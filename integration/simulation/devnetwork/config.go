@@ -29,6 +29,7 @@ type ObscuroConfig struct {
 	InitNumValidators int
 	BatchInterval     time.Duration
 	RollupInterval    time.Duration
+	L1BlockTime       time.Duration
 }
 
 // DefaultDevNetwork provides an off-the-shelf default config for a sim network
@@ -50,6 +51,7 @@ func DefaultDevNetwork() *InMemDevNetwork {
 			InitNumValidators: 3,
 			BatchInterval:     1 * time.Second,
 			RollupInterval:    10 * time.Second,
+			L1BlockTime:       15 * time.Second,
 		},
 		faucetLock: sync.Mutex{},
 	}
@@ -86,7 +88,8 @@ func LiveL1DevNetwork(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet,
 			PortStart:         integration.StartPortSimulationFullNetwork,
 			InitNumValidators: len(validatorWallets),
 			BatchInterval:     5 * time.Second,
-			RollupInterval:    1 * time.Minute,
+			RollupInterval:    3 * time.Minute,
+			L1BlockTime:       15 * time.Second,
 		},
 	}
 }

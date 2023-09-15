@@ -41,10 +41,7 @@ func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, clien
 	if err != nil {
 		return err
 	}
-	txData := d.CreateRollup(
-		&ethadapter.L1RollupTx{Rollup: encodedRollup},
-		w.GetNonceAndIncrement(),
-	)
+	txData := d.CreateRollup(&ethadapter.L1RollupTx{Rollup: encodedRollup})
 
 	issuedTx, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
@@ -68,8 +65,7 @@ func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, clien
 		return fmt.Errorf("rollup not stored in tree")
 	}
 
-	if !bytes.Equal(rollupElement.AggregatorID[:], rollup.Header.Coinbase.Bytes()) ||
-		!bytes.Equal(rollupElement.L1Block[:], rollup.Header.L1Proof.Bytes()) {
+	if !bytes.Equal(rollupElement.AggregatorID[:], rollup.Header.Coinbase.Bytes()) {
 		return fmt.Errorf("stored rollup does not match the generated rollup")
 	}
 

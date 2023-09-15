@@ -117,7 +117,8 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	wg.Wait()
 	min, max := minMax(heights)
 	// This checks that all the nodes are in sync. When a node falls behind with processing blocks it might highlight a problem.
-	if max-min > max/7 {
+	// since there is one node that only listens to rollups it will be naturally behind.
+	if max-min > max/5 {
 		t.Errorf("There is a problem with the Obscuro chain. Nodes fell out of sync. Max height: %d. Min height: %d -> %+v", max, min, heights)
 	}
 }
@@ -240,11 +241,7 @@ func ExtractDataFromEthereumChain(
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
 				rollups = append(rollups, r)
-				if node.IsBlockAncestor(block, r.Header.L1Proof) {
-					// only count the rollup if it is published in the right branch
-					// todo (@tudor) - once logic is added to the l1 - this can be made into a check
-					s.Stats.NewRollup(nodeIdx)
-				}
+				s.Stats.NewRollup(nodeIdx)
 			}
 		}
 	}

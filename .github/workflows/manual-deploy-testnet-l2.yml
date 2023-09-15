@@ -38,7 +38,8 @@ jobs:
       RESOURCE_TAG_NAME: ${{ steps.outputVars.outputs.RESOURCE_TAG_NAME }}
       RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
       RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
-      L1_HOST: ${{ steps.outputVars.outputs.L1_HOST }}
+      L1_WS_URL: ${{ steps.outputVars.outputs.L1_WS_URL }}
+      L1_HTTP_URL: ${{ steps.outputVars.outputs.L1_HTTP_URL }}
 
 
     steps:
@@ -62,7 +63,8 @@ jobs:
           echo "RESOURCE_TAG_NAME=testnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
-          echo "L1_HOST=testnet-eth2network.uksouth.cloudapp.azure.com" >> $GITHUB_ENV
+          echo "L1_WS_URL=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
+          echo "L1_HTTP_URL=http://testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
         if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
@@ -73,7 +75,8 @@ jobs:
           echo "RESOURCE_TAG_NAME=devtestnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
-          echo "L1_HOST=dev-testnet-eth2network.uksouth.cloudapp.azure.com" >> $GITHUB_ENV
+          echo "L1_WS_URL=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
+          echo "L1_HTTP_URL=http://dev-testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
 
       - name: 'Output env vars'
         id: outputVars
@@ -84,7 +87,8 @@ jobs:
           echo "RESOURCE_TAG_NAME=${{env.RESOURCE_TAG_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_STARTING_NAME=${{env.RESOURCE_STARTING_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
-          echo "L1_HOST=${{env.L1_HOST}}" >> $GITHUB_OUTPUT
+          echo "L1_WS_URL=${{env.L1_WS_URL}}" >> $GITHUB_OUTPUT
+          echo "L1_HTTP_URL=${{env.L1_HTTP_URL}}" >> $GITHUB_OUTPUT
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -107,7 +111,7 @@ jobs:
         shell: bash
         run: |
           go run ./testnet/launcher/l1contractdeployer/cmd \
-          -l1_host=${{ env.L1_HOST }} \
+          -l1_ws_url=${{ env.L1_HTTP_URL }} \
           -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
           -docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
           -contracts_env_file=./testnet/.env
@@ -252,7 +256,7 @@ jobs:
                -node_type=${{ matrix.node_type }} \
                -is_sgx_enabled=true \
                -host_id=${{ secrets[matrix.node_pk_addr] }} \
-               -l1_host=${{needs.build.outputs.L1_HOST}} \
+               -l1_ws_url=${{needs.build.outputs.L1_WS_URL}} \
                -management_contract_addr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
                -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
                -l1_start=${{needs.build.outputs.L1_START_HASH}} \
@@ -322,7 +326,7 @@ jobs:
         run: |
           go run ./testnet/launcher/l2contractdeployer/cmd \
           -l2_host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
-          -l1_host=${{ needs.build.outputs.L1_HOST }} \
+          -l1_ws_url=${{ needs.build.outputs.L1_HTTP_URL }} \
           -l2_ws_port=81 \
           -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
           -l2_private_key=8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b \

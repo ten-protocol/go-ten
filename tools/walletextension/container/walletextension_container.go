@@ -23,7 +23,7 @@ import (
 type WalletExtensionContainer struct {
 	hostAddr           string
 	userAccountManager *useraccountmanager.UserAccountManager
-	storage            *storage.Storage
+	storage            storage.Storage
 	stopControl        *stopcontrol.StopControl
 	logger             gethlog.Logger
 	walletExt          *walletextension.WalletExtension
@@ -42,7 +42,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 	userAccountManager := useraccountmanager.NewUserAccountManager(unAuthedClient, logger)
 
 	// start the database
-	databaseStorage, err := storage.New(config.DBPathOverride)
+	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride)
 	if err != nil {
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
 	}
@@ -101,7 +101,7 @@ func NewWalletExtensionContainer(
 	hostAddr string,
 	walletExt *walletextension.WalletExtension,
 	userAccountManager *useraccountmanager.UserAccountManager,
-	storage *storage.Storage,
+	storage storage.Storage,
 	stopControl *stopcontrol.StopControl,
 	httpServer *api.Server,
 	wsServer *api.Server,

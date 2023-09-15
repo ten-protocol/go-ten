@@ -22,7 +22,7 @@ type liveL1Network struct {
 func (l *liveL1Network) Prepare() {
 	// nothing to do really, sanity check the L1 connection
 	logger := testlog.Logger()
-	client, err := ethadapter.NewEthClientFromAddress(l.rpcAddress, 20*time.Second, common.HexToAddress("0x0"), logger)
+	client, err := ethadapter.NewEthClientFromURL(l.rpcAddress, 20*time.Second, common.HexToAddress("0x0"), logger)
 	if err != nil {
 		panic("unable to create live L1 eth client, err=" + err.Error())
 	}

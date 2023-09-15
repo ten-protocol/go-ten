@@ -46,8 +46,7 @@ func (t *Testnet) Start() error {
 		node.WithEnclaveImage(t.cfg.sequencerEnclaveDockerImage),
 		node.WithEnclaveDebug(t.cfg.sequencerEnclaveDebug),
 		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),
-		node.WithL1Host("eth2network"),
-		node.WithL1WSPort(9000),
+		node.WithL1WebsocketURL("ws://eth2network:9000"),
 		node.WithEnclaveWSPort(11000),
 		node.WithHostHTTPPort(80),
 		node.WithHostWSPort(81),
@@ -86,8 +85,7 @@ func (t *Testnet) Start() error {
 		node.WithEnclaveImage(t.cfg.validatorEnclaveDockerImage),
 		node.WithEnclaveDebug(t.cfg.validatorEnclaveDebug),
 		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),
-		node.WithL1Host("eth2network"),
-		node.WithL1WSPort(9000),
+		node.WithL1WebsocketURL("ws://eth2network:9000"),
 		node.WithEnclaveWSPort(11010),
 		node.WithHostHTTPPort(13010),
 		node.WithHostWSPort(13011),
@@ -120,8 +118,7 @@ func (t *Testnet) Start() error {
 
 	l2ContractDeployer, err := l2cd.NewDockerContractDeployer(
 		l2cd.NewContractDeployerConfig(
-			l2cd.WithL1Host("eth2network"),
-			l2cd.WithL1Port(8025),
+			l2cd.WithL1HTTPURL("http://eth2network:8025"),
 			l2cd.WithL2Host("sequencer-host"),
 			l2cd.WithL2WSPort(81),
 			l2cd.WithL1PrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
@@ -185,8 +182,7 @@ func startEth2Network() error {
 func deployL1Contracts() (*node.NetworkConfig, error) {
 	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
 		l1cd.NewContractDeployerConfig(
-			l1cd.WithL1Host("eth2network"),
-			l1cd.WithL1Port(8025),
+			l1cd.WithL1HTTPURL("http://eth2network:8025"),
 			l1cd.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l1cd.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"),
 		),
@@ -212,11 +208,11 @@ func deployL1Contracts() (*node.NetworkConfig, error) {
 func waitForHealthyNode(port int) error { // todo: hook the cfg
 	timeStart := time.Now()
 
-	hostRPCAddress := fmt.Sprintf("http://localhost:%d", port)
+	hostURL := fmt.Sprintf("http://localhost:%d", port)
 	fmt.Println("Waiting for Obscuro node to be healthy...")
 	err := retry.Do(
 		func() error {
-			client, err := rpc.NewNetworkClient(hostRPCAddress)
+			client, err := rpc.NewNetworkClient(hostURL)
 			if err != nil {
 				return err
 			}

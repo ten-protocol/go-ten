@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -20,18 +21,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	// Attempts to broadcast the rollup transaction to the L1. Worst-case, equates to 7 seconds, plus time per request.
-	l1TxTriesRollup = 3
-	// Attempts to send secret initialisation, request or response transactions to the L1. Worst-case, equates to 63 seconds, plus time per request.
-	l1TxTriesSecret = 7
-
-	// todo - these values have to be configurable
-	maxWaitForL1Receipt       = 100 * time.Second
-	retryIntervalForL1Receipt = 10 * time.Second
-	maxWaitForSecretResponse  = 120 * time.Second
-)
-
 type Publisher struct {
 	hostData        host.Identity
 	hostWallet      wallet.Wallet // Wallet used to issue ethereum transactions
@@ -41,34 +30,48 @@ type Publisher struct {
 	repository host.L1BlockRepository
 	logger     gethlog.Logger
 
-	running atomic.Bool
+	hostStopper *stopcontrol.StopControl
+
+	maxWaitForL1Receipt       time.Duration
+	retryIntervalForL1Receipt time.Duration
 }
 
-func NewL1Publisher(hostData host.Identity, hostWallet wallet.Wallet, client ethadapter.EthClient, mgmtContract mgmtcontractlib.MgmtContractLib, repository host.L1BlockRepository, logger gethlog.Logger) *Publisher {
+func NewL1Publisher(
+	hostData host.Identity,
+	hostWallet wallet.Wallet,
+	client ethadapter.EthClient,
+	mgmtContract mgmtcontractlib.MgmtContractLib,
+	repository host.L1BlockRepository,
+	hostStopper *stopcontrol.StopControl,
+	logger gethlog.Logger,
+	maxWaitForL1Receipt time.Duration,
+	retryIntervalForL1Receipt time.Duration,
+) *Publisher {
 	return &Publisher{
-		hostData:        hostData,
-		hostWallet:      hostWallet,
-		ethClient:       client,
-		mgmtContractLib: mgmtContract,
-		repository:      repository,
-		logger:          logger,
+		hostData:                  hostData,
+		hostWallet:                hostWallet,
+		ethClient:                 client,
+		mgmtContractLib:           mgmtContract,
+		repository:                repository,
+		hostStopper:               hostStopper,
+		logger:                    logger,
+		maxWaitForL1Receipt:       maxWaitForL1Receipt,
+		retryIntervalForL1Receipt: retryIntervalForL1Receipt,
 	}
 }
 
 func (p *Publisher) Start() error {
-	p.running.Store(true)
 	return nil
 }
 
 func (p *Publisher) Stop() error {
-	p.running.Store(false)
 	return nil
 }
 
 func (p *Publisher) HealthStatus() host.HealthStatus {
 	// todo (@matt) do proper health status based on failed transactions or something
 	errMsg := ""
-	if !p.running.Load() {
+	if p.hostStopper.IsStopping() {
 		errMsg = "not running"
 	}
 	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
@@ -85,18 +88,9 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 		InitialSecret: encSecret,
 		HostAddress:   p.hostData.P2PPublicAddress,
 	}
-	initialiseSecretTx := p.mgmtContractLib.CreateInitializeSecret(l1tx, p.hostWallet.GetNonceAndIncrement())
-	initialiseSecretTx, err = p.ethClient.EstimateGasAndGasPrice(initialiseSecretTx, p.hostWallet.Address())
-	if err != nil {
-		p.hostWallet.SetNonce(p.hostWallet.GetNonce() - 1)
-		return err
-	}
+	initialiseSecretTx := p.mgmtContractLib.CreateInitializeSecret(l1tx)
 	// we block here until we confirm a successful receipt. It is important this is published before the initial rollup.
-	err = p.signAndBroadcastL1Tx(initialiseSecretTx, l1TxTriesSecret, true)
-	if err != nil {
-		return err
-	}
-	return nil
+	return p.publishTransaction(initialiseSecretTx)
 }
 
 func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethcommon.Hash, error) {
@@ -119,14 +113,9 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 			panic(errors.Wrap(err, "could not fetch head block"))
 		}
 	}
-	requestSecretTx := p.mgmtContractLib.CreateRequestSecret(l1tx, p.hostWallet.GetNonceAndIncrement())
-	requestSecretTx, err = p.ethClient.EstimateGasAndGasPrice(requestSecretTx, p.hostWallet.Address())
-	if err != nil {
-		p.hostWallet.SetNonce(p.hostWallet.GetNonce() - 1)
-		return gethcommon.Hash{}, err
-	}
+	requestSecretTx := p.mgmtContractLib.CreateRequestSecret(l1tx)
 	// we wait until the secret req transaction has succeeded before we start polling for the secret
-	err = p.signAndBroadcastL1Tx(requestSecretTx, l1TxTriesSecret, true)
+	err = p.publishTransaction(requestSecretTx)
 	if err != nil {
 		return gethcommon.Hash{}, err
 	}
@@ -142,18 +131,17 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 		HostAddress: secretResponse.HostAddress,
 	}
 	// todo (#1624) - l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	respondSecretTx := p.mgmtContractLib.CreateRespondSecret(l1tx, p.hostWallet.GetNonceAndIncrement(), false)
-	respondSecretTx, err := p.ethClient.EstimateGasAndGasPrice(respondSecretTx, p.hostWallet.Address())
-	if err != nil {
-		p.hostWallet.SetNonce(p.hostWallet.GetNonce() - 1)
-		return err
-	}
+	respondSecretTx := p.mgmtContractLib.CreateRespondSecret(l1tx, false)
 	p.logger.Info("Broadcasting secret response L1 tx.", "requester", secretResponse.RequesterID)
+
 	// fire-and-forget (track the receipt asynchronously)
-	err = p.signAndBroadcastL1Tx(respondSecretTx, l1TxTriesSecret, false)
-	if err != nil {
-		return errors.Wrap(err, "could not broadcast secret response L1 tx")
-	}
+	go func() {
+		err := p.publishTransaction(respondSecretTx)
+		if err != nil {
+			p.logger.Error("could not broadcast secret response L1 tx", log.ErrKey, err)
+		}
+	}()
+
 	return nil
 }
 
@@ -207,22 +195,15 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 			}
 
 			return string(header)
-		}}, "rollup_hash", producedRollup.Header.Hash().Hex(), "batches_len", len(producedRollup.BatchPayloads))
+		}}, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
 
-	rollupTx := p.mgmtContractLib.CreateRollup(tx, p.hostWallet.GetNonceAndIncrement())
-	rollupTx, err = p.ethClient.EstimateGasAndGasPrice(rollupTx, p.hostWallet.Address())
-	if err != nil {
-		// todo (#1624) - make rollup submission a separate workflow (design and implement the flow etc)
-		p.hostWallet.SetNonce(p.hostWallet.GetNonce() - 1)
-		p.logger.Error("could not estimate rollup tx", log.ErrKey, err)
-		return
-	}
+	rollupTx := p.mgmtContractLib.CreateRollup(tx)
 
-	err = p.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup, true)
+	err = p.publishTransaction(rollupTx)
 	if err != nil {
 		p.logger.Error("could not issue rollup tx", log.ErrKey, err)
 	} else {
-		p.logger.Info("Rollup included in L1", "hash", producedRollup.Hash())
+		p.logger.Info("Rollup included in L1", log.RollupHashKey, producedRollup.Hash())
 	}
 }
 
@@ -258,69 +239,68 @@ func (p *Publisher) FetchLatestPeersList() ([]string, error) {
 	return filteredHostAddresses, nil
 }
 
-// `tries` is the number of times to attempt broadcasting the transaction.
-// if awaitReceipt is true then this method will block and synchronously wait to check the receipt, otherwise it is fire
-// and forget and the receipt tracking will happen in a separate go-routine
-func (p *Publisher) signAndBroadcastL1Tx(tx types.TxData, tries uint64, awaitReceipt bool) error {
-	var err error
-	tx, err = p.ethClient.EstimateGasAndGasPrice(tx, p.hostWallet.Address())
-	if err != nil {
-		return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
-	}
+// publishTransaction will keep trying unless the L1 seems to be unavailable or the tx is otherwise rejected
+// It is responsible for keeping the nonce accurate, according to the following rules:
+// - Caller should not increment the wallet nonce before this method is called
+// - This method will increment the wallet nonce only if the transaction is successfully broadcast
+// - This method will continue to resend the tx using latest gas price until it is successfully broadcast or the L1 is unavailable/this service is shutdown
+// - **ONLY** the L1 publisher service is publishing transactions for this wallet (to avoid nonce conflicts)
+// todo (@matt) this method should take a context so we can try to cancel if the tx is no longer required
+func (p *Publisher) publishTransaction(tx types.TxData) error {
+	// the nonce to be used for this tx attempt
+	nonce := p.hostWallet.GetNonceAndIncrement()
 
-	signedTx, err := p.hostWallet.SignTransaction(tx)
-	if err != nil {
-		return err
-	}
-
-	p.logger.Info("Host issuing l1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024)
-
-	err = retry.Do(func() error {
-		return p.ethClient.SendTransaction(signedTx)
-	}, retry.NewDoublingBackoffStrategy(time.Second, tries)) // doubling retry wait (3 tries = 7sec, 7 tries = 63sec)
-	if err != nil {
-		return fmt.Errorf("could not broadcast L1 tx after %d tries: %w", tries, err)
-	}
-	p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
-
-	if awaitReceipt {
-		// block until receipt is found and then return
-		return p.waitForReceipt(signedTx.Hash())
-	}
-
-	// else just watch for receipt asynchronously and log if it fails
-	go func() {
-		// todo (#1624) - consider how to handle the various ways that L1 transactions could fail to improve node operator QoL
-		err = p.waitForReceipt(signedTx.Hash())
-		if err != nil {
-			p.logger.Error("L1 transaction failed", log.ErrKey, err)
+	// while the publisher service is still alive we keep trying to get the transaction into the L1
+	for !p.hostStopper.IsStopping() {
+		// make sure an earlier tx hasn't been abandoned
+		if nonce > p.hostWallet.GetNonce() {
+			return errors.New("earlier transaction has failed to complete, we need to abort this transaction")
 		}
-	}()
+		// update the tx gas price before each attempt
+		tx, err := p.ethClient.PrepareTransactionToSend(tx, p.hostWallet.Address(), nonce)
+		if err != nil {
+			p.hostWallet.SetNonce(nonce) // revert the wallet nonce because we failed to complete the transaction
+			return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
+		}
 
-	return nil
-}
+		signedTx, err := p.hostWallet.SignTransaction(tx)
+		if err != nil {
+			p.hostWallet.SetNonce(nonce) // revert the wallet nonce because we failed to complete the transaction
+			return errors.Wrap(err, "could not sign L1 tx")
+		}
 
-func (p *Publisher) waitForReceipt(txHash common.TxHash) error {
-	var receipt *types.Receipt
-	var err error
-	err = retry.Do(
-		func() error {
-			receipt, err = p.ethClient.TransactionReceipt(txHash)
-			if err != nil {
-				// adds more info on the error
-				return fmt.Errorf("could not get receipt for L1 tx=%s: %w", txHash, err)
-			}
-			return err
-		},
-		retry.NewTimeoutStrategy(maxWaitForL1Receipt, retryIntervalForL1Receipt),
-	)
-	if err != nil {
-		return errors.Wrap(err, "receipt for L1 tx not found despite successful broadcast")
+		p.logger.Info("Host issuing l1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024)
+		err = p.ethClient.SendTransaction(signedTx)
+		if err != nil {
+			p.hostWallet.SetNonce(nonce) // revert the wallet nonce because we failed to complete the transaction
+			return errors.Wrap(err, "could not broadcast L1 tx")
+		}
+		p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
+
+		var receipt *types.Receipt
+		// retry until receipt is found
+		err = retry.Do(
+			func() error {
+				receipt, err = p.ethClient.TransactionReceipt(signedTx.Hash())
+				if err != nil {
+					return fmt.Errorf("could not get receipt for L1 tx=%s: %w", signedTx.Hash(), err)
+				}
+				return err
+			},
+			retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
+		)
+		if err != nil {
+			p.logger.Info("Receipt not found for transaction, we will re-attempt", log.ErrKey, err)
+			continue // try again on the same nonce, with updated gas price
+		}
+
+		if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
+			return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
+		}
+
+		p.logger.Debug("L1 transaction successful receipt found.", log.TxKey, signedTx.Hash(),
+			log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
+		break
 	}
-
-	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
-		return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
-	}
-	p.logger.Debug("L1 transaction receipt found.", log.TxKey, txHash, log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
 	return nil
 }

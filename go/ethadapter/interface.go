@@ -36,7 +36,8 @@ type EthClient interface {
 
 	CallContract(msg ethereum.CallMsg) ([]byte, error) // Runs the provided call message on the latest block.
 
-	EstimateGasAndGasPrice(txData types.TxData, from gethcommon.Address) (types.TxData, error) // Estimates the gas and the gas price for a given tx payload
+	// PrepareTransactionToSend updates the tx with from address, current nonce and current estimates for the gas and the gas price
+	PrepareTransactionToSend(txData types.TxData, from gethcommon.Address, nonce uint64) (types.TxData, error)
 
 	FetchLastBatchSeqNo(address gethcommon.Address) (*big.Int, error)
 

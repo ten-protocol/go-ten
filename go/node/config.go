@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -24,7 +25,7 @@ type Config struct {
 	enclaveImage              string
 	hostImage                 string
 	nodeType                  string
-	l1Host                    string
+	l1WSURL                   string
 	sequencerID               string
 	privateKey                string
 	hostP2PPort               int
@@ -35,7 +36,6 @@ type Config struct {
 	messageBusContractAddress string
 	managementContractAddr    string
 	l1Start                   string
-	l1WSPort                  int
 	hostP2PHost               string
 	hostPublicP2PAddr         string
 	pccsAddr                  string
@@ -47,6 +47,7 @@ type Config struct {
 	profilerEnabled           bool
 	logLevel                  int
 	isInboundP2PDisabled      bool
+	l1BlockTime               time.Duration
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -95,8 +96,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.P2PPublicAddress = fmt.Sprintf("127.0.0.1:%d", c.hostP2PPort)
 	cfg.P2PBindAddress = c.hostPublicP2PAddr
 
-	cfg.L1NodeWebsocketPort = uint(c.l1WSPort)
-	cfg.L1NodeHost = c.l1Host
+	cfg.L1WebsocketURL = c.l1WSURL
 	cfg.ManagementContractAddress = gethcommon.HexToAddress(c.managementContractAddr)
 	cfg.MessageBusAddress = gethcommon.HexToAddress(c.messageBusContractAddress)
 	cfg.LogPath = testlog.LogFile()
@@ -106,6 +106,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.LogLevel = c.logLevel
 	cfg.SequencerID = gethcommon.HexToAddress(c.sequencerID)
 	cfg.IsInboundP2PDisabled = c.isInboundP2PDisabled
+	cfg.L1BlockTime = c.l1BlockTime
 
 	return cfg
 }
@@ -202,15 +203,9 @@ func WithL1Start(blockHash string) Option {
 	}
 }
 
-func WithL1WSPort(i int) Option {
+func WithL1WebsocketURL(addr string) Option {
 	return func(c *Config) {
-		c.l1WSPort = i
-	}
-}
-
-func WithL1Host(s string) Option {
-	return func(c *Config) {
-		c.l1Host = s
+		c.l1WSURL = addr
 	}
 }
 
@@ -283,5 +278,11 @@ func WithLogLevel(i int) Option {
 func WithInboundP2PDisabled(b bool) Option {
 	return func(c *Config) {
 		c.isInboundP2PDisabled = b
+	}
+}
+
+func WithL1BlockTime(d time.Duration) Option {
+	return func(c *Config) {
+		c.l1BlockTime = d
 	}
 }

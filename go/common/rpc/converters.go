@@ -216,8 +216,7 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		return nil
 	}
 	headerMsg := generated.RollupHeaderMsg{
-		Proof:              header.L1Proof.Bytes(),
-		ProofNumber:        header.L1ProofNumber.Uint64(),
+		CompressionL1Head:  header.CompressionL1Head.Bytes(),
 		R:                  header.R.Bytes(),
 		S:                  header.S.Bytes(),
 		Coinbase:           header.Coinbase.Bytes(),
@@ -250,8 +249,7 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 	r := &big.Int{}
 	s := &big.Int{}
 	return &common.RollupHeader{
-		L1Proof:            gethcommon.BytesToHash(header.Proof),
-		L1ProofNumber:      big.NewInt(int64(header.ProofNumber)),
+		CompressionL1Head:  gethcommon.BytesToHash(header.CompressionL1Head),
 		R:                  r.SetBytes(header.R),
 		S:                  s.SetBytes(header.S),
 		Coinbase:           gethcommon.BytesToAddress(header.Coinbase),

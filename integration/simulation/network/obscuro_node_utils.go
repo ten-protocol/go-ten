@@ -52,6 +52,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			params.L1SetupData.ObscuroStartBlock,
 			params.AvgBlockDuration/3,
 			true,
+			params.AvgBlockDuration,
 		)
 		obscuroHosts[i] = obscuroNodes[i].Host()
 	}
@@ -135,19 +136,19 @@ func StopObscuroNodes(clients []rpc.Client) {
 }
 
 // CheckHostRPCServersStopped checks whether the hosts' RPC server addresses have been freed up.
-func CheckHostRPCServersStopped(hostRPCAddresses []string) {
+func CheckHostRPCServersStopped(hostWSURLS []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	eg, _ := errgroup.WithContext(ctx)
 
-	for _, hostRPCAddress := range hostRPCAddresses {
-		rpcAddress := hostRPCAddress
+	for _, hostWSURL := range hostWSURLS {
+		url := hostWSURL
 		// We cannot stop the RPC server synchronously. This is because the host itself is being stopped by an RPC
 		// call, so there is a deadlock. The RPC server is waiting for all connections to close, but a single
 		// connection remains open, waiting for the RPC server to close. Instead, we check whether the RPC port
 		// becomes free.
 		eg.Go(func() error {
-			for !isAddressAvailable(rpcAddress) {
+			for !isAddressAvailable(url) {
 				time.Sleep(100 * time.Millisecond)
 			}
 			return nil

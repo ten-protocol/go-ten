@@ -25,12 +25,12 @@ func DevTestnet() networktest.Environment {
 	return &testnetEnv{connector}
 }
 
-func LongRunningLocalNetwork(l1RPCAddress string) networktest.Environment {
+func LongRunningLocalNetwork(l1WSURL string) networktest.Environment {
 	connector := NewTestnetConnectorWithFaucetAccount(
 		"http://127.0.0.1:37800",
 		[]string{"http://127.0.0.1:37801", "http://127.0.0.1:37802"},
 		genesis.TestnetPrefundedPK,
-		l1RPCAddress,
+		l1WSURL,
 	)
 	return &testnetEnv{connector}
 }

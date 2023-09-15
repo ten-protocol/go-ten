@@ -55,20 +55,20 @@ func (m *mockContractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	return decodeTx(tx)
 }
 
-func (m *mockContractLib) CreateRollup(tx *ethadapter.L1RollupTx, nonce uint64) types.TxData {
-	return encodeTx(tx, nonce, rollupTxAddr)
+func (m *mockContractLib) CreateRollup(tx *ethadapter.L1RollupTx) types.TxData {
+	return encodeTx(tx, rollupTxAddr)
 }
 
-func (m *mockContractLib) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx, nonce uint64) types.TxData {
-	return encodeTx(tx, nonce, requestSecretTxAddr)
+func (m *mockContractLib) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData {
+	return encodeTx(tx, requestSecretTxAddr)
 }
 
-func (m *mockContractLib) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, nonce uint64, _ bool) types.TxData {
-	return encodeTx(tx, nonce, storeSecretTxAddr)
+func (m *mockContractLib) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, _ bool) types.TxData {
+	return encodeTx(tx, storeSecretTxAddr)
 }
 
-func (m *mockContractLib) CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx, nonce uint64) types.TxData {
-	return encodeTx(tx, nonce, initializeSecretTxAddr)
+func (m *mockContractLib) CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData {
+	return encodeTx(tx, initializeSecretTxAddr)
 }
 
 func (m *mockContractLib) GetHostAddresses() (ethereum.CallMsg, error) {
@@ -114,7 +114,7 @@ func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	return t
 }
 
-func encodeTx(tx ethadapter.L1Transaction, nonce uint64, opType gethcommon.Address) types.TxData {
+func encodeTx(tx ethadapter.L1Transaction, opType gethcommon.Address) types.TxData {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 
@@ -125,8 +125,7 @@ func encodeTx(tx ethadapter.L1Transaction, nonce uint64, opType gethcommon.Addre
 	// the mock implementation does not process contract calls
 	// this uses the To address to distinguish between different contract calls / different l1 transactions
 	return &types.LegacyTx{
-		Nonce: nonce,
-		Data:  buf.Bytes(),
-		To:    &opType,
+		Data: buf.Bytes(),
+		To:   &opType,
 	}
 }

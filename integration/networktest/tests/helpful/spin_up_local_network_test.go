@@ -62,7 +62,7 @@ func TestRunLocalNetworkAgainstSepolia(t *testing.T) {
 }
 
 func checkBalance(walDesc string, wal wallet.Wallet, rpcAddress string) {
-	client, err := ethadapter.NewEthClientFromAddress(rpcAddress, 20*time.Second, common.HexToAddress("0x0"), testlog.Logger())
+	client, err := ethadapter.NewEthClientFromURL(rpcAddress, 20*time.Second, common.HexToAddress("0x0"), testlog.Logger())
 	if err != nil {
 		panic("unable to create live L1 eth client, err=" + err.Error())
 	}
