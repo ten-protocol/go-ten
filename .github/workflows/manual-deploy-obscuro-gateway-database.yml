@@ -111,7 +111,7 @@ jobs:
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
                datadog/agent:latest \
             && cd /home/obscuro/go-obscuro/ \
-            && docker run -d --name db \
+            && docker run -d --name ${{env.RESOURCE_STARTING_NAME}}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }} \
                 -p 3306:3306 \
                 -e MARIADB_ROOT_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_ROOT_PWD }} \
                 -e MARIADB_USER=obscurouser \
