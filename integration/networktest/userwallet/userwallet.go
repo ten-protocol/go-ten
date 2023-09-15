@@ -24,7 +24,7 @@ import (
 
 const (
 	_maxReceiptWaitTime  = 30 * time.Second
-	_receiptPollInterval = 1 * time.Second
+	_receiptPollInterval = 1 * time.Second // todo (@matt) this should be configured using network timings provided by env
 )
 
 // UserWallet implements wallet.Wallet so it can be used with the original Wallet code.

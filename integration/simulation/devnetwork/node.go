@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"os"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/go-obscuro/go/host/l1"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -13,7 +15,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -106,7 +107,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	p2pAddr := fmt.Sprintf("%s:%d", network.Localhost, p2pPort)
 
 	hostConfig := &config.HostConfig{
-		ID:                        getHostID(n.operatorIdx),
+		ID:                        n.l1Wallet.Address(),
 		IsGenesis:                 n.nodeType == common.Sequencer,
 		NodeType:                  n.nodeType,
 		HasClientRPCHTTP:          true,
@@ -124,7 +125,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		L1ChainID:                 integration.EthereumChainID,
 		ObscuroChainID:            integration.ObscuroChainID,
 		L1StartHash:               n.l1Data.ObscuroStartBlock,
-		SequencerID:               getHostID(0),
+		SequencerID:               n.config.SequencerID,
 		UseInMemoryDB:             false,
 		LevelDBPath:               n.hostDBFilepath,
 		DebugNamespaceEnabled:     true,
@@ -133,7 +134,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		L1BlockTime:               n.config.L1BlockTime,
 	}
 
-	hostLogger := testlog.Logger().New(log.NodeIDKey, n.operatorIdx, log.CmpKey, log.HostCmp)
+	hostLogger := testlog.Logger().New(log.NodeIDKey, n.l1Wallet.Address(), log.CmpKey, log.HostCmp)
 
 	// create a socket P2P layer
 	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)
@@ -141,7 +142,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, svcLocator, p2pLogger, nil)
 	// create an enclave client
 
-	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, n.operatorIdx))
+	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, n.l1Wallet.Address()))
 	rpcServer := clientrpc.NewServer(hostConfig, n.logger)
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&hostConfig.ManagementContractAddress, n.logger)
 	l1Repo := l1.NewL1Repository(n.l1Client, []gethcommon.Address{hostConfig.ManagementContractAddress, hostConfig.MessageBusAddress}, n.logger)
@@ -149,7 +150,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 }
 
 func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveContainer {
-	enclaveLogger := testlog.Logger().New(log.NodeIDKey, n.operatorIdx, log.CmpKey, log.EnclaveCmp)
+	enclaveLogger := testlog.Logger().New(log.NodeIDKey, n.l1Wallet.Address(), log.CmpKey, log.EnclaveCmp)
 	enclavePort := n.config.PortStart + integration.DefaultEnclaveOffset + n.operatorIdx
 	enclaveAddr := fmt.Sprintf("%s:%d", network.Localhost, enclavePort)
 
@@ -157,8 +158,8 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 	hostAddr := fmt.Sprintf("%s:%d", network.Localhost, hostPort)
 
 	enclaveConfig := &config.EnclaveConfig{
-		HostID:                    getHostID(n.operatorIdx),
-		SequencerID:               getHostID(0),
+		HostID:                    n.l1Wallet.Address(),
+		SequencerID:               n.config.SequencerID,
 		HostAddress:               hostAddr,
 		Address:                   enclaveAddr,
 		NodeType:                  n.nodeType,
@@ -240,8 +241,4 @@ func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common
 		enclaveDBFilepath: sqliteDBPath,
 		hostDBFilepath:    levelDBPath,
 	}
-}
-
-func getHostID(nodeIdx int) gethcommon.Address {
-	return gethcommon.BigToAddress(big.NewInt(int64(nodeIdx)))
 }
