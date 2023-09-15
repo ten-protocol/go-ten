@@ -268,7 +268,9 @@ func (e *gethRPCClient) ReconnectIfClosed() error {
 
 // Alive tests the client
 func (e *gethRPCClient) Alive() bool {
-	_, err := e.client.BlockNumber(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+	_, err := e.client.BlockNumber(ctx)
 	if err != nil {
 		e.logger.Error("Unable to fetch BlockNumber rpc endpoint - client connection is in error state")
 		return false

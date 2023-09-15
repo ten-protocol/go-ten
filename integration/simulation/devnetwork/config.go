@@ -1,6 +1,7 @@
 package devnetwork
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"sync"
 	"time"
@@ -30,6 +31,7 @@ type ObscuroConfig struct {
 	BatchInterval     time.Duration
 	RollupInterval    time.Duration
 	L1BlockTime       time.Duration
+	SequencerID       common.Address
 }
 
 // DefaultDevNetwork provides an off-the-shelf default config for a sim network
@@ -52,12 +54,15 @@ func DefaultDevNetwork() *InMemDevNetwork {
 			BatchInterval:     1 * time.Second,
 			RollupInterval:    10 * time.Second,
 			L1BlockTime:       15 * time.Second,
+			SequencerID:       networkWallets.NodeWallets[0].Address(),
 		},
 		faucetLock: sync.Mutex{},
 	}
 }
 
-func LiveL1DevNetwork(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet, rpcAddress string) *InMemDevNetwork {
+// LiveL1DevNetwork provides a local obscuro network running on a live L1
+// Caller should provide a wallet per node and ideally an RPC URL per node (may not be necessary but can avoid conflicts, e.g. Infura seems to require an API key per connection)
+func LiveL1DevNetwork(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet, rpcURLs []string) *InMemDevNetwork {
 	// setup the host and deployer wallets to be the prefunded wallets
 
 	// create the L2 faucet wallet
@@ -77,7 +82,7 @@ func LiveL1DevNetwork(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet,
 		deployWallet:     seqWallet, // use the same wallet for deploying the contracts
 		seqWallet:        seqWallet,
 		validatorWallets: validatorWallets,
-		rpcAddress:       rpcAddress,
+		rpcURLs:          rpcURLs,
 	}
 
 	return &InMemDevNetwork{
@@ -90,6 +95,7 @@ func LiveL1DevNetwork(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet,
 			BatchInterval:     5 * time.Second,
 			RollupInterval:    3 * time.Minute,
 			L1BlockTime:       15 * time.Second,
+			SequencerID:       seqWallet.Address(),
 		},
 	}
 }

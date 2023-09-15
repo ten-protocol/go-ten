@@ -28,12 +28,12 @@ func (d *devNetworkEnv) Prepare() (networktest.NetworkConnector, func(), error) 
 }
 
 func awaitNodesAvailable(nc networktest.NetworkConnector) error {
-	err := awaitHealthStatus(nc.GetSequencerNode().HostRPCAddress(), 30*time.Second)
+	err := awaitHealthStatus(nc.GetSequencerNode().HostRPCAddress(), 60*time.Second)
 	if err != nil {
 		return err
 	}
 	for i := 0; i < nc.NumValidators(); i++ {
-		err := awaitHealthStatus(nc.GetValidatorNode(i).HostRPCAddress(), 30*time.Second)
+		err := awaitHealthStatus(nc.GetValidatorNode(i).HostRPCAddress(), 60*time.Second)
 		if err != nil {
 			return err
 		}
@@ -67,6 +67,6 @@ func LocalDevNetwork() networktest.Environment {
 
 // LocalNetworkLiveL1 creates a local network that points to a live running L1.
 // Note: seqWallet and validatorWallets need funds. seqWallet is used to deploy the L1 contracts
-func LocalNetworkLiveL1(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet, l1RPCAddress string) networktest.Environment {
-	return &devNetworkEnv{inMemDevNetwork: devnetwork.LiveL1DevNetwork(seqWallet, validatorWallets, l1RPCAddress)}
+func LocalNetworkLiveL1(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet, l1RPCURLs []string) networktest.Environment {
+	return &devNetworkEnv{inMemDevNetwork: devnetwork.LiveL1DevNetwork(seqWallet, validatorWallets, l1RPCURLs)}
 }

@@ -21,11 +21,12 @@ import (
 const (
 	_sepoliaChainID = 11155111
 
-	// To run Sepolia network: update these details with a websocket RPC address and funded PKs
-	_sepoliaRPCAddress   = "wss://sepolia.infura.io/ws/v3/<api-key>"
+	SepoliaRPCAddress1 = "wss://sepolia.infura.io/ws/v3/<api-key>" // seq
+	SepoliaRPCAddress2 = "wss://sepolia.infura.io/ws/v3/<api-key>" // val
+	SepoliaRPCAddress3 = "wss://sepolia.infura.io/ws/v3/<api-key>" // tester
+
 	_sepoliaSequencerPK  = "<pk>" // account 0x<acc>
 	_sepoliaValidator1PK = "<pk>" // account 0x<acc>
-
 )
 
 func TestRunLocalNetwork(t *testing.T) {
@@ -45,14 +46,14 @@ func TestRunLocalNetworkAgainstSepolia(t *testing.T) {
 	networktest.EnsureTestLogsSetUp("local-sepolia-network")
 
 	l1DeployerWallet := wallet.NewInMemoryWalletFromConfig(_sepoliaSequencerPK, _sepoliaChainID, testlog.Logger())
-	checkBalance("sequencer", l1DeployerWallet, _sepoliaRPCAddress)
+	checkBalance("sequencer", l1DeployerWallet, SepoliaRPCAddress1)
 
 	val1Wallet := wallet.NewInMemoryWalletFromConfig(_sepoliaValidator1PK, _sepoliaChainID, testlog.Logger())
-	checkBalance("validator1", val1Wallet, _sepoliaRPCAddress)
+	checkBalance("validator1", val1Wallet, SepoliaRPCAddress2)
 
 	validatorWallets := []wallet.Wallet{val1Wallet}
 	networktest.EnsureTestLogsSetUp("local-network-live-l1")
-	networkConnector, cleanUp, err := env.LocalNetworkLiveL1(l1DeployerWallet, validatorWallets, _sepoliaRPCAddress).Prepare()
+	networkConnector, cleanUp, err := env.LocalNetworkLiveL1(l1DeployerWallet, validatorWallets, []string{SepoliaRPCAddress1, SepoliaRPCAddress2}).Prepare()
 	if err != nil {
 		t.Fatal(err)
 	}

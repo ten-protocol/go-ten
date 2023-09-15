@@ -181,6 +181,7 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 
 	var start time.Time
 	var receipt *types.Receipt
+	// todo (@matt) these timings should be driven by the L2 batch times and L1 block times
 	for start = time.Now(); time.Since(start) < 80*time.Second; time.Sleep(2 * time.Second) {
 		receipt, err = workerClient.TransactionReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
@@ -191,10 +192,10 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 			return receipt, nil
 		}
 
-		testlog.Logger().Info(fmt.Sprintf("Contract deploy tx has not been mined into a block after %s...", time.Since(start)))
+		testlog.Logger().Info(fmt.Sprintf("Contract deploy tx (%s) has not been mined into a block after %s...", signedTx.Hash(), time.Since(start)))
 	}
 
-	return nil, fmt.Errorf("failed to mine contract deploy tx into a block after %s. Aborting", time.Since(start))
+	return nil, fmt.Errorf("failed to mine contract deploy tx (%s) into a block after %s. Aborting", signedTx.Hash(), time.Since(start))
 }
 
 func CreateEthClientConnection(id int64, port uint) ethadapter.EthClient {
