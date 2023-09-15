@@ -245,6 +245,7 @@ func (p *Publisher) FetchLatestPeersList() ([]string, error) {
 // - This method will increment the wallet nonce only if the transaction is successfully broadcast
 // - This method will continue to resend the tx using latest gas price until it is successfully broadcast or the L1 is unavailable/this service is shutdown
 // - **ONLY** the L1 publisher service is publishing transactions for this wallet (to avoid nonce conflicts)
+// todo (@matt) this method should take a context so we can try to cancel if the tx is no longer required
 func (p *Publisher) publishTransaction(tx types.TxData) error {
 	// the nonce to be used for this tx attempt
 	nonce := p.hostWallet.GetNonceAndIncrement()
