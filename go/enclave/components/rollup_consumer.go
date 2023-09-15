@@ -60,8 +60,14 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) 
 	if len(rollups) > 0 {
 		for _, rollup := range rollups {
 			// read batch data from rollup, verify and store it
-			if err := rc.rollupCompression.ProcessExtRollup(rollup); err != nil {
+			internalHeader, err := rc.rollupCompression.ProcessExtRollup(rollup)
+			if err != nil {
 				rc.logger.Error("Failed processing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+				// todo - issue challenge as a validator
+				return err
+			}
+			if err := rc.storage.StoreRollup(rollup, internalHeader); err != nil {
+				rc.logger.Error("Failed storing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 				return err
 			}
 		}

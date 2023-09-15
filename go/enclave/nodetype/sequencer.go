@@ -316,12 +316,24 @@ func (s *sequencer) SubmitTransaction(transaction *common.L2Tx) error {
 }
 
 func (s *sequencer) OnL1Fork(fork *common.ChainFork) error {
-	if fork.IsFork() {
-		err := s.duplicateBatches(fork.NewCanonical, fork.NonCanonicalPath)
-		if err != nil {
-			return fmt.Errorf("could not duplicate batches. Cause %w", err)
-		}
+	if !fork.IsFork() {
+		return nil
 	}
+
+	err := s.duplicateBatches(fork.NewCanonical, fork.NonCanonicalPath)
+	if err != nil {
+		return fmt.Errorf("could not duplicate batches. Cause %w", err)
+	}
+
+	rollup, err := s.storage.FetchReorgedRollup(fork.NonCanonicalPath)
+	if err == nil {
+		s.logger.Error("Reissue rollup", log.RollupHashKey, rollup)
+		return nil
+	}
+	if !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("could not call FetchReorgedRollup. Cause: %w", err)
+	}
+
 	return nil
 }
 
