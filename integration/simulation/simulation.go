@@ -204,8 +204,8 @@ func (s *Simulation) prefundL1Accounts() {
 			TokenContract: s.Params.Wallets.Tokens[testcommon.HOC].L1ContractAddress,
 			Sender:        &ownerAddr,
 		}
-		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData, tokenOwner.GetNonceAndIncrement())
-		estimatedTx, err := ethClient.EstimateGasAndGasPrice(tx, tokenOwner.Address())
+		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData)
+		estimatedTx, err := ethClient.PrepareTransactionToSend(tx, tokenOwner.Address(), tokenOwner.GetNonceAndIncrement())
 		if err != nil {
 			// ignore txs that are not able to be estimated/execute
 			testlog.Logger().Error("unable to estimate tx", log.ErrKey, err)

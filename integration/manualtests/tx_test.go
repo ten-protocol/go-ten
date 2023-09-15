@@ -68,10 +68,9 @@ func TestL1IssueContractInteractWaitReceipt(t *testing.T) {
 	assert.Nil(t, err)
 
 	l1Wallet.SetNonce(nonce)
-	estimatedTx, err := ethClient.EstimateGasAndGasPrice(&types.LegacyTx{
-		Nonce: l1Wallet.GetNonceAndIncrement(),
-		Data:  gethcommon.FromHex(storeContractBytecode),
-	}, l1Wallet.Address())
+	estimatedTx, err := ethClient.PrepareTransactionToSend(&types.LegacyTx{
+		Data: gethcommon.FromHex(storeContractBytecode),
+	}, l1Wallet.Address(), l1Wallet.GetNonceAndIncrement())
 	assert.Nil(t, err)
 
 	signedTx, err := l1Wallet.SignTransaction(estimatedTx)
@@ -114,11 +113,10 @@ func TestL1IssueTxWaitReceipt(t *testing.T) {
 	assert.Nil(t, err)
 
 	l1Wallet.SetNonce(nonce)
-	estimatedTx, err := ethClient.EstimateGasAndGasPrice(&types.LegacyTx{
-		Nonce: l1Wallet.GetNonceAndIncrement(),
+	estimatedTx, err := ethClient.PrepareTransactionToSend(&types.LegacyTx{
 		To:    &toAddr,
 		Value: big.NewInt(100),
-	}, l1Wallet.Address())
+	}, l1Wallet.Address(), l1Wallet.GetNonceAndIncrement())
 	assert.Nil(t, err)
 
 	signedTx, err := l1Wallet.SignTransaction(estimatedTx)

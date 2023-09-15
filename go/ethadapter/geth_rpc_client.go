@@ -222,8 +222,8 @@ func (e *gethRPCClient) FetchLastBatchSeqNo(address gethcommon.Address) (*big.In
 	return contract.LastBatchSeqNo(&bind.CallOpts{})
 }
 
-// EstimateGasAndGasPrice takes a txData type and overrides the Gas and Gas Price field with estimated values
-func (e *gethRPCClient) EstimateGasAndGasPrice(txData types.TxData, from gethcommon.Address) (types.TxData, error) {
+// PrepareTransactionToSend takes a txData type and overrides the From, Nonce, Gas and Gas Price field with current values
+func (e *gethRPCClient) PrepareTransactionToSend(txData types.TxData, from gethcommon.Address, nonce uint64) (types.TxData, error) {
 	unEstimatedTx := types.NewTx(txData)
 	gasPrice, err := e.EthClient().SuggestGasPrice(context.Background())
 	if err != nil {
@@ -241,7 +241,7 @@ func (e *gethRPCClient) EstimateGasAndGasPrice(txData types.TxData, from gethcom
 	}
 
 	return &types.LegacyTx{
-		Nonce:    unEstimatedTx.Nonce(),
+		Nonce:    nonce,
 		GasPrice: gasPrice,
 		Gas:      gasLimit,
 		To:       unEstimatedTx.To(),

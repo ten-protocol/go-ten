@@ -41,10 +41,7 @@ func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, clien
 	if err != nil {
 		return err
 	}
-	txData := d.CreateRollup(
-		&ethadapter.L1RollupTx{Rollup: encodedRollup},
-		w.GetNonceAndIncrement(),
-	)
+	txData := d.CreateRollup(&ethadapter.L1RollupTx{Rollup: encodedRollup})
 
 	issuedTx, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {

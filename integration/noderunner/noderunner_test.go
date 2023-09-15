@@ -131,6 +131,7 @@ func createInMemoryNode(t *testing.T) (node.Node, gethcommon.Address) {
 		node.WithL1WebsocketURL(fmt.Sprintf("ws://%s:%d", _localhost, _startPort+integration.DefaultGethWSPortOffset)),
 		node.WithGenesis(true),
 		node.WithProfiler(true),
+		node.WithL1BlockTime(1*time.Second),
 	)
 
 	return NewInMemNode(nodeCfg), hostAddress
