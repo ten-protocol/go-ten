@@ -111,7 +111,7 @@ jobs:
         shell: bash
         run: |
           go run ./testnet/launcher/l1contractdeployer/cmd \
-          -l1_ws_url=${{ env.L1_HTTP_URL }} \
+          -l1_http_url=${{ env.L1_HTTP_URL }} \
           -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
           -docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
           -contracts_env_file=./testnet/.env
@@ -326,7 +326,7 @@ jobs:
         run: |
           go run ./testnet/launcher/l2contractdeployer/cmd \
           -l2_host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
-          -l1_ws_url=${{ needs.build.outputs.L1_HTTP_URL }} \
+          -l1_http_url=${{ needs.build.outputs.L1_HTTP_URL }} \
           -l2_ws_port=81 \
           -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
           -l2_private_key=8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b \
