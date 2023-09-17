@@ -11,7 +11,6 @@ import (
 func RandomRollup(_ *types.Block) common.ExtRollup {
 	extRollup := common.ExtRollup{
 		Header: &common.RollupHeader{
-			L1Proof:  randomHash(),
 			Coinbase: RandomAddress(),
 		},
 	}

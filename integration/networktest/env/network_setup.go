@@ -25,12 +25,13 @@ func DevTestnet() networktest.Environment {
 	return &testnetEnv{connector}
 }
 
-func LongRunningLocalNetwork(l1RPCAddress string) networktest.Environment {
+// LongRunningLocalNetwork is a local network, the l1WSURL is optional (can be empty string), only required if testing L1 interactions
+func LongRunningLocalNetwork(l1WSURL string) networktest.Environment {
 	connector := NewTestnetConnectorWithFaucetAccount(
-		"http://127.0.0.1:37800",
-		[]string{"http://127.0.0.1:37801", "http://127.0.0.1:37802"},
+		"ws://127.0.0.1:37900",
+		[]string{"ws://127.0.0.1:37901"},
 		genesis.TestnetPrefundedPK,
-		l1RPCAddress,
+		l1WSURL,
 	)
 	return &testnetEnv{connector}
 }

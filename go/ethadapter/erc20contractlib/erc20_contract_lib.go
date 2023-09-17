@@ -20,7 +20,7 @@ type ERC20ContractLib interface {
 	DecodeTx(tx *types.Transaction) ethadapter.L1Transaction
 
 	// CreateDepositTx receives an common.L1Transaction and converts it to an eth transaction
-	CreateDepositTx(tx *ethadapter.L1DepositTx, nonce uint64) types.TxData
+	CreateDepositTx(tx *ethadapter.L1DepositTx) types.TxData
 }
 
 // erc20ContractLibImpl takes a mgmtContractAddr and processes multiple erc20ContractAddrs
@@ -44,16 +44,15 @@ func NewERC20ContractLib(mgmtContractAddr *gethcommon.Address, contractAddrs ...
 	}
 }
 
-func (c *erc20ContractLibImpl) CreateDepositTx(tx *ethadapter.L1DepositTx, nonce uint64) types.TxData {
+func (c *erc20ContractLibImpl) CreateDepositTx(tx *ethadapter.L1DepositTx) types.TxData {
 	data, err := c.contractABI.Pack("transfer", &tx.To, tx.Amount)
 	if err != nil {
 		panic(err)
 	}
 
 	return &types.LegacyTx{
-		Nonce: nonce,
-		To:    tx.TokenContract,
-		Data:  data,
+		To:   tx.TokenContract,
+		Data: data,
 	}
 }
 

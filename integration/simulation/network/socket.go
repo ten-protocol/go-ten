@@ -23,8 +23,8 @@ import (
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkOfSocketNodes struct {
-	l2Clients        []rpc.Client
-	hostRPCAddresses []string
+	l2Clients         []rpc.Client
+	hostWebsocketURLs []string
 
 	// geth
 	eth2Network    eth2network.Eth2Network
@@ -94,12 +94,12 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithManagementContractAddress(simParams.L1SetupData.MgmtContractAddress.String()),
 				node.WithMessageBusContractAddress(simParams.L1SetupData.MessageBusAddr.String()),
 				node.WithNodeType(nodeTypeStr),
-				node.WithL1Host("127.0.0.1"),
-				node.WithL1WSPort(simParams.StartPort+100),
 				node.WithCoinbase(simParams.Wallets.L2FeesWallet.Address().Hex()),
+				node.WithL1WebsocketURL(fmt.Sprintf("ws://%s:%d", "127.0.0.1", simParams.StartPort+100)),
 				node.WithInboundP2PDisabled(isInboundP2PDisabled),
 				node.WithLogLevel(4),
 				node.WithDebugNamespaceEnabled(true),
+				node.WithL1BlockTime(simParams.AvgBlockDuration),
 			),
 		)
 
@@ -129,13 +129,13 @@ func (n *networkOfSocketNodes) TearDown() {
 	// Stop the Obscuro nodes first (each host will attempt to shut down its enclave as part of shutdown).
 	StopObscuroNodes(n.l2Clients)
 	StopEth2Network(n.gethClients, n.eth2Network)
-	CheckHostRPCServersStopped(n.hostRPCAddresses)
+	CheckHostRPCServersStopped(n.hostWebsocketURLs)
 }
 
 func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) error {
 	// create the clients in the structs
 	n.l2Clients = make([]rpc.Client, simParams.NumberOfNodes)
-	n.hostRPCAddresses = make([]string, simParams.NumberOfNodes)
+	n.hostWebsocketURLs = make([]string, simParams.NumberOfNodes)
 	n.obscuroClients = make([]*obsclient.ObsClient, simParams.NumberOfNodes)
 
 	for i := 0; i < simParams.NumberOfNodes; i++ {
@@ -155,7 +155,7 @@ func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) er
 		}
 
 		n.l2Clients[i] = client
-		n.hostRPCAddresses[i] = fmt.Sprintf("ws://%s:%d", Localhost, simParams.StartPort+integration.DefaultHostRPCWSOffset+i)
+		n.hostWebsocketURLs[i] = fmt.Sprintf("ws://%s:%d", Localhost, simParams.StartPort+integration.DefaultHostRPCWSOffset+i)
 	}
 
 	for idx, l2Client := range n.l2Clients {

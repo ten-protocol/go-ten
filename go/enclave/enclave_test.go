@@ -38,7 +38,7 @@ const _testEnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a04
 // _successfulRollupGasPrice can be deterministically calculated when evaluating the management smart contract.
 // It should change only when there are changes to the smart contract or if the gas estimation algorithm is modified.
 // Other changes would mean something is broken.
-const _successfulRollupGasPrice = 338088
+const _successfulRollupGasPrice = 336360
 
 var _enclavePubKey *ecies.PublicKey
 
@@ -140,7 +140,7 @@ func gasEstimateSuccess(t *testing.T, w wallet.Wallet, enclave common.Enclave, v
 	}
 
 	if decodeUint64 != _successfulRollupGasPrice {
-		t.Fatal("unexpected gas price")
+		t.Fatalf("unexpected gas price %d", decodeUint64)
 	}
 }
 

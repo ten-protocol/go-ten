@@ -37,10 +37,8 @@ type HostInputConfig struct {
 	P2PBindAddress string
 	// P2PPublicAddress is the advertised P2P server address
 	P2PPublicAddress string
-	// The host of the connected L1 node
-	L1NodeHost string
-	// The websocket port of the connected L1 node
-	L1NodeWebsocketPort uint
+	// L1WebsocketURL is the RPC address for interactions with the L1
+	L1WebsocketURL string
 	// Timeout duration for RPC requests to the enclave service
 	EnclaveRPCTimeout time.Duration
 	// Timeout duration for connecting to, and communicating with, the L1 node
@@ -89,6 +87,9 @@ type HostInputConfig struct {
 	// Min interval before creating the next rollup (only used by Sequencer nodes)
 	RollupInterval time.Duration
 
+	// The expected time between blocks on the L1 network
+	L1BlockTime time.Duration
+
 	// Whether inbound p2p is enabled or not
 	IsInboundP2PDisabled bool
 }
@@ -106,8 +107,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		EnclaveRPCAddress:         p.EnclaveRPCAddress,
 		P2PBindAddress:            p.P2PBindAddress,
 		P2PPublicAddress:          p.P2PPublicAddress,
-		L1NodeHost:                p.L1NodeHost,
-		L1NodeWebsocketPort:       p.L1NodeWebsocketPort,
+		L1WebsocketURL:            p.L1WebsocketURL,
 		EnclaveRPCTimeout:         p.EnclaveRPCTimeout,
 		L1RPCTimeout:              p.L1RPCTimeout,
 		P2PConnectionTimeout:      p.P2PConnectionTimeout,
@@ -129,6 +129,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		DebugNamespaceEnabled:     p.DebugNamespaceEnabled,
 		BatchInterval:             p.BatchInterval,
 		RollupInterval:            p.RollupInterval,
+		L1BlockTime:               p.L1BlockTime,
 		IsInboundP2PDisabled:      p.IsInboundP2PDisabled,
 	}
 }
@@ -155,6 +156,8 @@ type HostConfig struct {
 	BatchInterval time.Duration
 	// Min interval before creating the next rollup (only used by Sequencer nodes)
 	RollupInterval time.Duration
+	// The expected time between blocks on the L1 network
+	L1BlockTime time.Duration
 
 	/////
 	// NODE CONFIG
@@ -197,10 +200,8 @@ type HostConfig struct {
 	P2PBindAddress string
 	// P2PPublicAddress is the advertised P2P server address
 	P2PPublicAddress string
-	// The host of the connected L1 node
-	L1NodeHost string
-	// The websocket port of the connected L1 node
-	L1NodeWebsocketPort uint
+	// L1WebsocketURL is the RPC address for interactions with the L1
+	L1WebsocketURL string
 	// Timeout duration for RPC requests to the enclave service
 	EnclaveRPCTimeout time.Duration
 	// Timeout duration for connecting to, and communicating with, the L1 node
@@ -232,8 +233,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		EnclaveRPCAddress:         "127.0.0.1:11000",
 		P2PBindAddress:            "0.0.0.0:10000",
 		P2PPublicAddress:          "127.0.0.1:10000",
-		L1NodeHost:                "127.0.0.1",
-		L1NodeWebsocketPort:       8546,
+		L1WebsocketURL:            "ws://127.0.0.1:8546",
 		EnclaveRPCTimeout:         time.Duration(defaultRPCTimeoutSecs) * time.Second,
 		L1RPCTimeout:              time.Duration(defaultL1RPCTimeoutSecs) * time.Second,
 		P2PConnectionTimeout:      time.Duration(defaultP2PTimeoutSecs) * time.Second,
@@ -253,6 +253,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		DebugNamespaceEnabled:     false,
 		BatchInterval:             1 * time.Second,
 		RollupInterval:            5 * time.Second,
+		L1BlockTime:               15 * time.Second,
 		IsInboundP2PDisabled:      false,
 	}
 }

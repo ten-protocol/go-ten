@@ -143,10 +143,7 @@ func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmt
 	if err != nil {
 		t.Error(err)
 	}
-	txData := mgmtContractLib.CreateRollup(
-		&ethadapter.L1RollupTx{Rollup: encodedRollup},
-		w.GetNonceAndIncrement(),
-	)
+	txData := mgmtContractLib.CreateRollup(&ethadapter.L1RollupTx{Rollup: encodedRollup})
 
 	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {
@@ -161,7 +158,6 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 		&ethadapter.L1InitializeSecretTx{
 			AggregatorID: &aggregatorID,
 		},
-		w.GetNonceAndIncrement(),
 	)
 
 	_, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
@@ -188,7 +184,6 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 		&ethadapter.L1InitializeSecretTx{
 			AggregatorID: &aggregatorID,
 		},
-		w.GetNonceAndIncrement(),
 	)
 
 	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
@@ -212,7 +207,6 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 		&ethadapter.L1InitializeSecretTx{
 			AggregatorID: requesterID,
 		},
-		w.GetNonceAndIncrement(),
 	)
 
 	_, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
@@ -244,7 +238,6 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 		&ethadapter.L1InitializeSecretTx{
 			AggregatorID: &aggAID,
 		},
-		w.GetNonceAndIncrement(),
 	)
 
 	_, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
@@ -266,7 +259,6 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 		&ethadapter.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
-		w.GetNonceAndIncrement(),
 	)
 
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
@@ -292,7 +284,6 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 			RequesterID: aggBID,
 			Secret:      fakeSecret,
 		}).Sign(aggCPrivateKey),
-		w.GetNonceAndIncrement(),
 		true,
 	)
 
@@ -308,7 +299,6 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 			RequesterID: aggBID,
 			AttesterID:  aggAID,
 		}).Sign(aggCPrivateKey),
-		w.GetNonceAndIncrement(),
 		true,
 	)
 
@@ -334,7 +324,6 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 			AggregatorID:  &aggAID,
 			InitialSecret: secretBytes,
 		},
-		w.GetNonceAndIncrement(),
 	)
 
 	_, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
@@ -363,7 +352,6 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 		&ethadapter.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
-		w.GetNonceAndIncrement(),
 	)
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
@@ -384,7 +372,6 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 		&ethadapter.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
-		w.GetNonceAndIncrement(),
 	)
 
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
@@ -402,7 +389,6 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 			RequesterID: aggCID,
 			AttesterID:  aggAID,
 		}).Sign(aggAPrivateKey),
-		w.GetNonceAndIncrement(),
 		true,
 	)
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
@@ -430,7 +416,6 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 			RequesterID: aggBID,
 			AttesterID:  aggCID,
 		}).Sign(aggCPrivateKey),
-		w.GetNonceAndIncrement(),
 		true,
 	)
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
@@ -471,7 +456,6 @@ func attestedNodeHostAddressesAreStored(t *testing.T, mgmtContractLib *debugMgmt
 			InitialSecret: secretBytes,
 			HostAddress:   aggAHostAddr,
 		},
-		w.GetNonceAndIncrement(),
 	)
 
 	_, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
@@ -493,7 +477,6 @@ func attestedNodeHostAddressesAreStored(t *testing.T, mgmtContractLib *debugMgmt
 		&ethadapter.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
-		w.GetNonceAndIncrement(),
 	)
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
@@ -508,7 +491,6 @@ func attestedNodeHostAddressesAreStored(t *testing.T, mgmtContractLib *debugMgmt
 		&ethadapter.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
-		w.GetNonceAndIncrement(),
 	)
 
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
@@ -527,7 +509,6 @@ func attestedNodeHostAddressesAreStored(t *testing.T, mgmtContractLib *debugMgmt
 			AttesterID:  aggAID,
 			HostAddress: aggBHostAddr,
 		}).Sign(aggAPrivateKey),
-		w.GetNonceAndIncrement(),
 		true,
 	)
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)

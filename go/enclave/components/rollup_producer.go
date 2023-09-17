@@ -2,10 +2,11 @@ package components
 
 import (
 	"fmt"
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -51,8 +52,8 @@ func NewRollupProducer(sequencerID gethcommon.Address, transactionBlobCrypto cry
 	}
 }
 
-func (re *rollupProducerImpl) CreateRollup(fromBatchNo uint64, limiter limiters.RollupLimiter) (*core.Rollup, error) {
-	batches, err := re.batchRegistry.BatchesAfter(fromBatchNo, limiter)
+func (re *rollupProducerImpl) CreateRollup(fromBatchNo uint64, upToL1Height uint64, limiter limiters.RollupLimiter) (*core.Rollup, error) {
+	batches, err := re.batchRegistry.BatchesAfter(fromBatchNo, upToL1Height, limiter)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch 'from' batch (seqNo=%d) for rollup: %w", fromBatchNo, err)
 	}
@@ -63,7 +64,11 @@ func (re *rollupProducerImpl) CreateRollup(fromBatchNo uint64, limiter limiters.
 		return nil, fmt.Errorf("no batches for rollup")
 	}
 
-	newRollup := re.createNextRollup(batches)
+	block, err := re.storage.FetchCanonicaBlockByHeight(big.NewInt(int64(upToL1Height)))
+	if err != nil {
+		return nil, err
+	}
+	newRollup := re.createNextRollup(batches, block)
 
 	re.logger.Info(fmt.Sprintf("Created new rollup %s with %d batches. From %d to %d", newRollup.Hash(), len(newRollup.Batches), batches[0].SeqNo(), batches[len(batches)-1].SeqNo()))
 
@@ -72,16 +77,11 @@ func (re *rollupProducerImpl) CreateRollup(fromBatchNo uint64, limiter limiters.
 
 // createNextRollup - based on a previous rollup and batches will create a new rollup that encapsulate the state
 // transition from the old rollup to the new one's head batch.
-func (re *rollupProducerImpl) createNextRollup(batches []*core.Batch) *core.Rollup {
+func (re *rollupProducerImpl) createNextRollup(batches []*core.Batch, block *types.Block) *core.Rollup {
 	lastBatch := batches[len(batches)-1]
 
 	rh := common.RollupHeader{}
-	rh.L1Proof = lastBatch.Header.L1Proof
-	b, err := re.storage.FetchBlock(rh.L1Proof)
-	if err != nil {
-		re.logger.Crit("Could not fetch block. Should not happen", log.ErrKey, err)
-	}
-	rh.L1ProofNumber = b.Number()
+	rh.CompressionL1Head = block.Hash()
 	rh.Coinbase = re.sequencerID
 
 	rh.CrossChainMessages = make([]MessageBus.StructsCrossChainMessage, 0)

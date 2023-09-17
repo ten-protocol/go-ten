@@ -80,7 +80,7 @@ type BatchExecutor interface {
 
 type BatchRegistry interface {
 	// BatchesAfter - Given a hash, will return batches following it until the head batch
-	BatchesAfter(batchSeqNo uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, error)
+	BatchesAfter(batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, error)
 
 	// GetBatchStateAtHeight - creates a stateDB that represents the state committed when
 	// the batch with height matching the blockNumber was created and stored.
@@ -104,7 +104,7 @@ type BatchRegistry interface {
 type RollupProducer interface {
 	// CreateRollup - creates a rollup starting from the end of the last rollup
 	// that has been stored and continues it towards what we consider the current L2 head.
-	CreateRollup(fromBatchNo uint64, limiter limiters.RollupLimiter) (*core.Rollup, error)
+	CreateRollup(fromBatchNo uint64, upToL1Height uint64, limiter limiters.RollupLimiter) (*core.Rollup, error)
 }
 
 type RollupConsumer interface {

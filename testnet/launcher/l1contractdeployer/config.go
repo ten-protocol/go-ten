@@ -5,9 +5,8 @@ type Option = func(c *Config)
 
 // Config holds the properties that configure the package
 type Config struct {
-	l1Host      string
+	l1HTTPURL   string
 	privateKey  string
-	l1Port      int
 	dockerImage string
 }
 
@@ -21,15 +20,9 @@ func NewContractDeployerConfig(opts ...Option) *Config {
 	return defaultConfig
 }
 
-func WithL1Host(s string) Option {
+func WithL1HTTPURL(s string) Option {
 	return func(c *Config) {
-		c.l1Host = s
-	}
-}
-
-func WithL1Port(i int) Option {
-	return func(c *Config) {
-		c.l1Port = i
+		c.l1HTTPURL = s
 	}
 }
 

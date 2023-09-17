@@ -1,8 +1,8 @@
-# Deploys Obscuro Gateway on Azure for Testnet
-# Builds the Obscuro Gateway image, pushes the image to dockerhub and starts the Obscuro Gateway on Azure VM
+# Deploys Obscuro Gateway's Database on Azure for Testnet
+# Starts the Obscuro Gateway's database on Azure VM
 
-name: '[M] Deploy Obscuro Gateway'
-run-name: '[M] Deploy Obscuro Gateway ( ${{ github.event.inputs.testnet_type }} )'
+name: '[M] Deploy Obscuro Gateway Database'
+run-name: '[M] Deploy Obscuro Gateway Database ( ${{ github.event.inputs.testnet_type }} )'
 on:
   workflow_dispatch:
     inputs:
@@ -27,42 +27,25 @@ jobs:
           echo "Branch Name: ${GITHUB_REF_NAME}"
           echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
-      - name: 'Set up Docker'
-        uses: docker/setup-buildx-action@v1
-
       - name: 'Set Obscuro Gateway variables for testnet'
         if: ${{ github.event.inputs.testnet_type == 'testnet' }}
         run: |
-          echo "OBSCURO_GATEWAY_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_testnet:latest" >> $GITHUB_ENV
-          echo "OBSCURO_GATEWAY_NODE_HOST=testnet.obscu.ro" >> $GITHUB_ENV
+          echo "OBSCURO_GATEWAY_DB_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_mariadb_testnet:latest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=testnet" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=obscurogatewaytestnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=obscurogatewaydbtestnetlatest" >> $GITHUB_ENV
 
       - name: 'Set Obscuro Gateway variables for dev-testnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
         run: |
-          echo "OBSCURO_GATEWAY_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_obscuro_gateway_testnet:latest" >> $GITHUB_ENV
-          echo "OBSCURO_GATEWAY_NODE_HOST=dev-testnet.obscu.ro" >> $GITHUB_ENV
+          echo "OBSCURO_GATEWAY_DB_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_obscuro_gateway_mariadb_testnet:latest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=dev-testnet" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=obscurogatewaydevtestnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=obscurogatewaydbdevtestnetlatest" >> $GITHUB_ENV
 
-
-      - name: 'Login to Azure docker registry'
-        uses: azure/docker-login@v1
-        with:
-          login-server: testnetobscuronet.azurecr.io
-          username: testnetobscuronet
-          password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Build and Push Docker Image
-        run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{ env.OBSCURO_GATEWAY_BUILD_TAG }} -f ./tools/walletextension/Dockerfile . 
-          docker push ${{ env.OBSCURO_GATEWAY_BUILD_TAG }}
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
       - name: 'Delete deployed VMs'
@@ -77,36 +60,35 @@ jobs:
         with:
           inlineScript: |
             $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
-            
 
-      - name: 'Create VM for Gateway node on Azure'
+
+      - name: 'Create VM for Gateway database node on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "${{env.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }}" \
+            az vm create -g Testnet -n "${{env.RESOURCE_STARTING_NAME}}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "obscurogateway-${{env.RESOURCE_STARTING_NAME}}" \
-            --tags deploygroup=ObscuroNode-${{env.RESOURCE_STARTING_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{env.RESOURCE_TAG_NAME}}=true \
-            --vnet-name ObscuroGateway-${{env.RESOURCE_STARTING_NAME}}-01VNET --subnet ObscuroGateway-${{env.RESOURCE_STARTING_NAME}}-01Subnet \
+            --public-ip-address-dns-name "obscurogateway-mariadb-${{env.RESOURCE_STARTING_NAME}}" \
+            --tags deploygroup=ObscuroGateway-mariaDB-${{env.RESOURCE_STARTING_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{env.RESOURCE_TAG_NAME}}=true \
             --size 	Standard_D4_v5 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:latest \
             --public-ip-sku Basic --authentication-type password
 
-      - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
+      - name: 'Open Obscuro Gateway db ports on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "${{env.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }}"  --port 80,81
+            az vm open-port -g Testnet -n "${{env.RESOURCE_STARTING_NAME}}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }}" --port 3306
 
         # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
       - name: 'Allow time for VM initialization'
         shell: bash
         run: sleep 30
 
-      - name: 'Start Obscuro gateway on Azure'
+      - name: 'Start Obscuro gateway Database on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{env.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }}"  \
+            az vm run-command invoke -g Testnet -n "${{env.RESOURCE_STARTING_NAME}}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && sudo apt-get update \
@@ -129,7 +111,10 @@ jobs:
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
                datadog/agent:latest \
             && cd /home/obscuro/go-obscuro/ \
-            && docker run -d -p 80:80 -p 81:81 --name ${{env.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }} \
-               ${{ env.OBSCURO_GATEWAY_BUILD_TAG }} \
-               ./wallet_extension_linux -host=0.0.0.0 -port=80 -portWS=81 -nodeHost=${{ env.OBSCURO_GATEWAY_NODE_HOST }} \
-               -logPath=sys_out -dbType=mariaDB -dbConnectionURL="obscurouser:${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }}@tcp(obscurogateway-mariadb-${{  github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:3306)/ogdb"'
+            && docker run -d --name ${{env.RESOURCE_STARTING_NAME}}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }} \
+                -p 3306:3306 \
+                -e MARIADB_ROOT_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_ROOT_PWD }} \
+                -e MARIADB_USER=obscurouser \
+                -e MARIADB_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }} \
+                -v /home/obscuro/go-obscuro/tools/walletextension/storage/database/001_init.sql:/docker-entrypoint-initdb.d/schema.sql \
+                mariadb:11.1.2-jammy'

@@ -72,11 +72,11 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 
 	// we create the node RPC client
-	rpcAddress := fmt.Sprintf("ws://127.0.0.1:%d", _startPort+integration.DefaultGethWSPortOffset)
+	wsURL := fmt.Sprintf("ws://127.0.0.1:%d", _startPort+integration.DefaultGethWSPortOffset)
 	var obscuroClient rpc.Client
 	wait := 30 // max wait in seconds
 	for {
-		obscuroClient, err = rpc.NewNetworkClient(rpcAddress)
+		obscuroClient, err = rpc.NewNetworkClient(wsURL)
 		if err == nil {
 			break
 		}
@@ -128,10 +128,10 @@ func createInMemoryNode(t *testing.T) (node.Node, gethcommon.Address) {
 		node.WithEnclaveWSPort(_startPort+integration.DefaultEnclaveOffset),
 		node.WithHostHTTPPort(_startPort+integration.DefaultHostRPCHTTPOffset),
 		node.WithHostWSPort(_startPort+integration.DefaultHostRPCWSOffset),
-		node.WithL1Host(_localhost),
-		node.WithL1WSPort(_startPort+integration.DefaultGethWSPortOffset),
+		node.WithL1WebsocketURL(fmt.Sprintf("ws://%s:%d", _localhost, _startPort+integration.DefaultGethWSPortOffset)),
 		node.WithGenesis(true),
 		node.WithProfiler(true),
+		node.WithL1BlockTime(1*time.Second),
 	)
 
 	return NewInMemNode(nodeCfg), hostAddress

@@ -64,6 +64,10 @@ type BatchResolver interface {
 	StoreBatch(batch *core.Batch) error
 	// StoreExecutedBatch - store the batch after it was executed
 	StoreExecutedBatch(batch *core.Batch, receipts []*types.Receipt) error
+
+	// StoreRollup
+	StoreRollup(rollup *common.ExtRollup, header *common.CalldataRollupHeader) error
+	FetchReorgedRollup(reorgedBlocks []common.L1BlockHash) (*common.L2BatchHash, error)
 }
 
 type GethStateDB interface {

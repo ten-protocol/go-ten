@@ -1,11 +1,8 @@
 package mgmtcontractlib
 
 import (
-	"bytes"
-	"compress/gzip"
 	"encoding/base64"
 	"fmt"
-	"io"
 	"math/big"
 	"strings"
 
@@ -27,10 +24,10 @@ const methodBytesLen = 4
 // MgmtContractLib provides methods for creating ethereum transactions by providing an L1Transaction, creating call
 // messages for call requests, and converting ethereum transactions into L1Transactions.
 type MgmtContractLib interface {
-	CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) types.TxData
-	CreateRequestSecret(tx *ethadapter.L1RequestSecretTx, nonce uint64) types.TxData
-	CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData
-	CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx, nonce uint64) types.TxData
+	CreateRollup(t *ethadapter.L1RollupTx) types.TxData
+	CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData
+	CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, verifyAttester bool) types.TxData
+	CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData
 	GetHostAddresses() (ethereum.CallMsg, error)
 
 	// DecodeTx receives a *types.Transaction and converts it to an common.L1Transaction
@@ -82,11 +79,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 		if !found {
 			panic("call data not found for rollupData")
 		}
-		zipped := Base64DecodeFromString(callData.(string))
-		rollup, err := Decompress(zipped)
-		if err != nil {
-			panic(err)
-		}
+		rollup := Base64DecodeFromString(callData.(string))
 
 		return &ethadapter.L1RollupTx{
 			Rollup: rollup,
@@ -105,29 +98,22 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	return nil
 }
 
-func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx) types.TxData {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
 		panic(err)
 	}
 
-	zipped, err := compress(t.Rollup)
-	if err != nil {
-		panic(err)
-	}
-	encRollupData := base64EncodeToString(zipped)
+	encRollupData := base64EncodeToString(t.Rollup)
 
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),
 		AggregatorID:       decodedRollup.Header.Coinbase,
-		L1Block:            decodedRollup.Header.L1Proof,
 		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
 	}
 
 	crossChain := ManagementContract.StructsHeaderCrossChainData{
-		BlockNumber: decodedRollup.Header.L1ProofNumber,
-		BlockHash:   decodedRollup.Header.L1Proof,
-		Messages:    convertCrossChainMessages(decodedRollup.Header.CrossChainMessages),
+		Messages: convertCrossChainMessages(decodedRollup.Header.CrossChainMessages),
 	}
 
 	data, err := c.contractABI.Pack(
@@ -141,26 +127,24 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) t
 	}
 
 	return &types.LegacyTx{
-		Nonce: nonce,
-		To:    c.addr,
-		Data:  data,
+		To:   c.addr,
+		Data: data,
 	}
 }
 
-func (c *contractLibImpl) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData {
 	data, err := c.contractABI.Pack(RequestSecretMethod, base64EncodeToString(tx.Attestation))
 	if err != nil {
 		panic(err)
 	}
 
 	return &types.LegacyTx{
-		Nonce: nonce,
-		To:    c.addr,
-		Data:  data,
+		To:   c.addr,
+		Data: data,
 	}
 }
 
-func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData {
+func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, verifyAttester bool) types.TxData {
 	data, err := c.contractABI.Pack(
 		RespondSecretMethod,
 		tx.AttesterID,
@@ -174,13 +158,12 @@ func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, 
 		panic(err)
 	}
 	return &types.LegacyTx{
-		Nonce: nonce,
-		To:    c.addr,
-		Data:  data,
+		To:   c.addr,
+		Data: data,
 	}
 }
 
-func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData {
 	data, err := c.contractABI.Pack(
 		InitializeSecretMethod,
 		tx.AggregatorID,
@@ -192,9 +175,8 @@ func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecr
 		panic(err)
 	}
 	return &types.LegacyTx{
-		Nonce: nonce,
-		To:    c.addr,
-		Data:  data,
+		To:   c.addr,
+		Data: data,
 	}
 }
 
@@ -320,19 +302,6 @@ func base64EncodeToString(bytes []byte) string {
 	return base64.StdEncoding.EncodeToString(bytes)
 }
 
-// compress the byte array using gzip
-func compress(in []byte) ([]byte, error) {
-	var b bytes.Buffer
-	gz := gzip.NewWriter(&b)
-	if _, err := gz.Write(in); err != nil {
-		return nil, err
-	}
-	if err := gz.Close(); err != nil {
-		return nil, err
-	}
-	return b.Bytes(), nil
-}
-
 // Base64DecodeFromString decodes a string to a byte array
 func Base64DecodeFromString(in string) []byte {
 	bytesStr, err := base64.StdEncoding.DecodeString(in)
@@ -340,18 +309,6 @@ func Base64DecodeFromString(in string) []byte {
 		panic(err)
 	}
 	return bytesStr
-}
-
-// Decompress the byte array using gzip
-func Decompress(in []byte) ([]byte, error) {
-	reader := bytes.NewReader(in)
-	gz, err := gzip.NewReader(reader)
-	if err != nil {
-		return nil, err
-	}
-	defer gz.Close()
-
-	return io.ReadAll(gz)
 }
 
 func convertCrossChainMessages(messages []MessageBus.StructsCrossChainMessage) []ManagementContract.StructsCrossChainMessage {

@@ -30,6 +30,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 )
 
+const RollupDelay = 2 // number of L1 blocks to exclude when creating a rollup. This will minimize compression reorg issues.
+
 type SequencerSettings struct {
 	MaxBatchSize      uint64
 	MaxRollupSize     uint64
@@ -242,10 +244,14 @@ func (s *sequencer) StoreExecutedBatch(batch *core.Batch, receipts types.Receipt
 }
 
 func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) {
-	// todo @stefan - move this somewhere else, it shouldn't be in the batch registry.
 	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
 
-	rollup, err := s.rollupProducer.CreateRollup(lastBatchNo, rollupLimiter)
+	currentL1Head, err := s.storage.FetchHeadBlock()
+	if err != nil {
+		return nil, err
+	}
+	upToL1Height := currentL1Head.NumberU64() - RollupDelay
+	rollup, err := s.rollupProducer.CreateRollup(lastBatchNo, upToL1Height, rollupLimiter)
 	if err != nil {
 		return nil, err
 	}
@@ -313,12 +319,24 @@ func (s *sequencer) SubmitTransaction(transaction *common.L2Tx) error {
 }
 
 func (s *sequencer) OnL1Fork(fork *common.ChainFork) error {
-	if fork.IsFork() {
-		err := s.duplicateBatches(fork.NewCanonical, fork.NonCanonicalPath)
-		if err != nil {
-			return fmt.Errorf("could not duplicate batches. Cause %w", err)
-		}
+	if !fork.IsFork() {
+		return nil
 	}
+
+	err := s.duplicateBatches(fork.NewCanonical, fork.NonCanonicalPath)
+	if err != nil {
+		return fmt.Errorf("could not duplicate batches. Cause %w", err)
+	}
+
+	rollup, err := s.storage.FetchReorgedRollup(fork.NonCanonicalPath)
+	if err == nil {
+		s.logger.Error("Reissue rollup", log.RollupHashKey, rollup)
+		return nil
+	}
+	if !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("could not call FetchReorgedRollup. Cause: %w", err)
+	}
+
 	return nil
 }
 

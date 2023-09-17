@@ -248,7 +248,6 @@ func (g *Guardian) provideSecret() error {
 		// instead of requesting a secret, we generate one and broadcast it
 		return g.generateAndBroadcastSecret()
 	}
-	g.logger.Info("Requesting secret.")
 	att, err := g.enclaveClient.Attestation()
 	if err != nil {
 		return fmt.Errorf("could not retrieve attestation from enclave. Cause: %w", err)
@@ -301,7 +300,7 @@ func (g *Guardian) provideSecret() error {
 }
 
 func (g *Guardian) generateAndBroadcastSecret() error {
-	g.logger.Info("Node is genesis node. Broadcasting secret.")
+	g.logger.Info("Node is genesis node. Publishing secret to L1 management contract.")
 	// Create the shared secret and submit it to the management contract for storage
 	attestation, err := g.enclaveClient.Attestation()
 	if err != nil {
@@ -318,9 +317,9 @@ func (g *Guardian) generateAndBroadcastSecret() error {
 
 	err = g.sl.L1Publisher().InitializeSecret(attestation, secret)
 	if err != nil {
-		return errors.Wrap(err, "failed to initialise enclave secret")
+		return errors.Wrap(err, "failed to publish generated enclave secret")
 	}
-	g.logger.Info("Node is genesis node. Secret was broadcast.")
+	g.logger.Info("Node is genesis node. Secret generation was published to L1.")
 	g.state.OnSecretProvided()
 	return nil
 }
@@ -440,7 +439,7 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 		if err != nil {
 			g.logger.Error("could not decode rollup.", log.ErrKey, err)
 		}
-		err = g.db.AddRollupHeader(r)
+		err = g.db.AddRollupHeader(r, block)
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("rollup already stored", log.RollupHashKey, r.Hash())

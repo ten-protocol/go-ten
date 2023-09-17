@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -32,7 +34,7 @@ type WalletExtension struct {
 	hostAddr           string // The address on which the Obscuro host can be reached.
 	userAccountManager *useraccountmanager.UserAccountManager
 	unsignedVKs        map[gethcommon.Address]*viewingkey.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
-	storage            *storage.Storage
+	storage            storage.Storage
 	logger             gethlog.Logger
 	stopControl        *stopcontrol.StopControl
 }
@@ -40,7 +42,7 @@ type WalletExtension struct {
 func New(
 	hostAddr string,
 	userAccountManager *useraccountmanager.UserAccountManager,
-	storage *storage.Storage,
+	storage storage.Storage,
 	stopControl *stopcontrol.StopControl,
 	logger gethlog.Logger,
 ) *WalletExtension {
@@ -367,9 +369,9 @@ func (w *WalletExtension) getStorageAtInterceptor(request *accountmanager.RPCReq
 			return nil
 		}
 
-		key, err := w.storage.GetUserPrivateKey(userID)
-		if err != nil || len(key) == 0 {
-			w.logger.Info("Trying to get userID, but it is not present in our database: ")
+		_, err = w.storage.GetUserPrivateKey(userID)
+		if err != nil {
+			w.logger.Info("Trying to get userID, but it is not present in our database: ", log.ErrKey, err)
 			return nil
 		}
 		response := map[string]interface{}{}
