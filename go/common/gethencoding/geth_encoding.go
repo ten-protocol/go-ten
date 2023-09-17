@@ -230,10 +230,10 @@ func CreateEthHeaderForBatch(h *common.BatchHeader, secret []byte) (*types.Heade
 	// deterministically calculate private randomness that will be exposed to the evm
 	randomness := crypto.CalculateRootBatchEntropy(secret, h.Number)
 
-	/*baseFee := uint64(0)
+	baseFee := uint64(0)
 	if h.BaseFee != nil {
 		baseFee = h.BaseFee.Uint64()
-	} */
+	}
 
 	return &types.Header{
 		ParentHash:  h.ParentHash,
@@ -244,7 +244,7 @@ func CreateEthHeaderForBatch(h *common.BatchHeader, secret []byte) (*types.Heade
 		Number:      h.Number,
 		GasLimit:    1_000_000_000,
 		GasUsed:     0,
-		BaseFee:     big.NewInt(0).SetUint64(0),
+		BaseFee:     big.NewInt(0).SetUint64(baseFee),
 		Coinbase:    h.Coinbase,
 		Time:        h.Time,
 		MixDigest:   randomness,

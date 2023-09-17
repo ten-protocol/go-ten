@@ -128,7 +128,7 @@ func (val *obsValidator) executionPrerequisites(batch *core.Batch) (bool, error)
 }
 
 func (val *obsValidator) handleGenesis(batch *core.Batch) error {
-	genBatch, _, err := val.batchExecutor.CreateGenesisState(batch.Header.L1Proof, batch.Header.Time, batch.Header.Coinbase)
+	genBatch, _, err := val.batchExecutor.CreateGenesisState(batch.Header.L1Proof, batch.Header.Time, batch.Header.Coinbase, batch.Header.BaseFee)
 	if err != nil {
 		return err
 	}

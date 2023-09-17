@@ -188,10 +188,6 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 	return messages, transfers
 }
 
-func (m *MessageBusManager) ShouldAutoRelayMessage(message common.CrossChainMessage) bool {
-	return message.Sender == *m.GetBusAddress()
-}
-
 func (m *MessageBusManager) ExecuteValueTransfers(transfers common.ValueTransferEvents, rollupState *state.StateDB) {
 	for _, transfer := range transfers {
 		rollupState.AddBalance(transfer.Receiver, transfer.Amount)

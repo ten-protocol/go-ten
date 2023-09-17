@@ -94,6 +94,7 @@ type CalldataRollupHeader struct {
 	FirstCanonParentHash  L2BatchHash
 
 	Coinbase common.Address
+	BaseFee  *big.Int
 
 	StartTime       uint64
 	BatchTimeDeltas [][]byte // todo - minimize assuming a default of 1 sec and then store only exceptions

@@ -81,6 +81,7 @@ type batchFromRollup struct {
 	time         uint64
 	l1Proof      common.L1BlockHash
 	coinbase     gethcommon.Address
+	baseFee      *big.Int
 
 	header *common.BatchHeader // for reorgs
 }
@@ -245,6 +246,7 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 		BatchHashes:           batchHashes,
 		BatchHeaders:          batchHeaders,
 		Coinbase:              batches[0].Header.Coinbase,
+		BaseFee:               batches[0].Header.BaseFee,
 	}
 
 	return calldataRollupHeader, nil
@@ -336,6 +338,7 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 			l1Proof:      block.Hash(),
 			header:       fullReorgedHeader,
 			coinbase:     calldataRollupHeader.Coinbase,
+			baseFee:      calldataRollupHeader.BaseFee,
 		}
 		rc.logger.Info("Rollup decompressed batch", log.BatchSeqNoKey, currentSeqNo, log.BatchHeightKey, currentHeight, "rollup_idx", currentBatchIdx, "l1_height", block.Number(), "l1_hash", block.Hash())
 	}
@@ -378,7 +381,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 		switch {
 		// handle genesis
 		case incompleteBatch.seqNo.Uint64() == common.L2GenesisSeqNo:
-			genBatch, _, err := rc.batchExecutor.CreateGenesisState(incompleteBatch.l1Proof, incompleteBatch.time, calldataRollupHeader.Coinbase)
+			genBatch, _, err := rc.batchExecutor.CreateGenesisState(incompleteBatch.l1Proof, incompleteBatch.time, calldataRollupHeader.Coinbase, calldataRollupHeader.BaseFee)
 			if err != nil {
 				return err
 			}
@@ -420,6 +423,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 				incompleteBatch.time,
 				incompleteBatch.seqNo,
 				incompleteBatch.coinbase,
+				incompleteBatch.baseFee,
 			)
 			if err != nil {
 				return err
@@ -489,6 +493,7 @@ func (rc *RollupCompression) computeBatch(
 	AtTime uint64,
 	SequencerNo *big.Int,
 	Coinbase gethcommon.Address,
+	BaseFee *big.Int,
 ) (*ComputedBatch, error) {
 	return rc.batchExecutor.ComputeBatch(&BatchExecutionContext{
 		BlockPtr:     BlockPtr,
@@ -498,7 +503,7 @@ func (rc *RollupCompression) computeBatch(
 		Creator:      Coinbase,
 		ChainConfig:  rc.chainConfig,
 		SequencerNo:  SequencerNo,
-		BaseFee:      big.NewInt(params.InitialBaseFee),
+		BaseFee:      big.NewInt(0).Set(BaseFee),
 	})
 }
 
