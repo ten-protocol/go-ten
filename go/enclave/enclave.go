@@ -213,7 +213,8 @@ func NewEnclave(
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
-	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, dataEncryptionService, dataCompressionService, config.ObscuroChainID, config.L1ChainID, storage, logger, sigVerifier)
+	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, &chainConfig, logger)
+	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, storage, logger)
 
 	var service nodetype.NodeType
@@ -224,6 +225,7 @@ func NewEnclave(
 			registry,
 			rProducer,
 			rConsumer,
+			rollupCompression,
 			logger,
 			config.HostID,
 			&chainConfig,

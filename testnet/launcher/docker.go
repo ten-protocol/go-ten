@@ -62,6 +62,7 @@ func (t *Testnet) Start() error {
 		node.WithInMemoryHostDB(true),
 		node.WithDebugNamespaceEnabled(true),
 		node.WithLogLevel(4),
+		node.WithCoinbase()
 	)
 
 	sequencerNode := node.NewDockerNode(sequencerNodeConfig)

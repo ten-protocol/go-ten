@@ -173,8 +173,6 @@ func (s *Simulation) deployObscuroERC20s() {
 				Data:      contractBytes,
 			}
 
-			s.RPCHandles.ObscuroWalletRndClient(owner).EstimateGasAndGasPrice(&deployContractTx)
-
 			signedTx, err := owner.SignTransaction(&deployContractTx)
 			if err != nil {
 				panic(err)

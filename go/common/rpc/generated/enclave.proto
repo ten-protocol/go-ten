@@ -393,7 +393,7 @@ message BatchHeaderMsg {
 message ExtRollupMsg {
   RollupHeaderMsg header = 1;
   bytes batchPayloads = 2;
-  bytes batchHeaders = 3;
+  bytes calldataRollupHeader = 3;
 }
 
 message RollupHeaderMsg {

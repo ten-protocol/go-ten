@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -85,6 +86,10 @@ func FetchBlock(db *sql.DB, hash common.L2BatchHash) (*types.Block, error) {
 
 func FetchHeadBlock(db *sql.DB) (*types.Block, error) {
 	return fetchBlock(db, "where is_canonical=true and height=(select max(b.height) from block b where is_canonical=true)")
+}
+
+func FetchBlockHeaderByHeight(db *sql.DB, height *big.Int) (*types.Header, error) {
+	return fetchBlockHeader(db, "where is_canonical=true and height=?", height.Int64())
 }
 
 func WriteL1Messages[T any](db *sql.DB, blockHash common.L1BlockHash, messages []T, isValueTransfer bool) error {

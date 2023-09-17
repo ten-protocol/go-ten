@@ -99,6 +99,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithCoinbase(simParams.Wallets.L2FeesWallet.Address().Hex()),
 				node.WithInboundP2PDisabled(isInboundP2PDisabled),
 				node.WithLogLevel(4),
+				node.WithDebugNamespaceEnabled(true),
 			),
 		)
 

@@ -26,6 +26,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/params"
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 )
@@ -91,6 +92,7 @@ func createInMemObscuroNode(
 		ManagementContractAddress: *mgtContractAddress,
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,
+		BaseFee:                   big.NewInt(params.InitialBaseFee),
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)

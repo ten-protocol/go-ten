@@ -7,7 +7,7 @@
 name: '[M] Deploy Testnet L2'
 on:
   workflow_dispatch:
-    testnet_type:
+    inputs:
       testnet_type:
         description: 'Testnet Type'
         required: true

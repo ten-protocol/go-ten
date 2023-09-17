@@ -219,6 +219,27 @@ func (m *Node) BalanceAt(gethcommon.Address, *big.Int) (*big.Int, error) {
 	panic("not implemented")
 }
 
+// GetLogs is a mock method - we don't really have logs on the mock transactions, so it returns a basic log for every tx
+// so the host recognises them as relevant
+func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
+	logs := make([]types.Log, 0)
+	if fq.BlockHash == nil {
+		return logs, nil
+	}
+	blk, err := m.BlockByHash(*fq.BlockHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
+	}
+	for _, tx := range blk.Transactions() {
+		dummyLog := types.Log{
+			BlockHash: blk.Hash(),
+			TxHash:    tx.Hash(),
+		}
+		logs = append(logs, dummyLog)
+	}
+	return logs, nil
+}
+
 // Start runs an infinite loop that listens to the two block producing channels and processes them.
 func (m *Node) Start() {
 	if m.mining {
