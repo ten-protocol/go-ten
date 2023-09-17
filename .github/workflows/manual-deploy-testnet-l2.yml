@@ -1,10 +1,13 @@
 # Deploys an Obscuro network on Azure for Testnet and Dev Testnet
 #
 # The Obscuro network is composed of 2 obscuro nodes running on individual vms with SGX. At the moment the workflow
-# can can onlu be triggered manually as a workflow dispatch.
+# can only be triggered manually as a workflow dispatch.
 #
+# This script uses GitHub Environments for variables (vars) and secrets - these are configured on GitHub and
+#  the environments match the input.testnet_type options
 
 name: '[M] Deploy Testnet L2'
+run-name: '[M] Deploy Testnet L2 ( ${{ github.event.inputs.testnet_type }} )'
 on:
   workflow_dispatch:
     inputs:
@@ -16,6 +19,7 @@ on:
         options:
           - 'dev-testnet'
           - 'testnet'
+          - 'sepolia-testnet'
       log_level:
         description: 'Log Level 1-Error 5-Trace'
         required: true
@@ -25,6 +29,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+
     # Map a step output to a job output
     outputs:
       MGMT_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MGMT_CONTRACT_ADDR }}
@@ -32,16 +39,6 @@ jobs:
       L1_START_HASH: ${{ steps.deployContracts.outputs.L1_START_HASH }}
       HOC_ERC20_ADDR: ${{ steps.deployContracts.outputs.HOC_ERC20_ADDR }}
       POC_ERC20_ADDR: ${{ steps.deployContracts.outputs.POC_ERC20_ADDR }}
-      L2_ENCLAVE_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG }}
-      L2_HOST_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_HOST_DOCKER_BUILD_TAG }}
-      L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }}
-      RESOURCE_TAG_NAME: ${{ steps.outputVars.outputs.RESOURCE_TAG_NAME }}
-      RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
-      RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
-      L1_WS_URL: ${{ steps.outputVars.outputs.L1_WS_URL }}
-      L1_HTTP_URL: ${{ steps.outputVars.outputs.L1_HTTP_URL }}
-      BATCH_INTERVAL: ${{ steps.outputVars.outputs.BATCH_INTERVAL }}
-      ROLLUP_INTERVAL: ${{ steps.outputVars.outputs.ROLLUP_INTERVAL }}
 
 
     steps:
@@ -56,48 +53,6 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 'Sets env vars for testnet'
-        if: ${{ github.event.inputs.testnet_type  == 'testnet' }}
-        run: |
-          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/enclave:latest" >> $GITHUB_ENV
-          echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/host:latest" >> $GITHUB_ENV
-          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=testnetlatest" >> $GITHUB_ENV
-          echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
-          echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
-          echo "L1_WS_URL=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
-          echo "L1_HTTP_URL=http://testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
-          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
-          echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
-
-      - name: 'Sets env vars for dev-testnet'
-        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
-        run: |
-          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest" >> $GITHUB_ENV
-          echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_host:latest" >> $GITHUB_ENV
-          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_hardhatdeployer:latest" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=devtestnetlatest" >> $GITHUB_ENV
-          echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
-          echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
-          echo "L1_WS_URL=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
-          echo "L1_HTTP_URL=http://dev-testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
-          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
-          echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
-
-      - name: 'Output env vars'
-        id: outputVars
-        run: |
-          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
-          echo "L2_HOST_DOCKER_BUILD_TAG=${{env.L2_HOST_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
-          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
-          echo "RESOURCE_TAG_NAME=${{env.RESOURCE_TAG_NAME}}" >> $GITHUB_OUTPUT
-          echo "RESOURCE_STARTING_NAME=${{env.RESOURCE_STARTING_NAME}}" >> $GITHUB_OUTPUT
-          echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
-          echo "L1_WS_URL=${{env.L1_WS_URL}}" >> $GITHUB_OUTPUT
-          echo "L1_HTTP_URL=${{env.L1_HTTP_URL}}" >> $GITHUB_OUTPUT
-          echo "BATCH_INTERVAL=${{env.BATCH_INTERVAL}}" >> $GITHUB_OUTPUT
-          echo "ROLLUP_INTERVAL=${{env.ROLLUP_INTERVAL}}" >> $GITHUB_OUTPUT
-
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
         with:
@@ -107,21 +62,21 @@ jobs:
 
       - name: 'Build and push obscuro node images'
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
-          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
-          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_HOST_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
-          docker push ${{env.L2_HOST_DOCKER_BUILD_TAG}}
-          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} -f tools/hardhatdeployer/Dockerfile .
-          docker push ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t ${{vars.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
+          docker push ${{vars.L2_ENCLAVE_DOCKER_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t ${{vars.L2_HOST_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
+          docker push ${{vars.L2_HOST_DOCKER_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t ${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} -f tools/hardhatdeployer/Dockerfile .
+          docker push ${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
 
       - name: 'Deploy Contracts'
         id: deployContracts
         shell: bash
         run: |
           go run ./testnet/launcher/l1contractdeployer/cmd \
-          -l1_http_url=${{ env.L1_HTTP_URL }} \
-          -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
-          -docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
+          -l1_http_url=${{ secrets.L1_HTTP_URL }} \
+          -private_key=${{ secrets.WORKER_PK }} \
+          -docker_image=${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
           -contracts_env_file=./testnet/.env
           source ./testnet/.env
           echo "Contracts deployed to $MGMTCONTRACTADDR"
@@ -144,14 +99,14 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+            $(az resource list --tag ${{vars.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
       # This will clean up any lingering dependencies - might fail if there are no resources to cleanup
       - name: 'Delete VMs dependencies'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+            $(az resource list --tag ${{vars.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
       - name: 'Upload container logs on failure'
         uses: actions/upload-artifact@v3
@@ -165,25 +120,13 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
 
     strategy:
       matrix:
         host_id: [ 0,1 ]
         include:
-          # Hardcoded host addresses
-          - host_addr: 0x0000000000000000000000000000000000000000
-            host_id: 0
-          - host_addr: 0x0000000000000000000000000000000000000001
-            host_id: 1
-          # Hardcoded host prefunded keys
-          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_0
-            host_id: 0
-          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_1
-            host_id: 1
-          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_0
-            host_id: 0
-          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_1
-            host_id: 1
           # Ensure there is a single genesis node
           - is_genesis: true
             host_id: 0
@@ -194,13 +137,26 @@ jobs:
             host_id: 0
           - node_type: validator
             host_id: 1
+          # Hardcoded lookup keys because GH actions doesn't let you build them inline with the host_id
+          - node_pk_lookup: NODE_WALLET_PK_0
+            host_id: 0
+          - node_pk_lookup: NODE_WALLET_PK_1
+            host_id: 1
+          - node_addr_lookup: NODE_WALLET_ADDR_0
+            host_id: 0
+          - node_addr_lookup: NODE_WALLET_ADDR_1
+            host_id: 1
+          - node_l1_ws_lookup: L1_WS_URL_0
+            host_id: 0
+          - node_l1_ws_lookup: L1_WS_URL_1
+            host_id: 1
 
     steps:
       - name: 'Extract branch name'
         shell: bash
         run: |
-              echo "Branch Name: ${GITHUB_REF_NAME}"
-              echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+          echo "Branch Name: ${GITHUB_REF_NAME}"
+          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
         # The Azure API will sometimes supersede PUT requests that come in close together. This sleep will stagger the VM requests.
         # It expects host_id to be an int and then multiplies it by 60s (i.e. host 0: sleep 0, host 1: sleep 60,...)
@@ -217,11 +173,11 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            az vm create -g Testnet -n "${{vars.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
-            --tags deploygroup=ObscuroNode-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{needs.build.outputs.RESOURCE_TAG_NAME}}=true \
-            --vnet-name ObscuroHost-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-01VNET --subnet ObscuroHost-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-01Subnet \
+            --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{vars.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
+            --tags deploygroup=ObscuroNode-${{vars.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{vars.RESOURCE_TAG_NAME}}=true \
+            --vnet-name ObscuroHost-${{vars.RESOURCE_TESTNET_NAME}}-01VNET --subnet ObscuroHost-${{vars.RESOURCE_TESTNET_NAME}}-01Subnet \
             --size Standard_DC4s_v2 --image ObscuroConfUbuntu \
             --public-ip-sku Basic --authentication-type password
 
@@ -229,7 +185,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 80,81,6060,6061,10000
+            az vm open-port -g Testnet -n "${{vars.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 80,81,6060,6061,10000
 
         # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
       - name: 'Allow time for VM initialization'
@@ -240,7 +196,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
+            az vm run-command invoke -g Testnet -n "${{vars.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
@@ -263,21 +219,22 @@ jobs:
                -is_genesis=${{ matrix.is_genesis }} \
                -node_type=${{ matrix.node_type }} \
                -is_sgx_enabled=true \
-               -host_id=${{ secrets[matrix.node_pk_addr] }} \
-               -l1_ws_url=${{needs.build.outputs.L1_WS_URL}} \
+               -host_id=${{ vars[matrix.node_addr_lookup] }} \
+               -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \
                -management_contract_addr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
                -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
                -l1_start=${{needs.build.outputs.L1_START_HASH}} \
-               -private_key=${{ secrets[matrix.node_pk_str] }} \
-               -sequencer_id=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
-               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
+               -private_key=${{ secrets[matrix.node_pk_lookup] }} \
+               -sequencer_id=${{ vars.NODE_WALLET_ADDR_0 }} \
+               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{vars.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
                -host_p2p_port=10000 \
-               -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
-               -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
+               -enclave_docker_image=${{vars.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
+               -host_docker_image=${{vars.L2_HOST_DOCKER_BUILD_TAG}} \
                -is_debug_namespace_enabled=true \
                -log_level=${{ github.event.inputs.log_level }} \
-               -batch_interval=${{needs.build.outputs.BATCH_INTERVAL}} \
-               -rollup_interval=${{needs.build.outputs.ROLLUP_INTERVAL}} \
+               -batch_interval=${{vars.BATCH_INTERVAL}} \
+               -rollup_interval=${{vars.ROLLUP_INTERVAL}} \
+               -l1_chain_id=${{vars.L1_CHAIN_ID}} \
                start'
 
 
@@ -286,6 +243,8 @@ jobs:
       - build
       - deploy
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
     steps:
       - uses: actions/checkout@v3
 
@@ -295,38 +254,42 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: 'Remove existing backend nodes from the load balancer'
-        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh ${{needs.build.outputs.RESOURCE_TESTNET_NAME}}
+        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh ${{vars.RESOURCE_TESTNET_NAME}}
 
       - name: 'Add load balancer address pool to the IP configuration'
         uses: azure/CLI@v1
         with:
           inlineScript: |
             az network nic ip-config address-pool add \
-              --address-pool Backend-Pool-Obscuro-${{needs.build.outputs.RESOURCE_TESTNET_NAME}} \
-              --ip-config-name ipconfig${{needs.build.outputs.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }} \
-              --nic-name ${{needs.build.outputs.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
+              --address-pool Backend-Pool-Obscuro-${{vars.RESOURCE_TESTNET_NAME}} \
+              --ip-config-name ipconfig${{vars.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }} \
+              --nic-name ${{vars.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
-              --lb-name ${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-loadbalancer
+              --lb-name ${{vars.RESOURCE_TESTNET_NAME}}-loadbalancer
 
   check-obscuro-is-healthy:
     needs:
       - build
       - deploy
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
     steps:
       - uses: actions/checkout@v3
 
       - name: "Wait until obscuro node is healthy"
         shell: bash
         run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{vars.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{vars.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
 
   deploy-l2-contracts:
     needs:
       - build
       - check-obscuro-is-healthy
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
     steps:
       - uses: actions/checkout@v3
 
@@ -335,15 +298,15 @@ jobs:
         shell: bash
         run: |
           go run ./testnet/launcher/l2contractdeployer/cmd \
-          -l2_host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
-          -l1_http_url=${{ needs.build.outputs.L1_HTTP_URL }} \
+          -l2_host=obscuronode-0-${{vars.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
+          -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -l2_ws_port=81 \
-          -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
+          -private_key=${{ secrets.WORKER_PK }} \
           -l2_private_key=8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b \
           -l2_hoc_private_key=6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682 \
           -l2_poc_private_key=4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8 \
           -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
-          -docker_image=${{needs.build.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+          -docker_image=${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
 
       - name: 'Save container logs on failure'
         if: failure()
@@ -370,6 +333,8 @@ jobs:
 
   obscuro-test-repository-dispatch:
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
     needs:
       - deploy-faucet
     steps:

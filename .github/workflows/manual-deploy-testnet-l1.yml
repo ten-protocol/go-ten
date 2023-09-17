@@ -30,6 +30,9 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+      
     steps:
       - uses: actions/checkout@v3
 
@@ -144,6 +147,6 @@ jobs:
             --blockTimeSecs=15 --slotsPerEpoch=2 --slotsPerSecond=15 \
             --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
             --logToFile=false \
-            --prefundedAddrs="${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}"'
+            --prefundedAddrs="${{ secrets.WORKER_ADDR }},${{ secrets.NODE_WALLET_ADDR_0 }},${{ secrets.NODE_WALLET_ADDR_1 }}"'
             
       
