@@ -1,18 +1,12 @@
 package main
 
 import (
-	"time"
-
 	"github.com/obscuronet/go-obscuro/go/node"
 )
 
 func main() {
 	cliConfig := ParseConfigCLI()
 	// todo (#1618) - allow for multiple operation (start, stop, status)
-
-	// we already validated the config in ParseConfigCLI, so we can safely ignore the error here
-	batchInterval, _ := time.ParseDuration(cliConfig.batchInterval)
-	rollupInterval, _ := time.ParseDuration(cliConfig.rollupInterval)
 
 	nodeCfg := node.NewNodeConfig(
 		node.WithNodeName(cliConfig.nodeName),
@@ -39,8 +33,8 @@ func main() {
 		node.WithDebugNamespaceEnabled(cliConfig.isDebugNamespaceEnabled), // false
 		node.WithLogLevel(cliConfig.logLevel),
 		node.WithInboundP2PDisabled(cliConfig.isInboundP2PDisabled),
-		node.WithBatchInterval(batchInterval),
-		node.WithRollupInterval(rollupInterval),
+		node.WithBatchInterval(cliConfig.batchInterval),
+		node.WithRollupInterval(cliConfig.rollupInterval),
 	)
 
 	dockerNode := node.NewDockerNode(nodeCfg)

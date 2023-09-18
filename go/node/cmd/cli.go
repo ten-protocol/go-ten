@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 )
 
 var (
@@ -106,15 +105,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.logLevel = *logLevel
 	cfg.isInboundP2PDisabled = *isInboundP2PDisabled
 	cfg.batchInterval = *batchInterval
-	if _, err := time.ParseDuration(cfg.batchInterval); err != nil {
-		fmt.Printf("invalid batch interval: %s\n", err)
-		os.Exit(1)
-	}
 	cfg.rollupInterval = *rollupInterval
-	if _, err := time.ParseDuration(cfg.rollupInterval); err != nil {
-		fmt.Printf("invalid rollup interval: %s\n", err)
-		os.Exit(1)
-	}
 
 	cfg.nodeAction = flag.Arg(0)
 	if !validateNodeAction(cfg.nodeAction) {
