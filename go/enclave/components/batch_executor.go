@@ -61,6 +61,9 @@ func NewBatchExecutor(
 	}
 }
 
+// payL1Fees - this function modifies the state db according to the transactions contained within the batch context
+// in order to substract gas fees from the balance. It returns a list of the transactions that have prepaid for their L1
+// publishing costs.
 func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) common.L2Transactions {
 	transactions := make(common.L2Transactions, 0)
 	block, _ := executor.storage.FetchBlock(context.BlockPtr)

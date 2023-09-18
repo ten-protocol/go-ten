@@ -7,6 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
+// Oracle - the interface for the future precompiled gas oracle contract
+// which will expose necessary l1 information.
 type Oracle interface {
 	ProcessL1Block(block *types.Block)
 	GetGasCostForTx(tx *types.Transaction, block *types.Block) (*big.Int, error)
@@ -22,6 +24,9 @@ func NewGasOracle() Oracle {
 	}
 }
 
+// ProcessL1Block - should be used to update the gas oracle. Currently does not really
+// fit into phase 1 gas mechancis as the information needs to be available per block.
+// would be fixed when this becomes a smart contract using the stateDB
 func (o *oracle) ProcessL1Block(block *types.Block) {
 	blockBaseFee := block.BaseFee()
 	if blockBaseFee != nil {
@@ -29,6 +34,7 @@ func (o *oracle) ProcessL1Block(block *types.Block) {
 	}
 }
 
+// GetGasCostForTx - Returns the expected l1 gas cost for a transaction at a given l1 block.
 func (o *oracle) GetGasCostForTx(tx *types.Transaction, block *types.Block) (*big.Int, error) {
 	encodedTx, err := rlp.EncodeToBytes(tx)
 	if err != nil {

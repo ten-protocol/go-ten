@@ -42,7 +42,7 @@ type BatchHeader struct {
 	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *big.Int                              `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
-	TransfersTree                 common.Hash                           `json:"transfersTree"`
+	TransfersTree                 common.Hash                           `json:"transfersTree"`           // This is a merkle tree of all of the outbound value transfers for the MainNet
 }
 
 // MarshalJSON custom marshals the BatchHeader into a json
@@ -101,8 +101,8 @@ type CalldataRollupHeader struct {
 	L1HeightDeltas [][]byte // delta of the block height. Stored as a byte array because rlp can't encode negative numbers
 
 	// these fields are for debugging the compression. Uncomment if there are issues
-	BatchHashes  []L2BatchHash
-	BatchHeaders []*BatchHeader
+	//BatchHashes  []L2BatchHash
+	//BatchHeaders []*BatchHeader
 
 	ReOrgs [][]byte `rlp:"optional"` // sparse list of reorged headers - non null only for reorgs.
 }

@@ -243,10 +243,10 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 		BatchTimeDeltas:       timeDeltasBA,
 		ReOrgs:                reorgsBA,
 		L1HeightDeltas:        l1DeltasBA,
-		BatchHashes:           batchHashes,
-		BatchHeaders:          batchHeaders,
-		Coinbase:              batches[0].Header.Coinbase,
-		BaseFee:               batches[0].Header.BaseFee,
+		//	BatchHashes:           batchHashes,
+		//	BatchHeaders:          batchHeaders,
+		Coinbase: batches[0].Header.Coinbase,
+		BaseFee:  batches[0].Header.BaseFee,
 	}
 
 	return calldataRollupHeader, nil
@@ -367,7 +367,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 		}
 	}
 
-	for i, incompleteBatch := range incompleteBatches {
+	for _, incompleteBatch := range incompleteBatches {
 		// check whether the batch is already stored in the database
 		b, err := rc.storage.FetchBatchBySeqNo(incompleteBatch.seqNo.Uint64())
 		if err == nil {
@@ -386,10 +386,10 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 				return err
 			}
 			// Sanity check - uncomment when debugging
-			if genBatch.Hash() != calldataRollupHeader.BatchHashes[i] {
+			/*if genBatch.Hash() != calldataRollupHeader.BatchHashes[i] {
 				rc.logger.Info(fmt.Sprintf("Good %+v \n Calc %+v", calldataRollupHeader.BatchHeaders[i], genBatch.Header))
 				rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
-			}
+			}*/
 
 			err = rc.storage.StoreBatch(genBatch)
 			if err != nil {
@@ -429,10 +429,10 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 				return err
 			}
 			// Sanity check - uncomment when debugging
-			if computedBatch.Batch.Hash() != calldataRollupHeader.BatchHashes[i] {
-				rc.logger.Info(fmt.Sprintf("Good %+v\nCalc %+v", calldataRollupHeader.BatchHeaders[i], computedBatch.Batch.Header))
-				rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
-			}
+			/*		if computedBatch.Batch.Hash() != calldataRollupHeader.BatchHashes[i] {
+					rc.logger.Info(fmt.Sprintf("Good %+v\nCalc %+v", calldataRollupHeader.BatchHeaders[i], computedBatch.Batch.Header))
+					rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
+				}*/
 
 			if _, err := computedBatch.Commit(true); err != nil {
 				return fmt.Errorf("cannot commit stateDB for incoming valid batch seq=%d. Cause: %w", incompleteBatch.seqNo, err)
