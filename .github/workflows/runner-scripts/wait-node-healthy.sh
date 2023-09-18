@@ -9,7 +9,7 @@ help_and_exit() {
     echo ""
     echo "Usage: "
     echo "   ex: "
-    echo "      -  $(basename "${0}") --host=testnet.obscu.ro --port=80"
+    echo "      -  $(basename "${0}") --host=erpc.testnet.obscu.ro --port=80"
     echo ""
     echo "  node             *Required* Set the host address"
     echo ""

@@ -11,7 +11,7 @@ set -euo pipefail
 port=3000
 portWS=3001
 host="0.0.0.0"
-nodeHost="testnet.obscu.ro"
+nodeHost="erpc.testnet.obscu.ro"
 nodePortHTTP=80
 nodePortWS=81
 logPath="wallet_extension_logs.txt"
