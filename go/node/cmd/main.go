@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/obscuronet/go-obscuro/go/node"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/node"
 )
 
 func main() {
