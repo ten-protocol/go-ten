@@ -14,8 +14,8 @@ const (
 	faucetPortUsage   = "The port on which to serve the faucet endpoint. Default: 80."
 
 	nodeHostName    = "nodeHost"
-	nodeHostDefault = "testnet.obscu.ro"
-	nodeHostUsage   = "The host on which to connect to the Obscuro node. Default: `testnet.obscu.ro`."
+	nodeHostDefault = "erpc.testnet.obscu.ro"
+	nodeHostUsage   = "The host on which to connect to the Obscuro node. Default: `erpc.testnet.obscu.ro`."
 
 	nodeHTTPPortName    = "nodePort"
 	nodeHTTPPortDefault = 80
