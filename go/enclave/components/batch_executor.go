@@ -247,7 +247,13 @@ func (vt ValueTransfers) EncodeIndex(index int, w *bytes.Buffer) {
 	}
 }
 
-func (executor *batchExecutor) CreateGenesisState(blkHash common.L1BlockHash, timeNow uint64, coinbase gethcommon.Address, baseFee *big.Int) (*core.Batch, *types.Transaction, error) {
+func (executor *batchExecutor) CreateGenesisState(
+	blkHash common.L1BlockHash,
+	timeNow uint64,
+	coinbase gethcommon.Address,
+	baseFee *big.Int,
+	gasLimit *big.Int,
+) (*core.Batch, *types.Transaction, error) {
 	preFundGenesisState, err := executor.genesis.GetGenesisRoot(executor.storage)
 	if err != nil {
 		return nil, nil, err
@@ -266,6 +272,7 @@ func (executor *batchExecutor) CreateGenesisState(blkHash common.L1BlockHash, ti
 			Time:             timeNow,
 			Coinbase:         coinbase,
 			BaseFee:          baseFee,
+			GasLimit:         gasLimit.Uint64(), //todo (@siliev) - does the batch header need uint64?
 		},
 		Transactions: []*common.L2Tx{},
 	}

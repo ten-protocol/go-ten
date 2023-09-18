@@ -36,6 +36,7 @@ type SequencerSettings struct {
 	MaxBatchSize      uint64
 	MaxRollupSize     uint64
 	GasPaymentAddress gethcommon.Address
+	BatchGasLimit     *big.Int
 	BaseFee           *big.Int
 }
 
@@ -122,7 +123,13 @@ func (s *sequencer) CreateBatch() error {
 // won't be committed by the producer.
 func (s *sequencer) initGenesis(block *common.L1Block) error {
 	s.logger.Info("Initializing genesis state", log.BlockHashKey, block.Hash())
-	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(block.Hash(), uint64(time.Now().Unix()), s.settings.GasPaymentAddress, s.settings.BaseFee)
+	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(
+		block.Hash(),
+		uint64(time.Now().Unix()),
+		s.settings.GasPaymentAddress,
+		s.settings.BaseFee,
+		s.settings.BatchGasLimit,
+	)
 	if err != nil {
 		return err
 	}

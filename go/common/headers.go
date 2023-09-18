@@ -94,6 +94,7 @@ type CalldataRollupHeader struct {
 
 	Coinbase common.Address
 	BaseFee  *big.Int
+	GasLimit uint64
 
 	StartTime       uint64
 	BatchTimeDeltas [][]byte // todo - minimize assuming a default of 1 sec and then store only exceptions

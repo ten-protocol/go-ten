@@ -82,6 +82,7 @@ type batchFromRollup struct {
 	l1Proof      common.L1BlockHash
 	coinbase     gethcommon.Address
 	baseFee      *big.Int
+	gasLimit     uint64
 
 	header *common.BatchHeader // for reorgs
 }
@@ -247,6 +248,7 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 		//	BatchHeaders:          batchHeaders,
 		Coinbase: batches[0].Header.Coinbase,
 		BaseFee:  batches[0].Header.BaseFee,
+		GasLimit: batches[0].Header.GasLimit,
 	}
 
 	return calldataRollupHeader, nil
@@ -339,6 +341,7 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 			header:       fullReorgedHeader,
 			coinbase:     calldataRollupHeader.Coinbase,
 			baseFee:      calldataRollupHeader.BaseFee,
+			gasLimit:     calldataRollupHeader.GasLimit,
 		}
 		rc.logger.Info("Rollup decompressed batch", log.BatchSeqNoKey, currentSeqNo, log.BatchHeightKey, currentHeight, "rollup_idx", currentBatchIdx, "l1_height", block.Number(), "l1_hash", block.Hash())
 	}
@@ -381,7 +384,13 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 		switch {
 		// handle genesis
 		case incompleteBatch.seqNo.Uint64() == common.L2GenesisSeqNo:
-			genBatch, _, err := rc.batchExecutor.CreateGenesisState(incompleteBatch.l1Proof, incompleteBatch.time, calldataRollupHeader.Coinbase, calldataRollupHeader.BaseFee)
+			genBatch, _, err := rc.batchExecutor.CreateGenesisState(
+				incompleteBatch.l1Proof,
+				incompleteBatch.time,
+				calldataRollupHeader.Coinbase,
+				calldataRollupHeader.BaseFee,
+				big.NewInt(0).SetUint64(calldataRollupHeader.GasLimit),
+			)
 			if err != nil {
 				return err
 			}

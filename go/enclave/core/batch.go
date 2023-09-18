@@ -117,6 +117,7 @@ func DeterministicEmptyBatch(
 		Time:     time,
 		BaseFee:  baseFee,
 		Coinbase: coinbase,
+		GasLimit: parent.GasLimit,
 	}
 	b := Batch{
 		Header: &h,
