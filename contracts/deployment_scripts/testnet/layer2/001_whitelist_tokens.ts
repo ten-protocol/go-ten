@@ -90,14 +90,31 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     let messages = getXChainMessages(hocResult);
     messages = messages.concat(getXChainMessages(pocResult));
 
+    console.log("Attempting to verify cross chain message transfer.");
+
     // Poll message submission 
     await new Promise(async (resolve, fail)=> { 
         setTimeout(fail, 30_000)
         const messageBusContract = (await hre.ethers.getContractAt('MessageBus', '0x526c84529b2b8c11f57d93d3f5537aca3aecef9b'));
-        while (await messageBusContract.callStatic.verifyMessageFinalized(messages[1]) != true) {
-            console.log(`Messages not stored on L2 yet, retrying...`);
-            await sleep(1_000);
+        const gasLimit = await messageBusContract.estimateGas.verifyMessageFinalized(messages[1])
+        const gasPrice = await l2Network.ethers.provider.getGasPrice()
+
+        try {
+            while (await messageBusContract.callStatic.verifyMessageFinalized(messages[1], {
+                from: l2Accounts.deployer,
+                gasLimit: gasLimit,
+                gasPrice: gasPrice
+            }) != true) {
+                console.log(`Messages not stored on L2 yet, retrying...`);
+                await sleep(1_000);
+            } 
+        }catch (err) {
+            console.log(err)
+            fail(err)
         }
+
+
+
         resolve(true);
     });
     

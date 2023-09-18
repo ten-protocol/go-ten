@@ -6,9 +6,9 @@ pragma solidity >=0.7.0 <0.9.0;
 // Calling functions on it will result in assets being bridged over to the other layer automatically.
 interface IBridge {
     enum Topics {
-        VALUE,
         TRANSFER,
-        MANAGEMENT
+        MANAGEMENT,
+        VALUE
     }
 
     // Sends the native currency to the other layer. On Layer 1 the native currency is ETH, while on Layer 2 it is OBX.
