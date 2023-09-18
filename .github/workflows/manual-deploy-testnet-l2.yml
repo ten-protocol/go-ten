@@ -39,6 +39,7 @@ jobs:
       RESOURCE_TAG_NAME: ${{ steps.outputVars.outputs.RESOURCE_TAG_NAME }}
       RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
       RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
+      # there are two websocket URLs because our sepolia RPC provider requires separate API keys for the connections
       L1_WS_URL_0: ${{ steps.outputVars.outputs.L1_WS_URL_0 }}
       L1_WS_URL_1: ${{ steps.outputVars.outputs.L1_WS_URL_1 }}
       L1_HTTP_URL: ${{ steps.outputVars.outputs.L1_HTTP_URL }}
