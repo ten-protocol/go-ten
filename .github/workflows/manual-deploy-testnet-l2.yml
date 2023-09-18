@@ -101,6 +101,8 @@ jobs:
           echo "L1_WS_URL_0=wss://sepolia.infura.io/ws/v3/${{secret.infura_apikey_0}}" >> $GITHUB_ENV
           echo "L1_WS_URL_1=wss://sepolia.infura.io/ws/v3/${{secret.infura_apikey_1}}" >> $GITHUB_ENV
           echo "L1_HTTP_URL=https://sepolia.infura.io/v3/${{secret.infura_apikey_0}}" >> $GITHUB_ENV
+          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
+          echo "ROLLUP_INTERVAL=3m" >> $GITHUB_ENV
 
       - name: 'Output env vars'
         id: outputVars
