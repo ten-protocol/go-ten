@@ -42,7 +42,7 @@ func (t *Testnet) Start() error {
 		node.WithNodeName("sequencer"),
 		node.WithNodeType("sequencer"),
 		node.WithGenesis(true),
-		node.WithSGXEnabled(false),
+		node.WithSGXEnabled(t.cfg.isSGXEnabled),
 		node.WithEnclaveImage(t.cfg.sequencerEnclaveDockerImage),
 		node.WithEnclaveDebug(t.cfg.sequencerEnclaveDebug),
 		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),
@@ -61,6 +61,7 @@ func (t *Testnet) Start() error {
 		node.WithInMemoryHostDB(true),
 		node.WithDebugNamespaceEnabled(true),
 		node.WithLogLevel(4),
+		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
 	)
 
 	sequencerNode := node.NewDockerNode(sequencerNodeConfig)
@@ -81,7 +82,7 @@ func (t *Testnet) Start() error {
 		node.WithNodeName("validator"),
 		node.WithNodeType("validator"),
 		node.WithGenesis(false),
-		node.WithSGXEnabled(false),
+		node.WithSGXEnabled(t.cfg.isSGXEnabled),
 		node.WithEnclaveImage(t.cfg.validatorEnclaveDockerImage),
 		node.WithEnclaveDebug(t.cfg.validatorEnclaveDebug),
 		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),
@@ -100,6 +101,7 @@ func (t *Testnet) Start() error {
 		node.WithInMemoryHostDB(true),
 		node.WithDebugNamespaceEnabled(true),
 		node.WithLogLevel(4),
+		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
 	)
 
 	validatorNode := node.NewDockerNode(validatorNodeConfig)
