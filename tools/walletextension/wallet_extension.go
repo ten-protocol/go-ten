@@ -320,11 +320,7 @@ func (w *WalletExtension) UserExists(hexUserID string) bool {
 		return false
 	}
 
-	if len(key) > 0 {
-		return true
-	}
-
-	return false
+	return len(key) > 0
 }
 
 // verifySignature checks if a message was signed by the correct address and if signature is valid
