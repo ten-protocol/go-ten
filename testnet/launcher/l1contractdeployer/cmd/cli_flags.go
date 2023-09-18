@@ -2,7 +2,7 @@ package main
 
 // Flag names.
 const (
-	l1HTTPURLFlag        = "l1_ws_url"
+	l1HTTPURLFlag        = "l1_http_url"
 	privateKeyFlag       = "private_key"
 	dockerImageFlag      = "docker_image"
 	contractsEnvFileFlag = "contracts_env_file"

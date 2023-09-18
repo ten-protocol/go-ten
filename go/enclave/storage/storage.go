@@ -460,12 +460,12 @@ func (s *storageImpl) GetEnclaveKey() (*ecdsa.PrivateKey, error) {
 	return enclaveKey, nil
 }
 
-func (s *storageImpl) StoreRollup(rollup *common.ExtRollup) error {
+func (s *storageImpl) StoreRollup(rollup *common.ExtRollup, internalHeader *common.CalldataRollupHeader) error {
 	callStart := time.Now()
 	defer s.logDuration("StoreRollup", callStart)
 	dbBatch := s.db.NewDBTransaction()
 
-	if err := enclavedb.WriteRollup(dbBatch, rollup.Header); err != nil {
+	if err := enclavedb.WriteRollup(dbBatch, rollup.Header, internalHeader); err != nil {
 		return fmt.Errorf("could not write rollup. Cause: %w", err)
 	}
 
@@ -473,6 +473,10 @@ func (s *storageImpl) StoreRollup(rollup *common.ExtRollup) error {
 		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
 	}
 	return nil
+}
+
+func (s *storageImpl) FetchReorgedRollup(reorgedBlocks []common.L1BlockHash) (*common.L2BatchHash, error) {
+	return enclavedb.FetchReorgedRollup(s.db.GetSQLDB(), reorgedBlocks)
 }
 
 func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, error) {

@@ -48,6 +48,8 @@ type Config struct {
 	logLevel                  int
 	isInboundP2PDisabled      bool
 	l1BlockTime               time.Duration
+	batchInterval             string
+	rollupInterval            string
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -284,5 +286,17 @@ func WithInboundP2PDisabled(b bool) Option {
 func WithL1BlockTime(d time.Duration) Option {
 	return func(c *Config) {
 		c.l1BlockTime = d
+	}
+}
+
+func WithBatchInterval(d string) Option {
+	return func(c *Config) {
+		c.batchInterval = d
+	}
+}
+
+func WithRollupInterval(d string) Option {
+	return func(c *Config) {
+		c.rollupInterval = d
 	}
 }

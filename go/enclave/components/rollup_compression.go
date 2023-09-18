@@ -112,17 +112,17 @@ func (rc *RollupCompression) CreateExtRollup(r *core.Rollup) (*common.ExtRollup,
 }
 
 // ProcessExtRollup - given an External rollup, responsible with checking and saving all batches found inside
-func (rc *RollupCompression) ProcessExtRollup(rollup *common.ExtRollup) error {
+func (rc *RollupCompression) ProcessExtRollup(rollup *common.ExtRollup) (*common.CalldataRollupHeader, error) {
 	transactionsPerBatch := make([][]*common.L2Tx, 0)
 	err := rc.decryptDecompressAndDeserialise(rollup.BatchPayloads, &transactionsPerBatch)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	calldataRollupHeader := new(common.CalldataRollupHeader)
 	err = rc.decryptDecompressAndDeserialise(rollup.CalldataRollupHeader, calldataRollupHeader)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// The recreation of batches is a 2-step process:
@@ -130,16 +130,16 @@ func (rc *RollupCompression) ProcessExtRollup(rollup *common.ExtRollup) error {
 	// 1. calculate fields like: sequence, height, time, l1Proof, from the implicit and explicit information from the metadata
 	incompleteBatches, err := rc.createIncompleteBatches(calldataRollupHeader, transactionsPerBatch, rollup.Header.CompressionL1Head)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// 2. execute each batch to be able to calculate the hash which is necessary for the next batch as it is the parent.
 	err = rc.executeAndSaveIncompleteBatches(calldataRollupHeader, incompleteBatches)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return calldataRollupHeader, nil
 }
 
 // the main logic that goes from a list of batches to the rollup header

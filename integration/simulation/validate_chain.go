@@ -118,7 +118,7 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	min, max := minMax(heights)
 	// This checks that all the nodes are in sync. When a node falls behind with processing blocks it might highlight a problem.
 	// since there is one node that only listens to rollups it will be naturally behind.
-	if max-min > max/5 {
+	if max-min > max/3 {
 		t.Errorf("There is a problem with the Obscuro chain. Nodes fell out of sync. Max height: %d. Min height: %d -> %+v", max, min, heights)
 	}
 }
@@ -264,7 +264,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		t.Errorf("Node %d: Obscuro node fell behind by %d blocks.", nodeIdx, maxEthereumHeight-l1Height)
 	}
 
-	// check that the height of the Rollup chain is higher than a minimum expected value.
+	// check that the height of the l2 chain is higher than a minimum expected value.
 	headBatchHeader, err := getHeadBatchHeader(obscuroClient)
 	if err != nil {
 		t.Error(fmt.Errorf("node %d: %w", nodeIdx, err))
@@ -279,13 +279,16 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		t.Errorf("Node %d: Node only mined %d rollups. Expected at least: %d.", nodeIdx, l2Height, minObscuroHeight)
 	}
 
-	// check that the height from the rollup header is consistent with the height returned by eth_blockNumber.
+	// check that the height from the head batch header is consistent with the height returned by eth_blockNumber.
 	l2HeightFromBatchNumber, err := obscuroClient.BatchNumber()
 	if err != nil {
 		t.Errorf("Node %d: Could not retrieve block number. Cause: %s", nodeIdx, err)
 	}
-	if l2HeightFromBatchNumber != l2Height.Uint64() {
-		t.Errorf("Node %d: Node's head rollup had a height %d, but %s height was %d", nodeIdx, l2Height, rpc.BatchNumber, l2HeightFromBatchNumber)
+	// due to the difference in calling time, the enclave could produce another batch
+	const maxAcceptedDiff = 2
+	heightDiff := int(l2HeightFromBatchNumber) - int(l2Height.Uint64())
+	if heightDiff > maxAcceptedDiff || heightDiff < -maxAcceptedDiff {
+		t.Errorf("Node %d: Node's head batch had a height %d, but %s height was %d", nodeIdx, l2Height, rpc.BatchNumber, l2HeightFromBatchNumber)
 	}
 
 	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)

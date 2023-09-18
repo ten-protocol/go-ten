@@ -33,6 +33,8 @@ func main() {
 		node.WithDebugNamespaceEnabled(cliConfig.isDebugNamespaceEnabled), // false
 		node.WithLogLevel(cliConfig.logLevel),
 		node.WithInboundP2PDisabled(cliConfig.isInboundP2PDisabled),
+		node.WithBatchInterval(cliConfig.batchInterval),
+		node.WithRollupInterval(cliConfig.rollupInterval),
 	)
 
 	dockerNode := node.NewDockerNode(nodeCfg)

@@ -42,6 +42,8 @@ jobs:
       L1_WS_URL_0: ${{ steps.outputVars.outputs.L1_WS_URL_0 }}
       L1_WS_URL_1: ${{ steps.outputVars.outputs.L1_WS_URL_1 }}
       L1_HTTP_URL: ${{ steps.outputVars.outputs.L1_HTTP_URL }}
+      BATCH_INTERVAL: ${{ steps.deployL2Contracts.outputs.BATCH_INTERVAL }}
+      ROLLUP_INTERVAL: ${{ steps.deployL2Contracts.outputs.ROLLUP_INTERVAL }}
 
 
     steps:
@@ -68,6 +70,8 @@ jobs:
           echo "L1_WS_URL_0=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_WS_URL_1=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_HTTP_URL=http://testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
+          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
+          echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
         if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
@@ -81,6 +85,8 @@ jobs:
           echo "L1_WS_URL_0=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_WS_URL_1=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_HTTP_URL=http://dev-testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
+          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
+          echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
 
       - name: 'Sets env vars for sepolia-testnet'
         if: ${{ (github.event.inputs.testnet_type == 'sepolia-testnet') }}
@@ -107,6 +113,8 @@ jobs:
           echo "L1_WS_URL_0=${{env.L1_WS_URL_0}}" >> $GITHUB_OUTPUT
           echo "L1_WS_URL_1=${{env.L1_WS_URL_1}}" >> $GITHUB_OUTPUT
           echo "L1_HTTP_URL=${{env.L1_HTTP_URL}}" >> $GITHUB_OUTPUT
+          echo "BATCH_INTERVAL=${{env.BATCH_INTERVAL}}" >> $GITHUB_OUTPUT
+          echo "ROLLUP_INTERVAL=${{env.ROLLUP_INTERVAL}}" >> $GITHUB_OUTPUT
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -129,7 +137,7 @@ jobs:
         shell: bash
         run: |
           go run ./testnet/launcher/l1contractdeployer/cmd \
-          -l1_ws_url=${{ env.L1_HTTP_URL }} \
+          -l1_http_url=${{ env.L1_HTTP_URL }} \
           -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
           -docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
           -contracts_env_file=./testnet/.env
@@ -291,6 +299,8 @@ jobs:
                -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
                -is_debug_namespace_enabled=true \
                -log_level=${{ github.event.inputs.log_level }} \
+               -batch_interval=${{needs.build.outputs.BATCH_INTERVAL}} \
+               -rollup_interval=${{needs.build.outputs.ROLLUP_INTERVAL}} \
                start'
 
 
@@ -349,7 +359,7 @@ jobs:
         run: |
           go run ./testnet/launcher/l2contractdeployer/cmd \
           -l2_host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
-          -l1_ws_url=${{ needs.build.outputs.L1_HTTP_URL }} \
+          -l1_http_url=${{ needs.build.outputs.L1_HTTP_URL }} \
           -l2_ws_port=81 \
           -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
           -l2_private_key=8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b \
