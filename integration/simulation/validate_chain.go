@@ -128,7 +128,6 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 }
 
 func checkCollectedL1Fees(t *testing.T, node ethadapter.EthClient, s *Simulation, nodeIdx int, rollupReceipts types.Receipts) {
-
 	costOfRollups := big.NewInt(0)
 
 	if !s.Params.IsInMem {
