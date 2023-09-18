@@ -115,8 +115,8 @@ func (d *DockerNode) startHost() error {
 		fmt.Sprintf("-useInMemoryDB=%t", d.cfg.hostInMemDB),
 		fmt.Sprintf("-debugNamespaceEnabled=%t", d.cfg.debugNamespaceEnabled),
 		// todo (@stefan): once the limiter is in, increase it back to 5 or 10s
-		"-batchInterval=1s",
-		"-rollupInterval=3s",
+		fmt.Sprintf("-batchInterval=%s", d.cfg.batchInterval),
+		fmt.Sprintf("-rollupInterval=%s", d.cfg.rollupInterval),
 		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
 		fmt.Sprintf("-isInboundP2PDisabled=%t", d.cfg.isInboundP2PDisabled),
 	}
