@@ -96,14 +96,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await new Promise(async (resolve, fail)=> { 
         setTimeout(fail, 30_000)
         const messageBusContract = (await hre.ethers.getContractAt('MessageBus', '0x526c84529b2b8c11f57d93d3f5537aca3aecef9b'));
-        const gasLimit = await messageBusContract.estimateGas.verifyMessageFinalized(messages[1])
+        var gasLimit = await messageBusContract.estimateGas.verifyMessageFinalized(messages[1], {
+            from: l2Accounts.deployer,
+        })
         const gasPrice = await l2Network.ethers.provider.getGasPrice()
+        const modifiedGasLimit = gasLimit.toNumber() + gasLimit.toNumber()
+        console.log("Gas limit for call: " + modifiedGasLimit.toString())
 
         try {
             while (await messageBusContract.callStatic.verifyMessageFinalized(messages[1], {
                 from: l2Accounts.deployer,
-                gasLimit: gasLimit,
-                gasPrice: gasPrice
+                maxFeePerGas: gasPrice,
+                gasLimit: modifiedGasLimit,
             }) != true) {
                 console.log(`Messages not stored on L2 yet, retrying...`);
                 await sleep(1_000);

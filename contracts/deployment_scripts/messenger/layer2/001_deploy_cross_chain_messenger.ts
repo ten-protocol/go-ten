@@ -24,7 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // Deploy the L2 Cross chain messenger and use the L2 bus for validation
     await deployments.deploy('CrossChainMessenger', {
-    from: deployer,
+        from: deployer,
         args: [ busAddress ],
         log: true,
     });

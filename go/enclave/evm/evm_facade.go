@@ -147,7 +147,13 @@ func ExecuteObsCall(
 	chainConfig *params.ChainConfig,
 	logger gethlog.Logger,
 ) (*gethcore.ExecutionResult, error) {
-	chain, vmCfg, gp := initParams(storage, true, nil)
+	var noBaseFee = true
+	if header.BaseFee != nil && header.BaseFee.Cmp(gethcommon.Big0) != 0 && msg.GasPrice.Cmp(gethcommon.Big0) != 0 {
+		noBaseFee = false
+		logger.Info("ObsCall - with base fee ", "to", msg.To.Hex())
+	}
+
+	chain, vmCfg, gp := initParams(storage, noBaseFee, nil)
 	ethHeader, err := gethencoding.CreateEthHeaderForBatch(header, secret(storage))
 	if err != nil {
 		return nil, err

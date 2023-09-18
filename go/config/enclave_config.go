@@ -96,7 +96,7 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,
 		GasPaymentAddress:         gethcommon.BigToAddress(gethcommon.Big2),
-		BaseFee:                   new(big.Int).SetUint64(1),
+		BaseFee:                   new(big.Int).SetUint64(0),
 		GasLimit:                  new(big.Int).SetUint64(params.MaxGasLimit),
 	}
 }

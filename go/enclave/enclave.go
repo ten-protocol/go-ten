@@ -688,6 +688,8 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 		encodedResult = hexutil.Encode(execResult.ReturnData)
 	}
 
+	e.logger.Info("Call result success ", "result", encodedResult)
+
 	return responses.AsEncryptedResponse(&encodedResult, vkHandler), nil
 }
 
