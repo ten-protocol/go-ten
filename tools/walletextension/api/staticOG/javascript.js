@@ -202,7 +202,6 @@ const initialize = async () => {
     const addAllAccountsButton = document.getElementById(idAddAllAccounts);
     const revokeUserIDButton = document.getElementById(idRevokeUserID);
     const statusArea = document.getElementById(idStatus);
-    const userIDArea = document.getElementById(idUserID);
 
     const accountsTable = document.getElementById('accountsTable')
     const tableBody = document.getElementById('tableBody');
@@ -212,7 +211,6 @@ const initialize = async () => {
     // check if userID exists and has a correct type and length (is valid) and display either
     // option to join or to add a new account to existing user
     if (isValidUserIDFormat(userID)) {
-        userIDArea.innerText = "Your userID is: " + userID
         joinButton.style.display = "none"
         addAccountButton.style.display = "block"
         addAllAccountsButton.style.display = "block"
@@ -250,7 +248,6 @@ const initialize = async () => {
             return
         }
         statusArea.innerText = "Successfully joined Obscuro Gateway";
-        userIDArea.innerText = "Your userID is: " + userID
         // show users an option to add another account and revoke userID
         addAccountButton.style.display = "block"
         addAllAccountsButton.style.display = "block"
@@ -310,7 +307,6 @@ const initialize = async () => {
             joinButton.style.display = "block";
             revokeUserIDButton.style.display = "none";
             addAllAccountsButton.style.display = "none";
-            userIDArea.innerText = "";
             statusArea.innerText = "Revoking UserID successful. Please remove current network from Metamask."
             addAccountButton.style.display = "none";
             accountsTable.style.display = "none"
