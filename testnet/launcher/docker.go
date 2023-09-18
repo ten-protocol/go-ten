@@ -62,6 +62,8 @@ func (t *Testnet) Start() error {
 		node.WithDebugNamespaceEnabled(true),
 		node.WithLogLevel(4),
 		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
+		node.WithBatchInterval("1s"),
+		node.WithRollupInterval("3s"),
 	)
 
 	sequencerNode := node.NewDockerNode(sequencerNodeConfig)
