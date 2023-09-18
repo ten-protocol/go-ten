@@ -41,6 +41,8 @@ jobs:
       RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
       L1_WS_URL: ${{ steps.outputVars.outputs.L1_WS_URL }}
       VM_BUILD_NUMBER: ${{ steps.outputVars.outputs.VM_BUILD_NUMBER }}
+      BATCH_INTERVAL: ${{ steps.deployL2Contracts.outputs.BATCH_INTERVAL }}
+      ROLLUP_INTERVAL: ${{ steps.deployL2Contracts.outputs.ROLLUP_INTERVAL }}
 
     steps:
       - uses: actions/checkout@v3
@@ -63,6 +65,8 @@ jobs:
           echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
           echo "L1_WS_URL=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
+          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
+          echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
         if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') || (github.event_name == 'schedule') }}
@@ -73,6 +77,8 @@ jobs:
           echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
           echo "L1_WS_URL=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
+          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
+          echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
 
       - name: 'Fetch latest VM hostnames by env tag and extract build number'
         id: fetch_hostnames
@@ -97,6 +103,8 @@ jobs:
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
           echo "L1_WS_URL=${{env.L1_WS_URL}}" >> $GITHUB_OUTPUT
           echo "VM_BUILD_NUMBER=${{env.VM_BUILD_NUMBER}}" >> $GITHUB_OUTPUT
+          echo "BATCH_INTERVAL=${{env.BATCH_INTERVAL}}" >> $GITHUB_OUTPUT
+          echo "ROLLUP_INTERVAL=${{env.ROLLUP_INTERVAL}}" >> $GITHUB_OUTPUT
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -182,6 +190,8 @@ jobs:
               -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
               -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
               -log_level=${{ github.event.inputs.log_level }} \
+              -batch_interval=${{needs.build.outputs.BATCH_INTERVAL}} \
+              -rollup_interval=${{needs.build.outputs.ROLLUP_INTERVAL}} \
               upgrade'
 
   check-obscuro-is-healthy:

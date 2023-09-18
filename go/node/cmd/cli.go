@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 var (
@@ -41,6 +42,8 @@ type NodeConfigCLI struct {
 	isDebugNamespaceEnabled bool
 	logLevel                int
 	isInboundP2PDisabled    bool
+	batchInterval           string // format like 500ms or 2s (any time parsable by time.ParseDuration())
+	rollupInterval          string // format like 500ms or 2s (any time parsable by time.ParseDuration())
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
@@ -73,6 +76,8 @@ func ParseConfigCLI() *NodeConfigCLI {
 	isDebugNamespaceEnabled := flag.Bool(isDebugNamespaceEnabledFlag, false, flagUsageMap[isDebugNamespaceEnabledFlag])
 	logLevel := flag.Int(logLevelFlag, 3, flagUsageMap[logLevelFlag])
 	isInboundP2PDisabled := flag.Bool(isInboundP2PDisabledFlag, false, flagUsageMap[isInboundP2PDisabledFlag])
+	batchInterval := flag.String(batchIntervalFlag, "1s", flagUsageMap[batchIntervalFlag])
+	rollupInterval := flag.String(rollupIntervalFlag, "3s", flagUsageMap[rollupIntervalFlag])
 
 	flag.Parse()
 	cfg.nodeName = *nodeName
@@ -100,6 +105,16 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.isDebugNamespaceEnabled = *isDebugNamespaceEnabled
 	cfg.logLevel = *logLevel
 	cfg.isInboundP2PDisabled = *isInboundP2PDisabled
+	cfg.batchInterval = *batchInterval
+	if _, err := time.ParseDuration(cfg.batchInterval); err != nil {
+		fmt.Printf("invalid batch interval: %s\n", err)
+		os.Exit(1)
+	}
+	cfg.rollupInterval = *rollupInterval
+	if _, err := time.ParseDuration(cfg.rollupInterval); err != nil {
+		fmt.Printf("invalid rollup interval: %s\n", err)
+		os.Exit(1)
+	}
 
 	cfg.nodeAction = flag.Arg(0)
 	if !validateNodeAction(cfg.nodeAction) {

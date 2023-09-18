@@ -40,6 +40,8 @@ jobs:
       RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
       L1_WS_URL: ${{ steps.outputVars.outputs.L1_WS_URL }}
       L1_HTTP_URL: ${{ steps.outputVars.outputs.L1_HTTP_URL }}
+      BATCH_INTERVAL: ${{ steps.deployL2Contracts.outputs.BATCH_INTERVAL }}
+      ROLLUP_INTERVAL: ${{ steps.deployL2Contracts.outputs.ROLLUP_INTERVAL }}
 
 
     steps:
@@ -65,6 +67,8 @@ jobs:
           echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
           echo "L1_WS_URL=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_HTTP_URL=http://testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
+          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
+          echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
         if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
@@ -77,6 +81,8 @@ jobs:
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
           echo "L1_WS_URL=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_HTTP_URL=http://dev-testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
+          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
+          echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
 
       - name: 'Output env vars'
         id: outputVars
@@ -89,6 +95,8 @@ jobs:
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
           echo "L1_WS_URL=${{env.L1_WS_URL}}" >> $GITHUB_OUTPUT
           echo "L1_HTTP_URL=${{env.L1_HTTP_URL}}" >> $GITHUB_OUTPUT
+          echo "BATCH_INTERVAL=${{env.BATCH_INTERVAL}}" >> $GITHUB_OUTPUT
+          echo "ROLLUP_INTERVAL=${{env.ROLLUP_INTERVAL}}" >> $GITHUB_OUTPUT
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -268,6 +276,8 @@ jobs:
                -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
                -is_debug_namespace_enabled=true \
                -log_level=${{ github.event.inputs.log_level }} \
+               -batch_interval=${{needs.build.outputs.BATCH_INTERVAL}} \
+               -rollup_interval=${{needs.build.outputs.ROLLUP_INTERVAL}} \
                start'
 
 

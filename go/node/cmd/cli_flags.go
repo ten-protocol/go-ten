@@ -27,6 +27,8 @@ const (
 	isDebugNamespaceEnabledFlag = "is_debug_namespace_enabled"
 	logLevelFlag                = "log_level"
 	isInboundP2PDisabledFlag    = "is_inbound_p2p_disabled"
+	batchIntervalFlag           = "batch_interval"
+	rollupIntervalFlag          = "rollup_interval"
 )
 
 // Returns a map of the flag usages.
@@ -58,5 +60,7 @@ func getFlagUsageMap() map[string]string {
 		isDebugNamespaceEnabledFlag: "Enables the debug namespace for both enclave and host",
 		logLevelFlag:                "Sets the log level 1-Error, 5-Trace",
 		isInboundP2PDisabledFlag:    "Disables inbound p2p (for testing)",
+		batchIntervalFlag:           "Duration between each batch. Can be formatted like 500ms or 1s",
+		rollupIntervalFlag:          "Duration between each rollup. Can be formatted like 500ms or 1s",
 	}
 }
