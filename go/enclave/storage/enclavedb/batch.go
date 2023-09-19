@@ -28,7 +28,7 @@ const (
 	bInsert             = "insert into batch values (?,?,?,?,?,?,?,?,?,?)"
 	updateBatchExecuted = "update batch set is_executed=true where sequence=?"
 
-	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
+	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.id"
 	selectHeader = "select b.header from batch b"
 
 	txExecInsert       = "insert into exec_tx values "
@@ -50,7 +50,8 @@ const (
 
 // WriteBatchAndTransactions - persists the batch and the transactions
 func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
-	bodyHash := truncTo16(batch.Header.TxHash)
+	// todo - optimize for reorgs
+	batchBodyID := batch.SeqNo().Uint64()
 
 	body, err := rlp.EncodeToBytes(batch.Transactions)
 	if err != nil {
@@ -61,7 +62,7 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 		return fmt.Errorf("could not encode batch header. Cause: %w", err)
 	}
 
-	dbtx.ExecuteSQL(bodyInsert, bodyHash, body)
+	dbtx.ExecuteSQL(bodyInsert, batchBodyID, body)
 
 	var parentBytes []byte
 	if batch.Number().Uint64() > 0 {
@@ -84,7 +85,7 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 		batch.Header.Number.Uint64(),           // height
 		isCanon,                                // is_canonical
 		header,                                 // header blob
-		bodyHash,                               // reference to the batch body
+		batchBodyID,                            // reference to the batch body
 		truncTo16(batch.Header.L1Proof),        // l1_proof
 		false,                                  // executed
 	)
@@ -112,7 +113,7 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 			args = append(args, from.Bytes())                  // sender_address
 			args = append(args, transaction.Nonce())           // nonce
 			args = append(args, i)                             // idx
-			args = append(args, bodyHash)                      // the batch body which contained it
+			args = append(args, batchBodyID)                   // the batch body which contained it
 		}
 		dbtx.ExecuteSQL(insert, args...)
 	}
@@ -449,8 +450,8 @@ func ReadContractCreationCount(db *sql.DB) (*big.Int, error) {
 	return big.NewInt(count), nil
 }
 
-func ReadUnexecutedBatches(db *sql.DB) ([]*core.Batch, error) {
-	return fetchBatches(db, "where is_executed=false and is_canonical=true order by b.sequence")
+func ReadUnexecutedBatches(db *sql.DB, from *big.Int) ([]*core.Batch, error) {
+	return fetchBatches(db, "where is_executed=false and is_canonical=true and sequence >= ? order by b.sequence", from.Uint64())
 }
 
 func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {

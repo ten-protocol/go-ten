@@ -15,7 +15,7 @@ import (
 
 const (
 	baseEventsQuerySelect      = "select full_topic0, full_topic1, full_topic2, full_topic3, full_topic4, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address"
-	baseDebugEventsQuerySelect = "select rel_address1, rel_address2, rel_address3, rel_address4, lifecycle_event, topic0, topic1, topic2, topic3, topic4, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address"
+	baseDebugEventsQuerySelect = "select rel_address1, rel_address2, rel_address3, rel_address4, lifecycle_event, full_topic0, full_topic1, full_topic2, full_topic3, full_topic4, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address"
 	baseEventsJoin             = "from events e join exec_tx extx on e.exec_tx_id=extx.id join tx on extx.tx=tx.hash join batch b on extx.batch=b.sequence where b.is_canonical=true "
 	insertEvent                = "insert into events values "
 	insertEventValues          = "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"

@@ -505,10 +505,10 @@ func (s *storageImpl) GetContractCount() (*big.Int, error) {
 	return enclavedb.ReadContractCreationCount(s.db.GetSQLDB())
 }
 
-func (s *storageImpl) FetchCanonicalUnexecutedBatches() ([]*core.Batch, error) {
+func (s *storageImpl) FetchCanonicalUnexecutedBatches(from *big.Int) ([]*core.Batch, error) {
 	callStart := time.Now()
 	defer s.logDuration("FetchCanonicalUnexecutedBatches", callStart)
-	return enclavedb.ReadUnexecutedBatches(s.db.GetSQLDB())
+	return enclavedb.ReadUnexecutedBatches(s.db.GetSQLDB(), from)
 }
 
 func (s *storageImpl) BatchWasExecuted(hash common.L2BatchHash) (bool, error) {

@@ -45,12 +45,12 @@ create table if not exists rollup
     start_seq         int        NOT NULL,
     end_seq           int        NOT NULL,
     header            blob       NOT NULL,
-    compression_block binary(16) NOT NULL
+    compression_block binary(16) NOT NULL REFERENCES block
 );
 
 create table if not exists batch_body
 (
-    hash    binary(16) primary key,
+    id      int        NOT NULL primary key,
     content mediumblob NOT NULL
 );
 
@@ -63,14 +63,14 @@ create table if not exists batch
     height       int        NOT NULL,
     is_canonical boolean    NOT NULL,
     header       blob       NOT NULL,
-    body         binary(16) NOT NULL REFERENCES batch_body,
+    body         int        NOT NULL REFERENCES batch_body,
     l1_proof     binary(16) NOT NULL, -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
     is_executed  boolean    NOT NULL
 --   the unique constraint is commented for now because there might be multiple non-canonical batches for the same height
 --   unique (height, is_canonical, is_executed)
 );
-create index IDX_BATCH_HEIGHT on batch (height);
 create index IDX_BATCH_HASH on batch (hash);
+create index IDX_BATCH_HEIGHT on batch (height, is_canonical);
 create index IDX_BATCH_Block on batch (l1_proof);
 
 create table if not exists tx
@@ -81,7 +81,7 @@ create table if not exists tx
     sender_address binary(20) NOT NULL,
     nonce          int        NOT NULL,
     idx            int        NOT NULL,
-    body           binary(16) REFERENCES batch_body
+    body           int REFERENCES batch_body
 );
 
 create table if not exists exec_tx

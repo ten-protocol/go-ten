@@ -52,7 +52,7 @@ type BatchResolver interface {
 	FetchBatchesByBlock(common.L1BlockHash) ([]*core.Batch, error)
 
 	// FetchCanonicalUnexecutedBatches - return the list of the unexecuted batches that are canonical
-	FetchCanonicalUnexecutedBatches() ([]*core.Batch, error)
+	FetchCanonicalUnexecutedBatches(*big.Int) ([]*core.Batch, error)
 
 	// BatchWasExecuted - return true if the batch was executed
 	BatchWasExecuted(hash common.L2BatchHash) (bool, error)

@@ -81,8 +81,8 @@ jobs:
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
           echo "L1_WS_URL=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_HTTP_URL=http://dev-testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
-          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
-          echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
+          echo "BATCH_INTERVAL=50ms" >> $GITHUB_ENV
+          echo "ROLLUP_INTERVAL=5s" >> $GITHUB_ENV
 
       - name: 'Output env vars'
         id: outputVars
