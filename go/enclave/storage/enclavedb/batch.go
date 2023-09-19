@@ -23,9 +23,9 @@ import (
 const (
 	bodyInsert    = "replace into batch_body values (?,?)"
 	txInsert      = "replace into tx values "
-	txInsertValue = "(?,?,?,?,?,?)"
+	txInsertValue = "(?,?,?,?,?,?,?)"
 
-	bInsert             = "insert into batch values (?,?,?,?,?,?,?,?,?)"
+	bInsert             = "insert into batch values (?,?,?,?,?,?,?,?,?,?)"
 	updateBatchExecuted = "update batch set is_executed=true where sequence=?"
 
 	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
@@ -33,10 +33,10 @@ const (
 
 	txExecInsert       = "insert into exec_tx values "
 	txExecInsertValue  = "(?,?,?,?,?)"
-	queryReceipts      = "select exec_tx.receipt, tx.content, exec_tx.batch, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
-	queryReceiptsCount = "select count(1) from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
+	queryReceipts      = "select exec_tx.receipt, tx.content, batch.full_hash, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.sequence=exec_tx.batch "
+	queryReceiptsCount = "select count(1) from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.sequence=exec_tx.batch "
 
-	selectTxQuery = "select tx.content, exec_tx.batch, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch where batch.is_canonical=true and tx.hash=?"
+	selectTxQuery = "select tx.content, batch.full_hash, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.sequence=exec_tx.batch where batch.is_canonical=true and tx.hash=?"
 
 	selectContractCreationTx    = "select tx from exec_tx where created_contract_address=?"
 	selectTotalCreatedContracts = "select count( distinct created_contract_address) from exec_tx "
@@ -44,8 +44,8 @@ const (
 
 	isCanonQuery = "select is_canonical from block where hash=?"
 
-	queryTxList      = "select exec_tx.tx, batch.height from exec_tx join batch on batch.hash=exec_tx.batch"
-	queryTxCountList = "select count(1) from exec_tx join batch on batch.hash=exec_tx.batch"
+	queryTxList      = "select tx.full_hash, batch.height from exec_tx join batch on batch.sequence=exec_tx.batch join tx on tx.hash=exec_tx.tx"
+	queryTxCountList = "select count(1) from exec_tx join batch on batch.sequence=exec_tx.batch"
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
@@ -78,7 +78,8 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 
 	dbtx.ExecuteSQL(bInsert,
 		batch.Header.SequencerOrderNo.Uint64(), // sequence
-		truncTo16(batch.Hash()),                // hash
+		batch.Hash(),                           // full hash
+		truncTo16(batch.Hash()),                // index hash
 		parentBytes,                            // parent
 		batch.Header.Number.Uint64(),           // height
 		isCanon,                                // is_canonical
@@ -105,7 +106,8 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 				return fmt.Errorf("unable to convert tx to message - %w", err)
 			}
 
-			args = append(args, truncTo16(transaction.Hash())) // tx_hash
+			args = append(args, truncTo16(transaction.Hash())) // indexed tx_hash
+			args = append(args, transaction.Hash())            // full tx_hash
 			args = append(args, txBytes)                       // content
 			args = append(args, from.Bytes())                  // sender_address
 			args = append(args, transaction.Nonce())           // nonce

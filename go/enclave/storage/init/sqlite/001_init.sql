@@ -57,6 +57,7 @@ create table if not exists batch_body
 create table if not exists batch
 (
     sequence     int primary key,
+    full_hash    binary(32),
     hash         binary(16) NOT NULL unique,
     parent       binary(16),
     height       int        NOT NULL,
@@ -75,6 +76,7 @@ create index IDX_BATCH_Block on batch (l1_proof);
 create table if not exists tx
 (
     hash           binary(16) primary key,
+    full_hash      binary(32) NOT NULL,
     content        mediumblob NOT NULL,
     sender_address binary(20) NOT NULL,
     nonce          int        NOT NULL,
@@ -102,6 +104,11 @@ create table if not exists events
     topic2          binary(16),
     topic3          binary(16),
     topic4          binary(16),
+    full_topic0     binary(32) NOT NULL,
+    full_topic1     binary(32),
+    full_topic2     binary(32),
+    full_topic3     binary(32),
+    full_topic4     binary(32),
     datablob        mediumblob,
     log_idx         int        NOT NULL,
     address         binary(20) NOT NULL,

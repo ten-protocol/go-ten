@@ -9,6 +9,9 @@ func truncTo16(hash gethcommon.Hash) []byte {
 }
 
 func truncBTo16(bytes []byte) []byte {
+	if len(bytes) == 0 {
+		return bytes
+	}
 	b := bytes[0:truncHash]
 	c := make([]byte, truncHash)
 	copy(c, b)

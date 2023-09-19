@@ -14,11 +14,11 @@ import (
 )
 
 const (
-	baseEventsQuerySelect      = "select topic0, topic1, topic2, topic3, topic4, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, address"
-	baseDebugEventsQuerySelect = "select rel_address1, rel_address2, rel_address3, rel_address4, lifecycle_event, topic0, topic1, topic2, topic3, topic4, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, address"
-	baseEventsJoin             = "from events e join exec_tx extx on e.exec_tx_id=extx.id join tx on extx.tx=tx.hash join batch b on extx.batch=b.hash where b.is_canonical=true "
+	baseEventsQuerySelect      = "select full_topic0, full_topic1, full_topic2, full_topic3, full_topic4, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address"
+	baseDebugEventsQuerySelect = "select rel_address1, rel_address2, rel_address3, rel_address4, lifecycle_event, topic0, topic1, topic2, topic3, topic4, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address"
+	baseEventsJoin             = "from events e join exec_tx extx on e.exec_tx_id=extx.id join tx on extx.tx=tx.hash join batch b on extx.batch=b.sequence where b.is_canonical=true "
 	insertEvent                = "insert into events values "
-	insertEventValues          = "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+	insertEventValues          = "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 	orderBy                    = " order by b.height, tx.idx asc"
 )
 
@@ -123,6 +123,7 @@ func writeLog(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *state.S
 
 	return []any{
 		truncBTo16(t0), truncBTo16(t1), truncBTo16(t2), truncBTo16(t3), truncBTo16(t4),
+		t0, t1, t2, t3, t4,
 		data, l.Index, l.Address.Bytes(),
 		isLifecycle, a1, a2, a3, a4,
 		executedTransactionID(&receipt.BlockHash, &l.TxHash),
