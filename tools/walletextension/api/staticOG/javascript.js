@@ -117,20 +117,9 @@ function getRandomIntAsString(min, max) {
 
 
 async function getUserID() {
-    try {
-        const account = await requestAccounts(); // Request user accounts
-        if (account) { // Check if user granted permission
-            // call getStorageAt for 0x0 address and random value (to prevent MetaMask from caching requests)
-            const storageValue = await ethereum.request({
-                method: 'eth_getStorageAt',
-                params: ["0x0000000000000000000000000000000000000000", getRandomIntAsString(0, 1000000)],
-            });
-            return storageValue;
-        }
-    } catch (error) {
-        return ""
-    }
-    return ""
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const userID = await provider.send('eth_getStorageAt', ["getUserID", getRandomIntAsString(0, 1000)])
+    return userID
 }
 
 async function requestAccounts() {

@@ -295,11 +295,8 @@ func TestGetStorageAtForReturningUserID(t *testing.T) {
 	respJoin := makeHTTPEthJSONReqWithPath(walletHTTPPort, "v1/join")
 	userID := string(respJoin)
 
-	specialAddressToGetUserID := "0x0000000000000000000000000000000000000000"
-	randomAddress := "0x123ABC0000000000000000000000000000000000"
-
 	// make a request to GetStorageAt with correct parameters to get userID that exists in the database
-	respBody := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{specialAddressToGetUserID, "0", nil}, userID)
+	respBody := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{"getUserID", "0", nil}, userID)
 	validateJSONResponse(t, respBody)
 
 	if !strings.Contains(string(respBody), userID) {
@@ -308,20 +305,20 @@ func TestGetStorageAtForReturningUserID(t *testing.T) {
 
 	// make a request to GetStorageAt with correct parameters, but userID that is not present in the database
 	invalidUserID := "abc123"
-	respBody2 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{specialAddressToGetUserID, "0", nil}, invalidUserID)
+	respBody2 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{"getUserID", "0", nil}, invalidUserID)
 
 	if !strings.Contains(string(respBody2), "method eth_getStorageAt cannot be called with an unauthorised client - no signed viewing keys found") {
 		t.Fatalf("expected method eth_getStorageAt cannot be called with an unauthorised client - no signed viewing keys found, got '%s'", string(respBody2))
 	}
 
 	// make a request to GetStorageAt with userID that is in the database, but wrong parameters
-	respBody3 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{randomAddress, "0", nil}, userID)
+	respBody3 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{"abc", "0", nil}, userID)
 	if strings.Contains(string(respBody3), userID) {
 		t.Fatalf("expected response not containing userID as the parameters are wrong ")
 	}
 
 	// make a request with wrong rpcMethod
-	respBody4 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetBalance, []interface{}{specialAddressToGetUserID, "0", nil}, userID)
+	respBody4 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetBalance, []interface{}{"getUserID", "0", nil}, userID)
 	if strings.Contains(string(respBody4), userID) {
 		t.Fatalf("expected response not containing userID as the parameters are wrong ")
 	}

@@ -27,28 +27,28 @@ const (
 )
 
 const (
-	PathRoot                         = "/"
-	PathReady                        = "/ready/"
-	PathViewingKeys                  = "/viewingkeys/"
-	PathGenerateViewingKey           = "/generateviewingkey/"
-	PathSubmitViewingKey             = "/submitviewingkey/"
-	PathJoin                         = "/join/"
-	PathAuthenticate                 = "/authenticate/"
-	PathQuery                        = "/query/"
-	PathRevoke                       = "/revoke/"
-	PathObscuroGateway               = "/"
-	PathHealth                       = "/health/"
-	WSProtocol                       = "ws://"
-	DefaultUser                      = "defaultUser"
-	UserQueryParameter               = "u"
-	AddressQueryParameter            = "a"
-	MessageFormatRegex               = `^Register\s(\w+)\sfor\s(\w+)$`
-	MessageUserIDLen                 = 64
-	SignatureLen                     = 65
-	PersonalSignMessagePrefix        = "\x19Ethereum Signed Message:\n%d%s"
-	GetStorageAtUserIDRequestAddress = "0x0000000000000000000000000000000000000000"
-	SuccessMsg                       = "success"
-	APIVersion1                      = "/v1"
+	PathRoot                            = "/"
+	PathReady                           = "/ready/"
+	PathViewingKeys                     = "/viewingkeys/"
+	PathGenerateViewingKey              = "/generateviewingkey/"
+	PathSubmitViewingKey                = "/submitviewingkey/"
+	PathJoin                            = "/join/"
+	PathAuthenticate                    = "/authenticate/"
+	PathQuery                           = "/query/"
+	PathRevoke                          = "/revoke/"
+	PathObscuroGateway                  = "/"
+	PathHealth                          = "/health/"
+	WSProtocol                          = "ws://"
+	DefaultUser                         = "defaultUser"
+	UserQueryParameter                  = "u"
+	AddressQueryParameter               = "a"
+	MessageFormatRegex                  = `^Register\s(\w+)\sfor\s(\w+)$`
+	MessageUserIDLen                    = 64
+	SignatureLen                        = 65
+	PersonalSignMessagePrefix           = "\x19Ethereum Signed Message:\n%d%s"
+	GetStorageAtUserIDRequestMethodName = "getUserID"
+	SuccessMsg                          = "success"
+	APIVersion1                         = "/v1"
 )
 
 var (

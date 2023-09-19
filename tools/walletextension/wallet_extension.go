@@ -408,7 +408,7 @@ func (w *WalletExtension) checkParametersForInterceptedGetStorageAt(params []int
 	}
 
 	if methodName, ok := params[0].(string); ok {
-		return methodName == common.GetStorageAtUserIDRequestAddress
+		return methodName == common.GetStorageAtUserIDRequestMethodName
 	}
 	return false
 }
