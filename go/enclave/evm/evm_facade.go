@@ -186,6 +186,7 @@ func ExecuteObsCall(
 		return result, err
 	}
 
+	logger.Info("ObsCall - with result ", "gas", result.UsedGas)
 	return result, nil
 }
 

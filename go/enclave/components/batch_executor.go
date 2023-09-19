@@ -64,8 +64,9 @@ func NewBatchExecutor(
 // payL1Fees - this function modifies the state db according to the transactions contained within the batch context
 // in order to substract gas fees from the balance. It returns a list of the transactions that have prepaid for their L1
 // publishing costs.
-func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) common.L2Transactions {
+func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) (common.L2Transactions, common.L2Transactions) {
 	transactions := make(common.L2Transactions, 0)
+	freeTransactions := make(common.L2Transactions, 0)
 	block, _ := executor.storage.FetchBlock(context.BlockPtr)
 
 	for _, tx := range context.Transactions {
@@ -85,17 +86,20 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 		isFreeTransaction := tx.GasFeeCap().Cmp(gethcommon.Big0) == 0
 		isFreeTransaction = isFreeTransaction && tx.GasPrice().Cmp(gethcommon.Big0) == 0
 
-		if !isFreeTransaction {
-			if accBalance.Cmp(cost) == -1 {
-				executor.logger.Info("insufficient account balance for tx", log.TxKey, tx.Hash(), "addr", sender.Hex())
-				continue
-			}
-			stateDB.SubBalance(*sender, cost)
-			stateDB.AddBalance(context.Creator, cost)
+		if isFreeTransaction {
+			freeTransactions = append(freeTransactions, tx)
+			continue
 		}
+		if accBalance.Cmp(cost) == -1 {
+			executor.logger.Info("insufficient account balance for tx", log.TxKey, tx.Hash(), "addr", sender.Hex())
+			continue
+		}
+		stateDB.SubBalance(*sender, cost)
+		stateDB.AddBalance(context.Creator, cost)
+
 		transactions = append(transactions, tx)
 	}
-	return transactions
+	return transactions, freeTransactions
 }
 
 func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
@@ -146,7 +150,9 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 	executor.crossChainProcessors.Local.ExecuteValueTransfers(transfers, stateDB)
 
-	transactionsToProcess := executor.payL1Fees(stateDB, context)
+	transactionsToProcess, freeTransactions := executor.payL1Fees(stateDB, context)
+
+	crossChainTransactions = append(crossChainTransactions, freeTransactions...)
 
 	successfulTxs, txReceipts, err := executor.processTransactions(batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
 	if err != nil {
@@ -165,7 +171,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	// we need to copy the batch to reset the internal hash cache
 	copyBatch := *batch
 	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
-	copyBatch.Transactions = successfulTxs
+	copyBatch.Transactions = append(successfulTxs, freeTransactions...)
 	copyBatch.ResetHash()
 
 	if err = executor.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {
@@ -259,6 +265,11 @@ func (executor *batchExecutor) CreateGenesisState(
 		return nil, nil, err
 	}
 
+	var limit uint64 = params.MaxGasLimit
+	if gasLimit != nil {
+		limit = gasLimit.Uint64()
+	}
+
 	genesisBatch := &core.Batch{
 		Header: &common.BatchHeader{
 			ParentHash:       common.L2BatchHash{},
@@ -272,7 +283,7 @@ func (executor *batchExecutor) CreateGenesisState(
 			Time:             timeNow,
 			Coinbase:         coinbase,
 			BaseFee:          baseFee,
-			GasLimit:         gasLimit.Uint64(), //todo (@siliev) - does the batch header need uint64?
+			GasLimit:         limit, //todo (@siliev) - does the batch header need uint64?
 		},
 		Transactions: []*common.L2Tx{},
 	}
@@ -282,6 +293,8 @@ func (executor *batchExecutor) CreateGenesisState(
 	if err != nil {
 		executor.logger.Crit("Could not create message bus deployment transaction", "Error", err)
 	}
+
+	executor.logger.Info("L2 Bus deploy", log.TxKey, deployTx.Hash())
 
 	if err = executor.genesis.CommitGenesisState(executor.storage); err != nil {
 		return nil, nil, fmt.Errorf("could not apply genesis preallocation. Cause: %w", err)
