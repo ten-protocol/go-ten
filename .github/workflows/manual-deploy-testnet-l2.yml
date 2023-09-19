@@ -58,6 +58,9 @@ jobs:
           username: testnetobscuronet
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
+      - name: Debug Env Vars
+        run: env
+
       - name: 'Build and push obscuro node images'
         run: |
           DOCKER_BUILDKIT=1 docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
