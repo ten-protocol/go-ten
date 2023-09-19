@@ -34,11 +34,9 @@ create table if not exists obsdb.block
     is_canonical boolean NOT NULL,
     header       blob    NOT NULL,
     height       int     NOT NULL,
-#     INDEX (parent),
     primary key (hash),
     INDEX (is_canonical),
     INDEX (height)
-#     INDEX (is_canonical, height)
 );
 GRANT ALL ON obsdb.block TO obscuro;
 
@@ -85,15 +83,12 @@ create table if not exists obsdb.batch
     l1_proof     binary(16) NOT NULL,
     is_executed  boolean    NOT NULL,
     primary key (sequence),
-#     INDEX (parent),
     INDEX (hash),
     INDEX (body),
     INDEX (height),
     INDEX (is_canonical),
     INDEX (is_executed),
     INDEX (l1_proof)
-#     INDEX (is_canonical, is_executed),
-#     INDEX (is_canonical, is_executed, height),
 );
 GRANT ALL ON obsdb.batch TO obscuro;
 
