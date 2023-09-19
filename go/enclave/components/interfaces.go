@@ -98,6 +98,9 @@ type BatchRegistry interface {
 	// HasGenesisBatch - returns if genesis batch is available yet or not, or error in case
 	// the function is unable to determine.
 	HasGenesisBatch() (bool, error)
+
+	// GetBatchesAfterSize returns the sum of the size of batches available after batchSeqNo
+	GetBatchesAfterSize(batchSeqNo uint64, upToL1Height uint64) (uint64, error)
 }
 
 type RollupProducer interface {

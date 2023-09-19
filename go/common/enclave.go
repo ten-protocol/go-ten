@@ -117,6 +117,9 @@ type Enclave interface {
 	// or panic otherwise.
 	CreateRollup(fromSeqNo uint64) (*ExtRollup, SystemError)
 
+	// GetBatchesAfterSize returns the size of batches available to create a new rollup from a fromSeqNo batch no
+	GetBatchesAfterSize(fromSeqNo uint64) (uint64, SystemError)
+
 	// DebugTraceTransaction returns the trace of a transaction
 	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, SystemError)
 

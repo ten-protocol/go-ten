@@ -78,6 +78,8 @@ service EnclaveProto {
 
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
 
+  rpc GetAvailableBatchesCount(GetAvailableBatchesCountRequest) returns (GetAvailableBatchesCountResponse) {}
+
 
   rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
 
@@ -177,6 +179,15 @@ message CreateRollupRequest{
 
 message CreateRollupResponse{
   ExtRollupMsg msg = 1;
+  SystemError systemError = 2;
+}
+
+message GetAvailableBatchesCountRequest{
+  optional uint64 fromSequenceNumber = 1;
+}
+
+message GetAvailableBatchesCountResponse{
+  uint64 count = 1;
   SystemError systemError = 2;
 }
 

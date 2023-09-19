@@ -92,6 +92,7 @@ type HostInputConfig struct {
 
 	// Whether inbound p2p is enabled or not
 	IsInboundP2PDisabled bool
+	MaxRollupSize        uint64
 }
 
 // ToHostConfig returns a HostConfig given a HostInputConfig
@@ -131,6 +132,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		RollupInterval:            p.RollupInterval,
 		L1BlockTime:               p.L1BlockTime,
 		IsInboundP2PDisabled:      p.IsInboundP2PDisabled,
+		MaxRollupSize:             p.MaxRollupSize,
 	}
 }
 
@@ -156,6 +158,8 @@ type HostConfig struct {
 	BatchInterval time.Duration
 	// Min interval before creating the next rollup (only used by Sequencer nodes)
 	RollupInterval time.Duration
+	// MaxRollupSize is the max size of the rollup
+	MaxRollupSize uint64
 	// The expected time between blocks on the L1 network
 	L1BlockTime time.Duration
 
@@ -255,5 +259,6 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		RollupInterval:            5 * time.Second,
 		L1BlockTime:               15 * time.Second,
 		IsInboundP2PDisabled:      false,
+		MaxRollupSize:             1024 * 64,
 	}
 }

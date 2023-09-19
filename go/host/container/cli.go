@@ -89,6 +89,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	batchInterval := flag.String(batchIntervalName, cfg.BatchInterval.String(), flagUsageMap[batchIntervalName])
 	rollupInterval := flag.String(rollupIntervalName, cfg.RollupInterval.String(), flagUsageMap[rollupIntervalName])
 	isInboundP2PDisabled := flag.Bool(isInboundP2PDisabledName, cfg.IsInboundP2PDisabled, flagUsageMap[isInboundP2PDisabledName])
+	maxRollupSize := flag.Uint64(maxRollupSizeFlagName, cfg.MaxRollupSize, flagUsageMap[maxRollupSizeFlagName])
 
 	flag.Parse()
 
@@ -139,6 +140,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 		return nil, err
 	}
 	cfg.IsInboundP2PDisabled = *isInboundP2PDisabled
+	cfg.MaxRollupSize = *maxRollupSize
 
 	return cfg, nil
 }

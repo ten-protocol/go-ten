@@ -432,6 +432,25 @@ func (c *Client) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.Syste
 	return rpc.FromExtRollupMsg(response.Msg), nil
 }
 
+func (c *Client) GetBatchesAfterSize(fromSeqNo uint64) (uint64, common.SystemError) {
+	defer c.logger.Debug("GetBatchesAfterSize rpc call", log.DurationKey, measure.NewStopwatch())
+
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetAvailableBatchesCount(timeoutCtx, &generated.GetAvailableBatchesCountRequest{
+		FromSequenceNumber: &fromSeqNo,
+	})
+	if err != nil {
+		return 0, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return 0, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	return response.Count, nil
+}
+
 func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()

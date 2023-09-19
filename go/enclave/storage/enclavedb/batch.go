@@ -27,8 +27,9 @@ const (
 	bInsert             = "insert into batch values (?,?,?,?,?,?,?,?,?)"
 	updateBatchExecuted = "update batch set is_executed=true where hash=?"
 
-	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
-	selectHeader = "select b.header from batch b"
+	selectBatch     = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
+	selectHeader    = "select b.header from batch b"
+	selectBatchSize = "select b.header, SUM(LENGTH(bb.content)) from batch b join batch_body bb on b.body=bb.hash"
 
 	txExecInsert       = "insert into exec_tx values "
 	txExecInsertValue  = "(?,?,?,?,?)"
@@ -165,6 +166,10 @@ func ReadCanonicalBatchByHeight(db *sql.DB, height uint64) (*core.Batch, error) 
 	return fetchBatch(db, " where b.height=? and is_canonical=true", height)
 }
 
+func ReadBatchSizeBySeqNo(db *sql.DB, seqNo uint64) (*common.BatchHeader, uint64, error) {
+	return fetchBatchHeaderAndSize(db, " where sequence=?", seqNo)
+}
+
 func ReadBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, error) {
 	return fetchBatchHeader(db, " where hash=?", hash.Bytes())
 }
@@ -296,6 +301,27 @@ func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.Batch
 	}
 
 	return h, nil
+}
+
+func fetchBatchHeaderAndSize(db *sql.DB, whereQuery string, args ...any) (*common.BatchHeader, uint64, error) {
+	var header string
+	var body uint64
+
+	err := db.QueryRow(selectBatchSize+" "+whereQuery, args...).Scan(&header, &body)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, 0, errutil.ErrNotFound
+		}
+		return nil, 0, err
+	}
+
+	h := new(common.BatchHeader)
+	if err := rlp.DecodeBytes([]byte(header), h); err != nil {
+		return nil, 0, fmt.Errorf("could not decode batch header. Cause: %w", err)
+	}
+
+	return h, body, nil
 }
 
 func selectReceipts(db *sql.DB, config *params.ChainConfig, query string, args ...any) (types.Receipts, error) {

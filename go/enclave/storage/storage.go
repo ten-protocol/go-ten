@@ -348,6 +348,12 @@ func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error) {
 	return enclavedb.ReadBatchBySeqNo(s.db.GetSQLDB(), seqNum)
 }
 
+func (s *storageImpl) FetchBatchHeaderAndSizeBySeqNo(seqNum uint64) (*common.BatchHeader, uint64, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchBatchBySeqNo", callStart)
+	return enclavedb.ReadBatchSizeBySeqNo(s.db.GetSQLDB(), seqNum)
+}
+
 func (s *storageImpl) FetchBatchesByBlock(block common.L1BlockHash) ([]*core.Batch, error) {
 	callStart := time.Now()
 	defer s.logDuration("FetchBatchesByBlock", callStart)

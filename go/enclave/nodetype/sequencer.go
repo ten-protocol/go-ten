@@ -262,6 +262,15 @@ func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) 
 	return s.rollupCompression.CreateExtRollup(rollup)
 }
 
+func (s *sequencer) GetBatchesAfterSize(lastBatchNo uint64) (uint64, error) {
+	currentL1Head, err := s.storage.FetchHeadBlock()
+	if err != nil {
+		return 0, err
+	}
+	upToL1Height := currentL1Head.NumberU64() - RollupDelay
+	return s.batchRegistry.GetBatchesAfterSize(lastBatchNo, upToL1Height)
+}
+
 func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash) error {
 	batchesToDuplicate := make([]*core.Batch, 0)
 

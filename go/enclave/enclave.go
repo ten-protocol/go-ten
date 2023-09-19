@@ -618,6 +618,27 @@ func (e *enclaveImpl) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.
 	return rollup, nil
 }
 
+func (e *enclaveImpl) GetBatchesAfterSize(fromSeqNo uint64) (uint64, common.SystemError) {
+	if e.stopControl.IsStopping() {
+		return 0, responses.ToInternalError(fmt.Errorf("requested GetAvailableBatches with the enclave stopping"))
+	}
+
+	callStart := time.Now()
+	defer func() {
+		e.logger.Info(fmt.Sprintf("GetBatchesAfterSize call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
+	}()
+
+	// todo - remove once the db operations are more atomic
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
+
+	count, err := e.Sequencer().GetBatchesAfterSize(fromSeqNo)
+	if err != nil {
+		return 0, responses.ToInternalError(err)
+	}
+	return count, nil
+}
+
 // ObsCall handles param decryption, validation and encryption
 // and requests the Rollup chain to execute the payload (eth_call)
 func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*responses.Call, common.SystemError) {

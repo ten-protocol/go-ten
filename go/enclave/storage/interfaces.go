@@ -44,6 +44,8 @@ type BatchResolver interface {
 	FetchBatchByHeight(height uint64) (*core.Batch, error)
 	// FetchBatchBySeqNo returns the batch with the given seq number.
 	FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error)
+	// FetchBatchHeaderAndSizeBySeqNo returns the size of the body of a batch
+	FetchBatchHeaderAndSizeBySeqNo(seqNum uint64) (*common.BatchHeader, uint64, error)
 	// FetchHeadBatch returns the current head batch of the canonical chain.
 	FetchHeadBatch() (*core.Batch, error)
 	// FetchCurrentSequencerNo returns the sequencer number

@@ -71,6 +71,7 @@ type EnclaveProtoClient interface {
 	GetBatchBySeqNo(ctx context.Context, in *GetBatchBySeqNoRequest, opts ...grpc.CallOption) (*GetBatchResponse, error)
 	CreateBatch(ctx context.Context, in *CreateBatchRequest, opts ...grpc.CallOption) (*CreateBatchResponse, error)
 	CreateRollup(ctx context.Context, in *CreateRollupRequest, opts ...grpc.CallOption) (*CreateRollupResponse, error)
+	GetAvailableBatchesCount(ctx context.Context, in *GetAvailableBatchesCountRequest, opts ...grpc.CallOption) (*GetAvailableBatchesCountResponse, error)
 	DebugTraceTransaction(ctx context.Context, in *DebugTraceTransactionRequest, opts ...grpc.CallOption) (*DebugTraceTransactionResponse, error)
 	StreamL2Updates(ctx context.Context, in *StreamL2UpdatesRequest, opts ...grpc.CallOption) (EnclaveProto_StreamL2UpdatesClient, error)
 	DebugEventLogRelevancy(ctx context.Context, in *DebugEventLogRelevancyRequest, opts ...grpc.CallOption) (*DebugEventLogRelevancyResponse, error)
@@ -294,6 +295,15 @@ func (c *enclaveProtoClient) CreateRollup(ctx context.Context, in *CreateRollupR
 	return out, nil
 }
 
+func (c *enclaveProtoClient) GetAvailableBatchesCount(ctx context.Context, in *GetAvailableBatchesCountRequest, opts ...grpc.CallOption) (*GetAvailableBatchesCountResponse, error) {
+	out := new(GetAvailableBatchesCountResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetBatchesAfterSize", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *enclaveProtoClient) DebugTraceTransaction(ctx context.Context, in *DebugTraceTransactionRequest, opts ...grpc.CallOption) (*DebugTraceTransactionResponse, error) {
 	out := new(DebugTraceTransactionResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/DebugTraceTransaction", in, out, opts...)
@@ -424,6 +434,7 @@ type EnclaveProtoServer interface {
 	GetBatchBySeqNo(context.Context, *GetBatchBySeqNoRequest) (*GetBatchResponse, error)
 	CreateBatch(context.Context, *CreateBatchRequest) (*CreateBatchResponse, error)
 	CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error)
+	GetAvailableBatchesCount(context.Context, *GetAvailableBatchesCountRequest) (*GetAvailableBatchesCountResponse, error)
 	DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error)
 	StreamL2Updates(*StreamL2UpdatesRequest, EnclaveProto_StreamL2UpdatesServer) error
 	DebugEventLogRelevancy(context.Context, *DebugEventLogRelevancyRequest) (*DebugEventLogRelevancyResponse, error)
@@ -505,6 +516,9 @@ func (UnimplementedEnclaveProtoServer) CreateBatch(context.Context, *CreateBatch
 }
 func (UnimplementedEnclaveProtoServer) CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateRollup not implemented")
+}
+func (UnimplementedEnclaveProtoServer) GetAvailableBatchesCount(context.Context, *GetAvailableBatchesCountRequest) (*GetAvailableBatchesCountResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBatchesAfterSize not implemented")
 }
 func (UnimplementedEnclaveProtoServer) DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DebugTraceTransaction not implemented")
@@ -951,6 +965,24 @@ func _EnclaveProto_CreateRollup_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_GetAvailableBatchesCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAvailableBatchesCountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).GetAvailableBatchesCount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/GetBatchesAfterSize",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).GetAvailableBatchesCount(ctx, req.(*GetAvailableBatchesCountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _EnclaveProto_DebugTraceTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DebugTraceTransactionRequest)
 	if err := dec(in); err != nil {
@@ -1160,6 +1192,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateRollup",
 			Handler:    _EnclaveProto_CreateRollup_Handler,
+		},
+		{
+			MethodName: "GetBatchesAfterSize",
+			Handler:    _EnclaveProto_GetAvailableBatchesCount_Handler,
 		},
 		{
 			MethodName: "DebugTraceTransaction",
