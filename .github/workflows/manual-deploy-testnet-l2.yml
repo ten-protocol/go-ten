@@ -51,8 +51,8 @@ jobs:
       SEQ_ADDRESS_LOOKUP_KEY: ${{ steps.outputVars.outputs.SEQ_ADDRESS_LOOKUP_KEY }}
       VAL_ADDRESS_LOOKUP_KEY: ${{ steps.outputVars.outputs.VAL_ADDRESS_LOOKUP_KEY }}
 
-      BATCH_INTERVAL: ${{ steps.deployL2Contracts.outputs.BATCH_INTERVAL }}
-      ROLLUP_INTERVAL: ${{ steps.deployL2Contracts.outputs.ROLLUP_INTERVAL }}
+      BATCH_INTERVAL: ${{ steps.outputVars.outputs.BATCH_INTERVAL }}
+      ROLLUP_INTERVAL: ${{ steps.outputVars.outputs.ROLLUP_INTERVAL }}
 
 
     steps:

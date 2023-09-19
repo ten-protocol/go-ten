@@ -52,8 +52,8 @@ jobs:
       VAL_ADDRESS_LOOKUP_KEY: ${{ steps.outputVars.outputs.VAL_ADDRESS_LOOKUP_KEY }}
 
       VM_BUILD_NUMBER: ${{ steps.outputVars.outputs.VM_BUILD_NUMBER }}
-      BATCH_INTERVAL: ${{ steps.deployL2Contracts.outputs.BATCH_INTERVAL }}
-      ROLLUP_INTERVAL: ${{ steps.deployL2Contracts.outputs.ROLLUP_INTERVAL }}
+      BATCH_INTERVAL: ${{ steps.outputVars.outputs.BATCH_INTERVAL }}
+      ROLLUP_INTERVAL: ${{ steps.outputVars.outputs.ROLLUP_INTERVAL }}
 
     steps:
       - uses: actions/checkout@v3
