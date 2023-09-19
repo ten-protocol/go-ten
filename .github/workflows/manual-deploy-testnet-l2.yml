@@ -40,8 +40,8 @@ jobs:
       RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
       L1_WS_URL: ${{ steps.outputVars.outputs.L1_WS_URL }}
       L1_HTTP_URL: ${{ steps.outputVars.outputs.L1_HTTP_URL }}
-      BATCH_INTERVAL: ${{ steps.deployL2Contracts.outputs.BATCH_INTERVAL }}
-      ROLLUP_INTERVAL: ${{ steps.deployL2Contracts.outputs.ROLLUP_INTERVAL }}
+      BATCH_INTERVAL: ${{ steps.outputVars.outputs.BATCH_INTERVAL }}
+      ROLLUP_INTERVAL: ${{ steps.outputVars.outputs.ROLLUP_INTERVAL }}
 
 
     steps:
