@@ -39,6 +39,7 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
                 {
                     chainId: chainIdHex,
                     chainName: 'Obscuro Testnet',
+                    iconUrls: [https://raw.githubusercontent.com/obscuronet/go-obscuro/main/tools/walletextension/api/staticOG/Metamask%20Network%20Icon.png],
                     nativeCurrency: {
                         name: 'Obscuro',
                         symbol: 'OBX',
