@@ -3,6 +3,8 @@
 # The Obscuro network is composed of 2 obscuro nodes running on individual vms with SGX. At the moment the workflow
 # can onlu be triggered manually as a workflow dispatch.
 #
+# This script uses GitHub environments for variables and secrets - these are configured on github and
+#  the environments match the input.testnet_type options
 
 name: '[M] Deploy Testnet L2'
 on:
