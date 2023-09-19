@@ -135,6 +135,19 @@ jobs:
             host_id: 0
           - node_type: validator
             host_id: 1
+          # Hardcoded lookup keys because GH actions doesn't let you build them inline with the host_id
+          - node_pk_lookup: NODE_WALLET_PK_0
+            host_id: 0
+          - node_pk_lookup: NODE_WALLET_PK_1
+            host_id: 1
+          - node_addr_lookup: NODE_WALLET_ADDR_0
+            host_id: 0
+          - node_addr_lookup: NODE_WALLET_ADDR_1
+            host_id: 1
+          - node_l1_ws_lookup: L1_WS_URL_0
+            host_id: 0
+          - node_l1_ws_lookup: L1_WS_URL_1
+            host_id: 1
 
     steps:
       - name: 'Extract branch name'
@@ -204,12 +217,12 @@ jobs:
                -is_genesis=${{ matrix.is_genesis }} \
                -node_type=${{ matrix.node_type }} \
                -is_sgx_enabled=true \
-               -host_id=${{ env["NODE_WALLET_ADDR_" + matrix.node_id] }} \
-               -l1_ws_url=${{ secrets["L1_WS_URL_" + matrix.node_id] }} \
+               -host_id=${{ env[matrix.node_addr_lookup] }} \
+               -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \
                -management_contract_addr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
                -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
                -l1_start=${{needs.build.outputs.L1_START_HASH}} \
-               -private_key=${{ secrets["NODE_WALLET_PK_" + matrix.node_id] }} \
+               -private_key=${{ env[matrix.node_pk_lookup }} \
                -sequencer_id=${{ env.NODE_WALLET_ADDR_0 }} \
                -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{env.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
                -host_p2p_port=10000 \
