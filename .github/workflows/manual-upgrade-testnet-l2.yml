@@ -109,8 +109,8 @@ jobs:
           echo "RESOURCE_TAG_NAME=sepoliatestnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=S" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=sepoliatestnet" >> $GITHUB_ENV
-          echo "L1_WS_URL_0=wss://sepolia.infura.io/ws/v3/${{secret.infura_apikey_0}}" >> $GITHUB_ENV
-          echo "L1_WS_URL_1=wss://sepolia.infura.io/ws/v3/${{secret.infura_apikey_1}}" >> $GITHUB_ENV
+          echo "L1_WS_URL_0=wss://sepolia.infura.io/ws/v3/${{secrets.infura_apikey_0}}" >> $GITHUB_ENV
+          echo "L1_WS_URL_1=wss://sepolia.infura.io/ws/v3/${{secrets.infura_apikey_1}}" >> $GITHUB_ENV
           echo "SEQ_PK_LOOKUP_KEY=${{env.SEQ_PK_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
           echo "VAL_PK_LOOKUP_KEY=${{env.VAL_PK_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
           echo "SEQ_ADDRESS_LOOKUP_KEY=${{env.SEQ_ADDRESS_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
