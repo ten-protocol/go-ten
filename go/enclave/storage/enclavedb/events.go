@@ -122,7 +122,7 @@ func writeLog(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *state.S
 	}
 
 	return []any{
-		t0, t1, t2, t3, t4,
+		truncBTo16(t0), truncBTo16(t1), truncBTo16(t2), truncBTo16(t3), truncBTo16(t4),
 		data, l.Index, l.Address.Bytes(),
 		isLifecycle, a1, a2, a3, a4,
 		executedTransactionID(&receipt.BlockHash, &l.TxHash),
@@ -133,15 +133,15 @@ func FilterLogs(
 	db *sql.DB,
 	requestingAccount *gethcommon.Address,
 	fromBlock, toBlock *big.Int,
-	blockHash *common.L2BatchHash,
+	batchHash *common.L2BatchHash,
 	addresses []gethcommon.Address,
 	topics [][]gethcommon.Hash,
 ) ([]*types.Log, error) {
 	queryParams := []any{}
 	query := ""
-	if blockHash != nil {
+	if batchHash != nil {
 		query += " AND b.hash = ?"
-		queryParams = append(queryParams, blockHash.Bytes())
+		queryParams = append(queryParams, truncTo16(*batchHash))
 	}
 
 	// ignore negative numbers
@@ -170,7 +170,7 @@ func FilterLogs(
 				column := fmt.Sprintf("topic%d", i)
 				query += " AND " + column + " in (?" + strings.Repeat(",?", len(sub)-1) + ")"
 				for _, topic := range sub {
-					queryParams = append(queryParams, topic.Bytes())
+					queryParams = append(queryParams, truncTo16(topic))
 				}
 			}
 		}
@@ -184,7 +184,7 @@ func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error
 
 	query := baseDebugEventsQuerySelect + " " + baseEventsJoin + "AND tx.hash = ?"
 
-	queryParams = append(queryParams, txHash.Bytes())
+	queryParams = append(queryParams, truncTo16(txHash))
 
 	result := make([]*tracers.DebugLogs, 0)
 
@@ -202,6 +202,7 @@ func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error
 			LifecycleEvent: false,
 		}
 
+		// todo - read datablob
 		var t0, t1, t2, t3, t4 sql.NullString
 		var relAddress1, relAddress2, relAddress3, relAddress4 sql.NullByte
 		err = rows.Scan(
