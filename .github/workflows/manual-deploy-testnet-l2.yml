@@ -1,7 +1,7 @@
 # Deploys an Obscuro network on Azure for Testnet and Dev Testnet
 #
 # The Obscuro network is composed of 2 obscuro nodes running on individual vms with SGX. At the moment the workflow
-# can can onlu be triggered manually as a workflow dispatch.
+# can onlu be triggered manually as a workflow dispatch.
 #
 
 name: '[M] Deploy Testnet L2'
@@ -33,27 +33,6 @@ jobs:
       L1_START_HASH: ${{ steps.deployContracts.outputs.L1_START_HASH }}
       HOC_ERC20_ADDR: ${{ steps.deployContracts.outputs.HOC_ERC20_ADDR }}
       POC_ERC20_ADDR: ${{ steps.deployContracts.outputs.POC_ERC20_ADDR }}
-      L2_ENCLAVE_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG }}
-      L2_HOST_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_HOST_DOCKER_BUILD_TAG }}
-      L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }}
-      RESOURCE_TAG_NAME: ${{ steps.outputVars.outputs.RESOURCE_TAG_NAME }}
-      RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
-      RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
-      # there are two websocket URLs because our sepolia RPC provider requires separate API keys for the connections
-      L1_WS_URL_0: ${{ steps.outputVars.outputs.L1_WS_URL_0 }}
-      L1_WS_URL_1: ${{ steps.outputVars.outputs.L1_WS_URL_1 }}
-      L1_HTTP_URL: ${{ steps.outputVars.outputs.L1_HTTP_URL }}
-
-      # these variables will just contain the lookup key for the Github secret
-      SEQ_PK_LOOKUP_KEY: ${{ steps.outputVars.outputs.SEQ_PK_LOOKUP_KEY }}
-      VAL_PK_LOOKUP_KEY: ${{ steps.outputVars.outputs.VAL_PK_LOOKUP_KEY }}
-      WORKER_PK_LOOKUP_KEY: ${{ steps.outputVars.outputs.WORKER_PK_LOOKUP_KEY }}
-      SEQ_ADDRESS_LOOKUP_KEY: ${{ steps.outputVars.outputs.SEQ_ADDRESS_LOOKUP_KEY }}
-      VAL_ADDRESS_LOOKUP_KEY: ${{ steps.outputVars.outputs.VAL_ADDRESS_LOOKUP_KEY }}
-
-      BATCH_INTERVAL: ${{ steps.outputVars.outputs.BATCH_INTERVAL }}
-      ROLLUP_INTERVAL: ${{ steps.outputVars.outputs.ROLLUP_INTERVAL }}
-
 
     steps:
       - uses: actions/checkout@v3
@@ -74,18 +53,8 @@ jobs:
           echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/host:latest" >> $GITHUB_ENV
           echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest" >> $GITHUB_ENV
           echo "RESOURCE_TAG_NAME=testnetlatest" >> $GITHUB_ENV
-          echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
-          echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
-          echo "L1_WS_URL_0=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
-          echo "L1_WS_URL_1=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_HTTP_URL=http://testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
-          echo "SEQ_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_0" >> $GITHUB_ENV
-          echo "VAL_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_1" >> $GITHUB_ENV
           echo "WORKER_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_WORKER" >> $GITHUB_ENV
-          echo "SEQ_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_0" >> $GITHUB_ENV
-          echo "VAL_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_1" >> $GITHUB_ENV
-          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
-          echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
         if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
@@ -94,18 +63,8 @@ jobs:
           echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_host:latest" >> $GITHUB_ENV
           echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_hardhatdeployer:latest" >> $GITHUB_ENV
           echo "RESOURCE_TAG_NAME=devtestnetlatest" >> $GITHUB_ENV
-          echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
-          echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
-          echo "L1_WS_URL_0=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
-          echo "L1_WS_URL_1=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_HTTP_URL=http://dev-testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
-          echo "SEQ_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_0" >> $GITHUB_ENV
-          echo "VAL_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_1" >> $GITHUB_ENV
           echo "WORKER_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_WORKER" >> $GITHUB_ENV
-          echo "SEQ_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_0" >> $GITHUB_ENV
-          echo "VAL_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_1" >> $GITHUB_ENV
-          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
-          echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
 
       - name: 'Sets env vars for sepolia-testnet'
         if: ${{ (github.event.inputs.testnet_type == 'sepolia-testnet') }}
@@ -114,38 +73,8 @@ jobs:
           echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/sepolia_host:latest" >> $GITHUB_ENV
           echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/sepolia_hardhatdeployer:latest" >> $GITHUB_ENV
           echo "RESOURCE_TAG_NAME=sepoliatestnetlatest" >> $GITHUB_ENV
-          echo "RESOURCE_STARTING_NAME=S" >> $GITHUB_ENV
-          echo "RESOURCE_TESTNET_NAME=sepoliatestnet" >> $GITHUB_ENV
-          echo "L1_WS_URL_0=wss://sepolia.infura.io/ws/v3/${{secrets.INFURA_API_KEY_0}}" >> $GITHUB_ENV
-          echo "L1_WS_URL_1=wss://sepolia.infura.io/ws/v3/${{secrets.INFURA_API_KEY_1}}" >> $GITHUB_ENV
           echo "L1_HTTP_URL=https://sepolia.infura.io/v3/${{secrets.INFURA_API_KEY_0}}" >> $GITHUB_ENV
-          echo "SEQ_PK_LOOKUP_KEY=SEPOLIA_FUNDED_ACC_PKSTR_0" >> $GITHUB_ENV
-          echo "VAL_PK_LOOKUP_KEY=SEPOLIA_FUNDED_ACC_PKSTR_1" >> $GITHUB_ENV
           echo "WORKER_PK_LOOKUP_KEY=SEPOLIA_FUNDED_ACC_PKSTR_0" >> $GITHUB_ENV
-          echo "SEQ_ADDRESS_LOOKUP_KEY=SEPOLIA_FUNDED_ADDR_0" >> $GITHUB_ENV
-          echo "VAL_ADDRESS_LOOKUP_KEY=SEPOLIA_FUNDED_ADDR_1" >> $GITHUB_ENV
-          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
-          echo "ROLLUP_INTERVAL=3m" >> $GITHUB_ENV
-
-      - name: 'Output env vars'
-        id: outputVars
-        run: |
-          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
-          echo "L2_HOST_DOCKER_BUILD_TAG=${{env.L2_HOST_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
-          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
-          echo "RESOURCE_TAG_NAME=${{env.RESOURCE_TAG_NAME}}" >> $GITHUB_OUTPUT
-          echo "RESOURCE_STARTING_NAME=${{env.RESOURCE_STARTING_NAME}}" >> $GITHUB_OUTPUT
-          echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
-          echo "L1_WS_URL_0=${{env.L1_WS_URL_0}}" >> $GITHUB_OUTPUT
-          echo "L1_WS_URL_1=${{env.L1_WS_URL_1}}" >> $GITHUB_OUTPUT
-          echo "L1_HTTP_URL=${{env.L1_HTTP_URL}}" >> $GITHUB_OUTPUT
-          echo "SEQ_PK_LOOKUP_KEY=${{env.SEQ_PK_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
-          echo "VAL_PK_LOOKUP_KEY=${{env.VAL_PK_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
-          echo "WORKER_PK_LOOKUP_KEY=${{env.WORKER_PK_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
-          echo "SEQ_ADDRESS_LOOKUP_KEY=${{env.SEQ_ADDRESS_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
-          echo "VAL_ADDRESS_LOOKUP_KEY=${{env.VAL_ADDRESS_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
-          echo "BATCH_INTERVAL=${{env.BATCH_INTERVAL}}" >> $GITHUB_OUTPUT
-          echo "ROLLUP_INTERVAL=${{env.ROLLUP_INTERVAL}}" >> $GITHUB_OUTPUT
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -219,15 +148,6 @@ jobs:
       matrix:
         host_id: [ 0,1 ]
         include:
-          # Hardcoded host prefunded keys
-          - node_pk_str: ${{ needs.build.outputs.SEQ_PK_LOOKUP_KEY }}
-            host_id: 0
-          - node_pk_str: ${{ needs.build.outputs.VAL_PK_LOOKUP_KEY }}
-            host_id: 1
-          - node_pk_addr: ${{ needs.build.outputs.SEQ_ADDRESS_LOOKUP_KEY }}
-            host_id: 0
-          - node_pk_addr: ${{ needs.build.outputs.VAL_ADDRESS_LOOKUP_KEY }}
-            host_id: 1
           # Ensure there is a single genesis node
           - is_genesis: true
             host_id: 0
@@ -238,18 +158,60 @@ jobs:
             host_id: 0
           - node_type: validator
             host_id: 1
-          # Prepare L1 RPC URLs
-          - l1_ws_addr: ${{ needs.build.outputs.L1_WS_URL_0 }}
-            host_id: 0
-          - l1_ws_addr: ${{ needs.build.outputs.L1_WS_URL_1 }}
-            host_id: 1
 
     steps:
+      - name: 'Sets env vars for testnet'
+        if: ${{ github.event.inputs.testnet_type  == 'testnet' }}
+        run: |
+          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/enclave:latest" >> $GITHUB_ENV
+          echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/host:latest" >> $GITHUB_ENV
+          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=testnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
+          echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
+          echo "L1_WS_URL=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
+          echo "WALLET_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_${{matrix.host_id}}" >> $GITHUB_ENV
+          echo "WALLET_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_${{matrix.host_id}}" >> $GITHUB_ENV
+          echo "SEQ_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_0" >> $GITHUB_ENV
+          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
+          echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
+
+      - name: 'Sets env vars for dev-testnet'
+        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
+        run: |
+          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest" >> $GITHUB_ENV
+          echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_host:latest" >> $GITHUB_ENV
+          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_hardhatdeployer:latest" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=devtestnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
+          echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
+          echo "L1_WS_URL=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
+          echo "WALLET_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_${{matrix.host_id}}" >> $GITHUB_ENV
+          echo "WALLET_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_${{matrix.host_id}}" >> $GITHUB_ENV
+          echo "SEQ_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_0" >> $GITHUB_ENV
+          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
+          echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
+
+      - name: 'Sets env vars for sepolia-testnet'
+        if: ${{ (github.event.inputs.testnet_type == 'sepolia-testnet') }}
+        run: |
+          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/sepolia_enclave:latest" >> $GITHUB_ENV
+          echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/sepolia_host:latest" >> $GITHUB_ENV
+          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/sepolia_hardhatdeployer:latest" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=sepoliatestnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_STARTING_NAME=S" >> $GITHUB_ENV
+          echo "RESOURCE_TESTNET_NAME=sepoliatestnet" >> $GITHUB_ENV
+          echo "L1_WS_URL=wss://sepolia.infura.io/ws/v3/${{secrets["INFURA_API_KEY_" + matrix.host_id]}}" >> $GITHUB_ENV
+          echo "WALLET_PK_LOOKUP_KEY=SEPOLIA_FUNDED_ACC_PKSTR_${{matrix.host_id}}" >> $GITHUB_ENV
+          echo "SEQ_ADDRESS_LOOKUP_KEY=SEPOLIA_FUNDED_ADDR_0" >> $GITHUB_ENV
+          echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
+          echo "ROLLUP_INTERVAL=3m" >> $GITHUB_ENV
+
       - name: 'Extract branch name'
         shell: bash
         run: |
-              echo "Branch Name: ${GITHUB_REF_NAME}"
-              echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+          echo "Branch Name: ${GITHUB_REF_NAME}"
+          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
         # The Azure API will sometimes supersede PUT requests that come in close together. This sleep will stagger the VM requests.
         # It expects host_id to be an int and then multiplies it by 60s (i.e. host 0: sleep 0, host 1: sleep 60,...)
@@ -266,11 +228,11 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            az vm create -g Testnet -n "${{env.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
-            --tags deploygroup=ObscuroNode-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{needs.build.outputs.RESOURCE_TAG_NAME}}=true \
-            --vnet-name ObscuroHost-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-01VNET --subnet ObscuroHost-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-01Subnet \
+            --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{env.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
+            --tags deploygroup=ObscuroNode-${{env.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{env.RESOURCE_TAG_NAME}}=true \
+            --vnet-name ObscuroHost-${{env.RESOURCE_TESTNET_NAME}}-01VNET --subnet ObscuroHost-${{env.RESOURCE_TESTNET_NAME}}-01Subnet \
             --size Standard_DC4s_v2 --image ObscuroConfUbuntu \
             --public-ip-sku Basic --authentication-type password
 
@@ -278,7 +240,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 80,81,6060,6061,10000
+            az vm open-port -g Testnet -n "${{env.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 80,81,6060,6061,10000
 
         # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
       - name: 'Allow time for VM initialization'
@@ -289,7 +251,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
+            az vm run-command invoke -g Testnet -n "${{env.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
@@ -313,20 +275,20 @@ jobs:
                -node_type=${{ matrix.node_type }} \
                -is_sgx_enabled=true \
                -host_id=${{ secrets[matrix.node_pk_addr] }} \
-               -l1_ws_url=${{matrix.l1_ws_addr}} \
+               -l1_ws_url=${{env.L1_WS_URL}} \
                -management_contract_addr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
                -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
                -l1_start=${{needs.build.outputs.L1_START_HASH}} \
-               -private_key=${{ secrets[matrix.node_pk_str] }} \
-               -sequencer_id=${{ secrets[needs.build.outputs.SEQ_ADDRESS_LOOKUP_KEY] }} \
-               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
+               -private_key=${{ secrets[env.WALLET_PK_LOOKUP_KEY] }} \
+               -sequencer_id=${{ secrets[env.SEQ_ADDRESS_LOOKUP_KEY] }} \
+               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{env.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
                -host_p2p_port=10000 \
                -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
                -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
                -is_debug_namespace_enabled=true \
                -log_level=${{ github.event.inputs.log_level }} \
-               -batch_interval=${{needs.build.outputs.BATCH_INTERVAL}} \
-               -rollup_interval=${{needs.build.outputs.ROLLUP_INTERVAL}} \
+               -batch_interval=${{env.BATCH_INTERVAL}} \
+               -rollup_interval=${{env.ROLLUP_INTERVAL}} \
                start'
 
 
@@ -338,24 +300,42 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: 'Sets env vars for testnet'
+        if: ${{ github.event.inputs.testnet_type  == 'testnet' }}
+        run: |
+          echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
+          echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
+
+      - name: 'Sets env vars for dev-testnet'
+        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
+        run: |
+          echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
+          echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
+
+      - name: 'Sets env vars for sepolia-testnet'
+        if: ${{ (github.event.inputs.testnet_type == 'sepolia-testnet') }}
+        run: |
+          echo "RESOURCE_STARTING_NAME=S" >> $GITHUB_ENV
+          echo "RESOURCE_TESTNET_NAME=sepoliatestnet" >> $GITHUB_ENV
+
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: 'Remove existing backend nodes from the load balancer'
-        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh ${{needs.build.outputs.RESOURCE_TESTNET_NAME}}
+        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh ${{env.RESOURCE_TESTNET_NAME}}
 
       - name: 'Add load balancer address pool to the IP configuration'
         uses: azure/CLI@v1
         with:
           inlineScript: |
             az network nic ip-config address-pool add \
-              --address-pool Backend-Pool-Obscuro-${{needs.build.outputs.RESOURCE_TESTNET_NAME}} \
-              --ip-config-name ipconfig${{needs.build.outputs.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }} \
-              --nic-name ${{needs.build.outputs.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
+              --address-pool Backend-Pool-Obscuro-${{env.RESOURCE_TESTNET_NAME}} \
+              --ip-config-name ipconfig${{env.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }} \
+              --nic-name ${{env.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
-              --lb-name ${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-loadbalancer
+              --lb-name ${{env.RESOURCE_TESTNET_NAME}}-loadbalancer
 
   check-obscuro-is-healthy:
     needs:
@@ -365,11 +345,26 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: 'Sets env vars for testnet'
+        if: ${{ github.event.inputs.testnet_type  == 'testnet' }}
+        run: |
+          echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
+
+      - name: 'Sets env vars for dev-testnet'
+        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
+        run: |
+          echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
+
+      - name: 'Sets env vars for sepolia-testnet'
+        if: ${{ (github.event.inputs.testnet_type == 'sepolia-testnet') }}
+        run: |
+          echo "RESOURCE_TESTNET_NAME=sepoliatestnet" >> $GITHUB_ENV
+
       - name: "Wait until obscuro node is healthy"
         shell: bash
         run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{env.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{env.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
 
   deploy-l2-contracts:
     needs:
@@ -379,6 +374,30 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: 'Sets env vars for testnet'
+        if: ${{ github.event.inputs.testnet_type  == 'testnet' }}
+        run: |
+          echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
+          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest" >> $GITHUB_ENV
+          echo "L1_HTTP_URL=http://testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
+          echo "WORKER_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_WORKER" >> $GITHUB_ENV
+
+      - name: 'Sets env vars for dev-testnet'
+        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
+        run: |
+          echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
+          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_hardhatdeployer:latest" >> $GITHUB_ENV
+          echo "L1_HTTP_URL=http://dev-testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
+          echo "WORKER_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_WORKER" >> $GITHUB_ENV
+
+      - name: 'Sets env vars for sepolia-testnet'
+        if: ${{ (github.event.inputs.testnet_type == 'sepolia-testnet') }}
+        run: |
+          echo "RESOURCE_TESTNET_NAME=sepoliatestnet" >> $GITHUB_ENV
+          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/sepolia_hardhatdeployer:latest" >> $GITHUB_ENV
+          echo "L1_HTTP_URL=https://sepolia.infura.io/v3/${{secrets.INFURA_API_KEY_0}}" >> $GITHUB_ENV
+          echo "WORKER_PK_LOOKUP_KEY=SEPOLIA_FUNDED_ACC_PKSTR_0" >> $GITHUB_ENV
+
       - name: 'Deploy L2 contracts'
         id: deployL2Contracts
         shell: bash
@@ -387,12 +406,12 @@ jobs:
           -l2_host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
           -l1_http_url=${{ needs.build.outputs.L1_HTTP_URL }} \
           -l2_ws_port=81 \
-          -private_key=${{ secrets[needs.build.outputs.WORKER_PK_LOOKUP_KEY] }} \
+          -private_key=${{ secrets[env.WORKER_PK_LOOKUP_KEY] }} \
           -l2_private_key=8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b \
           -l2_hoc_private_key=6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682 \
           -l2_poc_private_key=4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8 \
           -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
-          -docker_image=${{needs.build.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+          -docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
 
       - name: 'Save container logs on failure'
         if: failure()
