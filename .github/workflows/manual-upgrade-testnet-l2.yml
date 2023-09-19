@@ -8,7 +8,7 @@
 #
 # The scheduled deployment runs at 03:05 on every day-of-week.
 #
-# This script uses GitHub environments for variables and secrets - these are configured on github and
+# This script uses GitHub environments for variables and secrets - these are configured on GitHub and
 #  the environments match the input.testnet_type options
 
 name: '[M] Upgrade Testnet L2'
