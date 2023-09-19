@@ -43,6 +43,14 @@ jobs:
       L1_WS_URL_0: ${{ steps.outputVars.outputs.L1_WS_URL_0 }}
       L1_WS_URL_1: ${{ steps.outputVars.outputs.L1_WS_URL_1 }}
       L1_HTTP_URL: ${{ steps.outputVars.outputs.L1_HTTP_URL }}
+
+      # these variables will just contain the lookup key for the Github secret
+      SEQ_PK_LOOKUP_KEY: ${{ steps.outputVars.outputs.SEQ_PK_LOOKUP_KEY }}
+      VAL_PK_LOOKUP_KEY: ${{ steps.outputVars.outputs.VAL_PK_LOOKUP_KEY }}
+      WORKER_PK_LOOKUP_KEY: ${{ steps.outputVars.outputs.WORKER_PK_LOOKUP_KEY }}
+      SEQ_ADDRESS_LOOKUP_KEY: ${{ steps.outputVars.outputs.SEQ_ADDRESS_LOOKUP_KEY }}
+      VAL_ADDRESS_LOOKUP_KEY: ${{ steps.outputVars.outputs.VAL_ADDRESS_LOOKUP_KEY }}
+
       BATCH_INTERVAL: ${{ steps.deployL2Contracts.outputs.BATCH_INTERVAL }}
       ROLLUP_INTERVAL: ${{ steps.deployL2Contracts.outputs.ROLLUP_INTERVAL }}
 
@@ -71,6 +79,11 @@ jobs:
           echo "L1_WS_URL_0=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_WS_URL_1=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_HTTP_URL=http://testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
+          echo "SEQ_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_0" >> $GITHUB_ENV
+          echo "VAL_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_1" >> $GITHUB_ENV
+          echo "WORKER_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_WORKER" >> $GITHUB_ENV
+          echo "SEQ_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_0" >> $GITHUB_ENV
+          echo "VAL_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_1" >> $GITHUB_ENV
           echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
           echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
 
@@ -86,6 +99,11 @@ jobs:
           echo "L1_WS_URL_0=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_WS_URL_1=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_HTTP_URL=http://dev-testnet-eth2network.uksouth.cloudapp.azure.com:8025" >> $GITHUB_ENV
+          echo "SEQ_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_0" >> $GITHUB_ENV
+          echo "VAL_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_1" >> $GITHUB_ENV
+          echo "WORKER_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_WORKER" >> $GITHUB_ENV
+          echo "SEQ_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_0" >> $GITHUB_ENV
+          echo "VAL_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_1" >> $GITHUB_ENV
           echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
           echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
 
@@ -101,6 +119,11 @@ jobs:
           echo "L1_WS_URL_0=wss://sepolia.infura.io/ws/v3/${{secret.infura_apikey_0}}" >> $GITHUB_ENV
           echo "L1_WS_URL_1=wss://sepolia.infura.io/ws/v3/${{secret.infura_apikey_1}}" >> $GITHUB_ENV
           echo "L1_HTTP_URL=https://sepolia.infura.io/v3/${{secret.infura_apikey_0}}" >> $GITHUB_ENV
+          echo "SEQ_PK_LOOKUP_KEY=SEPOLIA_FUNDED_ACC_PKSTR_0" >> $GITHUB_ENV
+          echo "VAL_PK_LOOKUP_KEY=SEPOLIA_FUNDED_ACC_PKSTR_1" >> $GITHUB_ENV
+          echo "WORKER_PK_LOOKUP_KEY=SEPOLIA_FUNDED_ACC_0" >> $GITHUB_ENV
+          echo "SEQ_ADDRESS_LOOKUP_KEY=SEPOLIA_FUNDED_ADDR_0" >> $GITHUB_ENV
+          echo "VAL_ADDRESS_LOOKUP_KEY=SEPOLIA_FUNDED_ADDR_1" >> $GITHUB_ENV
           echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
           echo "ROLLUP_INTERVAL=3m" >> $GITHUB_ENV
 
@@ -116,6 +139,11 @@ jobs:
           echo "L1_WS_URL_0=${{env.L1_WS_URL_0}}" >> $GITHUB_OUTPUT
           echo "L1_WS_URL_1=${{env.L1_WS_URL_1}}" >> $GITHUB_OUTPUT
           echo "L1_HTTP_URL=${{env.L1_HTTP_URL}}" >> $GITHUB_OUTPUT
+          echo "SEQ_PK_LOOKUP_KEY=${{env.SEQ_PK_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
+          echo "VAL_PK_LOOKUP_KEY=${{env.VAL_PK_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
+          echo "WORKER_PK_LOOKUP_KEY=${{env.WORKER_PK_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
+          echo "SEQ_ADDRESS_LOOKUP_KEY=${{env.SEQ_ADDRESS_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
+          echo "VAL_ADDRESS_LOOKUP_KEY=${{env.VAL_ADDRESS_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
           echo "BATCH_INTERVAL=${{env.BATCH_INTERVAL}}" >> $GITHUB_OUTPUT
           echo "ROLLUP_INTERVAL=${{env.ROLLUP_INTERVAL}}" >> $GITHUB_OUTPUT
 
@@ -141,7 +169,7 @@ jobs:
         run: |
           go run ./testnet/launcher/l1contractdeployer/cmd \
           -l1_http_url=${{ env.L1_HTTP_URL }} \
-          -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
+          -private_key=${{ secrets[env.WORKER_PK_LOOKUP_KEY] }} \
           -docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
           -contracts_env_file=./testnet/.env
           source ./testnet/.env
@@ -191,19 +219,14 @@ jobs:
       matrix:
         host_id: [ 0,1 ]
         include:
-          # Hardcoded host addresses
-          - host_addr: 0x0000000000000000000000000000000000000000
-            host_id: 0
-          - host_addr: 0x0000000000000000000000000000000000000001
-            host_id: 1
           # Hardcoded host prefunded keys
-          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_0
+          - node_pk_str: ${{ needs.build.outputs.SEQ_PK_LOOKUP_KEY }}
             host_id: 0
-          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_1
+          - node_pk_str: ${{ needs.build.outputs.VAL_PK_LOOKUP_KEY }}
             host_id: 1
-          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_0
+          - node_pk_addr: ${{ needs.build.outputs.SEQ_ADDRESS_LOOKUP_KEY }}
             host_id: 0
-          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_1
+          - node_pk_addr: ${{ needs.build.outputs.VAL_ADDRESS_LOOKUP_KEY }}
             host_id: 1
           # Ensure there is a single genesis node
           - is_genesis: true
@@ -295,7 +318,7 @@ jobs:
                -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
                -l1_start=${{needs.build.outputs.L1_START_HASH}} \
                -private_key=${{ secrets[matrix.node_pk_str] }} \
-               -sequencer_id=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
+               -sequencer_id=${{ secrets[needs.build.outputs.SEQ_ADDRESS_LOOKUP_KEY] }} \
                -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
                -host_p2p_port=10000 \
                -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
@@ -364,7 +387,7 @@ jobs:
           -l2_host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
           -l1_http_url=${{ needs.build.outputs.L1_HTTP_URL }} \
           -l2_ws_port=81 \
-          -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
+          -private_key=${{ secrets[needs.build.outputs.WORKER_PK_LOOKUP_KEY] }} \
           -l2_private_key=8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b \
           -l2_hoc_private_key=6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682 \
           -l2_poc_private_key=4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8 \

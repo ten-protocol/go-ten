@@ -40,9 +40,17 @@ jobs:
       RESOURCE_TAG_NAME: ${{ steps.outputVars.outputs.RESOURCE_TAG_NAME }}
       RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
       RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
+
       # there are two websocket URLs because our sepolia RPC provider requires separate API keys for the connections
       L1_WS_URL_0: ${{ steps.outputVars.outputs.L1_WS_URL_0 }}
       L1_WS_URL_1: ${{ steps.outputVars.outputs.L1_WS_URL_1 }}
+
+      # these variables will just contain the lookup key for the Github secret
+      SEQ_PK_LOOKUP_KEY: ${{ steps.outputVars.outputs.SEQ_PK_LOOKUP_KEY }}
+      VAL_PK_LOOKUP_KEY: ${{ steps.outputVars.outputs.VAL_PK_LOOKUP_KEY }}
+      SEQ_ADDRESS_LOOKUP_KEY: ${{ steps.outputVars.outputs.SEQ_ADDRESS_LOOKUP_KEY }}
+      VAL_ADDRESS_LOOKUP_KEY: ${{ steps.outputVars.outputs.VAL_ADDRESS_LOOKUP_KEY }}
+
       VM_BUILD_NUMBER: ${{ steps.outputVars.outputs.VM_BUILD_NUMBER }}
       BATCH_INTERVAL: ${{ steps.deployL2Contracts.outputs.BATCH_INTERVAL }}
       ROLLUP_INTERVAL: ${{ steps.deployL2Contracts.outputs.ROLLUP_INTERVAL }}
@@ -69,6 +77,10 @@ jobs:
           echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
           echo "L1_WS_URL_0=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_WS_URL_1=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
+          echo "SEQ_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_0" >> $GITHUB_ENV
+          echo "VAL_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_1" >> $GITHUB_ENV
+          echo "SEQ_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_0" >> $GITHUB_ENV
+          echo "VAL_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_1" >> $GITHUB_ENV
           echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
           echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
 
@@ -82,6 +94,10 @@ jobs:
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
           echo "L1_WS_URL_0=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
           echo "L1_WS_URL_1=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
+          echo "SEQ_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_0" >> $GITHUB_ENV
+          echo "VAL_PK_LOOKUP_KEY=GETHNETWORK_PREFUNDED_PKSTR_1" >> $GITHUB_ENV
+          echo "SEQ_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_0" >> $GITHUB_ENV
+          echo "VAL_ADDRESS_LOOKUP_KEY=GETHNETWORK_PREFUNDED_ADDR_1" >> $GITHUB_ENV
           echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
           echo "ROLLUP_INTERVAL=10s" >> $GITHUB_ENV
 
@@ -95,6 +111,10 @@ jobs:
           echo "RESOURCE_TESTNET_NAME=sepoliatestnet" >> $GITHUB_ENV
           echo "L1_WS_URL_0=wss://sepolia.infura.io/ws/v3/${{secret.infura_apikey_0}}" >> $GITHUB_ENV
           echo "L1_WS_URL_1=wss://sepolia.infura.io/ws/v3/${{secret.infura_apikey_1}}" >> $GITHUB_ENV
+          echo "SEQ_PK_LOOKUP_KEY=${{env.SEQ_PK_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
+          echo "VAL_PK_LOOKUP_KEY=${{env.VAL_PK_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
+          echo "SEQ_ADDRESS_LOOKUP_KEY=${{env.SEQ_ADDRESS_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
+          echo "VAL_ADDRESS_LOOKUP_KEY=${{env.VAL_ADDRESS_LOOKUP_KEY}}" >> $GITHUB_OUTPUT
           echo "BATCH_INTERVAL=1s" >> $GITHUB_ENV
           echo "ROLLUP_INTERVAL=3m" >> $GITHUB_ENV
 
@@ -147,19 +167,14 @@ jobs:
       matrix:
         host_id: [ 0,1 ]
         include:
-          # Hardcoded host addresses
-          - host_addr: 0x0000000000000000000000000000000000000000
-            host_id: 0
-          - host_addr: 0x0000000000000000000000000000000000000001
-            host_id: 1
           # Hardcoded host prefunded keys
-          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_0
+          - node_pk_str: ${{ needs.build.outputs.SEQ_PK_LOOKUP_KEY }}
             host_id: 0
-          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_1
+          - node_pk_str: ${{ needs.build.outputs.VAL_PK_LOOKUP_KEY }}
             host_id: 1
-          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_0
+          - node_pk_addr: ${{ needs.build.outputs.SEQ_ADDRESS_LOOKUP_KEY }}
             host_id: 0
-          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_1
+          - node_pk_addr: ${{ needs.build.outputs.VAL_ADDRESS_LOOKUP_KEY }}
             host_id: 1
           # Ensure there is a single genesis node
           - is_genesis: true
@@ -170,6 +185,11 @@ jobs:
           - node_type: sequencer
             host_id: 0
           - node_type: validator
+            host_id: 1
+          # Prepare L1 RPC URLs
+          - l1_ws_addr: ${{ needs.build.outputs.L1_WS_URL_0 }}
+            host_id: 0
+          - l1_ws_addr: ${{ needs.build.outputs.L1_WS_URL_1 }}
             host_id: 1
 
     steps:
@@ -201,9 +221,9 @@ jobs:
               -node_type=${{ matrix.node_type }} \
               -is_sgx_enabled=true \
               -host_id=${{ secrets[matrix.node_pk_addr] }} \
-              -l1_ws_url=${{needs.build.outputs.L1_WS_URL}} \
+              -l1_ws_url=${{matrix.l1_ws_addr}} \
               -private_key=${{ secrets[matrix.node_pk_str] }} \
-              -sequencer_id=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
+              -sequencer_id=${{ secrets[needs.build.outputs.SEQ_ADDRESS_LOOKUP_KEY] }} \
               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com:10000 \
               -host_p2p_port=10000 \
               -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
