@@ -54,7 +54,7 @@ tools.
 
    * `port` (default: `3000`): The local port on which to serve the wallet extension.
    * `portWS` (default: `3001`): The local port on which to handle websocket requests.
-   * `nodeHost` (default: `testnet.obscu.ro`): The Obscuro node for the RPC connection.
+   * `nodeHost` (default: `erpc.testnet.obscu.ro`): The Obscuro node for the RPC connection.
    * `nodePortHTTP` (default: `80`): The Obscuro node's HTTP RPC port.
    * `nodePortWS` (default: `81`): The Obscuro node's websockets RPC port.
    * `logPath` (default: `wallet_extension_logs.txt`): The path for the wallet extension's logs.

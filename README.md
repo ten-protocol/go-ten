@@ -388,7 +388,7 @@ Remix (see[docs/testnet/deploying-a-smart-contract.md](docs/testnet/deploying-a-
 e.g. using web3.py(see [docs/testnet/deploying-a-smart-contract-programmatically.md](docs/testnet/deploying-a-smart-contract-programmatically.md)). 
 
 Note that in order to interact with the main cloud hosted testnet, all that needs to be changed is to start the wallet 
-extension using the default parameters, where the `nodeHost` will default to the testnet host URL `testnet.obscu.ro` i.e. 
+extension using the default parameters, where the `nodeHost` will default to the testnet host URL `erpc.testnet.obscu.ro` i.e. 
 
 ```
 cd ./tools/walletextension/main/
