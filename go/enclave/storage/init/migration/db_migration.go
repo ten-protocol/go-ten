@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"embed"
 	"errors"
+	"fmt"
 	"io/fs"
 	"math/big"
 	"sort"
@@ -40,14 +41,14 @@ func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 
 	// write to the database
 	for i := maxDB; i < maxMigration; i++ {
-		logger.Info("Executing db migration", "file", migrationFiles[i].Name())
+		logger.Info("Executing db migration", "file", migrationFiles[i].Name(), "remaining", migrationFiles)
 		content, err := sqlFiles.ReadFile(migrationFiles[i].Name())
 		if err != nil {
 			return err
 		}
 		err = executeMigration(db, string(content), i)
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to execute migration for %s - %w", migrationFiles[i].Name(), err)
 		}
 		logger.Info("Successfully executed", "file", migrationFiles[i].Name(), "index", i)
 	}
