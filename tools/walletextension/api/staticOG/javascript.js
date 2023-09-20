@@ -46,8 +46,7 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
                         decimals: 18
                     },
                     rpcUrls: [obscuroGatewayAddress+"/"+obscuroGatewayVersion+'/?u='+userID],
-                    blockExplorerUrls: null,
-                    iconUrls: ['https://raw.githubusercontent.com/obscuronet/go-obscuro/main/tools/walletextension/api/staticOG/Metamask%20Network%20Icon.png']
+                    blockExplorerUrls: null
                 },
             ],
         });
