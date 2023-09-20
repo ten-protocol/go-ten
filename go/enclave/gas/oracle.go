@@ -11,7 +11,7 @@ import (
 // which will expose necessary l1 information.
 type Oracle interface {
 	ProcessL1Block(block *types.Block)
-	GetGasCostForTx(tx *types.Transaction, block *types.Block) (*big.Int, error)
+	EstimateL1StorageGasCost(tx *types.Transaction, block *types.Block) (*big.Int, error)
 }
 
 type oracle struct {
@@ -34,8 +34,8 @@ func (o *oracle) ProcessL1Block(block *types.Block) {
 	}
 }
 
-// GetGasCostForTx - Returns the expected l1 gas cost for a transaction at a given l1 block.
-func (o *oracle) GetGasCostForTx(tx *types.Transaction, block *types.Block) (*big.Int, error) {
+// EstimateL1StorageGasCost - Returns the expected l1 gas cost for a transaction at a given l1 block.
+func (o *oracle) EstimateL1StorageGasCost(tx *types.Transaction, block *types.Block) (*big.Int, error) {
 	encodedTx, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		return nil, err

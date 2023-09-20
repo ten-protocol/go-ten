@@ -77,12 +77,16 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 		}
 		accBalance := stateDB.GetBalance(*sender)
 
-		cost, err := executor.gasOracle.GetGasCostForTx(tx, block)
+		cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block)
 		if err != nil {
 			executor.logger.Warn("Unable to get gas cost for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
 			continue
 		}
 
+		// Transactions that are created inside the enclave can have no GasPrice set.
+		// External transactions are always required to have a gas price set. Thus we filter
+		// those transactions for separate processing than the normal ones and we run them through the EVM
+		// with a flag that disables the baseFee logic and wont fail them for having price lower than the base fee.
 		isFreeTransaction := tx.GasFeeCap().Cmp(gethcommon.Big0) == 0
 		isFreeTransaction = isFreeTransaction && tx.GasPrice().Cmp(gethcommon.Big0) == 0
 
@@ -96,6 +100,7 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 		}
 		stateDB.SubBalance(*sender, cost)
 		stateDB.AddBalance(context.Creator, cost)
+		//todo - add refund logic.
 
 		transactions = append(transactions, tx)
 	}
