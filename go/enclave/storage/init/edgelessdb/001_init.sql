@@ -62,6 +62,7 @@ create table if not exists obsdb.rollup
     INDEX (compression_block),
     primary key (hash)
     );
+GRANT ALL ON obsdb.rollup TO obscuro;
 
 create table if not exists obsdb.batch_body
 (
