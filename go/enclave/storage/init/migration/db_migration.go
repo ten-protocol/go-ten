@@ -3,6 +3,7 @@ package migration
 import (
 	"database/sql"
 	"embed"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -48,8 +49,8 @@ func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 		}
 		err = executeMigration(db, string(content), i)
 		if err != nil {
-			fmt.Println(err)
-			logger.Error(fmt.Sprintf("%s", err.Error()))
+			fmt.Println(base64.StdEncoding.EncodeToString([]byte(err.Error())))
+			logger.Error(fmt.Sprintf("%s", base64.StdEncoding.EncodeToString([]byte(err.Error()))))
 			return fmt.Errorf("unable to execute migration for %s - %w", migrationFiles[i].Name(), err)
 		}
 		logger.Info("Successfully executed", "file", migrationFiles[i].Name(), "index", i)
