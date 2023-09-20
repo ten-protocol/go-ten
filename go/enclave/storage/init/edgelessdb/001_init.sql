@@ -54,15 +54,14 @@ GRANT ALL ON obsdb.l1_msg TO obscuro;
 
 create table if not exists obsdb.rollup
 (
-    id        INTEGER AUTO_INCREMENT,
-    start_seq int        NOT NULL,
-    end_seq   int        NOT NULL,
-    header    blob       NOT NULL,
-    block     binary(32) NOT NULL,
-    INDEX (block),
-    primary key (id)
-);
-GRANT ALL ON obsdb.rollup TO obscuro;
+    hash              binary(32),
+    start_seq         int        NOT NULL,
+    end_seq           int        NOT NULL,
+    header            blob       NOT NULL,
+    compression_block binary(32) NOT NULL,
+    INDEX (compression_block),
+    primary key (hash)
+    );
 
 create table if not exists obsdb.batch_body
 (
