@@ -92,7 +92,9 @@ type HostInputConfig struct {
 
 	// Whether inbound p2p is enabled or not
 	IsInboundP2PDisabled bool
-	MaxRollupSize        uint64
+
+	// MaxRollupSize specifies the threshold size which the sequencer-host publishes a rollup
+	MaxRollupSize uint64
 }
 
 // ToHostConfig returns a HostConfig given a HostInputConfig

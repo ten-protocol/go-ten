@@ -624,9 +624,7 @@ func (e *enclaveImpl) GetBatchesAfterSize(fromSeqNo uint64) (uint64, common.Syst
 	}
 
 	callStart := time.Now()
-	defer func() {
-		e.logger.Info(fmt.Sprintf("GetBatchesAfterSize call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
-	}()
+	defer e.logger.Info(fmt.Sprintf("GetBatchesAfterSize call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
 
 	// todo - remove once the db operations are more atomic
 	e.mainMutex.Lock()

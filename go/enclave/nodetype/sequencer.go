@@ -265,7 +265,7 @@ func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) 
 func (s *sequencer) GetBatchesAfterSize(lastBatchNo uint64) (uint64, error) {
 	currentL1Head, err := s.storage.FetchHeadBlock()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("unable to fetch headblock - %w", err)
 	}
 	upToL1Height := currentL1Head.NumberU64() - RollupDelay
 	return s.batchRegistry.GetBatchesAfterSize(lastBatchNo, upToL1Height)

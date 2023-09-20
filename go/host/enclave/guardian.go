@@ -63,11 +63,11 @@ type Guardian struct {
 	batchInterval  time.Duration
 	rollupInterval time.Duration
 	l1StartHash    gethcommon.Hash
+	maxRollupSize  uint64
 
 	hostInterrupter *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
 
-	logger        gethlog.Logger
-	maxRollupSize uint64
+	logger gethlog.Logger
 }
 
 func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
@@ -520,21 +520,19 @@ func (g *Guardian) periodicBatchProduction() {
 func (g *Guardian) periodicRollupProduction() { //nolint:gocognit
 	defer g.logger.Info("Stopping rollup production")
 
-	interval := g.rollupInterval
-	if interval == 0 {
+	// rollup at least at every g.rollupInterval
+	rollupInterval := g.rollupInterval
+	if rollupInterval == 0 {
 		g.logger.Crit("invalid rollup interval 0")
 	}
-	rollupTicker := time.NewTicker(interval)
-	// attempt to produce rollup every time the timer ticks until we are stopped/interrupted
+	rollupIntervalBasedTicker := time.NewTicker(rollupInterval)
 
-	rollupCheckTicker := time.NewTicker(5 * time.Second)
+	// every 5sec check if it should create a new rollup
+	rollupSizeCheckTicker := time.NewTicker(5 * time.Second)
+
 	for {
-		if g.hostInterrupter.IsStopping() {
-			rollupTicker.Stop()
-			return // stop periodic rollup production
-		}
 		select {
-		case <-rollupTicker.C:
+		case <-rollupIntervalBasedTicker.C:
 			if !g.state.IsUpToDate() {
 				// if we're behind the L1, we don't want to produce rollups
 				g.logger.Debug("skipping rollup production because L1 is not up to date", "state", g.state)
@@ -559,7 +557,7 @@ func (g *Guardian) periodicRollupProduction() { //nolint:gocognit
 				fmt.Println(time.Now().String(), " - FINISHED PRODUCED rollup from config'd rollupInterval ")
 			}
 
-		case <-rollupCheckTicker.C:
+		case <-rollupSizeCheckTicker.C:
 			if !g.state.IsUpToDate() {
 				// if we're behind the L1, we don't want to produce rollups
 				g.logger.Debug("skipping rollup production because L1 is not up to date", "state", g.state)
@@ -590,14 +588,15 @@ func (g *Guardian) periodicRollupProduction() { //nolint:gocognit
 					fmt.Println(time.Now().String(), " - PRODUCING rollup from 5sec check ")
 					g.sl.L1Publisher().PublishRollup(producedRollup)
 				}
-				rollupCheckTicker.Reset(5 * time.Second)
-				rollupTicker.Reset(interval)
+				rollupSizeCheckTicker.Reset(5 * time.Second)
+				rollupIntervalBasedTicker.Reset(rollupInterval)
 				fmt.Println(time.Now().String(), " - FINISHED PRODUCING rollup from 5sec check ")
 			}
 
 		case <-g.hostInterrupter.Done():
 			// interrupted - end periodic process
-			rollupTicker.Stop()
+			rollupIntervalBasedTicker.Stop()
+			rollupSizeCheckTicker.Stop()
 			return
 		}
 	}
