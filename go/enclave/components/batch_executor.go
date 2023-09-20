@@ -171,7 +171,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	// we need to copy the batch to reset the internal hash cache
 	copyBatch := *batch
 	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
-	copyBatch.Transactions = append(successfulTxs, freeTransactions...)
+	copyBatch.Transactions = append(transactionsToProcess, freeTransactions...)
 	copyBatch.ResetHash()
 
 	if err = executor.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {

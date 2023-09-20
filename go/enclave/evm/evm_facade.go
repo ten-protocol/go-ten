@@ -116,7 +116,7 @@ func executeTransaction(
 	header.MixDigest = before
 	if err != nil {
 		s.RevertToSnapshot(snap)
-		return nil, err
+		return receipt, err
 	}
 
 	return receipt, nil
