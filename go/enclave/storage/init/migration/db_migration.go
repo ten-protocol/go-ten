@@ -29,9 +29,9 @@ func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 	var maxDB int64
 	config, err := enclavedb.FetchConfig(db, currentFileKey)
 	if err != nil {
-		// first time there is no entry, so we assume 001 was executed already
+		// first time there is no entry, so we assume nothing was executed
 		if errors.Is(err, errutil.ErrNotFound) {
-			maxDB = 1
+			maxDB = 0
 		} else {
 			return err
 		}
@@ -41,7 +41,7 @@ func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 
 	// write to the database
 	for i := maxDB; i < maxMigration; i++ {
-		logger.Info("Executing db migration", "file", migrationFiles[i].Name(), "remaining", migrationFiles)
+		logger.Info("Executing db migration", "file", migrationFiles[i].Name())
 		content, err := sqlFiles.ReadFile(migrationFiles[i].Name())
 		if err != nil {
 			return err
