@@ -147,7 +147,7 @@ func ExecuteObsCall(
 	chainConfig *params.ChainConfig,
 	logger gethlog.Logger,
 ) (*gethcore.ExecutionResult, error) {
-	var noBaseFee = true
+	noBaseFee := true
 	if header.BaseFee != nil && header.BaseFee.Cmp(gethcommon.Big0) != 0 && msg.GasPrice.Cmp(gethcommon.Big0) != 0 {
 		noBaseFee = false
 		logger.Info("ObsCall - with base fee ", "to", msg.To.Hex())

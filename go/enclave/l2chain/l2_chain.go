@@ -119,7 +119,6 @@ func (oc *obscuroChain) ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *g
 }
 
 func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
-
 	// fetch the chain state at given batch
 	blockState, err := oc.Registry.GetBatchStateAtHeight(blockNumber)
 	if err != nil {

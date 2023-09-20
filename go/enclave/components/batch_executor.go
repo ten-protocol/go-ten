@@ -100,7 +100,7 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 		}
 		stateDB.SubBalance(*sender, cost)
 		stateDB.AddBalance(context.Creator, cost)
-		//todo - add refund logic.
+		// todo - add refund logic.
 
 		transactions = append(transactions, tx)
 	}
@@ -288,7 +288,7 @@ func (executor *batchExecutor) CreateGenesisState(
 			Time:             timeNow,
 			Coinbase:         coinbase,
 			BaseFee:          baseFee,
-			GasLimit:         limit, //todo (@siliev) - does the batch header need uint64?
+			GasLimit:         limit, // todo (@siliev) - does the batch header need uint64?
 		},
 		Transactions: []*common.L2Tx{},
 	}
