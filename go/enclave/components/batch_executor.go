@@ -270,7 +270,7 @@ func (executor *batchExecutor) CreateGenesisState(
 		return nil, nil, err
 	}
 
-	var limit = params.MaxGasLimit / 6
+	limit := params.MaxGasLimit / 6
 	if gasLimit != nil {
 		limit = gasLimit.Uint64()
 	}
