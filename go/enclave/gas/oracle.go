@@ -25,7 +25,7 @@ func NewGasOracle() Oracle {
 }
 
 // ProcessL1Block - should be used to update the gas oracle. Currently does not really
-// fit into phase 1 gas mechancis as the information needs to be available per block.
+// fit into phase 1 gas mechanics as the information needs to be available per block.
 // would be fixed when this becomes a smart contract using the stateDB
 func (o *oracle) ProcessL1Block(block *types.Block) {
 	blockBaseFee := block.BaseFee()

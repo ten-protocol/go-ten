@@ -40,17 +40,3 @@ func CalculateL1GasUsed(data []byte, overhead *big.Int) *big.Int {
 	l1Gas := new(big.Int).SetUint64(reducedTxSize)
 	return new(big.Int).Add(l1Gas, overhead)
 }
-
-// zeroesAndOnes counts the number of 0 bytes and non 0 bytes in a byte slice
-func zeroesAndOnes(data []byte) (uint64, uint64) {
-	var zeroes uint64
-	var ones uint64
-	for _, byt := range data {
-		if byt == 0 {
-			zeroes++
-		} else {
-			ones++
-		}
-	}
-	return zeroes, ones
-}
