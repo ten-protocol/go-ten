@@ -5,7 +5,6 @@ const idAddAccount = "addAccount";
 const idAddAllAccounts = "addAllAccounts";
 const idRevokeUserID = "revokeUserID";
 const idStatus = "status";
-const idUserID = "userID";
 const obscuroGatewayVersion = "v1"
 const pathJoin = obscuroGatewayVersion + "/join/";
 const pathAuthenticate = obscuroGatewayVersion + "/authenticate/";
@@ -18,7 +17,7 @@ const jsonHeaders = {
     "Accept": "application/json",
     "Content-Type": "application/json"
 };
-const metamaskRequestAccounts = "eth_requestAccounts";
+
 const metamaskPersonalSign = "personal_sign";
 
 function isValidUserIDFormat(value) {
@@ -26,6 +25,8 @@ function isValidUserIDFormat(value) {
 }
 
 let obscuroGatewayAddress = window.location.protocol + "//" + window.location.host;
+
+let provider = null;
 
 
 async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
@@ -46,6 +47,7 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
                     },
                     rpcUrls: [obscuroGatewayAddress+"/"+obscuroGatewayVersion+'/?u='+userID],
                     blockExplorerUrls: null,
+                    iconUrls: ['https://raw.githubusercontent.com/obscuronet/go-obscuro/main/tools/walletextension/api/staticOG/Metamask%20Network%20Icon.png']
                 },
             ],
         });
@@ -117,15 +119,12 @@ function getRandomIntAsString(min, max) {
 
 
 async function getUserID() {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const userID = await provider.send('eth_getStorageAt', ["getUserID", getRandomIntAsString(0, 1000)])
-    return userID
+    return await provider.send('eth_getStorageAt', ["getUserID", getRandomIntAsString(0, 1000)])
 }
 
-async function requestAccounts() {
+async function connectAccount() {
     try {
-        const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-        return accounts[0]; // Currently selected account
+        return await window.ethereum.request({ method: 'eth_requestAccounts' });
     } catch (error) {
         // TODO: Display warning to user to allow it and refresh page...
         console.error('User denied account access:', error);
@@ -159,6 +158,7 @@ function checkIfMetamaskIsLoaded() {
 function handleEthereum() {
     const { ethereum } = window;
     if (ethereum && ethereum.isMetaMask) {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
         initialize()
     } else {
         const statusArea = document.getElementById(idStatus);
@@ -168,7 +168,7 @@ function handleEthereum() {
 
 async function populateAccountsTable(document, tableBody, userID) {
     tableBody.innerHTML = '';
-    const accounts = await ethereum.request({method: 'eth_requestAccounts'});
+    const accounts = await provider.listAccounts();
     for (const account of accounts) {
         const row = document.createElement('tr');
 
@@ -253,13 +253,15 @@ const initialize = async () => {
             addAccountButton.style.display = "none"
         }
 
+        await connectAccount()
+
         // Get an account and prompt user to sign joining with a selected account
-        const accounts = await ethereum.request({method: metamaskRequestAccounts});
-        if (accounts.length === 0) {
+        const account = await provider.getSigner().getAddress();
+        if (account.length === 0) {
             statusArea.innerText = "No MetaMask accounts found."
             return
         }
-        let authenticateAccountStatus = await authenticateAccountWithObscuroGateway(ethereum, accounts[0], userID)
+        let authenticateAccountStatus = await authenticateAccountWithObscuroGateway(ethereum, account, userID)
         //statusArea.innerText = "\n Authentication status: " + authenticateAccountStatus
         accountsTable.style.display = "block"
         await populateAccountsTable(document, tableBody, userID)
@@ -273,8 +275,10 @@ const initialize = async () => {
             addAccountButton.style.display = "none"
         }
 
+        await connectAccount()
+
         // Get an account and prompt user to sign joining with selected account
-        const accounts = await ethereum.request({method: metamaskRequestAccounts});
+        const accounts = await provider.listAccounts();
         if (accounts.length === 0) {
             statusArea.innerText = "No MetaMask accounts found."
             return
