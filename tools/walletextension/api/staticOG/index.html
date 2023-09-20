@@ -4,7 +4,8 @@
 <head>
     <title>Obscuro Gateway </title>
     <link rel="icon" type="favicon-32x32" sizes="32x32" href="favicon-32x32.png">
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"
+            type="application/javascript"></script>
     <script type="module" type="application/javascript" src="javascript.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -18,8 +19,19 @@
 <button class="btn btn-primary btn-lg btn-block mb-3" id="addAllAccounts" style="display: none">Add all accounts from Metamask</button>
 <button class="btn btn-primary btn-lg btn-block mb-3" id="revokeUserID">Revoke UserID</button>
 
-<p id="userID"></p>
 <p id="status"></p>
+
+<table id="accountsTable" border="1">
+    <thead>
+    <tr>
+        <th>Accounts</th>
+        <th>Added to Obscuro Gateway</th>
+    </tr>
+    </thead>
+    <tbody id="tableBody">
+    <!-- Rows will be added here -->
+    </tbody>
+</table>
 
 </body>
 </html>
