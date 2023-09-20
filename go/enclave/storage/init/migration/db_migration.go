@@ -30,9 +30,9 @@ func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 	var maxDB int64
 	config, err := enclavedb.FetchConfig(db, currentMigrationVersionKey)
 	if err != nil {
-		// first time there is no entry, so we assume nothing was executed
+		// first time there is no entry, so 001 was executed already ( triggered at launch/manifest time )
 		if errors.Is(err, errutil.ErrNotFound) {
-			maxDB = 0
+			maxDB = 1
 		} else {
 			return err
 		}
