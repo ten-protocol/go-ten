@@ -118,7 +118,12 @@ function getRandomIntAsString(min, max) {
 
 
 async function getUserID() {
-    return await provider.send('eth_getStorageAt', ["getUserID", getRandomIntAsString(0, 1000)])
+    try {
+        return await provider.send('eth_getStorageAt', ["getUserID", getRandomIntAsString(0, 1000), null])
+    }catch (e) {
+        console.log(e)
+        return null;
+    }
 }
 
 async function connectAccount() {
