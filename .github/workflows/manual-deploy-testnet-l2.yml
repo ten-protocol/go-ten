@@ -38,18 +38,22 @@ jobs:
       POC_ERC20_ADDR: ${{ steps.deployContracts.outputs.POC_ERC20_ADDR }}
 
     steps:
-      - name: Load environment variables
-        uses: dotenv-actions/setup-dotenv@v2
-        with:
-          dotenv_path: ${{ github.event.inputs.testnet_type }}.env
+      - uses: actions/checkout@v3
 
-      - name: 'Deploy Contracts'
-        id: deployContracts
+      - name: Load dotenv
+        id: dotenv
+        uses: falti/dotenv-action@v1.0.4
+        with:
+          path: .github/workflows/${{ github.event.inputs.testnet_type }}.env
+          log-variables: true
+          export-variables: true
+          keys-case: bypass
+
+      - name: 'Test_ENV_1'
+        id: Test_ENV_1
         shell: bash
         run: |
-          echo "Loaded environment variables -> $RESOURCE_TESTNET_NAME"
-
-      - uses: actions/checkout@v3
+          echo "Loaded environment variables -> ${{ steps.dotenv.outputs.RESOURCE_TESTNET_NAME }}"
 
       - uses: actions/setup-go@v4
         with:
@@ -159,6 +163,12 @@ jobs:
             host_id: 1
 
     steps:
+      - name: 'Test_ENV_2'
+        id: Test_ENV_2
+        shell: bash
+        run: |
+          echo "Loaded environment variables -> ${{ steps.dotenv.outputs.RESOURCE_TESTNET_NAME }}"
+
       - name: 'Extract branch name'
         shell: bash
         run: |
