@@ -3,9 +3,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
+	"strings"
 )
 
 func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
@@ -45,4 +46,34 @@ func getQueryParameter(params map[string]string, selectedParameter string) (stri
 	}
 
 	return value, nil
+}
+
+func getUserID(conn userconn.UserConn, userIDPosition int) (string, error) {
+	// try getting userID from query parameters and return it if successful
+	userID, err := getQueryParameter(conn.ReadRequestParams(), common.UserQueryParameter)
+	if err == nil {
+		if len(userID) != common.MessageUserIDLen {
+			return "", fmt.Errorf(fmt.Sprintf("wrong length of userID from URL. Got: %d, Expected: %d", len(userID), common.MessageUserIDLen))
+		}
+		return userID, err
+	}
+
+	// Alternatively, try to get it from URL path
+	path := conn.GetHttpRequest().URL.Path
+	path = strings.Trim(path, "/")
+	parts := strings.Split(path, "/")
+
+	// our URLs, which require userID, have following pattern: <version>/<endpoint (*optional)>/<userID (*optional)>
+	// userID can be only on second or third position
+	if len(parts) != userIDPosition+1 {
+		return "", fmt.Errorf("URL structure of the request looks wrong")
+	}
+	userID = parts[userIDPosition]
+
+	// Check if userID has the correct length
+	if len(userID) != common.MessageUserIDLen {
+		return "", fmt.Errorf(fmt.Sprintf("wrong length of userID from URL. Got: %d, Expected: %d", len(userID), common.MessageUserIDLen))
+	}
+
+	return userID, nil
 }
