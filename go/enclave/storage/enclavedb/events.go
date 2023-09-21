@@ -170,7 +170,7 @@ func FilterLogs(
 				column := fmt.Sprintf("topic%d", i)
 				query += " AND " + column + " in (?" + strings.Repeat(",?", len(sub)-1) + ")"
 				for _, topic := range sub {
-					queryParams = append(queryParams, truncTo16(topic))
+					queryParams = append(queryParams, topic.Bytes())
 				}
 			}
 		}
@@ -202,7 +202,6 @@ func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error
 			LifecycleEvent: false,
 		}
 
-		// todo - read datablob
 		var t0, t1, t2, t3, t4 sql.NullString
 		var relAddress1, relAddress2, relAddress3, relAddress4 sql.NullByte
 		err = rows.Scan(
