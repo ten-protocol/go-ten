@@ -13,28 +13,60 @@ import (
 )
 
 type blockMessageExtractor struct {
-	busAddress   *common.L1Address
-	l2MessageBus *common.L2Address // todo (@stefan) - remove this
-	storage      storage.Storage
-	logger       gethlog.Logger
+	busAddress *common.L1Address
+	storage    storage.Storage
+	logger     gethlog.Logger
 }
 
 func NewBlockMessageExtractor(
 	busAddress *common.L1Address,
-	l2BusAddress *common.L2Address,
 	storage storage.Storage,
 	logger gethlog.Logger,
 ) BlockMessageExtractor {
 	return &blockMessageExtractor{
-		busAddress:   busAddress,
-		l2MessageBus: l2BusAddress,
-		storage:      storage,
-		logger:       logger.New(log.CmpKey, log.CrossChainCmp),
+		busAddress: busAddress,
+		storage:    storage,
+		logger:     logger.New(log.CmpKey, log.CrossChainCmp),
 	}
 }
 
 func (m *blockMessageExtractor) Enabled() bool {
 	return m.GetBusAddress().Hash().Big().Cmp(gethcommon.Big0) != 0
+}
+
+func (m *blockMessageExtractor) StoreCrossChainValueTransfers(block *common.L1Block, receipts common.L1Receipts) error {
+	defer m.logger.Info("Block value transfer messages processed", log.BlockHashKey, block.Hash(), log.DurationKey, measure.NewStopwatch())
+
+	/*areReceiptsValid := common.VerifyReceiptHash(block, receipts)
+
+	if !areReceiptsValid && m.Enabled() {
+		m.logger.Error("Invalid receipts submitted", log.BlockHashKey, block.Hash())
+		return fmt.Errorf("receipts do not match the receipt root for the block")
+	}*/
+
+	if len(receipts) == 0 {
+		return nil
+	}
+
+	transfers, err := m.getValueTransferMessages(receipts)
+	if err != nil {
+		m.logger.Error("Error encountered while getting inbound value transfers from block", log.BlockHashKey, block.Hash(), log.ErrKey, err)
+		return err
+	}
+
+	hasTransfers := len(transfers) > 0
+	if !hasTransfers {
+		return nil
+	}
+
+	m.logger.Trace(fmt.Sprintf("Storing %d value transfers for block", len(transfers)), log.BlockHashKey, block.Hash())
+	err = m.storage.StoreValueTransfers(block.Hash(), transfers)
+	if err != nil {
+		m.logger.Crit("Unable to store the transfers", log.ErrKey, err)
+		return err
+	}
+
+	return nil
 }
 
 // StoreCrossChainMessages - extracts the cross chain messages for the corresponding block from the receipts.
@@ -45,8 +77,6 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, r
 	defer m.logger.Info("Block cross chain messages processed", log.BlockHashKey, block.Hash(), log.DurationKey, measure.NewStopwatch())
 
 	if len(receipts) == 0 {
-		// todo (@stefan) - error if block receipts root does not match receipts hash
-		// else nil
 		return nil
 	}
 
@@ -97,4 +127,25 @@ func (m *blockMessageExtractor) getCrossChainMessages(block *common.L1Block, rec
 	m.logger.Trace(fmt.Sprintf("Found %d cross chain messages that will be submitted to L2!", len(messages)), log.BlockHashKey, block.Hash())
 
 	return messages, nil
+}
+
+func (m *blockMessageExtractor) getValueTransferMessages(receipts common.L1Receipts) (common.ValueTransferEvents, error) {
+	if len(receipts) == 0 {
+		return make(common.ValueTransferEvents, 0), nil
+	}
+
+	// Retrieves the relevant logs from the message bus.
+	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &ValueTransferEventID)
+	if err != nil {
+		m.logger.Error("Error encountered when filtering receipt logs.", log.ErrKey, err)
+		return make(common.ValueTransferEvents, 0), err
+	}
+
+	transfers, err := convertLogsToValueTransfers(logs, ValueTransferEventName, MessageBusABI)
+	if err != nil {
+		m.logger.Error("Error encountered when converting value transfer receipt logs.", log.ErrKey, err)
+		return make(common.ValueTransferEvents, 0), err
+	}
+
+	return transfers, nil
 }

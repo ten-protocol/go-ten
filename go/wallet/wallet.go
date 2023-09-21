@@ -27,6 +27,7 @@ type Wallet interface {
 	// GetNonceAndIncrement atomically increments the nonce by one and returns the previous value
 	GetNonceAndIncrement() uint64
 	GetNonce() uint64
+	ChainID() *big.Int
 
 	// PrivateKey returns the wallets private key
 	PrivateKey() *ecdsa.PrivateKey
@@ -73,6 +74,10 @@ func (m *inMemoryWallet) SignTransaction(tx types.TxData) (*types.Transaction, e
 // Address returns the current wallet address
 func (m *inMemoryWallet) Address() common.Address {
 	return m.pubKeyAddr
+}
+
+func (m *inMemoryWallet) ChainID() *big.Int {
+	return big.NewInt(0).Set(m.chainID)
 }
 
 func (m *inMemoryWallet) GetNonceAndIncrement() uint64 {

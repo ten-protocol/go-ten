@@ -18,8 +18,8 @@ const (
 	blockInsert       = "insert into block values (?,?,?,?,?)"
 	selectBlockHeader = "select header from block"
 
-	l1msgInsert = "insert into l1_msg (message, block) values "
-	l1msgValue  = "(?,?)"
+	l1msgInsert = "insert into l1_msg (message, block, is_transfer) values "
+	l1msgValue  = "(?,?,?)"
 	selectL1Msg = "select message from l1_msg "
 
 	rollupInsert = "replace into rollup values (?,?,?,?,?)"
@@ -93,7 +93,7 @@ func FetchBlockHeaderByHeight(db *sql.DB, height *big.Int) (*types.Header, error
 	return fetchBlockHeader(db, "where is_canonical=true and height=?", height.Int64())
 }
 
-func WriteL1Messages(db *sql.DB, blockHash common.L1BlockHash, messages common.CrossChainMessages) error {
+func WriteL1Messages[T any](db *sql.DB, blockHash common.L1BlockHash, messages []T, isValueTransfer bool) error {
 	insert := l1msgInsert + strings.Repeat(l1msgValue+",", len(messages))
 	insert = insert[0 : len(insert)-1] // remove trailing comma
 
@@ -106,6 +106,7 @@ func WriteL1Messages(db *sql.DB, blockHash common.L1BlockHash, messages common.C
 		}
 		args = append(args, data)
 		args = append(args, blockHash.Bytes())
+		args = append(args, isValueTransfer)
 	}
 	if len(messages) > 0 {
 		_, err := db.Exec(insert, args...)
@@ -114,10 +115,10 @@ func WriteL1Messages(db *sql.DB, blockHash common.L1BlockHash, messages common.C
 	return nil
 }
 
-func FetchL1Messages(db *sql.DB, blockHash common.L1BlockHash) (common.CrossChainMessages, error) {
-	var result common.CrossChainMessages
-	query := selectL1Msg + " where block = ?"
-	rows, err := db.Query(query, blockHash.Bytes())
+func FetchL1Messages[T any](db *sql.DB, blockHash common.L1BlockHash, isTransfer bool) ([]T, error) {
+	var result []T
+	query := selectL1Msg + " where block = ? and is_transfer = ?"
+	rows, err := db.Query(query, blockHash.Bytes(), isTransfer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -132,7 +133,7 @@ func FetchL1Messages(db *sql.DB, blockHash common.L1BlockHash) (common.CrossChai
 		if err != nil {
 			return nil, err
 		}
-		ccm := new(common.CrossChainMessage)
+		ccm := new(T)
 		if err := rlp.Decode(bytes.NewReader(msg), ccm); err != nil {
 			return nil, fmt.Errorf("could not decode cross chain message. Cause: %w", err)
 		}

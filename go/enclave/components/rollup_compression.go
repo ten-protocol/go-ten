@@ -80,6 +80,9 @@ type batchFromRollup struct {
 	txHash       gethcommon.Hash
 	time         uint64
 	l1Proof      common.L1BlockHash
+	coinbase     gethcommon.Address
+	baseFee      *big.Int
+	gasLimit     uint64
 
 	header *common.BatchHeader // for reorgs
 }
@@ -241,8 +244,11 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 		BatchTimeDeltas:       timeDeltasBA,
 		ReOrgs:                reorgsBA,
 		L1HeightDeltas:        l1DeltasBA,
-		// BatchHashes:           batchHashes,
-		// BatchHeaders:          batchHeaders,
+		//	BatchHashes:           batchHashes,
+		//	BatchHeaders:          batchHeaders,
+		Coinbase: batches[0].Header.Coinbase,
+		BaseFee:  batches[0].Header.BaseFee,
+		GasLimit: batches[0].Header.GasLimit,
 	}
 
 	return calldataRollupHeader, nil
@@ -333,6 +339,9 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 			time:         uint64(currentTime),
 			l1Proof:      block.Hash(),
 			header:       fullReorgedHeader,
+			coinbase:     calldataRollupHeader.Coinbase,
+			baseFee:      calldataRollupHeader.BaseFee,
+			gasLimit:     calldataRollupHeader.GasLimit,
 		}
 		rc.logger.Info("Rollup decompressed batch", log.BatchSeqNoKey, currentSeqNo, log.BatchHeightKey, currentHeight, "rollup_idx", currentBatchIdx, "l1_height", block.Number(), "l1_hash", block.Hash())
 	}
@@ -375,15 +384,21 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 		switch {
 		// handle genesis
 		case incompleteBatch.seqNo.Uint64() == common.L2GenesisSeqNo:
-			genBatch, _, err := rc.batchExecutor.CreateGenesisState(incompleteBatch.l1Proof, incompleteBatch.time)
+			genBatch, _, err := rc.batchExecutor.CreateGenesisState(
+				incompleteBatch.l1Proof,
+				incompleteBatch.time,
+				calldataRollupHeader.Coinbase,
+				calldataRollupHeader.BaseFee,
+				big.NewInt(0).SetUint64(calldataRollupHeader.GasLimit),
+			)
 			if err != nil {
 				return err
 			}
 			// Sanity check - uncomment when debugging
-			//if genBatch.Hash() != calldataRollupHeader.BatchHashes[i] {
-			//	rc.logger.Info(fmt.Sprintf("Good %+v\nCalc %+v", calldataRollupHeader.BatchHeaders[i], genBatch.Header))
-			//	rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
-			//}
+			/*if genBatch.Hash() != calldataRollupHeader.BatchHashes[i] {
+				rc.logger.Info(fmt.Sprintf("Good %+v \n Calc %+v", calldataRollupHeader.BatchHeaders[i], genBatch.Header))
+				rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
+			}*/
 
 			err = rc.storage.StoreBatch(genBatch)
 			if err != nil {
@@ -416,15 +431,17 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 				incompleteBatch.transactions,
 				incompleteBatch.time,
 				incompleteBatch.seqNo,
+				incompleteBatch.coinbase,
+				incompleteBatch.baseFee,
 			)
 			if err != nil {
 				return err
 			}
 			// Sanity check - uncomment when debugging
-			//if computedBatch.Batch.Hash() != calldataRollupHeader.BatchHashes[i] {
-			//	rc.logger.Info(fmt.Sprintf("Good %+v\nCalc %+v", calldataRollupHeader.BatchHeaders[i], computedBatch.Batch.Header))
-			//	rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
-			//}
+			/*		if computedBatch.Batch.Hash() != calldataRollupHeader.BatchHashes[i] {
+					rc.logger.Info(fmt.Sprintf("Good %+v\nCalc %+v", calldataRollupHeader.BatchHeaders[i], computedBatch.Batch.Header))
+					rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
+				}*/
 
 			if _, err := computedBatch.Commit(true); err != nil {
 				return fmt.Errorf("cannot commit stateDB for incoming valid batch seq=%d. Cause: %w", incompleteBatch.seqNo, err)
@@ -478,15 +495,24 @@ func (rc *RollupCompression) decryptDecompressAndDeserialise(blob []byte, obj an
 	return nil
 }
 
-func (rc *RollupCompression) computeBatch(BlockPtr common.L1BlockHash, ParentPtr common.L2BatchHash, Transactions common.L2Transactions, AtTime uint64, SequencerNo *big.Int) (*ComputedBatch, error) {
+func (rc *RollupCompression) computeBatch(
+	BlockPtr common.L1BlockHash,
+	ParentPtr common.L2BatchHash,
+	Transactions common.L2Transactions,
+	AtTime uint64,
+	SequencerNo *big.Int,
+	Coinbase gethcommon.Address,
+	BaseFee *big.Int,
+) (*ComputedBatch, error) {
 	return rc.batchExecutor.ComputeBatch(&BatchExecutionContext{
 		BlockPtr:     BlockPtr,
 		ParentPtr:    ParentPtr,
 		Transactions: Transactions,
 		AtTime:       AtTime,
-		// Creator:      executor,
-		ChainConfig: rc.chainConfig,
-		SequencerNo: SequencerNo,
+		Creator:      Coinbase,
+		ChainConfig:  rc.chainConfig,
+		SequencerNo:  SequencerNo,
+		BaseFee:      big.NewInt(0).Set(BaseFee),
 	})
 }
 

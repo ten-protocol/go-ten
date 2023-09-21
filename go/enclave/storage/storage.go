@@ -348,12 +348,6 @@ func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error) {
 	return enclavedb.ReadBatchBySeqNo(s.db.GetSQLDB(), seqNum)
 }
 
-func (s *storageImpl) FetchBatchHeaderAndSizeBySeqNo(seqNum uint64) (*common.BatchHeader, uint64, error) {
-	callStart := time.Now()
-	defer s.logDuration("FetchBatchBySeqNo", callStart)
-	return enclavedb.ReadBatchSizeBySeqNo(s.db.GetSQLDB(), seqNum)
-}
-
 func (s *storageImpl) FetchBatchesByBlock(block common.L1BlockHash) ([]*core.Batch, error) {
 	callStart := time.Now()
 	defer s.logDuration("FetchBatchesByBlock", callStart)
@@ -426,16 +420,24 @@ func (s *storageImpl) StoreExecutedBatch(batch *core.Batch, receipts []*types.Re
 	return nil
 }
 
+func (s *storageImpl) StoreValueTransfers(blockHash common.L1BlockHash, transfers common.ValueTransferEvents) error {
+	return enclavedb.WriteL1Messages(s.db.GetSQLDB(), blockHash, transfers, true)
+}
+
 func (s *storageImpl) StoreL1Messages(blockHash common.L1BlockHash, messages common.CrossChainMessages) error {
 	callStart := time.Now()
 	defer s.logDuration("StoreL1Messages", callStart)
-	return enclavedb.WriteL1Messages(s.db.GetSQLDB(), blockHash, messages)
+	return enclavedb.WriteL1Messages(s.db.GetSQLDB(), blockHash, messages, false)
 }
 
 func (s *storageImpl) GetL1Messages(blockHash common.L1BlockHash) (common.CrossChainMessages, error) {
 	callStart := time.Now()
 	defer s.logDuration("GetL1Messages", callStart)
-	return enclavedb.FetchL1Messages(s.db.GetSQLDB(), blockHash)
+	return enclavedb.FetchL1Messages[common.CrossChainMessage](s.db.GetSQLDB(), blockHash, false)
+}
+
+func (s *storageImpl) GetL1Transfers(blockHash common.L1BlockHash) (common.ValueTransferEvents, error) {
+	return enclavedb.FetchL1Messages[common.ValueTransferEvent](s.db.GetSQLDB(), blockHash, true)
 }
 
 const enclaveKeyKey = "ek"

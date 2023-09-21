@@ -307,8 +307,8 @@ func TestGetStorageAtForReturningUserID(t *testing.T) {
 	invalidUserID := "abc123"
 	respBody2 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{"getUserID", "0", nil}, invalidUserID)
 
-	if !strings.Contains(string(respBody2), "UserAccountManager doesn't exist for user: "+invalidUserID) {
-		t.Fatalf("expected response containing invalid userID '%s', got '%s'", invalidUserID, string(respBody2))
+	if !strings.Contains(string(respBody2), "method eth_getStorageAt cannot be called with an unauthorised client - no signed viewing keys found") {
+		t.Fatalf("expected method eth_getStorageAt cannot be called with an unauthorised client - no signed viewing keys found, got '%s'", string(respBody2))
 	}
 
 	// make a request to GetStorageAt with userID that is in the database, but wrong parameters

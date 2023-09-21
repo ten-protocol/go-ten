@@ -521,7 +521,7 @@ func (g *Guardian) periodicRollupProduction() { //nolint:gocognit
 	defer g.logger.Info("Stopping rollup production")
 
 	// rollup at least at every g.rollupInterval
-	rollupInterval := g.rollupInterval
+	rollupInterval := 17 * time.Second
 	if rollupInterval == 0 {
 		g.logger.Crit("invalid rollup interval 0")
 	}
@@ -573,7 +573,7 @@ func (g *Guardian) periodicRollupProduction() { //nolint:gocognit
 			if lastBatchNo.Uint64() > common.L2GenesisSeqNo {
 				fromBatch++
 			}
-			availBatchesSumSize, err := g.enclaveClient.GetBatchesAfterSize(fromBatch)
+			availBatchesSumSize, err := g.getBatchesAfterSize(fromBatch)
 			if err != nil {
 				g.logger.Error("unable to GetBatchesAfterSize rollup", log.ErrKey, err)
 				continue
@@ -650,4 +650,28 @@ func (g *Guardian) streamEnclaveData() {
 			return
 		}
 	}
+}
+
+func (g *Guardian) getBatchesAfterSize(seqNo uint64) (uint64, error) {
+	var size uint64
+
+	currentNo := seqNo
+	for {
+		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(big.NewInt(int64(currentNo)))
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				break // no more batches
+			}
+			return 0, err
+		}
+
+		bSize, err := batch.Size()
+		if err != nil {
+			return 0, err
+		}
+		size += uint64(bSize)
+		currentNo++
+	}
+
+	return size, nil
 }

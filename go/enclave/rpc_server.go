@@ -277,23 +277,6 @@ func (s *RPCServer) CreateRollup(_ context.Context, req *generated.CreateRollupR
 	}, nil
 }
 
-func (s *RPCServer) GetAvailableBatchesCount(_ context.Context, req *generated.GetAvailableBatchesCountRequest) (*generated.GetAvailableBatchesCountResponse, error) {
-	var fromSeqNo uint64 = 1
-	if req.FromSequenceNumber != nil && *req.FromSequenceNumber > common.L2GenesisSeqNo {
-		fromSeqNo = *req.FromSequenceNumber
-	}
-
-	count, sysError := s.enclave.GetBatchesAfterSize(fromSeqNo)
-	if sysError != nil {
-		s.logger.Error("Error getting available batches count", log.ErrKey, sysError)
-	}
-
-	return &generated.GetAvailableBatchesCountResponse{
-		Count:       count,
-		SystemError: toRPCError(sysError),
-	}, nil
-}
-
 func (s *RPCServer) CreateBatch(_ context.Context, _ *generated.CreateBatchRequest) (*generated.CreateBatchResponse, error) {
 	sysError := s.enclave.CreateBatch()
 	if sysError != nil {

@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -175,41 +174,4 @@ func (br *batchRegistry) GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Bat
 		batch = maybeBatch
 	}
 	return batch, nil
-}
-
-func (br *batchRegistry) GetBatchesAfterSize(batchSeqNo uint64, upToL1Height uint64) (uint64, error) {
-	// sanity check
-	headBatch, err := br.storage.FetchHeadBatch()
-	if err != nil {
-		return 0, err
-	}
-
-	if headBatch.SeqNo().Uint64() < batchSeqNo {
-		return 0, fmt.Errorf("head batch height %d is in the past compared to requested batch %d", headBatch.SeqNo().Uint64(), batchSeqNo)
-	}
-
-	var header *common.BatchHeader
-	var batchesSize uint64
-	var batchSize uint64
-
-	for currentBatchSeq := batchSeqNo; currentBatchSeq <= headBatch.SeqNo().Uint64(); currentBatchSeq++ {
-		header, batchSize, err = br.storage.FetchBatchHeaderAndSizeBySeqNo(currentBatchSeq)
-		if err != nil {
-			return 0, fmt.Errorf("could not retrieve batch by sequence number %d. Cause: %w", currentBatchSeq, err)
-		}
-
-		// check the block height
-		block, err := br.storage.FetchBlock(header.L1Proof)
-		if err != nil {
-			return 0, fmt.Errorf("could not retrieve block. Cause: %w", err)
-		}
-
-		if block.NumberU64() > upToL1Height {
-			break
-		}
-
-		batchesSize += batchSize
-	}
-
-	return batchesSize, nil
 }

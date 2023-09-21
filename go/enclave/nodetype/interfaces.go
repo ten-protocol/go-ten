@@ -30,9 +30,6 @@ type Sequencer interface {
 	// and adds as many batches to it as possible.
 	CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error)
 
-	// GetBatchesAfterSize - returns the number of batches available from the latest recorded rollup in the head l1 chain
-	GetBatchesAfterSize(lastBatchNo uint64) (uint64, error)
-
 	NodeType
 }
 

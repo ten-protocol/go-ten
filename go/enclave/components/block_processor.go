@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/gas"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -18,14 +19,16 @@ import (
 
 type l1BlockProcessor struct {
 	storage              storage.Storage
+	gasOracle            gas.Oracle
 	logger               gethlog.Logger
 	crossChainProcessors *crosschain.Processors
 }
 
-func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, logger gethlog.Logger) L1BlockProcessor {
+func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, gasOracle gas.Oracle, logger gethlog.Logger) L1BlockProcessor {
 	return &l1BlockProcessor{
 		storage:              storage,
 		logger:               logger,
+		gasOracle:            gasOracle,
 		crossChainProcessors: cc,
 	}
 }
@@ -44,7 +47,15 @@ func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts) (*BlockIngestio
 		if err != nil {
 			return nil, errors.New("failed to process cross chain messages")
 		}
+
+		err = bp.crossChainProcessors.Remote.StoreCrossChainValueTransfers(br.Block, *br.Receipts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to process cross chain transfers. Cause: %w", err)
+		}
 	}
+
+	// todo @siliev - not sure if this is the best way to update the price, will pick up random stale blocks from forks?
+	bp.gasOracle.ProcessL1Block(br.Block)
 
 	return ingestion, nil
 }

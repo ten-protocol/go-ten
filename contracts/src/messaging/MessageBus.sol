@@ -30,6 +30,22 @@ contract MessageBus is IMessageBus, Ownable {
         addressSequences[sender] += 1;
     }
 
+    function sendValueToL2(
+        address receiver,
+        uint256 amount
+    ) external payable {
+        require(msg.value > 0 && msg.value == amount, "Attempting to send value without providing Ether");
+        emit ValueTransfer(msg.sender, receiver, msg.value);
+    }
+
+    function receiveValueFromL2(
+        address receiver,
+        uint256 amount
+    ) external onlyOwner {
+        (bool ok, ) = receiver.call{value: amount}("");
+        require(ok, "failed sending value");
+    }
+
     // This method is called from contracts to publish messages to the other linked message bus.
     // nonce - This is provided and serves as deduplication nonce. It can also be used to group a batch of messages together.
     // topic - This is the topic for which the payload is published.

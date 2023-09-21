@@ -22,6 +22,10 @@ abstract contract CrossChainEnabledObscuro {
         return msg.sender == address(messenger);
     }
 
+    function _messageBus() internal view returns (IMessageBus) {
+        return messageBus;
+    }
+
     // Returns the address of the sender of the current cross chain message.
     // address 0x0 is considered null/no sender.
     function _crossChainSender() internal view returns (address) {

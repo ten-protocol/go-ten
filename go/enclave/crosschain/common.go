@@ -16,9 +16,11 @@ import (
 )
 
 var (
-	MessageBusABI, _    = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	CrossChainEventName = "LogMessagePublished"
-	CrossChainEventID   = MessageBusABI.Events[CrossChainEventName].ID
+	MessageBusABI, _       = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	CrossChainEventName    = "LogMessagePublished"
+	CrossChainEventID      = MessageBusABI.Events[CrossChainEventName].ID
+	ValueTransferEventName = "ValueTransfer"
+	ValueTransferEventID   = MessageBusABI.Events["ValueTransfer"].ID
 )
 
 func lazilyLogReceiptChecksum(msg string, receipts types.Receipts, logger gethlog.Logger) {
@@ -145,4 +147,25 @@ func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) Mes
 		Topic:    event.Topic,
 		Payload:  event.Payload,
 	}
+}
+
+// convertLogsToMessages - converts the logs of the event to messages. The logs should be filtered, otherwise fails.
+func convertLogsToValueTransfers(logs []types.Log, eventName string, messageBusABI abi.ABI) (common.ValueTransferEvents, error) {
+	messages := make(common.ValueTransferEvents, 0)
+
+	for _, log := range logs {
+		var event MessageBus.MessageBusValueTransfer
+		err := messageBusABI.UnpackIntoInterface(&event, eventName, log.Data)
+		if err != nil {
+			return nil, err
+		}
+
+		messages = append(messages, common.ValueTransferEvent{
+			Sender:   event.Sender,
+			Receiver: event.Receiver,
+			Amount:   event.Amount,
+		})
+	}
+
+	return messages, nil
 }

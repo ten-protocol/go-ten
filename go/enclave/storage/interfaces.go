@@ -44,8 +44,6 @@ type BatchResolver interface {
 	FetchBatchByHeight(height uint64) (*core.Batch, error)
 	// FetchBatchBySeqNo returns the batch with the given seq number.
 	FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error)
-	// FetchBatchHeaderAndSizeBySeqNo returns the size of the body of a batch
-	FetchBatchHeaderAndSizeBySeqNo(seqNum uint64) (*common.BatchHeader, uint64, error)
 	// FetchHeadBatch returns the current head batch of the canonical chain.
 	FetchHeadBatch() (*core.Batch, error)
 	// FetchCurrentSequencerNo returns the sequencer number
@@ -107,6 +105,9 @@ type AttestationStorage interface {
 type CrossChainMessagesStorage interface {
 	StoreL1Messages(blockHash common.L1BlockHash, messages common.CrossChainMessages) error
 	GetL1Messages(blockHash common.L1BlockHash) (common.CrossChainMessages, error)
+
+	StoreValueTransfers(blockHash common.L1BlockHash, transfers common.ValueTransferEvents) error
+	GetL1Transfers(blockHash common.L1BlockHash) (common.ValueTransferEvents, error)
 }
 
 type EnclaveKeyStorage interface {

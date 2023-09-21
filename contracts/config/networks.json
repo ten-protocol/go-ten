@@ -1,6 +1,6 @@
 {
     "localGeth": {
-      "url": "http://127.0.0.1:8025",
+      "url": "http://127.0.0.1:37000",
       "deploy": [
         "deployment_scripts/core/layer1/",
         "deployment_scripts/testnet/layer1/",
@@ -13,15 +13,16 @@
     },
     "localObscuro": {
       "chainId": 777,
-      "url": "http://127.0.0.1:3000/v1",
-      "obscuroEncRpcUrl": "ws://127.0.0.1:81",
-      "gasPrice": 2000000000,
+      "url": "http://127.0.0.1:3000/v1/",
+      "obscuroEncRpcUrl": "ws://127.0.0.1:37901",
       "companionNetworks" : {
         "layer1" : "localGeth"
       },
       "deploy": [
-        "deployment_scripts/core/layer2/",
-        "deployment_scripts/bridge/layer2/",
+        "deployment_scripts/messenger/layer1",
+        "deployment_scripts/messenger/layer2",
+        "deployment_scripts/bridge/",
+        "deployment_scripts/testnet/layer1/",
         "deployment_scripts/testnet/layer2/"
       ],
       "accounts": [

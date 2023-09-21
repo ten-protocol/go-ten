@@ -6,6 +6,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -63,6 +64,10 @@ type EnclaveConfig struct {
 	// a protocol limit, but a miner imposed limit and it might be hard to find someone
 	// to include a transaction if it goes above it
 	MaxRollupSize uint64
+
+	GasPaymentAddress gethcommon.Address
+	BaseFee           *big.Int
+	GasLimit          *big.Int
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -90,5 +95,8 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 		DebugNamespaceEnabled:     false,
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,
+		GasPaymentAddress:         gethcommon.HexToAddress("0xa714Ae85AA66424766ba4Df364EECc43197051A6"),
+		BaseFee:                   new(big.Int).SetUint64(1),
+		GasLimit:                  new(big.Int).SetUint64(params.MaxGasLimit / 6),
 	}
 }

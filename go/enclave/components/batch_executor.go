@@ -1,15 +1,18 @@
 package components
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
 	"sort"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/gas"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -32,21 +35,76 @@ type batchExecutor struct {
 	crossChainProcessors *crosschain.Processors
 	genesis              *genesis.Genesis
 	logger               gethlog.Logger
+	gasOracle            gas.Oracle
 	chainConfig          *params.ChainConfig
 
 	// stateDBMutex - used to protect calls to stateDB.Commit as it is not safe for async access.
 	stateDBMutex sync.Mutex
 }
 
-func NewBatchExecutor(storage storage.Storage, cc *crosschain.Processors, genesis *genesis.Genesis, chainConfig *params.ChainConfig, logger gethlog.Logger) BatchExecutor {
+func NewBatchExecutor(
+	storage storage.Storage,
+	cc *crosschain.Processors,
+	genesis *genesis.Genesis,
+	gasOracle gas.Oracle,
+	chainConfig *params.ChainConfig,
+	logger gethlog.Logger,
+) BatchExecutor {
 	return &batchExecutor{
 		storage:              storage,
 		crossChainProcessors: cc,
 		genesis:              genesis,
 		chainConfig:          chainConfig,
 		logger:               logger,
+		gasOracle:            gasOracle,
 		stateDBMutex:         sync.Mutex{},
 	}
+}
+
+// payL1Fees - this function modifies the state db according to the transactions contained within the batch context
+// in order to subtract gas fees from the balance. It returns a list of the transactions that have prepaid for their L1
+// publishing costs.
+func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) (common.L2Transactions, common.L2Transactions) {
+	transactions := make(common.L2Transactions, 0)
+	freeTransactions := make(common.L2Transactions, 0)
+	block, _ := executor.storage.FetchBlock(context.BlockPtr)
+
+	for _, tx := range context.Transactions {
+		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
+		if err != nil {
+			executor.logger.Warn("Unable to extract sender for tx", log.TxKey, tx.Hash())
+			continue
+		}
+		accBalance := stateDB.GetBalance(*sender)
+
+		cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block)
+		if err != nil {
+			executor.logger.Warn("Unable to get gas cost for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
+			continue
+		}
+
+		// Transactions that are created inside the enclave can have no GasPrice set.
+		// External transactions are always required to have a gas price set. Thus we filter
+		// those transactions for separate processing than the normal ones and we run them through the EVM
+		// with a flag that disables the baseFee logic and wont fail them for having price lower than the base fee.
+		isFreeTransaction := tx.GasFeeCap().Cmp(gethcommon.Big0) == 0
+		isFreeTransaction = isFreeTransaction && tx.GasPrice().Cmp(gethcommon.Big0) == 0
+
+		if isFreeTransaction {
+			freeTransactions = append(freeTransactions, tx)
+			continue
+		}
+		if accBalance.Cmp(cost) == -1 {
+			executor.logger.Info("insufficient account balance for tx", log.TxKey, tx.Hash(), "addr", sender.Hex())
+			continue
+		}
+		stateDB.SubBalance(*sender, cost)
+		stateDB.AddBalance(context.Creator, cost)
+		// todo - add refund logic.
+
+		transactions = append(transactions, tx)
+	}
+	return transactions, freeTransactions
 }
 
 func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
@@ -81,7 +139,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	}
 
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
-	batch := core.DeterministicEmptyBatch(parent.Header, block, context.AtTime, context.SequencerNo)
+	batch := core.DeterministicEmptyBatch(parent.Header, block, context.AtTime, context.SequencerNo, context.BaseFee, context.Creator)
 
 	stateDB, err := executor.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
@@ -89,18 +147,24 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	}
 
 	var messages common.CrossChainMessages
-	// Cross chain data is not accessible until one after the genesis batch
+	var transfers common.ValueTransferEvents
 	if context.SequencerNo.Int64() > int64(common.L2GenesisSeqNo+1) {
-		messages = executor.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
+		messages, transfers = executor.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
 	}
-	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 
-	successfulTxs, txReceipts, err := executor.processTransactions(batch, 0, context.Transactions, stateDB, context.ChainConfig)
+	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
+	executor.crossChainProcessors.Local.ExecuteValueTransfers(transfers, stateDB)
+
+	transactionsToProcess, freeTransactions := executor.payL1Fees(stateDB, context)
+
+	crossChainTransactions = append(crossChainTransactions, freeTransactions...)
+
+	successfulTxs, txReceipts, err := executor.processTransactions(batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
 
-	ccSuccessfulTxs, ccReceipts, err := executor.processTransactions(batch, len(successfulTxs), crossChainTransactions, stateDB, context.ChainConfig)
+	ccSuccessfulTxs, ccReceipts, err := executor.processTransactions(batch, len(successfulTxs), crossChainTransactions, stateDB, context.ChainConfig, true)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +176,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	// we need to copy the batch to reset the internal hash cache
 	copyBatch := *batch
 	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
-	copyBatch.Transactions = successfulTxs
+	copyBatch.Transactions = append(transactionsToProcess, freeTransactions...)
 	copyBatch.ResetHash()
 
 	if err = executor.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {
@@ -137,7 +201,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 			defer executor.stateDBMutex.Unlock()
 			h, err := stateDB.Commit(copyBatch.Number().Uint64(), deleteEmptyObjects)
 			if err != nil {
-				return gethcommon.Hash{}, err
+				return gethcommon.Hash{}, fmt.Errorf("commit failure for batch %d. Cause: %w", batch.SeqNo(), err)
 			}
 			trieDB := executor.storage.TrieDB()
 			err = trieDB.Commit(h, true)
@@ -161,6 +225,8 @@ func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, 
 		AtTime:       batch.Header.Time,
 		ChainConfig:  executor.chainConfig,
 		SequencerNo:  batch.Header.SequencerOrderNo,
+		Creator:      batch.Header.Coinbase,
+		BaseFee:      batch.Header.BaseFee,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
@@ -168,7 +234,7 @@ func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, 
 
 	if cb.Batch.Hash() != batch.Hash() {
 		// todo @stefan - generate a validator challenge here and return it
-		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v\n Incoming: %+v\n", cb.Batch.Header, batch.Header))
+		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v\n", cb.Batch.Header, batch.Header))
 		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
 	}
 
@@ -179,10 +245,34 @@ func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, 
 	return cb.Receipts, nil
 }
 
-func (executor *batchExecutor) CreateGenesisState(blkHash common.L1BlockHash, timeNow uint64) (*core.Batch, *types.Transaction, error) {
+type ValueTransfers []common.ValueTransferEvent
+
+func (vt ValueTransfers) Len() int {
+	return len(vt)
+}
+
+func (vt ValueTransfers) EncodeIndex(index int, w *bytes.Buffer) {
+	transfer := vt[index]
+	if err := rlp.Encode(w, transfer); err != nil {
+		panic(err)
+	}
+}
+
+func (executor *batchExecutor) CreateGenesisState(
+	blkHash common.L1BlockHash,
+	timeNow uint64,
+	coinbase gethcommon.Address,
+	baseFee *big.Int,
+	gasLimit *big.Int,
+) (*core.Batch, *types.Transaction, error) {
 	preFundGenesisState, err := executor.genesis.GetGenesisRoot(executor.storage)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	limit := params.MaxGasLimit / 6
+	if gasLimit != nil {
+		limit = gasLimit.Uint64()
 	}
 
 	genesisBatch := &core.Batch{
@@ -194,7 +284,11 @@ func (executor *batchExecutor) CreateGenesisState(blkHash common.L1BlockHash, ti
 			Number:           big.NewInt(int64(0)),
 			SequencerOrderNo: big.NewInt(int64(common.L2GenesisSeqNo)), // genesis batch has seq number 1
 			ReceiptHash:      types.EmptyRootHash,
+			TransfersTree:    types.EmptyRootHash,
 			Time:             timeNow,
+			Coinbase:         coinbase,
+			BaseFee:          baseFee,
+			GasLimit:         limit, // todo (@siliev) - does the batch header need uint64?
 		},
 		Transactions: []*common.L2Tx{},
 	}
@@ -204,6 +298,8 @@ func (executor *batchExecutor) CreateGenesisState(blkHash common.L1BlockHash, ti
 	if err != nil {
 		executor.logger.Crit("Could not create message bus deployment transaction", "Error", err)
 	}
+
+	executor.logger.Info("L2 Bus deploy", log.TxKey, deployTx.Hash())
 
 	if err = executor.genesis.CommitGenesisState(executor.storage); err != nil {
 		return nil, nil, fmt.Errorf("could not apply genesis preallocation. Cause: %w", err)
@@ -218,7 +314,16 @@ func (executor *batchExecutor) populateOutboundCrossChainData(batch *core.Batch,
 		return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
 	}
 
+	valueTransferMessages, err := executor.crossChainProcessors.Local.ExtractOutboundTransfers(receipts)
+	if err != nil {
+		executor.logger.Error("Extracting messages L2->L1 failed", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+		return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
+	}
+
+	transfersHash := types.DeriveSha(ValueTransfers(valueTransferMessages), &trie.StackTrie{})
+
 	batch.Header.CrossChainMessages = crossChainMessages
+	batch.Header.TransfersTree = transfersHash
 
 	executor.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch.",
 		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)
@@ -257,11 +362,11 @@ func (executor *batchExecutor) verifyInboundCrossChainTransactions(transactions 
 	return nil
 }
 
-func (executor *batchExecutor) processTransactions(batch *core.Batch, tCount int, txs []*common.L2Tx, stateDB *state.StateDB, cc *params.ChainConfig) ([]*common.L2Tx, []*types.Receipt, error) {
+func (executor *batchExecutor) processTransactions(batch *core.Batch, tCount int, txs []*common.L2Tx, stateDB *state.StateDB, cc *params.ChainConfig, noBaseFee bool) ([]*common.L2Tx, []*types.Receipt, error) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
-	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, executor.storage, cc, tCount, executor.logger)
+	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, executor.storage, cc, tCount, noBaseFee, executor.logger)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {

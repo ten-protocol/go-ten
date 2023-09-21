@@ -33,8 +33,11 @@ import (
 const RollupDelay = 2 // number of L1 blocks to exclude when creating a rollup. This will minimize compression reorg issues.
 
 type SequencerSettings struct {
-	MaxBatchSize  uint64
-	MaxRollupSize uint64
+	MaxBatchSize      uint64
+	MaxRollupSize     uint64
+	GasPaymentAddress gethcommon.Address
+	BatchGasLimit     *big.Int
+	BaseFee           *big.Int
 }
 
 type sequencer struct {
@@ -120,7 +123,13 @@ func (s *sequencer) CreateBatch() error {
 // won't be committed by the producer.
 func (s *sequencer) initGenesis(block *common.L1Block) error {
 	s.logger.Info("Initializing genesis state", log.BlockHashKey, block.Hash())
-	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(block.Hash(), uint64(time.Now().Unix()))
+	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(
+		block.Hash(),
+		uint64(time.Now().Unix()),
+		s.settings.GasPaymentAddress,
+		s.settings.BaseFee,
+		s.settings.BatchGasLimit,
+	)
 	if err != nil {
 		return err
 	}
@@ -190,7 +199,8 @@ func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash
 		ParentPtr:    headBatch,
 		Transactions: transactions,
 		AtTime:       batchTime,
-		Creator:      s.hostID,
+		Creator:      s.settings.GasPaymentAddress,
+		BaseFee:      s.settings.BaseFee,
 		ChainConfig:  s.chainConfig,
 		SequencerNo:  sequencerNo,
 	})
@@ -260,15 +270,6 @@ func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) 
 	s.logger.Info("Created new head rollup", log.RollupHashKey, rollup.Hash(), "numBatches", len(rollup.Batches))
 
 	return s.rollupCompression.CreateExtRollup(rollup)
-}
-
-func (s *sequencer) GetBatchesAfterSize(lastBatchNo uint64) (uint64, error) {
-	currentL1Head, err := s.storage.FetchHeadBlock()
-	if err != nil {
-		return 0, fmt.Errorf("unable to fetch headblock - %w", err)
-	}
-	upToL1Height := currentL1Head.NumberU64() - RollupDelay
-	return s.batchRegistry.GetBatchesAfterSize(lastBatchNo, upToL1Height)
 }
 
 func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash) error {
