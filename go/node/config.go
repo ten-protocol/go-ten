@@ -55,7 +55,11 @@ type Config struct {
 }
 
 func NewNodeConfig(opts ...Option) *Config {
-	defaultConfig := &Config{}
+	defaultConfig := &Config{
+		batchInterval:  "1s",
+		rollupInterval: "3s",
+		l1ChainID:      1337,
+	}
 
 	for _, opt := range opts {
 		opt(defaultConfig)
