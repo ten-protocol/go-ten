@@ -38,7 +38,7 @@ const (
 
 	selectTxQuery = "select tx.content, batch.full_hash, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.sequence=exec_tx.batch where batch.is_canonical=true and tx.hash=?"
 
-	selectContractCreationTx    = "select tx from exec_tx where created_contract_address=?"
+	selectContractCreationTx    = "select tx.full_hash from exec_tx join tx on tx.hash=exec_tx.tx where created_contract_address=?"
 	selectTotalCreatedContracts = "select count( distinct created_contract_address) from exec_tx "
 	queryBatchWasExecuted       = "select is_executed from batch where is_canonical=true and hash=?"
 
