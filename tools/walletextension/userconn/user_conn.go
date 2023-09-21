@@ -31,6 +31,7 @@ type UserConn interface {
 	HandleError(msg string)
 	SupportsSubscriptions() bool
 	IsClosed() bool
+	GetHTTPRequest() *http.Request
 }
 
 // Represents a user's connection over HTTP.
@@ -106,6 +107,10 @@ func (h *userConnHTTP) ReadRequestParams() map[string]string {
 	return getQueryParams(h.req.URL.Query())
 }
 
+func (h *userConnHTTP) GetHTTPRequest() *http.Request {
+	return h.req
+}
+
 func (w *userConnWS) ReadRequest() ([]byte, error) {
 	_, msg, err := w.conn.ReadMessage()
 	if err != nil {
@@ -164,6 +169,10 @@ func (w *userConnWS) IsClosed() bool {
 
 func (w *userConnWS) ReadRequestParams() map[string]string {
 	return getQueryParams(w.req.URL.Query())
+}
+
+func (w *userConnWS) GetHTTPRequest() *http.Request {
+	return w.req
 }
 
 // Logs the error, prints it to the console, and returns the error over HTTP.

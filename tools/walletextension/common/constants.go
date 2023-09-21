@@ -45,6 +45,7 @@ const (
 	MessageFormatRegex                  = `^Register\s(\w+)\sfor\s(\w+)$`
 	MessageUserIDLen                    = 64
 	SignatureLen                        = 65
+	EthereumAddressLen                  = 42
 	PersonalSignMessagePrefix           = "\x19Ethereum Signed Message:\n%d%s"
 	GetStorageAtUserIDRequestMethodName = "getUserID"
 	SuccessMsg                          = "success"

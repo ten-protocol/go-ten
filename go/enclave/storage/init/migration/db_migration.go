@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"embed"
 	"errors"
+	"fmt"
 	"io/fs"
 	"math/big"
 	"sort"
@@ -15,7 +16,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
 )
 
-const currentFileKey = "CURRENT_FILE"
+const currentMigrationVersionKey = "CURRENT_MIGRATION_VERSION"
 
 func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 	migrationFiles, err := readMigrationFiles(sqlFiles)
@@ -26,9 +27,9 @@ func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 	maxMigration := int64(len(migrationFiles))
 
 	var maxDB int64
-	config, err := enclavedb.FetchConfig(db, currentFileKey)
+	config, err := enclavedb.FetchConfig(db, currentMigrationVersionKey)
 	if err != nil {
-		// first time there is no entry, so we assume 001 was executed already
+		// first time there is no entry, so 001 was executed already ( triggered at launch/manifest time )
 		if errors.Is(err, errutil.ErrNotFound) {
 			maxDB = 1
 		} else {
@@ -47,7 +48,7 @@ func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 		}
 		err = executeMigration(db, string(content), i)
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to execute migration for %s - %w", migrationFiles[i].Name(), err)
 		}
 		logger.Info("Successfully executed", "file", migrationFiles[i].Name(), "index", i)
 	}
@@ -65,7 +66,7 @@ func executeMigration(db *sql.DB, content string, migrationOrder int64) error {
 		return err
 	}
 
-	_, err = enclavedb.WriteConfigToTx(tx, currentFileKey, big.NewInt(migrationOrder).Bytes())
+	_, err = enclavedb.WriteConfigToTx(tx, currentMigrationVersionKey, big.NewInt(migrationOrder).Bytes())
 	if err != nil {
 		return err
 	}

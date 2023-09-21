@@ -64,7 +64,7 @@ async function authenticateAccountWithObscuroGateway(ethereum, account, userID) 
         return "Account is already authenticated"
     }
 
-    const textToSign = "Register " + userID + " for " + account;
+    const textToSign = "Register " + userID + " for " + account.toLowerCase();
     const signature = await ethereum.request({
         method: metamaskPersonalSign,
         params: [textToSign, account]
