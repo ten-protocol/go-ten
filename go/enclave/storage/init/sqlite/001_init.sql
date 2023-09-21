@@ -100,16 +100,11 @@ create index IX_EX_TX1 on exec_tx (tx);
 -- todo denormalize. Extract contract and user table and point topic0 and rel_addreses to it
 create table if not exists events
 (
-    topic0          binary(16) NOT NULL,
-    topic1          binary(16),
-    topic2          binary(16),
-    topic3          binary(16),
-    topic4          binary(16),
-    full_topic0     binary(32) NOT NULL,
-    full_topic1     binary(32),
-    full_topic2     binary(32),
-    full_topic3     binary(32),
-    full_topic4     binary(32),
+    topic0          binary(32) NOT NULL,
+    topic1          binary(32),
+    topic2          binary(32),
+    topic3          binary(32),
+    topic4          binary(32),
     datablob        mediumblob,
     log_idx         int        NOT NULL,
     address         binary(20) NOT NULL,
