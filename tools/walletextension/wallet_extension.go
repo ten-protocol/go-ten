@@ -276,7 +276,7 @@ func (w *WalletExtension) UserHasAccount(hexUserID string, address string) (bool
 		return false, err
 	}
 
-	// check if any of the accounts matches given account
+	// check if any of the account matches given account
 	found := false
 	for _, account := range accounts {
 		if bytes.Equal(account.AccountAddress, addressBytes) {
@@ -286,7 +286,7 @@ func (w *WalletExtension) UserHasAccount(hexUserID string, address string) (bool
 	return found, nil
 }
 
-// DeleteUser deletes user and accounts associated with user from database for given userID
+// DeleteUser deletes user and accounts associated with user from the database for given userID
 func (w *WalletExtension) DeleteUser(hexUserID string) error {
 	userIDBytes, err := common.GetUserIDbyte(hexUserID)
 	if err != nil {
@@ -309,7 +309,23 @@ func (w *WalletExtension) DeleteUser(hexUserID string) error {
 	return nil
 }
 
-// verifySignature checks if message was signed by the correct address and if signature is valid
+func (w *WalletExtension) UserExists(hexUserID string) bool {
+	userIDBytes, err := common.GetUserIDbyte(hexUserID)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID, err).Error())
+		return false
+	}
+
+	key, err := w.storage.GetUserPrivateKey(userIDBytes)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error getting user's private key (%s), %w", hexUserID, err).Error())
+		return false
+	}
+
+	return len(key) > 0
+}
+
+// verifySignature checks if a message was signed by the correct address and if signature is valid
 func verifySignature(message string, signature []byte, address gethcommon.Address) (bool, error) {
 	// prefix the message like in the personal_sign method
 	prefixedMessage := fmt.Sprintf(common.PersonalSignMessagePrefix, len(message), message)

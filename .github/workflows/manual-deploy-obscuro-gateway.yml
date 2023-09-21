@@ -34,7 +34,7 @@ jobs:
         if: ${{ github.event.inputs.testnet_type == 'testnet' }}
         run: |
           echo "OBSCURO_GATEWAY_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_testnet:latest" >> $GITHUB_ENV
-          echo "OBSCURO_GATEWAY_NODE_HOST=testnet.obscu.ro" >> $GITHUB_ENV
+          echo "OBSCURO_GATEWAY_NODE_HOST=erpc.testnet.obscu.ro" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=testnet" >> $GITHUB_ENV
           echo "RESOURCE_TAG_NAME=obscurogatewaytestnetlatest" >> $GITHUB_ENV
 
@@ -42,7 +42,7 @@ jobs:
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
         run: |
           echo "OBSCURO_GATEWAY_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_obscuro_gateway_testnet:latest" >> $GITHUB_ENV
-          echo "OBSCURO_GATEWAY_NODE_HOST=dev-testnet.obscu.ro" >> $GITHUB_ENV
+          echo "OBSCURO_GATEWAY_NODE_HOST=erpc.dev-testnet.obscu.ro" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=dev-testnet" >> $GITHUB_ENV
           echo "RESOURCE_TAG_NAME=obscurogatewaydevtestnetlatest" >> $GITHUB_ENV
 

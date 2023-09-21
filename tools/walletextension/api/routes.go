@@ -156,9 +156,9 @@ func ethRequestHandler(walletExt *walletextension.WalletExtension, conn userconn
 		return
 	}
 
-	// Get userID
+	// Get userID and check if user exists (if not - use default user)
 	hexUserID, err := getQueryParameter(conn.ReadRequestParams(), common.UserQueryParameter)
-	if err != nil {
+	if err != nil || !walletExt.UserExists(hexUserID) {
 		walletExt.Logger().Error(fmt.Errorf("user not found in the query params: %w. Using the default user", err).Error())
 		hexUserID = hex.EncodeToString([]byte(common.DefaultUser)) // todo (@ziga) - this can be removed once old WE endpoints are removed
 	}
