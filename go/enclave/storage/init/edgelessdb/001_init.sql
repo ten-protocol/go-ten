@@ -47,6 +47,7 @@ create table if not exists obsdb.l1_msg
     id      INTEGER AUTO_INCREMENT,
     message varbinary(1024) NOT NULL,
     block   binary(32)      NOT NULL,
+    is_transfer boolean NOT NULL,
     INDEX (block),
     primary key (id)
 );
