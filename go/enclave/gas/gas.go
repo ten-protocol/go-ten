@@ -34,7 +34,7 @@ func (gp *ObscuroGasPool) ForTransaction(tx *types.Transaction) (*gethcore.GasPo
 // CalculateL1GasUsed - calculates the gas cost of having a transaction on the l1.
 func CalculateL1GasUsed(data []byte, overhead *big.Int) *big.Int {
 	reducedTxSize := uint64(len(data))
-	reducedTxSize = (reducedTxSize * 75) / 100
+	reducedTxSize = (reducedTxSize * 90) / 100
 	reducedTxSize = reducedTxSize * params.TxDataNonZeroGasEIP2028
 
 	l1Gas := new(big.Int).SetUint64(reducedTxSize)
