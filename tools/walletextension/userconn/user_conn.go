@@ -91,7 +91,7 @@ func (h *userConnHTTP) WriteResponse(msg []byte) error {
 }
 
 func (h *userConnHTTP) HandleError(msg string) {
-	h.logger.Error(msg)
+	h.logger.Error(fmt.Sprintf("Handling HTTP user error - %s", msg))
 	httpLogAndSendErr(h.resp, msg)
 }
 
@@ -139,7 +139,7 @@ func (w *userConnWS) WriteResponse(msg []byte) error {
 
 // HandleError logs and prints the error, and writes it to the websocket as a JSON object with a single key, "error".
 func (w *userConnWS) HandleError(msg string) {
-	w.logger.Error(msg)
+	w.logger.Error(fmt.Sprintf("Handling WS user error - %s", msg))
 
 	errMsg, err := json.Marshal(map[string]interface{}{
 		common.JSONKeyErr: msg,
