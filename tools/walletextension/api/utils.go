@@ -3,10 +3,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
-	"strings"
 )
 
 func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
@@ -59,7 +60,7 @@ func getUserID(conn userconn.UserConn, userIDPosition int) (string, error) {
 	}
 
 	// Alternatively, try to get it from URL path
-	path := conn.GetHttpRequest().URL.Path
+	path := conn.GetHTTPRequest().URL.Path
 	path = strings.Trim(path, "/")
 	parts := strings.Split(path, "/")
 

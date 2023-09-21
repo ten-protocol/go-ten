@@ -31,7 +31,7 @@ type UserConn interface {
 	HandleError(msg string)
 	SupportsSubscriptions() bool
 	IsClosed() bool
-	GetHttpRequest() *http.Request
+	GetHTTPRequest() *http.Request
 }
 
 // Represents a user's connection over HTTP.
@@ -107,7 +107,7 @@ func (h *userConnHTTP) ReadRequestParams() map[string]string {
 	return getQueryParams(h.req.URL.Query())
 }
 
-func (h *userConnHTTP) GetHttpRequest() *http.Request {
+func (h *userConnHTTP) GetHTTPRequest() *http.Request {
 	return h.req
 }
 
@@ -171,7 +171,7 @@ func (w *userConnWS) ReadRequestParams() map[string]string {
 	return getQueryParams(w.req.URL.Query())
 }
 
-func (w *userConnWS) GetHttpRequest() *http.Request {
+func (w *userConnWS) GetHTTPRequest() *http.Request {
 	return w.req
 }
 
