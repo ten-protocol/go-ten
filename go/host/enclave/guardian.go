@@ -521,7 +521,7 @@ func (g *Guardian) periodicRollupProduction() { //nolint:gocognit
 	defer g.logger.Info("Stopping rollup production")
 
 	// rollup at least at every g.rollupInterval
-	rollupInterval := 17 * time.Second
+	rollupInterval := g.rollupInterval
 	if rollupInterval == 0 {
 		g.logger.Crit("invalid rollup interval 0")
 	}
@@ -538,21 +538,18 @@ func (g *Guardian) periodicRollupProduction() { //nolint:gocognit
 				g.logger.Debug("skipping rollup production because L1 is not up to date", "state", g.state)
 				continue
 			}
-			lastBatchNo, err := g.sl.L1Publisher().FetchLatestSeqNo()
+
+			fromBatch, err := g.getLastestBatchNo()
 			if err != nil {
 				g.logger.Warn("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
 				continue
-			}
-			fromBatch := lastBatchNo.Uint64()
-			if lastBatchNo.Uint64() > common.L2GenesisSeqNo {
-				fromBatch++
 			}
 
 			producedRollup, err := g.enclaveClient.CreateRollup(fromBatch)
 			if err != nil {
 				g.logger.Error("unable to produce rollup", log.ErrKey, err)
 			} else {
-				fmt.Println(time.Now().String(), " - PRODUCING rollup from config'd rollupInterval - lastBatchNo: ", lastBatchNo)
+				fmt.Println(time.Now().String(), " - PRODUCING rollup from config'd rollupInterval - lastBatchNo: ", fromBatch)
 				g.sl.L1Publisher().PublishRollup(producedRollup)
 				fmt.Println(time.Now().String(), " - FINISHED PRODUCED rollup from config'd rollupInterval ")
 			}
@@ -563,16 +560,14 @@ func (g *Guardian) periodicRollupProduction() { //nolint:gocognit
 				g.logger.Debug("skipping rollup production because L1 is not up to date", "state", g.state)
 				continue
 			}
-			lastBatchNo, err := g.sl.L1Publisher().FetchLatestSeqNo()
+
+			fromBatch, err := g.getLastestBatchNo()
 			if err != nil {
 				g.logger.Warn("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
 				continue
 			}
-			fmt.Println(time.Now().String(), " - 5sec rollup creation CHECK - lastBatchNo: ", lastBatchNo)
-			fromBatch := lastBatchNo.Uint64()
-			if lastBatchNo.Uint64() > common.L2GenesisSeqNo {
-				fromBatch++
-			}
+
+			fmt.Println(time.Now().String(), " - 5sec rollup creation CHECK - lastBatchNo: ", fromBatch)
 			availBatchesSumSize, err := g.getBatchesAfterSize(fromBatch)
 			if err != nil {
 				g.logger.Error("unable to GetBatchesAfterSize rollup", log.ErrKey, err)
@@ -674,4 +669,17 @@ func (g *Guardian) getBatchesAfterSize(seqNo uint64) (uint64, error) {
 	}
 
 	return size, nil
+}
+
+func (g *Guardian) getLastestBatchNo() (uint64, error) {
+	lastBatchNo, err := g.sl.L1Publisher().FetchLatestSeqNo()
+	if err != nil {
+		fmt.Println(err)
+		return 0, err
+	}
+	fromBatch := lastBatchNo.Uint64()
+	if lastBatchNo.Uint64() > common.L2GenesisSeqNo {
+		fromBatch++
+	}
+	return fromBatch, nil
 }
