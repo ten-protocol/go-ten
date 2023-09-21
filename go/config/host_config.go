@@ -243,7 +243,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		LogPath:                   "",
 		PrivateKeyString:          "0000000000000000000000000000000000000000000000000000000000000001",
 		L1ChainID:                 1337,
-		ObscuroChainID:            777,
+		ObscuroChainID:            443,
 		ProfilerEnabled:           false,
 		L1StartHash:               common.L1BlockHash{}, // this hash will not be found, host will log a warning and then stream from L1 genesis
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
