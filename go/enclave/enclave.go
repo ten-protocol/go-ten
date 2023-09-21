@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/gas"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
@@ -203,8 +204,9 @@ func NewEnclave(
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
 
-	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, logger)
-	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, &chainConfig, logger)
+	gasOracle := gas.NewGasOracle()
+	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
+	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, &chainConfig, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	registry := components.NewBatchRegistry(storage, logger)
 	rProducer := components.NewRollupProducer(config.SequencerID, dataEncryptionService, config.ObscuroChainID, config.L1ChainID, storage, registry, blockProcessor, logger)
@@ -233,8 +235,11 @@ func NewEnclave(
 			dataEncryptionService,
 			dataCompressionService,
 			nodetype.SequencerSettings{
-				MaxBatchSize:  config.MaxBatchSize,
-				MaxRollupSize: config.MaxRollupSize,
+				MaxBatchSize:      config.MaxBatchSize,
+				MaxRollupSize:     config.MaxRollupSize,
+				GasPaymentAddress: config.GasPaymentAddress,
+				BatchGasLimit:     config.GasLimit,
+				BaseFee:           config.BaseFee,
 			},
 		)
 	} else {
@@ -683,6 +688,8 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 		encodedResult = hexutil.Encode(execResult.ReturnData)
 	}
 
+	e.logger.Info("Call result success ", "result", encodedResult)
+
 	return responses.AsEncryptedResponse(&encodedResult, vkHandler), nil
 }
 
@@ -1045,7 +1052,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
-	gasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.GlobalGasCap)
+	executionGasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.GlobalGasCap)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
@@ -1062,7 +1069,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
-	return responses.AsEncryptedResponse(&gasEstimate, vkHandler), nil
+	return responses.AsEncryptedResponse(&executionGasEstimate, vkHandler), nil
 }
 
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) { //nolint

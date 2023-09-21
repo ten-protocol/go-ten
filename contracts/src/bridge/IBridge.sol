@@ -7,7 +7,8 @@ pragma solidity >=0.7.0 <0.9.0;
 interface IBridge {
     enum Topics {
         TRANSFER,
-        MANAGEMENT
+        MANAGEMENT,
+        VALUE
     }
 
     // Sends the native currency to the other layer. On Layer 1 the native currency is ETH, while on Layer 2 it is OBX.
@@ -35,4 +36,9 @@ interface IBridge {
         uint256 amount,
         address receiver
     ) external;
+
+    struct ValueTransfer {
+        uint256 amount;
+        address recipient;
+    }
 }

@@ -33,8 +33,11 @@ import (
 const RollupDelay = 2 // number of L1 blocks to exclude when creating a rollup. This will minimize compression reorg issues.
 
 type SequencerSettings struct {
-	MaxBatchSize  uint64
-	MaxRollupSize uint64
+	MaxBatchSize      uint64
+	MaxRollupSize     uint64
+	GasPaymentAddress gethcommon.Address
+	BatchGasLimit     *big.Int
+	BaseFee           *big.Int
 }
 
 type sequencer struct {
@@ -120,7 +123,13 @@ func (s *sequencer) CreateBatch() error {
 // won't be committed by the producer.
 func (s *sequencer) initGenesis(block *common.L1Block) error {
 	s.logger.Info("Initializing genesis state", log.BlockHashKey, block.Hash())
-	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(block.Hash(), uint64(time.Now().Unix()))
+	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(
+		block.Hash(),
+		uint64(time.Now().Unix()),
+		s.settings.GasPaymentAddress,
+		s.settings.BaseFee,
+		s.settings.BatchGasLimit,
+	)
 	if err != nil {
 		return err
 	}
@@ -190,7 +199,8 @@ func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash
 		ParentPtr:    headBatch,
 		Transactions: transactions,
 		AtTime:       batchTime,
-		Creator:      s.hostID,
+		Creator:      s.settings.GasPaymentAddress,
+		BaseFee:      s.settings.BaseFee,
 		ChainConfig:  s.chainConfig,
 		SequencerNo:  sequencerNo,
 	})

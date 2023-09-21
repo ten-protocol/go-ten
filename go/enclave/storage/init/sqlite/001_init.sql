@@ -36,7 +36,8 @@ create table if not exists l1_msg
 (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
     message varbinary(1024) NOT NULL,
-    block   binary(32)      NOT NULL REFERENCES block
+    block   binary(32)      NOT NULL REFERENCES block,
+    is_transfer boolean
 );
 
 create table if not exists rollup

@@ -120,12 +120,30 @@ func (m *MessageBusManager) ExtractOutboundMessages(receipts common.L2Receipts) 
 	return messages, nil
 }
 
+// ExtractLocalMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
+func (m *MessageBusManager) ExtractOutboundTransfers(receipts common.L2Receipts) (common.ValueTransferEvents, error) {
+	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &ValueTransferEventID)
+	if err != nil {
+		m.logger.Error("Error extracting logs from L2 message bus!", log.ErrKey, err)
+		return make(common.ValueTransferEvents, 0), err
+	}
+
+	transfers, err := convertLogsToValueTransfers(logs, ValueTransferEventName, MessageBusABI)
+	if err != nil {
+		m.logger.Error("Error converting transfers from L2 message bus!", log.ErrKey, err)
+		return make(common.ValueTransferEvents, 0), err
+	}
+
+	return transfers, nil
+}
+
 // RetrieveInboundMessages - Retrieves the cross chain messages between two blocks.
 // todo (@stefan) - fix ordering of messages, currently it is irrelevant.
 // todo (@stefan) - do not extract messages below their consistency level. Irrelevant security wise.
 // todo (@stefan) - surface errors
-func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, _ *state.StateDB) common.CrossChainMessages {
+func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, _ *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents) {
 	messages := make(common.CrossChainMessages, 0)
+	transfers := make(common.ValueTransferEvents, 0)
 
 	from := fromBlock.Hash()
 	height := fromBlock.NumberU64()
@@ -140,12 +158,19 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 		}
 
 		m.logger.Trace(fmt.Sprintf("Looking for cross chain messages at block %s", b.Hash().Hex()))
+
 		messagesForBlock, err := m.storage.GetL1Messages(b.Hash())
 		if err != nil {
 			m.logger.Crit("Reading the key for the block failed with uncommon reason.", log.ErrKey, err)
 		}
 
+		transfersForBlock, err := m.storage.GetL1Transfers(b.Hash())
+		if err != nil {
+			m.logger.Crit("Unable to get L1 transfers for block that should be there.", log.ErrKey, err)
+		}
+
 		messages = append(messages, messagesForBlock...) // Ordering here might work in POBI, but might be weird for fast finality
+		transfers = append(transfers, transfersForBlock...)
 
 		// No deposits before genesis.
 		if b.NumberU64() < height {
@@ -160,7 +185,13 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 
 	m.logger.Info(fmt.Sprintf("Extracted cross chain messages for block height %d ->%d: %d.", fromBlock.NumberU64(), toBlock.NumberU64(), len(messages)))
 
-	return messages
+	return messages, transfers
+}
+
+func (m *MessageBusManager) ExecuteValueTransfers(transfers common.ValueTransferEvents, rollupState *state.StateDB) {
+	for _, transfer := range transfers {
+		rollupState.AddBalance(transfer.Receiver, transfer.Amount)
+	}
 }
 
 // CreateSyntheticTransactions - generates transactions that the enclave should execute internally for the messages.

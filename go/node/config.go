@@ -45,6 +45,7 @@ type Config struct {
 	hostInMemDB               bool
 	debugNamespaceEnabled     bool
 	profilerEnabled           bool
+	coinbaseAddress           string
 	logLevel                  int
 	isInboundP2PDisabled      bool
 	l1BlockTime               time.Duration
@@ -78,6 +79,10 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 	cfg.LogLevel = c.logLevel
 	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
 	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
+
+	if c.nodeType == "sequencer" && c.coinbaseAddress != "" {
+		cfg.GasPaymentAddress = gethcommon.HexToAddress(c.coinbaseAddress)
+	}
 
 	return cfg
 }
@@ -119,6 +124,12 @@ func (c *Config) UpdateNodeConfig(opts ...Option) *Config {
 	}
 
 	return c
+}
+
+func WithCoinbase(s string) Option {
+	return func(c *Config) {
+		c.coinbaseAddress = s
+	}
 }
 
 func WithNodeName(s string) Option {

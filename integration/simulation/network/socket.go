@@ -94,6 +94,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithManagementContractAddress(simParams.L1SetupData.MgmtContractAddress.String()),
 				node.WithMessageBusContractAddress(simParams.L1SetupData.MessageBusAddr.String()),
 				node.WithNodeType(nodeTypeStr),
+				node.WithCoinbase(simParams.Wallets.L2FeesWallet.Address().Hex()),
 				node.WithL1WebsocketURL(fmt.Sprintf("ws://%s:%d", "127.0.0.1", simParams.StartPort+100)),
 				node.WithInboundP2PDisabled(isInboundP2PDisabled),
 				node.WithLogLevel(4),

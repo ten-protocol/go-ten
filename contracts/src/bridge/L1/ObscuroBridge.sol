@@ -69,16 +69,16 @@ contract ObscuroBridge is
         remoteBridgeAddress = bridge;
     }
 
+    // This cross chain message is specialized and will result in automatic increase
+    // of balance on the other side. 
+    // NOTE: If sent to a contract, there will be no fallback function executed.
+    // Instead after the contract receives it, one can relay the cross chain message to
+    // verify ETH deposit.
     function sendNative(address receiver) external payable override {
         require(msg.value > 0, "Empty transfer.");
-
-        bytes memory data = abi.encodeWithSelector(
-            IBridge.receiveAssets.selector,
-            address(0x0),
-            msg.value,
-            receiver
-        );
-        queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0);
+        bytes memory data = abi.encode(ValueTransfer(msg.value, receiver));
+        queueMessage(remoteBridgeAddress, data, uint32(Topics.VALUE), 0, 0);
+        _messageBus().sendValueToL2{value: msg.value}(receiver, msg.value);
     }
 
     function sendERC20(
@@ -117,7 +117,7 @@ contract ObscuroBridge is
         if (hasRole(ERC20_TOKEN_ROLE, asset)) {
             _receiveTokens(asset, amount, receiver);
         } else if (hasRole(NATIVE_TOKEN_ROLE, asset)) {
-            _receiveNative(amount, receiver);
+            _receiveNative(receiver);
         } else {
             revert("Attempting to withdraw unknown asset.");
         }
@@ -131,8 +131,8 @@ contract ObscuroBridge is
         SafeERC20.safeTransfer(IERC20(asset), receiver, amount);
     }
 
-    function _receiveNative(uint256 amount, address receiver) private {
-        (bool sent, ) = receiver.call{value: amount}("");
+    function _receiveNative(address receiver) private {
+        (bool sent, ) = receiver.call("");
         require(sent, "Failed to send Ether");
     }
 }

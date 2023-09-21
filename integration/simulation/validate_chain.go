@@ -8,6 +8,9 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
@@ -48,6 +51,7 @@ const (
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
 // time of the simulation and the average block duration, that all Obscuro nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
+	time.Sleep(2 * time.Second)
 	checkTransactionsInjected(t, s)
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
 	checkObscuroBlockchainValidity(t, s, l1MaxHeight)
@@ -123,6 +127,34 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	}
 }
 
+func checkCollectedL1Fees(t *testing.T, node ethadapter.EthClient, s *Simulation, nodeIdx int, rollupReceipts types.Receipts) {
+	costOfRollups := big.NewInt(0)
+
+	if !s.Params.IsInMem {
+		for _, receipt := range rollupReceipts {
+			block, err := node.EthClient().BlockByHash(context.Background(), receipt.BlockHash)
+			if err != nil {
+				panic(err)
+			}
+
+			txCost := big.NewInt(0).Mul(block.BaseFee(), big.NewInt(0).SetUint64(receipt.GasUsed))
+			costOfRollups.Add(costOfRollups, txCost)
+		}
+
+		l2FeesWallet := s.Params.Wallets.L2FeesWallet
+		obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, l2FeesWallet)
+		feeBalance, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
+		if err != nil {
+			panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
+		}
+
+		// if balance of collected fees is less than cost of published rollups fail
+		if feeBalance.Cmp(costOfRollups) == -1 {
+			t.Errorf("Node %d: Sequencer has collected insufficient fees. Has: %d, needs: %d", nodeIdx, feeBalance, costOfRollups)
+		}
+	}
+}
+
 func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minHeight uint64, s *Simulation, nodeIdx int) uint64 {
 	head, err := node.FetchHeadBlock()
 	if err != nil {
@@ -134,8 +166,10 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeIdx, height, minHeight)
 	}
 
-	deposits, rollups, _, blockCount, _ := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
+	deposits, rollups, _, blockCount, _, rollupReceipts := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
+
+	checkCollectedL1Fees(t, node, s, nodeIdx, rollupReceipts)
 
 	if len(findHashDups(deposits)) > 0 {
 		dups := findHashDups(deposits)
@@ -206,9 +240,10 @@ func ExtractDataFromEthereumChain(
 	node ethadapter.EthClient,
 	s *Simulation,
 	nodeIdx int,
-) ([]gethcommon.Hash, []*common.ExtRollup, *big.Int, int, uint64) {
+) ([]gethcommon.Hash, []*common.ExtRollup, *big.Int, int, uint64, types.Receipts) {
 	deposits := make([]gethcommon.Hash, 0)
 	rollups := make([]*common.ExtRollup, 0)
+	rollupReceipts := make(types.Receipts, 0)
 	totalDeposited := big.NewInt(0)
 
 	blockchain := node.BlocksBetween(startBlock, endBlock)
@@ -241,11 +276,40 @@ func ExtractDataFromEthereumChain(
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
 				rollups = append(rollups, r)
+				rollupReceipts = append(rollupReceipts, receipt)
 				s.Stats.NewRollup(nodeIdx)
 			}
 		}
 	}
-	return deposits, rollups, totalDeposited, len(blockchain), successfulDeposits
+	return deposits, rollups, totalDeposited, len(blockchain), successfulDeposits, rollupReceipts
+}
+
+func verifyGasBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
+	time.Sleep(3 * time.Second)
+	mbusABI, _ := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	gasBridgeRecords := s.TxInjector.TxTracker.GasBridgeTransactions
+	for _, record := range gasBridgeRecords {
+		inputs, err := mbusABI.Methods["sendValueToL2"].Inputs.Unpack(record.L1BridgeTx.Data()[4:])
+		if err != nil {
+			panic(err)
+		}
+
+		receiver := inputs[0].(gethcommon.Address)
+		amount := inputs[1].(*big.Int)
+
+		if receiver != record.ReceiverWallet.Address() {
+			panic("Test setup is broken. Receiver in tx should match recorded wallet.")
+		}
+		obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, record.ReceiverWallet)
+		balance, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
+		if err != nil {
+			panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
+		}
+
+		if balance.Cmp(amount) != 0 {
+			t.Errorf("Node %d: Balance doesnt match the bridged amount. Have: %d, Want: %d", nodeIdx, balance, amount)
+		}
+	}
 }
 
 func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) {
@@ -290,6 +354,8 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	if heightDiff > maxAcceptedDiff || heightDiff < -maxAcceptedDiff {
 		t.Errorf("Node %d: Node's head batch had a height %d, but %s height was %d", nodeIdx, l2Height, rpc.BatchNumber, l2HeightFromBatchNumber)
 	}
+
+	verifyGasBridgeTransactions(t, s, nodeIdx)
 
 	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {

@@ -82,16 +82,16 @@ func createAuthClientsPerWallet(clients []rpc.Client, wallets *params.SimWallets
 	walletClients := make(map[string][]*obsclient.AuthObsClient)
 	// loop through all the L2 wallets we're using and round-robin allocate them the rpc clients we have for each host
 	for _, w := range append(wallets.SimObsWallets, wallets.L2FaucetWallet) {
-		walletClients[w.Address().String()] = createAuthClients(clients, w)
+		walletClients[w.Address().String()] = CreateAuthClients(clients, w)
 	}
 	for _, t := range wallets.Tokens {
 		w := t.L2Owner
-		walletClients[w.Address().String()] = createAuthClients(clients, w)
+		walletClients[w.Address().String()] = CreateAuthClients(clients, w)
 	}
 	return walletClients
 }
 
-func createAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.AuthObsClient {
+func CreateAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.AuthObsClient {
 	authClients := make([]*obsclient.AuthObsClient, len(clients))
 	for i, client := range clients {
 		vk, err := viewingkey.GenerateViewingKeyForWallet(wal)

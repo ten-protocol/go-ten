@@ -51,6 +51,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		params.MgmtContractLib,
 		params.ERC20ContractLib,
 		0,
+		params,
 	)
 
 	simulation := Simulation{

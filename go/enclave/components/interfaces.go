@@ -48,6 +48,7 @@ type BatchExecutionContext struct {
 	Creator      gethcommon.Address
 	ChainConfig  *params.ChainConfig
 	SequencerNo  *big.Int
+	BaseFee      *big.Int
 }
 
 // ComputedBatch - a structure representing the result of a batch
@@ -74,7 +75,7 @@ type BatchExecutor interface {
 	// CreateGenesisState - will create and commit the genesis state in the stateDB for the given block hash,
 	// and uint64 timestamp representing the time now. In this genesis state is where one can
 	// find preallocated funds for faucet. TODO - make this an option
-	CreateGenesisState(common.L1BlockHash, uint64) (*core.Batch, *types.Transaction, error)
+	CreateGenesisState(common.L1BlockHash, uint64, gethcommon.Address, *big.Int, *big.Int) (*core.Batch, *types.Transaction, error)
 }
 
 type BatchRegistry interface {

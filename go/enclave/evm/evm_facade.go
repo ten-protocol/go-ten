@@ -35,9 +35,10 @@ func ExecuteTransactions(
 	storage storage.Storage,
 	chainConfig *params.ChainConfig,
 	fromTxIndex int,
+	noBaseFee bool,
 	logger gethlog.Logger,
 ) map[common.TxHash]interface{} {
-	chain, vmCfg, gp := initParams(storage, true, logger)
+	chain, vmCfg, gp := initParams(storage, noBaseFee, logger)
 	zero := uint64(0)
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
@@ -115,7 +116,7 @@ func executeTransaction(
 	header.MixDigest = before
 	if err != nil {
 		s.RevertToSnapshot(snap)
-		return nil, err
+		return receipt, err
 	}
 
 	return receipt, nil
@@ -146,7 +147,13 @@ func ExecuteObsCall(
 	chainConfig *params.ChainConfig,
 	logger gethlog.Logger,
 ) (*gethcore.ExecutionResult, error) {
-	chain, vmCfg, gp := initParams(storage, true, nil)
+	noBaseFee := true
+	if header.BaseFee != nil && header.BaseFee.Cmp(gethcommon.Big0) != 0 && msg.GasPrice.Cmp(gethcommon.Big0) != 0 {
+		noBaseFee = false
+		logger.Info("ObsCall - with base fee ", "to", msg.To.Hex())
+	}
+
+	chain, vmCfg, gp := initParams(storage, noBaseFee, nil)
 	ethHeader, err := gethencoding.CreateEthHeaderForBatch(header, secret(storage))
 	if err != nil {
 		return nil, err
@@ -179,6 +186,7 @@ func ExecuteObsCall(
 		return result, err
 	}
 
+	logger.Info("ObsCall - with result ", "gas", result.UsedGas)
 	return result, nil
 }
 

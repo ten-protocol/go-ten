@@ -105,6 +105,8 @@ func DeterministicEmptyBatch(
 	block *types.Block,
 	time uint64,
 	sequencerNo *big.Int,
+	baseFee *big.Int,
+	coinbase gethcommon.Address,
 ) *Batch {
 	h := common.BatchHeader{
 		ParentHash:       parent.Hash(),
@@ -112,7 +114,10 @@ func DeterministicEmptyBatch(
 		Number:           big.NewInt(0).Add(parent.Number, big.NewInt(1)),
 		SequencerOrderNo: sequencerNo,
 		// todo (#1548) - Consider how this time should align with the time of the L1 block used as proof.
-		Time: time,
+		Time:     time,
+		BaseFee:  baseFee,
+		Coinbase: coinbase,
+		GasLimit: parent.GasLimit,
 	}
 	b := Batch{
 		Header: &h,

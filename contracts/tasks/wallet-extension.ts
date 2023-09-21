@@ -19,9 +19,9 @@ task("obscuro:wallet-extension:start:local")
 .setAction(async function(args, hre) {
     const nodeUrl = url.parse(args.rpcUrl)
 
-    if (args.withStdOut) {
+/*    if (args.withStdOut) {
         console.log(`Node url = ${JSON.stringify(nodeUrl, null, "  ")}`);
-    }
+    }*/
 
     const walletExtensionPath = path.resolve(hre.config.paths.root, "../tools/walletextension/bin/wallet_extension_linux");
     const weProcess = spawn(walletExtensionPath, [
@@ -149,6 +149,7 @@ task("obscuro:wallet-extension:add-key", "Creates a viewing key for a specifiec 
                 }
             }, (response)=>{
                 if (response.statusCode != 200) {
+                    console.error(response);
                     fail(response.statusCode);
                     return;
                 }
@@ -184,6 +185,7 @@ task("obscuro:wallet-extension:add-key", "Creates a viewing key for a specifiec 
                 if (response.statusCode == 200) { 
                     resolve(response.statusCode);
                 } else {
+                    console.log(response.statusMessage)
                     fail(response.statusCode);
                 }
             });
