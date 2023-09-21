@@ -60,6 +60,9 @@ func getUserID(conn userconn.UserConn, userIDPosition int) (string, error) {
 	}
 
 	// Alternatively, try to get it from URL path
+	// This is a temporary hack to work around hardhat bug which causes hardhat to ignore query parameters.
+	// It is unsafe because https encrypts query parameters,
+	// but not URL itself and will be removed once hardhat bug is resolved.
 	path := conn.GetHTTPRequest().URL.Path
 	path = strings.Trim(path, "/")
 	parts := strings.Split(path, "/")
