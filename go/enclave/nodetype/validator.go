@@ -3,6 +3,7 @@ package nodetype
 import (
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -68,9 +69,8 @@ func (val *obsValidator) OnL1Fork(_ *common.ChainFork) error {
 	return nil
 }
 
-func (val *obsValidator) VerifySequencerSignature(*core.Batch) error {
-	// todo
-	return nil
+func (val *obsValidator) VerifySequencerSignature(b *core.Batch) error {
+	return val.sigValidator.CheckSequencerSignature(b.Hash(), b.Header.R, b.Header.S)
 }
 
 func (val *obsValidator) ExecuteStoredBatches() error {
@@ -129,7 +129,7 @@ func (val *obsValidator) executionPrerequisites(batch *core.Batch) (bool, error)
 }
 
 func (val *obsValidator) handleGenesis(batch *core.Batch) error {
-	genBatch, _, err := val.batchExecutor.CreateGenesisState(batch.Header.L1Proof, batch.Header.Time)
+	genBatch, _, err := val.batchExecutor.CreateGenesisState(batch.Header.L1Proof, batch.Header.Time, batch.Header.Coinbase, batch.Header.BaseFee, big.NewInt(0).SetUint64(batch.Header.GasLimit))
 	if err != nil {
 		return err
 	}

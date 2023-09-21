@@ -34,11 +34,7 @@ type obscuroChain struct {
 
 	logger gethlog.Logger
 
-	// Gas usage values
-	// todo (#627) - use the ethconfig.Config instead
-	GlobalGasCap uint64
-	BaseFee      *big.Int
-	Registry     components.BatchRegistry
+	Registry components.BatchRegistry
 }
 
 func NewChain(
@@ -49,13 +45,11 @@ func NewChain(
 	registry components.BatchRegistry,
 ) ObscuroChain {
 	return &obscuroChain{
-		storage:      storage,
-		chainConfig:  chainConfig,
-		logger:       logger,
-		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
-		BaseFee:      gethcommon.Big0,
-		genesis:      genesis,
-		Registry:     registry,
+		storage:     storage,
+		chainConfig: chainConfig,
+		logger:      logger,
+		genesis:     genesis,
+		Registry:    registry,
 	}
 }
 
@@ -125,12 +119,6 @@ func (oc *obscuroChain) ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *g
 }
 
 func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
-	// todo (#627) - review this during gas mechanics implementation
-	callMsg, err := apiArgs.ToMessage(oc.GlobalGasCap, oc.BaseFee)
-	if err != nil {
-		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
-	}
-
 	// fetch the chain state at given batch
 	blockState, err := oc.Registry.GetBatchStateAtHeight(blockNumber)
 	if err != nil {
@@ -140,6 +128,11 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 	batch, err := oc.Registry.GetBatchAtHeight(*blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
+	}
+
+	callMsg, err := apiArgs.ToMessage(batch.Header.GasLimit, batch.Header.BaseFee)
+	if err != nil {
+		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
 	}
 
 	oc.logger.Trace("Obs_Call: Successful result", "result", gethlog.Lazy{Fn: func() string {
@@ -154,6 +147,7 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 	result, err := evm.ExecuteObsCall(callMsg, blockState, batch.Header, oc.storage, oc.chainConfig, oc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
+		oc.logger.Info("Call failed with error", log.ErrKey, err)
 		return result, err
 	}
 

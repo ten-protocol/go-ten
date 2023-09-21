@@ -105,6 +105,9 @@ type AttestationStorage interface {
 type CrossChainMessagesStorage interface {
 	StoreL1Messages(blockHash common.L1BlockHash, messages common.CrossChainMessages) error
 	GetL1Messages(blockHash common.L1BlockHash) (common.CrossChainMessages, error)
+
+	StoreValueTransfers(blockHash common.L1BlockHash, transfers common.ValueTransferEvents) error
+	GetL1Transfers(blockHash common.L1BlockHash) (common.ValueTransferEvents, error)
 }
 
 type EnclaveKeyStorage interface {

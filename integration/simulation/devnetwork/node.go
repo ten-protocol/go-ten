@@ -157,6 +157,8 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 	hostPort := n.config.PortStart + integration.DefaultHostP2pOffset + n.operatorIdx
 	hostAddr := fmt.Sprintf("%s:%d", network.Localhost, hostPort)
 
+	defaultCfg := config.DefaultEnclaveConfig()
+
 	enclaveConfig := &config.EnclaveConfig{
 		HostID:                    n.l1Wallet.Address(),
 		SequencerID:               n.config.SequencerID,
@@ -176,6 +178,9 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 		DebugNamespaceEnabled:     true,
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,
+		BaseFee:                   defaultCfg.BaseFee, // todo @siliev:: fix test transaction builders so this can be different
+		GasLimit:                  defaultCfg.GasLimit,
+		GasPaymentAddress:         defaultCfg.GasPaymentAddress,
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }

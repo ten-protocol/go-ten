@@ -20,6 +20,13 @@ interface IMessageBus {
         uint8 consistencyLevel
     );
 
+    event ValueTransfer
+    (
+        address sender,
+        address receiver,
+        uint256 amount
+    );
+
     // This method is called from contracts to publish messages to the other linked message bus.
     // nonce - This is provided and serves as deduplication nonce. It can also be used to group a batch of messages together.
     // topic - This is the topic for which the payload is published. 
@@ -34,6 +41,16 @@ interface IMessageBus {
         bytes calldata payload, 
         uint8 consistencyLevel
     ) external returns (uint64 sequence);
+
+    function sendValueToL2(
+        address receiver,
+        uint256 amount
+    ) external payable;
+
+    function receiveValueFromL2(
+        address receiver,
+        uint256 amount
+    ) external;
 
     // This function verifies that a cross chain message provided by the caller has indeed been submitted from the other network
     // and returns true only if the challenge period for the message has passed.

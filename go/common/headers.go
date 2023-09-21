@@ -23,17 +23,18 @@ var hasherPool = sync.Pool{
 // BatchHeader is a public / plaintext struct that holds common properties of batches.
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type BatchHeader struct {
-	ParentHash       L2BatchHash `json:"parentHash"`
-	Root             StateRoot   `json:"stateRoot"`
-	TxHash           common.Hash `json:"transactionsRoot"`
-	ReceiptHash      common.Hash `json:"receiptsRoot"`
-	Number           *big.Int    `json:"number"`           // height of the batch
-	SequencerOrderNo *big.Int    `json:"sequencerOrderNo"` // multiple batches can be created with the same height in case of L1 reorgs. The sequencer is responsible for including all of them in the rollups.
-	GasLimit         uint64      `json:"gasLimit"`
-	GasUsed          uint64      `json:"gasUsed"`
-	Time             uint64      `json:"timestamp"`
-	Extra            []byte      `json:"extraData"`
-	BaseFee          *big.Int    `json:"baseFee"`
+	ParentHash       L2BatchHash    `json:"parentHash"`
+	Root             StateRoot      `json:"stateRoot"`
+	TxHash           common.Hash    `json:"transactionsRoot"`
+	ReceiptHash      common.Hash    `json:"receiptsRoot"`
+	Number           *big.Int       `json:"number"`           // height of the batch
+	SequencerOrderNo *big.Int       `json:"sequencerOrderNo"` // multiple batches can be created with the same height in case of L1 reorgs. The sequencer is responsible for including all of them in the rollups.
+	GasLimit         uint64         `json:"gasLimit"`
+	GasUsed          uint64         `json:"gasUsed"`
+	Time             uint64         `json:"timestamp"`
+	Extra            []byte         `json:"extraData"`
+	BaseFee          *big.Int       `json:"baseFee"`
+	Coinbase         common.Address `json:"coinbase"`
 
 	// The custom Obscuro fields.
 	L1Proof                       L1BlockHash                           `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
@@ -41,6 +42,7 @@ type BatchHeader struct {
 	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *big.Int                              `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
+	TransfersTree                 common.Hash                           `json:"transfersTree"`           // This is a merkle tree of all of the outbound value transfers for the MainNet
 }
 
 // MarshalJSON custom marshals the BatchHeader into a json
@@ -61,11 +63,11 @@ func (b *BatchHeader) MarshalJSON() ([]byte, error) {
 		(*Alias)(b),
 		b.Hash(),
 		nil,
+		&b.Coinbase,
 		nil,
 		nil,
 		nil,
-		nil,
-		nil,
+		b.BaseFee,
 	})
 }
 
@@ -89,6 +91,10 @@ type CalldataRollupHeader struct {
 	FirstBatchSequence    *big.Int
 	FirstCanonBatchHeight *big.Int
 	FirstCanonParentHash  L2BatchHash
+
+	Coinbase common.Address
+	BaseFee  *big.Int
+	GasLimit uint64
 
 	StartTime       uint64
 	BatchTimeDeltas [][]byte // todo - minimize assuming a default of 1 sec and then store only exceptions

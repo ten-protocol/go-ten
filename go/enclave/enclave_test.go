@@ -38,7 +38,7 @@ const _testEnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a04
 // _successfulRollupGasPrice can be deterministically calculated when evaluating the management smart contract.
 // It should change only when there are changes to the smart contract or if the gas estimation algorithm is modified.
 // Other changes would mean something is broken.
-const _successfulRollupGasPrice = 317480
+const _successfulRollupGasPrice = 336360
 
 var _enclavePubKey *ecies.PublicKey
 

@@ -68,7 +68,16 @@ func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, 
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
 func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
-	return (*hexutil.Big)(big.NewInt(1)), nil
+	header, err := api.host.DB().GetHeadBatchHeader()
+	if err != nil {
+		return nil, err
+	}
+
+	if header.BaseFee == nil || header.BaseFee.Cmp(gethcommon.Big0) == 0 {
+		return (*hexutil.Big)(big.NewInt(1)), nil
+	}
+
+	return (*hexutil.Big)(big.NewInt(0).Set(header.BaseFee)), nil
 }
 
 // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to the
@@ -178,6 +187,7 @@ func (api *EthereumAPI) GetStorageAt(_ context.Context, encryptedParams common.E
 // rpc.DecimalOrHex -> []byte
 func (api *EthereumAPI) FeeHistory(context.Context, []byte, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
 	// todo (#1621) - return a non-dummy fee history
+
 	return &FeeHistoryResult{
 		OldestBlock:  (*hexutil.Big)(big.NewInt(0)),
 		Reward:       [][]*hexutil.Big{},

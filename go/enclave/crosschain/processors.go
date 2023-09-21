@@ -24,7 +24,7 @@ func New(
 ) *Processors {
 	processors := Processors{}
 	processors.Local = NewObscuroMessageBusManager(storage, chainID, logger)
-	processors.Remote = NewBlockMessageExtractor(l1BusAddress, processors.Local.GetBusAddress(), storage, logger)
+	processors.Remote = NewBlockMessageExtractor(l1BusAddress, storage, logger)
 	return &processors
 }
 
