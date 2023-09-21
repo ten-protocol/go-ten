@@ -117,4 +117,5 @@ jobs:
                 -e MARIADB_USER=obscurouser \
                 -e MARIADB_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }} \
                 -v /home/obscuro/go-obscuro/tools/walletextension/storage/database/001_init.sql:/docker-entrypoint-initdb.d/schema.sql \
-                mariadb:11.1.2-jammy'
+                mariadb:11.1.2-jammy \
+                --max_password_errors=2'
