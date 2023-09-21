@@ -127,6 +127,6 @@ contract MessageBus is IMessageBus, Ownable {
     }
 
     receive() external payable {
-        revert("the Wormhole contract does not accept assets");
+        this.sendValueToL2{value: msg.value}(msg.sender, msg.value);
     }
 }
