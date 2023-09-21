@@ -11,7 +11,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const messageBusAddress = process.env.MESSAGE_BUS_ADDRESS || "0x3FA8A7A039519602eBA00D443a14C0eb2358359a"
 
     const messageBus = (await hre.ethers.getContractFactory('MessageBus')).attach(messageBusAddress)
-    const prefundAmount = hre.ethers.utils.parseEther("2");
+    const prefundAmount = hre.ethers.utils.parseEther("0.5");
     const tx = await messageBus.populateTransaction.sendValueToL2(deployer, prefundAmount, {
         value: prefundAmount
     });
