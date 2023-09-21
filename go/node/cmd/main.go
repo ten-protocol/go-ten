@@ -35,6 +35,7 @@ func main() {
 		node.WithInboundP2PDisabled(cliConfig.isInboundP2PDisabled),
 		node.WithBatchInterval(cliConfig.batchInterval),
 		node.WithRollupInterval(cliConfig.rollupInterval),
+		node.WithL1ChainID(cliConfig.l1ChainID),
 	)
 
 	dockerNode := node.NewDockerNode(nodeCfg)
