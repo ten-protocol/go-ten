@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	baseEventsQuerySelect      = "select topic0, topic1, topic2, topic3, topic4, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, address"
-	baseDebugEventsQuerySelect = "select rel_address1, rel_address2, rel_address3, rel_address4, lifecycle_event, topic0, topic1, topic2, topic3, topic4, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, address"
-	baseEventsJoin             = "from events e join exec_tx extx on e.exec_tx_id=extx.id join tx on extx.tx=tx.hash join batch b on extx.batch=b.hash where b.is_canonical=true "
+	baseEventsQuerySelect      = "select topic0, topic1, topic2, topic3, topic4, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address"
+	baseDebugEventsQuerySelect = "select rel_address1, rel_address2, rel_address3, rel_address4, lifecycle_event, topic0, topic1, topic2, topic3, topic4, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address"
+	baseEventsJoin             = "from events e join exec_tx extx on e.exec_tx_id=extx.id join tx on extx.tx=tx.hash join batch b on extx.batch=b.sequence where b.is_canonical=true "
 	insertEvent                = "insert into events values "
 	insertEventValues          = "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 	orderBy                    = " order by b.height, tx.idx asc"
@@ -27,7 +27,7 @@ func StoreEventLogs(dbtx DBTransaction, receipts []*types.Receipt, stateDB *stat
 	totalLogs := 0
 	for _, receipt := range receipts {
 		for _, l := range receipt.Logs {
-			logArgs, err := writeLog(dbtx.GetDB(), l, receipt, stateDB)
+			logArgs, err := logDBValues(dbtx.GetDB(), l, receipt, stateDB)
 			if err != nil {
 				return err
 			}
@@ -49,7 +49,7 @@ func StoreEventLogs(dbtx DBTransaction, receipts []*types.Receipt, stateDB *stat
 // The other 4 topics are set by the programmer
 // According to the data relevancy rules, an event is relevant to accounts referenced directly in topics
 // If the event is not referring any user address, it is considered a "lifecycle event", and is relevant to everyone
-func writeLog(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *state.StateDB) ([]any, error) {
+func logDBValues(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *state.StateDB) ([]any, error) {
 	// The topics are stored in an array with a maximum of 5 entries, but usually less
 	var t0, t1, t2, t3, t4 []byte
 
@@ -133,15 +133,15 @@ func FilterLogs(
 	db *sql.DB,
 	requestingAccount *gethcommon.Address,
 	fromBlock, toBlock *big.Int,
-	blockHash *common.L2BatchHash,
+	batchHash *common.L2BatchHash,
 	addresses []gethcommon.Address,
 	topics [][]gethcommon.Hash,
 ) ([]*types.Log, error) {
 	queryParams := []any{}
 	query := ""
-	if blockHash != nil {
+	if batchHash != nil {
 		query += " AND b.hash = ?"
-		queryParams = append(queryParams, blockHash.Bytes())
+		queryParams = append(queryParams, truncTo16(*batchHash))
 	}
 
 	// ignore negative numbers
@@ -184,7 +184,7 @@ func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error
 
 	query := baseDebugEventsQuerySelect + " " + baseEventsJoin + "AND tx.hash = ?"
 
-	queryParams = append(queryParams, txHash.Bytes())
+	queryParams = append(queryParams, truncTo16(txHash))
 
 	result := make([]*tracers.DebugLogs, 0)
 
