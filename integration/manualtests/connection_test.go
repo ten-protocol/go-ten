@@ -11,39 +11,45 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/stretchr/testify/require"
-	"github.com/valyala/fasthttp"
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSubscribeToOG(t *testing.T) {
-	if os.Getenv(_IDEFlag) == "" {
-		t.Skipf("set flag %s to run this test in the IDE", _IDEFlag)
-	}
-	
+	//if os.Getenv(_IDEFlag) == "" {
+	//	t.Skipf("set flag %s to run this test in the IDE", _IDEFlag)
+	//}
+
 	// Using http
-	ogHTTPAddress := "dev-testnet.obscu.ro:443"
+	//ogHTTPAddress := "dev-testnet.obscu.ro:443"
 	ogWSAddress := "dev-testnet.obscu.ro:81"
+	//ogWSAddress := "51.132.131.47:81"
 
-	// join the network
-	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("https://%s/join/", ogHTTPAddress))
-	require.NoError(t, err) // dialing to the given TCP address timed out
-	fmt.Println(statusCode)
-	fmt.Println(body)
-
-	// sign the message
-	messagePayload := signMessage(string(body))
-
-	// register an account
-	body, err = registerAccount(ogHTTPAddress, messagePayload)
-	require.NoError(t, err)
-	fmt.Println(body)
+	//// join the network
+	//statusCode, userID, err := fasthttp.Get(nil, fmt.Sprintf("https://%s/v1/join/", ogHTTPAddress))
+	//require.NoError(t, err) // dialing to the given TCP address timed out
+	//fmt.Println(statusCode)
+	//fmt.Println(userID)
+	//
+	//// sign the message
+	//messagePayload := signMessage(string(userID))
+	//
+	//// register an account
+	//var regAccountResp []byte
+	//regAccountResp, err = registerAccount(ogHTTPAddress, string(userID), messagePayload)
+	//require.NoError(t, err)
+	//fmt.Println(regAccountResp)
 
 	// Using WS ->
+
+	for i := 0; i < 50; i++ {
+		ethclient.Dial("ws://" + ogWSAddress)
+		time.Sleep(100 * time.Millisecond)
+	}
 
 	// Connect to WebSocket server using the standard geth client
 	client, err := ethclient.Dial("ws://" + ogWSAddress)
@@ -80,11 +86,11 @@ func TestSubscribeToOG(t *testing.T) {
 	}
 }
 
-func registerAccount(baseAddress, payload string) ([]byte, error) {
+func registerAccount(baseAddress, userID, payload string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		http.MethodPost,
-		"https://"+baseAddress+"/authenticate/",
+		"https://"+baseAddress+"/authenticate/?u="+userID,
 		strings.NewReader(payload),
 	)
 	if err != nil {
