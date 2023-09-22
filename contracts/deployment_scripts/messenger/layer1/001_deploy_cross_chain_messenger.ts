@@ -14,7 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deployer } = await hre.companionNetworks.layer1.getNamedAccounts();
 
     // Read the message bus address from the management contract deployment.
-    const messageBusAddress : string = process.env.MESSAGE_BUS_ADDRESS || "0x3FA8A7A039519602eBA00D443a14C0eb2358359a"
+    const messageBusAddress : string = process.env.MESSAGE_BUS_ADDRESS!!
     console.log(`Message Bus address ${messageBusAddress}`);
 
     // Setup the cross chain messenger and point it to the message bus from the management contract to be used for validation
