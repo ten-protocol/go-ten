@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/tls"
 	"embed"
 	"fmt"
 	"io/fs"
@@ -88,5 +89,10 @@ func createWSServer(address string, routes []Route) *http.Server {
 		serveMux.HandleFunc(route.Name, route.Func)
 	}
 
-	return &http.Server{Addr: address, Handler: serveMux, ReadHeaderTimeout: 10 * time.Second}
+	return &http.Server{
+		Addr:              address,
+		Handler:           serveMux,
+		ReadHeaderTimeout: 10 * time.Second,
+		TLSNextProto:      make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
+	}
 }
