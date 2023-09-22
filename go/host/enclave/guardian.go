@@ -62,6 +62,7 @@ type Guardian struct {
 
 	batchInterval  time.Duration
 	rollupInterval time.Duration
+	blockTime      time.Duration
 	l1StartHash    gethcommon.Hash
 	maxRollupSize  uint64
 
@@ -80,6 +81,7 @@ func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator 
 		rollupInterval:  cfg.RollupInterval,
 		l1StartHash:     cfg.L1StartHash,
 		maxRollupSize:   cfg.MaxRollupSize,
+		blockTime:       cfg.L1BlockTime,
 		db:              db,
 		hostInterrupter: interrupter,
 		logger:          logger,
@@ -517,81 +519,50 @@ func (g *Guardian) periodicBatchProduction() {
 	}
 }
 
-func (g *Guardian) periodicRollupProduction() { //nolint:gocognit
+func (g *Guardian) periodicRollupProduction() {
 	defer g.logger.Info("Stopping rollup production")
 
-	// rollup at least at every g.rollupInterval
-	rollupInterval := g.rollupInterval
-	if rollupInterval == 0 {
-		g.logger.Crit("invalid rollup interval 0")
-	}
-	rollupIntervalBasedTicker := time.NewTicker(rollupInterval)
-
-	// every 5sec check if it should create a new rollup
-	rollupSizeCheckTicker := time.NewTicker(5 * time.Second)
+	// check rollup every l1 block time
+	rollupCheckTicker := time.NewTicker(g.blockTime)
+	lastSuccessfulRollup := time.Now()
 
 	for {
 		select {
-		case <-rollupIntervalBasedTicker.C:
+		case <-rollupCheckTicker.C:
 			if !g.state.IsUpToDate() {
 				// if we're behind the L1, we don't want to produce rollups
 				g.logger.Debug("skipping rollup production because L1 is not up to date", "state", g.state)
 				continue
 			}
 
-			fromBatch, err := g.getLastestBatchNo()
+			fromBatch, err := g.getLatestBatchNo()
 			if err != nil {
 				g.logger.Warn("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
 				continue
 			}
 
-			producedRollup, err := g.enclaveClient.CreateRollup(fromBatch)
-			if err != nil {
-				g.logger.Error("unable to produce rollup", log.ErrKey, err)
-			} else {
-				fmt.Println(time.Now().String(), " - PRODUCING rollup from config'd rollupInterval - lastBatchNo: ", fromBatch)
-				g.sl.L1Publisher().PublishRollup(producedRollup)
-				fmt.Println(time.Now().String(), " - FINISHED PRODUCED rollup from config'd rollupInterval ")
-			}
-
-		case <-rollupSizeCheckTicker.C:
-			if !g.state.IsUpToDate() {
-				// if we're behind the L1, we don't want to produce rollups
-				g.logger.Debug("skipping rollup production because L1 is not up to date", "state", g.state)
-				continue
-			}
-
-			fromBatch, err := g.getLastestBatchNo()
-			if err != nil {
-				g.logger.Warn("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
-				continue
-			}
-
-			fmt.Println(time.Now().String(), " - 5sec rollup creation CHECK - lastBatchNo: ", fromBatch)
-			availBatchesSumSize, err := g.getBatchesAfterSize(fromBatch)
+			availBatchesSumSize, err := g.calculateNonRolledupBatchesSize(fromBatch)
 			if err != nil {
 				g.logger.Error("unable to GetBatchesAfterSize rollup", log.ErrKey, err)
-				continue
 			}
 
-			fmt.Println(time.Now().String(), " - Sum of bytes of Batches not yet rolled up: - ", availBatchesSumSize, " bytes")
-			if availBatchesSumSize >= g.maxRollupSize {
+			// produce and issue rollup when either:
+			// it has passed g.rollupInterval from last lastSuccessfulRollup
+			// or the size of accumulated batches is > g.maxRollupSize
+			if time.Since(lastSuccessfulRollup) > g.rollupInterval || availBatchesSumSize >= g.maxRollupSize {
 				producedRollup, err := g.enclaveClient.CreateRollup(fromBatch)
 				if err != nil {
-					g.logger.Error("unable to produce rollup", log.ErrKey, err)
-				} else {
-					fmt.Println(time.Now().String(), " - PRODUCING rollup from 5sec check ")
-					g.sl.L1Publisher().PublishRollup(producedRollup)
+					g.logger.Error("unable to create rollup", "batchSeqNo", fromBatch)
+					continue
 				}
-				rollupSizeCheckTicker.Reset(5 * time.Second)
-				rollupIntervalBasedTicker.Reset(rollupInterval)
-				fmt.Println(time.Now().String(), " - FINISHED PRODUCING rollup from 5sec check ")
+				// this method waits until the receipt is received
+				g.sl.L1Publisher().PublishRollup(producedRollup)
+				lastSuccessfulRollup = time.Now()
 			}
 
 		case <-g.hostInterrupter.Done():
 			// interrupted - end periodic process
-			rollupIntervalBasedTicker.Stop()
-			rollupSizeCheckTicker.Stop()
+			rollupCheckTicker.Stop()
 			return
 		}
 	}
@@ -647,8 +618,12 @@ func (g *Guardian) streamEnclaveData() {
 	}
 }
 
-func (g *Guardian) getBatchesAfterSize(seqNo uint64) (uint64, error) {
+func (g *Guardian) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error) {
 	var size uint64
+
+	if seqNo == 0 { // don't calculate for seqNo 0 batches
+		return 0, nil
+	}
 
 	currentNo := seqNo
 	for {
@@ -671,10 +646,9 @@ func (g *Guardian) getBatchesAfterSize(seqNo uint64) (uint64, error) {
 	return size, nil
 }
 
-func (g *Guardian) getLastestBatchNo() (uint64, error) {
+func (g *Guardian) getLatestBatchNo() (uint64, error) {
 	lastBatchNo, err := g.sl.L1Publisher().FetchLatestSeqNo()
 	if err != nil {
-		fmt.Println(err)
 		return 0, err
 	}
 	fromBatch := lastBatchNo.Uint64()
