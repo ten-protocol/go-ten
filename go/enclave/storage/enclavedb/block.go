@@ -39,14 +39,14 @@ func WriteBlock(dbtx DBTransaction, b *types.Header) error {
 
 	var parentBytes []byte
 	if b.Number.Uint64() > 1 {
-		parentBytes = b.ParentHash.Bytes()
+		parentBytes = truncTo16(b.ParentHash)
 	}
 	dbtx.ExecuteSQL(blockInsert,
-		b.Hash().Bytes(),
-		parentBytes,
-		true,
-		header,
-		b.Number.Uint64(),
+		truncTo16(b.Hash()), // hash
+		parentBytes,         // parent
+		true,                // is_canonical
+		header,              // header
+		b.Number.Uint64(),   // height
 	)
 	return nil
 }
@@ -70,19 +70,19 @@ func updateCanonicalValue(dbtx DBTransaction, isCanonical bool, values []common.
 	args := make([]any, 0)
 	args = append(args, isCanonical)
 	for _, value := range values {
-		args = append(args, value.Bytes())
+		args = append(args, truncTo16(value))
 	}
 	dbtx.ExecuteSQL(updateBlocks, args...)
 	dbtx.ExecuteSQL(updateBatches, args...)
 }
 
-func FetchBlockHeader(db *sql.DB, hash common.L2BatchHash) (*types.Header, error) {
-	return fetchBlockHeader(db, " where hash=?", hash.Bytes())
+func FetchBlockHeader(db *sql.DB, hash common.L1BlockHash) (*types.Header, error) {
+	return fetchBlockHeader(db, " where hash=?", truncTo16(hash))
 }
 
 // todo - remove this. For now creates a "block" but without a body.
-func FetchBlock(db *sql.DB, hash common.L2BatchHash) (*types.Block, error) {
-	return fetchBlock(db, " where hash=?", hash.Bytes())
+func FetchBlock(db *sql.DB, hash common.L1BlockHash) (*types.Block, error) {
+	return fetchBlock(db, " where hash=?", truncTo16(hash))
 }
 
 func FetchHeadBlock(db *sql.DB) (*types.Block, error) {
@@ -105,7 +105,7 @@ func WriteL1Messages[T any](db *sql.DB, blockHash common.L1BlockHash, messages [
 			return err
 		}
 		args = append(args, data)
-		args = append(args, blockHash.Bytes())
+		args = append(args, truncTo16(blockHash))
 		args = append(args, isValueTransfer)
 	}
 	if len(messages) > 0 {
@@ -118,7 +118,7 @@ func WriteL1Messages[T any](db *sql.DB, blockHash common.L1BlockHash, messages [
 func FetchL1Messages[T any](db *sql.DB, blockHash common.L1BlockHash, isTransfer bool) ([]T, error) {
 	var result []T
 	query := selectL1Msg + " where block = ? and is_transfer = ?"
-	rows, err := db.Query(query, blockHash.Bytes(), isTransfer)
+	rows, err := db.Query(query, truncTo16(blockHash), isTransfer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -153,11 +153,11 @@ func WriteRollup(dbtx DBTransaction, rollup *common.RollupHeader, internalHeader
 		return fmt.Errorf("could not encode batch header. Cause: %w", err)
 	}
 	dbtx.ExecuteSQL(rollupInsert,
-		rollup.Hash(),
+		truncTo16(rollup.Hash()),
 		internalHeader.FirstBatchSequence.Uint64(),
 		rollup.LastBatchSeqNo,
 		data,
-		rollup.CompressionL1Head.Bytes(),
+		truncTo16(rollup.CompressionL1Head),
 	)
 	return nil
 }
@@ -170,7 +170,7 @@ func FetchReorgedRollup(db *sql.DB, reorgedBlocks []common.L1BlockHash) (*common
 
 	args := make([]any, 0)
 	for _, value := range reorgedBlocks {
-		args = append(args, value.Bytes())
+		args = append(args, truncTo16(value))
 	}
 	rollup := new(common.L2BatchHash)
 	err := db.QueryRow(query, args...).Scan(&rollup)

@@ -150,7 +150,6 @@ func ExecuteObsCall(
 	noBaseFee := true
 	if header.BaseFee != nil && header.BaseFee.Cmp(gethcommon.Big0) != 0 && msg.GasPrice.Cmp(gethcommon.Big0) != 0 {
 		noBaseFee = false
-		logger.Info("ObsCall - with base fee ", "to", msg.To.Hex())
 	}
 
 	chain, vmCfg, gp := initParams(storage, noBaseFee, nil)
@@ -186,7 +185,6 @@ func ExecuteObsCall(
 		return result, err
 	}
 
-	logger.Info("ObsCall - with result ", "gas", result.UsedGas)
 	return result, nil
 }
 

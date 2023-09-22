@@ -518,7 +518,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 	}
 
 	if err = e.service.SubmitTransaction(decryptedTx); err != nil {
-		e.logger.Warn("Could not submit transaction", log.TxKey, decryptedTx.Hash(), log.ErrKey, err)
+		e.logger.Debug("Could not submit transaction", log.TxKey, decryptedTx.Hash(), log.ErrKey, err)
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
@@ -687,8 +687,6 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 	if len(execResult.ReturnData) != 0 {
 		encodedResult = hexutil.Encode(execResult.ReturnData)
 	}
-
-	e.logger.Info("Call result success ", "result", encodedResult)
 
 	return responses.AsEncryptedResponse(&encodedResult, vkHandler), nil
 }

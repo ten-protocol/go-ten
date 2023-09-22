@@ -51,10 +51,15 @@ type Config struct {
 	l1BlockTime               time.Duration
 	batchInterval             string
 	rollupInterval            string
+	l1ChainID                 int
 }
 
 func NewNodeConfig(opts ...Option) *Config {
-	defaultConfig := &Config{}
+	defaultConfig := &Config{
+		batchInterval:  "1s",
+		rollupInterval: "3s",
+		l1ChainID:      1337,
+	}
 
 	for _, opt := range opts {
 		opt(defaultConfig)
@@ -114,6 +119,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.SequencerID = gethcommon.HexToAddress(c.sequencerID)
 	cfg.IsInboundP2PDisabled = c.isInboundP2PDisabled
 	cfg.L1BlockTime = c.l1BlockTime
+	cfg.L1ChainID = int64(c.l1ChainID)
 
 	return cfg
 }
@@ -309,5 +315,11 @@ func WithBatchInterval(d string) Option {
 func WithRollupInterval(d string) Option {
 	return func(c *Config) {
 		c.rollupInterval = d
+	}
+}
+
+func WithL1ChainID(i int) Option {
+	return func(c *Config) {
+		c.l1ChainID = i
 	}
 }
