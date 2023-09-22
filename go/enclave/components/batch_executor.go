@@ -95,7 +95,7 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 			continue
 		}
 		if accBalance.Cmp(cost) == -1 {
-			executor.logger.Info("insufficient account balance for tx", log.TxKey, tx.Hash(), "addr", sender.Hex())
+			executor.logger.Info(fmt.Sprintf("insufficient account balance for tx - want: %d have: %d", cost, accBalance), log.TxKey, tx.Hash(), "addr", sender.Hex())
 			continue
 		}
 		stateDB.SubBalance(*sender, cost)
