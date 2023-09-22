@@ -150,7 +150,8 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 }
 
 func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
-	headBatch, err := s.storage.FetchHeadBatch()
+	headBatchSeq := s.batchRegistry.HeadBatchSeq()
+	headBatch, err := s.storage.FetchBatchBySeqNo(headBatchSeq.Uint64())
 	if err != nil {
 		return err
 	}

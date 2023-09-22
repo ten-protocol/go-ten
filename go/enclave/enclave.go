@@ -518,7 +518,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 	}
 
 	if err = e.service.SubmitTransaction(decryptedTx); err != nil {
-		e.logger.Warn("Could not submit transaction", log.TxKey, decryptedTx.Hash(), log.ErrKey, err)
+		e.logger.Debug("Could not submit transaction", log.TxKey, decryptedTx.Hash(), log.ErrKey, err)
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 

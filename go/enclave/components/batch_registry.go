@@ -3,7 +3,10 @@ package components
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"sync"
+
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -20,18 +23,35 @@ import (
 )
 
 type batchRegistry struct {
-	storage storage.Storage
-	logger  gethlog.Logger
+	storage      storage.Storage
+	logger       gethlog.Logger
+	headBatchSeq *big.Int // keep track of the last executed batch to optimise db access
 
 	batchesCallback func(*core.Batch, types.Receipts)
 	callbackMutex   sync.RWMutex
 }
 
 func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegistry {
-	return &batchRegistry{
-		storage: storage,
-		logger:  logger,
+	var headBatchSeq *big.Int
+	headBatch, err := storage.FetchHeadBatch()
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			headBatchSeq = big.NewInt(int64(common.L2GenesisSeqNo))
+		} else {
+			return nil
+		}
+	} else {
+		headBatchSeq = headBatch.SeqNo()
 	}
+	return &batchRegistry{
+		storage:      storage,
+		headBatchSeq: headBatchSeq,
+		logger:       logger,
+	}
+}
+
+func (br *batchRegistry) HeadBatchSeq() *big.Int {
+	return br.headBatchSeq
 }
 
 func (br *batchRegistry) SubscribeForExecutedBatches(callback func(*core.Batch, types.Receipts)) {
@@ -53,6 +73,7 @@ func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Recei
 
 	defer br.logger.Debug("Sending batch and events", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
 
+	br.headBatchSeq = batch.SeqNo()
 	if br.batchesCallback != nil {
 		br.batchesCallback(batch, receipts)
 	}
