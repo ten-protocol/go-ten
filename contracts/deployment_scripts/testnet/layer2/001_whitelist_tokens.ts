@@ -102,7 +102,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         try {
             while (await messageBusContract.callStatic.verifyMessageFinalized(messages[1], {
                 maxFeePerGas: 2,
-                gasLimit: gasLimit,
+                gasLimit: gasLimit.mul(2),
                 from: l2Accounts.deployer
             }) != true) {
                 console.log(`Messages not stored on L2 yet, retrying...`);
