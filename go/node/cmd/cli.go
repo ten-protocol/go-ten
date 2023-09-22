@@ -43,6 +43,7 @@ type NodeConfigCLI struct {
 	isInboundP2PDisabled    bool
 	batchInterval           string // format like 500ms or 2s (any time parsable by time.ParseDuration())
 	rollupInterval          string // format like 500ms or 2s (any time parsable by time.ParseDuration())
+	l1ChainID               int
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
@@ -77,6 +78,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	isInboundP2PDisabled := flag.Bool(isInboundP2PDisabledFlag, false, flagUsageMap[isInboundP2PDisabledFlag])
 	batchInterval := flag.String(batchIntervalFlag, "1s", flagUsageMap[batchIntervalFlag])
 	rollupInterval := flag.String(rollupIntervalFlag, "3s", flagUsageMap[rollupIntervalFlag])
+	l1ChainID := flag.Int(l1ChainIDFlag, 1337, flagUsageMap[l1ChainIDFlag])
 
 	flag.Parse()
 	cfg.nodeName = *nodeName
@@ -106,6 +108,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.isInboundP2PDisabled = *isInboundP2PDisabled
 	cfg.batchInterval = *batchInterval
 	cfg.rollupInterval = *rollupInterval
+	cfg.l1ChainID = *l1ChainID
 
 	cfg.nodeAction = flag.Arg(0)
 	if !validateNodeAction(cfg.nodeAction) {

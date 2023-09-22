@@ -29,6 +29,7 @@ const (
 	isInboundP2PDisabledFlag    = "is_inbound_p2p_disabled"
 	batchIntervalFlag           = "batch_interval"
 	rollupIntervalFlag          = "rollup_interval"
+	l1ChainIDFlag               = "l1_chain_id"
 )
 
 // Returns a map of the flag usages.
@@ -62,5 +63,6 @@ func getFlagUsageMap() map[string]string {
 		isInboundP2PDisabledFlag:    "Disables inbound p2p (for testing)",
 		batchIntervalFlag:           "Duration between each batch. Can be formatted like 500ms or 1s",
 		rollupIntervalFlag:          "Duration between each rollup. Can be formatted like 500ms or 1s",
+		l1ChainIDFlag:               "Chain ID of the L1 network",
 	}
 }
