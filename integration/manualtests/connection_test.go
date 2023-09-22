@@ -27,7 +27,7 @@ func TestSubscribeToOG(t *testing.T) {
 	// Using http
 	ogHTTPAddress := "https://dev-testnet.obscu.ro:443"
 	ogWSAddress := "wss://dev-testnet.obscu.ro:81"
-	//ogWSAddress := "ws://51.132.131.47:81"
+	// ogWSAddress := "ws://51.132.131.47:81"
 
 	// join the network
 	statusCode, userID, err := fasthttp.Get(nil, fmt.Sprintf("%s/v1/join/", ogHTTPAddress))
