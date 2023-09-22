@@ -4,55 +4,51 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum"
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
-	"github.com/stretchr/testify/require"
 	"io"
 	"log"
 	"net/http"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	"github.com/stretchr/testify/require"
+	"github.com/valyala/fasthttp"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 func TestSubscribeToOG(t *testing.T) {
-	//if os.Getenv(_IDEFlag) == "" {
-	//	t.Skipf("set flag %s to run this test in the IDE", _IDEFlag)
-	//}
+	t.Skip("skip manual tests")
 
 	// Using http
-	//ogHTTPAddress := "dev-testnet.obscu.ro:443"
-	ogWSAddress := "dev-testnet.obscu.ro:81"
-	//ogWSAddress := "51.132.131.47:81"
+	ogHTTPAddress := "https://dev-testnet.obscu.ro:443"
+	ogWSAddress := "wss://dev-testnet.obscu.ro:81"
+	//ogWSAddress := "ws://51.132.131.47:81"
 
-	//// join the network
-	//statusCode, userID, err := fasthttp.Get(nil, fmt.Sprintf("https://%s/v1/join/", ogHTTPAddress))
-	//require.NoError(t, err) // dialing to the given TCP address timed out
-	//fmt.Println(statusCode)
-	//fmt.Println(userID)
-	//
-	//// sign the message
-	//messagePayload := signMessage(string(userID))
-	//
-	//// register an account
-	//var regAccountResp []byte
-	//regAccountResp, err = registerAccount(ogHTTPAddress, string(userID), messagePayload)
-	//require.NoError(t, err)
-	//fmt.Println(regAccountResp)
+	// join the network
+	statusCode, userID, err := fasthttp.Get(nil, fmt.Sprintf("%s/v1/join/", ogHTTPAddress))
+	require.NoError(t, err) // dialing to the given TCP address timed out
+	fmt.Println(statusCode)
+	fmt.Println(userID)
+
+	// sign the message
+	messagePayload := signMessage(string(userID))
+
+	// register an account
+	var regAccountResp []byte
+	regAccountResp, err = registerAccount(ogHTTPAddress, string(userID), messagePayload)
+	require.NoError(t, err)
+	fmt.Println(string(regAccountResp))
+	fmt.Println(hex.EncodeToString(regAccountResp))
 
 	// Using WS ->
 
-	for i := 0; i < 50; i++ {
-		ethclient.Dial("ws://" + ogWSAddress)
-		time.Sleep(100 * time.Millisecond)
-	}
-
 	// Connect to WebSocket server using the standard geth client
-	client, err := ethclient.Dial("ws://" + ogWSAddress)
+	client, err := ethclient.Dial(ogWSAddress)
 	require.NoError(t, err)
 
 	// Create a simple request
@@ -90,7 +86,7 @@ func registerAccount(baseAddress, userID, payload string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		http.MethodPost,
-		"https://"+baseAddress+"/authenticate/?u="+userID,
+		baseAddress+"/v1/authenticate/?u="+userID,
 		strings.NewReader(payload),
 	)
 	if err != nil {
@@ -125,5 +121,9 @@ func signMessage(userID string) string {
 	if err != nil {
 		log.Fatalf("Failed to sign message: %v", err)
 	}
-	return fmt.Sprintf("{\"signature\": \"%s\", \"message\": \"%s\"}", hex.EncodeToString(sig), message)
+	sig[64] += 27
+	signature := "0x" + hex.EncodeToString(sig)
+	payload := fmt.Sprintf("{\"signature\": \"%s\", \"message\": \"%s\"}", signature, message)
+	fmt.Println(payload)
+	return payload
 }

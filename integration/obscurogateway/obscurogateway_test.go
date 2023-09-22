@@ -46,7 +46,6 @@ const (
 
 func TestObscuroGateway(t *testing.T) {
 	t.Skip("Commented it out until more testing is driven from this test")
-	t.Skip("Commented it out until more testing is driven from this test")
 	startPort := integration.StartPortObscuroGatewayUnitTest
 	wallets := createObscuroNetwork(t, startPort)
 
