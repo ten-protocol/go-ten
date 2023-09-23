@@ -12,9 +12,11 @@ import (
 )
 
 type SendNativeFunds struct {
-	FromUser int
-	ToUser   int
-	Amount   *big.Int
+	FromUser   int
+	ToUser     int
+	Amount     *big.Int
+	GasLimit   *big.Int
+	SkipVerify bool
 
 	user   *userwallet.UserWallet
 	txHash *common.Hash
@@ -33,7 +35,11 @@ func (s *SendNativeFunds) Run(ctx context.Context, _ networktest.NetworkConnecto
 	if err != nil {
 		return ctx, err
 	}
-	txHash, err := user.SendFunds(ctx, target.Address(), s.Amount)
+	gas := uint64(1_000_000)
+	if s.GasLimit != nil {
+		gas = s.GasLimit.Uint64()
+	}
+	txHash, err := user.SendFunds(ctx, target.Address(), s.Amount, gas)
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +49,10 @@ func (s *SendNativeFunds) Run(ctx context.Context, _ networktest.NetworkConnecto
 }
 
 func (s *SendNativeFunds) Verify(ctx context.Context, _ networktest.NetworkConnector) error {
+	if s.SkipVerify {
+		return nil
+	}
+
 	receipt, err := s.user.AwaitReceipt(ctx, s.txHash)
 	if err != nil {
 		return fmt.Errorf("failed to fetch receipt - %w", err)

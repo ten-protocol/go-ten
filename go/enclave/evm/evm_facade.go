@@ -111,6 +111,12 @@ func executeTransaction(
 		for _, l := range receipt.Logs {
 			l.BlockHash = batchHash
 		}
+
+		if header.Coinbase.Big().Cmp(gethcommon.Big0) != 0 {
+			gasUsed := big.NewInt(0).SetUint64(receipt.GasUsed)
+			executionGasCost := big.NewInt(0).Mul(gasUsed, header.BaseFee)
+			s.AddBalance(header.Coinbase, executionGasCost)
+		}
 	}
 
 	header.MixDigest = before

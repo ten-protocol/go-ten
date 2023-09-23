@@ -17,12 +17,13 @@ import (
 //	networktest.Run(t, env.DevTestnet(), tests.smokeTest())
 //	networktest.Run(t, env.LocalDevNetwork(WithNumValidators(8)), traffic.RunnerTest(traffic.NativeFundsTransfers(), 30*time.Second)
 func Run(testName string, t *testing.T, env Environment, action Action) {
-	EnsureTestLogsSetUp(testName)
+	logFile := EnsureTestLogsSetUp(testName)
 	network, envCleanup, err := env.Prepare()
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancelCtx := context.WithCancel(context.Background())
+	initialCtx, cancelCtx := context.WithCancel(context.Background())
+	ctx := context.WithValue(initialCtx, "logFile", logFile)
 	defer func() {
 		envCleanup()
 		cancelCtx()
