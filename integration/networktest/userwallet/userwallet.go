@@ -85,7 +85,7 @@ func (s *UserWallet) ChainID() *big.Int {
 	return big.NewInt(integration.ObscuroChainID)
 }
 
-func (s *UserWallet) SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int) (*gethcommon.Hash, error) {
+func (s *UserWallet) SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int, gas uint64) (*gethcommon.Hash, error) {
 	err := s.EnsureClientSetup(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to prepare client to send funds - %w", err)
@@ -94,7 +94,7 @@ func (s *UserWallet) SendFunds(ctx context.Context, addr gethcommon.Address, val
 	tx := &types.LegacyTx{
 		Nonce:    s.nonce,
 		Value:    value,
-		Gas:      uint64(1_000_000),
+		Gas:      gas,
 		GasPrice: gethcommon.Big1,
 		To:       &addr,
 	}

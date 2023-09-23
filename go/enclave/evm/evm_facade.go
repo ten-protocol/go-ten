@@ -111,6 +111,12 @@ func executeTransaction(
 		for _, l := range receipt.Logs {
 			l.BlockHash = batchHash
 		}
+
+		if header.Coinbase.Big().Cmp(gethcommon.Big0) != 0 {
+			gasUsed := big.NewInt(0).SetUint64(receipt.GasUsed)
+			executionGasCost := big.NewInt(0).Mul(gasUsed, header.BaseFee)
+			s.AddBalance(header.Coinbase, executionGasCost)
+		}
 	}
 
 	header.MixDigest = before
@@ -150,7 +156,6 @@ func ExecuteObsCall(
 	noBaseFee := true
 	if header.BaseFee != nil && header.BaseFee.Cmp(gethcommon.Big0) != 0 && msg.GasPrice.Cmp(gethcommon.Big0) != 0 {
 		noBaseFee = false
-		logger.Info("ObsCall - with base fee ", "to", msg.To.Hex())
 	}
 
 	chain, vmCfg, gp := initParams(storage, noBaseFee, nil)
@@ -186,7 +191,6 @@ func ExecuteObsCall(
 		return result, err
 	}
 
-	logger.Info("ObsCall - with result ", "gas", result.UsedGas)
 	return result, nil
 }
 
