@@ -29,6 +29,12 @@ type SimToken struct {
 	L2ContractAddress *common.Address
 }
 
+type L1PrefundWallets struct {
+	HOC    wallet.Wallet
+	POC    wallet.Wallet
+	Faucet wallet.Wallet
+}
+
 type SimWallets struct {
 	MCOwnerWallet wallet.Wallet   // owner of the management contract deployed on Ethereum
 	NodeWallets   []wallet.Wallet // the keys used by the obscuro nodes to submit rollups to Eth
@@ -41,6 +47,8 @@ type SimWallets struct {
 	L2FaucetWallet wallet.Wallet // the wallet of the L2 faucet
 	L2FeesWallet   wallet.Wallet
 	Tokens         map[testcommon.ERC20]*SimToken // The supported tokens
+
+	PrefundedEthWallets L1PrefundWallets
 }
 
 func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroChainID int64) *SimWallets {
@@ -100,6 +108,11 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 			testcommon.HOC: &hoc,
 			testcommon.POC: &poc,
 		},
+		PrefundedEthWallets: L1PrefundWallets{
+			HOC:    datagenerator.RandomWallet(ethereumChainID),
+			POC:    datagenerator.RandomWallet(ethereumChainID),
+			Faucet: datagenerator.RandomWallet(ethereumChainID),
+		},
 	}
 }
 
@@ -109,6 +122,9 @@ func (w *SimWallets) AllEthWallets() []wallet.Wallet {
 		ethWallets = append(ethWallets, token.L1Owner)
 	}
 	ethWallets = append(ethWallets, w.GasBridgeWallet)
+	ethWallets = append(ethWallets, w.PrefundedEthWallets.POC)
+	ethWallets = append(ethWallets, w.PrefundedEthWallets.HOC)
+	ethWallets = append(ethWallets, w.PrefundedEthWallets.Faucet)
 	return append(append(append(w.NodeWallets, w.SimEthWallets...), w.MCOwnerWallet), ethWallets...)
 }
 
