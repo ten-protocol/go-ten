@@ -272,7 +272,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 			return errors.Wrap(err, "could not sign L1 tx")
 		}
 
-		p.logger.Info("Host issuing l1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024)
+		p.logger.Info("Host issuing l1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
 		err = p.ethClient.SendTransaction(signedTx)
 		if err != nil {
 			p.hostWallet.SetNonce(nonce) // revert the wallet nonce because we failed to complete the transaction
