@@ -50,6 +50,7 @@ type HostConfigToml struct {
 	RollupInterval            string
 	IsInboundP2PDisabled      bool
 	L1BlockTime               int
+	MaxRollupSize             int
 }
 
 // ParseConfig returns a config.HostInputConfig based on either the file identified by the `config` flag, or the flags with
