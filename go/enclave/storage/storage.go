@@ -40,8 +40,11 @@ import (
 
 // todo - this will require a dedicated table when updates are implemented
 const (
-	masterSeedCfg            = "MASTER_SEED"
-	_slowCallThresholdMillis = 50 // requests that take longer than this will be logged
+	masterSeedCfg                 = "MASTER_SEED"
+	_slowCallDebugThresholdMillis = 50  // requests that take longer than this will be logged with DEBUG
+	_slowCallInfoThresholdMillis  = 100 // requests that take longer than this will be logged with INFO
+	_slowCallWarnThresholdMillis  = 200 // requests that take longer than this will be logged with WARN
+	_slowCallErrorThresholdMillis = 500 // requests that take longer than this will be logged with ERROR
 )
 
 type storageImpl struct {
@@ -551,8 +554,16 @@ func (s *storageImpl) GetPublicTransactionCount() (uint64, error) {
 
 func (s *storageImpl) logDuration(method string, callStart time.Time) {
 	durationMillis := time.Since(callStart).Milliseconds()
+	msg := fmt.Sprintf("Storage::%s completed", method)
 	// we only log 'slow' calls to reduce noise
-	if durationMillis > _slowCallThresholdMillis {
-		s.logger.Info(fmt.Sprintf("Storage::%s completed", method), log.DurationMilliKey, durationMillis)
+	switch {
+	case durationMillis > _slowCallErrorThresholdMillis:
+		s.logger.Error(msg, log.DurationMilliKey, durationMillis)
+	case durationMillis > _slowCallWarnThresholdMillis:
+		s.logger.Warn(msg, log.DurationMilliKey, durationMillis)
+	case durationMillis > _slowCallInfoThresholdMillis:
+		s.logger.Info(msg, log.DurationMilliKey, durationMillis)
+	case durationMillis > _slowCallDebugThresholdMillis:
+		s.logger.Debug(msg, log.DurationMilliKey, durationMillis)
 	}
 }

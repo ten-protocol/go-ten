@@ -127,31 +127,43 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	}
 }
 
+// the cost of an empty rollup - adjust if the management contract changes. This is the rollup overhead.
+const emptyRollupGas = 110_000
+
 func checkCollectedL1Fees(t *testing.T, node ethadapter.EthClient, s *Simulation, nodeIdx int, rollupReceipts types.Receipts) {
-	costOfRollups := big.NewInt(0)
+	costOfRollupsWithTransactions := big.NewInt(0)
+	costOfEmptyRollups := big.NewInt(0)
 
-	if !s.Params.IsInMem {
-		for _, receipt := range rollupReceipts {
-			block, err := node.EthClient().BlockByHash(context.Background(), receipt.BlockHash)
-			if err != nil {
-				panic(err)
-			}
+	if s.Params.IsInMem {
+		// not supported for in memory tests
+		return
+	}
 
-			txCost := big.NewInt(0).Mul(block.BaseFee(), big.NewInt(0).SetUint64(receipt.GasUsed))
-			costOfRollups.Add(costOfRollups, txCost)
-		}
-
-		l2FeesWallet := s.Params.Wallets.L2FeesWallet
-		obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, l2FeesWallet)
-		feeBalance, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
+	for _, receipt := range rollupReceipts {
+		block, err := node.EthClient().BlockByHash(context.Background(), receipt.BlockHash)
 		if err != nil {
-			panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
+			panic(err)
 		}
 
-		// if balance of collected fees is less than cost of published rollups fail
-		if feeBalance.Cmp(costOfRollups) == -1 {
-			t.Errorf("Node %d: Sequencer has collected insufficient fees. Has: %d, needs: %d", nodeIdx, feeBalance, costOfRollups)
+		txCost := big.NewInt(0).Mul(block.BaseFee(), big.NewInt(0).SetUint64(receipt.GasUsed))
+		// only calculate the fees collected for non-empty rollups, because the empty ones are subsidized
+		if receipt.GasUsed > emptyRollupGas {
+			costOfRollupsWithTransactions.Add(costOfRollupsWithTransactions, txCost)
+		} else {
+			costOfEmptyRollups.Add(costOfEmptyRollups, txCost)
 		}
+	}
+
+	l2FeesWallet := s.Params.Wallets.L2FeesWallet
+	obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, l2FeesWallet)
+	feeBalance, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
+	if err != nil {
+		panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
+	}
+
+	// if balance of collected fees is less than cost of published rollups fail
+	if feeBalance.Cmp(costOfRollupsWithTransactions) == -1 {
+		t.Errorf("Node %d: Sequencer has collected insufficient fees. Has: %d, needs: %d", nodeIdx, feeBalance, costOfRollupsWithTransactions)
 	}
 }
 
