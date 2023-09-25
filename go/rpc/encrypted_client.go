@@ -165,11 +165,18 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 			}
 
 		case err := <-subscription.Err():
-			if err != nil {
-				c.logger.Info("subscription closed", log.ErrKey, err)
-			} else {
-				c.logger.Trace("subscription closed")
+			if c == nil {
+				panic("c is nill")
 			}
+			if c.logger == nil {
+				panic("c.logger is nill")
+			}
+			if subscription == nil {
+				panic("subscription is nil")
+			}
+
+			c.logger.Info("subscription closed", log.ErrKey, err)
+
 			return
 		}
 	}
