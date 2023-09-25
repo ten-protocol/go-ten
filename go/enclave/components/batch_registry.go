@@ -9,7 +9,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/core/state"
