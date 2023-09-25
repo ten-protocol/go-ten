@@ -4,7 +4,7 @@
 
 Welcome to Obscuro - the first Ethereum L2 with private smart contract state. 
 
-Obscuro hyper-scales and encrypts Ethereum. No SDKs, 100% EVM.
+Obscuro hyper-scales and encrypts Ethereum. 100% EVM, 100% Solidity.
 
 On this docsite you will find useful guidance on Obscuro, how to participate in the Testnet and, if you want to go deeper, read the whitepaper using the menu above. 
 
