@@ -161,7 +161,7 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 
 	isReorg := false
 	for i, batch := range batches {
-		rc.logger.Info("Add batch to rollup", log.BatchSeqNoKey, batch.SeqNo(), log.BatchHeightKey, batch.Number(), log.BatchHashKey, batch.Hash())
+		rc.logger.Debug("Compressing batch to rollup", log.BatchSeqNoKey, batch.SeqNo(), log.BatchHeightKey, batch.Number(), log.BatchHashKey, batch.Hash())
 		// determine whether the batch is canonical
 		can, err := rc.storage.FetchBatchByHeight(batch.NumberU64())
 		if err != nil {

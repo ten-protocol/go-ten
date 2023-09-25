@@ -244,7 +244,7 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, sig
 
 	accManager := w.userAccountManager.AddAndReturnAccountManager(hexUserID)
 
-	encClient, err := common.CreateEncClient(w.hostAddr, addressFromMessage.Bytes(), privateKeyBytes, signature)
+	encClient, err := common.CreateEncClient(w.hostAddr, addressFromMessage.Bytes(), privateKeyBytes, signature, w.Logger())
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error creating encrypted client for user: (%s), %w", hexUserID, err).Error())
 	}

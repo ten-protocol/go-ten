@@ -120,7 +120,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namesp
 		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
 	}
 	clientChannel := make(chan common.IDAndEncLog)
-	subscription, err := c.obscuroClient.Subscribe(ctx, nil, namespace, clientChannel, subscriptionType, encryptedParams)
+	subscriptionToObscuro, err := c.obscuroClient.Subscribe(ctx, nil, namespace, clientChannel, subscriptionType, encryptedParams)
 	if err != nil {
 		return nil, err
 	}
@@ -128,15 +128,15 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namesp
 	// We need to return the subscription ID, to allow unsubscribing. However, the client API has already converted
 	// from a subscription ID to a subscription object under the hood, so we can't retrieve the subscription ID.
 	// To hack around this, we always return the subscription ID as the first message on the newly-created subscription.
-	err = c.setResultToSubID(clientChannel, result, subscription)
+	err = c.setResultToSubID(clientChannel, result, subscriptionToObscuro)
 	if err != nil {
-		subscription.Unsubscribe()
+		subscriptionToObscuro.Unsubscribe()
 		return nil, err
 	}
 
-	go c.forwardLogs(clientChannel, logCh, subscription)
+	go c.forwardLogs(clientChannel, logCh, subscriptionToObscuro)
 
-	return subscription, nil
+	return subscriptionToObscuro, nil
 }
 
 func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh chan common.IDAndLog, subscription *rpc.ClientSubscription) {
@@ -166,9 +166,9 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 
 		case err := <-subscription.Err():
 			if err != nil {
-				c.logger.Info("subscription closed", log.ErrKey, err)
+				c.logger.Info("subscription to obscuro node closed with error", log.ErrKey, err)
 			} else {
-				c.logger.Trace("subscription closed")
+				c.logger.Info("subscription to obscuro node closed")
 			}
 			return
 		}

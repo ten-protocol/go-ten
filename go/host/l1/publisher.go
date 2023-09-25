@@ -249,15 +249,18 @@ func (p *Publisher) FetchLatestPeersList() ([]string, error) {
 func (p *Publisher) publishTransaction(tx types.TxData) error {
 	// the nonce to be used for this tx attempt
 	nonce := p.hostWallet.GetNonceAndIncrement()
+	retries := -1
 
 	// while the publisher service is still alive we keep trying to get the transaction into the L1
 	for !p.hostStopper.IsStopping() {
+		retries++ // count each attempt so we can increase gas price
+
 		// make sure an earlier tx hasn't been abandoned
 		if nonce > p.hostWallet.GetNonce() {
 			return errors.New("earlier transaction has failed to complete, we need to abort this transaction")
 		}
 		// update the tx gas price before each attempt
-		tx, err := p.ethClient.PrepareTransactionToSend(tx, p.hostWallet.Address(), nonce)
+		tx, err := p.ethClient.PrepareTransactionToRetry(tx, p.hostWallet.Address(), nonce, retries)
 		if err != nil {
 			p.hostWallet.SetNonce(nonce) // revert the wallet nonce because we failed to complete the transaction
 			return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
@@ -269,7 +272,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 			return errors.Wrap(err, "could not sign L1 tx")
 		}
 
-		p.logger.Info("Host issuing l1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024)
+		p.logger.Info("Host issuing l1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
 		err = p.ethClient.SendTransaction(signedTx)
 		if err != nil {
 			p.hostWallet.SetNonce(nonce) // revert the wallet nonce because we failed to complete the transaction

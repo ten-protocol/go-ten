@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"regexp"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/rpc"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 var authenticateMessageRegex = regexp.MustCompile(MessageFormatRegex)
@@ -63,7 +65,13 @@ func GetUserIDbyte(userID string) ([]byte, error) {
 	return hex.DecodeString(userID)
 }
 
-func CreateEncClient(hostRPCBindAddr string, addressBytes []byte, privateKeyBytes []byte, signature []byte) (*rpc.EncRPCClient, error) {
+func CreateEncClient(
+	hostRPCBindAddr string,
+	addressBytes []byte,
+	privateKeyBytes []byte,
+	signature []byte,
+	logger gethlog.Logger,
+) (*rpc.EncRPCClient, error) {
 	privateKey, err := BytesToPrivateKey(privateKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert bytes to ecies private key: %w", err)
@@ -77,7 +85,7 @@ func CreateEncClient(hostRPCBindAddr string, addressBytes []byte, privateKeyByte
 		PublicKey:  PrivateKeyToCompressedPubKey(privateKey),
 		Signature:  signature,
 	}
-	encClient, err := rpc.NewEncNetworkClient(hostRPCBindAddr, vk, nil)
+	encClient, err := rpc.NewEncNetworkClient(hostRPCBindAddr, vk, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create EncRPCClient: %w", err)
 	}
