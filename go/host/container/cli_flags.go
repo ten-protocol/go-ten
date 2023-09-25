@@ -34,6 +34,7 @@ const (
 	batchIntervalName            = "batchInterval"
 	rollupIntervalName           = "rollupInterval"
 	isInboundP2PDisabledName     = "isInboundP2PDisabled"
+	maxRollupSizeFlagName        = "maxRollupSize"
 )
 
 // Returns a map of the flag usages.
@@ -72,5 +73,6 @@ func getFlagUsageMap() map[string]string {
 		batchIntervalName:            "Duration between each batch. Can be put down as 1.0s",
 		rollupIntervalName:           "Duration between each rollup. Can be put down as 1.0s",
 		isInboundP2PDisabledName:     "Whether inbound p2p is enabled",
+		maxRollupSizeFlagName:        "Max size of a rollup",
 	}
 }
