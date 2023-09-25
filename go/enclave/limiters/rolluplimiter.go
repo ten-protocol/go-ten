@@ -9,7 +9,9 @@ import (
 )
 
 const (
-	txCompressionFactor  = 0.7
+	// 85% is a very conservative number. It will most likely be 66% in practice.
+	// We can lower it, once we have a mechanism in place to handle batches that don't actually compress to that.
+	txCompressionFactor  = 0.85
 	compressedHeaderSize = 1
 )
 
