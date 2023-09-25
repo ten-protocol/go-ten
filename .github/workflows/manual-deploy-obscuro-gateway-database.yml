@@ -122,7 +122,6 @@ jobs:
             && docker run -d --name ${{env.RESOURCE_STARTING_NAME}}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }} \
                 -p 3306:3306 \
                 -e MARIADB_ROOT_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_ROOT_PWD }} \
-                -e MARIADB_ROOT_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_ROOT_PWD }} \
                 -e MARIADB_USER=obscurouser \
                 -e MARIADB_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }} \
                 -v /home/obscuro/go-obscuro/tools/walletextension/storage/database/001_init.sql:/docker-entrypoint-initdb.d/schema.sql \
