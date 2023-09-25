@@ -45,11 +45,7 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
                         decimals: 18
                     },
                     rpcUrls: [obscuroGatewayAddress+"/"+obscuroGatewayVersion+'/?u='+userID],
-<<<<<<< HEAD
-                    blockExplorerUrls: null
-=======
                     blockExplorerUrls: ['https://testnet.obscuroscan.io'],
->>>>>>> 5ac5482f (Match network configuration with Chainlist)
                 },
             ],
         });
@@ -317,8 +313,5 @@ const initialize = async () => {
 
 }
 
-<<<<<<< HEAD
 window.addEventListener(eventDomLoaded, checkIfMetamaskIsLoaded);
-=======
-window.addEventListener(eventDomLoaded, initialize);
->>>>>>> 5ac5482f (Match network configuration with Chainlist)
+
