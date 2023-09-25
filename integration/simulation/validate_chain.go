@@ -156,7 +156,7 @@ func checkCollectedL1Fees(t *testing.T, node ethadapter.EthClient, s *Simulation
 
 	l2FeesWallet := s.Params.Wallets.L2FeesWallet
 	obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, l2FeesWallet)
-	feeBalance, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
+	_, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
 	if err != nil {
 		panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
 	}
