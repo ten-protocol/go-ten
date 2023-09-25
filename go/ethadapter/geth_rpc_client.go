@@ -29,6 +29,7 @@ const (
 	connRetryMaxWait        = 10 * time.Minute // after this duration, we will stop retrying to connect and return the failure
 	connRetryInterval       = 500 * time.Millisecond
 	_maxRetryPriceIncreases = 5
+	_retryPriceMultiplier   = 1.2
 )
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
@@ -241,7 +242,7 @@ func (e *gethRPCClient) PrepareTransactionToRetry(txData types.TxData, from geth
 	// it should never happen but to avoid any risk of repeated price increases we cap the possible retry price bumps to 5
 	retryFloat := math.Max(_maxRetryPriceIncreases, float64(retryNumber))
 	// we apply a 20% gas price increase for each retry (retrying with similar price gets rejected by mempool)
-	multiplier := math.Pow(1.2, retryFloat)
+	multiplier := math.Pow(_retryPriceMultiplier, retryFloat)
 
 	gasPriceFloat := new(big.Float).SetInt(gasPrice)
 	retryPriceFloat := big.NewFloat(0).Mul(gasPriceFloat, big.NewFloat(multiplier))
