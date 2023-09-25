@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 	"time"
 
@@ -25,8 +26,9 @@ import (
 )
 
 const (
-	connRetryMaxWait  = 10 * time.Minute // after this duration, we will stop retrying to connect and return the failure
-	connRetryInterval = 500 * time.Millisecond
+	connRetryMaxWait        = 10 * time.Minute // after this duration, we will stop retrying to connect and return the failure
+	connRetryInterval       = 500 * time.Millisecond
+	_maxRetryPriceIncreases = 5
 )
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
@@ -224,11 +226,27 @@ func (e *gethRPCClient) FetchLastBatchSeqNo(address gethcommon.Address) (*big.In
 
 // PrepareTransactionToSend takes a txData type and overrides the From, Nonce, Gas and Gas Price field with current values
 func (e *gethRPCClient) PrepareTransactionToSend(txData types.TxData, from gethcommon.Address, nonce uint64) (types.TxData, error) {
+	return e.PrepareTransactionToRetry(txData, from, nonce, 0)
+}
+
+// PrepareTransactionToRetry takes a txData type and overrides the From, Nonce, Gas and Gas Price field with current values
+// it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
+func (e *gethRPCClient) PrepareTransactionToRetry(txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int) (types.TxData, error) {
 	unEstimatedTx := types.NewTx(txData)
 	gasPrice, err := e.EthClient().SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, err
 	}
+
+	// it should never happen but to avoid any risk of repeated price increases we cap the possible retry price bumps to 5
+	retryFloat := math.Max(_maxRetryPriceIncreases, float64(retryNumber))
+	// we apply a 20% gas price increase for each retry (retrying with similar price gets rejected by mempool)
+	multiplier := math.Pow(1.2, retryFloat)
+
+	gasPriceFloat := new(big.Float).SetInt(gasPrice)
+	retryPriceFloat := big.NewFloat(0).Mul(gasPriceFloat, big.NewFloat(multiplier))
+	// prices aren't big enough for float error to matter
+	retryPrice, _ := retryPriceFloat.Int(nil)
 
 	gasLimit, err := e.EthClient().EstimateGas(context.Background(), ethereum.CallMsg{
 		From:  from,
@@ -242,7 +260,7 @@ func (e *gethRPCClient) PrepareTransactionToSend(txData types.TxData, from gethc
 
 	return &types.LegacyTx{
 		Nonce:    nonce,
-		GasPrice: gasPrice,
+		GasPrice: retryPrice,
 		Gas:      gasLimit,
 		To:       unEstimatedTx.To(),
 		Value:    unEstimatedTx.Value(),
