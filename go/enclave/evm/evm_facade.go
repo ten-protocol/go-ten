@@ -112,9 +112,13 @@ func executeTransaction(
 			l.BlockHash = batchHash
 		}
 
+		// Do not increase the balance of zero address as it is the contract deployment address.
+		// Doing so might cause weird interactions.
 		if header.Coinbase.Big().Cmp(gethcommon.Big0) != 0 {
 			gasUsed := big.NewInt(0).SetUint64(receipt.GasUsed)
 			executionGasCost := big.NewInt(0).Mul(gasUsed, header.BaseFee)
+			//As the baseFee is burned, we add it back to the coinbase.
+			//Geth should automatically add the tips.
 			s.AddBalance(header.Coinbase, executionGasCost)
 		}
 	}
