@@ -48,6 +48,25 @@ jobs:
         with:
           go-version: 1.20.4
 
+      - name: 'Print GitHub variables'
+        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
+        run: |
+          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=${{vars.L2_ENCLAVE_DOCKER_BUILD_TAG}}"
+          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}"
+          echo "L2_HOST_DOCKER_BUILD_TAG=${{vars.L2_HOST_DOCKER_BUILD_TAG}}"
+          
+          echo "RESOURCE_STARTING_NAME=${{vars.RESOURCE_STARTING_NAME}}"
+          echo "RESOURCE_TAG_NAME=${{vars.RESOURCE_TAG_NAME}}"
+          echo "RESOURCE_TESTNET_NAME=${{vars.RESOURCE_TESTNET_NAME}}"
+          
+          echo "L1_CHAIN_ID=${{vars.L1_CHAIN_ID}}"
+          echo "NODE_WALLET_ADDR_0=${{NODE_WALLET_ADDR_0}}"
+          echo "NODE_WALLET_ADDR_1=${{NODE_WALLET_ADDR_1}}"
+          echo "WORKER_ADDR=${{WORKER_ADDR}}"
+          
+          echo "BATCH_INTERVAL=${{vars.BATCH_INTERVAL}}"
+          echo "ROLLUP_INTERVAL=${{vars.ROLLUP_INTERVAL}}"
+
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
