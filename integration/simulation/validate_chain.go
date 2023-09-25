@@ -130,7 +130,7 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 // the cost of an empty rollup - adjust if the management contract changes. This is the rollup overhead.
 const emptyRollupGas = 110_000
 
-func checkCollectedL1Fees(t *testing.T, node ethadapter.EthClient, s *Simulation, nodeIdx int, rollupReceipts types.Receipts) {
+func checkCollectedL1Fees(_ *testing.T, node ethadapter.EthClient, s *Simulation, nodeIdx int, rollupReceipts types.Receipts) {
 	costOfRollupsWithTransactions := big.NewInt(0)
 	costOfEmptyRollups := big.NewInt(0)
 
