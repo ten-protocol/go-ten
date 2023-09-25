@@ -61,9 +61,9 @@ jobs:
           echo "RESOURCE_TESTNET_NAME=${{vars.RESOURCE_TESTNET_NAME}}"
           
           echo "L1_CHAIN_ID=${{vars.L1_CHAIN_ID}}"
-          echo "NODE_WALLET_ADDR_0=${{NODE_WALLET_ADDR_0}}"
-          echo "NODE_WALLET_ADDR_1=${{NODE_WALLET_ADDR_1}}"
-          echo "WORKER_ADDR=${{WORKER_ADDR}}"
+          echo "NODE_WALLET_ADDR_0=${{vars.NODE_WALLET_ADDR_0}}"
+          echo "NODE_WALLET_ADDR_1=${{vars.NODE_WALLET_ADDR_1}}"
+          echo "WORKER_ADDR=${{vars.WORKER_ADDR}}"
           
           echo "BATCH_INTERVAL=${{vars.BATCH_INTERVAL}}"
           echo "ROLLUP_INTERVAL=${{vars.ROLLUP_INTERVAL}}"
