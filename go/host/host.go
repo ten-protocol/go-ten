@@ -164,12 +164,12 @@ func (h *host) Stop() error {
 	// stop all registered services
 	for name, service := range h.services.All() {
 		if err := service.Stop(); err != nil {
-			h.logger.Error("failed to stop service", "service", name, log.ErrKey, err)
+			h.logger.Error("Failed to stop service", "service", name, log.ErrKey, err)
 		}
 	}
 
 	if err := h.db.Stop(); err != nil {
-		h.logger.Error("failed to stop DB", log.ErrKey, err)
+		h.logger.Error("Failed to stop DB", log.ErrKey, err)
 	}
 
 	h.logger.Info("Host shut down complete.")
