@@ -94,7 +94,7 @@ func (s *UserWallet) SendFunds(ctx context.Context, addr gethcommon.Address, val
 	tx := &types.LegacyTx{
 		Nonce:    s.nonce,
 		Value:    value,
-		Gas:      gas,
+		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		To:       &addr,
 	}
