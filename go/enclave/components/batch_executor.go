@@ -72,14 +72,14 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 	for _, tx := range context.Transactions {
 		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
 		if err != nil {
-			executor.logger.Warn("Unable to extract sender for tx", log.TxKey, tx.Hash())
+			executor.logger.Debug("Unable to extract sender for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
 			continue
 		}
 		accBalance := stateDB.GetBalance(*sender)
 
 		cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block)
 		if err != nil {
-			executor.logger.Warn("Unable to get gas cost for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
+			executor.logger.Debug("Unable to get gas cost for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
 			continue
 		}
 
@@ -108,7 +108,7 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 }
 
 func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
-	defer executor.logger.Info("Batch context processed", log.DurationKey, measure.NewStopwatch())
+	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
 
 	// sanity check that the l1 block exists. We don't have to execute batches of forks.
 	block, err := executor.storage.FetchBlock(context.BlockPtr)
@@ -204,14 +204,14 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 				return gethcommon.Hash{}, fmt.Errorf("commit failure for batch %d. Cause: %w", batch.SeqNo(), err)
 			}
 			trieDB := executor.storage.TrieDB()
-			err = trieDB.Commit(h, true)
+			err = trieDB.Commit(h, false)
 			return h, err
 		},
 	}, nil
 }
 
 func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, error) {
-	defer executor.logger.Info("Executed batch", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
+	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Executed batch", log.BatchHashKey, batch.Hash())
 
 	// Validators recompute the entire batch using the same batch context
 	// if they have all necessary prerequisites like having the l1 block processed
@@ -316,8 +316,8 @@ func (executor *batchExecutor) populateOutboundCrossChainData(batch *core.Batch,
 
 	valueTransferMessages, err := executor.crossChainProcessors.Local.ExtractOutboundTransfers(receipts)
 	if err != nil {
-		executor.logger.Error("Extracting messages L2->L1 failed", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
-		return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
+		executor.logger.Error("Failed extracting L2->L1 messages value transfers", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+		return fmt.Errorf("could not extract cross chain value transfers. Cause: %w", err)
 	}
 
 	transfersHash := types.DeriveSha(ValueTransfers(valueTransferMessages), &trie.StackTrie{})

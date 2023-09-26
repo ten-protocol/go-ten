@@ -3,6 +3,8 @@ package components
 import (
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	"github.com/obscuronet/go-obscuro/go/common/measure"
@@ -45,8 +47,7 @@ func NewRollupConsumer(
 }
 
 func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) error {
-	stopwatch := measure.NewStopwatch()
-	defer rc.logger.Info("Rollup consumer processed block", log.BlockHashKey, b.Block.Hash(), log.DurationKey, stopwatch)
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed block", log.BlockHashKey, b.Block.Hash())
 
 	rollups := rc.extractRollups(b)
 	if len(rollups) == 0 {

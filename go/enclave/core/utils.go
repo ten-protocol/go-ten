@@ -4,40 +4,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/obscuronet/go-obscuro/go/common"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/measure"
 )
-
-func MakeMap(txs []*common.L2Tx) map[gethcommon.Hash]*common.L2Tx {
-	m := make(map[gethcommon.Hash]*common.L2Tx)
-	for _, tx := range txs {
-		m[tx.Hash()] = tx
-	}
-	return m
-}
-
-func ToMap(txs []*common.L2Tx) map[gethcommon.Hash]gethcommon.Hash {
-	m := make(map[gethcommon.Hash]gethcommon.Hash)
-	for _, tx := range txs {
-		m[tx.Hash()] = tx.Hash()
-	}
-	return m
-}
-
-func PrintTxs(txs []*common.L2Tx) (txsString []string) {
-	for _, t := range txs {
-		txsString = printTx(t, txsString)
-	}
-	return txsString
-}
-
-func printTx(t *common.L2Tx, txsString []string) []string {
-	txsString = append(txsString, fmt.Sprintf("%s,", t.Hash().Hex()))
-	return txsString
-}
 
 // VerifySignature - Checks that the L2Tx has a valid signature.
 func VerifySignature(chainID int64, tx *types.Transaction) error {
@@ -54,4 +26,34 @@ func GetAuthenticatedSender(chainID int64, tx *types.Transaction) (*gethcommon.A
 		return nil, err
 	}
 	return &sender, nil
+}
+
+const (
+	// log level for requests that take longer than this threshold in millis
+	_errorThreshold = 500
+	_warnThreshold  = 200
+	_infoThreshold  = 100
+	_debugThreshold = 50
+)
+
+// LogMethodDuration - call only with "defer"
+func LogMethodDuration(logger gethlog.Logger, stopWatch *measure.Stopwatch, msg string, args ...any) {
+	var f func(msg string, ctx ...interface{})
+	durationMillis := stopWatch.Measure().Milliseconds()
+
+	// we adjust the logging level based on the time
+	switch {
+	case durationMillis > _errorThreshold:
+		f = logger.Error
+	case durationMillis > _warnThreshold:
+		f = logger.Warn
+	case durationMillis > _infoThreshold:
+		f = logger.Info
+	case durationMillis > _debugThreshold:
+		f = logger.Debug
+	default:
+		f = logger.Trace
+	}
+	newArgs := append([]any{log.DurationKey, stopWatch}, args...)
+	f(fmt.Sprintf("LogMethodDuration::%s", msg), newArgs...)
 }

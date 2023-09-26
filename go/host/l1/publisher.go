@@ -138,7 +138,7 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 	go func() {
 		err := p.publishTransaction(respondSecretTx)
 		if err != nil {
-			p.logger.Error("could not broadcast secret response L1 tx", log.ErrKey, err)
+			p.logger.Error("Could not broadcast secret response L1 tx", log.ErrKey, err)
 		}
 	}()
 
@@ -201,7 +201,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 
 	err = p.publishTransaction(rollupTx)
 	if err != nil {
-		p.logger.Error("could not issue rollup tx", log.ErrKey, err)
+		p.logger.Error("Could not issue rollup tx", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	} else {
 		p.logger.Info("Rollup included in L1", log.RollupHashKey, producedRollup.Hash())
 	}

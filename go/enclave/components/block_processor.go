@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/gas"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
@@ -34,7 +36,7 @@ func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, gasOr
 }
 
 func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts) (*BlockIngestionType, error) {
-	defer bp.logger.Info("L1 block processed", log.BlockHashKey, br.Block.Hash(), log.DurationKey, measure.NewStopwatch())
+	defer core.LogMethodDuration(bp.logger, measure.NewStopwatch(), "L1 block processed", log.BlockHashKey, br.Block.Hash())
 
 	ingestion, err := bp.tryAndInsertBlock(br)
 	if err != nil {
@@ -78,7 +80,7 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts) (*Blo
 		// Do not store the block if the L1 chain insertion failed
 		return nil, err
 	}
-	bp.logger.Trace("block inserted successfully",
+	bp.logger.Trace("Block inserted successfully",
 		log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash(), "ingestionType", ingestionType)
 
 	err = bp.storage.StoreBlock(block, ingestionType.ChainFork)

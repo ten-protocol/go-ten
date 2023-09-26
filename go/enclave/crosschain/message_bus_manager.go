@@ -183,7 +183,11 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 		b = p
 	}
 
-	m.logger.Info(fmt.Sprintf("Extracted cross chain messages for block height %d ->%d: %d.", fromBlock.NumberU64(), toBlock.NumberU64(), len(messages)))
+	logf := m.logger.Info
+	if len(messages)+len(transfers) == 0 {
+		logf = m.logger.Debug
+	}
+	logf(fmt.Sprintf("Extracted cross chain messages for block height %d ->%d", fromBlock.NumberU64(), toBlock.NumberU64()), "no_msgs", len(messages), "no_value_transfers", len(transfers))
 
 	return messages, transfers
 }
