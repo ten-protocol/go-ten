@@ -72,14 +72,14 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 	for _, tx := range context.Transactions {
 		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
 		if err != nil {
-			executor.logger.Debug("Unable to extract sender for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
+			executor.logger.Error("Unable to extract sender for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
 			continue
 		}
 		accBalance := stateDB.GetBalance(*sender)
 
 		cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block)
 		if err != nil {
-			executor.logger.Debug("Unable to get gas cost for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
+			executor.logger.Error("Unable to get gas cost for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
 			continue
 		}
 
