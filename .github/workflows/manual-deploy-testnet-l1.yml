@@ -14,7 +14,7 @@
 # The scheduled deployment runs at 03:05 on every day-of-week from Tuesday through Saturday, for dev-testnet only.
 
 name: '[M] Deploy Testnet L1'
-
+run-name: '[M] Deploy Testnet L1 ( ${{ github.event.inputs.testnet_type }} )'
 on:
   workflow_dispatch:
     inputs:
@@ -147,6 +147,6 @@ jobs:
             --blockTimeSecs=15 --slotsPerEpoch=2 --slotsPerSecond=15 \
             --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
             --logToFile=false \
-            --prefundedAddrs="${{ secrets.WORKER_ADDR }},${{ secrets.NODE_WALLET_ADDR_0 }},${{ secrets.NODE_WALLET_ADDR_1 }}"'
+            --prefundedAddrs="${{ vars.WORKER_ADDR }},${{ vars.NODE_WALLET_ADDR_0 }},${{ vars.NODE_WALLET_ADDR_1 }}"'
             
       
