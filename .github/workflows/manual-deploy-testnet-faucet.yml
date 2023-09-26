@@ -21,6 +21,7 @@ on:
         options:
           - 'dev-testnet'
           - 'testnet'
+          - 'sepolia-testnet'
 
   workflow_call:
     inputs:
@@ -51,6 +52,12 @@ jobs:
         run: |
           echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_faucet_testnet:latest" >> $GITHUB_ENV
           echo "TESTNET_ADDR=erpc.dev-testnet.obscu.ro" >> $GITHUB_ENV
+
+      - name: 'Sets env vars for sepolia-testnet'
+        if: ${{ inputs.testnet_type == 'sepolia-testnet' }}
+        run: |
+          echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/sepolia_faucet_testnet:latest" >> $GITHUB_ENV
+          echo "TESTNET_ADDR=erpc.sepolia-testnet.obscu.ro" >> $GITHUB_ENV
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
