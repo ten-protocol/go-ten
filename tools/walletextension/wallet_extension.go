@@ -37,6 +37,7 @@ type WalletExtension struct {
 	storage            storage.Storage
 	logger             gethlog.Logger
 	stopControl        *stopcontrol.StopControl
+	version            string
 }
 
 func New(
@@ -44,6 +45,7 @@ func New(
 	userAccountManager *useraccountmanager.UserAccountManager,
 	storage storage.Storage,
 	stopControl *stopcontrol.StopControl,
+	version string,
 	logger gethlog.Logger,
 ) *WalletExtension {
 	return &WalletExtension{
@@ -53,6 +55,7 @@ func New(
 		storage:            storage,
 		logger:             logger,
 		stopControl:        stopControl,
+		version:            version,
 	}
 }
 
@@ -413,4 +416,8 @@ func (w *WalletExtension) checkParametersForInterceptedGetStorageAt(params []int
 		return methodName == common.GetStorageAtUserIDRequestMethodName
 	}
 	return false
+}
+
+func (w *WalletExtension) Version() string {
+	return w.version
 }
