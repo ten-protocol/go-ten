@@ -9,7 +9,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -71,7 +70,7 @@ func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Recei
 	br.callbackMutex.RLock()
 	defer br.callbackMutex.RUnlock()
 
-	defer br.logger.Debug("Sending batch and events", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
+	defer core.LogMethodDuration(br.logger, measure.NewStopwatch(), "Sending batch and events", log.BatchHashKey, batch.Hash())
 
 	br.headBatchSeq = batch.SeqNo()
 	if br.batchesCallback != nil {

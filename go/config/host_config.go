@@ -92,6 +92,9 @@ type HostInputConfig struct {
 
 	// Whether inbound p2p is enabled or not
 	IsInboundP2PDisabled bool
+
+	// MaxRollupSize specifies the threshold size which the sequencer-host publishes a rollup
+	MaxRollupSize uint64
 }
 
 // ToHostConfig returns a HostConfig given a HostInputConfig
@@ -131,6 +134,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		RollupInterval:            p.RollupInterval,
 		L1BlockTime:               p.L1BlockTime,
 		IsInboundP2PDisabled:      p.IsInboundP2PDisabled,
+		MaxRollupSize:             p.MaxRollupSize,
 	}
 }
 
@@ -156,6 +160,8 @@ type HostConfig struct {
 	BatchInterval time.Duration
 	// Min interval before creating the next rollup (only used by Sequencer nodes)
 	RollupInterval time.Duration
+	// MaxRollupSize is the max size of the rollup
+	MaxRollupSize uint64
 	// The expected time between blocks on the L1 network
 	L1BlockTime time.Duration
 
@@ -243,7 +249,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		LogPath:                   "",
 		PrivateKeyString:          "0000000000000000000000000000000000000000000000000000000000000001",
 		L1ChainID:                 1337,
-		ObscuroChainID:            777,
+		ObscuroChainID:            443,
 		ProfilerEnabled:           false,
 		L1StartHash:               common.L1BlockHash{}, // this hash will not be found, host will log a warning and then stream from L1 genesis
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
@@ -255,5 +261,6 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		RollupInterval:            5 * time.Second,
 		L1BlockTime:               15 * time.Second,
 		IsInboundP2PDisabled:      false,
+		MaxRollupSize:             1024 * 64,
 	}
 }

@@ -14,6 +14,8 @@ sidebar-list:
     children:
       - title: Encrypted Ethereum
         url: what-is-obscuro/encrypted-ethereum
+      - title: Developer quick start
+        url: what-is-obscuro/quick-start
       - title: Technology
         url: what-is-obscuro/technology
       - title: User Experience
@@ -39,6 +41,8 @@ sidebar-list:
         url: testnet/deploying-a-smart-contract-programmatically
       - title: Change Log
         url: testnet/changelog
+      - title: Security
+        url: testnet/security
 
   - title: On Chain Capabilities
     children: 

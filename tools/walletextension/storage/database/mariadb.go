@@ -74,11 +74,10 @@ func (m *MariaDB) AddAccount(userID []byte, accountAddress []byte, signature []b
 	}
 	defer stmt.Close()
 
-	res, err := stmt.Exec(userID, accountAddress, signature)
+	_, err = stmt.Exec(userID, accountAddress, signature)
 	if err != nil {
 		return err
 	}
-	fmt.Println(res)
 
 	return nil
 }

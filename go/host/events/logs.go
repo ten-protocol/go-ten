@@ -60,9 +60,10 @@ func (l *LogEventManager) Subscribe(id rpc.ID, encryptedLogSubscription common.E
 }
 
 func (l *LogEventManager) Unsubscribe(id rpc.ID) {
-	err := l.sl.Enclaves().Unsubscribe(id)
-	if err != nil {
-		l.logger.Warn("could not terminate enclave subscription", log.ErrKey, err)
+	enclaveUnsubErr := l.sl.Enclaves().Unsubscribe(id)
+	if enclaveUnsubErr != nil {
+		// this can happen when the client passes a invalid subscription id
+		l.logger.Debug("Could not terminate enclave subscription", log.SubIDKey, id, log.ErrKey, enclaveUnsubErr)
 	}
 	l.subscriptionMutex.Lock()
 	defer l.subscriptionMutex.Unlock()
@@ -71,6 +72,9 @@ func (l *LogEventManager) Unsubscribe(id rpc.ID) {
 	if found {
 		close(logSubscription.ch)
 		delete(l.subscriptions, id)
+		if enclaveUnsubErr != nil {
+			l.logger.Error("The subscription management between the host and the enclave is out of sync", log.SubIDKey, id, log.ErrKey, enclaveUnsubErr)
+		}
 	}
 }
 
@@ -88,7 +92,7 @@ func (l *LogEventManager) SendLogsToSubscribers(result *common.EncryptedSubscrip
 	}
 }
 
-// Pairs the latest seen rollup for a log subscription with the channel on which new logs should be sent.
+// Simple wrapper over the channel that logs for this subscription are sent to.
 type subscription struct {
-	ch chan []byte // The channel that logs for this subscription are sent to.
+	ch chan []byte
 }

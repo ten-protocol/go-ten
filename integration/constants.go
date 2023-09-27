@@ -31,5 +31,5 @@ const (
 
 const (
 	EthereumChainID = 1337
-	ObscuroChainID  = 777
+	ObscuroChainID  = 443
 )

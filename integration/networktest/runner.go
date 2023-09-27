@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+type contextKey int
+
+const (
+	LogFileKey contextKey = 0
+)
+
 // Run provides a standardised way to run tests and provides a single place for changing logging/output styles, etc.
 //
 // The tests in `/tests` should typically only contain a single line, executing this method.
@@ -23,7 +29,7 @@ func Run(testName string, t *testing.T, env Environment, action Action) {
 		t.Fatal(err)
 	}
 	initialCtx, cancelCtx := context.WithCancel(context.Background())
-	ctx := context.WithValue(initialCtx, "logFile", logFile)
+	ctx := context.WithValue(initialCtx, LogFileKey, logFile)
 	defer func() {
 		envCleanup()
 		cancelCtx()

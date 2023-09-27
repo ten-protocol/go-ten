@@ -176,7 +176,7 @@ func (r *Repository) streamLiveBlocks() {
 			r.head = header.Hash()
 			block, err := r.ethClient.BlockByHash(header.Hash())
 			if err != nil {
-				r.logger.Error("error fetching new block", log.BlockHashKey, header.Hash(),
+				r.logger.Error("Error fetching new block", log.BlockHashKey, header.Hash(),
 					log.BlockHeightKey, header.Number, log.ErrKey, err)
 				continue
 			}

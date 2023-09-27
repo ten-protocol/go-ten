@@ -62,7 +62,9 @@ type Guardian struct {
 
 	batchInterval  time.Duration
 	rollupInterval time.Duration
+	blockTime      time.Duration
 	l1StartHash    gethcommon.Hash
+	maxRollupSize  uint64
 
 	hostInterrupter *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
 
@@ -78,6 +80,8 @@ func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator 
 		batchInterval:   cfg.BatchInterval,
 		rollupInterval:  cfg.RollupInterval,
 		l1StartHash:     cfg.L1StartHash,
+		maxRollupSize:   cfg.MaxRollupSize,
+		blockTime:       cfg.L1BlockTime,
 		db:              db,
 		hostInterrupter: interrupter,
 		logger:          logger,
@@ -107,12 +111,12 @@ func (g *Guardian) Start() error {
 func (g *Guardian) Stop() error {
 	err := g.enclaveClient.Stop()
 	if err != nil {
-		g.logger.Warn("error stopping enclave", log.ErrKey, err)
+		g.logger.Error("error stopping enclave", log.ErrKey, err)
 	}
 
 	err = g.enclaveClient.StopClient()
 	if err != nil {
-		g.logger.Warn("error stopping enclave client", log.ErrKey, err)
+		g.logger.Error("error stopping enclave client", log.ErrKey, err)
 	}
 
 	return nil
@@ -159,7 +163,7 @@ func (g *Guardian) HandleBlock(block *types.Block) {
 // Note: this should only be called for validators, sequencers produce their own batches
 func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	if g.hostData.IsSequencer {
-		g.logger.Error("repo received batch but we are a sequencer, ignoring")
+		g.logger.Error("Repo received batch but we are a sequencer, ignoring")
 		return
 	}
 	g.logger.Debug("Received L2 block", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
@@ -170,7 +174,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	}
 	err := g.submitL2Batch(batch)
 	if err != nil {
-		g.logger.Warn("error submitting batch to enclave", log.ErrKey, err)
+		g.logger.Error("Error submitting batch to enclave", log.ErrKey, err)
 	}
 }
 
@@ -234,7 +238,7 @@ func (g *Guardian) mainLoop() {
 func (g *Guardian) checkEnclaveStatus() {
 	s, err := g.enclaveClient.Status()
 	if err != nil {
-		g.logger.Error("could not get enclave status", log.ErrKey, err)
+		g.logger.Error("Could not get enclave status", log.ErrKey, err)
 		// we record this as a disconnection, we can't get any more info from the enclave about status currently
 		g.state.OnDisconnected()
 		return
@@ -277,7 +281,7 @@ func (g *Guardian) provideSecret() error {
 			if scrt.RequesterID.Hex() == g.hostData.ID.Hex() {
 				err = g.enclaveClient.InitEnclave(scrt.Secret)
 				if err != nil {
-					g.logger.Error("could not initialize enclave with received secret response", log.ErrKey, err)
+					g.logger.Error("Could not initialize enclave with received secret response", log.ErrKey, err)
 					continue // try the next secret response in the block if there are more
 				}
 				return nil // successfully initialized enclave with secret, break out of retry loop function
@@ -387,10 +391,11 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	}
 	receipts, err := g.sl.L1Repo().FetchObscuroReceipts(block)
 	if err != nil {
+		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
 	}
 	resp, err := g.enclaveClient.SubmitL1Block(*block, receipts, isLatest)
-	g.submitDataLock.Unlock()
+	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
 			// we have already processed this block, let's try the next canonical block
@@ -420,7 +425,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	// todo: make sure this doesn't respond to old requests (once we have a proper protocol for that)
 	err = g.publishSharedSecretResponses(resp.ProducedSecretResponses)
 	if err != nil {
-		g.logger.Error("failed to publish response to secret request", log.ErrKey, err)
+		g.logger.Error("Failed to publish response to secret request", log.ErrKey, err)
 	}
 	return true, nil
 }
@@ -437,14 +442,14 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 	for _, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
-			g.logger.Error("could not decode rollup.", log.ErrKey, err)
+			g.logger.Error("Could not decode rollup.", log.ErrKey, err)
 		}
 		err = g.db.AddRollupHeader(r, block)
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
-				g.logger.Info("rollup already stored", log.RollupHashKey, r.Hash())
+				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())
 			} else {
-				g.logger.Error("could not store rollup.", log.ErrKey, err)
+				g.logger.Error("Could not store rollup.", log.ErrKey, err)
 			}
 		}
 	}
@@ -499,13 +504,13 @@ func (g *Guardian) periodicBatchProduction() {
 		case <-batchProdTicker.C:
 			if !g.state.InSyncWithL1() {
 				// if we're behind the L1, we don't want to produce batches
-				g.logger.Debug("skipping batch production because L1 is not up to date")
+				g.logger.Debug("Skipping batch production because L1 is not up to date")
 				continue
 			}
-			g.logger.Debug("create batch")
+			g.logger.Debug("Create batch")
 			err := g.enclaveClient.CreateBatch()
 			if err != nil {
-				g.logger.Error("unable to produce batch", log.ErrKey, err)
+				g.logger.Error("Unable to produce batch", log.ErrKey, err)
 			}
 		case <-g.hostInterrupter.Done():
 			// interrupted - end periodic process
@@ -518,42 +523,49 @@ func (g *Guardian) periodicBatchProduction() {
 func (g *Guardian) periodicRollupProduction() {
 	defer g.logger.Info("Stopping rollup production")
 
-	interval := g.rollupInterval
-	if interval == 0 {
-		interval = 3 * time.Second
-	}
-	rollupTicker := time.NewTicker(interval)
-	// attempt to produce rollup every time the timer ticks until we are stopped/interrupted
+	// check rollup every l1 block time
+	rollupCheckTicker := time.NewTicker(g.blockTime)
+	lastSuccessfulRollup := time.Now()
+
 	for {
-		if g.hostInterrupter.IsStopping() {
-			rollupTicker.Stop()
-			return // stop periodic rollup production
-		}
 		select {
-		case <-rollupTicker.C:
+		case <-rollupCheckTicker.C:
 			if !g.state.IsUpToDate() {
 				// if we're behind the L1, we don't want to produce rollups
 				g.logger.Debug("skipping rollup production because L1 is not up to date", "state", g.state)
 				continue
 			}
-			lastBatchNo, err := g.sl.L1Publisher().FetchLatestSeqNo()
+
+			fromBatch, err := g.getLatestBatchNo()
 			if err != nil {
-				g.logger.Warn("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
+				g.logger.Error("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
 				continue
 			}
-			fromBatch := lastBatchNo.Uint64()
-			if lastBatchNo.Uint64() > common.L2GenesisSeqNo {
-				fromBatch++
-			}
-			producedRollup, err := g.enclaveClient.CreateRollup(fromBatch)
+
+			availBatchesSumSize, err := g.calculateNonRolledupBatchesSize(fromBatch)
 			if err != nil {
-				g.logger.Error("unable to produce rollup", log.ErrKey, err)
-			} else {
-				g.sl.L1Publisher().PublishRollup(producedRollup)
+				g.logger.Error("Unable to estimate the size of the current rollup", log.ErrKey, err)
+				// todo - this should not happen. Is it worth continuing?
+				availBatchesSumSize = 0
 			}
+
+			// produce and issue rollup when either:
+			// it has passed g.rollupInterval from last lastSuccessfulRollup
+			// or the size of accumulated batches is > g.maxRollupSize
+			if time.Since(lastSuccessfulRollup) > g.rollupInterval || availBatchesSumSize >= g.maxRollupSize {
+				producedRollup, err := g.enclaveClient.CreateRollup(fromBatch)
+				if err != nil {
+					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
+					continue
+				}
+				// this method waits until the receipt is received
+				g.sl.L1Publisher().PublishRollup(producedRollup)
+				lastSuccessfulRollup = time.Now()
+			}
+
 		case <-g.hostInterrupter.Done():
 			// interrupted - end periodic process
-			rollupTicker.Stop()
+			rollupCheckTicker.Stop()
 			return
 		}
 	}
@@ -577,7 +589,7 @@ func (g *Guardian) streamEnclaveData() {
 				continue
 			}
 
-			if resp.Batch != nil {
+			if resp.Batch != nil { //nolint:nestif
 				lastBatch = resp.Batch
 				g.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
 				err := g.sl.L2Repo().AddBatch(resp.Batch)
@@ -587,14 +599,15 @@ func (g *Guardian) streamEnclaveData() {
 				}
 
 				if g.hostData.IsSequencer { // if we are the sequencer we need to broadcast this new batch to the network
-					g.logger.Info("Batch produced", log.BatchHeightKey, resp.Batch.Header.Number, log.BatchHashKey, resp.Batch.Hash())
+					g.logger.Info("Batch produced. Sending to peers..", log.BatchHeightKey, resp.Batch.Header.Number, log.BatchHashKey, resp.Batch.Hash())
 
 					err = g.sl.P2P().BroadcastBatches([]*common.ExtBatch{resp.Batch})
 					if err != nil {
-						g.logger.Error("failed to broadcast batch", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
+						g.logger.Error("Failed to broadcast batch", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
 					}
+				} else {
+					g.logger.Debug("Received batch from enclave", log.BatchSeqNoKey, resp.Batch.Header.SequencerOrderNo, log.BatchHashKey, resp.Batch.Hash())
 				}
-				g.logger.Info("Received batch from enclave", log.BatchSeqNoKey, resp.Batch.Header.SequencerOrderNo, log.BatchHashKey, resp.Batch.Hash())
 				g.state.OnProcessedBatch(resp.Batch.Header.SequencerOrderNo)
 			}
 
@@ -607,4 +620,44 @@ func (g *Guardian) streamEnclaveData() {
 			return
 		}
 	}
+}
+
+func (g *Guardian) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error) {
+	var size uint64
+
+	if seqNo == 0 { // don't calculate for seqNo 0 batches
+		return 0, nil
+	}
+
+	currentNo := seqNo
+	for {
+		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(big.NewInt(int64(currentNo)))
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				break // no more batches
+			}
+			return 0, err
+		}
+
+		bSize, err := batch.Size()
+		if err != nil {
+			return 0, err
+		}
+		size += uint64(bSize)
+		currentNo++
+	}
+
+	return size, nil
+}
+
+func (g *Guardian) getLatestBatchNo() (uint64, error) {
+	lastBatchNo, err := g.sl.L1Publisher().FetchLatestSeqNo()
+	if err != nil {
+		return 0, err
+	}
+	fromBatch := lastBatchNo.Uint64()
+	if lastBatchNo.Uint64() > common.L2GenesisSeqNo {
+		fromBatch++
+	}
+	return fromBatch, nil
 }

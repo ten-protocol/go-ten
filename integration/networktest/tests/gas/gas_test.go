@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/integration/networktest/actions"
@@ -20,13 +19,13 @@ import (
 // Smoke tests are useful for checking a network is live or checking basic functionality is not broken
 
 var _transferAmount = big.NewInt(100_000_000)
-var _testTimeSpan = 10 * time.Second
 
 // Transaction with insufficient gas limit for the intrinsic cost. It should result in no difference
 // to user balances, but network should remain operational.
 // Used to automatically detect batch desync based on transaction inclusion.
 // Sequencer and Validator will process different transactions, but state should be identical.
 func TestExecuteNativeFundsTransferNoGas(t *testing.T) {
+	networktest.TestOnlyRunsInIDE(t)
 	networktest.Run(
 		"gas-underlimit-test",
 		t,
@@ -50,9 +49,9 @@ func TestExecuteNativeFundsTransferNoGas(t *testing.T) {
 				ExpectedBalance: common.Big0,
 			},
 			actions.VerifyOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) error {
-				logFile, ok := (ctx.Value("logFile")).(*os.File)
+				logFile, ok := (ctx.Value(networktest.LogFileKey)).(*os.File)
 				if !ok {
-					return fmt.Errorf("Log file not provided in context!")
+					return fmt.Errorf("log file not provided in context")
 				}
 				fmt.Println(logFile.Name())
 
@@ -66,7 +65,7 @@ func TestExecuteNativeFundsTransferNoGas(t *testing.T) {
 				// https://golang.org/pkg/bufio/#Scanner.Scan
 				for scanner.Scan() {
 					if strings.Contains(scanner.Text(), "Error validating batch") {
-						return fmt.Errorf("Found bad batches in test logs.")
+						return fmt.Errorf("found bad batches in test logs")
 					}
 				}
 

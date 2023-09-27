@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -161,7 +163,7 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 
 	isReorg := false
 	for i, batch := range batches {
-		rc.logger.Info("Add batch to rollup", log.BatchSeqNoKey, batch.SeqNo(), log.BatchHeightKey, batch.Number(), log.BatchHashKey, batch.Hash())
+		rc.logger.Debug("Compressing batch to rollup", log.BatchSeqNoKey, batch.SeqNo(), log.BatchHeightKey, batch.Number(), log.BatchHashKey, batch.Hash())
 		// determine whether the batch is canonical
 		can, err := rc.storage.FetchBatchByHeight(batch.NumberU64())
 		if err != nil {
@@ -261,31 +263,30 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 	startAtSeq := calldataRollupHeader.FirstBatchSequence.Int64()
 	currentHeight := calldataRollupHeader.FirstCanonBatchHeight.Int64() - 1
 	currentTime := int64(calldataRollupHeader.StartTime)
-	var currentL1Height *big.Int
 
 	rollupL1Block, err := rc.storage.FetchBlock(compressionL1Head)
+	if err != nil {
+		return nil, fmt.Errorf("can't find the block used for compression. Cause: %w", err)
+	}
+
+	l1Heights, err := rc.calculateL1HeightsFromDeltas(calldataRollupHeader, transactionsPerBatch)
+	if err != nil {
+		return nil, err
+	}
+
+	// a cache of the l1 blocks used by the current rollup, indexed by their height
+	l1BlocksAtHeight := make(map[uint64]*types.Block)
+	err = rc.calcL1AncestorsOfHeight(big.NewInt(int64(slices.Min(l1Heights))), rollupL1Block, l1BlocksAtHeight)
 	if err != nil {
 		return nil, err
 	}
 
 	for currentBatchIdx, batchTransactions := range transactionsPerBatch {
 		// the l1 proofs are stored as deltas, which compress well as it should be a series of 1s and 0s
-		// the first element is the actual height
-		l1Delta := big.NewInt(0)
-		err := l1Delta.GobDecode(calldataRollupHeader.L1HeightDeltas[currentBatchIdx])
-		if err != nil {
-			return nil, err
-		}
-		if currentBatchIdx == 0 {
-			currentL1Height = l1Delta
-		} else {
-			currentL1Height = big.NewInt(l1Delta.Int64() + currentL1Height.Int64())
-		}
-
 		// get the block with the currentL1Height, relative to the rollupL1Block
-		block, err := rc.getAncestorOfHeight(currentL1Height, rollupL1Block)
-		if err != nil {
-			return nil, err
+		block, f := l1BlocksAtHeight[l1Heights[currentBatchIdx]]
+		if !f {
+			return nil, fmt.Errorf("programming error. L1 block not retrieved")
 		}
 
 		// todo - this should be 1 second
@@ -348,15 +349,46 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 	return incompleteBatches, nil
 }
 
-func (rc *RollupCompression) getAncestorOfHeight(ancestorHeight *big.Int, head *types.Block) (*types.Block, error) {
-	if head.NumberU64() == ancestorHeight.Uint64() {
-		return head, nil
-	}
-	p, err := rc.storage.FetchBlock(head.ParentHash())
+func (rc *RollupCompression) calculateL1HeightsFromDeltas(calldataRollupHeader *common.CalldataRollupHeader, transactionsPerBatch [][]*common.L2Tx) ([]uint64, error) {
+	referenceHeight := big.NewInt(0)
+	// the first element in the deltas is the actual height
+	err := referenceHeight.GobDecode(calldataRollupHeader.L1HeightDeltas[0])
 	if err != nil {
 		return nil, err
 	}
-	return rc.getAncestorOfHeight(ancestorHeight, p)
+
+	l1Heights := make([]uint64, 0)
+	l1Heights = append(l1Heights, referenceHeight.Uint64())
+	prevHeight := l1Heights[0]
+	for currentBatchIdx := range transactionsPerBatch {
+		// the l1 proofs are stored as deltas, which compress well as it should be a series of 1s and 0s
+		if currentBatchIdx > 0 {
+			l1Delta := big.NewInt(0)
+			err := l1Delta.GobDecode(calldataRollupHeader.L1HeightDeltas[currentBatchIdx])
+			if err != nil {
+				return nil, err
+			}
+			value := l1Delta.Int64() + int64(prevHeight)
+			if value < 0 {
+				rc.logger.Crit("Should not have a negative height")
+			}
+			l1Heights = append(l1Heights, uint64(value))
+			prevHeight = uint64(value)
+		}
+	}
+	return l1Heights, nil
+}
+
+func (rc *RollupCompression) calcL1AncestorsOfHeight(fromHeight *big.Int, toBlock *types.Block, path map[uint64]*types.Block) error {
+	path[toBlock.NumberU64()] = toBlock
+	if toBlock.NumberU64() == fromHeight.Uint64() {
+		return nil
+	}
+	p, err := rc.storage.FetchBlock(toBlock.ParentHash())
+	if err != nil {
+		return err
+	}
+	return rc.calcL1AncestorsOfHeight(fromHeight, p, path)
 }
 
 func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeader *common.CalldataRollupHeader, incompleteBatches []*batchFromRollup) error { //nolint:gocognit
@@ -374,7 +406,10 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 		// check whether the batch is already stored in the database
 		b, err := rc.storage.FetchBatchBySeqNo(incompleteBatch.seqNo.Uint64())
 		if err == nil {
-			parentHash = b.Hash()
+			// chain to a parent only if the batch is not a reorg
+			if incompleteBatch.header == nil {
+				parentHash = b.Hash()
+			}
 			continue
 		}
 		if !errors.Is(err, errutil.ErrNotFound) {
@@ -382,6 +417,16 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 		}
 
 		switch {
+		// this batch was re-orged
+		case incompleteBatch.header != nil:
+			err := rc.storage.StoreBatch(&core.Batch{
+				Header:       incompleteBatch.header,
+				Transactions: incompleteBatch.transactions,
+			})
+			if err != nil {
+				return err
+			}
+
 		// handle genesis
 		case incompleteBatch.seqNo.Uint64() == common.L2GenesisSeqNo:
 			genBatch, _, err := rc.batchExecutor.CreateGenesisState(
@@ -412,16 +457,6 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 
 			rc.logger.Info("Stored genesis", log.BatchHashKey, genBatch.Hash())
 			parentHash = genBatch.Hash()
-
-		// this batch was re-orged
-		case incompleteBatch.header != nil:
-			err := rc.storage.StoreBatch(&core.Batch{
-				Header:       incompleteBatch.header,
-				Transactions: incompleteBatch.transactions,
-			})
-			if err != nil {
-				return err
-			}
 
 		default:
 			// transforms the incompleteBatch into a BatchHeader by executing the transactions

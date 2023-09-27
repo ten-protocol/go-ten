@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/measure"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/gas"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
@@ -363,9 +365,10 @@ func (e *enclaveImpl) StopClient() common.SystemError {
 }
 
 func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.StreamL2UpdatesResponse) {
-	e.logger.Info("Streaming batch to client", log.BatchHashKey, batch.Hash())
+	e.logger.Info("Streaming batch to host", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
 	extBatch, err := batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
 	if err != nil {
+		// this error is unrecoverable
 		e.logger.Crit("failed to convert batch", log.ErrKey, err)
 	}
 	resp := common.StreamL2UpdatesResponse{
@@ -377,7 +380,7 @@ func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.Stream
 // this function is only called when the executed batch is the new head
 func (e *enclaveImpl) streamEventsForNewHeadBatch(batch *core.Batch, receipts types.Receipts, outChannel chan common.StreamL2UpdatesResponse) {
 	logs, err := e.subscriptionManager.GetSubscribedLogsForBatch(batch, receipts)
-	e.logger.Info("Stream Events for", log.BatchHashKey, batch.Hash(), "nr_events", len(logs))
+	e.logger.Debug("Stream Events for", log.BatchHashKey, batch.Hash(), "nr_events", len(logs))
 	if err != nil {
 		e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
 		return
@@ -449,7 +452,7 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts) (*components.Bl
 	if err != nil {
 		// only warn for unexpected errors
 		if errors.Is(err, errutil.ErrBlockAncestorNotFound) || errors.Is(err, errutil.ErrBlockAlreadyProcessed) {
-			e.logger.Debug("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
+			e.logger.Debug("Did not ingest block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
 		} else {
 			e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
 		}
@@ -547,12 +550,9 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 		return responses.ToInternalError(fmt.Errorf("requested SubmitBatch with the enclave stopping"))
 	}
 
-	callStart := time.Now()
-	defer func() {
-		e.logger.Info("SubmitBatch call completed.", "start", callStart, log.DurationKey, time.Since(callStart), log.BatchHashKey, extBatch.Hash())
-	}()
+	core.LogMethodDuration(e.logger, measure.NewStopwatch(), "SubmitBatch call completed.", log.BatchHashKey, extBatch.Hash())
 
-	e.logger.Info("SubmitBatch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
+	e.logger.Info("Received new p2p batch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	batch, err := core.ToBatch(extBatch, e.dataEncryptionService, e.dataCompressionService)
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not convert batch. Cause: %w", err))
@@ -988,7 +988,7 @@ func (e *enclaveImpl) Stop() common.SystemError {
 
 	if e.profiler != nil {
 		if err := e.profiler.Stop(); err != nil {
-			e.logger.Error("Could not profiler", log.ErrKey, err)
+			e.logger.Error("Could not stop profiler", log.ErrKey, err)
 			return err
 		}
 	}
@@ -1212,14 +1212,14 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 			if transfer == nil {
 				transfer = new(hexutil.Big)
 			}
-			e.logger.Warn("Gas estimation capped by limited funds", "original", hi, "balance", balance,
+			e.logger.Debug("Gas estimation capped by limited funds", "original", hi, "balance", balance,
 				"sent", transfer.ToInt(), "maxFeePerGas", feeCap, "fundable", allowance)
 			hi = allowance.Uint64()
 		}
 	}
 	// Recap the highest gas allowance with specified gascap.
 	if gasCap != 0 && hi > gasCap {
-		e.logger.Warn("Caller gas above allowance, capping", "requested", hi, "cap", gasCap)
+		e.logger.Debug("Caller gas above allowance, capping", "requested", hi, "cap", gasCap)
 		hi = gasCap
 	}
 	cap = hi //nolint: revive
