@@ -37,7 +37,7 @@ func (e *EnclaveContainer) Start() error {
 func (e *EnclaveContainer) Stop() error {
 	_, err := e.RPCServer.Stop(context.Background(), nil)
 	if err != nil {
-		e.Logger.Warn("unable to cleanly stop enclave", log.ErrKey, err)
+		e.Logger.Error("Unable to cleanly stop enclave", log.ErrKey, err)
 		return err
 	}
 	return nil

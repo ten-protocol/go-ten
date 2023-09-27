@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
+
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/common/subscription"
@@ -238,7 +240,7 @@ func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
 		Requester: p.ourPublicAddress,
 		FromSeqNo: fromSeqNo,
 	}
-	defer p.logger.Info("Requested batches from sequencer", "fromSeqNo", batchRequest.FromSeqNo, log.DurationKey, measure.NewStopwatch())
+	defer core.LogMethodDuration(p.logger, measure.NewStopwatch(), "Requested batches from sequencer", "fromSeqNo", batchRequest.FromSeqNo)
 
 	encodedBatchRequest, err := rlp.EncodeToBytes(batchRequest)
 	if err != nil {
@@ -307,7 +309,7 @@ func (p *Service) handleConnections() {
 		conn, err := p.listener.Accept()
 		if err != nil {
 			if p.running.Load() {
-				p.logger.Warn("host could not form P2P connection", log.ErrKey, err)
+				p.logger.Debug("Could not form P2P connection", log.ErrKey, err)
 			}
 			return
 		}
@@ -323,21 +325,21 @@ func (p *Service) handle(conn net.Conn) {
 
 	encodedMsg, err := io.ReadAll(conn)
 	if err != nil {
-		p.logger.Warn("failed to read message from peer", log.ErrKey, err)
+		p.logger.Debug("Failed to read message from peer", log.ErrKey, err)
 		return
 	}
 
 	msg := message{}
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
-		p.logger.Warn("failed to decode message received from peer: ", log.ErrKey, err)
+		p.logger.Debug("Failed to decode message received from peer: ", log.ErrKey, err)
 		return
 	}
 
 	switch msg.Type {
 	case msgTypeTx:
 		if !p.isSequencer {
-			p.logger.Error("received transaction from peer, but not a sequencer node")
+			p.logger.Error("Received transaction from peer, but not a sequencer node")
 			return
 		}
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
@@ -356,6 +358,7 @@ func (p *Service) handle(conn net.Conn) {
 			// nothing to send to subscribers
 			break
 		}
+		// todo - check the batch signature
 		for _, batchSubs := range p.batchSubscribers.Subscribers() {
 			go batchSubs.HandleBatches(batchMsg.Batches, batchMsg.IsLive)
 		}
@@ -388,7 +391,7 @@ func (p *Service) broadcast(msg message) error {
 		go func() {
 			err := p.sendBytesWithRetry(closureAddr, msgEncoded)
 			if err != nil {
-				p.logger.Error("unsuccessful broadcast", log.ErrKey, err)
+				p.logger.Debug("Could not send message to peer", "peer", closureAddr, log.ErrKey, err)
 			}
 		}()
 	}
@@ -437,13 +440,13 @@ func (p *Service) sendBytes(address string, tx []byte) error {
 		defer conn.Close()
 	}
 	if err != nil {
-		p.logger.Warn(fmt.Sprintf("could not connect to peer on address %s", address), log.ErrKey, err)
+		p.logger.Debug(fmt.Sprintf("could not connect to peer on address %s", address), log.ErrKey, err)
 		return err
 	}
 
 	_, err = conn.Write(tx)
 	if err != nil {
-		p.logger.Warn(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
+		p.logger.Debug(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
 		return err
 	}
 	return nil

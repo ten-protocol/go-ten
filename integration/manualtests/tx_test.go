@@ -48,7 +48,7 @@ var (
 
 	l2Wallet = wallet.NewInMemoryWalletFromConfig(
 		"4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8",
-		777,
+		443,
 		gethlog.New())
 	l2Host = "localhost"
 	l2Port = 43900

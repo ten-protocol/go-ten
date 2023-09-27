@@ -230,7 +230,7 @@ func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash
 // StoreExecutedBatch - stores an executed batch in one go. This can be done for the sequencer because it is guaranteed
 // that all dependencies are in place for the execution to be successful.
 func (s *sequencer) StoreExecutedBatch(batch *core.Batch, receipts types.Receipts) error {
-	defer s.logger.Info("Registry StoreBatch() exit", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
+	defer core.LogMethodDuration(s.logger, measure.NewStopwatch(), "Registry StoreBatch() exit", log.BatchHashKey, batch.Hash())
 
 	// Check if this batch is already stored.
 	if _, err := s.storage.FetchBatchHeader(batch.Hash()); err == nil {
@@ -267,8 +267,6 @@ func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) 
 	if err := s.signRollup(rollup); err != nil {
 		return nil, fmt.Errorf("failed to sign created rollup: %w", err)
 	}
-
-	s.logger.Info("Created new head rollup", log.RollupHashKey, rollup.Hash(), "numBatches", len(rollup.Batches))
 
 	return s.rollupCompression.CreateExtRollup(rollup)
 }
@@ -339,6 +337,7 @@ func (s *sequencer) OnL1Fork(fork *common.ChainFork) error {
 	rollup, err := s.storage.FetchReorgedRollup(fork.NonCanonicalPath)
 	if err == nil {
 		s.logger.Error("Reissue rollup", log.RollupHashKey, rollup)
+		// todo - tudor - finalise the logic to reissue a rollup when the block used for compression was reorged
 		return nil
 	}
 	if !errors.Is(err, errutil.ErrNotFound) {

@@ -72,14 +72,14 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 	for _, tx := range context.Transactions {
 		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
 		if err != nil {
-			executor.logger.Warn("Unable to extract sender for tx", log.TxKey, tx.Hash())
+			executor.logger.Error("Unable to extract sender for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
 			continue
 		}
 		accBalance := stateDB.GetBalance(*sender)
 
 		cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block)
 		if err != nil {
-			executor.logger.Warn("Unable to get gas cost for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
+			executor.logger.Error("Unable to get gas cost for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
 			continue
 		}
 
@@ -107,8 +107,29 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 	return transactions, freeTransactions
 }
 
+func (executor *batchExecutor) refundL1Fees(stateDB *state.StateDB, context *BatchExecutionContext, transactions []*common.L2Tx) {
+	block, _ := executor.storage.FetchBlock(context.BlockPtr)
+	for _, tx := range transactions {
+		cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block)
+		if err != nil {
+			executor.logger.Warn("Unable to get gas cost for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
+			continue
+		}
+
+		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
+		if err != nil {
+			// todo @siliev - is this critical? Potential desync spot
+			executor.logger.Warn("Unable to extract sender for tx", log.TxKey, tx.Hash())
+			continue
+		}
+
+		stateDB.AddBalance(*sender, cost)
+		stateDB.SubBalance(context.Creator, cost)
+	}
+}
+
 func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
-	defer executor.logger.Info("Batch context processed", log.DurationKey, measure.NewStopwatch())
+	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
 
 	// sanity check that the l1 block exists. We don't have to execute batches of forks.
 	block, err := executor.storage.FetchBlock(context.BlockPtr)
@@ -159,12 +180,14 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 
 	crossChainTransactions = append(crossChainTransactions, freeTransactions...)
 
-	successfulTxs, txReceipts, err := executor.processTransactions(batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
+	successfulTxs, excludedTxs, txReceipts, err := executor.processTransactions(batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
 
-	ccSuccessfulTxs, ccReceipts, err := executor.processTransactions(batch, len(successfulTxs), crossChainTransactions, stateDB, context.ChainConfig, true)
+	executor.refundL1Fees(stateDB, context, excludedTxs)
+
+	ccSuccessfulTxs, _, ccReceipts, err := executor.processTransactions(batch, len(successfulTxs), crossChainTransactions, stateDB, context.ChainConfig, true)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +199,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	// we need to copy the batch to reset the internal hash cache
 	copyBatch := *batch
 	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
-	copyBatch.Transactions = append(transactionsToProcess, freeTransactions...)
+	copyBatch.Transactions = append(successfulTxs, freeTransactions...)
 	copyBatch.ResetHash()
 
 	if err = executor.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {
@@ -204,14 +227,14 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 				return gethcommon.Hash{}, fmt.Errorf("commit failure for batch %d. Cause: %w", batch.SeqNo(), err)
 			}
 			trieDB := executor.storage.TrieDB()
-			err = trieDB.Commit(h, true)
+			err = trieDB.Commit(h, false)
 			return h, err
 		},
 	}, nil
 }
 
 func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, error) {
-	defer executor.logger.Info("Executed batch", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
+	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Executed batch", log.BatchHashKey, batch.Hash())
 
 	// Validators recompute the entire batch using the same batch context
 	// if they have all necessary prerequisites like having the l1 block processed
@@ -316,8 +339,8 @@ func (executor *batchExecutor) populateOutboundCrossChainData(batch *core.Batch,
 
 	valueTransferMessages, err := executor.crossChainProcessors.Local.ExtractOutboundTransfers(receipts)
 	if err != nil {
-		executor.logger.Error("Extracting messages L2->L1 failed", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
-		return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
+		executor.logger.Error("Failed extracting L2->L1 messages value transfers", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+		return fmt.Errorf("could not extract cross chain value transfers. Cause: %w", err)
 	}
 
 	transfersHash := types.DeriveSha(ValueTransfers(valueTransferMessages), &trie.StackTrie{})
@@ -362,15 +385,23 @@ func (executor *batchExecutor) verifyInboundCrossChainTransactions(transactions 
 	return nil
 }
 
-func (executor *batchExecutor) processTransactions(batch *core.Batch, tCount int, txs []*common.L2Tx, stateDB *state.StateDB, cc *params.ChainConfig, noBaseFee bool) ([]*common.L2Tx, []*types.Receipt, error) {
+func (executor *batchExecutor) processTransactions(
+	batch *core.Batch,
+	tCount int,
+	txs []*common.L2Tx,
+	stateDB *state.StateDB,
+	cc *params.ChainConfig,
+	noBaseFee bool,
+) ([]*common.L2Tx, []*common.L2Tx, []*types.Receipt, error) {
 	var executedTransactions []*common.L2Tx
+	var excludedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
 	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, executor.storage, cc, tCount, noBaseFee, executor.logger)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {
-			return nil, nil, fmt.Errorf("there should be an entry for each transaction")
+			return nil, nil, nil, fmt.Errorf("there should be an entry for each transaction")
 		}
 		rec, foundReceipt := result.(*types.Receipt)
 		if foundReceipt {
@@ -378,12 +409,13 @@ func (executor *batchExecutor) processTransactions(batch *core.Batch, tCount int
 			txReceipts = append(txReceipts, rec)
 		} else {
 			// Exclude all errors
+			excludedTransactions = append(excludedTransactions, tx)
 			executor.logger.Info("Excluding transaction from batch", log.TxKey, tx.Hash(), log.BatchHashKey, batch.Hash(), "cause", result)
 		}
 	}
 	sort.Sort(sortByTxIndex(txReceipts))
 
-	return executedTransactions, txReceipts, nil
+	return executedTransactions, excludedTransactions, txReceipts, nil
 }
 
 func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) types.Receipts {

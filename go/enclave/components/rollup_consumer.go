@@ -3,6 +3,8 @@ package components
 import (
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	"github.com/obscuronet/go-obscuro/go/common/measure"
@@ -45,8 +47,7 @@ func NewRollupConsumer(
 }
 
 func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) error {
-	stopwatch := measure.NewStopwatch()
-	defer rc.logger.Info("Rollup consumer processed block", log.BlockHashKey, b.Block.Hash(), log.DurationKey, stopwatch)
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed block", log.BlockHashKey, b.Block.Hash())
 
 	rollups := rc.extractRollups(b)
 	if len(rollups) == 0 {
@@ -57,21 +58,34 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) 
 	if err != nil {
 		return err
 	}
-	if len(rollups) > 0 {
-		for _, rollup := range rollups {
-			// read batch data from rollup, verify and store it
-			internalHeader, err := rc.rollupCompression.ProcessExtRollup(rollup)
-			if err != nil {
-				rc.logger.Error("Failed processing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
-				// todo - issue challenge as a validator
-				return err
-			}
-			if err := rc.storage.StoreRollup(rollup, internalHeader); err != nil {
-				rc.logger.Error("Failed storing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
-				return err
-			}
+
+	for _, rollup := range rollups {
+		l1CompressionBlock, err := rc.storage.FetchBlock(rollup.Header.CompressionL1Head)
+		if err != nil {
+			rc.logger.Warn("Can't process rollup because the l1 block used for compression is not available", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+			continue
+		}
+		canonicalBlockByHeight, err := rc.storage.FetchCanonicaBlockByHeight(l1CompressionBlock.Number())
+		if err != nil {
+			return err
+		}
+		if canonicalBlockByHeight.Hash() != l1CompressionBlock.Hash() {
+			rc.logger.Warn("Skipping rollup because it was compressed on top of a non-canonical rollup", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+			continue
+		}
+		// read batch data from rollup, verify and store it
+		internalHeader, err := rc.rollupCompression.ProcessExtRollup(rollup)
+		if err != nil {
+			rc.logger.Error("Failed processing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+			// todo - issue challenge as a validator
+			return err
+		}
+		if err := rc.storage.StoreRollup(rollup, internalHeader); err != nil {
+			rc.logger.Error("Failed storing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+			return err
 		}
 	}
+
 	return nil
 }
 

@@ -3,6 +3,8 @@ package crosschain
 import (
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -35,7 +37,7 @@ func (m *blockMessageExtractor) Enabled() bool {
 }
 
 func (m *blockMessageExtractor) StoreCrossChainValueTransfers(block *common.L1Block, receipts common.L1Receipts) error {
-	defer m.logger.Info("Block value transfer messages processed", log.BlockHashKey, block.Hash(), log.DurationKey, measure.NewStopwatch())
+	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "Block value transfer messages processed", log.BlockHashKey, block.Hash())
 
 	/*areReceiptsValid := common.VerifyReceiptHash(block, receipts)
 
@@ -74,7 +76,7 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(block *common.L1Bl
 // block - the L1 block for which events are extracted.
 // receipts - all of the receipts for the corresponding block. This is validated.
 func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error {
-	defer m.logger.Info("Block cross chain messages processed", log.BlockHashKey, block.Hash(), log.DurationKey, measure.NewStopwatch())
+	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "Block cross chain messages processed", log.BlockHashKey, block.Hash())
 
 	if len(receipts) == 0 {
 		return nil

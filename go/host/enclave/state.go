@@ -156,7 +156,7 @@ func (s *StateTracker) calculateStatus() Status {
 		return Live
 	default:
 		// this shouldn't happen
-		s.logger.Error("unknown enclave status code - this should not happen", "code", s.enclaveStatusCode)
+		s.logger.Error("Unknown enclave status code - this should not happen", "code", s.enclaveStatusCode)
 		return Unavailable
 	}
 }
