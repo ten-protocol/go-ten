@@ -554,7 +554,7 @@ func (g *Guardian) periodicRollupProduction() {
 			if time.Since(lastSuccessfulRollup) > g.rollupInterval || availBatchesSumSize >= g.maxRollupSize {
 				producedRollup, err := g.enclaveClient.CreateRollup(fromBatch)
 				if err != nil {
-					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch)
+					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue
 				}
 				// this method waits until the receipt is received
