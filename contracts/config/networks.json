@@ -12,7 +12,7 @@
       ]
     },
     "localObscuro": {
-      "chainId": 777,
+      "chainId": 443,
       "url": "http://127.0.0.1:3000/v1/",
       "obscuroEncRpcUrl": "ws://127.0.0.1:37901",
       "companionNetworks" : {

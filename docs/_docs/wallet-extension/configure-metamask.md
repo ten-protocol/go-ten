@@ -6,8 +6,8 @@ To keep data encrypted between MetaMask and the Obscuro network, MetaMask needs 
 
 * Network Name: Obscuro Testnet
 * New RPC URL: `http://127.0.0.1:3000/`
-* Chain ID: 777
-* Currency Symbol: OBX
+* Chain ID: 443
+* Currency Symbol: ETH
 
 It should look like this:
 
