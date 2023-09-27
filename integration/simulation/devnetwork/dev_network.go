@@ -67,7 +67,7 @@ func (s *InMemDevNetwork) AllocateFaucetFunds(ctx context.Context, account gethc
 	s.faucetLock.Lock()
 	defer s.faucetLock.Unlock()
 
-	txHash, err := s.faucet.SendFunds(ctx, account, _defaultFaucetAmount)
+	txHash, err := s.faucet.SendFunds(ctx, account, _defaultFaucetAmount, 1_000_000)
 	if err != nil {
 		return err
 	}

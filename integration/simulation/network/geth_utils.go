@@ -64,6 +64,8 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int, blockDurationSe
 		walletAddresses = append(walletAddresses, w.Address().String())
 	}
 
+	fmt.Printf("Prefunded wallet addresses: %d\n", len(walletAddresses))
+
 	// kickoff the network with the prefunded wallet addresses
 	eth2Network := eth2network.NewEth2Network(
 		path,
@@ -98,7 +100,7 @@ func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.
 	}
 	mgmtContractReceipt, err := DeployContract(client, wallets.MCOwnerWallet, bytecode)
 	if err != nil {
-		return nil, fmt.Errorf("failed to deploy management contract. Cause: %w", err)
+		return nil, fmt.Errorf("failed to deploy management contract from %s. Cause: %w", wallets.MCOwnerWallet.Address(), err)
 	}
 
 	managementContract, err := ManagementContract.NewManagementContract(mgmtContractReceipt.ContractAddress, client.EthClient())
