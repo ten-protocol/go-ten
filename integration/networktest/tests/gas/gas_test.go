@@ -25,6 +25,7 @@ var _transferAmount = big.NewInt(100_000_000)
 // Used to automatically detect batch desync based on transaction inclusion.
 // Sequencer and Validator will process different transactions, but state should be identical.
 func TestExecuteNativeFundsTransferNoGas(t *testing.T) {
+	networktest.TestOnlyRunsInIDE(t)
 	networktest.Run(
 		"gas-underlimit-test",
 		t,
