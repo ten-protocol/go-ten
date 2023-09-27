@@ -78,7 +78,7 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 		Address:                   "127.0.0.1:11000",
 		NodeType:                  common.Sequencer,
 		L1ChainID:                 1337,
-		ObscuroChainID:            777,
+		ObscuroChainID:            443,
 		WillAttest:                false, // todo (config) - attestation should be on by default before production release
 		ValidateL1Blocks:          false,
 		GenesisJSON:               nil,
