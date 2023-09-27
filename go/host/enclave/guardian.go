@@ -391,10 +391,11 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	}
 	receipts, err := g.sl.L1Repo().FetchObscuroReceipts(block)
 	if err != nil {
+		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
 	}
 	resp, err := g.enclaveClient.SubmitL1Block(*block, receipts, isLatest)
-	g.submitDataLock.Unlock()
+	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
 			// we have already processed this block, let's try the next canonical block
