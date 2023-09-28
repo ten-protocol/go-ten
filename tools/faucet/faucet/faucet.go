@@ -19,11 +19,12 @@ import (
 )
 
 const (
-	_timeout    = 60 * time.Second
-	NativeToken = "eth"
-	WrappedOBX  = "wobx"
-	WrappedEth  = "weth"
-	WrappedUSDC = "usdc"
+	_timeout              = 60 * time.Second
+	NativeToken           = "eth"
+	DeprecatedNativeToken = "obx" // leaving this in temporarily for tooling that is getting native funds using `/obx` URL
+	WrappedOBX            = "wobx"
+	WrappedEth            = "weth"
+	WrappedUSDC           = "usdc"
 )
 
 type Faucet struct {
@@ -53,7 +54,7 @@ func (f *Faucet) Fund(address *common.Address, token string, amount *big.Int) er
 	var err error
 	var signedTx *types.Transaction
 
-	if token == NativeToken {
+	if token == NativeToken || token == DeprecatedNativeToken {
 		signedTx, err = f.fundNativeToken(address, amount)
 	} else {
 		return fmt.Errorf("token not fundable atm")

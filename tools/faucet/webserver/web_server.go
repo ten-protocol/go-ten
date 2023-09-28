@@ -115,6 +115,9 @@ func fundingHandler(faucetServer *faucet.Faucet, defaultAmount *big.Int) gin.Han
 		switch tokenReq {
 		case faucet.NativeToken:
 			token = faucet.NativeToken
+		// we leave this option in temporarily for tools that are still using `/obx` endpoint for native funds
+		case faucet.DeprecatedNativeToken:
+			token = faucet.NativeToken
 		case faucet.WrappedOBX:
 			token = faucet.WrappedOBX
 		case faucet.WrappedEth:

@@ -31,11 +31,11 @@ on port `80` within the container, but maps port `8080` on the host machine to t
 
 
 ## Allocating OBX to an EOA on a local testnet
-Allocating OBX to an externally owned account is done through a POST command to the `/fund/obx` endpoint, where the 
+Allocating OBX to an externally owned account is done through a POST command to the `/fund/eth` endpoint, where the 
 data in the POST command specifies the address e.g. for the account `0x0d2166b7b3A1522186E809e83d925d7b0B6db084`
 
 ```bash
-curl --location --request POST 'http://127.0.0.1:8080/fund/obx' \
+curl --location --request POST 'http://127.0.0.1:8080/fund/eth' \
 --header 'Content-Type: application/json' \
 --data-raw '{ "address":"0x0d2166b7b3A1522186E809e83d925d7b0B6db084" }'
 ```

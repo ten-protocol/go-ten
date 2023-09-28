@@ -99,7 +99,7 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 }
 
 func fundWallet(port int, w wallet.Wallet) error {
-	url := fmt.Sprintf("http://localhost:%d/fund/obx", port)
+	url := fmt.Sprintf("http://localhost:%d/fund/eth", port)
 	method := "POST"
 
 	payload := strings.NewReader(fmt.Sprintf(`{"address":"%s"}`, w.Address()))

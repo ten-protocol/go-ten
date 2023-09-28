@@ -30,6 +30,6 @@ the faucet server using the below;
 1. Make a note of your wallet address or copy it to your clipboard.
 2. Open a command shell and issue the below command, where `<address>` should be replaced with the value stored in your clipboard (e.g. `0x75Ad715443e1E2EBdaFA33ABB3B08443966019A6`). The faucet server will credit 100,000 OBX by default.
 ```bash
-curl --location --request POST 'http://testnet-faucet.uksouth.azurecontainer.io/fund/obx' --header 'Content-Type: application/json' --data-raw '{ "address":"<your address>" }'
+curl --location --request POST 'http://testnet-faucet.uksouth.azurecontainer.io/fund/eth' --header 'Content-Type: application/json' --data-raw '{ "address":"<your address>" }'
 ```
 3. After a short period of time the curl command will return `{"status":"ok"}` confirming OBX have been credited to your wallet.
