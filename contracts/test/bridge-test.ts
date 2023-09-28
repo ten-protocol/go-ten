@@ -307,7 +307,7 @@ describe("Bridge", function () {
         payload: decodedEvent.args[4],
         consistencyLevel: decodedEvent.args[5]
       })).to.be.revertedWith("Message not found or finalized.");
-  });129023860752390064
+  });
 
   it("MessageBus retrieveAllFunds method should allow owner to extract all native funds from the message bus", async function() {
     const [owner] = await ethers.getSigners();
