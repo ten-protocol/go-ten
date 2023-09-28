@@ -166,16 +166,15 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 	if err != nil {
 		return nil, err
 	}
-	reorgMap := make(map[uint64]*big.Int)
+	reorgMap := make(map[uint64]bool)
 	for _, batch := range reorgedBatches {
-		reorgMap[batch.SeqNo().Uint64()] = batch.SeqNo()
+		reorgMap[batch.SeqNo().Uint64()] = true
 	}
 
 	for i, batch := range batches {
 		rc.logger.Debug("Compressing batch to rollup", log.BatchSeqNoKey, batch.SeqNo(), log.BatchHeightKey, batch.Number(), log.BatchHashKey, batch.Hash())
 		// determine whether the batch is canonical
-		_, isReorg := reorgMap[batch.SeqNo().Uint64()]
-		if isReorg {
+		if reorgMap[batch.SeqNo().Uint64()] {
 			// if the canonical batch of the same height is different from the current batch
 			// then add the entire header to a "reorgs" array
 			reorgs[i] = batch.Header
