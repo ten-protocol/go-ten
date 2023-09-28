@@ -130,7 +130,7 @@ jobs:
                datadog/agent:latest \
             && cd /home/obscuro/go-obscuro/ \
             && docker run -d -p 80:80 -p 81:81 --name ${{env.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }} \
-              -e OBSCURO_GATEWAY_VERSION="${{ GITHUB.RUN_NUMBER }}" \
+              -e OBSCURO_GATEWAY_VERSION="${{ GITHUB.RUN_NUMBER }}-${{ GITHUB.SHA }}" \
                ${{ env.OBSCURO_GATEWAY_BUILD_TAG }} \
                ./wallet_extension_linux -host=0.0.0.0 -port=80 -portWS=81 -nodeHost=${{ env.OBSCURO_GATEWAY_NODE_HOST }} \
                -logPath=sys_out -dbType=mariaDB -dbConnectionURL="obscurouser:${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }}@tcp(obscurogateway-mariadb-${{  github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:3306)/ogdb"'
