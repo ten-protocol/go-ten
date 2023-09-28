@@ -178,6 +178,7 @@ func TestObscuroscan(t *testing.T) {
 		100,
 	)
 
+	fmt.Println("Running for 1 hour...")
 	time.Sleep(time.Hour)
 	// Gracefully shutdown
 	err = obsScanContainer.Stop()
