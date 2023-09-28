@@ -38,6 +38,7 @@ type SimParams struct {
 
 	StoppingDelay              time.Duration // How long to wait between injection and verification
 	NodeWithInboundP2PDisabled int
+	WithPrefunding             bool
 }
 
 type L1SetupData struct {

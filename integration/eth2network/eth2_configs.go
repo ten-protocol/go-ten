@@ -106,7 +106,7 @@ func generateGenesis(blockTimeSecs int, chainID int, signerAddrs, prefundedAddrs
 
 	// add the prefunded prefundedAddrs
 	for _, account := range prefundedAddrs {
-		genesisJSON["alloc"].(map[string]interface{})[account] = map[string]string{"balance": "10000000000000000000000"}
+		genesisJSON["alloc"].(map[string]interface{})[account] = map[string]string{"balance": "7500000000000000000000000000000"}
 	}
 
 	// set the block prod speed

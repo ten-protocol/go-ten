@@ -181,6 +181,7 @@ func (d *DockerNode) startEnclave() error {
 		"-maxBatchSize=25600",
 		"-maxRollupSize=65536",
 		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
+		"-obscuroGenesis", "{}",
 	)
 
 	if d.cfg.sgxEnabled {

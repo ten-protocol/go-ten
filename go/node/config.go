@@ -52,6 +52,7 @@ type Config struct {
 	batchInterval             string
 	rollupInterval            string
 	l1ChainID                 int
+	obscuroGenesis            string
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -59,6 +60,7 @@ func NewNodeConfig(opts ...Option) *Config {
 		batchInterval:  "1s",
 		rollupInterval: "3s",
 		l1ChainID:      1337,
+		obscuroGenesis: "{}",
 	}
 
 	for _, opt := range opts {
@@ -84,6 +86,7 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 	cfg.LogLevel = c.logLevel
 	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
 	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
+	cfg.ObscuroGenesis = c.obscuroGenesis
 
 	if c.nodeType == "sequencer" && c.coinbaseAddress != "" {
 		cfg.GasPaymentAddress = gethcommon.HexToAddress(c.coinbaseAddress)
@@ -321,5 +324,11 @@ func WithRollupInterval(d string) Option {
 func WithL1ChainID(i int) Option {
 	return func(c *Config) {
 		c.l1ChainID = i
+	}
+}
+
+func WithObscuroGenesis(g string) Option {
+	return func(c *Config) {
+		c.obscuroGenesis = g
 	}
 }

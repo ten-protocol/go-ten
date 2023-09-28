@@ -54,6 +54,7 @@ func (n *ContractDeployer) Start() error {
             "saveDeployments" : true,
             "companionNetworks" : { "layer1" : "layer1" },
             "deploy": [ 
+				"deployment_scripts/funding/layer1",
                 "deployment_scripts/messenger/layer1",
                 "deployment_scripts/messenger/layer2",
                 "deployment_scripts/bridge/",

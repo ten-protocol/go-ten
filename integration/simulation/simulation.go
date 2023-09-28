@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -56,6 +58,7 @@ func (s *Simulation) Start() {
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	time.Sleep(1 * time.Second)
 
+	s.bridgeFundingToObscuro()
 	s.trackLogs()              // Create log subscriptions, to validate that they're working correctly later.
 	s.prefundObscuroAccounts() // Prefund every L2 wallet
 	s.deployObscuroERC20s()    // Deploy the Obscuro HOC and POC ERC20 contracts
@@ -114,6 +117,63 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 		time.Sleep(s.Params.AvgBlockDuration)
 		testlog.Logger().Trace("Waiting for the Obscuro genesis rollup...")
 	}
+}
+
+func (s *Simulation) bridgeFundingToObscuro() {
+	if s.Params.IsInMem {
+		return
+	}
+
+	destAddr := s.Params.L1SetupData.MessageBusAddr
+	value, _ := big.NewInt(0).SetString("7400000000000000000000000000000", 10)
+
+	wallets := []wallet.Wallet{
+		s.Params.Wallets.PrefundedEthWallets.Faucet,
+		s.Params.Wallets.PrefundedEthWallets.HOC,
+		s.Params.Wallets.PrefundedEthWallets.POC,
+	}
+
+	receivers := []gethcommon.Address{
+		gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
+		gethcommon.HexToAddress("0x987E0a0692475bCc5F13D97E700bb43c1913EFfe"),
+		gethcommon.HexToAddress("0xDEe530E22045939e6f6a0A593F829e35A140D3F1"),
+	}
+
+	ethClient := s.RPCHandles.RndEthClient()
+
+	busCtr, err := MessageBus.NewMessageBus(destAddr, ethClient.EthClient())
+	if err != nil {
+		panic(err)
+	}
+
+	for idx, wallet := range wallets {
+		opts, err := bind.NewKeyedTransactorWithChainID(wallet.PrivateKey(), wallet.ChainID())
+		if err != nil {
+			panic(err)
+		}
+		opts.Value = value
+
+		_, err = busCtr.SendValueToL2(opts, receivers[idx], value)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	time.Sleep(3 * time.Second)
+	// todo - fix the wait group, for whatever reason it does not find a receipt...
+	/*wg := sync.WaitGroup{}
+	for _, tx := range transactions {
+		wg.Add(1)
+		transaction := tx
+		go func() {
+			defer wg.Done()
+			err := testcommon.AwaitReceiptEth(s.ctx, s.RPCHandles.RndEthClient(), transaction.Hash(), 20*time.Second)
+			if err != nil {
+				panic(err)
+			}
+		}()
+	}
+	wg.Wait()*/
 }
 
 // We subscribe to logs on every client for every wallet.

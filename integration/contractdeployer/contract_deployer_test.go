@@ -142,6 +142,7 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
 		Wallets:          wallets,
 		StartPort:        startPort,
+		WithPrefunding:   true,
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)

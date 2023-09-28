@@ -19,6 +19,7 @@
         "layer1" : "localGeth"
       },
       "deploy": [
+        "deployment_scripts/funding/layer1",
         "deployment_scripts/messenger/layer1",
         "deployment_scripts/messenger/layer2",
         "deployment_scripts/bridge/",
