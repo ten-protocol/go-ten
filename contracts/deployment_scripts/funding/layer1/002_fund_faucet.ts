@@ -9,9 +9,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const l1Accs = await layer1.getNamedAccounts();
     
     const messageBusAddress = process.env.MESSAGE_BUS_ADDRESS!!
+    const prefundAmountStr = process.env.PREFUND_FAUCET_AMOUNT || "10000"
 
     const messageBus = (await hre.ethers.getContractFactory('MessageBus')).attach(messageBusAddress)
-    const prefundAmount = hre.ethers.utils.parseEther("100");
+    const prefundAmount = hre.ethers.utils.parseEther(prefundAmountStr);
     const tx = await messageBus.populateTransaction.sendValueToL2("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", prefundAmount, {
         value: prefundAmount
     });
