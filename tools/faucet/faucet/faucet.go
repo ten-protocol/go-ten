@@ -13,18 +13,17 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
 const (
-	_timeout       = 60 * time.Second
-	OBXNativeToken = "obx"
-	WrappedOBX     = "wobx"
-	WrappedEth     = "weth"
-	WrappedUSDC    = "usdc"
+	_timeout    = 60 * time.Second
+	NativeToken = "eth"
+	WrappedOBX  = "wobx"
+	WrappedEth  = "weth"
+	WrappedUSDC = "usdc"
 )
 
 type Faucet struct {
@@ -50,11 +49,11 @@ func NewFaucet(rpcURL string, chainID int64, pkString string) (*Faucet, error) {
 	}, nil
 }
 
-func (f *Faucet) Fund(address *common.Address, token string, amount int64) error {
+func (f *Faucet) Fund(address *common.Address, token string, amount *big.Int) error {
 	var err error
 	var signedTx *types.Transaction
 
-	if token == OBXNativeToken {
+	if token == NativeToken {
 		signedTx, err = f.fundNativeToken(address, amount)
 	} else {
 		return fmt.Errorf("token not fundable atm")
@@ -105,7 +104,7 @@ func (f *Faucet) validateTx(tx *types.Transaction) error {
 	return fmt.Errorf("unable to fetch tx receipt after %s", _timeout)
 }
 
-func (f *Faucet) fundNativeToken(address *common.Address, amount int64) (*types.Transaction, error) {
+func (f *Faucet) fundNativeToken(address *common.Address, amount *big.Int) (*types.Transaction, error) {
 	// only one funding at the time
 	f.fundMutex.Lock()
 	defer f.fundMutex.Unlock()
@@ -125,7 +124,7 @@ func (f *Faucet) fundNativeToken(address *common.Address, amount int64) (*types.
 		GasPrice: big.NewInt(225),
 		Gas:      gas,
 		To:       address,
-		Value:    new(big.Int).Mul(big.NewInt(amount), big.NewInt(params.Ether)),
+		Value:    amount,
 	}
 
 	signedTx, err := f.wallet.SignTransaction(tx)

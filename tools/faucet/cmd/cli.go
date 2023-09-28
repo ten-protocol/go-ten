@@ -32,6 +32,10 @@ const (
 	serverPortName    = "serverPort"
 	serverPortDefault = 80
 	serverPortUsage   = "Port where the web server binds to"
+
+	defaultAmountName    = "defaultAmount"
+	defaultAmountDefault = 100.0
+	defaultAmountUsage   = "Default amount of token to fund (in ETH)"
 )
 
 func parseCLIArgs() *faucet.Config {
@@ -41,15 +45,25 @@ func parseCLIArgs() *faucet.Config {
 	faucetPK := flag.String(faucetPKName, faucetPKDefault, faucetPKUsage)
 	jwtSecret := flag.String(jwtSecretName, jwtSecretDefault, jwtSecretUsage)
 	serverPort := flag.Int(serverPortName, serverPortDefault, serverPortUsage)
+	defaultAmount := flag.Float64(defaultAmountName, defaultAmountDefault, defaultAmountUsage)
 	flag.Parse()
 
 	return &faucet.Config{
-		Port:       *faucetPort,
-		Host:       *nodeHost,
-		HTTPPort:   *nodeHTTPPort,
-		PK:         *faucetPK,
-		JWTSecret:  *jwtSecret,
-		ServerPort: *serverPort,
-		ChainID:    big.NewInt(443), // TODO make this configurable
+		Port:              *faucetPort,
+		Host:              *nodeHost,
+		HTTPPort:          *nodeHTTPPort,
+		PK:                *faucetPK,
+		JWTSecret:         *jwtSecret,
+		ServerPort:        *serverPort,
+		ChainID:           big.NewInt(443), // TODO make this configurable
+		DefaultFundAmount: toWei(defaultAmount),
 	}
+}
+
+func toWei(amount *float64) *big.Int {
+	amtFloat := new(big.Float).SetFloat64(*amount)
+	weiFloat := new(big.Float).Mul(amtFloat, big.NewFloat(1e18))
+	// don't care about the accuracy here, float should have less than 18 decimal places
+	wei, _ := weiFloat.Int(nil)
+	return wei
 }
