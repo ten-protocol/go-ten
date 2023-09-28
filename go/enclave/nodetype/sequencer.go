@@ -264,6 +264,7 @@ func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) 
 		return nil, err
 	}
 
+	// todo - double-check that this signing approach is secure, and it properly includes the entire payload
 	if err := s.signRollup(rollup); err != nil {
 		return nil, fmt.Errorf("failed to sign created rollup: %w", err)
 	}

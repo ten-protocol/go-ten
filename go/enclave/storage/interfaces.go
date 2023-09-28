@@ -50,7 +50,8 @@ type BatchResolver interface {
 	FetchCurrentSequencerNo() (*big.Int, error)
 	// FetchBatchesByBlock returns all batches with the block hash as the L1 proof
 	FetchBatchesByBlock(common.L1BlockHash) ([]*core.Batch, error)
-
+	// FetchNonCanonicalBatchesBetween - returns all reorged batches between the sequences
+	FetchNonCanonicalBatchesBetween(startSeq uint64, endSeq uint64) ([]*core.Batch, error)
 	// FetchCanonicalUnexecutedBatches - return the list of the unexecuted batches that are canonical
 	FetchCanonicalUnexecutedBatches(*big.Int) ([]*core.Batch, error)
 

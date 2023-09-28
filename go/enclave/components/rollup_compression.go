@@ -161,19 +161,24 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 	batchHashes := make([]common.L2BatchHash, len(batches))
 	batchHeaders := make([]*common.BatchHeader, len(batches))
 
-	isReorg := false
+	// create an efficient structure to determine whether a batch is canonical
+	reorgedBatches, err := rc.storage.FetchNonCanonicalBatchesBetween(batches[0].SeqNo().Uint64(), batches[len(batches)-1].SeqNo().Uint64())
+	if err != nil {
+		return nil, err
+	}
+	reorgMap := make(map[uint64]*big.Int)
+	for _, batch := range reorgedBatches {
+		reorgMap[batch.SeqNo().Uint64()] = batch.SeqNo()
+	}
+
 	for i, batch := range batches {
 		rc.logger.Debug("Compressing batch to rollup", log.BatchSeqNoKey, batch.SeqNo(), log.BatchHeightKey, batch.Number(), log.BatchHashKey, batch.Hash())
 		// determine whether the batch is canonical
-		can, err := rc.storage.FetchBatchByHeight(batch.NumberU64())
-		if err != nil {
-			return nil, err
-		}
-		if can.Hash() != batch.Hash() {
+		_, isReorg := reorgMap[batch.SeqNo().Uint64()]
+		if isReorg {
 			// if the canonical batch of the same height is different from the current batch
 			// then add the entire header to a "reorgs" array
 			reorgs[i] = batch.Header
-			isReorg = true
 			rc.logger.Info("Reorg", "pos", i)
 		} else {
 			reorgs[i] = nil
@@ -222,7 +227,7 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 		return nil, err
 	}
 	// optimisation in case there is no reorg header
-	if !isReorg {
+	if len(reorgedBatches) == 0 {
 		reorgsBA = nil
 	}
 

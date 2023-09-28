@@ -418,6 +418,9 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitL1Block with the enclave stopping"))
 	}
 
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
+
 	e.logger.Info("SubmitL1Block", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
 
 	// If the block and receipts do not match, reject the block.
@@ -445,9 +448,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 }
 
 func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts) (*components.BlockIngestionType, error) {
-	e.mainMutex.Lock()
-	defer e.mainMutex.Unlock()
-
+	e.logger.Info("Start ingesting block", log.BlockHashKey, br.Block.Hash())
 	ingestion, err := e.l1BlockProcessor.Process(br)
 	if err != nil {
 		// only warn for unexpected errors
@@ -581,16 +582,11 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 }
 
 func (e *enclaveImpl) CreateBatch() common.SystemError {
+	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateBatch call ended")
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested CreateBatch with the enclave stopping"))
 	}
 
-	callStart := time.Now()
-	defer func() {
-		e.logger.Info("CreateBatch call ended", log.DurationMilliKey, time.Since(callStart).Milliseconds())
-	}()
-
-	// todo - remove once the db operations are more atomic
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
@@ -603,14 +599,10 @@ func (e *enclaveImpl) CreateBatch() common.SystemError {
 }
 
 func (e *enclaveImpl) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
+	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateRollup call ended")
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GenerateRollup with the enclave stopping"))
 	}
-
-	callStart := time.Now()
-	defer func() {
-		e.logger.Info(fmt.Sprintf("CreateRollup call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
-	}()
 
 	// todo - remove once the db operations are more atomic
 	e.mainMutex.Lock()

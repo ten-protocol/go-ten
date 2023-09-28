@@ -139,6 +139,11 @@ func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
 	return enclavedb.ReadCanonicalBatchByHeight(s.db.GetSQLDB(), height)
 }
 
+func (s *storageImpl) FetchNonCanonicalBatchesBetween(startSeq uint64, endSeq uint64) ([]*core.Batch, error) {
+	defer s.logDuration("FetchNonCanonicalBatchesBetween", measure.NewStopwatch())
+	return enclavedb.ReadNonCanonicalBatches(s.db.GetSQLDB(), startSeq, endSeq)
+}
+
 func (s *storageImpl) StoreBlock(b *types.Block, chainFork *common.ChainFork) error {
 	defer s.logDuration("StoreBlock", measure.NewStopwatch())
 	dbTransaction := s.db.NewDBTransaction()

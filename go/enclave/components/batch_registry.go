@@ -105,6 +105,7 @@ func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, ro
 	resultBatches := make([]*core.Batch, 0)
 
 	currentBatchSeq := batchSeqNo
+	var currentBlock *types.Block
 	for currentBatchSeq <= headBatch.SeqNo().Uint64() {
 		batch, err := br.storage.FetchBatchBySeqNo(currentBatchSeq)
 		if err != nil {
@@ -112,13 +113,16 @@ func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, ro
 		}
 
 		// check the block height
-		block, err := br.storage.FetchBlock(batch.Header.L1Proof)
-		if err != nil {
-			return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
-		}
-
-		if block.NumberU64() > upToL1Height {
-			break
+		// if it's the same block as the previous batch there is no reason to check
+		if currentBlock == nil || currentBlock.Hash() != batch.Header.L1Proof {
+			block, err := br.storage.FetchBlock(batch.Header.L1Proof)
+			if err != nil {
+				return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
+			}
+			currentBlock = block
+			if block.NumberU64() > upToL1Height {
+				break
+			}
 		}
 
 		// check the limiter

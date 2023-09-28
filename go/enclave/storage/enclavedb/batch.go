@@ -168,6 +168,10 @@ func ReadCanonicalBatchByHeight(db *sql.DB, height uint64) (*core.Batch, error) 
 	return fetchBatch(db, " where b.height=? and is_canonical=true", height)
 }
 
+func ReadNonCanonicalBatches(db *sql.DB, startAtSeq uint64, endSeq uint64) ([]*core.Batch, error) {
+	return fetchBatches(db, " where b.sequence>=? and b.sequence <=? and b.is_canonical=false order by b.sequence", startAtSeq, endSeq)
+}
+
 func ReadBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, error) {
 	return fetchBatchHeader(db, " where hash=?", truncTo16(hash))
 }
