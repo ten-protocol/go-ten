@@ -1,18 +1,17 @@
 <template>
   <header>
-    <el-row class="align-vertical" justify="space-between">
-      <el-col :span="6">
-        <img src="@/assets/imgs/obscuroscan_logo.png" alt="obscu.ro" class="header-image" />
+    <el-container class="align-vertical">
+      <el-main>
+    <el-row justify="space-around">
+      <el-col :span="2" >
+        <img src="@/assets/imgs/obscuro_logo_black.png" alt="obscu.ro" class="header-image"  style="max-height: 5vh;"/>
       </el-col>
-      <el-col :span="4">
-        <meta-mask-connect-button />
-      </el-col>
-      <el-col :span="8">
+      <el-col :span="10" :offset="7">
         <nav class="nav-bar">
           <el-radio-group size="default">
-            <RouterLink to="/">  <el-radio-button label="top"> Home</el-radio-button></RouterLink>
-            <RouterLink to="/personal">  <el-radio-button label="right">Personal</el-radio-button></RouterLink>
-            <el-radio-button label="left">
+            <RouterLink to="/">  <el-button link class="paddedTop"> Home</el-button></RouterLink>
+            <RouterLink to="/personal">  <el-button link class="paddedTop">Personal</el-button></RouterLink>
+            <el-button link class="paddedTop">
               <el-dropdown>
                 <span class="el-dropdown-link">
                   Blockchain
@@ -25,8 +24,8 @@
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
-              </el-radio-button>
-            <el-radio-button label="left">
+              </el-button>
+            <el-button link class="paddedTop" style="margin: 0px">
               <el-dropdown>
                 <span class="el-dropdown-link">
                   Resources
@@ -38,27 +37,28 @@
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
-            </el-radio-button>
+            </el-button>
           </el-radio-group>
         </nav>
       </el-col>
-      <el-col :span="6">
-        <search-bar-item />
+      <el-col :span="5" >
+        <meta-mask-connect-button />
       </el-col>
+<!--      <el-col :span="4" >-->
+<!--        <search-bar-item />-->
+<!--      </el-col>-->
     </el-row>
-    <el-row>
-      <div class="white-bar"></div>
-    </el-row>
+      </el-main>
+    </el-container>
   </header>
 </template>
 
 <script>
-import SearchBarItem from '@/components/SearchBarItem.vue'
 import MetaMaskConnectButton from '@/components/MetaMaskConnectButton.vue'
 
 export default {
   name: 'NavbarView',
-  components: { MetaMaskConnectButton, SearchBarItem }
+  components: { MetaMaskConnectButton }
 }
 </script>
 
@@ -73,16 +73,8 @@ export default {
   object-fit: cover; /* If image's aspect ratio doesn't match, it'll still cover the space without distortion */
 }
 
-.white-bar {
-  background-color: white;
-  height: 1px;
-  width: 98%;
-  margin-top: 5px; /* Adds a small margin at the top */
-  align-self: center; /* Centers the bar in the flex layout */
+.paddedTop {
+  padding: 10px;
 }
 
-.align-vertical {
-  display: flex;
-  align-items: center;
-}
 </style>

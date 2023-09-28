@@ -1,65 +1,79 @@
 <template>
-  <el-row>
-    <el-col :span="4">
-      <el-card class="box" shadow="always">
-        <p>Ether Price</p>
+  <el-card shadow="never" style=" border-radius: 20px; ">
+  <el-row justify="space-around">
+    <el-col :span="4" >
+      <el-card class="box" shadow="never">
+        <p class="header-text">
+          <img class="icon" src="@/assets/imgs/icon_ethereum.png"/>
+          Ether Price
+        </p>
+
         <div>
           <div v-if="ethPriceUSD">$ {{ ethPriceUSD }}</div>
-          <div v-else>-</div>
+          <div v-else v-loading=true element-loading-background="#F4F6FF">loading...</div>
         </div>
       </el-card>
       <p>&nbsp;</p>
 
-      <el-card class="box" shadow="always">
-        <p>Nodes</p>
-        <p>n/a</p>
+      <el-card class="box" shadow="never">
+        <p class="header-text">
+          <img class="icon" src="@/assets/imgs/icon_nodes.png"/>
+          Nodes
+        </p>
+        <p v-loading=true element-loading-background="#F4F6FF">loading...</p>
       </el-card>
     </el-col>
 
-    <el-col :span="4" :offset="2">
-      <el-card class="box" shadow="always">
-        <p>Latest L2 Batch</p>
+    <el-col :span="4" :offset="3">
+      <el-card class="box" shadow="never">
+        <p class="header-text">
+          <img class="icon" src="@/assets/imgs/icon_l2_batch.png"/>
+          Latest L2 Batch
+        </p>
         <div>
           <div v-if="latestBatch">{{ latestBatch }}</div>
-          <div v-else>-</div>
+          <div v-else v-loading=true element-loading-background="#F4F6FF">loading...</div>
         </div>
       </el-card>
       <p>&nbsp;</p>
 
-      <el-card class="box" shadow="always">
-        <p>Latest L1 Rollup</p>
+      <el-card class="box" shadow="never">
+        <p class="header-text">
+          <img class="icon" src="@/assets/imgs/icon_l1_rollup.png"/>
+          Latest L1 Rollup
+        </p>
         <div>
           <div v-if="latestL1Proof">
             <ShortenedHash :hash="latestL1Proof" />
           </div>
-          <div v-else>-</div>
+          <div v-else v-loading=true element-loading-background="#F4F6FF">loading...</div>
         </div>
       </el-card>
     </el-col>
-    <el-col :span="4" :offset="2">
-      <el-card class="box" shadow="always">
-        <p>Transactions</p>
+    <el-col :span="4" :offset="3">
+      <el-card class="box" shadow="never">
+        <p class="header-text">
+          <img class="icon" src="@/assets/imgs/icon_transactions.png"/>
+          Transactions</p>
         <div>
           <div v-if="totalTransactionCount">{{ totalTransactionCount }}</div>
-          <div v-else>-</div>
+          <div v-else v-loading=true element-loading-background="#F4F6FF">loading...</div>
         </div>
       </el-card>
       <p>&nbsp;</p>
 
-      <el-card class="box" shadow="always">
-        <p>Contracts</p>
+      <el-card class="box" shadow="never">
+        <p class="header-text">
+          <img class="icon" src="@/assets/imgs/icon_contracts.png"/>
+          Contracts</p>
         <div>
           <div v-if="totalContractCount">{{ totalContractCount }}</div>
-          <div v-else>-</div>
+          <div v-else v-loading=true element-loading-background="#F4F6FF">loading...</div>
         </div>
       </el-card>
     </el-col>
-    <el-col :span="4" :offset="2">
-      <el-card class="box" shadow="always" style="min-height: 100%">
-        <p>News from Foundation</p>
-      </el-card>
-    </el-col>
   </el-row>
+  </el-card>
 </template>
 
 <script>
@@ -106,5 +120,21 @@ export default {
 <style scoped>
 .box {
   border-radius: 15px;
+  background: #F4F6FF;
+}
+
+.icon {
+  height: 24px;      /* Set desired height */
+  object-fit: cover; /* Ensure image content is not distorted */
+  margin-right: 8px; /* Optional space between the icon and the text */
+}
+
+.header-text {
+  color: #5973B8;
+  font-weight: bold;
+}
+
+.el-icon-loading:before {
+  color: red;
 }
 </style>

@@ -1,9 +1,9 @@
 <template>
-  <el-card class="centered-container">
-  <div class="slider-container">
+  <el-card class="centered-container" shadow="never" style="border-radius: 20px; ">
+  <div class="slider-container" >
     <div class="slider-content" :class="{ 'slide-out': isAnimating }">
-      <el-card v-for="card in displayedCards"  class="card-content">
-        <h3>Block: {{ card.L1ProofNumber }}</h3>
+      <el-card v-for="card in displayedCards"  class="card-content box">
+        <h3 class="header-text">Block: {{ card.L1ProofNumber }}</h3>
         <p>&nbsp;</p>
         <h5>R: <ShortenedHash :hash="card.hash" /></h5>
         <h5>Block: <ShortenedHash :hash="card.L1Proof" /></h5>
@@ -45,6 +45,16 @@ export default {
 </script>
 
 <style scoped>
+
+.header-text {
+  color: #5973B8;
+  font-weight: bold;
+}
+
+.box {
+  border-radius: 15px;
+  background: #F4F6FF;
+}
 
 .centered-container {
   display: flex;
