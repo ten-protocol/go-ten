@@ -79,6 +79,11 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 			isInboundP2PDisabled = i == simParams.NodeWithInboundP2PDisabled
 		}
 
+		genesis := "{}"
+		if simParams.WithPrefunding {
+			genesis = ""
+		}
+
 		// create the nodes
 		nodes[i] = noderunner.NewInMemNode(
 			node.NewNodeConfig(
@@ -100,6 +105,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithLogLevel(4),
 				node.WithDebugNamespaceEnabled(true),
 				node.WithL1BlockTime(simParams.AvgBlockDuration),
+				node.WithObscuroGenesis(genesis),
 			),
 		)
 
