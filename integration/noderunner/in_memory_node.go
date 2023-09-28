@@ -98,7 +98,6 @@ func (d *InMemNode) startHost() error {
 
 func (d *InMemNode) startEnclave() error {
 	enclaveCfg := d.cfg.ToEnclaveConfig()
-	enclaveCfg.ObscuroGenesis = "{}"
 	logger := testlog.Logger().New(log.CmpKey, log.EnclaveCmp, log.NodeIDKey, enclaveCfg.HostID)
 
 	// if not nil, the node will use the testlog.Logger - NewEnclaveContainerWithLogger will create one otherwise
