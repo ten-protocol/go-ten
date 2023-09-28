@@ -63,4 +63,7 @@ interface IMessageBus {
     // The function will be called by the ManagementContract on L1 and the enclave on L2. 
     // It should be access controlled and called according to the consistencyLevel and Obscuro platform rules.
     function storeCrossChainMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) external;
+
+    // This is a testnet function which allows the bridge owner to retrieve all funds from the message bus.
+    function retrieveAllFunds(address receiver) external;
 }

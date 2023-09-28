@@ -50,6 +50,7 @@ const (
 	GetStorageAtUserIDRequestMethodName = "getUserID"
 	SuccessMsg                          = "success"
 	APIVersion1                         = "/v1"
+	PathVersion                         = "/version/"
 )
 
 var (
