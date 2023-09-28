@@ -10,6 +10,7 @@ const pathJoin = obscuroGatewayVersion + "/join/";
 const pathAuthenticate = obscuroGatewayVersion + "/authenticate/";
 const pathQuery = obscuroGatewayVersion + "/query/";
 const pathRevoke = obscuroGatewayVersion + "/revoke/";
+const pathVersion = "/version/";
 const obscuroChainIDDecimal = 443;
 const methodPost = "post";
 const methodGet = "get";
@@ -28,6 +29,26 @@ let obscuroGatewayAddress = window.location.protocol + "//" + window.location.ho
 
 let provider = null;
 
+async function fetchAndDisplayVersion() {
+    try {
+        const versionResp = await fetch(
+            pathVersion, {
+                method: methodGet,
+                headers: jsonHeaders,
+            }
+        );
+        if (!versionResp.ok) {
+            throw new Error("Failed to fetch the version");
+        }
+
+        let response = await versionResp.text();
+
+        const versionDiv = document.getElementById("versionDisplay");
+        versionDiv.textContent = "Version: " + response;
+    } catch (error) {
+        console.error("Error fetching the version:", error);
+    }
+}
 
 async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
     // add network to MetaMask
@@ -199,6 +220,10 @@ const initialize = async () => {
     const tableBody = document.getElementById('tableBody');
     // getUserID from the gateway with getStorageAt method
     let userID = await getUserID()
+
+
+    // load the current version
+    await fetchAndDisplayVersion();
 
     // check if userID exists and has a correct type and length (is valid) and display either
     // option to join or to add a new account to existing user

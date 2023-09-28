@@ -62,6 +62,10 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 			Name: common.PathHealth,
 			Func: httpHandler(walletExt, healthRequestHandler),
 		},
+		{
+			Name: common.PathVersion,
+			Func: httpHandler(walletExt, versionRequestHandler),
+		},
 	}
 }
 
@@ -436,6 +440,21 @@ func healthRequestHandler(walletExt *walletextension.WalletExtension, userConn u
 	}
 
 	err = userConn.WriteResponse([]byte(common.SuccessMsg))
+	if err != nil {
+		walletExt.Logger().Error(fmt.Errorf("error writing success response, %w", err).Error())
+	}
+}
+
+// Handles request to /version endpoint.
+func versionRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
+	// read the request
+	_, err := userConn.ReadRequest()
+	if err != nil {
+		walletExt.Logger().Error(fmt.Errorf("error reading request: %w", err).Error())
+		return
+	}
+
+	err = userConn.WriteResponse([]byte(walletExt.Version()))
 	if err != nil {
 		walletExt.Logger().Error(fmt.Errorf("error writing success response, %w", err).Error())
 	}

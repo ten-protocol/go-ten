@@ -21,8 +21,8 @@ const (
 	walletExtensionPortWSUsage   = "The port on which to serve websocket JSON RPC requests. Default: 3001."
 
 	nodeHostName    = "nodeHost"
-	nodeHostDefault = "testnet.obscu.ro"
-	nodeHostUsage   = "The host on which to connect to the Obscuro node. Default: `testnet.obscu.ro`."
+	nodeHostDefault = "erpc.testnet.obscu.ro"
+	nodeHostUsage   = "The host on which to connect to the Obscuro node. Default: `erpc.testnet.obscu.ro`."
 
 	nodeHTTPPortName    = "nodePortHTTP"
 	nodeHTTPPortDefault = 80
