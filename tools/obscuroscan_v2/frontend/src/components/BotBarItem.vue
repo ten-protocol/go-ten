@@ -5,15 +5,27 @@
 
       <img src="@/assets/imgs/twitter_logo.png" alt="obscu.ro" class="header-image" />
     </el-col>
+    <el-col :span="20" class="version-column">
+      <div class="version-display">version: {{ version }}</div>
+    </el-col>
   </el-row>
 </template>
 
 <script>
+import Config from "@/lib/config";
+
 export default {
-  name: "BotBarItem"
+  name: "BotBarItem",
+  computed: {
+    version() {
+      return Config.version;
+    }
+  }
 }
 </script>
 
 <style scoped>
-
+.version-column {
+  text-align: right;
+}
 </style>

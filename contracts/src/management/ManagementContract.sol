@@ -2,11 +2,12 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./Structs.sol";
 import * as MessageBus from "../messaging/MessageBus.sol";
 
-contract ManagementContract {
+contract ManagementContract is Ownable {
 
     event LogManagementContractCreated(address messageBusAddress);
 
@@ -126,5 +127,10 @@ contract ManagementContract {
     // Accessor that checks if an address is attested or not
     function Attested(address _addr) view public returns (bool) {
         return attested[_addr];
+    }
+
+    // Testnet function to allow the contract owner to retrieve **all** funds from the network bridge.
+    function RetrieveAllBridgeFunds() public onlyOwner {
+        messageBus.retrieveAllFunds(msg.sender);
     }
 }

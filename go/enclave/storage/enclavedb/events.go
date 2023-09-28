@@ -203,7 +203,7 @@ func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error
 		}
 
 		var t0, t1, t2, t3, t4 sql.NullString
-		var relAddress1, relAddress2, relAddress3, relAddress4 sql.NullByte
+		var relAddress1, relAddress2, relAddress3, relAddress4 []byte
 		err = rows.Scan(
 			&relAddress1,
 			&relAddress2,
@@ -229,10 +229,10 @@ func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error
 			}
 		}
 
-		l.RelAddress1 = bytesToHash(relAddress1)
-		l.RelAddress2 = bytesToHash(relAddress2)
-		l.RelAddress3 = bytesToHash(relAddress3)
-		l.RelAddress4 = bytesToHash(relAddress4)
+		l.RelAddress1 = bytesToAddress(relAddress1)
+		l.RelAddress2 = bytesToAddress(relAddress2)
+		l.RelAddress3 = bytesToAddress(relAddress3)
+		l.RelAddress4 = bytesToAddress(relAddress4)
 
 		result = append(result, &l)
 	}
@@ -242,6 +242,14 @@ func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error
 	}
 
 	return result, nil
+}
+
+func bytesToAddress(b []byte) *gethcommon.Address {
+	if b != nil {
+		addr := gethcommon.BytesToAddress(b)
+		return &addr
+	}
+	return nil
 }
 
 // Of the log's topics, returns those that are (potentially) user addresses. A topic is considered a user address if:
@@ -348,23 +356,6 @@ func stringToHash(ns sql.NullString) gethcommon.Hash {
 	result := gethcommon.Hash{}
 	result.SetBytes([]byte(s))
 	return result
-}
-
-func bytesToHash(b sql.NullByte) *gethcommon.Hash {
-	result := gethcommon.Hash{}
-
-	if !b.Valid {
-		return nil
-	}
-
-	value, err := b.Value()
-	if err != nil {
-		return nil
-	}
-	s := value.(string)
-
-	result.SetBytes([]byte(s))
-	return &result
 }
 
 func byteArrayToHash(b []byte) gethcommon.Hash {

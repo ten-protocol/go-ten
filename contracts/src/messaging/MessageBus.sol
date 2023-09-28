@@ -122,6 +122,13 @@ contract MessageBus is IMessageBus, Ownable {
         );
     }
 
+    function retrieveAllFunds(
+        address receiver
+    ) external onlyOwner {
+        (bool ok, ) = receiver.call{value: address(this).balance}("");
+        require(ok, "failed sending value");
+    }
+
     fallback() external payable {
         revert("unsupported");
     }

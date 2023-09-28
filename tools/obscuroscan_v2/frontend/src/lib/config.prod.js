@@ -3,6 +3,7 @@ class Config {
     static backendServerAddress = import.meta.env.VITE_APIHOSTADDRESS
     static pollingInterval = 1000
     static pricePollingInterval = 10*this.pollingInterval
+    static version = import.meta.env.VITE_FE_VERSION
 }
 
 export default Config

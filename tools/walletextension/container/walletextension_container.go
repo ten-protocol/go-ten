@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -78,8 +79,14 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 		}
 	}
 
+	// captures version in the env vars
+	version := os.Getenv("OBSCURO_GATEWAY_VERSION")
+	if version == "" {
+		version = "dev"
+	}
+
 	stopControl := stopcontrol.New()
-	walletExt := walletextension.New(hostRPCBindAddr, &userAccountManager, databaseStorage, stopControl, logger)
+	walletExt := walletextension.New(hostRPCBindAddr, &userAccountManager, databaseStorage, stopControl, version, logger)
 	httpRoutes := api.NewHTTPRoutes(walletExt)
 	httpServer := api.NewHTTPServer(fmt.Sprintf("%s:%d", config.WalletExtensionHost, config.WalletExtensionPortHTTP), httpRoutes)
 
