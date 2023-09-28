@@ -146,8 +146,8 @@ func (s *UserWallet) SignTransaction(tx types.TxData) (*types.Transaction, error
 	return types.SignNewTx(s.privateKey, types.NewLondonSigner(s.chainID), tx)
 }
 
-func (s *UserWallet) SignTransactionForChainID(tx types.TxData, chainId *big.Int) (*types.Transaction, error) {
-	return types.SignNewTx(s.privateKey, types.NewLondonSigner(chainId), tx)
+func (s *UserWallet) SignTransactionForChainID(tx types.TxData, chainID *big.Int) (*types.Transaction, error) {
+	return types.SignNewTx(s.privateKey, types.NewLondonSigner(chainID), tx)
 }
 
 func (s *UserWallet) GetNonce() uint64 {

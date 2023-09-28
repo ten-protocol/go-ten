@@ -139,7 +139,6 @@ func (s *Simulation) bridgeFundingToObscuro() {
 		gethcommon.HexToAddress("0xDEe530E22045939e6f6a0A593F829e35A140D3F1"),
 	}
 
-	transactions := make([]*types.Transaction, 0)
 	ethClient := s.RPCHandles.RndEthClient()
 
 	busCtr, err := MessageBus.NewMessageBus(destAddr, ethClient.EthClient())
@@ -148,19 +147,16 @@ func (s *Simulation) bridgeFundingToObscuro() {
 	}
 
 	for idx, wallet := range wallets {
-
 		opts, err := bind.NewKeyedTransactorWithChainID(wallet.PrivateKey(), wallet.ChainID())
 		if err != nil {
 			panic(err)
 		}
 		opts.Value = value
 
-		tx, err := busCtr.SendValueToL2(opts, receivers[idx], value)
+		_, err = busCtr.SendValueToL2(opts, receivers[idx], value)
 		if err != nil {
 			panic(err)
 		}
-
-		transactions = append(transactions, tx)
 	}
 
 	time.Sleep(3 * time.Second)
