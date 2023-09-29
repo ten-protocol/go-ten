@@ -44,13 +44,13 @@ jobs:
         if: ${{ inputs.testnet_type == 'testnet' }}
         run: |
           echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest" >> $GITHUB_ENV
-          echo "TESTNET_ADDR=testnet.obscu.ro" >> $GITHUB_ENV
+          echo "TESTNET_ADDR=erpc.testnet.obscu.ro" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
         if: ${{ inputs.testnet_type == 'dev-testnet' }}
         run: |
           echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_faucet_testnet:latest" >> $GITHUB_ENV
-          echo "TESTNET_ADDR=dev-testnet.obscu.ro" >> $GITHUB_ENV
+          echo "TESTNET_ADDR=erpc.testnet.obscu.ro" >> $GITHUB_ENV
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
