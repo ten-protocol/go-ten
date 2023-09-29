@@ -1,6 +1,6 @@
 <template>
   <el-card shadow="never" style=" border-radius: 20px; ">
-  <el-row justify="space-around">
+  <el-row justify="space-evenly">
     <el-col :span="4" >
       <el-card class="box" shadow="never">
         <p class="header-text">

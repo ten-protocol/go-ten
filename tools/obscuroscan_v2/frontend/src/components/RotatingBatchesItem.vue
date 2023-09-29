@@ -3,11 +3,10 @@
   <div class="slider-container" style="width: 100%;">
     <div class="slider-content" :class="{ 'slide-out': isAnimating }" >
       <el-card v-for="card in displayedCards" :key="card.hash" class="card-content box">
-        <h3 class="header-text" >Height: {{ card.number }}</h3>
+        <h3 class="header-text" >Batch: {{ card.number }}</h3>
         <p>&nbsp;</p>
         <h5><ShortenedHash :hash="card.hash" /></h5>
         <h5><Timestamp :unixTimestampSeconds="Number(card.timestamp)" /></h5>
-        <h5>No of Txs: N/A</h5>
       </el-card>
     </div>
   </div>
@@ -77,6 +76,7 @@ export default {
   display: inline-block;
   width: 200px;  /* If 5 cards need to be displayed at a time, and container width is 1000px, then each card can be approximately 200px wide */
   margin-right: 20px;  /* Adjust as needed */
+  text-align: center;
 }
 
 

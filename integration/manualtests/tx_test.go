@@ -34,7 +34,7 @@ const (
 // Testnet values used for quick debugging:
 // l1 host: testnet-eth2network.uksouth.cloudapp.azure.com
 // l1 port: 9000
-// l2 host: testnet.obscu.ro
+// l2 host: erpc.testnet.obscu.ro
 // l2 port: 81
 // l2wallet: 8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b -> 0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77
 
@@ -48,10 +48,10 @@ var (
 
 	l2Wallet = wallet.NewInMemoryWalletFromConfig(
 		"4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8",
-		443,
+		777,
 		gethlog.New())
-	l2Host = "localhost"
-	l2Port = 43900
+	l2Host = "erpc.testnet.obscu.ro"
+	l2Port = 81
 )
 
 func TestL1IssueContractInteractWaitReceipt(t *testing.T) {
@@ -327,8 +327,9 @@ func TestL2IssueTxWaitReceipt(t *testing.T) {
 	require.NoError(t, err)
 
 	if balance.Cmp(big.NewInt(0)) <= 0 {
-		t.Errorf("not enough balance: has %s has %s obx", l2Wallet.Address().Hex(), balance.String())
+		t.Fatalf("not enough balance: has %s has %s obx", l2Wallet.Address().Hex(), balance.String())
 	}
+	fmt.Println("balance: ", balance.String())
 
 	toAddr := datagenerator.RandomAddress()
 	nonce, err := authClient.NonceAt(ctx, nil)
