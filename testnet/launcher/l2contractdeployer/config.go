@@ -5,19 +5,22 @@ type Option = func(c *Config)
 
 // Config holds the properties that configure the package
 type Config struct {
-	l1HTTPURL         string
-	l1privateKey      string
-	l2Port            int
-	l2Host            string
-	l2PrivateKey      string
-	hocPKString       string
-	pocPKString       string
-	messageBusAddress string
-	dockerImage       string
+	l1HTTPURL           string
+	l1privateKey        string
+	l2Port              int
+	l2Host              string
+	l2PrivateKey        string
+	hocPKString         string
+	pocPKString         string
+	messageBusAddress   string
+	dockerImage         string
+	faucetPrefundAmount string
 }
 
 func NewContractDeployerConfig(opts ...Option) *Config {
-	defaultConfig := &Config{}
+	defaultConfig := &Config{
+		faucetPrefundAmount: "10000",
+	}
 
 	for _, opt := range opts {
 		opt(defaultConfig)
@@ -77,5 +80,11 @@ func WithHocPKString(s string) Option {
 func WithPocPKString(s string) Option {
 	return func(c *Config) {
 		c.pocPKString = s
+	}
+}
+
+func WithFaucetFunds(f string) Option {
+	return func(c *Config) {
+		c.faucetPrefundAmount = f
 	}
 }
