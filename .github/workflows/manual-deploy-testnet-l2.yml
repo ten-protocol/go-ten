@@ -66,6 +66,7 @@ jobs:
           
           echo "BATCH_INTERVAL=${{vars.BATCH_INTERVAL}}"
           echo "ROLLUP_INTERVAL=${{vars.ROLLUP_INTERVAL}}"
+          echo "FAUCET_FUNDS=${{vars.FAUCET_FUNDS}}"
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -326,6 +327,7 @@ jobs:
           -l2_poc_private_key=4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8 \
           -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
           -docker_image=${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+          -faucet_funds=${{vars.FAUCET_FUNDS}}
 
       - name: 'Save container logs on failure'
         if: failure()

@@ -33,7 +33,8 @@ func (n *ContractDeployer) Start() error {
 	}
 
 	envs := map[string]string{
-		"MESSAGE_BUS_ADDRESS": n.cfg.messageBusAddress,
+		"PREFUND_FAUCET_AMOUNT": n.cfg.faucetPrefundAmount,
+		"MESSAGE_BUS_ADDRESS":   n.cfg.messageBusAddress,
 		"NETWORK_JSON": fmt.Sprintf(`
 {
         "layer1" : {
