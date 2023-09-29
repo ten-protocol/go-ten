@@ -47,7 +47,7 @@ const (
 )
 
 func TestObscuroscan(t *testing.T) {
-	t.Skip("Commented it out until more testing is driven from this test")
+	//t.Skip("Commented it out until more testing is driven from this test")
 	startPort := integration.StartPortObscuroscanUnitTest
 	createObscuroNetwork(t, startPort)
 
@@ -65,11 +65,18 @@ func TestObscuroscan(t *testing.T) {
 	require.NoError(t, err)
 
 	// wait for the msg bus contract to be deployed
-	time.Sleep(10 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	// make sure the server is ready to receive requests
 	err = waitServerIsReady(serverAddress)
 	require.NoError(t, err)
+
+	issueTransactions(
+		t,
+		fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
+		wallet.NewInMemoryWalletFromConfig("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b", integration.ObscuroChainID, testlog.Logger()),
+		5,
+	)
 
 	// Issue tests
 	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
@@ -80,7 +87,7 @@ func TestObscuroscan(t *testing.T) {
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/count/transactions/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "{\"count\":1}", string(body))
+	assert.Equal(t, "{\"count\":6}", string(body))
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/latest/", serverAddress))
 	assert.NoError(t, err)
@@ -99,7 +106,7 @@ func TestObscuroscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
-	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batchHeader/%s", serverAddress, batchHead.Hash().String()))
+	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/%s", serverAddress, batchHead.Hash().String()))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
@@ -114,8 +121,8 @@ func TestObscuroscan(t *testing.T) {
 	publicTxsObj := publicTxsRes{}
 	err = json.Unmarshal(body, &publicTxsObj)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(publicTxsObj.Result.TransactionsData))
-	assert.Equal(t, uint64(1), publicTxsObj.Result.Total)
+	assert.Equal(t, 5, len(publicTxsObj.Result.TransactionsData))
+	assert.Equal(t, uint64(5), publicTxsObj.Result.Total)
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batches/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)
@@ -171,15 +178,6 @@ func TestObscuroscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEqual(t, configFetchObj.Item.SequencerID, gethcommon.Address{})
 
-	issueTransactions(
-		t,
-		fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
-		wallet.NewInMemoryWalletFromConfig("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b", integration.ObscuroChainID, testlog.Logger()),
-		100,
-	)
-
-	fmt.Println("Running for 1 hour...")
-	time.Sleep(time.Hour)
 	// Gracefully shutdown
 	err = obsScanContainer.Stop()
 	assert.NoError(t, err)
@@ -215,6 +213,7 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
 		Wallets:          wallets,
 		StartPort:        startPort,
+		WithPrefunding:   true,
 	}
 
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
