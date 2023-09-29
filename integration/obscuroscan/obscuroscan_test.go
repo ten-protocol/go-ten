@@ -47,7 +47,6 @@ const (
 )
 
 func TestObscuroscan(t *testing.T) {
-	//t.Skip("Commented it out until more testing is driven from this test")
 	startPort := integration.StartPortObscuroscanUnitTest
 	createObscuroNetwork(t, startPort)
 
@@ -204,10 +203,9 @@ func waitServerIsReady(serverAddr string) error {
 // Creates a single-node Obscuro network for testing.
 func createObscuroNetwork(t *testing.T, startPort int) {
 	// Create the Obscuro network.
-	numberOfNodes := 1
-	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
+	wallets := params.NewSimWallets(1, 1, integration.EthereumChainID, integration.ObscuroChainID)
 	simParams := params.SimParams{
-		NumberOfNodes:    numberOfNodes,
+		NumberOfNodes:    1,
 		AvgBlockDuration: 1 * time.Second,
 		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
