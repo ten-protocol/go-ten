@@ -2,8 +2,9 @@ package main
 
 import (
 	"flag"
-	"github.com/ethereum/go-ethereum/params"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
 )

@@ -13,7 +13,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/networktest/env"
 )
 
-const _testTimeSpan = 120 * time.Second
+const _testTimeSpan = 20 * time.Second
 
 // basic test that verifies it can connect the L1 client and L2 client and sees block numbers increasing (useful to sanity check testnet issues etc.)
 func TestNetworkAvailability(t *testing.T) {
@@ -21,7 +21,7 @@ func TestNetworkAvailability(t *testing.T) {
 	networktest.Run(
 		"network-availability",
 		t,
-		env.DevTestnet(),
+		env.Testnet(),
 		actions.RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 			client, err := network.GetL1Client()
 			if err != nil {
