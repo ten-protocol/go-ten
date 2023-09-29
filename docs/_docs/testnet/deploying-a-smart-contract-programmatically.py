@@ -12,7 +12,7 @@ WPORT = 3000
 WHOST = '127.0.0.1'
 LOWER = 0
 UPPER = 100
-FAUCET_URL = 'http://testnet-faucet.uksouth.azurecontainer.io/fund/obx'
+FAUCET_URL = 'http://testnet-faucet.uksouth.azurecontainer.io/fund/eth'
 
 guesser = '''
 // SPDX-License-Identifier: MIT

@@ -21,6 +21,7 @@ on:
         options:
           - 'dev-testnet'
           - 'testnet'
+          - 'sepolia-testnet'
 
   workflow_call:
     inputs:
@@ -45,12 +46,21 @@ jobs:
         run: |
           echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest" >> $GITHUB_ENV
           echo "TESTNET_ADDR=erpc.testnet.obscu.ro" >> $GITHUB_ENV
+          echo "DEFAULT_FAUCET_AMOUNT=100" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
         if: ${{ inputs.testnet_type == 'dev-testnet' }}
         run: |
           echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_faucet_testnet:latest" >> $GITHUB_ENV
           echo "TESTNET_ADDR=erpc.dev-testnet.obscu.ro" >> $GITHUB_ENV
+          echo "DEFAULT_FAUCET_AMOUNT=100" >> $GITHUB_ENV
+
+      - name: 'Sets env vars for sepolia-testnet'
+        if: ${{ inputs.testnet_type == 'sepolia-testnet' }}
+        run: |
+          echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/sepolia_faucet_testnet:latest" >> $GITHUB_ENV
+          echo "TESTNET_ADDR=erpc.sepolia-testnet.obscu.ro" >> $GITHUB_ENV
+          echo "DEFAULT_FAUCET_AMOUNT=0.5" >> $GITHUB_ENV
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -79,7 +89,7 @@ jobs:
           location: 'uksouth'
           restart-policy: 'Never'
           environment-variables: PORT=80
-          command-line: ./faucet --nodeHost ${{ env.TESTNET_ADDR }} --pk ${{ secrets.FAUCET_PK }} --jwtSecret ${{ secrets.FAUCET_JWT_SECRET }}
+          command-line: ./faucet --nodeHost ${{ env.TESTNET_ADDR }} --pk ${{ secrets.FAUCET_PK }} --jwtSecret ${{ secrets.FAUCET_JWT_SECRET }} --defaultAmount ${{ env.DEFAULT_FAUCET_AMOUNT }}
           ports: '80'
           cpu: 2
           memory: 2
