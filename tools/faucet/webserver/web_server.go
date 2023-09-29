@@ -32,6 +32,7 @@ func NewWebServer(faucetServer *faucet.Faucet, bindAddress string, jwtSecret []b
 	// authed endpoint
 	r.POST("/auth/fund/:token", jwtTokenChecker(jwtSecret, faucetServer.Logger), fundingHandler(faucetServer, defaultAmount))
 
+	// todo (@matt) we need to remove this unsecure endpoint before we provide a fully public sepolia faucet
 	r.POST("/fund/:token", fundingHandler(faucetServer, defaultAmount))
 
 	return &WebServer{

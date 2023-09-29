@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/ethereum/go-ethereum/params"
 	"math/big"
 
 	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
@@ -62,7 +63,7 @@ func parseCLIArgs() *faucet.Config {
 
 func toWei(amount *float64) *big.Int {
 	amtFloat := new(big.Float).SetFloat64(*amount)
-	weiFloat := new(big.Float).Mul(amtFloat, big.NewFloat(1e18))
+	weiFloat := new(big.Float).Mul(amtFloat, big.NewFloat(params.Ether))
 	// don't care about the accuracy here, float should have less than 18 decimal places
 	wei, _ := weiFloat.Int(nil)
 	return wei
