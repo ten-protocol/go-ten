@@ -1,5 +1,8 @@
 <template>
-  <button @click="connectMetamask">Connect to Metamask</button>
+  <el-button @click="connectMetamask" size="large" >
+    <img src="@/assets/imgs/icon_metamask.png" alt="Connect with MetaMask" class="metamask-icon" />
+    Connect with MetaMask
+  </el-button>
 </template>
 
 <script>
@@ -40,5 +43,10 @@ export default {
 </script>
 
 <style scoped>
-/* Add your styles here */
+.metamask-icon {
+  width: 24px;       /* Set desired width */
+  height: 24px;      /* Set desired height */
+  object-fit: cover; /* Ensure image content is not distorted */
+  margin-right: 8px; /* Optional space between the icon and the text */
+}
 </style>

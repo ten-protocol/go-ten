@@ -1,13 +1,13 @@
 <template>
-  <el-card class="centered-container">
-  <div class="slider-container">
+  <el-card class="centered-container" shadow="never" style="border-radius: 20px; ">
+  <div class="slider-container" style="width: 100%;">
     <div class="slider-content" :class="{ 'slide-out': isAnimating }">
-      <el-card v-for="card in displayedCards"  class="card-content">
-        <h3>Block: {{ card.L1ProofNumber }}</h3>
+      <el-card v-for="card in displayedCards"  class="card-content box">
+        <h3 class="header-text">Rollup: <ShortenedHash :hash="card.hash" /></h3>
         <p>&nbsp;</p>
-        <h5>R: <ShortenedHash :hash="card.hash" /></h5>
-        <h5>Block: <ShortenedHash :hash="card.L1Proof" /></h5>
-        <h5>No of Txs: N/A</h5>
+        <h5>Last Batch: {{ card.LastBatchSeqNo }}</h5>
+        <h5><ShortenedHash :hash="card.CompressionL1Head" /></h5>
+
       </el-card>
     </div>
   </div>
@@ -46,6 +46,16 @@ export default {
 
 <style scoped>
 
+.header-text {
+  color: #5973B8;
+  font-weight: bold;
+}
+
+.box {
+  border-radius: 15px;
+  background: #F4F6FF;
+}
+
 .centered-container {
   display: flex;
   justify-content: center;  /* Center children horizontally */
@@ -66,6 +76,7 @@ export default {
   display: inline-block;
   width: 200px;  /* If 5 cards need to be displayed at a time, and container width is 1000px, then each card can be approximately 200px wide */
   margin-right: 20px;  /* Adjust as needed */
+  text-align: center;
 }
 
 

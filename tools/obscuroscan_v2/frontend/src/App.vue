@@ -36,14 +36,6 @@ export default {
 </script>
 
 <style scoped>
-.nav-bar-header {
-  background:black;
-  min-height: 40vh;
-}
-
-.main-content {
-  margin-top: -35vh;
-}
 
 .bot-bar {
   background:black;
