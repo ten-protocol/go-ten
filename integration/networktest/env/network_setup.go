@@ -9,7 +9,7 @@ func Testnet() networktest.Environment {
 	connector := NewTestnetConnector(
 		"http://erpc.testnet.obscu.ro:80",
 		[]string{"http://erpc.testnet.obscu.ro:80"}, // for now we'll just use sequencer as validator node... todo (@matt)
-		"http://testnet-faucet.uksouth.azurecontainer.io/fund/obx",
+		"http://testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000",
 	)
 	return &testnetEnv{connector}
@@ -19,7 +19,7 @@ func DevTestnet() networktest.Environment {
 	connector := NewTestnetConnector(
 		"http://erpc.dev-testnet.obscu.ro:80",
 		[]string{"http://erpc.dev-testnet.obscu.ro:80"}, // for now we'll just use sequencer as validator node... todo (@matt)
-		"http://dev-testnet-faucet.uksouth.azurecontainer.io/fund/obx",
+		"http://dev-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
 	)
 	return &testnetEnv{connector}

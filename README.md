@@ -363,7 +363,7 @@ it for an allocation to an externally owned addressed e.g. for the account `0x0d
 the following curl command can be used;
 
 ```bash
-curl --location --request POST 'http://127.0.0.1:8080/fund/obx' \
+curl --location --request POST 'http://127.0.0.1:8080/fund/eth' \
 --header 'Content-Type: application/json' \
 --data-raw '{ "address":"0x0d2166b7b3A1522186E809e83d925d7b0B6db084" }'
 ```

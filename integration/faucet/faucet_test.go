@@ -45,13 +45,14 @@ func TestFaucet(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	faucetConfig := &faucet.Config{
-		Port:       startPort,
-		Host:       "localhost",
-		HTTPPort:   startPort + integration.DefaultHostRPCHTTPOffset,
-		PK:         "0x" + contractDeployerPrivateKeyHex,
-		JWTSecret:  "This_is_secret",
-		ChainID:    big.NewInt(integration.ObscuroChainID),
-		ServerPort: integration.StartPortFaucetHTTPUnitTest,
+		Port:              startPort,
+		Host:              "localhost",
+		HTTPPort:          startPort + integration.DefaultHostRPCHTTPOffset,
+		PK:                "0x" + contractDeployerPrivateKeyHex,
+		JWTSecret:         "This_is_secret",
+		ChainID:           big.NewInt(integration.ObscuroChainID),
+		ServerPort:        integration.StartPortFaucetHTTPUnitTest,
+		DefaultFundAmount: new(big.Int).Mul(big.NewInt(100), big.NewInt(1e18)),
 	}
 	faucetContainer, err := container.NewFaucetContainerFromConfig(faucetConfig)
 	assert.NoError(t, err)
@@ -98,7 +99,7 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 }
 
 func fundWallet(port int, w wallet.Wallet) error {
-	url := fmt.Sprintf("http://localhost:%d/fund/obx", port)
+	url := fmt.Sprintf("http://localhost:%d/fund/eth", port)
 	method := "POST"
 
 	payload := strings.NewReader(fmt.Sprintf(`{"address":"%s"}`, w.Address()))
