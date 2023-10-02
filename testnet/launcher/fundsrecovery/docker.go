@@ -28,7 +28,7 @@ func (n *FundsRecovery) Start() error {
 	fmt.Printf("Starting L2 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
 
 	cmds := []string{
-		"npx", "hardhat", "obscuro:deploy",
+		"npx", "hardhat", "deploy",
 		"--network", "layer1",
 	}
 

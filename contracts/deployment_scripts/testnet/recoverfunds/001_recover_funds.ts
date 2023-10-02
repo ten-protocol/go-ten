@@ -3,11 +3,8 @@ import {DeployFunction} from 'hardhat-deploy/types';
 
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const layer1 =  hre.companionNetworks.layer1;
-    
     const {deployer} = await hre.getNamedAccounts();
-    const l1Accs = await layer1.getNamedAccounts();
-    
+
     const mgmtContractAddress = process.env.MGMT_CONTRACT_ADDRESS!!
     // todo: if we want to support this we need to add the payAcc address param to the RetrieveAllBridgeFunds solidity defn
     const addressToPay = process.env.ACC_TO_PAY!!
