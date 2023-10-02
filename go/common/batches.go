@@ -29,11 +29,6 @@ func (b *ExtBatch) Hash() L2BatchHash {
 	return v
 }
 
-func (b *ExtBatch) Size() (int, error) {
-	bytes, err := rlp.EncodeToBytes(b)
-	return len(bytes), err
-}
-
 func (b *ExtBatch) Encoded() ([]byte, error) {
 	return rlp.EncodeToBytes(b)
 }

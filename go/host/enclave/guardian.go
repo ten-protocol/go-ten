@@ -520,6 +520,8 @@ func (g *Guardian) periodicBatchProduction() {
 	}
 }
 
+const batchCompressionFactor = 0.85
+
 func (g *Guardian) periodicRollupProduction() {
 	defer g.logger.Info("Stopping rollup production")
 
@@ -542,6 +544,7 @@ func (g *Guardian) periodicRollupProduction() {
 				continue
 			}
 
+			// estimate the size of a compressed rollup
 			availBatchesSumSize, err := g.calculateNonRolledupBatchesSize(fromBatch)
 			if err != nil {
 				g.logger.Error("Unable to estimate the size of the current rollup", log.ErrKey, err)
@@ -549,11 +552,14 @@ func (g *Guardian) periodicRollupProduction() {
 				availBatchesSumSize = 0
 			}
 
+			// adjust the availBatchesSumSize
+			estimatedRunningRollupSize := uint64(float64(availBatchesSumSize) * batchCompressionFactor)
+
 			// produce and issue rollup when either:
 			// it has passed g.rollupInterval from last lastSuccessfulRollup
 			// or the size of accumulated batches is > g.maxRollupSize
 			timeExpired := time.Since(lastSuccessfulRollup) > g.rollupInterval
-			sizeExceeded := availBatchesSumSize >= g.maxRollupSize
+			sizeExceeded := estimatedRunningRollupSize >= g.maxRollupSize
 			if timeExpired || sizeExceeded {
 				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded)
 				producedRollup, err := g.enclaveClient.CreateRollup(fromBatch)
@@ -642,10 +648,7 @@ func (g *Guardian) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error)
 			return 0, err
 		}
 
-		bSize, err := batch.Size()
-		if err != nil {
-			return 0, err
-		}
+		bSize := len(batch.EncryptedTxBlob)
 		size += uint64(bSize)
 		currentNo++
 	}
