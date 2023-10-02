@@ -81,7 +81,9 @@ func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, 
 
 	// todo (tudor) figure out the context and the config
 	cfg := bigcache.DefaultConfig(2 * time.Minute)
-	cfg.HardMaxCacheSize = 512
+	cfg.Shards = 512
+	// 1GB cache. Max value in a shard is 2MB. No batch or block should be larger than that
+	cfg.HardMaxCacheSize = cfg.Shards * 4
 	bigcacheClient, err := bigcache.New(context.Background(), cfg)
 	if err != nil {
 		logger.Crit("Could not initialise bigcache", log.ErrKey, err)
