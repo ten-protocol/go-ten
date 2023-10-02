@@ -13,11 +13,11 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
-
 	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/config"
 	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/container"
 	"github.com/stretchr/testify/require"
@@ -73,7 +73,7 @@ func TestObscuroscan(t *testing.T) {
 	issueTransactions(
 		t,
 		fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
-		wallet.NewInMemoryWalletFromConfig("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b", integration.ObscuroChainID, testlog.Logger()),
+		wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger()),
 		5,
 	)
 
