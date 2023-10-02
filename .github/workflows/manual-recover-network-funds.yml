@@ -14,14 +14,13 @@ on:
           - 'dev-testnet'
           - 'testnet'
           - 'sepolia-testnet'
-      acc_to_pay:
-        description: 'Address which will receive the funds'
-        required: true
-        default: '0x563EAc5dfDFebA3C53c2160Bf1Bd62941E3D0005'
-        type: string
       mgmt_contract_addr:
         description: 'Deployed management contract which will be used to request the funds'
         required: true
+        type: string
+      acc_to_pay:
+        description: '(Ignored) Address which will receive the funds'
+        required: false
         type: string
 
 jobs:
