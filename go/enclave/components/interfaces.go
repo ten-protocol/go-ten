@@ -79,7 +79,7 @@ type BatchExecutor interface {
 }
 
 type BatchRegistry interface {
-	// BatchesAfter - Given a hash, will return batches following it until the head batch
+	// BatchesAfter - Given a hash, will return batches following it until the head batch and the l1 blocks referenced by those batches
 	BatchesAfter(batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error)
 
 	// GetBatchStateAtHeight - creates a stateDB that represents the state committed when
