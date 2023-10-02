@@ -552,7 +552,10 @@ func (g *Guardian) periodicRollupProduction() {
 			// produce and issue rollup when either:
 			// it has passed g.rollupInterval from last lastSuccessfulRollup
 			// or the size of accumulated batches is > g.maxRollupSize
-			if time.Since(lastSuccessfulRollup) > g.rollupInterval || availBatchesSumSize >= g.maxRollupSize {
+			timeExpired := time.Since(lastSuccessfulRollup) > g.rollupInterval
+			sizeExceeded := availBatchesSumSize >= g.maxRollupSize
+			if timeExpired || sizeExceeded {
+				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded)
 				producedRollup, err := g.enclaveClient.CreateRollup(fromBatch)
 				if err != nil {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)

@@ -91,25 +91,26 @@ func (br *batchRegistry) HasGenesisBatch() (bool, error) {
 	return genesisBatchStored, nil
 }
 
-func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, error) {
+func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error) {
 	// sanity check
 	headBatch, err := br.storage.FetchHeadBatch()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if headBatch.SeqNo().Uint64() < batchSeqNo {
-		return nil, fmt.Errorf("head batch height %d is in the past compared to requested batch %d", headBatch.SeqNo().Uint64(), batchSeqNo)
+		return nil, nil, fmt.Errorf("head batch height %d is in the past compared to requested batch %d", headBatch.SeqNo().Uint64(), batchSeqNo)
 	}
 
 	resultBatches := make([]*core.Batch, 0)
+	resultBlocks := make([]*types.Block, 0)
 
 	currentBatchSeq := batchSeqNo
 	var currentBlock *types.Block
 	for currentBatchSeq <= headBatch.SeqNo().Uint64() {
 		batch, err := br.storage.FetchBatchBySeqNo(currentBatchSeq)
 		if err != nil {
-			return nil, fmt.Errorf("could not retrieve batch by sequence number %d. Cause: %w", currentBatchSeq, err)
+			return nil, nil, fmt.Errorf("could not retrieve batch by sequence number %d. Cause: %w", currentBatchSeq, err)
 		}
 
 		// check the block height
@@ -117,18 +118,19 @@ func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, ro
 		if currentBlock == nil || currentBlock.Hash() != batch.Header.L1Proof {
 			block, err := br.storage.FetchBlock(batch.Header.L1Proof)
 			if err != nil {
-				return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
+				return nil, nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 			}
 			currentBlock = block
 			if block.NumberU64() > upToL1Height {
 				break
 			}
+			resultBlocks = append(resultBlocks, block)
 		}
 
 		// check the limiter
 		didAcceptBatch, err := rollupLimiter.AcceptBatch(batch)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if !didAcceptBatch {
 			break
@@ -145,12 +147,12 @@ func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, ro
 		current := resultBatches[0].SeqNo().Uint64()
 		for i, b := range resultBatches {
 			if current+uint64(i) != b.SeqNo().Uint64() {
-				return nil, fmt.Errorf("created invalid rollup with batches out of sequence")
+				return nil, nil, fmt.Errorf("created invalid rollup with batches out of sequence")
 			}
 		}
 	}
 
-	return resultBatches, nil
+	return resultBatches, resultBlocks, nil
 }
 
 func (br *batchRegistry) GetBatchStateAtHeight(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
