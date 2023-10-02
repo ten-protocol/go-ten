@@ -4,13 +4,16 @@ import "C"
 import (
 	"sync/atomic"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
-// todo - This should be a synthetic datastructure
+// Rollup - is an internal data structure useful during creation
 type Rollup struct {
 	Header  *common.RollupHeader
 	Batches []*Batch
+	Blocks  map[common.L1BlockHash]*types.Block // these are the blocks required during compression. The key is the hash
 	hash    atomic.Value
 }
 

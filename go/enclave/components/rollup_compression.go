@@ -91,7 +91,7 @@ type batchFromRollup struct {
 
 // CreateExtRollup - creates a compressed and encrypted External rollup from the internal data structure
 func (rc *RollupCompression) CreateExtRollup(r *core.Rollup) (*common.ExtRollup, error) {
-	header, err := rc.createRollupHeader(r.Batches)
+	header, err := rc.createRollupHeader(r)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,8 @@ func (rc *RollupCompression) ProcessExtRollup(rollup *common.ExtRollup) (*common
 }
 
 // the main logic that goes from a list of batches to the rollup header
-func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.CalldataRollupHeader, error) {
+func (rc *RollupCompression) createRollupHeader(rollup *core.Rollup) (*common.CalldataRollupHeader, error) {
+	batches := rollup.Batches
 	reorgs := make([]*common.BatchHeader, len(batches))
 
 	deltaTimes := make([]*big.Int, len(batches))
@@ -172,7 +173,7 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 	}
 
 	for i, batch := range batches {
-		rc.logger.Debug("Compressing batch to rollup", log.BatchSeqNoKey, batch.SeqNo(), log.BatchHeightKey, batch.Number(), log.BatchHashKey, batch.Hash())
+		rc.logger.Info("Compressing batch to rollup", log.BatchSeqNoKey, batch.SeqNo(), log.BatchHeightKey, batch.Number(), log.BatchHashKey, batch.Hash())
 		// determine whether the batch is canonical
 		if reorgMap[batch.SeqNo().Uint64()] {
 			// if the canonical batch of the same height is different from the current batch
@@ -189,10 +190,7 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 		prev = batch.Header.Time
 
 		// since this is the sequencer, it must have all the blocks, because it created the batches in the first place
-		block, err := rc.storage.FetchBlock(batch.Header.L1Proof)
-		if err != nil {
-			return nil, err
-		}
+		block := rollup.Blocks[batch.Header.L1Proof]
 
 		// the first element is the actual height
 		if i == 0 {

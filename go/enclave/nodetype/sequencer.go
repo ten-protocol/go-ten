@@ -259,17 +259,22 @@ func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) 
 		return nil, err
 	}
 	upToL1Height := currentL1Head.NumberU64() - RollupDelay
-	rollup, err := s.rollupProducer.CreateRollup(lastBatchNo, upToL1Height, rollupLimiter)
+	rollup, err := s.rollupProducer.CreateInternalRollup(lastBatchNo, upToL1Height, rollupLimiter)
 	if err != nil {
 		return nil, err
 	}
 
+	extRollup, err := s.rollupCompression.CreateExtRollup(rollup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compress rollup: %w", err)
+	}
+
 	// todo - double-check that this signing approach is secure, and it properly includes the entire payload
-	if err := s.signRollup(rollup); err != nil {
+	if err := s.signRollup(extRollup); err != nil {
 		return nil, fmt.Errorf("failed to sign created rollup: %w", err)
 	}
 
-	return s.rollupCompression.CreateExtRollup(rollup)
+	return extRollup, nil
 }
 
 func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash) error {
@@ -358,7 +363,7 @@ func (s *sequencer) signBatch(batch *core.Batch) error {
 	return nil
 }
 
-func (s *sequencer) signRollup(rollup *core.Rollup) error {
+func (s *sequencer) signRollup(rollup *common.ExtRollup) error {
 	var err error
 	h := rollup.Header.Hash()
 	rollup.Header.R, rollup.Header.S, err = ecdsa.Sign(rand.Reader, s.enclavePrivateKey, h[:])
