@@ -1,6 +1,6 @@
 # Obscuro Faucet
 
-This tools contains a Faucet to allow allocation of OBX tokens within an Obscuro network. For more information 
+This tools contains a Faucet to allow allocation of ETH tokens within an Obscuro network. For more information 
 on Obscuro see the [Obscuro repo](https://github.com/obscuronet/go-obscuro) and [documentation](https://docs.obscu.ro/).
 
 ## Repository Structure
@@ -30,8 +30,8 @@ to the Obscuro node running within the local testnet on host `validator-host` an
 on port `80` within the container, but maps port `8080` on the host machine to this.
 
 
-## Allocating OBX to an EOA on a local testnet
-Allocating OBX to an externally owned account is done through a POST command to the `/fund/eth` endpoint, where the 
+## Allocating ETH to an EOA on a local testnet
+Allocating ETH to an externally owned account is done through a POST command to the `/fund/eth` endpoint, where the 
 data in the POST command specifies the address e.g. for the account `0x0d2166b7b3A1522186E809e83d925d7b0B6db084`
 
 ```bash
