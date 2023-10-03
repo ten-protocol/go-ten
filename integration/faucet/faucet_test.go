@@ -2,6 +2,7 @@ package faucet
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/big"
@@ -60,6 +61,10 @@ func TestFaucet(t *testing.T) {
 	err = faucetContainer.Start()
 	assert.NoError(t, err)
 
+	initialFaucetBal, err := getFaucetBalance(faucetConfig.ServerPort)
+	assert.NoError(t, err)
+	assert.NotZero(t, initialFaucetBal)
+
 	rndWallet := datagenerator.RandomWallet(integration.ObscuroChainID)
 	err = fundWallet(faucetConfig.ServerPort, rndWallet)
 	assert.NoError(t, err)
@@ -73,6 +78,12 @@ func TestFaucet(t *testing.T) {
 	if currentBalance.Cmp(big.NewInt(0)) <= 0 {
 		t.Fatalf("Unexpected balance, got: %d, expected > 0", currentBalance.Int64())
 	}
+
+	endFaucetBal, err := getFaucetBalance(faucetConfig.ServerPort)
+	assert.NoError(t, err)
+	assert.NotZero(t, endFaucetBal)
+	// faucet balance should have decreased
+	assert.Less(t, endFaucetBal.Cmp(initialFaucetBal), 0)
 }
 
 // Creates a single-node Obscuro network for testing.
@@ -123,4 +134,36 @@ func fundWallet(port int, w wallet.Wallet) error {
 	}
 	fmt.Println(string(body))
 	return nil
+}
+
+func getFaucetBalance(port int) (*big.Int, error) {
+	url := fmt.Sprintf("http://localhost:%d/balance", port)
+	method := "GET"
+
+	client := &http.Client{}
+	req, err := http.NewRequestWithContext(context.Background(), method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	var resp struct {
+		Balance string `json:"balance"`
+	}
+	err = json.NewDecoder(res.Body).Decode(&resp)
+	if err != nil {
+		return nil, err
+	}
+	bal, success := new(big.Int).SetString(resp.Balance, 10)
+	if !success {
+		return nil, fmt.Errorf("failed to parse balance - %s", resp.Balance)
+	}
+
+	return bal, nil
 }

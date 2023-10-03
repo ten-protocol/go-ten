@@ -140,3 +140,7 @@ func (f *Faucet) fundNativeToken(address *common.Address, amount *big.Int) (*typ
 
 	return signedTx, nil
 }
+
+func (f *Faucet) Balance(ctx context.Context) (*big.Int, error) {
+	return f.client.BalanceAt(ctx, nil)
+}
