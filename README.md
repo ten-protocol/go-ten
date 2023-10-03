@@ -348,7 +348,7 @@ Once started Obscuroscan is available on `http://0.0.0.0:8098`.
 
 
 ### Building and running a local faucet
-Deploying and interacting with contracts on Obscuro requires OBX to be allocated to an account via the faucet.
+Deploying and interacting with contracts on Obscuro requires ETH to be allocated to an account on the L2 via the faucet (or bridged across from the L1).
 The faucet image should be pulled (or optionally built from scratch), and the container built and started to allow requests to be made to it. 
 To pull the testnet faucet and run use;
 
