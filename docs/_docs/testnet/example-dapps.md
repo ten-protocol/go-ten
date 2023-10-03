@@ -14,7 +14,7 @@ Building the guessing game in Obscuro addresses both scenarios described above. 
 1. Start up the wallet extension. Follow instructions [here](https://docs.obscu.ro/wallet-extension/wallet-extension).
 1. For the moment, the Guessing Game includes an ERC20 token (called OGG, short for Obscuro Guessing Game). This is partly because OGG is modified to have a built-in faucet: It allocates tokens to addresses as they make a request to allow other addresses to take tokens from their account.
 1. If you want to see this balance in your wallet, you have to import a new Token with the address: ``0x5FbDB2315678afecb367f032d93F642f64180aa3``
-1. Browse to [the number guessing game](http://obscuronet.github.io/sample-applications/number-guessing-game). Check you see `Network ID: 777` at the top of the game window to confirm you are connected to Obscuro Testnet.
+1. Browse to [the number guessing game](http://obscuronet.github.io/sample-applications/number-guessing-game). Check you see `Network ID: 443` at the top of the game window to confirm you are connected to Obscuro Testnet.
 1. MetaMask will open and ask to connect your account. Click `Next` then click `Connect`.
 1. Approve the payment of 1 or more token units to play the game (this will be added to the prize pool) by clicking the `Approve game fee` button.
 1. MetaMask will ask for your account to sign a transaction specifying the Guess contract address as the approval delegate. This means that you're giving permission for the game to take the participation fee. Click `Confirm`. Once approved you will see a confirmation popup. Click `OK`.

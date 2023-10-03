@@ -11,7 +11,7 @@ const pathJoin = obscuroGatewayVersion + "/join/";
 const pathAuthenticate = obscuroGatewayVersion + "/authenticate/";
 const pathQuery = obscuroGatewayVersion + "/query/";
 const pathRevoke = obscuroGatewayVersion + "/revoke/";
-const obscuroChainIDDecimal = 777;
+const obscuroChainIDDecimal = 443;
 const methodPost = "post";
 const methodGet = "get";
 const jsonHeaders = {
@@ -40,12 +40,12 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
                     chainId: chainIdHex,
                     chainName: 'Obscuro Testnet',
                     nativeCurrency: {
-                        name: 'Obscuro',
-                        symbol: 'OBX',
+                        name: 'Sepolia Ether',
+                        symbol: 'ETH',
                         decimals: 18
                     },
                     rpcUrls: [obscuroGatewayAddress+"/"+obscuroGatewayVersion+'/?u='+userID],
-                    blockExplorerUrls: null,
+                    blockExplorerUrls: ['https://testnet.obscuroscan.io'],
                 },
             ],
         });

@@ -37,7 +37,7 @@ func getFlagUsageMap() map[string]string {
 		addressName:                   "The address on which to serve the Obscuro enclave service",
 		nodeTypeName:                  "The node's type (e.g. sequencer, validator)",
 		l1ChainIDName:                 "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)",
-		obscuroChainIDName:            "An integer representing the unique chain id of the Obscuro chain (default 777)",
+		obscuroChainIDName:            "An integer representing the unique chain id of the Obscuro chain (default 443)",
 		willAttestName:                "Whether the enclave will produce a verified attestation report",
 		validateL1BlocksName:          "Whether to validate incoming blocks using the hardcoded L1 genesis.json config",
 		ManagementContractAddressName: "The management contract address on the L1",
