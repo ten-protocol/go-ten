@@ -10,11 +10,13 @@ import (
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/retry"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
+	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -34,6 +36,28 @@ func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
 		panic(fmt.Sprintf("invalid durations min=%s max=%s", min, max))
 	}
 	return time.Duration(RndBtw(uint64(min.Nanoseconds()), uint64(max.Nanoseconds()))) * time.Nanosecond
+}
+
+func AwaitReceiptEth(ctx context.Context, client ethadapter.EthClient, txHash gethcommon.Hash, timeout time.Duration) error {
+	var receipt *types.Receipt
+	var err error
+	err = retry.Do(func() error {
+		receipt, err = client.TransactionReceipt(txHash)
+		if err != nil && !errors.Is(err, rpc.ErrNilResponse) && !errors.Is(err, ethereum.NotFound) {
+			// we only retry for a nil "not found" response. This is a different error, so we bail out of the retry loop
+			return retry.FailFast(err)
+		}
+		return err
+	}, retry.NewTimeoutStrategy(timeout, _awaitReceiptPollingInterval))
+	if err != nil {
+		return fmt.Errorf("could not retrieve receipt for transaction %s - %w", txHash.Hex(), err)
+	}
+
+	if receipt.Status == types.ReceiptStatusFailed {
+		return fmt.Errorf("receipt had status failed for transaction %s", txHash.Hex())
+	}
+
+	return nil
 }
 
 // AwaitReceipt blocks until the receipt for the transaction with the given hash has been received. Errors if the
