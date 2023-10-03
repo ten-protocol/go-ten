@@ -5,6 +5,7 @@ const idAddAccount = "addAccount";
 const idAddAllAccounts = "addAllAccounts";
 const idRevokeUserID = "revokeUserID";
 const idStatus = "status";
+const idConnectButton = "connectButton"
 const obscuroGatewayVersion = "v1"
 const pathJoin = obscuroGatewayVersion + "/join/";
 const pathAuthenticate = obscuroGatewayVersion + "/authenticate/";
@@ -146,7 +147,7 @@ async function getUserID() {
     }
 }
 
-async function connectAccount() {
+async function connectAccounts() {
     try {
         return await window.ethereum.request({ method: 'eth_requestAccounts' });
     } catch (error) {
@@ -154,6 +155,19 @@ async function connectAccount() {
         console.error('User denied account access:', error);
         return null;
     }
+}
+
+async function isMetamaskConnected() {
+    let accounts;
+    try {
+        accounts = await provider.listAccounts()
+        console.log(accounts)
+        return accounts.length > 0;
+
+    } catch (error) {
+        console.log("Unable to get accounts")
+    }
+    return false
 }
 
 // Check if Metamask is available on mobile or as a plugin in browser
@@ -215,6 +229,7 @@ const initialize = async () => {
     const addAllAccountsButton = document.getElementById(idAddAllAccounts);
     const revokeUserIDButton = document.getElementById(idRevokeUserID);
     const statusArea = document.getElementById(idStatus);
+    const connectButton = document.getElementById("connectButton");
 
     const accountsTable = document.getElementById('accountsTable')
     const tableBody = document.getElementById('tableBody');
@@ -225,6 +240,13 @@ const initialize = async () => {
     // load the current version
     await fetchAndDisplayVersion();
 
+    // check if user already connected accounts
+    if (await isMetamaskConnected()) {
+        console.log("Connected")
+    } else {
+        console.log("Not connected")
+    }
+
     // check if userID exists and has a correct type and length (is valid) and display either
     // option to join or to add a new account to existing user
     if (isValidUserIDFormat(userID)) {
@@ -233,6 +255,7 @@ const initialize = async () => {
         addAllAccountsButton.style.display = "block"
         revokeUserIDButton.style.display = "block"
         accountsTable.style.display = "block"
+        connectButton.style.display = "block"
         await populateAccountsTable(document, tableBody, userID)
     } else {
         joinButton.style.display = "block"
@@ -267,6 +290,7 @@ const initialize = async () => {
         statusArea.innerText = "Successfully joined Obscuro Gateway";
         // show users an option to add another account and revoke userID
         addAccountButton.style.display = "block"
+        connectButton.style.display = "block"
         addAllAccountsButton.style.display = "block"
         revokeUserIDButton.style.display = "block"
         accountsTable.style.display = "block"
@@ -280,8 +304,6 @@ const initialize = async () => {
             joinButton.style.display = "block"
             addAccountButton.style.display = "none"
         }
-
-        await connectAccount()
 
         // Get an account and prompt user to sign joining with a selected account
         const account = await provider.getSigner().getAddress();
@@ -302,8 +324,6 @@ const initialize = async () => {
             joinButton.style.display = "block"
             addAccountButton.style.display = "none"
         }
-
-        await connectAccount()
 
         // Get an account and prompt user to sign joining with selected account
         const accounts = await provider.listAccounts();
@@ -334,6 +354,11 @@ const initialize = async () => {
         } else {
             statusArea.innerText = "Revoking UserID failed";
         }
+    })
+
+    connectButton.addEventListener(eventClick, async () => {
+        console.log("connect button!")
+        await connectAccounts();
     })
 
 }
