@@ -50,6 +50,6 @@ func parseCLIArgs() *faucet.Config {
 		PK:         *faucetPK,
 		JWTSecret:  *jwtSecret,
 		ServerPort: *serverPort,
-		ChainID:    big.NewInt(777), // TODO make this configurable
+		ChainID:    big.NewInt(443), // TODO make this configurable
 	}
 }

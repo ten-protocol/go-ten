@@ -60,7 +60,7 @@ func getFlagUsageMap() map[string]string {
 		logPathName:                  "The path to use for the host's log file",
 		privateKeyName:               "The private key for the L1 host account",
 		l1ChainIDName:                "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)",
-		obscuroChainIDName:           "An integer representing the unique chain id of the Obscuro chain (default 777)",
+		obscuroChainIDName:           "An integer representing the unique chain id of the Obscuro chain (default 443)",
 		profilerEnabledName:          "Runs a profiler instance (Defaults to false)",
 		l1StartHashName:              "The L1 block hash where the management contract was deployed",
 		sequencerIDName:              "The ID of the sequencer",
