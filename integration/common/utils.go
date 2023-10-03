@@ -38,7 +38,7 @@ func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
 	return time.Duration(RndBtw(uint64(min.Nanoseconds()), uint64(max.Nanoseconds()))) * time.Nanosecond
 }
 
-func AwaitReceiptEth(ctx context.Context, client ethadapter.EthClient, txHash gethcommon.Hash, timeout time.Duration) error {
+func AwaitReceiptEth(client ethadapter.EthClient, txHash gethcommon.Hash, timeout time.Duration) error {
 	var receipt *types.Receipt
 	var err error
 	err = retry.Do(func() error {
