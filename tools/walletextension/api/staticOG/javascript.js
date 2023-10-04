@@ -5,8 +5,10 @@ const idAddAccount = "addAccount";
 const idAddAllAccounts = "addAllAccounts";
 const idRevokeUserID = "revokeUserID";
 const idStatus = "status";
-const idConnectButton = "connectButton"
-const obscuroGatewayVersion = "v1"
+const idConnectButton = "connectButton";
+const idAccountsTable = "accountsTable";
+const idTableBody = "tableBody";
+const obscuroGatewayVersion = "v1";
 const pathJoin = obscuroGatewayVersion + "/join/";
 const pathAuthenticate = obscuroGatewayVersion + "/authenticate/";
 const pathQuery = obscuroGatewayVersion + "/query/";
@@ -51,6 +53,17 @@ async function fetchAndDisplayVersion() {
     }
 }
 
+function getNetworkName(gatewayAddress) {
+    switch(gatewayAddress) {
+        case 'https://uat-testnet.obscu.ro/':
+            return 'Obscuro UAT-Testnet';
+        case 'https://dev-testnet.obscu.ro/':
+            return 'Obscuro Dev-Testnet';
+        default:
+            return 'Obscuro Testnet';
+    }
+}
+
 async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
     // add network to MetaMask
     let chainIdHex = "0x" + chainIDDecimal.toString(16); // Convert to hexadecimal and prefix with '0x'
@@ -60,7 +73,7 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
             params: [
                 {
                     chainId: chainIdHex,
-                    chainName: 'Obscuro Testnet',
+                    chainName: getNetworkName(obscuroGatewayAddress),
                     nativeCurrency: {
                         name: 'Sepolia Ether',
                         symbol: 'ETH',
@@ -228,10 +241,10 @@ const initialize = async () => {
     const addAllAccountsButton = document.getElementById(idAddAllAccounts);
     const revokeUserIDButton = document.getElementById(idRevokeUserID);
     const statusArea = document.getElementById(idStatus);
-    const connectButton = document.getElementById("connectButton");
+    const connectButton = document.getElementById(idConnectButton);
 
-    const accountsTable = document.getElementById('accountsTable')
-    const tableBody = document.getElementById('tableBody');
+    const accountsTable = document.getElementById(idAccountsTable)
+    const tableBody = document.getElementById(idTableBody);
     // getUserID from the gateway with getStorageAt method
     let userID = await getUserID()
 
@@ -264,22 +277,26 @@ const initialize = async () => {
         await populateAccountsTable(document, tableBody, userID)
     }
 
+
+    async function displayCorrectScreenBasedOnMetamaskAndUserID() {
+        // handle which buttons should be shown to the user
+        if (await isMetamaskConnected()) {
+            // check if userID exists and has a correct type and length (is valid) and display either
+            // option to join or to add a new account to existing user
+            if (isValidUserIDFormat(userID)) {
+                await displayConnectedAndJoinedSuccessfully()
+            } else {
+                displayOnlyJoin()
+            }
+        } else {
+            displayOnlyConnectButton()
+        }
+    }
+
     // load the current version
     await fetchAndDisplayVersion();
 
-    // handle which buttons should be shown to the user
-    if (await isMetamaskConnected()) {
-        // check if userID exists and has a correct type and length (is valid) and display either
-        // option to join or to add a new account to existing user
-        if (isValidUserIDFormat(userID)) {
-            await displayConnectedAndJoinedSuccessfully()
-        } else {
-            displayOnlyJoin()
-        }
-    } else {
-        displayOnlyConnectButton()
-    }
-
+    await displayCorrectScreenBasedOnMetamaskAndUserID()
 
     joinButton.addEventListener(eventClick, async () => {
         // join Obscuro Gateway
@@ -358,7 +375,6 @@ const initialize = async () => {
     })
 
     connectButton.addEventListener(eventClick, async () => {
-        console.log("connect button!")
         await connectAccounts();
         location.reload()
     })
