@@ -13,7 +13,7 @@ on:
         type: choice
         options:
           - 'dev-testnet'
-          - 'testnet'
+          - 'uat-testnet'
           - 'sepolia-testnet'
 
 jobs:
@@ -32,12 +32,12 @@ jobs:
         uses: docker/setup-buildx-action@v1
 
       - name: 'Set Obscuro Gateway variables for testnet'
-        if: ${{ github.event.inputs.testnet_type == 'testnet' }}
+        if: ${{ github.event.inputs.testnet_type == 'uat-testnet' }}
         run: |
-          echo "OBSCURO_GATEWAY_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_testnet:latest" >> $GITHUB_ENV
-          echo "OBSCURO_GATEWAY_NODE_HOST=erpc.testnet.obscu.ro" >> $GITHUB_ENV
-          echo "RESOURCE_STARTING_NAME=testnet" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=obscurogatewaytestnetlatest" >> $GITHUB_ENV
+          echo "OBSCURO_GATEWAY_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_uat_testnet:latest" >> $GITHUB_ENV
+          echo "OBSCURO_GATEWAY_NODE_HOST=erpc.uat-testnet.obscu.ro" >> $GITHUB_ENV
+          echo "RESOURCE_STARTING_NAME=uat-testnet" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=obscurogatewayuattestnetlatest" >> $GITHUB_ENV
 
       - name: 'Set Obscuro Gateway variables for dev-testnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}

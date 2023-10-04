@@ -37,8 +37,8 @@ jobs:
         password: ${{ secrets.REGISTRY_PASSWORD }}    
     - name: Docker Build & Push to ACR
       run: |
-        DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuro_testnet_obscuroscan:latest -f tools/obscuroscan/Dockerfile  .
-        docker push testnetobscuronet.azurecr.io/obscuronet/obscuro_testnet_obscuroscan:latest
+        DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuro_uat_testnet_obscuroscan:latest -f tools/obscuroscan/Dockerfile  .
+        docker push testnetobscuronet.azurecr.io/obscuronet/obscuro_uat_testnet_obscuroscan:latest
 
     - name: 'Deploy to Azure Web App for Container'
       uses: azure/webapps-deploy@v2

@@ -20,7 +20,7 @@ on:
         type: choice
         options:
           - 'dev-testnet'
-          - 'testnet'
+          - 'uat-testnet'
           - 'sepolia-testnet'
 
   workflow_call:
@@ -42,10 +42,10 @@ jobs:
         uses: docker/setup-buildx-action@v1
 
       - name: 'Sets env vars for testnet'
-        if: ${{ inputs.testnet_type == 'testnet' }}
+        if: ${{ inputs.testnet_type == 'uat-testnet' }}
         run: |
-          echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest" >> $GITHUB_ENV
-          echo "TESTNET_ADDR=erpc.testnet.obscu.ro" >> $GITHUB_ENV
+          echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/uat_faucet_testnet:latest" >> $GITHUB_ENV
+          echo "TESTNET_ADDR=erpc.uat-testnet.obscu.ro" >> $GITHUB_ENV
           echo "DEFAULT_FAUCET_AMOUNT=100" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
