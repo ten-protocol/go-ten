@@ -161,7 +161,6 @@ async function isMetamaskConnected() {
     let accounts;
     try {
         accounts = await provider.listAccounts()
-        console.log(accounts)
         return accounts.length > 0;
 
     } catch (error) {
@@ -237,32 +236,50 @@ const initialize = async () => {
     let userID = await getUserID()
 
 
-    // load the current version
-    await fetchAndDisplayVersion();
-
-    // check if user already connected accounts
-    if (await isMetamaskConnected()) {
-        console.log("Connected")
-    } else {
-        console.log("Not connected")
+    function displayOnlyConnectButton(){
+        joinButton.style.display = "none"
+        addAccountButton.style.display = "none"
+        addAllAccountsButton.style.display = "none"
+        revokeUserIDButton.style.display = "none"
+        accountsTable.style.display = "none"
+        connectButton.style.display = "block"
     }
 
-    // check if userID exists and has a correct type and length (is valid) and display either
-    // option to join or to add a new account to existing user
-    if (isValidUserIDFormat(userID)) {
+    function displayOnlyJoin() {
+        joinButton.style.display = "block"
+        addAccountButton.style.display = "none"
+        addAllAccountsButton.style.display = "none"
+        revokeUserIDButton.style.display = "none"
+        accountsTable.style.display = "none"
+        connectButton.style.display = "none"
+    }
+
+    async function displayConnectedAndJoinedSuccessfully() {
         joinButton.style.display = "none"
         addAccountButton.style.display = "block"
         addAllAccountsButton.style.display = "block"
         revokeUserIDButton.style.display = "block"
         accountsTable.style.display = "block"
-        connectButton.style.display = "block"
+        connectButton.style.display = "none"
         await populateAccountsTable(document, tableBody, userID)
-    } else {
-        joinButton.style.display = "block"
-        addAccountButton.style.display = "none"
-        revokeUserIDButton.style.display = "none"
-        accountsTable.style.display = "none"
     }
+
+    // load the current version
+    await fetchAndDisplayVersion();
+
+    // handle which buttons should be shown to the user
+    if (await isMetamaskConnected()) {
+        // check if userID exists and has a correct type and length (is valid) and display either
+        // option to join or to add a new account to existing user
+        if (isValidUserIDFormat(userID)) {
+            await displayConnectedAndJoinedSuccessfully()
+        } else {
+            displayOnlyJoin()
+        }
+    } else {
+        displayOnlyConnectButton()
+    }
+
 
     joinButton.addEventListener(eventClick, async () => {
         // join Obscuro Gateway
@@ -279,7 +296,6 @@ const initialize = async () => {
 
         // save userID to the localStorage and hide button that enables users to join
         userID = await joinResp.text();
-        joinButton.style.display = "none"
 
         // add Obscuro network to Metamask
         let networkAdded = await addNetworkToMetaMask(ethereum, userID, obscuroChainIDDecimal)
@@ -289,20 +305,14 @@ const initialize = async () => {
         }
         statusArea.innerText = "Successfully joined Obscuro Gateway";
         // show users an option to add another account and revoke userID
-        addAccountButton.style.display = "block"
-        connectButton.style.display = "block"
-        addAllAccountsButton.style.display = "block"
-        revokeUserIDButton.style.display = "block"
-        accountsTable.style.display = "block"
-        await populateAccountsTable(document, tableBody, userID)
+
+        await displayConnectedAndJoinedSuccessfully()
     })
 
     addAccountButton.addEventListener(eventClick, async () => {
         // check if we have userID and it is the correct length
         if (!isValidUserIDFormat(userID)) {
-            statusArea.innerText = "\n Please join Obscuro network first"
-            joinButton.style.display = "block"
-            addAccountButton.style.display = "none"
+            displayOnlyJoin()
         }
 
         // Get an account and prompt user to sign joining with a selected account
@@ -311,18 +321,14 @@ const initialize = async () => {
             statusArea.innerText = "No MetaMask accounts found."
             return
         }
-        let authenticateAccountStatus = await authenticateAccountWithObscuroGateway(ethereum, account, userID)
-        //statusArea.innerText = "\n Authentication status: " + authenticateAccountStatus
-        accountsTable.style.display = "block"
+        let _ = await authenticateAccountWithObscuroGateway(ethereum, account, userID)
         await populateAccountsTable(document, tableBody, userID)
     })
 
     addAllAccountsButton.addEventListener(eventClick, async () => {
         // check if we have userID and it is the correct length
         if (!isValidUserIDFormat(userID)) {
-            statusArea.innerText = "\n Please join Obscuro network first"
-            joinButton.style.display = "block"
-            addAccountButton.style.display = "none"
+            displayOnlyJoin()
         }
 
         // Get an account and prompt user to sign joining with selected account
@@ -345,12 +351,7 @@ const initialize = async () => {
         await populateAccountsTable(document, tableBody, userID)
 
         if (result) {
-            joinButton.style.display = "block";
-            revokeUserIDButton.style.display = "none";
-            addAllAccountsButton.style.display = "none";
-            statusArea.innerText = "Revoking UserID successful. Please remove current network from Metamask."
-            addAccountButton.style.display = "none";
-            accountsTable.style.display = "none"
+            displayOnlyJoin()
         } else {
             statusArea.innerText = "Revoking UserID failed";
         }
@@ -359,6 +360,7 @@ const initialize = async () => {
     connectButton.addEventListener(eventClick, async () => {
         console.log("connect button!")
         await connectAccounts();
+        location.reload()
     })
 
 }
