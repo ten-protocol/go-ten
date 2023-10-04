@@ -354,8 +354,8 @@ To pull the testnet faucet and run use;
 
 ```
 cd tools/faucet
-docker pull testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest  
-./container_run.sh -image testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest 
+docker pull testnetobscuronet.azurecr.io/obscuronet/faucet_sepolia_testnet:latest  
+./container_run.sh -image testnetobscuronet.azurecr.io/obscuronet/faucet_sepolia_testnet:latest 
 ```
 
 The faucet runs a web server within the container, with a port mapping of 8080 set to allow POST requests to be made to 

@@ -34,8 +34,8 @@ jobs:
       - name: 'Set Obscuro Scan variables for dev-testnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
         run: |
-          echo "OBSCURO_SCAN_FE_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_fe_obscuro_scan_testnet:latest" >> $GITHUB_ENV
-          echo "OBSCURO_SCAN_API_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_api_obscuro_scan_testnet:latest" >> $GITHUB_ENV
+          echo "OBSCURO_SCAN_FE_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/fe_obscuro_scan_dev_testnet:latest" >> $GITHUB_ENV
+          echo "OBSCURO_SCAN_API_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/api_obscuro_scan_dev_testnet:latest" >> $GITHUB_ENV
           echo "OBSCURO_SCAN_NODE_HOST=erpc.dev-testnet.obscu.ro" >> $GITHUB_ENV
 
       - name: 'Login to Azure docker registry'

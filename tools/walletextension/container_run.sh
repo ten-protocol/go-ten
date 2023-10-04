@@ -16,7 +16,7 @@ nodePortHTTP=80
 nodePortWS=81
 logPath="wallet_extension_logs.txt"
 databasePath=".obscuro/gateway_database.db"
-image="obscuronet/obscuro_gateway_testnet:latest"
+image="obscuronet/obscuro_gateway_sepolia_testnet:latest"
 
 # Parse the options
 for argument in "$@"
