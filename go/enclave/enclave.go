@@ -1398,7 +1398,7 @@ func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPaginatio
 // Create a helper to check if a gas allowance results in an executable transaction
 // isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
 func (e *enclaveImpl) isGasEnough(args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error) {
-	core.LogMethodDuration(e.logger, measure.NewStopwatch(), "enclave.go:IsGasEnough")
+	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "enclave.go:IsGasEnough")
 	args.Gas = (*hexutil.Uint64)(&gas)
 	result, err := e.chain.ObsCallAtBlock(args, blkNumber)
 	if err != nil {
