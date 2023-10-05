@@ -164,7 +164,7 @@ func ExecuteObsCall(
 		noBaseFee = false
 	}
 
-	core.LogMethodDuration(logger, measure.NewStopwatch(), "evm_facade.go:ObsCall()")
+	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "evm_facade.go:ObsCall()")
 
 	chain, vmCfg, gp := initParams(storage, noBaseFee, nil)
 	ethHeader, err := gethencoding.CreateEthHeaderForBatch(header, secret(storage))
