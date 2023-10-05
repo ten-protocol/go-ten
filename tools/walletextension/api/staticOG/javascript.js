@@ -5,7 +5,6 @@ const idAddAccount = "addAccount";
 const idAddAllAccounts = "addAllAccounts";
 const idRevokeUserID = "revokeUserID";
 const idStatus = "status";
-const idConnectButton = "connectButton";
 const idAccountsTable = "accountsTable";
 const idTableBody = "tableBody";
 const obscuroGatewayVersion = "v1";
@@ -23,6 +22,7 @@ const jsonHeaders = {
 };
 
 const metamaskPersonalSign = "personal_sign";
+const obscuroChainIDHex = "0x" + obscuroChainIDDecimal.toString(16); // Convert to hexadecimal and prefix with '0x'
 
 function isValidUserIDFormat(value) {
     return typeof value === 'string' && value.length === 64;
@@ -64,15 +64,14 @@ function getNetworkName(gatewayAddress) {
     }
 }
 
-async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
+async function addNetworkToMetaMask(ethereum, userID) {
     // add network to MetaMask
-    let chainIdHex = "0x" + chainIDDecimal.toString(16); // Convert to hexadecimal and prefix with '0x'
     try {
         await ethereum.request({
             method: 'wallet_addEthereumChain',
             params: [
                 {
-                    chainId: chainIdHex,
+                    chainId: obscuroChainIDHex,
                     chainName: getNetworkName(obscuroGatewayAddress),
                     nativeCurrency: {
                         name: 'Sepolia Ether',
@@ -150,10 +149,13 @@ function getRandomIntAsString(min, max) {
     return randomInt.toString();
 }
 
-
 async function getUserID() {
     try {
-        return await provider.send('eth_getStorageAt', ["getUserID", getRandomIntAsString(0, 1000), null])
+        if (await isObscuroChain()) {
+            return await provider.send('eth_getStorageAt', ["getUserID", getRandomIntAsString(0, 1000), null])
+        } else {
+            return null
+        }
     }catch (e) {
         console.log(e)
         return null;
@@ -235,62 +237,56 @@ async function populateAccountsTable(document, tableBody, userID) {
     }
 }
 
+async function isObscuroChain() {
+    let currentChain = await ethereum.request({ method: 'eth_chainId' });
+    return currentChain === obscuroChainIDHex
+}
+
+async function switchToObscuroNetwork() {
+    try {
+        await ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: obscuroChainIDHex }],
+        });
+        return 0
+    } catch (switchError) {
+        return switchError.code
+    }
+    return -1
+}
+
 const initialize = async () => {
     const joinButton = document.getElementById(idJoin);
-    const addAccountButton = document.getElementById(idAddAccount);
-    const addAllAccountsButton = document.getElementById(idAddAllAccounts);
     const revokeUserIDButton = document.getElementById(idRevokeUserID);
     const statusArea = document.getElementById(idStatus);
-    const connectButton = document.getElementById(idConnectButton);
 
     const accountsTable = document.getElementById(idAccountsTable)
     const tableBody = document.getElementById(idTableBody);
     // getUserID from the gateway with getStorageAt method
     let userID = await getUserID()
 
-
-    function displayOnlyConnectButton(){
-        joinButton.style.display = "none"
-        addAccountButton.style.display = "none"
-        addAllAccountsButton.style.display = "none"
-        revokeUserIDButton.style.display = "none"
-        accountsTable.style.display = "none"
-        connectButton.style.display = "block"
-    }
-
     function displayOnlyJoin() {
         joinButton.style.display = "block"
-        addAccountButton.style.display = "none"
-        addAllAccountsButton.style.display = "none"
         revokeUserIDButton.style.display = "none"
         accountsTable.style.display = "none"
-        connectButton.style.display = "none"
     }
 
     async function displayConnectedAndJoinedSuccessfully() {
         joinButton.style.display = "none"
-        addAccountButton.style.display = "block"
-        addAllAccountsButton.style.display = "block"
         revokeUserIDButton.style.display = "block"
         accountsTable.style.display = "block"
-        connectButton.style.display = "none"
         await populateAccountsTable(document, tableBody, userID)
     }
 
-
     async function displayCorrectScreenBasedOnMetamaskAndUserID() {
-        // handle which buttons should be shown to the user
-        if (await isMetamaskConnected()) {
-            // check if userID exists and has a correct type and length (is valid) and display either
-            // option to join or to add a new account to existing user
+        // check if we are on Obscuro Chain
+        if(await isObscuroChain()){
+            // check if we have valid userID in rpcURL
             if (isValidUserIDFormat(userID)) {
-                await displayConnectedAndJoinedSuccessfully()
-            } else {
-                displayOnlyJoin()
+                return await displayConnectedAndJoinedSuccessfully()
             }
-        } else {
-            displayOnlyConnectButton()
         }
+        return displayOnlyJoin()
     }
 
     // load the current version
@@ -299,66 +295,53 @@ const initialize = async () => {
     await displayCorrectScreenBasedOnMetamaskAndUserID()
 
     joinButton.addEventListener(eventClick, async () => {
-        // join Obscuro Gateway
-        const joinResp = await fetch(
-            pathJoin, {
-                method: methodGet,
-                headers: jsonHeaders,
+        // check if we are on an obscuro chain
+        if (await isObscuroChain()) {
+            userID = await getUserID()
+            if (!isValidUserIDFormat(userID)) {
+                statusArea.innerText = "Please remove existing Obscuro network from metamask and start again."
             }
-        );
-        if (!joinResp.ok) {
-            statusArea.innerText = "Failed to join. \nError: " + joinResp
-            return
-        }
+        } else {
+            // we are not on an Obscuro network - try to switch
+            let switched = await switchToObscuroNetwork();
+            // error 4902 means that the chain does not exist
+            if (switched === 4902 || !isValidUserIDFormat(await getUserID())) {
+                // join the network
+                const joinResp = await fetch(
+                    pathJoin, {
+                        method: methodGet,
+                        headers: jsonHeaders,
+                    });
+                if (!joinResp.ok) {
+                    return
+                }
+                userID = await joinResp.text();
 
-        // save userID to the localStorage and hide button that enables users to join
-        userID = await joinResp.text();
+                // add Obscuro network
+                await addNetworkToMetaMask(window.ethereum, userID)
+            }
 
-        // add Obscuro network to Metamask
-        let networkAdded = await addNetworkToMetaMask(ethereum, userID, obscuroChainIDDecimal)
-        if (!networkAdded) {
-            statusArea.innerText = "Failed to add network"
-            return
-        }
-        statusArea.innerText = "Successfully joined Obscuro Gateway";
-        // show users an option to add another account and revoke userID
+            // we have to check if user has accounts connected with metamask - and promt to connect if not
+            if (!await isMetamaskConnected()) {
+                await connectAccounts();
+            }
 
-        await displayConnectedAndJoinedSuccessfully()
-    })
+            // connect all accounts
+            // Get an accounts and prompt user to sign joining with a selected account
+            const accounts = await provider.listAccounts();
+            if (accounts.length === 0) {
+                statusArea.innerText = "No MetaMask accounts found."
+                return
+            }
 
-    addAccountButton.addEventListener(eventClick, async () => {
-        // check if we have userID and it is the correct length
-        if (!isValidUserIDFormat(userID)) {
-            displayOnlyJoin()
-        }
+            userID = await getUserID();
+            for (const account of accounts) {
+                await authenticateAccountWithObscuroGateway(ethereum, account, userID)
+                accountsTable.style.display = "block"
+                await populateAccountsTable(document, tableBody, userID)
+            }
 
-        // Get an account and prompt user to sign joining with a selected account
-        const account = await provider.getSigner().getAddress();
-        if (account.length === 0) {
-            statusArea.innerText = "No MetaMask accounts found."
-            return
-        }
-        let _ = await authenticateAccountWithObscuroGateway(ethereum, account, userID)
-        await populateAccountsTable(document, tableBody, userID)
-    })
-
-    addAllAccountsButton.addEventListener(eventClick, async () => {
-        // check if we have userID and it is the correct length
-        if (!isValidUserIDFormat(userID)) {
-            displayOnlyJoin()
-        }
-
-        // Get an account and prompt user to sign joining with selected account
-        const accounts = await provider.listAccounts();
-        if (accounts.length === 0) {
-            statusArea.innerText = "No MetaMask accounts found."
-            return
-        }
-
-        for (const account of accounts) {
-            let authenticateAccountStatus = await authenticateAccountWithObscuroGateway(ethereum, account, userID)
-            accountsTable.style.display = "block"
-            await populateAccountsTable(document, tableBody, userID)
+            await displayConnectedAndJoinedSuccessfully()
         }
     })
 
@@ -373,12 +356,6 @@ const initialize = async () => {
             statusArea.innerText = "Revoking UserID failed";
         }
     })
-
-    connectButton.addEventListener(eventClick, async () => {
-        await connectAccounts();
-        location.reload()
-    })
-
 }
 
 window.addEventListener(eventDomLoaded, checkIfMetamaskIsLoaded);
