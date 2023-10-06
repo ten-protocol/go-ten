@@ -151,6 +151,9 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 
 func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	headBatchSeq := s.batchRegistry.HeadBatchSeq()
+	if headBatchSeq == nil {
+		headBatchSeq = big.NewInt(int64(common.L2GenesisSeqNo))
+	}
 	headBatch, err := s.storage.FetchBatchBySeqNo(headBatchSeq.Uint64())
 	if err != nil {
 		return err
