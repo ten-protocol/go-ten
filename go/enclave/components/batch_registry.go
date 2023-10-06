@@ -79,16 +79,7 @@ func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Recei
 }
 
 func (br *batchRegistry) HasGenesisBatch() (bool, error) {
-	genesisBatchStored := true
-	_, err := br.storage.FetchHeadBatch()
-	if err != nil {
-		if !errors.Is(err, errutil.ErrNotFound) {
-			return false, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
-		}
-		genesisBatchStored = false
-	}
-
-	return genesisBatchStored, nil
+	return br.headBatchSeq.Uint64() > common.L2GenesisSeqNo, nil
 }
 
 func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error) {
