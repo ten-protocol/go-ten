@@ -6,8 +6,6 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
@@ -35,8 +33,9 @@ func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegis
 	headBatch, err := storage.FetchHeadBatch()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			headBatchSeq = big.NewInt(int64(common.L2GenesisSeqNo))
+			headBatchSeq = nil
 		} else {
+			logger.Crit("Could not create batch registry", log.ErrKey, err)
 			return nil
 		}
 	} else {
@@ -79,16 +78,7 @@ func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Recei
 }
 
 func (br *batchRegistry) HasGenesisBatch() (bool, error) {
-	genesisBatchStored := true
-	_, err := br.storage.FetchHeadBatch()
-	if err != nil {
-		if !errors.Is(err, errutil.ErrNotFound) {
-			return false, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
-		}
-		genesisBatchStored = false
-	}
-
-	return genesisBatchStored, nil
+	return br.headBatchSeq != nil, nil
 }
 
 func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error) {
