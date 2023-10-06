@@ -547,7 +547,7 @@ func (g *Guardian) periodicRollupProduction() {
 			// estimate the size of a compressed rollup
 			availBatchesSumSize, err := g.calculateNonRolledupBatchesSize(fromBatch)
 			if err != nil {
-				g.logger.Error("Unable to estimate the size of the current rollup", log.ErrKey, err)
+				g.logger.Error("Unable to estimate the size of the current rollup", log.ErrKey, err, "from_batch", fromBatch)
 				// todo - this should not happen. Is it worth continuing?
 				availBatchesSumSize = 0
 			}
