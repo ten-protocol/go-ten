@@ -289,6 +289,18 @@ const initialize = async () => {
         return displayOnlyJoin()
     }
 
+    // if accounts change (user adds/removed connected accounts) we want to
+    window.ethereum.on('accountsChanged', async function (accounts) {
+        if (isValidUserIDFormat(await getUserID())) {
+            userID = await getUserID();
+            for (const account of accounts) {
+                await authenticateAccountWithObscuroGateway(ethereum, account, userID)
+                accountsTable.style.display = "block"
+                await populateAccountsTable(document, tableBody, userID)
+            }
+        }
+    });
+
     // load the current version
     await fetchAndDisplayVersion();
 
