@@ -16,6 +16,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/measure"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
@@ -161,6 +163,8 @@ func ExecuteObsCall(
 	if header.BaseFee != nil && header.BaseFee.Cmp(gethcommon.Big0) != 0 && msg.GasPrice.Cmp(gethcommon.Big0) != 0 {
 		noBaseFee = false
 	}
+
+	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "evm_facade.go:ObsCall()")
 
 	chain, vmCfg, gp := initParams(storage, noBaseFee, nil)
 	ethHeader, err := gethencoding.CreateEthHeaderForBatch(header, secret(storage))
