@@ -34,31 +34,22 @@ jobs:
       name: ${{ github.event.inputs.testnet_type }}
       
     steps:
+      - name: 'Print GitHub variables'
+        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
+        run: |
+          echo "ACCOUNT_ADDR_NODE_0=${{ vars.ACCOUNT_ADDR_NODE_0 }}"
+          echo "ACCOUNT_ADDR_NODE_1=${{ vars.ACCOUNT_ADDR_NODE_1 }}"
+          echo "ACCOUNT_ADDR_WORKER=${{ vars.ACCOUNT_ADDR_WORKER }}"
+          
+          echo "AZURE_RESOURCE_NAME_L1=${{ vars.AZURE_RESOURCE_NAME_L1 }}"
+          echo "AZURE_RESOURCE_TAG_L1=${{ vars.AZURE_RESOURCE_TAG_L1 }}"
+          
+          echo "DOCKER_BUILD_TAG_ETH2NETWORK=${{ vars.DOCKER_BUILD_TAG_ETH2NETWORK }}"
+
       - uses: actions/checkout@v3
 
       - name: 'Set up Docker'
         uses: docker/setup-buildx-action@v1
-
-      - name: 'Sets env vars for testnet'
-        if: ${{ github.event.inputs.testnet_type == 'uat-testnet' }}
-        run: |
-          echo "ETH2NETWORK_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/uat_testnet_eth2network:latest" >> $GITHUB_ENV
-          echo "L1_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/uat_testnet_l1network:latest" >> $GITHUB_ENV
-          echo "L1_CONTAINER_NAME=uat_testnet-eth2network" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=uat-testnet-l1-latest" >> $GITHUB_ENV
-          echo "RESOURCE_NAME=uat-testnet-eth2network" >> $GITHUB_ENV
-          echo "TEST_BRIDGE_ADDRESS=0xE09a37ABc1A63441404007019E5BC7517bE2c43f" >> $GITHUB_ENV
-
-      - name: 'Sets env vars for dev-testnet'
-        if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
-        run: |
-          echo "ETH2NETWORK_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_testnet_eth2network:latest" >> $GITHUB_ENV
-          echo "L1_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_testnet_l1network:latest" >> $GITHUB_ENV
-          echo "L1_CONTAINER_NAME=dev-testnet-eth2network" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=dev-testnet-l1-latest" >> $GITHUB_ENV
-          echo "RESOURCE_NAME=dev-testnet-eth2network" >> $GITHUB_ENV
-          echo "TEST_BRIDGE_ADDRESS=0xE09a37ABc1A63441404007019E5BC7517bE2c43f" >> $GITHUB_ENV
-
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -76,34 +67,33 @@ jobs:
         # DOCKER_BUILDKIT=1 will enable  the new docker build kit that allows us to use build only caches on RUN commands.
         # Tag the same image with 2 tags and push with the -a flag which pushes all images
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{env.ETH2NETWORK_BUILD_TAG}} -t ${{env.L1_DOCKER_BUILD_TAG}} -f testnet/eth2network.Dockerfile .
-          docker push ${{env.L1_DOCKER_BUILD_TAG}}
-          docker push ${{env.ETH2NETWORK_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_ETH2NETWORK }} -f testnet/eth2network.Dockerfile .
+          docker push ${{ vars.DOCKER_BUILD_TAG_ETH2NETWORK }}
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
       - name: 'Delete deployed VMs'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+            $(az resource list --tag ${{ vars.AZURE_RESOURCE_TAG_L1 }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
       # This will clean up any lingering dependencies - might fail if there are no resources to cleanup
       - name: 'Delete VMs dependencies'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+            $(az resource list --tag ${{ vars.AZURE_RESOURCE_TAG_L1 }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
       
 
-      - name: 'Create VM for "${{env.RESOURCE_NAME}}-${{ GITHUB.RUN_NUMBER }}" on Azure'
+      - name: 'Create VM for "${{ vars.AZURE_RESOURCE_NAME_L1 }}-${{ GITHUB.RUN_NUMBER }}" on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "${{env.RESOURCE_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
+            az vm create -g Testnet -n "${{ vars.AZURE_RESOURCE_NAME_L1 }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "${{ env.RESOURCE_NAME }}" \
-            --tags ${{env.RESOURCE_TAG_NAME}}=true \
-            --vnet-name ${{env.RESOURCE_NAME}}-01VNET --subnet ${{env.RESOURCE_NAME}}-01Subnet \
+            --public-ip-address-dns-name "${{ vars.AZURE_RESOURCE_NAME_L1 }}" \
+            --tags ${{ vars.AZURE_RESOURCE_TAG_L1 }}=true \
+            --vnet-name ${{ vars.AZURE_RESOURCE_NAME_L1 }}-01VNET --subnet ${{ vars.AZURE_RESOURCE_NAME_L1 }}-01Subnet \
             --size Standard_D3_v2 --image Canonical:0001-com-ubuntu-server-jammy:22_04-lts:latest \
             --public-ip-sku Basic --authentication-type password
 
@@ -111,18 +101,18 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "${{env.RESOURCE_NAME}}-${{ GITHUB.RUN_NUMBER }}" --port 8025,8026,9000,9001
+            az vm open-port -g Testnet -n "${{ vars.AZURE_RESOURCE_NAME_L1 }}-${{ GITHUB.RUN_NUMBER }}" --port 8025,8026,9000,9001
 
         # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
       - name: 'Allow time for VM initialization'
         shell: bash
         run: sleep 60
 
-      - name: 'Start l1 ${{env.RESOURCE_NAME}}-${{ GITHUB.RUN_NUMBER }} on Azure'
+      - name: 'Start l1 ${{ vars.AZURE_RESOURCE_NAME_L1 }}-${{ GITHUB.RUN_NUMBER }} on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{env.RESOURCE_NAME}}-${{ GITHUB.RUN_NUMBER }}"  \
+            az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_NAME_L1 }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && sudo apt-get update \
@@ -145,10 +135,14 @@ jobs:
                datadog/agent:latest \
             && docker run -d \
             -p 8025:8025 -p 8026:8026 -p 9000:9000 -p 9001:9001 \
-            --entrypoint /home/obscuro/go-obscuro/integration/eth2network/main/main ${{ env.ETH2NETWORK_BUILD_TAG }} \
+            --entrypoint /home/obscuro/go-obscuro/integration/eth2network/main/main ${{ vars.DOCKER_BUILD_TAG_ETH2NETWORK }} \
             --blockTimeSecs=15 --slotsPerEpoch=2 --slotsPerSecond=15 \
             --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
             --logToFile=false \
+<<<<<<< HEAD
             --prefundedAddrs="${{ vars.WORKER_ADDR }},${{ vars.NODE_WALLET_ADDR_0 }},${{ vars.NODE_WALLET_ADDR_1 }},${{ env.TEST_BRIDGE_ADDRESS }}"'
+=======
+            --prefundedAddrs="${{ vars.ACCOUNT_ADDR_WORKER }},${{ vars.ACCOUNT_ADDR_NODE_0 }},${{ vars.ACCOUNT_ADDR_NODE_1 }}"'
+>>>>>>> 6f56c0d8 (WIP updated scripts with new var names)
             
       

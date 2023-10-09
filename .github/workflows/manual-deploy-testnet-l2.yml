@@ -42,32 +42,33 @@ jobs:
 
 
     steps:
+      - name: 'Print GitHub variables'
+        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
+        run: |
+          echo "ACCOUNT_ADDR_NODE_0=${{ vars.ACCOUNT_ADDR_NODE_0 }}"
+          echo "ACCOUNT_ADDR_NODE_1=${{ vars.ACCOUNT_ADDR_NODE_1 }}"
+          echo "ACCOUNT_ADDR_WORKER=${{ vars.ACCOUNT_ADDR_WORKER }}"
+          
+          echo "AZURE_HOSTNAME_PREFIX=${{ vars.AZURE_HOSTNAME_PREFIX }}"
+          echo "AZURE_RESOURCE_NAME_L2=${{ vars.AZURE_RESOURCE_NAME_L2 }}"
+          
+          echo "DOCKER_BUILD_TAG_ENCLAVE=${{ vars.DOCKER_BUILD_TAG_ENCLAVE }}"
+          echo "DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}"
+          echo "DOCKER_BUILD_TAG_HOST=${{ vars.DOCKER_BUILD_TAG_HOST }}"
+          
+          echo "FAUCET_INITIAL_FUNDS=${{vars.FAUCET_INITIAL_FUNDS}}"
+          
+          echo "L1_CHAIN_ID=${{vars.L1_CHAIN_ID}}"
+          
+          echo "L2_BATCH_INTERVAL=${{ vars.L2_BATCH_INTERVAL }}"
+          echo "L2_MAX_BATCH_INTERVAL=${{vars.L2_MAX_BATCH_INTERVAL}}"
+          echo "L2_ROLLUP_INTERVAL=${{ vars.L2_ROLLUP_INTERVAL }}"
+
       - uses: actions/checkout@v3
 
       - uses: actions/setup-go@v4
         with:
           go-version: 1.20.4
-
-      - name: 'Print GitHub variables'
-        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
-        run: |
-          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=${{vars.L2_ENCLAVE_DOCKER_BUILD_TAG}}"
-          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}"
-          echo "L2_HOST_DOCKER_BUILD_TAG=${{vars.L2_HOST_DOCKER_BUILD_TAG}}"
-          
-          echo "RESOURCE_STARTING_NAME=${{vars.RESOURCE_STARTING_NAME}}"
-          echo "RESOURCE_TAG_NAME=${{vars.RESOURCE_TAG_NAME}}"
-          echo "RESOURCE_TESTNET_NAME=${{vars.RESOURCE_TESTNET_NAME}}"
-          
-          echo "L1_CHAIN_ID=${{vars.L1_CHAIN_ID}}"
-          echo "NODE_WALLET_ADDR_0=${{vars.NODE_WALLET_ADDR_0}}"
-          echo "NODE_WALLET_ADDR_1=${{vars.NODE_WALLET_ADDR_1}}"
-          echo "WORKER_ADDR=${{vars.WORKER_ADDR}}"
-          
-          echo "BATCH_INTERVAL=${{vars.BATCH_INTERVAL}}"
-          echo "L2_MAX_BATCH_INTERVAL=${{vars.L2_MAX_BATCH_INTERVAL}}"
-          echo "ROLLUP_INTERVAL=${{vars.ROLLUP_INTERVAL}}"
-          echo "FAUCET_FUNDS=${{vars.FAUCET_FUNDS}}"
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -83,12 +84,12 @@ jobs:
 
       - name: 'Build and push obscuro node images'
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{vars.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
-          docker push ${{vars.L2_ENCLAVE_DOCKER_BUILD_TAG}}
-          DOCKER_BUILDKIT=1 docker build -t ${{vars.L2_HOST_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
-          docker push ${{vars.L2_HOST_DOCKER_BUILD_TAG}}
-          DOCKER_BUILDKIT=1 docker build -t ${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} -f tools/hardhatdeployer/Dockerfile .
-          docker push ${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }} -f dockerfiles/enclave.Dockerfile  .
+          docker push ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_HOST }} -f dockerfiles/host.Dockerfile .
+          docker push ${{ vars.DOCKER_BUILD_TAG_HOST }}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
+          docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
 
       - name: 'Deploy Contracts'
         id: deployContracts
@@ -97,7 +98,7 @@ jobs:
           go run ./testnet/launcher/l1contractdeployer/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.WORKER_PK }} \
-          -docker_image=${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
+          -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -contracts_env_file=./testnet/.env
           source ./testnet/.env
           echo "Contracts deployed to $MGMTCONTRACTADDR"
@@ -119,14 +120,14 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            $(az resource list --tag ${{vars.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+            $(az resource list --tag ${{ vars.AZURE_RESOURCE_TAG_L2 }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
       # This will clean up any lingering dependencies - might fail if there are no resources to cleanup
       - name: 'Delete VMs dependencies'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            $(az resource list --tag ${{vars.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+            $(az resource list --tag ${{ vars.AZURE_RESOURCE_TAG_L2 }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
       - name: 'Upload L1 deployer container logs'
         uses: actions/upload-artifact@v3
@@ -157,13 +158,13 @@ jobs:
           - node_type: validator
             host_id: 1
           # Hardcoded lookup keys because GH actions doesn't let you build them inline with the host_id
-          - node_pk_lookup: NODE_WALLET_PK_0
+          - node_pk_lookup: ACCOUNT_PK_NODE_0
             host_id: 0
-          - node_pk_lookup: NODE_WALLET_PK_1
+          - node_pk_lookup: ACCOUNT_PK_NODE_1
             host_id: 1
-          - node_addr_lookup: NODE_WALLET_ADDR_0
+          - node_addr_lookup: ACCOUNT_ADDR_NODE_0
             host_id: 0
-          - node_addr_lookup: NODE_WALLET_ADDR_1
+          - node_addr_lookup: ACCOUNT_ADDR_NODE_1
             host_id: 1
           - node_l1_ws_lookup: L1_WS_URL_0
             host_id: 0
@@ -192,7 +193,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "${{vars.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            az vm create -g Testnet -n "${{ vars.AZURE_HOSTNAME_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
             --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{vars.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
             --tags deploygroup=ObscuroNode-${{vars.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{vars.RESOURCE_TAG_NAME}}=true \
