@@ -257,7 +257,7 @@ func (s *sequencer) StoreExecutedBatch(batch *core.Batch, receipts types.Receipt
 func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) {
 	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
 
-	currentL1Head, err := s.storage.FetchHeadBlock()
+	currentL1Head, err := s.blockProcessor.GetHead()
 	if err != nil {
 		return nil, err
 	}
