@@ -281,7 +281,7 @@ jobs:
         with:
           inlineScript: |
             az network nic ip-config address-pool add \
-              --address-pool Backend-Pool-Obscuro-${{vars.RESOURCE_TESTNET_NAME}} \
+              --address-pool ${{vars.RESOURCE_TESTNET_NAME}}-backend-pool \
               --ip-config-name ipconfig${{vars.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }} \
               --nic-name ${{vars.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
