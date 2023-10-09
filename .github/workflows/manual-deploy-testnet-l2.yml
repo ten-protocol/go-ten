@@ -282,8 +282,8 @@ jobs:
           inlineScript: |
             az network nic ip-config address-pool add \
               --address-pool ${{vars.RESOURCE_TESTNET_NAME}}-backend-pool \
-              --ip-config-name ${{vars.RESOURCE_STARTING_NAME}}-${{ GITHUB.RUN_NUMBER }}-ipconfig \
-              --nic-name ${{vars.RESOURCE_STARTING_NAME}}-${{ GITHUB.RUN_NUMBER }}-${{ matrix.host_id }}-nic \
+              --ip-config-name ipconfig${{vars.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }} \
+              --nic-name ${{vars.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
               --lb-name ${{vars.RESOURCE_TESTNET_NAME}}-loadbalancer
 
