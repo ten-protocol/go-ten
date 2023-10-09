@@ -24,14 +24,30 @@ type l1BlockProcessor struct {
 	gasOracle            gas.Oracle
 	logger               gethlog.Logger
 	crossChainProcessors *crosschain.Processors
+
+	// we store the l1 head to avoid expensive db access
+	// the host is responsible to always submitting the head l1 block
+	currentL1Head *common.L1BlockHash
 }
 
 func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, gasOracle gas.Oracle, logger gethlog.Logger) L1BlockProcessor {
+	var l1BlockHash *common.L1BlockHash
+	head, err := storage.FetchHeadBlock()
+	if err != nil {
+		if !errors.Is(err, errutil.ErrNotFound) {
+			logger.Crit("Cannot fetch head block", log.ErrKey, err)
+		}
+	} else {
+		h := head.Hash()
+		l1BlockHash = &h
+	}
+
 	return &l1BlockProcessor{
 		storage:              storage,
 		logger:               logger,
 		gasOracle:            gasOracle,
 		crossChainProcessors: cc,
+		currentL1Head:        l1BlockHash,
 	}
 }
 
@@ -59,6 +75,8 @@ func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts) (*BlockIngestio
 	// todo @siliev - not sure if this is the best way to update the price, will pick up random stale blocks from forks?
 	bp.gasOracle.ProcessL1Block(br.Block)
 
+	h := br.Block.Hash()
+	bp.currentL1Head = &h
 	return ingestion, nil
 }
 
@@ -93,7 +111,7 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts) (*Blo
 
 func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block) (*BlockIngestionType, error) {
 	// todo (#1056) - this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
-	prevL1Head, err := bp.storage.FetchHeadBlock()
+	prevL1Head, err := bp.GetHead()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			// todo (@matt) - we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
@@ -123,7 +141,10 @@ func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block) (*BlockIngestionT
 }
 
 func (bp *l1BlockProcessor) GetHead() (*common.L1Block, error) {
-	return bp.storage.FetchHeadBlock()
+	if bp.currentL1Head == nil {
+		return nil, errutil.ErrNotFound
+	}
+	return bp.storage.FetchBlock(*bp.currentL1Head)
 }
 
 func (bp *l1BlockProcessor) GetCrossChainContractAddress() *gethcommon.Address {
