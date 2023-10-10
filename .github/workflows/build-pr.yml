@@ -7,6 +7,9 @@ on:
       - 'docs/**'
       - 'design/**'
       - 'planning/**'
+    branches:
+      - main
+  push:
 
 jobs:
   build:
