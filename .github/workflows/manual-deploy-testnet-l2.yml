@@ -197,7 +197,7 @@ jobs:
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
             --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{vars.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
             --tags deploygroup=ObscuroNode-${{vars.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{vars.RESOURCE_TAG_NAME}}=true \
-            --vnet-name ObscuroHost-${{vars.RESOURCE_TESTNET_NAME}}-01VNET --subnet ObscuroHost-${{vars.RESOURCE_TESTNET_NAME}}-01Subnet \
+            --vnet-name ${{vars.RESOURCE_TESTNET_NAME}}-virtual-network --subnet ${{vars.RESOURCE_TESTNET_NAME}}-sub-network \
             --size Standard_DC8_v2 --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
             --public-ip-sku Standard --authentication-type password
 
@@ -281,7 +281,7 @@ jobs:
         with:
           inlineScript: |
             az network nic ip-config address-pool add \
-              --address-pool Backend-Pool-Obscuro-${{vars.RESOURCE_TESTNET_NAME}} \
+              --address-pool ${{vars.RESOURCE_TESTNET_NAME}}-backend-pool \
               --ip-config-name ipconfig${{vars.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }} \
               --nic-name ${{vars.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \

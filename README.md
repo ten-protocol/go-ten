@@ -354,8 +354,8 @@ To pull the testnet faucet and run use;
 
 ```
 cd tools/faucet
-docker pull testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest  
-./container_run.sh -image testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest 
+docker pull testnetobscuronet.azurecr.io/obscuronet/faucet_sepolia_testnet:latest  
+./container_run.sh -image testnetobscuronet.azurecr.io/obscuronet/faucet_sepolia_testnet:latest 
 ```
 
 The faucet runs a web server within the container, with a port mapping of 8080 set to allow POST requests to be made to 
@@ -388,7 +388,7 @@ Remix (see[docs/testnet/deploying-a-smart-contract.md](docs/testnet/deploying-a-
 e.g. using web3.py(see [docs/testnet/deploying-a-smart-contract-programmatically.md](docs/testnet/deploying-a-smart-contract-programmatically.md)). 
 
 Note that in order to interact with the main cloud hosted testnet, all that needs to be changed is to start the wallet 
-extension using the default parameters, where the `nodeHost` will default to the testnet host URL `erpc.testnet.obscu.ro` i.e. 
+extension using the default parameters, where the `nodeHost` will default to the testnet host URL `erpc.sepolia-testnet.obscu.ro` i.e. 
 
 ```
 cd ./tools/walletextension/main/
