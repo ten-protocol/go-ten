@@ -21,12 +21,6 @@ jobs:
         with:
           go-version: 1.20.4
 
-      - name: Test
-        run: |
-          pwd
-          
-        
-
       # Makes sure the artifacts are built correctly
       - name: Build
         run: go build -v ./...
