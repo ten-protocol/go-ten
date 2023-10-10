@@ -47,6 +47,7 @@ jobs:
           echo "L1_CONTAINER_NAME=testnet-eth2network" >> $GITHUB_ENV
           echo "RESOURCE_TAG_NAME=l1testnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_NAME=testnet-eth2network" >> $GITHUB_ENV
+          echo "TEST_BRIDGE_ADDRESS=0xE09a37ABc1A63441404007019E5BC7517bE2c43f" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
@@ -56,6 +57,7 @@ jobs:
           echo "L1_CONTAINER_NAME=dev-testnet-eth2network" >> $GITHUB_ENV
           echo "RESOURCE_TAG_NAME=devl1testnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_NAME=dev-testnet-eth2network" >> $GITHUB_ENV
+          echo "TEST_BRIDGE_ADDRESS=0xE09a37ABc1A63441404007019E5BC7517bE2c43f" >> $GITHUB_ENV
 
 
       - name: 'Login via Azure CLI'
@@ -147,6 +149,6 @@ jobs:
             --blockTimeSecs=15 --slotsPerEpoch=2 --slotsPerSecond=15 \
             --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
             --logToFile=false \
-            --prefundedAddrs="${{ vars.WORKER_ADDR }},${{ vars.NODE_WALLET_ADDR_0 }},${{ vars.NODE_WALLET_ADDR_1 }}"'
+            --prefundedAddrs="${{ vars.WORKER_ADDR }},${{ vars.NODE_WALLET_ADDR_0 }},${{ vars.NODE_WALLET_ADDR_1 }},${{ env.TEST_BRIDGE_ADDRESS }}"'
             
       
