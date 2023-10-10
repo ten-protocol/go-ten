@@ -2,8 +2,15 @@
 ---
 # Obscuro Testnet Change Log
 
-# Oct 2023-10-06 (v0.18.0)
+# Oct 2023-10-11 (v0.18.0)
 * A list of the PRs merged in this release is as below;
+  * `5e9c8c84` Update new dns (#1580)
+  * `1bc26e6e` Add block head cache (#1589)
+  * `e06c9f53` Fix deploy (#1587)
+  * `c5c136a3` Bumping testnet to 32gb (#1576)
+  * `30494ec2` Remove slow query (#1586)
+  * `beb55e8a` Fix bug (#1584)
+  * `0c161a9e` Remove costly select (#1583)
   * `dc900b6a` Fix gas estimation (#1582)
   * `1e7e94cc` Added stopwatches in important functions (#1581)
   * `1dea9e94` Add balance endpoint to faucet for monitoring (#1577)
