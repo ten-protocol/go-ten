@@ -16,10 +16,17 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
+
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: 1.20.4
+
+      - name: Fix go setup
+        run: |
+          echo GOPATH=$GOPATH >> $GITHUB_ENV
+          echo GOCACHE=$GOCACHE >> $GITHUB_ENV
+          echo GOMODCACHE=$GOMODCACHE >> $GITHUB_ENV
 
       # Makes sure the artifacts are built correctly
       - name: Build
