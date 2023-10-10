@@ -24,6 +24,8 @@ jobs:
 
       - name: Fix go setup
         run: |
+          go version
+          go env
           echo GOPATH=$GOPATH >> $GITHUB_ENV
           echo GOCACHE=$GOCACHE >> $GITHUB_ENV
           echo GOMODCACHE=$GOMODCACHE >> $GITHUB_ENV
