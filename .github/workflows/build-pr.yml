@@ -27,8 +27,8 @@ jobs:
           go version
           go env
           echo GOPATH=$GOPATH >> $GITHUB_ENV
-          echo GOCACHE=$GOCACHE >> $GITHUB_ENV
-          echo GOMODCACHE=$GOMODCACHE >> $GITHUB_ENV
+          echo GOCACHE=/home/obscurouser/githubRunner/actions-runner/_work/_tool/go/1.20.4/x64/bin/go >> $GITHUB_ENV
+          echo GOMODCACHE=/home/obscurouser/githubRunner/actions-runner/_work/_tool/go/1.20.4/x64/bin/go >> $GITHUB_ENV
 
       # Makes sure the artifacts are built correctly
       - name: Build
