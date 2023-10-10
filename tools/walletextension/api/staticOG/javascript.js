@@ -92,7 +92,6 @@ async function addNetworkToMetaMask(ethereum, userID) {
 
 async function authenticateAccountWithObscuroGateway(ethereum, account, userID) {
     const isAuthenticated = await accountIsAuthenticated(account, userID)
-
     if (isAuthenticated) {
         return "Account is already authenticated"
     }
@@ -289,18 +288,6 @@ const initialize = async () => {
         return displayOnlyJoin()
     }
 
-    // if accounts change (user adds/removed connected accounts) we want to
-    window.ethereum.on('accountsChanged', async function (accounts) {
-        if (isValidUserIDFormat(await getUserID())) {
-            userID = await getUserID();
-            for (const account of accounts) {
-                await authenticateAccountWithObscuroGateway(ethereum, account, userID)
-                accountsTable.style.display = "block"
-                await populateAccountsTable(document, tableBody, userID)
-            }
-        }
-    });
-
     // load the current version
     await fetchAndDisplayVersion();
 
@@ -352,6 +339,18 @@ const initialize = async () => {
                 accountsTable.style.display = "block"
                 await populateAccountsTable(document, tableBody, userID)
             }
+
+            // if accounts change we want to give user chance to add them to Obscuro
+            window.ethereum.on('accountsChanged', async function (accounts) {
+                if (isValidUserIDFormat(await getUserID())) {
+                    userID = await getUserID();
+                    for (const account of accounts) {
+                        await authenticateAccountWithObscuroGateway(ethereum, account, userID)
+                        accountsTable.style.display = "block"
+                        await populateAccountsTable(document, tableBody, userID)
+                    }
+                }
+            });
 
             await displayConnectedAndJoinedSuccessfully()
         }
