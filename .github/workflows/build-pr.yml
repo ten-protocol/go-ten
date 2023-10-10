@@ -7,8 +7,6 @@ on:
       - 'docs/**'
       - 'design/**'
       - 'planning/**'
-    branches:
-      - main
 
 jobs:
   build:
