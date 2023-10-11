@@ -330,7 +330,6 @@ jobs:
           -faucet_funds=${{vars.FAUCET_FUNDS}}
 
       - name: 'Save container logs on failure'
-        if: failure()
         run: |
           docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
 
