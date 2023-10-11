@@ -335,7 +335,6 @@ jobs:
 
       - name: 'Upload container logs on failure'
         uses: actions/upload-artifact@v3
-        if: failure()
         with:
           name: deploy-l2-artifacts
           path: |
