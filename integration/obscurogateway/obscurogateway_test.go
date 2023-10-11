@@ -9,16 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"github.com/valyala/fasthttp"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -28,7 +23,10 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/container"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/lib"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/valyala/fasthttp"
 )
 
 func init() { //nolint:gochecknoinits
@@ -45,7 +43,6 @@ const (
 )
 
 func TestObscuroGateway(t *testing.T) {
-	t.Skip("Commented it out until more testing is driven from this test")
 	startPort := integration.StartPortObscuroGatewayUnitTest
 	wallets := createObscuroNetwork(t, startPort)
 
@@ -57,6 +54,7 @@ func TestObscuroGateway(t *testing.T) {
 		NodeRPCWebsocketAddress: fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
 		LogPath:                 "sys_out",
 		VerboseFlag:             false,
+		DBType:                  "sqlite",
 	}
 
 	obscuroGwContainer := container.NewWalletExtensionContainerFromConfig(obscuroGatewayConf, testlog.Logger())
@@ -71,52 +69,56 @@ func TestObscuroGateway(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// make sure the server is ready to receive requests
-	serverAddress := fmt.Sprintf("http://%s:%d", obscuroGatewayConf.WalletExtensionHost, obscuroGatewayConf.WalletExtensionPortHTTP)
+	httpURL := fmt.Sprintf("http://%s:%d", obscuroGatewayConf.WalletExtensionHost, obscuroGatewayConf.WalletExtensionPortHTTP)
+	wsURL := fmt.Sprintf("ws://%s:%d", obscuroGatewayConf.WalletExtensionHost, obscuroGatewayConf.WalletExtensionPortWS)
 
 	// make sure the server is ready to receive requests
-	err := waitServerIsReady(serverAddress)
+	err := waitServerIsReady(httpURL)
+	require.NoError(t, err)
+
+	// join + register against the og
+	ogClient := lib.NewObscuroGatewayLibrary(httpURL, wsURL)
+	err = ogClient.Join()
 	require.NoError(t, err)
 
 	w := wallets.L2FaucetWallet
+	err = ogClient.RegisterAccount(w.PrivateKey(), w.Address())
+	require.NoError(t, err)
 
-	vk, err := viewingkey.GenerateViewingKeyForWallet(w)
-	assert.Nil(t, err)
-	client, err := rpc.NewEncNetworkClient(fmt.Sprintf("ws://%s", obscuroGatewayConf.NodeRPCWebsocketAddress), vk, testlog.Logger())
-	assert.Nil(t, err)
-	authClient := obsclient.NewAuthObsClient(client)
+	// use a standard eth client via the og
+	ethStdClient, err := ethclient.Dial(ogClient.HTTP())
+	require.NoError(t, err)
 
-	balance, err := authClient.BalanceAt(context.Background(), nil)
-	assert.Nil(t, err)
-	assert.NotEqual(t, big.NewInt(0), balance)
+	// check the balance
+	balance, err := ethStdClient.BalanceAt(context.Background(), w.Address(), nil)
+	require.NoError(t, err)
+	require.True(t, big.NewInt(0).Cmp(balance) == -1)
 
-	txHash := transferRandomAddr(t, authClient, w)
-
-	addr := w.Address()
-	receipts, err := authClient.GetReceiptsByAddress(context.Background(), &addr)
+	// issue a tx and check it was successfully minted
+	txHash := transferRandomAddr(t, ethStdClient, w)
+	receipt, err := ethStdClient.TransactionReceipt(context.Background(), txHash)
 	assert.NoError(t, err)
-
-	assert.Equal(t, 1, len(receipts))
-	assert.Equal(t, txHash.Hex(), receipts[0].TxHash.Hex())
+	require.True(t, receipt.Status == 1)
 
 	// Gracefully shutdown
 	err = obscuroGwContainer.Stop()
 	assert.NoError(t, err)
 }
 
-func transferRandomAddr(t *testing.T, authClient *obsclient.AuthObsClient, w wallet.Wallet) common.TxHash {
+func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet) common.TxHash {
 	ctx := context.Background()
 	toAddr := datagenerator.RandomAddress()
-	nonce, err := authClient.NonceAt(ctx, nil)
+	nonce, err := client.NonceAt(ctx, w.Address(), nil)
 	assert.Nil(t, err)
 
 	w.SetNonce(nonce)
-	estimatedTx := authClient.EstimateGasAndGasPrice(&types.LegacyTx{
+	estimatedTx := &types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
 		To:       &toAddr,
 		Value:    big.NewInt(100),
 		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
-	})
+	}
 	assert.Nil(t, err)
 
 	fmt.Println("Transferring from:", w.Address(), " to:", toAddr)
@@ -124,14 +126,14 @@ func transferRandomAddr(t *testing.T, authClient *obsclient.AuthObsClient, w wal
 	signedTx, err := w.SignTransaction(estimatedTx)
 	assert.Nil(t, err)
 
-	err = authClient.SendTransaction(ctx, signedTx)
+	err = client.SendTransaction(ctx, signedTx)
 	assert.Nil(t, err)
 
 	fmt.Printf("Created Tx: %s \n", signedTx.Hash().Hex())
 	fmt.Printf("Checking for tx receipt for %s \n", signedTx.Hash())
 	var receipt *types.Receipt
 	for start := time.Now(); time.Since(start) < time.Minute; time.Sleep(time.Second) {
-		receipt, err = authClient.TransactionReceipt(ctx, signedTx.Hash())
+		receipt, err = client.TransactionReceipt(ctx, signedTx.Hash())
 		if err == nil {
 			break
 		}
@@ -169,6 +171,7 @@ func createObscuroNetwork(t *testing.T, startPort int) *params.SimWallets {
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
 		Wallets:          wallets,
 		StartPort:        startPort,
+		WithPrefunding:   true,
 	}
 
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
