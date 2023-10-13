@@ -2,6 +2,7 @@ package faucet
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -9,11 +10,15 @@ import (
 	"testing"
 	"time"
 
+	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/httputil"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -44,7 +49,7 @@ const (
 
 func TestObscuroGateway(t *testing.T) {
 	startPort := integration.StartPortObscuroGatewayUnitTest
-	wallets := createObscuroNetwork(t, startPort)
+	createObscuroNetwork(t, startPort)
 
 	obscuroGatewayConf := config.Config{
 		WalletExtensionHost:     "127.0.0.1",
@@ -76,12 +81,30 @@ func TestObscuroGateway(t *testing.T) {
 	err := waitServerIsReady(httpURL)
 	require.NoError(t, err)
 
-	// join + register against the og
+	// run the tests against the exis
+	for name, test := range map[string]func(*testing.T, string, string){
+		"testAreTxsMinted":  testAreTxsMinted,
+		"testErrorHandling": testErrorHandling,
+	} {
+		t.Run(name, func(t *testing.T) {
+			test(t, httpURL, wsURL)
+		})
+	}
+
+	// Gracefully shutdown
+	err = obscuroGwContainer.Stop()
+	assert.NoError(t, err)
+}
+
+func testAreTxsMinted(t *testing.T, httpURL, wsURL string) {
+	// set up the ogClient
 	ogClient := lib.NewObscuroGatewayLibrary(httpURL, wsURL)
-	err = ogClient.Join()
+
+	// join + register against the og
+	err := ogClient.Join()
 	require.NoError(t, err)
 
-	w := wallets.L2FaucetWallet
+	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger())
 	err = ogClient.RegisterAccount(w.PrivateKey(), w.Address())
 	require.NoError(t, err)
 
@@ -99,10 +122,49 @@ func TestObscuroGateway(t *testing.T) {
 	receipt, err := ethStdClient.TransactionReceipt(context.Background(), txHash)
 	assert.NoError(t, err)
 	require.True(t, receipt.Status == 1)
+}
 
-	// Gracefully shutdown
-	err = obscuroGwContainer.Stop()
-	assert.NoError(t, err)
+func testErrorHandling(t *testing.T, httpURL, wsURL string) {
+	// set up the ogClient
+	ogClient := lib.NewObscuroGatewayLibrary(httpURL, wsURL)
+
+	// join + register against the og
+	err := ogClient.Join()
+	require.NoError(t, err)
+
+	// register an account
+	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger())
+	err = ogClient.RegisterAccount(w.PrivateKey(), w.Address())
+	require.NoError(t, err)
+
+	// make requests to geth for comparison
+
+	for _, req := range []string{
+		`{"jsonrpc":"2.0","method":"eth_getBalance","params":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "latest"],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_getBalance","params":[],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_getgetget","params":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "latest"],"id":1}`,
+		`{"method":"eth_getBalance","params":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "latest"],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_getBalance","params":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "latest"],"id":1,"extra":"extra_field"}`,
+		`{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "0x1234"]],"id":1}`,
+	} {
+		// ensure the geth request is issued correctly (should return 200 ok with jsonRPCError)
+		_, response, err := httputil.PostDataJSON(ogClient.HTTP(), []byte(req))
+		require.NoError(t, err)
+
+		// unmarshall the response to JSONRPCMessage
+		jsonRPCError := wecommon.JSONRPCMessage{}
+		err = json.Unmarshal(response, &jsonRPCError)
+		require.NoError(t, err)
+
+		// repeat the process for the gateway
+		_, response, err = httputil.PostDataJSON(fmt.Sprintf("http://localhost:%d", integration.StartPortObscuroGatewayUnitTest), []byte(req))
+		require.NoError(t, err)
+
+		// we only care about format
+		jsonRPCError = wecommon.JSONRPCMessage{}
+		err = json.Unmarshal(response, &jsonRPCError)
+		require.NoError(t, err)
+	}
 }
 
 func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet) common.TxHash {
@@ -160,7 +222,7 @@ func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet)
 }
 
 // Creates a single-node Obscuro network for testing.
-func createObscuroNetwork(t *testing.T, startPort int) *params.SimWallets {
+func createObscuroNetwork(t *testing.T, startPort int) {
 	// Create the Obscuro network.
 	numberOfNodes := 1
 	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
@@ -180,7 +242,6 @@ func createObscuroNetwork(t *testing.T, startPort int) *params.SimWallets {
 	if err != nil {
 		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
 	}
-	return wallets
 }
 
 func waitServerIsReady(serverAddr string) error {
