@@ -27,8 +27,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.Subscribe)
-
 // WalletExtension handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
 	hostAddr           string // The address on which the Obscuro host can be reached.

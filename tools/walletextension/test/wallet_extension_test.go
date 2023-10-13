@@ -13,7 +13,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/tools/walletextension"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/stretchr/testify/assert"
 
@@ -150,9 +149,9 @@ func canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.T, t
 
 func cannotSubscribeOverHTTP(t *testing.T, testHelper *testHelper) {
 	respBody := makeHTTPEthJSONReq(testHelper.walletHTTPPort, rpc.Subscribe, []interface{}{rpc.SubscriptionTypeLogs})
-	fmt.Println(respBody)
-	if string(respBody) != walletextension.ErrSubscribeFailHTTP+"\n" {
-		t.Fatalf("expected response of '%s', got '%s'", walletextension.ErrSubscribeFailHTTP, string(respBody))
+
+	if string(respBody) != "received an eth_subscribe request but the connection does not support subscriptions" {
+		t.Fatalf("unexpected response %s", string(respBody))
 	}
 }
 
