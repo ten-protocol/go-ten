@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"strings"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -109,17 +110,17 @@ func handleEthError(req *accountmanager.RPCRequest, conn userconn.UserConn, logg
 
 	errBytes, err := json.Marshal(jsonRPRCError)
 	if err != nil {
-		logger.Error("unable to marshal error - %w", err)
+		logger.Error("unable to marshal error - %w", log.ErrKey, err)
 		return
 	}
 
 	if err = conn.WriteResponse(errBytes); err != nil {
-		logger.Error("unable to write response back - %w", err)
+		logger.Error("unable to write response back - %w", log.ErrKey, err)
 	}
 }
 
 func handleError(conn userconn.UserConn, logger gethlog.Logger, err error) {
 	if err = conn.WriteResponse([]byte(err.Error())); err != nil {
-		logger.Error("unable to write response back - %w", err)
+		logger.Error("unable to write response back", log.ErrKey, err)
 	}
 }
