@@ -58,10 +58,11 @@ type Config struct {
 
 func NewNodeConfig(opts ...Option) *Config {
 	defaultConfig := &Config{
-		batchInterval:  "1s",
-		rollupInterval: "3s",
-		l1ChainID:      1337,
-		obscuroGenesis: "{}",
+		batchInterval:    "1s",
+		maxBatchInterval: "1s",
+		rollupInterval:   "3s",
+		l1ChainID:        1337,
+		obscuroGenesis:   "{}",
 	}
 
 	for _, opt := range opts {

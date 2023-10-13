@@ -130,7 +130,7 @@ func (executor *batchExecutor) refundL1Fees(stateDB *state.StateDB, context *Bat
 	}
 }
 
-func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) {
+func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) { //nolint:gocognit
 	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
 
 	// sanity check that the l1 block exists. We don't have to execute batches of forks.
