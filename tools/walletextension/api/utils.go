@@ -3,8 +3,9 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 	"strings"
+
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
