@@ -165,7 +165,9 @@ message DebugTraceTransactionResponse{
   SystemError systemError = 2;
 }
 
-message CreateBatchRequest{}
+message CreateBatchRequest{
+  bool skipIfEmpty = 1;
+}
 message CreateBatchResponse{
   string error = 2;
 }

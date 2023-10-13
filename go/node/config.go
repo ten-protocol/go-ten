@@ -50,6 +50,7 @@ type Config struct {
 	isInboundP2PDisabled      bool
 	l1BlockTime               time.Duration
 	batchInterval             string
+	maxBatchInterval          string
 	rollupInterval            string
 	l1ChainID                 int
 	obscuroGenesis            string
@@ -312,6 +313,12 @@ func WithL1BlockTime(d time.Duration) Option {
 func WithBatchInterval(d string) Option {
 	return func(c *Config) {
 		c.batchInterval = d
+	}
+}
+
+func WithMaxBatchInterval(d string) Option {
+	return func(c *Config) {
+		c.maxBatchInterval = d
 	}
 }
 

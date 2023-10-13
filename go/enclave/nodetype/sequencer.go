@@ -98,7 +98,7 @@ func NewSequencer(
 	}
 }
 
-func (s *sequencer) CreateBatch() error {
+func (s *sequencer) CreateBatch(skipBatchIfEmpty bool) error {
 	hasGenesis, err := s.batchRegistry.HasGenesisBatch()
 	if err != nil {
 		return fmt.Errorf("unknown genesis batch state. Cause: %w", err)
@@ -114,7 +114,7 @@ func (s *sequencer) CreateBatch() error {
 		return s.initGenesis(l1HeadBlock)
 	}
 
-	return s.createNewHeadBatch(l1HeadBlock)
+	return s.createNewHeadBatch(l1HeadBlock, skipBatchIfEmpty)
 }
 
 // TODO - This is iffy, the producer commits the stateDB. The producer
@@ -149,7 +149,7 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 	return nil
 }
 
-func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
+func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfEmpty bool) error {
 	headBatchSeq := s.batchRegistry.HeadBatchSeq()
 	if headBatchSeq == nil {
 		headBatchSeq = big.NewInt(int64(common.L2GenesisSeqNo))
@@ -186,7 +186,12 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	}
 
 	// todo - time is set only here; take from l1 block?
-	if _, err := s.produceBatch(sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), transactions, uint64(time.Now().Unix())); err != nil {
+	if _, err := s.produceBatch(sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), transactions, uint64(time.Now().Unix()), skipBatchIfEmpty); err != nil {
+		if errors.Is(err, components.ErrNoTransactionsToProcess) {
+			// skip batch production when there are no transactions to process
+			s.logger.Info("Skipping batch production, no transactions to execute")
+			return nil
+		}
 		return fmt.Errorf(" failed producing batch. Cause: %w", err)
 	}
 
@@ -197,7 +202,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	return nil
 }
 
-func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash, headBatch common.L2BatchHash, transactions common.L2Transactions, batchTime uint64) (*core.Batch, error) {
+func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash, headBatch common.L2BatchHash, transactions common.L2Transactions, batchTime uint64, failForEmptyBatch bool) (*core.Batch, error) {
 	cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 		BlockPtr:     l1Hash,
 		ParentPtr:    headBatch,
@@ -207,7 +212,7 @@ func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash
 		BaseFee:      s.settings.BaseFee,
 		ChainConfig:  s.chainConfig,
 		SequencerNo:  sequencerNo,
-	})
+	}, failForEmptyBatch)
 	if err != nil {
 		return nil, fmt.Errorf("failed computing batch. Cause: %w", err)
 	}
@@ -317,8 +322,8 @@ func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []c
 			return fmt.Errorf("could not fetch sequencer no. Cause %w", err)
 		}
 		sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))
-		// create the duplicate and store/broadcast it
-		b, err := s.produceBatch(sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time)
+		// create the duplicate and store/broadcast it, recreate batch even if it was empty
+		b, err := s.produceBatch(sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time, false)
 		if err != nil {
 			return fmt.Errorf("could not produce batch. Cause %w", err)
 		}

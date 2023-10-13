@@ -65,6 +65,7 @@ jobs:
           echo "WORKER_ADDR=${{vars.WORKER_ADDR}}"
           
           echo "BATCH_INTERVAL=${{vars.BATCH_INTERVAL}}"
+          echo "L2_MAX_BATCH_INTERVAL=${{vars.L2_MAX_BATCH_INTERVAL}}"
           echo "ROLLUP_INTERVAL=${{vars.ROLLUP_INTERVAL}}"
           echo "FAUCET_FUNDS=${{vars.FAUCET_FUNDS}}"
 
@@ -253,6 +254,7 @@ jobs:
                -is_debug_namespace_enabled=true \
                -log_level=${{ github.event.inputs.log_level }} \
                -batch_interval=${{vars.BATCH_INTERVAL}} \
+               -max_batch_interval=${{vars.L2_MAX_BATCH_INTERVAL}} \
                -rollup_interval=${{vars.ROLLUP_INTERVAL}} \
                -l1_chain_id=${{vars.L1_CHAIN_ID}} \
                start'

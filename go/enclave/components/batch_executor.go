@@ -29,6 +29,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 )
 
+var ErrNoTransactionsToProcess = fmt.Errorf("no transactions to process")
+
 // batchExecutor - the component responsible for executing batches
 type batchExecutor struct {
 	storage              storage.Storage
@@ -128,7 +130,7 @@ func (executor *batchExecutor) refundL1Fees(stateDB *state.StateDB, context *Bat
 	}
 }
 
-func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
+func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) {
 	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
 
 	// sanity check that the l1 block exists. We don't have to execute batches of forks.
@@ -207,6 +209,15 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	}
 
 	executor.populateHeader(&copyBatch, allReceipts(txReceipts, ccReceipts))
+	if failForEmptyBatch &&
+		len(txReceipts) == 0 &&
+		len(ccReceipts) == 0 &&
+		len(transactionsToProcess) == 0 &&
+		len(crossChainTransactions) == 0 &&
+		len(messages) == 0 &&
+		len(transfers) == 0 {
+		return nil, ErrNoTransactionsToProcess
+	}
 
 	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
 	for _, receipt := range txReceipts {
@@ -250,7 +261,7 @@ func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, 
 		SequencerNo:  batch.Header.SequencerOrderNo,
 		Creator:      batch.Header.Coinbase,
 		BaseFee:      batch.Header.BaseFee,
-	})
+	}, false) // this execution is not used when first producing a batch, we never want to fail for empty batches
 	if err != nil {
 		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
 	}

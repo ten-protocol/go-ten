@@ -550,7 +550,7 @@ func (rc *RollupCompression) computeBatch(
 		ChainConfig:  rc.chainConfig,
 		SequencerNo:  SequencerNo,
 		BaseFee:      big.NewInt(0).Set(BaseFee),
-	})
+	}, false)
 }
 
 func transformToByteArray(reorgs []*common.BatchHeader) ([][]byte, error) {
