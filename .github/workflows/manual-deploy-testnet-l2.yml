@@ -107,8 +107,7 @@ jobs:
           echo "L1_START_HASH=$L1START" >> $GITHUB_ENV
           echo "L1_START_HASH=$L1START" >> $GITHUB_OUTPUT
 
-      - name: 'Save container logs on failure'
-        if: failure()
+      - name: 'Save L1 deployer container logs'
         # Wait to make sure the logs are available in the container
         run: |
           sleep 60
@@ -128,14 +127,13 @@ jobs:
           inlineScript: |
             $(az resource list --tag ${{vars.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
-      - name: 'Upload container logs on failure'
+      - name: 'Upload L1 deployer container logs'
         uses: actions/upload-artifact@v3
-        if: failure()
         with:
           name: deploy-l1-artifacts
           path: |
             deploy-l1-contracts.out
-          retention-days: 2
+          retention-days: 1
 
   deploy:
     needs: build
@@ -329,17 +327,17 @@ jobs:
           -docker_image=${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
           -faucet_funds=${{vars.FAUCET_FUNDS}}
 
-      - name: 'Save container logs'
+      - name: 'Save L2 deployer container logs'
         run: |
           docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
 
-      - name: 'Upload container logs'
+      - name: 'Upload L2 deployer container logs'
         uses: actions/upload-artifact@v3
         with:
           name: deploy-l2-artifacts
           path: |
             deploy-l2-contracts.out
-          retention-days: 2
+          retention-days: 1
 
   deploy-faucet:
     name: 'Trigger Faucet deployment for dev- / testnet on a new deployment'
