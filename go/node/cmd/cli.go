@@ -42,6 +42,7 @@ type NodeConfigCLI struct {
 	logLevel                int
 	isInboundP2PDisabled    bool
 	batchInterval           string // format like 500ms or 2s (any time parsable by time.ParseDuration())
+	maxBatchInterval        string // format like 500ms or 2s (any time parsable by time.ParseDuration())
 	rollupInterval          string // format like 500ms or 2s (any time parsable by time.ParseDuration())
 	l1ChainID               int
 }
@@ -77,6 +78,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	logLevel := flag.Int(logLevelFlag, 3, flagUsageMap[logLevelFlag])
 	isInboundP2PDisabled := flag.Bool(isInboundP2PDisabledFlag, false, flagUsageMap[isInboundP2PDisabledFlag])
 	batchInterval := flag.String(batchIntervalFlag, "1s", flagUsageMap[batchIntervalFlag])
+	maxBatchInterval := flag.String(maxBatchIntervalFlag, "1s", flagUsageMap[maxBatchIntervalFlag])
 	rollupInterval := flag.String(rollupIntervalFlag, "3s", flagUsageMap[rollupIntervalFlag])
 	l1ChainID := flag.Int(l1ChainIDFlag, 1337, flagUsageMap[l1ChainIDFlag])
 
@@ -107,6 +109,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.logLevel = *logLevel
 	cfg.isInboundP2PDisabled = *isInboundP2PDisabled
 	cfg.batchInterval = *batchInterval
+	cfg.maxBatchInterval = *maxBatchInterval
 	cfg.rollupInterval = *rollupInterval
 	cfg.l1ChainID = *l1ChainID
 

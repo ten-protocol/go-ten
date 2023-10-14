@@ -67,7 +67,8 @@ type BatchExecutor interface {
 	// ComputeBatch - a more primitive ExecuteBatch
 	// Call with same BatchContext should always produce identical extBatch - idempotent
 	// Should be safe to call in parallel
-	ComputeBatch(*BatchExecutionContext) (*ComputedBatch, error)
+	// failForEmptyBatch bool is used to skip batch production
+	ComputeBatch(batchContext *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error)
 
 	// ExecuteBatch - executes the transactions and xchain messages, returns the receipts, and updates the stateDB
 	ExecuteBatch(*core.Batch) (types.Receipts, error)

@@ -399,13 +399,13 @@ func (c *Client) HealthCheck() (bool, common.SystemError) {
 	return response.Status, nil
 }
 
-func (c *Client) CreateBatch() common.SystemError {
+func (c *Client) CreateBatch(skipIfEmpty bool) common.SystemError {
 	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "CreateBatch rpc call")
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.CreateBatch(timeoutCtx, &generated.CreateBatchRequest{})
+	response, err := c.protoClient.CreateBatch(timeoutCtx, &generated.CreateBatchRequest{SkipIfEmpty: skipIfEmpty})
 	if err != nil {
 		return syserr.NewInternalError(err)
 	}

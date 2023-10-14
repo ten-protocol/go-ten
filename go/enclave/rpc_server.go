@@ -277,8 +277,8 @@ func (s *RPCServer) CreateRollup(_ context.Context, req *generated.CreateRollupR
 	}, nil
 }
 
-func (s *RPCServer) CreateBatch(_ context.Context, _ *generated.CreateBatchRequest) (*generated.CreateBatchResponse, error) {
-	sysError := s.enclave.CreateBatch()
+func (s *RPCServer) CreateBatch(_ context.Context, r *generated.CreateBatchRequest) (*generated.CreateBatchResponse, error) {
+	sysError := s.enclave.CreateBatch(r.SkipIfEmpty)
 	if sysError != nil {
 		s.logger.Error("Error creating batch", log.ErrKey, sysError)
 	}

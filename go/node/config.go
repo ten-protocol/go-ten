@@ -50,6 +50,7 @@ type Config struct {
 	isInboundP2PDisabled      bool
 	l1BlockTime               time.Duration
 	batchInterval             string
+	maxBatchInterval          string
 	rollupInterval            string
 	l1ChainID                 int
 	obscuroGenesis            string
@@ -57,10 +58,11 @@ type Config struct {
 
 func NewNodeConfig(opts ...Option) *Config {
 	defaultConfig := &Config{
-		batchInterval:  "1s",
-		rollupInterval: "3s",
-		l1ChainID:      1337,
-		obscuroGenesis: "{}",
+		batchInterval:    "1s",
+		maxBatchInterval: "1s",
+		rollupInterval:   "3s",
+		l1ChainID:        1337,
+		obscuroGenesis:   "{}",
 	}
 
 	for _, opt := range opts {
@@ -312,6 +314,12 @@ func WithL1BlockTime(d time.Duration) Option {
 func WithBatchInterval(d string) Option {
 	return func(c *Config) {
 		c.batchInterval = d
+	}
+}
+
+func WithMaxBatchInterval(d string) Option {
+	return func(c *Config) {
+		c.maxBatchInterval = d
 	}
 }
 
