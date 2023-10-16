@@ -32,22 +32,22 @@ jobs:
         if: ${{ github.event.inputs.testnet_type == 'uat-testnet' }}
         run: |
           echo "OBSCURO_GATEWAY_DB_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_mariadb_uat_testnet:latest" >> $GITHUB_ENV
-          echo "RESOURCE_STARTING_NAME=testnet" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=obscurogatewaydbtestnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_STARTING_NAME=uat-testnet" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=obscuro-gateway-db-testnet-latest" >> $GITHUB_ENV
 
       - name: 'Set Obscuro Gateway variables for dev-testnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
         run: |
           echo "OBSCURO_GATEWAY_DB_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_mariadb_dev_testnet:latest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=dev-testnet" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=obscurogatewaydbdevtestnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=obscuro-gateway-db-dev-testnet-latest" >> $GITHUB_ENV
 
       - name: 'Set Obscuro Gateway variables for sepolia-testnet'
         if: ${{ github.event.inputs.testnet_type == 'sepolia-testnet' }}
         run: |
           echo "OBSCURO_GATEWAY_DB_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_mariadb_sepolia_testnet:latest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=sepolia-testnet" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=obscurogatewaydbsepoliatestnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=obscuro-gateway-db-sepolia-testnet-latest" >> $GITHUB_ENV
 
 
       - name: 'Login via Azure CLI'
