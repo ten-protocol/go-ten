@@ -25,7 +25,7 @@ on:
         type: choice
         options:
           - 'dev-testnet'
-          - 'testnet'
+          - 'uat-testnet'
 
 jobs:
   build-and-deploy:

@@ -18,7 +18,7 @@ on:
         type: choice
         options:
           - 'dev-testnet'
-          - 'testnet'
+          - 'uat-testnet'
           - 'sepolia-testnet'
       log_level:
         description: 'Log Level 1-Error 5-Trace'
