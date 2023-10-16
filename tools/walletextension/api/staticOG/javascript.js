@@ -312,6 +312,8 @@ const initialize = async () => {
                         headers: jsonHeaders,
                     });
                 if (!joinResp.ok) {
+                    console.log("Error joining Obscuro Gateway")
+                    statusArea.innerText = "Error joining Obscuro Gateway. Please try again later."
                     return
                 }
                 userID = await joinResp.text();
