@@ -25,6 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         from: accountsL1.deployer,
         args: [ messengerL1.address ],
         log: true,
+        proxy: true
     });
 
     // We get the Cross chain messenger deployment on the layer 2 network.
@@ -36,6 +37,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         from: accountsL2.deployer,
         args: [ messengerL2.address, layer1BridgeDeployment.address ],
         log: true,
+        proxy: true
     });
 
     await hre.companionNetworks.layer1.deployments.execute("ObscuroBridge", {
