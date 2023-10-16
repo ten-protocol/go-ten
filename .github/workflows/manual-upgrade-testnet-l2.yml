@@ -77,7 +77,7 @@ jobs:
       - name: 'Fetch latest VM hostnames by env tag and extract build number'
         id: fetch_hostnames
         run: |
-          VM_HOSTNAME=$(az vm list --query "[?tags.${{vars.RESOURCE_TAG_NAME}}=='true'].{Name:name}[0]" -g Testnet -o tsv)
+          VM_HOSTNAME=$(az vm list --query "[?tags.\"${{vars.RESOURCE_TAG_NAME}}\"=='true'].{Name:name}[0]" -g Testnet -o tsv)
           VM_BUILD_NUMBER=$(echo $VM_HOSTNAME | perl -ne 'if (/(-[0-9]{1}-)(\d+)/) { print $2 }') # Extract build number from VM hostname, e.g. D-0-321 -> 321
           echo "VM_BUILD_NUMBER=${VM_BUILD_NUMBER}" >> $GITHUB_ENV
           echo "VM_HOSTNAME: ${VM_HOSTNAME}"
