@@ -15,11 +15,11 @@ import (
 )
 
 func TestSubscribeToOG(t *testing.T) {
-	t.Skip("skip manual tests")
+	//t.Skip("skip manual tests")
 
 	// Using http
-	ogHTTPAddress := "https://dev-testnet.obscu.ro:443"
-	ogWSAddress := "wss://dev-testnet.obscu.ro:81"
+	ogHTTPAddress := "https://uat-testnet.obscu.ro"
+	ogWSAddress := "wss://uat-testnet.obscu.ro:81"
 	// ogWSAddress := "ws://51.132.131.47:81"
 
 	ogClient := lib.NewObscuroGatewayLibrary(ogHTTPAddress, ogWSAddress)
