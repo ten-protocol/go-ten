@@ -2,8 +2,16 @@
 ---
 # Obscuro Testnet Change Log
 
-# Oct 2023-10-11 (v0.18.0)
+# Oct 2023-10-16 (v0.18.0)
 * A list of the PRs merged in this release is as below;
+  * `51b00380` Add maxbatchinterval to skip some empty batches (#1599)
+  * `3d3c12c9` Save l1 deployer logs (#1598)
+  * `b5620b12` Reduce the verbosity of eth2network (#1597)
+  * `7dfd9abe` Save logs (#1594)
+  * `9d0b6200` Library for obscuro gateway (#1595)
+  * `5b34ff6e` Update build-pr.yml (#1596)
+  * `5405c3f0` Add prefunded l1 bridge address for dev and uat testing (#1591)
+  * `226cfc65` Additional prs for the v0.18.0 release (#1592)
   * `5e9c8c84` Update new dns (#1580)
   * `1bc26e6e` Add block head cache (#1589)
   * `e06c9f53` Fix deploy (#1587)
