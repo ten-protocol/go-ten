@@ -257,7 +257,7 @@ func NewEnclave(
 	)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
-	err = restoreStateDBCache(storage, batchExecutor, genesis, logger)
+	err = restoreStateDBCache(storage, registry, batchExecutor, genesis, logger)
 	if err != nil {
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
@@ -581,7 +581,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 	return nil
 }
 
-func (e *enclaveImpl) CreateBatch() common.SystemError {
+func (e *enclaveImpl) CreateBatch(skipBatchIfEmpty bool) common.SystemError {
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateBatch call ended")
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested CreateBatch with the enclave stopping"))
@@ -590,7 +590,7 @@ func (e *enclaveImpl) CreateBatch() common.SystemError {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	err := e.Sequencer().CreateBatch()
+	err := e.Sequencer().CreateBatch(skipBatchIfEmpty)
 	if err != nil {
 		return responses.ToInternalError(err)
 	}
@@ -712,7 +712,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	}
 
 	var nonce uint64
-	l2Head, err := e.storage.FetchHeadBatch()
+	l2Head, err := e.storage.FetchBatchBySeqNo(e.registry.HeadBatchSeq().Uint64())
 	if err == nil {
 		// todo - we should return an error when head state is not available, but for current test situations with race
 		//  conditions we allow it to return zero while head state is uninitialized
@@ -1006,6 +1006,8 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return nil, responses.ToInternalError(fmt.Errorf("requested EstimateGas with the enclave stopping"))
 	}
 
+	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "enclave.go:EstimateGas()")
+
 	// decode the received request into a []interface
 	paramList, err := e.decodeRequest(encryptedParams)
 	if err != nil {
@@ -1099,7 +1101,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 
 	from := filter.FromBlock
 	if from != nil && from.Int64() < 0 {
-		batch, err := e.storage.FetchHeadBatch()
+		batch, err := e.storage.FetchBatchBySeqNo(e.registry.HeadBatchSeq().Uint64())
 		if err != nil {
 			return responses.AsPlaintextError(fmt.Errorf("could not retrieve head batch. Cause: %w", err)), nil
 		}
@@ -1396,6 +1398,7 @@ func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPaginatio
 // Create a helper to check if a gas allowance results in an executable transaction
 // isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
 func (e *enclaveImpl) isGasEnough(args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error) {
+	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "enclave.go:IsGasEnough")
 	args.Gas = (*hexutil.Uint64)(&gas)
 	result, err := e.chain.ObsCallAtBlock(args, blkNumber)
 	if err != nil {
@@ -1523,8 +1526,12 @@ func serializeEVMError(err error) ([]byte, error) {
 
 // this function looks at the batch chain and makes sure the resulting stateDB snapshots are available, replaying them if needed
 // (if there had been a clean shutdown and all stateDB data was persisted this should do nothing)
-func restoreStateDBCache(storage storage.Storage, producer components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
-	batch, err := storage.FetchHeadBatch()
+func restoreStateDBCache(storage storage.Storage, registry components.BatchRegistry, producer components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
+	if registry.HeadBatchSeq() == nil {
+		// not initialised yet
+		return nil
+	}
+	batch, err := storage.FetchBatchBySeqNo(registry.HeadBatchSeq().Uint64())
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			// there is no head batch, this is probably a new node - there is no state to rebuild
@@ -1535,7 +1542,7 @@ func restoreStateDBCache(storage storage.Storage, producer components.BatchExecu
 	}
 	if !stateDBAvailableForBatch(storage, batch.Hash()) {
 		logger.Info("state not available for latest batch after restart - rebuilding stateDB cache from batches")
-		err = replayBatchesToValidState(storage, producer, gen, logger)
+		err = replayBatchesToValidState(storage, registry, producer, gen, logger)
 		if err != nil {
 			return fmt.Errorf("unable to replay batches to restore valid state - %w", err)
 		}
@@ -1556,13 +1563,13 @@ func stateDBAvailableForBatch(storage storage.Storage, hash common.L2BatchHash) 
 // 1. step backwards from head batch until we find a batch that is already in stateDB cache, builds list of batches to replay
 // 2. iterate that list of batches from the earliest, process the transactions to calculate and cache the stateDB
 // todo (#1416) - get unit test coverage around this (and L2 Chain code more widely, see ticket #1416 )
-func replayBatchesToValidState(storage storage.Storage, batchExecutor components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
+func replayBatchesToValidState(storage storage.Storage, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
 	// this slice will be a stack of batches to replay as we walk backwards in search of latest valid state
 	// todo - consider capping the size of this batch list using FIFO to avoid memory issues, and then repeating as necessary
 	var batchesToReplay []*core.Batch
 	// `batchToReplayFrom` variable will eventually be the latest batch for which we are able to produce a StateDB
 	// - we will then set that as the head of the L2 so that this node can rebuild its missing state
-	batchToReplayFrom, err := storage.FetchHeadBatch()
+	batchToReplayFrom, err := storage.FetchBatchBySeqNo(registry.HeadBatchSeq().Uint64())
 	if err != nil {
 		return fmt.Errorf("no head batch found in DB but expected to replay batches - %w", err)
 	}

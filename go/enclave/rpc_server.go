@@ -277,8 +277,8 @@ func (s *RPCServer) CreateRollup(_ context.Context, req *generated.CreateRollupR
 	}, nil
 }
 
-func (s *RPCServer) CreateBatch(_ context.Context, _ *generated.CreateBatchRequest) (*generated.CreateBatchResponse, error) {
-	sysError := s.enclave.CreateBatch()
+func (s *RPCServer) CreateBatch(_ context.Context, r *generated.CreateBatchRequest) (*generated.CreateBatchResponse, error) {
+	sysError := s.enclave.CreateBatch(r.SkipIfEmpty)
 	if sysError != nil {
 		s.logger.Error("Error creating batch", log.ErrKey, sysError)
 	}
@@ -311,12 +311,16 @@ func (s *RPCServer) GetBatch(_ context.Context, request *generated.GetBatchReque
 	}
 
 	encodedBatch, encodingErr := batch.Encoded()
-	return &generated.GetBatchResponse{
-		Batch: encodedBatch,
-		SystemError: &generated.SystemError{
+	var sysErr *generated.SystemError
+	if encodingErr != nil {
+		sysErr = &generated.SystemError{
 			ErrorCode:   2,
 			ErrorString: encodingErr.Error(),
-		},
+		}
+	}
+	return &generated.GetBatchResponse{
+		Batch:       encodedBatch,
+		SystemError: sysErr,
 	}, err
 }
 
@@ -329,12 +333,16 @@ func (s *RPCServer) GetBatchBySeqNo(_ context.Context, request *generated.GetBat
 	}
 
 	encodedBatch, encodingErr := batch.Encoded()
-	return &generated.GetBatchResponse{
-		Batch: encodedBatch,
-		SystemError: &generated.SystemError{
+	var sysErr *generated.SystemError
+	if encodingErr != nil {
+		sysErr = &generated.SystemError{
 			ErrorCode:   2,
 			ErrorString: encodingErr.Error(),
-		},
+		}
+	}
+	return &generated.GetBatchResponse{
+		Batch:       encodedBatch,
+		SystemError: sysErr,
 	}, err
 }
 

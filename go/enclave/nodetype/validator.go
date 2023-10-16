@@ -74,7 +74,11 @@ func (val *obsValidator) VerifySequencerSignature(b *core.Batch) error {
 }
 
 func (val *obsValidator) ExecuteStoredBatches() error {
-	batches, err := val.storage.FetchCanonicalUnexecutedBatches(val.batchRegistry.HeadBatchSeq())
+	headBatchSeq := val.batchRegistry.HeadBatchSeq()
+	if headBatchSeq == nil {
+		headBatchSeq = big.NewInt(int64(common.L2GenesisSeqNo))
+	}
+	batches, err := val.storage.FetchCanonicalUnexecutedBatches(headBatchSeq)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil

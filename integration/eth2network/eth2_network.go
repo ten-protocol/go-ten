@@ -390,6 +390,7 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 		"--allow-insecure-unlock", // allows to use personal accounts over http/ws
 		"--nodiscover",            // don't try and discover peers
 		"--ipcdisable",            // avoid geth erroring bc the ipc path is too long
+		"--verbosity", "1",        // error log level
 	}
 	fmt.Printf("gethStartNode: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
@@ -438,7 +439,7 @@ func (n *Impl) prysmStartBeaconNode(gethAuthRPCPort, rpcPort, p2pPort int, nodeD
 		"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", gethAuthRPCPort),
 		"--jwt-secret", path.Join(nodeDataDir, "geth", "jwtsecret"),
 		"--contract-deployment-block", "0",
-		"--verbosity", "debug",
+		"--verbosity", "error",
 	}
 
 	fmt.Printf("prysmStartBeaconNode: %s %s\n", n.prysmBeaconBinaryPath, strings.Join(args, " "))
@@ -463,6 +464,7 @@ func (n *Impl) prysmStartValidator(beaconHTTPPort int, nodeDataDir string) (*exe
 		"--force-clear-db",
 		"--disable-account-metrics",
 		"--accept-terms-of-use",
+		"--verbosity", "error",
 	}
 
 	fmt.Printf("prysmStartValidator: %s %s\n", n.prysmValidatorBinaryPath, strings.Join(args, " "))

@@ -14,8 +14,8 @@ These are the key limitations to be aware of when developing for the Evan's Cat 
 1. The "Wallet Extension" is not fully polished yet. You can expect a better UX as Obscuro develops
 
 ## Connection to an Obscuro Node
-- **RPC http address:** `erpc.testnet.obscu.ro:80`
-- **RPC websocket address:** `erpc.testnet.obscu.ro:81`
+- **RPC http address:** `erpc.sepolia-testnet.obscu.ro:80`
+- **RPC websocket address:** `erpc.sepolia-testnet.obscu.ro:81`
 
 ## Rollup Encryption/Decryption Key
 The symmetric key used to encrypt and decrypt transaction blobs in rollups on the Obscuro Testnet:

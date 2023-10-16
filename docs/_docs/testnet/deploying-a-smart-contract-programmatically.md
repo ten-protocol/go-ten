@@ -24,8 +24,8 @@ account stored for later usage.
     logging.info('Using account with address %s' % account.address)
 ```
 
-## Request OBX from the faucet server for native OBX
-An account needs gas to perform transactions on Obscuro, where gas is paid in native OBX. Requests of native OBX can be 
+## Request ETH from the faucet server for native ETH
+An account needs gas to perform transactions on Obscuro, where gas is paid in native ETH. Requests of native ETH can be 
 made through a POST to the faucet server where the address is supplied in the data payload.
 ```python
     headers = {'Content-Type': 'application/json'}

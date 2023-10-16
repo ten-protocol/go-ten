@@ -29,7 +29,7 @@ type obscuroscanConfig struct {
 func defaultObscuroClientConfig() obscuroscanConfig {
 	return obscuroscanConfig{
 		nodeID:        "",
-		rpcServerAddr: "http://erpc.testnet.obscu.ro:80",
+		rpcServerAddr: "http://erpc.sepolia-testnet.obscu.ro:80",
 		address:       "127.0.0.1:3000/v1",
 		logPath:       "obscuroscan_logs.txt",
 	}

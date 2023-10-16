@@ -35,6 +35,8 @@ func NewWebServer(faucetServer *faucet.Faucet, bindAddress string, jwtSecret []b
 	// todo (@matt) we need to remove this unsecure endpoint before we provide a fully public sepolia faucet
 	r.POST("/fund/:token", fundingHandler(faucetServer, defaultAmount))
 
+	r.GET("/balance", balanceReqHandler(faucetServer))
+
 	return &WebServer{
 		engine:      r,
 		faucet:      faucetServer,
@@ -151,5 +153,19 @@ func fundingHandler(faucetServer *faucet.Faucet, defaultAmount *big.Int) gin.Han
 		}
 
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	}
+}
+
+// returns the remaining native balance of the faucet
+func balanceReqHandler(faucetServer *faucet.Faucet) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// get the balance
+		balance, err := faucetServer.Balance(c)
+		if err != nil {
+			errorHandler(c, fmt.Errorf("unable to get balance %w", err), faucetServer.Logger)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"balance": balance.String()})
 	}
 }

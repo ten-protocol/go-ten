@@ -53,6 +53,7 @@ async function fetchAndDisplayVersion() {
     }
 }
 
+
 function getNetworkName(gatewayAddress) {
     switch(gatewayAddress) {
         case 'https://uat-testnet.obscu.ro/':
@@ -64,7 +65,24 @@ function getNetworkName(gatewayAddress) {
     }
 }
 
-async function addNetworkToMetaMask(ethereum, userID) {
+
+function getRPCFromUrl(gatewayAddress) {
+    // get the correct RPC endpoint for each network
+    switch(gatewayAddress) {
+        case 'https://testnet.obscu.ro/':
+            return 'https://rpc.sepolia-testnet.obscu.ro'
+        case 'https://sepolia-testnet.obscu.ro':
+            return 'https://rpc.sepolia-testnet.obscu.ro'
+        case 'https://uat-testnet.obscu.ro/':
+            return 'https://rpc.uat-testnet.obscu.ro';
+        case 'https://dev-testnet.obscu.ro/':
+            return 'https://rpc.dev-testnet.obscu.ro';
+        default:
+            return gatewayAddress;
+    }
+}
+
+async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
     // add network to MetaMask
     try {
         await ethereum.request({
@@ -78,7 +96,7 @@ async function addNetworkToMetaMask(ethereum, userID) {
                         symbol: 'ETH',
                         decimals: 18
                     },
-                    rpcUrls: [obscuroGatewayAddress+"/"+obscuroGatewayVersion+'/?u='+userID],
+                    rpcUrls: [getRPCFromUrl(obscuroGatewayAddress)+"/"+obscuroGatewayVersion+'/?u='+userID],
                     blockExplorerUrls: ['https://testnet.obscuroscan.io'],
                 },
             ],

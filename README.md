@@ -348,14 +348,14 @@ Once started Obscuroscan is available on `http://0.0.0.0:8098`.
 
 
 ### Building and running a local faucet
-Deploying and interacting with contracts on Obscuro requires OBX to be allocated to an account via the faucet.
+Deploying and interacting with contracts on Obscuro requires ETH to be allocated to an account on the L2 via the faucet (or bridged across from the L1).
 The faucet image should be pulled (or optionally built from scratch), and the container built and started to allow requests to be made to it. 
 To pull the testnet faucet and run use;
 
 ```
 cd tools/faucet
-docker pull testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest  
-./container_run.sh -image testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest 
+docker pull testnetobscuronet.azurecr.io/obscuronet/faucet_sepolia_testnet:latest  
+./container_run.sh -image testnetobscuronet.azurecr.io/obscuronet/faucet_sepolia_testnet:latest 
 ```
 
 The faucet runs a web server within the container, with a port mapping of 8080 set to allow POST requests to be made to 
@@ -388,7 +388,7 @@ Remix (see[docs/testnet/deploying-a-smart-contract.md](docs/testnet/deploying-a-
 e.g. using web3.py(see [docs/testnet/deploying-a-smart-contract-programmatically.md](docs/testnet/deploying-a-smart-contract-programmatically.md)). 
 
 Note that in order to interact with the main cloud hosted testnet, all that needs to be changed is to start the wallet 
-extension using the default parameters, where the `nodeHost` will default to the testnet host URL `erpc.testnet.obscu.ro` i.e. 
+extension using the default parameters, where the `nodeHost` will default to the testnet host URL `erpc.sepolia-testnet.obscu.ro` i.e. 
 
 ```
 cd ./tools/walletextension/main/

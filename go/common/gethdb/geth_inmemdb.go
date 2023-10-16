@@ -25,5 +25,6 @@ func (db *InMemGethDB) Get(key []byte) ([]byte, error) {
 		}
 		return nil, err
 	}
+
 	return value, nil
 }
