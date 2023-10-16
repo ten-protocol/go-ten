@@ -12,7 +12,7 @@ on:
         type: choice
         options:
           - 'dev-testnet'
-          - 'testnet'
+          - 'uat-testnet'
           - 'sepolia-testnet'
       mgmt_contract_addr:
         description: 'Deployed management contract which will be used to request the funds'
