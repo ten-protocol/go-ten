@@ -1,8 +1,6 @@
 const eventClick = "click";
 const eventDomLoaded = "DOMContentLoaded";
 const idJoin = "join";
-const idAddAccount = "addAccount";
-const idAddAllAccounts = "addAllAccounts";
 const idRevokeUserID = "revokeUserID";
 const idStatus = "status";
 const idAccountsTable = "accountsTable";
@@ -207,12 +205,9 @@ function checkIfMetamaskIsLoaded() {
     if (window.ethereum) {
         handleEthereum();
     } else {
-        // TODO: Refactor and change the way we hide and display items on our webpage
-        document.getElementById(idJoin).style.display = "none";
-        document.getElementById(idAddAccount).style.display = "none";
-        document.getElementById(idAddAllAccounts).style.display = "none";
-        document.getElementById(idRevokeUserID).style.display = "none";
         const statusArea = document.getElementById(idStatus);
+        const table = document.getElementById("accountsTable");
+        table.style.display = "none";
         statusArea.innerText = 'Connecting to Metamask...';
         window.addEventListener('ethereum#initialized', handleEthereum, {
             once: true,
