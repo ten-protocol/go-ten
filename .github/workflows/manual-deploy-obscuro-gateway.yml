@@ -37,7 +37,7 @@ jobs:
           echo "OBSCURO_GATEWAY_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_uat_testnet:latest" >> $GITHUB_ENV
           echo "OBSCURO_GATEWAY_NODE_HOST=erpc.uat-testnet.obscu.ro" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=uat-testnet" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=obscurogatewayuattestnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=obscuro-gateway-uat-testnet-latest" >> $GITHUB_ENV
 
       - name: 'Set Obscuro Gateway variables for dev-testnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
@@ -45,7 +45,7 @@ jobs:
           echo "OBSCURO_GATEWAY_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_dev_testnet:latest" >> $GITHUB_ENV
           echo "OBSCURO_GATEWAY_NODE_HOST=erpc.dev-testnet.obscu.ro" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=dev-testnet" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=obscurogatewaydevtestnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=obscuro-gateway-dev-testnet-latest" >> $GITHUB_ENV
 
       - name: 'Set Obscuro Gateway variables for sepolia-testnet'
         if: ${{ github.event.inputs.testnet_type == 'sepolia-testnet' }}
@@ -53,7 +53,7 @@ jobs:
           echo "OBSCURO_GATEWAY_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_sepolia_testnet:latest" >> $GITHUB_ENV
           echo "OBSCURO_GATEWAY_NODE_HOST=erpc.sepolia-testnet.obscu.ro" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=sepolia-testnet" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=obscurogatewaysepoliatestnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=obscuro-gateway-sepolia-testnet-latest" >> $GITHUB_ENV
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
