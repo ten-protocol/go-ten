@@ -388,8 +388,8 @@ func (g *Guardian) catchupWithL2() error {
 func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, error) {
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
 	if !g.submitDataLock.TryLock() {
-		g.logger.Info("Unable to submit block, already submitting another block")
-		// we are already submitting a block, and we don't want to leak goroutines, we wil catch up with the block later
+		g.logger.Debug("Unable to submit block, enclave is busy processing data")
+		// we are waiting for the enclave to process other data, and we don't want to leak goroutines, we wil catch up with the block later
 		return false, nil
 	}
 	receipts, err := g.sl.L1Repo().FetchObscuroReceipts(block)
