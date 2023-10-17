@@ -51,6 +51,7 @@ jobs:
           
           echo "AZURE_HOSTNAME_PREFIX=${{ vars.AZURE_HOSTNAME_PREFIX }}"
           echo "AZURE_RESOURCE_NAME_L2=${{ vars.AZURE_RESOURCE_NAME_L2 }}"
+          echo "AZURE_RESOURCE_TAG_L2=${{ vars.AZURE_RESOURCE_TAG_L2 }}"
           
           echo "DOCKER_BUILD_TAG_ENCLAVE=${{ vars.DOCKER_BUILD_TAG_ENCLAVE }}"
           echo "DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}"
@@ -97,7 +98,7 @@ jobs:
         run: |
           go run ./testnet/launcher/l1contractdeployer/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
-          -private_key=${{ secrets.WORKER_PK }} \
+          -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -contracts_env_file=./testnet/.env
           source ./testnet/.env
@@ -196,7 +197,7 @@ jobs:
             az vm create -g Testnet -n "${{ vars.AZURE_HOSTNAME_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
             --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{vars.AZURE_RESOURCE_NAME_L2}}-${{ GITHUB.RUN_NUMBER }}" \
-            --tags deploygroup=ObscuroNode-${{vars.AZURE_RESOURCE_NAME_L2}}-${{ GITHUB.RUN_NUMBER }}  ${{vars.RESOURCE_TAG_NAME}}=true \
+            --tags deploygroup=ObscuroNode-${{vars.AZURE_RESOURCE_NAME_L2}}-${{ GITHUB.RUN_NUMBER }}  ${{vars.AZURE_RESOURCE_TAG_L2}}=true \
             --vnet-name ${{vars.AZURE_RESOURCE_NAME_L2}}-virtual-network --subnet ${{vars.AZURE_RESOURCE_NAME_L2}}-sub-network \
             --size Standard_DC8_v2 --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
             --public-ip-sku Standard --authentication-type password
@@ -245,7 +246,7 @@ jobs:
                -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
                -l1_start=${{needs.build.outputs.L1_START_HASH}} \
                -private_key=${{ secrets[matrix.node_pk_lookup] }} \
-               -sequencer_id=${{ vars.NODE_WALLET_ADDR_0 }} \
+               -sequencer_id=${{ vars.ACCOUNT_ADDR_NODE_0 }} \
                -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{vars.AZURE_RESOURCE_NAME_L2}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
                -host_p2p_port=10000 \
                -enclave_docker_image=${{vars.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
@@ -322,7 +323,7 @@ jobs:
           -l2_host=obscuronode-0-${{vars.AZURE_RESOURCE_NAME_L2}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -l2_ws_port=81 \
-          -private_key=${{ secrets.WORKER_PK }} \
+          -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -l2_private_key=8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b \
           -l2_hoc_private_key=6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682 \
           -l2_poc_private_key=4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8 \

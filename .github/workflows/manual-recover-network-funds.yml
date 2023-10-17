@@ -49,7 +49,7 @@ jobs:
         run: |
           go run ./testnet/launcher/fundsrecovery/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
-          -private_key=${{ secrets.WORKER_PK }} \
+          -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -mgmt_contract_addr=${{ github.event.inputs.mgmt_contract_addr }} \
           -docker_image=${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
           -acc_to_pay=${{ github.event.inputs.acc_to_pay }}

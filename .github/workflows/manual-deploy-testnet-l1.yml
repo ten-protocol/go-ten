@@ -40,6 +40,7 @@ jobs:
           echo "ACCOUNT_ADDR_NODE_0=${{ vars.ACCOUNT_ADDR_NODE_0 }}"
           echo "ACCOUNT_ADDR_NODE_1=${{ vars.ACCOUNT_ADDR_NODE_1 }}"
           echo "ACCOUNT_ADDR_WORKER=${{ vars.ACCOUNT_ADDR_WORKER }}"
+          echo "ACCOUNT_ADDR_WORKER=${{ vars.ACCOUNT_ADDR_L1_BRIDGE_TEST }}"
           
           echo "AZURE_RESOURCE_NAME_L1=${{ vars.AZURE_RESOURCE_NAME_L1 }}"
           echo "AZURE_RESOURCE_TAG_L1=${{ vars.AZURE_RESOURCE_TAG_L1 }}"
@@ -139,10 +140,4 @@ jobs:
             --blockTimeSecs=15 --slotsPerEpoch=2 --slotsPerSecond=15 \
             --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
             --logToFile=false \
-<<<<<<< HEAD
-            --prefundedAddrs="${{ vars.WORKER_ADDR }},${{ vars.NODE_WALLET_ADDR_0 }},${{ vars.NODE_WALLET_ADDR_1 }},${{ env.TEST_BRIDGE_ADDRESS }}"'
-=======
-            --prefundedAddrs="${{ vars.ACCOUNT_ADDR_WORKER }},${{ vars.ACCOUNT_ADDR_NODE_0 }},${{ vars.ACCOUNT_ADDR_NODE_1 }}"'
->>>>>>> 6f56c0d8 (WIP updated scripts with new var names)
-            
-      
+            --prefundedAddrs="${{ vars.ACCOUNT_ADDR_WORKER }},${{ vars.ACCOUNT_ADDR_NODE_0 }},${{ vars.ACCOUNT_ADDR_NODE_1 }},${{ vars.ACCOUNT_ADDR_L1_BRIDGE_TEST }}"'
