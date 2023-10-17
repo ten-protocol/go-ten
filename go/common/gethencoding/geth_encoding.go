@@ -185,11 +185,11 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 			gas = (*hexutil.Uint64)(&gasVal)
 
 		case callFieldGasPrice:
-			valueVal, err := hexutil.DecodeBig(valString)
+			gasPriceVal, err := hexutil.DecodeBig(valString)
 			if err != nil {
 				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
 			}
-			value = (*hexutil.Big)(valueVal)
+			gasPrice = (*hexutil.Big)(gasPriceVal)
 
 		case callFieldMaxFeePerGas:
 			maxFeePerGasVal, err := hexutil.DecodeBig(valString)
