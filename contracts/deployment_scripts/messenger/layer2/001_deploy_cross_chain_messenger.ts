@@ -29,7 +29,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         from: deployer,
         args: [ busAddress ],
         log: true,
-        proxy: true
+        proxy: {
+            proxyContract: "OpenZeppelinTransparentProxy"
+        }
     });
 };
 
