@@ -63,10 +63,10 @@ jobs:
           echo "DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}"
           echo "DOCKER_BUILD_TAG_HOST=${{ vars.DOCKER_BUILD_TAG_HOST }}"
           
-          echo "L1_CHAIN_ID=${{vars.L1_CHAIN_ID}}"
+          echo "L1_CHAIN_ID=${{ vars.L1_CHAIN_ID }}"
           
           echo "L2_BATCH_INTERVAL=${{ vars.L2_BATCH_INTERVAL }}"
-          echo "L2_MAX_BATCH_INTERVAL=${{vars.L2_MAX_BATCH_INTERVAL}}"
+          echo "L2_MAX_BATCH_INTERVAL=${{ vars.L2_MAX_BATCH_INTERVAL }}"
           echo "L2_ROLLUP_INTERVAL=${{ vars.L2_ROLLUP_INTERVAL }}"
 
       - name: 'Login via Azure CLI'
@@ -77,7 +77,7 @@ jobs:
       - name: 'Fetch latest VM hostnames by env tag and extract build number'
         id: fetch_hostnames
         run: |
-          VM_HOSTNAME=$(az vm list --query "[?tags.\"${{vars.AZURE_RESOURCE_TAG_L2}}\"=='true'].{Name:name}[0]" -g Testnet -o tsv)
+          VM_HOSTNAME=$(az vm list --query "[?tags.\"${{ vars.AZURE_RESOURCE_TAG_L2 }}\"=='true'].{Name:name}[0]" -g Testnet -o tsv)
           VM_BUILD_NUMBER=$(echo $VM_HOSTNAME | perl -ne 'if (/(-[0-9]{1}-)(\d+)/) { print $2 }') # Extract build number from VM hostname, e.g. D-0-321 -> 321
           echo "VM_BUILD_NUMBER=${VM_BUILD_NUMBER}" >> $GITHUB_ENV
           echo "VM_HOSTNAME: ${VM_HOSTNAME}"
@@ -90,7 +90,7 @@ jobs:
       - name: 'Output env vars'
         id: outputVars
         run: |
-          echo "VM_BUILD_NUMBER=${{env.VM_BUILD_NUMBER}}" >> $GITHUB_OUTPUT
+          echo "VM_BUILD_NUMBER=${{ env.VM_BUILD_NUMBER }}" >> $GITHUB_OUTPUT
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -101,10 +101,10 @@ jobs:
 
       - name: 'Build and push obscuro node images'
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{vars.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
-          docker push ${{vars.L2_ENCLAVE_DOCKER_BUILD_TAG}}
-          DOCKER_BUILDKIT=1 docker build -t ${{vars.L2_HOST_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
-          docker push ${{vars.L2_HOST_DOCKER_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} -f dockerfiles/enclave.Dockerfile  .
+          docker push ${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.L2_HOST_DOCKER_BUILD_TAG }} -f dockerfiles/host.Dockerfile .
+          docker push ${{ vars.L2_HOST_DOCKER_BUILD_TAG }}
 
   deploy:
     needs: build
@@ -156,11 +156,11 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{vars.AZURE_HOSTNAME_PREFIX}}-${{ matrix.host_id }}-${{needs.build.outputs.VM_BUILD_NUMBER}}"  \
+            az vm run-command invoke -g Testnet -n "${{ vars.AZURE_HOSTNAME_PREFIX }}-${{ matrix.host_id }}-${{ needs.build.outputs.VM_BUILD_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts '
-               docker pull ${{vars.L2_HOST_DOCKER_BUILD_TAG}} \
-            && docker pull ${{vars.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
+               docker pull ${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
+            && docker pull ${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} \
             && rm -rf /home/obscuro/go-obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
             && cd /home/obscuro/go-obscuro/ \
@@ -172,15 +172,15 @@ jobs:
               -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \
               -private_key=${{ secrets[matrix.node_pk_lookup] }} \
               -sequencer_id=${{ vars.ACCOUNT_ADDR_NODE_0 }} \
-              -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{vars.AZURE_RESOURCE_NAME_L2}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com:10000 \
+              -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{ vars.AZURE_RESOURCE_NAME_L2 }}-${{ needs.build.outputs.VM_BUILD_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
               -host_p2p_port=10000 \
-              -enclave_docker_image=${{vars.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
-              -host_docker_image=${{vars.L2_HOST_DOCKER_BUILD_TAG}} \
+              -enclave_docker_image=${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} \
+              -host_docker_image=${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
               -log_level=${{ github.event.inputs.log_level }} \
-              -batch_interval=${{vars.L2_BATCH_INTERVAL}} \
-              -max_batch_interval=${{vars.L2_MAX_BATCH_INTERVAL}} \
-              -rollup_interval=${{vars.L2_ROLLUP_INTERVAL}} \
-              -l1_chain_id=${{vars.L1_CHAIN_ID}} \
+              -batch_interval=${{ vars.L2_BATCH_INTERVAL }} \
+              -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
+              -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
+              -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
               upgrade'
 
   check-obscuro-is-healthy:
@@ -196,8 +196,8 @@ jobs:
       - name: "Wait until obscuro node is healthy"
         shell: bash
         run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{vars.AZURE_RESOURCE_NAME_L2}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{vars.AZURE_RESOURCE_NAME_L2}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ vars.AZURE_RESOURCE_NAME_L2 }}-${{ needs.build.outputs.VM_BUILD_NUMBER }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ vars.AZURE_RESOURCE_NAME_L2 }}-${{ needs.build.outputs.VM_BUILD_NUMBER }}.uksouth.cloudapp.azure.com
 
   deploy-faucet-on-dispatch:
     uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
