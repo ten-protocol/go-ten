@@ -22,7 +22,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         from: deployer,
         args: [ messageBusAddress ],
         log: true,
-        proxy: true
     });
 };
 

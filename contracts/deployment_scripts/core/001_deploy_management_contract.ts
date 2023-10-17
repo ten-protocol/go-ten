@@ -23,7 +23,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         contract: contractArtifact,
         args: [],
         log: true,
-        proxy: true
     });
     const busAddress = await deployments.read('ManagementContract', 'messageBus');
 
