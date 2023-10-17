@@ -68,9 +68,10 @@ function getNetworkName(gatewayAddress) {
 
 function getRPCFromUrl(gatewayAddress) {
     // get the correct RPC endpoint for each network
+    console.log("Gateway address is: ", gatewayAddress)
     switch(gatewayAddress) {
-        case 'https://testnet.obscu.ro/':
-            return 'https://rpc.sepolia-testnet.obscu.ro'
+        // case 'https://testnet.obscu.ro/':
+        //     return 'https://rpc.sepolia-testnet.obscu.ro'
         case 'https://sepolia-testnet.obscu.ro':
             return 'https://rpc.sepolia-testnet.obscu.ro'
         case 'https://uat-testnet.obscu.ro/':
