@@ -189,7 +189,8 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfE
 	if _, err := s.produceBatch(sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), transactions, uint64(time.Now().Unix()), skipBatchIfEmpty); err != nil {
 		if errors.Is(err, components.ErrNoTransactionsToProcess) {
 			// skip batch production when there are no transactions to process
-			s.logger.Info("Skipping batch production, no transactions to execute")
+			// todo: this might be a useful event to track for metrics (skipping batch production because empty batch)
+			s.logger.Debug("Skipping batch production, no transactions to execute")
 			return nil
 		}
 		return fmt.Errorf(" failed producing batch. Cause: %w", err)
