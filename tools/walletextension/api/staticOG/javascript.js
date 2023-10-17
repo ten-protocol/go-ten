@@ -56,9 +56,9 @@ async function fetchAndDisplayVersion() {
 
 function getNetworkName(gatewayAddress) {
     switch(gatewayAddress) {
-        case 'https://uat-testnet.obscu.ro/':
+        case 'https://uat-testnet.obscu.ro':
             return 'Obscuro UAT-Testnet';
-        case 'https://dev-testnet.obscu.ro/':
+        case 'https://dev-testnet.obscu.ro':
             return 'Obscuro Dev-Testnet';
         default:
             return 'Obscuro Testnet';
@@ -68,15 +68,14 @@ function getNetworkName(gatewayAddress) {
 
 function getRPCFromUrl(gatewayAddress) {
     // get the correct RPC endpoint for each network
-    console.log("Gateway address is: ", gatewayAddress)
     switch(gatewayAddress) {
         // case 'https://testnet.obscu.ro/':
         //     return 'https://rpc.sepolia-testnet.obscu.ro'
         case 'https://sepolia-testnet.obscu.ro':
             return 'https://rpc.sepolia-testnet.obscu.ro'
-        case 'https://uat-testnet.obscu.ro/':
+        case 'https://uat-testnet.obscu.ro':
             return 'https://rpc.uat-testnet.obscu.ro';
-        case 'https://dev-testnet.obscu.ro/':
+        case 'https://dev-testnet.obscu.ro':
             return 'https://rpc.dev-testnet.obscu.ro';
         default:
             return gatewayAddress;
