@@ -1,8 +1,6 @@
 const eventClick = "click";
 const eventDomLoaded = "DOMContentLoaded";
 const idJoin = "join";
-const idAddAccount = "addAccount";
-const idAddAllAccounts = "addAllAccounts";
 const idRevokeUserID = "revokeUserID";
 const idStatus = "status";
 const idAccountsTable = "accountsTable";
@@ -56,9 +54,9 @@ async function fetchAndDisplayVersion() {
 
 function getNetworkName(gatewayAddress) {
     switch(gatewayAddress) {
-        case 'https://uat-testnet.obscu.ro/':
+        case 'https://uat-testnet.obscu.ro':
             return 'Obscuro UAT-Testnet';
-        case 'https://dev-testnet.obscu.ro/':
+        case 'https://dev-testnet.obscu.ro':
             return 'Obscuro Dev-Testnet';
         default:
             return 'Obscuro Testnet';
@@ -69,13 +67,13 @@ function getNetworkName(gatewayAddress) {
 function getRPCFromUrl(gatewayAddress) {
     // get the correct RPC endpoint for each network
     switch(gatewayAddress) {
-        case 'https://testnet.obscu.ro/':
-            return 'https://rpc.sepolia-testnet.obscu.ro'
+        // case 'https://testnet.obscu.ro':
+        //     return 'https://rpc.sepolia-testnet.obscu.ro'
         case 'https://sepolia-testnet.obscu.ro':
             return 'https://rpc.sepolia-testnet.obscu.ro'
-        case 'https://uat-testnet.obscu.ro/':
+        case 'https://uat-testnet.obscu.ro':
             return 'https://rpc.uat-testnet.obscu.ro';
-        case 'https://dev-testnet.obscu.ro/':
+        case 'https://dev-testnet.obscu.ro':
             return 'https://rpc.dev-testnet.obscu.ro';
         default:
             return gatewayAddress;
@@ -207,12 +205,9 @@ function checkIfMetamaskIsLoaded() {
     if (window.ethereum) {
         handleEthereum();
     } else {
-        // TODO: Refactor and change the way we hide and display items on our webpage
-        document.getElementById(idJoin).style.display = "none";
-        document.getElementById(idAddAccount).style.display = "none";
-        document.getElementById(idAddAllAccounts).style.display = "none";
-        document.getElementById(idRevokeUserID).style.display = "none";
         const statusArea = document.getElementById(idStatus);
+        const table = document.getElementById("accountsTable");
+        table.style.display = "none";
         statusArea.innerText = 'Connecting to Metamask...';
         window.addEventListener('ethereum#initialized', handleEthereum, {
             once: true,
