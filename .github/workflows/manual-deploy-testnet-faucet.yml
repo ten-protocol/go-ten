@@ -38,12 +38,7 @@ jobs:
       - name: 'Print GitHub variables'
         # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
         run: |
-          echo "ACCOUNT_ADDR_WORKER=${{ vars.ACCOUNT_ADDR_WORKER }}"
-          echo "ACCOUNT_ADDR_NODE_0=${{ vars.ACCOUNT_ADDR_NODE_0 }}"
-          echo "ACCOUNT_ADDR_NODE_1=${{ vars.ACCOUNT_ADDR_NODE_1 }}"
-          echo "DOCKER_BUILD_TAG_FAUCET=${{ vars.DOCKER_BUILD_TAG_FAUCET }}"
-          echo "FAUCET_PAY_AMOUNT=${{ vars.FAUCET_PAY_AMOUNT }}"
-          echo "L2_RPC_URL_VALIDATOR=${{ vars.L2_RPC_URL_VALIDATOR }}"
+          echo "GitHub Variables = ${{ toJSON(vars) }}"
 
       - run: echo "Workflow_dispatch inputs ${{ github.event.inputs.testnet_type }}"
       - run: echo "Workflow_call inputs     ${{ inputs.testnet_type }}"

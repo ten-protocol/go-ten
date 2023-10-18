@@ -45,25 +45,7 @@ jobs:
       - name: 'Print GitHub variables'
         # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
         run: |
-          echo "ACCOUNT_ADDR_NODE_0=${{ vars.ACCOUNT_ADDR_NODE_0 }}"
-          echo "ACCOUNT_ADDR_NODE_1=${{ vars.ACCOUNT_ADDR_NODE_1 }}"
-          echo "ACCOUNT_ADDR_WORKER=${{ vars.ACCOUNT_ADDR_WORKER }}"
-          
-          echo "AZURE_HOSTNAME_PREFIX=${{ vars.AZURE_HOSTNAME_PREFIX }}"
-          echo "AZURE_RESOURCE_NAME_L2=${{ vars.AZURE_RESOURCE_NAME_L2 }}"
-          echo "AZURE_RESOURCE_TAG_L2=${{ vars.AZURE_RESOURCE_TAG_L2 }}"
-          
-          echo "DOCKER_BUILD_TAG_ENCLAVE=${{ vars.DOCKER_BUILD_TAG_ENCLAVE }}"
-          echo "DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}"
-          echo "DOCKER_BUILD_TAG_HOST=${{ vars.DOCKER_BUILD_TAG_HOST }}"
-          
-          echo "FAUCET_INITIAL_FUNDS=${{ vars.FAUCET_INITIAL_FUNDS }}"
-          
-          echo "L1_CHAIN_ID=${{ vars.L1_CHAIN_ID }}"
-          
-          echo "L2_BATCH_INTERVAL=${{ vars.L2_BATCH_INTERVAL }}"
-          echo "L2_MAX_BATCH_INTERVAL=${{ vars.L2_MAX_BATCH_INTERVAL }}"
-          echo "L2_ROLLUP_INTERVAL=${{ vars.L2_ROLLUP_INTERVAL }}"
+          echo "GitHub Variables = ${{ toJSON(vars) }}"
 
       - uses: actions/checkout@v3
 

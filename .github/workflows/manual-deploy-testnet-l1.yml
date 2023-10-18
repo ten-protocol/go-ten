@@ -37,15 +37,7 @@ jobs:
       - name: 'Print GitHub variables'
         # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
         run: |
-          echo "ACCOUNT_ADDR_NODE_0=${{ vars.ACCOUNT_ADDR_NODE_0 }}"
-          echo "ACCOUNT_ADDR_NODE_1=${{ vars.ACCOUNT_ADDR_NODE_1 }}"
-          echo "ACCOUNT_ADDR_WORKER=${{ vars.ACCOUNT_ADDR_WORKER }}"
-          echo "ACCOUNT_ADDR_WORKER=${{ vars.ACCOUNT_ADDR_L1_BRIDGE_TEST }}"
-          
-          echo "AZURE_RESOURCE_NAME_L1=${{ vars.AZURE_RESOURCE_NAME_L1 }}"
-          echo "AZURE_RESOURCE_TAG_L1=${{ vars.AZURE_RESOURCE_TAG_L1 }}"
-          
-          echo "DOCKER_BUILD_TAG_ETH2NETWORK=${{ vars.DOCKER_BUILD_TAG_ETH2NETWORK }}"
+          echo "GitHub Variables = ${{ toJSON(vars) }}"
 
       - uses: actions/checkout@v3
 

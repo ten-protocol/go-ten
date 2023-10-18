@@ -29,6 +29,11 @@ jobs:
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
+      - name: 'Print GitHub variables'
+        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
+        run: |
+          echo "GitHub Variables = ${{ toJSON(vars) }}"
+
       - uses: actions/checkout@v3
 
       - name: 'Login to Azure docker registry'
