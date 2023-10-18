@@ -68,23 +68,26 @@ type Guardian struct {
 
 	hostInterrupter *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
 
-	logger gethlog.Logger
+	logger           gethlog.Logger
+	maxBatchInterval time.Duration
+	lastBatchCreated time.Time
 }
 
 func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
 	return &Guardian{
-		hostData:        hostData,
-		state:           NewStateTracker(logger),
-		enclaveClient:   enclaveClient,
-		sl:              serviceLocator,
-		batchInterval:   cfg.BatchInterval,
-		rollupInterval:  cfg.RollupInterval,
-		l1StartHash:     cfg.L1StartHash,
-		maxRollupSize:   cfg.MaxRollupSize,
-		blockTime:       cfg.L1BlockTime,
-		db:              db,
-		hostInterrupter: interrupter,
-		logger:          logger,
+		hostData:         hostData,
+		state:            NewStateTracker(logger),
+		enclaveClient:    enclaveClient,
+		sl:               serviceLocator,
+		batchInterval:    cfg.BatchInterval,
+		maxBatchInterval: cfg.MaxBatchInterval,
+		rollupInterval:   cfg.RollupInterval,
+		l1StartHash:      cfg.L1StartHash,
+		maxRollupSize:    cfg.MaxRollupSize,
+		blockTime:        cfg.L1BlockTime,
+		db:               db,
+		hostInterrupter:  interrupter,
+		logger:           logger,
 	}
 }
 
@@ -385,8 +388,8 @@ func (g *Guardian) catchupWithL2() error {
 func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, error) {
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
 	if !g.submitDataLock.TryLock() {
-		g.logger.Info("Unable to submit block, already submitting another block")
-		// we are already submitting a block, and we don't want to leak goroutines, we wil catch up with the block later
+		g.logger.Debug("Unable to submit block, enclave is busy processing data")
+		// we are waiting for the enclave to process other data, and we don't want to leak goroutines, we wil catch up with the block later
 		return false, nil
 	}
 	receipts, err := g.sl.L1Repo().FetchObscuroReceipts(block)
@@ -508,7 +511,10 @@ func (g *Guardian) periodicBatchProduction() {
 				continue
 			}
 			g.logger.Debug("Create batch")
-			err := g.enclaveClient.CreateBatch()
+			// if maxBatchInterval is set higher than batchInterval then we are happy to skip creating batches when there is no data
+			// (up to a maximum time of maxBatchInterval)
+			skipBatchIfEmpty := g.maxBatchInterval > g.batchInterval && time.Since(g.lastBatchCreated) < g.maxBatchInterval
+			err := g.enclaveClient.CreateBatch(skipBatchIfEmpty)
 			if err != nil {
 				g.logger.Error("Unable to produce batch", log.ErrKey, err)
 			}
@@ -608,6 +614,7 @@ func (g *Guardian) streamEnclaveData() {
 				}
 
 				if g.hostData.IsSequencer { // if we are the sequencer we need to broadcast this new batch to the network
+					g.lastBatchCreated = time.Now()
 					g.logger.Info("Batch produced. Sending to peers..", log.BatchHeightKey, resp.Batch.Header.Number, log.BatchHashKey, resp.Batch.Hash())
 
 					err = g.sl.P2P().BroadcastBatches([]*common.ExtBatch{resp.Batch})

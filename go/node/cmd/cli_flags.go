@@ -28,6 +28,7 @@ const (
 	logLevelFlag                = "log_level"
 	isInboundP2PDisabledFlag    = "is_inbound_p2p_disabled"
 	batchIntervalFlag           = "batch_interval"
+	maxBatchIntervalFlag        = "max_batch_interval"
 	rollupIntervalFlag          = "rollup_interval"
 	l1ChainIDFlag               = "l1_chain_id"
 )
@@ -62,6 +63,7 @@ func getFlagUsageMap() map[string]string {
 		logLevelFlag:                "Sets the log level 1-Error, 5-Trace",
 		isInboundP2PDisabledFlag:    "Disables inbound p2p (for testing)",
 		batchIntervalFlag:           "Duration between each batch. Can be formatted like 500ms or 1s",
+		maxBatchIntervalFlag:        "Max interval between batches, if greater than batchInterval then some empty batches will be skipped. Can be formatted like 500ms or 1s",
 		rollupIntervalFlag:          "Duration between each rollup. Can be formatted like 500ms or 1s",
 		l1ChainIDFlag:               "Chain ID of the L1 network",
 	}

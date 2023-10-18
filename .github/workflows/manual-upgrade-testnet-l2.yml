@@ -25,7 +25,7 @@ on:
         type: choice
         options:
           - 'dev-testnet'
-          - 'testnet'
+          - 'uat-testnet'
           - 'sepolia-testnet'
       log_level:
         description: 'Log Level 1-Error 5-Trace'
@@ -66,6 +66,7 @@ jobs:
           echo "WORKER_ADDR=${{vars.WORKER_ADDR}}"
           
           echo "BATCH_INTERVAL=${{vars.BATCH_INTERVAL}}"
+          echo "L2_MAX_BATCH_INTERVAL=${{vars.L2_MAX_BATCH_INTERVAL}}"
           echo "ROLLUP_INTERVAL=${{vars.ROLLUP_INTERVAL}}"
 
       - name: 'Login via Azure CLI'
@@ -76,7 +77,7 @@ jobs:
       - name: 'Fetch latest VM hostnames by env tag and extract build number'
         id: fetch_hostnames
         run: |
-          VM_HOSTNAME=$(az vm list --query "[?tags.${{vars.RESOURCE_TAG_NAME}}=='true'].{Name:name}[0]" -g Testnet -o tsv)
+          VM_HOSTNAME=$(az vm list --query "[?tags.\"${{vars.RESOURCE_TAG_NAME}}\"=='true'].{Name:name}[0]" -g Testnet -o tsv)
           VM_BUILD_NUMBER=$(echo $VM_HOSTNAME | perl -ne 'if (/(-[0-9]{1}-)(\d+)/) { print $2 }') # Extract build number from VM hostname, e.g. D-0-321 -> 321
           echo "VM_BUILD_NUMBER=${VM_BUILD_NUMBER}" >> $GITHUB_ENV
           echo "VM_HOSTNAME: ${VM_HOSTNAME}"
@@ -177,6 +178,7 @@ jobs:
               -host_docker_image=${{vars.L2_HOST_DOCKER_BUILD_TAG}} \
               -log_level=${{ github.event.inputs.log_level }} \
               -batch_interval=${{vars.BATCH_INTERVAL}} \
+              -max_batch_interval=${{vars.L2_MAX_BATCH_INTERVAL}} \
               -rollup_interval=${{vars.ROLLUP_INTERVAL}} \
               -l1_chain_id=${{vars.L1_CHAIN_ID}} \
               upgrade'
@@ -227,10 +229,10 @@ jobs:
         run: |
           curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "dev_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
 
-      - name: 'Send a repository dispatch to obscuro-test on upgrade of testnet'
-        if: ${{ github.event.inputs.testnet_type == 'testnet' }}
+      - name: 'Send a repository dispatch to obscuro-test on upgrade of uat-testnet'
+        if: ${{ github.event.inputs.testnet_type == 'uat-testnet' }}
         run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "uat_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
 
   obscuro-test-signal-on-schedule:
     runs-on: ubuntu-latest

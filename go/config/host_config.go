@@ -84,6 +84,10 @@ type HostInputConfig struct {
 	// Min interval before creating the next batch (only used by Sequencer nodes)
 	BatchInterval time.Duration
 
+	// MaxBatchInterval is the max interval between batches, if this is set higher than BatchInterval, the host will
+	// not create empty batches until the MaxBatchInterval is reached or a transaction is received.
+	MaxBatchInterval time.Duration
+
 	// Min interval before creating the next rollup (only used by Sequencer nodes)
 	RollupInterval time.Duration
 
@@ -131,6 +135,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		LevelDBPath:               p.LevelDBPath,
 		DebugNamespaceEnabled:     p.DebugNamespaceEnabled,
 		BatchInterval:             p.BatchInterval,
+		MaxBatchInterval:          p.MaxBatchInterval,
 		RollupInterval:            p.RollupInterval,
 		L1BlockTime:               p.L1BlockTime,
 		IsInboundP2PDisabled:      p.IsInboundP2PDisabled,
@@ -158,6 +163,9 @@ type HostConfig struct {
 	MessageBusAddress gethcommon.Address
 	// Min interval before creating the next batch (only used by Sequencer nodes)
 	BatchInterval time.Duration
+	// MaxBatchInterval is the max interval between batches, if this is set higher than BatchInterval, the host will
+	// not create empty batches until the MaxBatchInterval is reached or a transaction is received.
+	MaxBatchInterval time.Duration
 	// Min interval before creating the next rollup (only used by Sequencer nodes)
 	RollupInterval time.Duration
 	// MaxRollupSize is the max size of the rollup
@@ -256,11 +264,11 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		MetricsEnabled:            true,
 		MetricsHTTPPort:           14000,
 		UseInMemoryDB:             true,
-		DebugNamespaceEnabled:     false,
-		BatchInterval:             1 * time.Second,
-		RollupInterval:            5 * time.Second,
-		L1BlockTime:               15 * time.Second,
-		IsInboundP2PDisabled:      false,
-		MaxRollupSize:             1024 * 64,
+		DebugNamespaceEnabled:     false, BatchInterval: 1 * time.Second,
+		MaxBatchInterval:     1 * time.Second,
+		RollupInterval:       5 * time.Second,
+		L1BlockTime:          15 * time.Second,
+		IsInboundP2PDisabled: false,
+		MaxRollupSize:        1024 * 64,
 	}
 }

@@ -18,7 +18,7 @@ on:
         type: choice
         options:
           - 'dev-testnet'
-          - 'testnet'
+          - 'uat-testnet'
           - 'sepolia-testnet'
       log_level:
         description: 'Log Level 1-Error 5-Trace'
@@ -65,6 +65,7 @@ jobs:
           echo "WORKER_ADDR=${{vars.WORKER_ADDR}}"
           
           echo "BATCH_INTERVAL=${{vars.BATCH_INTERVAL}}"
+          echo "L2_MAX_BATCH_INTERVAL=${{vars.L2_MAX_BATCH_INTERVAL}}"
           echo "ROLLUP_INTERVAL=${{vars.ROLLUP_INTERVAL}}"
           echo "FAUCET_FUNDS=${{vars.FAUCET_FUNDS}}"
 
@@ -107,8 +108,7 @@ jobs:
           echo "L1_START_HASH=$L1START" >> $GITHUB_ENV
           echo "L1_START_HASH=$L1START" >> $GITHUB_OUTPUT
 
-      - name: 'Save container logs on failure'
-        if: failure()
+      - name: 'Save L1 deployer container logs'
         # Wait to make sure the logs are available in the container
         run: |
           sleep 60
@@ -128,14 +128,13 @@ jobs:
           inlineScript: |
             $(az resource list --tag ${{vars.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
-      - name: 'Upload container logs on failure'
+      - name: 'Upload L1 deployer container logs'
         uses: actions/upload-artifact@v3
-        if: failure()
         with:
           name: deploy-l1-artifacts
           path: |
             deploy-l1-contracts.out
-          retention-days: 2
+          retention-days: 1
 
   deploy:
     needs: build
@@ -253,6 +252,7 @@ jobs:
                -is_debug_namespace_enabled=true \
                -log_level=${{ github.event.inputs.log_level }} \
                -batch_interval=${{vars.BATCH_INTERVAL}} \
+               -max_batch_interval=${{vars.L2_MAX_BATCH_INTERVAL}} \
                -rollup_interval=${{vars.ROLLUP_INTERVAL}} \
                -l1_chain_id=${{vars.L1_CHAIN_ID}} \
                start'
@@ -329,17 +329,17 @@ jobs:
           -docker_image=${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
           -faucet_funds=${{vars.FAUCET_FUNDS}}
 
-      - name: 'Save container logs'
+      - name: 'Save L2 deployer container logs'
         run: |
           docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
 
-      - name: 'Upload container logs'
+      - name: 'Upload L2 deployer container logs'
         uses: actions/upload-artifact@v3
         with:
           name: deploy-l2-artifacts
           path: |
             deploy-l2-contracts.out
-          retention-days: 2
+          retention-days: 1
 
   deploy-faucet:
     name: 'Trigger Faucet deployment for dev- / testnet on a new deployment'
@@ -363,6 +363,6 @@ jobs:
           curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "dev_testnet_deployed", "client_payload": { "ref": "${{ github.ref_name }}" }'
 
       - name: 'Send a repository dispatch to obscuro-test on deployment of testnet'
-        if: ${{ (github.event.inputs.testnet_type == 'testnet') }}
+        if: ${{ (github.event.inputs.testnet_type == 'uat-testnet') }}
         run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "testnet_deployed", "client_payload": { "ref": "${{ github.ref_name }}" }'
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "uat_testnet_deployed", "client_payload": { "ref": "${{ github.ref_name }}" }'

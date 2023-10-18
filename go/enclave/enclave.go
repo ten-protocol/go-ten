@@ -581,7 +581,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 	return nil
 }
 
-func (e *enclaveImpl) CreateBatch() common.SystemError {
+func (e *enclaveImpl) CreateBatch(skipBatchIfEmpty bool) common.SystemError {
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateBatch call ended")
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested CreateBatch with the enclave stopping"))
@@ -590,7 +590,7 @@ func (e *enclaveImpl) CreateBatch() common.SystemError {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	err := e.Sequencer().CreateBatch()
+	err := e.Sequencer().CreateBatch(skipBatchIfEmpty)
 	if err != nil {
 		return responses.ToInternalError(err)
 	}
