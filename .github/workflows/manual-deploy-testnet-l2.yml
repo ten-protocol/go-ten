@@ -103,14 +103,14 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            $(az resource list --tag ${{ vars.AZURE_RESOURCE_TAG_L2 }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+            $(az resource list --tag ${{ vars.AZURE_DEPLOY_GROUP_L2 }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
       # This will clean up any lingering dependencies - might fail if there are no resources to cleanup
       - name: 'Delete VMs dependencies'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            $(az resource list --tag ${{ vars.AZURE_RESOURCE_TAG_L2 }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+            $(az resource list --tag ${{ vars.AZURE_DEPLOY_GROUP_L2 }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
       - name: 'Upload L1 deployer container logs'
         uses: actions/upload-artifact@v3
@@ -176,11 +176,11 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "${{ vars.AZURE_HOSTNAME_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            az vm create -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{ vars.AZURE_RESOURCE_NAME_L2 }}-${{ GITHUB.RUN_NUMBER }}" \
-            --tags deploygroup=ObscuroNode-${{ vars.AZURE_RESOURCE_NAME_L2 }}-${{ GITHUB.RUN_NUMBER }}  ${{ vars.AZURE_RESOURCE_TAG_L2 }}=true \
-            --vnet-name ${{ vars.AZURE_RESOURCE_NAME_L2 }}-virtual-network --subnet ${{ vars.AZURE_RESOURCE_NAME_L2 }}-sub-network \
+            --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}" \
+            --tags deploygroup=ObscuroNode-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}  ${{ vars.AZURE_DEPLOY_GROUP_L2 }}=true \
+            --vnet-name ${{ github.event.inputs.testnet_type }}-virtual-network --subnet ${{ github.event.inputs.testnet_type }}-sub-network \
             --size Standard_DC8_v2 --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
             --public-ip-sku Standard --authentication-type password
 
@@ -188,7 +188,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "${{ vars.AZURE_HOSTNAME_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 80,81,6060,6061,10000
+            az vm open-port -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 80,81,6060,6061,10000
 
         # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
       - name: 'Allow time for VM initialization'
@@ -199,7 +199,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{ vars.AZURE_HOSTNAME_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
+            az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
@@ -229,7 +229,7 @@ jobs:
                -l1_start=${{needs.build.outputs.L1_START_HASH}} \
                -private_key=${{ secrets[matrix.node_pk_lookup] }} \
                -sequencer_id=${{ vars.ACCOUNT_ADDR_NODE_0 }} \
-               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{ vars.AZURE_RESOURCE_NAME_L2 }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
+               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
                -host_p2p_port=10000 \
                -enclave_docker_image=${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} \
                -host_docker_image=${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
@@ -258,18 +258,18 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: 'Remove existing backend nodes from the load balancer'
-        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh ${{ vars.AZURE_RESOURCE_NAME_L2 }}
+        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh ${{ github.event.inputs.testnet_type }}
 
       - name: 'Add load balancer address pool to the IP configuration'
         uses: azure/CLI@v1
         with:
           inlineScript: |
             az network nic ip-config address-pool add \
-              --address-pool ${{ vars.AZURE_RESOURCE_NAME_L2 }}-backend-pool \
-              --ip-config-name ipconfig${{ vars.AZURE_HOSTNAME_PREFIX }}-1-${{ GITHUB.RUN_NUMBER }} \
-              --nic-name ${{ vars.AZURE_HOSTNAME_PREFIX }}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
+              --address-pool ${{ github.event.inputs.testnet_type }}-backend-pool \
+              --ip-config-name ipconfig${{ vars.AZURE_RESOURCE_PREFIX }}-1-${{ GITHUB.RUN_NUMBER }} \
+              --nic-name ${{ vars.AZURE_RESOURCE_PREFIX }}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
-              --lb-name ${{ vars.AZURE_RESOURCE_NAME_L2 }}-loadbalancer
+              --lb-name ${{ github.event.inputs.testnet_type }}-loadbalancer
 
   check-obscuro-is-healthy:
     needs:
@@ -284,8 +284,8 @@ jobs:
       - name: "Wait until obscuro node is healthy"
         shell: bash
         run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ vars.AZURE_RESOURCE_NAME_L2 }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ vars.AZURE_RESOURCE_NAME_L2 }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
 
   deploy-l2-contracts:
     needs:
@@ -302,7 +302,7 @@ jobs:
         shell: bash
         run: |
           go run ./testnet/launcher/l2contractdeployer/cmd \
-          -l2_host=obscuronode-0-${{ vars.AZURE_RESOURCE_NAME_L2 }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
+          -l2_host=obscuronode-0-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -l2_ws_port=81 \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
