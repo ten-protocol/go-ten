@@ -8,12 +8,11 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
 )
 
-func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
+func parseRequest(body []byte) (*common.RPCRequest, error) {
 	// We unmarshal the JSON request
 	var reqJSONMap map[string]json.RawMessage
 	err := json.Unmarshal(body, &reqJSONMap)
@@ -36,7 +35,7 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 		return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %w", err)
 	}
 
-	return &accountmanager.RPCRequest{
+	return &common.RPCRequest{
 		ID:     reqID,
 		Method: method,
 		Params: params,
@@ -85,7 +84,7 @@ func getUserID(conn userconn.UserConn, userIDPosition int) (string, error) {
 	return userID, nil
 }
 
-func handleEthError(req *accountmanager.RPCRequest, conn userconn.UserConn, logger gethlog.Logger, err error) {
+func handleEthError(req *common.RPCRequest, conn userconn.UserConn, logger gethlog.Logger, err error) {
 	var method string
 	id := json.RawMessage("1")
 	if req != nil {
