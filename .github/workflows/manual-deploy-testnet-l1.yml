@@ -106,7 +106,6 @@ jobs:
         with:
           inlineScript: |
             az vm run-command invoke -g Testnet -n "${{ github.event.inputs.testnet_type }}-eth2network-${{ GITHUB.RUN_NUMBER }}"  \
-            az vm run-command invoke -g Testnet -n "${{ github.event.inputs.testnet_type }}-eth2network-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && sudo apt-get update \
