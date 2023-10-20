@@ -373,8 +373,6 @@ const initialize = async () => {
                 accountsTable.style.display = "block"
                 await populateAccountsTable(document, tableBody, userID)
             }
-            beginBox.style.visibility = "visible";
-            spinner.style.visibility = "hidden";
 
             // if accounts change we want to give user chance to add them to Obscuro
             window.ethereum.on('accountsChanged', async function (accounts) {
@@ -389,6 +387,8 @@ const initialize = async () => {
             });
 
             await displayConnectedAndJoinedSuccessfully()
+            beginBox.style.visibility = "visible";
+            spinner.style.visibility = "hidden";
         }
     })
 
