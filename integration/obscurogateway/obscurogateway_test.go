@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"math/big"
 	"net/http"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
+	integrationCommon "github.com/obscuronet/go-obscuro/integration/common"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
@@ -204,24 +206,8 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string) {
 	err = ethStdClient.SendTransaction(context.Background(), signedTx)
 	require.NoError(t, err)
 
-	var receipt *types.Receipt
-	for start := time.Now(); time.Since(start) < time.Minute; time.Sleep(time.Second) {
-		receipt, err = ethStdClient.TransactionReceipt(context.Background(), signedTx.Hash())
-		if err == nil {
-			break
-		}
-		if receipt != nil && receipt.Status == 1 {
-			break
-		}
-		fmt.Printf("no tx receipt after %s - %s\n", time.Since(start), err)
-	}
-
-	if receipt == nil {
-		t.Fatalf("Did not mine the transaction after %s seconds  - receipt: %+v", 30*time.Second, receipt)
-	}
-	if receipt.Status == 0 {
-		t.Fatalf("Tx Failed")
-	}
+	receipt, err := integrationCommon.AwaitReceiptEth(context.Background(), ethStdClient, signedTx.Hash(), time.Minute)
+	require.NoError(t, err)
 
 	pack, _ := errorsContractABI.Pack("force_require")
 	_, err = ethStdClient.CallContract(context.Background(), ethereum.CallMsg{
@@ -231,6 +217,9 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string) {
 	}, nil)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "execution reverted: Forced require")
+	_, ok := err.(errutil.EVMSerialisableError)
+	require.True(t, ok)
+	require.Equal(t, err.(errutil.EVMSerialisableError).Reason, []byte(""))
 
 	pack, _ = errorsContractABI.Pack("force_revert")
 	_, err = ethStdClient.CallContract(context.Background(), ethereum.CallMsg{
@@ -240,6 +229,9 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string) {
 	}, nil)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "execution reverted: Forced revert")
+	_, ok = err.(errutil.EVMSerialisableError)
+	require.True(t, ok)
+	require.Equal(t, err.(errutil.EVMSerialisableError).Reason, []byte(""))
 
 	pack, _ = errorsContractABI.Pack("force_assert")
 	_, err = ethStdClient.CallContract(context.Background(), ethereum.CallMsg{

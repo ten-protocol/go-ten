@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
@@ -109,8 +108,9 @@ func handleEthError(req *accountmanager.RPCRequest, conn userconn.UserConn, logg
 		Result:  nil,
 	}
 
-	if _, ok := err.(errutil.EVMSerialisableError); ok {
-		jsonRPRCError.Error.Data = err.(errutil.EVMSerialisableError).Reason
+	if evmError, ok := err.(errutil.EVMSerialisableError); ok {
+		jsonRPRCError.Error.Data = evmError.Reason
+		jsonRPRCError.Error.Code = evmError.ErrorCode()
 	}
 
 	errBytes, err := json.Marshal(jsonRPRCError)
