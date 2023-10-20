@@ -1,3 +1,4 @@
+const gatewayaddress = "https://testnet.obscu.ro"
 const eventClick = "click";
 const eventDomLoaded = "DOMContentLoaded";
 const idJoin = "join";
@@ -5,12 +6,16 @@ const idRevokeUserID = "revokeUserID";
 const idStatus = "status";
 const idAccountsTable = "accountsTable";
 const idTableBody = "tableBody";
+const idInformation = "information";
+const idInformation2 = "information2";
+const idBegin = "begin-box";
+const idSpinner = "spinner";
 const obscuroGatewayVersion = "v1";
-const pathJoin = obscuroGatewayVersion + "/join/";
-const pathAuthenticate = obscuroGatewayVersion + "/authenticate/";
-const pathQuery = obscuroGatewayVersion + "/query/";
-const pathRevoke = obscuroGatewayVersion + "/revoke/";
-const pathVersion = "/version/";
+const pathJoin = gatewayaddress + "/" + obscuroGatewayVersion + "/join/";
+const pathAuthenticate = gatewayaddress + "/" + obscuroGatewayVersion + "/authenticate/";
+const pathQuery = gatewayaddress + "/" + obscuroGatewayVersion + "/query/";
+const pathRevoke = gatewayaddress + "/" + obscuroGatewayVersion + "/revoke/";
+const pathVersion = gatewayaddress + "/" + "version/";
 const obscuroChainIDDecimal = 443;
 const methodPost = "post";
 const methodGet = "get";
@@ -26,7 +31,7 @@ function isValidUserIDFormat(value) {
     return typeof value === 'string' && value.length === 64;
 }
 
-let obscuroGatewayAddress = window.location.protocol + "//" + window.location.host;
+let obscuroGatewayAddress = gatewayaddress;
 
 let provider = null;
 
@@ -271,9 +276,14 @@ const initialize = async () => {
     const joinButton = document.getElementById(idJoin);
     const revokeUserIDButton = document.getElementById(idRevokeUserID);
     const statusArea = document.getElementById(idStatus);
+    const informationArea = document.getElementById(idInformation);
+    const informationArea2 = document.getElementById(idInformation2);
+    const beginBox = document.getElementById(idBegin);
+    const spinner = document.getElementById(idSpinner);
 
     const accountsTable = document.getElementById(idAccountsTable)
     const tableBody = document.getElementById(idTableBody);
+
     // getUserID from the gateway with getStorageAt method
     let userID = await getUserID()
 
@@ -281,12 +291,17 @@ const initialize = async () => {
         joinButton.style.display = "block"
         revokeUserIDButton.style.display = "none"
         accountsTable.style.display = "none"
+        informationArea.style.display = "block"
+        informationArea2.style.display = "none"
     }
 
     async function displayConnectedAndJoinedSuccessfully() {
         joinButton.style.display = "none"
+        informationArea.style.display = "none"
+        informationArea2.style.display = "block"
         revokeUserIDButton.style.display = "block"
         accountsTable.style.display = "block"
+        
         await populateAccountsTable(document, tableBody, userID)
     }
 
@@ -311,7 +326,7 @@ const initialize = async () => {
         if (await isObscuroChain()) {
             userID = await getUserID()
             if (!isValidUserIDFormat(userID)) {
-                statusArea.innerText = "Please remove existing Obscuro network from metamask and start again."
+                statusArea.innerText = "Existing Obscuro network detected in MetaMask. Please remove before hitting begin"
             }
         } else {
             // we are not on an Obscuro network - try to switch
@@ -349,11 +364,15 @@ const initialize = async () => {
             }
 
             userID = await getUserID();
+            beginBox.style.visibility = "hidden";
+            spinner.style.visibility = "visible";
             for (const account of accounts) {
                 await authenticateAccountWithObscuroGateway(ethereum, account, userID)
                 accountsTable.style.display = "block"
                 await populateAccountsTable(document, tableBody, userID)
             }
+            beginBox.style.visibility = "visible";
+            spinner.style.visibility = "hidden";
 
             // if accounts change we want to give user chance to add them to Obscuro
             window.ethereum.on('accountsChanged', async function (accounts) {
@@ -372,6 +391,8 @@ const initialize = async () => {
     })
 
     revokeUserIDButton.addEventListener(eventClick, async () => {
+        beginBox.style.visibility = "hidden";
+        spinner.style.visibility = "visible";
         let result = await revokeUserID(userID);
 
         await populateAccountsTable(document, tableBody, userID)
@@ -382,6 +403,8 @@ const initialize = async () => {
             statusArea.innerText = "Revoking UserID failed";
         }
     })
+    beginBox.style.visibility = "visible";
+    spinner.style.visibility = "hidden";
 }
 
 window.addEventListener(eventDomLoaded, checkIfMetamaskIsLoaded);
