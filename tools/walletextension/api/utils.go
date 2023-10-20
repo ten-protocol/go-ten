@@ -108,7 +108,7 @@ func handleEthError(req *accountmanager.RPCRequest, conn userconn.UserConn, logg
 		Result:  nil,
 	}
 
-	if evmError, ok := err.(errutil.EVMSerialisableError); ok {
+	if evmError, ok := err.(errutil.EVMSerialisableError); ok { //nolint: errorlint
 		jsonRPRCError.Error.Data = evmError.Reason
 		jsonRPRCError.Error.Code = evmError.ErrorCode()
 	}
