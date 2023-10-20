@@ -56,7 +56,8 @@ func (s *Simulation) Start() {
 	s.waitForObscuroGenesisOnL1()
 
 	// Arbitrary sleep to wait for RPC clients to get up and running
-	time.Sleep(1 * time.Second)
+	// and for all l2 nodes to receive the genesis l2 batch
+	time.Sleep(2 * time.Second)
 
 	s.bridgeFundingToObscuro()
 	s.trackLogs()              // Create log subscriptions, to validate that they're working correctly later.
