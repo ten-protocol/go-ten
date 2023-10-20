@@ -1,4 +1,3 @@
-const gatewayaddress = "https://testnet.obscu.ro"
 const eventClick = "click";
 const eventDomLoaded = "DOMContentLoaded";
 const idJoin = "join";
@@ -11,11 +10,11 @@ const idInformation2 = "information2";
 const idBegin = "begin-box";
 const idSpinner = "spinner";
 const obscuroGatewayVersion = "v1";
-const pathJoin = gatewayaddress + "/" + obscuroGatewayVersion + "/join/";
-const pathAuthenticate = gatewayaddress + "/" + obscuroGatewayVersion + "/authenticate/";
-const pathQuery = gatewayaddress + "/" + obscuroGatewayVersion + "/query/";
-const pathRevoke = gatewayaddress + "/" + obscuroGatewayVersion + "/revoke/";
-const pathVersion = gatewayaddress + "/" + "version/";
+const pathJoin = obscuroGatewayVersion + "/join/";
+const pathAuthenticate = obscuroGatewayVersion + "/authenticate/";
+const pathQuery = obscuroGatewayVersion + "/query/";
+const pathRevoke = obscuroGatewayVersion + "/revoke/";
+const pathVersion = "/version/";
 const obscuroChainIDDecimal = 443;
 const methodPost = "post";
 const methodGet = "get";
@@ -31,7 +30,7 @@ function isValidUserIDFormat(value) {
     return typeof value === 'string' && value.length === 64;
 }
 
-let obscuroGatewayAddress = gatewayaddress;
+let obscuroGatewayAddress = window.location.protocol + "//" + window.location.host;
 
 let provider = null;
 
