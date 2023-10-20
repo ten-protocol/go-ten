@@ -14,6 +14,8 @@ html {
     font-stretch: normal;
   }
 
+  ol li { padding: 5px 0px; }
+
   .logo {
     height: 100px;
   }
@@ -205,7 +207,7 @@ input { display: table-cell; }
 table {
     display: none;
     border-collapse: collapse;
-    width: fit-content;
+    width: 100%;
     margin: auto;  /* Center the table */
     background-color: #000000;  /* Dark Background */
     color: white;  /* Light Text */
@@ -217,7 +219,7 @@ th, td {
     text-align: center;
 }
 th {
-    background-color: #444;  /* Slightly Darker Header */
+    background-color: #111111;  /* Slightly Darker Header */
 }
 
 h2 {
@@ -242,6 +244,7 @@ h2 {
 #revokeUserID {
     margin-top: 10px;
     padding: 10px;
+    display: none;
 }
 
 .spinner {

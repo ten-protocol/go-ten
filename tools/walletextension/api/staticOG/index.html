@@ -3,7 +3,7 @@
 
 <head>
     <title>Obscuro Gateway</title>
-    <link rel="icon" type="favicon-32x32" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"
             type="application/javascript"></script>
     <script type="module" type="application/javascript" src="javascript.js"></script>
@@ -12,7 +12,7 @@
 
 <body>
         <div class="container-fluid">
-            <img src="obscuro.svg" alt="Obscuro" class="logo">
+            <img src="obscuro.svg" alt="Obscuro logo" class="logo">
         </div>
 
         <div class="spinner" id="spinner"></div>
@@ -20,24 +20,24 @@
 <div class="begin-box" id="begin-box">
     <h2>Welcome to the Obscuro Gateway</h2>
     <form>
-        <div id="information">3 clicks to setup encrypted communication between MetaMask and the Obscuro Network.
+        <div id="information">Three clicks to setup encrypted communication between MetaMask and the Obscuro Network.
             Upon hitting Begin, you'll be asked to:
             <ol>
                 <li>
-                    Add the Obscuro Testnet network as a new network to MetaMask. Check the Network URL base is https://testnet.obscu.ro and the chain ID is 443 and hit approve  
+                    Add the Obscuro Testnet network as a new network to MetaMask. Check the Network URL base is https://testnet.obscu.ro and the chain ID is 443 and hit Approve.
                 </li>
                 <li>
-                    Allow MetaMask to switch networks to the Obscuro Testnet network
+                    Allow MetaMask to switch networks to the Obscuro Testnet network.
                 </li>
                 <li>
-                    Sign the <b>Signature Request</b> (this is not a transaction) to register a unique viewing key tied to your wallet account that allows only you to view your transactions. You will have to do this for each account
+                    Sign the <b>Signature Request</b> (this is not a transaction) to register a unique viewing key tied to your wallet account that allows only you to view your transactions. You will get a request for each of your accounts, only hit Sign on the accounts you want to connect.
                 </li>
             </ol>
         </div>
         <div id="information2">
             You are set up on Obscuro. Your connected accounts are below:
         </div>
-      <a id="join">
+      <a id="join" href="#">
         <span></span>
         <span></span>
         <span></span>
@@ -55,7 +55,7 @@
         <!-- Rows will be added here -->
         </tbody>
     </table>
-    <button class="btn btn-primary btn-lg btn-block mb-3" id="revokeUserID" style="display: none">Revoke Accounts</button>
+    <button class="btn btn-primary btn-lg btn-block mb-3" id="revokeUserID">Revoke Accounts</button>
       <p id="status"></p>
     </form>
   </div>

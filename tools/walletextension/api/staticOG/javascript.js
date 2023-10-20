@@ -55,7 +55,6 @@ async function fetchAndDisplayVersion() {
     }
 }
 
-
 function getNetworkName(gatewayAddress) {
     switch(gatewayAddress) {
         case 'https://uat-testnet.obscu.ro':
@@ -66,7 +65,6 @@ function getNetworkName(gatewayAddress) {
             return 'Obscuro Testnet';
     }
 }
-
 
 function getRPCFromUrl(gatewayAddress) {
     // get the correct RPC endpoint for each network
@@ -407,6 +405,8 @@ const initialize = async () => {
             statusArea.innerText = "Revoking UserID failed";
         }
     })
+    beginBox.style.visibility = "visible";
+    spinner.style.visibility = "hidden";
 }
 
 window.addEventListener(eventDomLoaded, checkIfMetamaskIsLoaded);
