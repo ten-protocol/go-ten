@@ -19,32 +19,18 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
     steps:
+      - name: 'Print GitHub variables'
+        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
+        run: |
+          echo "GitHub Variables = ${{ toJSON(vars) }}"
+
       - uses: actions/checkout@v3
 
       - name: 'Set up Docker'
         uses: docker/setup-buildx-action@v1
-
-      - name: 'Set Obscuro Scan variables for sepolia-testnet'
-        if: ${{ github.event.inputs.testnet_type == 'sepolia-testnet' }}
-        run: |
-          echo "OBSCURO_SCAN_FE_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/fe_obscuro_scan_sepolia_testnet:latest" >> $GITHUB_ENV
-          echo "OBSCURO_SCAN_API_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/api_obscuro_scan_sepolia_testnet:latest" >> $GITHUB_ENV
-          echo "OBSCURO_SCAN_NODE_HOST=erpc.sepolia-testnet.obscu.ro" >> $GITHUB_ENV
-
-      - name: 'Set Obscuro Scan variables for uat-testnet'
-        if: ${{ github.event.inputs.testnet_type == 'uat-testnet' }}
-        run: |
-          echo "OBSCURO_SCAN_FE_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/fe_obscuro_scan_uat_testnet:latest" >> $GITHUB_ENV
-          echo "OBSCURO_SCAN_API_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/api_obscuro_scan_uat_testnet:latest" >> $GITHUB_ENV
-          echo "OBSCURO_SCAN_NODE_HOST=erpc.uat-testnet.obscu.ro" >> $GITHUB_ENV
-
-      - name: 'Set Obscuro Scan variables for dev-testnet'
-        if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
-        run: |
-          echo "OBSCURO_SCAN_FE_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/fe_obscuro_scan_dev_testnet:latest" >> $GITHUB_ENV
-          echo "OBSCURO_SCAN_API_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/api_obscuro_scan_dev_testnet:latest" >> $GITHUB_ENV
-          echo "OBSCURO_SCAN_NODE_HOST=erpc.dev-testnet.obscu.ro" >> $GITHUB_ENV
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -60,20 +46,20 @@ jobs:
 
       - name: Build and Push Docker FE Image
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{ env.OBSCURO_SCAN_FE_BUILD_TAG }} -f ./tools/obscuroscan_v2/frontend/Dockerfile . 
-          docker push ${{ env.OBSCURO_SCAN_FE_BUILD_TAG }}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_SCAN_FE }} -f ./tools/obscuroscan_v2/frontend/Dockerfile . 
+          docker push ${{ vars.DOCKER_BUILD_TAG_SCAN_FE }}
 
       - name: Build and Push Docker API Image
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{ env.OBSCURO_SCAN_API_BUILD_TAG }} -f ./tools/obscuroscan_v2/backend/Dockerfile . 
-          docker push ${{ env.OBSCURO_SCAN_API_BUILD_TAG }}    
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_SCAN_API }} -f ./tools/obscuroscan_v2/backend/Dockerfile . 
+          docker push ${{ vars.DOCKER_BUILD_TAG_SCAN_API }}    
 
       - name: 'Deploy FE to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
           dns-name-label: ${{ github.event.inputs.testnet_type }}-obscuro-scan
-          image: ${{ env.OBSCURO_SCAN_FE_BUILD_TAG }}
+          image: ${{ vars.DOCKER_BUILD_TAG_SCAN_FE }}
           name: ${{ github.event.inputs.testnet_type }}-fe-obscuro-scan
           location: 'uksouth'
           restart-policy: 'Never'
@@ -88,11 +74,11 @@ jobs:
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
           dns-name-label: ${{ github.event.inputs.testnet_type }}-api-obscuro-scan
-          image: ${{ env.OBSCURO_SCAN_API_BUILD_TAG }}
+          image: ${{ vars.DOCKER_BUILD_TAG_SCAN_API }}
           name: ${{ github.event.inputs.testnet_type }}-api-obscuro-scan
           location: 'uksouth'
           restart-policy: 'Never'
-          command-line: ./cmd/backend --nodeHostAddress http://${{ env.OBSCURO_SCAN_NODE_HOST }}:80 --serverAddress 0.0.0.0:80
+          command-line: ./cmd/backend --nodeHostAddress http://${{ vars.L2_RPC_URL_VALIDATOR }}:80 --serverAddress 0.0.0.0:80
           ports: '80'
           cpu: 2
           memory: 2
