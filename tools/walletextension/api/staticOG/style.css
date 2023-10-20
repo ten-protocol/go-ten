@@ -1,14 +1,184 @@
 html {
+    height: 100%;
+  }
+  body {
+    margin:0;
+    padding:0;
     font-family: sans-serif;
-    line-height: 1.5;
-}
+    background: linear-gradient(#000, #141e30);
+    color: #f6f6f6;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.6;
+    font-style: normal;
+    font-stretch: normal;
+  }
 
-body {
-    color: white;
-    background-color: black;
-    margin: 1rem;
-}
+  ol li { padding: 5px 0px; }
 
+  .logo {
+    height: 100px;
+  }
+  
+  .begin-box {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 800px;
+    padding: 40px;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,.5);
+    box-sizing: border-box;
+    box-shadow: 0 15px 25px rgba(0,0,0,.6);
+    border-radius: 10px;
+    visibility: hidden;
+  }
+  
+  .begin-box h2 {
+    margin: 0 0 30px;
+    padding: 0;
+    color: #fff;
+    text-align: center;
+  }
+  
+  .begin-box .user-box {
+    position: relative;
+  }
+  
+  .begin-box .user-box input {
+    width: 100%;
+    padding: 10px 0;
+    font-size: 16px;
+    color: #fff;
+    margin-bottom: 30px;
+    border: none;
+    border-bottom: 1px solid #fff;
+    outline: none;
+    background: transparent;
+  }
+  .begin-box .user-box label {
+    position: absolute;
+    top:0;
+    left: 0;
+    padding: 10px 0;
+    font-size: 16px;
+    color: #fff;
+    pointer-events: none;
+    transition: .5s;
+  }
+  
+  .begin-box .user-box input:focus ~ label,
+  .begin-box .user-box input:valid ~ label {
+    top: -20px;
+    left: 0;
+    color: #03e9f4;
+    font-size: 12px;
+  }
+  
+  .begin-box form a {
+    position: relative;
+    display: inline-block;
+    padding: 10px 20px;
+    color: #03e9f4;
+    font-size: 16px;
+    text-decoration: none;
+    text-transform: uppercase;
+    overflow: hidden;
+    transition: .5s;
+    margin-top: 40px;
+    letter-spacing: 4px
+  }
+  
+  .begin-box a:hover {
+    background: #03e9f4;
+    color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 0 5px #03e9f4,
+                0 0 25px #03e9f4,
+                0 0 50px #03e9f4,
+                0 0 100px #03e9f4;
+  }
+  
+  .begin-box a span {
+    position: absolute;
+    display: block;
+  }
+  
+  .begin-box a span:nth-child(1) {
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #03e9f4);
+    animation: btn-anim1 1s linear infinite;
+  }
+  
+  @keyframes btn-anim1 {
+    0% {
+      left: -100%;
+    }
+    50%,100% {
+      left: 100%;
+    }
+  }
+  
+  .begin-box a span:nth-child(2) {
+    top: -100%;
+    right: 0;
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, #03e9f4);
+    animation: btn-anim2 1s linear infinite;
+    animation-delay: .25s
+  }
+  
+  @keyframes btn-anim2 {
+    0% {
+      top: -100%;
+    }
+    50%,100% {
+      top: 100%;
+    }
+  }
+  
+  .begin-box a span:nth-child(3) {
+    bottom: 0;
+    right: -100%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(270deg, transparent, #03e9f4);
+    animation: btn-anim3 1s linear infinite;
+    animation-delay: .5s
+  }
+  
+  @keyframes btn-anim3 {
+    0% {
+      right: -100%;
+    }
+    50%,100% {
+      right: 100%;
+    }
+  }
+  
+  .begin-box a span:nth-child(4) {
+    bottom: -100%;
+    left: 0;
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(360deg, transparent, #03e9f4);
+    animation: btn-anim4 1s linear infinite;
+    animation-delay: .75s
+  }
+  
+  @keyframes btn-anim4 {
+    0% {
+      bottom: -100%;
+    }
+    50%,100% {
+      bottom: 100%;
+    }
+  }
+  
 a {
     color: white;
 }
@@ -35,11 +205,13 @@ input { display: table-cell; }
 
 /* basic style for the accounts table*/
 table {
+    display: none;
     border-collapse: collapse;
-    width: fit-content;
+    width: 100%;
     margin: auto;  /* Center the table */
-    background-color: #333;  /* Dark Background */
+    background-color: #000000;  /* Dark Background */
     color: white;  /* Light Text */
+    margin-top: 20px;
 }
 th, td {
     border: 1px solid #666;  /* Darker Border */
@@ -47,5 +219,101 @@ th, td {
     text-align: center;
 }
 th {
-    background-color: #444;  /* Slightly Darker Header */
+    background-color: #111111;  /* Slightly Darker Header */
 }
+
+h2 {
+    font-weight: normal;
+}
+
+#join {
+    margin: auto;
+}
+
+#versionDisplay {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    font-size: 0.5rem;
+}
+
+#status {
+    color: red;
+}
+
+#revokeUserID {
+    margin-top: 10px;
+    padding: 10px;
+    display: none;
+}
+
+.spinner {
+    position: relative;
+    margin: auto;
+    box-sizing: border-box;
+    background-clip: padding-box;
+    width: 200px;
+    height: 200px;
+    border-radius: 100px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    -webkit-mask: linear-gradient(rgba(0, 0, 0, 0.1), #000000 90%);
+    transform-origin: 50% 60%;
+    transform: perspective(200px) rotateX(66deg);
+    animation: spinner-wiggle 1.2s infinite;
+  }
+  
+  @keyframes spinner-wiggle {
+    30% {
+      transform: perspective(200px) rotateX(66deg);
+    }
+    40% {
+      transform: perspective(200px) rotateX(65deg);
+    }
+    50% {
+      transform: perspective(200px) rotateX(68deg);
+    }
+    60% {
+      transform: perspective(200px) rotateX(64deg);
+    }
+  }
+  .spinner:before,
+  .spinner:after {
+    content: "";
+    position: absolute;
+    margin: -4px;
+    box-sizing: inherit;
+    width: inherit;
+    height: inherit;
+    border-radius: inherit;
+    opacity: .05;
+    border: inherit;
+    border-color: transparent;
+    animation: spinner-spin 1.2s cubic-bezier(0.6, 0.2, 0, 0.8) infinite, spinner-fade 1.2s linear infinite;
+  }
+  
+  .spinner:before {
+    border-top-color: #66e6ff;
+  }
+  
+  .spinner:after {
+    border-top-color: #f0db75;
+    animation-delay: 0.3s;
+  }
+  
+  @keyframes spinner-spin {
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes spinner-fade {
+    20% {
+      opacity: .1;
+    }
+    40% {
+      opacity: 1;
+    }
+    60% {
+      opacity: .1;
+    }
+  }
+  
