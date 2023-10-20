@@ -1,11 +1,12 @@
 package faucet
 
 import (
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
 )
 
-func init() {
+func init() { //nolint: gochecknoinits
 	contractABI, err := abi.JSON(strings.NewReader(errorsContractABIString))
 	if err != nil {
 		panic(err)
