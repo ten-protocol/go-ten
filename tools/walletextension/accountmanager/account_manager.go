@@ -312,7 +312,11 @@ func (m *AccountManager) executeSubscribe(client rpc.Client, req *RPCRequest, re
 			case err = <-subscription.Err():
 				// An error on this channel means the subscription has ended, so we exit the loop.
 				if userConn != nil && err != nil {
-					userConn.HandleError(err.Error())
+					// todo properly handle the disconnect to the user side
+					err = userConn.WriteResponse([]byte(err.Error()))
+					if err != nil {
+						m.logger.Error("unable to close connection with the user", log.ErrKey, err)
+					}
 				}
 
 				return

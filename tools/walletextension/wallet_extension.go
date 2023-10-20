@@ -27,8 +27,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.Subscribe)
-
 // WalletExtension handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
 	hostAddr           string // The address on which the Obscuro host can be reached.
@@ -95,19 +93,21 @@ func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, co
 	}
 
 	err = selectedAccountManager.ProxyRequest(request, &rpcResp, conn)
-
-	if err != nil && !errors.Is(err, rpc.ErrNilResponse) {
-		response = common.CraftErrorResponse(err)
-	} else if errors.Is(err, rpc.ErrNilResponse) {
-		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
-		response[common.JSONKeyResult] = nil
-	} else {
-		response[common.JSONKeyResult] = rpcResp
-
-		// todo (@ziga) - fix this upstream on the decode
-		// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
-		adjustStateRoot(rpcResp, response)
+	if err != nil {
+		if errors.Is(err, rpc.ErrNilResponse) {
+			// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
+			response[common.JSONKeyResult] = nil
+			return response, nil
+		}
+		return nil, err
 	}
+
+	response[common.JSONKeyResult] = rpcResp
+
+	// todo (@ziga) - fix this upstream on the decode
+	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
+	adjustStateRoot(rpcResp, response)
+
 	return response, nil
 }
 

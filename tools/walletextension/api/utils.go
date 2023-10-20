@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
@@ -80,4 +84,44 @@ func getUserID(conn userconn.UserConn, userIDPosition int) (string, error) {
 	}
 
 	return userID, nil
+}
+
+func handleEthError(req *accountmanager.RPCRequest, conn userconn.UserConn, logger gethlog.Logger, err error) {
+	var method string
+	id := json.RawMessage("1")
+	if req != nil {
+		method = req.Method
+		id = req.ID
+	}
+
+	errjson := &common.JSONError{
+		Code:    0,
+		Message: err.Error(),
+		Data:    nil,
+	}
+
+	jsonRPRCError := common.JSONRPCMessage{
+		Version: "2.0",
+		ID:      id,
+		Method:  method,
+		Params:  nil,
+		Error:   errjson,
+		Result:  nil,
+	}
+
+	errBytes, err := json.Marshal(jsonRPRCError)
+	if err != nil {
+		logger.Error("unable to marshal error - %w", log.ErrKey, err)
+		return
+	}
+
+	if err = conn.WriteResponse(errBytes); err != nil {
+		logger.Error("unable to write response back - %w", log.ErrKey, err)
+	}
+}
+
+func handleError(conn userconn.UserConn, logger gethlog.Logger, err error) {
+	if err = conn.WriteResponse([]byte(err.Error())); err != nil {
+		logger.Error("unable to write response back", log.ErrKey, err)
+	}
 }

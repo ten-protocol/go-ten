@@ -1,10 +1,7 @@
 package common
 
 import (
-	"fmt"
 	"time"
-
-	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
 const (
@@ -53,7 +50,4 @@ const (
 	PathVersion                         = "/version/"
 )
 
-var (
-	ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.Subscribe)
-	ReaderHeadTimeout    = 10 * time.Second
-)
+var ReaderHeadTimeout = 10 * time.Second
