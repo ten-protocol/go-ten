@@ -12,6 +12,7 @@ import (
 
 	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
+	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -83,8 +84,9 @@ func TestObscuroGateway(t *testing.T) {
 
 	// run the tests against the exis
 	for name, test := range map[string]func(*testing.T, string, string){
-		"testAreTxsMinted":  testAreTxsMinted,
-		"testErrorHandling": testErrorHandling,
+		"testAreTxsMinted":            testAreTxsMinted,
+		"testErrorHandling":           testErrorHandling,
+		"testErrorsRevertedArePassed": testErrorsRevertedArePassed,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, httpURL, wsURL)
@@ -165,6 +167,88 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string) {
 		err = json.Unmarshal(response, &jsonRPCError)
 		require.NoError(t, err)
 	}
+}
+
+func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string) {
+	// set up the ogClient
+	ogClient := lib.NewObscuroGatewayLibrary(httpURL, wsURL)
+
+	// join + register against the og
+	err := ogClient.Join()
+	require.NoError(t, err)
+
+	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger())
+	err = ogClient.RegisterAccount(w.PrivateKey(), w.Address())
+	require.NoError(t, err)
+
+	// use a standard eth client via the og
+	ethStdClient, err := ethclient.Dial(ogClient.HTTP())
+	require.NoError(t, err)
+
+	// check the balance
+	balance, err := ethStdClient.BalanceAt(context.Background(), w.Address(), nil)
+	require.NoError(t, err)
+	require.True(t, big.NewInt(0).Cmp(balance) == -1)
+
+	// deploy errors contract
+	deployTx := &types.LegacyTx{
+		Nonce:    w.GetNonceAndIncrement(),
+		Gas:      uint64(1_000_000),
+		GasPrice: gethcommon.Big1,
+		Data:     gethcommon.FromHex(errorsContractBytecode),
+	}
+
+	signedTx, err := w.SignTransaction(deployTx)
+	require.NoError(t, err)
+
+	err = ethStdClient.SendTransaction(context.Background(), signedTx)
+	require.NoError(t, err)
+
+	var receipt *types.Receipt
+	for start := time.Now(); time.Since(start) < time.Minute; time.Sleep(time.Second) {
+		receipt, err = ethStdClient.TransactionReceipt(context.Background(), signedTx.Hash())
+		if err == nil {
+			break
+		}
+		if receipt != nil && receipt.Status == 1 {
+			break
+		}
+		fmt.Printf("no tx receipt after %s - %s\n", time.Since(start), err)
+	}
+
+	if receipt == nil {
+		t.Fatalf("Did not mine the transaction after %s seconds  - receipt: %+v", 30*time.Second, receipt)
+	}
+	if receipt.Status == 0 {
+		t.Fatalf("Tx Failed")
+	}
+
+	pack, _ := errorsContractABI.Pack("force_require")
+	_, err = ethStdClient.CallContract(context.Background(), ethereum.CallMsg{
+		From: w.Address(),
+		To:   &receipt.ContractAddress,
+		Data: pack,
+	}, nil)
+	require.Error(t, err)
+	require.Equal(t, err.Error(), "execution reverted: Forced require")
+
+	pack, _ = errorsContractABI.Pack("force_revert")
+	_, err = ethStdClient.CallContract(context.Background(), ethereum.CallMsg{
+		From: w.Address(),
+		To:   &receipt.ContractAddress,
+		Data: pack,
+	}, nil)
+	require.Error(t, err)
+	require.Equal(t, err.Error(), "execution reverted: Forced revert")
+
+	pack, _ = errorsContractABI.Pack("force_assert")
+	_, err = ethStdClient.CallContract(context.Background(), ethereum.CallMsg{
+		From: w.Address(),
+		To:   &receipt.ContractAddress,
+		Data: pack,
+	}, nil)
+	require.Error(t, err)
+	require.Equal(t, err.Error(), "execution reverted")
 }
 
 func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet) common.TxHash {
