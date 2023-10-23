@@ -53,6 +53,6 @@ describe('Gateway', () => {
             request: jest.fn().mockRejectedValue(new Error('Signature error')),
         })
 
-        await expect(gateway.registerAccount('privateKey', 'address')).rejects.toThrow('Failed to signe message. Error: Signature error');
+        await expect(gateway.registerAccount('privateKey', 'address')).rejects.toThrow('Failed to sign message. Error: Signature error');
     });
 });
