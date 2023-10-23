@@ -34,7 +34,7 @@ class Gateway {
                     params: [message, address]
                 })
             } catch (err) {
-                throw new Error(`Failed to signe message. ${err}`);
+                throw new Error(`Failed to sign message. ${err}`);
             }
 
         if (signature === -1) {
@@ -42,16 +42,15 @@ class Gateway {
         }
 
         try {
-            const authenticateUserURL = pathAuthenticate+"?u="+this.userID()
+            const authenticateUserURL = pathAuthenticate+"?u="+this.userId
             const authenticateFields = {"signature": signature, "message": message}
-            const authenticateResp = await fetch(
+            const authenticateResp = await axios.post(
                 authenticateUserURL, {
-                    method: "post",
                     headers: {
                         "Accept": "application/json",
                         "Content-Type": "application/json"
                     },
-                    body: JSON.stringify(authenticateFields)
+                    authenticateFields
                 }
             );
             return await authenticateResp.text()

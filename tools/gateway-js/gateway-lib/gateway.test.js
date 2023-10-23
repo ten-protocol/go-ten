@@ -35,8 +35,9 @@ describe('Gateway', () => {
     });
 
     it('should register account successfully', async () => {
-        global.fetch.mockResolvedValue({
-            text: jest.fn().mockResolvedValue('Account registered'),
+        axios.post.mockResolvedValue({
+            status: 200,
+            text: jest.fn().mockResolvedValue('Account registered')
         });
 
         gateway = new Gateway("", "", {
