@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	gethlog "github.com/ethereum/go-ethereum/log"
-
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
@@ -109,11 +108,18 @@ func handleEthError(req *accountmanager.RPCRequest, conn userconn.UserConn, logg
 		Result:  nil,
 	}
 
+	if evmError, ok := err.(errutil.EVMSerialisableError); ok { //nolint: errorlint
+		jsonRPRCError.Error.Data = evmError.Reason
+		jsonRPRCError.Error.Code = evmError.ErrorCode()
+	}
+
 	errBytes, err := json.Marshal(jsonRPRCError)
 	if err != nil {
 		logger.Error("unable to marshal error - %w", log.ErrKey, err)
 		return
 	}
+
+	logger.Info(fmt.Sprintf("Forwarding %s error response from Obscuro node: %s", method, errBytes))
 
 	if err = conn.WriteResponse(errBytes); err != nil {
 		logger.Error("unable to write response back - %w", log.ErrKey, err)
@@ -121,6 +127,8 @@ func handleEthError(req *accountmanager.RPCRequest, conn userconn.UserConn, logg
 }
 
 func handleError(conn userconn.UserConn, logger gethlog.Logger, err error) {
+	logger.Error("error processing request - Forwarding response to user", log.ErrKey, err)
+
 	if err = conn.WriteResponse([]byte(err.Error())); err != nil {
 		logger.Error("unable to write response back", log.ErrKey, err)
 	}

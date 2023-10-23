@@ -178,8 +178,8 @@ func ethRequestHandler(walletExt *walletextension.WalletExtension, conn userconn
 		handleEthError(request, conn, walletExt.Logger(), err)
 		return
 	}
-	walletExt.Logger().Info(fmt.Sprintf("Forwarding %s response from Obscuro node: %s", request.Method, rpcResponse))
 
+	walletExt.Logger().Info(fmt.Sprintf("Forwarding %s response from Obscuro node: %s", request.Method, rpcResponse))
 	if err = conn.WriteResponse(rpcResponse); err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
