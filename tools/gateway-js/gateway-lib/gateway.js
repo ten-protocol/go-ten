@@ -18,7 +18,8 @@ class Gateway {
             if (response.status !== 200) {
                 throw new Error(`Failed to get userID. Status code: ${response.status}`);
             }
-            this.userID = response.data;
+            // todo make further checks on the data
+            this.userId = response.data;
         } catch (error) {
             throw new Error(`Failed to get userID. ${error}`);
         }

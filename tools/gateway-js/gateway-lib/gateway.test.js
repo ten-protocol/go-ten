@@ -25,7 +25,7 @@ describe('Gateway', () => {
 
         await gateway.join();
 
-        expect(gateway.userID).toBe('testUserID');
+        expect(gateway.userId).toBe('testUserID');
     });
 
     it('should throw error on unsuccessful join', async () => {
