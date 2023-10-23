@@ -24,7 +24,7 @@ class Gateway {
         }
     }
 
-    async registerAccount(privateKey, address) {
+    async registerAccount(address) {
         const message = `Register ${this.userID} for ${address.toLowerCase()}`;
         let signature = ""
 
