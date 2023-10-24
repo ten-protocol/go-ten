@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
@@ -41,6 +42,7 @@ const (
 type AccountManager struct {
 	unauthedClient rpc.Client
 	// todo (@ziga) - create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
+	accountsMutex  sync.RWMutex
 	accountClients map[gethcommon.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
 	logger         gethlog.Logger
 }
@@ -55,6 +57,8 @@ func NewAccountManager(unauthedClient rpc.Client, logger gethlog.Logger) *Accoun
 
 // AddClient adds a client to the list of clients, keyed by account address.
 func (m *AccountManager) AddClient(address gethcommon.Address, client *rpc.EncRPCClient) {
+	m.accountsMutex.Lock()
+	defer m.accountsMutex.Unlock()
 	m.accountClients[address] = client
 }
 
@@ -80,6 +84,9 @@ const emptyFilterCriteria = "[]" // This is the value that gets passed for an em
 // determine the client based on the topics
 // if none is found use all clients from current user
 func (m *AccountManager) suggestSubscriptionClient(rpcReq *RPCRequest) ([]rpc.Client, error) {
+	m.accountsMutex.RLock()
+	defer m.accountsMutex.RUnlock()
+
 	clients := make([]rpc.Client, 0, len(m.accountClients))
 
 	// by default, if no client is identified as a candidate, then subscribe to all accounts
@@ -129,6 +136,9 @@ func (m *AccountManager) suggestSubscriptionClient(rpcReq *RPCRequest) ([]rpc.Cl
 }
 
 func (m *AccountManager) executeCall(rpcReq *RPCRequest, rpcResp *interface{}) error {
+	m.accountsMutex.RLock()
+	defer m.accountsMutex.RUnlock()
+
 	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
 	suggestedClient := m.suggestAccountClient(rpcReq, m.accountClients)
 
