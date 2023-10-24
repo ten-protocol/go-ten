@@ -38,6 +38,7 @@ class Gateway {
                 throw new Error(`Failed to sign message. ${err}`);
             }
 
+        // todo make further checks on the data
         if (signature === -1) {
             return "Signing failed"
         }
@@ -46,14 +47,16 @@ class Gateway {
             const authenticateUserURL = pathAuthenticate+"?u="+this.userId
             const authenticateFields = {"signature": signature, "message": message}
             const authenticateResp = await axios.post(
-                authenticateUserURL, {
+                authenticateUserURL,
+                authenticateFields,
+                {
                     headers: {
                         "Accept": "application/json",
                         "Content-Type": "application/json"
-                    },
-                    authenticateFields
+                    }
                 }
             );
+            // todo make further checks on the data
             return await authenticateResp.text()
         } catch (error) {
             throw new Error(`Failed to register account. ${error}`);

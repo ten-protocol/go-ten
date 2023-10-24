@@ -40,7 +40,7 @@ describe('Gateway', () => {
             text: jest.fn().mockResolvedValue('Account registered')
         });
 
-        gateway = new Gateway("", "", {
+        gateway = new Gateway(httpURL, wsURL, {
             request: jest.fn().mockResolvedValue("mockSignature")
         })
 
@@ -50,7 +50,7 @@ describe('Gateway', () => {
     });
 
     it('should throw error on unsuccessful account registration', async () => {
-        gateway = new Gateway("", "", {
+        gateway = new Gateway(httpURL, wsURL, {
             request: jest.fn().mockRejectedValue(new Error('Signature error')),
         })
 
