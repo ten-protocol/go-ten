@@ -1,0 +1,23 @@
+{
+  "name": "obscuro-widget",
+  "version": "1.0.0",
+  "description": "Obscuro widget that enables developers to embed a widget that makes it easy for users to connect with the Obscuro gateway.",
+  "main": "src/index.js",
+  "keywords": [
+    "obscuro",
+    "gateway",
+    "widget",
+    "ethereum",
+    "blockchain",
+    "web3",
+    "metamask"
+  ],
+  "author": "obscuro",
+  "license": "ISC",
+  "dependencies": {
+    "ethers": "latest"
+  },
+  "devDependencies": {
+    "parcel": "^2.10.0"
+  }
+}
