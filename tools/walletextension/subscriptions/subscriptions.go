@@ -63,7 +63,6 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 			// At this stage we want to use only the first account - same as before
 			// introduce subscribing with all accounts in another PR )
 		}
-
 	}
 	return nil
 }
