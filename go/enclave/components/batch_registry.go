@@ -177,10 +177,8 @@ func (br *batchRegistry) GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Bat
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 		}
 		batch = genesisBatch
-	case gethrpc.PendingBlockNumber:
-		// todo - depends on the current pending rollup; leaving it for a different iteration as it will need more thought
-		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
-	case gethrpc.SafeBlockNumber, gethrpc.FinalizedBlockNumber, gethrpc.LatestBlockNumber:
+	// note: our API currently treats all these block statuses the same for obscuro batches
+	case gethrpc.SafeBlockNumber, gethrpc.FinalizedBlockNumber, gethrpc.LatestBlockNumber, gethrpc.PendingBlockNumber:
 		headBatch, err := br.storage.FetchBatchBySeqNo(br.headBatchSeq.Uint64())
 		if err != nil {
 			return nil, fmt.Errorf("batch with requested height %d was not found. Cause: %w", height, err)

@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/responses"
@@ -207,17 +206,15 @@ type FeeHistoryResult struct {
 // Given a batch number, returns the hash of the batch with that number.
 func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	// Handling the special cases first. No special handling is required for rpc.EarliestBlockNumber.
-	if batchNumber == rpc.LatestBlockNumber {
+	// note: our API currently treats all these block statuses the same for obscuro batches
+	if batchNumber == rpc.LatestBlockNumber || batchNumber == rpc.PendingBlockNumber ||
+		batchNumber == rpc.FinalizedBlockNumber || batchNumber == rpc.SafeBlockNumber {
 		batchHeader, err := api.host.DB().GetHeadBatchHeader()
 		if err != nil {
 			return nil, err
 		}
 		batchHash := batchHeader.Hash()
 		return &batchHash, nil
-	}
-
-	if batchNumber == rpc.PendingBlockNumber {
-		return nil, errutil.ErrNoImpl
 	}
 
 	batchNumberBig := big.NewInt(batchNumber.Int64())
