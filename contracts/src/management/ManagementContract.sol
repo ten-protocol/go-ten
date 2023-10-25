@@ -143,7 +143,7 @@ contract ManagementContract is Ownable {
     }
 
     // Function to set an important contract's address, only callable by owner
-    function setImportantContractAddress(string memory key, address newAddress) public onlyOwner {
+    function SetImportantContractAddress(string memory key, address newAddress) public onlyOwner {
         if (importantContractAddresses[key] == address(0)) {
             importantContractKeys.push(key);
         }
@@ -151,7 +151,7 @@ contract ManagementContract is Ownable {
         emit ImportantContractAddressUpdated(key, newAddress);
     }
 
-    function getImportantContractKeys() public view returns(string[] memory) {
+    function GetImportantContractKeys() public view returns(string[] memory) {
         return importantContractKeys;
     }
 }
