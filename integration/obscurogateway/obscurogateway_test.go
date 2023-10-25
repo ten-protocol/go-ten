@@ -222,7 +222,6 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string) {
 	assert.Equal(t, 3, len(user1logs))
 	// user2 should see three events (two lifecycle events - same as user0) and event with his interaction with setMessage
 	assert.Equal(t, 2, len(user2logs))
-
 }
 
 func testAreTxsMinted(t *testing.T, httpURL, wsURL string) { //nolint: unused

@@ -5,10 +5,11 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/lib"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/obscuronet/go-obscuro/tools/walletextension/lib"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
