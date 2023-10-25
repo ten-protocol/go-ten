@@ -91,8 +91,8 @@ func TestObscuroGateway(t *testing.T) {
 	// run the tests against the exis
 	for name, test := range map[string]func(*testing.T, string, string){
 		//"testAreTxsMinted":            testAreTxsMinted, this breaks the other tests bc, enable once concurency issues are fixed
-		//"testErrorHandling":                testErrorHandling,
-		//"testErrorsRevertedArePassed":      testErrorsRevertedArePassed,
+		"testErrorHandling":                testErrorHandling,
+		"testErrorsRevertedArePassed":      testErrorsRevertedArePassed,
 		"testMultipleAccountsSubscription": testMultipleAccountsSubscription,
 	} {
 		t.Run(name, func(t *testing.T) {

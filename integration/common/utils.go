@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"math/big"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
