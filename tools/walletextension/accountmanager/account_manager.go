@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/eth/filters"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/subscriptions"
 	"strings"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/subscriptions"
 
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 

@@ -49,40 +49,38 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 			return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
 		}
 
+		// We periodically check if the websocket is closed, and terminate the subscription.
+		go checkIfUserConnIsClosedAndUnsubscribe(userConn, subscription)
+
 		// Add map subscriptionIDs
 		if currentNodeSubscriptionID, ok := (*resp).(string); ok {
 			// TODO (@ziga): Currently we use the same value for node and user subscriptionID - this will change after
 			// subscribing with multiple accounts
 			sm.UpdateSubscriptionMapping(currentNodeSubscriptionID, currentNodeSubscriptionID)
+
+			return nil
+			// TODO (@ziga)
+			// At this stage we want to use only the first account - same as before
+			// introduce subscribing with all accounts in another PR )
 		}
 
-		// We periodically check if the websocket is closed, and terminate the subscription.
-		go checkIfUserConnIsClosedAndUnsubscribe(userConn, subscription)
-
-		return nil
-		// TODO (@ziga)
-		// At this stage we want to use only the first account - same as before
-		// introduce subscribing with all accounts in another PR )
 	}
 	return nil
 }
 
 func readFromChannelAndWriteToUserConn(channel chan common.IDAndLog, userConn userconn.UserConn, logger gethlog.Logger) {
-	for {
-		select {
-		case data := <-channel:
-			jsonResponse, err := wecommon.PrepareLogResponse(data)
-			if err != nil {
-				logger.Error("could not marshal log response to JSON on subscription.", log.SubIDKey, data.SubID, log.ErrKey, err)
-				continue
-			}
+	for data := range channel {
+		jsonResponse, err := wecommon.PrepareLogResponse(data)
+		if err != nil {
+			logger.Error("could not marshal log response to JSON on subscription.", log.SubIDKey, data.SubID, log.ErrKey, err)
+			continue
+		}
 
-			logger.Trace(fmt.Sprintf("Forwarding log from Obscuro node: %s", jsonResponse), log.SubIDKey, data.SubID)
-			err = userConn.WriteResponse(jsonResponse)
-			if err != nil {
-				logger.Error("could not write the JSON log to the websocket on subscription %", log.SubIDKey, data.SubID, log.ErrKey, err)
-				continue
-			}
+		logger.Trace(fmt.Sprintf("Forwarding log from Obscuro node: %s", jsonResponse), log.SubIDKey, data.SubID)
+		err = userConn.WriteResponse(jsonResponse)
+		if err != nil {
+			logger.Error("could not write the JSON log to the websocket on subscription %", log.SubIDKey, data.SubID, log.ErrKey, err)
+			continue
 		}
 	}
 }

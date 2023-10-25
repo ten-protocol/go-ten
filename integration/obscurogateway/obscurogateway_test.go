@@ -4,17 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"net/http"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
-	"math/big"
-	"net/http"
-	"strings"
-	"testing"
-	"time"
 
 	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
@@ -737,5 +738,4 @@ func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Has
 			}
 		}
 	}()
-
 }
