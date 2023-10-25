@@ -35,21 +35,22 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 
 	sm.logger.Info(fmt.Sprintf("Subscribing to event %s with %d clients", req.Params, len(clients)))
 
-	// create a common channel for subscriptions from all clients
+	// create a common channel for subscriptions from all accounts
 	funnelMultipleAccountsChan := make(chan common.IDAndLog)
 
 	// read from a multiple accounts channel and write results to userConn
 	go readFromChannelAndWriteToUserConn(funnelMultipleAccountsChan, userConn, sm.logger)
 
 	// iterate over all clients and subscribe for each of them
+	// TODO: currently we use only first client (enabling subscriptions for all of them will be part of future PR)
 	for _, client := range clients {
-		// fmt.Println("Subscribing with client: ", client)
 		subscription, err := client.Subscribe(context.Background(), resp, rpc.SubscribeNamespace, funnelMultipleAccountsChan, req.Params...)
 		if err != nil {
 			return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
 		}
 
 		// We periodically check if the websocket is closed, and terminate the subscription.
+		// TODO: test this feature in integration test
 		go checkIfUserConnIsClosedAndUnsubscribe(userConn, subscription)
 
 		// Add map subscriptionIDs

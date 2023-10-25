@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"math/big"
 	"math/rand"
 	"sync"
@@ -127,4 +128,34 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 		}(txHash)
 	}
 	wg.Wait()
+}
+
+func InteractWithSmartContract(client *ethclient.Client, wallet wallet.Wallet, contractAbi abi.ABI, methodName string, methodParam string, contractAddress gethcommon.Address) (*types.Receipt, error) {
+	contractInteractionData, err := contractAbi.Pack(methodName, methodParam)
+	if err != nil {
+		return nil, err
+	}
+
+	interactionTx := types.LegacyTx{
+		Nonce:    wallet.GetNonceAndIncrement(),
+		To:       &contractAddress,
+		Gas:      uint64(1_000_000),
+		GasPrice: gethcommon.Big1,
+		Data:     contractInteractionData,
+	}
+	signedTx, err := wallet.SignTransaction(&interactionTx)
+	if err != nil {
+		return nil, err
+	}
+	err = client.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		return nil, err
+	}
+
+	txReceipt, err := AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 2*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	return txReceipt, nil
 }

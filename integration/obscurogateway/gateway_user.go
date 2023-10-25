@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/lib"
 	"io"
 	"net/http"
 	"strings"
@@ -12,9 +13,10 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/valyala/fasthttp"
 )
 
+// GatewayUser TODO (@ziga) refactor GatewayUser and integrate it with OGlib.
+// GatewayUser is a struct that includes everything a gateway user has and uses (userID, wallets, http & ws addresses and client )
 type GatewayUser struct {
 	UserID            string
 	Wallets           []wallet.Wallet
@@ -74,6 +76,7 @@ func (u GatewayUser) PrintUserAccountsBalances() error {
 	return nil
 }
 
+// TODO (@ziga) - use OGlib for registering accounts
 func registerAccount(url string, userID string, pk *ecdsa.PrivateKey, hexAddress string) ([]byte, error) {
 	payload := prepareRegisterPayload(userID, pk, hexAddress)
 
@@ -113,9 +116,11 @@ func prepareRegisterPayload(userID string, pk *ecdsa.PrivateKey, hexAddress stri
 }
 
 func joinObscuroGateway(url string) (string, error) {
-	statusCode, userID, err := fasthttp.Get(nil, fmt.Sprintf("%s/v1/join/", url))
-	if err != nil || statusCode != 200 {
-		return "", fmt.Errorf(fmt.Sprintf("Failed to get userID. Status code: %d, err: %s", statusCode, err))
+	ogClient := lib.NewObscuroGatewayLibrary(url, url)
+	err := ogClient.Join()
+	if err != nil {
+		return "", err
 	}
-	return string(userID), nil
+
+	return ogClient.UserID(), nil
 }
