@@ -2,6 +2,29 @@
 ---
 # Obscuro Testnet Change Log
 
+# Oct 2023-10-26 (v0.19.0)
+* A list of the PRs merged in this release is as below;
+  * `9eb4dd0e` Contract changes for storing addresses (#1622)
+  * `563c5677` Add mutex for accts (#1621)
+  * `a140f352` Initial commit for basic gateway package (#1619)
+  * `8f898053` Increase init time (#1617)
+  * `20e5799c` Adds revert reason test + error logging (#1616)
+  * `401acba7` Keeping table behind spinner until loaded (#1618)
+  * `4c5c8b2a` Cais gateway ui changes (#1614)
+  * `85f05f9f` Convert remaining gh action scripts to env vars (#1615)
+  * `ebcc4aa4` Normalizing og errors (#1600)
+  * `d494bc8c` Update deployment scripts to use standardised env vars (#1608)
+  * `a25b5b44` Fix for estimate gas failing when gasprice included. (#1610)
+  * `c4140adf` Ziga/fix og metamask urls (#1611)
+  * `d317e3ac` Lock hh-deploy version to fix compatibility (#1612)
+  * `b5722cd3` Downgrade spammy log messages (#1609)
+  * `31d9b7ff` Fix stuck at revoke userid (#1605)
+  * `94d12bd1` Ci fixes for deployment (#1607)
+  * `d1036cfe` Fixes upgrade list query (#1604)
+  * `299d5094` Update og namings in the gh (#1603)
+  * `a18f8624` Updates gh inputs to reflect current networks (#1602)
+  * `a58288f6` Improve ui for users on og (#1579)
+
 # Oct 2023-10-16 (v0.18.0)
 * A list of the PRs merged in this release is as below;
   * `51b00380` Add maxbatchinterval to skip some empty batches (#1599)
