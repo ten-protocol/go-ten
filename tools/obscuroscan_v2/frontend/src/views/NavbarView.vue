@@ -4,7 +4,7 @@
       <el-main>
     <el-row justify="space-around">
       <el-col :span="2" >
-        <img src="@/assets/imgs/obscuro_logo_black.png" alt="obscu.ro" class="header-image"  style="max-height: 5vh;"/>
+        <img src="@/assets/imgs/obscuro.svg" alt="obscu.ro" class="header-image"  style="max-height: 5vh;"/>
       </el-col>
       <el-col :span="10" :offset="7">
         <nav class="nav-bar">
