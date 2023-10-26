@@ -23,7 +23,10 @@ func NewUser(wallets []wallet.Wallet, serverAddressHTTP string, serverAddressWS 
 	ogClient := lib.NewObscuroGatewayLibrary(serverAddressHTTP, serverAddressWS)
 
 	// automatically join
-	ogClient.Join()
+	err := ogClient.Join()
+	if err != nil {
+		return nil, err
+	}
 
 	// create clients
 	httpClient, err := ethclient.Dial(serverAddressHTTP + "/v1/" + "?u=" + ogClient.UserID())
@@ -45,7 +48,10 @@ func NewUser(wallets []wallet.Wallet, serverAddressHTTP string, serverAddressWS 
 
 func (u GatewayUser) RegisterAccounts() error {
 	for _, w := range u.Wallets {
-		u.ogClient.RegisterAccount(w.PrivateKey(), w.Address())
+		err := u.ogClient.RegisterAccount(w.PrivateKey(), w.Address())
+		if err != nil {
+			return err
+		}
 		fmt.Printf("Successfully registered address %s for user: %s.\n", w.Address().Hex(), u.ogClient.UserID())
 	}
 
