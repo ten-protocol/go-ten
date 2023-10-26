@@ -13,9 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
-
 	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -88,15 +85,18 @@ func TestObscuroGateway(t *testing.T) {
 	err := waitServerIsReady(httpURL)
 	require.NoError(t, err)
 
+	// prefunded wallet
+	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger())
+
 	// run the tests against the exis
-	for name, test := range map[string]func(*testing.T, string, string){
+	for name, test := range map[string]func(*testing.T, string, string, wallet.Wallet){
 		//"testAreTxsMinted":            testAreTxsMinted, this breaks the other tests bc, enable once concurency issues are fixed
 		"testErrorHandling":                testErrorHandling,
-		"testErrorsRevertedArePassed":      testErrorsRevertedArePassed,
 		"testMultipleAccountsSubscription": testMultipleAccountsSubscription,
+		"testErrorsRevertedArePassed":      testErrorsRevertedArePassed,
 	} {
 		t.Run(name, func(t *testing.T) {
-			test(t, httpURL, wsURL)
+			test(t, httpURL, wsURL, w)
 		})
 	}
 
@@ -105,8 +105,7 @@ func TestObscuroGateway(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string) {
-	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger())
+func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
 	fmt.Printf("Created user with UserID: %s\n", user0.UserID)
@@ -146,11 +145,6 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string) {
 	require.NoError(t, err)
 	err = user2.PrintUserAccountsBalances()
 	require.NoError(t, err)
-
-	// deploy errors contract
-	//_, contractAddress, err := deploySmartContract(user0.HTTPClient, user0.Wallets[0], eventsContractBytecode)
-	//require.NoError(t, err)
-	//fmt.Println("Deployed contract address: ", contractAddress)
 
 	// deploy events contract
 	deployTx := &types.LegacyTx{
@@ -252,7 +246,7 @@ func testAreTxsMinted(t *testing.T, httpURL, wsURL string) { //nolint: unused
 	require.True(t, receipt.Status == 1)
 }
 
-func testErrorHandling(t *testing.T, httpURL, wsURL string) {
+func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// set up the ogClient
 	ogClient := lib.NewObscuroGatewayLibrary(httpURL, wsURL)
 
@@ -261,7 +255,6 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string) {
 	require.NoError(t, err)
 
 	// register an account
-	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger())
 	err = ogClient.RegisterAccount(w.PrivateKey(), w.Address())
 	require.NoError(t, err)
 
@@ -295,7 +288,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string) {
 	}
 }
 
-func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string) {
+func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// set up the ogClient
 	ogClient := lib.NewObscuroGatewayLibrary(httpURL, wsURL)
 
@@ -303,7 +296,6 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string) {
 	err := ogClient.Join()
 	require.NoError(t, err)
 
-	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger())
 	err = ogClient.RegisterAccount(w.PrivateKey(), w.Address())
 	require.NoError(t, err)
 
@@ -441,19 +433,6 @@ func waitServerIsReady(serverAddr string) error {
 		}
 	}
 	return fmt.Errorf("timed out before server was ready")
-}
-
-func ComputeContractAddress(sender gethcommon.Address, nonce uint64) (gethcommon.Address, error) {
-	// RLP encode the byte array of the sender's address and nonce
-	encoded, err := rlp.EncodeToBytes([]interface{}{sender, nonce})
-	if err != nil {
-		return gethcommon.Address{}, err
-	}
-	// Compute the Keccak-256 hash of the RLP encoded byte array
-	hash := crypto.Keccak256(encoded)
-
-	// The contract address is the last 20 bytes of this hash
-	return gethcommon.BytesToAddress(hash[len(hash)-20:]), nil
 }
 
 func TransferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddress gethcommon.Address, amount int64) (*types.Receipt, error) {
