@@ -1,6 +1,7 @@
 package faucet
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -11,8 +12,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -108,15 +107,15 @@ func TestObscuroGateway(t *testing.T) {
 func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with UserID: %s\n", user0.UserID)
+	fmt.Printf("Created user with UserID: %s\n", user0.ogClient.UserID())
 
 	user1, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.ObscuroChainID), datagenerator.RandomWallet(integration.ObscuroChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with UserID: %s\n", user1.UserID)
+	fmt.Printf("Created user with UserID: %s\n", user0.ogClient.UserID())
 
 	user2, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.ObscuroChainID), datagenerator.RandomWallet(integration.ObscuroChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with UserID: %s\n", user2.UserID)
+	fmt.Printf("Created user with UserID: %s\n", user0.ogClient.UserID())
 
 	// register all the accounts for that user
 	err = user0.RegisterAccounts()
@@ -128,14 +127,14 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 
 	var amountToTransfer int64 = 1_000_000_000_000_000_000
 	// Transfer some funds to user1 and user2 wallets, because they need it to make transactions
-	_, err = TransferETHToAddress(user0.HTTPClient, user0.Wallets[0], user1.Wallets[0].Address(), amountToTransfer)
+	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user1.Wallets[0].Address(), amountToTransfer)
 	require.NoError(t, err)
 	time.Sleep(5 * time.Second)
-	_, err = TransferETHToAddress(user0.HTTPClient, user0.Wallets[0], user1.Wallets[1].Address(), amountToTransfer)
+	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user1.Wallets[1].Address(), amountToTransfer)
 	require.NoError(t, err)
-	_, err = TransferETHToAddress(user0.HTTPClient, user0.Wallets[0], user2.Wallets[0].Address(), amountToTransfer)
+	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user2.Wallets[0].Address(), amountToTransfer)
 	require.NoError(t, err)
-	_, err = TransferETHToAddress(user0.HTTPClient, user0.Wallets[0], user2.Wallets[1].Address(), amountToTransfer)
+	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user2.Wallets[1].Address(), amountToTransfer)
 	require.NoError(t, err)
 
 	// Print balances of all registered accounts to check if all accounts have funds
@@ -163,7 +162,16 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user0.HTTPClient, signedTx.Hash(), time.Minute)
 	require.NoError(t, err)
 
-	resultMessage, err := getStringValueFromSmartContractGetter(contractReceipt.ContractAddress, eventsContractABI, "message", user1.HTTPClient)
+	// check if value was changed in the smart contract with the interactions above
+	pack, _ := eventsContractABI.Pack("message2")
+	result, err := user1.HTTPClient.CallContract(context.Background(), ethereum.CallMsg{
+		From: user1.Wallets[0].Address(),
+		To:   &contractReceipt.ContractAddress,
+		Data: pack,
+	}, nil)
+	require.NoError(t, err)
+
+	resultMessage := string(bytes.TrimRight(result[64:], "\x00"))
 	require.NoError(t, err)
 
 	// check if the value is the same as hardcoded in smart contract
@@ -180,7 +188,7 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 
 	// user1 calls setMessage and setMessage2 on deployed smart contract with the account
 	// that was registered as the first in OG
-	user1MessageValue := "user1PrivateEvent"
+	user1MessageValue := "user1PublicEvent"
 	// interact with smart contract and cause events to be emitted
 	_, err = integrationCommon.InteractWithSmartContract(user1.HTTPClient, user1.Wallets[0], eventsContractABI, "setMessage", "user1PrivateEvent", contractReceipt.ContractAddress)
 	require.NoError(t, err)
@@ -188,13 +196,20 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	require.NoError(t, err)
 
 	// check if value was changed in the smart contract with the interactions above
-	resultMessage, err = getStringValueFromSmartContractGetter(contractReceipt.ContractAddress, eventsContractABI, "message", user1.HTTPClient)
+	pack, _ = eventsContractABI.Pack("message2")
+	result, err = user1.HTTPClient.CallContract(context.Background(), ethereum.CallMsg{
+		From: user1.Wallets[0].Address(),
+		To:   &contractReceipt.ContractAddress,
+		Data: pack,
+	}, nil)
 	require.NoError(t, err)
+
+	resultMessage = string(bytes.TrimRight(result[64:], "\x00"))
 	assert.Equal(t, user1MessageValue, resultMessage)
 
 	// user2 calls setMessage and setMessage2 on deployed smart contract with the account
 	// that was registered as the second in OG
-	user2MessageValue := "user2PrivateEvent"
+	user2MessageValue := "user2PublicEvent"
 	// interact with smart contract and cause events to be emitted
 	_, err = integrationCommon.InteractWithSmartContract(user2.HTTPClient, user2.Wallets[1], eventsContractABI, "setMessage", "user2PrivateEvent", contractReceipt.ContractAddress)
 	require.NoError(t, err)
@@ -202,8 +217,14 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	require.NoError(t, err)
 
 	// check if value was changed in the smart contract with the interactions above
-	resultMessage, err = getStringValueFromSmartContractGetter(contractReceipt.ContractAddress, eventsContractABI, "message", user1.HTTPClient)
+	pack, _ = eventsContractABI.Pack("message2")
+	result, err = user1.HTTPClient.CallContract(context.Background(), ethereum.CallMsg{
+		From: user1.Wallets[0].Address(),
+		To:   &contractReceipt.ContractAddress,
+		Data: pack,
+	}, nil)
 	require.NoError(t, err)
+	resultMessage = string(bytes.TrimRight(result[64:], "\x00"))
 	assert.Equal(t, user2MessageValue, resultMessage)
 
 	// wait a few seconds to be completely sure all events arrived
@@ -218,7 +239,7 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	assert.Equal(t, 2, len(user2logs))
 }
 
-func testAreTxsMinted(t *testing.T, httpURL, wsURL string) { //nolint: unused
+func testAreTxsMinted(t *testing.T, httpURL, wsURL string, w wallet.Wallet) { //nolint: unused
 	// set up the ogClient
 	ogClient := lib.NewObscuroGatewayLibrary(httpURL, wsURL)
 
@@ -226,7 +247,6 @@ func testAreTxsMinted(t *testing.T, httpURL, wsURL string) { //nolint: unused
 	err := ogClient.Join()
 	require.NoError(t, err)
 
-	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger())
 	err = ogClient.RegisterAccount(w.PrivateKey(), w.Address())
 	require.NoError(t, err)
 
@@ -435,7 +455,7 @@ func waitServerIsReady(serverAddr string) error {
 	return fmt.Errorf("timed out before server was ready")
 }
 
-func TransferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddress gethcommon.Address, amount int64) (*types.Receipt, error) {
+func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddress gethcommon.Address, amount int64) (*types.Receipt, error) {
 	transferTx1 := types.LegacyTx{
 		Nonce:    wallet.GetNonceAndIncrement(),
 		To:       &toAddress,
@@ -453,20 +473,6 @@ func TransferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddr
 		return nil, err
 	}
 	return integrationCommon.AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 2*time.Second)
-}
-
-func getStringValueFromSmartContractGetter(contractAddress gethcommon.Address, contractAbi abi.ABI, method string, client *ethclient.Client) (string, error) {
-	contract := bind.NewBoundContract(contractAddress, contractAbi, client, client, client)
-	var resultMessage string
-	callOpts := &bind.CallOpts{}
-	results := make([]interface{}, 1)
-	results[0] = &resultMessage
-	err := contract.Call(callOpts, &results, method)
-	if err != nil {
-		return "", err
-	}
-
-	return resultMessage, nil
 }
 
 func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Hash, client *ethclient.Client, logs *[]types.Log) {
