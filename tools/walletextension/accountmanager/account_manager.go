@@ -1,15 +1,14 @@
 package accountmanager
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/subscriptions"
 
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 
@@ -19,9 +18,6 @@ import (
 
 	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
-	"github.com/go-kit/kit/transport/http/jsonrpc"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
 
@@ -29,8 +25,6 @@ import (
 )
 
 const (
-	methodEthSubscription = "eth_subscription"
-
 	ethCallPaddedArgLen = 64
 	ethCallAddrPadding  = "000000000000000000000000"
 
@@ -42,16 +36,18 @@ const (
 type AccountManager struct {
 	unauthedClient rpc.Client
 	// todo (@ziga) - create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
-	accountsMutex  sync.RWMutex
-	accountClients map[gethcommon.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
-	logger         gethlog.Logger
+	accountsMutex        sync.RWMutex
+	accountClients       map[gethcommon.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
+	subscriptionsManager *subscriptions.SubscriptionManager
+	logger               gethlog.Logger
 }
 
 func NewAccountManager(unauthedClient rpc.Client, logger gethlog.Logger) *AccountManager {
 	return &AccountManager{
-		unauthedClient: unauthedClient,
-		accountClients: make(map[gethcommon.Address]*rpc.EncRPCClient),
-		logger:         logger,
+		unauthedClient:       unauthedClient,
+		accountClients:       make(map[gethcommon.Address]*rpc.EncRPCClient),
+		subscriptionsManager: subscriptions.New(logger),
+		logger:               logger,
 	}
 }
 
@@ -64,18 +60,18 @@ func (m *AccountManager) AddClient(address gethcommon.Address, client *rpc.EncRP
 
 // ProxyRequest tries to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt
 // the request with all clients until it succeeds
-func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}, userConn userconn.UserConn) error {
+func (m *AccountManager) ProxyRequest(rpcReq *wecommon.RPCRequest, rpcResp *interface{}, userConn userconn.UserConn) error {
 	if rpcReq.Method == rpc.Subscribe {
 		clients, err := m.suggestSubscriptionClient(rpcReq)
 		if err != nil {
 			return err
 		}
-		// fetch the clients from a topic
-		for _, client := range clients {
-			return m.executeSubscribe(client, rpcReq, rpcResp, userConn)
+		err = m.subscriptionsManager.HandleNewSubscriptions(clients, rpcReq, rpcResp, userConn)
+		if err != nil {
+			m.logger.Error("Error subscribing to multiple clients")
 		}
+		return err
 	}
-
 	return m.executeCall(rpcReq, rpcResp)
 }
 
@@ -83,7 +79,7 @@ const emptyFilterCriteria = "[]" // This is the value that gets passed for an em
 
 // determine the client based on the topics
 // if none is found use all clients from current user
-func (m *AccountManager) suggestSubscriptionClient(rpcReq *RPCRequest) ([]rpc.Client, error) {
+func (m *AccountManager) suggestSubscriptionClient(rpcReq *wecommon.RPCRequest) ([]rpc.Client, error) {
 	m.accountsMutex.RLock()
 	defer m.accountsMutex.RUnlock()
 
@@ -135,10 +131,9 @@ func (m *AccountManager) suggestSubscriptionClient(rpcReq *RPCRequest) ([]rpc.Cl
 	return clients, nil
 }
 
-func (m *AccountManager) executeCall(rpcReq *RPCRequest, rpcResp *interface{}) error {
+func (m *AccountManager) executeCall(rpcReq *wecommon.RPCRequest, rpcResp *interface{}) error {
 	m.accountsMutex.RLock()
 	defer m.accountsMutex.RUnlock()
-
 	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
 	suggestedClient := m.suggestAccountClient(rpcReq, m.accountClients)
 
@@ -170,7 +165,7 @@ func (m *AccountManager) executeCall(rpcReq *RPCRequest, rpcResp *interface{}) e
 }
 
 // suggestAccountClient works through various methods to try and guess which available client to use for a request, returns nil if none found
-func (m *AccountManager) suggestAccountClient(req *RPCRequest, accClients map[gethcommon.Address]*rpc.EncRPCClient) *rpc.EncRPCClient {
+func (m *AccountManager) suggestAccountClient(req *wecommon.RPCRequest, accClients map[gethcommon.Address]*rpc.EncRPCClient) *rpc.EncRPCClient {
 	if len(accClients) == 1 {
 		for _, client := range accClients {
 			// return the first (and only) client
@@ -285,70 +280,7 @@ func searchDataFieldForAccount(callParams map[string]interface{}, accClients map
 	return nil, fmt.Errorf("no known account found in data bytes")
 }
 
-func (m *AccountManager) executeSubscribe(client rpc.Client, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error { //nolint: gocognit
-	if len(req.Params) == 0 {
-		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
-	}
-	m.logger.Info(fmt.Sprintf("Subscribing client: %s for request: %s", client, req))
-	ch := make(chan common.IDAndLog)
-	subscription, err := client.Subscribe(context.Background(), resp, rpc.SubscribeNamespace, ch, req.Params...)
-	if err != nil {
-		return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
-	}
-
-	// We listen for incoming messages on the subscription.
-	go func() {
-		for {
-			select {
-			case idAndLog := <-ch:
-				if userConn.IsClosed() {
-					m.logger.Info("received log but websocket was closed on subscription", log.SubIDKey, idAndLog.SubID)
-					return
-				}
-
-				jsonResponse, err := prepareLogResponse(idAndLog)
-				if err != nil {
-					m.logger.Error("could not marshal log response to JSON on subscription.", log.SubIDKey, idAndLog.SubID, log.ErrKey, err)
-					continue
-				}
-
-				m.logger.Trace(fmt.Sprintf("Forwarding log from Obscuro node: %s", jsonResponse), log.SubIDKey, idAndLog.SubID)
-				err = userConn.WriteResponse(jsonResponse)
-				if err != nil {
-					m.logger.Error("could not write the JSON log to the websocket on subscription %", log.SubIDKey, idAndLog.SubID, log.ErrKey, err)
-					continue
-				}
-
-			case err = <-subscription.Err():
-				// An error on this channel means the subscription has ended, so we exit the loop.
-				if userConn != nil && err != nil {
-					// todo properly handle the disconnect to the user side
-					err = userConn.WriteResponse([]byte(err.Error()))
-					if err != nil {
-						m.logger.Error("unable to close connection with the user", log.ErrKey, err)
-					}
-				}
-
-				return
-			}
-		}
-	}()
-
-	// We periodically check if the websocket is closed, and terminate the subscription.
-	go func() {
-		for {
-			if userConn.IsClosed() {
-				subscription.Unsubscribe()
-				return
-			}
-			time.Sleep(100 * time.Millisecond)
-		}
-	}()
-
-	return nil
-}
-
-func submitCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
+func submitCall(client *rpc.EncRPCClient, req *wecommon.RPCRequest, resp *interface{}) error {
 	if req.Method == rpc.Call || req.Method == rpc.EstimateGas {
 		// Never modify the original request, as it might be reused.
 		req = req.Clone()
@@ -403,37 +335,4 @@ func setFromFieldIfMissing(args []interface{}, account gethcommon.Address) ([]in
 	}
 
 	return request, nil
-}
-
-// Formats the log to be sent as an Eth JSON-RPC response.
-func prepareLogResponse(idAndLog common.IDAndLog) ([]byte, error) {
-	paramsMap := make(map[string]interface{})
-	paramsMap[wecommon.JSONKeySubscription] = idAndLog.SubID
-	paramsMap[wecommon.JSONKeyResult] = idAndLog.Log
-
-	respMap := make(map[string]interface{})
-	respMap[wecommon.JSONKeyRPCVersion] = jsonrpc.Version
-	respMap[wecommon.JSONKeyMethod] = methodEthSubscription
-	respMap[wecommon.JSONKeyParams] = paramsMap
-
-	jsonResponse, err := json.Marshal(respMap)
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal log response to JSON. Cause: %w", err)
-	}
-	return jsonResponse, nil
-}
-
-type RPCRequest struct {
-	ID     json.RawMessage
-	Method string
-	Params []interface{}
-}
-
-// Clone returns a new instance of the *RPCRequest
-func (r *RPCRequest) Clone() *RPCRequest {
-	return &RPCRequest{
-		ID:     r.ID,
-		Method: r.Method,
-		Params: r.Params,
-	}
 }

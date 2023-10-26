@@ -18,7 +18,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/storage"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
@@ -68,7 +67,7 @@ func (w *WalletExtension) Logger() gethlog.Logger {
 }
 
 // ProxyEthRequest proxys an incoming user request to the enclave
-func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, conn userconn.UserConn, hexUserID string) (map[string]interface{}, error) {
+func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userconn.UserConn, hexUserID string) (map[string]interface{}, error) {
 	response := map[string]interface{}{}
 	// all responses must contain the request id. Both successful and unsuccessful.
 	response[common.JSONKeyRPCVersion] = jsonrpc.Version
@@ -378,7 +377,7 @@ func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
 
 // getStorageAtInterceptor checks if the parameters for getStorageAt are set to values that require interception
 // and return response or nil if the gateway should forward the request to the node.
-func (w *WalletExtension) getStorageAtInterceptor(request *accountmanager.RPCRequest, hexUserID string) map[string]interface{} {
+func (w *WalletExtension) getStorageAtInterceptor(request *common.RPCRequest, hexUserID string) map[string]interface{} {
 	// check if parameters are correct, and we can intercept a request, otherwise return nil
 	if w.checkParametersForInterceptedGetStorageAt(request.Params) {
 		// check if userID in the parameters is also in our database

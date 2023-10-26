@@ -3,9 +3,13 @@ package common
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
+
+	"github.com/go-kit/kit/transport/http/jsonrpc"
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -36,7 +40,7 @@ func BytesToPrivateKey(keyBytes []byte) (*ecies.PrivateKey, error) {
 	return eciesPrivateKey, nil
 }
 
-// CalculateUserID calculates userID from public key
+// CalculateUserID calculates userID from a public key
 func CalculateUserID(publicKeyBytes []byte) []byte {
 	return crypto.Keccak256Hash(publicKeyBytes).Bytes()
 }
@@ -90,4 +94,38 @@ func CreateEncClient(
 		return nil, fmt.Errorf("unable to create EncRPCClient: %w", err)
 	}
 	return encClient, nil
+}
+
+type RPCRequest struct {
+	ID     json.RawMessage
+	Method string
+	Params []interface{}
+}
+
+// Clone returns a new instance of the *RPCRequest
+func (r *RPCRequest) Clone() *RPCRequest {
+	return &RPCRequest{
+		ID:     r.ID,
+		Method: r.Method,
+		Params: r.Params,
+	}
+}
+
+// Formats the log to be sent as an Eth JSON-RPC response.
+// TODO (@ziga) - Move this code to a subscriptions package once it is used only there..
+func PrepareLogResponse(idAndLog common.IDAndLog) ([]byte, error) {
+	paramsMap := make(map[string]interface{})
+	paramsMap[JSONKeySubscription] = idAndLog.SubID
+	paramsMap[JSONKeyResult] = idAndLog.Log
+
+	respMap := make(map[string]interface{})
+	respMap[JSONKeyRPCVersion] = jsonrpc.Version
+	respMap[JSONKeyMethod] = methodEthSubscription
+	respMap[JSONKeyParams] = paramsMap
+
+	jsonResponse, err := json.Marshal(respMap)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal log response to JSON. Cause: %w", err)
+	}
+	return jsonResponse, nil
 }
