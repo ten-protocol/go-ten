@@ -47,7 +47,7 @@ const (
 	GetStorageAtUserIDRequestMethodName = "getUserID"
 	SuccessMsg                          = "success"
 	APIVersion1                         = "/v1"
-	methodEthSubscription               = "eth_subscription"
+	MethodEthSubscription               = "eth_subscription"
 	PathVersion                         = "/version/"
 )
 
