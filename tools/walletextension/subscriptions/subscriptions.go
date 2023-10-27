@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-kit/kit/transport/http/jsonrpc"
@@ -20,6 +21,7 @@ import (
 type SubscriptionManager struct {
 	subscriptionMappings map[string][]string
 	logger               gethlog.Logger
+	mu                   sync.Mutex
 }
 
 func New(logger gethlog.Logger) *SubscriptionManager {
@@ -100,6 +102,10 @@ func checkIfUserConnIsClosedAndUnsubscribe(userConn userconn.UserConn, subscript
 }
 
 func (sm *SubscriptionManager) UpdateSubscriptionMapping(userSubscriptionID string, obscuroNodeSubscriptionID string) {
+	// Ensure there is no concurrent map writes
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
 	existingUserIDs, exists := sm.subscriptionMappings[userSubscriptionID]
 
 	if !exists {
