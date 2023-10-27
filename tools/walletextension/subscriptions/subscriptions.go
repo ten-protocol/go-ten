@@ -76,7 +76,7 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 
 func readFromChannelAndWriteToUserConn(channel chan common.IDAndLog, userConn userconn.UserConn, userSubscriptionID gethrpc.ID, logger gethlog.Logger) {
 	for data := range channel {
-		jsonResponse, err := PrepareLogResponse(data, userSubscriptionID)
+		jsonResponse, err := prepareLogResponse(data, userSubscriptionID)
 		if err != nil {
 			logger.Error("could not marshal log response to JSON on subscription.", log.SubIDKey, data.SubID, log.ErrKey, err)
 			continue
@@ -128,7 +128,7 @@ func (sm *SubscriptionManager) UpdateSubscriptionMapping(userSubscriptionID stri
 }
 
 // Formats the log to be sent as an Eth JSON-RPC response.
-func PrepareLogResponse(idAndLog common.IDAndLog, userSubscriptionID gethrpc.ID) ([]byte, error) {
+func prepareLogResponse(idAndLog common.IDAndLog, userSubscriptionID gethrpc.ID) ([]byte, error) {
 	paramsMap := make(map[string]interface{})
 	paramsMap[wecommon.JSONKeySubscription] = userSubscriptionID
 	paramsMap[wecommon.JSONKeyResult] = idAndLog.Log
