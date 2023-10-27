@@ -50,7 +50,6 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 	go readFromChannelAndWriteToUserConn(funnelMultipleAccountsChan, userConn, userSubscriptionID, sm.logger)
 
 	// iterate over all clients and subscribe for each of them
-	// TODO: currently we use only first client (enabling subscriptions for all of them will be part of future PR)
 	for _, client := range clients {
 		subscription, err := client.Subscribe(context.Background(), resp, rpc.SubscribeNamespace, funnelMultipleAccountsChan, req.Params...)
 		if err != nil {
