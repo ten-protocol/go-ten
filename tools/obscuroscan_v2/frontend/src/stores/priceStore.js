@@ -24,7 +24,7 @@ export const usePriceStore = defineStore({
             }
         },
 
-        async startPolling() {
+        startPolling() {
             this.poller.start();
         },
 
