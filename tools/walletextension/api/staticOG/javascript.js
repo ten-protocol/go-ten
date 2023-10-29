@@ -1,20 +1,24 @@
+const gatewayaddress = "https://testnet.obscu.ro"
 const eventClick = "click";
 const eventDomLoaded = "DOMContentLoaded";
 const idJoin = "join";
+const idMoreInfo = "moreInfo";
 const idRevokeUserID = "revokeUserID";
 const idStatus = "status";
 const idAccountsTable = "accountsTable";
 const idTableBody = "tableBody";
 const idInformation = "information";
 const idInformation2 = "information2";
+const idWelcome = "welcome";
+const idRequestTokens = "requestTokens";
 const idBegin = "begin-box";
 const idSpinner = "spinner";
 const obscuroGatewayVersion = "v1";
-const pathJoin = obscuroGatewayVersion + "/join/";
-const pathAuthenticate = obscuroGatewayVersion + "/authenticate/";
-const pathQuery = obscuroGatewayVersion + "/query/";
-const pathRevoke = obscuroGatewayVersion + "/revoke/";
-const pathVersion = "/version/";
+const pathJoin = gatewayaddress + "/" + obscuroGatewayVersion + "/join/";
+const pathAuthenticate = gatewayaddress + "/" + obscuroGatewayVersion + "/authenticate/";
+const pathQuery = gatewayaddress + "/" + obscuroGatewayVersion + "/query/";
+const pathRevoke = gatewayaddress + "/" + obscuroGatewayVersion + "/revoke/";
+const pathVersion = gatewayaddress + "/" + "version/";
 const obscuroChainIDDecimal = 443;
 const methodPost = "post";
 const methodGet = "get";
@@ -30,7 +34,7 @@ function isValidUserIDFormat(value) {
     return typeof value === 'string' && value.length === 64;
 }
 
-let obscuroGatewayAddress = window.location.protocol + "//" + window.location.host;
+let obscuroGatewayAddress = gatewayaddress;
 
 let provider = null;
 
@@ -244,7 +248,13 @@ async function populateAccountsTable(document, tableBody, userID) {
 
         const statusCell = document.createElement('td');
 
-        statusCell.textContent = await accountIsAuthenticated(account, userID);  // Status is empty for now
+        let x = await accountIsAuthenticated(account, userID);  // Status is empty for now
+        if (x == true) {
+            statusCell.textContent = "\u2705";
+        } else {
+            statusCell.textContent = "\u274C";
+        }
+        
         row.appendChild(statusCell);
 
         tableBody.appendChild(row);
@@ -269,12 +279,30 @@ async function switchToObscuroNetwork() {
     return -1
 }
 
+function copyFaucetRequest() {
+    // Get the text field
+    var copyText = document.getElementById("myInput");
+  
+    // Select the text field
+    copyText.select();
+    copyText.setSelectionRange(0, 99999); // For mobile devices
+  
+     // Copy the text inside the text field
+    navigator.clipboard.writeText(copyText.value);
+  
+    // Alert the copied text
+    alert("Copied the text: " + copyText.value);
+  }
+
 const initialize = async () => {
     const joinButton = document.getElementById(idJoin);
+    const moreInfoButton = document.getElementById(idMoreInfo);
     const revokeUserIDButton = document.getElementById(idRevokeUserID);
     const statusArea = document.getElementById(idStatus);
     const informationArea = document.getElementById(idInformation);
     const informationArea2 = document.getElementById(idInformation2);
+    const welcome = document.getElementById(idWelcome);
+    const requestTokens = document.getElementById(idRequestTokens);
     const beginBox = document.getElementById(idBegin);
     const spinner = document.getElementById(idSpinner);
 
@@ -285,23 +313,29 @@ const initialize = async () => {
     let userID = await getUserID()
 
     function displayOnlyJoin() {
-        joinButton.style.display = "block"
-        revokeUserIDButton.style.display = "none"
-        accountsTable.style.display = "none"
-        informationArea.style.display = "block"
-        informationArea2.style.display = "none"
+        joinButton.style.display = "block";
+        moreInfoButton.style.display = "block";
+        revokeUserIDButton.style.display = "none";
+        requestTokens.style.display = "none";
+        accountsTable.style.display = "none";
+        informationArea.style.display = "block";
+        informationArea2.style.display = "none";
+        welcome.style.display = "block";
 
         beginBox.style.visibility = "visible";
         spinner.style.visibility = "hidden";
     }
 
     async function displayConnectedAndJoinedSuccessfully() {
-        joinButton.style.display = "none"
-        informationArea.style.display = "none"
-        informationArea2.style.display = "block"
-        revokeUserIDButton.style.display = "block"
-        accountsTable.style.display = "block"
-        
+        joinButton.style.display = "none";
+        moreInfoButton.style.display = "none";
+        informationArea.style.display = "none";
+        informationArea2.style.display = "block";
+        revokeUserIDButton.style.display = "block";
+        accountsTable.style.display = "block";
+        welcome.style.display = "none";
+        requestTokens.style.display = "block";
+
         await populateAccountsTable(document, tableBody, userID)
     }
 
@@ -405,9 +439,32 @@ const initialize = async () => {
             statusArea.innerText = "Revoking UserID failed";
         }
     })
+
     beginBox.style.visibility = "visible";
     spinner.style.visibility = "hidden";
 }
 
-window.addEventListener(eventDomLoaded, checkIfMetamaskIsLoaded);
+const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+;:'|?/><~";
 
+const randomChar = () => chars[Math.floor(Math.random() * (chars.length - 1))],
+      randomString = length => Array.from(Array(length)).map(randomChar).join("");
+
+const card = document.querySelector(".card"),
+      letters = card.querySelector(".card-letters");
+
+const handleOnMove = e => {
+  const rect = card.getBoundingClientRect(),
+        x = e.clientX - rect.left,
+        y = e.clientY - rect.top;
+
+  letters.style.setProperty("--x", `${x}px`);
+  letters.style.setProperty("--y", `${y}px`);
+
+  letters.innerText = randomString(1700);
+}
+
+card.onmousemove = e => handleOnMove(e);
+
+card.ontouchmove = e => handleOnMove(e.touches[0]);
+
+window.addEventListener(eventDomLoaded, checkIfMetamaskIsLoaded);
