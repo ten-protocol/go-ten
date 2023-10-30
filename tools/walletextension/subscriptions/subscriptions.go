@@ -109,7 +109,6 @@ func readFromChannelAndWriteToUserConn(channel chan common.IDAndLog, userConn us
 func checkIfUserConnIsClosedAndUnsubscribe(userConn userconn.UserConn, subscription *gethrpc.ClientSubscription) {
 	for {
 		if userConn.IsClosed() {
-			fmt.Println("----------- Unsubscribing now...")
 			subscription.Unsubscribe()
 			return
 		}
