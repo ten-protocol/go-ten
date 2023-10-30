@@ -74,12 +74,28 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 }
 
 func readFromChannelAndWriteToUserConn(channel chan common.IDAndLog, userConn userconn.UserConn, userSubscriptionID gethrpc.ID, logger gethlog.Logger) {
+	buffer := NewCircularBuffer(wecommon.DeduplicationBufferSize)
 	for data := range channel {
 		jsonResponse, err := prepareLogResponse(data, userSubscriptionID)
 		if err != nil {
 			logger.Error("could not marshal log response to JSON on subscription.", log.SubIDKey, data.SubID, log.ErrKey, err)
 			continue
 		}
+
+		// create unique identifier for current log
+		uniqueLogKey := LogKey{
+			BlockHash: data.Log.BlockHash,
+			TxHash:    data.Log.TxHash,
+			Index:     data.Log.Index,
+		}
+
+		// check if the current event is a duplicate (and skip it if it is)
+		if buffer.Contains(uniqueLogKey) {
+			continue
+		}
+
+		// the current log is unique, and we want to add it to our buffer and proceed with forwarding to the user
+		buffer.Push(uniqueLogKey)
 
 		logger.Trace(fmt.Sprintf("Forwarding log from Obscuro node: %s", jsonResponse), log.SubIDKey, data.SubID)
 		err = userConn.WriteResponse(jsonResponse)
@@ -93,6 +109,7 @@ func readFromChannelAndWriteToUserConn(channel chan common.IDAndLog, userConn us
 func checkIfUserConnIsClosedAndUnsubscribe(userConn userconn.UserConn, subscription *gethrpc.ClientSubscription) {
 	for {
 		if userConn.IsClosed() {
+			fmt.Println("----------- Unsubscribing now...")
 			subscription.Unsubscribe()
 			return
 		}
