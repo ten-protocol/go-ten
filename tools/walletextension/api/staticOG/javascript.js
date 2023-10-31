@@ -444,6 +444,18 @@ const initialize = async () => {
     spinner.style.visibility = "hidden";
 }
 
+$('#moreInfo').click(function(){
+    var buttonId = 'four';
+    $('#modal-container').removeAttr('class').addClass(buttonId);
+    $('body').addClass('modal-active');
+  })
+  
+  $('#modal-container').click(function(){
+    $(this).addClass('out');
+    $(this).addClass('disappear');
+    $('body').removeClass('modal-active');
+  });
+
 const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+;:'|?/><~";
 
 const randomChar = () => chars[Math.floor(Math.random() * (chars.length - 1))],

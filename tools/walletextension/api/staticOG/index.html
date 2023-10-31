@@ -7,6 +7,7 @@
     <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
     <script type="module" src="javascript.js"></script>
     <link rel="stylesheet" href="style.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 </head>
 
 <body>
@@ -38,24 +39,11 @@
                                 </li>
                             </ol>
                         </div>
-                        <span class="tooltip" id="moreInfo">
+
+                        <span id="moreInfo">
                             <button type="button">More info</button>
-                            <div class="tooltiptext">
-                                <p>By connecting your wallet to Obscuro and signing the signature request you will get a unique user
-                                    id, which is also your viewing key. It is contained in the RPC link and unique for each user. Do
-                                    not share this unless you want others to see the details of your transactions.</p>
-            
-                                <p>
-                                    Signing the Signature Request is completely secure. It’s not a transaction so cannot spend any
-                                    of your assets and it doesn’t give Obscuro control over your account.
-                                </p>
-                                <p>
-                                    Basic RPC URL: https://testnet.obscu.ro
-                                    <br>
-                                    Chain ID: 443
-                                </p>
-                            </div>
                         </span>
+                            
                         <br>
                         <div id="information2">
                             You are set up on Obscuro. Your connected accounts are below:
@@ -93,6 +81,26 @@
     </div>
 
     <div id="versionDisplay"></div>
+ 
+    <div id="modal-container">
+        <div class="modal-background">
+          <div class="modal">
+                <p>By connecting your wallet to Obscuro and signing the signature request you will get a unique user
+                    id, which is also your viewing key. It is contained in the RPC link and unique for each user. Do
+                    not share this unless you want others to see the details of your transactions.</p>
+
+                <p>
+                    Signing the Signature Request is completely secure. It’s not a transaction so cannot spend any
+                    of your assets and it doesn’t give Obscuro control over your account.
+                </p>
+                <p>
+                    Basic RPC URL: https://testnet.obscu.ro
+                    <br>
+                    Chain ID: 443
+                </p>
+          </div>
+        </div>
+      </div>
 </body>
 
 </html>
