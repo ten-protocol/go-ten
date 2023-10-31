@@ -19,19 +19,15 @@ html {
   .logo {
     height: 100px;
   }
-  
+
   .begin-box {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 800px;
     padding: 40px;
-    transform: translate(-50%, -50%);
     background: rgba(0,0,0,.5);
     box-sizing: border-box;
     box-shadow: 0 15px 25px rgba(0,0,0,.6);
     border-radius: 10px;
     visibility: hidden;
+    width: 800px;
   }
   
   .begin-box h2 {
@@ -230,21 +226,28 @@ h2 {
     margin: auto;
 }
 
+#moreInfo {
+  width: 80px;
+}
+
 #versionDisplay {
-    position: fixed;
-    bottom: 10px;
-    right: 10px;
-    font-size: 0.5rem;
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  font-size: 0.5rem;
 }
 
 #status {
-    color: red;
+  color: red;
+}
+
+.joined-button {
+  margin-top: 10px;
+  padding: 10px
 }
 
 #revokeUserID {
-    margin-top: 10px;
-    padding: 10px;
-    display: none;
+  display: none;
 }
 
 .spinner {
@@ -317,3 +320,255 @@ h2 {
     }
   }
   
+  .wrapper {
+    position: relative;
+    top: 50%;
+    margin: auto;
+    width: 800px;
+    height: 500px;
+  }
+
+  :root {
+    --background-rgb: 2 6 23;
+    --background-light-rgb: 30 41 59;
+    
+    --hyperplexed-main-rgb: 41 121 255;
+    --hyperplexed-main-light-rgb: 56 182 255;
+    --hyperplexed-secondary-rgb: 42 252 152;
+      
+    --card-size: 800px;
+    --font-size: 0.9rem;
+  }
+    
+  .card-track {
+    height: 100%;
+    width: var(--card-size);
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  
+  .card-wrapper {
+    width: 800px;
+    position: relative;
+  }
+  
+  .card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    position: relative;
+    border-radius: 2rem;
+    overflow: hidden;
+    cursor: pointer;
+    width: 100%;
+    height:100%;
+  }
+  
+  .card-image {
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 4;
+  }
+  
+  .card-gradient {
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    background: radial-gradient(
+      rgb(var(--background-light-rgb)) 40%, 
+      rgb(var(--hyperplexed-main-rgb)) 50%, 
+      rgb(var(--hyperplexed-main-light-rgb)),
+      rgb(var(--hyperplexed-secondary-rgb))
+    );
+    mix-blend-mode: darken; 
+    pointer-events: none;
+    z-index: 3;
+  }
+  
+  .card-letters {
+    --x: 0px;
+    --y: 0px;
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    height: 85%;
+    width: 100%;
+    color: white;
+    font-size: var(--font-size);
+    font-weight: 500;
+    word-wrap: break-word;
+    opacity: 0;
+    transition: opacity 400ms;
+    -webkit-mask-image: radial-gradient(
+      calc(var(--card-size) * 0.5) circle at var(--x) var(--y), 
+      rgb(255 255 255) 20%, 
+      rgb(255 255 255 / 25%), 
+      transparent
+    );
+    scale: 1.03;
+  }
+  
+  .card:hover .card-letters {
+    opacity: 1;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  
+  html.modal-active, body.modal-active {
+    overflow: hidden;
+  }
+  
+  #modal-container {
+    position: fixed;
+    display: table;
+    height: 100%;
+    width: 100%;
+    top: 0;
+    left: 0;
+    transform: scale(0);
+    z-index: 6;
+  }
+  #modal-container.four {
+    z-index: 5;
+    transform: scale(1);
+  }
+  #modal-container.four .modal-background {
+    background: rgba(0, 0, 0, 0.7);
+  }
+  #modal-container.four .modal-background .modal {
+    animation: blowUpModal 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+  }
+  #modal-container.four + .content {
+    z-index: 6;
+    animation: blowUpContent 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+  }
+  #modal-container.four.out .modal-background .modal {
+    animation: blowUpModalTwo 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+  }
+  #modal-container.four.out + .content {
+    animation: blowUpContentTwo 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+  }
+  .disappear {
+    animation: blowUpModalTwo 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+  }
+  #modal-container .modal-background {
+    display: table-cell;
+    background: rgba(0, 0, 0, 0.8);
+    text-align: center;
+    vertical-align: middle;
+  }
+  #modal-container .modal-background .modal {
+    background: #000;
+    padding: 50px;
+    display: inline-block;
+    border-radius: 3px;
+    position: relative;
+    width: 800px;
+  }
+  #modal-container .modal-background .modal p {
+    text-align: left;
+  }
+  #modal-container .modal-background .modal h2 {
+    font-size: 25px;
+    line-height: 25px;
+    margin-bottom: 15px;
+  }
+  #modal-container .modal-background .modal .modal-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    border-radius: 3px;
+  }
+  #modal-container .modal-background .modal .modal-svg rect {
+    stroke: #000;
+    stroke-width: 2px;
+    stroke-dasharray: 778;
+    stroke-dashoffset: 778;
+  }
+  
+  .content {
+    min-height: 100%;
+    height: 100%;
+    background: #000;
+    position: relative;
+    z-index: 5;
+  }
+  .content h1 {
+    padding: 75px 0 30px 0;
+    text-align: center;
+    font-size: 30px;
+    line-height: 30px;
+  }
+  .content .buttons {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0;
+    text-align: center;
+  }
+  .content .buttons .button {
+    display: inline-block;
+    text-align: center;
+    padding: 10px 15px;
+    margin: 10px;
+    background: red;
+    font-size: 18px;
+    background-color: #efefef;
+    border-radius: 3px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+  }
+  .content .buttons .button:hover {
+    color: white;
+    background: #009bd5;
+  }
+  
+  @keyframes blowUpContent {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    99.9% {
+      transform: scale(2);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(0);
+    }
+  }
+  @keyframes blowUpContentTwo {
+    0% {
+      transform: scale(2);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  @keyframes blowUpModal {
+    0% {
+      transform: scale(0);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  @keyframes blowUpModalTwo {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(0);
+      opacity: 0;
+    }
+  }
