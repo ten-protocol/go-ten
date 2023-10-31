@@ -20,7 +20,7 @@
           <img class="icon" src="@/assets/imgs/icon_nodes.png"/>
           Nodes
         </p>
-        <p v-loading=true element-loading-background="#F4F6FF">loading...</p>
+        <div>Coming soon</div>
       </el-card>
     </el-col>
 

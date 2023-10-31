@@ -1,5 +1,6 @@
 <template>
   <el-card class="fill-width">
+    <el-header>Recent transactions</el-header>
     <el-table  height="60vh" :data="publicTransactionsData">
       <el-table-column prop="BatchHeight" label="Batch Height" width="180" />
       <el-table-column prop="Finality" label="Finality" width="180" />

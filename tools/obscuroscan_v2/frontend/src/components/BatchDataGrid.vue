@@ -7,7 +7,7 @@
         @row-click="toggleWindow"
         style="cursor: pointer"
     >
-      <el-table-column prop="sequencerOrderNo" label="Height" width="180"/>
+      <el-table-column prop="number" label="Height" width="180"/>
       <el-table-column prop="hash" label="Hash" width="250">
         <template #default="scope">
           <ShortenedHash :hash="scope.row.hash" />
