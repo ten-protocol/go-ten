@@ -71,7 +71,7 @@ func (m *AccountManager) ProxyRequest(rpcReq *wecommon.RPCRequest, rpcResp *inte
 			m.logger.Error("Error subscribing to multiple clients")
 			return err
 		}
-		return err
+		return nil
 	}
 	return m.executeCall(rpcReq, rpcResp)
 }
