@@ -69,6 +69,7 @@ func (m *AccountManager) ProxyRequest(rpcReq *wecommon.RPCRequest, rpcResp *inte
 		err = m.subscriptionsManager.HandleNewSubscriptions(clients, rpcReq, rpcResp, userConn)
 		if err != nil {
 			m.logger.Error("Error subscribing to multiple clients")
+			return err
 		}
 		return err
 	}
