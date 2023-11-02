@@ -50,7 +50,6 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 	go readFromChannelAndWriteToUserConn(funnelMultipleAccountsChan, userConn, userSubscriptionID, sm.logger)
 
 	// iterate over all clients and subscribe for each of them
-	// TODO: currently we use only first client (enabling subscriptions for all of them will be part of future PR)
 	for _, client := range clients {
 		subscription, err := client.Subscribe(context.Background(), resp, rpc.SubscribeNamespace, funnelMultipleAccountsChan, req.Params...)
 		if err != nil {
@@ -75,12 +74,28 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 }
 
 func readFromChannelAndWriteToUserConn(channel chan common.IDAndLog, userConn userconn.UserConn, userSubscriptionID gethrpc.ID, logger gethlog.Logger) {
+	buffer := NewCircularBuffer(wecommon.DeduplicationBufferSize)
 	for data := range channel {
+		// create unique identifier for current log
+		uniqueLogKey := LogKey{
+			BlockHash: data.Log.BlockHash,
+			TxHash:    data.Log.TxHash,
+			Index:     data.Log.Index,
+		}
+
+		// check if the current event is a duplicate (and skip it if it is)
+		if buffer.Contains(uniqueLogKey) {
+			continue
+		}
+
 		jsonResponse, err := prepareLogResponse(data, userSubscriptionID)
 		if err != nil {
 			logger.Error("could not marshal log response to JSON on subscription.", log.SubIDKey, data.SubID, log.ErrKey, err)
 			continue
 		}
+
+		// the current log is unique, and we want to add it to our buffer and proceed with forwarding to the user
+		buffer.Push(uniqueLogKey)
 
 		logger.Trace(fmt.Sprintf("Forwarding log from Obscuro node: %s", jsonResponse), log.SubIDKey, data.SubID)
 		err = userConn.WriteResponse(jsonResponse)

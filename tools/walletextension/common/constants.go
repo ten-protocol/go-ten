@@ -49,6 +49,7 @@ const (
 	APIVersion1                         = "/v1"
 	MethodEthSubscription               = "eth_subscription"
 	PathVersion                         = "/version/"
+	DeduplicationBufferSize             = 20
 )
 
 var ReaderHeadTimeout = 10 * time.Second
