@@ -76,12 +76,6 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 func readFromChannelAndWriteToUserConn(channel chan common.IDAndLog, userConn userconn.UserConn, userSubscriptionID gethrpc.ID, logger gethlog.Logger) {
 	buffer := NewCircularBuffer(wecommon.DeduplicationBufferSize)
 	for data := range channel {
-		jsonResponse, err := prepareLogResponse(data, userSubscriptionID)
-		if err != nil {
-			logger.Error("could not marshal log response to JSON on subscription.", log.SubIDKey, data.SubID, log.ErrKey, err)
-			continue
-		}
-
 		// create unique identifier for current log
 		uniqueLogKey := LogKey{
 			BlockHash: data.Log.BlockHash,
@@ -91,6 +85,12 @@ func readFromChannelAndWriteToUserConn(channel chan common.IDAndLog, userConn us
 
 		// check if the current event is a duplicate (and skip it if it is)
 		if buffer.Contains(uniqueLogKey) {
+			continue
+		}
+
+		jsonResponse, err := prepareLogResponse(data, userSubscriptionID)
+		if err != nil {
+			logger.Error("could not marshal log response to JSON on subscription.", log.SubIDKey, data.SubID, log.ErrKey, err)
 			continue
 		}
 
