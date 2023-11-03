@@ -268,10 +268,18 @@ async function populateAccountsTable(document, tableBody, userID) {
     const statusCell = document.createElement("td");
 
     let x = await accountIsAuthenticated(account, userID);
-    if (x == true) {
+
+    if (x === true) {
       statusCell.textContent = "\u2705";
     } else {
-      statusCell.textContent = "\u274C";
+      const connectButton = document.createElement("button");
+      connectButton.textContent = "Connect";
+      connectButton.style.cursor = "pointer";
+      connectButton.addEventListener("click", async (event) => {
+        event.preventDefault();
+        await authenticateAccountWithObscuroGateway(ethereum, account, userID);
+      });
+      statusCell.appendChild(connectButton);
     }
 
     const copyIcon = document.createElement("img");
