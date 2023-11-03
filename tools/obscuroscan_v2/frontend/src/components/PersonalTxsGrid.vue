@@ -10,7 +10,7 @@
     </el-table-column>
     <el-table-column prop="status" label="Status" width="180" >
       <template #default="scope">
-        <span style="margin-left: 10px">{{ (Number(scope.row.status) === 1) ? "Sucess" : "Failed" }}</span>
+        <span style="margin-left: 10px">{{ (Number(scope.row.status) === 1) ? "Success" : "Failed" }}</span>
       </template>
     </el-table-column>
     <el-table-column prop="gasUsed" label="Gas Cost" width="180" >
