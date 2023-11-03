@@ -2,9 +2,10 @@ package test
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 	"strings"
 	"testing"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration"

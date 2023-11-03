@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"regexp"
 	"testing"
 	"time"
 
@@ -303,50 +302,50 @@ func issueRequestWS(conn *websocket.Conn, body []byte) []byte {
 }
 
 // Reads messages from the connection for the provided duration, and returns the read messages.
-func readMessagesForDuration(t *testing.T, conn *websocket.Conn, duration time.Duration) [][]byte {
-	// We set a timeout to kill the test, in case we never receive a log.
-	timeout := time.AfterFunc(duration*3, func() {
-		t.Fatalf("timed out waiting to receive a log via the subscription")
-	})
-	defer timeout.Stop()
-
-	var msgs [][]byte
-	endTime := time.Now().Add(duration)
-	for {
-		_, msg, err := conn.ReadMessage()
-		if err != nil {
-			t.Fatalf("could not read message from websocket. Cause: %s", err)
-		}
-		msgs = append(msgs, msg)
-		if time.Now().After(endTime) {
-			return msgs
-		}
-	}
-}
+//func readMessagesForDuration(t *testing.T, conn *websocket.Conn, duration time.Duration) [][]byte {
+//	// We set a timeout to kill the test, in case we never receive a log.
+//	timeout := time.AfterFunc(duration*3, func() {
+//		t.Fatalf("timed out waiting to receive a log via the subscription")
+//	})
+//	defer timeout.Stop()
+//
+//	var msgs [][]byte
+//	endTime := time.Now().Add(duration)
+//	for {
+//		_, msg, err := conn.ReadMessage()
+//		if err != nil {
+//			t.Fatalf("could not read message from websocket. Cause: %s", err)
+//		}
+//		msgs = append(msgs, msg)
+//		if time.Now().After(endTime) {
+//			return msgs
+//		}
+//	}
+//}
 
 // Asserts that there are no duplicate logs in the provided list.
-func assertNoDupeLogs(t *testing.T, logsJSON [][]byte) {
-	logCount := make(map[string]int)
-
-	for _, logJSON := range logsJSON {
-		// Check if the log is already in the logCount map.
-		_, exist := logCount[string(logJSON)]
-		if exist {
-			logCount[string(logJSON)]++ // If it is, increase the count for that log by one.
-		} else {
-			logCount[string(logJSON)] = 1 // Otherwise, start a count for that log starting at one.
-		}
-	}
-
-	for logJSON, count := range logCount {
-		if count > 1 {
-			t.Errorf("received duplicate log with body %s", logJSON)
-		}
-	}
-}
+//func assertNoDupeLogs(t *testing.T, logsJSON [][]byte) {
+//	logCount := make(map[string]int)
+//
+//	for _, logJSON := range logsJSON {
+//		// Check if the log is already in the logCount map.
+//		_, exist := logCount[string(logJSON)]
+//		if exist {
+//			logCount[string(logJSON)]++ // If it is, increase the count for that log by one.
+//		} else {
+//			logCount[string(logJSON)] = 1 // Otherwise, start a count for that log starting at one.
+//		}
+//	}
+//
+//	for logJSON, count := range logCount {
+//		if count > 1 {
+//			t.Errorf("received duplicate log with body %s", logJSON)
+//		}
+//	}
+//}
 
 // Checks that the response to a request is correctly formatted, and returns the result field.
-func validateJSONResponse(t *testing.T, resp []byte) interface{} {
+func validateJSONResponse(t *testing.T, resp []byte) {
 	var respJSON map[string]interface{}
 	err := json.Unmarshal(resp, &respJSON)
 	if err != nil {
@@ -366,16 +365,14 @@ func validateJSONResponse(t *testing.T, resp []byte) interface{} {
 	if result == nil {
 		t.Fatalf("response did not contain `result` field")
 	}
-
-	return result
 }
 
 // Checks that the response to a subscription request is correctly formatted.
-func validateSubscriptionResponse(t *testing.T, resp []byte) {
-	result := validateJSONResponse(t, resp)
-	pattern := "0x.*"
-	resultString, ok := result.(string)
-	if !ok || !regexp.MustCompile(pattern).MatchString(resultString) {
-		t.Fatalf("subscription response did not contain expected result. Expected pattern matching %s, got %s", pattern, resultString)
-	}
-}
+//func validateSubscriptionResponse(t *testing.T, resp []byte) {
+//	result := validateJSONResponse(t, resp)
+//	pattern := "0x.*"
+//	resultString, ok := result.(string)
+//	if !ok || !regexp.MustCompile(pattern).MatchString(resultString) {
+//		t.Fatalf("subscription response did not contain expected result. Expected pattern matching %s, got %s", pattern, resultString)
+//	}
+//}
