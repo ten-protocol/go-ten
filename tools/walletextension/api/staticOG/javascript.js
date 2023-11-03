@@ -1,4 +1,5 @@
 const gatewayaddress = "https://testnet.obscu.ro";
+const obscuroscanLink = "https://testnet.obscuroscan.com";
 const eventClick = "click";
 const eventDomLoaded = "DOMContentLoaded";
 const idJoin = "join";
@@ -255,12 +256,18 @@ async function populateAccountsTable(document, tableBody, userID) {
     const row = document.createElement("tr");
 
     const accountCell = document.createElement("td");
-    accountCell.textContent = account;
+
+    const accountLink = document.createElement("a");
+    accountLink.href = obscuroscanLink;
+    accountLink.textContent = account;
+    accountLink.target = "_blank";
+    accountCell.appendChild(accountLink);
+
     row.appendChild(accountCell);
 
     const statusCell = document.createElement("td");
 
-    let x = await accountIsAuthenticated(account, userID); // Status is empty for now
+    let x = await accountIsAuthenticated(account, userID);
     if (x == true) {
       statusCell.textContent = "\u2705";
     } else {
@@ -270,7 +277,6 @@ async function populateAccountsTable(document, tableBody, userID) {
     const copyIcon = document.createElement("img");
     copyIcon.src = "./copy.svg";
     copyIcon.style.cursor = "pointer";
-    copyIcon.style.marginLeft = "10px";
     copyIcon.style.width = "20px";
 
     copyIcon.addEventListener("click", () => {
@@ -289,7 +295,6 @@ async function populateAccountsTable(document, tableBody, userID) {
     });
 
     accountCell.appendChild(copyIcon);
-
     row.appendChild(statusCell);
 
     tableBody.appendChild(row);
