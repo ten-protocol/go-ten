@@ -2,6 +2,7 @@ import './assets/main.css'
 
 import { createApp } from 'vue'
 import {createPinia, setActivePinia} from 'pinia'
+import timeago from 'vue-timeago3'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
@@ -19,6 +20,7 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component)
 }
 
+app.use(timeago) // timeago is a human readable 'time since' library
 app.use(ElementPlus)
 app.config.globalProperties.RunConfig =new Config()
 app.use(router)

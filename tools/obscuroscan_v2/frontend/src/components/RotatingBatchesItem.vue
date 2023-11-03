@@ -1,16 +1,20 @@
 <template>
-  <el-card class="centered-container" shadow="never" style="border-radius: 20px;">
-  <div class="slider-container" style="width: 100%;">
-    <div class="slider-content" :class="{ 'slide-out': isAnimating }" >
-      <el-card v-for="card in displayedCards" :key="card.hash" class="card-content box">
-        <h3 class="header-text" >Batch: {{ card.number }}</h3>
-        <p>&nbsp;</p>
-        <h5><ShortenedHash :hash="card.hash" /></h5>
-        <h5><Timestamp :unixTimestampSeconds="Number(card.timestamp)" /></h5>
-      </el-card>
-    </div>
-  </div>
-  </el-card>
+  <el-row class="batches-row">
+    <el-button class="all-batches-btn obs-link-button" @click="$router.push('/batches')"><el-icon><ArrowLeftBold /></el-icon> View older batches</el-button>
+    <el-card v-for="batch in batchList" :key="batch.hash" class="batch-card">
+      <template #header>
+        <div class="card-header" >Batch <span class="batch-height">{{ batch.number }}</span></div>
+      </template>
+      <p class="prop-label">Batch Hash:</p>
+      <el-row class="hash prop-val"><ShortenedHash :hash="batch.hash" /><CopyButton :value="batch.hash"/></el-row>
+      <p class="prop-label">L1 Block:</p>
+      <el-row class="hash prop-val"><ShortenedHash :hash="batch.l1Proof" /><CopyButton :value="batch.l1Proof"/></el-row>
+      <p class="prop-label">Tx Count:</p>
+      <p class="prop-val">{{ batch.txHashes ? batch.txHashes.length : 0}}</p>
+      <p class="prop-label">Timestamp:</p>
+      <p class="prop-val timestamp"><Timestamp :unixTimestampSeconds="Number(batch.timestamp)" /></p>
+    </el-card>
+  </el-row>
 </template>
 
 <script>
@@ -18,10 +22,11 @@ import {useBatchStore} from "@/stores/batchStore";
 import {computed, onMounted, onUnmounted} from "vue";
 import Timestamp from "@/components/helper/Timestamp.vue";
 import ShortenedHash from "@/components/helper/ShortenedHash.vue";
+import CopyButton from "@/components/helper/CopyButton.vue";
 
 export default {
   name: "RotatingBatchesItem",
-  components: {ShortenedHash, Timestamp},
+  components: {CopyButton, ShortenedHash, Timestamp},
 
   setup() {
     const batch = useBatchStore()
@@ -37,7 +42,7 @@ export default {
     })
 
     return {
-      displayedCards:  computed(() => batch.batches.get()),
+      batchList:  computed(() => batch.batches.get()),
       isAnimating: false
     }
   },
@@ -45,48 +50,47 @@ export default {
 </script>
 
 <style scoped>
-
-.box {
-  border-radius: 15px;
-  background: #F4F6FF;
+.card-header {
+  text-align: right;
 }
-
-.header-text {
-  color: #5973B8;
+.batch-height {
   font-weight: bold;
+  color: var(--obs-tertiary)
 }
 
-.centered-container {
-  display: flex;
-  justify-content: center;  /* Center children horizontally */
-  align-items: center;      /* Center children vertically */
+.batches-row {
+  align-content: center;
+  height: fit-content;
 }
 
-.slider-container {
-  overflow-x: auto;
-  width: 1000px;  /* Adjust based on your design */
-  white-space: nowrap;
-}
-
-.slider-content {
-  display: flex;
-}
-
-.card-content {
-  display: inline-block;
-  width: 200px;  /* If 5 cards need to be displayed at a time, and container width is 1000px, then each card can be approximately 200px wide */
-  margin-right: 20px;  /* Adjust as needed */
+.all-batches-btn {
+  border-radius: 8px;
+  margin: auto 0;
+  flex-grow: 1;
   text-align: center;
 }
 
-
-.slide-out {
-  animation: slideOut 1s forwards; /* Animation to slide the cards to the left */
+.batch-card {
+  width: 14rem;
+  margin: 12px;
+  border-radius: 8px;
 }
 
-@keyframes slideOut {
-  0% { transform: translateX(0%); }
-  100% { transform: translateX(-20%); } /* Assuming each card takes 20% width */
+.batch-card.el-card__header {
+  border-bottom-color: var(--obs-secondary) !important;
+}
+.prop-label {
+  font-size: 0.6rem;
+  color: #A3A3A3;
+}
+.hash {
+  gap: 0.5rem;
+  justify-items: end;
+  align-items: center;
+}
+
+.prop-val {
+  font-size: 0.75rem;
 }
 
 </style>

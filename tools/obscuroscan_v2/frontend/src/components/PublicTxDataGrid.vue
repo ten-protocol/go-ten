@@ -1,10 +1,15 @@
 <template>
-  <el-card class="fill-width">
-    <el-header>Recent transactions</el-header>
-    <el-table  height="60vh" :data="publicTransactionsData">
+  <el-card class="fill-width obs-container-card" shadow="never">
+    <template #header>
+      <div class="card-header">
+        <span>Recent Transactions</span>
+        <el-button class="obs-link-button" @click="$router.push('/transactions')">View all transactions</el-button>
+      </div>
+    </template>
+    <el-table :data="publicTransactionsData">
       <el-table-column prop="BatchHeight" label="Batch Height" width="180" />
       <el-table-column prop="Finality" label="Finality" width="180" />
-      <el-table-column prop="TransactionHash" label="Tx Hash"  />
+      <el-table-column prop="TransactionHash" label="Tx Hash" />
     </el-table>
     <el-pagination
       @size-change="handleSizeChange"
@@ -74,5 +79,10 @@ export default {
 <style scoped>
 .fill-width {
   width: 100%;
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 </style>

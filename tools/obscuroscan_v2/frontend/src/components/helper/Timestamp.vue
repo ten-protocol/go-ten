@@ -1,6 +1,7 @@
 <template>
-  <div>
-    {{ formattedTimestamp }}
+  <div :title="formattedTimestamp">
+    {{ formattedTimestamp }}<br/>
+    <span class="time-ago">(<timeago :datetime="unixTimestampSeconds * 1000"></timeago>)</span>
   </div>
 </template>
 
@@ -28,3 +29,9 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.time-ago {
+  font-size: 0.6rem;
+}
+</style>

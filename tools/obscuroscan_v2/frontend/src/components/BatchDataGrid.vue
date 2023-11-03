@@ -1,36 +1,34 @@
 <template>
-  <el-card class="fill-width">
-    <BatchInfoWindow ref="batchInfoWindowRef" />
-    <el-table
-        height="60vh"
-        :data="batchesData"
-        @row-click="toggleWindow"
-        style="cursor: pointer"
-    >
-      <el-table-column prop="number" label="Height" width="180"/>
-      <el-table-column prop="hash" label="Hash" width="250">
-        <template #default="scope">
-          <ShortenedHash :hash="scope.row.hash" />
-        </template>
-      </el-table-column>
-      <el-table-column prop="timestamp" label="Time"  width="180">
-        <template #default="scope">
-          <Timestamp :unixTimestampSeconds="Number(scope.row.timestamp)" />
-        </template>
-      </el-table-column>
-      <el-table-column prop="l1Proof" label="Included in Rollup"/>
-    </el-table>
-    <el-pagination
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-        :current-page="currentPage"
-        :page-sizes="[10, 20, 30, 40]"
-        :page-size="size"
-        :page-count="totalPages"
-        layout="total, sizes, prev, pager, next"
-        :total="batchListingCount"
-    ></el-pagination>
-  </el-card>
+  <BatchInfoWindow ref="batchInfoWindowRef" />
+  <el-table
+      height="60vh"
+      :data="batchesData"
+      @row-click="toggleWindow"
+      style="cursor: pointer"
+  >
+    <el-table-column prop="number" label="Height" width="180"/>
+    <el-table-column prop="hash" label="Hash" width="250">
+      <template #default="scope">
+        <ShortenedHash :hash="scope.row.hash" />
+      </template>
+    </el-table-column>
+    <el-table-column prop="timestamp" label="Time"  width="180">
+      <template #default="scope">
+        <Timestamp :unixTimestampSeconds="Number(scope.row.timestamp)" />
+      </template>
+    </el-table-column>
+    <el-table-column prop="l1Proof" label="Included in Rollup"/>
+  </el-table>
+  <el-pagination
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+      :current-page="currentPage"
+      :page-sizes="[10, 20, 30, 40]"
+      :page-size="size"
+      :page-count="totalPages"
+      layout="total, sizes, prev, pager, next"
+      :total="batchListingCount"
+  ></el-pagination>
 </template>
 
 <script>
@@ -47,14 +45,9 @@ export default {
   setup() {
     const store = useBatchStore()
 
-    // Start polling when the component is mounted
     onMounted(() => {
-      store.startPolling()
-    })
-
-    // Ensure to stop polling when component is destroyed or deactivated
-    onUnmounted(() => {
-      store.stopPolling()
+      // reload store data on mount
+      store.fetch()
     })
 
     return {
@@ -80,12 +73,14 @@ export default {
       const store = useBatchStore()
       store.size = newSize
       store.offset = (this.currentPage - 1) * store.size
+      store.fetch()
     },
     // Called when the current page is changed
     handleCurrentChange(newPage) {
       const store = useBatchStore()
       this.currentPage = newPage
       store.offset = (newPage - 1) * store.size
+      store.fetch()
     },
     toggleWindow(data) {
       this.$refs.batchInfoWindowRef.displayData(data.hash);

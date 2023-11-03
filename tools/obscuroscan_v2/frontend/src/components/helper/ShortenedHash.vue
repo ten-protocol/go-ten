@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="hash-wrapper">
     <el-tooltip
         class="box-item"
         effect="dark"
@@ -27,14 +27,16 @@ export default {
   computed: {
     shortenedHash() {
       if (!this.hash) return "";
-      const start = this.hash.substring(0, 6);
-      const end = this.hash.substring(this.hash.length - 6);
-      return `${start}...${end}`;
+      const start = this.hash.substring(0, 12);
+      //const end = this.hash.substring(this.hash.length - 6);
+      return `${start}...`;
     }
   }
 };
 </script>
 
 <style scoped>
-
+.hash-wrapper {
+  cursor: default;
+}
 </style>
