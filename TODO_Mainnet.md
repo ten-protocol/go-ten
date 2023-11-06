@@ -33,7 +33,8 @@
   - Sort out finality for xchain messages, separate from the DA rollup.
 
 ## VIII. Management contract
-  - 
+  - Upgradable contracts
+  - Contract signature handling (multisig to deploy new versions ?)
 
 ## IX.  Gateway
   - SGX
