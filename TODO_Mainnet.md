@@ -25,6 +25,9 @@
   - L1 validation
   - Add challenges
   - review everything
+  - prepare docs for external security audit
+  - arrange the audit
+  - address the outcome of the audit
 
 ## VII. Cross chain
   - Sort out finality for xchain messages, separate from the DA rollup.
