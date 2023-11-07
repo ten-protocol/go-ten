@@ -78,7 +78,7 @@ func (db *DB) GetBlockListing(pagination *common.QueryPagination) (*common.Block
 	var blocks []common.PublicBlock
 	for i := blocksFrom; i > uint64(blocksToInclusive); i-- {
 		header, err := db.GetBlockByHeight(big.NewInt(int64(i)))
-		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		if err != nil {
 			return nil, err
 		}
 
