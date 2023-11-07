@@ -38,6 +38,7 @@ type PublicTransaction struct {
 
 type PublicBatch struct {
 	BatchHeader
+	TxHashes []TxHash `json:"txHashes"`
 }
 
 type PublicBlock struct {

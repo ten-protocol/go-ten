@@ -58,13 +58,27 @@ func (db *DB) AddBlock(header *types.Header) error {
 	return nil
 }
 
-// GetBlockListing returns a list of blocks given the pagination
+// GetBlockListing returns latest L1 blocks given the pagination.
+// For example, page 0, size 10 will return the latest 10 blocks.
 func (db *DB) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
+	// fetch the total blocks so we can paginate
+	tipHeader, err := db.GetBlockAtTip()
+	if err != nil {
+		return nil, err
+	}
+
+	blocksFrom := tipHeader.Number.Uint64() - pagination.Offset
+	blocksToInclusive := int(blocksFrom) - int(pagination.Size) + 1
+	// if blocksToInclusive would be negative, set it to 0
+	if blocksToInclusive < 0 {
+		blocksToInclusive = 0
+	}
+
 	// fetch requested batches
 	var blocks []common.PublicBlock
-	for i := pagination.Offset; i < pagination.Offset+uint64(pagination.Size); i++ {
+	for i := blocksFrom; i > uint64(blocksToInclusive); i-- {
 		header, err := db.GetBlockByHeight(big.NewInt(int64(i)))
-		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		if err != nil {
 			return nil, err
 		}
 
@@ -74,19 +88,12 @@ func (db *DB) GetBlockListing(pagination *common.QueryPagination) (*common.Block
 			return nil, err
 		}
 
-		if header != nil {
-			listedBlock := common.PublicBlock{BlockHeader: *header}
-			if rollup != nil {
-				listedBlock.RollupHash = rollup.Hash()
-				fmt.Println("added at block: ", header.Number.Int64(), " - ", listedBlock.RollupHash)
-			}
-			blocks = append(blocks, listedBlock)
+		listedBlock := common.PublicBlock{BlockHeader: *header}
+		if rollup != nil {
+			listedBlock.RollupHash = rollup.Hash()
+			fmt.Println("added at block: ", header.Number.Int64(), " - ", listedBlock.RollupHash)
 		}
-	}
-	// fetch the total blocks so we can paginate
-	tipHeader, err := db.GetBlockAtTip()
-	if err != nil {
-		return nil, err
+		blocks = append(blocks, listedBlock)
 	}
 
 	return &common.BlockListingResponse{
