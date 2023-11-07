@@ -25,15 +25,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`Beginning deploy of cross chain messenger`);
 
     // Deploy the L2 Cross chain messenger and use the L2 bus for validation
-    await deployments.deploy('CrossChainMessenger', {
+    await deployments.deploy('CrossChainMessengerL2', {
         from: deployer,
-        args: [ busAddress ],
+        args: [ ],
         log: true,
-        proxy: {
-            proxyContract: "OpenZeppelinTransparentProxy"
-        }
+        contract: 'CrossChainMessenger'
     });
 };
 
 export default func;
-func.tags = ['CrossChainMessenger', 'CrossChainMessenger_deploy'];
+func.tags = ['CrossChainMessengerL2', 'CrossChainMessenger_deployL2'];

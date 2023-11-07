@@ -20,10 +20,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Setup the cross chain messenger and point it to the message bus from the management contract to be used for validation
     await deployments.deploy('CrossChainMessenger', {
         from: deployer,
-        args: [ messageBusAddress ],
         log: true,
         proxy: {
-            proxyContract: "OpenZeppelinTransparentProxy"
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: [ messageBusAddress ]
+                }
+            }
         }
     });
 };

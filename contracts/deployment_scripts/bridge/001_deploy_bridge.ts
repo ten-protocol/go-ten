@@ -31,7 +31,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     });
 
     // We get the Cross chain messenger deployment on the layer 2 network.
-    const messengerL2 = await deployments.get("CrossChainMessenger");
+    const messengerL2 = await deployments.get("CrossChainMessengerL2");
 
     // Deploy the layer 2 part of the bridge and instruct it to use the address of the L2 cross chain messenger to enable functionality
     // and be subordinate of the L1 ObscuroBridge
@@ -56,4 +56,4 @@ export default func;
 func.tags = ['EthereumBridge', 'EthereumBridge_deploy'];
 
 // This should only be deployed after the L2 CrossChainMessenger
-func.dependencies = ['CrossChainMessenger'];
+func.dependencies = ['CrossChainMessenger', 'CrossChainMessengerL2'];

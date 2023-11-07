@@ -18,11 +18,14 @@ contract CrossChainMessenger is ICrossChainMessenger {
     error CallFailed(bytes error);
 
     IMessageBus messageBusContract;
-    address public crossChainSender = address(0x0);
+    address public crossChainSender;
     mapping(bytes32 => bool) messageConsumed;
 
-    constructor(address messageBusAddr) {
+
+    //todo - make only once
+    function initialize(address messageBusAddr) external {
         messageBusContract = IMessageBus(messageBusAddr);
+        crossChainSender =  address(0x0);
     }
 
     function messageBus() external view returns (address) {

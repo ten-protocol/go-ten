@@ -24,7 +24,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         args: [],
         log: true,
         proxy: {
-            proxyContract: "OpenZeppelinTransparentProxy"
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: []
+                }
+            }
         }
     });
     const busAddress = await deployments.read('ManagementContract', 'messageBus');

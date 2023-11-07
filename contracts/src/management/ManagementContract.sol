@@ -27,7 +27,7 @@ contract ManagementContract is Ownable {
     Structs.RollupStorage private rollups;
     //The messageBus where messages can be sent to Obscuro
     MessageBus.IMessageBus public messageBus;
-    constructor() {
+    function initialize() external {
         messageBus = new MessageBus.MessageBus();
         emit LogManagementContractCreated(address(messageBus));
     }
