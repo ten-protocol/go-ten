@@ -93,6 +93,7 @@ func TestObscuroGateway(t *testing.T) {
 		"testErrorHandling":                testErrorHandling,
 		"testMultipleAccountsSubscription": testMultipleAccountsSubscription,
 		"testErrorsRevertedArePassed":      testErrorsRevertedArePassed,
+		"testUnsubscribe":                  testUnsubscribe,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, httpURL, wsURL, w)
@@ -383,6 +384,57 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.W
 	require.Equal(t, err.Error(), "execution reverted")
 }
 
+func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+	// create a user with multiple accounts
+	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.ObscuroChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	fmt.Printf("Created user with UserID: %s\n", user.ogClient.UserID())
+
+	// register all the accounts for the user
+	err = user.RegisterAccounts()
+	require.NoError(t, err)
+
+	// deploy events contract
+	deployTx := &types.LegacyTx{
+		Nonce:    w.GetNonceAndIncrement(),
+		Gas:      uint64(1_000_000),
+		GasPrice: gethcommon.Big1,
+		Data:     gethcommon.FromHex(eventsContractBytecode),
+	}
+
+	signedTx, err := w.SignTransaction(deployTx)
+	require.NoError(t, err)
+
+	err = user.HTTPClient.SendTransaction(context.Background(), signedTx)
+	require.NoError(t, err)
+
+	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user.HTTPClient, signedTx.Hash(), time.Minute)
+	require.NoError(t, err)
+
+	fmt.Println("Deployed contract address: ", contractReceipt.ContractAddress)
+
+	// subscribe to an event
+	var userLogs []types.Log
+	subscription := subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user.WSClient, &userLogs)
+
+	// make an action that will trigger events
+	_, err = integrationCommon.InteractWithSmartContract(user.HTTPClient, user.Wallets[0], eventsContractABI, "setMessage", "foo", contractReceipt.ContractAddress)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, len(userLogs))
+
+	// Unsubscribe from events
+	subscription.Unsubscribe()
+
+	// make another action that will trigger events
+	_, err = integrationCommon.InteractWithSmartContract(user.HTTPClient, user.Wallets[0], eventsContractABI, "setMessage", "bar", contractReceipt.ContractAddress)
+	require.NoError(t, err)
+
+	// check that we are not receiving events after unsubscribing
+	assert.Equal(t, 1, len(userLogs))
+
+}
+
 func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet) common.TxHash { //nolint: unused
 	ctx := context.Background()
 	toAddr := datagenerator.RandomAddress()
@@ -475,7 +527,7 @@ func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddr
 	return integrationCommon.AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 2*time.Second)
 }
 
-func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Hash, client *ethclient.Client, logs *[]types.Log) {
+func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Hash, client *ethclient.Client, logs *[]types.Log) ethereum.Subscription {
 	// Make a subscription
 	filterQuery := ethereum.FilterQuery{
 		Addresses: addresses,
@@ -489,8 +541,6 @@ func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Has
 	if err != nil {
 		fmt.Printf("Failed to subscribe to filter logs: %v\n", err)
 	}
-	// todo (@ziga) - unsubscribe when it is fixed...
-	// defer subscription.Unsubscribe() // cleanup
 
 	// Listen for logs in a goroutine
 	go func() {
@@ -505,4 +555,6 @@ func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Has
 			}
 		}
 	}()
+
+	return subscription
 }

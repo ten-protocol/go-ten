@@ -19,14 +19,14 @@ import (
 )
 
 type SubscriptionManager struct {
-	subscriptionMappings map[string][]string
+	subscriptionMappings map[string][]*gethrpc.ClientSubscription
 	logger               gethlog.Logger
 	mu                   sync.Mutex
 }
 
 func New(logger gethlog.Logger) *SubscriptionManager {
 	return &SubscriptionManager{
-		subscriptionMappings: make(map[string][]string),
+		subscriptionMappings: make(map[string][]*gethrpc.ClientSubscription),
 		logger:               logger,
 	}
 }
@@ -55,17 +55,11 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 		if err != nil {
 			return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
 		}
-
+		sm.UpdateSubscriptionMapping(string(userSubscriptionID), subscription)
+		
 		// We periodically check if the websocket is closed, and terminate the subscription.
 		// TODO: test this feature in integration test
-		go checkIfUserConnIsClosedAndUnsubscribe(userConn, subscription)
-
-		// Make a connection between subscriptionID returned from node for current request and subscriptionID returned to user
-		if currentNodeSubscriptionID, ok := (*resp).(string); ok {
-			sm.UpdateSubscriptionMapping(string(userSubscriptionID), currentNodeSubscriptionID)
-		} else {
-			sm.logger.Error("Unable to read subscriptionID")
-		}
+		go checkIfUserConnIsClosedAndUnsubscribe(userConn, subscription, &sm.mu)
 	}
 
 	// We return subscriptionID with resp interface. We want to use userSubscriptionID to allow unsubscribing
@@ -106,39 +100,42 @@ func readFromChannelAndWriteToUserConn(channel chan common.IDAndLog, userConn us
 	}
 }
 
-func checkIfUserConnIsClosedAndUnsubscribe(userConn userconn.UserConn, subscription *gethrpc.ClientSubscription) {
+func checkIfUserConnIsClosedAndUnsubscribe(userConn userconn.UserConn, subscription *gethrpc.ClientSubscription, mu *sync.Mutex) {
 	for {
+		mu.Lock()
 		if userConn.IsClosed() {
 			subscription.Unsubscribe()
 			return
 		}
+		mu.Unlock()
 		time.Sleep(100 * time.Millisecond)
 	}
 }
 
-func (sm *SubscriptionManager) UpdateSubscriptionMapping(userSubscriptionID string, obscuroNodeSubscriptionID string) {
+func (sm *SubscriptionManager) UpdateSubscriptionMapping(userSubscriptionID string, subscription *gethrpc.ClientSubscription) {
 	// Ensure there is no concurrent map writes
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
-	existingUserIDs, exists := sm.subscriptionMappings[userSubscriptionID]
+	// Check if the userSubscriptionID already exists in the map
+	subscriptions, exists := sm.subscriptionMappings[userSubscriptionID]
 
+	// If it doesn't exist, create a new slice for it
 	if !exists {
-		sm.subscriptionMappings[userSubscriptionID] = []string{obscuroNodeSubscriptionID}
-		return
+		subscriptions = []*gethrpc.ClientSubscription{}
 	}
 
-	// Check if obscuroNodeSubscriptionID already exists to avoid duplication
-	alreadyExists := false
-	for _, existingID := range existingUserIDs {
-		if obscuroNodeSubscriptionID == existingID {
-			alreadyExists = true
+	// Check if the subscription is already in the slice, if not, add it
+	subscriptionExists := false
+	for _, sub := range subscriptions {
+		if sub == subscription {
+			subscriptionExists = true
 			break
 		}
 	}
 
-	if !alreadyExists {
-		sm.subscriptionMappings[userSubscriptionID] = append(existingUserIDs, obscuroNodeSubscriptionID)
+	if !subscriptionExists {
+		sm.subscriptionMappings[userSubscriptionID] = append(subscriptions, subscription)
 	}
 }
 
@@ -158,4 +155,21 @@ func prepareLogResponse(idAndLog common.IDAndLog, userSubscriptionID gethrpc.ID)
 		return nil, fmt.Errorf("could not marshal log response to JSON. Cause: %w", err)
 	}
 	return jsonResponse, nil
+}
+
+func (sm *SubscriptionManager) HandleUnsubscribe(userSubscriptionID string, rpcResp *interface{}) {
+	subscriptions, exists := sm.subscriptionMappings[userSubscriptionID]
+
+	if !exists {
+		*rpcResp = false
+		return
+	}
+
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	for _, sub := range subscriptions {
+		sub.Unsubscribe()
+	}
+	delete(sm.subscriptionMappings, userSubscriptionID)
+	*rpcResp = true
 }

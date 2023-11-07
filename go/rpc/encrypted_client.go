@@ -125,15 +125,6 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namesp
 		return nil, err
 	}
 
-	// We need to return the subscription ID, to allow unsubscribing. However, the client API has already converted
-	// from a subscription ID to a subscription object under the hood, so we can't retrieve the subscription ID.
-	// To hack around this, we always return the subscription ID as the first message on the newly-created subscription.
-	err = c.setResultToSubID(clientChannel, result, subscriptionToObscuro)
-	if err != nil {
-		subscriptionToObscuro.Unsubscribe()
-		return nil, err
-	}
-
 	go c.forwardLogs(clientChannel, logCh, subscriptionToObscuro)
 
 	return subscriptionToObscuro, nil
@@ -212,24 +203,6 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 
 	logSubscription.Filter = &filterCriteria
 	return logSubscription, nil
-}
-
-func (c *EncRPCClient) setResultToSubID(clientChannel chan common.IDAndEncLog, result interface{}, subscription *rpc.ClientSubscription) error {
-	select {
-	case idAndEncLog := <-clientChannel:
-		if idAndEncLog.SubID == "" || idAndEncLog.EncLog != nil {
-			return fmt.Errorf("expected an initial subscription response with the subscription ID only")
-		}
-		if result != nil {
-			err := c.setResult([]byte(idAndEncLog.SubID), result)
-			if err != nil {
-				return fmt.Errorf("failed to extract result from subscription response: %w", err)
-			}
-		}
-	case <-subscription.Err():
-		return fmt.Errorf("did not receive the initial subscription response with the subscription ID")
-	}
-	return nil
 }
 
 func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
