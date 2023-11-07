@@ -89,7 +89,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	return c.executeSensitiveCall(ctx, result, method, args...)
 }
 
-func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
+func (c *EncRPCClient) Subscribe(ctx context.Context, _ interface{}, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("subscription did not specify its type")
 	}
