@@ -90,10 +90,11 @@ func TestObscuroGateway(t *testing.T) {
 	// run the tests against the exis
 	for name, test := range map[string]func(*testing.T, string, string, wallet.Wallet){
 		//"testAreTxsMinted":            testAreTxsMinted, this breaks the other tests bc, enable once concurency issues are fixed
-		"testErrorHandling":                testErrorHandling,
-		"testMultipleAccountsSubscription": testMultipleAccountsSubscription,
-		"testErrorsRevertedArePassed":      testErrorsRevertedArePassed,
-		"testUnsubscribe":                  testUnsubscribe,
+		"testErrorHandling":                    testErrorHandling,
+		"testMultipleAccountsSubscription":     testMultipleAccountsSubscription,
+		"testErrorsRevertedArePassed":          testErrorsRevertedArePassed,
+		"testUnsubscribe":                      testUnsubscribe,
+		"testClosingConnectionWhileSubscribed": testClosingConnectionWhileSubscribed,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, httpURL, wsURL, w)
@@ -432,7 +433,64 @@ func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 
 	// check that we are not receiving events after unsubscribing
 	assert.Equal(t, 1, len(userLogs))
+}
 
+func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+	// create a user with multiple accounts
+	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.ObscuroChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	fmt.Printf("Created user with UserID: %s\n", user.ogClient.UserID())
+
+	// register all the accounts for the user
+	err = user.RegisterAccounts()
+	require.NoError(t, err)
+
+	// deploy events contract
+	deployTx := &types.LegacyTx{
+		Nonce:    w.GetNonceAndIncrement(),
+		Gas:      uint64(1_000_000),
+		GasPrice: gethcommon.Big1,
+		Data:     gethcommon.FromHex(eventsContractBytecode),
+	}
+
+	signedTx, err := w.SignTransaction(deployTx)
+	require.NoError(t, err)
+
+	err = user.HTTPClient.SendTransaction(context.Background(), signedTx)
+	require.NoError(t, err)
+
+	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user.HTTPClient, signedTx.Hash(), time.Minute)
+	require.NoError(t, err)
+
+	fmt.Println("Deployed contract address: ", contractReceipt.ContractAddress)
+
+	// subscribe to an event
+	var userLogs []types.Log
+	subscription := subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user.WSClient, &userLogs)
+
+	// Close the websocket connection and make sure nothing breaks, but user does not receive events
+	user.WSClient.Close()
+
+	// make an action that will emmit events
+	_, err = integrationCommon.InteractWithSmartContract(user.HTTPClient, user.Wallets[0], eventsContractABI, "setMessage2", "foo", contractReceipt.ContractAddress)
+	require.NoError(t, err)
+	// but with closed connection we don't receive any logs
+	assert.Equal(t, 0, len(userLogs))
+
+	// re-establish connection
+	wsClient, err := ethclient.Dial(wsURL + "/v1/" + "?u=" + user.ogClient.UserID())
+	require.NoError(t, err)
+	user.WSClient = wsClient
+
+	// make an action that will emmit events again
+	_, err = integrationCommon.InteractWithSmartContract(user.HTTPClient, user.Wallets[0], eventsContractABI, "setMessage2", "foo", contractReceipt.ContractAddress)
+	require.NoError(t, err)
+
+	// closing connection (above) unsubscribes, and we still should see no logs
+	assert.Equal(t, 0, len(userLogs))
+
+	// Call unsubscribe (should handle it without issues even if it is already unsubscribed by closing the channel)
+	subscription.Unsubscribe()
 }
 
 func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet) common.TxHash { //nolint: unused

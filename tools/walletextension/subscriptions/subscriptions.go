@@ -56,9 +56,8 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 			return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
 		}
 		sm.UpdateSubscriptionMapping(string(userSubscriptionID), subscription)
-		
+
 		// We periodically check if the websocket is closed, and terminate the subscription.
-		// TODO: test this feature in integration test
 		go checkIfUserConnIsClosedAndUnsubscribe(userConn, subscription, &sm.mu)
 	}
 
