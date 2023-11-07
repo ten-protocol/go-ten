@@ -1,51 +1,50 @@
 # Outstanding Work for Mainnet
 
-## I. Operational Node 
-	- configuration that makes sense
-	- robust startup scripts 
- 	- Enclave HA
- 	- HA Host DB
- 	- Mempool
- 	- More robust P2P (?)
- 	- Harden Ethereum Wallet. More robust L1 tx signing (with manual confirmation?)
- 	- HA L1 provider 
-  	- Obscuro RPC - cleanup
-  	- secret sharing. Review and harden
-  	- address compression edge case 
+## I. Operational Node
+  - Configuration that makes sense 
+  - Robust startup scripts 
+  - Enclave HA 
+  - HA Host DB 
+  - Mempool 
+  - More robust P2P (?)
+  - Harden Ethereum Wallet. More robust L1 tx signing (with manual confirmation?)
+  - HA L1 provider 
+  - Obscuro RPC - cleanup 
+  - Secret sharing. Review and harden 
+  - Address compression edge case 
 
 ## II. Crypto
-	- Implement revelation logic
-	- implement key derivation for rollup encryption
+  - Implement revelation logic 
+  - Implement key derivation for rollup encryption
 
 ## III. Upgrade
-	- Implement operational upgrade process (described in design doc). Includes L1 component, RPC endpoints, etc
-	- Implement key splitting and sharing to N parties (with stake?)
+  - Implement operational upgrade process (described in design doc). Includes L1 component, RPC endpoints, etc
+  - Implement key splitting and sharing to N parties (with stake?)
 
-## V. Security
-  	- L1 validation
-  	- Add challenges
-  	- review everything
-  	- prepare docs for external security audit
-  	- arrange the audit
-  	- address the outcome of the audit
+## IV. Security
+  - L1 validation
+  - Add challenges
+  - Review everything
+  - Prepare docs for external security audit
+  - Arrange the audit 
+  - Address the outcome of the audit
 
-## VII. Cross chain
-  	- Sort out finality for xchain messages, separate from the DA rollup.
+## V. Cross chain
+  - Sort out finality for xchain messages, separate from the DA rollup.
 
-## VIII. Management contract
-  	- Upgradable contracts
-  	- Contract signature handling (multisig to deploy new versions ?)
+## VI. Management contract
+  - Upgradable contracts 
+  - Contract signature handling (multisig to deploy new versions ?)
 
-## IX.  Gateway
-	- SGX
-	- certificate generation
-	- tooling to determine cert used for connection
-	- smart contract logic + staking + slashing
+## VII. Gateway
+  - SGX 
+  - Certificate generation 
+  - Tooling to determine cert used for connection 
+  - Smart contract logic + staking + slashing
 
-## X.  UI libraries, clients and tooling, and monitoring
-  	- Obscuroscan
-  	- obscuro widget
-  	- js libraries
-  	- hardhat plugin
-  	- 
+## VIII. UI libraries, clients and tooling, and monitoring
+  - Obscuroscan 
+  - Obscuro widget 
+  - JS libraries 
+  - Hardhat plugin
 
