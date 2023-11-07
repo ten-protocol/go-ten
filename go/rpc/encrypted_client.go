@@ -334,27 +334,6 @@ func (c *EncRPCClient) decryptResponse(encryptedBytes []byte) ([]byte, error) {
 	return decryptedResult, nil
 }
 
-// setResult tries to cast/unmarshal data into the result pointer, based on its type
-func (c *EncRPCClient) setResult(data []byte, result interface{}) error {
-	switch result := result.(type) {
-	case *string:
-		*result = string(data)
-		return nil
-
-	case *interface{}:
-		err := json.Unmarshal(data, result)
-		if err != nil {
-			// if unmarshal failed with generic return we can try to send it back as a string
-			*result = string(data)
-		}
-		return nil
-
-	default:
-		// for any other type we attempt to json unmarshal it
-		return json.Unmarshal(data, result)
-	}
-}
-
 // IsSensitiveMethod indicates whether the RPC method's requests and responses should be encrypted.
 func IsSensitiveMethod(method string) bool {
 	for _, m := range SensitiveMethods {

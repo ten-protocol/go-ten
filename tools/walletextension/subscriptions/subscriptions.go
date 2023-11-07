@@ -58,7 +58,8 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 		sm.UpdateSubscriptionMapping(string(userSubscriptionID), subscription)
 
 		// We periodically check if the websocket is closed, and terminate the subscription.
-		go checkIfUserConnIsClosedAndUnsubscribe(userConn, subscription, &sm.mu)
+		// TODO: Check if it will be much more efficient to create just one go routine for all clients together
+		go sm.checkIfUserConnIsClosedAndUnsubscribe(userConn, subscription, string(userSubscriptionID))
 	}
 
 	// We return subscriptionID with resp interface. We want to use userSubscriptionID to allow unsubscribing
@@ -99,16 +100,43 @@ func readFromChannelAndWriteToUserConn(channel chan common.IDAndLog, userConn us
 	}
 }
 
-func checkIfUserConnIsClosedAndUnsubscribe(userConn userconn.UserConn, subscription *gethrpc.ClientSubscription, mu *sync.Mutex) {
-	for {
-		mu.Lock()
-		if userConn.IsClosed() {
-			subscription.Unsubscribe()
-			return
+func (sm *SubscriptionManager) unsubscribeAndRemove(userSubscriptionID string, subscription *gethrpc.ClientSubscription) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	subscription.Unsubscribe()
+
+	subscriptions, exists := sm.subscriptionMappings[userSubscriptionID]
+	if !exists {
+		return
+	}
+
+	for i, s := range subscriptions {
+		if s != subscription {
+			continue
 		}
-		mu.Unlock()
+
+		// Remove the subscription from the slice
+		lastIndex := len(subscriptions) - 1
+		subscriptions[i] = subscriptions[lastIndex]
+		subscriptions = subscriptions[:lastIndex]
+
+		// If the slice is empty, delete the key from the map
+		if len(subscriptions) == 0 {
+			delete(sm.subscriptionMappings, userSubscriptionID)
+		} else {
+			sm.subscriptionMappings[userSubscriptionID] = subscriptions
+		}
+		break
+	}
+}
+
+func (sm *SubscriptionManager) checkIfUserConnIsClosedAndUnsubscribe(userConn userconn.UserConn, subscription *gethrpc.ClientSubscription, userSubscriptionID string) {
+	for !userConn.IsClosed() {
 		time.Sleep(100 * time.Millisecond)
 	}
+
+	sm.unsubscribeAndRemove(userSubscriptionID, subscription)
 }
 
 func (sm *SubscriptionManager) UpdateSubscriptionMapping(userSubscriptionID string, subscription *gethrpc.ClientSubscription) {
