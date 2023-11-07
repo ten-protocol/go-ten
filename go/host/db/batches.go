@@ -132,8 +132,8 @@ func (db *DB) GetBatchBySequenceNumber(sequenceNumber *big.Int) (*common.ExtBatc
 	return db.GetBatch(*batchHash)
 }
 
-// GetBatchListing returns latest BatchListingResponse given a pagination. For example, page 0, size 10 will return the
-// latest 10 batches.
+// GetBatchListing returns latest batches given a pagination.
+// For example, page 0, size 10 will return the latest 10 batches.
 // todo change this when the db changes - this is not super performant
 func (db *DB) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	// fetch the total batches so we can paginate
@@ -143,11 +143,16 @@ func (db *DB) GetBatchListing(pagination *common.QueryPagination) (*common.Batch
 	}
 
 	batchesFrom := header.SequencerOrderNo.Uint64() - pagination.Offset
+	batchesToInclusive := int(batchesFrom) - int(pagination.Size) + 1
+	// batchesToInclusive can't go below zero
+	if batchesToInclusive < 0 {
+		batchesToInclusive = 0
+	}
 
 	var batches []common.PublicBatch
 	// fetch requested batches - looping backwards from the latest batch subtracting any pagination offset
 	// (e.g. front-end showing latest batches first, page 3 of size 10 would be skipping the 30 most recent batches)
-	for i := batchesFrom; i > batchesFrom-uint64(pagination.Size); i-- {
+	for i := batchesFrom; i >= uint64(batchesToInclusive); i-- {
 		extBatch, err := db.GetBatchBySequenceNumber(big.NewInt(int64(i)))
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return nil, err
