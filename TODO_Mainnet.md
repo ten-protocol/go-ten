@@ -9,9 +9,9 @@
  	- More robust P2P (?)
  	- Harden Ethereum Wallet. More robust L1 tx signing (with manual confirmation?)
  	- HA L1 provider 
-  - Obscuro RPC - cleanup
-  - secret sharing. Review and harden
-  - address compression edge case 
+  	- Obscuro RPC - cleanup
+  	- secret sharing. Review and harden
+  	- address compression edge case 
 
 ## II. Crypto
 	- Implement revelation logic
@@ -22,23 +22,30 @@
 	- Implement key splitting and sharing to N parties (with stake?)
 
 ## V. Security
-  - L1 validation
-  - Add challenges
-  - review everything
-  - prepare docs for external security audit
-  - arrange the audit
-  - address the outcome of the audit
+  	- L1 validation
+  	- Add challenges
+  	- review everything
+  	- prepare docs for external security audit
+  	- arrange the audit
+  	- address the outcome of the audit
 
 ## VII. Cross chain
-  - Sort out finality for xchain messages, separate from the DA rollup.
+  	- Sort out finality for xchain messages, separate from the DA rollup.
 
 ## VIII. Management contract
-  - Upgradable contracts
-  - Contract signature handling (multisig to deploy new versions ?)
+  	- Upgradable contracts
+  	- Contract signature handling (multisig to deploy new versions ?)
 
 ## IX.  Gateway
-  - SGX
-  - certificate generation
-  - tooling to determine cert used for connection
-  - smart contract logic + staking + slashing
+	- SGX
+	- certificate generation
+	- tooling to determine cert used for connection
+	- smart contract logic + staking + slashing
+
+## X.  UI libraries, clients and tooling, and monitoring
+  	- Obscuroscan
+  	- obscuro widget
+  	- js libraries
+  	- hardhat plugin
+  	- 
 
