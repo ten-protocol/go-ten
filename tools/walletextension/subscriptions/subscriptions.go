@@ -186,7 +186,6 @@ func prepareLogResponse(idAndLog common.IDAndLog, userSubscriptionID gethrpc.ID)
 
 func (sm *SubscriptionManager) HandleUnsubscribe(userSubscriptionID string, rpcResp *interface{}) {
 	subscriptions, exists := sm.subscriptionMappings[userSubscriptionID]
-
 	if !exists {
 		*rpcResp = false
 		return
