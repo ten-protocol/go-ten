@@ -108,6 +108,7 @@ func (sm *SubscriptionManager) unsubscribeAndRemove(userSubscriptionID string, s
 
 	subscriptions, exists := sm.subscriptionMappings[userSubscriptionID]
 	if !exists {
+		sm.logger.Error("subscription that needs to be removed is not present in subscriptionMappings for userSubscriptionID: %s", userSubscriptionID)
 		return
 	}
 
