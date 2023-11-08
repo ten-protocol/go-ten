@@ -81,7 +81,7 @@ func (m *AccountManager) ProxyRequest(rpcReq *wecommon.RPCRequest, rpcResp *inte
 		}
 		subscriptionID, ok := rpcReq.Params[0].(string)
 		if !ok {
-			return fmt.Errorf("subscriptionID needs to be a string. Got: %d", rpcReq.Params[0])
+			return fmt.Errorf("subscriptionID needs to be a string. Got: %v", rpcReq.Params[0])
 		}
 		m.subscriptionsManager.HandleUnsubscribe(subscriptionID, rpcResp)
 		return nil
