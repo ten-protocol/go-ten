@@ -36,6 +36,10 @@ func NewTxPool(blockchain *ethblockchain.EthBlockchain) (*TxPool, error) {
 // Start starts the pool
 // can only be started after t.blockchain has at least one block inside
 func (t *TxPool) Start() error {
+	if t.pool != nil {
+		return fmt.Errorf("tx pool already started")
+	}
+
 	memp, err := gethtxpool.New(new(big.Int).SetUint64(0), t.blockchain, []gethtxpool.SubPool{t.legacyPool})
 	if err != nil {
 		return fmt.Errorf("unable to init geth tx pool - %w", err)
