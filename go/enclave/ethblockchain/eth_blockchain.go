@@ -2,8 +2,6 @@ package ethblockchain
 
 import (
 	"fmt"
-	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -12,12 +10,14 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 // EthBlockchain is an obscuro wrapper around the ethereum core.Blockchain object
@@ -101,7 +101,7 @@ func (e *EthBlockchain) GetBlock(_ common.Hash, number uint64) *gethtypes.Block 
 // StateAt returns a state database for a given root hash (generally the head).
 func (e *EthBlockchain) StateAt(root common.Hash) (*state.StateDB, error) {
 	if root.Hex() == gethtypes.EmptyCodeHash.Hex() {
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 
 	currentBatchSeqNo := e.batchRegistry.HeadBatchSeq()
@@ -111,7 +111,7 @@ func (e *EthBlockchain) StateAt(root common.Hash) (*state.StateDB, error) {
 	currentBatch, err := e.storage.FetchBatchBySeqNo(currentBatchSeqNo.Uint64())
 	if err != nil {
 		e.logger.Warn("unable to get batch by height", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 
 	return e.storage.CreateStateDB(currentBatch.Hash())

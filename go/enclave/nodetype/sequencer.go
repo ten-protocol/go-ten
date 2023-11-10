@@ -159,7 +159,7 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 	time.Sleep(time.Second)
 
 	if err = s.mempool.Add(msgBusTx); err != nil {
-		return fmt.Errorf("failed to queue message bus creation transaction to genesis - %s", err)
+		return fmt.Errorf("failed to queue message bus creation transaction to genesis - %w", err)
 	}
 	return nil
 }
