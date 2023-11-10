@@ -1,0 +1,153 @@
+package ethblockchain
+
+import (
+	"fmt"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/core/txpool/legacypool"
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
+	"github.com/obscuronet/go-obscuro/go/enclave/components"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
+	gethcore "github.com/ethereum/go-ethereum/core"
+	gethtypes "github.com/ethereum/go-ethereum/core/types"
+)
+
+// EthBlockchain is an obscuro wrapper around the ethereum core.Blockchain object
+type EthBlockchain struct {
+	newHeadChan   chan gethcore.ChainHeadEvent
+	batchRegistry components.BatchRegistry
+	storage       storage.Storage
+	chainID       *big.Int
+	logger        gethlog.Logger
+}
+
+// NewEthBlockchain returns a new instance
+func NewEthBlockchain(chainID *big.Int, batchRegistry components.BatchRegistry, storage storage.Storage, logger gethlog.Logger) *EthBlockchain {
+	return &EthBlockchain{
+		newHeadChan:   make(chan gethcore.ChainHeadEvent),
+		batchRegistry: batchRegistry,
+		storage:       storage,
+		chainID:       chainID,
+		logger:        logger,
+	}
+}
+
+// Config retrieves the chain's fork configuration.
+func (e *EthBlockchain) Config() *params.ChainConfig {
+	return ChainParams(e.chainID)
+}
+
+// CurrentBlock returns the current head of the chain.
+func (e *EthBlockchain) CurrentBlock() *gethtypes.Header {
+	currentBatchSeqNo := e.batchRegistry.HeadBatchSeq()
+	if currentBatchSeqNo == nil {
+		return nil
+	}
+	currentBatch, err := e.storage.FetchBatchBySeqNo(currentBatchSeqNo.Uint64())
+	if err != nil {
+		e.logger.Warn("unable to retrieve batch seq no: %d", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
+		return nil
+	}
+	batch, err := gethencoding.CreateEthHeaderForBatch(currentBatch.Header, secret(e.storage))
+	if err != nil {
+		e.logger.Warn("unable to convert batch to eth header ", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
+		return nil
+	}
+	return batch
+}
+
+func (e *EthBlockchain) SubscribeChainHeadEvent(ch chan<- gethcore.ChainHeadEvent) event.Subscription {
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		for {
+			select {
+			case head := <-e.newHeadChan:
+				select {
+				case ch <- head:
+				case <-quit:
+					return nil
+				}
+			case <-quit:
+				return nil
+			}
+		}
+	})
+}
+
+// GetBlock retrieves a specific block, used during pool resets.
+func (e *EthBlockchain) GetBlock(_ common.Hash, number uint64) *gethtypes.Block {
+	nbatch, err := e.storage.FetchBatchByHeight(number)
+	if err != nil {
+		e.logger.Warn("unable to get batch by height", "number", number, log.ErrKey, err)
+		return nil
+	}
+
+	nfromBatch, err := gethencoding.CreateEthBlockFromBatch(nbatch)
+	if err != nil {
+		e.logger.Error("unable to convert batch to eth block", log.ErrKey, err)
+		return nil
+	}
+
+	return nfromBatch
+}
+
+// StateAt returns a state database for a given root hash (generally the head).
+func (e *EthBlockchain) StateAt(root common.Hash) (*state.StateDB, error) {
+	if root.Hex() == gethtypes.EmptyCodeHash.Hex() {
+		return nil, nil
+	}
+
+	currentBatchSeqNo := e.batchRegistry.HeadBatchSeq()
+	if currentBatchSeqNo == nil {
+		return nil, fmt.Errorf("not ready yet")
+	}
+	currentBatch, err := e.storage.FetchBatchBySeqNo(currentBatchSeqNo.Uint64())
+	if err != nil {
+		e.logger.Warn("unable to get batch by height", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
+		return nil, nil
+	}
+
+	return e.storage.CreateStateDB(currentBatch.Hash())
+}
+
+func (e *EthBlockchain) IngestNewBlock(batch *core.Batch) error {
+	convertedBlock, err := gethencoding.CreateEthBlockFromBatch(batch)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		e.newHeadChan <- gethcore.ChainHeadEvent{Block: convertedBlock}
+	}()
+
+	return nil
+}
+
+func NewLegacyPoolConfig() legacypool.Config {
+	return legacypool.Config{
+		Locals:       nil,
+		NoLocals:     false,
+		Journal:      "",
+		Rejournal:    0,
+		PriceLimit:   0,
+		PriceBump:    0,
+		AccountSlots: 100,
+		GlobalSlots:  10000000,
+		AccountQueue: 100,
+		GlobalQueue:  10000000,
+		Lifetime:     0,
+	}
+}
+
+func secret(storage storage.Storage) []byte {
+	// todo (#1053) - handle secret not being found.
+	secret, _ := storage.FetchSecret()
+	return secret[:]
+}

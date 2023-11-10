@@ -11,9 +11,10 @@ import (
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/measure"
-
+	"github.com/obscuronet/go-obscuro/go/enclave/ethblockchain"
 	"github.com/obscuronet/go-obscuro/go/enclave/gas"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/obscuronet/go-obscuro/go/enclave/txpool"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 
@@ -52,7 +53,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
@@ -127,29 +127,9 @@ func NewEnclave(
 		}
 	}
 
-	zeroTimestamp := uint64(0)
 	// Initialise the database
-	chainConfig := params.ChainConfig{
-		ChainID:             big.NewInt(config.ObscuroChainID),
-		HomesteadBlock:      gethcommon.Big0,
-		DAOForkBlock:        gethcommon.Big0,
-		EIP150Block:         gethcommon.Big0,
-		EIP155Block:         gethcommon.Big0,
-		EIP158Block:         gethcommon.Big0,
-		ByzantiumBlock:      gethcommon.Big0,
-		ConstantinopleBlock: gethcommon.Big0,
-		PetersburgBlock:     gethcommon.Big0,
-		IstanbulBlock:       gethcommon.Big0,
-		MuirGlacierBlock:    gethcommon.Big0,
-		BerlinBlock:         gethcommon.Big0,
-		LondonBlock:         gethcommon.Big0,
-
-		CancunTime:   &zeroTimestamp,
-		ShanghaiTime: &zeroTimestamp,
-		PragueTime:   &zeroTimestamp,
-		VerkleTime:   &zeroTimestamp,
-	}
-	storage := storage.NewStorageFromConfig(config, &chainConfig, logger)
+	chainConfig := ethblockchain.ChainParams(big.NewInt(config.ObscuroChainID))
+	storage := storage.NewStorageFromConfig(config, chainConfig, logger)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
 	// todo (#1056) - valid block
@@ -200,24 +180,31 @@ func NewEnclave(
 	dataEncryptionService := crypto.NewDataEncryptionService(logger)
 	dataCompressionService := compression.NewBrotliDataCompressionService()
 
-	memp := mempool.New(config.ObscuroChainID, logger)
-
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, &chainConfig, logger)
+	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, chainConfig, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	registry := components.NewBatchRegistry(storage, logger)
 	rProducer := components.NewRollupProducer(config.SequencerID, storage, registry, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
-	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, &chainConfig, logger)
+	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, chainConfig, logger)
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, storage, logger)
+
+	blockchain := ethblockchain.NewEthBlockchain(big.NewInt(config.ObscuroChainID), registry, storage, logger)
+	if err != nil {
+		logger.Crit("unable to init the eth blockchain construct", log.ErrKey, err)
+	}
+	mempool, err := txpool.NewTxPool(blockchain)
+	if err != nil {
+		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
+	}
 
 	var service nodetype.NodeType
 	if config.NodeType == common.Sequencer {
@@ -230,9 +217,9 @@ func NewEnclave(
 			rollupCompression,
 			logger,
 			config.HostID,
-			&chainConfig,
+			chainConfig,
 			enclaveKey,
-			memp,
+			mempool,
 			storage,
 			dataEncryptionService,
 			dataCompressionService,
@@ -243,14 +230,15 @@ func NewEnclave(
 				BatchGasLimit:     config.GasLimit,
 				BaseFee:           config.BaseFee,
 			},
+			blockchain,
 		)
 	} else {
-		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, &chainConfig, config.SequencerID, storage, sigVerifier, logger)
+		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, config.SequencerID, storage, sigVerifier, logger)
 	}
 
 	chain := l2chain.NewChain(
 		storage,
-		&chainConfig,
+		chainConfig,
 		genesis,
 		logger,
 		registry,
@@ -263,7 +251,7 @@ func NewEnclave(
 	}
 
 	// TODO ensure debug is allowed/disallowed
-	debug := debugger.New(chain, storage, &chainConfig)
+	debug := debugger.New(chain, storage, chainConfig)
 
 	logger.Info("Enclave service created with following config", log.CfgKey, config.HostID)
 	return &enclaveImpl{

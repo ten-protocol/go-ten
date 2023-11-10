@@ -9,9 +9,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/measure"
-
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/measure"
+	"github.com/obscuronet/go-obscuro/go/enclave/ethblockchain"
+	"github.com/obscuronet/go-obscuro/go/enclave/txpool"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
@@ -27,7 +28,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
-	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 )
 
 const RollupDelay = 2 // number of L1 blocks to exclude when creating a rollup. This will minimize compression reorg issues.
@@ -53,11 +53,12 @@ type sequencer struct {
 	hostID                 gethcommon.Address
 	chainConfig            *params.ChainConfig
 	enclavePrivateKey      *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
-	mempool                mempool.Manager
+	mempool                *txpool.TxPool
 	storage                storage.Storage
 	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
+	blockchain             *ethblockchain.EthBlockchain
 }
 
 func NewSequencer(
@@ -67,17 +68,16 @@ func NewSequencer(
 	rollupProducer components.RollupProducer,
 	rollupConsumer components.RollupConsumer,
 	rollupCompression *components.RollupCompression,
-
 	logger gethlog.Logger,
-
 	hostID gethcommon.Address,
 	chainConfig *params.ChainConfig,
-	enclavePrivateKey *ecdsa.PrivateKey, // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
-	mempool mempool.Manager,
+	enclavePrivateKey *ecdsa.PrivateKey,
+	mempool *txpool.TxPool,
 	storage storage.Storage,
 	dataEncryptionService crypto.DataEncryptionService,
 	dataCompressionService compression.DataCompressionService,
 	settings SequencerSettings,
+	blockchain *ethblockchain.EthBlockchain,
 ) Sequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
@@ -95,6 +95,7 @@ func NewSequencer(
 		dataEncryptionService:  dataEncryptionService,
 		dataCompressionService: dataCompressionService,
 		settings:               settings,
+		blockchain:             blockchain,
 	}
 }
 
@@ -134,10 +135,6 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 		return err
 	}
 
-	if err = s.mempool.AddMempoolTx(msgBusTx); err != nil {
-		return fmt.Errorf("failed to queue message bus creation transaction to genesis. Cause: %w", err)
-	}
-
 	if err := s.signBatch(batch); err != nil {
 		return fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
@@ -146,6 +143,24 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 		return fmt.Errorf("1. failed storing batch. Cause: %w", err)
 	}
 
+	// this is the actual first block produced in chain
+	err = s.blockchain.IngestNewBlock(batch)
+	if err != nil {
+		return fmt.Errorf("unable to remove ingest new block into eth blockchain - %w", err)
+	}
+
+	// the mempool can only be started after at least 1 block is in the blockchain object
+	err = s.mempool.Start()
+	if err != nil {
+		return err
+	}
+
+	// make sure the mempool queuing system is initialized before adding the msg bus tx to it
+	time.Sleep(time.Second)
+
+	if err = s.mempool.Add(msgBusTx); err != nil {
+		return fmt.Errorf("failed to queue message bus creation transaction to genesis - %s", err)
+	}
 	return nil
 }
 
@@ -168,16 +183,24 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfE
 		return fmt.Errorf("attempted to create batch on top of batch=%s. With l1 head=%s", headBatch.Hash(), l1HeadBlock.Hash())
 	}
 
-	stateDB, err := s.storage.CreateStateDB(headBatch.Hash())
-	if err != nil {
-		return fmt.Errorf("unable to create stateDB for selecting transactions. Batch: %s Cause: %w", headBatch.Hash(), err)
-	}
-
 	// todo (@stefan) - limit on receipts too
 	limiter := limiters.NewBatchSizeLimiter(s.settings.MaxBatchSize)
-	transactions, err := s.mempool.CurrentTxs(stateDB, limiter)
-	if err != nil {
-		return err
+	pendingTransactions := s.mempool.PendingTransactions() // minor does not request tip enforcement
+	var transactions []*types.Transaction
+	for _, group := range pendingTransactions {
+		for _, lazyTx := range group {
+			if tx := lazyTx.Resolve(); tx != nil {
+				err = limiter.AcceptTransaction(tx.Tx)
+				if err != nil {
+					if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
+						break
+					}
+					// Limiter encountered unexpected error
+					return fmt.Errorf("limiter encountered unexpected error - %w", err)
+				}
+				transactions = append(transactions, tx.Tx)
+			}
+		}
 	}
 
 	sequencerNo, err := s.storage.FetchCurrentSequencerNo()
@@ -194,10 +217,6 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfE
 			return nil
 		}
 		return fmt.Errorf(" failed producing batch. Cause: %w", err)
-	}
-
-	if err := s.mempool.RemoveTxs(transactions); err != nil {
-		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
 	}
 
 	return nil
@@ -232,6 +251,12 @@ func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash
 
 	s.logger.Info("Produced new batch", log.BatchHashKey, cb.Batch.Hash(),
 		"height", cb.Batch.Number(), "numTxs", len(cb.Batch.Transactions), log.BatchSeqNoKey, cb.Batch.SeqNo(), "parent", cb.Batch.Header.ParentHash)
+
+	// add the batch to the chain so it can remove pending transactions from the pool
+	err = s.blockchain.IngestNewBlock(cb.Batch)
+	if err != nil {
+		return nil, fmt.Errorf("unable to remove tx from mempool - %w", err)
+	}
 
 	return cb.Batch, nil
 }
@@ -336,7 +361,7 @@ func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []c
 }
 
 func (s *sequencer) SubmitTransaction(transaction *common.L2Tx) error {
-	return s.mempool.AddMempoolTx(transaction)
+	return s.mempool.Add(transaction)
 }
 
 func (s *sequencer) OnL1Fork(fork *common.ChainFork) error {

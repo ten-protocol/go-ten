@@ -140,15 +140,13 @@ func (s *Simulation) bridgeFundingToObscuro() {
 		gethcommon.HexToAddress("0xDEe530E22045939e6f6a0A593F829e35A140D3F1"),
 	}
 
-	ethClient := s.RPCHandles.RndEthClient()
-
-	busCtr, err := MessageBus.NewMessageBus(destAddr, ethClient.EthClient())
+	busCtr, err := MessageBus.NewMessageBus(destAddr, s.RPCHandles.RndEthClient().EthClient())
 	if err != nil {
 		panic(err)
 	}
 
-	for idx, wallet := range wallets {
-		opts, err := bind.NewKeyedTransactorWithChainID(wallet.PrivateKey(), wallet.ChainID())
+	for idx, w := range wallets {
+		opts, err := bind.NewKeyedTransactorWithChainID(w.PrivateKey(), w.ChainID())
 		if err != nil {
 			panic(err)
 		}
@@ -160,7 +158,7 @@ func (s *Simulation) bridgeFundingToObscuro() {
 		}
 	}
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(15 * time.Second)
 	// todo - fix the wait group, for whatever reason it does not find a receipt...
 	/*wg := sync.WaitGroup{}
 	for _, tx := range transactions {

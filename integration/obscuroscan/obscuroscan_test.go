@@ -238,13 +238,14 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 		t.Errorf("not enough balance: has %s has %s obx", issuerWallet.Address().Hex(), balance.String())
 	}
 
+	nonce, err := authClient.NonceAt(ctx, nil)
+	assert.Nil(t, err)
+	issuerWallet.SetNonce(nonce)
+
 	var receipts []gethcommon.Hash
 	for i := 0; i < numbTxs; i++ {
 		toAddr := datagenerator.RandomAddress()
-		nonce, err := authClient.NonceAt(ctx, nil)
-		assert.Nil(t, err)
 
-		issuerWallet.SetNonce(nonce)
 		estimatedTx := authClient.EstimateGasAndGasPrice(&types.LegacyTx{
 			Nonce:    issuerWallet.GetNonceAndIncrement(),
 			To:       &toAddr,
