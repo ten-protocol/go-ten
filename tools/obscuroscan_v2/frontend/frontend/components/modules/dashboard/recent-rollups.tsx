@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 
-export function RecentTransactions() {
+export function RecentRollups() {
   return (
     <div className="space-y-8">
       {Array.from({ length: 5 }, (_, i) => (
@@ -17,7 +17,7 @@ export function RecentTransactions() {
           <div className="ml-auto font-medium">+$1,999.00</div>
         </div>
       ))}
-      <Button>View All Transactions</Button>
+      <Button>View All Rollups</Button>
     </div>
   )
 }

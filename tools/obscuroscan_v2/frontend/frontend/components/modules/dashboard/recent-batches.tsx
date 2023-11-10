@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 
 export function RecentBatches() {
   return (
@@ -16,6 +17,7 @@ export function RecentBatches() {
           <div className="ml-auto font-medium">+$1,999.00</div>
         </div>
       ))}
+      <Button>View All Batches</Button>
     </div>
   )
 }
