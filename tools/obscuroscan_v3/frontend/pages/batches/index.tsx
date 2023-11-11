@@ -20,7 +20,7 @@ async function getData(): Promise<Payment[]> {
   ]
 }
 
-function Transactions() {
+function Batches() {
   const [data, setData] = useState<Payment[]>([])
 
   useEffect(() => {
@@ -39,10 +39,13 @@ function Transactions() {
   return (
     <Layout>
       <div className="container mx-auto py-10">
+        <div className="flex items-center justify-between space-y-2">
+          <h2 className="text-3xl font-bold tracking-tight mb-4">Batches</h2>
+        </div>
         {data.length > 0 ? <DataTable columns={columns} data={data} /> : <p>Loading...</p>}
       </div>
     </Layout>
   )
 }
 
-export default Transactions
+export default Batches

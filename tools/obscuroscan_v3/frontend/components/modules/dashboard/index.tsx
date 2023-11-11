@@ -8,6 +8,7 @@ import { RecentBatches } from './recent-batches'
 import { RecentRollups } from './recent-rollups'
 import { RecentTransactions } from './recent-transactions'
 import { Button } from '@/components/ui/button'
+import { useTransactions } from '@/components/hooks/useTransactions'
 
 const DASHBOARD_DATA = [
   {
@@ -43,6 +44,9 @@ const DASHBOARD_DATA = [
 ]
 
 export default function Dashboard() {
+  const { transactions } = useTransactions()
+  console.log('🚀 ~ file: index.tsx:48 ~ Dashboard ~ transactions:', transactions)
+
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
