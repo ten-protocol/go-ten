@@ -18,7 +18,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/storage"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
@@ -26,8 +25,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
-
-var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.Subscribe)
 
 // WalletExtension handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
@@ -70,7 +67,7 @@ func (w *WalletExtension) Logger() gethlog.Logger {
 }
 
 // ProxyEthRequest proxys an incoming user request to the enclave
-func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, conn userconn.UserConn, hexUserID string) (map[string]interface{}, error) {
+func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userconn.UserConn, hexUserID string) (map[string]interface{}, error) {
 	response := map[string]interface{}{}
 	// all responses must contain the request id. Both successful and unsuccessful.
 	response[common.JSONKeyRPCVersion] = jsonrpc.Version
@@ -95,19 +92,21 @@ func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, co
 	}
 
 	err = selectedAccountManager.ProxyRequest(request, &rpcResp, conn)
-
-	if err != nil && !errors.Is(err, rpc.ErrNilResponse) {
-		response = common.CraftErrorResponse(err)
-	} else if errors.Is(err, rpc.ErrNilResponse) {
-		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
-		response[common.JSONKeyResult] = nil
-	} else {
-		response[common.JSONKeyResult] = rpcResp
-
-		// todo (@ziga) - fix this upstream on the decode
-		// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
-		adjustStateRoot(rpcResp, response)
+	if err != nil {
+		if errors.Is(err, rpc.ErrNilResponse) {
+			// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
+			response[common.JSONKeyResult] = nil
+			return response, nil
+		}
+		return nil, err
 	}
+
+	response[common.JSONKeyResult] = rpcResp
+
+	// todo (@ziga) - fix this upstream on the decode
+	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
+	adjustStateRoot(rpcResp, response)
+
 	return response, nil
 }
 
@@ -250,6 +249,7 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, sig
 	encClient, err := common.CreateEncClient(w.hostAddr, addressFromMessage.Bytes(), privateKeyBytes, signature, w.Logger())
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error creating encrypted client for user: (%s), %w", hexUserID, err).Error())
+		return fmt.Errorf("error creating encrypted client for user: (%s), %w", hexUserID, err)
 	}
 
 	accManager.AddClient(addressFromMessage, encClient)
@@ -378,7 +378,7 @@ func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
 
 // getStorageAtInterceptor checks if the parameters for getStorageAt are set to values that require interception
 // and return response or nil if the gateway should forward the request to the node.
-func (w *WalletExtension) getStorageAtInterceptor(request *accountmanager.RPCRequest, hexUserID string) map[string]interface{} {
+func (w *WalletExtension) getStorageAtInterceptor(request *common.RPCRequest, hexUserID string) map[string]interface{} {
 	// check if parameters are correct, and we can intercept a request, otherwise return nil
 	if w.checkParametersForInterceptedGetStorageAt(request.Params) {
 		// check if userID in the parameters is also in our database

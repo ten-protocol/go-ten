@@ -35,3 +35,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ['CrossChainMessengerL2', 'CrossChainMessenger_deployL2'];
+func.dependencies = ['CrossChainMessenger']; //TODO: Remove HPERC20, this is only to have matching addresses.

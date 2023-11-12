@@ -1,7 +1,8 @@
 <template>
   <el-button @click="connectMetamask" size="large" >
     <img src="@/assets/imgs/icon_metamask.png" alt="Connect with MetaMask" class="metamask-icon" />
-    Connect with MetaMask
+    <div v-if="walletStore.provider">Connected!</div>
+    <div v-else>Connect with MetaMask</div>
   </el-button>
 </template>
 
@@ -36,7 +37,8 @@ export default {
     }
 
     return {
-      connectMetamask
+      connectMetamask,
+      walletStore
     };
   }
 }

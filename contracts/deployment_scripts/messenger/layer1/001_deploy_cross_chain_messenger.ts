@@ -21,7 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await deployments.deploy('CrossChainMessenger', {
         from: deployer,
         log: true,
-        proxy: {
+        /*proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {
                 init: {
@@ -29,7 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
                     args: [ messageBusAddress ]
                 }
             }
-        }
+        }*/
     });
 };
 

@@ -9,7 +9,7 @@ export const usePriceStore = defineStore({
         poller: new Poller(() => {
             const store = usePriceStore();
             store.fetch();
-        }, 60*Config.pollingInterval)
+        }, Config.pricePollingInterval)
     }),
     actions: {
         async fetch() {
@@ -18,7 +18,7 @@ export const usePriceStore = defineStore({
                 const data = await response.json();
                 this.ethPriceUSD = data.ethereum.usd;
 
-                console.log("Fetched "+this.ethPriceUSD);
+                console.log("Fetched " + this.ethPriceUSD);
             } catch (error) {
                 console.error("Failed to fetch count:", error);
             }
