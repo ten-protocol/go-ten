@@ -1,5 +1,5 @@
 import React from "react";
-import { columns } from "@/components/modules/personal/transactions/columns";
+import { columns } from "@/components/modules/blockchain/transactions/columns";
 import { DataTable } from "@/components/modules/common/data-table/data-table";
 import Layout from "@/components/layouts/default-layout";
 import { useTransactions } from "@/src/hooks/useTransactions";

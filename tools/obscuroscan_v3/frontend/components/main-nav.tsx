@@ -44,16 +44,13 @@ export function MainNav({
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuGroup>
             <DropdownMenuItem>
-              <Link href="/transactions">Transactions</Link>
+              <Link href="/blockchain/transactions">Transactions</Link>
             </DropdownMenuItem>
             <DropdownMenuItem>
-              <Link href="/blocks">Blocks</Link>
+              <Link href="/blockchain/blocks">Blocks</Link>
             </DropdownMenuItem>
             <DropdownMenuItem>
-              <Link href="/batches">Batches</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Link href="/rollups">Rollups</Link>
+              <Link href="/blockchain/batches">Batches</Link>
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
