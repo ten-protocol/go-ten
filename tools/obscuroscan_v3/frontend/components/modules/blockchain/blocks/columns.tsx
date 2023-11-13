@@ -6,10 +6,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { labels, statuses } from "./data";
 import { DataTableColumnHeader } from "../../common/data-table/data-table-column-header";
 import { DataTableRowActions } from "../../common/data-table/data-table-row-actions";
-import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
+import { Block, BlockHeader } from "@/src/types/interfaces/BlockInterfaces";
 import TruncatedAddress from "../../common/truncated-address";
+import { formatTimeAgo } from "@/src/lib/utils";
 
-export const columns: ColumnDef<Transaction>[] = [
+export const columns: ColumnDef<Block>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -32,15 +33,16 @@ export const columns: ColumnDef<Transaction>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "BatchHeight",
+    accessorKey: "blockHeader.number",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Batch Height" />
+      <DataTableColumnHeader column={column} title="Block" />
     ),
     cell: ({ row }) => {
+      const blockHeader = row.getValue("blockHeader") as BlockHeader;
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate font-medium">
-            {row.getValue("BatchHeight")}
+            {row.getValue("blockHeader.number")}
           </span>
         </div>
       );
@@ -48,14 +50,82 @@ export const columns: ColumnDef<Transaction>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-
   {
-    accessorKey: "TransactionHash",
+    accessorKey: "blockHeader.timestamp",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Transaction Hash" />
+      <DataTableColumnHeader column={column} title="Age" />
     ),
     cell: ({ row }) => {
-      return <TruncatedAddress address={row.getValue("TransactionHash")} />;
+      const blockHeader = row.getValue("blockHeader") as BlockHeader;
+      return (
+        <div className="flex space-x-2">
+          <span className="max-w-[500px] truncate font-medium">
+            {blockHeader?.timestamp
+              ? formatTimeAgo(blockHeader?.timestamp)
+              : "N/A"}
+          </span>
+        </div>
+      );
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "blockHeader.gasUsed",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Gas Used" />
+    ),
+    cell: ({ row }) => {
+      const blockHeader = row.getValue("blockHeader") as BlockHeader;
+      return (
+        <div className="flex space-x-2">
+          <span className="max-w-[500px] truncate font-medium">
+            {blockHeader?.gasUsed}
+          </span>
+        </div>
+      );
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "blockHeader.gasLimit",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Gas Limit" />
+    ),
+    cell: ({ row }) => {
+      const blockHeader = row.getValue("blockHeader") as BlockHeader;
+      return (
+        <div className="flex space-x-2">
+          <span className="max-w-[500px] truncate font-medium">
+            {blockHeader?.gasLimit}
+          </span>
+        </div>
+      );
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "blockHeader.hash",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Hash" />
+    ),
+    cell: ({ row }) => {
+      const blockHeader = row.getValue("blockHeader") as BlockHeader;
+      return <TruncatedAddress address={blockHeader?.hash} />;
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "blockHeader.parentHash",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Parent Hash" />
+    ),
+    cell: ({ row }) => {
+      const blockHeader = row.getValue("blockHeader") as BlockHeader;
+      return <TruncatedAddress address={blockHeader?.parentHash} />;
     },
     enableSorting: false,
     enableHiding: false,
