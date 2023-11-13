@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"io"
 	"math/big"
 	"net/http"
@@ -24,6 +23,7 @@ import (
 	"github.com/obscuronet/go-obscuro/tools/faucet/container"
 	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() { //nolint:gochecknoinits
