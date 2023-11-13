@@ -185,9 +185,10 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfE
 
 	// todo (@stefan) - limit on receipts too
 	limiter := limiters.NewBatchSizeLimiter(s.settings.MaxBatchSize)
-	pendingTransactions := s.mempool.PendingTransactions() // minor does not request tip enforcement
+	pendingTransactions := s.mempool.PendingTransactions()
 	var transactions []*types.Transaction
 	for _, group := range pendingTransactions {
+		// lazily resolve transactions until the batch runs out of space
 		for _, lazyTx := range group {
 			if tx := lazyTx.Resolve(); tx != nil {
 				err = limiter.AcceptTransaction(tx.Tx)
