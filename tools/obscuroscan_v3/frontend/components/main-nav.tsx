@@ -55,13 +55,26 @@ export function MainNav({
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <Link
-        href="/examples/dashboard"
-        className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-      >
-        Resources
-      </Link>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="clear"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+          >
+            Resources
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" forceMount>
+          <DropdownMenuGroup>
+            <Link href="/resources/decrypt">
+              <DropdownMenuItem>Decrypt</DropdownMenuItem>
+            </Link>
+            <Link href="/resources/verify">
+              <DropdownMenuItem>Verified Data</DropdownMenuItem>
+            </Link>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </nav>
   );
 }
