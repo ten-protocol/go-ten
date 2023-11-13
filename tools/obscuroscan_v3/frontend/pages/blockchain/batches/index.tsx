@@ -1,5 +1,5 @@
 import React from "react";
-import { columns } from "@/components/modules/personal/batches/components/columns";
+import { columns } from "@/components/modules/personal/batches/columns";
 import { DataTable } from "@/components/modules/common/data-table/data-table";
 import Layout from "@/components/layouts/default-layout";
 import { Metadata } from "next";
