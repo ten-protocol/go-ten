@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"io"
 	"math/big"
 	"net/http"
@@ -62,25 +63,25 @@ func TestFaucet(t *testing.T) {
 	assert.NoError(t, err)
 
 	initialFaucetBal, err := getFaucetBalance(faucetConfig.ServerPort)
-	assert.NoError(t, err)
-	assert.NotZero(t, initialFaucetBal)
+	require.NoError(t, err)
+	require.NotZero(t, initialFaucetBal)
 
 	rndWallet := datagenerator.RandomWallet(integration.ObscuroChainID)
 	err = fundWallet(faucetConfig.ServerPort, rndWallet)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	obsClient, err := obsclient.DialWithAuth(fmt.Sprintf("http://%s:%d", network.Localhost, startPort+integration.DefaultHostRPCHTTPOffset), rndWallet, testlog.Logger())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	currentBalance, err := obsClient.BalanceAt(context.Background(), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	if currentBalance.Cmp(big.NewInt(0)) <= 0 {
 		t.Fatalf("Unexpected balance, got: %d, expected > 0", currentBalance.Int64())
 	}
 
 	endFaucetBal, err := getFaucetBalance(faucetConfig.ServerPort)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotZero(t, endFaucetBal)
 	// faucet balance should have decreased
 	assert.Less(t, endFaucetBal.Cmp(initialFaucetBal), 0)
