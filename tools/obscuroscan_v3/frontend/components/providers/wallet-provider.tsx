@@ -79,6 +79,7 @@ export const WalletConnectionProvider = ({
   });
 
   const walletConnectionContextValue: WalletConnectionContextType = {
+    provider,
     walletConnected,
     walletAddress,
     connectWallet,
