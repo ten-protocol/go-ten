@@ -20,7 +20,6 @@ import TruncatedAddress from "../common/truncated-address";
 
 export default function Dashboard() {
   const { transactions } = useTransactions();
-  const { rollups } = useRollups();
   const { batches, latestBatch } = useBatches();
 
   const DASHBOARD_DATA = [
