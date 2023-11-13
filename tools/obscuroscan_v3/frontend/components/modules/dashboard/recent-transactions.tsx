@@ -1,22 +1,18 @@
-import { useTransactions } from "@/src/hooks/useTransactions";
 import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import TruncatedAddress from "../common/truncated-address";
 
-export function RecentTransactions() {
-  const { transactions } = useTransactions();
-
+export function RecentTransactions({ transactions }: any) {
   return (
     <div className="space-y-8">
       <Table>
-        <TableCaption>A list of your recent invoices.</TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead className="w-[100px]">Batch Height</TableHead>
@@ -32,14 +28,15 @@ export function RecentTransactions() {
                   {transaction?.BatchHeight}
                 </TableCell>
                 <TableCell>{transaction?.Finality}</TableCell>
-                <TableCell>{transaction?.TransactionHash}</TableCell>
+                <TableCell>
+                  <TruncatedAddress address={transaction?.TransactionHash} />
+                </TableCell>
               </TableRow>
             )
           )}
         </TableBody>
       </Table>
-
-      <Button>View All Transactions</Button>
+      <Button variant={"link"}>View All Transactions</Button>
     </div>
   );
 }

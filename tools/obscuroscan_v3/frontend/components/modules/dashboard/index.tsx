@@ -15,41 +15,56 @@ import { RecentRollups } from "./recent-rollups";
 import { RecentTransactions } from "./recent-transactions";
 import { Button } from "@/components/ui/button";
 import { useTransactions } from "@/src/hooks/useTransactions";
-
-const DASHBOARD_DATA = [
-  {
-    title: "Ether Price",
-    value: "$1967.89",
-    change: "+20.1% from last month",
-    icon: RocketIcon,
-  },
-  {
-    title: "Latest Batch",
-    value: "2061",
-    change: "+20.1% from last month",
-    icon: LayersIcon,
-  },
-  {
-    title: "Latest Rollup",
-    value: "0xbaa7c0288013169ca1dc9115b5ce496a31a5972f16b6975a62cc09cc740f294e",
-    change: "+20.1% from last month",
-    icon: CubeIcon,
-  },
-  {
-    title: "Transactions",
-    value: "5",
-    change: "+20.1% from last month",
-    icon: ReaderIcon,
-  },
-  {
-    title: "Contracts",
-    value: "3",
-    change: "+20.1% from last month",
-    icon: FileTextIcon,
-  },
-];
+import { useRollups } from "@/src/hooks/useRollups";
+import { useBatches } from "@/src/hooks/useBatches";
+import TruncatedAddress from "../common/truncated-address";
 
 export default function Dashboard() {
+  const { transactions } = useTransactions();
+  const { rollups } = useRollups();
+  console.log("🚀 ~ file: index.tsx:57 ~ Dashboard ~ rollups:", rollups);
+  const { batches, latestBatch } = useBatches();
+
+  const DASHBOARD_DATA = [
+    {
+      title: "Ether Price",
+      value: "$1967.89",
+      change: "+20.1% from last month",
+      icon: RocketIcon,
+    },
+    {
+      title: "Latest Batch",
+      value: batches?.result?.Total,
+      change: "+20.1% from last month",
+      icon: LayersIcon,
+    },
+    {
+      title: "Latest Rollup",
+      value:
+        (
+          <TruncatedAddress
+            address={latestBatch?.item?.l1Proof}
+            prefixLength={6}
+            suffixLength={4}
+          />
+        ) || "N/A",
+      change: "+20.1% from last month",
+      icon: CubeIcon,
+    },
+    {
+      title: "Transactions",
+      value: "5",
+      change: "+20.1% from last month",
+      icon: ReaderIcon,
+    },
+    {
+      title: "Contracts",
+      value: "3",
+      change: "+20.1% from last month",
+      icon: FileTextIcon,
+    },
+  ];
+
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
@@ -92,28 +107,28 @@ export default function Dashboard() {
             ))}
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-9">
-            <Card className="col-span-3">
+            <Card className="col-span-6">
               <CardHeader>
                 <CardTitle>Recent Batches</CardTitle>
               </CardHeader>
               <CardContent>
-                <RecentBatches />
+                <RecentBatches batches={batches} />
               </CardContent>
             </Card>
-            <Card className="col-span-3">
+            {/* <Card className="col-span-3">
               <CardHeader>
                 <CardTitle>Recent Rollups</CardTitle>
               </CardHeader>
               <CardContent>
-                <RecentRollups />
+                <RecentRollups rollups={rollups} />
               </CardContent>
-            </Card>
+            </Card> */}
             <Card className="col-span-3">
               <CardHeader>
                 <CardTitle>Recent Transactions</CardTitle>
               </CardHeader>
               <CardContent>
-                <RecentTransactions />
+                <RecentTransactions transactions={transactions} />
               </CardContent>
             </Card>
           </div>

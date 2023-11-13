@@ -1,4 +1,4 @@
-import { getBatches, getLatestBatches } from "@/api/batches";
+import { getBatches, getLatestBatch } from "@/api/batches";
 import { useQuery } from "@tanstack/react-query";
 
 export const useBatches = () => {
@@ -7,10 +7,10 @@ export const useBatches = () => {
     queryFn: () => getBatches(),
   });
 
-  const { data: batchCount, isLoading: isBatchCountLoading } = useQuery({
-    queryKey: ["batchCount"],
-    queryFn: () => getLatestBatches(),
+  const { data: latestBatch, isLoading: isLatestBatchLoading } = useQuery({
+    queryKey: ["latestBatch"],
+    queryFn: () => getLatestBatch(),
   });
 
-  return { batches, isBatchesLoading, batchCount, isBatchCountLoading };
+  return { batches, isBatchesLoading, latestBatch, isLatestBatchLoading };
 };

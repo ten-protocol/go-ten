@@ -14,12 +14,12 @@ export const getBatches = async (
   return data;
 };
 
-export const getLatestBatches = async (
+export const getLatestBatch = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<any>> => {
   const data = await httpRequest<ResponseDataInterface<any>>({
     method: "get",
-    url: pathToUrl(apiRoutes.getLatestBatches),
+    url: pathToUrl(apiRoutes.getLatestBatch),
     searchParams: payload,
   });
   return data;

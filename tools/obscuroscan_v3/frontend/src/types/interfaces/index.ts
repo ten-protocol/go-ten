@@ -47,6 +47,7 @@ export interface PaginationInterface {
 
 export interface ResponseDataInterface<T> {
   result: T;
+  item: T;
   message: string;
   pagination?: PaginationInterface;
   success: string;
