@@ -17,6 +17,6 @@ export type Price = {
 };
 
 export type TransactionResponse = {
-  TransactionData: Transaction[];
+  TransactionsData: Transaction[];
   Total: number;
 };

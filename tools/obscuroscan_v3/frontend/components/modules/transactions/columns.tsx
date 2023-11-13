@@ -5,10 +5,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 
 import { labels, statuses } from "./data";
-import { DataTableColumnHeader } from "../../common/data-table/data-table-column-header";
-import { DataTableRowActions } from "../../common/data-table/data-table-row-actions";
+import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
+import { DataTableRowActions } from "../common/data-table/data-table-row-actions";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
-import TruncatedAddress from "../../common/truncated-address";
+import TruncatedAddress from "../common/truncated-address";
 
 export const columns: ColumnDef<Transaction>[] = [
   {

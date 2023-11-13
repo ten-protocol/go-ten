@@ -4,10 +4,10 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { labels, statuses } from "./data";
-import { DataTableColumnHeader } from "../../common/data-table/data-table-column-header";
-import { DataTableRowActions } from "../../common/data-table/data-table-row-actions";
+import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
+import { DataTableRowActions } from "../common/data-table/data-table-row-actions";
 import { Block, BlockHeader } from "@/src/types/interfaces/BlockInterfaces";
-import TruncatedAddress from "../../common/truncated-address";
+import TruncatedAddress from "../common/truncated-address";
 import { formatTimeAgo } from "@/src/lib/utils";
 
 export const columns: ColumnDef<Block>[] = [

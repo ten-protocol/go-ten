@@ -74,19 +74,19 @@ export default function Dashboard() {
       title: "Recent Batches",
       data: batches,
       component: <RecentBatches batches={batches} />,
-      goTo: "/blockchain/batches",
+      goTo: "/batches",
     },
     {
       title: "Recent Blocks",
       data: blocks,
       component: <RecentBlocks blocks={blocks} />,
-      goTo: "/blockchain/blocks",
+      goTo: "/blocks",
     },
     {
       title: "Recent Transactions",
       data: transactions,
       component: <RecentTransactions transactions={transactions} />,
-      goTo: "/blockchain/transactions",
+      goTo: "/transactions",
     },
   ];
 

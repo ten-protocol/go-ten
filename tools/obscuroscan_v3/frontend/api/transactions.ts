@@ -3,15 +3,15 @@ import { apiRoutes } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
 import { ResponseDataInterface } from "@/src/types/interfaces";
 import {
-  Transaction,
   TransactionCount,
   Price,
+  TransactionResponse,
 } from "@/src/types/interfaces/TransactionInterfaces";
 
 export const getTransactions = async (
   payload?: Record<string, any>
-): Promise<ResponseDataInterface<Transaction[]>> => {
-  const data = await httpRequest<ResponseDataInterface<Transaction[]>>({
+): Promise<ResponseDataInterface<TransactionResponse>> => {
+  const data = await httpRequest<ResponseDataInterface<TransactionResponse>>({
     method: "get",
     url: pathToUrl(apiRoutes.getTransactions),
     searchParams: payload,

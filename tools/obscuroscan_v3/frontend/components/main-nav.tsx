@@ -43,13 +43,13 @@ export function MainNav({
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuGroup>
-            <Link href="/blockchain/transactions">
+            <Link href="/transactions">
               <DropdownMenuItem>Transactions</DropdownMenuItem>
             </Link>
-            <Link href="/blockchain/blocks">
+            <Link href="/blocks">
               <DropdownMenuItem>Blocks</DropdownMenuItem>
             </Link>
-            <Link href="/blockchain/batches">
+            <Link href="/batches">
               <DropdownMenuItem>Batches</DropdownMenuItem>
             </Link>
           </DropdownMenuGroup>
