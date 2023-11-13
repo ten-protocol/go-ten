@@ -5,3 +5,18 @@ export type Transaction = {
   Finality: string;
   TransactionHash: string;
 };
+
+export type TransactionCount = {
+  count: number;
+};
+
+export type Price = {
+  ethereum: {
+    usd: number;
+  };
+};
+
+export type TransactionResponse = {
+  TransactionData: Transaction[];
+  Total: number;
+};

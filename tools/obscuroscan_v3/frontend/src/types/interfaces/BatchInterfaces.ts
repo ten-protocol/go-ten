@@ -7,7 +7,7 @@ export type Batch = {
   sequencerOrderNo: number;
   gasLimit: number;
   gasUsed: number;
-  timestamp: number;
+  timestamp: string;
   extraData: string;
   baseFee: number;
   coinbase: string;
@@ -25,4 +25,9 @@ export type Batch = {
   difficulty: string;
   nonce: string;
   baseFeePerGas: number;
+};
+
+export type BatchResponse = {
+  BatchesData: Batch[];
+  Total: string;
 };

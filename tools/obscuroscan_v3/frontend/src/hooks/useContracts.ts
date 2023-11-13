@@ -12,8 +12,34 @@ export const useContracts = () => {
     queryFn: () => getContractCount(),
   });
 
+  const formattedContracts = [
+    {
+      name: "Management Contract",
+      address: contracts?.item.ManagementContractAddress,
+      confirmed: true,
+    },
+    {
+      name: "Message Bus Contract",
+      address: contracts?.item.MessageBusAddress,
+      confirmed: true,
+    },
+  ];
+  const sequencerData = [
+    {
+      name: "Sequencer ID",
+      address: contracts?.item.SequencerID,
+      confirmed: true,
+    },
+    {
+      name: "L1 Start Hash",
+      address: contracts?.item.L1StartHash,
+      confirmed: true,
+    },
+  ];
+
   return {
-    contracts,
+    formattedContracts,
+    sequencerData,
     isContractsLoading,
     contractCount,
     isContractCountLoading,

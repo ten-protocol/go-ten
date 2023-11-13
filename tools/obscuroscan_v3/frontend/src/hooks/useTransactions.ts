@@ -1,4 +1,8 @@
-import { getTransactions, getTransactionCount } from "@/api/transactions";
+import {
+  getTransactions,
+  getTransactionCount,
+  getPrice,
+} from "@/api/transactions";
 import { useWalletConnection } from "@/components/providers/wallet-provider";
 import { useQuery } from "@tanstack/react-query";
 import { ethers } from "ethers";
@@ -36,11 +40,17 @@ export const useTransactions = () => {
     }
   };
 
+  const { data: price, isLoading: isPriceLoading } = useQuery({
+    queryKey: ["price"],
+    queryFn: () => getPrice(),
+  });
+
   return {
     transactions,
     isTransactionsLoading,
     transactionCount,
     isTransactionCountLoading,
     personalTxns,
+    price,
   };
 };

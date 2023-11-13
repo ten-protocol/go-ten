@@ -1,7 +1,6 @@
 import React from "react";
 import { CalendarDateRangePicker } from "@/components/date-range-picker";
 import { CardHeader, CardTitle, CardContent, Card } from "@/components/ui/card";
-import { TabsList, TabsTrigger, TabsContent, Tabs } from "@/components/ui/tabs";
 import {
   LayersIcon,
   FileTextIcon,
@@ -14,18 +13,25 @@ import { RecentBatches } from "./recent-batches";
 import { RecentTransactions } from "./recent-transactions";
 import { Button } from "@/components/ui/button";
 import { useTransactions } from "@/src/hooks/useTransactions";
-import { useRollups } from "@/src/hooks/useRollups";
 import { useBatches } from "@/src/hooks/useBatches";
 import TruncatedAddress from "../common/truncated-address";
+import { useContracts } from "@/src/hooks/useContracts";
+import { Skeleton } from "@/components/ui/skeleton";
+import { RecentBlocks } from "./recent-blocks";
+import { useBlocks } from "@/src/hooks/useBlocks";
+import AnalyticsCard from "./analytics-card";
+import Link from "next/link";
 
 export default function Dashboard() {
-  const { transactions } = useTransactions();
+  const { price, transactions, transactionCount } = useTransactions();
+  const { contractCount } = useContracts();
   const { batches, latestBatch } = useBatches();
+  const { blocks } = useBlocks();
 
   const DASHBOARD_DATA = [
     {
       title: "Ether Price",
-      value: "$1967.89",
+      value: price?.ethereum?.usd,
       change: "+20.1% from last month",
       icon: RocketIcon,
     },
@@ -37,28 +43,50 @@ export default function Dashboard() {
     },
     {
       title: "Latest Rollup",
-      value:
-        (
-          <TruncatedAddress
-            address={latestBatch?.item?.l1Proof}
-            prefixLength={6}
-            suffixLength={4}
-          />
-        ) || "N/A",
+      value: latestBatch?.item?.l1Proof ? (
+        <TruncatedAddress
+          address={latestBatch?.item?.l1Proof}
+          prefixLength={6}
+          suffixLength={4}
+        />
+      ) : (
+        "N/A"
+      ),
       change: "+20.1% from last month",
       icon: CubeIcon,
     },
     {
       title: "Transactions",
-      value: "5",
+      value: transactionCount?.count,
       change: "+20.1% from last month",
       icon: ReaderIcon,
     },
     {
       title: "Contracts",
-      value: "3",
+      value: contractCount?.count,
       change: "+20.1% from last month",
       icon: FileTextIcon,
+    },
+  ];
+
+  const RECENT_DATA = [
+    {
+      title: "Recent Batches",
+      data: batches,
+      component: <RecentBatches batches={batches} />,
+      goTo: "/blockchain/batches",
+    },
+    {
+      title: "Recent Blocks",
+      data: blocks,
+      component: <RecentBlocks blocks={blocks} />,
+      goTo: "/blockchain/blocks",
+    },
+    {
+      title: "Recent Transactions",
+      data: transactions,
+      component: <RecentTransactions transactions={transactions} />,
+      goTo: "/blockchain/transactions",
     },
   ];
 
@@ -71,66 +99,36 @@ export default function Dashboard() {
           <Button>Download</Button>
         </div>
       </div>
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="analytics" disabled>
-            Analytics
-          </TabsTrigger>
-          <TabsTrigger value="reports" disabled>
-            Reports
-          </TabsTrigger>
-          <TabsTrigger value="notifications" disabled>
-            Notifications
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {DASHBOARD_DATA.map((item: any, index) => (
-              <Card key={index}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {item.title}
-                  </CardTitle>
-                  {React.createElement(item.icon)}
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold truncate">
-                    {item.value}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{item.change}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-9">
-            <Card className="col-span-6">
-              <CardHeader>
-                <CardTitle>Recent Batches</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <RecentBatches batches={batches} />
-              </CardContent>
-            </Card>
-            {/* <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>Recent Rollups</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <RecentRollups rollups={rollups} />
-              </CardContent>
-            </Card> */}
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>Recent Transactions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <RecentTransactions transactions={transactions} />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {DASHBOARD_DATA.map((item: any, index) => (
+          <AnalyticsCard key={index} item={item} />
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-9">
+        {RECENT_DATA.map((item: any, index) => (
+          <Card key={index} className="col-span-4">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle>{item.title}</CardTitle>
+              <Link
+                href={{
+                  pathname: item.goTo,
+                }}
+              >
+                <Button variant="outline" size="sm">
+                  View All
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent>
+              {item.data ? (
+                item.component
+              ) : (
+                <Skeleton className="w-full h-[200px] rounded-lg" />
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

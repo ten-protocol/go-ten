@@ -8,8 +8,9 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import { format } from "date-fns";
 import TruncatedAddress from "../common/truncated-address";
+import { formatTimeAgo } from "@/src/lib/utils";
+import { Batch } from "@/src/types/interfaces/BatchInterfaces";
 
 export function RecentBatches({ batches }: any) {
   return (
@@ -20,25 +21,24 @@ export function RecentBatches({ batches }: any) {
             <TableHead className="w-[100px]">Batch Hash</TableHead>
             <TableHead>L1 Block</TableHead>
             <TableHead>Txn Count</TableHead>
-            <TableHead className="text-right">Timestamp</TableHead>
+            <TableHead>Timestamp</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {batches?.result?.BatchesData.map((batch: any, i: number) => (
+          {batches?.result?.BatchesData.map((batch: Batch, i: number) => (
             <TableRow key={i}>
+              <TableCell>{batch?.number}</TableCell>
               <TableCell className="font-medium">
                 <TruncatedAddress address={batch.hash} />
               </TableCell>
               <TableCell className="font-medium">
                 <TruncatedAddress address={batch.l1Proof} />
               </TableCell>
-              <TableCell>{batch?.txHashes?.length || 0}</TableCell>
-              <TableCell>{format(batch?.timestamp, "LLL dd, y")}</TableCell>
+              <TableCell>{formatTimeAgo(batch?.timestamp)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-      <Button>View All Rollups</Button>
     </div>
   );
 }

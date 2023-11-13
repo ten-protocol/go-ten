@@ -36,7 +36,6 @@ export function RecentTransactions({ transactions }: any) {
           )}
         </TableBody>
       </Table>
-      <Button variant={"link"}>View All Transactions</Button>
     </div>
   );
 }
