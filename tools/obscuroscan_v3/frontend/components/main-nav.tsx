@@ -1,21 +1,36 @@
-import React from 'react'
-import Link from 'next/link'
+import React from "react";
+import Link from "next/link";
 
-import { cn } from '@/src/lib/utils'
-import { Button } from './ui/button'
+import { cn } from "@/src/lib/utils";
+import { Button } from "./ui/button";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuItem
-} from './ui/dropdown-menu'
+  DropdownMenuItem,
+} from "./ui/dropdown-menu";
 
-export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
+export function MainNav({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLElement>) {
   return (
-    <nav className={cn('flex items-center space-x-4 lg:space-x-6', className)} {...props}>
-      <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
+    <nav
+      className={cn("flex items-center space-x-4 lg:space-x-6", className)}
+      {...props}
+    >
+      <Link
+        href="/"
+        className="text-sm font-medium transition-colors hover:text-primary"
+      >
         Home
+      </Link>
+      <Link
+        href="/personal"
+        className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+      >
+        Personal
       </Link>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -23,7 +38,7 @@ export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElemen
             variant="clear"
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
-            Personal
+            Blockchain
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -43,12 +58,7 @@ export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElemen
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Link
-        href="/examples/dashboard"
-        className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-      >
-        Blockchain
-      </Link>
+
       <Link
         href="/examples/dashboard"
         className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
@@ -56,5 +66,5 @@ export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElemen
         Resources
       </Link>
     </nav>
-  )
+  );
 }

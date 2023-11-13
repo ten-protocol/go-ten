@@ -11,7 +11,6 @@ import {
 } from "@radix-ui/react-icons";
 
 import { RecentBatches } from "./recent-batches";
-import { RecentRollups } from "./recent-rollups";
 import { RecentTransactions } from "./recent-transactions";
 import { Button } from "@/components/ui/button";
 import { useTransactions } from "@/src/hooks/useTransactions";
@@ -22,7 +21,6 @@ import TruncatedAddress from "../common/truncated-address";
 export default function Dashboard() {
   const { transactions } = useTransactions();
   const { rollups } = useRollups();
-  console.log("🚀 ~ file: index.tsx:57 ~ Dashboard ~ rollups:", rollups);
   const { batches, latestBatch } = useBatches();
 
   const DASHBOARD_DATA = [

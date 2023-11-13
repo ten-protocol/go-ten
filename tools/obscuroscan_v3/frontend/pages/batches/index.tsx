@@ -1,51 +1,35 @@
-import React, { useEffect, useState } from 'react'
-import { Payment, columns } from '@/components/modules/personal/transactions/columns'
-import { DataTable } from '@/components/modules/common/data-table'
-import Layout from '@/components/layouts/default-layout'
+import React from "react";
+import { columns } from "@/components/modules/personal/batches/components/columns";
+import { DataTable } from "@/components/modules/common/data-table/data-table";
+import Layout from "@/components/layouts/default-layout";
+import { Metadata } from "next";
+import { useBatches } from "@/src/hooks/useBatches";
 
-async function getData(): Promise<Payment[]> {
-  return [
-    {
-      id: '728ed52f',
-      amount: 100,
-      status: 'pending',
-      email: 'm@example.com'
-    },
-    {
-      id: '489e1d42',
-      amount: 125,
-      status: 'processing',
-      email: 'example@gmail.com'
-    }
-  ]
-}
+export const metadata: Metadata = {
+  title: "Batches",
+  description: "A table of Batches.",
+};
 
-function Batches() {
-  const [data, setData] = useState<Payment[]>([])
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const result = await getData()
-        setData(result)
-      } catch (error) {
-        console.error('Error fetching data:', error)
-      }
-    }
-
-    fetchData()
-  }, [])
+export default function Batches() {
+  const { batches } = useBatches();
 
   return (
-    <Layout>
-      <div className="container mx-auto py-10">
-        <div className="flex items-center justify-between space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight mb-4">Batches</h2>
+    <>
+      <Layout>
+        <div className="hidden h-full flex-1 flex-col space-y-8 p-8 md:flex">
+          <div className="flex items-center justify-between space-y-2">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
+              <p className="text-muted-foreground">A table of Batches.</p>
+            </div>
+          </div>
+          {batches?.result?.batchesData ? (
+            <DataTable columns={columns} data={batches?.result?.batchesData} />
+          ) : (
+            <p>Loading...</p>
+          )}
         </div>
-        {data.length > 0 ? <DataTable columns={columns} data={data} /> : <p>Loading...</p>}
-      </div>
-    </Layout>
-  )
+      </Layout>
+    </>
+  );
 }
-
-export default Batches

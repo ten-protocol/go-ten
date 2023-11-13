@@ -1,51 +1,40 @@
-import React, { useEffect, useState } from 'react'
-import { Payment, columns } from '@/components/modules/personal/transactions/columns'
-import { DataTable } from '@/components/modules/common/data-table'
-import Layout from '@/components/layouts/default-layout'
+import React from "react";
+import { columns } from "@/components/modules/personal/transactions/columns";
+import { DataTable } from "@/components/modules/common/data-table/data-table";
+import Layout from "@/components/layouts/default-layout";
+import { useTransactions } from "@/src/hooks/useTransactions";
+import { Metadata } from "next";
 
-async function getData(): Promise<Payment[]> {
-  return [
-    {
-      id: '728ed52f',
-      amount: 100,
-      status: 'pending',
-      email: 'm@example.com'
-    },
-    {
-      id: '489e1d42',
-      amount: 125,
-      status: 'processing',
-      email: 'example@gmail.com'
-    }
-  ]
-}
+export const metadata: Metadata = {
+  title: "Transactions",
+  description: "A table of transactions.",
+};
 
-function Transactions() {
-  const [data, setData] = useState<Payment[]>([])
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const result = await getData()
-        setData(result)
-      } catch (error) {
-        console.error('Error fetching data:', error)
-      }
-    }
-
-    fetchData()
-  }, [])
+export default function Transactions() {
+  const { transactions } = useTransactions();
 
   return (
-    <Layout>
-      <div className="container mx-auto py-10">
-        <div className="flex items-center justify-between space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight mb-4">Transactions</h2>
+    <>
+      <Layout>
+        <div className="hidden h-full flex-1 flex-col space-y-8 p-8 md:flex">
+          <div className="flex items-center justify-between space-y-2">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">
+                Transactions
+              </h2>
+              <p className="text-muted-foreground">A table of transactions.</p>
+            </div>
+          </div>
+          {transactions?.result?.TransactionsData ? (
+            <DataTable
+              columns={columns}
+              data={transactions?.result?.TransactionsData}
+            />
+          ) : (
+            <p>Loading...</p>
+          )}
         </div>
-        {data.length > 0 ? <DataTable columns={columns} data={data} /> : <p>Loading...</p>}
-      </div>
-    </Layout>
-  )
+      </Layout>
+    </>
+  );
 }
-
-export default Transactions
