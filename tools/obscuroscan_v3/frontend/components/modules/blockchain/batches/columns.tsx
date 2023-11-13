@@ -6,10 +6,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { labels, statuses } from "./data";
 import { DataTableColumnHeader } from "../../common/data-table/data-table-column-header";
 import { DataTableRowActions } from "../../common/data-table/data-table-row-actions";
-import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
 import TruncatedAddress from "../../common/truncated-address";
+import { formatTimeAgo } from "@/src/lib/utils";
+import { Batch } from "@/src/types/interfaces/BatchInterfaces";
 
-export const columns: ColumnDef<Transaction>[] = [
+export const columns: ColumnDef<Batch>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -32,15 +33,15 @@ export const columns: ColumnDef<Transaction>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "BatchHeight",
+    accessorKey: "number",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Batch Height" />
+      <DataTableColumnHeader column={column} title="Batch" />
     ),
     cell: ({ row }) => {
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate font-medium">
-            {row.getValue("BatchHeight")}
+            {row.getValue("number")}
           </span>
         </div>
       );
@@ -48,26 +49,100 @@ export const columns: ColumnDef<Transaction>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-
   {
-    accessorKey: "TransactionHash",
+    accessorKey: "timestamp",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Transaction Hash" />
+      <DataTableColumnHeader column={column} title="Age" />
     ),
     cell: ({ row }) => {
-      return <TruncatedAddress address={row.getValue("TransactionHash")} />;
+      return (
+        <div className="flex space-x-2">
+          <span className="max-w-[500px] truncate font-medium">
+            {row.getValue("timestamp")
+              ? formatTimeAgo(row.getValue("timestamp"))
+              : "N/A"}
+          </span>
+        </div>
+      );
     },
     enableSorting: false,
     enableHiding: false,
   },
   {
-    accessorKey: "Finality",
+    accessorKey: "gasUsed",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Finality" />
+      <DataTableColumnHeader column={column} title="Gas Used" />
+    ),
+    cell: ({ row }) => {
+      return (
+        <div className="flex space-x-2">
+          <span className="max-w-[500px] truncate font-medium">
+            {row.getValue("gasUsed")}
+          </span>
+        </div>
+      );
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "gasLimit",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Gas Limit" />
+    ),
+    cell: ({ row }) => {
+      return (
+        <div className="flex space-x-2">
+          <span className="max-w-[500px] truncate font-medium">
+            {row.getValue("gasLimit")}
+          </span>
+        </div>
+      );
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "hash",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Hash" />
+    ),
+    cell: ({ row }) => {
+      return <TruncatedAddress address={row.getValue("hash")} />;
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "parentHash",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Parent Hash" />
+    ),
+    cell: ({ row }) => {
+      return <TruncatedAddress address={row.getValue("parentHash")} />;
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "l1Proof",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="L1 Proof" />
+    ),
+    cell: ({ row }) => {
+      return <TruncatedAddress address={row.original.l1Proof} />;
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "difficulty",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Difficulty" />
     ),
     cell: ({ row }) => {
       const finality = statuses.find(
-        (finality) => finality.value === row.getValue("Finality")
+        (finality) => finality.value === row.getValue("difficulty")
       );
 
       if (!finality) {
@@ -79,7 +154,7 @@ export const columns: ColumnDef<Transaction>[] = [
           {finality.icon && (
             <finality.icon className="mr-2 h-4 w-4 text-muted-foreground" />
           )}
-          <span>{finality.label}</span>
+          <span>{finality.label || "N/A"}</span>
         </div>
       );
     },

@@ -23,8 +23,8 @@ export default function Batches() {
               <p className="text-muted-foreground">A table of Batches.</p>
             </div>
           </div>
-          {batches?.result?.batchesData ? (
-            <DataTable columns={columns} data={batches?.result?.batchesData} />
+          {batches?.result?.BatchesData ? (
+            <DataTable columns={columns} data={batches?.result?.BatchesData} />
           ) : (
             <p>Loading...</p>
           )}
