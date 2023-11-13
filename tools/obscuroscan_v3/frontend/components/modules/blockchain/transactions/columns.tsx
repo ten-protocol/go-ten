@@ -4,7 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 
-import { labels, priorities, statuses } from "./data";
+import { labels, statuses } from "./data";
 import { DataTableColumnHeader } from "../../common/data-table/data-table-column-header";
 import { DataTableRowActions } from "../../common/data-table/data-table-row-actions";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
@@ -35,7 +35,7 @@ export const columns: ColumnDef<Transaction>[] = [
   {
     accessorKey: "BatchHeight",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Batch Height" />
+      <DataTableColumnHeader column={column} title="Batch" />
     ),
     cell: ({ row }) => {
       return (

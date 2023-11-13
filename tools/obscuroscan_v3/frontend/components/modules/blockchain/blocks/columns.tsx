@@ -33,16 +33,16 @@ export const columns: ColumnDef<Block>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "blockHeader.number",
+    accessorKey: "number",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Block" />
     ),
     cell: ({ row }) => {
-      const blockHeader = row.getValue("blockHeader") as BlockHeader;
+      const blockHeader = row.original.blockHeader as BlockHeader;
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate font-medium">
-            {row.getValue("blockHeader.number")}
+            {+blockHeader?.number}
           </span>
         </div>
       );
@@ -56,7 +56,7 @@ export const columns: ColumnDef<Block>[] = [
       <DataTableColumnHeader column={column} title="Age" />
     ),
     cell: ({ row }) => {
-      const blockHeader = row.getValue("blockHeader") as BlockHeader;
+      const blockHeader = row.original.blockHeader as BlockHeader;
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate font-medium">
@@ -76,11 +76,11 @@ export const columns: ColumnDef<Block>[] = [
       <DataTableColumnHeader column={column} title="Gas Used" />
     ),
     cell: ({ row }) => {
-      const blockHeader = row.getValue("blockHeader") as BlockHeader;
+      const blockHeader = row.original.blockHeader as BlockHeader;
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate font-medium">
-            {blockHeader?.gasUsed}
+            {+blockHeader?.gasUsed}
           </span>
         </div>
       );
@@ -94,11 +94,11 @@ export const columns: ColumnDef<Block>[] = [
       <DataTableColumnHeader column={column} title="Gas Limit" />
     ),
     cell: ({ row }) => {
-      const blockHeader = row.getValue("blockHeader") as BlockHeader;
+      const blockHeader = row.original.blockHeader as BlockHeader;
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate font-medium">
-            {blockHeader?.gasLimit}
+            {+blockHeader?.gasLimit}
           </span>
         </div>
       );
@@ -112,7 +112,7 @@ export const columns: ColumnDef<Block>[] = [
       <DataTableColumnHeader column={column} title="Hash" />
     ),
     cell: ({ row }) => {
-      const blockHeader = row.getValue("blockHeader") as BlockHeader;
+      const blockHeader = row.original.blockHeader as BlockHeader;
       return <TruncatedAddress address={blockHeader?.hash} />;
     },
     enableSorting: false,
@@ -124,8 +124,19 @@ export const columns: ColumnDef<Block>[] = [
       <DataTableColumnHeader column={column} title="Parent Hash" />
     ),
     cell: ({ row }) => {
-      const blockHeader = row.getValue("blockHeader") as BlockHeader;
+      const blockHeader = row.original.blockHeader as BlockHeader;
       return <TruncatedAddress address={blockHeader?.parentHash} />;
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "rollupHash",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Rollup Hash" />
+    ),
+    cell: ({ row }) => {
+      return <TruncatedAddress address={row.original.rollupHash} />;
     },
     enableSorting: false,
     enableHiding: false,
