@@ -61,6 +61,8 @@ func (m *AccountManager) AddClient(address gethcommon.Address, client *rpc.EncRP
 // ProxyRequest tries to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt
 // the request with all clients until it succeeds
 func (m *AccountManager) ProxyRequest(rpcReq *wecommon.RPCRequest, rpcResp *interface{}, userConn userconn.UserConn) error {
+	// We need to handle a special case for subscribing and unsubscribing from events,
+	// because we need to handle multiple accounts with a single user request
 	if rpcReq.Method == rpc.Subscribe {
 		clients, err := m.suggestSubscriptionClient(rpcReq)
 		if err != nil {
@@ -71,6 +73,17 @@ func (m *AccountManager) ProxyRequest(rpcReq *wecommon.RPCRequest, rpcResp *inte
 			m.logger.Error("Error subscribing to multiple clients")
 			return err
 		}
+		return nil
+	}
+	if rpcReq.Method == rpc.Unsubscribe {
+		if len(rpcReq.Params) != 1 {
+			return fmt.Errorf("one parameter (subscriptionID) expected, %d parameters received", len(rpcReq.Params))
+		}
+		subscriptionID, ok := rpcReq.Params[0].(string)
+		if !ok {
+			return fmt.Errorf("subscriptionID needs to be a string. Got: %v", rpcReq.Params[0])
+		}
+		m.subscriptionsManager.HandleUnsubscribe(subscriptionID, rpcResp)
 		return nil
 	}
 	return m.executeCall(rpcReq, rpcResp)

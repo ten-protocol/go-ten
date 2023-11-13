@@ -1,25 +1,30 @@
 <template>
-  <BatchInfoWindow ref="batchInfoWindowRef" />
-  <el-table
-      height="60vh"
-      :data="batchesData"
-      @row-click="toggleWindow"
-      style="cursor: pointer"
-  >
-    <el-table-column prop="number" label="Height" width="180"/>
-    <el-table-column prop="hash" label="Hash" width="250">
-      <template #default="scope">
-        <ShortenedHash :hash="scope.row.hash" />
-      </template>
-    </el-table-column>
-    <el-table-column prop="timestamp" label="Time"  width="180">
-      <template #default="scope">
-        <Timestamp :unixTimestampSeconds="Number(scope.row.timestamp)" />
-      </template>
-    </el-table-column>
-    <el-table-column prop="l1Proof" label="Included in Rollup"/>
-  </el-table>
-  <el-pagination
+  <el-card class="fill-width">
+    <BatchInfoWindow ref="batchInfoWindowRef" />
+    <el-table height="60vh" :data="batchesData" @row-click="toggleWindow" style="cursor: pointer">
+      <el-table-column prop="number" label="Height" width="180" />
+      <el-table-column prop="hash" label="Hash" width="250">
+        <template #default="scope">
+          <ShortenedHash :hash="scope.row.hash" />
+        </template>
+      </el-table-column>
+      <el-table-column prop="timestamp" label="Time" width="180">
+        <template #default="scope">
+          <Timestamp :unixTimestampSeconds="Number(scope.row.timestamp)" />
+        </template>
+      </el-table-column>
+      <el-table-column
+        label="No. Transactions"
+        :formatter="
+          function (row) {
+            return row.txHashes ? row.txHashes.length : 0
+          }
+        "
+        width="180"
+      />
+      <el-table-column prop="l1Proof" label="L1 block" />
+    </el-table>
+    <el-pagination
       @size-change="handleSizeChange"
       @current-change="handleCurrentChange"
       :current-page="currentPage"
@@ -28,25 +33,25 @@
       :page-count="totalPages"
       layout="total, sizes, prev, pager, next"
       :total="batchListingCount"
-  ></el-pagination>
+    ></el-pagination>
+  </el-card>
 </template>
 
 <script>
-
-import {computed, onMounted, onUnmounted} from 'vue'
-import {useBatchStore} from "@/stores/batchStore";
-import ShortenedHash from "@/components/helper/ShortenedHash.vue";
-import Timestamp from "@/components/helper/Timestamp.vue";
-import BatchInfoWindow from "@/components/helper/BatchInfoWindow.vue";
+import { computed, onMounted } from 'vue'
+import { useBatchStore } from '@/stores/batchStore'
+import ShortenedHash from '@/components/helper/ShortenedHash.vue'
+import Timestamp from '@/components/helper/Timestamp.vue'
+import BatchInfoWindow from '@/components/helper/BatchInfoWindow.vue'
 
 export default {
   name: 'BatchesDataGrid',
-  components: {BatchInfoWindow, Timestamp, ShortenedHash},
+  components: { BatchInfoWindow, Timestamp, ShortenedHash },
   setup() {
     const store = useBatchStore()
 
+    // Reload batch data onMount
     onMounted(() => {
-      // reload store data on mount
       store.fetch()
     })
 
@@ -73,6 +78,7 @@ export default {
       const store = useBatchStore()
       store.size = newSize
       store.offset = (this.currentPage - 1) * store.size
+      // reload data
       store.fetch()
     },
     // Called when the current page is changed
@@ -80,15 +86,11 @@ export default {
       const store = useBatchStore()
       this.currentPage = newPage
       store.offset = (newPage - 1) * store.size
+      // reload data
       store.fetch()
     },
     toggleWindow(data) {
-      this.$refs.batchInfoWindowRef.displayData(data.hash);
-    },
-  },
-  computed: {
-    tableRowClassName() {
-      return "hover"
+      this.$refs.batchInfoWindowRef.displayData(data.hash)
     }
   }
 }

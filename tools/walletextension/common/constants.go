@@ -47,8 +47,9 @@ const (
 	GetStorageAtUserIDRequestMethodName = "getUserID"
 	SuccessMsg                          = "success"
 	APIVersion1                         = "/v1"
-	methodEthSubscription               = "eth_subscription"
+	MethodEthSubscription               = "eth_subscription"
 	PathVersion                         = "/version/"
+	DeduplicationBufferSize             = 20
 )
 
 var ReaderHeadTimeout = 10 * time.Second

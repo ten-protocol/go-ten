@@ -2,8 +2,12 @@ package subscriptions
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
+
+	"github.com/go-kit/kit/transport/http/jsonrpc"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -15,13 +19,14 @@ import (
 )
 
 type SubscriptionManager struct {
-	subscriptionMappings map[string][]string
+	subscriptionMappings map[string][]*gethrpc.ClientSubscription
 	logger               gethlog.Logger
+	mu                   sync.Mutex
 }
 
 func New(logger gethlog.Logger) *SubscriptionManager {
 	return &SubscriptionManager{
-		subscriptionMappings: make(map[string][]string),
+		subscriptionMappings: make(map[string][]*gethrpc.ClientSubscription),
 		logger:               logger,
 	}
 }
@@ -35,46 +40,56 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 
 	sm.logger.Info(fmt.Sprintf("Subscribing to event %s with %d clients", req.Params, len(clients)))
 
+	// create subscriptionID which will enable user to unsubscribe from all subscriptions
+	userSubscriptionID := gethrpc.NewID()
+
 	// create a common channel for subscriptions from all accounts
 	funnelMultipleAccountsChan := make(chan common.IDAndLog)
 
 	// read from a multiple accounts channel and write results to userConn
-	go readFromChannelAndWriteToUserConn(funnelMultipleAccountsChan, userConn, sm.logger)
+	go readFromChannelAndWriteToUserConn(funnelMultipleAccountsChan, userConn, userSubscriptionID, sm.logger)
 
 	// iterate over all clients and subscribe for each of them
-	// TODO: currently we use only first client (enabling subscriptions for all of them will be part of future PR)
 	for _, client := range clients {
 		subscription, err := client.Subscribe(context.Background(), resp, rpc.SubscribeNamespace, funnelMultipleAccountsChan, req.Params...)
 		if err != nil {
 			return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
 		}
+		sm.UpdateSubscriptionMapping(string(userSubscriptionID), subscription)
 
 		// We periodically check if the websocket is closed, and terminate the subscription.
-		// TODO: test this feature in integration test
-		go checkIfUserConnIsClosedAndUnsubscribe(userConn, subscription)
-
-		// Add map subscriptionIDs
-		if currentNodeSubscriptionID, ok := (*resp).(string); ok {
-			// TODO (@ziga): Currently we use the same value for node and user subscriptionID - this will change after
-			// subscribing with multiple accounts
-			sm.UpdateSubscriptionMapping(currentNodeSubscriptionID, currentNodeSubscriptionID)
-
-			return nil
-			// TODO (@ziga)
-			// At this stage we want to use only the first account - same as before
-			// introduce subscribing with all accounts in another PR )
-		}
+		// TODO: Check if it will be much more efficient to create just one go routine for all clients together
+		go sm.checkIfUserConnIsClosedAndUnsubscribe(userConn, subscription, string(userSubscriptionID))
 	}
+
+	// We return subscriptionID with resp interface. We want to use userSubscriptionID to allow unsubscribing
+	*resp = userSubscriptionID
 	return nil
 }
 
-func readFromChannelAndWriteToUserConn(channel chan common.IDAndLog, userConn userconn.UserConn, logger gethlog.Logger) {
+func readFromChannelAndWriteToUserConn(channel chan common.IDAndLog, userConn userconn.UserConn, userSubscriptionID gethrpc.ID, logger gethlog.Logger) {
+	buffer := NewCircularBuffer(wecommon.DeduplicationBufferSize)
 	for data := range channel {
-		jsonResponse, err := wecommon.PrepareLogResponse(data)
+		// create unique identifier for current log
+		uniqueLogKey := LogKey{
+			BlockHash: data.Log.BlockHash,
+			TxHash:    data.Log.TxHash,
+			Index:     data.Log.Index,
+		}
+
+		// check if the current event is a duplicate (and skip it if it is)
+		if buffer.Contains(uniqueLogKey) {
+			continue
+		}
+
+		jsonResponse, err := prepareLogResponse(data, userSubscriptionID)
 		if err != nil {
 			logger.Error("could not marshal log response to JSON on subscription.", log.SubIDKey, data.SubID, log.ErrKey, err)
 			continue
 		}
+
+		// the current log is unique, and we want to add it to our buffer and proceed with forwarding to the user
+		buffer.Push(uniqueLogKey)
 
 		logger.Trace(fmt.Sprintf("Forwarding log from Obscuro node: %s", jsonResponse), log.SubIDKey, data.SubID)
 		err = userConn.WriteResponse(jsonResponse)
@@ -85,34 +100,103 @@ func readFromChannelAndWriteToUserConn(channel chan common.IDAndLog, userConn us
 	}
 }
 
-func checkIfUserConnIsClosedAndUnsubscribe(userConn userconn.UserConn, subscription *gethrpc.ClientSubscription) {
-	for {
-		if userConn.IsClosed() {
-			subscription.Unsubscribe()
-			return
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-}
+func (sm *SubscriptionManager) unsubscribeAndRemove(userSubscriptionID string, subscription *gethrpc.ClientSubscription) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
 
-func (sm *SubscriptionManager) UpdateSubscriptionMapping(userSubscriptionID string, obscuroNodeSubscriptionID string) {
-	existingUserIDs, exists := sm.subscriptionMappings[userSubscriptionID]
+	subscription.Unsubscribe()
 
+	subscriptions, exists := sm.subscriptionMappings[userSubscriptionID]
 	if !exists {
-		sm.subscriptionMappings[userSubscriptionID] = []string{obscuroNodeSubscriptionID}
+		sm.logger.Error("subscription that needs to be removed is not present in subscriptionMappings for userSubscriptionID: %s", userSubscriptionID)
 		return
 	}
 
-	// Check if obscuroNodeSubscriptionID already exists to avoid duplication
-	alreadyExists := false
-	for _, existingID := range existingUserIDs {
-		if obscuroNodeSubscriptionID == existingID {
-			alreadyExists = true
+	for i, s := range subscriptions {
+		if s != subscription {
+			continue
+		}
+
+		// Remove the subscription from the slice
+		lastIndex := len(subscriptions) - 1
+		subscriptions[i] = subscriptions[lastIndex]
+		subscriptions = subscriptions[:lastIndex]
+
+		// If the slice is empty, delete the key from the map
+		if len(subscriptions) == 0 {
+			delete(sm.subscriptionMappings, userSubscriptionID)
+		} else {
+			sm.subscriptionMappings[userSubscriptionID] = subscriptions
+		}
+		break
+	}
+}
+
+func (sm *SubscriptionManager) checkIfUserConnIsClosedAndUnsubscribe(userConn userconn.UserConn, subscription *gethrpc.ClientSubscription, userSubscriptionID string) {
+	for !userConn.IsClosed() {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	sm.unsubscribeAndRemove(userSubscriptionID, subscription)
+}
+
+func (sm *SubscriptionManager) UpdateSubscriptionMapping(userSubscriptionID string, subscription *gethrpc.ClientSubscription) {
+	// Ensure there is no concurrent map writes
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	// Check if the userSubscriptionID already exists in the map
+	subscriptions, exists := sm.subscriptionMappings[userSubscriptionID]
+
+	// If it doesn't exist, create a new slice for it
+	if !exists {
+		subscriptions = []*gethrpc.ClientSubscription{}
+	}
+
+	// Check if the subscription is already in the slice, if not, add it
+	subscriptionExists := false
+	for _, sub := range subscriptions {
+		if sub == subscription {
+			subscriptionExists = true
 			break
 		}
 	}
 
-	if !alreadyExists {
-		sm.subscriptionMappings[userSubscriptionID] = append(existingUserIDs, obscuroNodeSubscriptionID)
+	if !subscriptionExists {
+		sm.subscriptionMappings[userSubscriptionID] = append(subscriptions, subscription)
 	}
+}
+
+// Formats the log to be sent as an Eth JSON-RPC response.
+func prepareLogResponse(idAndLog common.IDAndLog, userSubscriptionID gethrpc.ID) ([]byte, error) {
+	paramsMap := make(map[string]interface{})
+	paramsMap[wecommon.JSONKeySubscription] = userSubscriptionID
+	paramsMap[wecommon.JSONKeyResult] = idAndLog.Log
+
+	respMap := make(map[string]interface{})
+	respMap[wecommon.JSONKeyRPCVersion] = jsonrpc.Version
+	respMap[wecommon.JSONKeyMethod] = wecommon.MethodEthSubscription
+	respMap[wecommon.JSONKeyParams] = paramsMap
+
+	jsonResponse, err := json.Marshal(respMap)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal log response to JSON. Cause: %w", err)
+	}
+	return jsonResponse, nil
+}
+
+func (sm *SubscriptionManager) HandleUnsubscribe(userSubscriptionID string, rpcResp *interface{}) {
+	subscriptions, exists := sm.subscriptionMappings[userSubscriptionID]
+	if !exists {
+		*rpcResp = false
+		return
+	}
+
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	for _, sub := range subscriptions {
+		sub.Unsubscribe()
+	}
+	delete(sm.subscriptionMappings, userSubscriptionID)
+	*rpcResp = true
 }
