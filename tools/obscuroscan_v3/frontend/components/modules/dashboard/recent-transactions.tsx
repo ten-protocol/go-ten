@@ -1,41 +1,41 @@
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import TruncatedAddress from "../common/truncated-address";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { EyeOpenIcon } from "@radix-ui/react-icons";
+import Link from "next/link";
+import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
 
-export function RecentTransactions({ transactions }: any) {
+export function RecentTransactions({ transactions }: { transactions: any }) {
   return (
     <div className="space-y-8">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[100px]">Batch Height</TableHead>
-            <TableHead>Finality</TableHead>
-            <TableHead className="text-right">Tx Hash</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {transactions?.result?.TransactionsData.map(
-            (transaction: any, i: number) => (
-              <TableRow key={i}>
-                <TableCell className="font-medium">
-                  {transaction?.BatchHeight}
-                </TableCell>
-                <TableCell>{transaction?.Finality}</TableCell>
-                <TableCell>
-                  <TruncatedAddress address={transaction?.TransactionHash} />
-                </TableCell>
-              </TableRow>
-            )
-          )}
-        </TableBody>
-      </Table>
+      {transactions?.result?.TransactionsData.map(
+        (transaction: Transaction, i: number) => (
+          <div className="flex items-center" key={i}>
+            <Avatar className="h-9 w-9">
+              <AvatarFallback>TX</AvatarFallback>
+            </Avatar>
+            <div className="ml-4 space-y-1">
+              <p className="text-sm font-medium leading-none">
+                Batch Height: #{transaction?.BatchHeight}
+              </p>
+            </div>
+            <div className="ml-auto font-medium">
+              <TruncatedAddress address={transaction?.TransactionHash} />
+            </div>
+            <div className="ml-auto font-medium">
+              <Link
+                href={{
+                  pathname: `/transactions/${transaction?.TransactionHash}`,
+                }}
+              >
+                <Button variant="link" size="sm">
+                  <EyeOpenIcon />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )
+      )}
     </div>
   );
 }

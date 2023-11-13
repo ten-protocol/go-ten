@@ -5,10 +5,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 import { labels, statuses } from "./data";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
-import { DataTableRowActions } from "../common/data-table/data-table-row-actions";
 import TruncatedAddress from "../common/truncated-address";
 import { formatTimeAgo } from "@/src/lib/utils";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
+import { EyeOpenIcon } from "@radix-ui/react-icons";
+import Link from "next/link";
 
 export const columns: ColumnDef<Batch>[] = [
   {
@@ -164,6 +165,12 @@ export const columns: ColumnDef<Batch>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => <DataTableRowActions row={row} labels={labels} />,
+    cell: ({ row }) => {
+      return (
+        <Link href={`/batches/${row.original.number}`}>
+          <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
+        </Link>
+      );
+    },
   },
 ];
