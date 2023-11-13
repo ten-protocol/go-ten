@@ -1,5 +1,6 @@
-import { RecentSales } from "@/components/modules/dashboard/recent-sales";
-import { Overview } from "@/components/overview";
+import { getBatchByHash } from "@/api/batches";
+import Layout from "@/components/layouts/default-layout";
+import { BatchDetails } from "@/components/modules/batches/batch-details";
 import {
   Card,
   CardHeader,
@@ -7,27 +8,36 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/router";
 
 export default function Batch() {
+  const router = useRouter();
+  const { batch } = router.query;
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["Batch"],
+    queryFn: () => getBatchByHash(batch as string),
+  });
+
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-      <Card className="col-span-4">
-        <CardHeader>
-          <CardTitle>Overview</CardTitle>
-        </CardHeader>
-        <CardContent className="pl-2">
-          <Overview />
-        </CardContent>
-      </Card>
+    <Layout>
       <Card className="col-span-3">
         <CardHeader>
-          <CardTitle>Recent Sales</CardTitle>
-          <CardDescription>You made 265 sales this month.</CardDescription>
+          <CardTitle>Batch #{batch}</CardTitle>
+          <CardDescription>
+            {isLoading ? (
+              <Skeleton className="h-6 w-24" />
+            ) : (
+              data?.result?.l1Proof
+            )}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <RecentSales />
+          <BatchDetails />
         </CardContent>
       </Card>
-    </div>
+    </Layout>
   );
 }
