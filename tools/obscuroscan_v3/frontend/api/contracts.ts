@@ -3,34 +3,24 @@ import { apiRoutes } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
 import { ResponseDataInterface } from "@/src/types/interfaces";
 
-export const getBatches = async (
+export const getContractCount = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<any>> => {
   const data = await httpRequest<ResponseDataInterface<any>>({
     method: "get",
-    url: pathToUrl(apiRoutes.getBatches),
+    url: pathToUrl(apiRoutes.getContractCount),
     searchParams: payload,
   });
   return data;
 };
 
-export const getLatestBatches = async (
+export const getVerifiedContracts = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<any>> => {
   const data = await httpRequest<ResponseDataInterface<any>>({
     method: "get",
-    url: pathToUrl(apiRoutes.getLatestBatches),
+    url: pathToUrl(apiRoutes.getVerifiedContracts),
     searchParams: payload,
-  });
-  return data;
-};
-
-export const getBatchByHash = async (
-  hash: string
-): Promise<ResponseDataInterface<any>> => {
-  const data = await httpRequest<ResponseDataInterface<any>>({
-    method: "get",
-    url: pathToUrl(apiRoutes.getBatchByHash, { hash }),
   });
   return data;
 };

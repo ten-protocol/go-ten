@@ -1,23 +1,45 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
+import { useTransactions } from "@/src/hooks/useTransactions";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export function RecentTransactions() {
+  const { transactions } = useTransactions();
+
   return (
     <div className="space-y-8">
-      {Array.from({ length: 5 }, (_, i) => (
-        <div className="flex items-center" key={i}>
-          <Avatar className="h-9 w-9">
-            <AvatarImage src="/avatars/01.png" alt="Avatar" />
-            <AvatarFallback>OM</AvatarFallback>
-          </Avatar>
-          <div className="ml-4 space-y-1">
-            <p className="text-sm font-medium leading-none">Olivia Martin</p>
-            <p className="text-sm text-muted-foreground">olivia.martin@email.com</p>
-          </div>
-          <div className="ml-auto font-medium">+$1,999.00</div>
-        </div>
-      ))}
+      <Table>
+        <TableCaption>A list of your recent invoices.</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">Batch Height</TableHead>
+            <TableHead>Finality</TableHead>
+            <TableHead className="text-right">Tx Hash</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {transactions?.result?.TransactionsData.map(
+            (transaction: any, i: number) => (
+              <TableRow key={i}>
+                <TableCell className="font-medium">
+                  {transaction?.BatchHeight}
+                </TableCell>
+                <TableCell>{transaction?.Finality}</TableCell>
+                <TableCell>{transaction?.TransactionHash}</TableCell>
+              </TableRow>
+            )
+          )}
+        </TableBody>
+      </Table>
+
       <Button>View All Transactions</Button>
     </div>
-  )
+  );
 }
