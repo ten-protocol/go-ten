@@ -105,7 +105,7 @@ func applyGenesisState(storage *mockStorage, accounts []gethcommon.Address) (com
 	_ = statedb.IntermediateRoot(true)
 	commit, err := statedb.Commit(0, true)
 	if err != nil {
-		panic(err)
+		return common.StateRoot{}, err
 	}
 	return commit, nil
 }
