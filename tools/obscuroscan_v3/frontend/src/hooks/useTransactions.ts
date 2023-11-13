@@ -7,6 +7,7 @@ import { useWalletConnection } from "@/components/providers/wallet-provider";
 import { useQuery } from "@tanstack/react-query";
 import { ethers } from "ethers";
 import { useEffect, useState } from "react";
+import { pollingInterval, pricePollingInterval } from "../lib/constants";
 
 export const useTransactions = () => {
   const { walletAddress, provider } = useWalletConnection();
@@ -20,12 +21,14 @@ export const useTransactions = () => {
   const { data: transactions, isLoading: isTransactionsLoading } = useQuery({
     queryKey: ["transactions"],
     queryFn: () => getTransactions(),
+    refetchInterval: pollingInterval,
   });
 
   const { data: transactionCount, isLoading: isTransactionCountLoading } =
     useQuery({
       queryKey: ["transactionCount"],
       queryFn: () => getTransactionCount(),
+      refetchInterval: pollingInterval,
     });
 
   const personalTransactions = async () => {
@@ -43,6 +46,7 @@ export const useTransactions = () => {
   const { data: price, isLoading: isPriceLoading } = useQuery({
     queryKey: ["price"],
     queryFn: () => getPrice(),
+    refetchInterval: pricePollingInterval,
   });
 
   return {

@@ -1,5 +1,9 @@
-import { SocialLinks } from '@/src/lib/constants'
-import { GitHubLogoIcon, TwitterLogoIcon, DiscordLogoIcon } from '@radix-ui/react-icons'
+import { socialLinks } from "@/src/lib/constants";
+import {
+  GitHubLogoIcon,
+  TwitterLogoIcon,
+  DiscordLogoIcon,
+} from "@radix-ui/react-icons";
 
 export default function Footer() {
   return (
@@ -7,19 +11,19 @@ export default function Footer() {
       <div className="flex h-16 items-center px-4">
         <div className="flex-1 flex items-center space-x-4">
           <a
-            href={SocialLinks.github}
+            href={socialLinks.github}
             className="text-muted-foreground hover:text-primary transition-colors"
           >
             <GitHubLogoIcon />
           </a>
           <a
-            href={SocialLinks.twitter}
+            href={socialLinks.twitter}
             className="text-muted-foreground hover:text-primary transition-colors"
           >
             <TwitterLogoIcon />
           </a>
           <a
-            href={SocialLinks.discord}
+            href={socialLinks.discord}
             className="text-muted-foreground hover:text-primary transition-colors"
           >
             <DiscordLogoIcon />
@@ -41,5 +45,5 @@ export default function Footer() {
         </div>
       </div>
     </div>
-  )
+  );
 }
