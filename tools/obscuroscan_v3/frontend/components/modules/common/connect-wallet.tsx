@@ -17,15 +17,14 @@ const ConnectWalletButton = ({ children }: { children?: React.ReactNode }) => {
         {walletConnected ? (
           <>
             <LinkBreak2Icon className="w-4 h-4 mr-2" />
-            Disconnect
+            <span className="sm:hidden">Disconnect Wallet</span>
           </>
         ) : (
           <>
             <Link2Icon className="w-4 h-4 mr-2" />
-            Connect
+            <span className="sm:hidden">Connect to Metamask</span>
           </>
-        )}{" "}
-        Wallet
+        )}
       </Button>
     </>
   );

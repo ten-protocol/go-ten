@@ -15,17 +15,15 @@ export function RecentBatches({ batches }: { batches: any }) {
             <AvatarFallback>BN</AvatarFallback>
           </Avatar>
           <div className="ml-4 space-y-1">
-            <p className="text-sm font-medium leading-none">
-              Batch #{batch?.number}
-            </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm font-medium leading-none">#{batch?.number}</p>
+            <p className="text-sm text-muted-foreground word-break-all">
               {formatTimeAgo(batch?.timestamp)}
             </p>
           </div>
-          <div className="ml-auto font-medium">
+          <div className="ml-auto font-medium min-w-[140px]">
             <TruncatedAddress address={batch?.hash} />
           </div>
-          <div className="ml-auto font-medium">
+          <div className="ml-auto font-medium max-w-[100px]">
             <Link
               href={{
                 pathname: `/batches/${batch?.number}`,

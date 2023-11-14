@@ -71,43 +71,42 @@ export default function Dashboard() {
 
   const RECENT_DATA = [
     {
-      title: "Recent Batches",
-      data: batches,
-      component: <RecentBatches batches={batches} />,
-      goTo: "/batches",
-    },
-    {
       title: "Recent Blocks",
       data: blocks,
       component: <RecentBlocks blocks={blocks} />,
       goTo: "/blocks",
+      className: "sm:col-span-1 md:col-span-6 lg:col-span-3",
+    },
+    {
+      title: "Recent Batches",
+      data: batches,
+      component: <RecentBatches batches={batches} />,
+      goTo: "/batches",
+      className: "sm:col-span-1 md:col-span-3 lg:col-span-3",
     },
     {
       title: "Recent Transactions",
       data: transactions,
       component: <RecentTransactions transactions={transactions} />,
       goTo: "/transactions",
+      className: "sm:col-span-1 md:col-span-3 lg:col-span-3",
     },
   ];
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
+    <>
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Obscuroscan</h2>
-        <div className="flex items-center space-x-2">
-          <CalendarDateRangePicker />
-          <Button>Download</Button>
-        </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
         {DASHBOARD_DATA.map((item: any, index) => (
           <AnalyticsCard key={index} item={item} />
         ))}
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-9">
+      <div className="grid gap-4 md:grid-cols-6 lg:grid-cols-9">
         {RECENT_DATA.map((item: any, index) => (
-          <Card key={index} className="col-span-3">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Card key={index} className={item.className}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
               <CardTitle>{item.title}</CardTitle>
               <Link
                 href={{
@@ -119,7 +118,7 @@ export default function Dashboard() {
                 </Button>
               </Link>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3">
               {item.data ? (
                 item.component
               ) : (
@@ -129,6 +128,6 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
-    </div>
+    </>
   );
 }

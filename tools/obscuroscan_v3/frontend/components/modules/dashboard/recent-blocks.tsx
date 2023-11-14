@@ -16,16 +16,16 @@ export function RecentBlocks({ blocks }: { blocks: any }) {
           </Avatar>
           <div className="ml-4 space-y-1">
             <p className="text-sm font-medium leading-none">
-              Block #{block?.blockHeader?.number}
+              #{block?.blockHeader?.number}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground word-break-all">
               {formatTimeAgo(block?.blockHeader?.timestamp)}
             </p>
           </div>
-          <div className="ml-auto font-medium">
+          <div className="ml-auto font-medium min-w-[140px]">
             <TruncatedAddress address={block?.blockHeader?.hash} />
           </div>
-          <div className="ml-auto font-medium">
+          <div className="ml-auto font-medium max-w-[50px]">
             <Link
               href={{
                 pathname: `/blocks/${block?.blockHeader?.number}`,

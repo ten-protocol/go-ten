@@ -16,7 +16,7 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
             </Avatar>
             <div className="ml-4 space-y-1">
               <p className="text-sm font-medium leading-none">
-                Batch Height: #{transaction?.BatchHeight}
+                Height: #{transaction?.BatchHeight}
               </p>
             </div>
             <div className="ml-auto font-medium">
