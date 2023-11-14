@@ -167,7 +167,7 @@ export const columns: ColumnDef<Batch>[] = [
     id: "actions",
     cell: ({ row }) => {
       return (
-        <Link href={`/batches/${row.original.number}`}>
+        <Link href={`/batches/${row.original.hash}`}>
           <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
         </Link>
       );
