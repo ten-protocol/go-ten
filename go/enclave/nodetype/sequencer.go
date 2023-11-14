@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-
 	"math/big"
 	"sort"
 	"time"
