@@ -5,17 +5,17 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+
 	"math/big"
 	"sort"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/measure"
-	"github.com/obscuronet/go-obscuro/go/enclave/ethblockchain"
-	"github.com/obscuronet/go-obscuro/go/enclave/txpool"
-
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/go/enclave/evm/ethchainadapter"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/obscuronet/go-obscuro/go/enclave/txpool"
 
 	"github.com/obscuronet/go-obscuro/go/common/compression"
 
@@ -58,7 +58,7 @@ type sequencer struct {
 	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
-	blockchain             *ethblockchain.EthBlockchain
+	blockchain             *ethchainadapter.EthChainAdapter
 }
 
 func NewSequencer(
@@ -77,7 +77,7 @@ func NewSequencer(
 	dataEncryptionService crypto.DataEncryptionService,
 	dataCompressionService compression.DataCompressionService,
 	settings SequencerSettings,
-	blockchain *ethblockchain.EthBlockchain,
+	blockchain *ethchainadapter.EthChainAdapter,
 ) Sequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
@@ -111,8 +111,18 @@ func (s *sequencer) CreateBatch(skipBatchIfEmpty bool) error {
 		return fmt.Errorf("failed retrieving l1 head. Cause: %w", err)
 	}
 
+	// the sequencer creates the initial genesis batch if one does not exist yet
 	if !hasGenesis {
-		return s.initGenesis(l1HeadBlock)
+		return s.createGenesisBatch(l1HeadBlock)
+	}
+
+	if running := s.mempool.Running(); !running {
+		// the mempool can only be started after at least 1 block (the genesis) is in the blockchain object
+		// if the node restarted the mempool must be started again
+		err = s.mempool.Start()
+		if err != nil {
+			return err
+		}
 	}
 
 	return s.createNewHeadBatch(l1HeadBlock, skipBatchIfEmpty)
@@ -122,7 +132,7 @@ func (s *sequencer) CreateBatch(skipBatchIfEmpty bool) error {
 // should only create batches and stateDBs but not commit them to the database,
 // this is the responsibility of the sequencer. Refactor the code so genesis state
 // won't be committed by the producer.
-func (s *sequencer) initGenesis(block *common.L1Block) error {
+func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 	s.logger.Info("Initializing genesis state", log.BlockHashKey, block.Hash())
 	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(
 		block.Hash(),

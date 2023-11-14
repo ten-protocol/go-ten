@@ -1,4 +1,4 @@
-package ethblockchain
+package ethchainadapter
 
 import (
 	"fmt"
@@ -20,8 +20,8 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-// EthBlockchain is an obscuro wrapper around the ethereum core.Blockchain object
-type EthBlockchain struct {
+// EthChainAdapter is an obscuro wrapper around the ethereum core.Blockchain object
+type EthChainAdapter struct {
 	newHeadChan   chan gethcore.ChainHeadEvent
 	batchRegistry components.BatchRegistry
 	storage       storage.Storage
@@ -29,9 +29,9 @@ type EthBlockchain struct {
 	logger        gethlog.Logger
 }
 
-// NewEthBlockchain returns a new instance
-func NewEthBlockchain(chainID *big.Int, batchRegistry components.BatchRegistry, storage storage.Storage, logger gethlog.Logger) *EthBlockchain {
-	return &EthBlockchain{
+// NewEthChainAdapter returns a new instance
+func NewEthChainAdapter(chainID *big.Int, batchRegistry components.BatchRegistry, storage storage.Storage, logger gethlog.Logger) *EthChainAdapter {
+	return &EthChainAdapter{
 		newHeadChan:   make(chan gethcore.ChainHeadEvent),
 		batchRegistry: batchRegistry,
 		storage:       storage,
@@ -41,12 +41,12 @@ func NewEthBlockchain(chainID *big.Int, batchRegistry components.BatchRegistry, 
 }
 
 // Config retrieves the chain's fork configuration.
-func (e *EthBlockchain) Config() *params.ChainConfig {
+func (e *EthChainAdapter) Config() *params.ChainConfig {
 	return ChainParams(e.chainID)
 }
 
 // CurrentBlock returns the current head of the chain.
-func (e *EthBlockchain) CurrentBlock() *gethtypes.Header {
+func (e *EthChainAdapter) CurrentBlock() *gethtypes.Header {
 	currentBatchSeqNo := e.batchRegistry.HeadBatchSeq()
 	if currentBatchSeqNo == nil {
 		return nil
@@ -64,7 +64,7 @@ func (e *EthBlockchain) CurrentBlock() *gethtypes.Header {
 	return batch
 }
 
-func (e *EthBlockchain) SubscribeChainHeadEvent(ch chan<- gethcore.ChainHeadEvent) event.Subscription {
+func (e *EthChainAdapter) SubscribeChainHeadEvent(ch chan<- gethcore.ChainHeadEvent) event.Subscription {
 	return event.NewSubscription(func(quit <-chan struct{}) error {
 		for {
 			select {
@@ -82,7 +82,7 @@ func (e *EthBlockchain) SubscribeChainHeadEvent(ch chan<- gethcore.ChainHeadEven
 }
 
 // GetBlock retrieves a specific block, used during pool resets.
-func (e *EthBlockchain) GetBlock(_ common.Hash, number uint64) *gethtypes.Block {
+func (e *EthChainAdapter) GetBlock(_ common.Hash, number uint64) *gethtypes.Block {
 	nbatch, err := e.storage.FetchBatchByHeight(number)
 	if err != nil {
 		e.logger.Warn("unable to get batch by height", "number", number, log.ErrKey, err)
@@ -99,7 +99,7 @@ func (e *EthBlockchain) GetBlock(_ common.Hash, number uint64) *gethtypes.Block 
 }
 
 // StateAt returns a state database for a given root hash (generally the head).
-func (e *EthBlockchain) StateAt(root common.Hash) (*state.StateDB, error) {
+func (e *EthChainAdapter) StateAt(root common.Hash) (*state.StateDB, error) {
 	if root.Hex() == gethtypes.EmptyCodeHash.Hex() {
 		return nil, nil //nolint:nilnil
 	}
@@ -117,7 +117,7 @@ func (e *EthBlockchain) StateAt(root common.Hash) (*state.StateDB, error) {
 	return e.storage.CreateStateDB(currentBatch.Hash())
 }
 
-func (e *EthBlockchain) IngestNewBlock(batch *core.Batch) error {
+func (e *EthChainAdapter) IngestNewBlock(batch *core.Batch) error {
 	convertedBlock, err := gethencoding.CreateEthBlockFromBatch(batch)
 	if err != nil {
 		return err

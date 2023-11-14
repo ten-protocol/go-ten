@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/ethblockchain"
+	"github.com/obscuronet/go-obscuro/go/enclave/evm/ethchainadapter"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"github.com/stretchr/testify/require"
@@ -48,7 +48,7 @@ func TestTxPool_AddTransaction_Pending(t *testing.T) {
 
 	mockRegistry.OnBatchExecuted(genesisBatch, nil)
 
-	blockchain := ethblockchain.NewEthBlockchain(
+	blockchain := ethchainadapter.NewEthChainAdapter(
 		big.NewInt(int64(chainID)),
 		mockRegistry,
 		mockStore,

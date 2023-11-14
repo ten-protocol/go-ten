@@ -230,6 +230,7 @@ func (s *Simulation) deployObscuroERC20s() {
 				Gas:       1025_000_000,
 				GasFeeCap: gethcommon.Big1, // This field is used to derive the gas price for dynamic fee transactions.
 				Data:      contractBytes,
+				GasTipCap: gethcommon.Big1,
 			}
 
 			signedTx, err := owner.SignTransaction(&deployContractTx)

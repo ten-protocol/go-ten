@@ -10,15 +10,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/compression"
 	"github.com/obscuronet/go-obscuro/go/common/measure"
-	"github.com/obscuronet/go-obscuro/go/enclave/ethblockchain"
+	"github.com/obscuronet/go-obscuro/go/enclave/evm/ethchainadapter"
 	"github.com/obscuronet/go-obscuro/go/enclave/gas"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 	"github.com/obscuronet/go-obscuro/go/enclave/txpool"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
-
-	"github.com/obscuronet/go-obscuro/go/common/compression"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/nodetype"
@@ -128,7 +126,7 @@ func NewEnclave(
 	}
 
 	// Initialise the database
-	chainConfig := ethblockchain.ChainParams(big.NewInt(config.ObscuroChainID))
+	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.ObscuroChainID))
 	storage := storage.NewStorageFromConfig(config, chainConfig, logger)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
@@ -197,7 +195,7 @@ func NewEnclave(
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, storage, logger)
 
-	blockchain := ethblockchain.NewEthBlockchain(big.NewInt(config.ObscuroChainID), registry, storage, logger)
+	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, logger)
 	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)

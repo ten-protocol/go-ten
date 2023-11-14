@@ -1,4 +1,4 @@
-package ethblockchain
+package ethchainadapter
 
 import (
 	"math/big"

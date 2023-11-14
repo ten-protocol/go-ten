@@ -5,12 +5,11 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/core/txpool/legacypool"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/ethblockchain"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethtxpool "github.com/ethereum/go-ethereum/core/txpool"
+	"github.com/ethereum/go-ethereum/core/txpool/legacypool"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/evm/ethchainadapter"
 )
 
 // TxPool is an obscuro wrapper around geths transaction pool
@@ -18,13 +17,14 @@ type TxPool struct {
 	txPoolConfig legacypool.Config
 	legacyPool   *legacypool.LegacyPool
 	pool         *gethtxpool.TxPool
-	blockchain   *ethblockchain.EthBlockchain
+	blockchain   *ethchainadapter.EthChainAdapter
 	gasTip       *big.Int
+	running      bool
 }
 
 // NewTxPool returns a new instance of the tx pool
-func NewTxPool(blockchain *ethblockchain.EthBlockchain, gasTip *big.Int) (*TxPool, error) {
-	txPoolConfig := ethblockchain.NewLegacyPoolConfig()
+func NewTxPool(blockchain *ethchainadapter.EthChainAdapter, gasTip *big.Int) (*TxPool, error) {
+	txPoolConfig := ethchainadapter.NewLegacyPoolConfig()
 	legacyPool := legacypool.New(txPoolConfig, blockchain)
 
 	return &TxPool{
@@ -48,6 +48,7 @@ func (t *TxPool) Start() error {
 	}
 
 	t.pool = memp
+	t.running = true
 	return nil
 }
 
@@ -69,4 +70,8 @@ func (t *TxPool) Add(transaction *common.L2Tx) error {
 		return fmt.Errorf(strings.Join(strErrors, "; "))
 	}
 	return nil
+}
+
+func (t *TxPool) Running() bool {
+	return t.running
 }
