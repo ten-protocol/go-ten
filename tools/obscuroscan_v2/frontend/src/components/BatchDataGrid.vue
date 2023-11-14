@@ -18,7 +18,8 @@
           <Timestamp :unixTimestampSeconds="Number(scope.row.timestamp)" />
         </template>
       </el-table-column>
-      <el-table-column prop="l1Proof" label="Included in Rollup"/>
+      <el-table-column label="No. Transactions" :formatter="function(row) { return row.txHashes ? row.txHashes.length : 0; }" width="180" />
+      <el-table-column prop="l1Proof" label="L1 block"/>
     </el-table>
     <el-pagination
         @size-change="handleSizeChange"
@@ -47,14 +48,9 @@ export default {
   setup() {
     const store = useBatchStore()
 
-    // Start polling when the component is mounted
+    // Reload batch data onMount
     onMounted(() => {
-      store.startPolling()
-    })
-
-    // Ensure to stop polling when component is destroyed or deactivated
-    onUnmounted(() => {
-      store.stopPolling()
+      store.fetch()
     })
 
     return {
@@ -80,21 +76,20 @@ export default {
       const store = useBatchStore()
       store.size = newSize
       store.offset = (this.currentPage - 1) * store.size
+      // reload data
+      store.fetch()
     },
     // Called when the current page is changed
     handleCurrentChange(newPage) {
       const store = useBatchStore()
       this.currentPage = newPage
       store.offset = (newPage - 1) * store.size
+      // reload data
+      store.fetch()
     },
     toggleWindow(data) {
       this.$refs.batchInfoWindowRef.displayData(data.hash);
     },
-  },
-  computed: {
-    tableRowClassName() {
-      return "hover"
-    }
   }
 }
 </script>
