@@ -7,15 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DataTableViewOptions } from "./data-table-view-options";
 
-import { priorities, statuses } from "../../transactions/data";
 import { DataTableFacetedFilter } from "./data-table-faceted-filter";
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
+  toolbar?: {
+    column: string;
+    title: string;
+    options: { label: string; value: string }[];
+  }[];
 }
-
 export function DataTableToolbar<TData>({
   table,
+  toolbar,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
 
@@ -30,19 +34,16 @@ export function DataTableToolbar<TData>({
           }
           className="h-8 w-[150px] lg:w-[250px]"
         />
-        {table.getColumn("status") && (
-          <DataTableFacetedFilter
-            column={table.getColumn("status")}
-            title="Status"
-            options={statuses}
-          />
-        )}
-        {table.getColumn("priority") && (
-          <DataTableFacetedFilter
-            column={table.getColumn("priority")}
-            title="Priority"
-            options={priorities}
-          />
+        {toolbar?.map(
+          (item, index) =>
+            table.getColumn(item.column) && (
+              <DataTableFacetedFilter
+                key={index}
+                column={table.getColumn(item.column)}
+                title={item.title}
+                options={item.options}
+              />
+            )
         )}
         {isFiltered && (
           <Button

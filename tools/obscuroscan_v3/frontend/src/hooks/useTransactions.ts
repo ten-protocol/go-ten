@@ -5,13 +5,18 @@ import {
 } from "@/api/transactions";
 import { useWalletConnection } from "@/components/providers/wallet-provider";
 import { useQuery } from "@tanstack/react-query";
-import { ethers } from "ethers";
 import { useEffect, useState } from "react";
 import { pollingInterval, pricePollingInterval } from "../lib/constants";
+import { PersonalTransactionsResponse } from "../types/interfaces/TransactionInterfaces";
+import { useToast } from "@/components/ui/use-toast";
 
 export const useTransactions = () => {
+  const { toast } = useToast();
   const { walletAddress, provider } = useWalletConnection();
-  const [personalTxns, setPersonalTxns] = useState<Uint8Array>();
+
+  const [personalTxnsLoading, setPersonalTxnsLoading] = useState(false);
+  const [personalTxns, setPersonalTxns] =
+    useState<PersonalTransactionsResponse>();
 
   useEffect(() => {
     personalTransactions();
@@ -31,15 +36,29 @@ export const useTransactions = () => {
       refetchInterval: pollingInterval,
     });
 
-  const personalTransactions = async () => {
-    if (provider) {
-      const personalTxData = await provider.send("eth_getStorageAt", [
-        walletAddress,
-        "0x0",
-        null,
-      ]);
-      const personalTx = ethers.utils.arrayify(personalTxData);
-      setPersonalTxns(personalTx);
+  const personalTransactions = async (payload?: {
+    pagination: { offset: number; size: number };
+  }) => {
+    try {
+      setPersonalTxnsLoading(true);
+      if (provider) {
+        const requestPayload = {
+          address: walletAddress,
+          ...payload,
+        };
+        const personalTxData = await provider.send("eth_getStorageAt", [
+          "listPersonalTransactions",
+          requestPayload,
+          null,
+        ]);
+        setPersonalTxns(personalTxData);
+      }
+    } catch (error) {
+      toast({
+        description: "Error fetching personal transactions",
+      });
+    } finally {
+      setPersonalTxnsLoading(false);
     }
   };
 
@@ -55,6 +74,7 @@ export const useTransactions = () => {
     transactionCount,
     isTransactionCountLoading,
     personalTxns,
+    personalTxnsLoading,
     price,
   };
 };

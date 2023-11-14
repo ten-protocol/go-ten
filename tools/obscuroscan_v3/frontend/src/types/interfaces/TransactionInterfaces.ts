@@ -20,3 +20,17 @@ export type TransactionResponse = {
   TransactionsData: Transaction[];
   Total: number;
 };
+
+export type PersonalTransactionsResponse = {
+  Result: PersonalTransactions[];
+  Total: number;
+};
+
+export type PersonalTransactions = {
+  id: number;
+  blockNumber: string;
+  transactionHash: string;
+  status: "Success" | "Failed";
+  gasUsed: string;
+  blockHash: string;
+};

@@ -17,7 +17,7 @@ const ConnectWalletButton = ({ children }: { children?: React.ReactNode }) => {
         {walletConnected ? (
           <>
             <LinkBreak2Icon className="w-4 h-4 mr-2" />
-            <span className="sm:hidden">Disconnect Wallet</span>
+            <span className="hidden sm:inline">Disconnect Wallet</span>
           </>
         ) : (
           <>
