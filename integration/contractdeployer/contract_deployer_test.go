@@ -33,7 +33,6 @@ const (
 	erc20ParamThree               = "1000000000000000000"
 	testLogs                      = "../.build/noderunner/"
 	receiptTimeout                = 30 * time.Second // The time to wait for a receipt for a transaction.
-	_portOffset                   = 100
 )
 
 func init() { //nolint:gochecknoinits
@@ -82,7 +81,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 }
 
 func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
-	startPort := integration.StartPortContractDeployerTest + _portOffset
+	startPort := integration.StartPortContractDeployerTest
 	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
 	createObscuroNetwork(t, startPort)
 
