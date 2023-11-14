@@ -1,33 +1,56 @@
 <template>
-  <div class="navbar">
-    <div class="logo">
-      <img src="@/assets/imgs/obscuro_black.png" alt="Obscuro logo"/>
-    </div>
-    <div class="spacer"> </div>
-    <el-menu
-        class="navbar-menu"
-        :default-active="$route.path"
-        mode="horizontal"
-        :router="true"
-        :ellipsis="false"
-        active-text-color="#5973B8"
-    >
-      <el-menu-item index="/">Home</el-menu-item>
-      <el-menu-item index="/personal">Personal</el-menu-item>
-      <el-sub-menu index="blockchain">
-        <template #title>Blockchain</template>
-        <el-menu-item index="/transactions">Transactions</el-menu-item>
-        <el-menu-item index="/batches">Batches</el-menu-item>
-        <el-menu-item index="/blocks">Blocks</el-menu-item>
-      </el-sub-menu>
-      <el-sub-menu index="resources">
-        <template #title>Resources</template>
-        <el-menu-item index="/decrypt">Decrypt</el-menu-item>
-        <el-menu-item index="/data">Verified Data</el-menu-item>
-      </el-sub-menu>
-    </el-menu>
-    <meta-mask-connect-button />
-  </div>
+  <header>
+    <el-container class="align-vertical">
+      <el-main>
+    <el-row justify="space-around">
+      <el-col :span="2" >
+        <img src="@/assets/imgs/obscuro.svg" alt="obscu.ro" class="header-image"  style="max-height: 5vh;"/>
+      </el-col>
+      <el-col :span="10" :offset="7">
+        <nav class="nav-bar">
+          <el-radio-group size="default">
+            <RouterLink to="/">  <el-button link class="paddedTop"> Home</el-button></RouterLink>
+            <RouterLink to="/personal">  <el-button link class="paddedTop">Personal</el-button></RouterLink>
+            <el-button link class="paddedTop">
+              <el-dropdown>
+                <span class="el-dropdown-link">
+                  Blockchain
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <RouterLink to="/transactions"> <el-dropdown-item>Transactions</el-dropdown-item></RouterLink>
+                    <RouterLink to="/batches"> <el-dropdown-item>Batches</el-dropdown-item></RouterLink>
+                    <RouterLink to="/blocks"> <el-dropdown-item>Blocks</el-dropdown-item></RouterLink>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              </el-button>
+            <el-button link class="paddedTop" style="margin: 0px">
+              <el-dropdown>
+                <span class="el-dropdown-link">
+                  Resources
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <RouterLink to="/decrypt"> <el-dropdown-item>Decrypt</el-dropdown-item></RouterLink>
+                    <RouterLink to="/verified"> <el-dropdown-item>Verified Data</el-dropdown-item></RouterLink>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </el-button>
+          </el-radio-group>
+        </nav>
+      </el-col>
+      <el-col :span="5" >
+        <meta-mask-connect-button />
+      </el-col>
+<!--      <el-col :span="4" >-->
+<!--        <search-bar-item />-->
+<!--      </el-col>-->
+    </el-row>
+      </el-main>
+    </el-container>
+  </header>
 </template>
 
 <script>
@@ -40,33 +63,18 @@ export default {
 </script>
 
 <style scoped>
-.navbar {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-
-  background: white;
-  //height: 59px;
-  padding-left: 12px;
-  padding-right: 8px;
+/* Nav bar styles */
+.nav-bar {
+  border-radius: 8px; /* Optional rounded corners */
 }
 
-.navbar-menu {
-  border: none;
-  cursor: pointer;
+.header-image {
+  max-height: 100%; /* Ensure the image doesn't exceed the header's height */
+  object-fit: cover; /* If image's aspect ratio doesn't match, it'll still cover the space without distortion */
 }
 
-.spacer {
-  flex-grow: 1;
+.paddedTop {
+  padding: 10px;
 }
 
-.logo {
-  margin-right: 20px;
-  max-height: 59px;
-}
-
-.logo img {
-  max-height: 59px;
-}
 </style>

@@ -1,27 +1,26 @@
 <script>
 import { defineComponent } from 'vue'
+import SummaryItem from '@/components/SummaryItem.vue'
 import RotatingBatchesItem from "@/components/RotatingBatchesItem.vue";
-import RecentRollupsTable from "@/components/RecentRollupsTable.vue";
+import RotatingBlocksItem from "@/components/RotatingRollupsItem.vue";
 import PublicTxDataGrid from "@/components/PublicTxDataGrid.vue";
-import SummaryRow from "@/components/SummaryRow.vue";
 
 export default defineComponent({
-  components: {PublicTxDataGrid, RecentRollupsTable, RotatingBatchesItem, SummaryRow }
+  components: {PublicTxDataGrid, RotatingBlocksItem, RotatingBatchesItem, SummaryItem }
 })
 </script>
 <template>
-  <summary-row />
-  <rotating-batches-item/>
-  <el-row gutter="12">
-    <el-col :span="12">
-      <recent-rollups-table/>
-    </el-col>
-    <el-col :span="12">
+  <el-container>
+    <el-main>
+      <summary-item />
+      <p>&nbsp;</p>
+      <rotating-batches-item/>
+      <p>&nbsp;</p>
+     <rotating-blocks-item/>
+      <p>&nbsp;</p>
       <public-tx-data-grid/>
-    </el-col>
-  </el-row>
+    </el-main>
+  </el-container>
 </template>
 
-<style>
-
-</style>
+<style></style>

@@ -1,4 +1,5 @@
 <template>
+  <el-card>
   <el-table height="250" style="width: 100%" :data="personalTransactionList">
     <el-table-column prop="blockNumber" label="Batch Height" width="180" >
       <template #default="scope">
@@ -31,6 +32,7 @@
       layout="total, sizes, prev, pager, next"
       :total="personalTransactionCount"
   ></el-pagination>
+  </el-card>
 </template>
 
 <script>

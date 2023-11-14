@@ -1,47 +1,7 @@
-:root {
-    /* Neutral gray colors */
-    --obs-bg-color: #f5f5f5;
-    --obs-text-color: #333333;
-
-    /* Colors from the Obscuro palette */
-    --obs-primary: #96DECD;
-    --obs-secondary: #969DDE;
-    --obs-color-3: #C896DE;
-    --obs-color-4: #96C8DE;
-    --obs-tertiary: #5973B8;
-    --el-menu-hover-text-color: #5973B8 !important;
-    --el-menu-hover-bg-color: #f5f5f5 !important;
-}
-
-body {
-    margin: 0;
-    padding: 0;
-    font-size: 16px;
-    line-height: 1.5;
-    font-family: Inter,BlinkMacSystemFont,Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
-    font-weight: 400;
-    color: #333333; /* a dark grey that complements obscuro color pallette */
-    background-color: var(--obs-bg-color);
-}
+@import './base.css';
 
 #app {
   font-weight: normal;
-  background-color: var(--obs-bg-color);
-  color: var(--obs-text-color);
-  font-family: Inter,BlinkMacSystemFont,Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
 }
 
-.obs-link-button {
-    color: var(--obs-text-color);
-    background-color: transparent;
-}
 
-.obs-link-button:hover {
-    color: var(--obs-tertiary) !important;
-    background-color: transparent !important;
-    border-color: var(--obs-tertiary) !important;
-}
-
-.obs-container-card {
-    border-radius: 12px;
-}

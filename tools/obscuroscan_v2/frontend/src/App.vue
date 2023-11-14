@@ -40,16 +40,4 @@ export default {
 .bot-bar {
   background:black;
 }
-
-.nav-bar-header {
-  margin: 0;
-  padding: 0;
-  filter:drop-shadow(0px 1vh 1vh #E1E1E1);
-}
-
-.main-content {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
 </style>
