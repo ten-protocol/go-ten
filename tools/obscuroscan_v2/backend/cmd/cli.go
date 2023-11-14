@@ -8,8 +8,8 @@ import (
 
 func parseCLIArgs() *config.Config {
 	defaultConfig := &config.Config{
-		NodeHostAddress: "http://127.0.0.1:37801",
-		ServerAddress:   "0.0.0.0:43910",
+		NodeHostAddress: "http://erpc.dev-testnet.obscu.ro:80",
+		ServerAddress:   "0.0.0.0:80",
 		LogPath:         "obscuroscan_logs.txt",
 	}
 
