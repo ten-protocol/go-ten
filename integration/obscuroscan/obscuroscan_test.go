@@ -86,7 +86,7 @@ func TestObscuroscan(t *testing.T) {
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/count/transactions/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "{\"count\":6}", string(body))
+	assert.Equal(t, "{\"count\":5}", string(body))
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/latest/", serverAddress))
 	assert.NoError(t, err)
