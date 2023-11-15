@@ -7,10 +7,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PersonalTransactions() {
   const { personalTxns, personalTxnsLoading } = useTransactions();
-  console.log(
-    "🚀 ~ file: index.tsx:10 ~ PersonalTransactions ~ personalTxns:",
-    personalTxns
-  );
 
   return (
     <>

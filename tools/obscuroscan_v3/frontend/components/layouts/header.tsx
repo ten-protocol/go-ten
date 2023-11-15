@@ -8,7 +8,7 @@ import Link from "next/link";
 export default function Header() {
   return (
     <div className="border-b">
-      <div className="flex h-16 items-center px-4">
+      <div className="flex h-16 justify-between items-center px-4">
         <Link href="/">
           <Image
             src="/assets/images/obscuro_black.png"
@@ -18,7 +18,7 @@ export default function Header() {
           />
         </Link>
         <MainNav className="mx-6" />
-        <div className="ml-auto flex items-center space-x-4">
+        <div className="flex items-center space-x-4">
           {/* <Search /> */}
           <ModeToggle />
           <ConnectWalletButton />

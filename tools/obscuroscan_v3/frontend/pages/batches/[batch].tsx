@@ -1,6 +1,7 @@
 import { getBatchByHash } from "@/api/batches";
 import Layout from "@/components/layouts/default-layout";
 import { BatchDetails } from "@/components/modules/batches/batch-details";
+import TruncatedAddress from "@/components/modules/common/truncated-address";
 import {
   Card,
   CardHeader,
@@ -17,27 +18,31 @@ export default function Batch() {
   const { batch } = router.query;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["Batch"],
+    queryKey: ["batch", batch],
     queryFn: () => getBatchByHash(batch as string),
   });
 
+  const batchDetails = data?.item;
+
   return (
     <Layout>
-      <Card className="col-span-3">
-        <CardHeader>
-          <CardTitle>Batch #{batch}</CardTitle>
-          <CardDescription>
-            {isLoading ? (
-              <Skeleton className="h-6 w-24" />
-            ) : (
-              data?.result?.l1Proof
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <BatchDetails />
-        </CardContent>
-      </Card>
+      {isLoading ? (
+        <Skeleton className="h-6 w-24" />
+      ) : batchDetails ? (
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Batch #{batchDetails?.Header?.number}</CardTitle>
+            <CardDescription>
+              Overview of the batch #{batchDetails?.Header?.number}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BatchDetails batchDetails={batchDetails} />
+          </CardContent>
+        </Card>
+      ) : (
+        <div>Batch not found</div>
+      )}
     </Layout>
   );
 }

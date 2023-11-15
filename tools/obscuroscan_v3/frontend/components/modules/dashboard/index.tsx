@@ -21,6 +21,7 @@ import { RecentBlocks } from "./recent-blocks";
 import { useBlocks } from "@/src/hooks/useBlocks";
 import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
+import { cn } from "@/src/lib/utils";
 
 export default function Dashboard() {
   const { price, transactions, transactionCount } = useTransactions();
@@ -105,7 +106,10 @@ export default function Dashboard() {
       </div>
       <div className="grid gap-4 md:grid-cols-6 lg:grid-cols-9">
         {RECENT_DATA.map((item: any, index) => (
-          <Card key={index} className={item.className}>
+          <Card
+            key={index}
+            className={cn(item.className, "h-[450px] overflow-y-auto")}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
               <CardTitle>{item.title}</CardTitle>
               <Link
