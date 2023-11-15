@@ -7,7 +7,7 @@ import {
   TableCell,
 } from "@/src/components/ui/table";
 import { Table } from "@/src/components/ui/table";
-import { useContracts } from "@/src/hooks/useContracts";
+import { useContractsService } from "@/src/hooks/useContractsService";
 import TruncatedAddress from "../../common/truncated-address";
 import { Badge } from "@/src/components/ui/badge";
 import {
@@ -18,7 +18,7 @@ import {
 } from "@/src/components/ui/card";
 
 export default function VerifiedSequencerData() {
-  const { sequencerData } = useContracts();
+  const { sequencerData } = useContractsService();
 
   return (
     <Card>

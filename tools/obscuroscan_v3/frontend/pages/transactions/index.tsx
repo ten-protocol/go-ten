@@ -2,7 +2,7 @@ import React from "react";
 import { columns } from "@/src/components/modules/transactions/columns";
 import { DataTable } from "@/src/components/modules/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
-import { useTransactions } from "@/src/hooks/useTransactions";
+import { useTransactions } from "@/src/hooks/useTransactionsService";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {

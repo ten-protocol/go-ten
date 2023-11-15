@@ -7,7 +7,7 @@ import {
   TableCell,
 } from "@/src/components/ui/table";
 import { Table } from "@/src/components/ui/table";
-import { useContracts } from "@/src/hooks/useContracts";
+import { useContracts } from "@/src/hooks/useContractsService";
 import TruncatedAddress from "../../common/truncated-address";
 import { Badge } from "@/src/components/ui/badge";
 import {

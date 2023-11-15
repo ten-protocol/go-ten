@@ -4,7 +4,7 @@ import { pathToUrl } from "@/src/routes/router";
 import { ResponseDataInterface } from "@/src/types/interfaces";
 import { ContractCount } from "@/src/types/interfaces/ContractInterface";
 
-export const getContractCount = async (
+export const fetchContractCount = async (
   payload?: Record<string, any>
 ): Promise<ContractCount> => {
   const data = await httpRequest<ContractCount>({
@@ -15,7 +15,7 @@ export const getContractCount = async (
   return data;
 };
 
-export const getVerifiedContracts = async (
+export const fetchVerifiedContracts = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<any>> => {
   const data = await httpRequest<ResponseDataInterface<any>>({

@@ -8,7 +8,7 @@ import {
   TransactionResponse,
 } from "@/src/types/interfaces/TransactionInterfaces";
 
-export const getTransactions = async (
+export const fetchTransactions = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<TransactionResponse>> => {
   const data = await httpRequest<ResponseDataInterface<TransactionResponse>>({
@@ -19,7 +19,7 @@ export const getTransactions = async (
   return data;
 };
 
-export const getTransactionCount = async (): Promise<TransactionCount> => {
+export const fetchTransactionCount = async (): Promise<TransactionCount> => {
   const data = await httpRequest<TransactionCount>({
     method: "get",
     url: pathToUrl(apiRoutes.getTransactionCount),
@@ -27,10 +27,10 @@ export const getTransactionCount = async (): Promise<TransactionCount> => {
   return data;
 };
 
-export const getPrice = async (): Promise<Price> => {
+export const fetchEtherPrice = async (): Promise<Price> => {
   const data = await httpRequest<Price>({
     method: "get",
-    url: apiRoutes.getPrice,
+    url: apiRoutes.getEtherPrice,
   });
   return data;
 };

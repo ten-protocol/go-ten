@@ -1,7 +1,6 @@
-import { getBatchByHash } from "@/api/batches";
+import { fetchBatchByHash } from "@/api/batches";
 import Layout from "@/src/components/layouts/default-layout";
 import { BatchDetails } from "@/src/components/modules/batches/batch-details";
-import TruncatedAddress from "@/src/components/modules/common/truncated-address";
 import {
   Card,
   CardHeader,
@@ -15,11 +14,11 @@ import { useRouter } from "next/router";
 
 export default function Batch() {
   const router = useRouter();
-  const { batch } = router.query;
+  const { hash } = router.query;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["batch", batch],
-    queryFn: () => getBatchByHash(batch as string),
+    queryKey: ["batch", hash],
+    queryFn: () => fetchBatchByHash(hash as string),
   });
 
   const batchDetails = data?.item;

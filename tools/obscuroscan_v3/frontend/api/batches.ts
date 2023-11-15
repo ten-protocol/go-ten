@@ -8,7 +8,7 @@ import {
   BatchResponse,
 } from "@/src/types/interfaces/BatchInterfaces";
 
-export const getBatches = async (
+export const fetchBatches = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<BatchResponse>> => {
   const data = await httpRequest<ResponseDataInterface<BatchResponse>>({
@@ -19,7 +19,7 @@ export const getBatches = async (
   return data;
 };
 
-export const getLatestBatch = async (
+export const fetchLatestBatch = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<Batch>> => {
   const data = await httpRequest<ResponseDataInterface<Batch>>({
@@ -30,7 +30,7 @@ export const getLatestBatch = async (
   return data;
 };
 
-export const getBatchByHash = async (
+export const fetchBatchByHash = async (
   hash: string
 ): Promise<ResponseDataInterface<BatchDetails>> => {
   const data = await httpRequest<ResponseDataInterface<BatchDetails>>({

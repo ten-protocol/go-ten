@@ -17,22 +17,22 @@ import {
 import { RecentBatches } from "./recent-batches";
 import { RecentTransactions } from "./recent-transactions";
 import { Button } from "@/src/components/ui/button";
-import { useTransactions } from "@/src/hooks/useTransactions";
-import { useBatches } from "@/src/hooks/useBatches";
+import { useTransactionsService } from "@/src/hooks/useTransactionsService";
+import { useBatchesService } from "@/src/hooks/useBatchesService";
 import TruncatedAddress from "../common/truncated-address";
-import { useContracts } from "@/src/hooks/useContracts";
+import { useContractsService } from "@/src/hooks/useContractsService";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { RecentBlocks } from "./recent-blocks";
-import { useBlocks } from "@/src/hooks/useBlocks";
+import { useBlocksService } from "@/src/hooks/useBlocksService";
 import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
 import { cn } from "@/src/lib/utils";
 
 export default function Dashboard() {
-  const { price, transactions, transactionCount } = useTransactions();
-  const { contractCount } = useContracts();
-  const { batches, latestBatch } = useBatches();
-  const { blocks } = useBlocks();
+  const { price, transactions, transactionCount } = useTransactionsService();
+  const { contractCount } = useContractsService();
+  const { batches, latestBatch } = useBatchesService();
+  const { blocks } = useBlocksService();
 
   const DASHBOARD_DATA = [
     {

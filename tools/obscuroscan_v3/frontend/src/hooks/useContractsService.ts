@@ -1,15 +1,15 @@
-import { getContractCount, getVerifiedContracts } from "@/api/contracts";
+import { fetchContractCount, fetchVerifiedContracts } from "@/api/contracts";
 import { useQuery } from "@tanstack/react-query";
 
-export const useContracts = () => {
+export const useContractsService = () => {
   const { data: contracts, isLoading: isContractsLoading } = useQuery({
     queryKey: ["contracts"],
-    queryFn: () => getVerifiedContracts(),
+    queryFn: () => fetchVerifiedContracts(),
   });
 
   const { data: contractCount, isLoading: isContractCountLoading } = useQuery({
     queryKey: ["contractCount"],
-    queryFn: () => getContractCount(),
+    queryFn: () => fetchContractCount(),
   });
 
   const formattedContracts = [

@@ -1,9 +1,7 @@
-import { Button } from "@/src/components/ui/button";
 import TruncatedAddress from "../common/truncated-address";
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
-import { EyeOpenIcon } from "@radix-ui/react-icons";
-import Link from "next/link";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
+import { Badge } from "../../ui/badge";
 
 export function RecentTransactions({ transactions }: { transactions: any }) {
   return (
@@ -23,15 +21,7 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
               <TruncatedAddress address={transaction?.TransactionHash} />
             </div>
             <div className="ml-auto font-medium">
-              <Link
-                href={{
-                  pathname: `/transactions/${transaction?.TransactionHash}`,
-                }}
-              >
-                <Button variant="link" size="sm">
-                  <EyeOpenIcon />
-                </Button>
-              </Link>
+              <Badge>{transaction?.Finality}</Badge>
             </div>
           </div>
         )

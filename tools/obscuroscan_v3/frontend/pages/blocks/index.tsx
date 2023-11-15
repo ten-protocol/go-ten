@@ -3,7 +3,7 @@ import { columns } from "@/src/components/modules/blocks/columns";
 import { DataTable } from "@/src/components/modules/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
-import { useBlocks } from "@/src/hooks/useBlocks";
+import { useBlocksService } from "@/src/hooks/useBlocksService";
 
 export const metadata: Metadata = {
   title: "Blocks",
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default function Blocks() {
-  const { blocks } = useBlocks();
+  const { blocks } = useBlocksService();
 
   return (
     <>

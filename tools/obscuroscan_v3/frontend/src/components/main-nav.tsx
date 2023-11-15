@@ -16,11 +16,6 @@ import { ChevronDownIcon } from "@radix-ui/react-icons";
 import { NavLink } from "@/src/types/interfaces";
 import { NavLinks } from "../routes";
 
-interface MainNavProps {
-  navLinks: NavLink[];
-  className?: string;
-}
-
 const NavItem: React.FC<{ navLink: NavLink }> = ({ navLink }) => {
   const router = useRouter();
 
@@ -50,7 +45,9 @@ const NavItem: React.FC<{ navLink: NavLink }> = ({ navLink }) => {
           <DropdownMenuGroup>
             {navLink.subNavLinks &&
               navLink.subNavLinks.map((subNavLink: NavLink) => (
-                <NavItem key={subNavLink.label} navLink={subNavLink} />
+                <DropdownMenuItem key={subNavLink.label}>
+                  <NavItem navLink={subNavLink} />
+                </DropdownMenuItem>
               ))}
           </DropdownMenuGroup>
         </DropdownMenuContent>

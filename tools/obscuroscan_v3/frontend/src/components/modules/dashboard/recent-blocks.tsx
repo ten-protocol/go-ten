@@ -1,9 +1,6 @@
-import { Button } from "@/src/components/ui/button";
 import TruncatedAddress from "../common/truncated-address";
 import { formatTimeAgo } from "@/src/lib/utils";
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
-import { EyeOpenIcon } from "@radix-ui/react-icons";
-import Link from "next/link";
 import { Block } from "@/src/types/interfaces/BlockInterfaces";
 
 export function RecentBlocks({ blocks }: { blocks: any }) {
@@ -24,17 +21,6 @@ export function RecentBlocks({ blocks }: { blocks: any }) {
           </div>
           <div className="ml-auto font-medium min-w-[140px]">
             <TruncatedAddress address={block?.blockHeader?.hash} />
-          </div>
-          <div className="ml-auto font-medium max-w-[50px]">
-            <Link
-              href={{
-                pathname: `/blocks/${block?.blockHeader?.number}`,
-              }}
-            >
-              <Button variant="link" size="sm">
-                <EyeOpenIcon />
-              </Button>
-            </Link>
           </div>
         </div>
       ))}
