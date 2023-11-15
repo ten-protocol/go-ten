@@ -13,3 +13,16 @@ export const getRollups = async (
   });
   return data;
 };
+
+export const decryptEncryptedRollup = async ({
+  StrData,
+}: {
+  StrData: string;
+}): Promise<ResponseDataInterface<any>> => {
+  const data = await httpRequest<ResponseDataInterface<any>>({
+    method: "post",
+    url: pathToUrl(apiRoutes.decryptEncryptedRollup),
+    data: { StrData },
+  });
+  return data;
+};

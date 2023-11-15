@@ -20,4 +20,5 @@ export const apiRoutes = {
 
   // **** ROLLUPS ****
   getRollups: "/items/rollup/latest/",
+  decryptEncryptedRollup: "/actions/decryptTxBlob/",
 };

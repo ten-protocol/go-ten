@@ -23,7 +23,7 @@ export function RecentBatches({ batches }: { batches: any }) {
           <div className="ml-auto font-medium min-w-[140px]">
             <TruncatedAddress address={batch?.hash} />
           </div>
-          <div className="ml-auto font-medium max-w-[100px]">
+          {/* <div className="ml-auto font-medium max-w-[100px]">
             <Link
               href={{
                 pathname: `/batches/${batch?.number}`,
@@ -33,7 +33,7 @@ export function RecentBatches({ batches }: { batches: any }) {
                 <EyeOpenIcon />
               </Button>
             </Link>
-          </div>
+          </div> */}
         </div>
       ))}
     </div>

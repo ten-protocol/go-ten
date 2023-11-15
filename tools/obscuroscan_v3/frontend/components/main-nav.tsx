@@ -11,6 +11,8 @@ import {
   DropdownMenuItem,
 } from "./ui/dropdown-menu";
 
+import { ChevronDownIcon } from "@radix-ui/react-icons";
+
 export function MainNav({
   className,
   ...props
@@ -36,9 +38,9 @@ export function MainNav({
         <DropdownMenuTrigger asChild>
           <Button
             variant="clear"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary p-0"
           >
-            Blockchain
+            Blockchain <ChevronDownIcon className="ml-1 h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -59,9 +61,9 @@ export function MainNav({
         <DropdownMenuTrigger asChild>
           <Button
             variant="clear"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary p-0"
           >
-            Resources
+            Resources <ChevronDownIcon className="ml-1 h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -69,7 +71,7 @@ export function MainNav({
             <Link href="/resources/decrypt">
               <DropdownMenuItem>Decrypt</DropdownMenuItem>
             </Link>
-            <Link href="/resources/verify">
+            <Link href="/resources/verified-data">
               <DropdownMenuItem>Verified Data</DropdownMenuItem>
             </Link>
           </DropdownMenuGroup>

@@ -29,10 +29,6 @@ export const WalletConnectionProvider = ({
   const [provider, setProvider] =
     useState<ethers.providers.Web3Provider | null>(null);
 
-  useEffect(() => {
-    connectWallet();
-  }, []);
-
   const connectWallet = async () => {
     if ((window as any).ethereum) {
       const ethProvider = new ethers.providers.Web3Provider(

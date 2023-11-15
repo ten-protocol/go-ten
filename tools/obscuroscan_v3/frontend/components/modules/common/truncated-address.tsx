@@ -1,6 +1,14 @@
+import React from "react";
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 import { useCopy } from "@/src/hooks/useCopy";
 import { CopyIcon } from "@radix-ui/react-icons";
-import React from "react";
 
 const TruncatedAddress = ({
   address,
@@ -22,7 +30,14 @@ const TruncatedAddress = ({
     <div className="flex items-center space-x-2">
       {address ? (
         <>
-          <div>{truncatedAddress}</div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>{truncatedAddress}</TooltipTrigger>
+              <TooltipContent>
+                <p>{address}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <button
             className="text-muted-foreground hover:text-primary transition-colors"
             onClick={() => copyToClipboard(address)}

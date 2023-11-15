@@ -12,7 +12,7 @@ export default function Header() {
         <Link href="/">
           <Image
             src="/assets/images/obscuro_black.png"
-            width={200}
+            width={150}
             height={32}
             alt="Obscuro Logo"
           />

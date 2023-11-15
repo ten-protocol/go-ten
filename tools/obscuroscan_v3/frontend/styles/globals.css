@@ -28,6 +28,12 @@
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
 
+    --success: 120 63% 31%;
+    --success-foreground: 210 40% 98%;
+
+    --warning: 45 80% 50%;
+    --warning-foreground: 0 0% 20%;
+
     --destructive: 0 100% 50%;
     --destructive-foreground: 210 40% 98%;
 
@@ -61,6 +67,12 @@
     --secondary: 222.2 47.4% 11.2%;
     --secondary-foreground: 210 40% 98%;
 
+    --success: 120 63% 31%;
+    --success-foreground: 210 40% 98%;
+
+    --warning: 45 80% 40%;
+    --warning-foreground: 0 0% 80%;
+
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
@@ -76,7 +88,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 

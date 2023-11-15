@@ -3,9 +3,14 @@ import { columns } from "@/components/modules/personal/columns";
 import { DataTable } from "@/components/modules/common/data-table/data-table";
 import { useTransactions } from "@/src/hooks/useTransactions";
 import { toolbar } from "./data";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PersonalTransactions() {
   const { personalTxns, personalTxnsLoading } = useTransactions();
+  console.log(
+    "🚀 ~ file: index.tsx:10 ~ PersonalTransactions ~ personalTxns:",
+    personalTxns
+  );
 
   return (
     <>
@@ -20,11 +25,11 @@ export default function PersonalTransactions() {
         </div>
       </div>
       {personalTxnsLoading ? (
-        <p>Loading...</p>
-      ) : personalTxns?.Result ? (
+        <Skeleton className="h-96" />
+      ) : personalTxns?.Results ? (
         <DataTable
           columns={columns}
-          data={personalTxns?.Result}
+          data={personalTxns?.Results}
           toolbar={toolbar}
         />
       ) : (
