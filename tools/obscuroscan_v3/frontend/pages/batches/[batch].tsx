@@ -1,15 +1,15 @@
 import { getBatchByHash } from "@/api/batches";
-import Layout from "@/components/layouts/default-layout";
-import { BatchDetails } from "@/components/modules/batches/batch-details";
-import TruncatedAddress from "@/components/modules/common/truncated-address";
+import Layout from "@/src/components/layouts/default-layout";
+import { BatchDetails } from "@/src/components/modules/batches/batch-details";
+import TruncatedAddress from "@/src/components/modules/common/truncated-address";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
   CardDescription,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@/src/components/ui/card";
+import { Skeleton } from "@/src/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 

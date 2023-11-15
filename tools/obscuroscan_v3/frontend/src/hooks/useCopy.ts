@@ -1,4 +1,4 @@
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/src/components/ui/use-toast";
 import React from "react";
 
 export const useCopy = () => {

@@ -1,5 +1,5 @@
 import { decryptEncryptedRollup, getRollups } from "@/api/rollups";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/src/components/ui/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 

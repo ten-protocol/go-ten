@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ThemeProvider } from "@/components/providers/theme-provider";
+import { ThemeProvider } from "@/src/components/providers/theme-provider";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
   QueryClient,
@@ -8,10 +8,10 @@ import {
 } from "@tanstack/react-query";
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
-import { Toaster } from "@/components/ui/toaster";
-import { useToast } from "@/components/ui/use-toast";
-import { WalletConnectionProvider } from "@/components/providers/wallet-provider";
-import { NetworkStatus } from "@/components/modules/common/network-status";
+import { Toaster } from "@/src/components/ui/toaster";
+import { useToast } from "@/src/components/ui/use-toast";
+import { WalletConnectionProvider } from "@/src/components/providers/wallet-provider";
+import { NetworkStatus } from "@/src/components/modules/common/network-status";
 
 export default function App({ Component, pageProps }: AppProps) {
   const { toast } = useToast();

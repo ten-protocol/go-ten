@@ -1,5 +1,5 @@
-import Layout from "@/components/layouts/default-layout";
-import Decrypt from "@/components/modules/resources/decrypt";
+import Layout from "@/src/components/layouts/default-layout";
+import Decrypt from "@/src/components/modules/resources/decrypt";
 
 export default function DecryptPage() {
   return (

@@ -1,7 +1,7 @@
 import React from "react";
-import { columns } from "@/components/modules/batches/columns";
-import { DataTable } from "@/components/modules/common/data-table/data-table";
-import Layout from "@/components/layouts/default-layout";
+import { columns } from "@/src/components/modules/batches/columns";
+import { DataTable } from "@/src/components/modules/common/data-table/data-table";
+import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBatches } from "@/src/hooks/useBatches";
 

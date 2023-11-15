@@ -3,12 +3,12 @@ import {
   getTransactionCount,
   getPrice,
 } from "@/api/transactions";
-import { useWalletConnection } from "@/components/providers/wallet-provider";
+import { useWalletConnection } from "@/src/components/providers/wallet-provider";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { pollingInterval, pricePollingInterval } from "../lib/constants";
 import { PersonalTransactionsResponse } from "../types/interfaces/TransactionInterfaces";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/src/components/ui/use-toast";
 
 export const useTransactions = () => {
   const { toast } = useToast();

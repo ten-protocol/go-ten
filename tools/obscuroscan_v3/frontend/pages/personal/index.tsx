@@ -1,7 +1,7 @@
 import React from "react";
-import Layout from "@/components/layouts/default-layout";
+import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
-import PersonalTransactions from "@/components/modules/personal";
+import PersonalTransactions from "@/src/components/modules/personal";
 
 export const metadata: Metadata = {
   title: "Personal Transactions",
