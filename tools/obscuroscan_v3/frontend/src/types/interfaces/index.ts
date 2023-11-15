@@ -52,3 +52,11 @@ export interface ResponseDataInterface<T> {
   pagination?: PaginationInterface;
   success: string;
 }
+
+export type NavLink = {
+  label: string;
+  href?: string;
+  isDropdown?: boolean;
+  isExternal?: boolean;
+  subNavLinks?: NavLink[];
+};
