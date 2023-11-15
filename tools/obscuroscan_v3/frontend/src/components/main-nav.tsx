@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 
 import { cn } from "@/src/lib/utils";
 import { Button } from "./ui/button";
@@ -13,7 +14,7 @@ import {
 
 import { ChevronDownIcon } from "@radix-ui/react-icons";
 import { NavLink } from "@/src/types/interfaces";
-import { useRouter } from "next/router";
+import { NavLinks } from "../routes";
 
 interface MainNavProps {
   navLinks: NavLink[];
@@ -29,7 +30,6 @@ const NavItem: React.FC<{ navLink: NavLink }> = ({ navLink }) => {
         subNavLink.href && router.pathname.includes(subNavLink.href)
     );
   };
-
   if (navLink.isDropdown) {
     return (
       <DropdownMenu>
@@ -84,12 +84,16 @@ const NavItem: React.FC<{ navLink: NavLink }> = ({ navLink }) => {
   }
 };
 
-const MainNav = ({ navLinks, className }: MainNavProps) => (
-  <nav className={cn("flex items-center space-x-4 lg:space-x-6", className)}>
-    {navLinks.map((navLink) => (
+export const MainNav = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLElement>) => (
+  <nav
+    className={cn("flex items-center space-x-4 lg:space-x-6", className)}
+    {...props}
+  >
+    {NavLinks.map((navLink) => (
       <NavItem key={navLink.label} navLink={navLink} />
     ))}
   </nav>
 );
-
-export default MainNav;
