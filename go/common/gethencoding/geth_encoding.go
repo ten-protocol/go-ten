@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/trie"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -243,13 +245,22 @@ func CreateEthHeaderForBatch(h *common.BatchHeader, secret []byte) (*types.Heade
 		Difficulty:  big.NewInt(0),
 		Number:      h.Number,
 		GasLimit:    h.GasLimit,
-		GasUsed:     0,
+		GasUsed:     h.GasUsed,
 		BaseFee:     big.NewInt(0).SetUint64(baseFee),
 		Coinbase:    h.Coinbase,
 		Time:        h.Time,
 		MixDigest:   randomness,
 		Nonce:       types.BlockNonce{},
 	}, nil
+}
+
+func CreateEthBlockFromBatch(b *core.Batch) (*types.Block, error) {
+	blockHeader, err := CreateEthHeaderForBatch(b.Header, nil)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create eth block from batch - %w", err)
+	}
+
+	return types.NewBlock(blockHeader, b.Transactions, nil, nil, trie.NewStackTrie(nil)), nil
 }
 
 // DecodeParamBytes decodes the parameters byte array into a slice of interfaces

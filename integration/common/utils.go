@@ -23,7 +23,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
-var _awaitReceiptPollingInterval = 100 * time.Millisecond
+var _awaitReceiptPollingInterval = 200 * time.Millisecond
 
 func RndBtw(min uint64, max uint64) uint64 {
 	if min >= max {
