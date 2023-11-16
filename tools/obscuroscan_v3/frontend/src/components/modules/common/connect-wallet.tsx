@@ -14,13 +14,14 @@ const ConnectWalletButton = () => {
     >
       {walletConnected ? (
         <>
-          <LinkBreak2Icon className="w-4 h-4" />
-          <span className="hidden md:inline ml-2">Disconnect Wallet</span>
+          <LinkBreak2Icon className="h-4 w-4 mr-1" />
+          Disconnect
         </>
       ) : (
         <>
-          <Link2Icon className="w-4 h-4" />
-          <span className="hidden md:inline ml-2">Connect to Metamask</span>
+          <Link2Icon className="h-4 w-4 mr-1" />
+          Connect
+          <span className="hidden sm:inline">&nbsp;Wallet</span>
         </>
       )}
     </Button>

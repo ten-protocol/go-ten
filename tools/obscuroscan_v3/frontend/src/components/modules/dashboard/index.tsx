@@ -38,17 +38,19 @@ export default function Dashboard() {
     {
       title: "Ether Price",
       value: price?.ethereum?.usd,
-      change: "+20.1% from last month",
+      // TODO: add change
+      // change: "+20.1%",
       icon: RocketIcon,
     },
     {
-      title: "Latest Batch",
+      title: "Latest L2 Batch",
       value: batches?.result?.Total,
-      change: "+20.1% from last month",
+      // TODO: add change
+      // change: "+20.1%",
       icon: LayersIcon,
     },
     {
-      title: "Latest Rollup",
+      title: "Latest L1 Rollup",
       value: latestBatch?.item?.l1Proof ? (
         <TruncatedAddress
           address={latestBatch?.item?.l1Proof}
@@ -58,19 +60,22 @@ export default function Dashboard() {
       ) : (
         "N/A"
       ),
-      change: "+20.1% from last month",
+      // TODO: add change
+      // change: "+20.1%",
       icon: CubeIcon,
     },
     {
       title: "Transactions",
       value: transactionCount?.count,
-      change: "+20.1% from last month",
+      // TODO: add change
+      // change: "+20.1%",
       icon: ReaderIcon,
     },
     {
       title: "Contracts",
       value: contractCount?.count,
-      change: "+20.1% from last month",
+      // TODO: add change
+      // change: "+20.1%",
       icon: FileTextIcon,
     },
   ];
@@ -104,7 +109,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Obscuroscan</h2>
       </div>
-      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-4">
         {DASHBOARD_DATA.map((item: any, index) => (
           <AnalyticsCard key={index} item={item} />
         ))}
