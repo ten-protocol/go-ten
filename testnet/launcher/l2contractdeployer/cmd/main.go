@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	l2cd "github.com/obscuronet/go-obscuro/testnet/launcher/l2contractdeployer"
+	l2cd "github.com/ten-protocol/go-ten/testnet/launcher/l2contractdeployer"
 )
 
 func main() {

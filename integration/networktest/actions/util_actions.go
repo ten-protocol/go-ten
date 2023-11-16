@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/common"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/common"
+	"github.com/ten-protocol/go-ten/integration/networktest"
 )
 
 // SetContextValue is a simple action step that just sets a value on the context

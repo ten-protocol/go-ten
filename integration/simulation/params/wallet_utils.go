@@ -3,17 +3,17 @@ package params
 import (
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
+	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
 )
 
 // SimToken - mapping between the ERC20s on Ethereum and Obscuro. This holds both the contract addresses and the keys of the contract owners,

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/stretchr/testify/require"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
 var tests = map[string]func(storage Storage, t *testing.T){

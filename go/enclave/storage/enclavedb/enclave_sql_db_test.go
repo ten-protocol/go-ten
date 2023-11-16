@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/status-im/keycard-go/hexutils"
 

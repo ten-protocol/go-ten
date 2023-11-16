@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/async"
+	"github.com/ten-protocol/go-ten/go/common/async"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
-	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
+	"github.com/ten-protocol/go-ten/integration/simulation/stats"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
 )

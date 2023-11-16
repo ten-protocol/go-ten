@@ -3,7 +3,7 @@ package crosschain
 import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 type (

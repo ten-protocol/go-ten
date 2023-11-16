@@ -10,23 +10,23 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/measure"
-	"github.com/obscuronet/go-obscuro/go/enclave/evm/ethchainadapter"
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
-	"github.com/obscuronet/go-obscuro/go/enclave/txpool"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
-	"github.com/obscuronet/go-obscuro/go/common/compression"
+	"github.com/ten-protocol/go-ten/go/common/compression"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/components"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/enclave/components"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
+	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 )
 
 const RollupDelay = 2 // number of L1 blocks to exclude when creating a rollup. This will minimize compression reorg issues.

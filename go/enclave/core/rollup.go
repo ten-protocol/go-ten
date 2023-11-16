@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 // Rollup - is an internal data structure useful during creation

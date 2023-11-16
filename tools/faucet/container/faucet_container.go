@@ -3,8 +3,8 @@ package container
 import (
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
-	"github.com/obscuronet/go-obscuro/tools/faucet/webserver"
+	"github.com/ten-protocol/go-ten/tools/faucet/faucet"
+	"github.com/ten-protocol/go-ten/tools/faucet/webserver"
 )
 
 type FaucetContainer struct {

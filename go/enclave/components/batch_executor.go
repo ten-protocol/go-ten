@@ -8,8 +8,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/gas"
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/gas"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -19,14 +19,14 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/measure"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
-	"github.com/obscuronet/go-obscuro/go/enclave/evm"
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
+	"github.com/ten-protocol/go-ten/go/enclave/evm"
+	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 )
 
 var ErrNoTransactionsToProcess = fmt.Errorf("no transactions to process")

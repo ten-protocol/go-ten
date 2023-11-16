@@ -202,7 +202,7 @@ jobs:
             az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
-            && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
+            && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
             && docker network create --driver bridge node_network || true \
             && docker run -d --name datadog-agent \
                --network node_network \

@@ -4,14 +4,14 @@ import (
 	"math/big"
 	"sync/atomic"
 
-	"github.com/obscuronet/go-obscuro/go/common/compression"
+	"github.com/ten-protocol/go-ten/go/common/compression"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 // Batch Data structure only for the internal use of the enclave since transactions are in clear

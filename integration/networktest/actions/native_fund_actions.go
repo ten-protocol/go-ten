@@ -7,8 +7,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
-	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
+	"github.com/ten-protocol/go-ten/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest/userwallet"
 )
 
 type SendNativeFunds struct {

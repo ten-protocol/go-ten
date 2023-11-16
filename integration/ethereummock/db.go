@@ -5,16 +5,16 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
 // Received blocks ar stored here

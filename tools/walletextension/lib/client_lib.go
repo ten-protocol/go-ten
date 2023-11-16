@@ -11,7 +11,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/valyala/fasthttp"
 )
 

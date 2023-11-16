@@ -11,15 +11,15 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
+	"github.com/ten-protocol/go-ten/integration/networktest/userwallet"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
-	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/ten-protocol/go-ten/integration"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest"
 )
 
 var _defaultFaucetAmount = big.NewInt(750_000_000_000_000)

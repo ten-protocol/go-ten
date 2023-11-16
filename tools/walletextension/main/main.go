@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/container"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/container"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )

@@ -8,17 +8,17 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/api"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/storage"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/tools/walletextension"
+	"github.com/ten-protocol/go-ten/tools/walletextension/api"
+	"github.com/ten-protocol/go-ten/tools/walletextension/config"
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
+	"github.com/ten-protocol/go-ten/tools/walletextension/useraccountmanager"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 type WalletExtensionContainer struct {

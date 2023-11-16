@@ -8,19 +8,19 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
+	"github.com/ten-protocol/go-ten/tools/walletextension/useraccountmanager"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
-	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/storage"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
+	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
+	"github.com/ten-protocol/go-ten/tools/walletextension/userconn"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"

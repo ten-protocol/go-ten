@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
 )
 
 // This test creates a network of in memory L1 and L2 nodes, then injects transactions, and finally checks the resulting output blockchain.

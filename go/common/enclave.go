@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	"github.com/obscuronet/go-obscuro/go/responses"
+	"github.com/ten-protocol/go-ten/go/common/tracers"
+	"github.com/ten-protocol/go-ten/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

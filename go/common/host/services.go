@@ -4,12 +4,12 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/responses"
+	"github.com/ten-protocol/go-ten/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
 // service names - these are the keys used to register known services with the host

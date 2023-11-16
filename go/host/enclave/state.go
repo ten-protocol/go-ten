@@ -7,8 +7,8 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/gethutil"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/gethutil"
 )
 
 // This state machine compares the state of the enclave to the state of the world and is used to determine what actions can be taken with the enclave.

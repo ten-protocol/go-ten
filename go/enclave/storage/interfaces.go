@@ -11,10 +11,10 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/tracers"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 )
 
 // BlockResolver stores new blocks and returns information on existing blocks

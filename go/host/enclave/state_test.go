@@ -6,8 +6,8 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
 var (

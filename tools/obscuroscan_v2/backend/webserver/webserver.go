@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend"
+	"github.com/ten-protocol/go-ten/tools/obscuroscan_v2/backend"
 )
 
 type WebServer struct {

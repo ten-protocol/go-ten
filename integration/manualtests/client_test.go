@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/stretchr/testify/assert"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
 )
 
 func TestClientGetRollup(t *testing.T) {

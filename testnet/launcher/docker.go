@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/retry"
-	"github.com/obscuronet/go-obscuro/go/node"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/testnet/launcher/eth2network"
 	"github.com/sanity-io/litter"
+	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/node"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/testnet/launcher/eth2network"
 
-	l1cd "github.com/obscuronet/go-obscuro/testnet/launcher/l1contractdeployer"
-	l2cd "github.com/obscuronet/go-obscuro/testnet/launcher/l2contractdeployer"
+	l1cd "github.com/ten-protocol/go-ten/testnet/launcher/l1contractdeployer"
+	l2cd "github.com/ten-protocol/go-ten/testnet/launcher/l2contractdeployer"
 )
 
 type Testnet struct {

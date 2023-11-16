@@ -6,7 +6,7 @@ import (
 	"github.com/eko/gocache/lib/v4/cache"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
 func getCachedValue[V any](cache *cache.Cache[[]byte], logger gethlog.Logger, key any, onFailed func(any) (V, error)) (V, error) {

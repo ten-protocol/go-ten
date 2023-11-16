@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )

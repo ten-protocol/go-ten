@@ -9,15 +9,15 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/common/measure"
 
 	"github.com/allegro/bigcache/v3"
 	"github.com/eko/gocache/lib/v4/cache"
 	bigcache_store "github.com/eko/gocache/store/bigcache/v4"
 
-	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/ten-protocol/go-ten/go/config"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
+	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -25,16 +25,16 @@ import (
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/trie"
 
-	"github.com/obscuronet/go-obscuro/go/common/syserr"
+	"github.com/ten-protocol/go-ten/go/common/syserr"
 
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/tracers"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"

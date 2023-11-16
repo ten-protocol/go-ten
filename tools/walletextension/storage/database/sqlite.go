@@ -6,11 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
-	obscurocommon "github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	obscurocommon "github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
-	common "github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	common "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 type SqliteDatabase struct {

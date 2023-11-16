@@ -10,10 +10,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/common/constants"
-	"github.com/obscuronet/go-obscuro/go/common/retry"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
+	"github.com/ten-protocol/go-ten/go/common/constants"
+	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration/erc20contract"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )

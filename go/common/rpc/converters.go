@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
+	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/rpc/generated"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

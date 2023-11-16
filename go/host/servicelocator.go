@@ -2,7 +2,7 @@ package host
 
 import (
 	"github.com/ethereum/go-ethereum/log"
-	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
+	hostcommon "github.com/ten-protocol/go-ten/go/common/host"
 )
 
 type ServicesRegistry struct {

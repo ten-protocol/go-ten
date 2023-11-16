@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/common/container"
-	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
+	"github.com/ten-protocol/go-ten/go/common/container"
+	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
 )
 
 // Runs an Obscuro host as a standalone process.
