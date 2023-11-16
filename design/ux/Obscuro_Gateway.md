@@ -86,8 +86,8 @@ autonumber
 
 actor "Alice's Browser" as Alice
 participant MetaMask as MM
-participant "https://gateway.ten.network/v1" as OG
-participant "https://ten.network" as ON
+participant "https://gateway.ten.org/v1" as OG
+participant "https://ten.org" as ON
 
 group First click
     Alice -> ON: Join Ten
@@ -104,7 +104,7 @@ group First click
          the Public Key of the VK
     end note
     OG -> Alice: Send UserId
-    Alice -> MM: Automatically add "Ten" network with RPC\n"https://gateway.ten.network/v1?u=$UserId"
+    Alice -> MM: Automatically add "Ten" network with RPC\n"https://gateway.ten.org/v1?u=$UserId"
 end
 
 group Second click
@@ -121,20 +121,20 @@ group Third click
     Alice -> MM : Confirm signature
 end
 
-Alice -> OG: All further Ten interactions will be to\nhttps://gateway.ten.network/v1?u=$UserId
+Alice -> OG: All further Ten interactions will be to\nhttps://gateway.ten.org/v1?u=$UserId
 
 @enduml
 ```
 
 The onboarding should be done in 3 clicks.
-1. The user goes to a website (like "ten.network"), where she clicks "Join Ten". This will add a network to their wallet.
+1. The user goes to a website (like "ten.org"), where she clicks "Join Ten". This will add a network to their wallet.
 2. User connects the wallet to the page.
 3. In the wallet popup, the user has to sign over a message: "Register $UserId for $ACCT"
 
 ##### Click 1
-1. Behind the scenes, a js functions calls "gateway.ten.network/v1/join" where it will generate a VK and send back the hash of the Public key. This is the "UserId" 
+1. Behind the scenes, a js functions calls "gateway.ten.org/v1/join" where it will generate a VK and send back the hash of the Public key. This is the "UserId" 
 2. After receiving the UserId, the js function will add a new network to the wallet.
-The RPC URL of the new Ten network will include the userid: "https://gateway.ten.network/v1?u=$UserId". 
+The RPC URL of the new Ten network will include the userid: "https://gateway.ten.org/v1?u=$UserId". 
 Notice that the UserId has to be included as a query parameter because it must be encrypted by https, as it is secret.
 
 ##### Click 2
@@ -142,7 +142,7 @@ After these actions are complete, the same page will now ask the user to connect
 Automatically the page will open metamask and ask the user to sign over a text "Register $UserId for $ACCT", where ACCT is the current account selected in metamask.
 
 ##### Click 3
-Once signed, this will be submitted in the background to: "https://gateway.ten.network/v1?u=$UserId&action=register"
+Once signed, this will be submitted in the background to: "https://gateway.ten.org/v1?u=$UserId&action=register"
 
 
 Note: Any further accounts will be registered similarly for the same UserId.

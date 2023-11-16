@@ -58,7 +58,7 @@ tools.
    * `nodePortHTTP` (default: `80`): The Ten node's HTTP RPC port.
    * `nodePortWS` (default: `81`): The Ten node's websockets RPC port.
    * `logPath` (default: `wallet_extension_logs.txt`): The path for the wallet extension's logs.
-   * `databasePath` (default: `~/.ten/getway_database`): The path to use for the wallet extension's 
+   * `databasePath` (default: `~/.obscuro/getway_database`): The path to use for the wallet extension's 
       database. 
 
    The wallet extension is now listening on the specified host and port. For the remainder of this document, we'll 
@@ -75,7 +75,7 @@ tools.
    automatically by the wallet extension. Your balance in MetaMask will be set to 0 at the beginning.
    You can get testnet ETH from [faucet](https://docs.obscu.ro/testnet/faucet/) (you may need to switch to another network and back again to force MetaMask to refresh balance).
    
-   Once a viewing key is generated it will be persisted across restarts of the wallet extension, saved in the user home space under `~/.ten/wallet_extension_persistence`.
+   Once a viewing key is generated it will be persisted across restarts of the wallet extension, saved in the user home space under `~/.obscuro/wallet_extension_persistence`.
 
 # Auditing the source
 

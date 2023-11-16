@@ -22,4 +22,4 @@ Some tasks, like competitions, accept multiple submissions. If there's a suggest
 
 Finally, nothing is more important than the community. We're here to help in any way. If you need guidance, want to discuss a task, ask questions, anything then reach out to anyone on the Obsuro Labs team on [Discord](https://discord.gg/7pkKv2Tyfn).
 
-Ready to go? Begin [here](https://app.dework.xyz/o/ten-6jhKTFlgOKNhKW1sG9Pbpt/p/community-co-7bsAxi8yDlzjUc3BV4hKyg?inviteId=de008bf8-d8f0-4429-8433-7f4d575e89d8)
+Ready to go? Begin [here](https://app.dework.xyz/o/obscuro-6jhKTFlgOKNhKW1sG9Pbpt/p/community-co-7bsAxi8yDlzjUc3BV4hKyg?inviteId=de008bf8-d8f0-4429-8433-7f4d575e89d8)

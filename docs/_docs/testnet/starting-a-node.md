@@ -50,8 +50,8 @@ go run /home/ten/go-ten/go/node/cmd \
      -sequencer_id="0xc272459070A881BfA28aB3E810f9b19E4F468531" \
      -host_public_p2p_addr="$(curl https://ipinfo.io/ip):10000" \
      -host_p2p_port=10000 \
-     -enclave_docker_image="testnettennet.azurecr.io/tennet/enclave:latest" \
-     -host_docker_image="testnettennet.azurecr.io/tennet/host:latest" \
+     -enclave_docker_image="testnetobscuronet.azurecr.io/obscuronet/enclave:latest" \
+     -host_docker_image="testnetobscuronet.azurecr.io/obscuronet/host:latest" \
      start
 ```
 

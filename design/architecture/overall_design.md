@@ -9,7 +9,7 @@ The purpose of this document is to describe aspects of Ten's technical design th
 
 The following diagram shows the key components of an Ten deployment:
 
-![architecture diagram](./resources/ten_arch.jpeg)
+![architecture diagram](./resources/obscuro_arch.jpeg)
 
 The Ethereum node and Ethereum chain components shown in this diagram are developed and maintained by third-parties. 
 The following additional components must be developed:

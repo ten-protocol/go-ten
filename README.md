@@ -17,7 +17,7 @@ The typical blockchain node runs multiple services in a single process. For exam
 Ten uses Trusted Execution Environments (TEE), like Intel SGX, to execute transactions in a confidential environment, which means we diverge from the typical architecture. 
 There are three main components of the architecture, each running as a separate process: the Enclave, the Host and the Wallet Extension.
 
-![Architecture](design/architecture/resources/ten_arch.jpeg)
+![Architecture](design/architecture/resources/obscuro_arch.jpeg)
 
 ### I. The Enclave
 
@@ -354,8 +354,8 @@ To pull the testnet faucet and run use;
 
 ```
 cd tools/faucet
-docker pull testnettennet.azurecr.io/tennet/faucet_sepolia_testnet:latest  
-./container_run.sh -image testnettennet.azurecr.io/tennet/faucet_sepolia_testnet:latest 
+docker pull testnetobscuronet.azurecr.io/obscuronet/faucet_sepolia_testnet:latest  
+./container_run.sh -image testnetobscuronet.azurecr.io/obscuronet/faucet_sepolia_testnet:latest
 ```
 
 The faucet runs a web server within the container, with a port mapping of 8080 set to allow POST requests to be made to 

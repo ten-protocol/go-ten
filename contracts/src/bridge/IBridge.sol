@@ -11,7 +11,7 @@ interface IBridge {
         VALUE
     }
 
-    // Sends the native currency to the other layer. On Layer 1 the native currency is ETH, while on Layer 2 it is TEN.
+    // Sends the native currency to the other layer. On Layer 1 the native currency is ETH, while on Layer 2 it is OBX.
     // When it arrives on the other side it will be wrapped as a token.
     // receiver - the L2 address that will receive the assets on the other network.
     function sendNative(address receiver) external payable;
