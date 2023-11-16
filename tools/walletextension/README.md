@@ -1,4 +1,4 @@
-# 👛 The Obscuro wallet extension
+# 👛 The Ten wallet extension
 
 See the documentation [here](https://docs.obscu.ro/wallet-extension/wallet-extension/).
 
@@ -31,7 +31,7 @@ To run the container you can use `./docker_run.sh`. You can add parameters to th
 
 ### HTTP Endpoints
 
-For interacting with Obscuro Gateway, there are the following HTTP endpoints available:
+For interacting with Ten Gateway, there are the following HTTP endpoints available:
 
 - `GET /v1/join`
 

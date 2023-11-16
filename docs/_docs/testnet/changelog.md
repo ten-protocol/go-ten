@@ -1,6 +1,6 @@
 ---
 ---
-# Obscuro Testnet Change Log
+# Ten Testnet Change Log
 
 # Oct 2023-10-26 (v0.19.0)
 * A list of the PRs merged in this release is as below;

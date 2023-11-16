@@ -235,7 +235,7 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 	assert.Nil(t, err)
 
 	if balance.Cmp(big.NewInt(0)) <= 0 {
-		t.Errorf("not enough balance: has %s has %s obx", issuerWallet.Address().Hex(), balance.String())
+		t.Errorf("not enough balance: has %s has %s ten", issuerWallet.Address().Hex(), balance.String())
 	}
 
 	nonce, err := authClient.NonceAt(ctx, nil)
