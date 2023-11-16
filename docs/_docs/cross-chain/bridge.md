@@ -1,8 +1,8 @@
 ---
 ---
-# The Standard Obscuro Bridge
+# The Standard Ten Bridge
 
-The standard Obscuro bridge is a trustless and decentralised asset bridge that uses a wrapped token mint and burn pattern. Under the hood it is based on the cross chain messaging protocol and exists entirely as a smart contract without the need of separate runnables or nodes.
+The standard Ten bridge is a trustless and decentralised asset bridge that uses a wrapped token mint and burn pattern. Under the hood it is based on the cross chain messaging protocol and exists entirely as a smart contract without the need of separate runnables or nodes.
 
 ## Contract Addresses
 
@@ -21,12 +21,12 @@ The value received by the bridge contract during the execution of `sendNative` i
 
 ## Layer 1 To Layer 2 Specifics
 
-The `ObscuroBridge.sol` contract is responsible for managing the layer 1 side of the bridge. It's the "bridge to Obscuro".
+The `ObscuroBridge.sol` contract is responsible for managing the layer 1 side of the bridge. It's the "bridge to Ten".
 The `EthereumBridge.sol` contract is responsible for managing the layer 2 side of the bridge. It's the "bridge to Ethereum".
 
 In order to bridge tokens over they need to be whitelisted. **Initially only accounts with the admin role can whitelist tokens!** When the protocol has matured this whitelisting functionality will change. If you want your token to be whitelisted, get in touch with us through our discord.
 
-When an asset is whitelisted, the bridge internally uses the `publishMessage` call on the `MessageBus` contract which is deployed and exposed by the `ManagementContract` on layer 1. In the message that is published the bridge "tells" the other side of it, which resides on layer 2 that a token has been whitelisted. This in turn creates a wrapped version of the token on the other side. This version of the token can only be minted and burned by the layer 2 bridge. Notice that when the bridge "tells" its counter part, the message is not automatically delivered by Obscuro. To automate the process one needs to have a relayer in place that will do it automatically and a system in place that funds the gas costs of said relayer. As the network grows general purpose relayers might pop up. If you are developing or have developed such a relayer, contact us on discord to get it listed.
+When an asset is whitelisted, the bridge internally uses the `publishMessage` call on the `MessageBus` contract which is deployed and exposed by the `ManagementContract` on layer 1. In the message that is published the bridge "tells" the other side of it, which resides on layer 2 that a token has been whitelisted. This in turn creates a wrapped version of the token on the other side. This version of the token can only be minted and burned by the layer 2 bridge. Notice that when the bridge "tells" its counter part, the message is not automatically delivered by Ten. To automate the process one needs to have a relayer in place that will do it automatically and a system in place that funds the gas costs of said relayer. As the network grows general purpose relayers might pop up. If you are developing or have developed such a relayer, contact us on discord to get it listed.
 
  * Minting allows to create fresh funds on the L2 when they get locked on L1.
  * Burning allows to destroy supply on L2 in order to release it from the bridge on L1.

@@ -1,6 +1,6 @@
-# Obscuro Gateway JS
+# Ten Gateway JS
 
-A JavaScript library for the gateway, providing streamlined access and functionalities for interacting with the Obscuro network.
+A JavaScript library for the gateway, providing streamlined access and functionalities for interacting with the Ten network.
 
 ## Table of Contents
 
@@ -13,23 +13,23 @@ A JavaScript library for the gateway, providing streamlined access and functiona
 
 ## Features
 
-- Seamless connection to Obscuro Network.
+- Seamless connection to Ten Network.
 - Easy-to-use methods for joining and authenticating.
 - External consumption support through CDN or NPM.
 
 ## Installation
 
-To install `obscuro-gateway-js`, use npm:
+To install `ten-gateway-js`, use npm:
 
 \`\`\`bash
-npm install obscuro-gateway-js
+npm install ten-gateway-js
 \`\`\`
 
 ## Usage
 
 \`\`\`javascript
 
-const Gateway = require('obscuro-gateway-js');
+const Gateway = require('ten-gateway-js');
 
 const gateway = new Gateway(httpURL, wsURL, provider);
 await gateway.join();
@@ -51,7 +51,7 @@ For production:
 npm run build
 \`\`\`
 
-The production build will be available for external consumption on GitHub Pages at `https://go-obscuro.github.io/obscuronet/gateway.bundle.js`.
+The production build will be available for external consumption on GitHub Pages at `https://go-ten.github.io/obscuronet/gateway.bundle.js`.
 
 ## Contribute
 

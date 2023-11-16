@@ -1,8 +1,8 @@
 ---
 ---
 # ObscuroScan
-ObscuroScan is a blockchain explorer for the Obscuro Testnet - 
-Obscuro's equivalent of Etherscan. ObscuroScan allows you to view the latest rollups and transactions on the Testnet, 
+ObscuroScan is a blockchain explorer for the Ten Testnet - 
+Ten's equivalent of Etherscan. ObscuroScan allows you to view the latest rollups and transactions on the Testnet, 
 as well as search for historical rollups and transactions. Its functionality will be expanded over time.
 
 ## Usage
@@ -16,6 +16,6 @@ as well as search for historical rollups and transactions. Its functionality wil
 ## Decryption of Transaction Blobs
 
 Notice the _Decrypted transaction blob_ section for each rollup. This allows you to see the normally-encrypted 
-transactions in unencrypted plain text. This is a feature of Testnet aimed at helping you understand how Obscuro works, 
+transactions in unencrypted plain text. This is a feature of Testnet aimed at helping you understand how Ten works, 
 and is only possible because Testnet uses a rollup encryption key that is long-lived and well-known. On Mainnet, 
-rollups will be encrypted with rotating keys that are not known to anyone, or anything, other than the Obscuro enclaves.
+rollups will be encrypted with rotating keys that are not known to anyone, or anything, other than the Ten enclaves.

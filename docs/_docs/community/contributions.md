@@ -1,10 +1,10 @@
 ---
 ---
-# Contributing to Obscuro
+# Contributing to Ten
 
-Obscuro will evolve to be *the* solution for privacy on Ethereum through the strength and dedication of the Obscuro community. Together we'll make Obscuro the most community-driven project in crypto.
+Ten will evolve to be *the* solution for privacy on Ethereum through the strength and dedication of the Ten community. Together we'll make Ten the most community-driven project in crypto.
 
-As detailed in the [whitepaper](https://whitepaper.obscu.ro), Obscuro is powered by OBX, a native utility token that provides security to the Obscuro network while allowing holders to pay transaction fees.
+As detailed in the [whitepaper](https://whitepaper.obscu.ro), Ten is powered by OBX, a native utility token that provides security to the Ten network while allowing holders to pay transaction fees.
 
 2% of tokens are set aside for early contributors. Each contributor's allocation is a percentage of their total contributions against the entire community contribution.
 
@@ -22,4 +22,4 @@ Some tasks, like competitions, accept multiple submissions. If there's a suggest
 
 Finally, nothing is more important than the community. We're here to help in any way. If you need guidance, want to discuss a task, ask questions, anything then reach out to anyone on the Obsuro Labs team on [Discord](https://discord.gg/7pkKv2Tyfn).
 
-Ready to go? Begin [here](https://app.dework.xyz/o/obscuro-6jhKTFlgOKNhKW1sG9Pbpt/p/community-co-7bsAxi8yDlzjUc3BV4hKyg?inviteId=de008bf8-d8f0-4429-8433-7f4d575e89d8)
+Ready to go? Begin [here](https://app.dework.xyz/o/ten-6jhKTFlgOKNhKW1sG9Pbpt/p/community-co-7bsAxi8yDlzjUc3BV4hKyg?inviteId=de008bf8-d8f0-4429-8433-7f4d575e89d8)
