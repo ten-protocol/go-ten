@@ -31,7 +31,7 @@
   * `3d3c12c9` Save l1 deployer logs (#1598)
   * `b5620b12` Reduce the verbosity of eth2network (#1597)
   * `7dfd9abe` Save logs (#1594)
-  * `9d0b6200` Library for ten gateway (#1595)
+  * `9d0b6200` Library for obscuro gateway (#1595)
   * `5b34ff6e` Update build-pr.yml (#1596)
   * `5405c3f0` Add prefunded l1 bridge address for dev and uat testing (#1591)
   * `226cfc65` Additional prs for the v0.18.0 release (#1592)
@@ -47,11 +47,11 @@
   * `1dea9e94` Add balance endpoint to faucet for monitoring (#1577)
   * `f1a106a8` Bump enclave heap size (#1575)
   * `61c2cda5` Add sepoliatestnet as an environment for network tests (#1574)
-  * `eccd99e0` Update some ten references in docs (#1573)
+  * `eccd99e0` Update some obx references in docs (#1573)
   * `8ed7e45b` Add gh actions script to retrieve funds from the bridge (#1570)
   * `4525fd57` Adjust cache cfg (#1568)
   * `a0309593` Performance fixes - speed and memory  (#1567)
-  * `701bd079` Enable tenscan test (#1566)
+  * `701bd079` Enable obscuroscan test (#1566)
   * `42b98cf4` Fix config wiring at one of the layers for faucet (#1565)
   * `a8184707` Added faucet funding. (#1562)
   * `10ded300` Pedro/fe tweaks (#1564)
@@ -61,7 +61,7 @@
   * `1eb404cd` Add retrieve all funds method to bridge (#1557)
   * `7b2ef03e` Adding version displays to og and oscan (#1560)
   * `a21c156d` Fixes the reladdresses in the events debug log (#1555)
-  * `aa9dae08` Deploy ten gateway for sepolia testnet (#1552)
+  * `aa9dae08` Deploy obscuro gateway for sepolia testnet (#1552)
   * `584b6a74` Match network configuration with chainlist (#1511)
   * `84964850` L1 gas refunds for failing transactions. basefee not burned anymore (#1550)
   * `a97b8359` Compression fixes (#1559)
@@ -91,7 +91,7 @@
   * `df76b51a` Testnet launcher now works with sgx (#1488)
   * `c638627b` Correct ws to http on the deployers flag name (#1528)
   * `0529e965` Save rollups (#1526)
-  * `2adec7a5` Ten gateway vm (#1513)
+  * `2adec7a5` Obscuro gateway vm (#1513)
   * `8babe2ea` Changes to support sepolia testing from ide (#1527)
   * `64a0c5ed` L1 publisher: resend stuck tx and manage nonce (#1518)
   * `40d58aa3` Og now can connect to mariadb (#1521)
@@ -104,14 +104,14 @@
 * A list of the PRs merged in this release is as below;
   * `43e99a9b` Refactor storage to allow for different dbs + tests (#1517)
   * `1e6ba68f` Tweak og database deploy (#1515)
-  * `2e56932f` Ten gateway database deploy (#1514)
+  * `2e56932f` Obscuro gateway database deploy (#1514)
   * `b7b4e3e3` Change config to use rpc urls instead of host and port (#1512)
   * `764f98d7` Aggressive header compression (#1502)
-  * `28d007bd` Filter for tx with any ten interactions (#1509)
+  * `28d007bd` Filter for tx with any obscuro interactions (#1509)
   * `4ddbf93f` Hardhat: ensure token script doesn't spin when waiting (#1508)
   * `61a90b0d` Change back to inputs (#1507)
   * `5b18d686` Fix the event relevancy fields (#1506)
-  * `b4cbf13e` Limit enclave fed l1 receipts to ten-relevant tx (#1495)
+  * `b4cbf13e` Limit enclave fed l1 receipts to obscuro-relevant tx (#1495)
   * `2d2f7e46` Enclave guardian: remove superfluous running flag (#1505)
   * `98a86e6f` Open port 3002 on gateway for websockets (#1504)
   * `eeefcb14` L1 client - change reconnect to reconnect if dead (#1503)
@@ -122,8 +122,8 @@
   * `d0357c92` Fixing the debug namespace wiring (#1492)
   * `509d76fb` Add loglevel flag (#1490)
   * `d0dc3165` Update testnet-kpis.md (#1441)
-  * `8bb1b465` Use versioning with ten gateway api (#1486)
-  * `6ed6b304` Uses a prebuilt ten node image (#1487)
+  * `8bb1b465` Use versioning with obscuro gateway api (#1486)
+  * `6ed6b304` Uses a prebuilt obscuro node image (#1487)
   * `998c8449` Merge stopcontrol + breaker packages (#1485)
   * `b50b5f76` Bump eth2network (#1483)
   * `94775344` Fix for zero hash geth errors (#1484)
@@ -132,7 +132,7 @@
   * `81c611d0` Add sepolia network runner to ide tools (#1480)
   * `4a74826a` Subscribe for all clients from user if there is no address (#1467)
   * `0e34f367` Add very primitive db migration mechanism. (#1479)
-  * `2e2b2019` Add verified data pages + ten info endpoint (#1476)
+  * `2e2b2019` Add verified data pages + obscuro info endpoint (#1476)
 
 # Aug 2023-08-22 (v0.16.0)
 * A list of the PRs merged in this release is as below;
@@ -141,7 +141,7 @@
   * `28ab67ac` Add timer to storage calls (#1473)
   * `01f1cd94` Nil pointer when eth new block not found (#1472)
   * `89c09486` Add decryption + fixes to the grids (#1470)
-  * `6687cf32` Fixes to the tenscan ui (#1468)
+  * `6687cf32` Fixes to the obscuroscan ui (#1468)
 
 # Aug 2023-08-17 (v0.15.0)
 * A list of the PRs merged in this release is as below;
@@ -178,7 +178,7 @@
   * `2224f956` Add hash reset (#1436)
   * `bb03475f` Use compressed pub key (#1435)
   * `90a768d2` Fix encoding of userid (#1429)
-  * `d2c7acbd` Tenscan - add pagination in the list calls (public and encrypted) (#1434)
+  * `d2c7acbd` Obscuroscan - add pagination in the list calls (public and encrypted) (#1434)
   * `1ab96316` Fix bug with unexecuted batch data (#1432)
   * `cfdc6b81` Avoid panics when sequencer host thinks it is behind the enclave (#1433)
   * `58863712` Introduce unsubscribe delay (#1424)
@@ -199,27 +199,27 @@
   * `4caac6dc` Fix cache for blocks and batches (#1415)
   * `f96bccd8` Ensure error fields on encl rpc resp are captured (#1413)
   * `ce4d06d3` Add primitive cache for blocks and batches (#1412)
-  * `a36adf12` Block explorer api routes + fix ten api json marshallers (#1407)
+  * `a36adf12` Block explorer api routes + fix obscuro api json marshallers (#1407)
   * `10477c78` Set back ot 03:05 nightly (#1410)
   * `cd8be2c0` Fix event order (#1408)
   * `ccf890a5` Implement relational db new tables (#1385)
-  * `483c39a5` Tenscan now pulls rollups (#1406)
+  * `483c39a5` Obscuroscan now pulls rollups (#1406)
   * `99ec6e7c` Change from port 13000 to 80 (#1405)
   * `a08afcc6` Adding rolling batches and blocks (#1404)
   * `1a3f5cbc` More fixes to get the faucet deployment to work when the upgrade workflow is initiated from a schedule event  (#1402)
-  * `b074d5f2` Hook ten scan other endpoints (#1403)
+  * `b074d5f2` Hook obscuro scan other endpoints (#1403)
   * `66f3cac0` Obs scan connect be-fe (#1399)
   * `922c1b18` Simplify enclave batch streaming and fix p2p batch requesting (#1400)
   * `3e9446df` Put in some logging (#1401)
-  * `0d7ddd32` Fixes to the ten scan v2 deploy (#1398)
-  * `01fb6339` Tenscan v2 deploy (#1397)
-  * `04ebaf7e` Tenscan v2 frontend bootstrap (#1396)
+  * `0d7ddd32` Fixes to the obscuro scan v2 deploy (#1398)
+  * `01fb6339` Obscuroscan v2 deploy (#1397)
+  * `04ebaf7e` Obscuroscan v2 frontend bootstrap (#1396)
   * `c79b9c24` Fix issue with host failing to stop after error (#1393)
   * `3cc1eb98` Simplify host health check and p2p health check (#1389)
   * `6e46b005` Try feeding consecutive blocks if failing after a fork (#1395)
   * `3cc25ebb` Scheduled trigger of the faucet fix for schedule (#1394)
   * `92098154` Add batch repository to host using seq no as key (#1388)
-  * `00793ac0` Tenscan v2 backend  (#1391)
+  * `00793ac0` Obscuroscan v2 backend  (#1391)
   * `e8c45ef3` Avoid getting stuck when returning to a prev l1 fork (#1390)
   * `17d27178` Rework how rollups are created (#1386)
   * `d093666a` Lock ego container image (#1387)
@@ -227,7 +227,7 @@
   * `5c27887e` Fix the deployment of the faucet on a scheduled trigger (#1383)
   * `30162354` Re-enable the upgrade (#1382)
   * `b9b1d5be` Move sql creation logic to "sql" files  (#1377)
-  * `6700de56` Add multi-user support for ten gateway (#1375)
+  * `6700de56` Add multi-user support for obscuro gateway (#1375)
   * `edf2ac90` Add subscription manager for sub/unsub (#1379)
   * `b522d6c2` Fix paths for testnet local build (#1380)
   * `c7c0aa5d` Fix testnet after docker refactoring (#1378)
@@ -242,9 +242,9 @@
   * `50e9678b` Add bit about the host services to the design docs (#1369)
   * `c7668ee4` Add scan endpoint + contract creation count (#1367)
   * `3e958a50` Enclave-guardian: add enclave status tracker to host (#1364)
-  * `fcb3a7a3` Fix ten gateway deployment (#1366)
+  * `fcb3a7a3` Fix obscuro gateway deployment (#1366)
   * `4207c708` Temporary rollup logic fix (#1362)
-  * `7de5739f` Deploy ten gateway (#1349)
+  * `7de5739f` Deploy obscuro gateway (#1349)
   * `ef8f4245` Fix the build tests (#1361)
   * `7bdb5b56` Pedro/fix ci (#1360)
   * `5d524409` Simplify block processing logic (#1359)
@@ -266,9 +266,9 @@
   * `3728b2df` Rename host db add batch method (#1343)
   * `ad813cb6` Tudor/change headers (#1341)
   * `553abbc4` Change how randomness per batch is calculated to remove the mixdigest (#1340)
-  * `3a1eb7af` Integrate faucet in go-ten (#1323)
+  * `3a1eb7af` Integrate faucet in go-obscuro (#1323)
   * `612b5d5d` L1 now runs on vm (#1335)
-  * `f90ec295` Add ten gateway endpoints (#1334)
+  * `f90ec295` Add obscuro gateway endpoints (#1334)
   * `e6e2658c` Fix for validators not working without p2p (#1337)
   * `a6bf6909` Updates start command (#1336)
   * `74d7ce02` Ziga/obscuto gatweay storage (#1330)
@@ -305,7 +305,7 @@
   * `3a4e1ca8` Adjust limiters (#1294)
   * `da8d540b` Performance fixes (#1293)
   * `06878966` Standardise block and batch log references (#1292)
-  * `86dd3c93` Ten_gateway design (#1248)
+  * `86dd3c93` Obscuro_gateway design (#1248)
   * `020fd3af` Fix logger config (#1291)
   * `ce2e8a3b` Added config for batch size limit. (#1290)
   * `88b3a845` Add userid parameter in all request handlers (#1283)
@@ -319,7 +319,7 @@
   * `9595c548` Fix log level (#1281)
   * `8f55555e` Fix databasepath to be consistent with other settings (#1280)
   * `69c09eb2` Always update l1 head on submit block (#1279)
-  * `2b0bee0d` Ten gateway add database (#1266)
+  * `2b0bee0d` Obscuro gateway add database (#1266)
   * `4945e3a0` Storage now accepts db batch. (#1277)
   * `3d7d9157` Add simple retry to p2p (#1278)
   * `30f51bda` Added log timers. (#1276)
@@ -358,9 +358,9 @@
   * `fdc9b035` Fix broken link for the pdf version of the whitepaper. (#1238)
   * `61b9e17f` Update some of the @matt todos (#1240)
   * `13c87ac1` Updates after backlog review part three (#1239)
-  * `a551408b` Layout update for tenscan (#1200)
+  * `a551408b` Layout update for obscuroscan (#1200)
   * `eeb1623b` Locking the docker image alpine to 16 (#1233)
-  * `6758cb32` Update wallet extension docs and include a link to ten faucet (#1235)
+  * `6758cb32` Update wallet extension docs and include a link to obx faucet (#1235)
   * `a1a30083` Logs are now debuggable from the debug_log visibility endpoint (#1231)
   * `3497be98` Only perform the l2 deployment on a scheduled basis (#1230)
   * `3bda160e` Reintroducing encrypted enclave errors (#1197)
@@ -369,7 +369,7 @@
 # April 2023-04-13 (v0.12)
 * Robustness fixes for event log subscriptions, including ensuring no dropping of event logs, removal of any duplicates,
   and ensuring correct ordering based on their block insertion.
-* Event log subscriptions will now infer the correct viewing key to use for relevancy checks performed by an Ten
+* Event log subscriptions will now infer the correct viewing key to use for relevancy checks performed by an Obscuro
   node. This is based on filter criteria in the subscription, e.g. when a particular address field is included
   in the filter list, if a viewing key for that address is registered, that key will be used. Note that subscriptions to
   all events, where those events might contain data used in the relevancy checks, will not be able to infer the viewing
@@ -406,7 +406,7 @@
   * `c6316cbb` Store events in sql table (#1182)
   * `17a7c44b` Todo review number 1 edits (#1191)
   * `927b970d` L1_host not output properly in upgrade gh action (#1190)
-  * `013e8f32` Wipe and re-clone ten code on testnet node upgrade (#1186)
+  * `013e8f32` Wipe and re-clone obscuro code on testnet node upgrade (#1186)
   * `f7d4cd35` Revert "refactoring how errors are done. (#1153)" (#1189)
   * `8dd0f1f6` Resolve faucet docs images (#1188)
   * `24659498` Add back in the faucet steps using discord (#1187)
@@ -504,7 +504,7 @@
   * `e2c2babc` Avoid swallowing l1 client error messages (#1081)
   * `54819a09` Ensure l2 head is rewound after l1 forks (#1078)
   * `afafeee2` Call db client batches dbbatches to avoid confusion (#1070)
-  * `a8357aa3` Ten bridge deployment scripts. (#1046)
+  * `a8357aa3` Obscuro bridge deployment scripts. (#1046)
   * `c951a9b8` Reduces the time to start a merged eth2 network (#1077)
   * `7a65331c` Make pr template lighter (#1076)
   * `015c6b7e` Juiced the docker. it's now fast. (#1071)
@@ -542,7 +542,7 @@
   * `a0eb02c3` Testnet and dev tesnet now deploy from one workflow (#1035)
   * `10838a4e` Improved validation of incoming rollups (#1040)
   * `47ecb855` Extracted abigen task as a separate one (#1036)
-  * `e375f0f5` Tenscan now deploys manually (#1033)
+  * `e375f0f5` Obscuroscan now deploys manually (#1033)
   * `d37f325a` Separate batch and rollup in block submission response (#1034)
   * `0d32caf7` Testnet metrics are pushed to datadog (#1025)
   * `35c60d39` Fixed a slight bug in the message bus (#1028)
@@ -559,13 +559,13 @@
   * `383b9c7b` Updated changelog (#1016)
   * `3622359f` Uses known registry address (#1017)
   * `6f4f876c` Decouples host and rpc server (#1014)
-  * `81d92fb3` Locks edb version for the ten node (#1012)
+  * `81d92fb3` Locks edb version for the obscuro node (#1012)
   * `1bb248d3` Remove unnecessary start method from enclave interface (#1011)
   * `7e525447` Rpc server is injected into the host (#1010)
   * `7c51dcb6` Docker updates (#1009)
   * `8ac39307` Updates pccs url for edgelessdb + ego (#1008)
   * `74cc6e9b` Change sequencer id var to read from gh secrets (#1006)
-  * `d74c2995` Use a curl command to request ten (#1007)
+  * `d74c2995` Use a curl command to request obx (#1007)
   * `dd9b5e77` Adds metrics + update p2p to use metrics (#1002)
   * `dd6d7ec6` Fix timing issue with sequencer secret (#1004)
   * `80a24e61` Genesis rollup agg field should be the sequencer that produces it (#1003)
@@ -616,7 +616,7 @@
   * `838067f8` Standardise container wiring for enclave and host (#949)
   * `5e18b286` Fix security issue. seal secrets with the unique sgx key (#950)
   * `e8e34ac8` Adding stop and status scripts (#948)
-  * `13d334da` Ten cross chain messaging (#817)
+  * `13d334da` Obscuro cross chain messaging (#817)
   * `2d327cee` Adds a start node doc (#945)
   * `cfdfd07c` Submit each batch to the enclave if it's successfully stored (#947)
   * `24871c16` Removes issequencerenclave. updates node types. (#944)
@@ -629,14 +629,14 @@
   * `640f065f` Have shorter timeout for awaiting receipt in in-mem sim (#925)
   * `8334dad0` Host id is now generated from pk (#933)
   * `8c06ad68` Quote the owner in the json (#932)
-  * `687f910d` Fixes ten scan git deploy (#931)
+  * `687f910d` Fixes obscuro scan git deploy (#931)
   * `f75f77d4` Remove pkaddress flag (#930)
   * `86c61ec9` Add in user login (#929)
   * `6b302f85` Fix in-mem mock concurrency bug (#928)
   * `53fb50a4` Remove genesis block references outside of in-mem mock code (#922)
   * `2dade86f` Testnet dns now point to node1 (#918)
   * `df5703b1` Avoid duplication in ancestor-checking methods (#920)
-  * `84a4a13d` Jamescarlyle webapp tenscan (#849)
+  * `84a4a13d` Jamescarlyle webapp obscuroscan (#849)
   * `3d212dad` Allow l1 start block to be configured to avoid all l1 history (#917)
   * `a979dca4` Fix fork block loop and re-merge blockprovider pr (#916)
   * `c4c30343` Removes buggy fetchheadrollup method on storage (#914)
@@ -672,26 +672,26 @@
   * `08e16959` Surface more enclave errors (#877)
   * `4641fd93` Rename to be consistent (#876)
   * `8c993fec` More surfacing of enclave db errors (#874)
-  * `9e497728` Add file to deploy tenscan into dev-testnet (#875)
+  * `9e497728` Add file to deploy obscuroscan into dev-testnet (#875)
   * `72fde61d` Update faucet.md (#872)
-  * `85ce478b` Extends integration tests of tenscan. switch tenscan api to return batches, not rollups. (#873)
+  * `85ce478b` Extends integration tests of obscuroscan. switch obscuroscan api to return batches, not rollups. (#873)
   * `325d37fb` Tidy up names (#860)
   * `80a77b7e` Surface enclave db errors (#866)
   * `d28d3b27` Revert "testnet dns now point to node1" (#868)
-  * `b40a7517` Test tenscan's getlatesttxs in integration tests (#871)
+  * `b40a7517` Test obscuroscan's getlatesttxs in integration tests (#871)
   * `84d42fda` Fix dead links in docs (#864)
   * `bea17905` Adds integration test of gettotaltxs. (#870)
   * `e6598799` Return errors from enclave db, instead of ignoring or using a critical log message (#863)
   * `a734947d` Custom error is now a pointer (#865)
-  * `6bcadc77` Switch over various tenscan api methods to be based on batches, not rollups (#857)
+  * `6bcadc77` Switch over various obscuroscan api methods to be based on batches, not rollups (#857)
 
 ## November 2022-11-22 (v0.7)
 * A variety of stability related issues are fixed within this release.
 * Inclusion of a health endpoint for system status monitoring.
-* It is now possible to run an Tenscan against a locally deployed testnet. For more information see
-  [building and running a local testnet](https://github.com/ten-protocol/go-ten/blob/main/README.md#building-and-running-a-local-testnet)
+* It is now possible to run an Obscuroscan against a locally deployed testnet. For more information see
+  [building and running a local testnet](https://github.com/obscuronet/go-obscuro/blob/main/README.md#building-and-running-a-local-testnet)
   in the project readme.
-* Tenscan's GitHub Actions [deploy script](https://github.com/ten-protocol/go-ten/blob/main/.github/workflows/manual-deploy-tenscan.yml) has been modified to run the public Testnet Tenscan as an Azure web app. This allows access via HTTPS (TLS), which allows app developers to call the Tenscan API from other web apps.
+* Obscuroscan's GitHub Actions [deploy script](https://github.com/obscuronet/go-obscuro/blob/main/.github/workflows/manual-deploy-obscuroscan.yml) has been modified to run the public Testnet Obscuroscan as an Azure web app. This allows access via HTTPS (TLS), which allows app developers to call the Obscuroscan API from other web apps.
 * A list of the relevant PRs addressed in this release is as below;
   * `12a04c40` Checks whether the head rollup is nil (#859)
   * `619d39b4` Clarify that blocks are L1 blocks (#858)
@@ -716,7 +716,7 @@
   * `17940c7b` Fixing node start out of sync (#832)
   * `81b8d9c8` Testnet DNS now point to node1 (#827)
   * `de9dbc6f` Cleans up the GetLatestTransactions API method (#833)
-  * `6932e020` Fixes grabbing a rollup via TenScan (#829)
+  * `6932e020` Fixes grabbing a rollup via ObscuroScan (#829)
   * `c9e978f0` Adds booleans to DB methods to indicate whether was found. (#831)
   * `849ea7aa` Fetch latest Rollup Head now returns error (#826)
   * `bc652690` Adding health check endpoint (#825)
@@ -724,7 +724,7 @@
   * `9107d571` Fixes eth call error propagation (#822)
   * `976d872c` Remove unused test APIs. Rename RPC method constants for clarity (#821)
   * `3a6f197f` Stop in-mem nodes properly. Prune unused in-mem RPC methods (#820)
-  * `84e7c615` Provides logger for Tenscan (#819)
+  * `84e7c615` Provides logger for Obscuroscan (#819)
   * `088d8f50` Dynamic estimate gas (#815)
   * `4478ffbd` Fix the bridge address to pass the checksums (#812)
   * `ef0e04d9` Downgrade the spammy log message (#810)
@@ -734,26 +734,26 @@
 
 ## November 2022-11-08 (v0.6)
 * The Number Guessing Game has been removed from static and auto deployment scripts, and is now hosted
-  [in a sample applications repository](https://github.com/ten-protocol/sample-applications). Given the move for
+  [in a sample applications repository](https://github.com/obscuronet/sample-applications). Given the move for
   Testnet to be long-running (or at least restartable without contract disappearance), the Guessing Game must be
   persisted across software updates, and redeployed manually if needed in the same way other applications are.
 * The list of sensitive RPC API methods, where the request and response is encrypted in transit, now covers
   `eth_call`, `eth_estimateGas`, `eth_getBalance`, `eth_getLogs`, `eth_getTransactionByHash`, `eth_getTransactionCount`,
-  `eth_getTransactionReceipt` and `eth_sendRawTransaction`. See the Ten
+  `eth_getTransactionReceipt` and `eth_sendRawTransaction`. See the Obscuro
   [documentation](https://docs.obscu.ro/api/sensitive-apis/) for more details.
 * Calls to wait for a transaction receipt are now blocking, whereas previously they would return an error meaning the
   client side code needed to perform a specific wait and poll loop. The example on how to [programmatically deploy
   a contract](https://docs.obscu.ro/testnet/deploying-a-smart-contract-programmatically/) has been updated accordingly.
 * The ability to start a faucet server against a local testnet deployment is now supported via a docker
-  container. For more information see the Ten
-  [readme](https://github.com/ten-protocol/go-ten#building-and-running-a-local-faucet).
-* Updates to the [Events](https://github.com/ten-protocol/go-ten/blob/main/design/ux/Events_design.md) design
-  inclusion of the [Fast Finality](https://github.com/ten-protocol/go-ten/blob/main/design/finality_protocol/fast_finality.md) design.
-* The [Ten docs site](https://docs.obscu.ro/) is now searchable.
+  container. For more information see the Obscuro
+  [readme](https://github.com/obscuronet/go-obscuro#building-and-running-a-local-faucet).
+* Updates to the [Events](https://github.com/obscuronet/go-obscuro/blob/main/design/ux/Events_design.md) design
+  inclusion of the [Fast Finality](https://github.com/obscuronet/go-obscuro/blob/main/design/finality_protocol/fast_finality.md) design.
+* The [Obscuro docs site](https://docs.obscu.ro/) is now searchable.
 * Testnet is now officially termed `Evan's Cat`.
 
-* TenScan:
-  * TenScan supports a single API at [/rollup/](http://testnet.tenscan.io/rollup/) which allows web clients to
+* ObscuroScan:
+  * ObscuroScan supports a single API at [/rollup/](http://testnet.obscuroscan.io/rollup/) which allows web clients to
     access a JSON representation of rollups and encrypted transactions. Further details
     [here](https://docs.obscu.ro/testnet/obscuroscan)
 
@@ -761,7 +761,7 @@
 * Event Subscriptions:
   * Event subscriptions for logs are now supported via the eth_subscribe and eth_getLogs approaches. This has been
     tested using both the ethers and web3js libraries. Note that eth_newFilter is not currently supported. For more
-    information see [the events design](https://github.com/ten-protocol/go-ten/blob/main/design/Events_design.md).
+    information see [the events design](https://github.com/obscuronet/go-obscuro/blob/main/design/Events_design.md).
 
 ## September 2022-09-22 (v0.4)
 * Wallet extension:
@@ -792,27 +792,27 @@
   * The two pre-installed ERC20 contracts deployed are now named 'HOC' and 'POC', replacing the previous tokens of 'JAM'
     and 'ETH'. Contract addresses remain the same as before respectively. The tokens have restricted `balanceOf` and
     `allowance` calls such that only the owner of the account can view details which should be private to them. See
-    `go-ten\integration\erc20contract\ObsERC20.sol` for more information.
-  * Testnet now supports a faucet to distribute native TEN on request. Previously pre-funding of accounts meant that
-    no native tokens were required to execute transactions on Ten - this is now not the case and native tokens
-    must be requested. Allocation of native TEN, along with HOC and POC tokens is currently not supported automatically
-    and a request to Ten Labs should be made on the Faucet Discord channel.
+    `go-obscuro\integration\erc20contract\ObsERC20.sol` for more information.
+  * Testnet now supports a faucet to distribute native OBX on request. Previously pre-funding of accounts meant that
+    no native tokens were required to execute transactions on Obscuro - this is now not the case and native tokens
+    must be requested. Allocation of native OBX, along with HOC and POC tokens is currently not supported automatically
+    and a request to Obscuro Labs should be made on the Faucet Discord channel.
 * Gas prices:
   * The node operator can configure the minimum gas price their aggregator will accept on startup.
 * Wallet extension
   * The wallet extension now supports multiple viewing keys through a single running instance. For more information see
-    the [wallet extension design doc](https://github.com/ten-protocol/go-ten/blob/main/design/ux/wallet_extension.md),
+    the [wallet extension design doc](https://github.com/obscuronet/go-obscuro/blob/main/design/ux/wallet_extension.md),
     specifically `Handling eth_call requests` for how the required viewing key is selected when multiple keys are
     registered.
 
 ## August 2022
 * Testnet launch:
   * Testnet preview launched to limited number of application developers.
-  * TenScan block explorer for Testnet launched.
+  * ObscuroScan block explorer for Testnet launched.
   * Number Guessing Game smart contract deployed to Testnet.
-* Ten Docsite launched.
+* Obscuro Docsite launched.
 * Account balances:
   * Added correct calculation of account balances (previously, all accounts were allocated infinite funds).
   * Introduced network faucet account.
-  * Ten enclaves services can configure the minimum gas price they'll accept
+  * Obscuro enclaves services can configure the minimum gas price they'll accept
 * ``block.difficulty`` will return a true random number generated inside the secure enclave.
