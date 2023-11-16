@@ -86,7 +86,7 @@ func TestObscuroscan(t *testing.T) {
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/count/transactions/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "{\"count\":6}", string(body))
+	assert.Equal(t, "{\"count\":5}", string(body))
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/latest/", serverAddress))
 	assert.NoError(t, err)
@@ -238,13 +238,14 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 		t.Errorf("not enough balance: has %s has %s obx", issuerWallet.Address().Hex(), balance.String())
 	}
 
+	nonce, err := authClient.NonceAt(ctx, nil)
+	assert.Nil(t, err)
+	issuerWallet.SetNonce(nonce)
+
 	var receipts []gethcommon.Hash
 	for i := 0; i < numbTxs; i++ {
 		toAddr := datagenerator.RandomAddress()
-		nonce, err := authClient.NonceAt(ctx, nil)
-		assert.Nil(t, err)
 
-		issuerWallet.SetNonce(nonce)
 		estimatedTx := authClient.EstimateGasAndGasPrice(&types.LegacyTx{
 			Nonce:    issuerWallet.GetNonceAndIncrement(),
 			To:       &toAddr,
