@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 //go:embed static

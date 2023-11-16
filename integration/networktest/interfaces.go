@@ -3,7 +3,7 @@ package networktest
 import (
 	"context"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum/common"
 )

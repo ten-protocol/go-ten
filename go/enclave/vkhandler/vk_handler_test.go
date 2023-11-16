@@ -6,8 +6,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/stretchr/testify/assert"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 )
 
 func TestVKHandler(t *testing.T) {

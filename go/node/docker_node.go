@@ -6,7 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/sanity-io/litter"
 
-	"github.com/obscuronet/go-obscuro/go/common/docker"
+	"github.com/ten-protocol/go-ten/go/common/docker"
 )
 
 var (

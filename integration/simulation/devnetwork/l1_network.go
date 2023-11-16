@@ -1,7 +1,7 @@
 package devnetwork
 
 import (
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
 // L1Network represents the L1Network being used for the devnetwork

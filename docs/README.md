@@ -4,7 +4,7 @@ This is the Obscuro Doc Site and it looks like [this](https://docs.obscu.ro/).
 
 ## Adding New Doc Site Pages
 
-1. Clone this repository: https://github.com/obscuronet/go-obscuro
+1. Clone this repository: https://github.com/ten-protocol/go-ten
 2. Create your new content as a Markdown file in the `/docs` folder of the repo. Take care with the folder structure. 
    As a general rule, new titles in the left hand navigation menu should have their content contained in a seperate 
    subfolder under docs, for example, `/docs/testnet` contains all the Markdown files relation to the testnet docs.

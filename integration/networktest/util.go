@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/obsclient"
 )
 
 // IDEFlag is used as an environnment variable to allow tests to run that are designed not to run in CI

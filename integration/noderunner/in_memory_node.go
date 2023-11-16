@@ -3,17 +3,17 @@ package noderunner
 import (
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/node"
-	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/ten-protocol/go-ten/go/node"
+	"github.com/ten-protocol/go-ten/go/wallet"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/sanity-io/litter"
 
-	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
-	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
+	enclavecontainer "github.com/ten-protocol/go-ten/go/enclave/container"
+	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
 )
 
 type InMemNode struct {

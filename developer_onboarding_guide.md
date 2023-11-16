@@ -52,4 +52,4 @@ To do so, follow these steps:
 
 ## Obscuro smart contracts
 
-Documentation for Obscuro smart contracts is available [here](https://github.com/obscuronet/go-obscuro/blob/main/contracts/README.md).
+Documentation for Obscuro smart contracts is available [here](https://github.com/ten-protocol/go-ten/blob/main/contracts/README.md).

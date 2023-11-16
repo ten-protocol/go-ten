@@ -35,11 +35,11 @@ tools.
 
 ## Usage
 
-1. The wallet extension can be downloaded from the [Obscuro release page](https://github.com/obscuronet/go-obscuro/releases) 
+1. The wallet extension can be downloaded from the [Obscuro release page](https://github.com/ten-protocol/go-ten/releases) 
    where the binary is built for the Linux, MacOS and Windows platforms. Download the binary for the latest release and 
    rename to `wallet_extension`. Note that on MacOS the binary has not been signed and notarised yet - see 
    [apple support](https://support.apple.com/en-gb/HT202491) for steps to over-write this. The binary can be compiled by
-   cloning the [Obscuro repository](https://github.com/obscuronet/go-obscuro) and running the following command from the 
+   cloning the [Obscuro repository](https://github.com/ten-protocol/go-ten) and running the following command from the 
    root of the repository:
 
    ```
@@ -79,4 +79,4 @@ tools.
 
 # Auditing the source
 
-The source code for the wallet extension can be found [here](https://github.com/obscuronet/go-obscuro/tree/main/tools/walletextension).
+The source code for the wallet extension can be found [here](https://github.com/ten-protocol/go-ten/tree/main/tools/walletextension).

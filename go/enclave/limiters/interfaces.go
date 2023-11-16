@@ -3,7 +3,7 @@ package limiters
 import (
 	"errors"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	"github.com/ethereum/go-ethereum/core/types"
 )

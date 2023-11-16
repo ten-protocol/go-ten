@@ -1,7 +1,7 @@
 # Obscuro Faucet
 
 This tools contains a Faucet to allow allocation of ETH tokens within an Obscuro network. For more information 
-on Obscuro see the [Obscuro repo](https://github.com/obscuronet/go-obscuro) and [documentation](https://docs.obscu.ro/).
+on Obscuro see the [Obscuro repo](https://github.com/ten-protocol/go-ten) and [documentation](https://docs.obscu.ro/).
 
 ## Repository Structure
 The top level structure of the tool is as below;
@@ -25,7 +25,7 @@ $ ./container_run.sh
 ```
 
 By default, when running locally the Faucet will connect to a local testnet started as described in the go-obscuro 
-project repo [readme](https://github.com/obscuronet/go-obscuro#building-and-running-a-local-testnet). It will connect 
+project repo [readme](https://github.com/ten-protocol/go-ten#building-and-running-a-local-testnet). It will connect 
 to the Obscuro node running within the local testnet on host `validator-host` and port `13010`. The Faucet opens 
 on port `80` within the container, but maps port `8080` on the host machine to this.
 

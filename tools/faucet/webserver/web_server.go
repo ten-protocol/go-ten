@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-gonic/gin"
-	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
+	"github.com/ten-protocol/go-ten/tools/faucet/faucet"
 )
 
 type WebServer struct {

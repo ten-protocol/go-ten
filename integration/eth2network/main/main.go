@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/eth2network"
+	"github.com/ten-protocol/go-ten/integration/eth2network"
 )
 
 // Spins up a new eth 2 network.

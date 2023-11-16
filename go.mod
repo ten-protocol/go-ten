@@ -1,4 +1,4 @@
-module github.com/obscuronet/go-obscuro
+module github.com/ten-protocol/go-ten
 
 go 1.20
 

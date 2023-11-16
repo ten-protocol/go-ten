@@ -12,4 +12,4 @@ Developers can expect frequent updates which will be communicated [here](https:/
 * The [Wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension) is still being improved.
 * The decryption key is known by all allowing you to decrypt and view everything. This also allows the wider community to support you in development.
 
-All Obscuro code is under an open source licence. If you see something you think could be improved or reworked feel free to submit a PR in the [go-obscuro repo](https://github.com/obscuronet/go-obscuro), or to let us know about your suggestion on [Discord](https://discord.com/channels/916052669955727371/945360340613484684). 
+All Obscuro code is under an open source licence. If you see something you think could be improved or reworked feel free to submit a PR in the [go-obscuro repo](https://github.com/ten-protocol/go-ten), or to let us know about your suggestion on [Discord](https://discord.com/channels/916052669955727371/945360340613484684). 

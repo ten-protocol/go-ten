@@ -15,7 +15,7 @@ A PDF version of the whitepaper is available [here](https://whitepaper.obscu.ro/
 
 ## Useful Resources
 
-1.  [Github](https://github.com/obscuronet/go-obscuro)
+1.  [Github](https://github.com/ten-protocol/go-ten)
 2.  [Twitter](https://twitter.com/obscuronet/)
 3.  [Discord](https://discord.gg/7pkKv2Tyfn)
 4.  [Blog](https://medium.com/obscuro-labs)

@@ -22,10 +22,10 @@ sudo apt-get update \
 #### - Download Obscuro repo
 
 
-Make sure to use the latest `<version>` at https://github.com/obscuronet/go-obscuro/tags.
+Make sure to use the latest `<version>` at https://github.com/ten-protocol/go-ten/tags.
 
 ```
-  git clone --depth 1 -b <version> https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro
+  git clone --depth 1 -b <version> https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro
 ```
 
 #### - Start Obscuro Node

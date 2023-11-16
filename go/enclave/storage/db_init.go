@@ -3,14 +3,14 @@ package storage
 import (
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
+	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/edgelessdb"
-	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/sqlite"
+	"github.com/ten-protocol/go-ten/go/enclave/storage/init/edgelessdb"
+	"github.com/ten-protocol/go-ten/go/enclave/storage/init/sqlite"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/ten-protocol/go-ten/go/config"
 )
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config

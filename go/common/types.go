@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 )
 
 type (

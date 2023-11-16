@@ -10,8 +10,8 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/lib"
 	"github.com/stretchr/testify/require"
+	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
 )
 
 func TestSubscribeToOG(t *testing.T) {
