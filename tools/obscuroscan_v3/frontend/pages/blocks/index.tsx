@@ -14,22 +14,20 @@ export default function Blocks() {
   const { blocks } = useBlocksService();
 
   return (
-    <>
-      <Layout>
-        <div className="hidden h-full flex-1 flex-col space-y-8 p-8 md:flex">
-          <div className="flex items-center justify-between space-y-2">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">Blocks</h2>
-              <p className="text-muted-foreground">A table of Blocks.</p>
-            </div>
+    <Layout>
+      <div className="h-full flex-1 flex-col space-y-8 md:flex">
+        <div className="flex items-center justify-between space-y-2">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Blocks</h2>
+            <p className="text-muted-foreground">A table of Blocks.</p>
           </div>
-          {blocks?.result?.BlocksData ? (
-            <DataTable columns={columns} data={blocks?.result?.BlocksData} />
-          ) : (
-            <p>Loading...</p>
-          )}
         </div>
-      </Layout>
-    </>
+        {blocks?.result?.BlocksData ? (
+          <DataTable columns={columns} data={blocks?.result?.BlocksData} />
+        ) : (
+          <p>Loading...</p>
+        )}
+      </div>
+    </Layout>
   );
 }

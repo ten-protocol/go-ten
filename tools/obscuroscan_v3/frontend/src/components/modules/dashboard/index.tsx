@@ -81,26 +81,26 @@ export default function Dashboard() {
       data: blocks,
       component: <RecentBlocks blocks={blocks} />,
       goTo: "/blocks",
-      className: "sm:col-span-1 md:col-span-6 lg:col-span-3",
+      className: "col-span-1 md:col-span-2 lg:col-span-3",
     },
     {
       title: "Recent Batches",
       data: batches,
       component: <RecentBatches batches={batches} />,
       goTo: "/batches",
-      className: "sm:col-span-1 md:col-span-3 lg:col-span-3",
+      className: "col-span-1 md:col-span-2 lg:col-span-3",
     },
     {
       title: "Recent Transactions",
       data: transactions,
       component: <RecentTransactions transactions={transactions} />,
       goTo: "/transactions",
-      className: "sm:col-span-1 md:col-span-3 lg:col-span-3",
+      className: "col-span-1 md:col-span-2 lg:col-span-3",
     },
   ];
 
   return (
-    <>
+    <div className="h-full flex-1 flex-col space-y-8 md:flex">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Obscuroscan</h2>
       </div>
@@ -109,7 +109,7 @@ export default function Dashboard() {
           <AnalyticsCard key={index} item={item} />
         ))}
       </div>
-      <div className="grid gap-4 md:grid-cols-6 lg:grid-cols-9">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-6 lg:grid-cols-9">
         {RECENT_DATA.map((item: any, index) => (
           <Card
             key={index}
@@ -137,6 +137,6 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
-    </>
+    </div>
   );
 }

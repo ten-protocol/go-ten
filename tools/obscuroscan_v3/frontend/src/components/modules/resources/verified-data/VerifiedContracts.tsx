@@ -7,7 +7,7 @@ import {
   TableCell,
 } from "@/src/components/ui/table";
 import { Table } from "@/src/components/ui/table";
-import { useContracts } from "@/src/hooks/useContractsService";
+import { useContractsService } from "@/src/hooks/useContractsService";
 import TruncatedAddress from "../../common/truncated-address";
 import { Badge } from "@/src/components/ui/badge";
 import {
@@ -16,15 +16,17 @@ import {
   CardTitle,
   CardContent,
 } from "@/src/components/ui/card";
+import { Separator } from "@/src/components/ui/separator";
 
 export default function VerifiedContracts() {
-  const { formattedContracts } = useContracts();
+  const { formattedContracts } = useContractsService();
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle>Verified Contracts</CardTitle>
       </CardHeader>
+      <Separator />
       <CardContent>
         <Table>
           <TableCaption>Verified Contracts</TableCaption>

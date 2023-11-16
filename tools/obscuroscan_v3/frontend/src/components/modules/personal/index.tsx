@@ -1,12 +1,12 @@
 import React from "react";
 import { columns } from "@/src/components/modules/personal/columns";
 import { DataTable } from "@/src/components/modules/common/data-table/data-table";
-import { useTransactions } from "@/src/hooks/useTransactionsService";
+import { useTransactionsService } from "@/src/hooks/useTransactionsService";
 import { toolbar } from "./data";
 import { Skeleton } from "@/src/components/ui/skeleton";
 
 export default function PersonalTransactions() {
-  const { personalTxns, personalTxnsLoading } = useTransactions();
+  const { personalTxns, personalTxnsLoading } = useTransactionsService();
 
   return (
     <>
