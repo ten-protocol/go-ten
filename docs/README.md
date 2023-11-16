@@ -1,6 +1,6 @@
-# Obscuro Doc Site
+# Ten Doc Site
 
-This is the Obscuro Doc Site and it looks like [this](https://docs.obscu.ro/).
+This is the Ten Doc Site and it looks like [this](https://docs.obscu.ro/).
 
 ## Adding New Doc Site Pages
 
@@ -11,7 +11,7 @@ This is the Obscuro Doc Site and it looks like [this](https://docs.obscu.ro/).
 3. To have this new content shown in the left-hand navigation menu you need to modify the file 
    `/docs/_data/navigation.yml`. Follow the same format to add new headings and content titles. Remember to specify the 
    file type as `.html` for your new Markdown files, not `.md` when providing the URL.
-4. Push your changes to obscuronet/go-obscuro
+4. Push your changes to tennet/go-ten
 5. GitHub Pages will trigger a GitHub Action to use a Jekyll build job to create the static content and then publish 
    the pages at the custom URL.
 6. Browse to https://docs.obscu.ro/ and check your content. Remember your browser will cache some of the pages so hit 

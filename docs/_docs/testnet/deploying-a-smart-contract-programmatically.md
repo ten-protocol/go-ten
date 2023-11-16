@@ -1,7 +1,7 @@
 ---
 ---
-# Deploying a Smart Contract to Obscuro Testnet Programmatically
-The steps below demonstrate how to programmatically create a new contract on to Obscuro Testnet and interact with it via 
+# Deploying a Smart Contract to Ten Testnet Programmatically
+The steps below demonstrate how to programmatically create a new contract on to Ten Testnet and interact with it via 
 call functions. The example uses [Python](https://www.python.org/) and [web3.py](https://web3py.readthedocs.io/en/stable/) 
 as a reference but the principles of usage will be the same in any web3 language implementation. 
 
@@ -25,7 +25,7 @@ account stored for later usage.
 ```
 
 ## Request ETH from the faucet server for native ETH
-An account needs gas to perform transactions on Obscuro, where gas is paid in native ETH. Requests of native ETH can be 
+An account needs gas to perform transactions on Ten, where gas is paid in native ETH. Requests of native ETH can be 
 made through a POST to the faucet server where the address is supplied in the data payload.
 ```python
     headers = {'Content-Type': 'application/json'}
@@ -68,7 +68,7 @@ release). An arbitrary `gasPrice` should be given e.g. the current price on the 
 ```
 
 ## Sign the transaction and send to the network 
-Using the account the transaction can be signed and submitted to the Obscuro Testnet. 
+Using the account the transaction can be signed and submitted to the Ten Testnet. 
 ```python
     signed_tx = account.signTransaction(build_tx)
     tx_hash = None

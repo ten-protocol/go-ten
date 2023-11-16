@@ -1,8 +1,8 @@
 ---
 ---
-# Obscuro Cross Chain Messaging
+# Ten Cross Chain Messaging
 
-Obscuro is equipped with a cross chain messaging protocol that enables sending and receiving messages across layers securely and in an entirely decentralized fashion.
+Ten is equipped with a cross chain messaging protocol that enables sending and receiving messages across layers securely and in an entirely decentralized fashion.
 
 The core contract that provides this functionality is the `MessageBus`. It exists both on L1 and L2. In the L1 you can find it under the management contract whilst on the L2 it is created and managed by the protocol.
 
@@ -14,7 +14,7 @@ When the message is made available, users can call the `verifyMessageFinalized` 
 
 This allows to have a behaviour much like querying questions - **'Has the address 0xAAAA.. received 25WETH tokens on the bridge with address 0XAB0FF?'**. If the bridge on this address has called `publishMessage` saying **'I have received 25 WETH tokens with recipient 0xAAAA.`** the query will return true. 
 
-When messages are published on the Obscuro layer (L2) the transport to L1 is done by the management contract upon rollup submission. Messages delivered however need to wait for the challenge period of the rollup before being considered final. This ensures that rollups along with the messages they carry can be challenged. This is the logical equivalent of challenge period for optimistic rollups.
+When messages are published on the Ten layer (L2) the transport to L1 is done by the management contract upon rollup submission. Messages delivered however need to wait for the challenge period of the rollup before being considered final. This ensures that rollups along with the messages they carry can be challenged. This is the logical equivalent of challenge period for optimistic rollups.
 
 ## Advanced capabilities
 

@@ -1,1 +1,1 @@
-A golang based library to use the obscuro gateway programmatically.
+A golang based library to use the ten gateway programmatically.

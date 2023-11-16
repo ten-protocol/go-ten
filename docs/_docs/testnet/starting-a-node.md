@@ -19,25 +19,25 @@ sudo apt-get update \
     && sudo snap refresh && sudo snap install --channel=1.20 go --classic 
 ```
 
-#### - Download Obscuro repo
+#### - Download Ten repo
 
 
 Make sure to use the latest `<version>` at https://github.com/ten-protocol/go-ten/tags.
 
 ```
-  git clone --depth 1 -b <version> https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro
+  git clone --depth 1 -b <version> https://github.com/ten-protocol/go-ten.git /home/ten/go-ten
 ```
 
-#### - Start Obscuro Node
+#### - Start Ten Node
 
-To start the obscuro node some information is required to populate the starting script.
+To start the ten node some information is required to populate the starting script.
 
 - (host_public_p2p_addr) The external facing address of the network. Where outside peers will connect to. Must be open to outside connections.`curl https://ipinfo.io/ip` provides the external IP.
 - (private_key) Private Key to issue transactions into the Layer 1
 - (host_id) Public Key derived from the Private Key
 
 ```
-go run /home/obscuro/go-obscuro/go/node/cmd \
+go run /home/ten/go-ten/go/node/cmd \
      -is_genesis="false" \
      -node_type=validator \
      -is_sgx_enabled="true" \

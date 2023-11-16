@@ -46,7 +46,7 @@ type L1SetupData struct {
 	ObscuroStartBlock common.Hash
 	// MgmtContractAddr defines the management contract address
 	MgmtContractAddress common.Address
-	// ObxErc20Address - the address of the "OBX" ERC20
+	// ObxErc20Address - the address of the "TEN" ERC20
 	ObxErc20Address common.Address
 	// EthErc20Address - the address of the "ETH" ERC20
 	EthErc20Address common.Address

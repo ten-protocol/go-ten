@@ -19,7 +19,10 @@ ol li {
 }
 
 .logo {
+  width: 100px;
   height: 100px;
+  object-fit: contain;
+  padding: 10px;
 }
 
 .begin-box {

@@ -1,6 +1,6 @@
-# Obscuro cryptography
+# Ten cryptography
 
-Obscuro uses cryptography for:
+Ten uses cryptography for:
 - data authentication
 - integrity
 - Private communication and data storage. 
@@ -27,7 +27,7 @@ will get verified by the other nodes who have the power to challenge.
 
 ## Private communication and data storage
 
-Privacy is a concern that is Obscuro-specific.
+Privacy is a concern that is Ten-specific.
 
 For protecting data-in-use we use SGX.
 
@@ -36,7 +36,7 @@ In this section we'll discuss how data is protected in transit and at rest.
 
 ### The Shared Secret 
 
-Obscuro is a decentralised network of attested nodes that need to collaborate on building a ledger.
+Ten is a decentralised network of attested nodes that need to collaborate on building a ledger.
 The ledger should only be visible inside the enclave program, and not to the outside world.
 
 The requirement is that all data exiting the enclaves should be encrypted with keys known only to the enclaves.
@@ -58,16 +58,16 @@ and for receiving encrypted responses which only that user can decrypt.
 
 VKs are signed by the actual account key as part of a transaction. This is the only step that requires a human interaction. 
 
-VKs are certificates used behind the scenes by the Obscuro tooling to encrypt and authenticate traffic.
+VKs are certificates used behind the scenes by the Ten tooling to encrypt and authenticate traffic.
 
 ### Data in transit
 
 By data in transit, we mean a few things:
 - transactions submitted by end users.
 - "eth_call" requests. Users calling smart contracts
-- protocol communication between obscuro nodes (not yet used, so not covered).
+- protocol communication between ten nodes (not yet used, so not covered).
 
-#### The "Obscuro Key"
+#### The "Ten Key"
 
 Client software must encrypt data with a key known only to the enclaves.
 
@@ -87,9 +87,9 @@ Data at rest is:
 
 #### EdgelessDB
 
-Obscuro uses EdglessDB as the local database, the equivalent of LevelDB in go-ethereum.
+Ten uses EdglessDB as the local database, the equivalent of LevelDB in go-ethereum.
 
-EdgelessDB runs inside an enclave. After the initial handshake attestation, the Obscuro Enclave will store the key
+EdgelessDB runs inside an enclave. After the initial handshake attestation, the Ten Enclave will store the key
 used for communication with Edgeless sealed with the enclave key.
 Edb uses RocksDB behind the scenes and use AES-GCM to encrypt the backing files.
 
@@ -115,17 +115,17 @@ The advantage of releasing keys, as opposed to releasing decrypted transactions 
 
 #### Storing transactions in batches
 
-Batches are the units of data gossiped between the Obscuro nodes that provide soft finality.
+Batches are the units of data gossiped between the Ten nodes that provide soft finality.
 The payload of each batch is encrypted with a:
 `Key_for_Batch(Batch_Height)=HKDF(SHA256(BatchHeight || Shared_secret))` (Todo - does this make sense?)
 
 
 ## SGX Attestation Parameters
 
-In order for the Obscuro enclave to be considered secure, besides the actual code running on up-to-date hardware, it also must be
+In order for the Ten enclave to be considered secure, besides the actual code running on up-to-date hardware, it also must be
 configured with the right parameters.
 
-The requirement is that a node operator should not be able to start an Obscuro Enclave (and obtain the Shared Secret) with 
+The requirement is that a node operator should not be able to start an Ten Enclave (and obtain the Shared Secret) with 
 parameters that allow them to extract secrets. 
 
 Some configs will not change from one version to the nex, but must be configurable because the same codebase is used for both testing and production.
@@ -137,7 +137,7 @@ The config file passed in will be included in the enclave measurement.
 ### Protected config parameters 
 
 #### Business configs 
-- Obscuro Chain Id
+- Ten Chain Id
 - Ethereum Chain Id
 - Management Contract Address
 - MessageBus Address
