@@ -17,7 +17,7 @@ Nobody (which includes node operators and the sequencer) can access the internal
 **The only thing you have to do when porting a dApp to Ten is to add a check in your view functions comparing 
 the `tx.origing` and `msg.sender` against the accounts allowed to access that data.**
 
-The snippet below illustrates this for an [ERC20 token](https://github.com/obscuronet/sample-applications/blob/main/number-guessing-game/contracts/ERC20.sol#L25). 
+The snippet below illustrates this for an [ERC20 token](https://github.com/ten-protocol/sample-applications/blob/main/number-guessing-game/contracts/ERC20.sol#L25). 
 
 ```solidity
 function balanceOf(address tokenOwner) public view override returns (uint256) {

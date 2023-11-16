@@ -1,13 +1,13 @@
 ---
 ---
-# ObscuroScan
-ObscuroScan is a blockchain explorer for the Ten Testnet - 
-Ten's equivalent of Etherscan. ObscuroScan allows you to view the latest rollups and transactions on the Testnet, 
+# TenScan
+TenScan is a blockchain explorer for the Ten Testnet - 
+Ten's equivalent of Etherscan. TenScan allows you to view the latest rollups and transactions on the Testnet, 
 as well as search for historical rollups and transactions. Its functionality will be expanded over time.
 
 ## Usage
 
-1. Go to the [ObscuroScan landing page](http://testnet.obscuroscan.io/)
+1. Go to the [TenScan landing page](http://testnet.tenscan.io/)
 2. Observe the feed of latest rollups and transactions. Click on any rollup number or transaction hash to see the 
    details of the corresponding rollup and the L1 block where it was published
 3. From the search bar in the top right, search for any rollup (using its number, e.g. `2453`) or transaction (using 

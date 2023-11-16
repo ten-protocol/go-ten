@@ -17,7 +17,7 @@ The typical blockchain node runs multiple services in a single process. For exam
 Ten uses Trusted Execution Environments (TEE), like Intel SGX, to execute transactions in a confidential environment, which means we diverge from the typical architecture. 
 There are three main components of the architecture, each running as a separate process: the Enclave, the Host and the Wallet Extension.
 
-![Architecture](design/architecture/resources/obscuro_arch.jpeg)
+![Architecture](design/architecture/resources/ten_arch.jpeg)
 
 ### I. The Enclave
 
@@ -226,7 +226,7 @@ root
 └── <a href="./tools">tools</a>: Peripheral tooling.
     ├── <a href="./tools/hardhatdeployer">hardhatdeployer</a>: Automates deployment of ERC20 and management contracts to the L1.
     ├── <a href="./tools/faucet">faucet</a>: Faucet for testnet.
-    ├── <a href="./tools/obscuroscan">obscuroscan</a>: Tooling to monitor network transactions.
+    ├── <a href="./tools/tenscan">tenscan</a>: Tooling to monitor network transactions.
     └── <a href="./tools/walletextension">walletextension</a>: Ensures sensitive messages to and from the Ten node are encrypted.
 
 </pre>
@@ -325,7 +325,7 @@ docker images repository use;
 ```
 ./testnet/testnet-local-build_images.sh \
 && go run ./testnet/launcher/cmd \
-&& ./testnet/start-obscuroscan.sh --rpcServerAddress=http://localhost:80 --receivingPort=8098
+&& ./testnet/start-tenscan.sh --rpcServerAddress=http://localhost:80 --receivingPort=8098
 ```
 
 The above will perform all the relevant builds and ensure the images are ready for running each component. 
@@ -341,10 +341,10 @@ pay for Ten rollup transactions
 account on the L1 network used to deploy the Ten Management and the ERC20 contracts
 - `0x0000000000000000000000000000000000000001` is the host id of the Ten node when starting in a local mode
 - `0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF` is the address of the Ten Management contract which is known a-priori as a nonce of 0 is used 
-- `0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9` is the address of the ERC20 contract which represents OBX and is known a-priori as a nonce of 1 is used
+- `0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9` is the address of the ERC20 contract which represents TEN and is known a-priori as a nonce of 1 is used
 - `0x51D43a3Ca257584E770B6188232b199E76B022A2` is the address of the ERC20 contract which represents ETH and is known a-priori as a nonce of 2 is used
 
-Once started Obscuroscan is available on `http://0.0.0.0:8098`.
+Once started Tenscan is available on `http://0.0.0.0:8098`.
 
 
 ### Building and running a local faucet
@@ -354,8 +354,8 @@ To pull the testnet faucet and run use;
 
 ```
 cd tools/faucet
-docker pull testnetobscuronet.azurecr.io/obscuronet/faucet_sepolia_testnet:latest  
-./container_run.sh -image testnetobscuronet.azurecr.io/obscuronet/faucet_sepolia_testnet:latest 
+docker pull testnettennet.azurecr.io/tennet/faucet_sepolia_testnet:latest  
+./container_run.sh -image testnettennet.azurecr.io/tennet/faucet_sepolia_testnet:latest 
 ```
 
 The faucet runs a web server within the container, with a port mapping of 8080 set to allow POST requests to be made to 

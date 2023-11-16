@@ -39,7 +39,7 @@ That's it. You're all set to start building your first dApp on Ten.
 ![Step 1 screenshot](https://images.tango.us/workflows/57863807-6b96-4295-a7a1-42da1623f030/steps/919b227f-f1f5-4af3-aba1-7fb83576d505/8144f3f5-7855-4c83-86dd-c88e5476c367.png?crop=focalpoint&fit=crop&fp-x=0.5000&fp-y=0.5000&fp-z=1.0000&w=1200&mark-w=0.2&mark-pad=0&mark64=aHR0cHM6Ly9pbWFnZXMudGFuZ28udXMvc3RhdGljL21hZGUtd2l0aC10YW5nby13YXRlcm1hcmsucG5n&ar=874%3A594)
 
 
-#### Paste "https://github.com/obscuronet/tutorial/blob/main/number-guessing-game/contracts/Guess.sol" into input
+#### Paste "https://github.com/ten-protocol/tutorial/blob/main/number-guessing-game/contracts/Guess.sol" into input
 ![Step 2 screenshot](https://images.tango.us/workflows/57863807-6b96-4295-a7a1-42da1623f030/steps/4b3b212d-2518-4cc9-aab2-4befe128b38c/66a9a87d-0899-42d2-8f6a-98f204b25825.png?crop=focalpoint&fit=crop&fp-x=0.5000&fp-y=0.5000&fp-z=1.0000&w=1200&mark-w=0.2&mark-pad=0&mark64=aHR0cHM6Ly9pbWFnZXMudGFuZ28udXMvc3RhdGljL21hZGUtd2l0aC10YW5nby13YXRlcm1hcmsucG5n&ar=530%3A371)
 
 

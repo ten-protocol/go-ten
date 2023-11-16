@@ -154,7 +154,7 @@ After N such light rounds, when the Aggregator has gathered enough txs, it submi
 
 ##### The batch as the canonical unit
 
-In the scenario, from the point of view of the ObscuroVM, each batch is the equivalent to an Ethereum block.
+In the scenario, from the point of view of the TenVM, each batch is the equivalent to an Ethereum block.
 
 The rollups published to the L1 function more like logical checkpoints.
 

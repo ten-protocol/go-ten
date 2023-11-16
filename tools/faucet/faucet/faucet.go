@@ -21,8 +21,8 @@ import (
 const (
 	_timeout    = 60 * time.Second
 	NativeToken = "eth"
-	// DeprecatedNativeToken is left in temporarily for tooling that is getting native funds using `/obx` URL
-	DeprecatedNativeToken = "obx" // todo (@matt) remove this once we have fixed the /obx usages
+	// DeprecatedNativeToken is left in temporarily for tooling that is getting native funds using `/ten` URL
+	DeprecatedNativeToken = "ten" // todo (@matt) remove this once we have fixed the /ten usages
 	WrappedOBX            = "wobx"
 	WrappedEth            = "weth"
 	WrappedUSDC           = "usdc"

@@ -8,7 +8,7 @@ interface ITokenFactory {
     // onCreateTokenCommand - Will instantiate an ERC20 token contract, owned by the bridge. This token contract allows
     // for minting and burning of assets.
     // crossChainAddress - the address on which the L1 token contract resides
-    // name, symbol - ERC20 string representation of the token, for example "Obscuro Token", "OBX"
+    // name, symbol - ERC20 string representation of the token, for example "Obscuro Token", "TEN"
     function onCreateTokenCommand(
         address crossChainAddress,
         string calldata name,

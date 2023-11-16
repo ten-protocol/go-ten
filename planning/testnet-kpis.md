@@ -21,7 +21,7 @@ Key performance indicators (KPIs) will be used to determine the amount of Testne
 |--|--|--|--|--|
 | Testnet documentation page views (https://docs.obscu.ro/testnet/) | Gauges interest from developers in building on testnet. A good early indicator. Straightforward to capture | Google Analytics | Number of unique page views in the last 4 weeks |50|
 |DApps in development| This is difficult to measure as it’s not something we can look to the network to accurately measure. We can use our business development CRM data as an indicator. | Airtable "Partnerships" tab| Number of partners with status changed to "Soft Commitment" in the last 4 weeks|40|
-| New dApps deployed on Testnet| Indicates how much new activity and commitment of effort from dApp builders| ObscuroScan?| Number of new dApp addresses deployed in the last 4 weeks|20|
+| New dApps deployed on Testnet| Indicates how much new activity and commitment of effort from dApp builders| TenScan?| Number of new dApp addresses deployed in the last 4 weeks|20|
 
 ## Discounted KPIs
 These KPIs were considered and discounted for now.

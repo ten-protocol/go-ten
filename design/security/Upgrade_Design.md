@@ -114,7 +114,7 @@ Upgrading the SGX firmware or completely changing hardware falls under the same 
 
 In this section, we'll look at the architecture and analyse how upgrading different components fits into the above categories.
 
-![architecture diagram](./../architecture/resources/obscuro_arch.jpeg)
+![architecture diagram](./../architecture/resources/ten_arch.jpeg)
 
 ### Trusted Computing Base (Enclave, Database and SGX)
 

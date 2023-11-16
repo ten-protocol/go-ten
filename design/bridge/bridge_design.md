@@ -43,7 +43,7 @@ These contracts will be owned by the ManagementContract and the enclave on their
 ## Assumptions
 
 1. Fees
-   * Big assumption - there will be a way to pay for bridge services/messaging in OBX without incurring losses in ETH on the layer 1 side.
+   * Big assumption - there will be a way to pay for bridge services/messaging in TEN without incurring losses in ETH on the layer 1 side.
    * The Ten DAO will be able to configure properties for the messaging part of the protocol and accurately estimate the `gas costs` of storing data without losing too much on `gas price` spikes.
 2. Finality
    * The management contract will be responsible for not exposing data that has not been finalized. This means that it should have first gone through the challenge period.
@@ -196,7 +196,7 @@ When a block from `L1` is processed by the `enclave` and transactions inside of 
 
 When a transaction on the `L2` results in `LogMessagePublished`, the event will automatically be added to the `Rollup header` by the `enclave`. Then the management contract will submit them to the `MessageBus` or they will directly be.
 
-![Diagram not found](./resources/PublishFromObscuro.svg)
+![Diagram not found](./resources/PublishFromTen.svg)
 
 > **_NOTE:_** **The messages must not be accessible unless** the challenge period has passed! On top of that the block where the message is submitted to L1 must have confirmations equal to `consistencyLevel` before the message is released. Those are simply counted on-chain as "confirmations" is meaningless for Ten L2.  
 
@@ -220,13 +220,13 @@ When publishing a message on the Ten L2, storing the message will have a direct 
 
 The wormhole implementation requires that a fee is paid for each published message. This is something we should implement exactly as is to prevent people from spamming huge messages on L2 for a little gas cost that results in Ten having to pay for them being submitted to the L1!
 
-The problem we will experience is that the native currency on Ten L2 will be different from the native currency on L1 - ETH. This means `ETH : OBX` pair volatility might result in losing money on gas costs.
+The problem we will experience is that the native currency on Ten L2 will be different from the native currency on L1 - ETH. This means `ETH : TEN` pair volatility might result in losing money on gas costs.
 
 I see a couple of possible solutions to this:
 1. Collect the fees in `WETH` when calling `publishMessage`.
     * This is a bad user experience. Anytime we want to withdraw we must source `WETH`
     * It does protect us from losing money when publishing rollups, however.
-2. Using a DEX when it becomes available on Ten's L2 we can exchange OBX tokens for the required amount of `WETH`.
+2. Using a DEX when it becomes available on Ten's L2 we can exchange TEN tokens for the required amount of `WETH`.
 
 An additional insurance fee might be required. It is described in [Security](#MessageBusSecurity)
 
@@ -265,7 +265,7 @@ This diagrams should help illustrate the control flow:
 
 We can also engineer a mechanism to insure delivered messages:
 * When fees are collected for `publishMessage`, part of those fees is funneled to an insurance pool.
-* When a message that has been published gets reorganized the ObscuroDAO can pay for the financial loss from the insurance pool.
+* When a message that has been published gets reorganized the TenDAO can pay for the financial loss from the insurance pool.
 
 > **_NOTE:_** The maximum possible payout should always be less than the penalty for PoS slashing on MainNet. This ensures there is no profit to attacking and claiming insurance.  
 
@@ -311,10 +311,10 @@ There will be the following topics initially:
 ---
 
 **Diagram of the bridge process that happens on Ten's Layer 2 when a deposit is created**
-![Sequence Diagram not available](./resources/ObscuroL2_MessageBus_deposit_Diagram.svg)
+![Sequence Diagram not available](./resources/TenL2_MessageBus_deposit_Diagram.svg)
 
 **Diagram of the process to withdraw the assets from the bridge contract on Ten's Layer 2**
-![Sequence Diagram not available](./resources/ObscuroL2_Bridge_withdraw_Diagram.svg)
+![Sequence Diagram not available](./resources/TenL2_Bridge_withdraw_Diagram.svg)
 
 The API to transfer assets from the perspective of the user is the same on both layers. The process is as follows:
 

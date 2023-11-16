@@ -21,7 +21,7 @@ The value received by the bridge contract during the execution of `sendNative` i
 
 ## Layer 1 To Layer 2 Specifics
 
-The `ObscuroBridge.sol` contract is responsible for managing the layer 1 side of the bridge. It's the "bridge to Ten".
+The `TenBridge.sol` contract is responsible for managing the layer 1 side of the bridge. It's the "bridge to Ten".
 The `EthereumBridge.sol` contract is responsible for managing the layer 2 side of the bridge. It's the "bridge to Ethereum".
 
 In order to bridge tokens over they need to be whitelisted. **Initially only accounts with the admin role can whitelist tokens!** When the protocol has matured this whitelisting functionality will change. If you want your token to be whitelisted, get in touch with us through our discord.
@@ -31,14 +31,14 @@ When an asset is whitelisted, the bridge internally uses the `publishMessage` ca
  * Minting allows to create fresh funds on the L2 when they get locked on L1.
  * Burning allows to destroy supply on L2 in order to release it from the bridge on L1.
 
-The protocol to bridge assets using `mint`/`burn` is based on the `MessageBus`'s `publishMessage` too. The `ObscuroBridge` tells the layer 2 that it has locked a certain amount of tokens and because of that address Y should receive the same amount of the wrapped token counterpart. This is when `mint` comes into play. On the other hand, the `EthereumBridge` burns tokens when received and tells the L1 that it has in fact done so. This is interpreted by the L1 smart contract as evidence to release locked funds. This message once again needs to be relayed for the process to work, but by a separate L1 relayer.
+The protocol to bridge assets using `mint`/`burn` is based on the `MessageBus`'s `publishMessage` too. The `TenBridge` tells the layer 2 that it has locked a certain amount of tokens and because of that address Y should receive the same amount of the wrapped token counterpart. This is when `mint` comes into play. On the other hand, the `EthereumBridge` burns tokens when received and tells the L1 that it has in fact done so. This is interpreted by the L1 smart contract as evidence to release locked funds. This message once again needs to be relayed for the process to work, but by a separate L1 relayer.
 
 
 ## Security
 
-The bridge inherits the `CrossChainEnabledObscuro` contract. It provides a modifier `onlyCrossChainSender` that can be attached to public smart contract functions in order to limit them. Normally you can limit a function to be called by `msg.sender`. With this new modifier you can limit a function to be called from the equivalent of `msg.crosschainsender`. In the `ObscuroBridge` we limit the cross chain sender to the remote bridge only like this `onlyCrossChainSender(remoteBridgeAddress)`.
+The bridge inherits the `CrossChainEnabledTen` contract. It provides a modifier `onlyCrossChainSender` that can be attached to public smart contract functions in order to limit them. Normally you can limit a function to be called by `msg.sender`. With this new modifier you can limit a function to be called from the equivalent of `msg.crosschainsender`. In the `TenBridge` we limit the cross chain sender to the remote bridge only like this `onlyCrossChainSender(remoteBridgeAddress)`.
 
-The bridge initialization phase links the two bridge contracts (ObscuroBridge, EthereumBridge) together. This linking is finalized when both contracts know the remote address on the opposite layer. Using those remote addresses, the bridges limit incoming `receiveAsset` messages to only be callable by the `CrossChainMessenger` contract sitting on the same layer. This `CrossChainMessenger` contract provides the necessary context to the bridge about the sender of the cross chain message. This allows to validate message is coming from the `remoteBridgeAddress`. The sender address is determined inside of `publishMessage` by taking the `msg.sender`. This `msg.sender` is put inside the metadata of each message. 
+The bridge initialization phase links the two bridge contracts (TenBridge, EthereumBridge) together. This linking is finalized when both contracts know the remote address on the opposite layer. Using those remote addresses, the bridges limit incoming `receiveAsset` messages to only be callable by the `CrossChainMessenger` contract sitting on the same layer. This `CrossChainMessenger` contract provides the necessary context to the bridge about the sender of the cross chain message. This allows to validate message is coming from the `remoteBridgeAddress`. The sender address is determined inside of `publishMessage` by taking the `msg.sender`. This `msg.sender` is put inside the metadata of each message. 
 
 The result of this setup is that `receiveAsset` is only callable by having a valid cross chain message coming from the correct contract. Anything else will get rejected and cause the call to revert.
 

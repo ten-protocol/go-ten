@@ -51,7 +51,7 @@ For production:
 npm run build
 \`\`\`
 
-The production build will be available for external consumption on GitHub Pages at `https://go-ten.github.io/obscuronet/gateway.bundle.js`.
+The production build will be available for external consumption on GitHub Pages at `https://go-ten.github.io/tennet/gateway.bundle.js`.
 
 ## Contribute
 
