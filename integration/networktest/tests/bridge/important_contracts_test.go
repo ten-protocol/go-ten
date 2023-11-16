@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
-	"github.com/obscuronet/go-obscuro/integration/networktest/actions"
-	"github.com/obscuronet/go-obscuro/integration/networktest/actions/l1"
-	"github.com/obscuronet/go-obscuro/integration/networktest/env"
+	"github.com/ten-protocol/go-ten/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest/actions"
+	"github.com/ten-protocol/go-ten/integration/networktest/actions/l1"
+	"github.com/ten-protocol/go-ten/integration/networktest/env"
 )
 
 func TestImportantContractsLookup(t *testing.T) {
