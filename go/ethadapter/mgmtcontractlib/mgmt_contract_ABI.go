@@ -1,6 +1,6 @@
 package mgmtcontractlib
 
-import "github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
+import "github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 
 const (
 	AddRollupMethod        = "AddRollup"

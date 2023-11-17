@@ -6,11 +6,11 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/naoina/toml"
-	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/ten-protocol/go-ten/go/config"
 )
 
 // EnclaveConfigToml is the structure that an enclave's .toml config is parsed into.

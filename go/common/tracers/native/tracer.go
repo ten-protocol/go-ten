@@ -45,7 +45,7 @@ package native
 //import (
 //	"errors"
 //
-//	"github.com/obscuronet/go-obscuro/go/common/tracers"
+//	"github.com/ten-protocol/go-ten/go/common/tracers"
 //)
 //
 //// init registers itself this packages as a lookup for tracers.

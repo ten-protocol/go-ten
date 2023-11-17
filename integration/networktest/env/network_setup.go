@@ -1,8 +1,8 @@
 package env
 
 import (
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
+	"github.com/ten-protocol/go-ten/go/enclave/genesis"
+	"github.com/ten-protocol/go-ten/integration/networktest"
 )
 
 func SepoliaTestnet() networktest.Environment {

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/ten-protocol/go-ten/go/rpc"
 )
 
 func TestAddingAndGettingUserAccountManagers(t *testing.T) {

@@ -5,24 +5,24 @@ import (
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/host/l1"
+	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/metrics"
-	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
-	"github.com/obscuronet/go-obscuro/go/host"
-	"github.com/obscuronet/go-obscuro/go/host/p2p"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
-	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/metrics"
+	"github.com/ten-protocol/go-ten/go/config"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/host"
+	"github.com/ten-protocol/go-ten/go/host/p2p"
+	"github.com/ten-protocol/go-ten/go/host/rpc/clientapi"
+	"github.com/ten-protocol/go-ten/go/host/rpc/clientrpc"
+	"github.com/ten-protocol/go-ten/go/host/rpc/enclaverpc"
+	"github.com/ten-protocol/go-ten/go/wallet"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
+	hostcommon "github.com/ten-protocol/go-ten/go/common/host"
 )
 
 const (

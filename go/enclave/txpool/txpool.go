@@ -8,8 +8,8 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethtxpool "github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/txpool/legacypool"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/evm/ethchainadapter"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 )
 
 // TxPool is an obscuro wrapper around geths transaction pool

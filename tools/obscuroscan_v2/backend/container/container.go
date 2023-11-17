@@ -3,12 +3,12 @@ package container
 import (
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend"
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/config"
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/webserver"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/tools/obscuroscan_v2/backend"
+	"github.com/ten-protocol/go-ten/tools/obscuroscan_v2/backend/config"
+	"github.com/ten-protocol/go-ten/tools/obscuroscan_v2/backend/webserver"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )

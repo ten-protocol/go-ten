@@ -3,7 +3,7 @@ package datagenerator
 import (
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 // RandomRollup - block is needed in order to pass the smart contract check

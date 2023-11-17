@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/params"
 
-	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
+	"github.com/ten-protocol/go-ten/tools/faucet/faucet"
 )
 
 const (

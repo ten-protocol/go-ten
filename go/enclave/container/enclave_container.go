@@ -5,15 +5,15 @@ import (
 	"fmt"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/enclave"
 
-	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/ten-protocol/go-ten/go/config"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
-	obscuroGenesis "github.com/obscuronet/go-obscuro/go/enclave/genesis"
+	obscuroGenesis "github.com/ten-protocol/go-ten/go/enclave/genesis"
 )
 
 // todo (#1056) - replace with the genesis.json of Obscuro's L1 network.

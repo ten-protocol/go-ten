@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/config"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

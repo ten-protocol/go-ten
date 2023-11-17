@@ -3,7 +3,7 @@ package crosschain
 import (
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 

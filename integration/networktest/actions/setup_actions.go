@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
-	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
+	"github.com/ten-protocol/go-ten/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest/userwallet"
 )
 
 type CreateTestUser struct {

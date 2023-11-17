@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
+	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
 
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/stretchr/testify/assert"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/tools/walletextension/accountmanager"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

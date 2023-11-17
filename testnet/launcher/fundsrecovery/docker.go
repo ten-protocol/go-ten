@@ -9,8 +9,8 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/obscuronet/go-obscuro/go/common/docker"
 	"github.com/sanity-io/litter"
+	"github.com/ten-protocol/go-ten/go/common/docker"
 )
 
 type FundsRecovery struct {

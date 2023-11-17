@@ -16,17 +16,17 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"github.com/gorilla/websocket"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/container"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/config"
+	"github.com/ten-protocol/go-ten/tools/walletextension/container"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethnode "github.com/ethereum/go-ethereum/node"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
+	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
 )
 
 const jsonID = "1"

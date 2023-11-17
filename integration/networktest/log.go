@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 )
 
 // EnsureTestLogsSetUp calls Setup if it hasn't already been called (some tests run tests within themselves, we don't want

@@ -3,10 +3,10 @@ package host
 import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/host/db"
-	"github.com/obscuronet/go-obscuro/go/responses"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/config"
+	"github.com/ten-protocol/go-ten/go/host/db"
+	"github.com/ten-protocol/go-ten/go/responses"
 )
 
 // Host is the half of the Obscuro node that lives outside the enclave.
