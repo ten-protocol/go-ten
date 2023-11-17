@@ -1,6 +1,6 @@
 ---
 ---
-# Obscuro Testnet Change Log
+# Ten Testnet Change Log
 
 # Oct 2023-10-26 (v0.19.0)
 * A list of the PRs merged in this release is as below;
@@ -689,9 +689,9 @@
 * A variety of stability related issues are fixed within this release.
 * Inclusion of a health endpoint for system status monitoring.
 * It is now possible to run an Obscuroscan against a locally deployed testnet. For more information see
-  [building and running a local testnet](https://github.com/obscuronet/go-obscuro/blob/main/README.md#building-and-running-a-local-testnet)
+  [building and running a local testnet](https://github.com/ten-protocol/go-ten/blob/main/README.md#building-and-running-a-local-testnet)
   in the project readme.
-* Obscuroscan's GitHub Actions [deploy script](https://github.com/obscuronet/go-obscuro/blob/main/.github/workflows/manual-deploy-obscuroscan.yml) has been modified to run the public Testnet Obscuroscan as an Azure web app. This allows access via HTTPS (TLS), which allows app developers to call the Obscuroscan API from other web apps.
+* Obscuroscan's GitHub Actions [deploy script](https://github.com/ten-protocol/go-ten/blob/main/.github/workflows/manual-deploy-obscuroscan.yml) has been modified to run the public Testnet Obscuroscan as an Azure web app. This allows access via HTTPS (TLS), which allows app developers to call the Obscuroscan API from other web apps.
 * A list of the relevant PRs addressed in this release is as below;
   * `12a04c40` Checks whether the head rollup is nil (#859)
   * `619d39b4` Clarify that blocks are L1 blocks (#858)
@@ -746,9 +746,9 @@
   a contract](https://docs.obscu.ro/testnet/deploying-a-smart-contract-programmatically/) has been updated accordingly.
 * The ability to start a faucet server against a local testnet deployment is now supported via a docker
   container. For more information see the Obscuro
-  [readme](https://github.com/obscuronet/go-obscuro#building-and-running-a-local-faucet).
-* Updates to the [Events](https://github.com/obscuronet/go-obscuro/blob/main/design/ux/Events_design.md) design
-  inclusion of the [Fast Finality](https://github.com/obscuronet/go-obscuro/blob/main/design/finality_protocol/fast_finality.md) design.
+  [readme](https://github.com/ten-protocol/go-ten#building-and-running-a-local-faucet).
+* Updates to the [Events](https://github.com/ten-protocol/go-ten/blob/main/design/ux/Events_design.md) design
+  inclusion of the [Fast Finality](https://github.com/ten-protocol/go-ten/blob/main/design/finality_protocol/fast_finality.md) design.
 * The [Obscuro docs site](https://docs.obscu.ro/) is now searchable.
 * Testnet is now officially termed `Evan's Cat`.
 
@@ -761,7 +761,7 @@
 * Event Subscriptions:
   * Event subscriptions for logs are now supported via the eth_subscribe and eth_getLogs approaches. This has been
     tested using both the ethers and web3js libraries. Note that eth_newFilter is not currently supported. For more
-    information see [the events design](https://github.com/obscuronet/go-obscuro/blob/main/design/Events_design.md).
+    information see [the events design](https://github.com/ten-protocol/go-ten/blob/main/design/Events_design.md).
 
 ## September 2022-09-22 (v0.4)
 * Wallet extension:
@@ -801,7 +801,7 @@
   * The node operator can configure the minimum gas price their aggregator will accept on startup.
 * Wallet extension
   * The wallet extension now supports multiple viewing keys through a single running instance. For more information see
-    the [wallet extension design doc](https://github.com/obscuronet/go-obscuro/blob/main/design/ux/wallet_extension.md),
+    the [wallet extension design doc](https://github.com/ten-protocol/go-ten/blob/main/design/ux/wallet_extension.md),
     specifically `Handling eth_call requests` for how the required viewing key is selected when multiple keys are
     registered.
 

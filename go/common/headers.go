@@ -11,7 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"golang.org/x/crypto/sha3"
 )
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	l1cd "github.com/obscuronet/go-obscuro/testnet/launcher/l1contractdeployer"
+	l1cd "github.com/ten-protocol/go-ten/testnet/launcher/l1contractdeployer"
 )
 
 func main() {

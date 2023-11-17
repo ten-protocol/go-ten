@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/tools/walletextension/accountmanager"
 )
 
 type UserAccountManager struct {

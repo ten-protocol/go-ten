@@ -1,4 +1,4 @@
-module github.com/obscuronet/go-obscuro
+module github.com/ten-protocol/go-ten
 
 go 1.20
 
@@ -30,6 +30,7 @@ require (
 	github.com/tidwall/gjson v1.11.0
 	github.com/valyala/fasthttp v1.48.0
 	golang.org/x/crypto v0.12.0
+	golang.org/x/exp v0.0.0-20230810033253-352e893a4cad
 	golang.org/x/sync v0.3.0
 	google.golang.org/grpc v1.53.0
 	google.golang.org/protobuf v1.30.0
@@ -134,7 +135,6 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/exp v0.0.0-20230810033253-352e893a4cad // indirect
 	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect

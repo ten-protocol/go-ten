@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"encoding/gob"
 
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
 var (

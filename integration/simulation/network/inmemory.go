@@ -4,17 +4,17 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/common/host"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/host/container"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
-	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
+	"github.com/ten-protocol/go-ten/go/common/host"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/host/container"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
+	"github.com/ten-protocol/go-ten/integration/simulation/p2p"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/integration/simulation/stats"
 )
 
 type basicNetworkOfInMemoryNodes struct {

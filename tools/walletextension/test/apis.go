@@ -14,9 +14,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
-	"github.com/obscuronet/go-obscuro/go/responses"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
+	"github.com/ten-protocol/go-ten/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

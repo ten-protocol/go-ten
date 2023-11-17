@@ -9,12 +9,12 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/common/profiler"
-	"github.com/obscuronet/go-obscuro/go/node"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/eth2network"
+	"github.com/ten-protocol/go-ten/go/common/profiler"
+	"github.com/ten-protocol/go-ten/go/node"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/eth2network"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"

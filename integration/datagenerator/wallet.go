@@ -3,9 +3,9 @@ package datagenerator
 import (
 	"encoding/hex"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
-	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
 // RandomWallet returns a wallet with a random private key

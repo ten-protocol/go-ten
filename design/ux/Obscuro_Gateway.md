@@ -1,6 +1,6 @@
-# The Obscuro Gateway - Design
+# The Ten Gateway - Design
 
-The scope of this document is to design a hosted [Wallet Extension](wallet_extension.md) called the "Obscuro Gateway" (OG).
+The scope of this document is to design a hosted [Wallet Extension](wallet_extension.md) called the "Ten Gateway" (OG).
 
 The OG will be a superset of the WE functionality, so this document will only cover the additions.
 
@@ -12,12 +12,12 @@ The current WE is designed to be used by a single user holding multiple addresse
 
 The OG must support mutiple users, each with multiple addresses. It can be seen as offering a WE per user.
 
-The Obscuro node has no concept of "User". It only authenticates based on the "blockchain address". 
+The Ten node has no concept of "User". It only authenticates based on the "blockchain address". 
 It expects to be supplied with a signed viewing key per address, so that it can respond encrypted with that VK. 
 
 *Note that multiple addresses can share a VK.*
 
-The role of the current WE is to manage a list of authenticated viewing keys (AVK), which it uses behind the scenes to communicate with an Obscuro node. 
+The role of the current WE is to manage a list of authenticated viewing keys (AVK), which it uses behind the scenes to communicate with an Ten node. 
 The AVKs are stored on the local computer in a file.
 An AVK is a text containing the hash of the public viewing key signed with the "spending key" that controls a blockchain address.
 
@@ -28,7 +28,7 @@ The diagram below depicts the setup once the OG is implemented.
 @startuml
 'https://plantuml.com/deployment-diagram
 
-cloud "Obscuro Nodes"
+cloud "Ten Nodes"
 
 actor Alice
 component "Alice's Computer"{
@@ -39,29 +39,29 @@ component "Alice's Computer"{
 Alice --> "Alice's MetaMask"
 "Alice's MetaMask" --> "Alice's Wallet Extension"
 "Alice's Wallet Extension" <-> "Alice's Viewing Keys"
-"Alice's Wallet Extension" ----> "Obscuro Nodes" : Encrypted RPC
+"Alice's Wallet Extension" ----> "Ten Nodes" : Encrypted RPC
 
 actor Bob
 component "Bob's Computer"{
     agent "Bob's MetaMask"
 }
 component "Confidential Web Service"{
-    node "Obscuro Gateway"
+    node "Ten Gateway"
     database "OG Viewing Keys"
 }
-"OG Viewing Keys" <-> "Obscuro Gateway"
+"OG Viewing Keys" <-> "Ten Gateway"
 
 Bob --> "Bob's MetaMask"
-"Bob's MetaMask" ---> "Obscuro Gateway" : HTTPS
-"Obscuro Gateway" ----> "Obscuro Nodes" : Encrypted RPC
+"Bob's MetaMask" ---> "Ten Gateway" : HTTPS
+"Ten Gateway" ----> "Ten Nodes" : Encrypted RPC
 
 actor Charlie
 component "Charlie's Computer"{
     agent "Charlie's MetaMask"
 }
-node "Obscuro Gateway"
+node "Ten Gateway"
 Charlie --> "Charlie's MetaMask"
-"Charlie's MetaMask" ---> "Obscuro Gateway" : HTTPS
+"Charlie's MetaMask" ---> "Ten Gateway" : HTTPS
 
 @enduml
 ```
@@ -86,11 +86,11 @@ autonumber
 
 actor "Alice's Browser" as Alice
 participant MetaMask as MM
-participant "https://gateway.obscuro.network/v1" as OG
-participant "https://obscuro.network" as ON
+participant "https://gateway.ten.org/v1" as OG
+participant "https://ten.org" as ON
 
 group First click
-    Alice -> ON: Join Obscuro
+    Alice -> ON: Join Ten
     ON --> Alice: Redirect to OG
     note right
         The point of this sequence
@@ -104,11 +104,11 @@ group First click
          the Public Key of the VK
     end note
     OG -> Alice: Send UserId
-    Alice -> MM: Automatically add "Obscuro" network with RPC\n"https://gateway.obscuro.network/v1?u=$UserId"
+    Alice -> MM: Automatically add "Ten" network with RPC\n"https://gateway.ten.org/v1?u=$UserId"
 end
 
 group Second click
-    Alice -> MM : Connect wallet and switch to Obscuro
+    Alice -> MM : Connect wallet and switch to Ten
 end
 
 group Third click
@@ -121,42 +121,42 @@ group Third click
     Alice -> MM : Confirm signature
 end
 
-Alice -> OG: All further Obscuro interactions will be to\nhttps://gateway.obscuro.network/v1?u=$UserId
+Alice -> OG: All further Ten interactions will be to\nhttps://gateway.ten.org/v1?u=$UserId
 
 @enduml
 ```
 
 The onboarding should be done in 3 clicks.
-1. The user goes to a website (like "obscuro.network"), where she clicks "Join Obscuro". This will add a network to their wallet.
+1. The user goes to a website (like "ten.org"), where she clicks "Join Ten". This will add a network to their wallet.
 2. User connects the wallet to the page.
 3. In the wallet popup, the user has to sign over a message: "Register $UserId for $ACCT"
 
 ##### Click 1
-1. Behind the scenes, a js functions calls "gateway.obscuro.network/v1/join" where it will generate a VK and send back the hash of the Public key. This is the "UserId" 
+1. Behind the scenes, a js functions calls "gateway.ten.org/v1/join" where it will generate a VK and send back the hash of the Public key. This is the "UserId" 
 2. After receiving the UserId, the js function will add a new network to the wallet.
-The RPC URL of the new Obscuro network will include the userid: "https://gateway.obscuro.network/v1?u=$UserId". 
+The RPC URL of the new Ten network will include the userid: "https://gateway.ten.org/v1?u=$UserId". 
 Notice that the UserId has to be included as a query parameter because it must be encrypted by https, as it is secret.
 
 ##### Click 2
-After these actions are complete, the same page will now ask the user to connect the wallet and switch to Obscuro. 
+After these actions are complete, the same page will now ask the user to connect the wallet and switch to Ten. 
 Automatically the page will open metamask and ask the user to sign over a text "Register $UserId for $ACCT", where ACCT is the current account selected in metamask.
 
 ##### Click 3
-Once signed, this will be submitted in the background to: "https://gateway.obscuro.network/v1?u=$UserId&action=register"
+Once signed, this will be submitted in the background to: "https://gateway.ten.org/v1?u=$UserId&action=register"
 
 
 Note: Any further accounts will be registered similarly for the same UserId.
 
 Note: The user must guard the UserId. Anyone who can read it, will be able to read the data of this user.
 
-The ultimate goal of this protocol is to submit the "Register $UserId for $ACCT" text to the gateway, which is required by an Obscuro node to authenticate viewing keys per address.
+The ultimate goal of this protocol is to submit the "Register $UserId for $ACCT" text to the gateway, which is required by an Ten node to authenticate viewing keys per address.
 
 Note: Alternative UXes that achieve the same goal are ok.
 
 
 ### Register subsequent addresses  
 
-User Alice is onboarded already and has the Obscuro network configured in her wallet with a UserId.
+User Alice is onboarded already and has the Ten network configured in her wallet with a UserId.
 
 She has to go to the same landing page as above and connect her wallet, instead of hitting "Join".
 When connecting, she can choose a second account.

@@ -1,8 +1,8 @@
 package clientapi
 
 import (
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/host"
 )
 
 // ObscuroAPI implements Obscuro-specific JSON RPC operations.

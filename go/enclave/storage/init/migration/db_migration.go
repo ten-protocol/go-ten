@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 )
 
 const currentMigrationVersionKey = "CURRENT_MIGRATION_VERSION"

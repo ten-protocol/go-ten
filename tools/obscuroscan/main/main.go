@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan"
+	"github.com/ten-protocol/go-ten/tools/obscuroscan"
 )
 
 func main() {

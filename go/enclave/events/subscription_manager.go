@@ -6,16 +6,16 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/enclave/rpc"
+	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"

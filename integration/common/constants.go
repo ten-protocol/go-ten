@@ -3,7 +3,7 @@ package common
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
 // The Contract addresses are the result of the deploying a smart contract from hardcoded owners.

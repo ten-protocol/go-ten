@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/common/tracers"
+	"github.com/ten-protocol/go-ten/go/enclave/l2chain"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

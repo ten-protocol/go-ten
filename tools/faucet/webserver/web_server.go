@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-gonic/gin"
-	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
+	"github.com/ten-protocol/go-ten/tools/faucet/faucet"
 )
 
 type WebServer struct {
@@ -118,7 +118,7 @@ func fundingHandler(faucetServer *faucet.Faucet, defaultAmount *big.Int) gin.Han
 		switch tokenReq {
 		case faucet.NativeToken:
 			token = faucet.NativeToken
-		// we leave this option in temporarily for tools that are still using `/obx` endpoint for native funds
+		// we leave this option in temporarily for tools that are still using `/ten` endpoint for native funds
 		case faucet.DeprecatedNativeToken:
 			token = faucet.NativeToken
 		case faucet.WrappedOBX:

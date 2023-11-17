@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	funds "github.com/obscuronet/go-obscuro/testnet/launcher/fundsrecovery"
+	funds "github.com/ten-protocol/go-ten/testnet/launcher/fundsrecovery"
 )
 
 func main() {

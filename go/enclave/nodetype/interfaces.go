@@ -2,9 +2,9 @@ package nodetype
 
 import (
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/components"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/enclave/components"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
 // NodeType - the interface for any service type running in Obscuro nodes.

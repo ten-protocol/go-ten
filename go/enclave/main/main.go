@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/common/container"
-	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
+	"github.com/ten-protocol/go-ten/go/common/container"
+	enclavecontainer "github.com/ten-protocol/go-ten/go/enclave/container"
 )
 
 // Runs an Obscuro enclave as a standalone process.

@@ -6,17 +6,17 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
 type rollupProducerImpl struct {

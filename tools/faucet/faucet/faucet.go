@@ -13,16 +13,16 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
 const (
 	_timeout    = 60 * time.Second
 	NativeToken = "eth"
-	// DeprecatedNativeToken is left in temporarily for tooling that is getting native funds using `/obx` URL
-	DeprecatedNativeToken = "obx" // todo (@matt) remove this once we have fixed the /obx usages
+	// DeprecatedNativeToken is left in temporarily for tooling that is getting native funds using `/ten` URL
+	DeprecatedNativeToken = "ten" // todo (@matt) remove this once we have fixed the /ten usages
 	WrappedOBX            = "wobx"
 	WrappedEth            = "weth"
 	WrappedUSDC           = "usdc"

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
 const (

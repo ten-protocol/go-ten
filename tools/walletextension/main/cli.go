@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
+	"github.com/ten-protocol/go-ten/tools/walletextension/config"
 )
 
 const (

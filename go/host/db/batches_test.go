@@ -7,9 +7,9 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 func TestCanStoreAndRetrieveBatchHeader(t *testing.T) {

@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
-	"github.com/obscuronet/go-obscuro/go/common/httputil"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
+	"github.com/ten-protocol/go-ten/go/common/httputil"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/tools/walletextension"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/userconn"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

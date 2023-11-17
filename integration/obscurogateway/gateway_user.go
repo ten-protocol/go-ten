@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension/lib"
+	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
 
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
 // GatewayUser TODO (@ziga) refactor GatewayUser and integrate it with OGlib.

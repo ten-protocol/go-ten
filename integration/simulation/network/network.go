@@ -3,16 +3,16 @@ package network
 import (
 	"math/rand"
 
-	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/ten-protocol/go-ten/go/rpc"
 
-	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/obsclient"
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/integration/simulation/stats"
 )
 
 // Network is responsible with knowing how to manage the lifecycle of networks of Ethereum or Obscuro nodes.

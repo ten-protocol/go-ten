@@ -7,15 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
 
-	simstats "github.com/obscuronet/go-obscuro/integration/simulation/stats"
+	simstats "github.com/ten-protocol/go-ten/integration/simulation/stats"
 
 	"github.com/google/uuid"
 )

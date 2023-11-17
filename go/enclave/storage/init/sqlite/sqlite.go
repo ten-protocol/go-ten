@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/migration"
+	"github.com/ten-protocol/go-ten/go/enclave/storage/init/migration"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
+	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	_ "github.com/mattn/go-sqlite3" // this imports the sqlite driver to make the sql.Open() connection work
 )

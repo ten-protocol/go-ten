@@ -7,17 +7,17 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/obsclient"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
 )
 
 const (

@@ -8,18 +8,18 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/subscriptions"
+	"github.com/ten-protocol/go-ten/tools/walletextension/subscriptions"
 
-	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
-	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/tools/walletextension/userconn"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

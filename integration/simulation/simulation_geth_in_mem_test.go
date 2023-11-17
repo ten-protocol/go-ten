@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/ten-protocol/go-ten/integration"
 
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
 )
 
 const gethTestEnv = "GETH_TEST_ENABLED"

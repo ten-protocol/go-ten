@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/container"
+	"github.com/ten-protocol/go-ten/tools/obscuroscan_v2/backend/container"
 )
 
 func main() {
