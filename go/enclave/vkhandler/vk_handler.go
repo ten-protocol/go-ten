@@ -22,33 +22,38 @@ type VKHandler struct {
 	publicViewingKey *ecies.PublicKey
 }
 
-// New creates a new viewing key handler
-// checks if the signature is valid
-// as well if signature matches account address
-// todo (@ziga) - function now accepts both old and new messages
+// VKHandler is responsible for:
+// - checking if received signature of a provided viewing key is signed by provided address
+// - encrypting payloads with a viewing key (public key) that can only be decrypted by private key signed owned by an address signing it
+
+// New creates a new viewing key handler if signature is valid and was produced by given address
+// It receives address, viewing key and a signature over viewing key.
+// In order to check signature validity, we need to reproduce a message that was originally signed
 func New(requestedAddr *gethcommon.Address, vkPubKeyBytes, accountSignatureHexBytes []byte) (*VKHandler, error) {
-	// Recalculate the message signed by MetaMask.
-	msgToSign := viewingkey.GenerateSignMessageOG(vkPubKeyBytes, requestedAddr)
+	// get userID from viewingKey public key
+	userID := viewingkey.CalculateUserIDHex(vkPubKeyBytes)
 
-	// We recover the key based on the signed message and the signature.
-	recoveredAccountPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), accountSignatureHexBytes)
-	if err != nil {
-		return nil, fmt.Errorf("viewing key but could not validate its signature - %w", err)
-	}
-	recoveredAccountAddress := crypto.PubkeyToAddress(*recoveredAccountPublicKey)
+	// check if a signature is valid and signed address matched requiredAddress
+	isValidSignature, _ := viewingkey.VerifySignatureEIP712(userID, requestedAddr, accountSignatureHexBytes)
+	// TODO: @ziga
+	// don't return here, because we still need to support old Wallet extension endpoints now (will be removed in #2134)
+	//if err != nil {
+	//	return nil, err
+	//}
 
+	// Old wallet extension message format
 	// We recover the key based on the signed message and the signature (same as before, but with legacy message format "vk"+<vk>"
-	// todo (@ziga) remove this once old WE message format is deprecated
+	// todo (@ziga) remove support of old message format when removing old wallet extension endpoints (#2134)
 	msgToSignLegacy := viewingkey.GenerateSignMessage(vkPubKeyBytes)
 	recoveredAccountPublicKeyLegacy, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSignLegacy)), accountSignatureHexBytes)
 	if err != nil {
-		return nil, fmt.Errorf("viewing key but could not validate its signature - %w", err)
+		return nil, fmt.Errorf("viewing key but could not validate its legacy signature - %w", err)
 	}
 	recoveredAccountAddressLegacy := crypto.PubkeyToAddress(*recoveredAccountPublicKeyLegacy)
 
 	// is the requested account address the same as the address recovered from the signature
 	// todo (@ziga) - we currently check also for legacy address and allow both (remove this after transition period)
-	if requestedAddr.Hash() != recoveredAccountAddress.Hash() &&
+	if isValidSignature &&
 		requestedAddr.Hash() != recoveredAccountAddressLegacy.Hash() {
 		return nil, ErrInvalidAddressSignature
 	}

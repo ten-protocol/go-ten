@@ -112,7 +112,7 @@ group Second click
 end
 
 group Third click
-    Alice -> MM: Automatically open MM with request to \nsign over "Register $UserId for $Acct"
+    Alice -> MM: Automatically open MM with request to \nsign over EIP-712 formatted message
     note right
         This text will be sent as is
         accompanied by the signature and
@@ -129,7 +129,33 @@ Alice -> OG: All further Ten interactions will be to\nhttps://gateway.ten.org/v1
 The onboarding should be done in 3 clicks.
 1. The user goes to a website (like "ten.org"), where she clicks "Join Ten". This will add a network to their wallet.
 2. User connects the wallet to the page.
-3. In the wallet popup, the user has to sign over a message: "Register $UserId for $ACCT"
+3. In the wallet popup, the user has to sign over EIP-712 formatted message.
+
+Format of EIP-712 message used for signing viewing keys is:
+
+```
+types: {
+      EIP712Domain: [
+        { name: "name", type: "string" },
+        { name: "version", type: "string" },
+        { name: "chainId", type: "uint256" },
+      ],
+      Authentication: [
+        { name: "Encryption Token", type: "address" },
+      ],
+    },
+    primaryType: "Authentication",
+    domain: {
+      name: "Ten",
+      version: "1.0",
+      chainId: obscuroChainIDDecimal,
+    },
+    message: {
+      "Encryption Token": "0x"+userID
+    },
+  };
+
+```
 
 ##### Click 1
 1. Behind the scenes, a js functions calls "gateway.ten.org/v1/join" where it will generate a VK and send back the hash of the Public key. This is the "UserId" 
@@ -139,7 +165,7 @@ Notice that the UserId has to be included as a query parameter because it must b
 
 ##### Click 2
 After these actions are complete, the same page will now ask the user to connect the wallet and switch to Ten. 
-Automatically the page will open metamask and ask the user to sign over a text "Register $UserId for $ACCT", where ACCT is the current account selected in metamask.
+Automatically, the page will open metamask and ask the user to sign over an EIP-712 formatted message as described above.
 
 ##### Click 3
 Once signed, this will be submitted in the background to: "https://gateway.ten.org/v1?u=$UserId&action=register"
@@ -148,8 +174,6 @@ Once signed, this will be submitted in the background to: "https://gateway.ten.o
 Note: Any further accounts will be registered similarly for the same UserId.
 
 Note: The user must guard the UserId. Anyone who can read it, will be able to read the data of this user.
-
-The ultimate goal of this protocol is to submit the "Register $UserId for $ACCT" text to the gateway, which is required by an Ten node to authenticate viewing keys per address.
 
 Note: Alternative UXes that achieve the same goal are ok.
 
@@ -193,7 +217,7 @@ This endpoints responds a json of true or false if the address "a" is already re
 
 ### Authenticate address - POST "/authenticate?u=$UserId"
 JSON Fields:
-- text
+- address
 - signature
 
 This call will be made by a javascript function after it has collected the signed text containing the UserId and the Address from the wallet.

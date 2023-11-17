@@ -1,10 +1,17 @@
 package viewingkey
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"math/big"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/signer/core/apitypes"
+	"github.com/ten-protocol/go-ten/integration"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -21,6 +28,18 @@ import (
 // theft of funds). By adding a prefix, the viewing key bytes no longer looks like a transaction hash, and thus get
 // signed as-is.
 const SignedMsgPrefix = "vk"
+
+const (
+	EIP712Domain             = "EIP712Domain"
+	EIP712Type               = "Authentication"
+	EIP712DomainName         = "name"
+	EIP712DomainVersion      = "version"
+	EIP712DomainChainID      = "chainId"
+	EIP712EncryptionToken    = "Encryption Token"
+	EIP712DomainNameValue    = "Ten"
+	EIP712DomainVersionValue = "1.0"
+	UserIDHexLength          = 40
+)
 
 // ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave
 type ViewingKey struct {
@@ -108,4 +127,120 @@ func GenerateSignMessage(vkPubKey []byte) string {
 func GenerateSignMessageOG(vkPubKey []byte, addr *gethcommon.Address) string {
 	userID := crypto.Keccak256Hash(vkPubKey).Bytes()
 	return fmt.Sprintf("Register %s for %s", hex.EncodeToString(userID), strings.ToLower(addr.Hex()))
+}
+
+// GenerateAuthenticationEIP712RawData generates raw data (bytes)
+// for an EIP-712 message used to authenticate an address with user
+func GenerateAuthenticationEIP712RawData(userID string) ([]byte, error) {
+	if len(userID) != UserIDHexLength {
+		return nil, fmt.Errorf("userID hex length must be %d, received %d", UserIDHexLength, len(userID))
+	}
+	encryptionToken := "0x" + userID
+
+	types := apitypes.Types{
+		EIP712Domain: {
+			{Name: EIP712DomainName, Type: "string"},
+			{Name: EIP712DomainVersion, Type: "string"},
+			{Name: EIP712DomainChainID, Type: "uint256"},
+		},
+		EIP712Type: {
+			{Name: EIP712EncryptionToken, Type: "address"},
+		},
+	}
+
+	domain := apitypes.TypedDataDomain{
+		Name:    EIP712DomainNameValue,
+		Version: EIP712DomainVersionValue,
+		ChainId: (*math.HexOrDecimal256)(big.NewInt(integration.ObscuroChainID)), // TODO !ziga (read this from config!)
+	}
+
+	message := map[string]interface{}{
+		EIP712EncryptionToken: encryptionToken,
+	}
+
+	typedData := apitypes.TypedData{
+		Types:       types,
+		PrimaryType: EIP712Type,
+		Domain:      domain,
+		Message:     message,
+	}
+
+	// Now we need to create EIP-712 compliant hash.
+	// It involves hashing the message with its structure, hashing domain separator,
+	// and then encoding both hashes with specific EIP-712 bytes to construct the final message format.
+
+	// Hash the EIP-712 message using its type and content
+	typedDataHash, err := typedData.HashStruct(typedData.PrimaryType, typedData.Message)
+	if err != nil {
+		return nil, err
+	}
+	// Create the domain separator hash for EIP-712 message context
+	domainSeparator, err := typedData.HashStruct(EIP712Domain, typedData.Domain.Map())
+	if err != nil {
+		return nil, err
+	}
+	// Prefix domain and message hashes with EIP-712 version and encoding bytes
+	rawData := append([]byte("\x19\x01"), append(domainSeparator, typedDataHash...)...)
+	return rawData, nil
+}
+
+// CalculateUserIDHex CalculateUserID calculates userID from a public key
+// (we truncate it, because we want it to have length 20) and encode to hex strings
+func CalculateUserIDHex(publicKeyBytes []byte) string {
+	return hex.EncodeToString(CalculateUserID(publicKeyBytes))
+}
+
+// CalculateUserID calculates userID from a public key (we truncate it, because we want it to have length 20)
+func CalculateUserID(publicKeyBytes []byte) []byte {
+	return crypto.Keccak256Hash(publicKeyBytes).Bytes()[:20]
+}
+
+func VerifySignatureEIP712(userID string, address *gethcommon.Address, signature []byte) (bool, error) {
+	// get raw data for structured message
+	rawData, err := GenerateAuthenticationEIP712RawData(userID)
+	if err != nil {
+		return false, err
+	}
+
+	// create a hash of structured message (needed for signature verification)
+	hashBytes := crypto.Keccak256(rawData)
+	hash := gethcommon.BytesToHash(hashBytes)
+
+	if len(signature) != 65 {
+		return false, fmt.Errorf("invalid signature length: %d", len(signature))
+	}
+
+	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	if signature[64] == 27 || signature[64] == 28 {
+		signature[64] -= 27
+	}
+
+	pubKeyBytes, err := crypto.Ecrecover(hash[:], signature)
+	if err != nil {
+		return false, fmt.Errorf("invalid signature: %w", err)
+	}
+
+	pubKey, err := crypto.UnmarshalPubkey(pubKeyBytes)
+	if err != nil {
+		return false, fmt.Errorf("cannot unmarshal public key: %w", err)
+	}
+
+	recoveredAddr := crypto.PubkeyToAddress(*pubKey)
+
+	if !bytes.Equal(recoveredAddr.Bytes(), address.Bytes()) {
+		return false, errors.New("address from signature not the same as expected")
+	}
+
+	r := new(big.Int).SetBytes(signature[:32])
+	s := new(big.Int).SetBytes(signature[32:64])
+
+	// Verify the signature
+	isValid := ecdsa.Verify(pubKey, hashBytes, r, s)
+
+	if !isValid {
+		return false, errors.New("signature is not valid")
+	}
+
+	return true, nil
 }
