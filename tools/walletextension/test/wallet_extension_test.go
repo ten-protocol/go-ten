@@ -41,7 +41,7 @@ func TestWalletExtension(t *testing.T) {
 		"canRegisterViewingKeyAndMakeRequestsOverWebsockets":          canRegisterViewingKeyAndMakeRequestsOverWebsockets,
 	} {
 		t.Run(name, func(t *testing.T) {
-			hostPort := _hostWSPort + i*_testOffset
+			hostPort := _hostWSPort
 			dummyAPI, shutDownHost := createDummyHost(t, hostPort)
 			shutdownWallet := createWalExt(t, createWalExtCfg(hostPort, hostPort+1, hostPort+2))
 
