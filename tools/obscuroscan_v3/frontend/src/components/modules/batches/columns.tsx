@@ -3,7 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/src/components/ui/checkbox";
 
-import { labels, statuses } from "./data";
+import { labels, statuses } from "./constants";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
 import TruncatedAddress from "../common/truncated-address";
 import { formatTimeAgo } from "@/src/lib/utils";

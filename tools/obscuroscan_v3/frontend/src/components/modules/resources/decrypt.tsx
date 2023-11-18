@@ -14,7 +14,7 @@ import { CopyIcon } from "@radix-ui/react-icons";
 import { Terminal } from "lucide-react";
 import { useRouter } from "next/router";
 import JSONPretty from "react-json-pretty";
-import { useRollups } from "@/src/hooks/useRollups";
+import { useRollupsService } from "@/src/hooks/useRollupsService";
 import {
   Tooltip,
   TooltipProvider,
@@ -24,7 +24,7 @@ import {
 
 export default function Decrypt() {
   const router = useRouter();
-  const { decryptedRollup, decryptEncryptedData } = useRollups();
+  const { decryptedRollup, decryptEncryptedData } = useRollupsService();
 
   const [encryptedRollup, setEncryptedRollup] = useState<string>("");
 

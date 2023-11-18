@@ -4,7 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { Badge } from "@/src/components/ui/badge";
 
-import { labels, statuses } from "./data";
+import { labels, statuses } from "./constants";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
 import { DataTableRowActions } from "../common/data-table/data-table-row-actions";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
@@ -80,7 +80,7 @@ export const columns: ColumnDef<Transaction>[] = [
           {finality.icon && (
             <finality.icon className="mr-2 h-4 w-4 text-muted-foreground" />
           )}
-          <span>{finality.label}</span>
+          <Badge>{finality.label}</Badge>
         </div>
       );
     },

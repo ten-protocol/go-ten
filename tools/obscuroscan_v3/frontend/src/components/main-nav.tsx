@@ -16,12 +16,7 @@ import { ChevronDownIcon } from "@radix-ui/react-icons";
 import { NavLink } from "@/src/types/interfaces";
 import { NavLinks } from "../routes";
 
-interface MainNavProps {
-  navLinks: NavLink[];
-  className?: string;
-}
-
-const NavItem: React.FC<{ navLink: NavLink }> = ({ navLink }) => {
+const NavItem = ({ navLink }: { navLink: NavLink }) => {
   const router = useRouter();
 
   const isDropdownActive = (navLink: NavLink) => {
@@ -36,8 +31,9 @@ const NavItem: React.FC<{ navLink: NavLink }> = ({ navLink }) => {
         <DropdownMenuTrigger asChild>
           <Button
             variant="clear"
+            size={"wrap"}
             className={cn(
-              "text-sm font-medium text-muted-foreground transition-colors hover:text-primary p-0",
+              "text-sm font-medium text-muted-foreground transition-colors hover:text-primary flex justify-start",
               {
                 "text-primary": isDropdownActive(navLink),
               }
@@ -50,7 +46,9 @@ const NavItem: React.FC<{ navLink: NavLink }> = ({ navLink }) => {
           <DropdownMenuGroup>
             {navLink.subNavLinks &&
               navLink.subNavLinks.map((subNavLink: NavLink) => (
-                <NavItem key={subNavLink.label} navLink={subNavLink} />
+                <DropdownMenuItem key={subNavLink.label}>
+                  <NavItem navLink={subNavLink} />
+                </DropdownMenuItem>
               ))}
           </DropdownMenuGroup>
         </DropdownMenuContent>
@@ -88,12 +86,11 @@ export const MainNav = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLElement>) => (
-  <nav
-    className={cn("flex items-center space-x-4 lg:space-x-6", className)}
-    {...props}
-  >
+  <nav className={cn("flex items-center lg:space-x-6", className)} {...props}>
     {NavLinks.map((navLink) => (
-      <NavItem key={navLink.label} navLink={navLink} />
+      <div key={navLink.label} className="w-full flex items-center mr-4 p-2">
+        <NavItem navLink={navLink} />
+      </div>
     ))}
   </nav>
 );

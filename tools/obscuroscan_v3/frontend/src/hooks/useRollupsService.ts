@@ -1,14 +1,14 @@
-import { decryptEncryptedRollup, getRollups } from "@/api/rollups";
+import { decryptEncryptedRollup, fetchRollups } from "@/api/rollups";
 import { toast } from "@/src/components/ui/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
-export const useRollups = () => {
+export const useRollupsService = () => {
   const [decryptedRollup, setDecryptedRollup] = useState<any>();
 
   const { data: rollups, isLoading: isRollupsLoading } = useQuery({
     queryKey: ["rollups"],
-    queryFn: () => getRollups(),
+    queryFn: () => fetchRollups(),
   });
 
   const { mutate: decryptEncryptedData } = useMutation({

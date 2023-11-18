@@ -1,11 +1,11 @@
-import { getBlocks } from "@/api/blocks";
+import { fetchBlocks } from "@/api/blocks";
 import { useQuery } from "@tanstack/react-query";
 import { pollingInterval } from "../lib/constants";
 
-export const useBlocks = () => {
+export const useBlocksService = () => {
   const { data: blocks, isLoading: isBlocksLoading } = useQuery({
     queryKey: ["blocks"],
-    queryFn: () => getBlocks(),
+    queryFn: () => fetchBlocks(),
     refetchInterval: pollingInterval,
   });
 

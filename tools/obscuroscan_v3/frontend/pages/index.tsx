@@ -5,7 +5,7 @@ import Dashboard from "@/src/components/modules/dashboard";
 
 export const metadata: Metadata = {
   title: "Dashboard",
-  description: "ObscuroScan Dashboard",
+  description: "Obscuroscan Dashboard",
 };
 
 export default function DashboardPage() {

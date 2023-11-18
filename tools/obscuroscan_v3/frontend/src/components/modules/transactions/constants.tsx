@@ -3,6 +3,7 @@ import {
   ArrowRightIcon,
   ArrowUpIcon,
   CheckCircledIcon,
+  ClockIcon,
 } from "@radix-ui/react-icons";
 
 export const labels = [
@@ -17,6 +18,11 @@ export const statuses = [
     value: "Final",
     label: "Final",
     icon: CheckCircledIcon,
+  },
+  {
+    value: "Pending",
+    label: "Pending",
+    icon: ClockIcon,
   },
 ];
 

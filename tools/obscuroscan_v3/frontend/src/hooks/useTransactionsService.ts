@@ -1,7 +1,7 @@
 import {
-  getTransactions,
-  getTransactionCount,
-  getPrice,
+  fetchEtherPrice,
+  fetchTransactions,
+  fetchTransactionCount,
 } from "@/api/transactions";
 import { useWalletConnection } from "@/src/components/providers/wallet-provider";
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +10,7 @@ import { pollingInterval, pricePollingInterval } from "../lib/constants";
 import { PersonalTransactionsResponse } from "../types/interfaces/TransactionInterfaces";
 import { useToast } from "@/src/components/ui/use-toast";
 
-export const useTransactions = () => {
+export const useTransactionsService = () => {
   const { toast } = useToast();
   const { walletAddress, provider } = useWalletConnection();
 
@@ -25,14 +25,14 @@ export const useTransactions = () => {
 
   const { data: transactions, isLoading: isTransactionsLoading } = useQuery({
     queryKey: ["transactions"],
-    queryFn: () => getTransactions(),
+    queryFn: () => fetchTransactions(),
     refetchInterval: pollingInterval,
   });
 
   const { data: transactionCount, isLoading: isTransactionCountLoading } =
     useQuery({
       queryKey: ["transactionCount"],
-      queryFn: () => getTransactionCount(),
+      queryFn: () => fetchTransactionCount(),
       refetchInterval: pollingInterval,
     });
 
@@ -64,7 +64,7 @@ export const useTransactions = () => {
 
   const { data: price, isLoading: isPriceLoading } = useQuery({
     queryKey: ["price"],
-    queryFn: () => getPrice(),
+    queryFn: () => fetchEtherPrice(),
     refetchInterval: pricePollingInterval,
   });
 

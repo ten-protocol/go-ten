@@ -3,7 +3,7 @@ import { apiRoutes } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
 import { ResponseDataInterface } from "@/src/types/interfaces";
 
-export const getBlocks = async (
+export const fetchBlocks = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<any>> => {
   const data = await httpRequest<ResponseDataInterface<any>>({

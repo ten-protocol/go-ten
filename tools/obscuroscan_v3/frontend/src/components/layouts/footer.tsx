@@ -7,7 +7,7 @@ import {
 
 export default function Footer() {
   return (
-    <div className="border-t">
+    <div className="border-t px-2">
       <div className="flex h-16 items-center px-4">
         <div className="flex-1 flex items-center space-x-4">
           <a
