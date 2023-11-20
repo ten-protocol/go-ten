@@ -3,7 +3,7 @@ import { columns } from "@/src/components/modules/batches/columns";
 import { DataTable } from "@/src/components/modules/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
-import { useBatchesService } from "@/src/hooks/useBatchesService";
+import { useBatchesService } from "@/src/services/useBatchesService";
 
 export const metadata: Metadata = {
   title: "Batches",

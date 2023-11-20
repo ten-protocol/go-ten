@@ -14,7 +14,7 @@ import { CopyIcon } from "@radix-ui/react-icons";
 import { Terminal } from "lucide-react";
 import { useRouter } from "next/router";
 import JSONPretty from "react-json-pretty";
-import { useRollupsService } from "@/src/hooks/useRollupsService";
+import { useRollupsService } from "@/src/services/useRollupsService";
 import {
   Tooltip,
   TooltipProvider,

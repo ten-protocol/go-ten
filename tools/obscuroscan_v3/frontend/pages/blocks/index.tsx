@@ -3,7 +3,7 @@ import { columns } from "@/src/components/modules/blocks/columns";
 import { DataTable } from "@/src/components/modules/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
-import { useBlocksService } from "@/src/hooks/useBlocksService";
+import { useBlocksService } from "@/src/services/useBlocksService";
 
 export const metadata: Metadata = {
   title: "Blocks",

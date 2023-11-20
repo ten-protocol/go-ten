@@ -17,13 +17,13 @@ import {
 import { RecentBatches } from "./recent-batches";
 import { RecentTransactions } from "./recent-transactions";
 import { Button } from "@/src/components/ui/button";
-import { useTransactionsService } from "@/src/hooks/useTransactionsService";
-import { useBatchesService } from "@/src/hooks/useBatchesService";
+import { useTransactionsService } from "@/src/services/useTransactionsService";
+import { useBatchesService } from "@/src/services/useBatchesService";
 import TruncatedAddress from "../common/truncated-address";
-import { useContractsService } from "@/src/hooks/useContractsService";
+import { useContractsService } from "@/src/services/useContractsService";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { RecentBlocks } from "./recent-blocks";
-import { useBlocksService } from "@/src/hooks/useBlocksService";
+import { useBlocksService } from "@/src/services/useBlocksService";
 import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
 import { cn } from "@/src/lib/utils";

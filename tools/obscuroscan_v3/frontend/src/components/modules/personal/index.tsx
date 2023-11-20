@@ -1,7 +1,7 @@
 import React from "react";
 import { columns } from "@/src/components/modules/personal/columns";
 import { DataTable } from "@/src/components/modules/common/data-table/data-table";
-import { useTransactionsService } from "@/src/hooks/useTransactionsService";
+import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { toolbar } from "./data";
 import { Skeleton } from "@/src/components/ui/skeleton";
 
