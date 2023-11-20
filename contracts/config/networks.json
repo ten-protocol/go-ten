@@ -1,6 +1,6 @@
 {
     "localGeth": {
-      "url": "http://127.0.0.1:37000",
+      "url": "http://127.0.0.1:8025",
       "deploy": [
         "deployment_scripts/core/layer1/",
         "deployment_scripts/testnet/layer1/",
@@ -14,7 +14,7 @@
     "localObscuro": {
       "chainId": 443,
       "url": "http://127.0.0.1:3000/v1/",
-      "obscuroEncRpcUrl": "ws://127.0.0.1:37901",
+      "obscuroEncRpcUrl": "ws://127.0.0.1:13011",
       "companionNetworks" : {
         "layer1" : "localGeth"
       },

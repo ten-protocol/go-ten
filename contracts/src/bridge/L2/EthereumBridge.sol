@@ -28,10 +28,11 @@ contract EthereumBridge is
 
     address remoteBridgeAddress;
 
-    constructor(
+    function initialize(
         address messenger,
         address remoteBridge
-    ) CrossChainEnabledObscuro(messenger) {
+    ) external {
+        CrossChainEnabledObscuro.initialize(messenger);
         remoteBridgeAddress = remoteBridge;
     }
 

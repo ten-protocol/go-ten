@@ -8,7 +8,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const {deployer} = await hre.getNamedAccounts();
     const l1Accs = await layer1.getNamedAccounts();
     
-    const messageBusAddress = process.env.MESSAGE_BUS_ADDRESS!!
+    const messageBusAddress = process.env.MESSAGE_BUS_ADDRESS || "0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"
 
     const messageBus = (await hre.ethers.getContractFactory('MessageBus')).attach(messageBusAddress)
     const prefundAmount = hre.ethers.utils.parseEther("0.5");

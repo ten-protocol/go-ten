@@ -12,7 +12,7 @@ abstract contract CrossChainEnabledObscuro {
 
     // The messenger contract passed will be the authority that we trust to tell us
     // who has sent the cross chain message and that the message is indeed cross chain.
-    constructor(address messengerAddress) {
+    function initialize(address messengerAddress) public virtual {
         messenger = ICrossChainMessenger(messengerAddress);
         messageBus = IMessageBus(messenger.messageBus());
     }
