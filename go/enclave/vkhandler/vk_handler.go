@@ -3,13 +3,12 @@ package vkhandler
 import (
 	"crypto/rand"
 	"fmt"
-
 	"github.com/ethereum/go-ethereum/accounts"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
 )
 
 var ErrInvalidAddressSignature = fmt.Errorf("invalid viewing key signature for requested address")
@@ -33,13 +32,9 @@ func New(requestedAddr *gethcommon.Address, vkPubKeyBytes, accountSignatureHexBy
 	// get userID from viewingKey public key
 	userID := viewingkey.CalculateUserIDHex(vkPubKeyBytes)
 
-	// check if a signature is valid and signed address matched requiredAddress
+	// check if the signature is valid
+	// TODO: @ziga - after removing old wallet extension signatures we can return if the signature is invalid
 	isValidSignature, _ := viewingkey.VerifySignatureEIP712(userID, requestedAddr, accountSignatureHexBytes)
-	// TODO: @ziga
-	// don't return here, because we still need to support old Wallet extension endpoints now (will be removed in #2134)
-	//if err != nil {
-	//	return nil, err
-	//}
 
 	// Old wallet extension message format
 	// We recover the key based on the signed message and the signature (same as before, but with legacy message format "vk"+<vk>"
@@ -47,14 +42,13 @@ func New(requestedAddr *gethcommon.Address, vkPubKeyBytes, accountSignatureHexBy
 	msgToSignLegacy := viewingkey.GenerateSignMessage(vkPubKeyBytes)
 	recoveredAccountPublicKeyLegacy, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSignLegacy)), accountSignatureHexBytes)
 	if err != nil {
-		return nil, fmt.Errorf("viewing key but could not validate its legacy signature - %w", err)
+		return nil, fmt.Errorf("viewing key but could not validate its signature - %w", err)
 	}
 	recoveredAccountAddressLegacy := crypto.PubkeyToAddress(*recoveredAccountPublicKeyLegacy)
 
 	// is the requested account address the same as the address recovered from the signature
-	// todo (@ziga) - we currently check also for legacy address and allow both (remove this after transition period)
-	if isValidSignature &&
-		requestedAddr.Hash() != recoveredAccountAddressLegacy.Hash() {
+	if requestedAddr.Hash() != recoveredAccountAddressLegacy.Hash() &&
+		!isValidSignature {
 		return nil, ErrInvalidAddressSignature
 	}
 
