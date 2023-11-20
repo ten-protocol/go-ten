@@ -1,40 +1,91 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Tenscan: Blockchain Explorer for The Encryption Network (TEN)
+
+Tenscan is a Next.js and Tailwind CSS-powered application that serves as a Blockchain Explorer for The Encryption Network (TEN). This explorer allows users to interact with and explore the blocks, transactions, batches, resources, and personal data on the TEN blockchain. Tenscan is built using the Shadcn-UI Component Library for a consistent and visually appealing user interface.
+
+## Folder Structure
+
+```
+📁 Tenscan
+├── 📁 api
+├── 📁 pages
+│   ├── 📁 batches
+│   │   ├── 📄 [hash].tsx
+│   │   └── 📄 index.tsx
+│   ├── 📁 blocks
+│   │   └── 📄 index.tsx
+│   ├── 📁 personal
+│   │   └── 📄 index.tsx
+│   ├── 📁 resources
+│   │   └── 📄 index.tsx
+│   └── 📁 transactions
+│       └── 📄 index.tsx
+├── 📁 public
+├── 📁 styles
+│   ├── 📁 fonts
+│   └── 📄 global.css
+├── 📁 src
+│   ├── 📁 components
+│   │   ├── 📁 layouts
+│   │   ├── 📁 modules
+│   │   │   ├── 📁 batches
+│   │   │   ├── 📁 blocks
+│   │   │   ├── 📁 common
+│   │   │   ├── 📁 dashboard
+│   │   │   ├── 📁 personal
+│   │   │   ├── 📁 resources
+│   │   │   └── 📁 transactions
+│   │   ├── 📁 providers
+│   │   └── 📁 ui
+│   ├── 📁 hooks
+│   ├── 📁 lib
+│   │   ├── 📄 constants
+│   │   └── 📄 utils
+│   ├── 📁 routes
+│   ├── 📁 services
+│   └── 📁 types
+└── 📁 styles
+    ├── 📁 fonts
+    └── 📄 global.css
+```
 
 ## Getting Started
 
-First, run the development server:
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/ten-protocol/go-ten.git
+   cd go-ten/tools/obscuroscan_v3/frontend
+   ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2. **Install Dependencies:**
+   ```bash
+   npm install
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. **Run the Development Server:**
+   ```bash
+   npm run dev
+   ```
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+   The application will be accessible at [http://localhost:3000](http://localhost:3000).
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+## Usage
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+- Visit the different sections of the explorer through the navigation links in the UI.
+- Explore the different blocks, transactions, batches, resources, and personal data on the TEN.
+- View the details of each batch by their hash.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+## Built With
 
-## Learn More
+- [Next.js](https://nextjs.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Shadcn-UI](https://shadcn.com/)
+- [TypeScript](https://www.typescriptlang.org/)
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Contributing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+Contributions are welcome! Please follow our [contribution guidelines](/docs/_docs/community/contributions.md).
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+This project is licensed under the [GNU Affero General Public License v3.0](/LICENSE).
