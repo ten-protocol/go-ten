@@ -1,7 +1,6 @@
 package vkhandler
 
 import (
-	"encoding/hex"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts"
@@ -10,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 )
+
+const chainID = 443
 
 func TestVKHandler(t *testing.T) {
 	// generate user private Key
@@ -25,9 +26,9 @@ func TestVKHandler(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
-	userID := hex.EncodeToString(crypto.Keccak256Hash(vkPubKeyBytes).Bytes()[:20])
+	userID := viewingkey.CalculateUserIDHex(vkPubKeyBytes)
 	WEMessageFormatTestHash := accounts.TextHash([]byte(viewingkey.GenerateSignMessage(vkPubKeyBytes)))
-	EIP712MessageData, err := viewingkey.GenerateAuthenticationEIP712RawData(userID)
+	EIP712MessageData, err := viewingkey.GenerateAuthenticationEIP712RawData(userID, chainID)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -44,7 +45,7 @@ func TestVKHandler(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Create a new vk Handler
-			_, err = New(&userAddr, vkPubKeyBytes, signature)
+			_, err = New(&userAddr, vkPubKeyBytes, signature, chainID)
 			assert.NoError(t, err)
 		})
 	}
@@ -64,9 +65,9 @@ func TestSignAndCheckSignature(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
-	userID := hex.EncodeToString(crypto.Keccak256Hash(vkPubKeyBytes).Bytes()[:20])
+	userID := viewingkey.CalculateUserIDHex(vkPubKeyBytes)
 	WEMessageFormatTestHash := accounts.TextHash([]byte(viewingkey.GenerateSignMessage(vkPubKeyBytes)))
-	EIP712MessageData, err := viewingkey.GenerateAuthenticationEIP712RawData(userID)
+	EIP712MessageData, err := viewingkey.GenerateAuthenticationEIP712RawData(userID, chainID)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

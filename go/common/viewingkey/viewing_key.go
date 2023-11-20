@@ -9,13 +9,11 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/signer/core/apitypes"
-	"github.com/ten-protocol/go-ten/integration"
-
 	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/ten-protocol/go-ten/go/wallet"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -131,7 +129,7 @@ func GenerateSignMessageOG(vkPubKey []byte, addr *gethcommon.Address) string {
 
 // GenerateAuthenticationEIP712RawData generates raw data (bytes)
 // for an EIP-712 message used to authenticate an address with user
-func GenerateAuthenticationEIP712RawData(userID string) ([]byte, error) {
+func GenerateAuthenticationEIP712RawData(userID string, chainID int64) ([]byte, error) {
 	if len(userID) != UserIDHexLength {
 		return nil, fmt.Errorf("userID hex length must be %d, received %d", UserIDHexLength, len(userID))
 	}
@@ -151,7 +149,7 @@ func GenerateAuthenticationEIP712RawData(userID string) ([]byte, error) {
 	domain := apitypes.TypedDataDomain{
 		Name:    EIP712DomainNameValue,
 		Version: EIP712DomainVersionValue,
-		ChainId: (*math.HexOrDecimal256)(big.NewInt(integration.ObscuroChainID)), // TODO !ziga (read this from config!)
+		ChainId: (*math.HexOrDecimal256)(big.NewInt(chainID)),
 	}
 
 	message := map[string]interface{}{
@@ -195,9 +193,9 @@ func CalculateUserID(publicKeyBytes []byte) []byte {
 	return crypto.Keccak256Hash(publicKeyBytes).Bytes()[:20]
 }
 
-func VerifySignatureEIP712(userID string, address *gethcommon.Address, signature []byte) (bool, error) {
+func VerifySignatureEIP712(userID string, address *gethcommon.Address, signature []byte, chainID int64) (bool, error) {
 	// get raw data for structured message
-	rawData, err := GenerateAuthenticationEIP712RawData(userID)
+	rawData, err := GenerateAuthenticationEIP712RawData(userID, chainID)
 	if err != nil {
 		return false, err
 	}

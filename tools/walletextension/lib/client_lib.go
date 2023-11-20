@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ten-protocol/go-ten/integration"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
@@ -44,7 +46,7 @@ func (o *OGLib) Join() error {
 
 func (o *OGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	rawMessage, err := viewingkey.GenerateAuthenticationEIP712RawData(string(o.userID))
+	rawMessage, err := viewingkey.GenerateAuthenticationEIP712RawData(string(o.userID), integration.ObscuroChainID)
 	if err != nil {
 		return err
 	}

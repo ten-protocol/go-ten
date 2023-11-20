@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/config"
+
 	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/useraccountmanager"
@@ -33,6 +35,7 @@ type WalletExtension struct {
 	logger             gethlog.Logger
 	stopControl        *stopcontrol.StopControl
 	version            string
+	config             *config.Config
 }
 
 func New(
@@ -42,6 +45,7 @@ func New(
 	stopControl *stopcontrol.StopControl,
 	version string,
 	logger gethlog.Logger,
+	config *config.Config,
 ) *WalletExtension {
 	return &WalletExtension{
 		hostAddr:           hostAddr,
@@ -51,6 +55,7 @@ func New(
 		logger:             logger,
 		stopControl:        stopControl,
 		version:            version,
+		config:             config,
 	}
 }
 
@@ -203,9 +208,8 @@ func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
 // AddAddressToUser checks if a message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
 func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, signature []byte) error {
 	addressFromMessage := gethcommon.HexToAddress(address)
-
 	// check if a message was signed by the correct address and if the signature is valid
-	valid, err := viewingkey.VerifySignatureEIP712(hexUserID, &addressFromMessage, signature)
+	valid, err := viewingkey.VerifySignatureEIP712(hexUserID, &addressFromMessage, signature, int64(w.config.TenChainID))
 	if !valid && err != nil {
 		return fmt.Errorf("signature is not valid: %w", err)
 	}

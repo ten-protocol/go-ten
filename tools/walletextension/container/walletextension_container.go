@@ -86,7 +86,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 	}
 
 	stopControl := stopcontrol.New()
-	walletExt := walletextension.New(hostRPCBindAddr, &userAccountManager, databaseStorage, stopControl, version, logger)
+	walletExt := walletextension.New(hostRPCBindAddr, &userAccountManager, databaseStorage, stopControl, version, logger, &config)
 	httpRoutes := api.NewHTTPRoutes(walletExt)
 	httpServer := api.NewHTTPServer(fmt.Sprintf("%s:%d", config.WalletExtensionHost, config.WalletExtensionPortHTTP), httpRoutes)
 

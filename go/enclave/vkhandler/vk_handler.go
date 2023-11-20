@@ -3,6 +3,7 @@ package vkhandler
 import (
 	"crypto/rand"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -28,13 +29,13 @@ type VKHandler struct {
 // New creates a new viewing key handler if signature is valid and was produced by given address
 // It receives address, viewing key and a signature over viewing key.
 // In order to check signature validity, we need to reproduce a message that was originally signed
-func New(requestedAddr *gethcommon.Address, vkPubKeyBytes, accountSignatureHexBytes []byte) (*VKHandler, error) {
+func New(requestedAddr *gethcommon.Address, vkPubKeyBytes, accountSignatureHexBytes []byte, chainID int64) (*VKHandler, error) {
 	// get userID from viewingKey public key
 	userID := viewingkey.CalculateUserIDHex(vkPubKeyBytes)
 
 	// check if the signature is valid
 	// TODO: @ziga - after removing old wallet extension signatures we can return if the signature is invalid
-	isValidSignature, _ := viewingkey.VerifySignatureEIP712(userID, requestedAddr, accountSignatureHexBytes)
+	isValidSignature, _ := viewingkey.VerifySignatureEIP712(userID, requestedAddr, accountSignatureHexBytes, chainID)
 
 	// Old wallet extension message format
 	// We recover the key based on the signed message and the signature (same as before, but with legacy message format "vk"+<vk>"
