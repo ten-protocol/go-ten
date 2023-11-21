@@ -31,7 +31,7 @@ import (
 
 const jsonID = "1"
 
-func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *config.Config {
+func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *config.Config { //nolint: unparam
 	testDBPath, err := os.CreateTemp("", "")
 	if err != nil {
 		panic("could not create persistence file for wallet extension tests")
@@ -61,7 +61,7 @@ func createWalExt(t *testing.T, walExtCfg *config.Config) func() error {
 }
 
 // Creates an RPC layer that the wallet extension can connect to. Returns a handle to shut down the host.
-func createDummyHost(t *testing.T, wsRPCPort int) (*DummyAPI, func() error) {
+func createDummyHost(t *testing.T, wsRPCPort int) (*DummyAPI, func() error) { //nolint: unparam
 	dummyAPI := NewDummyAPI()
 	cfg := gethnode.Config{
 		WSHost:    common.Localhost,
@@ -124,7 +124,7 @@ func makeHTTPEthJSONReqWithPath(port int, path string) []byte {
 }
 
 // Makes an Ethereum JSON RPC request over HTTP and returns the response body with userID query paremeter.
-func makeHTTPEthJSONReqWithUserID(port int, method string, params interface{}, userID string) []byte {
+func makeHTTPEthJSONReqWithUserID(port int, method string, params interface{}, userID string) []byte { //nolint: unparam
 	reqBody := prepareRequestBody(method, params)
 	return makeRequestHTTP(fmt.Sprintf("http://%s:%d/v1/?u=%s", common.Localhost, port, userID), reqBody)
 }
