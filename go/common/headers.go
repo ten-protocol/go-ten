@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -58,7 +60,7 @@ func (b *BatchHeader) MarshalJSON() ([]byte, error) {
 		Nonce      *types.BlockNonce `json:"nonce"`
 
 		// BaseFee was added by EIP-1559 and is ignored in legacy headers.
-		BaseFee *big.Int `json:"baseFeePerGas"`
+		BaseFee *hexutil.Big `json:"baseFeePerGas"`
 	}{
 		(*Alias)(b),
 		b.Hash(),
@@ -67,7 +69,7 @@ func (b *BatchHeader) MarshalJSON() ([]byte, error) {
 		nil,
 		nil,
 		nil,
-		b.BaseFee,
+		(*hexutil.Big)(b.BaseFee),
 	})
 }
 
