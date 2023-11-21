@@ -8,10 +8,12 @@ export const metadata: Metadata = {
   description: "Tenscan Gateway: A gateway to the Tenscan ecosystem",
 };
 
-export default function DashboardPage() {
+export default function HomePage() {
   return (
     <Layout>
-      <Home />
+      <div className="flex items-center justify-center w-full h-full">
+        <Home />
+      </div>
     </Layout>
   );
 }

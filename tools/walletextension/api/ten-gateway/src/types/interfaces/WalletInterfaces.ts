@@ -1,7 +1,8 @@
 import { ethers } from "ethers";
 
 export interface WalletConnectionContextType {
-  provider: ethers.providers.Web3Provider | null;
+  connectToTenTestnet: () => Promise<void>;
+  accounts: string[] | null;
   walletConnected: boolean;
   walletAddress: string | null;
   connectWallet: () => Promise<void>;
