@@ -277,9 +277,6 @@ func (g *Guardian) provideSecret() error {
 			return fmt.Errorf("next block after block=%s not found - %w", awaitFromBlock, err)
 		}
 		secretRespTxs, _, _ := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(nextBlock)
-		if err != nil {
-			return fmt.Errorf("could not extract secret responses from block=%s - %w", nextBlock.Hash(), err)
-		}
 		for _, scrt := range secretRespTxs {
 			if scrt.RequesterID.Hex() == g.hostData.ID.Hex() {
 				err = g.enclaveClient.InitEnclave(scrt.Secret)
