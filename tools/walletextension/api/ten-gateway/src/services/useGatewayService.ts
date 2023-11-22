@@ -42,7 +42,7 @@ const useGatewayService = () => {
 
   const connectToTenTestnet = async () => {
     if (await isTenChain()) {
-      if (userID && !isValidUserIDFormat(userID)) {
+      if (!userID || !isValidUserIDFormat(userID)) {
         toast({
           description:
             "Existing Ten network detected in MetaMask. Please remove before hitting begin",
@@ -62,16 +62,18 @@ const useGatewayService = () => {
       }
 
       if (!(await isMetamaskConnected())) {
+        console.log("No accounts found, connecting...");
         await connectAccounts();
       }
+      console.log("Connected to Ten Network");
 
       if (!provider) {
         return;
       }
-
+      console.log("Getting accounts...");
       const accounts = await provider.listAccounts();
-
       if (accounts.length === 0) {
+        console.log("No accounts found");
         toast({ description: "No MetaMask accounts found." });
         return;
       }

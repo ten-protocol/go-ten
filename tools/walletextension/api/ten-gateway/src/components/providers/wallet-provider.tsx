@@ -45,17 +45,10 @@ export const WalletConnectionProvider = ({
     useState<ethers.providers.Web3Provider | null>(null);
 
   useEffect(() => {
-    const ethereum = (window as any).ethereum;
-
-    const handleAccountsChanged = async (accounts: string[]) => {
-      if (accounts.length === 0) {
-        toast({ description: "Please connect to MetaMask." });
-      } else if (userID && isValidUserIDFormat(userID)) {
-        await Promise.all(
-          accounts.map((account) =>
-            authenticateAccountWithTenGateway(userID, account)
-          )
-        );
+    const { ethereum } = window as any;
+    const handleAccountsChanged = async () => {
+      if (isValidUserIDFormat(await getUserID())) {
+        await displayCorrectScreenBasedOnMetamaskAndUserID();
       }
     };
 
@@ -64,7 +57,7 @@ export const WalletConnectionProvider = ({
     return () => {
       ethereum.removeListener("accountsChanged", handleAccountsChanged);
     };
-  }, [userID]);
+  }, []);
 
   useEffect(() => {
     checkIfMetamaskIsLoaded();
@@ -76,7 +69,7 @@ export const WalletConnectionProvider = ({
         (window as any).ethereum
       );
       setProvider(provider);
-      handleEthereum();
+      await handleEthereum();
     } else {
       toast({ description: "Connecting to MetaMask..." });
 
@@ -87,11 +80,11 @@ export const WalletConnectionProvider = ({
     }
   }
 
-  function handleEthereum() {
+  async function handleEthereum() {
     const { ethereum } = window as any;
 
     if (ethereum && ethereum.isMetaMask) {
-      initialize();
+      await displayCorrectScreenBasedOnMetamaskAndUserID();
     } else {
       toast({ description: "Please install MetaMask to use Ten Gateway." });
     }
@@ -101,28 +94,36 @@ export const WalletConnectionProvider = ({
     if (!provider || !(await isTenChain())) {
       return null;
     }
-
     try {
-      return await provider.send("eth_getStorageAt", [
-        "getUserID",
-        getRandomIntAsString(0, 1000),
-        null,
-      ]);
-    } catch (e) {
+      if (await isTenChain()) {
+        const id = await provider.send("eth_getStorageAt", [
+          "getUserID",
+          getRandomIntAsString(0, 1000),
+          null,
+        ]);
+        return id;
+      } else {
+        return null;
+      }
+    } catch (e: any) {
+      toast({
+        description:
+          `${e.message} ${e.data?.message}` ||
+          "Error: Could not fetch your userID. Please try again later.",
+      });
       console.error(e);
       return null;
     }
   }
 
-  const initialize = async () => {
+  async function displayCorrectScreenBasedOnMetamaskAndUserID() {
     const userID = await getUserID();
+
     setUserID(userID);
     setVersion(await fetchVersion());
-    await displayCorrectScreenBasedOnMetamaskAndUserID();
-  };
 
-  async function displayCorrectScreenBasedOnMetamaskAndUserID() {
     if (await isTenChain()) {
+      console.log("isTenChain");
       if (provider && userID && isValidUserIDFormat(userID)) {
         const accounts = await provider.listAccounts();
         const formattedAccounts = await Promise.all(
@@ -132,7 +133,7 @@ export const WalletConnectionProvider = ({
           }))
         );
         setAccounts(formattedAccounts);
-        setWalletConnected(true);
+        return setWalletConnected(true);
       }
     } else {
       setWalletConnected(false);
@@ -170,9 +171,4 @@ export const WalletConnectionProvider = ({
       {children}
     </WalletConnectionContext.Provider>
   );
-
-  function handleFetchError(errorMessage: string) {
-    console.error(`Error: ${errorMessage}`);
-    toast({ description: `${errorMessage}. Please try again later.` });
-  }
 };
