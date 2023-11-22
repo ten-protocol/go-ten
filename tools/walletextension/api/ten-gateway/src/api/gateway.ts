@@ -26,7 +26,6 @@ export async function fetchVersion(): Promise<string> {
     method: "get",
     url: pathToUrl(apiRoutes.version),
   });
-  console.log("🚀 ~ file: gateway.ts:46 ~ fetchVersion ~ data:", data);
   return data;
 }
 
@@ -42,10 +41,6 @@ export async function accountIsAuthenticated(
       a: account,
     },
   });
-  console.log(
-    "🚀 ~ file: gateway.ts:54 ~ accountIsAuthenticated ~ data:",
-    data
-  );
   return data;
 }
 
@@ -76,10 +71,6 @@ export async function authenticateAccountWithTenGateway(
       u: userID,
     },
   });
-  console.log(
-    "🚀 ~ file: gateway.ts:82 ~ authenticateAccountWithTenGateway ~ data:",
-    data
-  );
   return data;
 }
 
@@ -91,7 +82,6 @@ export async function revokeAccountsApi(userID: string): Promise<void> {
       u: userID,
     },
   });
-  console.log("🚀 ~ file: gateway.ts:95 ~ revokeAccounts ~ data:", data);
 }
 
 export async function joinTestnet(): Promise<string> {
@@ -99,7 +89,6 @@ export async function joinTestnet(): Promise<string> {
     method: "get",
     url: pathToUrl(apiRoutes.join),
   });
-  console.log("🚀 ~ file: gateway.ts:102 ~ joinTestnet ~ data:", data);
   return data;
 }
 
