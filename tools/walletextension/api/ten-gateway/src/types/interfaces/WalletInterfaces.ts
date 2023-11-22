@@ -5,7 +5,6 @@ export interface WalletConnectionContextType {
   accounts: Account[] | null;
   walletConnected: boolean;
   connectAccount: (account: string) => Promise<void>;
-  disconnectAccount: (account: string) => Promise<void>;
   revokeAccounts: () => Promise<void>;
 }
 

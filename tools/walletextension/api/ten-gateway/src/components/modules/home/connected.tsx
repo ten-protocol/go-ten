@@ -16,9 +16,7 @@ import { socialLinks } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Connected = () => {
-  const { accounts, connectAccount, disconnectAccount, revokeAccounts } =
-    useWalletConnection();
-  console.log("🚀 ~ file: connected.tsx:20 ~ Connected ~ accounts:", accounts);
+  const { accounts, connectAccount, revokeAccounts } = useWalletConnection();
 
   return (
     <>
@@ -30,7 +28,7 @@ const Connected = () => {
           the Ten Discord.
         </h3>
         <div className="flex justify-end space-x-2 my-4">
-          <LinkButton size={"sm"} href={socialLinks.discord}>
+          <LinkButton size={"sm"} href={socialLinks.discord} target="_blank">
             Request Tokens
           </LinkButton>
           <Button size={"sm"} variant={"destructive"} onClick={revokeAccounts}>
@@ -43,7 +41,7 @@ const Connected = () => {
           <TableRow>
             <TableHead>Account</TableHead>
             <TableHead>Connected</TableHead>
-            <TableHead>Actions</TableHead>
+            <TableHead></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -71,17 +69,14 @@ const Connected = () => {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    size={"sm"}
-                    variant={account.connected ? "outline" : "default"}
-                    onClick={
-                      account.connected
-                        ? () => disconnectAccount(account.name)
-                        : () => connectAccount(account.name)
-                    }
-                  >
-                    {account.connected ? "Disconnect" : "Connect"}
-                  </Button>
+                  {!account.connected && (
+                    <Button
+                      size={"sm"}
+                      onClick={() => connectAccount(account.name)}
+                    >
+                      {account.connected ? "Disconnect" : "Connect"}
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))
