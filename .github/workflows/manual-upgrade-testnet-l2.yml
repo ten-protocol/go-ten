@@ -212,12 +212,12 @@ jobs:
       - name: 'Send a repository dispatch to obscuro-test on upgrade of dev-testnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
         run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "dev_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "dev_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
 
       - name: 'Send a repository dispatch to obscuro-test on upgrade of uat-testnet'
         if: ${{ github.event.inputs.testnet_type == 'uat-testnet' }}
         run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "uat_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "uat_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
 
   obscuro-test-signal-on-schedule:
     runs-on: ubuntu-latest
@@ -228,4 +228,4 @@ jobs:
     steps:
       - name: 'Send a repository dispatch to obscuro-test on upgrade of dev-testnet'
         run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "dev_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "dev_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'

@@ -4,13 +4,16 @@ import (
 	"context"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/wallet"
 
 	"github.com/ethereum/go-ethereum/common"
 )
 
 // NetworkConnector represents the network being tested against, e.g. testnet, dev-testnet, dev-sim
 //
-// It provides network details (standard contract addresses) and easy client setup for sim users
+// # It provides network details (standard contract addresses) and easy client setup for sim users
+//
+// Note: some of these methods may not be available for some networks (e.g. MC Owner wallet for live testnets)
 type NetworkConnector interface {
 	ChainID() int64
 	// AllocateFaucetFunds uses the networks default faucet mechanism for allocating funds to a test account
@@ -21,6 +24,7 @@ type NetworkConnector interface {
 	GetSequencerNode() NodeOperator
 	GetValidatorNode(idx int) NodeOperator
 	GetL1Client() (ethadapter.EthClient, error)
+	GetMCOwnerWallet() (wallet.Wallet, error) // wallet that owns the management contract (network admin)
 }
 
 // Action is any step in a test, they will typically be either minimally small steps in the test or they will be containers

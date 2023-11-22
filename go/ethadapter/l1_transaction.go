@@ -33,6 +33,11 @@ type L1RespondSecretTx struct {
 	HostAddress string
 }
 
+type L1SetImportantContractsTx struct {
+	Key        string
+	NewAddress gethcommon.Address
+}
+
 // Sign signs the payload with a given private key
 func (l *L1RespondSecretTx) Sign(privateKey *ecdsa.PrivateKey) *L1RespondSecretTx {
 	var data []byte

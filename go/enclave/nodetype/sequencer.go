@@ -164,12 +164,33 @@ func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 		return err
 	}
 
-	// make sure the mempool queuing system is initialized before adding the msg bus tx to it
-	time.Sleep(time.Second)
-
-	if err = s.mempool.Add(msgBusTx); err != nil {
-		return fmt.Errorf("failed to queue message bus creation transaction to genesis - %w", err)
+	// produce batch #2 which has the message bus and any other system contracts
+	cb, err := s.produceBatch(
+		batch.Header.SequencerOrderNo.Add(batch.Header.SequencerOrderNo, big.NewInt(1)),
+		block.Hash(),
+		batch.Hash(),
+		common.L2Transactions{msgBusTx},
+		uint64(time.Now().Unix()),
+		false,
+	)
+	if err != nil {
+		if errors.Is(err, components.ErrNoTransactionsToProcess) {
+			// skip batch production when there are no transactions to process
+			// todo: this might be a useful event to track for metrics (skipping batch production because empty batch)
+			s.logger.Debug("Skipping batch production, no transactions to execute")
+			return nil
+		}
+		return fmt.Errorf(" failed producing batch. Cause: %w", err)
 	}
+
+	if len(cb.Receipts) == 0 || cb.Receipts[0].TxHash.Hex() != msgBusTx.Hash().Hex() {
+		err = fmt.Errorf("message Bus contract not minted - no receipts in batch")
+		s.logger.Error(err.Error())
+		return err
+	}
+
+	s.logger.Info("Message Bus Contract minted successfully", "address", cb.Receipts[0].ContractAddress.Hex())
+
 	return nil
 }
 
@@ -232,7 +253,14 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfE
 	return nil
 }
 
-func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash, headBatch common.L2BatchHash, transactions common.L2Transactions, batchTime uint64, failForEmptyBatch bool) (*core.Batch, error) {
+func (s *sequencer) produceBatch(
+	sequencerNo *big.Int,
+	l1Hash common.L1BlockHash,
+	headBatch common.L2BatchHash,
+	transactions common.L2Transactions,
+	batchTime uint64,
+	failForEmptyBatch bool,
+) (*components.ComputedBatch, error) {
 	cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 		BlockPtr:     l1Hash,
 		ParentPtr:    headBatch,
@@ -268,7 +296,7 @@ func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash
 		return nil, fmt.Errorf("unable to remove tx from mempool - %w", err)
 	}
 
-	return cb.Batch, nil
+	return cb, nil
 }
 
 // StoreExecutedBatch - stores an executed batch in one go. This can be done for the sequencer because it is guaranteed
@@ -359,11 +387,11 @@ func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []c
 		}
 		sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))
 		// create the duplicate and store/broadcast it, recreate batch even if it was empty
-		b, err := s.produceBatch(sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time, false)
+		cb, err := s.produceBatch(sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time, false)
 		if err != nil {
 			return fmt.Errorf("could not produce batch. Cause %w", err)
 		}
-		currentHead = b.Hash()
+		currentHead = cb.Batch.Hash()
 		s.logger.Info("Duplicated batch", log.BatchHashKey, currentHead)
 	}
 

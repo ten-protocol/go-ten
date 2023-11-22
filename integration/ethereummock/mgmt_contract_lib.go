@@ -71,12 +71,32 @@ func (m *mockContractLib) CreateInitializeSecret(tx *ethadapter.L1InitializeSecr
 	return encodeTx(tx, initializeSecretTxAddr)
 }
 
-func (m *mockContractLib) GetHostAddresses() (ethereum.CallMsg, error) {
+func (m *mockContractLib) GetHostAddressesMsg() (ethereum.CallMsg, error) {
 	return ethereum.CallMsg{}, nil
 }
 
-func (m *mockContractLib) DecodeCallResponse([]byte) ([][]string, error) {
-	return [][]string{{""}}, nil
+func (m *mockContractLib) DecodeHostAddressesResponse([]byte) ([]string, error) {
+	return []string{""}, nil
+}
+
+func (m *mockContractLib) GetImportantContractKeysMsg() (ethereum.CallMsg, error) {
+	return ethereum.CallMsg{}, nil
+}
+
+func (m *mockContractLib) DecodeImportantContractKeysResponse([]byte) ([]string, error) {
+	return []string{""}, nil
+}
+
+func (m *mockContractLib) SetImportantContractMsg(string, gethcommon.Address) (ethereum.CallMsg, error) {
+	return ethereum.CallMsg{}, nil
+}
+
+func (m *mockContractLib) GetImportantAddressCallMsg(string) (ethereum.CallMsg, error) {
+	return ethereum.CallMsg{}, nil
+}
+
+func (m *mockContractLib) DecodeImportantAddressResponse([]byte) (gethcommon.Address, error) {
+	return gethcommon.Address{}, nil
 }
 
 func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
