@@ -7,8 +7,6 @@ import {
   TooltipTrigger,
 } from "@/src/components/ui/tooltip";
 
-import { useCopy } from "@/src/hooks/useCopy";
-import { CopyIcon } from "@radix-ui/react-icons";
 import Copy from "./copy";
 
 const TruncatedAddress = ({
@@ -24,8 +22,6 @@ const TruncatedAddress = ({
     0,
     prefixLength || 6
   )}...${address?.substring(address.length - (suffixLength || 4))}`;
-
-  const { copyToClipboard } = useCopy();
 
   return (
     <>
