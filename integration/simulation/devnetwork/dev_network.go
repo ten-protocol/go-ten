@@ -54,6 +54,10 @@ type InMemDevNetwork struct {
 	faucetLock sync.Mutex
 }
 
+func (s *InMemDevNetwork) GetMCOwnerWallet() (wallet.Wallet, error) {
+	return s.networkWallets.MCOwnerWallet, nil
+}
+
 func (s *InMemDevNetwork) ChainID() int64 {
 	return integration.ObscuroChainID
 }
