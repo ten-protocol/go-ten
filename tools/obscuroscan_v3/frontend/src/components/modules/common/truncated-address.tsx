@@ -9,6 +9,7 @@ import {
 
 import { useCopy } from "@/src/hooks/useCopy";
 import { CopyIcon } from "@radix-ui/react-icons";
+import Copy from "./copy";
 
 const TruncatedAddress = ({
   address,
@@ -27,9 +28,9 @@ const TruncatedAddress = ({
   const { copyToClipboard } = useCopy();
 
   return (
-    <div className="flex items-center space-x-2">
+    <>
       {address ? (
-        <>
+        <div className="flex items-center">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger>{truncatedAddress}</TooltipTrigger>
@@ -38,17 +39,12 @@ const TruncatedAddress = ({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <button
-            className="text-muted-foreground hover:text-primary transition-colors"
-            onClick={() => copyToClipboard(address)}
-          >
-            <CopyIcon />
-          </button>
-        </>
+          <Copy value={address} />
+        </div>
       ) : (
         <div>N/A</div>
       )}
-    </div>
+    </>
   );
 };
 
