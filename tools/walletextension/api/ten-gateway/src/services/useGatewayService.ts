@@ -13,42 +13,39 @@ const useGatewayService = () => {
   const { provider } = useWalletConnection();
   const { userID, setUserID } = useWalletConnection();
 
-  async function connectAccounts() {
+  const connectAccounts = async () => {
     try {
       return await (window as any).ethereum.request({
         method: "eth_requestAccounts",
       });
     } catch (error) {
-      console.error("User denied account access:", error);
       toast({ description: `User denied account access: ${error}` });
       return null;
     }
-  }
+  };
 
-  async function isMetamaskConnected() {
+  const isMetamaskConnected = async () => {
     if (!provider) {
       return false;
     }
-
     try {
       const accounts = await provider.listAccounts();
       return accounts.length > 0;
     } catch (error) {
-      console.log("Unable to get accounts");
+      toast({ description: "Unable to get accounts" });
     }
-
     return false;
-  }
+  };
 
   const connectToTenTestnet = async () => {
     if (await isTenChain()) {
       if (!userID || !isValidUserIDFormat(userID)) {
-        toast({
+        return toast({
           description:
             "Existing Ten network detected in MetaMask. Please remove before hitting begin",
         });
       }
-    } else {
+
       const switched = await switchToTenNetwork();
       const rpcUrls = [`${getRPCFromUrl()}/${tenGatewayVersion}/?u=${userID}`];
 
@@ -62,31 +59,25 @@ const useGatewayService = () => {
       }
 
       if (!(await isMetamaskConnected())) {
-        console.log("No accounts found, connecting...");
+        toast({ description: "No accounts found, connecting..." });
         await connectAccounts();
       }
-      console.log("Connected to Ten Network");
-
+      toast({ description: "Connected to Ten Network" });
       if (!provider) {
         return;
       }
-      console.log("Getting accounts...");
+      toast({ description: "Getting accounts..." });
       const accounts = await provider.listAccounts();
       if (accounts.length === 0) {
-        console.log("No accounts found");
+        toast({ description: "No accounts found" });
         toast({ description: "No MetaMask accounts found." });
         return;
       }
     }
   };
 
-  const handleFetchError = (message: string) => {
-    toast({ description: message });
-  };
-
   return {
     connectToTenTestnet,
-    handleFetchError,
   };
 };
 

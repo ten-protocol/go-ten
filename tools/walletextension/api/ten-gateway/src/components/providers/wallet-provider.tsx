@@ -47,7 +47,7 @@ export const WalletConnectionProvider = ({
   useEffect(() => {
     const { ethereum } = window as any;
     const handleAccountsChanged = async () => {
-      if (isValidUserIDFormat(await getUserID())) {
+      if (userID && isValidUserIDFormat(userID)) {
         await displayCorrectScreenBasedOnMetamaskAndUserID();
       }
     };
@@ -60,40 +60,43 @@ export const WalletConnectionProvider = ({
   }, []);
 
   useEffect(() => {
-    checkIfMetamaskIsLoaded();
+    const initialize = async () => {
+      await checkIfMetamaskIsLoaded();
+    };
+    initialize();
   }, []);
 
-  async function checkIfMetamaskIsLoaded() {
+  const checkIfMetamaskIsLoaded = async () => {
     if (window && (window as any).ethereum) {
-      const provider = new ethers.providers.Web3Provider(
-        (window as any).ethereum
-      );
-      setProvider(provider);
       await handleEthereum();
     } else {
       toast({ description: "Connecting to MetaMask..." });
-
       window.addEventListener("ethereum#initialized", handleEthereum, {
         once: true,
       });
       setTimeout(handleEthereum, METAMASK_CONNECTION_TIMEOUT);
     }
-  }
+  };
 
-  async function handleEthereum() {
+  const handleEthereum = async () => {
     const { ethereum } = window as any;
-
     if (ethereum && ethereum.isMetaMask) {
+      const provider = new ethers.providers.Web3Provider(
+        (window as any).ethereum
+      );
+      setProvider(provider);
       await displayCorrectScreenBasedOnMetamaskAndUserID();
     } else {
       toast({ description: "Please install MetaMask to use Ten Gateway." });
     }
-  }
+  };
 
-  async function getUserID() {
-    if (!provider || !(await isTenChain())) {
+  const getUserID = async () => {
+    if (!provider) {
+      console.log("no provider");
       return null;
     }
+
     try {
       if (await isTenChain()) {
         const id = await provider.send("eth_getStorageAt", [
@@ -114,16 +117,14 @@ export const WalletConnectionProvider = ({
       console.error(e);
       return null;
     }
-  }
+  };
 
-  async function displayCorrectScreenBasedOnMetamaskAndUserID() {
+  const displayCorrectScreenBasedOnMetamaskAndUserID = async () => {
     const userID = await getUserID();
-
     setUserID(userID);
     setVersion(await fetchVersion());
 
     if (await isTenChain()) {
-      console.log("isTenChain");
       if (provider && userID && isValidUserIDFormat(userID)) {
         const accounts = await provider.listAccounts();
         const formattedAccounts = await Promise.all(
@@ -133,12 +134,14 @@ export const WalletConnectionProvider = ({
           }))
         );
         setAccounts(formattedAccounts);
-        return setWalletConnected(true);
+        setWalletConnected(true); // Set walletConnected after all async operations
+      } else {
+        setWalletConnected(false);
       }
     } else {
       setWalletConnected(false);
     }
-  }
+  };
 
   const connectAccount = async (account: string) => {
     if (!userID) {
