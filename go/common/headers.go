@@ -6,11 +6,12 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"golang.org/x/crypto/sha3"
 )
@@ -45,30 +46,81 @@ type BatchHeader struct {
 	TransfersTree                 common.Hash                           `json:"transfersTree"`           // This is a merkle tree of all of the outbound value transfers for the MainNet
 }
 
+type batchHeaderEncoding struct {
+	ParentHash       L2BatchHash     `json:"parentHash"`
+	Root             common.Hash     `json:"stateRoot"`
+	TxHash           common.Hash     `json:"transactionsRoot"`
+	ReceiptHash      common.Hash     `json:"receiptsRoot"`
+	Number           *hexutil.Big    `json:"number"`
+	SequencerOrderNo *hexutil.Big    `json:"sequencerOrderNo"`
+	GasLimit         hexutil.Uint64  `json:"gasLimit"`
+	GasUsed          hexutil.Uint64  `json:"gasUsed"`
+	Time             hexutil.Uint64  `json:"timestamp"`
+	Extra            []byte          `json:"extraData"`
+	BaseFee          *hexutil.Big    `json:"baseFeePerGas"`
+	Coinbase         *common.Address `json:"miner"`
+
+	// The custom Obscuro fields.
+	L1Proof                       L1BlockHash                           `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
+	R, S                          *hexutil.Big                          // signature values
+	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
+	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
+	LatestInboundCrossChainHeight *hexutil.Big                          `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
+	TransfersTree                 common.Hash
+}
+
 // MarshalJSON custom marshals the BatchHeader into a json
 func (b *BatchHeader) MarshalJSON() ([]byte, error) {
-	type Alias BatchHeader
-	return json.Marshal(struct {
-		*Alias
-		Hash       common.Hash       `json:"hash"`
-		UncleHash  *common.Hash      `json:"sha3Uncles"`
-		Coinbase   *common.Address   `json:"miner"`
-		Bloom      *types.Bloom      `json:"logsBloom"`
-		Difficulty *big.Int          `json:"difficulty"`
-		Nonce      *types.BlockNonce `json:"nonce"`
-
-		// BaseFee was added by EIP-1559 and is ignored in legacy headers.
-		BaseFee *big.Int `json:"baseFeePerGas"`
-	}{
-		(*Alias)(b),
-		b.Hash(),
-		nil,
+	return json.Marshal(batchHeaderEncoding{
+		b.ParentHash,
+		b.Root,
+		b.TxHash,
+		b.ReceiptHash,
+		(*hexutil.Big)(b.Number),
+		(*hexutil.Big)(b.SequencerOrderNo),
+		hexutil.Uint64(b.GasLimit),
+		hexutil.Uint64(b.GasUsed),
+		hexutil.Uint64(b.Time),
+		b.Extra,
+		(*hexutil.Big)(b.BaseFee),
 		&b.Coinbase,
-		nil,
-		nil,
-		nil,
-		b.BaseFee,
+		b.L1Proof,
+		(*hexutil.Big)(b.R),
+		(*hexutil.Big)(b.S),
+		b.CrossChainMessages,
+		b.LatestInboundCrossChainHash,
+		(*hexutil.Big)(b.LatestInboundCrossChainHeight),
+		b.TransfersTree,
 	})
+}
+
+func (b *BatchHeader) UnmarshalJSON(data []byte) error {
+	dec := new(batchHeaderEncoding)
+	err := json.Unmarshal(data, dec)
+	if err != nil {
+		return err
+	}
+
+	b.ParentHash = dec.ParentHash
+	b.Root = dec.Root
+	b.TxHash = dec.TxHash
+	b.ReceiptHash = dec.ReceiptHash
+	b.Number = (*big.Int)(dec.Number)
+	b.SequencerOrderNo = (*big.Int)(dec.SequencerOrderNo)
+	b.GasLimit = uint64(dec.GasLimit)
+	b.GasUsed = uint64(dec.GasUsed)
+	b.Time = uint64(dec.Time)
+	b.Extra = dec.Extra
+	b.BaseFee = (*big.Int)(dec.BaseFee)
+	b.Coinbase = *dec.Coinbase
+	b.L1Proof = dec.L1Proof
+	b.R = (*big.Int)(dec.R)
+	b.S = (*big.Int)(dec.S)
+	b.CrossChainMessages = dec.CrossChainMessages
+	b.LatestInboundCrossChainHash = dec.LatestInboundCrossChainHash
+	b.LatestInboundCrossChainHeight = (*big.Int)(dec.LatestInboundCrossChainHeight)
+	b.TransfersTree = dec.TransfersTree
+	return nil
 }
 
 // RollupHeader is a public / plaintext struct that holds common properties of rollups.

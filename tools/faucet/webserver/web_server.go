@@ -147,12 +147,13 @@ func fundingHandler(faucetServer *faucet.Faucet, defaultAmount *big.Int) gin.Han
 
 		// fund the address
 		addr := common.HexToAddress(req.Address)
-		if err := faucetServer.Fund(&addr, token, defaultAmount); err != nil {
+		hash, err := faucetServer.Fund(&addr, token, defaultAmount)
+		if err != nil {
 			errorHandler(c, fmt.Errorf("unable to fund request %w", err), faucetServer.Logger)
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "tx": hash})
 	}
 }
 

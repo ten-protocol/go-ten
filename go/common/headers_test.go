@@ -15,7 +15,7 @@ func TestBatchHeader_MarshalJSON(t *testing.T) {
 		Root:                          randomHash(),
 		TxHash:                        randomHash(),
 		ReceiptHash:                   randomHash(),
-		Number:                        gethcommon.Big0,
+		Number:                        gethcommon.Big1,
 		SequencerOrderNo:              gethcommon.Big1,
 		GasLimit:                      100,
 		GasUsed:                       200,
