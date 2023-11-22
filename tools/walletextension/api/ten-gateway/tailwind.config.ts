@@ -1,5 +1,4 @@
 import type { Config } from "tailwindcss";
-const { fontFamily } = require("tailwindcss/defaultTheme");
 
 const config: Config = {
   darkMode: ["class"],
@@ -67,8 +66,19 @@ const config: Config = {
         md: `calc(var(--radius) - 2px)`,
         sm: "calc(var(--radius) - 4px)",
       },
-      fontFamily: {
-        sans: ["Cloud Soft", ...fontFamily.sans],
+      fontSize: {
+        8: "8px",
+        10: "10px",
+        12: "12px",
+        13: "13px",
+        14: "14px",
+        16: "16px",
+        18: "18px",
+        20: "20px",
+        22: "22px",
+        24: "24px",
+        30: "30px",
+        40: "40px",
       },
       keyframes: {
         "accordion-down": {
