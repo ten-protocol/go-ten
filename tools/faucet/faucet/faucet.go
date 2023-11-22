@@ -59,7 +59,6 @@ func (f *Faucet) Fund(address *common.Address, token string, amount *big.Int) (s
 		signedTx, err = f.fundNativeToken(address, amount)
 	} else {
 		return "", fmt.Errorf("token not fundable atm")
-		// signedTx, err = f.fundERC20Token(address, token)
 		// todo implement this when contracts are deployable somewhere
 	}
 	if err != nil {
