@@ -261,6 +261,10 @@ func makeRequestHTTP(url string, body []byte) []byte {
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
 	}
+	if resp == nil || resp.Body == nil {
+		return nil
+	}
+
 	if err != nil {
 		panic(err)
 	}

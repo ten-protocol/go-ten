@@ -74,6 +74,9 @@ func (o *OGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 	if err != nil {
 		return fmt.Errorf("unable to issue request - %w", err)
 	}
+	if response == nil {
+		return fmt.Errorf("received nil response from HTTP request")
+	}
 
 	defer response.Body.Close()
 	_, err = io.ReadAll(response.Body)

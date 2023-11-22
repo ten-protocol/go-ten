@@ -126,8 +126,10 @@ func canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.T, t
 			signature:   signature,
 		})
 	}
-
 	// We set the API to decrypt with an arbitrary key from the list we just generated.
+	if len(viewingKeys) == 0 {
+		t.Fatalf("len of viewingKeys is 0")
+	}
 	arbitraryViewingKey := viewingKeys[len(viewingKeys)/2]
 	testHelper.hostAPI.setViewingKey(arbitraryViewingKey.address, arbitraryViewingKey.hexVKPubKey, arbitraryViewingKey.signature)
 

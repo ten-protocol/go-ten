@@ -46,7 +46,9 @@ func CalculateUserID(publicKeyBytes []byte) []byte {
 func GetUserIDAndAddressFromMessage(message string) (string, string, error) {
 	if authenticateMessageRegex.MatchString(message) {
 		params := authenticateMessageRegex.FindStringSubmatch(message)
-		return params[1], params[2], nil
+		if len(params) >= 3 {
+			return params[1], params[2], nil
+		}
 	}
 	return "", "", errors.New("invalid message format")
 }

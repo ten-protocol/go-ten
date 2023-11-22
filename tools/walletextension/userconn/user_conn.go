@@ -134,9 +134,11 @@ func (w *userConnWS) GetHTTPRequest() *http.Request {
 
 func getQueryParams(query url.Values) map[string]string {
 	params := make(map[string]string)
-	queryParams := query
-	for key, value := range queryParams {
-		params[key] = value[0]
+	for key, value := range query {
+		if len(value) > 0 {
+			params[key] = value[0]
+		}
 	}
+
 	return params
 }

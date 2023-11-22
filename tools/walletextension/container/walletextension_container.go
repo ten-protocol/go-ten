@@ -44,8 +44,9 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 
 	// start the database
 	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride)
-	if err != nil {
+	if err != nil || databaseStorage == nil {
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
+		return nil
 	}
 
 	// Get all the data from the database and add all the clients for all users
@@ -70,8 +71,14 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 		}
 		for _, account := range accounts {
 			encClient, err := wecommon.CreateEncClient(hostRPCBindAddr, account.AccountAddress, user.PrivateKey, account.Signature, logger)
+			// TODO (@ziga) - try to create that client later if it fails now (related to lazy loading mentioned above)
 			if err != nil {
 				logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
+				continue
+			}
+			if encClient == nil {
+				logger.Error(fmt.Sprintf("encClient is nil when trying to create accountManagers for user %s", hex.EncodeToString(user.UserID)))
+				continue
 			}
 
 			// add client to current userAccountManager
@@ -128,6 +135,10 @@ func NewWalletExtensionContainer(
 
 // TODO Start should not be a locking process
 func (w *WalletExtensionContainer) Start() error {
+	if w == nil {
+		return fmt.Errorf("start called on nil (WalletExtensionContainer) ")
+	}
+
 	httpErrChan := w.httpServer.Start()
 	wsErrChan := w.wsServer.Start()
 
@@ -145,6 +156,9 @@ func (w *WalletExtensionContainer) Start() error {
 }
 
 func (w *WalletExtensionContainer) Stop() error {
+	if w == nil {
+		return fmt.Errorf("Stop called on nil (WalletExtensionContainer) ")
+	}
 	w.stopControl.Stop()
 
 	err := w.httpServer.Stop()

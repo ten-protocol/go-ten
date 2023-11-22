@@ -367,13 +367,23 @@ func verifySignature(message string, signature []byte, address gethcommon.Addres
 }
 
 func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
-	if resultMap, ok := rpcResp.(map[string]interface{}); ok {
-		if val, foundRoot := resultMap[common.JSONKeyRoot]; foundRoot {
-			if val == "0x" {
-				respMap[common.JSONKeyResult].(map[string]interface{})[common.JSONKeyRoot] = nil
-			}
-		}
+	resultMap, ok := rpcResp.(map[string]interface{})
+	if !ok {
+		return
 	}
+
+	val, foundRoot := resultMap[common.JSONKeyRoot]
+	if !foundRoot || val != "0x" {
+		return
+	}
+
+	nestedMap, ok := respMap[common.JSONKeyResult].(map[string]interface{})
+	if !ok || nestedMap != nil {
+		return
+	}
+
+	respMap[common.JSONKeyResult] = make(map[string]interface{})
+	respMap[common.JSONKeyResult].(map[string]interface{})[common.JSONKeyRoot] = nil
 }
 
 // getStorageAtInterceptor checks if the parameters for getStorageAt are set to values that require interception

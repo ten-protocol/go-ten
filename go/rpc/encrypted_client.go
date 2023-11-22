@@ -283,6 +283,10 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 }
 
 func (c *EncRPCClient) executeRPCCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+	if c.obscuroClient == nil {
+		return fmt.Errorf("EncRPCClient.obscuroClient is nil, but we want to execute .Call on it")
+	}
+
 	if ctx == nil {
 		return c.obscuroClient.Call(result, method, args...)
 	}
