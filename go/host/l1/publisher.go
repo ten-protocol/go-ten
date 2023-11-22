@@ -161,6 +161,8 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 	return nil
 }
 
+// ExtractObscuroRelevantTransactions will extract any transactions from the block that are relevant to obscuro
+// todo (#2495) we should monitor for relevant L1 events instead of scanning every transaction in the block
 func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
 	var secretRespTxs []*ethadapter.L1RespondSecretTx
 	var rollupTxs []*ethadapter.L1RollupTx
