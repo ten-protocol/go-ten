@@ -2,11 +2,11 @@ import { ethers } from "ethers";
 
 export interface WalletConnectionContextType {
   connectToTenTestnet: () => Promise<void>;
-  accounts: string[] | null;
+  accounts: Account[] | null;
   walletConnected: boolean;
-  walletAddress: string | null;
-  connectWallet: () => Promise<void>;
-  disconnectWallet: () => void;
+  connectAccount: (account: string) => Promise<void>;
+  disconnectAccount: (account: string) => Promise<void>;
+  revokeAccounts: () => Promise<void>;
 }
 
 export interface Props {
@@ -20,3 +20,8 @@ export interface State {
 export interface WalletConnectionProviderProps {
   children: React.ReactNode;
 }
+
+export type Account = {
+  name: string;
+  connected: boolean;
+};

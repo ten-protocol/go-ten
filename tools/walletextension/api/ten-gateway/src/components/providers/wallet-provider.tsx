@@ -3,12 +3,14 @@ import { ethers } from "ethers";
 import {
   WalletConnectionContextType,
   WalletConnectionProviderProps,
+  Account,
 } from "@/types/interfaces/WalletInterfaces";
 import { useToast } from "../ui/use-toast";
 import {
   getNetworkName,
   getRPCFromUrl,
   getRandomIntAsString,
+  isTenChain,
   isValidUserIDFormat,
   metamaskPersonalSign,
   pathAuthenticate,
@@ -18,8 +20,8 @@ import {
   pathVersion,
   tenChainIDHex,
   tenGatewayVersion,
+  tenscanLink,
 } from "@/lib/utils";
-import { set } from "date-fns";
 
 const WalletConnectionContext =
   createContext<WalletConnectionContextType | null>(null);
@@ -42,40 +44,60 @@ export const WalletConnectionProvider = ({
   const [walletConnected, setWalletConnected] = useState(false);
   const [userID, setUserID] = useState<string | null>(null);
   const [version, setVersion] = useState<string | null>(null);
-  const [accounts, setAccounts] = useState<string[] | null>(null);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [provider, setProvider] =
     useState<ethers.providers.Web3Provider | null>(null);
 
-  const connectWallet = async () => {
-    if ((window as any).ethereum) {
-      const ethProvider = new ethers.providers.Web3Provider(
+  useEffect(() => {
+    const ethereum = (window as any).ethereum;
+    const handleAccountsChanged = async (accounts: string[]) => {
+      if (accounts.length === 0) {
+        toast({ description: "Please connect to MetaMask." });
+      } else {
+        if (userID && isValidUserIDFormat(userID)) {
+          for (const account of accounts) {
+            await authenticateAccountWithTenGateway(account);
+          }
+        }
+      }
+    };
+    ethereum.on("accountsChanged", handleAccountsChanged);
+    return () => {
+      ethereum.removeListener("accountsChanged", handleAccountsChanged);
+    };
+  });
+
+  useEffect(() => {
+    checkIfMetamaskIsLoaded();
+  }, []);
+
+  function checkIfMetamaskIsLoaded() {
+    if (window && (window as any).ethereum) {
+      const provider = new ethers.providers.Web3Provider(
         (window as any).ethereum
       );
-      setProvider(ethProvider);
-
-      try {
-        await ethProvider.send("eth_requestAccounts", []);
-        const signer = ethProvider.getSigner();
-        const address = await signer.getAddress();
-        setWalletAddress(address);
-        setWalletConnected(true);
-      } catch (error: any) {
-        toast({ description: "Error connecting to wallet:" + error.message });
-      }
+      setProvider(provider);
+      handleEthereum();
     } else {
-      toast({ description: "No ethereum object found." });
-    }
-  };
+      toast({ description: "Connecting to Metamask..." });
+      window.addEventListener("ethereum#initialized", handleEthereum, {
+        once: true,
+      });
 
-  const disconnectWallet = () => {
-    if (provider) {
-      provider.removeAllListeners();
-      setWalletConnected(false);
-      setWalletAddress(null);
-      setProvider(null);
+      // If the event is not dispatched by the end of the timeout,
+      // the user probably doesn't have MetaMask installed.
+      setTimeout(handleEthereum, 3000); // 3 seconds
     }
-  };
+  }
+
+  function handleEthereum() {
+    const { ethereum } = window as any;
+    if (ethereum && ethereum.isMetaMask) {
+      initialize();
+    } else {
+      toast({ description: "Please install MetaMask to use Ten Gateway." });
+    }
+  }
 
   async function getUserID() {
     if (!provider) {
@@ -97,61 +119,12 @@ export const WalletConnectionProvider = ({
     }
   }
 
-  async function isTenChain() {
-    let currentChain = await (window as any).ethereum.request({
-      method: "eth_chainId",
-    });
-    return currentChain === tenChainIDHex;
-  }
-
-  function checkIfMetamaskIsLoaded() {
-    if (window && (window as any).ethereum) {
-      handleEthereum();
-    } else {
-      toast({ description: "Connecting to Metamask..." });
-      window.addEventListener("ethereum#initialized", handleEthereum, {
-        once: true,
-      });
-
-      // If the event is not dispatched by the end of the timeout,
-      // the user probably doesn't have MetaMask installed.
-      setTimeout(handleEthereum, 3000); // 3 seconds
-    }
-  }
-
-  function handleEthereum() {
-    const { ethereum } = window as any;
-    if (ethereum && ethereum.isMetaMask) {
-      initialize();
-    } else {
-      toast({ description: "Please install MetaMask to use Obscuro Gateway." });
-    }
-  }
-
   const initialize = async () => {
     // getUserID from the gateway with getStorageAt method
     let userID = await getUserID();
-
-    await displayCorrectScreenBasedOnMetamaskAndUserID();
+    setUserID(userID);
     await fetchAndDisplayVersion();
     await displayCorrectScreenBasedOnMetamaskAndUserID();
-  };
-
-  const revokeUserID = async () => {
-    const queryAccountUserID = pathRevoke + "?u=" + userID;
-    const revokeResponse = await fetch(queryAccountUserID, {
-      method: "get",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (revokeResponse.ok) {
-      setWalletConnected(false);
-    } else {
-      toast({ description: "Revoking UserID failed" });
-    }
   };
 
   async function fetchAndDisplayVersion() {
@@ -179,8 +152,7 @@ export const WalletConnectionProvider = ({
   }
 
   async function displayCorrectScreenBasedOnMetamaskAndUserID() {
-    console.log("displayCorrectScreenBasedOnMetamaskAndUserID");
-    // check if we are on Obscuro Chain
+    // check if we are on Ten Chain
     if (await isTenChain()) {
       // check if we have valid userID in rpcURL
       if (!provider) {
@@ -188,7 +160,15 @@ export const WalletConnectionProvider = ({
       }
       if (userID && isValidUserIDFormat(userID)) {
         const accounts = await provider.listAccounts();
-        setAccounts(accounts);
+        const formattedAccounts: Account[] = [];
+        for (const account of accounts) {
+          const isConnected = await accountIsAuthenticated(account);
+          formattedAccounts.push({
+            name: account,
+            connected: isConnected,
+          });
+        }
+        setAccounts(formattedAccounts);
       }
       setWalletConnected(true);
       return;
@@ -226,7 +206,7 @@ export const WalletConnectionProvider = ({
             rpcUrls: [
               getRPCFromUrl() + "/" + tenGatewayVersion + "/?u=" + userID,
             ],
-            blockExplorerUrls: ["https://testnet.obscuroscan.io"],
+            blockExplorerUrls: [tenscanLink],
           },
         ],
       });
@@ -310,6 +290,23 @@ export const WalletConnectionProvider = ({
     return await authenticateResp.text();
   }
 
+  const revokeAccounts = async () => {
+    const queryAccountUserID = pathRevoke + "?u=" + userID;
+    const revokeResponse = await fetch(queryAccountUserID, {
+      method: "get",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (revokeResponse.ok) {
+      setWalletConnected(false);
+    } else {
+      toast({ description: "Revoking UserID failed" });
+    }
+  };
+
   const connectToTenTestnet = async () => {
     // check if we are on an Ten chain
     if (await isTenChain()) {
@@ -364,52 +361,45 @@ export const WalletConnectionProvider = ({
         toast({ description: "No MetaMask accounts found." });
         return;
       }
-
-      for (const account of accounts) {
-        await authenticateAccountWithTenGateway(account);
-      }
     }
   };
 
-  useEffect(() => {
-    const ethereum = (window as any).ethereum;
-    const handleAccountsChanged = async (accounts: string[]) => {
-      if (accounts.length === 0) {
-        toast({ description: "Please connect to MetaMask." });
-      } else {
-        if (userID && isValidUserIDFormat(userID)) {
-          for (const account of accounts) {
-            await authenticateAccountWithTenGateway(account);
-          }
-        }
-      }
-    };
-    ethereum.on("accountsChanged", handleAccountsChanged);
-    return () => {
-      ethereum.removeListener("accountsChanged", handleAccountsChanged);
-    };
-  });
+  const connectAccount = async (account: string) => {
+    await authenticateAccountWithTenGateway(account);
+  };
 
-  const user: any = async () => await getUserID();
-  useEffect(() => {
-    if (window) {
-      const ethProvider = new ethers.providers.Web3Provider(
-        (window as any).ethereum
-      );
-      setProvider(ethProvider);
-      setUserID(user);
-      fetchAndDisplayVersion();
-      displayCorrectScreenBasedOnMetamaskAndUserID();
+  const disconnectAccount = async (account: string) => {
+    const revokeAccountURL = pathRevoke + "?u=" + userID + "&a=" + account;
+    const revokeAccountResp = await fetch(revokeAccountURL, {
+      method: "get",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (revokeAccountResp.ok) {
+      const formattedAccounts: Account[] = [];
+      for (const account of accounts!) {
+        const isConnected = await accountIsAuthenticated(account.name);
+        formattedAccounts.push({
+          name: account.name,
+          connected: isConnected,
+        });
+      }
+      setAccounts(formattedAccounts);
+    } else {
+      toast({ description: "Revoking account failed" });
     }
-  }, []);
+  };
 
   const walletConnectionContextValue: WalletConnectionContextType = {
     walletConnected,
-    walletAddress,
-    connectWallet,
-    disconnectWallet,
     connectToTenTestnet,
     accounts,
+    revokeAccounts,
+    connectAccount,
+    disconnectAccount,
   };
 
   return (

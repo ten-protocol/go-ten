@@ -63,3 +63,10 @@ export function getRPCFromUrl() {
       return tenGatewayAddress;
   }
 }
+
+export async function isTenChain() {
+  let currentChain = await (window as any).ethereum.request({
+    method: "eth_chainId",
+  });
+  return currentChain === tenChainIDHex;
+}
