@@ -1,8 +1,6 @@
-import Image from "next/image";
 import { MainNav } from "../main-nav";
 import { ModeToggle } from "../mode-toggle";
 import ConnectWalletButton from "../modules/common/connect-wallet";
-import { Search } from "../search";
 import Link from "next/link";
 import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
@@ -13,17 +11,11 @@ export default function Header() {
     <div className="border-b">
       <div className="flex h-16 justify-between items-center px-4">
         <Link href="/">
-          <Image
-            src="/assets/images/ten.svg"
-            width={150}
-            height={32}
-            alt="Ten Logo"
-          />
+          <h1 className="text-40">TEN.</h1>
         </Link>
         <div className="hidden md:flex items-center space-x-4">
           <MainNav className="mx-6" />
           <div className="flex items-center space-x-4">
-            {/* <Search /> */}
             <ModeToggle />
             <ConnectWalletButton />
           </div>

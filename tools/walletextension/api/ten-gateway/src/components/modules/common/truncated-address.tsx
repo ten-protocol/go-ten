@@ -1,15 +1,11 @@
 import React from "react";
 
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
+  Tooltip,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
-
-import { useCopy } from "@/hooks/useCopy";
-import { CopyIcon } from "@radix-ui/react-icons";
-import { Button } from "@/components/ui/button";
+  TooltipContent,
+} from "@radix-ui/react-tooltip";
 import Copy from "./copy";
 
 const TruncatedAddress = ({
@@ -26,12 +22,10 @@ const TruncatedAddress = ({
     prefixLength || 6
   )}...${address?.substring(address.length - (suffixLength || 4))}`;
 
-  const { copyToClipboard } = useCopy();
-
   return (
-    <div className="flex items-center space-x-2">
+    <>
       {address ? (
-        <>
+        <div className="flex items-center">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger>{truncatedAddress}</TooltipTrigger>
@@ -41,11 +35,11 @@ const TruncatedAddress = ({
             </Tooltip>
           </TooltipProvider>
           <Copy value={address} />
-        </>
+        </div>
       ) : (
         <div>N/A</div>
       )}
-    </div>
+    </>
   );
 };
 

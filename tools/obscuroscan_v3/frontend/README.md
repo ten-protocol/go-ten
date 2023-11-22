@@ -6,46 +6,17 @@ Tenscan is a Next.js and Tailwind CSS-powered application that serves as a Block
 
 ```
 📁 Tenscan
-├── 📁 api
-├── 📁 pages
-│   ├── 📁 batches
-│   │   ├── 📄 [hash].tsx
-│   │   └── 📄 index.tsx
-│   ├── 📁 blocks
-│   │   └── 📄 index.tsx
-│   ├── 📁 personal
-│   │   └── 📄 index.tsx
-│   ├── 📁 resources
-│   │   └── 📄 index.tsx
-│   └── 📁 transactions
-│       └── 📄 index.tsx
-├── 📁 public
-├── 📁 styles
-│   ├── 📁 fonts
-│   └── 📄 global.css
-├── 📁 src
-│   ├── 📁 components
-│   │   ├── 📁 layouts
-│   │   ├── 📁 modules
-│   │   │   ├── 📁 batches
-│   │   │   ├── 📁 blocks
-│   │   │   ├── 📁 common
-│   │   │   ├── 📁 dashboard
-│   │   │   ├── 📁 personal
-│   │   │   ├── 📁 resources
-│   │   │   └── 📁 transactions
-│   │   ├── 📁 providers
-│   │   └── 📁 ui
-│   ├── 📁 hooks
-│   ├── 📁 lib
-│   │   ├── 📄 constants
-│   │   └── 📄 utils
-│   ├── 📁 routes
-│   ├── 📁 services
-│   └── 📁 types
-└── 📁 styles
-    ├── 📁 fonts
-    └── 📄 global.css
+├── 📁 api - Contains server-side code, such as API routes or server logic
+├── 📁 pages - Typically used for Next.js pages. Each .tsx or .js file in this directory becomes a route in your application
+├── 📁 public - This directory is used to serve static assets. Files inside this directory can be referenced in your code with a URL path
+├── 📁 src - Main source code directory for this project
+│   ├── 📁 components - Contains reusable React components used throughout the application
+│   ├── 📁 hooks - Custom React hooks that can be shared and reused across components
+│   ├── 📁 lib - Utility functions or modules that provide common functionalities across the application
+│   ├── 📁 routes - Route-related logic or configuration can be placed in this directory
+│   ├── 📁 services - Used for services that interact with external APIs or handle other data-related tasks
+│   └── 📁 types - Type definitions (.d.ts files or TypeScript files) for TypeScript, describing the shape of data and objects used in the application
+└── 📁 styles - Global styles, stylesheets, or styling-related configurations for this project
 ```
 
 ## Getting Started

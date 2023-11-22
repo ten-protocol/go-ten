@@ -10,7 +10,7 @@ const Copy = ({ value }: { value: string | number }) => {
       type="submit"
       variant={"clear"}
       size="sm"
-      className="px-3 py-1 text-muted-foreground"
+      className="text-muted-foreground"
       onClick={() => copyToClipboard(value.toString())}
     >
       <span className="sr-only">Copy</span>
