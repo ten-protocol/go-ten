@@ -30,12 +30,13 @@ contract ManagementContract is Ownable {
     // isWithdrawalAvailable marks if the contract allows withdrawals or not
     bool private isWithdrawalAvailable;
 
-    uint256 public lastBatchSeqNo = 0;
+    uint256 public lastBatchSeqNo;
 
     Structs.RollupStorage private rollups;
     //The messageBus where messages can be sent to Obscuro
     MessageBus.IMessageBus public messageBus;
     function initialize() external {
+        lastBatchSeqNo = 0;
         messageBus = new MessageBus.MessageBus();
         emit LogManagementContractCreated(address(messageBus));
     }

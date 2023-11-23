@@ -31,8 +31,8 @@ contract EthereumBridge is
     function initialize(
         address messenger,
         address remoteBridge
-    ) external {
-        CrossChainEnabledObscuro.initialize(messenger);
+    ) public {
+        CrossChainEnabledObscuro.configure(messenger);
         remoteBridgeAddress = remoteBridge;
     }
 

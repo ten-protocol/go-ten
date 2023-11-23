@@ -8,8 +8,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const {deployer} = await hre.getNamedAccounts();
     const l1Accs = await layer1.getNamedAccounts();
     
-    const messageBusAddress = process.env.MESSAGE_BUS_ADDRESS || "0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"
-    const prefundAmountStr = process.env.PREFUND_FAUCET_AMOUNT || "1"
+    const messageBusAddress = process.env.MESSAGE_BUS_ADDRESS!!// || "0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"
+    const prefundAmountStr = process.env.PREFUND_FAUCET_AMOUNT!!// || "1"
 
     if (prefundAmountStr == "0") {
         return;
@@ -22,7 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     });
 
 
-    console.log(`Sending ${prefundAmount} to ${deployer}`);
+    console.log(`Sending ${prefundAmount} to ${deployer} through ${messageBusAddress}`);
 
     const receipt = await layer1.deployments.rawTx({
         from: l1Accs.deployer,

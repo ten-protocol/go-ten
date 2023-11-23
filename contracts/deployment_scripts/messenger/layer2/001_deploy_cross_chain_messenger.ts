@@ -22,10 +22,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // TODO: Remove hardcoded L2 message bus address when properly exposed.
     const messageBusAddress = hre.ethers.utils.getAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b");
     // Deploy the L2 Cross chain messenger and use the L2 bus for validation
-    await deployments.deploy('CrossChainMessengerL2', {
+    await deployments.deploy('CrossChainMessenger', {
         from: deployer,
         log: true,
-        contract: 'CrossChainMessenger',
         proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {
@@ -40,4 +39,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ['CrossChainMessengerL2', 'CrossChainMessenger_deployL2'];
+func.tags = ['CrossChainMessenger', 'CrossChainMessenger_deploy'];

@@ -30,8 +30,8 @@ contract ObscuroBridge is
 
     address remoteBridgeAddress;
 
-    function initialize(address messenger) public override {
-         super.initialize(messenger);
+    function initialize(address messenger) external {
+         CrossChainEnabledObscuro.configure(messenger);
         _grantRole(ADMIN_ROLE, msg.sender);
         _grantRole(NATIVE_TOKEN_ROLE, address(0x0));
     }
