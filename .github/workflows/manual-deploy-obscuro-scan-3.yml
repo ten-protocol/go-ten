@@ -73,9 +73,9 @@ jobs:
         uses: "azure/aci-deploy@v1"
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
-          dns-name-label: ${{ github.event.inputs.testnet_type }}-api-obscuro-scan
+          dns-name-label: ${{ github.event.inputs.testnet_type }}-api-obscuro-scan-v3
           image: ${{ vars.DOCKER_BUILD_TAG_SCAN_API }}
-          name: ${{ github.event.inputs.testnet_type }}-api-obscuro-scan
+          name: ${{ github.event.inputs.testnet_type }}-api-obscuro-scan-v3
           location: "uksouth"
           restart-policy: "Never"
           command-line: ./cmd/backend --nodeHostAddress http://${{ vars.L2_RPC_URL_VALIDATOR }}:80 --serverAddress 0.0.0.0:80
