@@ -1,7 +1,7 @@
 export const socialLinks = {
-  github: "https://github.com/obscuronet",
+  github: "https://github.com/ten-protocol",
   discord: "https://discord.gg/2JQ2Z3r",
-  twitter: "https://twitter.com/obscuronet",
+  twitter: "https://twitter.com/tenprotocol",
 };
 
 export const pollingInterval = 5000;
