@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/rpc"
@@ -40,13 +39,12 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 		logger.Crit("unable to create temporary client for request ", log.ErrKey, err)
 	}
 
-	userAccountManager := useraccountmanager.NewUserAccountManager(unAuthedClient, logger)
-
 	// start the database
 	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride)
 	if err != nil {
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
 	}
+	userAccountManager := useraccountmanager.NewUserAccountManager(unAuthedClient, logger, databaseStorage, hostRPCBindAddr)
 
 	// Get all the data from the database and add all the clients for all users
 	// todo (@ziga) - implement lazy loading for clients to reduce number of connections and speed up loading
@@ -62,21 +60,8 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 
 	// iterate over users create accountManagers and add all accounts to them per user
 	for _, user := range allUsers {
-		currentUserAccountManager := userAccountManager.AddAndReturnAccountManager(hex.EncodeToString(user.UserID))
-
-		accounts, err := databaseStorage.GetAccounts(user.UserID)
-		if err != nil {
-			logger.Error(fmt.Errorf("error getting accounts for user: %s, %w", hex.EncodeToString(user.UserID), err).Error())
-		}
-		for _, account := range accounts {
-			encClient, err := wecommon.CreateEncClient(hostRPCBindAddr, account.AccountAddress, user.PrivateKey, account.Signature, logger)
-			if err != nil {
-				logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
-			}
-
-			// add client to current userAccountManager
-			currentUserAccountManager.AddClient(common.BytesToAddress(account.AccountAddress), encClient)
-		}
+		userAccountManager.AddAndReturnAccountManager(hex.EncodeToString(user.UserID))
+		logger.Info(fmt.Sprintf("account manager added for user: %s", hex.EncodeToString(user.UserID)))
 	}
 
 	// captures version in the env vars
