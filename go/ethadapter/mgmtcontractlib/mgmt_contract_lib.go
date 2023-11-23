@@ -28,13 +28,23 @@ type MgmtContractLib interface {
 	CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData
 	CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, verifyAttester bool) types.TxData
 	CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData
-	GetHostAddresses() (ethereum.CallMsg, error)
 
 	// DecodeTx receives a *types.Transaction and converts it to an common.L1Transaction
 	DecodeTx(tx *types.Transaction) ethadapter.L1Transaction
-	// DecodeCallResponse unpacks a call response into a slice of strings.
-	DecodeCallResponse(callResponse []byte) ([][]string, error)
 	GetContractAddr() *gethcommon.Address
+
+	// The methods below are used to create call messages for mgmt contract data and unpack the responses
+
+	GetHostAddressesMsg() (ethereum.CallMsg, error)
+	DecodeHostAddressesResponse(callResponse []byte) ([]string, error)
+
+	SetImportantContractMsg(key string, address gethcommon.Address) (ethereum.CallMsg, error)
+
+	GetImportantContractKeysMsg() (ethereum.CallMsg, error)
+	DecodeImportantContractKeysResponse(callResponse []byte) ([]string, error)
+
+	GetImportantAddressCallMsg(key string) (ethereum.CallMsg, error)
+	DecodeImportantAddressResponse(callResponse []byte) (gethcommon.Address, error)
 }
 
 type contractLibImpl struct {
@@ -93,6 +103,14 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 
 	case InitializeSecretMethod:
 		return c.unpackInitSecretTx(tx, method, contractCallData)
+
+	case SetImportantContractsMethod:
+		tx, err := c.unpackSetImportantContractsTx(tx, method, contractCallData)
+		if err != nil {
+			c.logger.Warn("could not unpack set important contracts tx", log.ErrKey, err)
+			return nil
+		}
+		return tx
 	}
 
 	return nil
@@ -180,7 +198,7 @@ func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecr
 	}
 }
 
-func (c *contractLibImpl) GetHostAddresses() (ethereum.CallMsg, error) {
+func (c *contractLibImpl) GetHostAddressesMsg() (ethereum.CallMsg, error) {
 	data, err := c.contractABI.Pack(GetHostAddressesMethod)
 	if err != nil {
 		return ethereum.CallMsg{}, fmt.Errorf("could not pack the call data. Cause: %w", err)
@@ -188,23 +206,108 @@ func (c *contractLibImpl) GetHostAddresses() (ethereum.CallMsg, error) {
 	return ethereum.CallMsg{To: c.addr, Data: data}, nil
 }
 
-func (c *contractLibImpl) DecodeCallResponse(callResponse []byte) ([][]string, error) {
+func (c *contractLibImpl) DecodeHostAddressesResponse(callResponse []byte) ([]string, error) {
 	unpackedResponse, err := c.contractABI.Unpack(GetHostAddressesMethod, callResponse)
 	if err != nil {
 		return nil, fmt.Errorf("could not unpack call response. Cause: %w", err)
 	}
 
-	// We convert the returned interfaces to strings.
-	unpackedResponseStrings := make([][]string, 0, len(unpackedResponse))
-	for _, obj := range unpackedResponse {
-		str, ok := obj.([]string)
-		if !ok {
-			return nil, fmt.Errorf("could not convert interface in call response to string")
-		}
-		unpackedResponseStrings = append(unpackedResponseStrings, str)
+	// We expect the response to be a list containing one element, that element is a list of address strings
+	if len(unpackedResponse) != 1 {
+		return nil, fmt.Errorf("unexpected number of results (%d) returned from call, response: %s", len(unpackedResponse), unpackedResponse)
+	}
+	addresses, ok := unpackedResponse[0].([]string)
+	if !ok {
+		return nil, fmt.Errorf("could not convert element in call response to list of strings")
 	}
 
-	return unpackedResponseStrings, nil
+	return addresses, nil
+}
+
+func (c *contractLibImpl) GetContractNamesMsg() (ethereum.CallMsg, error) {
+	data, err := c.contractABI.Pack(GetImportantContractKeysMethod)
+	if err != nil {
+		return ethereum.CallMsg{}, fmt.Errorf("could not pack the call data. Cause: %w", err)
+	}
+	return ethereum.CallMsg{To: c.addr, Data: data}, nil
+}
+
+func (c *contractLibImpl) DecodeContractNamesResponse(callResponse []byte) ([]string, error) {
+	unpackedResponse, err := c.contractABI.Unpack(GetImportantContractKeysMethod, callResponse)
+	if err != nil {
+		return nil, fmt.Errorf("could not unpack call response. Cause: %w", err)
+	}
+
+	// We expect the response to be a list containing one element, that element is a list of address strings
+	if len(unpackedResponse) != 1 {
+		return nil, fmt.Errorf("unexpected number of results (%d) returned from call, response: %s", len(unpackedResponse), unpackedResponse)
+	}
+	contractNames, ok := unpackedResponse[0].([]string)
+	if !ok {
+		return nil, fmt.Errorf("could not convert element in call response to list of strings")
+	}
+
+	return contractNames, nil
+}
+
+func (c *contractLibImpl) SetImportantContractMsg(key string, address gethcommon.Address) (ethereum.CallMsg, error) {
+	data, err := c.contractABI.Pack(SetImportantContractsMethod, key, address)
+	if err != nil {
+		return ethereum.CallMsg{}, fmt.Errorf("could not pack the call data. Cause: %w", err)
+	}
+	return ethereum.CallMsg{To: c.addr, Data: data}, nil
+}
+
+func (c *contractLibImpl) GetImportantContractKeysMsg() (ethereum.CallMsg, error) {
+	data, err := c.contractABI.Pack(GetImportantContractKeysMethod)
+	if err != nil {
+		return ethereum.CallMsg{}, fmt.Errorf("could not pack the call data. Cause: %w", err)
+	}
+	return ethereum.CallMsg{To: c.addr, Data: data}, nil
+}
+
+func (c *contractLibImpl) DecodeImportantContractKeysResponse(callResponse []byte) ([]string, error) {
+	unpackedResponse, err := c.contractABI.Unpack(GetImportantContractKeysMethod, callResponse)
+	if err != nil {
+		return nil, fmt.Errorf("could not unpack call response. Cause: %w", err)
+	}
+
+	// We expect the response to be a list containing one element, that element is a list of address strings
+	if len(unpackedResponse) != 1 {
+		return nil, fmt.Errorf("unexpected number of results (%d) returned from call, response: %s", len(unpackedResponse), unpackedResponse)
+	}
+	contractNames, ok := unpackedResponse[0].([]string)
+	if !ok {
+		return nil, fmt.Errorf("could not convert element in call response to list of strings")
+	}
+
+	return contractNames, nil
+}
+
+func (c *contractLibImpl) GetImportantAddressCallMsg(key string) (ethereum.CallMsg, error) {
+	data, err := c.contractABI.Pack(GetImportantAddressMethod, key)
+	if err != nil {
+		return ethereum.CallMsg{}, fmt.Errorf("could not pack the call data. Cause: %w", err)
+	}
+	return ethereum.CallMsg{To: c.addr, Data: data}, nil
+}
+
+func (c *contractLibImpl) DecodeImportantAddressResponse(callResponse []byte) (gethcommon.Address, error) {
+	unpackedResponse, err := c.contractABI.Unpack(GetImportantAddressMethod, callResponse)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("could not unpack call response. Cause: %w", err)
+	}
+
+	// We expect the response to be a list containing one element, that element is a list of address strings
+	if len(unpackedResponse) != 1 {
+		return gethcommon.Address{}, fmt.Errorf("unexpected number of results (%d) returned from call, response: %s", len(unpackedResponse), unpackedResponse)
+	}
+	address, ok := unpackedResponse[0].(gethcommon.Address)
+	if !ok {
+		return gethcommon.Address{}, fmt.Errorf("could not convert element in call response to list of strings")
+	}
+
+	return address, nil
 }
 
 func (c *contractLibImpl) unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1InitializeSecretTx {
@@ -295,6 +398,36 @@ func (c *contractLibImpl) unpackRespondSecretTx(tx *types.Transaction, method *a
 		Secret:      responseSecretBytes[:],
 		HostAddress: hostAddressString,
 	}
+}
+
+func (c *contractLibImpl) unpackSetImportantContractsTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*ethadapter.L1SetImportantContractsTx, error) {
+	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
+	if err != nil {
+		return nil, fmt.Errorf("could not unpack transaction. Cause: %w", err)
+	}
+
+	keyData, found := contractCallData["key"]
+	if !found {
+		return nil, fmt.Errorf("call data not found for key")
+	}
+	keyString, ok := keyData.(string)
+	if !ok {
+		return nil, fmt.Errorf("could not decode key data")
+	}
+
+	contractAddressData, found := contractCallData["newAddress"]
+	if !found {
+		return nil, fmt.Errorf("call data not found for newAddress")
+	}
+	contractAddress, ok := contractAddressData.(gethcommon.Address)
+	if !ok {
+		return nil, fmt.Errorf("could not decode newAddress data")
+	}
+
+	return &ethadapter.L1SetImportantContractsTx{
+		Key:        keyString,
+		NewAddress: contractAddress,
+	}, nil
 }
 
 // base64EncodeToString encodes a byte array to a string

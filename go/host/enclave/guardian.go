@@ -276,10 +276,7 @@ func (g *Guardian) provideSecret() error {
 		if err != nil {
 			return fmt.Errorf("next block after block=%s not found - %w", awaitFromBlock, err)
 		}
-		secretRespTxs := g.sl.L1Publisher().ExtractSecretResponses(nextBlock)
-		if err != nil {
-			return fmt.Errorf("could not extract secret responses from block=%s - %w", nextBlock.Hash(), err)
-		}
+		secretRespTxs, _, _ := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(nextBlock)
 		for _, scrt := range secretRespTxs {
 			if scrt.RequesterID.Hex() == g.hostData.ID.Hex() {
 				err = g.enclaveClient.InitEnclave(scrt.Secret)
@@ -435,13 +432,12 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 
 func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 	// if there are any secret responses in the block we should refresh our P2P list to re-sync with the network
-	respTxs := g.sl.L1Publisher().ExtractSecretResponses(block)
-	if len(respTxs) > 0 {
+	secretRespTxs, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(block)
+	if len(secretRespTxs) > 0 {
 		// new peers may have been granted access to the network, notify p2p service to refresh its peer list
 		go g.sl.P2P().RefreshPeerList()
 	}
 
-	rollupTxs := g.sl.L1Publisher().ExtractRollupTxs(block)
 	for _, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
@@ -455,6 +451,15 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 				g.logger.Error("Could not store rollup.", log.ErrKey, err)
 			}
 		}
+	}
+
+	if len(contractAddressTxs) > 0 {
+		go func() {
+			err := g.sl.L1Publisher().ResyncImportantContracts()
+			if err != nil {
+				g.logger.Error("Could not resync important contracts", log.ErrKey, err)
+			}
+		}()
 	}
 }
 

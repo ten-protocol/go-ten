@@ -9,9 +9,9 @@ import (
 
 func TestAddingAndGettingUserAccountManagers(t *testing.T) {
 	unauthedClient, _ := rpc.NewNetworkClient("ws://test")
-	userAccountManager := NewUserAccountManager(unauthedClient, log.New())
-	userID1 := "user1"
-	userID2 := "user2"
+	userAccountManager := NewUserAccountManager(unauthedClient, log.New(), nil, "ws://test")
+	userID1 := "4A6F686E20446F65"
+	userID2 := "7A65746F65A2676F"
 
 	// Test adding and getting account manager for userID1
 	userAccountManager.AddAndReturnAccountManager(userID1)
@@ -21,7 +21,6 @@ func TestAddingAndGettingUserAccountManagers(t *testing.T) {
 	}
 	// We should get error if we try to get Account manager for User2
 	_, err = userAccountManager.GetUserAccountManager(userID2)
-
 	if err == nil {
 		t.Fatal("expecting error when trying to get AccountManager for user that doesn't exist.")
 	}
@@ -51,7 +50,7 @@ func TestAddingAndGettingUserAccountManagers(t *testing.T) {
 
 func TestDeletingUserAccountManagers(t *testing.T) {
 	unauthedClient, _ := rpc.NewNetworkClient("ws://test")
-	userAccountManager := NewUserAccountManager(unauthedClient, log.New())
+	userAccountManager := NewUserAccountManager(unauthedClient, log.New(), nil, "")
 	userID := "user1"
 
 	// Add an account manager for the user

@@ -89,4 +89,5 @@ type ObscuroNetworkInfo struct {
 	L1StartHash               common.Hash
 	SequencerID               common.Address
 	MessageBusAddress         common.Address
+	ImportantContracts        map[string]common.Address // map of contract name to address
 }
