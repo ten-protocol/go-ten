@@ -1,8 +1,8 @@
-# Deploys Obscuro Scan on Azure for Testnet
-# Builds the Obscuro Scan image, pushes the image to dockerhub and starts the Obscuro Scan on Azure
+# Deploys Ten Scan on Azure for Testnet
+# Builds the Ten Scan image, pushes the image to dockerhub and starts the Ten Scan on Azure
 
-name: "[M] Deploy Obscuro Scan 3 Testnet"
-run-name: "[M] Deploy Obscuro Scan Testnet ( ${{ github.event.inputs.testnet_type }} )"
+name: "[M] Deploy Ten Scan 3 Testnet"
+run-name: "[M] Deploy Ten Scan Testnet ( ${{ github.event.inputs.testnet_type }} )"
 on:
   workflow_dispatch:
     inputs:
