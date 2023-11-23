@@ -144,6 +144,11 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 	signature[64] -= 27
 
 	vk.Signature = signature
+
+	err := w.storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
+	if err != nil {
+		return fmt.Errorf("error saving user: %s", common.DefaultUser)
+	}
 	// create an encrypted RPC client with the signed VK and register it with the enclave
 	// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
 	client, err := rpc.NewEncNetworkClient(w.hostAddr, vk, w.logger)
@@ -156,11 +161,6 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 	}
 
 	defaultAccountManager.AddClient(address, client)
-
-	err = w.storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
-	if err != nil {
-		return fmt.Errorf("error saving user: %s", common.DefaultUser)
-	}
 
 	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.Signature)
 	if err != nil {

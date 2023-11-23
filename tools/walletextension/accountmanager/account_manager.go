@@ -51,6 +51,18 @@ func NewAccountManager(unauthedClient rpc.Client, logger gethlog.Logger) *Accoun
 	}
 }
 
+// GetAllAddressesWithClients returns a list of addresses which already have clients (are in accountClients map)
+func (m *AccountManager) GetAllAddressesWithClients() []string {
+	m.accountsMutex.RLock()
+	defer m.accountsMutex.RUnlock()
+
+	addresses := make([]string, 0, len(m.accountClients))
+	for address := range m.accountClients {
+		addresses = append(addresses, address.Hex())
+	}
+	return addresses
+}
+
 // AddClient adds a client to the list of clients, keyed by account address.
 func (m *AccountManager) AddClient(address gethcommon.Address, client *rpc.EncRPCClient) {
 	m.accountsMutex.Lock()
