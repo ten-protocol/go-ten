@@ -37,17 +37,16 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 	unAuthedClient, err := rpc.NewNetworkClient(hostRPCBindAddr)
 	if err != nil {
 		logger.Crit("unable to create temporary client for request ", log.ErrKey, err)
+		os.Exit(1)
 	}
 
 	// start the database
 	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride)
 	if err != nil {
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
+		os.Exit(1)
 	}
 	userAccountManager := useraccountmanager.NewUserAccountManager(unAuthedClient, logger, databaseStorage, hostRPCBindAddr)
-
-	// Get all the data from the database and add all the clients for all users
-	// todo (@ziga) - implement lazy loading for clients to reduce number of connections and speed up loading
 
 	// add default user (when no UserID is provided in the query parameter - for WE endpoints)
 	userAccountManager.AddAndReturnAccountManager(hex.EncodeToString([]byte(wecommon.DefaultUser)))

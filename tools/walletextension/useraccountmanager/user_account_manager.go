@@ -63,12 +63,13 @@ func (m *UserAccountManager) GetUserAccountManager(userID string) (*accountmanag
 	}
 
 	// log that we don't have a storage, but still return existing userAccountManager
+	// this should never happen, but is useful for tests
 	if m.storage == nil {
 		m.logger.Error("storage is nil in UserAccountManager")
 		return userAccManager, nil
 	}
 
-	databseAccounts, err := m.storage.GetAccounts(userIDbytes)
+	databaseAccounts, err := m.storage.GetAccounts(userIDbytes)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +79,7 @@ func (m *UserAccountManager) GetUserAccountManager(userID string) (*accountmanag
 		return nil, err
 	}
 
-	for _, account := range databseAccounts {
+	for _, account := range databaseAccounts {
 		addressHexString := common.BytesToAddress(account.AccountAddress).Hex()
 		// check if a client for the current address already exists (and skip it if it does)
 		if addressAlreadyExists(addressHexString, addressesWithClients) {
