@@ -13,3 +13,5 @@ export const apiHost = process.env.NEXT_PUBLIC_API_HOST;
 
 export const currentEncryptedKey =
   "bddbc0d46a0666ce57a466168d99c1830b0c65e052d77188f2cbfc3f6486588c";
+
+export const GOOGLE_ANALYTICS_ID = "G-M82QX9RT4L";
