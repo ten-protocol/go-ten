@@ -6,12 +6,11 @@ import { ResponseDataInterface } from "@/src/types/interfaces";
 export const fetchRollups = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<any>> => {
-  const data = await httpRequest<ResponseDataInterface<any>>({
+  return await httpRequest<ResponseDataInterface<any>>({
     method: "get",
     url: pathToUrl(apiRoutes.getRollups),
     searchParams: payload,
   });
-  return data;
 };
 
 export const decryptEncryptedRollup = async ({
@@ -19,10 +18,9 @@ export const decryptEncryptedRollup = async ({
 }: {
   StrData: string;
 }): Promise<ResponseDataInterface<any>> => {
-  const data = await httpRequest<ResponseDataInterface<any>>({
+  return await httpRequest<ResponseDataInterface<any>>({
     method: "post",
     url: pathToUrl(apiRoutes.decryptEncryptedRollup),
     data: { StrData },
   });
-  return data;
 };

@@ -6,10 +6,9 @@ import { ResponseDataInterface } from "@/src/types/interfaces";
 export const fetchBlocks = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<any>> => {
-  const data = await httpRequest<ResponseDataInterface<any>>({
+  return await httpRequest<ResponseDataInterface<any>>({
     method: "get",
     url: pathToUrl(apiRoutes.getBlocks),
     searchParams: payload,
   });
-  return data;
 };

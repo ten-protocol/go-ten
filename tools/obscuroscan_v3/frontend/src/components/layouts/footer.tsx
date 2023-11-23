@@ -1,4 +1,4 @@
-import { socialLinks } from "@/src/lib/constants";
+import { socialLinks, version } from "@/src/lib/constants";
 import {
   GitHubLogoIcon,
   TwitterLogoIcon,
@@ -30,7 +30,7 @@ export default function Footer() {
           </a>
         </div>
         <div className="flex items-center space-x-4">
-          <a
+          {/* <a
             href="/privacy"
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
@@ -41,7 +41,10 @@ export default function Footer() {
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
             Terms
-          </a>
+          </a> */}
+          <div className="text-sm font-medium text-muted-foreground">
+            Version: {version}
+          </div>
         </div>
       </div>
     </div>

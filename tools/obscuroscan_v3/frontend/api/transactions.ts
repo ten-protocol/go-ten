@@ -11,26 +11,23 @@ import {
 export const fetchTransactions = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<TransactionResponse>> => {
-  const data = await httpRequest<ResponseDataInterface<TransactionResponse>>({
+  return await httpRequest<ResponseDataInterface<TransactionResponse>>({
     method: "get",
     url: pathToUrl(apiRoutes.getTransactions),
     searchParams: payload,
   });
-  return data;
 };
 
 export const fetchTransactionCount = async (): Promise<TransactionCount> => {
-  const data = await httpRequest<TransactionCount>({
+  return await httpRequest<TransactionCount>({
     method: "get",
     url: pathToUrl(apiRoutes.getTransactionCount),
   });
-  return data;
 };
 
 export const fetchEtherPrice = async (): Promise<Price> => {
-  const data = await httpRequest<Price>({
+  return await httpRequest<Price>({
     method: "get",
     url: apiRoutes.getEtherPrice,
   });
-  return data;
 };

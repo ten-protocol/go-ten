@@ -1,3 +1,4 @@
+import { apiHost } from "@/src/lib/constants";
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 
 type HttpMethod = "get" | "post" | "put" | "patch" | "delete";
@@ -21,11 +22,11 @@ interface HttpOptions {
 }
 
 const baseConfig: AxiosRequestConfig = {
-  baseURL: process.env.NEXT_PUBLIC_API_HOST,
+  baseURL: apiHost,
   timeout: 10000,
 };
 
-export const https: AxiosInstance = axios.create(baseConfig);
+const https: AxiosInstance = axios.create(baseConfig);
 
 export const httpRequest = async <ResponseData>(
   options: HttpOptions,
@@ -63,6 +64,27 @@ export const httpRequest = async <ResponseData>(
     responseType: responseType,
     ...config,
   };
-  const response = await https(httpConfig);
-  return response.data as ResponseData;
+  try {
+    const response = await https(httpConfig);
+    return response.data as ResponseData;
+  } catch (error) {
+    handleHttpError(error);
+    throw error;
+  }
+};
+
+// Centralized error handling function
+const handleHttpError = (error: any) => {
+  // if the error is a server error (status code 5xx) before handling
+  if (isAxiosError(error) && error.response && error.response.status >= 500) {
+    console.error("Server error:", error);
+  } else {
+    // other errors
+    console.error("An error occurred:", error);
+  }
+};
+
+// Type guard to check if the error is an AxiosError
+const isAxiosError = (error: any): error is import("axios").AxiosError => {
+  return error.isAxiosError === true;
 };

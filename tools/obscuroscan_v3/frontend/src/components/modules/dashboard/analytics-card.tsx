@@ -26,7 +26,9 @@ export default function AnalyticsCard({
             <Skeleton className="w-[100px] h-[20px] rounded-full" />
           )}
         </div>
-        <p className="text-xs text-muted-foreground">{item.change}</p>
+        {item.change && (
+          <p className="text-xs text-muted-foreground">{item.change}</p>
+        )}
       </CardContent>
     </Card>
   );

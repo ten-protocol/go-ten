@@ -11,31 +11,28 @@ import {
 export const fetchBatches = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<BatchResponse>> => {
-  const data = await httpRequest<ResponseDataInterface<BatchResponse>>({
+  return await httpRequest<ResponseDataInterface<BatchResponse>>({
     method: "get",
     url: pathToUrl(apiRoutes.getBatches),
     searchParams: payload,
   });
-  return data;
 };
 
 export const fetchLatestBatch = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<Batch>> => {
-  const data = await httpRequest<ResponseDataInterface<Batch>>({
+  return await httpRequest<ResponseDataInterface<Batch>>({
     method: "get",
     url: pathToUrl(apiRoutes.getLatestBatch),
     searchParams: payload,
   });
-  return data;
 };
 
 export const fetchBatchByHash = async (
   hash: string
 ): Promise<ResponseDataInterface<BatchDetails>> => {
-  const data = await httpRequest<ResponseDataInterface<BatchDetails>>({
+  return await httpRequest<ResponseDataInterface<BatchDetails>>({
     method: "get",
     url: pathToUrl(apiRoutes.getBatchByHash, { hash }),
   });
-  return data;
 };
