@@ -4,7 +4,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ethereum/go-ethereum"
 

@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
+	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
 
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/stretchr/testify/assert"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/tools/walletextension/accountmanager"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -18,9 +18,7 @@ import (
 const (
 	errFailedDecrypt = "could not decrypt bytes with viewing key"
 	dummyParams      = "dummyParams"
-	jsonKeyTopics    = "topics"
 	_hostWSPort      = integration.StartPortWalletExtensionUnitTest
-	_testOffset      = 100 // offset each test by a multiplier of the offset to avoid port colision. ie: 	hostPort := _hostWSPort + _testOffset*2
 )
 
 type testHelper struct {
@@ -41,14 +39,13 @@ func TestWalletExtension(t *testing.T) {
 		"canRegisterViewingKeyAndMakeRequestsOverWebsockets":          canRegisterViewingKeyAndMakeRequestsOverWebsockets,
 	} {
 		t.Run(name, func(t *testing.T) {
-			hostPort := _hostWSPort + i*_testOffset
-			dummyAPI, shutDownHost := createDummyHost(t, hostPort)
-			shutdownWallet := createWalExt(t, createWalExtCfg(hostPort, hostPort+1, hostPort+2))
+			dummyAPI, shutDownHost := createDummyHost(t, _hostWSPort)
+			shutdownWallet := createWalExt(t, createWalExtCfg(_hostWSPort, _hostWSPort+1, _hostWSPort+2))
 
 			h := &testHelper{
-				hostPort:       hostPort,
-				walletHTTPPort: hostPort + 1,
-				walletWSPort:   hostPort + 2,
+				hostPort:       _hostWSPort,
+				walletHTTPPort: _hostWSPort + 1,
+				walletWSPort:   _hostWSPort + 2,
 				hostAPI:        dummyAPI,
 			}
 
@@ -173,14 +170,13 @@ func canRegisterViewingKeyAndMakeRequestsOverWebsockets(t *testing.T, testHelper
 }
 
 func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
-	hostPort := _hostWSPort + _testOffset*7
-	walletHTTPPort := hostPort + 1
-	walletWSPort := hostPort + 2
+	walletHTTPPort := _hostWSPort + 1
+	walletWSPort := _hostWSPort + 2
 
-	_, shutdownHost := createDummyHost(t, hostPort)
+	_, shutdownHost := createDummyHost(t, _hostWSPort)
 	defer shutdownHost() //nolint: errcheck
 
-	shutdownWallet := createWalExt(t, createWalExtCfg(hostPort, walletHTTPPort, walletWSPort))
+	shutdownWallet := createWalExt(t, createWalExtCfg(_hostWSPort, walletHTTPPort, walletWSPort))
 	defer shutdownWallet() //nolint: errcheck
 
 	conn, err := openWSConn(walletWSPort)
@@ -202,13 +198,12 @@ func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
 }
 
 func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
-	hostPort := _hostWSPort + _testOffset*8
-	walletHTTPPort := hostPort + 1
-	walletWSPort := hostPort + 2
+	walletHTTPPort := _hostWSPort + 1
+	walletWSPort := _hostWSPort + 2
 
-	dummyAPI, shutdownHost := createDummyHost(t, hostPort)
+	dummyAPI, shutdownHost := createDummyHost(t, _hostWSPort)
 	defer shutdownHost() //nolint: errcheck
-	walExtCfg := createWalExtCfg(hostPort, walletHTTPPort, walletWSPort)
+	walExtCfg := createWalExtCfg(_hostWSPort, walletHTTPPort, walletWSPort)
 	shutdownWallet := createWalExt(t, walExtCfg)
 
 	addr, viewingKeyBytes, signature := simulateViewingKeyRegister(t, walletHTTPPort, walletWSPort, false)
@@ -278,13 +273,12 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 //}
 
 func TestGetStorageAtForReturningUserID(t *testing.T) {
-	hostPort := _hostWSPort + _testOffset*8
-	walletHTTPPort := hostPort + 1
-	walletWSPort := hostPort + 2
+	walletHTTPPort := _hostWSPort + 1
+	walletWSPort := _hostWSPort + 2
 
-	createDummyHost(t, hostPort)
-	walExtCfg := createWalExtCfg(hostPort, walletHTTPPort, walletWSPort)
-	createWalExtCfg(hostPort, walletHTTPPort, walletWSPort)
+	createDummyHost(t, _hostWSPort)
+	walExtCfg := createWalExtCfg(_hostWSPort, walletHTTPPort, walletWSPort)
+	createWalExtCfg(_hostWSPort, walletHTTPPort, walletWSPort)
 	createWalExt(t, walExtCfg)
 
 	// create userID

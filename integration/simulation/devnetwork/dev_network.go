@@ -7,22 +7,22 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
+	"github.com/ten-protocol/go-ten/integration/networktest/userwallet"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
 )
 
 var _defaultFaucetAmount = big.NewInt(750_000_000_000_000)
@@ -52,6 +52,10 @@ type InMemDevNetwork struct {
 
 	faucet     *userwallet.UserWallet
 	faucetLock sync.Mutex
+}
+
+func (s *InMemDevNetwork) GetMCOwnerWallet() (wallet.Wallet, error) {
+	return s.networkWallets.MCOwnerWallet, nil
 }
 
 func (s *InMemDevNetwork) ChainID() int64 {

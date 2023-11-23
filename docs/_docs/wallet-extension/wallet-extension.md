@@ -1,16 +1,16 @@
 ---
 ---
-# The Obscuro Wallet Extension
+# The Ten Wallet Extension
 
-The wallet extension is the Obscuro component that ensures that sensitive information in RPC requests between client
-applications and the Obscuro enclave, such as balances or transactions, cannot be seen by third parties. It
-achieves this goal without requiring any custom wallet software or application code changes. Private keys for Obscuro
+The wallet extension is the Ten component that ensures that sensitive information in RPC requests between client
+applications and the Ten enclave, such as balances or transactions, cannot be seen by third parties. It
+achieves this goal without requiring any custom wallet software or application code changes. Private keys for Ten
 addresses may be stored in [MetaMask](https://metamask.io/), for example, and the Wallet Extension will act as a bridge 
-between MetaMask and an Obscuro host without ever knowing your wallet's private keys itself.
+between MetaMask and an Ten host without ever knowing your wallet's private keys itself.
 
 The wallet extension performs two functions:
 
-* Encrypting outgoing RPC requests using the public key of the Obscuro enclave.
+* Encrypting outgoing RPC requests using the public key of the Ten enclave.
 * Decrypting incoming RPC responses for [privacy-sensitive requests](https://docs.obscu.ro/api/sensitive-apis/) (e.g. `eth_getBalance`, 
   `eth_call` and `eth_getTransactionReceipt`) using an address-specific _viewing key_.
 
@@ -22,7 +22,7 @@ to securely decrypt the incoming messages.
 The wallet extension should be run locally by the user, such that no sensitive data leaves the client's machine
 unencrypted. If the data is not particularly sensitive, it can also be run in another trusted location.
 
-This diagram shows how Wallet Extension fits into the Obscuro workflow as a bridge between standard ethereum ecosystem
+This diagram shows how Wallet Extension fits into the Ten workflow as a bridge between standard ethereum ecosystem
 tools.
 ![Diagram showing wallet extension as an RPC bridge for common Ethereum tooling](../../assets/images/RPC-Interfaces.png)
 
@@ -35,11 +35,11 @@ tools.
 
 ## Usage
 
-1. The wallet extension can be downloaded from the [Obscuro release page](https://github.com/obscuronet/go-obscuro/releases) 
+1. The wallet extension can be downloaded from the [Ten release page](https://github.com/ten-protocol/go-ten/releases) 
    where the binary is built for the Linux, MacOS and Windows platforms. Download the binary for the latest release and 
    rename to `wallet_extension`. Note that on MacOS the binary has not been signed and notarised yet - see 
    [apple support](https://support.apple.com/en-gb/HT202491) for steps to over-write this. The binary can be compiled by
-   cloning the [Obscuro repository](https://github.com/obscuronet/go-obscuro) and running the following command from the 
+   cloning the [Ten repository](https://github.com/ten-protocol/go-ten) and running the following command from the 
    root of the repository:
 
    ```
@@ -54,9 +54,9 @@ tools.
 
    * `port` (default: `3000`): The local port on which to serve the wallet extension.
    * `portWS` (default: `3001`): The local port on which to handle websocket requests.
-   * `nodeHost` (default: `erpc.sepolia-testnet.obscu.ro`): The Obscuro node for the RPC connection.
-   * `nodePortHTTP` (default: `80`): The Obscuro node's HTTP RPC port.
-   * `nodePortWS` (default: `81`): The Obscuro node's websockets RPC port.
+   * `nodeHost` (default: `erpc.sepolia-testnet.obscu.ro`): The Ten node for the RPC connection.
+   * `nodePortHTTP` (default: `80`): The Ten node's HTTP RPC port.
+   * `nodePortWS` (default: `81`): The Ten node's websockets RPC port.
    * `logPath` (default: `wallet_extension_logs.txt`): The path for the wallet extension's logs.
    * `databasePath` (default: `~/.obscuro/getway_database`): The path to use for the wallet extension's 
       database. 
@@ -64,7 +64,7 @@ tools.
    The wallet extension is now listening on the specified host and port. For the remainder of this document, we'll 
    assume that the default ports of `3000` and `3001` were selected.
 
-3. Sign in to MetaMask and add the Obscuro Testnet network following the instructions [here](https://docs.obscu.ro/wallet-extension/configure-metamask).
+3. Sign in to MetaMask and add the Ten Testnet network following the instructions [here](https://docs.obscu.ro/wallet-extension/configure-metamask).
 
 4. At this stage, no viewing key has been set up. The enclave will refuse to respond to sensitive RPC requests such 
    as `eth_getBalance`, `eth_call` and `eth_getTransactionReceipt`. As a result, your balance in MetaMask will not be 
@@ -79,4 +79,4 @@ tools.
 
 # Auditing the source
 
-The source code for the wallet extension can be found [here](https://github.com/obscuronet/go-obscuro/tree/main/tools/walletextension).
+The source code for the wallet extension can be found [here](https://github.com/ten-protocol/go-ten/tree/main/tools/walletextension).

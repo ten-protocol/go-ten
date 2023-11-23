@@ -4,22 +4,25 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/wallet"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
+	"github.com/ten-protocol/go-ten/integration/networktest/userwallet"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
-	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/ten-protocol/go-ten/integration"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest"
 )
 
 var _defaultFaucetAmount = big.NewInt(750_000_000_000_000)
@@ -123,4 +126,8 @@ func (t *testnetConnector) AllocateFaucetFundsWithWallet(ctx context.Context, ac
 		return fmt.Errorf("faucet transaction receipt status not successful - %v", receipt.Status)
 	}
 	return nil
+}
+
+func (t *testnetConnector) GetMCOwnerWallet() (wallet.Wallet, error) {
+	return nil, errors.New("testnet connector environments cannot access the MC owner wallet")
 }

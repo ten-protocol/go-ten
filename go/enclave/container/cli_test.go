@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/ten-protocol/go-ten/go/config"
 )
 
 const (

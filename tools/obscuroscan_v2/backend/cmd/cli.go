@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/config"
+	"github.com/ten-protocol/go-ten/tools/obscuroscan_v2/backend/config"
 )
 
 func parseCLIArgs() *config.Config {

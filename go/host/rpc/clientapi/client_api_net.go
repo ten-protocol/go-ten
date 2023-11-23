@@ -3,7 +3,7 @@ package clientapi
 import (
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/ten-protocol/go-ten/go/common/host"
 )
 
 // NetworkAPI implements a subset of the Ethereum network JSON RPC operations.

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -31,6 +31,11 @@ type L1RespondSecretTx struct {
 	AttesterID  gethcommon.Address
 	AttesterSig []byte
 	HostAddress string
+}
+
+type L1SetImportantContractsTx struct {
+	Key        string
+	NewAddress gethcommon.Address
 }
 
 // Sign signs the payload with a given private key

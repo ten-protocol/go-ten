@@ -10,26 +10,25 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/common/compression"
+	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
+	"github.com/ten-protocol/go-ten/go/enclave/gas"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/txpool"
+	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/gas"
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/components"
+	"github.com/ten-protocol/go-ten/go/enclave/nodetype"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
+	"github.com/ten-protocol/go-ten/go/enclave/l2chain"
+	"github.com/ten-protocol/go-ten/go/responses"
 
-	"github.com/obscuronet/go-obscuro/go/common/compression"
+	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/components"
-	"github.com/obscuronet/go-obscuro/go/enclave/nodetype"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
-	"github.com/obscuronet/go-obscuro/go/responses"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -38,25 +37,24 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/gethapi"
-	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/profiler"
-	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
-	"github.com/obscuronet/go-obscuro/go/common/syserr"
-	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
-	"github.com/obscuronet/go-obscuro/go/enclave/events"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/gethapi"
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/profiler"
+	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
+	"github.com/ten-protocol/go-ten/go/common/syserr"
+	"github.com/ten-protocol/go-ten/go/common/tracers"
+	"github.com/ten-protocol/go-ten/go/config"
+	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
+	"github.com/ten-protocol/go-ten/go/enclave/debugger"
+	"github.com/ten-protocol/go-ten/go/enclave/events"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
-	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/enclave/rpc"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
-	_ "github.com/obscuronet/go-obscuro/go/common/tracers/native" // make sure the tracers are loaded
+	_ "github.com/ten-protocol/go-ten/go/common/tracers/native" // make sure the tracers are loaded
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
@@ -127,29 +125,9 @@ func NewEnclave(
 		}
 	}
 
-	zeroTimestamp := uint64(0)
 	// Initialise the database
-	chainConfig := params.ChainConfig{
-		ChainID:             big.NewInt(config.ObscuroChainID),
-		HomesteadBlock:      gethcommon.Big0,
-		DAOForkBlock:        gethcommon.Big0,
-		EIP150Block:         gethcommon.Big0,
-		EIP155Block:         gethcommon.Big0,
-		EIP158Block:         gethcommon.Big0,
-		ByzantiumBlock:      gethcommon.Big0,
-		ConstantinopleBlock: gethcommon.Big0,
-		PetersburgBlock:     gethcommon.Big0,
-		IstanbulBlock:       gethcommon.Big0,
-		MuirGlacierBlock:    gethcommon.Big0,
-		BerlinBlock:         gethcommon.Big0,
-		LondonBlock:         gethcommon.Big0,
-
-		CancunTime:   &zeroTimestamp,
-		ShanghaiTime: &zeroTimestamp,
-		PragueTime:   &zeroTimestamp,
-		VerkleTime:   &zeroTimestamp,
-	}
-	storage := storage.NewStorageFromConfig(config, &chainConfig, logger)
+	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.ObscuroChainID))
+	storage := storage.NewStorageFromConfig(config, chainConfig, logger)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
 	// todo (#1056) - valid block
@@ -200,24 +178,28 @@ func NewEnclave(
 	dataEncryptionService := crypto.NewDataEncryptionService(logger)
 	dataCompressionService := compression.NewBrotliDataCompressionService()
 
-	memp := mempool.New(config.ObscuroChainID, logger)
-
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, &chainConfig, logger)
+	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, chainConfig, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	registry := components.NewBatchRegistry(storage, logger)
 	rProducer := components.NewRollupProducer(config.SequencerID, storage, registry, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
-	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, &chainConfig, logger)
+	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, chainConfig, logger)
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, storage, logger)
+
+	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, logger)
+	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice)
+	if err != nil {
+		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
+	}
 
 	var service nodetype.NodeType
 	if config.NodeType == common.Sequencer {
@@ -230,9 +212,9 @@ func NewEnclave(
 			rollupCompression,
 			logger,
 			config.HostID,
-			&chainConfig,
+			chainConfig,
 			enclaveKey,
-			memp,
+			mempool,
 			storage,
 			dataEncryptionService,
 			dataCompressionService,
@@ -243,14 +225,15 @@ func NewEnclave(
 				BatchGasLimit:     config.GasLimit,
 				BaseFee:           config.BaseFee,
 			},
+			blockchain,
 		)
 	} else {
-		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, &chainConfig, config.SequencerID, storage, sigVerifier, logger)
+		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, config.SequencerID, storage, sigVerifier, logger)
 	}
 
 	chain := l2chain.NewChain(
 		storage,
-		&chainConfig,
+		chainConfig,
 		genesis,
 		logger,
 		registry,
@@ -263,7 +246,7 @@ func NewEnclave(
 	}
 
 	// TODO ensure debug is allowed/disallowed
-	debug := debugger.New(chain, storage, &chainConfig)
+	debug := debugger.New(chain, storage, chainConfig)
 
 	logger.Info("Enclave service created with following config", log.CfgKey, config.HostID)
 	return &enclaveImpl{

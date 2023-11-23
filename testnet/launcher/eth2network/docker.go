@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/go-obscuro/go/common/docker"
-	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/sanity-io/litter"
+	"github.com/ten-protocol/go-ten/go/common/docker"
+	"github.com/ten-protocol/go-ten/go/common/retry"
 )
 
 type Eth2Network struct {

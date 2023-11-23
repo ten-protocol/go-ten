@@ -1,12 +1,12 @@
 # Tech decisions
 
-This document lists the frameworks and tooling used by Obscuro.
+This document lists the frameworks and tooling used by Ten.
 
 The purpose of this list is to avoid the proliferation of different frameworks and tooling with the same general 
-purpose, as this increases the developer overhead when extending Obscuro.
+purpose, as this increases the developer overhead when extending Ten.
 
 The introduction of a new framework or tool should be discussed with the team, even if the usage sits outside the 
-`go-obscuro` repo.
+`go-ten` repo.
 
 ## Deployment
 

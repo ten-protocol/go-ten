@@ -7,11 +7,11 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
+	hostcommon "github.com/ten-protocol/go-ten/go/common/host"
 )
 
 // ObsClient provides access to general Obscuro functionality that doesn't require viewing keys.

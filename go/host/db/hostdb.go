@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/ten-protocol/go-ten/go/config"
 
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/ethdb/leveldb"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethmetrics "github.com/ethereum/go-ethereum/metrics"
-	"github.com/obscuronet/go-obscuro/go/common/gethdb"
+	"github.com/ten-protocol/go-ten/go/common/gethdb"
 )
 
 // Schema keys, in alphabetical order.

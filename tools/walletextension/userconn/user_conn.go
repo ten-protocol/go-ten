@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -39,6 +40,7 @@ type userConnWS struct {
 	isClosed bool
 	logger   gethlog.Logger
 	req      *http.Request
+	mu       sync.Mutex
 }
 
 func NewUserConnHTTP(resp http.ResponseWriter, req *http.Request, logger gethlog.Logger) UserConn {
@@ -106,6 +108,9 @@ func (w *userConnWS) ReadRequest() ([]byte, error) {
 }
 
 func (w *userConnWS) WriteResponse(msg []byte) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	err := w.conn.WriteMessage(websocket.TextMessage, msg)
 	if err != nil {
 		if websocket.IsCloseError(err) || strings.Contains(string(msg), "EOF") {

@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/naoina/toml"
 
-	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/ten-protocol/go-ten/go/config"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

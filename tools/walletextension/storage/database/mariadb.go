@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	_ "github.com/go-sql-driver/mysql" // Importing MariaDB driver
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 type MariaDB struct {

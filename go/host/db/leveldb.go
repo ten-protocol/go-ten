@@ -5,8 +5,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/ethdb"
 	ethldb "github.com/ethereum/go-ethereum/ethdb/leveldb"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
 // ObscuroLevelDB is a very thin wrapper around a level DB database for compatibility with our internal interfaces

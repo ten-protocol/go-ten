@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/common/retry"
 
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
 	"golang.org/x/sync/errgroup"
 )
 

@@ -8,20 +8,20 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
-	contractdeployer "github.com/obscuronet/go-obscuro/tools/hardhatdeployer"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/go/enclave/genesis"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/integration/simulation/stats"
+	contractdeployer "github.com/ten-protocol/go-ten/tools/hardhatdeployer"
 
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
 )
 
 const (
@@ -33,7 +33,6 @@ const (
 	erc20ParamThree               = "1000000000000000000"
 	testLogs                      = "../.build/noderunner/"
 	receiptTimeout                = 30 * time.Second // The time to wait for a receipt for a transaction.
-	_portOffset                   = 1000
 )
 
 func init() { //nolint:gochecknoinits
@@ -82,7 +81,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 }
 
 func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
-	startPort := integration.StartPortContractDeployerTest + _portOffset
+	startPort := integration.StartPortContractDeployerTest
 	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
 	createObscuroNetwork(t, startPort)
 

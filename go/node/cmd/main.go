@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/obscuronet/go-obscuro/go/node"
+	"github.com/ten-protocol/go-ten/go/node"
 )
 
 func main() {

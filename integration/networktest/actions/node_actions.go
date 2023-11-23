@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/retry"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
+	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/integration/networktest"
 )
 
 func StartValidatorEnclave(validatorIdx int) networktest.Action {

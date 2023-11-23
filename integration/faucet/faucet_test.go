@@ -12,17 +12,18 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-	"github.com/obscuronet/go-obscuro/tools/faucet/container"
-	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/tools/faucet/container"
+	"github.com/ten-protocol/go-ten/tools/faucet/faucet"
 )
 
 func init() { //nolint:gochecknoinits
@@ -62,25 +63,25 @@ func TestFaucet(t *testing.T) {
 	assert.NoError(t, err)
 
 	initialFaucetBal, err := getFaucetBalance(faucetConfig.ServerPort)
-	assert.NoError(t, err)
-	assert.NotZero(t, initialFaucetBal)
+	require.NoError(t, err)
+	require.NotZero(t, initialFaucetBal)
 
 	rndWallet := datagenerator.RandomWallet(integration.ObscuroChainID)
 	err = fundWallet(faucetConfig.ServerPort, rndWallet)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	obsClient, err := obsclient.DialWithAuth(fmt.Sprintf("http://%s:%d", network.Localhost, startPort+integration.DefaultHostRPCHTTPOffset), rndWallet, testlog.Logger())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	currentBalance, err := obsClient.BalanceAt(context.Background(), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	if currentBalance.Cmp(big.NewInt(0)) <= 0 {
 		t.Fatalf("Unexpected balance, got: %d, expected > 0", currentBalance.Int64())
 	}
 
 	endFaucetBal, err := getFaucetBalance(faucetConfig.ServerPort)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotZero(t, endFaucetBal)
 	// faucet balance should have decreased
 	assert.Less(t, endFaucetBal.Cmp(initialFaucetBal), 0)
@@ -110,7 +111,7 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 }
 
 func fundWallet(port int, w wallet.Wallet) error {
-	url := fmt.Sprintf("http://localhost:%d/fund/eth", port)
+	url := fmt.Sprintf("http://localhost:%d/auth/fund/eth", port)
 	method := "POST"
 
 	payload := strings.NewReader(fmt.Sprintf(`{"address":"%s"}`, w.Address()))
@@ -121,6 +122,7 @@ func fundWallet(port int, w wallet.Wallet) error {
 		return err
 	}
 	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.xDOI1Cc30Zuj7VYKiRTqB2VntEKpZ5SkJW1heSsvzFw")
 
 	res, err := client.Do(req)
 	if err != nil {

@@ -4,12 +4,12 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/responses"
+	"github.com/ten-protocol/go-ten/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
 // service names - these are the keys used to register known services with the host
@@ -101,10 +101,8 @@ type L1Publisher interface {
 	InitializeSecret(attestation *common.AttestationReport, encSecret common.EncryptedSharedEnclaveSecret) error
 	// RequestSecret will send a management contract transaction to request a secret from the enclave, returning the L1 head at time of sending
 	RequestSecret(report *common.AttestationReport) (gethcommon.Hash, error)
-	// ExtractSecretResponses will return all secret response tx from an L1 block
-	ExtractSecretResponses(block *types.Block) []*ethadapter.L1RespondSecretTx
-	// ExtractRollupTxs will return all rollup txs from an L1 block
-	ExtractRollupTxs(block *types.Block) []*ethadapter.L1RollupTx
+	// ExtractObscuroRelevantTransactions will return all Obscuro relevant tx from an L1 block
+	ExtractObscuroRelevantTransactions(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx)
 	// PublishRollup will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
 	// todo (#1624) - With a single sequencer, it is problematic if rollup publication fails; handle this case better
 	PublishRollup(producedRollup *common.ExtRollup)
@@ -114,6 +112,11 @@ type L1Publisher interface {
 	FetchLatestPeersList() ([]string, error)
 
 	FetchLatestSeqNo() (*big.Int, error)
+
+	// GetImportantContracts returns a (cached) record of addresses of the important network contracts
+	GetImportantContracts() map[string]gethcommon.Address
+	// ResyncImportantContracts will fetch the latest important contracts from the management contract, update the cache
+	ResyncImportantContracts() error
 }
 
 // L2BatchRepository provides an interface for the host to request L2 batch data (live-streaming and historical)

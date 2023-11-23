@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/responses"
-	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/ten-protocol/go-ten/go/responses"
+	"github.com/ten-protocol/go-ten/go/rpc"
 )
 
 // These tests use a mocked RPC client, they test any transformations of the Go objects -> RPC params, as well as any
