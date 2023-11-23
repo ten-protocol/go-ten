@@ -154,7 +154,7 @@
   }
 
   .prose a {
-    @apply text-accent;
+    @apply text-accent-foreground;
   }
 }
 

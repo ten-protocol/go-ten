@@ -107,7 +107,7 @@
     {
       "heading": "15. CONTACT INFORMATION",
       "content": [
-        "If you have any questions about the Website or these Terms, please contact us at <a href=\"mailto:{companyInfo.email}\">{companyInfo.email}</a>"
+        "If you have any questions about the Website or these Terms, please contact us at <a href='mailto:siteMetadata.email'>siteMetadata.email</a>"
       ]
     }
   ]

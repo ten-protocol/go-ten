@@ -1,6 +1,7 @@
 import Layout from "@/src/components/layouts/default-layout";
 import Spinner from "@/src/components/ui/spinner";
 import { useToast } from "@/src/components/ui/use-toast";
+import { siteMetadata } from "@/src/lib/siteMetadata";
 import { useRouter } from "next/router";
 import React from "react";
 
@@ -26,7 +27,22 @@ const Document = () => {
     try {
       const response = await fetch(`/docs/${id}.json`);
       const data = await response.json();
-      setDocument(data);
+      const processedData = {
+        title: data.title,
+        subHeading: data.subHeading,
+        content: data.content.map((item: any) => {
+          return {
+            heading: item.heading,
+            content: item.content.map((paragraph: any) => {
+              return paragraph.replace(
+                /siteMetadata.email/g,
+                siteMetadata.email
+              );
+            }),
+          };
+        }),
+      };
+      setDocument(processedData);
     } catch (error) {
       toast({
         variant: "destructive",
