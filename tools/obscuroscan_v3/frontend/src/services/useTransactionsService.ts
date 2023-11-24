@@ -9,8 +9,10 @@ import { useEffect, useState } from "react";
 import { pollingInterval, pricePollingInterval } from "../lib/constants";
 import { PersonalTransactionsResponse } from "../types/interfaces/TransactionInterfaces";
 import { useToast } from "@/src/components/ui/use-toast";
+import { useRouter } from "next/router";
 
 export const useTransactionsService = () => {
+  const router = useRouter();
   const { toast } = useToast();
   const { walletAddress, provider } = useWalletConnection();
 
@@ -23,7 +25,30 @@ export const useTransactionsService = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walletAddress]);
 
-  const { data: transactions, isLoading: isTransactionsLoading } = useQuery({
+  const [options, setOptions] = useState({
+    offset: 0,
+    limit: 10,
+  });
+
+  const [noPolling, setNoPolling] = useState(false);
+
+  const updateQueryParams = (query: any) => {
+    console.log(
+      "🚀 ~ file: useBatchesService.ts:15 ~ updateQueryParams ~ query:",
+      query
+    );
+    // setOptions({
+    //   offset: newOffset,
+    //   limit: newSize,
+    // });
+    // refetchBatches;
+  };
+
+  const {
+    data: transactions,
+    isLoading: isTransactionsLoading,
+    refetch,
+  } = useQuery({
     queryKey: ["transactions"],
     queryFn: () => fetchTransactions(),
     refetchInterval: pollingInterval,
@@ -70,6 +95,7 @@ export const useTransactionsService = () => {
 
   return {
     transactions,
+    updateTransactionQueryParams: updateQueryParams,
     isTransactionsLoading,
     transactionCount,
     isTransactionCountLoading,

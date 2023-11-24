@@ -11,7 +11,14 @@ export const metadata: Metadata = {
 };
 
 export default function Batches() {
-  const { batches } = useBatchesService();
+  const { batches, refetchBatches, setNoPolling, updateQueryParams } =
+    useBatchesService();
+  const { BatchesData, Total } = batches?.result || {};
+
+  React.useEffect(() => {
+    setNoPolling(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Layout>
@@ -19,11 +26,18 @@ export default function Batches() {
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
-            <p className="text-muted-foreground">A table of Batches.</p>
+            <p className="text-sm text-muted-foreground">
+              {Total} Batches found.
+            </p>
           </div>
         </div>
-        {batches?.result?.BatchesData ? (
-          <DataTable columns={columns} data={batches?.result?.BatchesData} />
+        {BatchesData ? (
+          <DataTable
+            columns={columns}
+            data={BatchesData}
+            refetch={refetchBatches}
+            updateQueryParams={updateQueryParams}
+          />
         ) : (
           <p>Loading...</p>
         )}

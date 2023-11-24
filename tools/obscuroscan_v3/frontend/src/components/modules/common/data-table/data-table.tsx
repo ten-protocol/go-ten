@@ -26,6 +26,7 @@ import {
 } from "@/src/components/ui/table";
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
+import { useRouter } from "next/router";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -35,12 +36,16 @@ interface DataTableProps<TData, TValue> {
     title: string;
     options: { label: string; value: string }[];
   }[];
+  updateQueryParams?: (query: any) => void;
+  refetch?: () => void;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   toolbar,
+  updateQueryParams,
+  refetch,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
@@ -72,9 +77,43 @@ export function DataTable<TData, TValue>({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
+  const { query, push, pathname } = useRouter();
+
+  const queryParams = React.useMemo(() => {
+    if (query) {
+      const { pageIndex, pageSize } = table.getState().pagination;
+      const { sorting } = table.getState();
+
+      return {
+        ...query,
+        page: pageIndex + 1,
+        limit: pageSize,
+        sort: sorting.map((sort) => `${sort.id}:${sort.desc ? "desc" : "asc"}`),
+      };
+    }
+    return null;
+  }, [table, query]);
+
+  React.useEffect(() => {
+    if (queryParams) {
+      if (updateQueryParams) {
+        updateQueryParams(queryParams);
+      }
+
+      push(
+        {
+          pathname: pathname,
+          query: queryParams,
+        },
+        undefined,
+        { shallow: true }
+      );
+    }
+  }, [queryParams, push, pathname, updateQueryParams]);
+
   return (
     <div className="space-y-4">
-      <DataTableToolbar table={table} toolbar={toolbar} />
+      <DataTableToolbar table={table} toolbar={toolbar} refetch={refetch} />
       <div className="rounded-md border">
         <Table>
           <TableHeader>
