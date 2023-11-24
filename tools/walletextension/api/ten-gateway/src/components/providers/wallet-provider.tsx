@@ -51,12 +51,12 @@ export const WalletConnectionProvider = ({
         await displayCorrectScreenBasedOnMetamaskAndUserID();
       }
     };
-
     ethereum.on("accountsChanged", handleAccountsChanged);
 
     return () => {
       ethereum.removeListener("accountsChanged", handleAccountsChanged);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -64,6 +64,7 @@ export const WalletConnectionProvider = ({
       await checkIfMetamaskIsLoaded();
     };
     initialize();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkIfMetamaskIsLoaded = async () => {
@@ -93,7 +94,6 @@ export const WalletConnectionProvider = ({
 
   const getUserID = async () => {
     if (!provider) {
-      console.log("no provider");
       return null;
     }
 
@@ -120,21 +120,13 @@ export const WalletConnectionProvider = ({
   };
 
   const displayCorrectScreenBasedOnMetamaskAndUserID = async () => {
-    const userID = await getUserID();
-    setUserID(userID);
     setVersion(await fetchVersion());
 
     if (await isTenChain()) {
+      const userID = await getUserID();
+      setUserID(userID);
       if (provider && userID && isValidUserIDFormat(userID)) {
-        const accounts = await provider.listAccounts();
-        const formattedAccounts = await Promise.all(
-          accounts.map(async (account) => ({
-            name: account,
-            connected: await accountIsAuthenticated(userID, account),
-          }))
-        );
-        setAccounts(formattedAccounts);
-        setWalletConnected(true); // Set walletConnected after all async operations
+        await getAccounts();
       } else {
         setWalletConnected(false);
       }
@@ -155,7 +147,56 @@ export const WalletConnectionProvider = ({
       return;
     }
 
-    await revokeAccountsApi(userID);
+    const revokeResponse = await revokeAccountsApi(userID);
+    if (revokeResponse === "success") {
+      toast({
+        variant: "success",
+        description: "Successfully revoked all accounts.",
+      });
+      setAccounts(null);
+      setWalletConnected(false);
+    }
+  };
+
+  const getAccounts = async () => {
+    if (!provider) {
+      toast({
+        variant: "destructive",
+        description: "No provider found. Please try again later.",
+      });
+      return;
+    }
+
+    toast({ variant: "info", description: "Getting accounts..." });
+    if (!(await isTenChain())) {
+      toast({
+        variant: "warning",
+        description: "Please connect to the Ten chain.",
+      });
+      return;
+    }
+    const accounts = await provider.listAccounts();
+
+    if (accounts.length === 0) {
+      toast({
+        variant: "destructive",
+        description: "No MetaMask accounts found.",
+      });
+      return;
+    }
+
+    const user = await getUserID();
+    setUserID(user);
+
+    setAccounts(
+      await Promise.all(
+        accounts.map(async (account) => ({
+          name: account,
+          connected: await accountIsAuthenticated(user, account),
+        }))
+      )
+    );
+    setWalletConnected(true);
   };
 
   const walletConnectionContextValue: WalletConnectionContextType = {
@@ -167,6 +208,7 @@ export const WalletConnectionProvider = ({
     provider,
     version,
     revokeAccounts,
+    getAccounts,
   };
 
   return (

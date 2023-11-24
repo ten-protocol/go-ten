@@ -38,3 +38,9 @@ export const metamaskPersonalSign = "personal_sign";
 
 export const tenChainIDHex = "0x" + tenChainIDDecimal.toString(16); // Convert to hexadecimal and prefix with '0x'
 export const METAMASK_CONNECTION_TIMEOUT = 3000;
+
+export const nativeCurrency = {
+  name: "Sepolia Ether",
+  symbol: "ETH",
+  decimals: 18,
+};

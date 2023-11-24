@@ -10,3 +10,9 @@ export const apiRoutes = {
   revoke: `/${tenGatewayVersion}/revoke/`,
   version: `/version/`,
 };
+
+export const requestMethods = {
+  connectAccounts: "eth_requestAccounts",
+  switchNetwork: "wallet_switchEthereumChain",
+  addNetwork: "wallet_addEthereumChain",
+};

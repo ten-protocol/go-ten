@@ -1,4 +1,4 @@
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import useGatewayService from "@/services/useGatewayService";
 import { Terminal, Badge } from "lucide-react";
 import React from "react";
