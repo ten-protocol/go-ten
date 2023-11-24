@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/rpc"
@@ -50,6 +52,16 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 
 	// add default user (when no UserID is provided in the query parameter - for WE endpoints)
 	userAccountManager.AddAndReturnAccountManager(hex.EncodeToString([]byte(wecommon.DefaultUser)))
+
+	// add default user to the database (temporary fix before removing wallet extension endpoints)
+	accountPrivateKey, err := crypto.GenerateKey()
+	if err != nil {
+		logger.Error("Unable to generate hey pair for default user", log.ErrKey, err)
+	}
+	err = databaseStorage.AddUser([]byte(wecommon.DefaultUser), crypto.FromECDSA(accountPrivateKey))
+	if err != nil {
+		logger.Error("Unable to save default user to the database", log.ErrKey, err)
+	}
 
 	// get all users and their private keys from the database
 	allUsers, err := databaseStorage.GetAllUsers()
