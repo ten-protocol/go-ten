@@ -56,11 +56,12 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 	// add default user to the database (temporary fix before removing wallet extension endpoints)
 	accountPrivateKey, err := crypto.GenerateKey()
 	if err != nil {
-		logger.Error("Unable to generate hey pair for default user", log.ErrKey, err)
+		logger.Error("Unable to generate key pair for default user", log.ErrKey, err)
 	}
 	err = databaseStorage.AddUser([]byte(wecommon.DefaultUser), crypto.FromECDSA(accountPrivateKey))
 	if err != nil {
 		logger.Error("Unable to save default user to the database", log.ErrKey, err)
+		os.Exit(1)
 	}
 
 	// get all users and their private keys from the database
