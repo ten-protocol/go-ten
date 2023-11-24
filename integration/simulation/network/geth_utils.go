@@ -108,6 +108,12 @@ func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.
 		return nil, fmt.Errorf("failed to instantiate management contract. Cause: %w", err)
 	}
 
+	opts := bind.NewKeyedTransactor(wallets.MCOwnerWallet.PrivateKey())
+	_, err = managementContract.Initialize(opts)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to initialize management contract!")
+	}
+
 	l1BusAddress, err := managementContract.MessageBus(&bind.CallOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch MessageBus address. Cause: %w", err)
