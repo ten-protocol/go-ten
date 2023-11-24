@@ -12,6 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         deployments, 
         getNamedAccounts
     } = hre;
+    const mgmtContractAddress = process.env.MGMT_CONTRACT_ADDRESS!!
 
     // L2 address of a prefunded deployer account to be used in smart contracts
     const accountsL2 = await getNamedAccounts();
@@ -26,6 +27,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         args: [ messengerL1.address ],
         log: true,
     });
+
+    // get management contract and write the L1 bridge address to it
+    const mgmtContract = (await hre.ethers.getContractFactory('ManagementContract')).attach(mgmtContractAddress)
+    const tx = await mgmtContract.SetImportantContractAddress("L1Bridge", layer1BridgeDeployment.address);
+    const receipt = await tx.wait();
+    if (receipt.status !== 1) {
+        console.log("Failed to set L1BridgeAddress in management contract");
+    }
+    console.log(`L1BridgeAddress=${layer1BridgeDeployment.address}`)
 
     // We get the Cross chain messenger deployment on the layer 2 network.
     const messengerL2 = await deployments.get("CrossChainMessenger");

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
@@ -26,6 +27,11 @@ type Publisher struct {
 	hostWallet      wallet.Wallet // Wallet used to issue ethereum transactions
 	ethClient       ethadapter.EthClient
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
+
+	// cached map of important contract addresses (updated when we see a SetImportantContractsTx)
+	importantContractAddresses map[string]gethcommon.Address
+	// lock for the important contract addresses map
+	importantAddressesMutex sync.RWMutex
 
 	repository host.L1BlockRepository
 	logger     gethlog.Logger
@@ -57,10 +63,20 @@ func NewL1Publisher(
 		logger:                    logger,
 		maxWaitForL1Receipt:       maxWaitForL1Receipt,
 		retryIntervalForL1Receipt: retryIntervalForL1Receipt,
+
+		importantContractAddresses: map[string]gethcommon.Address{},
+		importantAddressesMutex:    sync.RWMutex{},
 	}
 }
 
 func (p *Publisher) Start() error {
+	go func() {
+		// Do an initial read of important contract addresses when service starts up
+		err := p.ResyncImportantContracts()
+		if err != nil {
+			p.logger.Error("Could not load important contract addresses", log.ErrKey, err)
+		}
+	}()
 	return nil
 }
 
@@ -145,8 +161,12 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 	return nil
 }
 
-func (p *Publisher) ExtractSecretResponses(block *types.Block) []*ethadapter.L1RespondSecretTx {
+// ExtractObscuroRelevantTransactions will extract any transactions from the block that are relevant to obscuro
+// todo (#2495) we should monitor for relevant L1 events instead of scanning every transaction in the block
+func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
 	var secretRespTxs []*ethadapter.L1RespondSecretTx
+	var rollupTxs []*ethadapter.L1RollupTx
+	var contractAddressTxs []*ethadapter.L1SetImportantContractsTx
 	for _, tx := range block.Transactions() {
 		t := p.mgmtContractLib.DecodeTx(tx)
 		if t == nil {
@@ -154,23 +174,18 @@ func (p *Publisher) ExtractSecretResponses(block *types.Block) []*ethadapter.L1R
 		}
 		if scrtTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
 			secretRespTxs = append(secretRespTxs, scrtTx)
-		}
-	}
-	return secretRespTxs
-}
-
-func (p *Publisher) ExtractRollupTxs(block *types.Block) []*ethadapter.L1RollupTx {
-	var rollupTxs []*ethadapter.L1RollupTx
-	for _, tx := range block.Transactions() {
-		t := p.mgmtContractLib.DecodeTx(tx)
-		if t == nil {
 			continue
 		}
 		if rollupTx, ok := t.(*ethadapter.L1RollupTx); ok {
 			rollupTxs = append(rollupTxs, rollupTx)
+			continue
+		}
+		if contractAddressTx, ok := t.(*ethadapter.L1SetImportantContractsTx); ok {
+			contractAddressTxs = append(contractAddressTxs, contractAddressTx)
+			continue
 		}
 	}
-	return rollupTxs
+	return secretRespTxs, rollupTxs, contractAddressTxs
 }
 
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
@@ -208,7 +223,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 }
 
 func (p *Publisher) FetchLatestPeersList() ([]string, error) {
-	msg, err := p.mgmtContractLib.GetHostAddresses()
+	msg, err := p.mgmtContractLib.GetHostAddressesMsg()
 	if err != nil {
 		return nil, err
 	}
@@ -216,11 +231,10 @@ func (p *Publisher) FetchLatestPeersList() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	decodedResponse, err := p.mgmtContractLib.DecodeCallResponse(response)
+	hostAddresses, err := p.mgmtContractLib.DecodeHostAddressesResponse(response)
 	if err != nil {
 		return nil, err
 	}
-	hostAddresses := decodedResponse[0]
 
 	// We remove any duplicate addresses and our own address from the retrieved peer list
 	var filteredHostAddresses []string
@@ -237,6 +251,55 @@ func (p *Publisher) FetchLatestPeersList() ([]string, error) {
 	}
 
 	return filteredHostAddresses, nil
+}
+
+func (p *Publisher) GetImportantContracts() map[string]gethcommon.Address {
+	p.importantAddressesMutex.RLock()
+	defer p.importantAddressesMutex.RUnlock()
+	return p.importantContractAddresses
+}
+
+// ResyncImportantContracts will fetch the latest important contracts from the management contract and update the cached map
+// Note: this should be run in a goroutine as it makes L1 transactions in series and will block.
+// Cache is not overwritten until it completes.
+func (p *Publisher) ResyncImportantContracts() error {
+	getKeysCallMsg, err := p.mgmtContractLib.GetImportantContractKeysMsg()
+	if err != nil {
+		return fmt.Errorf("could not build callMsg for important contracts: %w", err)
+	}
+	keysResp, err := p.ethClient.CallContract(getKeysCallMsg)
+	if err != nil {
+		return fmt.Errorf("could not fetch important contracts: %w", err)
+	}
+
+	importantContracts, err := p.mgmtContractLib.DecodeImportantContractKeysResponse(keysResp)
+	if err != nil {
+		return fmt.Errorf("could not decode important contracts resp: %w", err)
+	}
+
+	contractsMap := make(map[string]gethcommon.Address)
+
+	for _, contract := range importantContracts {
+		getAddressCallMsg, err := p.mgmtContractLib.GetImportantAddressCallMsg(contract)
+		if err != nil {
+			return fmt.Errorf("could not build callMsg for important contract=%s: %w", contract, err)
+		}
+		addrResp, err := p.ethClient.CallContract(getAddressCallMsg)
+		if err != nil {
+			return fmt.Errorf("could not fetch important contract=%s: %w", contract, err)
+		}
+		contractAddress, err := p.mgmtContractLib.DecodeImportantAddressResponse(addrResp)
+		if err != nil {
+			return fmt.Errorf("could not decode important contract=%s resp: %w", contract, err)
+		}
+		contractsMap[contract] = contractAddress
+	}
+
+	p.importantAddressesMutex.Lock()
+	defer p.importantAddressesMutex.Unlock()
+	p.importantContractAddresses = contractsMap
+
+	return nil
 }
 
 // publishTransaction will keep trying unless the L1 seems to be unavailable or the tx is otherwise rejected

@@ -111,7 +111,7 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 }
 
 func fundWallet(port int, w wallet.Wallet) error {
-	url := fmt.Sprintf("http://localhost:%d/fund/eth", port)
+	url := fmt.Sprintf("http://localhost:%d/auth/fund/eth", port)
 	method := "POST"
 
 	payload := strings.NewReader(fmt.Sprintf(`{"address":"%s"}`, w.Address()))
@@ -122,6 +122,7 @@ func fundWallet(port int, w wallet.Wallet) error {
 		return err
 	}
 	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.xDOI1Cc30Zuj7VYKiRTqB2VntEKpZ5SkJW1heSsvzFw")
 
 	res, err := client.Do(req)
 	if err != nil {

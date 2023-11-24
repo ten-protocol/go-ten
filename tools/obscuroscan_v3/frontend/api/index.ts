@@ -1,50 +1,56 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
+import { apiHost } from "@/src/lib/constants";
+import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 
-type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete'
+type HttpMethod = "get" | "post" | "put" | "patch" | "delete";
 
 interface HttpOptions {
-  method?: HttpMethod
-  url: string
-  data?: Record<string, any>
-  params?: Record<string, any>
-  headers?: Record<string, any>
-  timeout?: number
-  responseType?: 'json' | 'arraybuffer' | 'blob' | 'document' | 'text' | undefined
-  download?: boolean
-  searchParams?: Record<string, any>
+  method?: HttpMethod;
+  url: string;
+  data?: Record<string, any>;
+  params?: Record<string, any>;
+  headers?: Record<string, any>;
+  timeout?: number;
+  responseType?:
+    | "json"
+    | "arraybuffer"
+    | "blob"
+    | "document"
+    | "text"
+    | undefined;
+  download?: boolean;
+  searchParams?: Record<string, any>;
 }
 
 const baseConfig: AxiosRequestConfig = {
-  // baseURL: process.env.BASE_URL,
-  baseURL: 'http://127.0.0.1:43910',
-  timeout: 10000
-}
+  baseURL: apiHost,
+  timeout: 10000,
+};
 
-export const https: AxiosInstance = axios.create(baseConfig)
+const https: AxiosInstance = axios.create(baseConfig);
 
 export const httpRequest = async <ResponseData>(
   options: HttpOptions,
   config: AxiosRequestConfig = {}
 ): Promise<ResponseData> => {
   const {
-    method = 'get',
+    method = "get",
     url,
     data,
     params,
     headers,
     timeout,
     responseType,
-    searchParams
-  } = options
-  let query = ''
+    searchParams,
+  } = options;
+  let query = "";
   if (searchParams) {
     const filteredParams = Object.fromEntries(
       Object.entries(searchParams).filter(
-        ([, value]) => value !== undefined && value !== null && value !== ''
+        ([, value]) => value !== undefined && value !== null && value !== ""
       )
-    )
+    );
     if (Object.keys(filteredParams).length) {
-      query = new URLSearchParams(filteredParams).toString()
+      query = new URLSearchParams(filteredParams).toString();
     }
   }
 
@@ -56,8 +62,29 @@ export const httpRequest = async <ResponseData>(
     headers: { ...(headers || {}) },
     timeout,
     responseType: responseType,
-    ...config
+    ...config,
+  };
+  try {
+    const response = await https(httpConfig);
+    return response.data as ResponseData;
+  } catch (error) {
+    handleHttpError(error);
+    throw error;
   }
-  const response = await https(httpConfig)
-  return response.data as ResponseData
-}
+};
+
+// Centralized error handling function
+const handleHttpError = (error: any) => {
+  // if the error is a server error (status code 5xx) before handling
+  if (isAxiosError(error) && error.response && error.response.status >= 500) {
+    console.error("Server error:", error);
+  } else {
+    // other errors
+    console.error("An error occurred:", error);
+  }
+};
+
+// Type guard to check if the error is an AxiosError
+const isAxiosError = (error: any): error is import("axios").AxiosError => {
+  return error.isAxiosError === true;
+};

@@ -27,6 +27,8 @@ import { useBlocksService } from "@/src/services/useBlocksService";
 import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
 import { cn } from "@/src/lib/utils";
+import { Badge } from "../../ui/badge";
+import { BlocksIcon } from "lucide-react";
 
 export default function Dashboard() {
   const { price, transactions, transactionCount } = useTransactionsService();
@@ -44,7 +46,7 @@ export default function Dashboard() {
     },
     {
       title: "Latest L2 Batch",
-      value: batches?.result?.Total,
+      value: batches?.result?.Total || "N/A",
       // TODO: add change
       // change: "+20.1%",
       icon: LayersIcon,
@@ -78,6 +80,11 @@ export default function Dashboard() {
       // change: "+20.1%",
       icon: FileTextIcon,
     },
+    {
+      title: "Nodes",
+      value: <Badge>Coming Soon</Badge>,
+      icon: BlocksIcon,
+    },
   ];
 
   const RECENT_DATA = [
@@ -107,7 +114,7 @@ export default function Dashboard() {
   return (
     <div className="h-full flex-1 flex-col space-y-8 md:flex">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Obscuroscan</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Tenscan</h2>
       </div>
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-4">
         {DASHBOARD_DATA.map((item: any, index) => (

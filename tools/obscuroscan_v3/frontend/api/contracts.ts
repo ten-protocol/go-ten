@@ -7,21 +7,19 @@ import { ContractCount } from "@/src/types/interfaces/ContractInterface";
 export const fetchContractCount = async (
   payload?: Record<string, any>
 ): Promise<ContractCount> => {
-  const data = await httpRequest<ContractCount>({
+  return await httpRequest<ContractCount>({
     method: "get",
     url: pathToUrl(apiRoutes.getContractCount),
     searchParams: payload,
   });
-  return data;
 };
 
 export const fetchVerifiedContracts = async (
   payload?: Record<string, any>
 ): Promise<ResponseDataInterface<any>> => {
-  const data = await httpRequest<ResponseDataInterface<any>>({
+  return await httpRequest<ResponseDataInterface<any>>({
     method: "get",
     url: pathToUrl(apiRoutes.getVerifiedContracts),
     searchParams: payload,
   });
-  return data;
 };
