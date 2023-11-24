@@ -2,11 +2,11 @@ package walletextension
 
 import (
 	"bytes"
-	"crypto/ecdsa"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/big"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/config"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 
@@ -35,6 +35,7 @@ type WalletExtension struct {
 	logger             gethlog.Logger
 	stopControl        *stopcontrol.StopControl
 	version            string
+	config             *config.Config
 }
 
 func New(
@@ -44,6 +45,7 @@ func New(
 	stopControl *stopcontrol.StopControl,
 	version string,
 	logger gethlog.Logger,
+	config *config.Config,
 ) *WalletExtension {
 	return &WalletExtension{
 		hostAddr:           hostAddr,
@@ -53,6 +55,7 @@ func New(
 		logger:             logger,
 		stopControl:        stopControl,
 		version:            version,
+		config:             config,
 	}
 }
 
@@ -188,7 +191,7 @@ func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
 	}
 
 	// create UserID and store it in the database with the private key
-	userID := common.CalculateUserID(common.PrivateKeyToCompressedPubKey(viewingPrivateKeyEcies))
+	userID := viewingkey.CalculateUserID(common.PrivateKeyToCompressedPubKey(viewingPrivateKeyEcies))
 	err = w.storage.AddUser(userID, crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
 	if err != nil {
 		w.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))
@@ -202,28 +205,13 @@ func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
 	return hexUserID, nil
 }
 
-// AddAddressToUser checks if message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
-func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, signature []byte) error {
-	// parse the message to get userID and account address
-	messageUserID, messageAddressHex, err := common.GetUserIDAndAddressFromMessage(message)
-	if err != nil {
-		w.Logger().Error(fmt.Errorf("submitted message (%s) is not in the correct format", message).Error())
-		return err
-	}
-
-	// check if userID corresponds to the one in the message and check if the length of hex encoded userID is correct
-	if hexUserID != messageUserID || len(messageUserID) != common.MessageUserIDLen {
-		w.Logger().Error(fmt.Errorf("submitted message (%s) is not in the correct format", message).Error())
-		return errors.New("userID from message does not match userID from request")
-	}
-
-	addressFromMessage := gethcommon.HexToAddress(messageAddressHex)
-
-	// check if message was signed by the correct address and if signature is valid
-	valid, err := verifySignature(message, signature, addressFromMessage)
+// AddAddressToUser checks if a message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
+func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, signature []byte) error {
+	addressFromMessage := gethcommon.HexToAddress(address)
+	// check if a message was signed by the correct address and if the signature is valid
+	valid, err := viewingkey.VerifySignatureEIP712(hexUserID, &addressFromMessage, signature, int64(w.config.TenChainID))
 	if !valid && err != nil {
-		w.Logger().Error(fmt.Errorf("error: signature is not valid: %s", string(signature)).Error())
-		return err
+		return fmt.Errorf("signature is not valid: %w", err)
 	}
 
 	// register the account for that viewing key
@@ -326,44 +314,6 @@ func (w *WalletExtension) UserExists(hexUserID string) bool {
 	}
 
 	return len(key) > 0
-}
-
-// verifySignature checks if a message was signed by the correct address and if signature is valid
-func verifySignature(message string, signature []byte, address gethcommon.Address) (bool, error) {
-	// prefix the message like in the personal_sign method
-	prefixedMessage := fmt.Sprintf(common.PersonalSignMessagePrefix, len(message), message)
-	messageHash := crypto.Keccak256([]byte(prefixedMessage))
-
-	// check if the signature length is correct
-	if len(signature) != common.SignatureLen {
-		return false, errors.New("incorrect signature length")
-	}
-
-	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
-	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-	signature[64] -= 27
-
-	addressFromSignature, pubKeyFromSignature, err := common.GetAddressAndPubKeyFromSignature(messageHash, signature)
-	if err != nil {
-		return false, err
-	}
-
-	if !bytes.Equal(addressFromSignature.Bytes(), address.Bytes()) {
-		return false, errors.New("address from signature not the same as expected")
-	}
-
-	// Split signature into r, s
-	r := new(big.Int).SetBytes(signature[:32])
-	s := new(big.Int).SetBytes(signature[32:64])
-
-	// Verify the signature
-	isValid := ecdsa.Verify(pubKeyFromSignature, messageHash, r, s)
-
-	if !isValid {
-		return false, errors.New("signature is not valid")
-	}
-
-	return true, nil
 }
 
 func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {

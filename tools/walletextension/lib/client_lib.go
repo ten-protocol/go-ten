@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ten-protocol/go-ten/integration"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/valyala/fasthttp"
 )
 
@@ -44,17 +46,19 @@ func (o *OGLib) Join() error {
 
 func (o *OGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	message := fmt.Sprintf("Register %s for %s", o.userID, strings.ToLower(addr.Hex()))
-	prefixedMessage := fmt.Sprintf(common.PersonalSignMessagePrefix, len(message), message)
+	rawMessage, err := viewingkey.GenerateAuthenticationEIP712RawData(string(o.userID), integration.ObscuroChainID)
+	if err != nil {
+		return err
+	}
 
-	messageHash := crypto.Keccak256([]byte(prefixedMessage))
+	messageHash := crypto.Keccak256(rawMessage)
 	sig, err := crypto.Sign(messageHash, pk)
 	if err != nil {
 		return fmt.Errorf("failed to sign message: %w", err)
 	}
 	sig[64] += 27
 	signature := "0x" + hex.EncodeToString(sig)
-	payload := fmt.Sprintf("{\"signature\": \"%s\", \"message\": \"%s\"}", signature, message)
+	payload := fmt.Sprintf("{\"signature\": \"%s\", \"address\": \"%s\"}", signature, addr.Hex())
 
 	// issue the registration message
 	req, err := http.NewRequestWithContext(
@@ -76,9 +80,12 @@ func (o *OGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 	}
 
 	defer response.Body.Close()
-	_, err = io.ReadAll(response.Body)
+	r, err := io.ReadAll(response.Body)
 	if err != nil {
 		return fmt.Errorf("unable to read response - %w", err)
+	}
+	if string(r) != "success" {
+		return fmt.Errorf("expected success, got %s", string(r))
 	}
 	return nil
 }

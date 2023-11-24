@@ -40,7 +40,7 @@ const (
 	UserQueryParameter                  = "u"
 	AddressQueryParameter               = "a"
 	MessageFormatRegex                  = `^Register\s(\w+)\sfor\s(\w+)$`
-	MessageUserIDLen                    = 64
+	MessageUserIDLen                    = 40
 	SignatureLen                        = 65
 	EthereumAddressLen                  = 42
 	PersonalSignMessagePrefix           = "\x19Ethereum Signed Message:\n%d%s"

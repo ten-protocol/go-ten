@@ -180,7 +180,7 @@ func NewEnclave(
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
-	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
+	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, config.ObscuroChainID, logger)
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
@@ -491,7 +491,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(&viewingKeyAddress, paramList[0])
+	vkHandler, err := createVKHandler(&viewingKeyAddress, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -629,7 +629,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(apiArgs.From, paramList[0])
+	vkHandler, err := createVKHandler(apiArgs.From, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -689,7 +689,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	address := gethcommon.HexToAddress(addressStr)
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(&address, paramList[0])
+	vkHandler, err := createVKHandler(&address, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -748,7 +748,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(&viewingKeyAddress, paramList[0])
+	vkHandler, err := createVKHandler(&viewingKeyAddress, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -803,7 +803,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(&sender, paramList[0])
+	vkHandler, err := createVKHandler(&sender, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		e.logger.Trace("error getting the vk ", "txHash", txHash, log.ErrKey, err)
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
@@ -920,7 +920,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(encryptAddress, paramList[0])
+	vkHandler, err := createVKHandler(encryptAddress, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -1015,7 +1015,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(callMsg.From, paramList[0])
+	vkHandler, err := createVKHandler(callMsg.From, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -1069,7 +1069,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(forAddress, paramList[0])
+	vkHandler, err := createVKHandler(forAddress, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -1333,7 +1333,7 @@ func (e *enclaveImpl) GetCustomQuery(encryptedParams common.EncryptedParamsGetSt
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(&privateCustomQuery.Address, paramList[0])
+	vkHandler, err := createVKHandler(&privateCustomQuery.Address, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -1593,13 +1593,13 @@ func replayBatchesToValidState(storage storage.Storage, registry components.Batc
 	return nil
 }
 
-func createVKHandler(address *gethcommon.Address, vkIntf interface{}) (*vkhandler.VKHandler, error) {
+func createVKHandler(address *gethcommon.Address, vkIntf interface{}, chainID int64) (*vkhandler.VKHandler, error) {
 	vkPubKeyHexBytes, accountSignatureHexBytes, err := gethencoding.ExtractViewingKey(vkIntf)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode viewing key - %w", err)
 	}
 
-	encryptor, err := vkhandler.New(address, vkPubKeyHexBytes, accountSignatureHexBytes)
+	encryptor, err := vkhandler.New(address, vkPubKeyHexBytes, accountSignatureHexBytes, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create vk encryption for request - %w", err)
 	}
