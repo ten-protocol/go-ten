@@ -5,16 +5,17 @@ type Option = func(c *Config)
 
 // Config holds the properties that configure the package
 type Config struct {
-	l1HTTPURL           string
-	l1privateKey        string
-	l2Port              int
-	l2Host              string
-	l2PrivateKey        string
-	hocPKString         string
-	pocPKString         string
-	messageBusAddress   string
-	dockerImage         string
-	faucetPrefundAmount string
+	l1HTTPURL                 string
+	l1privateKey              string
+	l2Port                    int
+	l2Host                    string
+	l2PrivateKey              string
+	hocPKString               string
+	pocPKString               string
+	managementContractAddress string
+	messageBusAddress         string
+	dockerImage               string
+	faucetPrefundAmount       string
 }
 
 func NewContractDeployerConfig(opts ...Option) *Config {
@@ -50,6 +51,12 @@ func WithL2WSPort(i int) Option {
 func WithL2Host(s string) Option {
 	return func(c *Config) {
 		c.l2Host = s
+	}
+}
+
+func WithManagementContractAddress(s string) Option {
+	return func(c *Config) {
+		c.managementContractAddress = s
 	}
 }
 
