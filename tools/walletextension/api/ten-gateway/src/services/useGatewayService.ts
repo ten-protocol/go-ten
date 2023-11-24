@@ -38,6 +38,10 @@ const useGatewayService = () => {
   };
 
   const connectToTenTestnet = async () => {
+    console.log(
+      "🚀 ~ file: useGatewayService.ts:43 ~ connectToTenTestnet ~ userID:",
+      userID
+    );
     if (await isTenChain()) {
       if (!userID || !isValidUserIDFormat(userID)) {
         return toast({
@@ -45,34 +49,34 @@ const useGatewayService = () => {
             "Existing Ten network detected in MetaMask. Please remove before hitting begin",
         });
       }
+    }
 
-      const switched = await switchToTenNetwork();
-      const rpcUrls = [`${getRPCFromUrl()}/${tenGatewayVersion}/?u=${userID}`];
+    const switched = await switchToTenNetwork();
+    const rpcUrls = [`${getRPCFromUrl()}/${tenGatewayVersion}/?u=${userID}`];
 
-      if (
-        switched === SWITCHED_CODE ||
-        (userID && !isValidUserIDFormat(userID))
-      ) {
-        const user = await joinTestnet();
-        setUserID(user);
-        await addNetworkToMetaMask(rpcUrls);
-      }
+    if (
+      switched === SWITCHED_CODE ||
+      (userID && !isValidUserIDFormat(userID))
+    ) {
+      const user = await joinTestnet();
+      setUserID(user);
+      await addNetworkToMetaMask(rpcUrls);
+    }
 
-      if (!(await isMetamaskConnected())) {
-        toast({ description: "No accounts found, connecting..." });
-        await connectAccounts();
-      }
-      toast({ description: "Connected to Ten Network" });
-      if (!provider) {
-        return;
-      }
-      toast({ description: "Getting accounts..." });
-      const accounts = await provider.listAccounts();
-      if (accounts.length === 0) {
-        toast({ description: "No accounts found" });
-        toast({ description: "No MetaMask accounts found." });
-        return;
-      }
+    if (!(await isMetamaskConnected())) {
+      toast({ description: "No accounts found, connecting..." });
+      await connectAccounts();
+    }
+    toast({ description: "Connected to Ten Network" });
+    if (!provider) {
+      return;
+    }
+    toast({ description: "Getting accounts..." });
+    const accounts = await provider.listAccounts();
+    if (accounts.length === 0) {
+      toast({ description: "No accounts found" });
+      toast({ description: "No MetaMask accounts found." });
+      return;
     }
   };
 
