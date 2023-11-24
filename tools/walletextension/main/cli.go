@@ -51,6 +51,10 @@ const (
 	dbConnectionURLFlagName    = "dbConnectionURL"
 	dbConnectionURLFlagDefault = ""
 	dbConnectionURLFlagUsage   = "If dbType is set to mariaDB, this must be set. ex: obscurouser:password@tcp(127.0.0.1:3306)/ogdb"
+
+	tenChainIDName      = "tenChainID"
+	tenChainIDDefault   = 443
+	tenChainIDFlagUsage = "ChainID of Ten network that the gateway is communicating with"
 )
 
 func parseCLIArgs() config.Config {
@@ -65,6 +69,7 @@ func parseCLIArgs() config.Config {
 	verboseFlag := flag.Bool(verboseFlagName, verboseFlagDefault, verboseFlagUsage)
 	dbType := flag.String(dbTypeFlagName, dbTypeFlagDefault, dbTypeFlagUsage)
 	dbConnectionURL := flag.String(dbConnectionURLFlagName, dbConnectionURLFlagDefault, dbConnectionURLFlagUsage)
+	tenChainID := flag.Int(tenChainIDName, tenChainIDDefault, tenChainIDFlagUsage)
 	flag.Parse()
 
 	return config.Config{
@@ -78,5 +83,6 @@ func parseCLIArgs() config.Config {
 		VerboseFlag:             *verboseFlag,
 		DBType:                  *dbType,
 		DBConnectionURL:         *dbConnectionURL,
+		TenChainID:              *tenChainID,
 	}
 }

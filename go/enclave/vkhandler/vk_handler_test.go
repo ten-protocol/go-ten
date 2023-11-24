@@ -10,6 +10,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 )
 
+const chainID = 443
+
 func TestVKHandler(t *testing.T) {
 	// generate user private Key
 	userPrivKey, err := crypto.GenerateKey()
@@ -24,19 +26,26 @@ func TestVKHandler(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
+	userID := viewingkey.CalculateUserIDHex(vkPubKeyBytes)
+	WEMessageFormatTestHash := accounts.TextHash([]byte(viewingkey.GenerateSignMessage(vkPubKeyBytes)))
+	EIP712MessageData, err := viewingkey.GenerateAuthenticationEIP712RawData(userID, chainID)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	EIP712MessageFormatTestHash := crypto.Keccak256(EIP712MessageData)
 
-	tests := map[string]string{
-		"WEMessageFormatTest": viewingkey.GenerateSignMessage(vkPubKeyBytes),
-		"OGMessageFormatTest": viewingkey.GenerateSignMessageOG(vkPubKeyBytes, &userAddr),
+	tests := map[string][]byte{
+		"WEMessageFormatTest":     WEMessageFormatTestHash,
+		"EIP712MessageFormatTest": EIP712MessageFormatTestHash,
 	}
 
-	for testName, msgToSign := range tests {
+	for testName, msgHashToSign := range tests {
 		t.Run(testName, func(t *testing.T) {
-			signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), userPrivKey)
+			signature, err := crypto.Sign(msgHashToSign, userPrivKey)
 			assert.NoError(t, err)
 
 			// Create a new vk Handler
-			_, err = New(&userAddr, vkPubKeyBytes, signature)
+			_, err = New(&userAddr, vkPubKeyBytes, signature, chainID)
 			assert.NoError(t, err)
 		})
 	}
@@ -56,25 +65,32 @@ func TestSignAndCheckSignature(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
+	userID := viewingkey.CalculateUserIDHex(vkPubKeyBytes)
+	WEMessageFormatTestHash := accounts.TextHash([]byte(viewingkey.GenerateSignMessage(vkPubKeyBytes)))
+	EIP712MessageData, err := viewingkey.GenerateAuthenticationEIP712RawData(userID, chainID)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	EIP712MessageFormatTestHash := crypto.Keccak256(EIP712MessageData)
 
-	tests := map[string]string{
-		"WEMessageFormatTest": viewingkey.GenerateSignMessage(vkPubKeyBytes),
-		"OGMessageFormatTest": viewingkey.GenerateSignMessageOG(vkPubKeyBytes, &userAddr),
+	tests := map[string][]byte{
+		"WEMessageFormatTest":     WEMessageFormatTestHash,
+		"EIP712MessageFormatTest": EIP712MessageFormatTestHash,
 	}
 
-	for testName, msgToSign := range tests {
+	for testName, msgHashToSign := range tests {
 		t.Run(testName, func(t *testing.T) {
 			// sign the message
-			signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), userPrivKey)
+			signature, err := crypto.Sign(msgHashToSign, userPrivKey)
 			assert.NoError(t, err)
 
 			// Recover the key based on the signed message and the signature.
-			recoveredAccountPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), signature)
+			recoveredAccountPublicKey, err := crypto.SigToPub(msgHashToSign, signature)
 			assert.NoError(t, err)
 			recoveredAccountAddress := crypto.PubkeyToAddress(*recoveredAccountPublicKey)
 
 			if recoveredAccountAddress.Hex() != userAddr.Hex() {
-				t.Errorf("unable to recover user address from signature")
+				t.Fatalf("Expected user address %s, got %s", userAddr.Hex(), recoveredAccountAddress.Hex())
 			}
 
 			_, err = crypto.DecompressPubkey(vkPubKeyBytes)
