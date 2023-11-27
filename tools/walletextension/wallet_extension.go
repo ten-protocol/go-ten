@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/accountmanager"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/config"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -336,6 +338,15 @@ func (w *WalletExtension) getStorageAtInterceptor(request *common.RPCRequest, he
 		if err != nil {
 			w.logger.Warn("GetStorageAt called with appropriate parameters to return userID, but not found in the database: ", "userId", hexUserID)
 			return nil
+		}
+
+		// check if we have default user (we don't want to send userID of it out)
+		if hexUserID == hex.EncodeToString([]byte(common.DefaultUser)) {
+			response := map[string]interface{}{}
+			response[common.JSONKeyRPCVersion] = jsonrpc.Version
+			response[common.JSONKeyID] = request.ID
+			response[common.JSONKeyResult] = fmt.Sprintf(accountmanager.ErrNoViewingKey, "eth_getStorageAt")
+			return response
 		}
 
 		_, err = w.storage.GetUserPrivateKey(userID)
