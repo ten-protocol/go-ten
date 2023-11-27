@@ -3,6 +3,8 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "./ICrossChainMessenger.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+
 
 // CrossChainMessenger is the contract that provides the context for contracts
 // that inherit CrossChainEnabledObscuro. It allows to deliver messages using relayMessage.
@@ -14,7 +16,7 @@ import "./ICrossChainMessenger.sol";
 // from whom the messages are coming from.
 // Notice that this Messenger has no restrictions on who can relay messages, nor does it have any understanding of fees.
 // You can opt in to deploy a customer messenger for your cross chain dApp with more specialized logic.
-contract CrossChainMessenger is ICrossChainMessenger {
+contract CrossChainMessenger is ICrossChainMessenger, Initializable {
     error CallFailed(bytes error);
 
     IMessageBus messageBusContract;
@@ -23,7 +25,7 @@ contract CrossChainMessenger is ICrossChainMessenger {
 
 
     //todo - make only once
-    function initialize(address messageBusAddr) external {
+    function initialize(address messageBusAddr) external initializer {
         messageBusContract = IMessageBus(messageBusAddr);
         crossChainSender =  address(0x0);
     }

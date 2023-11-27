@@ -16,6 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Use the contract addresses from the management contract deployment.
     const mgmtContractAddress = process.env.MGMT_CONTRACT_ADDRESS!!
     const messageBusAddress : string = process.env.MESSAGE_BUS_ADDRESS!!
+    console.log(`Management Contract address ${mgmtContractAddress}`);
     console.log(`Message Bus address ${messageBusAddress}`);
 
     // Setup the cross chain messenger and point it to the message bus from the management contract to be used for validation

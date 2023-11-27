@@ -4,6 +4,7 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 import "../IBridge.sol";
 import "../ITokenFactory.sol";
@@ -31,7 +32,7 @@ contract EthereumBridge is
     function initialize(
         address messenger,
         address remoteBridge
-    ) public {
+    ) public initializer {
         CrossChainEnabledObscuro.configure(messenger);
         remoteBridgeAddress = remoteBridge;
     }
