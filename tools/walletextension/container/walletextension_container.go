@@ -60,12 +60,14 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 	accountPrivateKey, err := crypto.GenerateKey()
 	if err != nil {
 		logger.Error("Unable to generate key pair for default user", log.ErrKey, err)
+		os.Exit(1)
 	}
 
 	// get all users and their private keys from the database
 	allUsers, err := databaseStorage.GetAllUsers()
 	if err != nil {
 		logger.Error(fmt.Errorf("error getting all users from database, %w", err).Error())
+		os.Exit(1)
 	}
 
 	// iterate over users create accountManagers and add all defaultUserAccounts to them per user
@@ -79,11 +81,13 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 			accounts, err := databaseStorage.GetAccounts(user.UserID)
 			if err != nil {
 				logger.Error(fmt.Errorf("error getting accounts for user: %s, %w", hex.EncodeToString(user.UserID), err).Error())
+				os.Exit(1)
 			}
 			for _, account := range accounts {
 				encClient, err := wecommon.CreateEncClient(hostRPCBindAddr, account.AccountAddress, user.PrivateKey, account.Signature, logger)
 				if err != nil {
 					logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
+					os.Exit(1)
 				}
 
 				// add a client to default user
