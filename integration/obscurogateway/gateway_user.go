@@ -16,11 +16,11 @@ type GatewayUser struct {
 	Wallets    []wallet.Wallet
 	HTTPClient *ethclient.Client
 	WSClient   *ethclient.Client
-	ogClient   *lib.OGLib
+	tgClient   *lib.TGLib
 }
 
 func NewUser(wallets []wallet.Wallet, serverAddressHTTP string, serverAddressWS string) (*GatewayUser, error) {
-	ogClient := lib.NewObscuroGatewayLibrary(serverAddressHTTP, serverAddressWS)
+	ogClient := lib.NewTenGatewayLibrary(serverAddressHTTP, serverAddressWS)
 
 	// automatically join
 	err := ogClient.Join()
@@ -29,11 +29,11 @@ func NewUser(wallets []wallet.Wallet, serverAddressHTTP string, serverAddressWS 
 	}
 
 	// create clients
-	httpClient, err := ethclient.Dial(serverAddressHTTP + "/v1/" + "?u=" + ogClient.UserID())
+	httpClient, err := ethclient.Dial(serverAddressHTTP + "/v1/" + "?token=" + ogClient.UserID())
 	if err != nil {
 		return nil, err
 	}
-	wsClient, err := ethclient.Dial(serverAddressWS + "/v1/" + "?u=" + ogClient.UserID())
+	wsClient, err := ethclient.Dial(serverAddressWS + "/v1/" + "?token=" + ogClient.UserID())
 	if err != nil {
 		return nil, err
 	}
@@ -42,17 +42,17 @@ func NewUser(wallets []wallet.Wallet, serverAddressHTTP string, serverAddressWS 
 		Wallets:    wallets,
 		HTTPClient: httpClient,
 		WSClient:   wsClient,
-		ogClient:   ogClient,
+		tgClient:   ogClient,
 	}, nil
 }
 
 func (u GatewayUser) RegisterAccounts() error {
 	for _, w := range u.Wallets {
-		err := u.ogClient.RegisterAccount(w.PrivateKey(), w.Address())
+		err := u.tgClient.RegisterAccount(w.PrivateKey(), w.Address())
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Successfully registered address %s for user: %s.\n", w.Address().Hex(), u.ogClient.UserID())
+		fmt.Printf("Successfully registered address %s for user: %s.\n", w.Address().Hex(), u.tgClient.UserID())
 	}
 
 	return nil

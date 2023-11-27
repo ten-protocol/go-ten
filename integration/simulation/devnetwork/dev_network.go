@@ -59,7 +59,7 @@ func (s *InMemDevNetwork) GetMCOwnerWallet() (wallet.Wallet, error) {
 }
 
 func (s *InMemDevNetwork) ChainID() int64 {
-	return integration.ObscuroChainID
+	return integration.TenChainID
 }
 
 func (s *InMemDevNetwork) FaucetWallet() wallet.Wallet {

@@ -38,7 +38,7 @@ type ObscuroConfig struct {
 // DefaultDevNetwork provides an off-the-shelf default config for a sim network
 func DefaultDevNetwork() *InMemDevNetwork {
 	numNodes := 4 // Default sim currently uses 4 L1 nodes. Obscuro nodes: 1 seq, 3 validators
-	networkWallets := params.NewSimWallets(0, numNodes, integration.EthereumChainID, integration.ObscuroChainID)
+	networkWallets := params.NewSimWallets(0, numNodes, integration.EthereumChainID, integration.TenChainID)
 	l1Config := &L1Config{
 		PortStart:        integration.StartPortSimulationFullNetwork,
 		NumNodes:         4,
@@ -71,7 +71,7 @@ func LiveL1DevNetwork(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet,
 	if err != nil {
 		panic("could not initialise L2 faucet private key")
 	}
-	l2FaucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), l2FaucetPrivKey, testlog.Logger())
+	l2FaucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.TenChainID), l2FaucetPrivKey, testlog.Logger())
 	networkWallets := &params.SimWallets{
 		MCOwnerWallet:  seqWallet,
 		NodeWallets:    append([]wallet.Wallet{seqWallet}, validatorWallets...),

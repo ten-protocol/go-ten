@@ -17,24 +17,24 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-type OGLib struct {
+type TGLib struct {
 	httpURL string
 	wsURL   string
 	userID  []byte
 }
 
-func NewObscuroGatewayLibrary(httpURL, wsURL string) *OGLib {
-	return &OGLib{
+func NewTenGatewayLibrary(httpURL, wsURL string) *TGLib {
+	return &TGLib{
 		httpURL: httpURL,
 		wsURL:   wsURL,
 	}
 }
 
-func (o *OGLib) UserID() string {
+func (o *TGLib) UserID() string {
 	return string(o.userID)
 }
 
-func (o *OGLib) Join() error {
+func (o *TGLib) Join() error {
 	// todo move this to stdlib
 	statusCode, userID, err := fasthttp.Get(nil, fmt.Sprintf("%s/v1/join/", o.httpURL))
 	if err != nil || statusCode != 200 {
@@ -44,9 +44,9 @@ func (o *OGLib) Join() error {
 	return nil
 }
 
-func (o *OGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
+func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	rawMessage, err := viewingkey.GenerateAuthenticationEIP712RawData(string(o.userID), integration.ObscuroChainID)
+	rawMessage, err := viewingkey.GenerateAuthenticationEIP712RawData(string(o.userID), integration.TenChainID)
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (o *OGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		http.MethodPost,
-		o.httpURL+"/v1/authenticate/?u="+string(o.userID),
+		o.httpURL+"/v1/authenticate/?token="+string(o.userID),
 		strings.NewReader(payload),
 	)
 	if err != nil {
@@ -90,10 +90,10 @@ func (o *OGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 	return nil
 }
 
-func (o *OGLib) HTTP() string {
-	return fmt.Sprintf("%s/v1/?u=%s", o.httpURL, o.userID)
+func (o *TGLib) HTTP() string {
+	return fmt.Sprintf("%s/v1/?token=%s", o.httpURL, o.userID)
 }
 
-func (o *OGLib) WS() string {
-	return fmt.Sprintf("%s/v1/?u=%s", o.wsURL, o.userID)
+func (o *TGLib) WS() string {
+	return fmt.Sprintf("%s/v1/?token=%s", o.wsURL, o.userID)
 }

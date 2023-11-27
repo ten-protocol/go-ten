@@ -22,7 +22,7 @@ func TestSubscribeToOG(t *testing.T) {
 	ogWSAddress := "wss://dev-testnet.obscu.ro:81"
 	// ogWSAddress := "ws://51.132.131.47:81"
 
-	ogClient := lib.NewObscuroGatewayLibrary(ogHTTPAddress, ogWSAddress)
+	ogClient := lib.NewTenGatewayLibrary(ogHTTPAddress, ogWSAddress)
 
 	// join the network
 	err := ogClient.Join()
