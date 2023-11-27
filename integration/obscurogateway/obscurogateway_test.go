@@ -63,6 +63,7 @@ func TestObscuroGateway(t *testing.T) {
 		LogPath:                 "sys_out",
 		VerboseFlag:             false,
 		DBType:                  "sqlite",
+		TenChainID:              443,
 	}
 
 	obscuroGwContainer := container.NewWalletExtensionContainerFromConfig(obscuroGatewayConf, testlog.Logger())
