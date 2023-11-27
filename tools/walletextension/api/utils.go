@@ -51,9 +51,21 @@ func getQueryParameter(params map[string]string, selectedParameter string) (stri
 	return value, nil
 }
 
+// getUserID returns userID from query params / url of the URL
+// it always first tries to get userID from a query parameter `u` or `token` (`u` parameter will become deprecated)
+// if it fails to get userID from a query parameter it tries to get it from the URL and it needs position as the second parameter
 func getUserID(conn userconn.UserConn, userIDPosition int) (string, error) {
-	// try getting userID from query parameters and return it if successful
-	userID, err := getQueryParameter(conn.ReadRequestParams(), common.UserQueryParameter)
+	// try getting userID (`token`) from query parameters and return it if successful
+	userID, err := getQueryParameter(conn.ReadRequestParams(), common.EncryptedTokenQueryParameter)
+	if err == nil {
+		if len(userID) != common.MessageUserIDLen {
+			return "", fmt.Errorf(fmt.Sprintf("wrong length of userID from URL. Got: %d, Expected: %d", len(userID), common.MessageUserIDLen))
+		}
+		return userID, err
+	}
+
+	// try getting userID(`u`) from query parameters and return it if successful
+	userID, err = getQueryParameter(conn.ReadRequestParams(), common.UserQueryParameter)
 	if err == nil {
 		if len(userID) != common.MessageUserIDLen {
 			return "", fmt.Errorf(fmt.Sprintf("wrong length of userID from URL. Got: %d, Expected: %d", len(userID), common.MessageUserIDLen))

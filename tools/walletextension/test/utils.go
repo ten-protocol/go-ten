@@ -126,7 +126,7 @@ func makeHTTPEthJSONReqWithPath(port int, path string) []byte {
 // Makes an Ethereum JSON RPC request over HTTP and returns the response body with userID query paremeter.
 func makeHTTPEthJSONReqWithUserID(port int, method string, params interface{}, userID string) []byte { //nolint: unparam
 	reqBody := prepareRequestBody(method, params)
-	return makeRequestHTTP(fmt.Sprintf("http://%s:%d/v1/?u=%s", common.Localhost, port, userID), reqBody)
+	return makeRequestHTTP(fmt.Sprintf("http://%s:%d/v1/?token=%s", common.Localhost, port, userID), reqBody)
 }
 
 // Makes an Ethereum JSON RPC request over websockets and returns the response body.

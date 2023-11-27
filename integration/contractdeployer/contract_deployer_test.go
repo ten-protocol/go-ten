@@ -56,7 +56,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 		NodePort:          uint(hostWSPort),
 		IsL1Deployment:    false,
 		PrivateKey:        contractDeployerPrivateKeyHex,
-		ChainID:           big.NewInt(integration.ObscuroChainID),
+		ChainID:           big.NewInt(integration.TenChainID),
 		ContractName:      contractdeployer.Layer2Erc20Contract,
 		ConstructorParams: []string{erc20ParamOne, erc20ParamTwo, erc20ParamThree},
 	}
@@ -66,7 +66,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 		panic(err)
 	}
 
-	contractDeployerWallet := wallet.NewInMemoryWalletFromConfig(contractDeployerPrivateKeyHex, integration.ObscuroChainID, testlog.Logger())
+	contractDeployerWallet := wallet.NewInMemoryWalletFromConfig(contractDeployerPrivateKeyHex, integration.TenChainID, testlog.Logger())
 	contractDeployerClient := getClient(hostWSPort, contractDeployerWallet)
 
 	var deployedCode string
@@ -85,10 +85,10 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
 	createObscuroNetwork(t, startPort)
 
-	faucetWallet := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger())
+	faucetWallet := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.TenChainID, testlog.Logger())
 	faucetClient := getClient(hostWSPort, faucetWallet)
 
-	contractDeployerWallet := wallet.NewInMemoryWalletFromConfig(contractDeployerPrivateKeyHex, integration.ObscuroChainID, testlog.Logger())
+	contractDeployerWallet := wallet.NewInMemoryWalletFromConfig(contractDeployerPrivateKeyHex, integration.TenChainID, testlog.Logger())
 	// We send more than enough to the contract deployer, to make sure prefunding won't be needed.
 	excessivePrealloc := big.NewInt(contractdeployer.Prealloc * 3)
 	testcommon.PrefundWallets(context.Background(), faucetWallet, obsclient.NewAuthObsClient(faucetClient), 0, []wallet.Wallet{contractDeployerWallet}, excessivePrealloc, receiptTimeout)
@@ -106,7 +106,7 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 		NodePort:          uint(startPort + integration.DefaultHostRPCWSOffset),
 		IsL1Deployment:    false,
 		PrivateKey:        contractDeployerPrivateKeyHex,
-		ChainID:           big.NewInt(integration.ObscuroChainID),
+		ChainID:           big.NewInt(integration.TenChainID),
 		ContractName:      contractdeployer.Layer2Erc20Contract,
 		ConstructorParams: []string{erc20ParamOne, erc20ParamTwo, erc20ParamThree},
 	}
@@ -133,7 +133,7 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 func createObscuroNetwork(t *testing.T, startPort int) {
 	// Create the Obscuro network.
 	numberOfNodes := 1
-	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
+	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
 		NumberOfNodes:    numberOfNodes,
 		AvgBlockDuration: 1 * time.Second,

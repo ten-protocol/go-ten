@@ -1,16 +1,16 @@
 # The Ten Gateway - Design
 
-The scope of this document is to design a hosted [Wallet Extension](wallet_extension.md) called the "Ten Gateway" (OG).
+The scope of this document is to design a hosted [Wallet Extension](wallet_extension.md) called the "Ten Gateway" (TG).
 
-The OG will be a superset of the WE functionality, so this document will only cover the additions.
+The TG will be a superset of the WE functionality, so this document will only cover the additions.
 
 ## High level overview
 
-The OG will be a [Confidential Web Service](https://medium.com/p/983a2a67fc08), running inside SGX.
+The TG will be a [Confidential Web Service](https://medium.com/p/983a2a67fc08), running inside SGX.
 
 The current WE is designed to be used by a single user holding multiple addresses accross potentially multiple wallets. 
 
-The OG must support mutiple users, each with multiple addresses. It can be seen as offering a WE per user.
+The TG must support mutiple users, each with multiple addresses. It can be seen as offering a WE per user.
 
 The Ten node has no concept of "User". It only authenticates based on the "blockchain address". 
 It expects to be supplied with a signed viewing key per address, so that it can respond encrypted with that VK. 
@@ -22,7 +22,7 @@ The AVKs are stored on the local computer in a file.
 An AVK is a text containing the hash of the public viewing key signed with the "spending key" that controls a blockchain address.
 
 
-The diagram below depicts the setup once the OG is implemented.
+The diagram below depicts the setup once the TG is implemented.
 ![Architecture diagram](resources/og_arch.png)
 ```plantuml
 @startuml
@@ -47,9 +47,9 @@ component "Bob's Computer"{
 }
 component "Confidential Web Service"{
     node "Ten Gateway"
-    database "OG Viewing Keys"
+    database "TG Viewing Keys"
 }
-"OG Viewing Keys" <-> "Ten Gateway"
+"TG Viewing Keys" <-> "Ten Gateway"
 
 Bob --> "Bob's MetaMask"
 "Bob's MetaMask" ---> "Ten Gateway" : HTTPS
@@ -66,11 +66,11 @@ Charlie --> "Charlie's MetaMask"
 @enduml
 ```
 
-Notice that the OG is a multi-tenant WE running inside SGX and storing the authenticated viewing keys (and other information) in an encrypted database.
+Notice that the TG is a multi-tenant WE running inside SGX and storing the authenticated viewing keys (and other information) in an encrypted database.
 
 ## User interactions
 
-The key reason for the OG is to allow implementing a 3-click user onboarding process.
+The key reason for the TG is to allow implementing a 3-click user onboarding process.
 
 ### User on-boarding
 
@@ -86,25 +86,25 @@ autonumber
 
 actor "Alice's Browser" as Alice
 participant MetaMask as MM
-participant "https://gateway.ten.org/v1" as OG
+participant "https://gateway.ten.org/v1" as TG
 participant "https://ten.org" as ON
 
 group First click
     Alice -> ON: Join Ten
-    ON --> Alice: Redirect to OG
+    ON --> Alice: Redirect to TG
     note right
         The point of this sequence
         is to call the "Create User"
-        endpoint on the OG
+        endpoint on the TG
     end note
-    Alice -> OG: Create User\n(ajax call behind the scenes)
-    OG -> OG: Generate and record VK\nand record against UserId
+    Alice -> TG: Create User\n(ajax call behind the scenes)
+    TG -> TG: Generate and record VK\nand record against UserId
     note right
         The UserId is the hash of
          the Public Key of the VK
     end note
-    OG -> Alice: Send UserId
-    Alice -> MM: Automatically add "Ten" network with RPC\n"https://gateway.ten.org/v1?u=$UserId"
+    TG -> Alice: Send Encryption token
+    Alice -> MM: Automatically add "Ten" network with RPC\n"https://gateway.ten.org/v1?token=$EncryptionToken"
 end
 
 group Second click
@@ -121,7 +121,7 @@ group Third click
     Alice -> MM : Confirm signature
 end
 
-Alice -> OG: All further Ten interactions will be to\nhttps://gateway.ten.org/v1?u=$UserId
+Alice -> TG: All further Ten interactions will be to\nhttps://gateway.ten.org/v1?token=$EncryptionToken
 
 @enduml
 ```
@@ -151,36 +151,36 @@ types: {
       chainId: obscuroChainIDDecimal,
     },
     message: {
-      "Encryption Token": "0x"+userID
+      "Encryption Token": "0x"+encryptionToken
     },
   };
 
 ```
 
 ##### Click 1
-1. Behind the scenes, a js functions calls "gateway.ten.org/v1/join" where it will generate a VK and send back the hash of the Public key. This is the "UserId" 
-2. After receiving the UserId, the js function will add a new network to the wallet.
-The RPC URL of the new Ten network will include the userid: "https://gateway.ten.org/v1?u=$UserId". 
-Notice that the UserId has to be included as a query parameter because it must be encrypted by https, as it is secret.
+1. Behind the scenes, a js functions calls "gateway.ten.org/v1/join" where it will generate a VK and send back the hash of the Public key. This is the "encryption token" 
+2. After receiving the Encryption token, the js function will add a new network to the wallet.
+The RPC URL of the new Ten network will include the encryption token: "https://gateway.ten.org/v1?token=$EncryptionToken". 
+Notice that the encryption token has to be included as a query parameter because it must be encrypted by https, as it is secret.
 
 ##### Click 2
 After these actions are complete, the same page will now ask the user to connect the wallet and switch to Ten. 
 Automatically, the page will open metamask and ask the user to sign over an EIP-712 formatted message as described above.
 
 ##### Click 3
-Once signed, this will be submitted in the background to: "https://gateway.ten.org/v1?u=$UserId&action=register"
+Once signed, this will be submitted in the background to: "https://gateway.ten.org/v1?token=$EncryptionToken&action=register"
 
 
-Note: Any further accounts will be registered similarly for the same UserId.
+Note: Any further accounts will be registered similarly for the same encryption token.
 
-Note: The user must guard the UserId. Anyone who can read it, will be able to read the data of this user.
+Note: The user must guard the encryption token. Anyone who can read it, will be able to read the data of this user.
 
 Note: Alternative UXes that achieve the same goal are ok.
 
 
 ### Register subsequent addresses  
 
-User Alice is onboarded already and has the Ten network configured in her wallet with a UserId.
+User Alice is onboarded already and has the Ten network configured in her wallet with an encryption token.
 
 She has to go to the same landing page as above and connect her wallet, instead of hitting "Join".
 When connecting, she can choose a second account.
@@ -192,51 +192,52 @@ After signing it will submit to the server
 
 The curent WE is single-tenant. It assumes that all registered blockchain addresses belong to the same user.
 
-The OG will keep a many-to-one relationship between addresses and users. It will have multiple users, each with multiple addresses.
+The TG will keep a many-to-one relationship between addresses and users. It will have multiple users, each with multiple addresses.
 
-Each request to the OG (except "/join") must have the "u" query parameter. 
-The first thing, the WE will lookup the userId and then operate in "Wallet Extension" mode, after loading all addresses.
+Each request to the TG (except "/join") must have the "u" query parameter. 
+The first thing, the WE will lookup the encryption token and then operate in "Wallet Extension" mode, after loading all addresses.
 
-Note that the system considers the realm of a UserId as completely independent. Multiple users could register the same addrss,
-if they somehow control the spending key. It shouldn't matter since they have different userIds
+Note that the system considers the realm of an encryption token as completely independent. Multiple users could register the same addrss,
+if they somehow control the spending key.
+It shouldn't matter since they have different encryption tokens
 
 ## HTTP Endpoints
 
 ### Create User - GET "/join"
 
 - Generates a key-pair.
-- Hashes the public key of the VK - this is the UserId.
-- Stores in the db: UserId, PrivateKey 
-- Return UserId
+- Hashes the public key of the VK - this is the encryption token.
+- Stores in the db: EncryptionToken, PrivateKey 
+- Return encryption token
 
 Note: Has to be protected against DDOS attacks.
 
-### Query address - Get "/query/address?u=$UserId&a=$Address"
+### Query address - Get "/query/address?token=$EncryptionToken&a=$Address"
 
 This endpoints responds a json of true or false if the address "a" is already registered for user "u" 
 
-### Authenticate address - POST "/authenticate?u=$UserId"
+### Authenticate address - POST "/authenticate?token=$EncryptionToken"
 JSON Fields:
 - address
 - signature
 
-This call will be made by a javascript function after it has collected the signed text containing the UserId and the Address from the wallet.
+This call will be made by a javascript function after it has collected the signed text containing the encryption token and the Address from the wallet.
 
-This call is equivalent to the current: "submitviewingkey/", but instead it will save the information against the UserId.
+This call is equivalent to the current: "submitviewingkey/", but instead it will save the information against the encryption token.
 
 Actions:
-- check the text is well formed and extract the userId and address
-- check the UserId corresponds to the one in the text
+- check the text is well formed and extract the encryption token and address
+- check the encryption token corresponds to the one in the text
 - check the signature corresponds to the address and is valid
-- save the text+signature against the userId 
+- save the text+signature against the encryption token 
 
-### Revoke UserId - POST "/revoke?u=$UserId"
+### Revoke Encryption token - POST "/revoke?t=$EncryptionToken"
 
-When this endpoint is triggered, the userId with the authenticated viewing keys should be deleted.
+When this endpoint is triggered, the encryption token with the authenticated viewing keys should be deleted.
 
 ### ETH RPC endpoints
 All the Eth RPC endpoints are implemented as they are now in the WE. 
-The difference is that the UserId must be checked before any logic, and the registered addresses for that user are loaded in context.
+The difference is that the encryption token must be checked before any logic, and the registered addresses for that user are loaded in context.
 
 ## SGX
 
@@ -253,7 +254,7 @@ Note that the current WE implements most of this flow.
 
 ## Upgradability
 
-When the OG is upgraded, the database with viewing keys has to be handed over to the new version.
+When the TG is upgraded, the database with viewing keys has to be handed over to the new version.
 The best mechanism is to use the transparent upgrading approval we have for the enclave based on an event from the Management Contract.
 
 
@@ -268,17 +269,17 @@ I propose to start gradually by adding functionality that doesn't break the WE.
    The tests can use sqlite, same as we do for the enclave. And in the real setup it will be edgelessdb. 
    This code can be extracted from the enclave and made reusable.
 
-2. Store the VKs in the database against a hardcoded userId and create the logic to fetch them based on the hardcoded userId.
+2. Store the VKs in the database against a hardcoded encryption token and create the logic to fetch them based on the hardcoded encryption token.
 
 Note: At this stage there is no functional change of the wallet extension. Just prepararation. 
 
-3. Add the UserId parameter in all request handlers.
+3. Add the encryption token parameter in all request handlers.
 
-Note: still no functional change, except that now all the rpc urls in the test need "?u=1" to work
+Note: still no functional change, except that now all the rpc urls in the test need "?token1" to work
 
 4. Change the format of the signed string and implement the authenticate endpoint.
 
-5. Do the rest of the wiring of the userId
+5. Do the rest of the wiring of the encryption token
 
 6. Implement the "join" endpoint, and make sure everything works E2E
 
@@ -295,7 +296,7 @@ Very simple interface to show that the 3-click approach is possible.
 
 # Advanced features
 
-## Allowing users to create accounts on the OG
+## Allowing users to create accounts on the TG
 Maybe using single-sign On.
 
 This will allow advanced features.
@@ -304,14 +305,14 @@ This will allow advanced features.
 
 This could be used for tax purposes, or to prove holdings.
 
-## Revocation of userId 
+## Revocation of encryption token 
 
 Users might suspect someone else knows their UserdId.
 
-Note: forgotten userIds are not a problem, because they have high enough entropy.
+Note: forgotten encryption tokens are not a problem, because they have high enough entropy.
 
 There must be a UI which calls the revocation endpoint.
 
-Note that if the OG operator comes into possession of a UserId, they can circumvent the revocation by launching the service
+Note that if the TG operator comes into possession of an encryption token, they can circumvent the revocation by launching the service
 against a snapshot of the database. To prevent this, revocations could be published on ledger, and make them a first 
 class citizen.
