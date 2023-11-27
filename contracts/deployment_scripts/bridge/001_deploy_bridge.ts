@@ -30,8 +30,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // get management contract and write the L1 bridge address to it
     const mgmtContract = (await hre.ethers.getContractFactory('ManagementContract')).attach(mgmtContractAddress)
-    const tx = await mgmtContract.SetImportantContractAddress("L1Bridge", layer1BridgeDeployment.address);
-    const receipt = await tx.wait();
+    const recordL1AddressTx = await mgmtContract.SetImportantContractAddress("L1Bridge", layer1BridgeDeployment.address);
+    const receipt = await recordL1AddressTx.wait();
     if (receipt.status !== 1) {
         console.log("Failed to set L1BridgeAddress in management contract");
     }
@@ -53,6 +53,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true,
     }, "setRemoteBridge", layer2BridgeDeployment.address);
 
+    const recordL2AddressTx = await mgmtContract.SetImportantContractAddress("L2Bridge", layer2BridgeDeployment.address);
+    const receipt2 = await recordL2AddressTx.wait();
+    if (receipt2.status !== 1) {
+        console.log("Failed to set L2BridgeAddress in management contract");
+    }
+    console.log(`L2BridgeAddress=${layer2BridgeDeployment.address}`)
     console.log(` Bridge deployed with from L1 address=${accountsL1.deployer} L2 Address=${accountsL2.deployer}`);
 };
 
