@@ -95,6 +95,8 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 
 	// Get the last three lines
 	output := buf.String()
+	fmt.Printf("L2 Deployer output %s\n", output)
+
 	lines := strings.Split(output, "\n")
 
 	managementAddr, err := findAddress(lines[0])
