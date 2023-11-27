@@ -124,6 +124,7 @@ func (t *Testnet) Start() error {
 			l2cd.WithL2Host("sequencer-host"),
 			l2cd.WithL2WSPort(81),
 			l2cd.WithL1PrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
+			l2cd.WithManagementContractAddress("0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF"),
 			l2cd.WithMessageBusContractAddress("0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"),
 			l2cd.WithL2PrivateKey("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
 			l2cd.WithHocPKString("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"),
