@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// WrappedFlag is a construct that allows to have go flags while obeying to a new set of restricteveness rules
+// WrappedFlag is a construct that allows to have go flags while obeying to a new set of restrictiveness rules
 type WrappedFlag struct {
 	flagType     string
 	ptr          any
@@ -16,17 +16,17 @@ type WrappedFlag struct {
 	description  string
 }
 
-// GetString returns the flag current value casted to string
+// GetString returns the flag current value cast to string
 func (f WrappedFlag) GetString() string {
 	return *f.ptr.(*string)
 }
 
-// GetInt64 returns the flag current value casted to int64
+// GetInt64 returns the flag current value cast to int64
 func (f WrappedFlag) GetInt64() int64 {
 	return *f.ptr.(*int64)
 }
 
-// GetBool returns the flag current value casted to bool
+// GetBool returns the flag current value cast to bool
 func (f WrappedFlag) GetBool() bool {
 	return *f.ptr.(*bool)
 }

@@ -9,6 +9,7 @@
 #   /home/obscuro/go-obscuro/go/enclave/main    contains the executable for the enclave
 #
 
+# Defaults to restricted flag mode
 ARG RESTRICTEDMODE=true
 
 FROM ghcr.io/edgelesssys/ego-dev:v1.3.0 AS build-base
