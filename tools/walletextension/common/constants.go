@@ -38,12 +38,10 @@ const (
 	WSProtocol                          = "ws://"
 	DefaultUser                         = "defaultUser"
 	UserQueryParameter                  = "u"
+	EncryptedTokenQueryParameter        = "token"
 	AddressQueryParameter               = "a"
-	MessageFormatRegex                  = `^Register\s(\w+)\sfor\s(\w+)$`
-	MessageUserIDLen                    = 64
-	SignatureLen                        = 65
+	MessageUserIDLen                    = 40
 	EthereumAddressLen                  = 42
-	PersonalSignMessagePrefix           = "\x19Ethereum Signed Message:\n%d%s"
 	GetStorageAtUserIDRequestMethodName = "getUserID"
 	SuccessMsg                          = "success"
 	APIVersion1                         = "/v1"

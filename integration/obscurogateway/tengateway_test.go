@@ -40,34 +40,35 @@ import (
 func init() { //nolint:gochecknoinits
 	testlog.Setup(&testlog.Cfg{
 		LogDir:      testLogs,
-		TestType:    "obscurogateway",
+		TestType:    "tengateway",
 		TestSubtype: "test",
 		LogLevel:    log.LvlInfo,
 	})
 }
 
 const (
-	testLogs = "../.build/obscurogateway/"
+	testLogs = "../.build/tengateway/"
 )
 
-func TestObscuroGateway(t *testing.T) {
-	startPort := integration.StartPortObscuroGatewayUnitTest
-	createObscuroNetwork(t, startPort)
+func TestTenGateway(t *testing.T) {
+	startPort := integration.StartPortTenGatewayUnitTest
+	createTenNetwork(t, startPort)
 
-	obscuroGatewayConf := config.Config{
+	tenGatewayConf := config.Config{
 		WalletExtensionHost:     "127.0.0.1",
-		WalletExtensionPortHTTP: startPort + integration.DefaultObscuroGatewayHTTPPortOffset,
-		WalletExtensionPortWS:   startPort + integration.DefaultObscuroGatewayWSPortOffset,
+		WalletExtensionPortHTTP: startPort + integration.DefaultTenGatewayHTTPPortOffset,
+		WalletExtensionPortWS:   startPort + integration.DefaultTenGatewayWSPortOffset,
 		NodeRPCHTTPAddress:      fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
 		NodeRPCWebsocketAddress: fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
 		LogPath:                 "sys_out",
 		VerboseFlag:             false,
 		DBType:                  "sqlite",
+		TenChainID:              443,
 	}
 
-	obscuroGwContainer := container.NewWalletExtensionContainerFromConfig(obscuroGatewayConf, testlog.Logger())
+	tenGwContainer := container.NewWalletExtensionContainerFromConfig(tenGatewayConf, testlog.Logger())
 	go func() {
-		err := obscuroGwContainer.Start()
+		err := tenGwContainer.Start()
 		if err != nil {
 			fmt.Printf("error stopping WE - %s", err)
 		}
@@ -77,15 +78,15 @@ func TestObscuroGateway(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// make sure the server is ready to receive requests
-	httpURL := fmt.Sprintf("http://%s:%d", obscuroGatewayConf.WalletExtensionHost, obscuroGatewayConf.WalletExtensionPortHTTP)
-	wsURL := fmt.Sprintf("ws://%s:%d", obscuroGatewayConf.WalletExtensionHost, obscuroGatewayConf.WalletExtensionPortWS)
+	httpURL := fmt.Sprintf("http://%s:%d", tenGatewayConf.WalletExtensionHost, tenGatewayConf.WalletExtensionPortHTTP)
+	wsURL := fmt.Sprintf("ws://%s:%d", tenGatewayConf.WalletExtensionHost, tenGatewayConf.WalletExtensionPortWS)
 
 	// make sure the server is ready to receive requests
 	err := waitServerIsReady(httpURL)
 	require.NoError(t, err)
 
 	// prefunded wallet
-	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger())
+	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.TenChainID, testlog.Logger())
 
 	// run the tests against the exis
 	for name, test := range map[string]func(*testing.T, string, string, wallet.Wallet){
@@ -102,22 +103,22 @@ func TestObscuroGateway(t *testing.T) {
 	}
 
 	// Gracefully shutdown
-	err = obscuroGwContainer.Stop()
+	err = tenGwContainer.Stop()
 	assert.NoError(t, err)
 }
 
 func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with UserID: %s\n", user0.ogClient.UserID())
+	fmt.Printf("Created user with encryption token: %s\n", user0.tgClient.UserID())
 
-	user1, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.ObscuroChainID), datagenerator.RandomWallet(integration.ObscuroChainID)}, httpURL, wsURL)
+	user1, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with UserID: %s\n", user0.ogClient.UserID())
+	fmt.Printf("Created user with encryption token: %s\n", user0.tgClient.UserID())
 
-	user2, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.ObscuroChainID), datagenerator.RandomWallet(integration.ObscuroChainID)}, httpURL, wsURL)
+	user2, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with UserID: %s\n", user0.ogClient.UserID())
+	fmt.Printf("Created user with encryption token: %s\n", user0.tgClient.UserID())
 
 	// register all the accounts for that user
 	err = user0.RegisterAccounts()
@@ -189,7 +190,7 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user2.WSClient, &user2logs)
 
 	// user1 calls setMessage and setMessage2 on deployed smart contract with the account
-	// that was registered as the first in OG
+	// that was registered as the first in TG
 	user1MessageValue := "user1PublicEvent"
 	// interact with smart contract and cause events to be emitted
 	_, err = integrationCommon.InteractWithSmartContract(user1.HTTPClient, user1.Wallets[0], eventsContractABI, "setMessage", "user1PrivateEvent", contractReceipt.ContractAddress)
@@ -210,7 +211,7 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	assert.Equal(t, user1MessageValue, resultMessage)
 
 	// user2 calls setMessage and setMessage2 on deployed smart contract with the account
-	// that was registered as the second in OG
+	// that was registered as the second in TG
 	user2MessageValue := "user2PublicEvent"
 	// interact with smart contract and cause events to be emitted
 	_, err = integrationCommon.InteractWithSmartContract(user2.HTTPClient, user2.Wallets[1], eventsContractABI, "setMessage", "user2PrivateEvent", contractReceipt.ContractAddress)
@@ -242,8 +243,8 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 }
 
 func testAreTxsMinted(t *testing.T, httpURL, wsURL string, w wallet.Wallet) { //nolint: unused
-	// set up the ogClient
-	ogClient := lib.NewObscuroGatewayLibrary(httpURL, wsURL)
+	// set up the tgClient
+	ogClient := lib.NewTenGatewayLibrary(httpURL, wsURL)
 
 	// join + register against the og
 	err := ogClient.Join()
@@ -269,8 +270,8 @@ func testAreTxsMinted(t *testing.T, httpURL, wsURL string, w wallet.Wallet) { //
 }
 
 func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
-	// set up the ogClient
-	ogClient := lib.NewObscuroGatewayLibrary(httpURL, wsURL)
+	// set up the tgClient
+	ogClient := lib.NewTenGatewayLibrary(httpURL, wsURL)
 
 	// join + register against the og
 	err := ogClient.Join()
@@ -300,7 +301,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 		require.NoError(t, err)
 
 		// repeat the process for the gateway
-		_, response, err = httputil.PostDataJSON(fmt.Sprintf("http://localhost:%d", integration.StartPortObscuroGatewayUnitTest), []byte(req))
+		_, response, err = httputil.PostDataJSON(fmt.Sprintf("http://localhost:%d", integration.StartPortTenGatewayUnitTest), []byte(req))
 		require.NoError(t, err)
 
 		// we only care about format
@@ -311,8 +312,8 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 }
 
 func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
-	// set up the ogClient
-	ogClient := lib.NewObscuroGatewayLibrary(httpURL, wsURL)
+	// set up the tgClient
+	ogClient := lib.NewTenGatewayLibrary(httpURL, wsURL)
 
 	// join + register against the og
 	err := ogClient.Join()
@@ -387,9 +388,9 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.W
 
 func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// create a user with multiple accounts
-	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.ObscuroChainID)}, httpURL, wsURL)
+	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with UserID: %s\n", user.ogClient.UserID())
+	fmt.Printf("Created user with encryption token: %s\n", user.tgClient.UserID())
 
 	// register all the accounts for the user
 	err = user.RegisterAccounts()
@@ -437,9 +438,9 @@ func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 
 func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// create a user with multiple accounts
-	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.ObscuroChainID)}, httpURL, wsURL)
+	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with UserID: %s\n", user.ogClient.UserID())
+	fmt.Printf("Created user with encryption token: %s\n", user.tgClient.UserID())
 
 	// register all the accounts for the user
 	err = user.RegisterAccounts()
@@ -478,7 +479,7 @@ func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w
 	assert.Equal(t, 0, len(userLogs))
 
 	// re-establish connection
-	wsClient, err := ethclient.Dial(wsURL + "/v1/" + "?u=" + user.ogClient.UserID())
+	wsClient, err := ethclient.Dial(wsURL + "/v1/" + "?token=" + user.tgClient.UserID())
 	require.NoError(t, err)
 	user.WSClient = wsClient
 
@@ -524,11 +525,11 @@ func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet)
 	return signedTx.Hash()
 }
 
-// Creates a single-node Obscuro network for testing.
-func createObscuroNetwork(t *testing.T, startPort int) {
-	// Create the Obscuro network.
+// Creates a single-node Ten network for testing.
+func createTenNetwork(t *testing.T, startPort int) {
+	// Create the Ten network.
 	numberOfNodes := 1
-	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
+	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
 		NumberOfNodes:    numberOfNodes,
 		AvgBlockDuration: 1 * time.Second,
@@ -539,11 +540,11 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 		WithPrefunding:   true,
 	}
 
-	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
-	t.Cleanup(obscuroNetwork.TearDown)
-	_, err := obscuroNetwork.Create(&simParams, nil)
+	tenNetwork := network.NewNetworkOfSocketNodes(wallets)
+	t.Cleanup(tenNetwork.TearDown)
+	_, err := tenNetwork.Create(&simParams, nil)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
+		panic(fmt.Sprintf("failed to create test Ten network. Cause: %s", err))
 	}
 }
 

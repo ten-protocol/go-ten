@@ -9,30 +9,32 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ten-protocol/go-ten/integration"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/valyala/fasthttp"
 )
 
-type OGLib struct {
+type TGLib struct {
 	httpURL string
 	wsURL   string
 	userID  []byte
 }
 
-func NewObscuroGatewayLibrary(httpURL, wsURL string) *OGLib {
-	return &OGLib{
+func NewTenGatewayLibrary(httpURL, wsURL string) *TGLib {
+	return &TGLib{
 		httpURL: httpURL,
 		wsURL:   wsURL,
 	}
 }
 
-func (o *OGLib) UserID() string {
+func (o *TGLib) UserID() string {
 	return string(o.userID)
 }
 
-func (o *OGLib) Join() error {
+func (o *TGLib) Join() error {
 	// todo move this to stdlib
 	statusCode, userID, err := fasthttp.Get(nil, fmt.Sprintf("%s/v1/join/", o.httpURL))
 	if err != nil || statusCode != 200 {
@@ -42,25 +44,27 @@ func (o *OGLib) Join() error {
 	return nil
 }
 
-func (o *OGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
+func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	message := fmt.Sprintf("Register %s for %s", o.userID, strings.ToLower(addr.Hex()))
-	prefixedMessage := fmt.Sprintf(common.PersonalSignMessagePrefix, len(message), message)
+	rawMessage, err := viewingkey.GenerateAuthenticationEIP712RawData(string(o.userID), integration.TenChainID)
+	if err != nil {
+		return err
+	}
 
-	messageHash := crypto.Keccak256([]byte(prefixedMessage))
+	messageHash := crypto.Keccak256(rawMessage)
 	sig, err := crypto.Sign(messageHash, pk)
 	if err != nil {
 		return fmt.Errorf("failed to sign message: %w", err)
 	}
 	sig[64] += 27
 	signature := "0x" + hex.EncodeToString(sig)
-	payload := fmt.Sprintf("{\"signature\": \"%s\", \"message\": \"%s\"}", signature, message)
+	payload := fmt.Sprintf("{\"signature\": \"%s\", \"address\": \"%s\"}", signature, addr.Hex())
 
 	// issue the registration message
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		http.MethodPost,
-		o.httpURL+"/v1/authenticate/?u="+string(o.userID),
+		o.httpURL+"/v1/authenticate/?token="+string(o.userID),
 		strings.NewReader(payload),
 	)
 	if err != nil {
@@ -76,17 +80,20 @@ func (o *OGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 	}
 
 	defer response.Body.Close()
-	_, err = io.ReadAll(response.Body)
+	r, err := io.ReadAll(response.Body)
 	if err != nil {
 		return fmt.Errorf("unable to read response - %w", err)
+	}
+	if string(r) != "success" {
+		return fmt.Errorf("expected success, got %s", string(r))
 	}
 	return nil
 }
 
-func (o *OGLib) HTTP() string {
-	return fmt.Sprintf("%s/v1/?u=%s", o.httpURL, o.userID)
+func (o *TGLib) HTTP() string {
+	return fmt.Sprintf("%s/v1/?token=%s", o.httpURL, o.userID)
 }
 
-func (o *OGLib) WS() string {
-	return fmt.Sprintf("%s/v1/?u=%s", o.wsURL, o.userID)
+func (o *TGLib) WS() string {
+	return fmt.Sprintf("%s/v1/?token=%s", o.wsURL, o.userID)
 }

@@ -40,11 +40,15 @@ describe("Bridge", function () {
     busL1 = await MessageBus.deploy();
     busL2 = await MessageBus.deploy();
 
-    messengerL1 = await Messenger.deploy(busL1.address);
-    messengerL2 = await Messenger.deploy(busL2.address);
+    messengerL1 = await Messenger.deploy();
+    await messengerL1.initialize(busL1.address);
+    messengerL2 = await Messenger.deploy();
+    await messengerL2.initialize(busL2.address)
 
-    bridgeL1 = await L1Bridge.deploy(messengerL1.address);
-    bridgeL2 = await L2Bridge.deploy(messengerL2.address, bridgeL1.address);
+    bridgeL1 = await L1Bridge.deploy();
+    bridgeL1.initialize(messengerL1.address);
+    bridgeL2 = await L2Bridge.deploy();
+    bridgeL2.initialize(messengerL2.address, bridgeL1.address);
 
     const tx = await bridgeL1.setRemoteBridge(bridgeL2.address);
     await tx.wait();

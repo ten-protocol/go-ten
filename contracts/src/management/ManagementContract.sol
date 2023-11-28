@@ -3,11 +3,17 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+
 
 import "./Structs.sol";
 import * as MessageBus from "../messaging/MessageBus.sol";
 
-contract ManagementContract is Ownable {
+contract ManagementContract is Ownable, Initializable {
+
+    constructor() {
+       // _disableInitializers(); //todo @siliev - figure out why the solidity compiler cant find this. Perhaps OZ needs a version upgrade?
+    }
 
     event LogManagementContractCreated(address messageBusAddress);
     // Event to log changes to important contract addresses
@@ -30,12 +36,13 @@ contract ManagementContract is Ownable {
     // isWithdrawalAvailable marks if the contract allows withdrawals or not
     bool private isWithdrawalAvailable;
 
-    uint256 public lastBatchSeqNo = 0;
+    uint256 public lastBatchSeqNo;
 
     Structs.RollupStorage private rollups;
     //The messageBus where messages can be sent to Obscuro
     MessageBus.IMessageBus public messageBus;
-    constructor() {
+    function initialize() public initializer {
+        lastBatchSeqNo = 0;
         messageBus = new MessageBus.MessageBus();
         emit LogManagementContractCreated(address(messageBus));
     }

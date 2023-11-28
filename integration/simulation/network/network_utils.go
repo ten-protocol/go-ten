@@ -83,7 +83,7 @@ func createInMemObscuroNode(
 		HostID:                    hostConfig.ID,
 		NodeType:                  nodeType,
 		L1ChainID:                 integration.EthereumChainID,
-		ObscuroChainID:            integration.ObscuroChainID,
+		ObscuroChainID:            integration.TenChainID,
 		WillAttest:                false,
 		ValidateL1Blocks:          validateBlocks,
 		GenesisJSON:               genesisJSON,

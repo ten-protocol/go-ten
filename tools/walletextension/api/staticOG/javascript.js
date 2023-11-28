@@ -19,6 +19,7 @@ const pathQuery = obscuroGatewayVersion + "/query/";
 const pathRevoke = obscuroGatewayVersion + "/revoke/";
 const pathVersion = "/version/";
 const obscuroChainIDDecimal = 443;
+const userIDHexLength = 40;
 const methodPost = "post";
 const methodGet = "get";
 const jsonHeaders = {
@@ -30,7 +31,7 @@ const metamaskPersonalSign = "personal_sign";
 const obscuroChainIDHex = "0x" + obscuroChainIDDecimal.toString(16); // Convert to hexadecimal and prefix with '0x'
 
 function isValidUserIDFormat(value) {
-  return typeof value === "string" && value.length === 64;
+  return typeof value === "string" && value.length === userIDHexLength;
 }
 
 let obscuroGatewayAddress =
@@ -104,7 +105,7 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
             getRPCFromUrl(obscuroGatewayAddress) +
               "/" +
               obscuroGatewayVersion +
-              "/?u=" +
+              "/?token=" +
               userID,
           ],
           blockExplorerUrls: ["https://testnet.obscuroscan.io"],
@@ -118,41 +119,60 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
   return true;
 }
 
-async function authenticateAccountWithObscuroGateway(
-  ethereum,
-  account,
-  userID
-) {
-  const isAuthenticated = await accountIsAuthenticated(account, userID);
+async function authenticateAccountWithObscuroGatewayEIP712(ethereum, account, userID) {
+  const isAuthenticated = await accountIsAuthenticated(account, userID)
+
   if (isAuthenticated) {
-    return "Account is already authenticated";
+    return "Account is already authenticated"
   }
 
-  const textToSign = "Register " + userID + " for " + account.toLowerCase();
-  const signature = await ethereum
-    .request({
-      method: metamaskPersonalSign,
-      params: [textToSign, account],
-    })
-    .catch((_) => {
-      return -1;
-    });
-  if (signature === -1) {
-    return "Signing failed";
-  }
+  const typedData = {
+    types: {
+      EIP712Domain: [
+        { name: "name", type: "string" },
+        { name: "version", type: "string" },
+        { name: "chainId", type: "uint256" },
+      ],
+      Authentication: [
+        { name: "Encryption Token", type: "address" },
+      ],
+    },
+    primaryType: "Authentication",
+    domain: {
+      name: "Ten",
+      version: "1.0",
+      chainId: obscuroChainIDDecimal,
+    },
+    message: {
+      "Encryption Token": "0x"+userID
+    },
+  };
 
-  const authenticateUserURL = pathAuthenticate + "?u=" + userID;
-  const authenticateFields = { signature: signature, message: textToSign };
-  const authenticateResp = await fetch(authenticateUserURL, {
-    method: methodPost,
-    headers: jsonHeaders,
-    body: JSON.stringify(authenticateFields),
+  const data = JSON.stringify(typedData);
+  const signature = await ethereum.request({
+    method: "eth_signTypedData_v4",
+    params: [account, data],
+  }).catch(_ => {
+    console.log("signing failed!")
+    return -1;
   });
-  return await authenticateResp.text();
+
+
+  const authenticateUserURL = pathAuthenticate+"?token="+userID
+  const authenticateFields = {"signature": signature, "address": account }
+  const authenticateResp = await fetch(
+      authenticateUserURL, {
+        method: methodPost,
+        headers: jsonHeaders,
+        body: JSON.stringify(authenticateFields)
+      }
+  );
+  return await authenticateResp.text()
 }
 
+
 async function accountIsAuthenticated(account, userID) {
-  const queryAccountUserID = pathQuery + "?u=" + userID + "&a=" + account;
+  const queryAccountUserID = pathQuery + "?token=" + userID + "&a=" + account;
   const isAuthenticatedResponse = await fetch(queryAccountUserID, {
     method: methodGet,
     headers: jsonHeaders,
@@ -163,7 +183,7 @@ async function accountIsAuthenticated(account, userID) {
 }
 
 async function revokeUserID(userID) {
-  const queryAccountUserID = pathRevoke + "?u=" + userID;
+  const queryAccountUserID = pathRevoke + "?token=" + userID;
   const revokeResponse = await fetch(queryAccountUserID, {
     method: methodGet,
     headers: jsonHeaders,
@@ -275,7 +295,7 @@ async function populateAccountsTable(document, tableBody, userID) {
       connectButton.style.cursor = "pointer";
       connectButton.addEventListener("click", async (event) => {
         event.preventDefault();
-        await authenticateAccountWithObscuroGateway(ethereum, account, userID);
+        await authenticateAccountWithObscuroGatewayEIP712(ethereum, account, userID);
       });
       statusCell.appendChild(connectButton);
     }
@@ -435,7 +455,7 @@ const initialize = async () => {
       beginBox.style.visibility = "hidden";
       spinner.style.visibility = "visible";
       for (const account of accounts) {
-        await authenticateAccountWithObscuroGateway(ethereum, account, userID);
+        await authenticateAccountWithObscuroGatewayEIP712(ethereum, account, userID);
         accountsTable.style.display = "block";
         await populateAccountsTable(document, tableBody, userID);
       }
@@ -445,7 +465,7 @@ const initialize = async () => {
         if (isValidUserIDFormat(await getUserID())) {
           userID = await getUserID();
           for (const account of accounts) {
-            await authenticateAccountWithObscuroGateway(
+            await authenticateAccountWithObscuroGatewayEIP712(
               ethereum,
               account,
               userID

@@ -12,4 +12,5 @@ type Config struct {
 	VerboseFlag             bool
 	DBType                  string
 	DBConnectionURL         string
+	TenChainID              int
 }

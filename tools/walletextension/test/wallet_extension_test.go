@@ -294,7 +294,7 @@ func TestGetStorageAtForReturningUserID(t *testing.T) {
 	}
 
 	// make a request to GetStorageAt with correct parameters, but userID that is not present in the database
-	invalidUserID := "abc123"
+	invalidUserID := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	respBody2 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{"getUserID", "0", nil}, invalidUserID)
 
 	if !strings.Contains(string(respBody2), "method eth_getStorageAt cannot be called with an unauthorised client - no signed viewing keys found") {
