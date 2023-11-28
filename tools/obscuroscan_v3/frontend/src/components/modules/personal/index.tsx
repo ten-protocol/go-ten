@@ -27,6 +27,7 @@ export default function PersonalTransactions() {
           columns={columns}
           data={personalTxns?.Results}
           toolbar={toolbar}
+          total={personalTxns?.Total}
         />
       ) : (
         <p>No transactions found.</p>

@@ -4,6 +4,7 @@ import {
   TwitterLogoIcon,
   DiscordLogoIcon,
 } from "@radix-ui/react-icons";
+import Link from "next/link";
 
 export default function Footer() {
   return (
@@ -30,18 +31,18 @@ export default function Footer() {
           </a>
         </div>
         <div className="flex items-center space-x-4">
-          <a
+          <Link
             href="/docs/privacy"
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
             Privacy
-          </a>
-          <a
+          </Link>
+          <Link
             href="/docs/terms"
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
             Terms
-          </a>
+          </Link>
           <div className="text-sm font-medium text-muted-foreground">
             Version: {version}
           </div>

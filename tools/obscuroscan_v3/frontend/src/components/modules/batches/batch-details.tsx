@@ -1,9 +1,9 @@
 import { Separator } from "@/src/components/ui/separator";
 import TruncatedAddress from "../common/truncated-address";
-import { BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
 import KeyValueItem, { KeyValueList } from "@/src/components/ui/key-value";
 import { formatTimeAgo } from "@/src/lib/utils";
 import { Badge } from "@/src/components/ui/badge";
+import { BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
 
 export function BatchDetailsComponent({
   batchDetails,
