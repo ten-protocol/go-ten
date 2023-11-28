@@ -1,8 +1,9 @@
 package crosschain
 
 import (
-	"github.com/ten-protocol/go-ten/go/common"
 	"math/big"
+
+	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
