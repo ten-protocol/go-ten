@@ -11,9 +11,11 @@ export const metadata: Metadata = {
 };
 
 export default function Batches() {
-  const { batches, refetchBatches, setNoPolling, updateQueryParams } =
-    useBatchesService();
-  const { BatchesData, Total } = batches?.result || {};
+  const { batches, refetchBatches, setNoPolling } = useBatchesService();
+  const { BatchesData, Total } = batches?.result || {
+    BatchesData: [],
+    Total: 0,
+  };
 
   React.useEffect(() => {
     setNoPolling(true);
@@ -36,7 +38,7 @@ export default function Batches() {
             columns={columns}
             data={BatchesData}
             refetch={refetchBatches}
-            updateQueryParams={updateQueryParams}
+            total={+Total}
           />
         ) : (
           <p>Loading...</p>

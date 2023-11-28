@@ -38,14 +38,15 @@ interface DataTableProps<TData, TValue> {
   }[];
   updateQueryParams?: (query: any) => void;
   refetch?: () => void;
+  total: number;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   toolbar,
-  updateQueryParams,
   refetch,
+  total,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
@@ -54,6 +55,10 @@ export function DataTable<TData, TValue>({
     []
   );
   const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [pagination, setPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 20,
+  });
 
   const table = useReactTable({
     data,
@@ -63,7 +68,11 @@ export function DataTable<TData, TValue>({
       columnVisibility,
       rowSelection,
       columnFilters,
+      pagination,
     },
+    onPaginationChange: setPagination,
+    manualPagination: true,
+    pageCount: Math.ceil(total / pagination.pageSize),
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
@@ -79,37 +88,12 @@ export function DataTable<TData, TValue>({
 
   const { query, push, pathname } = useRouter();
 
-  const queryParams = React.useMemo(() => {
-    if (query) {
-      const { pageIndex, pageSize } = table.getState().pagination;
-      const { sorting } = table.getState();
-
-      return {
-        ...query,
-        page: pageIndex + 1,
-        limit: pageSize,
-        sort: sorting.map((sort) => `${sort.id}:${sort.desc ? "desc" : "asc"}`),
-      };
-    }
-    return null;
-  }, [table, query]);
-
   React.useEffect(() => {
-    if (queryParams) {
-      if (updateQueryParams) {
-        updateQueryParams(queryParams);
-      }
-
-      push(
-        {
-          pathname: pathname,
-          query: queryParams,
-        },
-        undefined,
-        { shallow: true }
-      );
-    }
-  }, [queryParams, push, pathname, updateQueryParams]);
+    const { pageIndex, pageSize } = table.getState().pagination;
+    const params = { ...query, page: pageIndex + 1, size: pageSize };
+    push({ pathname, query: params });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table.getState().pagination]);
 
   return (
     <div className="space-y-4">

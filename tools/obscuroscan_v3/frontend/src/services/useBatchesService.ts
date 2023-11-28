@@ -2,25 +2,16 @@ import { fetchBatches, fetchLatestBatch } from "@/api/batches";
 import { useQuery } from "@tanstack/react-query";
 import { pollingInterval } from "../lib/constants";
 import { useState } from "react";
+import { useRouter } from "next/router";
 
 export const useBatchesService = () => {
-  const [options, setOptions] = useState({
-    offset: 0,
-    limit: 10,
-  });
+  const { query } = useRouter();
 
   const [noPolling, setNoPolling] = useState(false);
 
-  const updateQueryParams = (query: any) => {
-    console.log(
-      "🚀 ~ file: useBatchesService.ts:15 ~ updateQueryParams ~ query:",
-      query
-    );
-    // setOptions({
-    //   offset: newOffset,
-    //   limit: newSize,
-    // });
-    // refetchBatches;
+  const options = {
+    offset: query.page ? parseInt(query.page as string) : 1,
+    size: query.size ? parseInt(query.size as string) : 10,
   };
 
   const {
@@ -28,7 +19,7 @@ export const useBatchesService = () => {
     isLoading: isBatchesLoading,
     refetch: refetchBatches,
   } = useQuery({
-    queryKey: ["batches"],
+    queryKey: ["batches", options],
     queryFn: () => fetchBatches(options),
     refetchInterval: noPolling ? false : pollingInterval,
   });
@@ -44,7 +35,6 @@ export const useBatchesService = () => {
     isBatchesLoading,
     latestBatch,
     isLatestBatchLoading,
-    updateQueryParams,
     setNoPolling,
     refetchBatches,
   };

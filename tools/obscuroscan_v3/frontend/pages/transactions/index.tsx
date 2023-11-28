@@ -11,8 +11,17 @@ export const metadata: Metadata = {
 };
 
 export default function Transactions() {
-  const { transactions, updateTransactionQueryParams } =
+  const { transactions, refetchTransactions, setNoPolling } =
     useTransactionsService();
+  const { TransactionsData, Total } = transactions?.result || {
+    TransactionsData: [],
+    Total: 0,
+  };
+
+  React.useEffect(() => {
+    setNoPolling(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Layout>
@@ -20,13 +29,17 @@ export default function Transactions() {
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Transactions</h2>
+            <p className="text-sm text-muted-foreground">
+              {Total} Transactions found.
+            </p>
           </div>
         </div>
-        {transactions?.result?.TransactionsData ? (
+        {TransactionsData ? (
           <DataTable
             columns={columns}
-            data={transactions?.result?.TransactionsData}
-            updateQueryParams={updateTransactionQueryParams}
+            data={TransactionsData}
+            refetch={refetchTransactions}
+            total={+Total}
           />
         ) : (
           <p>Loading...</p>

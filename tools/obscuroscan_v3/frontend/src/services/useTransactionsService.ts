@@ -12,7 +12,7 @@ import { useToast } from "@/src/components/ui/use-toast";
 import { useRouter } from "next/router";
 
 export const useTransactionsService = () => {
-  const router = useRouter();
+  const { query } = useRouter();
   const { toast } = useToast();
   const { walletAddress, provider } = useWalletConnection();
 
@@ -25,33 +25,24 @@ export const useTransactionsService = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walletAddress]);
 
-  const [options, setOptions] = useState({
-    offset: 0,
-    limit: 10,
-  });
-
   const [noPolling, setNoPolling] = useState(false);
 
-  const updateQueryParams = (query: any) => {
-    console.log(
-      "🚀 ~ file: useBatchesService.ts:15 ~ updateQueryParams ~ query:",
-      query
-    );
-    // setOptions({
-    //   offset: newOffset,
-    //   limit: newSize,
-    // });
-    // refetchBatches;
+  const options = {
+    offset: query.page ? parseInt(query.page as string) : 1,
+    size: query.size ? parseInt(query.size as string) : 10,
+    // sort: query.sort ? (query.sort as string) : "blockNumber",
+    // order: query.order ? (query.order as string) : "desc",
+    // filter: query.filter ? (query.filter as string) : "",
   };
 
   const {
     data: transactions,
     isLoading: isTransactionsLoading,
-    refetch,
+    refetch: refetchTransactions,
   } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: () => fetchTransactions(),
-    refetchInterval: pollingInterval,
+    queryKey: ["transactions", options],
+    queryFn: () => fetchTransactions(options),
+    refetchInterval: noPolling ? false : pollingInterval,
   });
 
   const { data: transactionCount, isLoading: isTransactionCountLoading } =
@@ -95,8 +86,9 @@ export const useTransactionsService = () => {
 
   return {
     transactions,
-    updateTransactionQueryParams: updateQueryParams,
     isTransactionsLoading,
+    refetchTransactions,
+    setNoPolling,
     transactionCount,
     isTransactionCountLoading,
     personalTxns,

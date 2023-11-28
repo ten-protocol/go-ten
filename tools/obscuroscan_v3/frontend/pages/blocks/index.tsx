@@ -11,7 +11,16 @@ export const metadata: Metadata = {
 };
 
 export default function Blocks() {
-  const { blocks } = useBlocksService();
+  const { blocks, setNoPolling, refetchBlocks } = useBlocksService();
+  const { BlocksData, Total } = blocks?.result || {
+    BlocksData: [],
+    Total: 0,
+  };
+
+  React.useEffect(() => {
+    setNoPolling(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Layout>
@@ -19,10 +28,18 @@ export default function Blocks() {
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Blocks</h2>
+            <p className="text-sm text-muted-foreground">
+              {Total} Blocks found.
+            </p>
           </div>
         </div>
-        {blocks?.result?.BlocksData ? (
-          <DataTable columns={columns} data={blocks?.result?.BlocksData} />
+        {BlocksData ? (
+          <DataTable
+            columns={columns}
+            data={BlocksData}
+            total={+Total}
+            refetch={refetchBlocks}
+          />
         ) : (
           <p>Loading...</p>
         )}
