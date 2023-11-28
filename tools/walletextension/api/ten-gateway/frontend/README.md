@@ -1,40 +1,62 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Ten Gateway
+
+Ten Gateway is a Next.js and Tailwind CSS-powered application that serves as a Blockchain Explorer for The Encryption Network (TEN). This explorer allows users to interact with and explore the blocks, transactions, batches, resources, and personal data on the TEN blockchain. Tenscan is built using the Shadcn-UI Component Library for a consistent and visually appealing user interface.
+
+## Folder Structure
+
+```
+📁 Ten Gateway
+├── 📁 api - Contains server-side code, such as API routes or server logic
+├── 📁 public - This directory is used to serve static assets. Files inside this directory can be referenced in your code with a URL path
+├── 📁 src - Main source code directory for this project
+│   ├── 📁 components - Contains reusable React components used throughout the application
+│   ├── 📁 pages - Typically used for Next.js pages. Each .tsx or .js file in this directory becomes a route in your application
+│   ├── 📁 hooks - Custom React hooks that can be shared and reused across components
+│   ├── 📁 lib - Utility functions or modules that provide common functionalities across the application
+│   ├── 📁 routes - Route-related logic or configuration can be placed in this directory
+│   ├── 📁 services - Used for services that interact with external APIs or handle other data-related tasks
+│   └── 📁 types - Type definitions (.d.ts files or TypeScript files) for TypeScript, describing the shape of data and objects used in the application
+└── 📁 styles - Global styles, stylesheets, or styling-related configurations for this project
+```
 
 ## Getting Started
 
-First, run the development server:
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/ten-protocol/go-ten.git
+   cd go-ten/tools/walletextension/api/ten-gateway/frontend
+   ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2. **Install Dependencies:**
+   ```bash
+   npm install
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. **Run the Development Server:**
+   ```bash
+   npm run dev
+   ```
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+   The application will be accessible at [http://localhost:3000](http://localhost:3000).
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+## Usage
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+- Connect to Ten Testnet using the button in the top right corner of the application or on the homepage
+- You can request tokens from the Discord bot by typing `!faucet <your address>` in the #faucet channel
+- You can also revoke accounts by clicking the "Revoke Accounts" button on the homepage
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+## Built With
 
-## Learn More
+- [Next.js](https://nextjs.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Shadcn-UI](https://shadcn.com/)
+- [TypeScript](https://www.typescriptlang.org/)
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Contributing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+Contributions are welcome! Please follow our [contribution guidelines](/docs/_docs/community/contributions.md).
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+This project is licensed under the [GNU Affero General Public License v3.0](/LICENSE).
