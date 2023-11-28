@@ -3,6 +3,7 @@ package host
 import (
 	"encoding/json"
 	"fmt"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/go/host/l2"
