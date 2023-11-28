@@ -70,7 +70,7 @@ func NewUserWallet(pk *ecdsa.PrivateKey, rpcEndpoint string, logger gethlog.Logg
 		privateKey:     pk,
 		publicKey:      publicKeyECDSA,
 		accountAddress: crypto.PubkeyToAddress(*publicKeyECDSA),
-		chainID:        big.NewInt(integration.ObscuroChainID), // default, overridable using `WithChainID(...) opt`
+		chainID:        big.NewInt(integration.TenChainID), // default, overridable using `WithChainID(...) opt`
 		rpcEndpoint:    rpcEndpoint,
 		logger:         logger,
 	}
@@ -82,7 +82,7 @@ func NewUserWallet(pk *ecdsa.PrivateKey, rpcEndpoint string, logger gethlog.Logg
 }
 
 func (s *UserWallet) ChainID() *big.Int {
-	return big.NewInt(integration.ObscuroChainID)
+	return big.NewInt(integration.TenChainID)
 }
 
 func (s *UserWallet) SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int, gas uint64) (*gethcommon.Hash, error) {

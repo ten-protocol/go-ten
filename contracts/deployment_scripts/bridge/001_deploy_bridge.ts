@@ -24,8 +24,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // We deploy the layer 1 part of the bridge.
     const layer1BridgeDeployment = await hre.companionNetworks.layer1.deployments.deploy('ObscuroBridge', {
         from: accountsL1.deployer,
-        args: [ messengerL1.address ],
         log: true,
+        proxy: {
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: [ messengerL1.address ]
+                }
+            }
+        }
     });
 
     // get management contract and write the L1 bridge address to it
@@ -44,8 +52,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // and be subordinate of the L1 ObscuroBridge
     const layer2BridgeDeployment = await deployments.deploy('EthereumBridge', {
         from: accountsL2.deployer,
-        args: [ messengerL2.address, layer1BridgeDeployment.address ],
         log: true,
+        proxy: {
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: [ messengerL2.address, layer1BridgeDeployment.address ]
+                }
+            }
+        }
     });
 
     await hre.companionNetworks.layer1.deployments.execute("ObscuroBridge", {

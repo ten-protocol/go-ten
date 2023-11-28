@@ -44,7 +44,7 @@ class Gateway {
         }
 
         try {
-            const authenticateUserURL = pathAuthenticate+"?u="+this.userId
+            const authenticateUserURL = pathAuthenticate+"?token="+this.userId
             const authenticateFields = {"signature": signature, "message": message}
             const authenticateResp = await axios.post(
                 authenticateUserURL,
@@ -68,11 +68,11 @@ class Gateway {
     }
 
     http() {
-        return `${this.httpURL}/v1/?u=${this.userId}`;
+        return `${this.httpURL}/v1/?token=${this.userId}`;
     }
 
     ws() {
-        return `${this.wsURL}/v1/?u=${this.userId}`;
+        return `${this.wsURL}/v1/?token=${this.userId}`;
     }
 }
 

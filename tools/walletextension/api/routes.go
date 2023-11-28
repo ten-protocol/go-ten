@@ -162,7 +162,7 @@ func ethRequestHandler(walletExt *walletextension.WalletExtension, conn userconn
 	// Get userID
 	hexUserID, err := getUserID(conn, 1)
 	if err != nil || !walletExt.UserExists(hexUserID) {
-		walletExt.Logger().Error("user not found in the query params: %w. Using the default user", log.ErrKey, err)
+		walletExt.Logger().Info("user not found in the query params: %w. Using the default user", log.ErrKey, err)
 		hexUserID = hex.EncodeToString([]byte(common.DefaultUser)) // todo (@ziga) - this can be removed once old WE endpoints are removed
 	}
 
@@ -342,7 +342,7 @@ func queryRequestHandler(walletExt *walletextension.WalletExtension, conn userco
 	hexUserID, err := getUserID(conn, 2)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
-		walletExt.Logger().Error("user not found in the query params", log.ErrKey, err)
+		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
 		return
 	}
 	address, err := getQueryParameter(conn.ReadRequestParams(), common.AddressQueryParameter)
@@ -394,7 +394,7 @@ func revokeRequestHandler(walletExt *walletextension.WalletExtension, conn userc
 	hexUserID, err := getUserID(conn, 2)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
-		walletExt.Logger().Error("user not found in the query params", log.ErrKey, err)
+		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
 		return
 	}
 
