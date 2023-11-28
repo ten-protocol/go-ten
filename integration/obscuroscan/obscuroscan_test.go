@@ -47,12 +47,12 @@ const (
 )
 
 func TestObscuroscan(t *testing.T) {
-	startPort := integration.StartPortObscuroscanUnitTest
+	startPort := integration.StartPortTenscanUnitTest
 	createObscuroNetwork(t, startPort)
 
 	obsScanConfig := &config.Config{
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
-		ServerAddress:   fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultObscuroscanHTTPPortOffset),
+		ServerAddress:   fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultTenscanHTTPPortOffset),
 		LogPath:         "sys_out",
 	}
 	serverAddress := fmt.Sprintf("http://%s", obsScanConfig.ServerAddress)
@@ -73,7 +73,7 @@ func TestObscuroscan(t *testing.T) {
 	issueTransactions(
 		t,
 		fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
-		wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger()),
+		wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.TenChainID, testlog.Logger()),
 		5,
 	)
 
@@ -203,7 +203,7 @@ func waitServerIsReady(serverAddr string) error {
 // Creates a single-node Obscuro network for testing.
 func createObscuroNetwork(t *testing.T, startPort int) {
 	// Create the Obscuro network.
-	wallets := params.NewSimWallets(1, 1, integration.EthereumChainID, integration.ObscuroChainID)
+	wallets := params.NewSimWallets(1, 1, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
 		NumberOfNodes:    1,
 		AvgBlockDuration: 1 * time.Second,

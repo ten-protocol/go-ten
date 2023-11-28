@@ -23,9 +23,23 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         contract: contractArtifact,
         args: [],
         log: true,
+        proxy: {
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: []
+                }
+            }
+        }
     });
-    const busAddress = await deployments.read('ManagementContract', 'messageBus');
 
+    const busAddress = await deployments.read('ManagementContract', 'messageBus');
+    const busAddressImpl = await deployments.read('ManagementContract_Implementation', 'messageBus');
+    console.log(`Implementation_MessageBus = ${busAddressImpl}`);
+
+
+    console.log(`ManagementContractAddress= ${mgmtContractDeployment.address}`);
     // This is required in CI/CD - look at testnet-deploy-contracts.sh for more information.
     // depends on grep -e MessageBusAddress and a positional cut of the address
     console.log(`MessageBusAddress= ${busAddress}`);

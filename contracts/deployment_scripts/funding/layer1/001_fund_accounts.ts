@@ -16,8 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         value: prefundAmount
     });
 
-
-    console.log(`Sending ${prefundAmount} to ${deployer}`);
+    console.log(`Sending ${prefundAmount} to ${deployer} through MessageBus ${messageBusAddress}`);
 
     const receipt = await layer1.deployments.rawTx({
         from: l1Accs.deployer,

@@ -34,17 +34,19 @@ type SubscriptionManager struct {
 	storage              storage.Storage
 
 	subscriptions     map[gethrpc.ID]*common.LogSubscription
+	chainID           int64
 	subscriptionMutex *sync.RWMutex // the mutex guards the subscriptions/lastHead pair
 
 	logger gethlog.Logger
 }
 
-func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage storage.Storage, logger gethlog.Logger) *SubscriptionManager {
+func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage storage.Storage, chainID int64, logger gethlog.Logger) *SubscriptionManager {
 	return &SubscriptionManager{
 		rpcEncryptionManager: rpcEncryptionManager,
 		storage:              storage,
 
 		subscriptions:     map[gethrpc.ID]*common.LogSubscription{},
+		chainID:           chainID,
 		subscriptionMutex: &sync.RWMutex{},
 		logger:            logger,
 	}
@@ -64,7 +66,7 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	}
 
 	// create viewing key encryption handler for pushing future logs
-	encryptor, err := vkhandler.New(subscription.Account, subscription.PublicViewingKey, subscription.Signature)
+	encryptor, err := vkhandler.New(subscription.Account, subscription.PublicViewingKey, subscription.Signature, s.chainID)
 	if err != nil {
 		return fmt.Errorf("unable to create vk encryption for request - %w", err)
 	}
