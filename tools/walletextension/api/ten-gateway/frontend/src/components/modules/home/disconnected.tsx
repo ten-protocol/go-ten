@@ -77,9 +77,14 @@ const Disconnected = () => {
               <Badge className="h-4 w-4" />
               <p className="text-sm">
                 RPC URL:{" "}
-                <Link href={testnetUrls.default.url} className="underline">
+                <a
+                  href={testnetUrls.default.url}
+                  className="underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   {testnetUrls.default.url}
-                </Link>
+                </a>
               </p>
               <Copy value={testnetUrls.default.url} />
             </div>

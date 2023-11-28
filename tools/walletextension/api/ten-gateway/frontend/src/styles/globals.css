@@ -65,7 +65,7 @@
     --warning: 45 80% 50%;
     --warning-foreground: 0 0% 20%;
 
-    --info: 224, 40%, 54%;
+    --info: 224 40% 54%;
     --info-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 100% 50%;
@@ -107,7 +107,7 @@
     --warning: 45 80% 40%;
     --warning-foreground: 0 0% 80%;
 
-    --info: 224, 40%, 54%;
+    --info: 224 40% 54%;
     --info-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 63% 31%;
@@ -190,5 +190,5 @@
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 210 40% 98%;
 
-  --ring: 212.7 26.8% 83.9;
+  --ring: 212.7 26.8% 83.9%;
 }

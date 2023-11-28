@@ -42,14 +42,13 @@ export const WalletConnectionProvider = ({
   const [version, setVersion] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<Account[] | null>(null);
-  const [provider, setProvider] =
-    useState<ethers.providers.Web3Provider | null>(null);
+  const [provider, setProvider] = useState({} as ethers.providers.Web3Provider);
 
   useEffect(() => {
     const { ethereum } = window as any;
     const handleAccountsChanged = async () => {
       if (userID && isValidUserIDFormat(userID)) {
-        await displayCorrectScreenBasedOnMetamaskAndUserID();
+        await displayCorrectScreenBasedOnMetamaskAndUserID(userID, provider);
       }
     };
     ethereum.on("accountsChanged", handleAccountsChanged);
@@ -128,8 +127,8 @@ export const WalletConnectionProvider = ({
   };
 
   const displayCorrectScreenBasedOnMetamaskAndUserID = async (
-    userID?: any,
-    provider?: any
+    userID: string,
+    provider: ethers.providers.Web3Provider
   ) => {
     setVersion(await fetchVersion());
     if (await isTenChain()) {
