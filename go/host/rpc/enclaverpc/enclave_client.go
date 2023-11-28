@@ -598,3 +598,18 @@ func (c *Client) GetPublicTransactionData(pagination *common.QueryPagination) (*
 
 	return &result, nil
 }
+
+func (c *Client) GetL2MessageBusAddress() (gethcommon.Address, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetL2MessageBusAddress(timeoutCtx, &generated.GetL2MessageBusAddressRequest{})
+	if err != nil {
+		return gethcommon.Address{}, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return gethcommon.Address{}, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	return gethcommon.BytesToAddress(response.L2MessageBusAddress), nil
+}

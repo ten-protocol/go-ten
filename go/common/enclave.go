@@ -137,6 +137,9 @@ type EnclaveScan interface {
 
 	// GetPublicTransactionData returns a list of public transaction data
 	GetPublicTransactionData(pagination *QueryPagination) (*TransactionListingResponse, SystemError)
+
+	// GetL2MessageBusAddress returns the address of the L2 message bus contract
+	GetL2MessageBusAddress() (gethcommon.Address, SystemError)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

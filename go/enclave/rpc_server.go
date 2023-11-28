@@ -430,6 +430,15 @@ func (s *RPCServer) GetPublicTransactionData(_ context.Context, req *generated.G
 	return &generated.GetPublicTransactionDataResponse{PublicTransactionData: marshal}, nil
 }
 
+func (s *RPCServer) GetL2MessageBusAddress(_ context.Context, _ *generated.GetL2MessageBusAddressRequest) (*generated.GetL2MessageBusAddressResponse, error) {
+	address, sysError := s.enclave.GetL2MessageBusAddress()
+	if sysError != nil {
+		s.logger.Error("Error getting message bus address", log.ErrKey, sysError)
+		return &generated.GetL2MessageBusAddressResponse{SystemError: toRPCError(sysError)}, nil
+	}
+	return &generated.GetL2MessageBusAddressResponse{L2MessageBusAddress: address.Bytes()}, nil
+}
+
 func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

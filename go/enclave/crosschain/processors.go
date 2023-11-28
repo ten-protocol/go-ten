@@ -1,6 +1,7 @@
 package crosschain
 
 import (
+	"github.com/ten-protocol/go-ten/go/common"
 	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -30,4 +31,9 @@ func New(
 
 func (c *Processors) Enabled() bool {
 	return c.Remote.Enabled()
+}
+
+func (c *Processors) GetL2MessageBusAddress() (gethcommon.Address, common.SystemError) {
+	address := c.Local.GetBusAddress()
+	return *address, nil
 }

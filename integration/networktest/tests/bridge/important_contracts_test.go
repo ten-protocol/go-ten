@@ -17,7 +17,10 @@ func TestImportantContractsLookup(t *testing.T) {
 		t,
 		env.LocalDevNetwork(),
 		actions.Series(
+			// Verify that an address for an important contract can be set and read
 			l1.SetImportantContract("L1TestContract", gethcommon.HexToAddress("0x64")),
+			// Verify that the L2 Message Bus address is made available by the host (it is deployed with a synthetic tx)
+			l1.VerifyL2MessageBusAddressAvailable(),
 		),
 	)
 }

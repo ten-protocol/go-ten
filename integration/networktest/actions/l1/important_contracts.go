@@ -2,6 +2,8 @@ package l1
 
 import (
 	"context"
+	"fmt"
+	"github.com/ten-protocol/go-ten/integration/networktest/actions"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -103,4 +105,26 @@ func (s *setImportantContract) Verify(_ context.Context, network networktest.Net
 		return errors.New("important contract not set")
 	}
 	return nil
+}
+
+func VerifyL2MessageBusAddressAvailable() networktest.Action {
+	// VerifyOnly because the L2MessageBus should be deployed automatically by the node as a synthetic tx
+	return actions.VerifyOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) error {
+		cli, err := obsclient.Dial(network.ValidatorRPCAddress(0))
+		if err != nil {
+			return errors.Wrap(err, "failed to dial obsClient")
+		}
+		networkCfg, err := cli.GetConfig()
+		if err != nil {
+			return errors.Wrap(err, "failed to get network config")
+		}
+
+		var _emptyAddress common.Address
+		if networkCfg.L2MessageBusAddress == _emptyAddress {
+			return errors.New("L2MessageBusAddress not set")
+
+		}
+		fmt.Println("L2MessageBusAddress: ", networkCfg.L2MessageBusAddress)
+		return nil
+	})
 }

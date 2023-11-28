@@ -91,6 +91,7 @@ service EnclaveProto {
 
   rpc GetPublicTransactionData(GetPublicTransactionDataRequest) returns (GetPublicTransactionDataResponse) {}
 
+  rpc GetL2MessageBusAddress(GetL2MessageBusAddressRequest) returns (GetL2MessageBusAddressResponse) {}
 }
 
 message GetPublicTransactionDataRequest {
@@ -99,6 +100,13 @@ message GetPublicTransactionDataRequest {
 
 message GetPublicTransactionDataResponse{
   bytes publicTransactionData = 1;
+  SystemError systemError = 2;
+}
+
+message GetL2MessageBusAddressRequest {}
+
+message GetL2MessageBusAddressResponse{
+  bytes l2MessageBusAddress = 1;
   SystemError systemError = 2;
 }
 
