@@ -15,4 +15,5 @@ export const requestMethods = {
   connectAccounts: "eth_requestAccounts",
   switchNetwork: "wallet_switchEthereumChain",
   addNetwork: "wallet_addEthereumChain",
+  getStorageAt: "eth_getStorageAt",
 };

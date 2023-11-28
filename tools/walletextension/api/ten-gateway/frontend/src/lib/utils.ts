@@ -1,7 +1,12 @@
 import { type ClassValue, clsx } from "clsx";
 import { formatDistanceToNow } from "date-fns";
 import { twMerge } from "tailwind-merge";
-import { tenChainIDHex, tenGatewayAddress, testnetUrls } from "./constants";
+import {
+  tenChainIDHex,
+  tenGatewayAddress,
+  testnetUrls,
+  userIDHexLength,
+} from "./constants";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -13,7 +18,7 @@ export function formatTimeAgo(unixTimestampSeconds: string) {
 }
 
 export function isValidUserIDFormat(value: string) {
-  return typeof value === "string" && value.length === 64;
+  return typeof value === "string" && value.length === userIDHexLength;
 }
 
 export function getRandomIntAsString(min: number, max: number) {

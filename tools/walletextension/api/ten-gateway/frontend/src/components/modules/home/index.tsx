@@ -1,17 +1,21 @@
 import React from "react";
-import { Button } from "../../ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "../../ui/card";
-import { Terminal } from "lucide-react";
 import { useWalletConnection } from "../../providers/wallet-provider";
 import Connected from "./connected";
 import Disconnected from "./disconnected";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Home = () => {
-  const { walletConnected } = useWalletConnection();
+  const { walletConnected, loading } = useWalletConnection();
 
   return (
     <div className="w-[800px] mx-auto">
-      {walletConnected ? <Connected /> : <Disconnected />}
+      {loading ? (
+        <Skeleton className="h-[400px]" />
+      ) : walletConnected ? (
+        <Connected />
+      ) : (
+        <Disconnected />
+      )}
     </div>
   );
 };

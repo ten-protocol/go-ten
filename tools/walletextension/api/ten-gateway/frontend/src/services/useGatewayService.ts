@@ -1,16 +1,16 @@
+import { ToastType } from "@/types/interfaces";
 import {
   addNetworkToMetaMask,
   joinTestnet,
   switchToTenNetwork,
 } from "../api/gateway";
 import { useWalletConnection } from "../components/providers/wallet-provider";
-import { useToast } from "../components/ui/use-toast";
+import { showToast } from "../components/ui/use-toast";
 import { SWITCHED_CODE, tenGatewayVersion } from "../lib/constants";
 import { getRPCFromUrl, isTenChain, isValidUserIDFormat } from "../lib/utils";
 import { requestMethods } from "../routes";
 
 const useGatewayService = () => {
-  const { toast } = useToast();
   const { provider } = useWalletConnection();
   const { userID, setUserID, getAccounts } = useWalletConnection();
 
@@ -19,12 +19,9 @@ const useGatewayService = () => {
       await (window as any).ethereum.request({
         method: requestMethods.connectAccounts,
       });
-      toast({ variant: "success", description: "Connected to Ten Network" });
+      showToast(ToastType.SUCCESS, "Connected to Ten Network");
     } catch (error) {
-      toast({
-        variant: "destructive",
-        description: "Unable to connect to Ten Network",
-      });
+      showToast(ToastType.DESTRUCTIVE, "Unable to connect to Ten Network");
       return null;
     }
   };
@@ -37,7 +34,7 @@ const useGatewayService = () => {
       const accounts = await provider.listAccounts();
       return accounts.length > 0;
     } catch (error) {
-      toast({ variant: "destructive", description: "Unable to get accounts" });
+      showToast(ToastType.DESTRUCTIVE, "Unable to get accounts");
     }
     return false;
   };
@@ -65,23 +62,16 @@ const useGatewayService = () => {
       }
 
       if (!(await isMetamaskConnected())) {
-        toast({
-          variant: "info",
-          description: "No accounts found, connecting...",
-        });
+        showToast(ToastType.INFO, "No accounts found, connecting...");
         await connectAccounts();
       }
 
       if (!provider) {
         return;
       }
-      await getAccounts();
+      await getAccounts(provider);
     } catch (error: any) {
-      console.error("Error:", error.message);
-      toast({
-        variant: "destructive",
-        description: `${error.message}`,
-      });
+      showToast(ToastType.DESTRUCTIVE, `${error.message}`);
     }
   };
 

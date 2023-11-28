@@ -50,7 +50,7 @@ export interface ResponseDataInterface<T> {
   item: T;
   message: string;
   pagination?: PaginationInterface;
-  success: string;
+  success: boolean;
 }
 
 export type NavLink = {
@@ -60,3 +60,11 @@ export type NavLink = {
   isExternal?: boolean;
   subNavLinks?: NavLink[];
 };
+
+export enum ToastType {
+  INFO = "info",
+  SUCCESS = "success",
+  WARNING = "warning",
+  DESTRUCTIVE = "destructive",
+  DEFAULT = "default",
+}

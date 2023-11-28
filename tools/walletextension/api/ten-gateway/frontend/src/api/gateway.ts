@@ -7,6 +7,7 @@ import {
   tenChainIDHex,
   tenscanLink,
   nativeCurrency,
+  typedData,
 } from "../lib/constants";
 
 export async function switchToTenNetwork() {
@@ -43,34 +44,61 @@ export async function accountIsAuthenticated(
   });
 }
 
-export async function authenticateAccountWithTenGateway(
+const getSignature = async (account: string, data: any) => {
+  const { ethereum } = window as any;
+  const signature = await ethereum.request({
+    method: metamaskPersonalSign,
+    params: [account, JSON.stringify(data)],
+  });
+
+  return signature;
+};
+
+export async function authenticateAccountWithTenGatewayEIP712(
   userID: string,
   account: string
-): Promise<string> {
-  const textToSign = `Register ${userID} for ${account.toLowerCase()}`;
-  const signature = await (window as any).ethereum
-    .request({
-      method: metamaskPersonalSign,
-      params: [textToSign, account],
-    })
-    .catch((error: any) => -1);
+): Promise<any> {
+  try {
+    const isAuthenticated = await accountIsAuthenticated(userID, account);
+    if (isAuthenticated) {
+      return "Account is already authenticated";
+    }
+    const data = {
+      ...typedData,
+      message: {
+        ...typedData.message,
+        "Encryption Token": "0x" + userID,
+      },
+    };
+    const signature = await getSignature(account, data);
 
-  if (signature === -1) {
-    return "Signing failed";
+    const auth = await authenticateUser(userID, {
+      signature,
+      address: account,
+    });
+    return auth;
+  } catch (error) {
+    throw error;
   }
+}
 
-  return await httpRequest<string>({
+const authenticateUser = async (
+  userID: string,
+  authenticateFields: {
+    signature: string;
+    address: string;
+  }
+) => {
+  const authenticateResp = await httpRequest({
     method: "post",
     url: pathToUrl(apiRoutes.authenticate),
-    data: {
-      signature,
-      message: textToSign,
-    },
+    data: authenticateFields,
     searchParams: {
       u: userID,
     },
   });
-}
+  return authenticateResp;
+};
 
 export async function revokeAccountsApi(userID: string): Promise<string> {
   return await httpRequest<string>({
@@ -103,10 +131,9 @@ export async function addNetworkToMetaMask(rpcUrls: string[]) {
         },
       ],
     });
+    return true;
   } catch (error) {
     console.error(error);
     return error;
   }
-
-  return true;
 }
