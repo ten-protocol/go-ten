@@ -10,7 +10,7 @@
 #
 
 # Defaults to restricted flag mode
-ARG RESTRICTEDMODE=true
+ARG TESTMODE=false
 
 FROM ghcr.io/edgelesssys/ego-dev:v1.3.0 AS build-base
 
@@ -35,12 +35,12 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     ego-go build
 
 # New build stage for compiling the enclave with restricted flags mode
-FROM build-enclave as build-enclave-restrictedmode-true
+FROM build-enclave as build-enclave-testmode-false
 # Sign the enclave executable
 RUN ego sign enclave.json
 
 # New build stage for compiling the enclave without restricted flags mode
-FROM build-enclave as build-enclave-restrictedmode-false
+FROM build-enclave as build-enclave-testmode-true
 # Sign the enclave executable
 RUN ego sign enclave-test.json
 

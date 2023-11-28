@@ -18,7 +18,7 @@ services:
       context: $ROOT_PATH
       dockerfile: ./dockerfiles/enclave.Dockerfile
       args:
-        RESTRICTEDMODE: false
+        TESTMODE: true
   enclave-debug:
     image: "testnetobscuronet.azurecr.io/obscuronet/enclave_debug:latest"
     build:
