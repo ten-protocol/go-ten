@@ -30,18 +30,18 @@ export default function Footer() {
           </a>
         </div>
         <div className="flex items-center space-x-4">
-          {/* <a
-            href="/privacy"
+          <a
+            href="/docs/privacy"
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
             Privacy
           </a>
           <a
-            href="/terms"
+            href="/docs/terms"
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
             Terms
-          </a> */}
+          </a>
           <div className="text-sm font-medium text-muted-foreground">
             Version: {version}
           </div>

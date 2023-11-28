@@ -8,6 +8,8 @@ import "../ITokenFactory.sol";
 import "../../messaging/messenger/CrossChainEnabledObscuro.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+
 
 // This is the Ethereum side of the Obscuro Bridge.
 // End-users can interact with it to transfer ERC20 tokens and native eth to the Layer 2 Obscuro.
@@ -30,7 +32,8 @@ contract ObscuroBridge is
 
     address remoteBridgeAddress;
 
-    constructor(address messenger) CrossChainEnabledObscuro(messenger) {
+    function initialize(address messenger) public initializer() {
+         CrossChainEnabledObscuro.configure(messenger);
         _grantRole(ADMIN_ROLE, msg.sender);
         _grantRole(NATIVE_TOKEN_ROLE, address(0x0));
     }

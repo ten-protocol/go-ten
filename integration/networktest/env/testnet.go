@@ -52,13 +52,13 @@ func NewTestnetConnectorWithFaucetAccount(seqRPCAddr string, validatorRPCAddress
 	return &testnetConnector{
 		seqRPCAddress:         seqRPCAddr,
 		validatorRPCAddresses: validatorRPCAddressses,
-		faucetWallet:          userwallet.NewUserWallet(ecdsaKey, validatorRPCAddressses[0], testlog.Logger(), userwallet.WithChainID(big.NewInt(integration.ObscuroChainID))),
+		faucetWallet:          userwallet.NewUserWallet(ecdsaKey, validatorRPCAddressses[0], testlog.Logger(), userwallet.WithChainID(big.NewInt(integration.TenChainID))),
 		l1RPCURL:              l1RPCAddress,
 	}
 }
 
 func (t *testnetConnector) ChainID() int64 {
-	return integration.ObscuroChainID
+	return integration.TenChainID
 }
 
 func (t *testnetConnector) AllocateFaucetFunds(ctx context.Context, account gethcommon.Address) error {

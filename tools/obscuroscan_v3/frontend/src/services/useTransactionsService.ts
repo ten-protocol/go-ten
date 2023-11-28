@@ -9,8 +9,10 @@ import { useEffect, useState } from "react";
 import { pollingInterval, pricePollingInterval } from "../lib/constants";
 import { PersonalTransactionsResponse } from "../types/interfaces/TransactionInterfaces";
 import { useToast } from "@/src/components/ui/use-toast";
+import { useRouter } from "next/router";
 
 export const useTransactionsService = () => {
+  const { query } = useRouter();
   const { toast } = useToast();
   const { walletAddress, provider } = useWalletConnection();
 
@@ -23,10 +25,24 @@ export const useTransactionsService = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walletAddress]);
 
-  const { data: transactions, isLoading: isTransactionsLoading } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: () => fetchTransactions(),
-    refetchInterval: pollingInterval,
+  const [noPolling, setNoPolling] = useState(false);
+
+  const options = {
+    offset: query.page ? parseInt(query.page as string) : 1,
+    size: query.size ? parseInt(query.size as string) : 10,
+    // sort: query.sort ? (query.sort as string) : "blockNumber",
+    // order: query.order ? (query.order as string) : "desc",
+    // filter: query.filter ? (query.filter as string) : "",
+  };
+
+  const {
+    data: transactions,
+    isLoading: isTransactionsLoading,
+    refetch: refetchTransactions,
+  } = useQuery({
+    queryKey: ["transactions", options],
+    queryFn: () => fetchTransactions(options),
+    refetchInterval: noPolling ? false : pollingInterval,
   });
 
   const { data: transactionCount, isLoading: isTransactionCountLoading } =
@@ -71,6 +87,8 @@ export const useTransactionsService = () => {
   return {
     transactions,
     isTransactionsLoading,
+    refetchTransactions,
+    setNoPolling,
     transactionCount,
     isTransactionCountLoading,
     personalTxns,

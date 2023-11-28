@@ -52,7 +52,7 @@ func TestFaucet(t *testing.T) {
 		HTTPPort:          startPort + integration.DefaultHostRPCHTTPOffset,
 		PK:                "0x" + contractDeployerPrivateKeyHex,
 		JWTSecret:         "This_is_secret",
-		ChainID:           big.NewInt(integration.ObscuroChainID),
+		ChainID:           big.NewInt(integration.TenChainID),
 		ServerPort:        integration.StartPortFaucetHTTPUnitTest,
 		DefaultFundAmount: new(big.Int).Mul(big.NewInt(100), big.NewInt(1e18)),
 	}
@@ -66,7 +66,7 @@ func TestFaucet(t *testing.T) {
 	require.NoError(t, err)
 	require.NotZero(t, initialFaucetBal)
 
-	rndWallet := datagenerator.RandomWallet(integration.ObscuroChainID)
+	rndWallet := datagenerator.RandomWallet(integration.TenChainID)
 	err = fundWallet(faucetConfig.ServerPort, rndWallet)
 	require.NoError(t, err)
 
@@ -91,7 +91,7 @@ func TestFaucet(t *testing.T) {
 func createObscuroNetwork(t *testing.T, startPort int) {
 	// Create the Obscuro network.
 	numberOfNodes := 1
-	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
+	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
 		NumberOfNodes:    numberOfNodes,
 		AvgBlockDuration: 1 * time.Second,

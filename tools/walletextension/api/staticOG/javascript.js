@@ -105,7 +105,7 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
             getRPCFromUrl(obscuroGatewayAddress) +
               "/" +
               obscuroGatewayVersion +
-              "/?u=" +
+              "/?token=" +
               userID,
           ],
           blockExplorerUrls: ["https://testnet.obscuroscan.io"],
@@ -158,7 +158,7 @@ async function authenticateAccountWithObscuroGatewayEIP712(ethereum, account, us
   });
 
 
-  const authenticateUserURL = pathAuthenticate+"?u="+userID
+  const authenticateUserURL = pathAuthenticate+"?token="+userID
   const authenticateFields = {"signature": signature, "address": account }
   const authenticateResp = await fetch(
       authenticateUserURL, {
@@ -172,7 +172,7 @@ async function authenticateAccountWithObscuroGatewayEIP712(ethereum, account, us
 
 
 async function accountIsAuthenticated(account, userID) {
-  const queryAccountUserID = pathQuery + "?u=" + userID + "&a=" + account;
+  const queryAccountUserID = pathQuery + "?token=" + userID + "&a=" + account;
   const isAuthenticatedResponse = await fetch(queryAccountUserID, {
     method: methodGet,
     headers: jsonHeaders,
@@ -183,7 +183,7 @@ async function accountIsAuthenticated(account, userID) {
 }
 
 async function revokeUserID(userID) {
-  const queryAccountUserID = pathRevoke + "?u=" + userID;
+  const queryAccountUserID = pathRevoke + "?token=" + userID;
   const revokeResponse = await fetch(queryAccountUserID, {
     method: methodGet,
     headers: jsonHeaders,
