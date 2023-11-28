@@ -138,8 +138,8 @@ type EnclaveScan interface {
 	// GetPublicTransactionData returns a list of public transaction data
 	GetPublicTransactionData(pagination *QueryPagination) (*TransactionListingResponse, SystemError)
 
-	// GetL2MessageBusAddress returns the address of the L2 message bus contract
-	GetL2MessageBusAddress() (gethcommon.Address, SystemError)
+	// EnclavePublicConfig returns network data that is known to the enclave but can be shared publicly
+	EnclavePublicConfig() (*EnclavePublicConfig, SystemError)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
@@ -153,4 +153,8 @@ type ProducedSecretResponse struct {
 	Secret      []byte
 	RequesterID gethcommon.Address
 	HostAddress string
+}
+
+type EnclavePublicConfig struct {
+	L2MessageBusAddress gethcommon.Address
 }

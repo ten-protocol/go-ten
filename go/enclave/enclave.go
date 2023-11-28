@@ -1378,8 +1378,12 @@ func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPaginatio
 	}, nil
 }
 
-func (e *enclaveImpl) GetL2MessageBusAddress() (gethcommon.Address, common.SystemError) {
-	return e.crossChainProcessors.GetL2MessageBusAddress()
+func (e *enclaveImpl) EnclavePublicConfig() (*common.EnclavePublicConfig, common.SystemError) {
+	address, systemError := e.crossChainProcessors.GetL2MessageBusAddress()
+	if systemError != nil {
+		return nil, systemError
+	}
+	return &common.EnclavePublicConfig{L2MessageBusAddress: address}, nil
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction

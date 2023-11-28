@@ -91,7 +91,8 @@ service EnclaveProto {
 
   rpc GetPublicTransactionData(GetPublicTransactionDataRequest) returns (GetPublicTransactionDataResponse) {}
 
-  rpc GetL2MessageBusAddress(GetL2MessageBusAddressRequest) returns (GetL2MessageBusAddressResponse) {}
+  // EnclavePublicConfig returns public network data that is known to the enclave but may not be known to the host
+  rpc EnclavePublicConfig(EnclavePublicConfigRequest) returns (EnclavePublicConfigResponse) {}
 }
 
 message GetPublicTransactionDataRequest {
@@ -103,9 +104,9 @@ message GetPublicTransactionDataResponse{
   SystemError systemError = 2;
 }
 
-message GetL2MessageBusAddressRequest {}
+message EnclavePublicConfigRequest {}
 
-message GetL2MessageBusAddressResponse{
+message EnclavePublicConfigResponse{
   bytes l2MessageBusAddress = 1;
   SystemError systemError = 2;
 }

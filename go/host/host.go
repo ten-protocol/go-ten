@@ -200,7 +200,7 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 
 // ObscuroConfig returns info on the Obscuro network
 func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
-	l2MessageBusAddress, err := h.EnclaveClient().GetL2MessageBusAddress()
+	publicCfg, err := h.EnclaveClient().EnclavePublicConfig()
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("unable to get L2 message bus address - %w", err))
 	}
@@ -210,7 +210,7 @@ func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
 
 		SequencerID:         h.config.SequencerID,
 		MessageBusAddress:   h.config.MessageBusAddress,
-		L2MessageBusAddress: l2MessageBusAddress,
+		L2MessageBusAddress: publicCfg.L2MessageBusAddress,
 		ImportantContracts:  h.services.L1Publisher().GetImportantContracts(),
 	}, nil
 }
