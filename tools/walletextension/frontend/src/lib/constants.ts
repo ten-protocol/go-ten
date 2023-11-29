@@ -5,7 +5,10 @@ export const socialLinks = {
   github: "https://github.com/obscuronet",
   discord: "https://discord.gg/2JQ2Z3r",
   twitter: "https://twitter.com/obscuronet",
+  twitterHandle: "@obscuronet",
 };
+
+export const GOOGLE_ANALYTICS_ID = "G-RPFRRG1S7F";
 
 export const testnetUrls = {
   sepolia: {

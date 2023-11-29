@@ -1,5 +1,15 @@
 import React from "react";
 
+export interface SeoProps {
+  title: string;
+  description: string;
+  canonicalUrl: string;
+  ogTwitterImage: string;
+  ogImageUrl: string;
+  ogType: string;
+  children: React.ReactNode;
+}
+
 export interface ErrorType {
   statusCode?: number;
   showRedirectText?: boolean;
