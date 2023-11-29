@@ -88,6 +88,8 @@ func TestTenGateway(t *testing.T) {
 	// prefunded wallet
 	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.TenChainID, testlog.Logger())
 
+	time.Sleep(time.Hour)
+
 	// run the tests against the exis
 	for name, test := range map[string]func(*testing.T, string, string, wallet.Wallet){
 		//"testAreTxsMinted":            testAreTxsMinted, this breaks the other tests bc, enable once concurency issues are fixed

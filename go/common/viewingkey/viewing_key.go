@@ -6,15 +6,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/big"
-	"strings"
-
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/ten-protocol/go-ten/go/wallet"
+	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -34,6 +32,7 @@ const (
 	EIP712DomainVersion      = "version"
 	EIP712DomainChainID      = "chainId"
 	EIP712EncryptionToken    = "Encryption Token"
+	EIP712EncryptionTokenV2  = "EncryptionToken"
 	EIP712DomainNameValue    = "Ten"
 	EIP712DomainVersionValue = "1.0"
 	UserIDHexLength          = 40
@@ -120,13 +119,6 @@ func GenerateSignMessage(vkPubKey []byte) string {
 	return SignedMsgPrefix + hex.EncodeToString(vkPubKey)
 }
 
-// GenerateSignMessageOG creates the message to be signed by Obscuro Gateway (new format)
-// format is expected to be "Register <userID> for <Account>" (with the account in lowercase)
-func GenerateSignMessageOG(vkPubKey []byte, addr *gethcommon.Address) string {
-	userID := crypto.Keccak256Hash(vkPubKey).Bytes()
-	return fmt.Sprintf("Register %s for %s", hex.EncodeToString(userID), strings.ToLower(addr.Hex()))
-}
-
 // GenerateAuthenticationEIP712RawData generates raw data (bytes)
 // for an EIP-712 message used to authenticate an address with user
 func GenerateAuthenticationEIP712RawData(userID string, chainID int64) ([]byte, error) {
@@ -182,6 +174,61 @@ func GenerateAuthenticationEIP712RawData(userID string, chainID int64) ([]byte, 
 	return rawData, nil
 }
 
+// GenerateAuthenticationEIP712RawDataV2 generates raw data (bytes)
+// for an EIP-712 message used to authenticate an address with user
+func GenerateAuthenticationEIP712RawDataV2(userID string, chainID int64) ([]byte, error) {
+	if len(userID) != UserIDHexLength {
+		return nil, fmt.Errorf("userID hex length must be %d, received %d", UserIDHexLength, len(userID))
+	}
+	encryptionToken := "0x" + userID
+
+	types := apitypes.Types{
+		EIP712Domain: {
+			{Name: EIP712DomainName, Type: "string"},
+			{Name: EIP712DomainVersion, Type: "string"},
+			{Name: EIP712DomainChainID, Type: "uint256"},
+		},
+		EIP712Type: {
+			{Name: EIP712EncryptionTokenV2, Type: "address"},
+		},
+	}
+
+	domain := apitypes.TypedDataDomain{
+		Name:    EIP712DomainNameValue,
+		Version: EIP712DomainVersionValue,
+		ChainId: (*math.HexOrDecimal256)(big.NewInt(chainID)),
+	}
+
+	message := map[string]interface{}{
+		EIP712EncryptionTokenV2: encryptionToken,
+	}
+
+	typedData := apitypes.TypedData{
+		Types:       types,
+		PrimaryType: EIP712Type,
+		Domain:      domain,
+		Message:     message,
+	}
+
+	// Now we need to create EIP-712 compliant hash.
+	// It involves hashing the message with its structure, hashing domain separator,
+	// and then encoding both hashes with specific EIP-712 bytes to construct the final message format.
+
+	// Hash the EIP-712 message using its type and content
+	typedDataHash, err := typedData.HashStruct(typedData.PrimaryType, typedData.Message)
+	if err != nil {
+		return nil, err
+	}
+	// Create the domain separator hash for EIP-712 message context
+	domainSeparator, err := typedData.HashStruct(EIP712Domain, typedData.Domain.Map())
+	if err != nil {
+		return nil, err
+	}
+	// Prefix domain and message hashes with EIP-712 version and encoding bytes
+	rawData := append([]byte("\x19\x01"), append(domainSeparator, typedDataHash...)...)
+	return rawData, nil
+}
+
 // CalculateUserIDHex CalculateUserID calculates userID from a public key
 // (we truncate it, because we want it to have length 20) and encode to hex strings
 func CalculateUserIDHex(publicKeyBytes []byte) string {
@@ -194,51 +241,66 @@ func CalculateUserID(publicKeyBytes []byte) []byte {
 }
 
 func VerifySignatureEIP712(userID string, address *gethcommon.Address, signature []byte, chainID int64) (bool, error) {
+	var rawDataOptions [][]byte
+
 	// get raw data for structured message
-	rawData, err := GenerateAuthenticationEIP712RawData(userID, chainID)
+	rawDataOption1, err := GenerateAuthenticationEIP712RawData(userID, chainID)
 	if err != nil {
 		return false, err
 	}
+	rawDataOptions = append(rawDataOptions, rawDataOption1)
 
-	// create a hash of structured message (needed for signature verification)
-	hashBytes := crypto.Keccak256(rawData)
-	hash := gethcommon.BytesToHash(hashBytes)
-
-	if len(signature) != 65 {
-		return false, fmt.Errorf("invalid signature length: %d", len(signature))
-	}
-
-	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
-	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-	if signature[64] == 27 || signature[64] == 28 {
-		signature[64] -= 27
-	}
-
-	pubKeyBytes, err := crypto.Ecrecover(hash[:], signature)
+	// get raw data for structured message
+	rawDataOption2, err := GenerateAuthenticationEIP712RawDataV2(userID, chainID)
 	if err != nil {
-		return false, fmt.Errorf("invalid signature: %w", err)
+		return false, err
 	}
+	rawDataOptions = append(rawDataOptions, rawDataOption2)
 
-	pubKey, err := crypto.UnmarshalPubkey(pubKeyBytes)
-	if err != nil {
-		return false, fmt.Errorf("cannot unmarshal public key: %w", err)
+	for _, rawData := range rawDataOptions {
+		// create a hash of structured message (needed for signature verification)
+		hashBytes := crypto.Keccak256(rawData)
+		hash := gethcommon.BytesToHash(hashBytes)
+
+		if len(signature) != 65 {
+			//return false, fmt.Errorf("invalid signature length: %d", len(signature))
+			continue
+		}
+
+		// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+		// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+		if signature[64] == 27 || signature[64] == 28 {
+			signature[64] -= 27
+		}
+
+		pubKeyBytes, err := crypto.Ecrecover(hash[:], signature)
+		if err != nil {
+			// return false, fmt.Errorf("invalid signature: %w", err)
+			continue
+		}
+
+		pubKey, err := crypto.UnmarshalPubkey(pubKeyBytes)
+		if err != nil {
+			//return false, fmt.Errorf("cannot unmarshal public key: %w", err)
+			continue
+		}
+
+		recoveredAddr := crypto.PubkeyToAddress(*pubKey)
+
+		if !bytes.Equal(recoveredAddr.Bytes(), address.Bytes()) {
+			// return false, errors.New("address from signature not the same as expected")
+			continue
+		}
+
+		r := new(big.Int).SetBytes(signature[:32])
+		s := new(big.Int).SetBytes(signature[32:64])
+
+		// Verify the signature
+		isValid := ecdsa.Verify(pubKey, hashBytes, r, s)
+
+		if isValid {
+			return true, nil
+		}
 	}
-
-	recoveredAddr := crypto.PubkeyToAddress(*pubKey)
-
-	if !bytes.Equal(recoveredAddr.Bytes(), address.Bytes()) {
-		return false, errors.New("address from signature not the same as expected")
-	}
-
-	r := new(big.Int).SetBytes(signature[:32])
-	s := new(big.Int).SetBytes(signature[32:64])
-
-	// Verify the signature
-	isValid := ecdsa.Verify(pubKey, hashBytes, r, s)
-
-	if !isValid {
-		return false, errors.New("signature is not valid")
-	}
-
-	return true, nil
+	return false, errors.New("signature is not valid")
 }
