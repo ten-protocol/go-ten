@@ -77,6 +77,8 @@ type EnclaveProtoClient interface {
 	GetTotalContractCount(ctx context.Context, in *GetTotalContractCountRequest, opts ...grpc.CallOption) (*GetTotalContractCountResponse, error)
 	GetReceiptsByAddress(ctx context.Context, in *GetReceiptsByAddressRequest, opts ...grpc.CallOption) (*GetReceiptsByAddressResponse, error)
 	GetPublicTransactionData(ctx context.Context, in *GetPublicTransactionDataRequest, opts ...grpc.CallOption) (*GetPublicTransactionDataResponse, error)
+	// EnclavePublicConfig returns public network data that is known to the enclave but may not be known to the host
+	EnclavePublicConfig(ctx context.Context, in *EnclavePublicConfigRequest, opts ...grpc.CallOption) (*EnclavePublicConfigResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -371,6 +373,15 @@ func (c *enclaveProtoClient) GetPublicTransactionData(ctx context.Context, in *G
 	return out, nil
 }
 
+func (c *enclaveProtoClient) EnclavePublicConfig(ctx context.Context, in *EnclavePublicConfigRequest, opts ...grpc.CallOption) (*EnclavePublicConfigResponse, error) {
+	out := new(EnclavePublicConfigResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/EnclavePublicConfig", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
@@ -430,6 +441,8 @@ type EnclaveProtoServer interface {
 	GetTotalContractCount(context.Context, *GetTotalContractCountRequest) (*GetTotalContractCountResponse, error)
 	GetReceiptsByAddress(context.Context, *GetReceiptsByAddressRequest) (*GetReceiptsByAddressResponse, error)
 	GetPublicTransactionData(context.Context, *GetPublicTransactionDataRequest) (*GetPublicTransactionDataResponse, error)
+	// EnclavePublicConfig returns public network data that is known to the enclave but may not be known to the host
+	EnclavePublicConfig(context.Context, *EnclavePublicConfigRequest) (*EnclavePublicConfigResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -523,6 +536,9 @@ func (UnimplementedEnclaveProtoServer) GetReceiptsByAddress(context.Context, *Ge
 }
 func (UnimplementedEnclaveProtoServer) GetPublicTransactionData(context.Context, *GetPublicTransactionDataRequest) (*GetPublicTransactionDataResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPublicTransactionData not implemented")
+}
+func (UnimplementedEnclaveProtoServer) EnclavePublicConfig(context.Context, *EnclavePublicConfigRequest) (*EnclavePublicConfigResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EnclavePublicConfig not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -1062,6 +1078,24 @@ func _EnclaveProto_GetPublicTransactionData_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_EnclavePublicConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnclavePublicConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).EnclavePublicConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/EnclavePublicConfig",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).EnclavePublicConfig(ctx, req.(*EnclavePublicConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1180,6 +1214,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPublicTransactionData",
 			Handler:    _EnclaveProto_GetPublicTransactionData_Handler,
+		},
+		{
+			MethodName: "EnclavePublicConfig",
+			Handler:    _EnclaveProto_EnclavePublicConfig_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
