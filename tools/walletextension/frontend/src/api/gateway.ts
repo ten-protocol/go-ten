@@ -3,14 +3,39 @@ import { httpRequest } from ".";
 import { pathToUrl } from "../routes/router";
 import { getNetworkName } from "../lib/utils";
 import {
-  metamaskPersonalSign,
   tenChainIDHex,
   tenscanLink,
   nativeCurrency,
-  typedData,
+  tenChainIDDecimal,
 } from "../lib/constants";
+import { AuthenticationResponse } from "@/types/interfaces/GatewayInterfaces";
+
+const typedData = {
+  types: {
+    EIP712Domain: [
+      { name: "name", type: "string" },
+      { name: "version", type: "string" },
+      { name: "chainId", type: "uint256" },
+    ],
+    Authentication: [{ name: "Encryption Token", type: "address" }],
+  },
+  primaryType: "Authentication",
+  domain: {
+    name: "Ten",
+    version: "1.0",
+    chainId: tenChainIDDecimal,
+  },
+  message: {
+    "Encryption Token": "0x",
+  },
+};
+
+const { ethereum } = typeof window !== "undefined" ? window : ({} as any);
 
 export async function switchToTenNetwork() {
+  if (!ethereum) {
+    return;
+  }
   try {
     await (window as any).ethereum.request({
       method: requestMethods.switchNetwork,
@@ -33,34 +58,37 @@ export async function fetchVersion(): Promise<string> {
 export async function accountIsAuthenticated(
   userID: string,
   account: string
-): Promise<boolean> {
-  return await httpRequest<boolean>({
+): Promise<AuthenticationResponse> {
+  return await httpRequest<AuthenticationResponse>({
     method: "get",
     url: pathToUrl(apiRoutes.queryAccountUserID),
     searchParams: {
-      u: userID,
+      token: userID,
       a: account,
     },
   });
 }
 
 const getSignature = async (account: string, data: any) => {
-  const { ethereum } = window as any;
-  const signature = await ethereum.request({
-    method: metamaskPersonalSign,
+  if (!ethereum) {
+    return;
+  }
+  return await ethereum.request({
+    method: requestMethods.signTypedData,
     params: [account, JSON.stringify(data)],
   });
-
-  return signature;
 };
 
 export async function authenticateAccountWithTenGatewayEIP712(
   userID: string,
   account: string
 ): Promise<any> {
+  if (!userID) {
+    return;
+  }
   try {
     const isAuthenticated = await accountIsAuthenticated(userID, account);
-    if (isAuthenticated) {
+    if (isAuthenticated.status) {
       return "Account is already authenticated";
     }
     const data = {
@@ -89,15 +117,14 @@ const authenticateUser = async (
     address: string;
   }
 ) => {
-  const authenticateResp = await httpRequest({
+  return await httpRequest({
     method: "post",
     url: pathToUrl(apiRoutes.authenticate),
     data: authenticateFields,
     searchParams: {
-      u: userID,
+      token: userID,
     },
   });
-  return authenticateResp;
 };
 
 export async function revokeAccountsApi(userID: string): Promise<string> {
@@ -105,7 +132,7 @@ export async function revokeAccountsApi(userID: string): Promise<string> {
     method: "get",
     url: pathToUrl(apiRoutes.revoke),
     searchParams: {
-      u: userID,
+      token: userID,
     },
   });
 }
@@ -118,8 +145,11 @@ export async function joinTestnet(): Promise<string> {
 }
 
 export async function addNetworkToMetaMask(rpcUrls: string[]) {
+  if (!ethereum) {
+    return;
+  }
   try {
-    await (window as any).ethereum.request({
+    await ethereum.request({
       method: requestMethods.addNetwork,
       params: [
         {

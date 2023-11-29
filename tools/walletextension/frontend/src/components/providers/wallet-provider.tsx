@@ -21,6 +21,8 @@ import { METAMASK_CONNECTION_TIMEOUT } from "../../lib/constants";
 import { requestMethods } from "@/routes";
 import { ToastType } from "@/types/interfaces";
 
+const { ethereum } = typeof window !== "undefined" ? window : ({} as any);
+
 const WalletConnectionContext =
   createContext<WalletConnectionContextType | null>(null);
 
@@ -45,8 +47,10 @@ export const WalletConnectionProvider = ({
   const [provider, setProvider] = useState({} as ethers.providers.Web3Provider);
 
   useEffect(() => {
-    const { ethereum } = window as any;
     const handleAccountsChanged = async () => {
+      if (!ethereum) {
+        return;
+      }
       if (userID && isValidUserIDFormat(userID)) {
         await displayCorrectScreenBasedOnMetamaskAndUserID(userID, provider);
       }
@@ -68,7 +72,6 @@ export const WalletConnectionProvider = ({
   }, []);
 
   const checkIfMetamaskIsLoaded = async () => {
-    const { ethereum } = window as any;
     if (ethereum) {
       await handleEthereum();
     } else {
@@ -81,7 +84,6 @@ export const WalletConnectionProvider = ({
   };
 
   const handleEthereum = async () => {
-    const { ethereum } = window as any;
     if (ethereum && ethereum.isMetaMask) {
       const provider = new ethers.providers.Web3Provider(ethereum);
       setProvider(provider);
@@ -133,7 +135,7 @@ export const WalletConnectionProvider = ({
     setVersion(await fetchVersion());
     if (await isTenChain()) {
       if (userID) {
-        await getAccounts(provider);
+        await getAccounts(provider, userID);
       } else {
         setWalletConnected(false);
       }
@@ -145,14 +147,30 @@ export const WalletConnectionProvider = ({
   };
 
   const connectAccount = async (account: string) => {
-    if (loading) {
-      return;
-    }
-
     if (!userID) {
       return;
     }
     await authenticateAccountWithTenGatewayEIP712(userID, account);
+    const { status } = await accountIsAuthenticated(userID, account);
+    if (status) {
+      showToast(ToastType.SUCCESS, "Account authenticated!");
+      setAccounts((accounts) => {
+        if (!accounts) {
+          return null;
+        }
+        return accounts.map((acc) => {
+          if (acc.name === account) {
+            return {
+              ...acc,
+              connected: status,
+            };
+          }
+          return acc;
+        });
+      });
+    } else {
+      showToast(ToastType.DESTRUCTIVE, "Account authentication failed.");
+    }
   };
 
   const revokeAccounts = async () => {
@@ -167,7 +185,10 @@ export const WalletConnectionProvider = ({
     }
   };
 
-  const getAccounts = async (provider: ethers.providers.Web3Provider) => {
+  const getAccounts = async (
+    provider: ethers.providers.Web3Provider,
+    id: string
+  ) => {
     try {
       if (!provider) {
         showToast(
@@ -191,21 +212,22 @@ export const WalletConnectionProvider = ({
         return;
       }
 
-      for (const account of accounts) {
-        await authenticateAccountWithTenGatewayEIP712(userID, account);
-      }
+      let updatedAccounts: Account[] = [];
 
-      const updatedAccounts = await Promise.all(
-        accounts.map(async (account: string) => ({
+      for (let i = 0; i < accounts.length; i++) {
+        const account = accounts[i];
+        authenticateAccountWithTenGatewayEIP712(id, account);
+        const { status } = await accountIsAuthenticated(id, account);
+        updatedAccounts.push({
           name: account,
-          connected: await accountIsAuthenticated(userID, account),
-        }))
-      );
+          connected: status,
+        });
+      }
 
       setAccounts(updatedAccounts);
       setWalletConnected(true);
 
-      showToast(ToastType.SUCCESS, "Accounts authenticated successfully!");
+      showToast(ToastType.SUCCESS, "Accounts authenticated");
     } catch (error) {
       console.error(error);
       showToast(ToastType.DESTRUCTIVE, "An error occurred. Please try again.");

@@ -41,7 +41,7 @@ const Connected = () => {
         <TableHeader>
           <TableRow>
             <TableHead>Account</TableHead>
-            <TableHead>Connected</TableHead>
+            <TableHead>Authenticated</TableHead>
             <TableHead></TableHead>
           </TableRow>
         </TableHeader>

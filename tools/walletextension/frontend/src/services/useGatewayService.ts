@@ -10,13 +10,18 @@ import { SWITCHED_CODE, tenGatewayVersion } from "../lib/constants";
 import { getRPCFromUrl, isTenChain, isValidUserIDFormat } from "../lib/utils";
 import { requestMethods } from "../routes";
 
+const { ethereum } = typeof window !== "undefined" ? window : ({} as any);
+
 const useGatewayService = () => {
   const { provider } = useWalletConnection();
   const { userID, setUserID, getAccounts } = useWalletConnection();
 
   const connectAccounts = async () => {
+    if (!ethereum) {
+      return null;
+    }
     try {
-      await (window as any).ethereum.request({
+      await ethereum.request({
         method: requestMethods.connectAccounts,
       });
       showToast(ToastType.SUCCESS, "Connected to Ten Network");
@@ -57,7 +62,9 @@ const useGatewayService = () => {
       ) {
         const user = await joinTestnet();
         setUserID(user);
-        const rpcUrls = [`${getRPCFromUrl()}/${tenGatewayVersion}/?u=${user}`];
+        const rpcUrls = [
+          `${getRPCFromUrl()}/${tenGatewayVersion}/?token=${user}`,
+        ];
         await addNetworkToMetaMask(rpcUrls);
       }
 
@@ -66,10 +73,10 @@ const useGatewayService = () => {
         await connectAccounts();
       }
 
-      if (!provider) {
+      if (!provider || !userID) {
         return;
       }
-      await getAccounts(provider);
+      await getAccounts(provider, userID);
     } catch (error: any) {
       showToast(ToastType.DESTRUCTIVE, `${error.message}`);
     }

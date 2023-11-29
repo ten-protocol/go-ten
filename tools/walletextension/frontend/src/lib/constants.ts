@@ -1,4 +1,4 @@
-export const tenGatewayAddress = "https://testnet.obscu.ro";
+export const tenGatewayAddress = "https://uat-testnet.obscu.ro";
 export const tenscanLink = "https://testnet.tenscan.com";
 
 export const socialLinks = {
@@ -35,8 +35,6 @@ export const userIDHexLength = 40;
 export const tenGatewayVersion = "v1";
 export const tenChainIDDecimal = 443;
 
-export const metamaskPersonalSign = "personal_sign";
-
 export const tenChainIDHex = "0x" + tenChainIDDecimal.toString(16); // Convert to hexadecimal and prefix with '0x'
 export const METAMASK_CONNECTION_TIMEOUT = 3000;
 
@@ -44,24 +42,4 @@ export const nativeCurrency = {
   name: "Sepolia Ether",
   symbol: "ETH",
   decimals: 18,
-};
-
-export const typedData = {
-  types: {
-    EIP712Domain: [
-      { name: "name", type: "string" },
-      { name: "version", type: "string" },
-      { name: "chainId", type: "uint256" },
-    ],
-    Authentication: [{ name: "Encryption Token", type: "address" }],
-  },
-  primaryType: "Authentication",
-  domain: {
-    name: "Ten",
-    version: "1.0",
-    chainId: tenChainIDDecimal,
-  },
-  message: {
-    "Encryption Token": "0x",
-  },
 };

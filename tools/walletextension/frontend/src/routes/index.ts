@@ -16,4 +16,5 @@ export const requestMethods = {
   switchNetwork: "wallet_switchEthereumChain",
   addNetwork: "wallet_addEthereumChain",
   getStorageAt: "eth_getStorageAt",
+  signTypedData: "eth_signTypedData_v4",
 };

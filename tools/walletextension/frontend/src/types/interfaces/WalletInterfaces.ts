@@ -9,7 +9,10 @@ export interface WalletConnectionContextType {
   provider: ethers.providers.Web3Provider | null;
   version: string | null;
   revokeAccounts: () => void;
-  getAccounts: (provider: ethers.providers.Web3Provider) => Promise<void>;
+  getAccounts: (
+    provider: ethers.providers.Web3Provider,
+    userID: string
+  ) => Promise<void>;
   loading: boolean;
 }
 
