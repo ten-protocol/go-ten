@@ -23,17 +23,16 @@ func (api *ObscuroAPI) Health() (*host.HealthCheck, error) {
 }
 
 // Config returns the config status of obscuro host + enclave + db
-func (api *ObscuroAPI) Config() (*JSONFriendlyObscuroNetworkInfo, error) {
+func (api *ObscuroAPI) Config() (*ChecksumFormattedObscuroNetworkConfig, error) {
 	config, err := api.host.ObscuroConfig()
 	if err != nil {
 		return nil, err
 	}
-	return jsonFriendly(config), nil
+	return checksumFormatted(config), nil
 }
 
-// JSONFriendlyObscuroNetworkInfo is a JSON-friendly version of ObscuroNetworkInfo.
-// In particular, it serialises the addresses as EIP55 checksum addresses.
-type JSONFriendlyObscuroNetworkInfo struct {
+// ChecksumFormattedObscuroNetworkConfig serialises the addresses as EIP55 checksum addresses.
+type ChecksumFormattedObscuroNetworkConfig struct {
 	ManagementContractAddress gethcommon.AddressEIP55
 	L1StartHash               gethcommon.Hash
 	SequencerID               gethcommon.AddressEIP55
@@ -42,12 +41,12 @@ type JSONFriendlyObscuroNetworkInfo struct {
 	ImportantContracts        map[string]gethcommon.AddressEIP55 // map of contract name to address
 }
 
-func jsonFriendly(info *common.ObscuroNetworkInfo) *JSONFriendlyObscuroNetworkInfo {
+func checksumFormatted(info *common.ObscuroNetworkInfo) *ChecksumFormattedObscuroNetworkConfig {
 	importantContracts := make(map[string]gethcommon.AddressEIP55)
 	for name, addr := range info.ImportantContracts {
 		importantContracts[name] = gethcommon.AddressEIP55(addr)
 	}
-	return &JSONFriendlyObscuroNetworkInfo{
+	return &ChecksumFormattedObscuroNetworkConfig{
 		ManagementContractAddress: gethcommon.AddressEIP55(info.ManagementContractAddress),
 		L1StartHash:               info.L1StartHash,
 		SequencerID:               gethcommon.AddressEIP55(info.SequencerID),
