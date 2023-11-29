@@ -1,6 +1,6 @@
 # Ten Gateway
 
-Ten Gateway is a Next.js and Tailwind CSS-powered application that serves as a Blockchain Explorer for The Encryption Network (TEN). This explorer allows users to interact with and explore the blocks, transactions, batches, resources, and personal data on the TEN blockchain. Tenscan is built using the Shadcn-UI Component Library for a consistent and visually appealing user interface.
+Ten Gateway is a Next.js and Tailwind CSS-powered application.
 
 ## Folder Structure
 
@@ -24,7 +24,7 @@ Ten Gateway is a Next.js and Tailwind CSS-powered application that serves as a B
 1. **Clone the Repository:**
    ```bash
    git clone https://github.com/ten-protocol/go-ten.git
-   cd go-ten/tools/walletextension/api/ten-gateway/frontend
+   cd go-ten/tools/walletextension/frontend
    ```
 
 2. **Install Dependencies:**
