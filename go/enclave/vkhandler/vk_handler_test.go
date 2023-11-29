@@ -28,11 +28,11 @@ func TestVKHandler(t *testing.T) {
 	vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
 	userID := viewingkey.CalculateUserIDHex(vkPubKeyBytes)
 	WEMessageFormatTestHash := accounts.TextHash([]byte(viewingkey.GenerateSignMessage(vkPubKeyBytes)))
-	EIP712MessageData, err := viewingkey.GenerateAuthenticationEIP712RawData(userID, chainID)
+	EIP712MessageData, err := viewingkey.GenerateAuthenticationEIP712RawDataOptions(userID, chainID)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	EIP712MessageFormatTestHash := crypto.Keccak256(EIP712MessageData)
+	EIP712MessageFormatTestHash := crypto.Keccak256(EIP712MessageData[0])
 
 	tests := map[string][]byte{
 		"WEMessageFormatTest":     WEMessageFormatTestHash,
@@ -67,11 +67,11 @@ func TestSignAndCheckSignature(t *testing.T) {
 	vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
 	userID := viewingkey.CalculateUserIDHex(vkPubKeyBytes)
 	WEMessageFormatTestHash := accounts.TextHash([]byte(viewingkey.GenerateSignMessage(vkPubKeyBytes)))
-	EIP712MessageData, err := viewingkey.GenerateAuthenticationEIP712RawData(userID, chainID)
+	EIP712MessageData, err := viewingkey.GenerateAuthenticationEIP712RawDataOptions(userID, chainID)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	EIP712MessageFormatTestHash := crypto.Keccak256(EIP712MessageData)
+	EIP712MessageFormatTestHash := crypto.Keccak256(EIP712MessageData[0])
 
 	tests := map[string][]byte{
 		"WEMessageFormatTest":     WEMessageFormatTestHash,

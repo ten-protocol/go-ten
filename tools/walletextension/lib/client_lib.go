@@ -46,12 +46,12 @@ func (o *TGLib) Join() error {
 
 func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	rawMessage, err := viewingkey.GenerateAuthenticationEIP712RawData(string(o.userID), integration.TenChainID)
+	rawMessage, err := viewingkey.GenerateAuthenticationEIP712RawDataOptions(string(o.userID), integration.TenChainID)
 	if err != nil {
 		return err
 	}
 
-	messageHash := crypto.Keccak256(rawMessage)
+	messageHash := crypto.Keccak256(rawMessage[0])
 	sig, err := crypto.Sign(messageHash, pk)
 	if err != nil {
 		return fmt.Errorf("failed to sign message: %w", err)
