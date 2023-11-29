@@ -4,6 +4,7 @@ import { useToast } from "@/src/components/ui/use-toast";
 import { siteMetadata } from "@/src/lib/siteMetadata";
 import { useRouter } from "next/router";
 import React from "react";
+import Custom404Error from "../404";
 
 type Document = {
   title: string;
@@ -64,29 +65,35 @@ const Document = () => {
     <Layout>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {!loading ? (
-          <>
-            <div className="mb-8 text-center">
-              <h1 className="text-4xl font-extrabold mb-6">{document.title}</h1>
-              <p className="text-sm text-muted-foreground">
-                {document.subHeading}
-              </p>
-            </div>
-            <div className="prose prose-lg prose-primary">
-              {document.content &&
-                document.content.map((section, index) => (
-                  <div key={index} className="mb-8">
-                    <h2 className="mb-2">{section.heading}</h2>
-                    {section.content &&
-                      section.content.map((paragraph, index) => (
-                        <div
-                          key={index}
-                          dangerouslySetInnerHTML={{ __html: paragraph }}
-                        ></div>
-                      ))}
-                  </div>
-                ))}
-            </div>
-          </>
+          !document.title ? (
+            <Custom404Error customPageTitle="Document" />
+          ) : (
+            <>
+              <div className="mb-8 text-center">
+                <h1 className="text-4xl font-extrabold mb-6">
+                  {document.title}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {document.subHeading}
+                </p>
+              </div>
+              <div className="prose prose-lg prose-primary">
+                {document.content &&
+                  document.content.map((section, index) => (
+                    <div key={index} className="mb-8">
+                      <h2 className="mb-2">{section.heading}</h2>
+                      {section.content &&
+                        section.content.map((paragraph, index) => (
+                          <div
+                            key={index}
+                            dangerouslySetInnerHTML={{ __html: paragraph }}
+                          ></div>
+                        ))}
+                    </div>
+                  ))}
+              </div>
+            </>
+          )
         ) : (
           <Spinner />
         )}

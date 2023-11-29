@@ -8,7 +8,6 @@ export function Custom404Error({
   isFullWidth,
   message,
   showMessage = true,
-  isModal,
   redirectLink,
   children,
 }: ErrorType) {
