@@ -127,6 +127,44 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 500;
+  }
+
+  /* styles for docs */
+  .prose ul {
+    list-style: disc;
+    margin-left: 2rem;
+  }
+
+  .prose ul li {
+    margin-bottom: 0.5rem;
+  }
+
+  .prose ul li:last-child {
+    margin-bottom: 0;
+  }
+
+  .prose ul ul {
+    list-style: circle;
+    margin-left: 2rem;
+  }
+
+  .prose a {
+    @apply text-accent-foreground;
+  }
+
+  .prose table td,
+  .prose table th {
+    border: 1px solid hsl(var(--border));
+    padding: 0.5rem;
+  }
 }
 
 .theme-slate {
