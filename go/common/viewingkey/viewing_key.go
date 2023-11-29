@@ -237,7 +237,6 @@ func VerifySignatureEIP712(userID string, address *gethcommon.Address, signature
 		hash := gethcommon.BytesToHash(hashBytes)
 
 		if len(signature) != 65 {
-			// return false, fmt.Errorf("invalid signature length: %d", len(signature))
 			continue
 		}
 
@@ -249,20 +248,17 @@ func VerifySignatureEIP712(userID string, address *gethcommon.Address, signature
 
 		pubKeyBytes, err := crypto.Ecrecover(hash[:], signature)
 		if err != nil {
-			// return false, fmt.Errorf("invalid signature: %w", err)
 			continue
 		}
 
 		pubKey, err := crypto.UnmarshalPubkey(pubKeyBytes)
 		if err != nil {
-			// return false, fmt.Errorf("cannot unmarshal public key: %w", err)
 			continue
 		}
 
 		recoveredAddr := crypto.PubkeyToAddress(*pubKey)
 
 		if !bytes.Equal(recoveredAddr.Bytes(), address.Bytes()) {
-			// return false, errors.New("address from signature not the same as expected")
 			continue
 		}
 
@@ -276,5 +272,5 @@ func VerifySignatureEIP712(userID string, address *gethcommon.Address, signature
 			return true, nil
 		}
 	}
-	return false, errors.New("signature is not valid")
+	return false, errors.New("signature verification failed")
 }
