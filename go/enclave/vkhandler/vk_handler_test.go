@@ -28,11 +28,14 @@ func TestVKHandler(t *testing.T) {
 	vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
 	userID := viewingkey.CalculateUserIDHex(vkPubKeyBytes)
 	WEMessageFormatTestHash := accounts.TextHash([]byte(viewingkey.GenerateSignMessage(vkPubKeyBytes)))
-	EIP712MessageData, err := viewingkey.GenerateAuthenticationEIP712RawDataOptions(userID, chainID)
+	EIP712MessageDataOptions, err := viewingkey.GenerateAuthenticationEIP712RawDataOptions(userID, chainID)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	EIP712MessageFormatTestHash := crypto.Keccak256(EIP712MessageData[0])
+	if len(EIP712MessageDataOptions) == 0 {
+		t.Fatalf("GenerateAuthenticationEIP712RawDataOptions returned no results")
+	}
+	EIP712MessageFormatTestHash := crypto.Keccak256(EIP712MessageDataOptions[0])
 
 	tests := map[string][]byte{
 		"WEMessageFormatTest":     WEMessageFormatTestHash,
