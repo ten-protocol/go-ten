@@ -41,7 +41,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     if (receipt.status !== 1) {
         console.log("Failed to set L1CrossChainMessenger in management contract");
     }
-    console.log(`L1CrossChainMessenger=${crossChainDeployment.address}`)
+    console.log(`L1CrossChainMessenger=${crossChainDeployment.address}`);
 };
 
 export default func;
