@@ -156,6 +156,12 @@
   .prose a {
     @apply text-accent-foreground;
   }
+
+  .prose table td,
+  .prose table th {
+    border: 1px solid hsl(var(--border));
+    padding: 0.5rem;
+  }
 }
 
 .theme-slate {

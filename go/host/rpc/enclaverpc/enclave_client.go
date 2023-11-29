@@ -598,3 +598,19 @@ func (c *Client) GetPublicTransactionData(pagination *common.QueryPagination) (*
 
 	return &result, nil
 }
+
+func (c *Client) EnclavePublicConfig() (*common.EnclavePublicConfig, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.EnclavePublicConfig(timeoutCtx, &generated.EnclavePublicConfigRequest{})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+	return &common.EnclavePublicConfig{
+		L2MessageBusAddress: gethcommon.BytesToAddress(response.L2MessageBusAddress),
+	}, nil
+}

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/ten-protocol/go-ten/go/host/l2"
 
 	"github.com/ten-protocol/go-ten/go/host/enclave"
@@ -42,6 +44,9 @@ type host struct {
 	logger gethlog.Logger
 
 	metricRegistry gethmetrics.Registry
+
+	// l2MessageBusAddress is fetched from the enclave but cache it here because it never changes
+	l2MessageBusAddress *gethcommon.Address
 }
 
 func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
@@ -200,13 +205,21 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 
 // ObscuroConfig returns info on the Obscuro network
 func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
+	if h.l2MessageBusAddress == nil {
+		publicCfg, err := h.EnclaveClient().EnclavePublicConfig()
+		if err != nil {
+			return nil, responses.ToInternalError(fmt.Errorf("unable to get L2 message bus address - %w", err))
+		}
+		h.l2MessageBusAddress = &publicCfg.L2MessageBusAddress
+	}
 	return &common.ObscuroNetworkInfo{
 		ManagementContractAddress: h.config.ManagementContractAddress,
 		L1StartHash:               h.config.L1StartHash,
 
-		SequencerID:        h.config.SequencerID,
-		MessageBusAddress:  h.config.MessageBusAddress,
-		ImportantContracts: h.services.L1Publisher().GetImportantContracts(),
+		SequencerID:         h.config.SequencerID,
+		MessageBusAddress:   h.config.MessageBusAddress,
+		L2MessageBusAddress: *h.l2MessageBusAddress,
+		ImportantContracts:  h.services.L1Publisher().GetImportantContracts(),
 	}, nil
 }
 

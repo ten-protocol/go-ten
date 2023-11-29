@@ -11,8 +11,11 @@ import {DeployFunction} from 'hardhat-deploy/types';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { 
         deployments, 
-        getNamedAccounts
+        getNamedAccounts,
+        companionNetworks,
     } = hre;
+    // Use the contract addresses from the management contract deployment.
+    const mgmtContractAddress = process.env.MGMT_CONTRACT_ADDRESS!!
 
     // Get the prefunded L2 deployer account to use for deploying.
     const {deployer} = await getNamedAccounts();
@@ -22,7 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // TODO: Remove hardcoded L2 message bus address when properly exposed.
     const messageBusAddress = hre.ethers.utils.getAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b");
     // Deploy the L2 Cross chain messenger and use the L2 bus for validation
-    await deployments.deploy('CrossChainMessenger', {
+    const crossChainDeployment = await deployments.deploy('CrossChainMessenger', {
         from: deployer,
         log: true,
         proxy: {
@@ -35,7 +38,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             }
         }
     });
-    console.log("Deployed!")
+    // get L1 management contract and write the cross chain messenger address to it
+    const mgmtContract = (await hre.ethers.getContractFactory('ManagementContract')).attach(mgmtContractAddress);
+    const tx = await mgmtContract.SetImportantContractAddress("L2CrossChainMessenger", crossChainDeployment.address);
+    const receipt = await tx.wait();
+    if (receipt.status !== 1) {
+        console.log("Failed to set L2CrossChainMessenger in management contract");
+    }
+    console.log(`L2CrossChainMessenger=${crossChainDeployment.address}`);
 };
 
 export default func;
