@@ -27,17 +27,25 @@ import (
 const SignedMsgPrefix = "vk"
 
 const (
-	EIP712Domain             = "EIP712Domain"
-	EIP712Type               = "Authentication"
-	EIP712DomainName         = "name"
-	EIP712DomainVersion      = "version"
-	EIP712DomainChainID      = "chainId"
-	EIP712EncryptionToken    = "Encryption Token"
+	EIP712Domain          = "EIP712Domain"
+	EIP712Type            = "Authentication"
+	EIP712DomainName      = "name"
+	EIP712DomainVersion   = "version"
+	EIP712DomainChainID   = "chainId"
+	EIP712EncryptionToken = "Encryption Token"
+	// EIP712EncryptionTokenV2 is used to support older versions of third party libraries
+	// that don't have the support for spaces in type names
 	EIP712EncryptionTokenV2  = "EncryptionToken"
 	EIP712DomainNameValue    = "Ten"
 	EIP712DomainVersionValue = "1.0"
 	UserIDHexLength          = 40
 )
+
+// EIP712EncryptionTokens is a list of all possible options for Encryption token name
+var EIP712EncryptionTokens = [...]string{
+	EIP712EncryptionToken,
+	EIP712EncryptionTokenV2,
+}
 
 // ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave
 type ViewingKey struct {
@@ -152,53 +160,30 @@ func GenerateAuthenticationEIP712RawDataOptions(userID string, chainID int64) ([
 		ChainId: (*math.HexOrDecimal256)(big.NewInt(chainID)),
 	}
 
-	// create two different options for types to support some third party libraries that don't support
-	// spaces in types (in our example `Encryption Token`)
-	types := apitypes.Types{
-		EIP712Domain: {
-			{Name: EIP712DomainName, Type: "string"},
-			{Name: EIP712DomainVersion, Type: "string"},
-			{Name: EIP712DomainChainID, Type: "uint256"},
-		},
-		EIP712Type: {
-			{Name: EIP712EncryptionToken, Type: "address"},
-		},
-	}
+	typedDataList := make([]apitypes.TypedData, 0, len(EIP712EncryptionTokens))
+	for _, encTokenName := range EIP712EncryptionTokens {
+		message := map[string]interface{}{
+			encTokenName: encryptionToken,
+		}
 
-	typesV2 := apitypes.Types{
-		EIP712Domain: {
-			{Name: EIP712DomainName, Type: "string"},
-			{Name: EIP712DomainVersion, Type: "string"},
-			{Name: EIP712DomainChainID, Type: "uint256"},
-		},
-		EIP712Type: {
-			{Name: EIP712EncryptionTokenV2, Type: "address"},
-		},
-	}
+		types := apitypes.Types{
+			EIP712Domain: {
+				{Name: EIP712DomainName, Type: "string"},
+				{Name: EIP712DomainVersion, Type: "string"},
+				{Name: EIP712DomainChainID, Type: "uint256"},
+			},
+			EIP712Type: {
+				{Name: encTokenName, Type: "address"},
+			},
+		}
 
-	// create two different options for messages to support some third party libraries that don't support
-	// spaces in types (in our example `Encryption Token`)
-	message := map[string]interface{}{
-		EIP712EncryptionToken: encryptionToken,
-	}
-	messageV2 := map[string]interface{}{
-		EIP712EncryptionTokenV2: encryptionToken,
-	}
-
-	// create a list of all possible options of valid messages
-	typedDataList := []apitypes.TypedData{
-		{
+		newTypeElement := apitypes.TypedData{
 			Types:       types,
 			PrimaryType: EIP712Type,
 			Domain:      domain,
 			Message:     message,
-		},
-		{
-			Types:       typesV2,
-			PrimaryType: EIP712Type,
-			Domain:      domain,
-			Message:     messageV2,
-		},
+		}
+		typedDataList = append(typedDataList, newTypeElement)
 	}
 
 	rawDataOptions := make([][]byte, 0, len(typedDataList))
@@ -223,6 +208,34 @@ func CalculateUserID(publicKeyBytes []byte) []byte {
 	return crypto.Keccak256Hash(publicKeyBytes).Bytes()[:20]
 }
 
+// CheckSignatureAndAddress checks if the signature is valid for hash of the message and checks if
+// signer is an address provided to the function.
+// It returns true if both conditions are true and false otherwise
+func CheckSignatureAndAddress(hashBytes []byte, signature []byte, address *gethcommon.Address) bool {
+	hash := gethcommon.BytesToHash(hashBytes)
+	pubKeyBytes, err := crypto.Ecrecover(hash[:], signature)
+	if err != nil {
+		return false
+	}
+
+	pubKey, err := crypto.UnmarshalPubkey(pubKeyBytes)
+	if err != nil {
+		return false
+	}
+
+	recoveredAddr := crypto.PubkeyToAddress(*pubKey)
+
+	if !bytes.Equal(recoveredAddr.Bytes(), address.Bytes()) {
+		return false
+	}
+
+	r := new(big.Int).SetBytes(signature[:32])
+	s := new(big.Int).SetBytes(signature[32:64])
+
+	// Verify the signature and return the result (all the checks above passed)
+	return ecdsa.Verify(pubKey, hashBytes, r, s)
+}
+
 func VerifySignatureEIP712(userID string, address *gethcommon.Address, signature []byte, chainID int64) (bool, error) {
 	var rawDataOptions [][]byte
 
@@ -231,44 +244,22 @@ func VerifySignatureEIP712(userID string, address *gethcommon.Address, signature
 		return false, err
 	}
 
+	if len(signature) != 65 {
+		return false, fmt.Errorf("invalid signaure length: %d", len(signature))
+	}
+
+	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	if signature[64] == 27 || signature[64] == 28 {
+		signature[64] -= 27
+	}
+
 	for _, rawData := range rawDataOptions {
 		// create a hash of structured message (needed for signature verification)
 		hashBytes := crypto.Keccak256(rawData)
-		hash := gethcommon.BytesToHash(hashBytes)
 
-		if len(signature) != 65 {
-			continue
-		}
-
-		// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
-		// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-		if signature[64] == 27 || signature[64] == 28 {
-			signature[64] -= 27
-		}
-
-		pubKeyBytes, err := crypto.Ecrecover(hash[:], signature)
-		if err != nil {
-			continue
-		}
-
-		pubKey, err := crypto.UnmarshalPubkey(pubKeyBytes)
-		if err != nil {
-			continue
-		}
-
-		recoveredAddr := crypto.PubkeyToAddress(*pubKey)
-
-		if !bytes.Equal(recoveredAddr.Bytes(), address.Bytes()) {
-			continue
-		}
-
-		r := new(big.Int).SetBytes(signature[:32])
-		s := new(big.Int).SetBytes(signature[32:64])
-
-		// Verify the signature
-		isValid := ecdsa.Verify(pubKey, hashBytes, r, s)
-
-		if isValid {
+		// current signature is valid - return true
+		if CheckSignatureAndAddress(hashBytes, signature, address) {
 			return true, nil
 		}
 	}
