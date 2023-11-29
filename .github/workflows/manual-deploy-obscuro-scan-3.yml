@@ -58,13 +58,13 @@ jobs:
         uses: "azure/aci-deploy@v1"
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
-          dns-name-label: ${{ github.event.inputs.testnet_type }}-obscuro-scan
+          dns-name-label: ${{ github.event.inputs.testnet_type }}-obscuro-scan-v3
           image: ${{ vars.DOCKER_BUILD_TAG_SCAN_FE }}
-          name: ${{ github.event.inputs.testnet_type }}-fe-obscuro-scan
+          name: ${{ github.event.inputs.testnet_type }}-fe-obscuro-scan-v3
           location: "uksouth"
           restart-policy: "Never"
           environment-variables: NEXT_PUBLIC_API_HOST=https://${{ github.event.inputs.testnet_type }}-api.obscuroscan.io NEXT_PUBLIC_FE_VERSION=${{ GITHUB.RUN_NUMBER }}-${{ GITHUB.SHA }}
-          command-line: npm run start
+          command-line: npm run start -- --port 80
           ports: "80"
           cpu: 2
           memory: 2
