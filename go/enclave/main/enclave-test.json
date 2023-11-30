@@ -16,8 +16,8 @@
   ],
   "env": [
     {
-      "name": "RESTRICTED",
-      "value": "false"
+      "name": "EDG_TESTMODE",
+      "value": "true"
     }
   ]
 }

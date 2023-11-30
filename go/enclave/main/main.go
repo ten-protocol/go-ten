@@ -4,16 +4,27 @@ import (
 	"fmt"
 
 	"github.com/ten-protocol/go-ten/go/common/container"
+	tenflag "github.com/ten-protocol/go-ten/go/common/flag"
+	"github.com/ten-protocol/go-ten/go/config"
 	enclavecontainer "github.com/ten-protocol/go-ten/go/enclave/container"
 )
 
 // Runs an Obscuro enclave as a standalone process.
 func main() {
-	config, err := enclavecontainer.ParseConfig()
+	// fetch and parse flags
+	flags := config.EnclaveFlags()
+	err := tenflag.CreateCLIFlags(flags)
 	if err != nil {
 		panic(fmt.Errorf("could not parse config. Cause: %w", err))
 	}
 
-	enclaveContainer := enclavecontainer.NewEnclaveContainerFromConfig(config)
+	tenflag.Parse()
+
+	enclaveConfig, err := config.FromFlags(flags)
+	if err != nil {
+		panic(fmt.Errorf("unable to create config from flags - %w", err))
+	}
+
+	enclaveContainer := enclavecontainer.NewEnclaveContainerFromConfig(enclaveConfig)
 	container.Serve(enclaveContainer)
 }

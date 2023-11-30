@@ -1,14 +1,18 @@
 package config
 
 import (
+	"fmt"
 	"math/big"
+	"os"
+	"strconv"
+	"strings"
 
-	"github.com/ten-protocol/go-ten/go/common"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/flag"
 	"github.com/ten-protocol/go-ten/go/common/log"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
@@ -99,4 +103,109 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 		BaseFee:                   new(big.Int).SetUint64(1),
 		GasLimit:                  new(big.Int).SetUint64(params.MaxGasLimit / 6),
 	}
+}
+
+func FromFlags(flagMap map[string]*flag.TenFlag) (*EnclaveConfig, error) {
+	flagsTestMode := false
+
+	// check if it's in test mode or not
+	val := os.Getenv("EDG_TESTMODE")
+	if val == "true" {
+		flagsTestMode = true
+	} else {
+		fmt.Println("Using mandatory signed configurations.")
+	}
+
+	if !flagsTestMode {
+		envFlags, err := retrieveEnvFlags()
+		if err != nil {
+			return nil, fmt.Errorf("unable to retrieve env flags - %w", err)
+		}
+
+		// create the final flag usage
+		parsedFlags := map[string]*flag.TenFlag{}
+		for flagName, cliflag := range flagMap {
+			parsedFlags[flagName] = cliflag
+		}
+		// env flags override CLI flags
+		for flagName, envflag := range envFlags {
+			parsedFlags[flagName] = envflag
+		}
+
+		return newConfig(parsedFlags)
+	}
+	return newConfig(flagMap)
+}
+
+func retrieveEnvFlags() (map[string]*flag.TenFlag, error) {
+	parsedFlags := map[string]*flag.TenFlag{}
+
+	for _, eflag := range enclaveRestrictedFlags {
+		val := os.Getenv("EDG_" + strings.ToUpper(eflag.Name))
+		switch eflag.FlagType {
+		case "string":
+			parsedFlag := flag.NewStringFlag(eflag.Name, "", "")
+			parsedFlag.Value = val
+
+			parsedFlags[eflag.Name] = parsedFlag
+		case "int64":
+			i, err := strconv.ParseInt(val, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse flag %s - %w", eflag.Name, err)
+			}
+
+			parsedFlag := flag.NewIntFlag(eflag.Name, 0, "")
+			parsedFlag.Value = i
+			parsedFlags[eflag.Name] = parsedFlag
+		case "bool":
+			b, err := strconv.ParseBool(val)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse flag %s - %w", eflag.Name, err)
+			}
+
+			parsedFlag := flag.NewBoolFlag(eflag.Name, false, "")
+			parsedFlag.Value = b
+			parsedFlags[eflag.Name] = parsedFlag
+		default:
+			return nil, fmt.Errorf("unexpected type: %s", eflag.FlagType)
+		}
+	}
+	return parsedFlags, nil
+}
+
+func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
+	cfg := DefaultEnclaveConfig()
+
+	nodeType, err := common.ToNodeType(flags[NodeTypeFlag].String())
+	if err != nil {
+		return nil, fmt.Errorf("unrecognised node type '%s'", flags[NodeTypeFlag].String())
+	}
+
+	cfg.HostID = gethcommon.HexToAddress(flags[HostIDFlag].String())
+	cfg.HostAddress = flags[HostAddressFlag].String()
+	cfg.Address = flags[AddressFlag].String()
+	cfg.NodeType = nodeType
+	cfg.L1ChainID = flags[L1ChainIDFlag].Int64()
+	cfg.ObscuroChainID = flags[ObscuroChainIDFlag].Int64()
+	cfg.WillAttest = flags[WillAttestFlag].Bool()
+	cfg.ValidateL1Blocks = flags[ValidateL1BlocksFlag].Bool()
+	cfg.ManagementContractAddress = gethcommon.HexToAddress(flags[ManagementContractAddressFlag].String())
+	cfg.LogLevel = flags[LogLevelFlag].Int()
+	cfg.LogPath = flags[LogPathFlag].String()
+	cfg.UseInMemoryDB = flags[UseInMemoryDBFlag].Bool()
+	cfg.EdgelessDBHost = flags[EdgelessDBHostFlag].String()
+	cfg.SqliteDBPath = flags[SQLiteDBPathFlag].String()
+	cfg.ProfilerEnabled = flags[ProfilerEnabledFlag].Bool()
+	cfg.MinGasPrice = big.NewInt(flags[MinGasPriceFlag].Int64())
+	cfg.MessageBusAddress = gethcommon.HexToAddress(flags[MessageBusAddressFlag].String())
+	cfg.SequencerID = gethcommon.HexToAddress(flags[SequencerIDFlag].String())
+	cfg.ObscuroGenesis = flags[ObscuroGenesisFlag].String()
+	cfg.DebugNamespaceEnabled = flags[DebugNamespaceEnabledFlag].Bool()
+	cfg.MaxBatchSize = flags[MaxBatchSizeFlag].Uint64()
+	cfg.MaxRollupSize = flags[MaxRollupSizeFlag].Uint64()
+	cfg.BaseFee = big.NewInt(0).SetUint64(flags[L2BaseFeeFlag].Uint64())
+	cfg.GasPaymentAddress = gethcommon.HexToAddress(flags[L2CoinbaseFlag].String())
+	cfg.GasLimit = big.NewInt(0).SetUint64(flags[L2GasLimitFlag].Uint64())
+
+	return cfg, nil
 }

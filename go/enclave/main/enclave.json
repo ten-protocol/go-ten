@@ -16,8 +16,8 @@
   ],
   "env": [
     {
-      "name": "RESTRICTED",
-      "value": "true"
+      "name": "TESTMODE",
+      "value": "false"
     },
     {
       "name": "L1CHAINID",

@@ -45,7 +45,7 @@ FROM build-enclave as build-enclave-testmode-true
 RUN ego sign enclave-test.json
 
 # Tag the restricted mode as the current build
-FROM build-enclave-restrictedmode-${RESTRICTEDMODE} as build-enclave
+FROM build-enclave-testmode-${TESTMODE} as build-enclave
 
 # Trigger a new build stage and use the smaller ego version:
 FROM ghcr.io/edgelesssys/ego-deploy:v1.3.0
