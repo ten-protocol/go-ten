@@ -100,3 +100,38 @@ func TestRestrictedMode(t *testing.T) {
 	require.Equal(t, true, enclaveConfig.ProfilerEnabled)
 	require.Equal(t, true, enclaveConfig.DebugNamespaceEnabled)
 }
+
+func TestRestrictedModeNoCLIDuplication(t *testing.T) {
+	// Backup the original CommandLine.
+	originalFlagSet := flag.CommandLine
+	// Create a new FlagSet for testing purposes.
+	flag.CommandLine = flag.NewFlagSet("", flag.ContinueOnError)
+
+	// Defer a function to reset CommandLine after the test.
+	defer func() {
+		flag.CommandLine = originalFlagSet
+	}()
+
+	t.Setenv("EDG_TESTMODE", "false")
+	t.Setenv("EDG_"+strings.ToUpper(L1ChainIDFlag), "4444")
+	t.Setenv("EDG_"+strings.ToUpper(ObscuroChainIDFlag), "1243")
+	t.Setenv("EDG_"+strings.ToUpper(ObscuroGenesisFlag), "{}")
+	t.Setenv("EDG_"+strings.ToUpper(UseInMemoryDBFlag), "true")
+	t.Setenv("EDG_"+strings.ToUpper(ProfilerEnabledFlag), "true")
+	t.Setenv("EDG_"+strings.ToUpper(DebugNamespaceEnabledFlag), "true")
+
+	flags := EnclaveFlags()
+	err := tenflag.CreateCLIFlags(flags)
+	require.NoError(t, err)
+
+	err = flag.CommandLine.Set(NodeTypeFlag, "sequencer")
+	require.NoError(t, err)
+
+	err = flag.CommandLine.Set(L1ChainIDFlag, "5555")
+	require.NoError(t, err)
+
+	flag.Parse()
+
+	_, err = FromFlags(flags)
+	require.Errorf(t, err, "restricted flag was set: l1ChainID")
+}

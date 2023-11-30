@@ -98,6 +98,16 @@ func (f TenFlag) Bool() bool {
 	return f.Value.(bool)
 }
 
+func (f TenFlag) IsSet() bool {
+	found := false
+	flag.Visit(func(fl *flag.Flag) {
+		if fl.Name == f.Name {
+			found = true
+		}
+	})
+	return found
+}
+
 func CreateCLIFlags(flags map[string]*TenFlag) error {
 	for _, tflag := range flags {
 		switch tflag.FlagType {

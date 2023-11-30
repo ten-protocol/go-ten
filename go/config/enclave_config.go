@@ -105,7 +105,7 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 	}
 }
 
-func FromFlags(flagMap map[string]*flag.TenFlag) (*EnclaveConfig, error) {
+func FromFlags(cliFlags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 	flagsTestMode := false
 
 	// check if it's in test mode or not
@@ -122,9 +122,16 @@ func FromFlags(flagMap map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 			return nil, fmt.Errorf("unable to retrieve env flags - %w", err)
 		}
 
+		// fail if any restricted flag is set via the cli
+		for _, envflag := range envFlags {
+			if cliflag, ok := cliFlags[envflag.Name]; ok && cliflag.IsSet() {
+				return nil, fmt.Errorf("restricted flag was set: %s", cliflag.Name)
+			}
+		}
+
 		// create the final flag usage
 		parsedFlags := map[string]*flag.TenFlag{}
-		for flagName, cliflag := range flagMap {
+		for flagName, cliflag := range cliFlags {
 			parsedFlags[flagName] = cliflag
 		}
 		// env flags override CLI flags
@@ -134,7 +141,7 @@ func FromFlags(flagMap map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 
 		return newConfig(parsedFlags)
 	}
-	return newConfig(flagMap)
+	return newConfig(cliFlags)
 }
 
 func retrieveEnvFlags() (map[string]*flag.TenFlag, error) {
