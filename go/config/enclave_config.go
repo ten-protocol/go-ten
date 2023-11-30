@@ -142,6 +142,12 @@ func retrieveEnvFlags() (map[string]*flag.TenFlag, error) {
 
 	for _, eflag := range enclaveRestrictedFlags {
 		val := os.Getenv("EDG_" + strings.ToUpper(eflag.Name))
+
+		// all env flags must be set
+		if val == "" {
+			return nil, fmt.Errorf("env var not set: %s", eflag.Name)
+		}
+
 		switch eflag.FlagType {
 		case "string":
 			parsedFlag := flag.NewStringFlag(eflag.Name, "", "")

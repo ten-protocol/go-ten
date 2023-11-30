@@ -2,13 +2,15 @@ package config
 
 import (
 	"flag"
+	"math/big"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	tenflag "github.com/ten-protocol/go-ten/go/common/flag"
 )
 
-func TestFromFlags(t *testing.T) {
+func TestCLIFlagTypes(t *testing.T) {
 	// Backup the original CommandLine.
 	originalFlagSet := flag.CommandLine
 	// Create a new FlagSet for testing purposes.
@@ -24,7 +26,7 @@ func TestFromFlags(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set the flags as needed for the test.
-	err = flag.CommandLine.Set(HostIDFlag, "string-value")
+	err = flag.CommandLine.Set(LogPathFlag, "string-value")
 	require.NoError(t, err)
 
 	err = flag.CommandLine.Set(NodeTypeFlag, "sequencer")
@@ -44,12 +46,57 @@ func TestFromFlags(t *testing.T) {
 
 	flag.Parse()
 
-	require.Equal(t, "string-value", flags[HostIDFlag].String())
+	require.Equal(t, "string-value", flags[LogPathFlag].String())
 	require.Equal(t, true, flags[WillAttestFlag].Bool())
 	require.Equal(t, 123, flags[LogLevelFlag].Int())
 	require.Equal(t, int64(3333), flags[MinGasPriceFlag].Int64())
 	require.Equal(t, uint64(222222), flags[L2GasLimitFlag].Uint64())
 
-	_, err = newConfig(flags)
+	enclaveConfig, err := newConfig(flags)
 	require.NoError(t, err)
+
+	require.Equal(t, "string-value", enclaveConfig.LogPath)
+	require.Equal(t, true, enclaveConfig.WillAttest)
+	require.Equal(t, 123, enclaveConfig.LogLevel)
+	require.Equal(t, big.NewInt(3333), enclaveConfig.MinGasPrice)
+	require.Equal(t, big.NewInt(222222), enclaveConfig.GasLimit)
+}
+
+func TestRestrictedMode(t *testing.T) {
+	// Backup the original CommandLine.
+	originalFlagSet := flag.CommandLine
+	// Create a new FlagSet for testing purposes.
+	flag.CommandLine = flag.NewFlagSet("", flag.ContinueOnError)
+
+	// Defer a function to reset CommandLine after the test.
+	defer func() {
+		flag.CommandLine = originalFlagSet
+	}()
+
+	t.Setenv("EDG_TESTMODE", "false")
+	t.Setenv("EDG_"+strings.ToUpper(L1ChainIDFlag), "4444")
+	t.Setenv("EDG_"+strings.ToUpper(ObscuroChainIDFlag), "1243")
+	t.Setenv("EDG_"+strings.ToUpper(ObscuroGenesisFlag), "{}")
+	t.Setenv("EDG_"+strings.ToUpper(UseInMemoryDBFlag), "true")
+	t.Setenv("EDG_"+strings.ToUpper(ProfilerEnabledFlag), "true")
+	t.Setenv("EDG_"+strings.ToUpper(DebugNamespaceEnabledFlag), "true")
+
+	flags := EnclaveFlags()
+	err := tenflag.CreateCLIFlags(flags)
+	require.NoError(t, err)
+
+	err = flag.CommandLine.Set(NodeTypeFlag, "sequencer")
+	require.NoError(t, err)
+
+	flag.Parse()
+
+	enclaveConfig, err := FromFlags(flags)
+	require.NoError(t, err)
+
+	require.Equal(t, int64(4444), enclaveConfig.L1ChainID)
+	require.Equal(t, int64(1243), enclaveConfig.ObscuroChainID)
+	require.Equal(t, []byte(nil), enclaveConfig.GenesisJSON)
+	require.Equal(t, true, enclaveConfig.UseInMemoryDB)
+	require.Equal(t, true, enclaveConfig.ProfilerEnabled)
+	require.Equal(t, true, enclaveConfig.DebugNamespaceEnabled)
 }
