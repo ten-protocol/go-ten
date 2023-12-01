@@ -1,35 +1,18 @@
 import { ToastType } from "@/types/interfaces";
-import {
-  addNetworkToMetaMask,
-  joinTestnet,
-  switchToTenNetwork,
-} from "../api/gateway";
+import { joinTestnet } from "../api/gateway";
 import { useWalletConnection } from "../components/providers/wallet-provider";
 import { showToast } from "../components/ui/use-toast";
 import { SWITCHED_CODE, tenGatewayVersion } from "../lib/constants";
 import { getRPCFromUrl, isTenChain, isValidUserIDFormat } from "../lib/utils";
-import { requestMethods } from "../routes";
-
-const { ethereum } = typeof window !== "undefined" ? window : ({} as any);
+import {
+  addNetworkToMetaMask,
+  connectAccounts,
+  switchToTenNetwork,
+} from "@/api/ethRequests";
 
 const useGatewayService = () => {
-  const { provider } = useWalletConnection();
-  const { userID, setUserID, getAccounts } = useWalletConnection();
-
-  const connectAccounts = async () => {
-    if (!ethereum) {
-      return null;
-    }
-    try {
-      await ethereum.request({
-        method: requestMethods.connectAccounts,
-      });
-      showToast(ToastType.SUCCESS, "Connected to Ten Network");
-    } catch (error) {
-      showToast(ToastType.DESTRUCTIVE, "Unable to connect to Ten Network");
-      return null;
-    }
-  };
+  const { userID, provider, fetchUserAccounts, setLoading } =
+    useWalletConnection();
 
   const isMetamaskConnected = async () => {
     if (!provider) {
@@ -45,12 +28,15 @@ const useGatewayService = () => {
   };
 
   const connectToTenTestnet = async () => {
+    setLoading(true);
     try {
       if (await isTenChain()) {
         if (!userID || !isValidUserIDFormat(userID)) {
-          throw new Error(
+          showToast(
+            ToastType.WARNING,
             "Existing Ten network detected in MetaMask. Please remove before hitting begin"
           );
+          return;
         }
       }
 
@@ -61,7 +47,6 @@ const useGatewayService = () => {
         (userID && !isValidUserIDFormat(userID))
       ) {
         const user = await joinTestnet();
-        setUserID(user);
         const rpcUrls = [
           `${getRPCFromUrl()}/${tenGatewayVersion}/?token=${user}`,
         ];
@@ -71,14 +56,15 @@ const useGatewayService = () => {
       if (!(await isMetamaskConnected())) {
         showToast(ToastType.INFO, "No accounts found, connecting...");
         await connectAccounts();
+        showToast(ToastType.SUCCESS, "Connected to Ten Network");
       }
 
-      if (!provider || !userID) {
-        return;
-      }
-      await getAccounts(provider, userID);
+      await fetchUserAccounts();
     } catch (error: any) {
       showToast(ToastType.DESTRUCTIVE, `${error.message}`);
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 

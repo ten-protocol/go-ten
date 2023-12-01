@@ -75,7 +75,7 @@ const Connected = () => {
                       size={"sm"}
                       onClick={() => connectAccount(account.name)}
                     >
-                      {account.connected ? "Disconnect" : "Connect"}
+                      Connect
                     </Button>
                   )}
                 </TableCell>

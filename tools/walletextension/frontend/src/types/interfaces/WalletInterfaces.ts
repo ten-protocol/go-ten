@@ -5,15 +5,12 @@ export interface WalletConnectionContextType {
   walletConnected: boolean;
   connectAccount: (account: string) => Promise<void>;
   userID: string | null;
-  setUserID: (userID: string) => void;
-  provider: ethers.providers.Web3Provider | null;
   version: string | null;
   revokeAccounts: () => void;
-  getAccounts: (
-    provider: ethers.providers.Web3Provider,
-    userID: string
-  ) => Promise<void>;
   loading: boolean;
+  provider: ethers.providers.Web3Provider;
+  fetchUserAccounts: () => Promise<void>;
+  setLoading: (loading: boolean) => void;
 }
 
 export interface Props {

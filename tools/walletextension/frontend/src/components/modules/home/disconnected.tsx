@@ -16,7 +16,6 @@ import {
 } from "../../ui/dialog";
 import Copy from "../common/copy";
 import { testnetUrls, tenChainIDDecimal } from "../../../lib/constants";
-import Link from "next/link";
 
 const CONNECTION_STEPS = [
   "Hit Connect to Ten and start your journey",
