@@ -298,7 +298,6 @@ func (executor *batchExecutor) CreateGenesisState(
 	timeNow uint64,
 	coinbase gethcommon.Address,
 	baseFee *big.Int,
-	gasLimit *big.Int,
 ) (*core.Batch, *types.Transaction, error) {
 	preFundGenesisState, err := executor.genesis.GetGenesisRoot(executor.storage)
 	if err != nil {
@@ -306,9 +305,6 @@ func (executor *batchExecutor) CreateGenesisState(
 	}
 
 	limit := params.MaxGasLimit / 6
-	if gasLimit != nil {
-		limit = gasLimit.Uint64()
-	}
 
 	genesisBatch := &core.Batch{
 		Header: &common.BatchHeader{

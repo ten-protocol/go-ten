@@ -138,7 +138,6 @@ func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 		uint64(time.Now().Unix()),
 		s.settings.GasPaymentAddress,
 		s.settings.BaseFee,
-		s.settings.BatchGasLimit,
 	)
 	if err != nil {
 		return err

@@ -6,7 +6,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common/log"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -67,7 +66,6 @@ type EnclaveConfig struct {
 
 	GasPaymentAddress gethcommon.Address
 	BaseFee           *big.Int
-	GasLimit          *big.Int
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -97,6 +95,5 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 		MaxRollupSize:             1024 * 64,
 		GasPaymentAddress:         gethcommon.HexToAddress("0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"),
 		BaseFee:                   new(big.Int).SetUint64(1),
-		GasLimit:                  new(big.Int).SetUint64(params.MaxGasLimit / 6),
 	}
 }

@@ -222,7 +222,6 @@ func NewEnclave(
 				MaxBatchSize:      config.MaxBatchSize,
 				MaxRollupSize:     config.MaxRollupSize,
 				GasPaymentAddress: config.GasPaymentAddress,
-				BatchGasLimit:     config.GasLimit,
 				BaseFee:           config.BaseFee,
 			},
 			blockchain,
