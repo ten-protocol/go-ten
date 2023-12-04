@@ -26,6 +26,7 @@ import {
 } from "@/src/components/ui/table";
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
+import { useRouter } from "next/router";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -35,12 +36,17 @@ interface DataTableProps<TData, TValue> {
     title: string;
     options: { label: string; value: string }[];
   }[];
+  updateQueryParams?: (query: any) => void;
+  refetch?: () => void;
+  total: number;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   toolbar,
+  refetch,
+  total,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
@@ -49,6 +55,10 @@ export function DataTable<TData, TValue>({
     []
   );
   const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [pagination, setPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 20,
+  });
 
   const table = useReactTable({
     data,
@@ -58,7 +68,11 @@ export function DataTable<TData, TValue>({
       columnVisibility,
       rowSelection,
       columnFilters,
+      pagination,
     },
+    onPaginationChange: setPagination,
+    manualPagination: true,
+    pageCount: Math.ceil(total / pagination.pageSize),
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
@@ -72,9 +86,18 @@ export function DataTable<TData, TValue>({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
+  const { query, push, pathname } = useRouter();
+
+  React.useEffect(() => {
+    const { pageIndex, pageSize } = table.getState().pagination;
+    const params = { ...query, page: pageIndex + 1, size: pageSize };
+    push({ pathname, query: params });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table.getState().pagination]);
+
   return (
     <div className="space-y-4">
-      <DataTableToolbar table={table} toolbar={toolbar} />
+      <DataTableToolbar table={table} toolbar={toolbar} refetch={refetch} />
       <div className="rounded-md border">
         <Table>
           <TableHeader>
