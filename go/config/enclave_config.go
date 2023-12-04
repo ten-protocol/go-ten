@@ -105,7 +105,7 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 	}
 }
 
-func FromFlags(cliFlags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
+func NewConfigFromFlags(cliFlags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 	flagsTestMode := false
 
 	// check if it's in test mode or not

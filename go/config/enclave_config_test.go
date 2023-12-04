@@ -90,7 +90,7 @@ func TestRestrictedMode(t *testing.T) {
 
 	flag.Parse()
 
-	enclaveConfig, err := FromFlags(flags)
+	enclaveConfig, err := NewConfigFromFlags(flags)
 	require.NoError(t, err)
 
 	require.Equal(t, int64(4444), enclaveConfig.L1ChainID)
@@ -132,6 +132,6 @@ func TestRestrictedModeNoCLIDuplication(t *testing.T) {
 
 	flag.Parse()
 
-	_, err = FromFlags(flags)
+	_, err = NewConfigFromFlags(flags)
 	require.Errorf(t, err, "restricted flag was set: l1ChainID")
 }

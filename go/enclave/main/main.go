@@ -20,7 +20,7 @@ func main() {
 
 	tenflag.Parse()
 
-	enclaveConfig, err := config.FromFlags(flags)
+	enclaveConfig, err := config.NewConfigFromFlags(flags)
 	if err != nil {
 		panic(fmt.Errorf("unable to create config from flags - %w", err))
 	}
