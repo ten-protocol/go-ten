@@ -106,17 +106,18 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 }
 
 func NewConfigFromFlags(cliFlags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
-	flagsTestMode := false
+	productionMode := true
 
-	// check if it's in test mode or not
+	// check if it's in production mode or not
 	val := os.Getenv("EDG_TESTMODE")
 	if val == "true" {
-		flagsTestMode = true
+		productionMode = false
+		fmt.Println("Using test mode flags")
 	} else {
 		fmt.Println("Using mandatory signed configurations.")
 	}
 
-	if !flagsTestMode {
+	if productionMode {
 		envFlags, err := retrieveEnvFlags()
 		if err != nil {
 			return nil, fmt.Errorf("unable to retrieve env flags - %w", err)
