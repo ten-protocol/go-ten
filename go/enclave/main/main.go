@@ -12,13 +12,13 @@ import (
 // Runs an Obscuro enclave as a standalone process.
 func main() {
 	// fetch and parse flags
-	flags := config.EnclaveFlags()
-	err := tenflag.CreateCLIFlags(flags)
+	flags := config.EnclaveFlags                       // fetch the flags that enclave requires
+	err := tenflag.CreateCLIFlags(config.EnclaveFlags) // using tenflag convert those flags into the golang flags package ( go flags is a singlen )
 	if err != nil {
 		panic(fmt.Errorf("could not create CLI flags. Cause: %w", err))
 	}
 
-	tenflag.Parse()
+	tenflag.Parse() // parse the golang flags package defined flags from CLI
 
 	enclaveConfig, err := config.NewConfigFromFlags(flags)
 	if err != nil {

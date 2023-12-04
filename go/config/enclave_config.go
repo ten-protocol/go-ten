@@ -7,13 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/params"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/flag"
-	"github.com/ten-protocol/go-ten/go/common/log"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 // EnclaveConfig contains the full configuration for an Obscuro enclave service.
@@ -74,37 +70,6 @@ type EnclaveConfig struct {
 	GasLimit          *big.Int
 }
 
-// DefaultEnclaveConfig returns an EnclaveConfig with default values.
-func DefaultEnclaveConfig() *EnclaveConfig {
-	return &EnclaveConfig{
-		HostID:                    gethcommon.BytesToAddress([]byte("")),
-		HostAddress:               "127.0.0.1:10000",
-		Address:                   "127.0.0.1:11000",
-		NodeType:                  common.Sequencer,
-		L1ChainID:                 1337,
-		ObscuroChainID:            443,
-		WillAttest:                false, // todo (config) - attestation should be on by default before production release
-		ValidateL1Blocks:          false,
-		GenesisJSON:               nil,
-		ManagementContractAddress: gethcommon.BytesToAddress([]byte("")),
-		LogLevel:                  int(gethlog.LvlInfo),
-		LogPath:                   log.SysOut,
-		UseInMemoryDB:             true, // todo (config) - persistence should be on by default before production release
-		EdgelessDBHost:            "",
-		SqliteDBPath:              "",
-		ProfilerEnabled:           false,
-		MinGasPrice:               big.NewInt(1),
-		SequencerID:               gethcommon.BytesToAddress([]byte("")),
-		ObscuroGenesis:            "",
-		DebugNamespaceEnabled:     false,
-		MaxBatchSize:              1024 * 25,
-		MaxRollupSize:             1024 * 64,
-		GasPaymentAddress:         gethcommon.HexToAddress("0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"),
-		BaseFee:                   new(big.Int).SetUint64(1),
-		GasLimit:                  new(big.Int).SetUint64(params.MaxGasLimit / 6),
-	}
-}
-
 func NewConfigFromFlags(cliFlags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 	productionMode := true
 
@@ -156,7 +121,7 @@ func retrieveEnvFlags() (map[string]*flag.TenFlag, error) {
 			return nil, fmt.Errorf("env var not set: %s", eflag)
 		}
 
-		switch EnclaveFlags()[eflag].FlagType {
+		switch EnclaveFlags[eflag].FlagType {
 		case "string":
 			parsedFlag := flag.NewStringFlag(eflag, "", "")
 			parsedFlag.Value = val
@@ -181,14 +146,14 @@ func retrieveEnvFlags() (map[string]*flag.TenFlag, error) {
 			parsedFlag.Value = b
 			parsedFlags[eflag] = parsedFlag
 		default:
-			return nil, fmt.Errorf("unexpected type: %s", EnclaveFlags()[eflag].FlagType)
+			return nil, fmt.Errorf("unexpected type: %s", EnclaveFlags[eflag].FlagType)
 		}
 	}
 	return parsedFlags, nil
 }
 
 func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
-	cfg := DefaultEnclaveConfig()
+	cfg := &EnclaveConfig{}
 
 	nodeType, err := common.ToNodeType(flags[NodeTypeFlag].String())
 	if err != nil {

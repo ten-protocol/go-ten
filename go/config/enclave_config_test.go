@@ -21,7 +21,7 @@ func TestCLIFlagTypes(t *testing.T) {
 		flag.CommandLine = originalFlagSet
 	}()
 
-	flags := EnclaveFlags()
+	flags := EnclaveFlags
 	err := tenflag.CreateCLIFlags(flags)
 	require.NoError(t, err)
 
@@ -81,7 +81,7 @@ func TestRestrictedMode(t *testing.T) {
 	t.Setenv("EDG_"+strings.ToUpper(ProfilerEnabledFlag), "true")
 	t.Setenv("EDG_"+strings.ToUpper(DebugNamespaceEnabledFlag), "true")
 
-	flags := EnclaveFlags()
+	flags := EnclaveFlags
 	err := tenflag.CreateCLIFlags(flags)
 	require.NoError(t, err)
 
@@ -120,7 +120,7 @@ func TestRestrictedModeNoCLIDuplication(t *testing.T) {
 	t.Setenv("EDG_"+strings.ToUpper(ProfilerEnabledFlag), "true")
 	t.Setenv("EDG_"+strings.ToUpper(DebugNamespaceEnabledFlag), "true")
 
-	flags := EnclaveFlags()
+	flags := EnclaveFlags
 	err := tenflag.CreateCLIFlags(flags)
 	require.NoError(t, err)
 
