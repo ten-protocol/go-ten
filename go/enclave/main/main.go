@@ -15,7 +15,7 @@ func main() {
 	flags := config.EnclaveFlags()
 	err := tenflag.CreateCLIFlags(flags)
 	if err != nil {
-		panic(fmt.Errorf("could not parse config. Cause: %w", err))
+		panic(fmt.Errorf("could not create CLI flags. Cause: %w", err))
 	}
 
 	tenflag.Parse()
