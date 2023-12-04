@@ -149,39 +149,39 @@ func retrieveEnvFlags() (map[string]*flag.TenFlag, error) {
 	parsedFlags := map[string]*flag.TenFlag{}
 
 	for _, eflag := range enclaveRestrictedFlags {
-		val := os.Getenv("EDG_" + strings.ToUpper(eflag.Name))
+		val := os.Getenv("EDG_" + strings.ToUpper(eflag))
 
 		// all env flags must be set
 		if val == "" {
-			return nil, fmt.Errorf("env var not set: %s", eflag.Name)
+			return nil, fmt.Errorf("env var not set: %s", eflag)
 		}
 
-		switch eflag.FlagType {
+		switch EnclaveFlags()[eflag].FlagType {
 		case "string":
-			parsedFlag := flag.NewStringFlag(eflag.Name, "", "")
+			parsedFlag := flag.NewStringFlag(eflag, "", "")
 			parsedFlag.Value = val
 
-			parsedFlags[eflag.Name] = parsedFlag
+			parsedFlags[eflag] = parsedFlag
 		case "int64":
 			i, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("unable to parse flag %s - %w", eflag.Name, err)
+				return nil, fmt.Errorf("unable to parse flag %s - %w", eflag, err)
 			}
 
-			parsedFlag := flag.NewIntFlag(eflag.Name, 0, "")
+			parsedFlag := flag.NewIntFlag(eflag, 0, "")
 			parsedFlag.Value = i
-			parsedFlags[eflag.Name] = parsedFlag
+			parsedFlags[eflag] = parsedFlag
 		case "bool":
 			b, err := strconv.ParseBool(val)
 			if err != nil {
-				return nil, fmt.Errorf("unable to parse flag %s - %w", eflag.Name, err)
+				return nil, fmt.Errorf("unable to parse flag %s - %w", eflag, err)
 			}
 
-			parsedFlag := flag.NewBoolFlag(eflag.Name, false, "")
+			parsedFlag := flag.NewBoolFlag(eflag, false, "")
 			parsedFlag.Value = b
-			parsedFlags[eflag.Name] = parsedFlag
+			parsedFlags[eflag] = parsedFlag
 		default:
-			return nil, fmt.Errorf("unexpected type: %s", eflag.FlagType)
+			return nil, fmt.Errorf("unexpected type: %s", EnclaveFlags()[eflag].FlagType)
 		}
 	}
 	return parsedFlags, nil
