@@ -31,6 +31,8 @@ import (
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/simulation/network"
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
+
+	integrationCommon "github.com/ten-protocol/go-ten/integration/common"
 )
 
 // InMemNodeOperator represents an Obscuro node playing a role in a DevSimulation
@@ -158,7 +160,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 	hostPort := n.config.PortStart + integration.DefaultHostP2pOffset + n.operatorIdx
 	hostAddr := fmt.Sprintf("%s:%d", network.Localhost, hostPort)
 
-	defaultCfg := config.DefaultEnclaveConfig()
+	defaultCfg := integrationCommon.DefaultEnclaveConfig()
 
 	enclaveConfig := &config.EnclaveConfig{
 		HostID:                    n.l1Wallet.Address(),
@@ -180,7 +182,8 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,
 		BaseFee:                   defaultCfg.BaseFee, // todo @siliev:: fix test transaction builders so this can be different
-		GasLimit:                  defaultCfg.GasLimit,
+		GasBatchExecutionLimit:    defaultCfg.GasBatchExecutionLimit,
+		GasLocalExecutionCapFlag:  defaultCfg.GasLocalExecutionCapFlag,
 		GasPaymentAddress:         defaultCfg.GasPaymentAddress,
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)

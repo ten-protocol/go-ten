@@ -1,15 +1,15 @@
 package config
 
 import (
+	"fmt"
 	"math/big"
-
-	"github.com/ten-protocol/go-ten/go/common"
+	"os"
+	"strconv"
+	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ten-protocol/go-ten/go/common/log"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/flag"
 )
 
 // EnclaveConfig contains the full configuration for an Obscuro enclave service.
@@ -65,41 +65,128 @@ type EnclaveConfig struct {
 	// to include a transaction if it goes above it
 	MaxRollupSize uint64
 
-	GasPaymentAddress gethcommon.Address
-	BaseFee           *big.Int
-	GasLimit          uint64
-
-	GasEstimationCap uint64
+	GasPaymentAddress        gethcommon.Address
+	BaseFee                  *big.Int
+	GasBatchExecutionLimit   uint64
+	GasLocalExecutionCapFlag uint64
 }
 
-// DefaultEnclaveConfig returns an EnclaveConfig with default values.
-func DefaultEnclaveConfig() *EnclaveConfig {
-	return &EnclaveConfig{
-		HostID:                    gethcommon.BytesToAddress([]byte("")),
-		HostAddress:               "127.0.0.1:10000",
-		Address:                   "127.0.0.1:11000",
-		NodeType:                  common.Sequencer,
-		L1ChainID:                 1337,
-		ObscuroChainID:            443,
-		WillAttest:                false, // todo (config) - attestation should be on by default before production release
-		ValidateL1Blocks:          false,
-		GenesisJSON:               nil,
-		ManagementContractAddress: gethcommon.BytesToAddress([]byte("")),
-		LogLevel:                  int(gethlog.LvlInfo),
-		LogPath:                   log.SysOut,
-		UseInMemoryDB:             true, // todo (config) - persistence should be on by default before production release
-		EdgelessDBHost:            "",
-		SqliteDBPath:              "",
-		ProfilerEnabled:           false,
-		MinGasPrice:               big.NewInt(1),
-		SequencerID:               gethcommon.BytesToAddress([]byte("")),
-		ObscuroGenesis:            "",
-		DebugNamespaceEnabled:     false,
-		MaxBatchSize:              1024 * 25,
-		MaxRollupSize:             1024 * 64,
-		GasPaymentAddress:         gethcommon.HexToAddress("0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"),
-		BaseFee:                   new(big.Int).SetUint64(1),
-		GasLimit:                  params.MaxGasLimit / 6,
-		GasEstimationCap:          5_000_000_000,
+func NewConfigFromFlags(cliFlags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
+	productionMode := true
+
+	// check if it's in production mode or not
+	val := os.Getenv("EDG_TESTMODE")
+	if val == "true" {
+		productionMode = false
+		fmt.Println("Using test mode flags")
+	} else {
+		fmt.Println("Using mandatory signed configurations.")
 	}
+
+	if productionMode {
+		envFlags, err := retrieveEnvFlags()
+		if err != nil {
+			return nil, fmt.Errorf("unable to retrieve env flags - %w", err)
+		}
+
+		// fail if any restricted flag is set via the cli
+		for _, envflag := range envFlags {
+			if cliflag, ok := cliFlags[envflag.Name]; ok && cliflag.IsSet() {
+				return nil, fmt.Errorf("restricted flag was set: %s", cliflag.Name)
+			}
+		}
+
+		// create the final flag usage
+		parsedFlags := map[string]*flag.TenFlag{}
+		for flagName, cliflag := range cliFlags {
+			parsedFlags[flagName] = cliflag
+		}
+		// env flags override CLI flags
+		for flagName, envflag := range envFlags {
+			parsedFlags[flagName] = envflag
+		}
+
+		return newConfig(parsedFlags)
+	}
+	return newConfig(cliFlags)
+}
+
+func retrieveEnvFlags() (map[string]*flag.TenFlag, error) {
+	parsedFlags := map[string]*flag.TenFlag{}
+
+	for _, eflag := range enclaveRestrictedFlags {
+		val := os.Getenv("EDG_" + strings.ToUpper(eflag))
+
+		// all env flags must be set
+		if val == "" {
+			return nil, fmt.Errorf("env var not set: %s", eflag)
+		}
+
+		switch EnclaveFlags[eflag].FlagType {
+		case "string":
+			parsedFlag := flag.NewStringFlag(eflag, "", "")
+			parsedFlag.Value = val
+
+			parsedFlags[eflag] = parsedFlag
+		case "int64":
+			i, err := strconv.ParseInt(val, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse flag %s - %w", eflag, err)
+			}
+
+			parsedFlag := flag.NewIntFlag(eflag, 0, "")
+			parsedFlag.Value = i
+			parsedFlags[eflag] = parsedFlag
+		case "bool":
+			b, err := strconv.ParseBool(val)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse flag %s - %w", eflag, err)
+			}
+
+			parsedFlag := flag.NewBoolFlag(eflag, false, "")
+			parsedFlag.Value = b
+			parsedFlags[eflag] = parsedFlag
+		default:
+			return nil, fmt.Errorf("unexpected type: %s", EnclaveFlags[eflag].FlagType)
+		}
+	}
+	return parsedFlags, nil
+}
+
+func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
+	cfg := &EnclaveConfig{}
+
+	nodeType, err := common.ToNodeType(flags[NodeTypeFlag].String())
+	if err != nil {
+		return nil, fmt.Errorf("unrecognised node type '%s'", flags[NodeTypeFlag].String())
+	}
+
+	cfg.HostID = gethcommon.HexToAddress(flags[HostIDFlag].String())
+	cfg.HostAddress = flags[HostAddressFlag].String()
+	cfg.Address = flags[AddressFlag].String()
+	cfg.NodeType = nodeType
+	cfg.L1ChainID = flags[L1ChainIDFlag].Int64()
+	cfg.ObscuroChainID = flags[ObscuroChainIDFlag].Int64()
+	cfg.WillAttest = flags[WillAttestFlag].Bool()
+	cfg.ValidateL1Blocks = flags[ValidateL1BlocksFlag].Bool()
+	cfg.ManagementContractAddress = gethcommon.HexToAddress(flags[ManagementContractAddressFlag].String())
+	cfg.LogLevel = flags[LogLevelFlag].Int()
+	cfg.LogPath = flags[LogPathFlag].String()
+	cfg.UseInMemoryDB = flags[UseInMemoryDBFlag].Bool()
+	cfg.EdgelessDBHost = flags[EdgelessDBHostFlag].String()
+	cfg.SqliteDBPath = flags[SQLiteDBPathFlag].String()
+	cfg.ProfilerEnabled = flags[ProfilerEnabledFlag].Bool()
+	cfg.MinGasPrice = big.NewInt(flags[MinGasPriceFlag].Int64())
+	cfg.MessageBusAddress = gethcommon.HexToAddress(flags[MessageBusAddressFlag].String())
+	cfg.SequencerID = gethcommon.HexToAddress(flags[SequencerIDFlag].String())
+	cfg.ObscuroGenesis = flags[ObscuroGenesisFlag].String()
+	cfg.DebugNamespaceEnabled = flags[DebugNamespaceEnabledFlag].Bool()
+	cfg.MaxBatchSize = flags[MaxBatchSizeFlag].Uint64()
+	cfg.MaxRollupSize = flags[MaxRollupSizeFlag].Uint64()
+	cfg.BaseFee = big.NewInt(0).SetUint64(flags[L2BaseFeeFlag].Uint64())
+	cfg.GasPaymentAddress = gethcommon.HexToAddress(flags[L2CoinbaseFlag].String())
+	cfg.GasBatchExecutionLimit = flags[L2GasLimitFlag].Uint64()
+	cfg.GasLocalExecutionCapFlag = flags[GasLocalExecutionCapFlag].Uint64()
+
+	return cfg, nil
 }
