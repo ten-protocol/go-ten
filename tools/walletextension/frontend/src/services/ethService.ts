@@ -5,12 +5,10 @@ import {
 import { accountIsAuthenticated } from "@/api/gateway";
 import { showToast } from "@/components/ui/use-toast";
 import { METAMASK_CONNECTION_TIMEOUT } from "@/lib/constants";
-import { isTenChain, isValidUserIDFormat } from "@/lib/utils";
+import { isTenChain, isValidUserIDFormat, ethereum } from "@/lib/utils";
 import { ToastType } from "@/types/interfaces";
 import { Account } from "@/types/interfaces/WalletInterfaces";
 import { ethers } from "ethers";
-
-const { ethereum } = typeof window !== "undefined" ? window : ({} as any);
 
 const ethService = {
   checkIfMetamaskIsLoaded: async (provider: ethers.providers.Web3Provider) => {
@@ -19,15 +17,23 @@ const ethService = {
     } else {
       showToast(ToastType.INFO, "Connecting to MetaMask...");
 
+      let timeoutId: ReturnType<typeof setTimeout>;
       const handleEthereumOnce = () => {
         ethService.handleEthereum(provider);
       };
 
-      window.addEventListener("ethereum#initialized", handleEthereumOnce, {
-        once: true,
-      });
+      window.addEventListener(
+        "ethereum#initialized",
+        () => {
+          clearTimeout(timeoutId);
+          handleEthereumOnce();
+        },
+        {
+          once: true,
+        }
+      );
 
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         handleEthereumOnce(); // Call the handler function after the timeout
       }, METAMASK_CONNECTION_TIMEOUT);
     }
@@ -65,7 +71,7 @@ const ethService = {
     }
   },
 
-  getCorrectScreenBasedOnMetamaskAndUserID: async (userID: string) => {
+  isUserConnectedToTenChain: async (userID: string) => {
     if (await isTenChain()) {
       if (userID && isValidUserIDFormat(userID)) {
         return true;
@@ -78,20 +84,25 @@ const ethService = {
   },
 
   getAccounts: async (provider: ethers.providers.Web3Provider) => {
+    if (!provider) {
+      showToast(
+        ToastType.DESTRUCTIVE,
+        "No provider found. Please try again later."
+      );
+      return;
+    }
+
     const id = await getUserID(provider);
+
     if (!id || !isValidUserIDFormat(id)) {
+      showToast(
+        ToastType.DESTRUCTIVE,
+        "No user ID found. Please try again later."
+      );
       return;
     }
 
     try {
-      if (!provider) {
-        showToast(
-          ToastType.DESTRUCTIVE,
-          "No provider found. Please try again later."
-        );
-        return;
-      }
-
       showToast(ToastType.INFO, "Getting accounts...");
 
       if (!(await isTenChain())) {
@@ -108,15 +119,15 @@ const ethService = {
 
       let updatedAccounts: Account[] = [];
 
-      for (let i = 0; i < accounts.length; i++) {
-        const account = accounts[i];
-        await authenticateAccountWithTenGatewayEIP712(id, account);
-        const { status } = await accountIsAuthenticated(id, account);
-        updatedAccounts.push({
-          name: account,
-          connected: status,
-        });
-      }
+      const authenticationPromises = accounts.map((account) =>
+        authenticateAccountWithTenGatewayEIP712(id, account)
+          .then(() => accountIsAuthenticated(id, account))
+          .then(({ status }) => ({
+            name: account,
+            connected: status,
+          }))
+      );
+      updatedAccounts = await Promise.all(authenticationPromises);
       showToast(ToastType.SUCCESS, "Accounts fetched successfully.");
       return updatedAccounts;
     } catch (error) {

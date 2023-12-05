@@ -5,7 +5,7 @@ import {
   Account,
 } from "../../types/interfaces/WalletInterfaces";
 import { showToast } from "../ui/use-toast";
-import { isValidUserIDFormat } from "../../lib/utils";
+import { ethereum } from "../../lib/utils";
 import {
   accountIsAuthenticated,
   fetchVersion,
@@ -18,8 +18,6 @@ import {
 } from "@/api/ethRequests";
 import { ethers } from "ethers";
 import ethService from "@/services/ethService";
-
-const { ethereum } = typeof window !== "undefined" ? window : ({} as any);
 
 const WalletConnectionContext =
   createContext<WalletConnectionContextType | null>(null);
@@ -46,16 +44,7 @@ export const WalletConnectionProvider = ({
   const [provider, setProvider] = useState({} as ethers.providers.Web3Provider);
 
   useEffect(() => {
-    const handleAccountsChanged = async () => {
-      if (!ethereum) {
-        return;
-      }
-      if (userID && isValidUserIDFormat(userID)) {
-        const status =
-          await ethService.getCorrectScreenBasedOnMetamaskAndUserID(userID);
-        setWalletConnected(status);
-      }
-    };
+    initialize();
     ethereum.on("accountsChanged", handleAccountsChanged);
 
     return () => {
@@ -64,29 +53,30 @@ export const WalletConnectionProvider = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleAccountsChanged = async () => {
+    if (!ethereum) {
+      return;
+    }
+    const status = await ethService.isUserConnectedToTenChain(userID);
+    setWalletConnected(status);
+  };
+
   const initialize = async () => {
     const providerInstance = new ethers.providers.Web3Provider(ethereum);
     setProvider(providerInstance);
     await ethService.checkIfMetamaskIsLoaded(providerInstance);
     const id = await getUserID(providerInstance);
     setUserID(id);
-    const status = await ethService.getCorrectScreenBasedOnMetamaskAndUserID(
-      id
-    );
-    setWalletConnected(status);
+    handleAccountsChanged();
     const accounts = await ethService.getAccounts(providerInstance);
     setAccounts(accounts || null);
     setVersion(await fetchVersion());
     setLoading(false);
   };
 
-  useEffect(() => {
-    initialize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const connectAccount = async (account: string) => {
     if (!userID) {
+      showToast(ToastType.INFO, "User ID is required to connect an account.");
       return;
     }
     await authenticateAccountWithTenGatewayEIP712(userID, account);
@@ -114,6 +104,7 @@ export const WalletConnectionProvider = ({
 
   const revokeAccounts = async () => {
     if (!userID) {
+      showToast(ToastType.INFO, "User ID is required to revoke accounts");
       return;
     }
     const revokeResponse = await revokeAccountsApi(userID);

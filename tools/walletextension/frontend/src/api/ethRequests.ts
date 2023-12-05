@@ -3,13 +3,19 @@ import {
   tenChainIDDecimal,
   tenChainIDHex,
   tenscanLink,
+  userStorageAddress,
 } from "@/lib/constants";
-import { getNetworkName, getRandomIntAsString, isTenChain } from "@/lib/utils";
+import {
+  getNetworkName,
+  getRandomIntAsString,
+  isTenChain,
+  ethereum,
+} from "@/lib/utils";
 import { requestMethods } from "@/routes";
 import { ethers } from "ethers";
 import { accountIsAuthenticated, authenticateUser } from "./gateway";
-
-const { ethereum } = typeof window !== "undefined" ? window : ({} as any);
+import { showToast } from "@/components/ui/use-toast";
+import { ToastType } from "@/types/interfaces";
 
 const typedData = {
   types: {
@@ -73,13 +79,17 @@ export const getSignature = async (account: string, data: any) => {
 
 export const getUserID = async (provider: ethers.providers.Web3Provider) => {
   if (!provider) {
+    showToast(
+      ToastType.DESTRUCTIVE,
+      "No provider found. Please try again later."
+    );
     return null;
   }
 
   try {
     if (await isTenChain()) {
       const id = await provider.send(requestMethods.getStorageAt, [
-        "getUserID",
+        userStorageAddress,
         getRandomIntAsString(0, 1000),
         null,
       ]);
@@ -122,8 +132,10 @@ export async function authenticateAccountWithTenGatewayEIP712(
   account: string
 ): Promise<any> {
   if (!userID) {
+    showToast(ToastType.INFO, "User ID is required to revoke accounts");
     return;
   }
+
   try {
     const isAuthenticated = await accountIsAuthenticated(userID, account);
     if (isAuthenticated.status) {

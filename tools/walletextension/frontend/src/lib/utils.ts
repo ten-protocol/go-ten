@@ -55,8 +55,11 @@ export function getRPCFromUrl() {
 }
 
 export async function isTenChain() {
-  let currentChain = await (window as any).ethereum.request({
+  let currentChain = await ethereum.request({
     method: "eth_chainId",
   });
   return currentChain === tenChainIDHex;
 }
+
+export const { ethereum } =
+  typeof window !== "undefined" ? window : ({} as any);
