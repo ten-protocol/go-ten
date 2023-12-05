@@ -35,7 +35,7 @@ type SequencerSettings struct {
 	MaxBatchSize      uint64
 	MaxRollupSize     uint64
 	GasPaymentAddress gethcommon.Address
-	BatchGasLimit     *big.Int
+	BatchGasLimit     uint64
 	BaseFee           *big.Int
 }
 
@@ -138,7 +138,6 @@ func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 		uint64(time.Now().Unix()),
 		s.settings.GasPaymentAddress,
 		s.settings.BaseFee,
-		s.settings.BatchGasLimit,
 	)
 	if err != nil {
 		return err

@@ -67,7 +67,9 @@ type EnclaveConfig struct {
 
 	GasPaymentAddress gethcommon.Address
 	BaseFee           *big.Int
-	GasLimit          *big.Int
+	GasLimit          uint64
+
+	GasEstimationCap uint64
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -97,6 +99,7 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 		MaxRollupSize:             1024 * 64,
 		GasPaymentAddress:         gethcommon.HexToAddress("0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"),
 		BaseFee:                   new(big.Int).SetUint64(1),
-		GasLimit:                  new(big.Int).SetUint64(params.MaxGasLimit / 6),
+		GasLimit:                  params.MaxGasLimit / 6,
+		GasEstimationCap:          5_000_000_000,
 	}
 }

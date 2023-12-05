@@ -42,6 +42,8 @@ type batchExecutor struct {
 
 	// stateDBMutex - used to protect calls to stateDB.Commit as it is not safe for async access.
 	stateDBMutex sync.Mutex
+
+	batchGasLimit uint64 // max execution gas allowed in a batch
 }
 
 func NewBatchExecutor(
@@ -50,6 +52,7 @@ func NewBatchExecutor(
 	genesis *genesis.Genesis,
 	gasOracle gas.Oracle,
 	chainConfig *params.ChainConfig,
+	batchGasLimit uint64,
 	logger gethlog.Logger,
 ) BatchExecutor {
 	return &batchExecutor{
@@ -60,6 +63,7 @@ func NewBatchExecutor(
 		logger:               logger,
 		gasOracle:            gasOracle,
 		stateDBMutex:         sync.Mutex{},
+		batchGasLimit:        batchGasLimit,
 	}
 }
 
@@ -298,16 +302,10 @@ func (executor *batchExecutor) CreateGenesisState(
 	timeNow uint64,
 	coinbase gethcommon.Address,
 	baseFee *big.Int,
-	gasLimit *big.Int,
 ) (*core.Batch, *types.Transaction, error) {
 	preFundGenesisState, err := executor.genesis.GetGenesisRoot(executor.storage)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	limit := params.MaxGasLimit / 6
-	if gasLimit != nil {
-		limit = gasLimit.Uint64()
 	}
 
 	genesisBatch := &core.Batch{
@@ -323,7 +321,7 @@ func (executor *batchExecutor) CreateGenesisState(
 			Time:             timeNow,
 			Coinbase:         coinbase,
 			BaseFee:          baseFee,
-			GasLimit:         limit, // todo (@siliev) - does the batch header need uint64?
+			GasLimit:         params.MaxGasLimit / 6,
 		},
 		Transactions: []*common.L2Tx{},
 	}
@@ -408,8 +406,7 @@ func (executor *batchExecutor) processTransactions(
 	var executedTransactions []*common.L2Tx
 	var excludedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
-
-	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, executor.storage, cc, tCount, noBaseFee, executor.logger)
+	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, executor.storage, cc, tCount, noBaseFee, executor.batchGasLimit, executor.logger)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {

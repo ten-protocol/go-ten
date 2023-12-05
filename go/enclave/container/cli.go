@@ -41,6 +41,7 @@ type EnclaveConfigToml struct {
 	GasPaymentAddress         string
 	BaseFee                   uint64
 	GasLimit                  uint64
+	GasEstimationCap          uint64
 }
 
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
@@ -74,7 +75,8 @@ func ParseConfig() (*config.EnclaveConfig, error) {
 	maxRollupSize := flag.Uint64(maxRollupSizeName, cfg.MaxRollupSize, flagUsageMap[maxRollupSizeName])
 	baseFee := flag.Uint64("l2BaseFee", cfg.BaseFee.Uint64(), "")
 	coinbaseAddress := flag.String("l2Coinbase", cfg.GasPaymentAddress.Hex(), "")
-	gasLimit := flag.Uint64("l2GasLimit", cfg.GasLimit.Uint64(), "")
+	gasLimit := flag.Uint64("l2GasLimit", cfg.GasLimit, "")
+	gasEstimationCap := flag.Uint64(gasEstimationCapName, cfg.GasEstimationCap, flagUsageMap[gasEstimationCapName])
 
 	flag.Parse()
 
@@ -111,7 +113,8 @@ func ParseConfig() (*config.EnclaveConfig, error) {
 	cfg.MaxRollupSize = *maxRollupSize
 	cfg.BaseFee = big.NewInt(0).SetUint64(*baseFee)
 	cfg.GasPaymentAddress = gethcommon.HexToAddress(*coinbaseAddress)
-	cfg.GasLimit = big.NewInt(0).SetUint64(*gasLimit)
+	cfg.GasLimit = *gasLimit
+	cfg.GasEstimationCap = *gasEstimationCap
 
 	return cfg, nil
 }

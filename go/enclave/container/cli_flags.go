@@ -25,6 +25,7 @@ const (
 	debugNamespaceEnabledName     = "debugNamespaceEnabled"
 	maxBatchSizeName              = "maxBatchSize"
 	maxRollupSizeName             = "maxRollupSize"
+	gasEstimationCapName          = "gasEstimationCap"
 )
 
 // Returns a map of the flag usages.
@@ -54,5 +55,6 @@ func getFlagUsageMap() map[string]string {
 		debugNamespaceEnabledName:     "Whether the debug namespace is enabled",
 		maxBatchSizeName:              "The maximum size a batch is allowed to reach uncompressed",
 		maxRollupSizeName:             "The maximum size a rollup is allowed to reach",
+		gasEstimationCapName:          "The gas limit for executing estimations",
 	}
 }
