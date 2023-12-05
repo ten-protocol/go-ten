@@ -108,8 +108,16 @@ func (s *RPCServer) InitEnclave(_ context.Context, request *generated.InitEnclav
 }
 
 func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
-	bl := s.decodeBlock(request.EncodedBlock)
-	receipts := s.decodeReceipts(request.EncodedReceipts)
+	bl, err := s.decodeBlock(request.EncodedBlock)
+	if err != nil {
+		s.logger.Error("Error decoding block", log.ErrKey, err)
+		return nil, err
+	}
+	receipts, err := s.decodeReceipts(request.EncodedReceipts)
+	if err != nil {
+		s.logger.Error("Error decoding receipts", log.ErrKey, err)
+		return nil, err
+	}
 	blockSubmissionResponse, err := s.enclave.SubmitL1Block(bl, receipts, request.IsLatest)
 	if err != nil {
 		var rejErr *errutil.BlockRejectError
@@ -439,25 +447,25 @@ func (s *RPCServer) EnclavePublicConfig(_ context.Context, _ *generated.EnclaveP
 	return &generated.EnclavePublicConfigResponse{L2MessageBusAddress: enclaveCfg.L2MessageBusAddress.Bytes()}, nil
 }
 
-func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {
+func (s *RPCServer) decodeBlock(encodedBlock []byte) (types.Block, error) {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)
 	if err != nil {
-		s.logger.Info("failed to decode block sent to enclave", log.ErrKey, err)
+		return types.Block{}, fmt.Errorf("unable to decode block, bytes=%x, err=%w", encodedBlock, err)
 	}
-	return block
+	return block, nil
 }
 
 // decodeReceipts - converts the rlp encoded bytes to receipts if possible.
-func (s *RPCServer) decodeReceipts(encodedReceipts []byte) types.Receipts {
+func (s *RPCServer) decodeReceipts(encodedReceipts []byte) (types.Receipts, error) {
 	receipts := make(types.Receipts, 0)
 
 	err := rlp.DecodeBytes(encodedReceipts, &receipts)
 	if err != nil {
-		s.logger.Crit("failed to decode receipts sent to enclave", log.ErrKey, err)
+		return nil, fmt.Errorf("unable to decode receipts, bytes=%x, err=%w", encodedReceipts, err)
 	}
 
-	return receipts
+	return receipts, nil
 }
 
 func toRPCError(err common.SystemError) *generated.SystemError {
