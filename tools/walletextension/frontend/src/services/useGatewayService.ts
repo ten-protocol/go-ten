@@ -33,7 +33,7 @@ const useGatewayService = () => {
       if (await isTenChain()) {
         if (!userID || !isValidUserIDFormat(userID)) {
           showToast(
-            ToastType.WARNING,
+            ToastType.DESTRUCTIVE,
             "Existing Ten network detected in MetaMask. Please remove before hitting begin"
           );
           return;
