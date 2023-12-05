@@ -13,5 +13,35 @@
       "type": "hostfs",
       "readOnly": false
     }
+  ],
+  "env": [
+    {
+      "name": "TESTMODE",
+      "value": "false"
+    },
+    {
+      "name": "L1CHAINID",
+      "value": "1"
+    },
+    {
+      "name": "OBSCUROCHAINID",
+      "value": "443"
+    },
+    {
+      "name": "OBSCUROGENESIS",
+      "value": "{}"
+    },
+    {
+      "name": "USEINMEMORYDB",
+      "value": "false"
+    },
+    {
+      "name": "PROFILERENABLED",
+      "value": "false"
+    },
+    {
+      "name": "DEBUGNAMESPACENEABLED",
+      "value": "false"
+    }
   ]
 }
