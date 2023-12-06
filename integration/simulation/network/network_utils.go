@@ -2,14 +2,13 @@ package network
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/params"
 	"math"
 	"math/big"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/host/l1"
-
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/host"
+	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
