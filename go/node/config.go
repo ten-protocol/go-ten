@@ -9,6 +9,7 @@ import (
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	integrationCommon "github.com/ten-protocol/go-ten/integration/common"
 )
 
 const (
@@ -73,7 +74,7 @@ func NewNodeConfig(opts ...Option) *Config {
 }
 
 func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
-	cfg := config.DefaultEnclaveConfig()
+	cfg := integrationCommon.DefaultEnclaveConfig()
 
 	if c.nodeType == "validator" {
 		cfg.NodeType = common.Validator

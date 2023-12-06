@@ -4,6 +4,14 @@
 # deploy = copies over only the enclave executable without the source
 #          in a lightweight base image specialized for deployment and prepares the /data/ folder.
 
+# Final container folder structure:
+#   /home/obscuro/data                          contains working files for the enclave
+#   /home/obscuro/go-obscuro/go/enclave/main    contains the executable for the enclave
+#
+
+# Defaults to restricted flag mode
+ARG TESTMODE=false
+
 FROM ghcr.io/edgelesssys/ego-dev:v1.3.0 AS build-base
 
 # setup container data structure
@@ -26,19 +34,25 @@ WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 RUN --mount=type=cache,target=/root/.cache/go-build \
     ego-go build
 
+# New build stage for compiling the enclave with restricted flags mode
+FROM build-enclave as build-enclave-testmode-false
 # Sign the enclave executable
-RUN ego sign main
+RUN ego sign enclave.json
 
-# Final container folder structure:
-#   /home/obscuro/data                          contains working files for the enclave
-#   /home/obscuro/go-obscuro/go/enclave/main    contains the executable for the enclave
-#
+# New build stage for compiling the enclave without restricted flags mode
+FROM build-enclave as build-enclave-testmode-true
+# Sign the enclave executable
+RUN ego sign enclave-test.json
+
+# Tag the restricted mode as the current build
+FROM build-enclave-testmode-${TESTMODE} as build-enclave
+
 # Trigger a new build stage and use the smaller ego version:
 FROM ghcr.io/edgelesssys/ego-deploy:v1.3.0
 
 # Copy just the binary for the enclave into this build stage
 COPY --from=build-enclave \
-    /home/obscuro/go-obscuro/go/enclave/main home/obscuro/go-obscuro/go/enclave/main
+    /home/obscuro/go-obscuro/go/enclave/main /home/obscuro/go-obscuro/go/enclave/main
     
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 

@@ -31,6 +31,8 @@ import (
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/simulation/network"
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
+
+	integrationCommon "github.com/ten-protocol/go-ten/integration/common"
 )
 
 // InMemNodeOperator represents an Obscuro node playing a role in a DevSimulation
@@ -158,7 +160,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 	hostPort := n.config.PortStart + integration.DefaultHostP2pOffset + n.operatorIdx
 	hostAddr := fmt.Sprintf("%s:%d", network.Localhost, hostPort)
 
-	defaultCfg := config.DefaultEnclaveConfig()
+	defaultCfg := integrationCommon.DefaultEnclaveConfig()
 
 	enclaveConfig := &config.EnclaveConfig{
 		HostID:                    n.l1Wallet.Address(),
