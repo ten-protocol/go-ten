@@ -41,7 +41,7 @@ func TestCLIFlagTypes(t *testing.T) {
 	err = flag.CommandLine.Set(MinGasPriceFlag, "3333")
 	require.NoError(t, err)
 
-	err = flag.CommandLine.Set(L2GasLimitFlag, "222222")
+	err = flag.CommandLine.Set(GasBatchExecutionLimit, "222222")
 	require.NoError(t, err)
 
 	flag.Parse()
@@ -50,7 +50,7 @@ func TestCLIFlagTypes(t *testing.T) {
 	require.Equal(t, true, flags[WillAttestFlag].Bool())
 	require.Equal(t, 123, flags[LogLevelFlag].Int())
 	require.Equal(t, int64(3333), flags[MinGasPriceFlag].Int64())
-	require.Equal(t, uint64(222222), flags[L2GasLimitFlag].Uint64())
+	require.Equal(t, uint64(222222), flags[GasBatchExecutionLimit].Uint64())
 
 	enclaveConfig, err := newConfig(flags)
 	require.NoError(t, err)
@@ -59,7 +59,7 @@ func TestCLIFlagTypes(t *testing.T) {
 	require.Equal(t, true, enclaveConfig.WillAttest)
 	require.Equal(t, 123, enclaveConfig.LogLevel)
 	require.Equal(t, big.NewInt(3333), enclaveConfig.MinGasPrice)
-	require.Equal(t, big.NewInt(222222), enclaveConfig.GasBatchExecutionLimit)
+	require.Equal(t, uint64(222222), enclaveConfig.GasBatchExecutionLimit)
 }
 
 func TestRestrictedMode(t *testing.T) {

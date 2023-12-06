@@ -321,7 +321,7 @@ func (executor *batchExecutor) CreateGenesisState(
 			Time:             timeNow,
 			Coinbase:         coinbase,
 			BaseFee:          baseFee,
-			GasLimit:         params.MaxGasLimit / 6,
+			GasLimit:         executor.batchGasLimit,
 		},
 		Transactions: []*common.L2Tx{},
 	}
@@ -406,7 +406,17 @@ func (executor *batchExecutor) processTransactions(
 	var executedTransactions []*common.L2Tx
 	var excludedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
-	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, executor.storage, cc, tCount, noBaseFee, executor.batchGasLimit, executor.logger)
+	txResults := evm.ExecuteTransactions(
+		txs,
+		stateDB,
+		batch.Header,
+		executor.storage,
+		cc,
+		tCount,
+		noBaseFee,
+		executor.batchGasLimit,
+		executor.logger,
+	)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {

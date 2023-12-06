@@ -185,7 +185,7 @@ func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 	cfg.MaxRollupSize = flags[MaxRollupSizeFlag].Uint64()
 	cfg.BaseFee = big.NewInt(0).SetUint64(flags[L2BaseFeeFlag].Uint64())
 	cfg.GasPaymentAddress = gethcommon.HexToAddress(flags[L2CoinbaseFlag].String())
-	cfg.GasBatchExecutionLimit = flags[L2GasLimitFlag].Uint64()
+	cfg.GasBatchExecutionLimit = flags[GasBatchExecutionLimit].Uint64()
 	cfg.GasLocalExecutionCapFlag = flags[GasLocalExecutionCapFlag].Uint64()
 
 	return cfg, nil

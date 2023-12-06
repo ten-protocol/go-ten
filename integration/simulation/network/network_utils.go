@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/params"
 	"math"
 	"math/big"
 	"time"
@@ -94,8 +95,8 @@ func createInMemObscuroNode(
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,
 		BaseFee:                   big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
-		GasLocalExecutionCapFlag:  1_000_000_000_000_000_000,
-		GasBatchExecutionLimit:    1_000_000_000_000_000_000,
+		GasLocalExecutionCapFlag:  params.MaxGasLimit / 2,
+		GasBatchExecutionLimit:    params.MaxGasLimit / 2,
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)

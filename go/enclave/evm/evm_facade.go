@@ -169,6 +169,7 @@ func ExecuteObsCall(
 	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "evm_facade.go:ObsCall()")
 
 	gp := gethcore.GasPool(gasEstimationCap)
+	gp.SetGas(gasEstimationCap)
 	chain, vmCfg := initParams(storage, noBaseFee, nil)
 	ethHeader, err := gethencoding.CreateEthHeaderForBatch(header, secret(storage))
 	if err != nil {
