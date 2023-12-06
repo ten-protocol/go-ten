@@ -2,7 +2,6 @@ package devnetwork
 
 import (
 	"fmt"
-	"math/big"
 	"os"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -175,7 +174,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 		GenesisJSON:               nil,
 		UseInMemoryDB:             false,
 		ManagementContractAddress: n.l1Data.MgmtContractAddress,
-		MinGasPrice:               big.NewInt(1),
+		MinGasPrice:               gethcommon.Big1,
 		MessageBusAddress:         n.l1Data.MessageBusAddr,
 		SqliteDBPath:              n.enclaveDBFilepath,
 		DebugNamespaceEnabled:     true,

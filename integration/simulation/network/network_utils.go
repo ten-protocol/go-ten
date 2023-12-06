@@ -88,7 +88,7 @@ func createInMemObscuroNode(
 		ValidateL1Blocks:          validateBlocks,
 		GenesisJSON:               genesisJSON,
 		UseInMemoryDB:             true,
-		MinGasPrice:               big.NewInt(1),
+		MinGasPrice:               gethcommon.Big1,
 		MessageBusAddress:         l1BusAddress,
 		ManagementContractAddress: *mgtContractAddress,
 		MaxBatchSize:              1024 * 25,
