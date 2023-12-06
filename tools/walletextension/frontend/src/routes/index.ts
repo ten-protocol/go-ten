@@ -6,7 +6,7 @@ export const NavLinks: NavLink[] = [];
 export const apiRoutes = {
   join: `/${tenGatewayVersion}/join/`,
   authenticate: `/${tenGatewayVersion}/authenticate/`,
-  queryAccountUserID: `/${tenGatewayVersion}/query/`,
+  queryAccountToken: `/${tenGatewayVersion}/query/`,
   revoke: `/${tenGatewayVersion}/revoke/`,
   version: `/version/`,
 };

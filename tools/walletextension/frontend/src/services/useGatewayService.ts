@@ -3,7 +3,7 @@ import { joinTestnet } from "../api/gateway";
 import { useWalletConnection } from "../components/providers/wallet-provider";
 import { showToast } from "../components/ui/use-toast";
 import { SWITCHED_CODE, tenGatewayVersion } from "../lib/constants";
-import { getRPCFromUrl, isTenChain, isValidUserIDFormat } from "../lib/utils";
+import { getRPCFromUrl, isTenChain, isValidTokenFormat } from "../lib/utils";
 import {
   addNetworkToMetaMask,
   connectAccounts,
@@ -11,7 +11,7 @@ import {
 } from "@/api/ethRequests";
 
 const useGatewayService = () => {
-  const { userID, provider, fetchUserAccounts, setLoading } =
+  const { token, provider, fetchUserAccounts, setLoading } =
     useWalletConnection();
 
   const isMetamaskConnected = async () => {
@@ -23,15 +23,15 @@ const useGatewayService = () => {
       return accounts.length > 0;
     } catch (error) {
       showToast(ToastType.DESTRUCTIVE, "Unable to get accounts");
+      throw error;
     }
-    return false;
   };
 
   const connectToTenTestnet = async () => {
     setLoading(true);
     try {
       if (await isTenChain()) {
-        if (!userID || !isValidUserIDFormat(userID)) {
+        if (!token || !isValidTokenFormat(token)) {
           showToast(
             ToastType.DESTRUCTIVE,
             "Existing Ten network detected in MetaMask. Please remove before hitting begin"
@@ -42,10 +42,7 @@ const useGatewayService = () => {
 
       const switched = await switchToTenNetwork();
 
-      if (
-        switched === SWITCHED_CODE ||
-        (userID && !isValidUserIDFormat(userID))
-      ) {
+      if (switched === SWITCHED_CODE || (token && !isValidTokenFormat(token))) {
         const user = await joinTestnet();
         const rpcUrls = [
           `${getRPCFromUrl()}/${tenGatewayVersion}/?token=${user}`,

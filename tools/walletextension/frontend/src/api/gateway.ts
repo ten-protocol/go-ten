@@ -11,21 +11,21 @@ export async function fetchVersion(): Promise<string> {
 }
 
 export async function accountIsAuthenticated(
-  userID: string,
+  token: string,
   account: string
 ): Promise<AuthenticationResponse> {
   return await httpRequest<AuthenticationResponse>({
     method: "get",
-    url: pathToUrl(apiRoutes.queryAccountUserID),
+    url: pathToUrl(apiRoutes.queryAccountToken),
     searchParams: {
-      token: userID,
+      token,
       a: account,
     },
   });
 }
 
 export const authenticateUser = async (
-  userID: string,
+  token: string,
   authenticateFields: {
     signature: string;
     address: string;
@@ -36,17 +36,17 @@ export const authenticateUser = async (
     url: pathToUrl(apiRoutes.authenticate),
     data: authenticateFields,
     searchParams: {
-      token: userID,
+      token,
     },
   });
 };
 
-export async function revokeAccountsApi(userID: string): Promise<string> {
+export async function revokeAccountsApi(token: string): Promise<string> {
   return await httpRequest<string>({
     method: "get",
     url: pathToUrl(apiRoutes.revoke),
     searchParams: {
-      token: userID,
+      token,
     },
   });
 }

@@ -56,9 +56,8 @@ const Disconnected = () => {
           <div className="space-y-4">
             <p>
               By connecting your wallet to Ten and signing the signature request
-              you will get a unique user id, which is also your{" "}
-              <b>viewing key</b>. It is contained in the RPC link and unique for
-              each user.
+              you will get a unique token, which is also your <b>viewing key</b>
+              . It is contained in the RPC link and unique for each user.
             </p>
             <Alert variant={"warning"} className="flex items-center space-x-2">
               <Terminal className="h-4 w-4" />

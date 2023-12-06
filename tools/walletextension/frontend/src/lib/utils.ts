@@ -5,7 +5,7 @@ import {
   tenChainIDHex,
   tenGatewayAddress,
   testnetUrls,
-  userIDHexLength,
+  tokenHexLength,
 } from "./constants";
 
 export function cn(...inputs: ClassValue[]) {
@@ -17,8 +17,8 @@ export function formatTimeAgo(unixTimestampSeconds: string) {
   return formatDistanceToNow(date, { addSuffix: true });
 }
 
-export function isValidUserIDFormat(value: string) {
-  return typeof value === "string" && value.length === userIDHexLength;
+export function isValidTokenFormat(value: string) {
+  return typeof value === "string" && value.length === tokenHexLength;
 }
 
 export function getRandomIntAsString(min: number, max: number) {
@@ -27,6 +27,7 @@ export function getRandomIntAsString(min: number, max: number) {
   const randomInt = Math.floor(Math.random() * (max - min + 1)) + min;
   return randomInt.toString();
 }
+
 export function getNetworkName() {
   switch (tenGatewayAddress) {
     case testnetUrls.uat.url:

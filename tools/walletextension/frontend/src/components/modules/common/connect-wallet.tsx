@@ -22,7 +22,6 @@ const ConnectWalletButton = () => {
         <>
           <Link2Icon className="h-4 w-4 mr-1" />
           Connect
-          <span className="hidden sm:inline">&nbsp;Account(s)</span>
         </>
       )}
     </Button>

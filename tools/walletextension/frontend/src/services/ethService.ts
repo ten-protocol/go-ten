@@ -1,79 +1,69 @@
+import { ethers } from "ethers";
 import {
   authenticateAccountWithTenGatewayEIP712,
-  getUserID,
+  getToken,
 } from "@/api/ethRequests";
 import { accountIsAuthenticated } from "@/api/gateway";
 import { showToast } from "@/components/ui/use-toast";
 import { METAMASK_CONNECTION_TIMEOUT } from "@/lib/constants";
-import { isTenChain, isValidUserIDFormat, ethereum } from "@/lib/utils";
+import { isTenChain, isValidTokenFormat, ethereum } from "@/lib/utils";
 import { ToastType } from "@/types/interfaces";
 import { Account } from "@/types/interfaces/WalletInterfaces";
-import { ethers } from "ethers";
 
 const ethService = {
   checkIfMetamaskIsLoaded: async (provider: ethers.providers.Web3Provider) => {
-    if (ethereum) {
-      await ethService.handleEthereum(provider);
-    } else {
-      showToast(ToastType.INFO, "Connecting to MetaMask...");
+    try {
+      if (ethereum) {
+        return await ethService.handleEthereum(provider);
+      } else {
+        showToast(ToastType.INFO, "Connecting to MetaMask...");
 
-      let timeoutId: ReturnType<typeof setTimeout>;
-      const handleEthereumOnce = () => {
-        ethService.handleEthereum(provider);
-      };
+        let timeoutId: ReturnType<typeof setTimeout>;
 
-      window.addEventListener(
-        "ethereum#initialized",
-        () => {
-          clearTimeout(timeoutId);
+        const handleEthereumOnce = async () => {
+          await ethService.handleEthereum(provider);
+        };
+
+        window.addEventListener(
+          "ethereum#initialized",
+          () => {
+            clearTimeout(timeoutId);
+            handleEthereumOnce();
+          },
+          {
+            once: true,
+          }
+        );
+
+        timeoutId = setTimeout(() => {
           handleEthereumOnce();
-        },
-        {
-          once: true,
-        }
-      );
-
-      timeoutId = setTimeout(() => {
-        handleEthereumOnce(); // Call the handler function after the timeout
-      }, METAMASK_CONNECTION_TIMEOUT);
+        }, METAMASK_CONNECTION_TIMEOUT);
+      }
+    } catch (error) {
+      showToast(ToastType.DESTRUCTIVE, "An error occurred. Please try again.");
+      throw error;
     }
   },
 
   handleEthereum: async (provider: ethers.providers.Web3Provider) => {
-    if (ethereum && ethereum.isMetaMask) {
-      const fetchedUserID = await getUserID(provider);
-      if (fetchedUserID && isValidUserIDFormat(fetchedUserID)) {
-        showToast(ToastType.SUCCESS, "MetaMask connected!");
+    try {
+      if (ethereum && ethereum.isMetaMask) {
+        return;
       } else {
         showToast(
           ToastType.WARNING,
-          "Please connect to the Ten chain to use Ten Gateway."
+          "Please install MetaMask to use Ten Gateway."
         );
       }
-    } else {
-      showToast(
-        ToastType.WARNING,
-        "Please install MetaMask to use Ten Gateway."
-      );
+    } catch (error: any) {
+      showToast(ToastType.DESTRUCTIVE, "An error occurred. Please try again.");
+      throw error;
     }
   },
 
-  fetchUserID: async (provider: ethers.providers.Web3Provider) => {
-    try {
-      return await getUserID(provider);
-    } catch (e: any) {
-      showToast(
-        ToastType.DESTRUCTIVE,
-        `${e.message} ${e.data?.message}` ||
-          "Error: Could not fetch your user ID. Please try again later."
-      );
-      return null;
-    }
-  },
-
-  isUserConnectedToTenChain: async (userID: string) => {
+  isUserConnectedToTenChain: async (token: string) => {
     if (await isTenChain()) {
-      if (userID && isValidUserIDFormat(userID)) {
+      if (token && isValidTokenFormat(token)) {
         return true;
       } else {
         return false;
@@ -81,6 +71,32 @@ const ethService = {
     } else {
       return false;
     }
+  },
+
+  formatAccounts: async (
+    accounts: string[],
+    provider: ethers.providers.Web3Provider,
+    token: string
+  ) => {
+    if (!provider) {
+      showToast(
+        ToastType.DESTRUCTIVE,
+        "No provider found. Please try again later."
+      );
+      return;
+    }
+    let updatedAccounts: Account[] = [];
+    showToast(ToastType.INFO, "Checking account authentication status...");
+    const authenticationPromise = accounts.map((account) =>
+      accountIsAuthenticated(token, account).then(({ status }) => {
+        return {
+          name: account,
+          connected: status,
+        };
+      })
+    );
+    updatedAccounts = await Promise.all(authenticationPromise);
+    return updatedAccounts;
   },
 
   getAccounts: async (provider: ethers.providers.Web3Provider) => {
@@ -92,13 +108,9 @@ const ethService = {
       return;
     }
 
-    const id = await getUserID(provider);
+    const token = await getToken(provider);
 
-    if (!id || !isValidUserIDFormat(id)) {
-      showToast(
-        ToastType.DESTRUCTIVE,
-        "No user ID found. Please try again later."
-      );
+    if (!token || !isValidTokenFormat(token)) {
       return;
     }
 
@@ -116,23 +128,23 @@ const ethService = {
         showToast(ToastType.DESTRUCTIVE, "No MetaMask accounts found.");
         return [];
       }
+      showToast(ToastType.SUCCESS, "Accounts found!");
 
-      let updatedAccounts: Account[] = [];
-
-      const authenticationPromises = accounts.map((account) =>
-        authenticateAccountWithTenGatewayEIP712(id, account)
-          .then(() => accountIsAuthenticated(id, account))
-          .then(({ status }) => ({
-            name: account,
-            connected: status,
-          }))
-      );
-      updatedAccounts = await Promise.all(authenticationPromises);
-      showToast(ToastType.SUCCESS, "Accounts fetched successfully.");
-      return updatedAccounts;
+      return ethService.formatAccounts(accounts, provider, token);
     } catch (error) {
       console.error(error);
       showToast(ToastType.DESTRUCTIVE, "An error occurred. Please try again.");
+    }
+  },
+
+  authenticateWithGateway: async (token: string, account: string) => {
+    try {
+      return await authenticateAccountWithTenGatewayEIP712(token, account);
+    } catch (error) {
+      showToast(
+        ToastType.DESTRUCTIVE,
+        `Error authenticating account: ${account}`
+      );
     }
   },
 };

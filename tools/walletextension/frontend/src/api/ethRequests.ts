@@ -77,7 +77,7 @@ export const getSignature = async (account: string, data: any) => {
   });
 };
 
-export const getUserID = async (provider: ethers.providers.Web3Provider) => {
+export const getToken = async (provider: ethers.providers.Web3Provider) => {
   if (!provider) {
     showToast(
       ToastType.DESTRUCTIVE,
@@ -88,12 +88,12 @@ export const getUserID = async (provider: ethers.providers.Web3Provider) => {
 
   try {
     if (await isTenChain()) {
-      const id = await provider.send(requestMethods.getStorageAt, [
+      const token = await provider.send(requestMethods.getStorageAt, [
         userStorageAddress,
         getRandomIntAsString(0, 1000),
         null,
       ]);
-      return id;
+      return token;
     } else {
       return null;
     }
@@ -128,16 +128,18 @@ export async function addNetworkToMetaMask(rpcUrls: string[]) {
 }
 
 export async function authenticateAccountWithTenGatewayEIP712(
-  userID: string,
+  token: string,
   account: string
 ): Promise<any> {
-  if (!userID) {
-    showToast(ToastType.INFO, "User ID is required to revoke accounts");
-    return;
+  if (!token) {
+    return showToast(
+      ToastType.INFO,
+      "Encryption token not found. Please try again later."
+    );
   }
 
   try {
-    const isAuthenticated = await accountIsAuthenticated(userID, account);
+    const isAuthenticated = await accountIsAuthenticated(token, account);
     if (isAuthenticated.status) {
       return {
         status: true,
@@ -148,17 +150,18 @@ export async function authenticateAccountWithTenGatewayEIP712(
       ...typedData,
       message: {
         ...typedData.message,
-        "Encryption Token": "0x" + userID,
+        "Encryption Token": "0x" + token,
       },
     };
     const signature = await getSignature(account, data);
 
-    const auth = await authenticateUser(userID, {
+    const auth = await authenticateUser(token, {
       signature,
       address: account,
     });
+    console.log("🚀 ~ file: ethRequests.ts:166 ~ auth:", auth);
     return auth;
-  } catch (error) {
+  } catch (error: any) {
     throw error;
   }
 }
