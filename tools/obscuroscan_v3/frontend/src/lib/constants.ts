@@ -2,6 +2,7 @@ export const socialLinks = {
   github: "https://github.com/ten-protocol",
   discord: "https://discord.gg/2JQ2Z3r",
   twitter: "https://twitter.com/tenprotocol",
+  twitterHandle: "@tenprotocol",
 };
 
 export const pollingInterval = 5000;
