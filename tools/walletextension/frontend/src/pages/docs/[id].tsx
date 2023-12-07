@@ -1,10 +1,11 @@
 import Layout from "@/components/layouts/default-layout";
 import Spinner from "@/components/ui/spinner";
-import { useToast } from "@/components/ui/use-toast";
 import { siteMetadata } from "@/lib/siteMetadata";
 import { useRouter } from "next/router";
 import React from "react";
 import Custom404Error from "../404";
+import { showToast } from "@/components/ui/use-toast";
+import { ToastType } from "@/types/interfaces";
 
 type Document = {
   title: string;
@@ -16,7 +17,6 @@ type Document = {
 };
 
 const Document = () => {
-  const { toast } = useToast();
   const { query } = useRouter();
   const { id } = query;
 
@@ -45,10 +45,7 @@ const Document = () => {
       };
       setDocument(processedData);
     } catch (error) {
-      toast({
-        variant: "destructive",
-        description: "Error fetching document",
-      });
+      showToast(ToastType.DESTRUCTIVE, "Error fetching document");
     } finally {
       setLoading(false);
     }
