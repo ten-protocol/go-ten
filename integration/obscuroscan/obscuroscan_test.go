@@ -136,6 +136,10 @@ func TestObscuroscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.LessOrEqual(t, 9, len(batchlistingObj.Result.BatchesData))
 	assert.LessOrEqual(t, uint64(9), batchlistingObj.Result.Total)
+	// check results are descending order (latest first)
+	assert.LessOrEqual(t, batchlistingObj.Result.BatchesData[1].Number.Cmp(batchlistingObj.Result.BatchesData[0].Number), 0)
+	// check "hash" field is included in json response
+	assert.Contains(t, string(body), "\"hash\"")
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/blocks/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)
