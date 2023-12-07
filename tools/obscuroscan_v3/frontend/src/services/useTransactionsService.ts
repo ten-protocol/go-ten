@@ -66,10 +66,6 @@ export const useTransactionsService = () => {
           requestPayload,
           null,
         ]);
-        console.log(
-          "🚀 ~ file: useTransactionsService.ts:68 ~ useTransactionsService ~ personalTxData:",
-          personalTxData
-        );
         setPersonalTxns(personalTxData);
       }
     } catch (error) {
