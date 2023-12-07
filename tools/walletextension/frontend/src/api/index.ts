@@ -21,7 +21,6 @@ interface HttpOptions {
 }
 
 const baseConfig: AxiosRequestConfig = {
-  // baseURL: process.env.BASE_URL,
   baseURL: tenGatewayAddress,
   timeout: 10000,
 };

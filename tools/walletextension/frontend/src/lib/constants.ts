@@ -1,4 +1,4 @@
-export const tenGatewayAddress = "https://uat-testnet.obscu.ro";
+export const tenGatewayAddress = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
 export const tenscanLink = "https://testnet.tenscan.com";
 
 export const socialLinks = {
