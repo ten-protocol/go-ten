@@ -4,7 +4,8 @@ import {
   WalletConnectionContextType,
   WalletConnectionProviderProps,
 } from "@/src/types/interfaces/WalletInterfaces";
-import { useToast } from "../ui/use-toast";
+import { showToast } from "../ui/use-toast";
+import { ToastType } from "@/src/types/interfaces";
 
 const WalletConnectionContext =
   createContext<WalletConnectionContextType | null>(null);
@@ -22,8 +23,6 @@ export const useWalletConnection = (): WalletConnectionContextType => {
 export const WalletConnectionProvider = ({
   children,
 }: WalletConnectionProviderProps) => {
-  const { toast } = useToast();
-
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [provider, setProvider] =
@@ -43,10 +42,16 @@ export const WalletConnectionProvider = ({
         setWalletAddress(address);
         setWalletConnected(true);
       } catch (error: any) {
-        toast({ description: "Error connecting to wallet:" + error.message });
+        showToast(
+          ToastType.DESTRUCTIVE,
+          "Error connecting to wallet:" + error.message
+        );
       }
     } else {
-      toast({ description: "No ethereum object found." });
+      showToast(
+        ToastType.DESTRUCTIVE,
+        "No ethereum object found. Please install MetaMask!"
+      );
     }
   };
 
@@ -63,7 +68,7 @@ export const WalletConnectionProvider = ({
     const ethereum = (window as any).ethereum;
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts.length === 0) {
-        toast({ description: "Please connect to MetaMask." });
+        showToast(ToastType.DESTRUCTIVE, "Please connect to MetaMask.");
       } else if (accounts[0] !== walletAddress) {
         setWalletAddress(accounts[0]);
       }

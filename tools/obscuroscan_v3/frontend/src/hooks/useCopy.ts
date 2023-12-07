@@ -1,19 +1,22 @@
-import { useToast } from "@/src/components/ui/use-toast";
 import React from "react";
+import { showToast } from "../components/ui/use-toast";
+import { ToastType } from "../types/interfaces";
 
 export const useCopy = () => {
-  const { toast } = useToast();
   const [copied, setCopied] = React.useState(false);
 
   const copyToClipboard = (text: string, name?: string) => {
     copyText(text)
       .catch(() => fallbackCopyTextToClipboard(text))
       .then(() => {
-        toast({ description: `${name ? name : ""} Copied!` });
+        showToast(ToastType.SUCCESS, `${name ? name : "Copied!"}`);
         setCopied(true);
       })
       .catch(() => {
-        toast({ description: `Couldn't copy ${name ? name : "Text"}!!!` });
+        showToast(
+          ToastType.DESTRUCTIVE,
+          `Couldn't copy ${name ? name : "Text"}!!!`
+        );
       })
       .finally(() => {
         setTimeout(() => setCopied(false), 1000);

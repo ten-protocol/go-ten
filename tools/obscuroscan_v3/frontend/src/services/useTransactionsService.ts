@@ -8,12 +8,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { pollingInterval, pricePollingInterval } from "../lib/constants";
 import { PersonalTransactionsResponse } from "../types/interfaces/TransactionInterfaces";
-import { useToast } from "@/src/components/ui/use-toast";
 import { useRouter } from "next/router";
+import { showToast } from "../components/ui/use-toast";
+import { ToastType } from "../types/interfaces";
 
 export const useTransactionsService = () => {
   const { query } = useRouter();
-  const { toast } = useToast();
   const { walletAddress, provider } = useWalletConnection();
 
   const [personalTxnsLoading, setPersonalTxnsLoading] = useState(false);
@@ -70,9 +70,7 @@ export const useTransactionsService = () => {
         setPersonalTxns(personalTxData);
       }
     } catch (error) {
-      toast({
-        description: "Error fetching personal transactions",
-      });
+      showToast(ToastType.DESTRUCTIVE, "Error fetching personal transactions");
     } finally {
       setPersonalTxnsLoading(false);
     }
