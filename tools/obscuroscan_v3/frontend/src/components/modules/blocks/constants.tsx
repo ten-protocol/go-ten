@@ -2,23 +2,7 @@ import {
   ArrowDownIcon,
   ArrowRightIcon,
   ArrowUpIcon,
-  CheckCircledIcon,
 } from "@radix-ui/react-icons";
-
-export const labels = [
-  {
-    value: "Final",
-    label: "Final",
-  },
-];
-
-export const statuses = [
-  {
-    value: "Final",
-    label: "Final",
-    icon: CheckCircledIcon,
-  },
-];
 
 export const priorities = [
   {

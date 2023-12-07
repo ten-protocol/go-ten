@@ -2,7 +2,6 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 
-import { labels, statuses } from "./constants";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
 import { DataTableRowActions } from "../common/data-table/data-table-row-actions";
 import { Block, BlockHeader } from "@/src/types/interfaces/BlockInterfaces";
@@ -120,34 +119,19 @@ export const columns: ColumnDef<Block>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "Finality",
+    accessorKey: "miner",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Finality" />
+      <DataTableColumnHeader column={column} title="Miner" />
     ),
     cell: ({ row }) => {
-      const finality = statuses.find(
-        (finality) => finality.value === row.getValue("Finality")
-      );
-
-      if (!finality) {
-        return null;
-      }
-
-      return (
-        <div className="flex items-center">
-          {finality.icon && (
-            <finality.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-          )}
-          <span>{finality.label}</span>
-        </div>
-      );
+      const blockHeader = row.original.blockHeader as BlockHeader;
+      return <TruncatedAddress address={blockHeader?.miner} />;
     },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
-    },
+    enableSorting: false,
+    enableHiding: false,
   },
   {
     id: "actions",
-    cell: ({ row }) => <DataTableRowActions row={row} labels={labels} />,
+    cell: ({ row }) => <DataTableRowActions row={row} labels={null} />,
   },
 ];

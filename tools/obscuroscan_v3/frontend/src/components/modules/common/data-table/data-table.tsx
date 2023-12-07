@@ -87,13 +87,13 @@ export function DataTable<TData, TValue>({
   });
 
   const { query, push, pathname } = useRouter();
+  const { pageIndex, pageSize } = table.getState().pagination;
 
   React.useEffect(() => {
-    const { pageIndex, pageSize } = table.getState().pagination;
     const params = { ...query, page: pageIndex + 1, size: pageSize };
     push({ pathname, query: params });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [table.getState().pagination]);
+  }, [pageIndex, pageSize]);
 
   return (
     <div className="space-y-4">

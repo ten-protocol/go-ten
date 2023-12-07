@@ -6,7 +6,11 @@ import {
 import { useWalletConnection } from "@/src/components/providers/wallet-provider";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { pollingInterval, pricePollingInterval } from "../lib/constants";
+import {
+  getOptions,
+  pollingInterval,
+  pricePollingInterval,
+} from "../lib/constants";
 import { PersonalTransactionsResponse } from "../types/interfaces/TransactionInterfaces";
 import { useRouter } from "next/router";
 import { showToast } from "../components/ui/use-toast";
@@ -27,13 +31,7 @@ export const useTransactionsService = () => {
 
   const [noPolling, setNoPolling] = useState(false);
 
-  const options = {
-    offset: query.page ? parseInt(query.page as string) : 1,
-    size: query.size ? parseInt(query.size as string) : 10,
-    // sort: query.sort ? (query.sort as string) : "blockNumber",
-    // order: query.order ? (query.order as string) : "desc",
-    // filter: query.filter ? (query.filter as string) : "",
-  };
+  const options = getOptions(query);
 
   const {
     data: transactions,

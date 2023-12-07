@@ -19,6 +19,7 @@ export default function Blocks() {
 
   React.useEffect(() => {
     setNoPolling(true);
+    return () => setNoPolling(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
