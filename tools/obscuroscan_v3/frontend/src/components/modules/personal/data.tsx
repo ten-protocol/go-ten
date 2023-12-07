@@ -14,11 +14,3 @@ export const statuses = [
     variant: "destructive",
   },
 ];
-
-export const toolbar = [
-  {
-    column: "status",
-    title: "Status",
-    options: statuses,
-  },
-];

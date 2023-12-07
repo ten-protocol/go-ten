@@ -2,11 +2,21 @@ import React from "react";
 import { columns } from "@/src/components/modules/personal/columns";
 import { DataTable } from "@/src/components/modules/common/data-table/data-table";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
-import { toolbar } from "./data";
 import { Skeleton } from "@/src/components/ui/skeleton";
 
 export default function PersonalTransactions() {
-  const { personalTxns, personalTxnsLoading } = useTransactionsService();
+  const { personalTxns, setNoPolling, personalTxnsLoading } =
+    useTransactionsService();
+  const { Receipts, Total } = personalTxns || {
+    Receipts: [],
+    Total: 0,
+  };
+
+  React.useEffect(() => {
+    setNoPolling(true);
+    return () => setNoPolling(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
@@ -16,19 +26,14 @@ export default function PersonalTransactions() {
             Personal Transactions
           </h2>
           <p className="text-muted-foreground">
-            A table of personal transactions.
+            {Total} personal transaction(s).
           </p>
         </div>
       </div>
       {personalTxnsLoading ? (
         <Skeleton className="h-96" />
-      ) : personalTxns?.Results ? (
-        <DataTable
-          columns={columns}
-          data={personalTxns?.Results}
-          toolbar={toolbar}
-          total={personalTxns?.Total}
-        />
+      ) : Receipts ? (
+        <DataTable columns={columns} data={Receipts} total={Total} />
       ) : (
         <p>No transactions found.</p>
       )}

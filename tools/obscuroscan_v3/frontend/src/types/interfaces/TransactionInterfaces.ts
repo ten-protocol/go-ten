@@ -22,7 +22,7 @@ export type TransactionResponse = {
 };
 
 export type PersonalTransactionsResponse = {
-  Results: PersonalTransactions[];
+  Receipts: PersonalTransactions[];
   Total: number;
 };
 

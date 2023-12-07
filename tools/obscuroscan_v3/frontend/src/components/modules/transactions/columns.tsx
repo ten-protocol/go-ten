@@ -18,7 +18,7 @@ export const columns: ColumnDef<Transaction>[] = [
     cell: ({ row }) => {
       return (
         <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate font-medium">
+          <span className="max-w-[500px] truncate">
             {row.getValue("BatchHeight")}
           </span>
         </div>
@@ -66,8 +66,8 @@ export const columns: ColumnDef<Transaction>[] = [
       return value.includes(row.getValue(id));
     },
   },
-  {
-    id: "actions",
-    cell: ({ row }) => <DataTableRowActions row={row} labels={labels} />,
-  },
+  // {
+  //   id: "actions",
+  //   cell: ({ row }) => <DataTableRowActions row={row} labels={labels} />,
+  // },
 ];

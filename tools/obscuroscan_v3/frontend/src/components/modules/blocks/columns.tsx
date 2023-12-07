@@ -7,6 +7,10 @@ import { DataTableRowActions } from "../common/data-table/data-table-row-actions
 import { Block, BlockHeader } from "@/src/types/interfaces/BlockInterfaces";
 import TruncatedAddress from "../common/truncated-address";
 import { formatTimeAgo } from "@/src/lib/utils";
+import { Badge } from "../../ui/badge";
+import ExternalLink from "../../ui/external-link";
+import { pathToUrl } from "@/src/routes/router";
+import { externalLinks } from "@/src/routes";
 
 export const columns: ColumnDef<Block>[] = [
   {
@@ -18,9 +22,7 @@ export const columns: ColumnDef<Block>[] = [
       const blockHeader = row.original.blockHeader as BlockHeader;
       return (
         <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate font-medium">
-            {+blockHeader?.number}
-          </span>
+          <span className="max-w-[500px] truncate">{+blockHeader?.number}</span>
         </div>
       );
     },
@@ -47,17 +49,33 @@ export const columns: ColumnDef<Block>[] = [
     enableSorting: false,
     enableHiding: false,
   },
+
+  {
+    accessorKey: "rollupHash",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Rollup Hash" />
+    ),
+    cell: ({ row }) => {
+      return +row.original.rollupHash === 0 ? (
+        <Badge>No rollup</Badge>
+      ) : (
+        <TruncatedAddress address={row.original.rollupHash} />
+      );
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: "blockHeader.gasUsed",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Gas Used" />
+      <DataTableColumnHeader column={column} title="Rollup Gas Used" />
     ),
     cell: ({ row }) => {
       const blockHeader = row.original.blockHeader as BlockHeader;
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {+blockHeader?.gasUsed}
+            <Badge variant={"outline"}>{+blockHeader?.gasUsed}</Badge>
           </span>
         </div>
       );
@@ -90,7 +108,11 @@ export const columns: ColumnDef<Block>[] = [
     ),
     cell: ({ row }) => {
       const blockHeader = row.original.blockHeader as BlockHeader;
-      return <TruncatedAddress address={blockHeader?.hash} />;
+      return (
+        <ExternalLink href={externalLinks.etherscanBlock}>
+          <TruncatedAddress address={blockHeader?.hash} />
+        </ExternalLink>
+      );
     },
     enableSorting: false,
     enableHiding: false,
@@ -107,17 +129,7 @@ export const columns: ColumnDef<Block>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-  {
-    accessorKey: "rollupHash",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Rollup Hash" />
-    ),
-    cell: ({ row }) => {
-      return <TruncatedAddress address={row.original.rollupHash} />;
-    },
-    enableSorting: false,
-    enableHiding: false,
-  },
+
   {
     accessorKey: "miner",
     header: ({ column }) => (

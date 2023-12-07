@@ -5,7 +5,7 @@ import PersonalTransactions from "@/src/components/modules/personal";
 
 export const metadata: Metadata = {
   title: "Personal Transactions",
-  description: "ObscuroScan Personal Transactions",
+  description: "Tenscan Personal Transactions",
 };
 
 export default function PersonalPage() {

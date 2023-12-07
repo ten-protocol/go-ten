@@ -25,6 +25,10 @@ export const apiRoutes = {
   decryptEncryptedRollup: "/actions/decryptTxBlob/",
 };
 
+export const ethMethods = {
+  getStorageAt: "eth_getStorageAt",
+};
+
 export const NavLinks: NavLink[] = [
   {
     href: "/",
@@ -78,3 +82,7 @@ export const NavLinks: NavLink[] = [
     ],
   },
 ];
+
+export const externalLinks = {
+  etherscanBlock: "https://etherscan.io/block/:hash",
+};

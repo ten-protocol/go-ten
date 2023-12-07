@@ -1,7 +1,6 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Checkbox } from "@/src/components/ui/checkbox";
 import { Badge, badgeVariants } from "@/src/components/ui/badge";
 
 import { statuses } from "./data";
@@ -11,27 +10,6 @@ import { PersonalTransactions } from "@/src/types/interfaces/TransactionInterfac
 import TruncatedAddress from "../common/truncated-address";
 
 export const columns: ColumnDef<PersonalTransactions>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-        className="translate-y-[2px]"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        className="translate-y-[2px]"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
   {
     accessorKey: "blockNumber",
     header: ({ column }) => (

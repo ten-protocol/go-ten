@@ -15,6 +15,7 @@ import { PersonalTransactionsResponse } from "../types/interfaces/TransactionInt
 import { useRouter } from "next/router";
 import { showToast } from "../components/ui/use-toast";
 import { ToastType } from "../types/interfaces";
+import { ethMethods } from "../routes";
 
 export const useTransactionsService = () => {
   const { query } = useRouter();
@@ -47,7 +48,7 @@ export const useTransactionsService = () => {
     useQuery({
       queryKey: ["transactionCount"],
       queryFn: () => fetchTransactionCount(),
-      refetchInterval: pollingInterval,
+      refetchInterval: noPolling ? false : pollingInterval,
     });
 
   const personalTransactions = async (payload?: {
@@ -60,11 +61,15 @@ export const useTransactionsService = () => {
           address: walletAddress,
           ...payload,
         };
-        const personalTxData = await provider.send("eth_getStorageAt", [
+        const personalTxData = await provider.send(ethMethods.getStorageAt, [
           "listPersonalTransactions",
           requestPayload,
           null,
         ]);
+        console.log(
+          "🚀 ~ file: useTransactionsService.ts:68 ~ useTransactionsService ~ personalTxData:",
+          personalTxData
+        );
         setPersonalTxns(personalTxData);
       }
     } catch (error) {
