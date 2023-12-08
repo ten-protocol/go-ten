@@ -32,7 +32,19 @@ Ten Gateway is a Next.js and Tailwind CSS-powered application.
    npm install
    ```
 
-3. **Run the Development Server:**
+3. **Configure Environment Variables:**
+Create a `.env.local` file in the root directory of the project and add the following environment variables:
+
+   ```bash
+   NEXT_PUBLIC_API_GATEWAY_URL=********
+   ```
+   
+   Possible values for `NEXT_PUBLIC_API_GATEWAY_URL` are:
+   - `https://https://uat-testnet.obscu.ro`
+   - `https://https://sepolia-testnet.obscu.ro`
+   - `https://https://dev-testnet.obscu.ro`
+
+4. **Run the Development Server:**
    ```bash
    npm run dev
    ```
