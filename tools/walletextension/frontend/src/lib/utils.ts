@@ -39,22 +39,6 @@ export function getNetworkName() {
   }
 }
 
-export function getRPCFromUrl() {
-  // get the correct RPC endpoint for each network
-  switch (testnetUrls.default.url) {
-    // case 'https://testnet.obscu.ro':
-    //     return 'https://rpc.sepolia-testnet.obscu.ro'
-    case testnetUrls.sepolia.url:
-      return testnetUrls.sepolia.rpc;
-    case testnetUrls.uat.url:
-      return testnetUrls.uat.rpc;
-    case testnetUrls.dev.url:
-      return testnetUrls.dev.rpc;
-    default:
-      return testnetUrls.default.url;
-  }
-}
-
 export async function isTenChain() {
   let currentChain = await ethereum.request({
     method: "eth_chainId",
