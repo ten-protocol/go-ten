@@ -10,17 +10,18 @@ import Copy from "./copy";
 
 const TruncatedAddress = ({
   address,
-  prefixLength,
-  suffixLength,
+  prefixLength = 6,
+  suffixLength = 4,
 }: {
   address: string;
   prefixLength?: number;
   suffixLength?: number;
 }) => {
-  const truncatedAddress = `${address?.substring(
-    0,
-    prefixLength || 6
-  )}...${address?.substring(address.length - (suffixLength || 4))}`;
+  const truncatedAddress =
+    address &&
+    `${address.substring(0, prefixLength)}...${address.substring(
+      address.length - suffixLength
+    )}`;
 
   return (
     <>

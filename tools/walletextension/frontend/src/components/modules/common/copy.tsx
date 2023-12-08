@@ -11,7 +11,7 @@ const Copy = ({ value }: { value: string | number | undefined }) => {
       variant={"clear"}
       size="sm"
       className="px-3 py-1 text-muted-foreground"
-      onClick={() => (value ? copyToClipboard(value.toString()) : null)}
+      onClick={() => (value ? copyToClipboard(String(value)) : null)}
     >
       <span className="sr-only">Copy</span>
       {copied ? <CheckIcon /> : <CopyIcon />}

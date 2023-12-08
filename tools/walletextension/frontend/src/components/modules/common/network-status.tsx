@@ -8,7 +8,7 @@ const MessageContent = (
 );
 
 export const NetworkStatus = ({ message = MessageContent }) => {
-  const [isOnline, setIsOnline] = React.useState(true);
+  const [isOnline, setIsOnline] = React.useState(navigator.onLine);
 
   React.useEffect(() => {
     const setOnlineStatus = () => {

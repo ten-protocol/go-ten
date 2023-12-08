@@ -71,10 +71,15 @@ export const getSignature = async (account: string, data: any) => {
   if (!ethereum) {
     throw new Error("No ethereum object found");
   }
-  return await ethereum.request({
-    method: requestMethods.signTypedData,
-    params: [account, JSON.stringify(data)],
-  });
+  try {
+    return await ethereum.request({
+      method: requestMethods.signTypedData,
+      params: [account, JSON.stringify(data)],
+    });
+  } catch (error) {
+    console.error(error);
+    throw new Error("Failed to get signature");
+  }
 };
 
 export const getToken = async (provider: ethers.providers.Web3Provider) => {

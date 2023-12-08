@@ -1,7 +1,7 @@
 import React from "react";
-import { Metadata } from "next";
 import Layout from "../components/layouts/default-layout";
 import Home from "../components/modules/home";
+import { Metadata } from "next/types";
 
 export const metadata: Metadata = {
   title: "Tenscan Gateway",
