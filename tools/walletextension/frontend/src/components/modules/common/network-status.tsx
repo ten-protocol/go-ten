@@ -30,10 +30,7 @@ export const NetworkStatus = ({ message = MessageContent }) => {
         isOnline ? "translate-x-full" : "translate-x-0"
       }`}
     >
-      <div
-        className="bg-red-500 text-white p-4 rounded-md shadow-lg ring-1 ring-gray-800 backdrop-blur transition dark:bg-gray-800/90 dark:ring-white/10 dark:hover:ring-white/20 cursor-pointer"
-        onClick={() => setIsOnline(true)}
-      >
+      <div className="bg-red-500 text-white p-4 rounded-md shadow-lg ring-1 ring-gray-800 backdrop-blur transition dark:bg-gray-800/90 dark:ring-white/10 dark:hover:ring-white/20 cursor-pointer">
         {message}
       </div>
     </div>
