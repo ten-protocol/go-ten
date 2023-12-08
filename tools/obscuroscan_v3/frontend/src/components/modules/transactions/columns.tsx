@@ -3,9 +3,8 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/src/components/ui/badge";
 
-import { labels, statuses } from "./constants";
+import { statuses } from "./constants";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
-import { DataTableRowActions } from "../common/data-table/data-table-row-actions";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
 import TruncatedAddress from "../common/truncated-address";
 

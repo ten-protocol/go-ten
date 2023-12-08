@@ -15,7 +15,7 @@ const ExternalLink = ({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={`hover:underline ${className}`}
+      className={`flex items-center hover:underline ${className}`}
     >
       {children} <ExternalLinkIcon className="inline-block h-4 w-4" />
     </a>

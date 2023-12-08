@@ -51,15 +51,15 @@ export const useTransactionsService = () => {
       refetchInterval: noPolling ? false : pollingInterval,
     });
 
-  const personalTransactions = async (payload?: {
-    pagination: { offset: number; size: number };
-  }) => {
+  const personalTransactions = async () => {
     try {
       setPersonalTxnsLoading(true);
       if (provider) {
         const requestPayload = {
           address: walletAddress,
-          ...payload,
+          pagination: {
+            ...options,
+          },
         };
         const personalTxData = await provider.send(ethMethods.getStorageAt, [
           "listPersonalTransactions",
@@ -70,6 +70,8 @@ export const useTransactionsService = () => {
       }
     } catch (error) {
       showToast(ToastType.DESTRUCTIVE, "Error fetching personal transactions");
+      console.error("Error fetching personal transactions:", error);
+      throw error;
     } finally {
       setPersonalTxnsLoading(false);
     }

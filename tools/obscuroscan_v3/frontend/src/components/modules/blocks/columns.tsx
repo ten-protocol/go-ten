@@ -109,7 +109,9 @@ export const columns: ColumnDef<Block>[] = [
     cell: ({ row }) => {
       const blockHeader = row.original.blockHeader as BlockHeader;
       return (
-        <ExternalLink href={externalLinks.etherscanBlock}>
+        <ExternalLink
+          href={`${externalLinks.etherscanBlock}${blockHeader?.hash}`}
+        >
           <TruncatedAddress address={blockHeader?.hash} />
         </ExternalLink>
       );

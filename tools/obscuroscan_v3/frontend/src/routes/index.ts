@@ -84,5 +84,5 @@ export const NavLinks: NavLink[] = [
 ];
 
 export const externalLinks = {
-  etherscanBlock: "https://etherscan.io/block/:hash",
+  etherscanBlock: "https://etherscan.io/block/",
 };

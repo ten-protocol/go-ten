@@ -3,23 +3,24 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge, badgeVariants } from "@/src/components/ui/badge";
 
-import { statuses } from "./data";
+import { statuses, types } from "./data";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
-import { DataTableRowActions } from "../common/data-table/data-table-row-actions";
 import { PersonalTransactions } from "@/src/types/interfaces/TransactionInterfaces";
 import TruncatedAddress from "../common/truncated-address";
+import Link from "next/link";
+import { EyeOpenIcon } from "@radix-ui/react-icons";
 
 export const columns: ColumnDef<PersonalTransactions>[] = [
   {
     accessorKey: "blockNumber",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Block Number" />
+      <DataTableColumnHeader column={column} title="Ten Batch" />
     ),
     cell: ({ row }) => {
       return (
         <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate font-medium">
-            {row.getValue("blockNumber")}
+          <span className="max-w-[500px] truncate">
+            {Number(row.getValue("blockNumber"))}
           </span>
         </div>
       );
@@ -27,7 +28,17 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-
+  {
+    accessorKey: "blockHash",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Ten Batch Hash" />
+    ),
+    cell: ({ row }) => {
+      return <TruncatedAddress address={row.getValue("blockHash")} />;
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: "transactionHash",
     header: ({ column }) => (
@@ -47,8 +58,8 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
     cell: ({ row }) => {
       return (
         <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate font-medium">
-            {row.getValue("gasUsed")}
+          <span className="max-w-[500px] truncate">
+            {Number(row.getValue("gasUsed"))}
           </span>
         </div>
       );
@@ -57,21 +68,30 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "blockHash",
+    accessorKey: "type",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Block Hash" />
+      <DataTableColumnHeader column={column} title="Type" />
     ),
     cell: ({ row }) => {
+      const type = types.find((type) => {
+        return type.value === row.getValue("type");
+      });
+
+      if (!type) {
+        return null;
+      }
+
       return (
-        <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate font-medium">
-            {row.getValue("blockHash")}
-          </span>
+        <div className="flex items-center">
+          <Badge variant={type.variant as keyof typeof badgeVariants}>
+            {type.label}
+          </Badge>
         </div>
       );
     },
-    enableSorting: false,
-    enableHiding: false,
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
   },
   {
     accessorKey: "status",
@@ -80,7 +100,7 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
     ),
     cell: ({ row }) => {
       const status = statuses.find(
-        (status) => status.value === row.getValue("Status")
+        (status) => status.value === row.getValue("status")
       );
 
       if (!status) {
@@ -102,8 +122,14 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
       return value.includes(row.getValue(id));
     },
   },
-  {
-    id: "actions",
-    cell: ({ row }) => <DataTableRowActions row={row} labels={statuses} />,
-  },
+  // {
+  //   id: "actions",
+  //   cell: ({ row }) => {
+  //     return (
+  //       <Link href={`/batches/${row.original.hash}`}>
+  //         <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
+  //       </Link>
+  //     );
+  //   },
+  // },
 ];

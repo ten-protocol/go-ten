@@ -26,11 +26,21 @@ export type PersonalTransactionsResponse = {
   Total: number;
 };
 
+export type TransactionType = 0x0 | 0x1 | 0x2 | 0x3;
+
 export type PersonalTransactions = {
   id: number;
   blockNumber: string;
   transactionHash: string;
-  status: "Success" | "Failed";
+  status: string;
   gasUsed: string;
   blockHash: string;
+  contractAddress: string;
+  cumulativeGasUsed: string;
+  effectiveGasPrice: string;
+  logs: any[];
+  logsBloom: string;
+  root: string;
+  transactionIndex: string;
+  type: TransactionType;
 };
