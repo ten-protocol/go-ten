@@ -84,5 +84,6 @@ export const NavLinks: NavLink[] = [
 ];
 
 export const externalLinks = {
-  etherscanBlock: "https://etherscan.io/block/",
+  // Dev and UAT environments don't have etherscan, hence, we're hardcoding this to just Sepolia
+  etherscanBlock: "https://sepolia.etherscan.io/block/",
 };

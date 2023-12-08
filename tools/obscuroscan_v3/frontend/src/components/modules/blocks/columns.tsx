@@ -3,14 +3,13 @@
 import { ColumnDef } from "@tanstack/react-table";
 
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
-import { DataTableRowActions } from "../common/data-table/data-table-row-actions";
 import { Block, BlockHeader } from "@/src/types/interfaces/BlockInterfaces";
 import TruncatedAddress from "../common/truncated-address";
 import { formatTimeAgo } from "@/src/lib/utils";
 import { Badge } from "../../ui/badge";
 import ExternalLink from "../../ui/external-link";
-import { pathToUrl } from "@/src/routes/router";
 import { externalLinks } from "@/src/routes";
+import { EyeOpenIcon } from "@radix-ui/react-icons";
 
 export const columns: ColumnDef<Block>[] = [
   {
@@ -108,13 +107,7 @@ export const columns: ColumnDef<Block>[] = [
     ),
     cell: ({ row }) => {
       const blockHeader = row.original.blockHeader as BlockHeader;
-      return (
-        <ExternalLink
-          href={`${externalLinks.etherscanBlock}${blockHeader?.hash}`}
-        >
-          <TruncatedAddress address={blockHeader?.hash} />
-        </ExternalLink>
-      );
+      return <TruncatedAddress address={blockHeader?.hash} />;
     },
     enableSorting: false,
     enableHiding: false,
@@ -146,6 +139,15 @@ export const columns: ColumnDef<Block>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => <DataTableRowActions row={row} labels={null} />,
+    cell: ({ row }) => {
+      const blockHeader = row.original.blockHeader as BlockHeader;
+      return (
+        <ExternalLink
+          href={`${externalLinks.etherscanBlock}${blockHeader?.hash}`}
+        >
+          <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer mr-2" />
+        </ExternalLink>
+      );
+    },
   },
 ];
