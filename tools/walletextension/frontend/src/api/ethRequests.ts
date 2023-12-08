@@ -155,12 +155,10 @@ export async function authenticateAccountWithTenGatewayEIP712(
     };
     const signature = await getSignature(account, data);
 
-    const auth = await authenticateUser(token, {
+    return await authenticateUser(token, {
       signature,
       address: account,
     });
-    console.log("🚀 ~ file: ethRequests.ts:166 ~ auth:", auth);
-    return auth;
   } catch (error: any) {
     throw error;
   }
