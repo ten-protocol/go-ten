@@ -47,6 +47,7 @@ type BatchHeader struct {
 }
 
 type batchHeaderEncoding struct {
+	Hash             common.Hash     `json:"hash"`
 	ParentHash       L2BatchHash     `json:"parentHash"`
 	Root             common.Hash     `json:"stateRoot"`
 	TxHash           common.Hash     `json:"transactionsRoot"`
@@ -72,6 +73,7 @@ type batchHeaderEncoding struct {
 // MarshalJSON custom marshals the BatchHeader into a json
 func (b *BatchHeader) MarshalJSON() ([]byte, error) {
 	return json.Marshal(batchHeaderEncoding{
+		b.Hash(),
 		b.ParentHash,
 		b.Root,
 		b.TxHash,
