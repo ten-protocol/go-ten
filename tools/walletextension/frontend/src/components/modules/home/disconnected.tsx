@@ -16,6 +16,7 @@ import {
 } from "../../ui/dialog";
 import Copy from "../common/copy";
 import { testnetUrls, tenChainIDDecimal } from "../../../lib/constants";
+import { downloadMetaMask, ethereum } from "@/lib/utils";
 
 const CONNECTION_STEPS = [
   "Hit Connect to Ten and start your journey",
@@ -25,6 +26,7 @@ const CONNECTION_STEPS = [
 
 const Disconnected = () => {
   const { connectToTenTestnet } = useGatewayService();
+
   return (
     <div className="flex flex-col items-center justify-center space-y-4">
       <h1 className="text-4xl font-bold">Welcome to the Ten Gateway!</h1>
@@ -102,9 +104,14 @@ const Disconnected = () => {
         </DialogContent>
       </Dialog>
 
-      <Button className="mt-4" onClick={connectToTenTestnet}>
+      <Button
+        className="mt-4"
+        onClick={ethereum ? connectToTenTestnet : downloadMetaMask}
+      >
         <Terminal />
-        <span className="ml-2">Connect to Ten Testnet</span>
+        <span className="ml-2">
+          {ethereum ? "Connect to Ten Testnet" : "Install MetaMask to continue"}
+        </span>
       </Button>
     </div>
   );

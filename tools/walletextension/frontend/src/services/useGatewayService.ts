@@ -58,7 +58,7 @@ const useGatewayService = () => {
 
       await fetchUserAccounts();
     } catch (error: any) {
-      showToast(ToastType.DESTRUCTIVE, `${error.message}`);
+      showToast(ToastType.DESTRUCTIVE, `${error}`);
       throw error;
     } finally {
       setLoading(false);

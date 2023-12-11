@@ -40,6 +40,9 @@ export function getNetworkName() {
 }
 
 export async function isTenChain() {
+  if (!ethereum) {
+    return false;
+  }
   let currentChain = await ethereum.request({
     method: "eth_chainId",
   });
@@ -48,3 +51,7 @@ export async function isTenChain() {
 
 export const { ethereum } =
   typeof window !== "undefined" ? window : ({} as any);
+
+export const downloadMetaMask = () => {
+  window ? window.open("https://metamask.io/download", "_blank") : null;
+};

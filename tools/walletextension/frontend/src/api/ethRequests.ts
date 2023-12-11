@@ -39,7 +39,7 @@ const typedData = {
 
 export const switchToTenNetwork = async () => {
   if (!ethereum) {
-    throw new Error("No ethereum object found");
+    throw "No ethereum object found";
   }
   try {
     await ethereum.request({
@@ -55,7 +55,7 @@ export const switchToTenNetwork = async () => {
 
 export const connectAccounts = async () => {
   if (!ethereum) {
-    throw new Error("No ethereum object found");
+    throw "No ethereum object found";
   }
   try {
     return await ethereum.request({
@@ -69,7 +69,7 @@ export const connectAccounts = async () => {
 
 export const getSignature = async (account: string, data: any) => {
   if (!ethereum) {
-    throw new Error("No ethereum object found");
+    throw "No ethereum object found";
   }
   try {
     return await ethereum.request({
@@ -78,7 +78,7 @@ export const getSignature = async (account: string, data: any) => {
     });
   } catch (error) {
     console.error(error);
-    throw new Error("Failed to get signature");
+    throw "Failed to get signature";
   }
 };
 
@@ -110,7 +110,7 @@ export const getToken = async (provider: ethers.providers.Web3Provider) => {
 
 export async function addNetworkToMetaMask(rpcUrls: string[]) {
   if (!ethereum) {
-    throw new Error("No ethereum object found");
+    throw "No ethereum object found";
   }
   try {
     await ethereum.request({
