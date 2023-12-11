@@ -13,7 +13,7 @@ const TruncatedAddress = ({
   address,
   prefixLength,
   suffixLength,
-  showCopy,
+  showCopy = true,
 }: {
   address: string;
   prefixLength?: number;
