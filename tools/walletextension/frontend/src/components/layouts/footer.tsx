@@ -37,7 +37,7 @@ export default function Footer() {
           </a>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <h3 className="text-sm text-muted-foreground">
+          <h3 className="text-xs text-muted-foreground">
             Version: {version || "Unknown"}
           </h3>
         </div>
