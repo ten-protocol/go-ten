@@ -1,12 +1,12 @@
 import React from "react";
 import { showToast } from "../components/ui/use-toast";
 import { ToastType } from "../types/interfaces";
+import { RESET_COPIED_TIMEOUT } from "../lib/constants";
 
 export const useCopy = () => {
   const [copied, setCopied] = React.useState(false);
-
-  const copyToClipboard = (text: string, name?: string) => {
-    copyText(text)
+  const copyToClipboard = (text: string, name?: string): Promise<void> => {
+    return copyText(text)
       .catch(() => fallbackCopyTextToClipboard(text))
       .then(() => {
         showToast(ToastType.SUCCESS, `${name ? name : "Copied!"}`);
@@ -20,6 +20,7 @@ export const useCopy = () => {
       })
       .finally(() => {
         setTimeout(() => setCopied(false), 1000);
+        setTimeout(() => setCopied(false), RESET_COPIED_TIMEOUT);
       });
   };
 
@@ -48,7 +49,7 @@ const fallbackCopyTextToClipboard = (text: string) => {
     textArea.select();
 
     try {
-      document.execCommand("copy");
+      navigator.clipboard.writeText(text).then(res, rej);
     } catch (err) {
       rej(err);
     }

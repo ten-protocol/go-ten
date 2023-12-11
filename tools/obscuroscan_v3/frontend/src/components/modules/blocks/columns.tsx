@@ -21,7 +21,9 @@ export const columns: ColumnDef<Block>[] = [
       const blockHeader = row.original.blockHeader as BlockHeader;
       return (
         <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate">{+blockHeader?.number}</span>
+          <span className="max-w-[500px] truncate">
+            {Number(blockHeader?.number)}
+          </span>
         </div>
       );
     },
@@ -55,7 +57,7 @@ export const columns: ColumnDef<Block>[] = [
       <DataTableColumnHeader column={column} title="Rollup Hash" />
     ),
     cell: ({ row }) => {
-      return +row.original.rollupHash === 0 ? (
+      return Number(row.original.rollupHash) === 0 ? (
         <Badge>No rollup</Badge>
       ) : (
         <TruncatedAddress address={row.original.rollupHash} />
@@ -74,7 +76,7 @@ export const columns: ColumnDef<Block>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            <Badge variant={"outline"}>{+blockHeader?.gasUsed}</Badge>
+            <Badge variant={"outline"}>{Number(blockHeader?.gasUsed)}</Badge>
           </span>
         </div>
       );
@@ -92,7 +94,7 @@ export const columns: ColumnDef<Block>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {+blockHeader?.gasLimit}
+            {Number(blockHeader?.gasLimit)}
           </span>
         </div>
       );

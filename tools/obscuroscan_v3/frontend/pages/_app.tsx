@@ -27,7 +27,7 @@ export default function App({ Component, pageProps }: AppProps) {
     },
     onError: (error: any, mutation: any) => {
       if (error?.response?.data?.message) {
-        showToast(ToastType.DESTRUCTIVE, mutation?.message);
+        showToast(ToastType.DESTRUCTIVE, error?.response?.data?.message);
       }
     },
   });

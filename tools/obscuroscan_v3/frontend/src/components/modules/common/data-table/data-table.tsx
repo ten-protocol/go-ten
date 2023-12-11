@@ -90,7 +90,7 @@ export function DataTable<TData, TValue>({
   const { pageIndex, pageSize } = table.getState().pagination;
 
   React.useEffect(() => {
-    const params = { ...query, page: pageIndex + 1, size: pageSize };
+    const params = { ...query, page: pageIndex, size: pageSize };
     push({ pathname, query: params });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageIndex, pageSize]);
