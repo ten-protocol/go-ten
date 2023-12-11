@@ -2,11 +2,12 @@ import { apiRoutes } from "../routes";
 import { httpRequest } from ".";
 import { pathToUrl } from "../routes/router";
 import { AuthenticationResponse } from "@/types/interfaces/GatewayInterfaces";
+import { tenGatewayAddress } from "../lib/constants";
 
 export async function fetchVersion(): Promise<string> {
   return await httpRequest<string>({
     method: "get",
-    url: pathToUrl(apiRoutes.version),
+    url: tenGatewayAddress + pathToUrl(apiRoutes.version),
   });
 }
 
@@ -16,7 +17,7 @@ export async function accountIsAuthenticated(
 ): Promise<AuthenticationResponse> {
   return await httpRequest<AuthenticationResponse>({
     method: "get",
-    url: pathToUrl(apiRoutes.queryAccountToken),
+    url: tenGatewayAddress + pathToUrl(apiRoutes.queryAccountToken),
     searchParams: {
       token,
       a: account,
@@ -33,7 +34,7 @@ export const authenticateUser = async (
 ) => {
   return await httpRequest({
     method: "post",
-    url: pathToUrl(apiRoutes.authenticate),
+    url: tenGatewayAddress + pathToUrl(apiRoutes.authenticate),
     data: authenticateFields,
     searchParams: {
       token,
@@ -44,7 +45,7 @@ export const authenticateUser = async (
 export async function revokeAccountsApi(token: string): Promise<string> {
   return await httpRequest<string>({
     method: "get",
-    url: pathToUrl(apiRoutes.revoke),
+    url: tenGatewayAddress + pathToUrl(apiRoutes.revoke),
     searchParams: {
       token,
     },
@@ -54,6 +55,6 @@ export async function revokeAccountsApi(token: string): Promise<string> {
 export async function joinTestnet(): Promise<string> {
   return await httpRequest<string>({
     method: "get",
-    url: pathToUrl(apiRoutes.join),
+    url: tenGatewayAddress + pathToUrl(apiRoutes.join),
   });
 }

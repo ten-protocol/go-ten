@@ -1,8 +1,11 @@
-# 👛 The Ten wallet extension
+# The Ten gateway
 
 See the documentation [here](https://docs.obscu.ro/wallet-extension/wallet-extension/).
 
 ## Developer notes
+
+Running gateway frontend locally requires building static files first.
+To do that, run `npm run build` in `tools/walletextension/frontend` folder.
 
 The precompiled binaries for macOS ARM64, macOS AMD64, Windows AMD64 and Linux AMD64 can be built by running the 
 following commands from the `tools/walletextension/main` folder:

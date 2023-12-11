@@ -1,11 +1,12 @@
-export const tenGatewayAddress = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
+export const tenGatewayAddress = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://127.0.0.1:3000";
+
 export const tenscanLink = "https://testnet.tenscan.com";
 
 export const socialLinks = {
-  github: "https://github.com/obscuronet",
-  discord: "https://discord.gg/2JQ2Z3r",
-  twitter: "https://twitter.com/obscuronet",
-  twitterHandle: "@obscuronet",
+  github: "https://github.com/ten-protocol",
+  discord: "https://discord.gg/fVXstswaJY",
+  twitter: "https://twitter.com/tenprotocol",
+  twitterHandle: "@tenprotocol",
 };
 
 export const GOOGLE_ANALYTICS_ID = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;

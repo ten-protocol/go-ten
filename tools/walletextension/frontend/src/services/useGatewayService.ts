@@ -2,8 +2,8 @@ import { ToastType } from "@/types/interfaces";
 import { joinTestnet } from "../api/gateway";
 import { useWalletConnection } from "../components/providers/wallet-provider";
 import { showToast } from "../components/ui/use-toast";
-import { SWITCHED_CODE, tenGatewayVersion } from "../lib/constants";
-import { getRPCFromUrl, isTenChain, isValidTokenFormat } from "../lib/utils";
+import {SWITCHED_CODE, tenGatewayAddress, tenGatewayVersion} from "../lib/constants";
+import { isTenChain, isValidTokenFormat } from "../lib/utils";
 import {
   addNetworkToMetaMask,
   connectAccounts,
@@ -45,7 +45,7 @@ const useGatewayService = () => {
       if (switched === SWITCHED_CODE || (token && !isValidTokenFormat(token))) {
         const user = await joinTestnet();
         const rpcUrls = [
-          `${getRPCFromUrl()}/${tenGatewayVersion}/?token=${user}`,
+          `${tenGatewayAddress}/${tenGatewayVersion}/?token=${user}`,
         ];
         await addNetworkToMetaMask(rpcUrls);
       }

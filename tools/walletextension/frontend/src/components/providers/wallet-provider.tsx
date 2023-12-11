@@ -43,40 +43,22 @@ export const WalletConnectionProvider = ({
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [provider, setProvider] = useState({} as ethers.providers.Web3Provider);
 
-  useEffect(() => {
-    initialize();
-    ethereum.on("accountsChanged", handleAccountsChanged);
-
-    return () => {
-      ethereum.removeListener("accountsChanged", handleAccountsChanged);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleAccountsChanged = async () => {
-    if (!ethereum) {
-      return;
-    }
-    const status = await ethService.isUserConnectedToTenChain(token);
-    await fetchUserAccounts();
-    setWalletConnected(status);
-  };
-
   const initialize = async () => {
-    if (!ethereum) {
-      showToast(
-        ToastType.DESTRUCTIVE,
-        "Please install Metamask to connect your wallet."
-      );
-      return;
-    }
     try {
+      if (!ethereum) {
+        showToast(
+          ToastType.DESTRUCTIVE,
+          "Please install Metamask to connect your wallet."
+        );
+        return;
+      }
       const providerInstance = new ethers.providers.Web3Provider(ethereum);
       setProvider(providerInstance);
       await ethService.checkIfMetamaskIsLoaded(providerInstance);
 
       const fetchedToken = await getToken(providerInstance);
       setToken(fetchedToken);
+
       const status = await ethService.isUserConnectedToTenChain(fetchedToken);
       setWalletConnected(status);
 
@@ -178,6 +160,11 @@ export const WalletConnectionProvider = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    initialize();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const walletConnectionContextValue: WalletConnectionContextType = {
     walletConnected,
