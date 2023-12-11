@@ -15,10 +15,13 @@ export const getOptions = (query: {
   page?: string | string[];
   size?: string | string[];
 }) => {
+  const offset =
+    query.page && query.size
+      ? (parseInt(query.page as string, 10) - 1) *
+        parseInt(query.size as string, 10)
+      : 0;
   const options = {
-    offset: Number.isNaN(parseInt(query.page as string, 10))
-      ? 1
-      : parseInt(query.page as string, 10),
+    offset: Number.isNaN(offset) ? 0 : offset,
     size: Number.isNaN(parseInt(query.size as string, 10))
       ? 10
       : parseInt(query.size as string, 10),
