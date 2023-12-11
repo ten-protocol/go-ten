@@ -52,7 +52,7 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_GATEWAY }} -f ./tools/walletextension/Dockerfile . 
+          DOCKER_BUILDKIT=1 docker build --build-arg TESTNET_TYPE=${{ github.event.inputs.testnet_type }} -t ${{ vars.DOCKER_BUILD_TAG_GATEWAY }} -f ./tools/walletextension/Dockerfile . 
           docker push ${{ vars.DOCKER_BUILD_TAG_GATEWAY }}
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)

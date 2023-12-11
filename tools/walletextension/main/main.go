@@ -74,7 +74,7 @@ func main() {
 	}()
 
 	walletExtensionAddr := fmt.Sprintf("%s:%d", common.Localhost, config.WalletExtensionPortHTTP)
-	fmt.Printf("💡 Wallet extension started - visit http://%s/viewingkeys/ to generate an ephemeral viewing key.\n", walletExtensionAddr)
+	fmt.Printf("💡 Wallet extension started \n") // Some tests rely on seeing this message. Removed in next PR.
 	fmt.Printf("💡 Obscuro Gateway started - visit http://%s to use it.\n", walletExtensionAddr)
 
 	select {}
