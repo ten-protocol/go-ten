@@ -70,6 +70,7 @@ export const useTransactionsService = () => {
       }
     } catch (error) {
       console.error("Error fetching personal transactions:", error);
+      setPersonalTxns(undefined);
       showToast(ToastType.DESTRUCTIVE, "Error fetching personal transactions");
       throw error;
     } finally {
