@@ -19,7 +19,6 @@ export const useCopy = () => {
         );
       })
       .finally(() => {
-        setTimeout(() => setCopied(false), 1000);
         setTimeout(() => setCopied(false), RESET_COPIED_TIMEOUT);
       });
   };
@@ -49,7 +48,7 @@ const fallbackCopyTextToClipboard = (text: string) => {
     textArea.select();
 
     try {
-      navigator.clipboard.writeText(text).then(res, rej);
+      document.execCommand("copy");
     } catch (err) {
       rej(err);
     }
