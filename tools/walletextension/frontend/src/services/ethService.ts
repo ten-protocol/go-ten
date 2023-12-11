@@ -50,7 +50,7 @@ const ethService = {
       if (ethereum && ethereum.isMetaMask) {
         return;
       } else {
-        showToast(
+        return showToast(
           ToastType.WARNING,
           "Please install MetaMask to use Ten Gateway."
         );
@@ -96,6 +96,7 @@ const ethService = {
       })
     );
     updatedAccounts = await Promise.all(authenticationPromise);
+    showToast(ToastType.SUCCESS, "Account authentication status updated!");
     return updatedAccounts;
   },
 
