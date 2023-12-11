@@ -4,7 +4,7 @@
 # build-host = copies over the source code and builds the binaries using a compiler cache
 # final = copies over only the executables in an alpine image that doesn't have any additional load.
 
-FROM golang:1.20-alpine as system
+FROM golang:1.20-alpine3.18 as system
 # set the base libs to build / run
 RUN apk add build-base bash
 ENV CGO_ENABLED=1
@@ -31,7 +31,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go build
 
 # Trigger another build stage to remove unnecessary files.
-FROM alpine:3.17
+FROM alpine:3.18
 
 # Copy over just the binary from the previous build stage into this one.
 COPY --from=build-host \
