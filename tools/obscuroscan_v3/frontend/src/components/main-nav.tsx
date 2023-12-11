@@ -59,7 +59,7 @@ const NavItem = ({ navLink }: { navLink: NavLink }) => {
       <a
         href={navLink.href}
         key={navLink.label}
-        className="text-sm font-medium transition-colors hover:text-primary"
+        className="text-sm font-medium transition-colors hover:text-primary w-full"
       >
         {navLink.label}
       </a>
@@ -70,7 +70,7 @@ const NavItem = ({ navLink }: { navLink: NavLink }) => {
         href={navLink.href || ""}
         key={navLink.label}
         className={cn(
-          "text-sm font-medium text-muted-foreground transition-colors hover:text-primary",
+          "text-sm font-medium text-muted-foreground transition-colors hover:text-primary w-full",
           {
             "text-primary": router.pathname === navLink.href,
           }

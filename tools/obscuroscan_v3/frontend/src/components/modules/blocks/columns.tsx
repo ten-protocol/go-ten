@@ -1,37 +1,17 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Checkbox } from "@/src/components/ui/checkbox";
 
-import { labels, statuses } from "./constants";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
-import { DataTableRowActions } from "../common/data-table/data-table-row-actions";
 import { Block, BlockHeader } from "@/src/types/interfaces/BlockInterfaces";
 import TruncatedAddress from "../common/truncated-address";
 import { formatTimeAgo } from "@/src/lib/utils";
+import { Badge } from "../../ui/badge";
+import ExternalLink from "../../ui/external-link";
+import { externalLinks } from "@/src/routes";
+import { EyeOpenIcon } from "@radix-ui/react-icons";
 
 export const columns: ColumnDef<Block>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-        className="translate-y-[2px]"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        className="translate-y-[2px]"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
   {
     accessorKey: "number",
     header: ({ column }) => (
@@ -41,8 +21,8 @@ export const columns: ColumnDef<Block>[] = [
       const blockHeader = row.original.blockHeader as BlockHeader;
       return (
         <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate font-medium">
-            {+blockHeader?.number}
+          <span className="max-w-[500px] truncate">
+            {Number(blockHeader?.number)}
           </span>
         </div>
       );
@@ -59,7 +39,7 @@ export const columns: ColumnDef<Block>[] = [
       const blockHeader = row.original.blockHeader as BlockHeader;
       return (
         <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate font-medium">
+          <span className="max-w-[500px] truncate">
             {blockHeader?.timestamp
               ? formatTimeAgo(blockHeader?.timestamp)
               : "N/A"}
@@ -70,17 +50,33 @@ export const columns: ColumnDef<Block>[] = [
     enableSorting: false,
     enableHiding: false,
   },
+
+  {
+    accessorKey: "rollupHash",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Rollup Hash" />
+    ),
+    cell: ({ row }) => {
+      return Number(row.original.rollupHash) === 0 ? (
+        <Badge>No rollup</Badge>
+      ) : (
+        <TruncatedAddress address={row.original.rollupHash} />
+      );
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: "blockHeader.gasUsed",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Gas Used" />
+      <DataTableColumnHeader column={column} title="Rollup Gas Used" />
     ),
     cell: ({ row }) => {
       const blockHeader = row.original.blockHeader as BlockHeader;
       return (
         <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate font-medium">
-            {+blockHeader?.gasUsed}
+          <span className="max-w-[500px] truncate">
+            <Badge variant={"outline"}>{Number(blockHeader?.gasUsed)}</Badge>
           </span>
         </div>
       );
@@ -97,8 +93,8 @@ export const columns: ColumnDef<Block>[] = [
       const blockHeader = row.original.blockHeader as BlockHeader;
       return (
         <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate font-medium">
-            {+blockHeader?.gasLimit}
+          <span className="max-w-[500px] truncate">
+            {Number(blockHeader?.gasLimit)}
           </span>
         </div>
       );
@@ -130,46 +126,30 @@ export const columns: ColumnDef<Block>[] = [
     enableSorting: false,
     enableHiding: false,
   },
+
   {
-    accessorKey: "rollupHash",
+    accessorKey: "miner",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Rollup Hash" />
+      <DataTableColumnHeader column={column} title="Miner" />
     ),
     cell: ({ row }) => {
-      return <TruncatedAddress address={row.original.rollupHash} />;
+      const blockHeader = row.original.blockHeader as BlockHeader;
+      return <TruncatedAddress address={blockHeader?.miner} />;
     },
     enableSorting: false,
     enableHiding: false,
   },
   {
-    accessorKey: "Finality",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Finality" />
-    ),
-    cell: ({ row }) => {
-      const finality = statuses.find(
-        (finality) => finality.value === row.getValue("Finality")
-      );
-
-      if (!finality) {
-        return null;
-      }
-
-      return (
-        <div className="flex items-center">
-          {finality.icon && (
-            <finality.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-          )}
-          <span>{finality.label}</span>
-        </div>
-      );
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
-    },
-  },
-  {
     id: "actions",
-    cell: ({ row }) => <DataTableRowActions row={row} labels={labels} />,
+    cell: ({ row }) => {
+      const blockHeader = row.original.blockHeader as BlockHeader;
+      return (
+        <ExternalLink
+          href={`${externalLinks.etherscanBlock}${blockHeader?.hash}`}
+        >
+          <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer mr-2" />
+        </ExternalLink>
+      );
+    },
   },
 ];

@@ -186,4 +186,11 @@ function useToast() {
   };
 }
 
-export { useToast, toast };
+const showToast = (variant: ToastProps["variant"], description: string) => {
+  toast({
+    variant,
+    description,
+  });
+};
+
+export { useToast, toast, showToast };

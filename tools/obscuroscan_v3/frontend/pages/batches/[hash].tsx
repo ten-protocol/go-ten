@@ -30,9 +30,9 @@ export default function Batch() {
       ) : batchDetails ? (
         <Card className="col-span-3">
           <CardHeader>
-            <CardTitle>Batch #{batchDetails?.Header?.number}</CardTitle>
+            <CardTitle>Batch #{Number(batchDetails?.Header?.number)}</CardTitle>
             <CardDescription>
-              Overview of the batch #{batchDetails?.Header?.number}
+              Overview of the batch #{Number(batchDetails?.Header?.number)}
             </CardDescription>
           </CardHeader>
           <CardContent>

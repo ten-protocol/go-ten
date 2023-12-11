@@ -25,6 +25,10 @@ export const apiRoutes = {
   decryptEncryptedRollup: "/actions/decryptTxBlob/",
 };
 
+export const ethMethods = {
+  getStorageAt: "eth_getStorageAt",
+};
+
 export const NavLinks: NavLink[] = [
   {
     href: "/",
@@ -78,3 +82,8 @@ export const NavLinks: NavLink[] = [
     ],
   },
 ];
+
+export const externalLinks = {
+  // Dev and UAT environments don't have etherscan, hence, we're hardcoding this to just Sepolia
+  etherscanBlock: "https://sepolia.etherscan.io/block/",
+};
