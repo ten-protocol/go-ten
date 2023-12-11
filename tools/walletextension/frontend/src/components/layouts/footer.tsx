@@ -5,8 +5,11 @@ import {
   TwitterLogoIcon,
   DiscordLogoIcon,
 } from "@radix-ui/react-icons";
+import { useWalletConnection } from "../providers/wallet-provider";
 
 export default function Footer() {
+  const { version } = useWalletConnection();
+
   return (
     <div className="border-t px-2">
       <div className="flex h-16 items-center px-4">
@@ -32,6 +35,11 @@ export default function Footer() {
           >
             <DiscordLogoIcon />
           </a>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <h3 className="text-xs text-muted-foreground">
+            Version: {version || "Unknown"}
+          </h3>
         </div>
         <div className="flex items-center space-x-4">
           <Link

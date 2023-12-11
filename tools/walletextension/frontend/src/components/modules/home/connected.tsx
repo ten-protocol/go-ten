@@ -16,8 +16,7 @@ import { socialLinks } from "../../../lib/constants";
 import { Skeleton } from "../../ui/skeleton";
 
 const Connected = () => {
-  const { accounts, connectAccount, version, revokeAccounts } =
-    useWalletConnection();
+  const { accounts, connectAccount, revokeAccounts } = useWalletConnection();
 
   return (
     <>
@@ -84,12 +83,6 @@ const Connected = () => {
           )}
         </TableBody>
       </Table>
-
-      <div className="mt-8">
-        <h3 className="text-sm text-muted-foreground">
-          Version: {version || "Unknown"}
-        </h3>
-      </div>
     </>
   );
 };
