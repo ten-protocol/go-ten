@@ -39,7 +39,7 @@ export default function Dashboard() {
   const DASHBOARD_DATA = [
     {
       title: "Ether Price",
-      value: price?.ethereum?.usd || "N/A",
+      value: `$${price?.ethereum?.usd}` || "N/A",
       // TODO: add change
       // change: "+20.1%",
       icon: RocketIcon,
