@@ -13,7 +13,7 @@ export const GOOGLE_ANALYTICS_ID = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
 
 export const testnetUrls = {
   sepolia: {
-    name: "Ten Dev-Testnet",
+    name: "Obscuro Testnet",
     url: "https://sepolia-testnet.obscu.ro",
     rpc: "https://rpc.sepolia-testnet.obscu.ro",
   },
@@ -28,7 +28,7 @@ export const testnetUrls = {
     rpc: "https://rpc.dev-testnet.obscu.ro",
   },
   default: {
-    name: "Ten Testnet",
+    name: "Obscuro Testnet",
     url: tenGatewayAddress,
   },
 };
