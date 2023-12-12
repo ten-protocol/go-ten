@@ -5,6 +5,7 @@ import PersonalTransactions from "@/src/components/modules/personal";
 import { useWalletConnection } from "@/src/components/providers/wallet-provider";
 import ConnectWalletButton from "@/src/components/modules/common/connect-wallet";
 import EmptyState from "@/src/components/modules/common/empty-state";
+import { ethereum } from "@/src/lib/utils";
 
 export const metadata: Metadata = {
   title: "Personal Transactions",
@@ -20,9 +21,17 @@ export default function PersonalPage() {
         <PersonalTransactions />
       ) : (
         <EmptyState
-          title="Connect your wallet"
+          title="Connect Wallet"
           description="Connect your wallet to view your personal transactions."
-          action={<ConnectWalletButton />}
+          action={
+            <ConnectWalletButton
+              text={
+                ethereum
+                  ? "Connect Wallet to continue"
+                  : "Install MetaMask to continue"
+              }
+            />
+          }
         />
       )}
     </Layout>
