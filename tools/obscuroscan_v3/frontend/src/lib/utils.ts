@@ -10,3 +10,10 @@ export function formatTimeAgo(unixTimestampSeconds: string) {
   const date = new Date(Number(unixTimestampSeconds) * 1000);
   return formatDistanceToNow(date, { addSuffix: true });
 }
+
+export const { ethereum } =
+  typeof window !== "undefined" ? window : ({} as any);
+
+export const downloadMetaMask = () => {
+  window ? window.open("https://metamask.io/download", "_blank") : null;
+};

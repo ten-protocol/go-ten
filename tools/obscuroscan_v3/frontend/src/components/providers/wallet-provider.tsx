@@ -6,6 +6,7 @@ import {
 } from "@/src/types/interfaces/WalletInterfaces";
 import { showToast } from "../ui/use-toast";
 import { ToastType } from "@/src/types/interfaces";
+import { ethereum } from "@/src/lib/utils";
 
 const WalletConnectionContext =
   createContext<WalletConnectionContextType | null>(null);
@@ -29,10 +30,8 @@ export const WalletConnectionProvider = ({
     useState<ethers.providers.Web3Provider | null>(null);
 
   const connectWallet = async () => {
-    if ((window as any).ethereum) {
-      const ethProvider = new ethers.providers.Web3Provider(
-        (window as any).ethereum
-      );
+    if (ethereum) {
+      const ethProvider = new ethers.providers.Web3Provider(ethereum);
       setProvider(ethProvider);
 
       try {
@@ -65,7 +64,10 @@ export const WalletConnectionProvider = ({
   };
 
   useEffect(() => {
-    const ethereum = (window as any).ethereum;
+    if (!ethereum) {
+      return;
+    }
+
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts.length === 0) {
         showToast(ToastType.DESTRUCTIVE, "Please connect to MetaMask.");
@@ -73,8 +75,10 @@ export const WalletConnectionProvider = ({
         setWalletAddress(accounts[0]);
       }
     };
+
     ethereum.on("accountsChanged", handleAccountsChanged);
     return () => {
+      if (!ethereum) return;
       ethereum.removeListener("accountsChanged", handleAccountsChanged);
     };
   });
