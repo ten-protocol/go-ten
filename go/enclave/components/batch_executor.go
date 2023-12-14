@@ -213,7 +213,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	if failForEmptyBatch &&
 		len(txReceipts) == 0 &&
 		len(ccReceipts) == 0 &&
-		len(transactionsToProcess) == 0 &&
+		len(transactionsToProcess)-len(excludedTxs) == 0 &&
 		len(crossChainTransactions) == 0 &&
 		len(messages) == 0 &&
 		len(transfers) == 0 {
