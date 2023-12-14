@@ -94,6 +94,7 @@ export const getToken = async (provider: ethers.providers.Web3Provider) => {
         getRandomIntAsString(0, 1000),
         null,
       ]);
+      showToast(ToastType.SUCCESS, "Token found!");
       return token;
     } else {
       return null;
