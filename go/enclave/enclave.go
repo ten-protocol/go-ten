@@ -196,7 +196,7 @@ func NewEnclave(
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, storage, logger)
 
 	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, logger)
-	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice)
+	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}

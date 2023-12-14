@@ -5,6 +5,9 @@ import (
 	"math/big"
 	"strings"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethtxpool "github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/txpool/legacypool"
@@ -20,10 +23,11 @@ type TxPool struct {
 	blockchain   *ethchainadapter.EthChainAdapter
 	gasTip       *big.Int
 	running      bool
+	logger       gethlog.Logger
 }
 
 // NewTxPool returns a new instance of the tx pool
-func NewTxPool(blockchain *ethchainadapter.EthChainAdapter, gasTip *big.Int) (*TxPool, error) {
+func NewTxPool(blockchain *ethchainadapter.EthChainAdapter, gasTip *big.Int, logger gethlog.Logger) (*TxPool, error) {
 	txPoolConfig := ethchainadapter.NewLegacyPoolConfig()
 	legacyPool := legacypool.New(txPoolConfig, blockchain)
 
@@ -32,6 +36,7 @@ func NewTxPool(blockchain *ethchainadapter.EthChainAdapter, gasTip *big.Int) (*T
 		txPoolConfig: txPoolConfig,
 		legacyPool:   legacyPool,
 		gasTip:       gasTip,
+		logger:       logger,
 	}, nil
 }
 
@@ -77,5 +82,10 @@ func (t *TxPool) Running() bool {
 }
 
 func (t *TxPool) Close() error {
+	defer func() {
+		if err := recover(); err != nil {
+			t.logger.Error("Could not close legacy pool", log.ErrKey, err)
+		}
+	}()
 	return t.legacyPool.Close()
 }
