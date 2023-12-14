@@ -110,6 +110,7 @@ const ethService = {
     }
 
     const token = await getToken(provider);
+    showToast(ToastType.INFO, "Token found!");
 
     if (!token || !isValidTokenFormat(token)) {
       return;
@@ -135,6 +136,7 @@ const ethService = {
     } catch (error) {
       console.error(error);
       showToast(ToastType.DESTRUCTIVE, "An error occurred. Please try again.");
+      throw error;
     }
   },
 
