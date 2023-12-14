@@ -5,7 +5,7 @@ import {
   Account,
 } from "../../types/interfaces/WalletInterfaces";
 import { showToast } from "../ui/use-toast";
-import { ethereum } from "../../lib/utils";
+import { ethereum, isValidTokenFormat } from "../../lib/utils";
 import {
   accountIsAuthenticated,
   fetchVersion,
@@ -133,13 +133,24 @@ export const WalletConnectionProvider = ({
       );
       return;
     }
+    const token = await getToken(provider);
+
+    if (!isValidTokenFormat(token)) {
+      showToast(
+        ToastType.INFO,
+        "Invalid token format. Please refresh the page."
+      );
+      setAccounts([]);
+      setWalletConnected(false);
+      return;
+    }
+
+    showToast(ToastType.SUCCESS, "Token fetched!");
+    setToken(token);
 
     try {
       const accounts = await ethService.getAccounts(provider);
       showToast(ToastType.SUCCESS, "Accounts fetched!");
-      const token = await getToken(provider);
-      showToast(ToastType.SUCCESS, "Token fetched!");
-      setToken(token);
       let updatedAccounts: Account[] = [];
 
       // updatedAccounts = await Promise.all(

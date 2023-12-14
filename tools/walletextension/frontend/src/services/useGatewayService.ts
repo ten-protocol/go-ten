@@ -11,6 +11,7 @@ import { isTenChain, isValidTokenFormat } from "../lib/utils";
 import {
   addNetworkToMetaMask,
   connectAccounts,
+  getToken,
   switchToTenNetwork,
 } from "@/api/ethRequests";
 
@@ -32,6 +33,7 @@ const useGatewayService = () => {
   };
 
   const connectToTenTestnet = async () => {
+    showToast(ToastType.INFO, "Connecting to Ten Network...");
     setLoading(true);
     try {
       if (await isTenChain()) {
@@ -46,7 +48,10 @@ const useGatewayService = () => {
       showToast(ToastType.INFO, "Switching to Ten Network...");
       const switched = await switchToTenNetwork();
       showToast(ToastType.SUCCESS, `Switched to Ten Network: ${switched}`);
-      if (switched === SWITCHED_CODE || (token && !isValidTokenFormat(token))) {
+      // SWITCHED_CODE=4902; error 4902 means that the chain does not exist
+      if (switched === 4902 || !isValidTokenFormat(await getToken(provider))) {
+        showToast(ToastType.INFO, "Joining Ten Network...");
+        // if (switched === SWITCHED_CODE || (token && !isValidTokenFormat(token))) {
         const user = await joinTestnet();
         showToast(ToastType.SUCCESS, `Joined Ten Network: ${user}`);
         const rpcUrls = [
