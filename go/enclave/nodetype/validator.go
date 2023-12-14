@@ -153,3 +153,7 @@ func (val *obsValidator) handleGenesis(batch *core.Batch) error {
 func (val *obsValidator) OnL1Block(_ types.Block, _ *components.BlockIngestionType) error {
 	return val.ExecuteStoredBatches()
 }
+
+func (val *obsValidator) Close() error {
+	return nil
+}

@@ -75,3 +75,7 @@ func (t *TxPool) Add(transaction *common.L2Tx) error {
 func (t *TxPool) Running() bool {
 	return t.running
 }
+
+func (t *TxPool) Close() error {
+	return t.legacyPool.Close()
+}

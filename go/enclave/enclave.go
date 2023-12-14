@@ -972,8 +972,13 @@ func (e *enclaveImpl) Stop() common.SystemError {
 		e.registry.UnsubscribeFromBatches()
 	}
 
+	err := e.service.Close()
+	if err != nil {
+		e.logger.Error("Could not stop node service", log.ErrKey, err)
+	}
+
 	time.Sleep(time.Second)
-	err := e.storage.Close()
+	err = e.storage.Close()
 	if err != nil {
 		e.logger.Error("Could not stop db", log.ErrKey, err)
 		return err
