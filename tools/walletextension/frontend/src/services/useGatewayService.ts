@@ -2,7 +2,11 @@ import { ToastType } from "@/types/interfaces";
 import { joinTestnet } from "../api/gateway";
 import { useWalletConnection } from "../components/providers/wallet-provider";
 import { showToast } from "../components/ui/use-toast";
-import {SWITCHED_CODE, tenGatewayAddress, tenGatewayVersion} from "../lib/constants";
+import {
+  SWITCHED_CODE,
+  tenGatewayAddress,
+  tenGatewayVersion,
+} from "../lib/constants";
 import { isTenChain, isValidTokenFormat } from "../lib/utils";
 import {
   addNetworkToMetaMask,
@@ -58,7 +62,7 @@ const useGatewayService = () => {
 
       await fetchUserAccounts();
     } catch (error: any) {
-      showToast(ToastType.DESTRUCTIVE, `${error}`);
+      showToast(ToastType.DESTRUCTIVE, `${error?.message}`);
       throw error;
     } finally {
       setLoading(false);

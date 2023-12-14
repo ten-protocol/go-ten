@@ -83,11 +83,7 @@ export const getSignature = async (account: string, data: any) => {
 };
 
 export const getToken = async (provider: ethers.providers.Web3Provider) => {
-  if (!provider) {
-    showToast(
-      ToastType.DESTRUCTIVE,
-      "No provider found. Please try again later."
-    );
+  if (!provider.send) {
     return null;
   }
 

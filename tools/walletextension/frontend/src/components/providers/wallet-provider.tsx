@@ -44,25 +44,23 @@ export const WalletConnectionProvider = ({
   const [provider, setProvider] = useState({} as ethers.providers.Web3Provider);
 
   const initialize = async () => {
-    try {
-      if (!ethereum) {
-        showToast(
-          ToastType.DESTRUCTIVE,
-          "Please install Metamask to connect your wallet."
-        );
-        return;
-      }
-      const providerInstance = new ethers.providers.Web3Provider(ethereum);
-      setProvider(providerInstance);
-      await ethService.checkIfMetamaskIsLoaded(providerInstance);
+    if (!provider) {
+      return showToast(
+        ToastType.INFO,
+        "Provider is required to initialize wallet connection."
+      );
+    }
 
-      const fetchedToken = await getToken(providerInstance);
+    try {
+      await ethService.checkIfMetamaskIsLoaded(provider);
+
+      const fetchedToken = await getToken(provider);
       setToken(fetchedToken);
 
       const status = await ethService.isUserConnectedToTenChain(fetchedToken);
       setWalletConnected(status);
 
-      const accounts = await ethService.getAccounts(providerInstance);
+      const accounts = await ethService.getAccounts(provider);
       setAccounts(accounts || null);
       setVersion(await fetchVersion());
     } catch (error) {
@@ -105,7 +103,7 @@ export const WalletConnectionProvider = ({
       } else {
         showToast(ToastType.DESTRUCTIVE, "Account authentication failed.");
       }
-    } catch (error) {
+    } catch (error: any) {
       showToast(ToastType.DESTRUCTIVE, "Account authentication failed.");
     }
   };
@@ -162,8 +160,23 @@ export const WalletConnectionProvider = ({
   };
 
   useEffect(() => {
-    initialize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (ethereum && ethereum.isMetaMask) {
+      const providerInstance = new ethers.providers.Web3Provider(ethereum);
+      setProvider(providerInstance);
+      initialize();
+
+      ethereum.on("accountsChanged", () => {
+        fetchUserAccounts();
+      });
+    }
+
+    return () => {
+      if (ethereum && ethereum.removeListener) {
+        ethereum.removeListener("accountsChanged", () => {
+          fetchUserAccounts();
+        });
+      }
+    };
   }, []);
 
   const walletConnectionContextValue: WalletConnectionContextType = {
