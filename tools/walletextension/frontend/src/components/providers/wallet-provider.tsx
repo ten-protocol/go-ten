@@ -136,14 +136,18 @@ export const WalletConnectionProvider = ({
 
     try {
       const accounts = await ethService.getAccounts(provider);
+      showToast(ToastType.SUCCESS, "Accounts fetched!");
       const token = await getToken(provider);
+      showToast(ToastType.SUCCESS, "Token fetched!");
       setToken(token);
       let updatedAccounts: Account[] = [];
 
       updatedAccounts = await Promise.all(
         accounts!.map(async (account) => {
           await ethService.authenticateWithGateway(token, account.name);
+          showToast(ToastType.SUCCESS, "Account authenticated with gateway!");
           const { status } = await accountIsAuthenticated(token, account.name);
+          showToast(ToastType.SUCCESS, "Account authenticated!");
           return {
             ...account,
             connected: status,
@@ -151,8 +155,11 @@ export const WalletConnectionProvider = ({
         })
       );
       setAccounts(updatedAccounts || null);
-    } catch (error) {
-      showToast(ToastType.DESTRUCTIVE, "Error fetching user accounts.");
+    } catch (error: any) {
+      showToast(
+        ToastType.DESTRUCTIVE,
+        `Error fetching user accounts: ${error?.message}`
+      );
     } finally {
       setWalletConnected(true);
       setLoading(false);
