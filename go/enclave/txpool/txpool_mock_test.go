@@ -342,6 +342,5 @@ func (m *mockStorage) TrieDB() *trie.Database {
 }
 
 func (m *mockStorage) StateDB() state.Database {
-	// TODO implement me
-	panic("implement me")
+	return m.stateDB
 }
