@@ -136,13 +136,13 @@ func NewLegacyPoolConfig() legacypool.Config {
 		NoLocals:     false,
 		Journal:      "",
 		Rejournal:    0,
-		PriceLimit:   0,
-		PriceBump:    0,
-		AccountSlots: 100,
-		GlobalSlots:  10000000,
-		AccountQueue: 100,
-		GlobalQueue:  10000000,
-		Lifetime:     0,
+		PriceLimit:   legacypool.DefaultConfig.PriceLimit,
+		PriceBump:    legacypool.DefaultConfig.PriceBump,
+		AccountSlots: legacypool.DefaultConfig.AccountSlots,
+		GlobalSlots:  legacypool.DefaultConfig.GlobalSlots,
+		AccountQueue: legacypool.DefaultConfig.AccountQueue,
+		GlobalQueue:  legacypool.DefaultConfig.GlobalQueue,
+		Lifetime:     legacypool.DefaultConfig.Lifetime,
 	}
 }
 

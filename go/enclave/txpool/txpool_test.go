@@ -57,7 +57,7 @@ func TestTxPool_AddTransaction_Pending(t *testing.T) {
 	err = blockchain.IngestNewBlock(genesisBatch)
 	require.NoError(t, err)
 
-	txPool, err := NewTxPool(blockchain, big.NewInt(1))
+	txPool, err := NewTxPool(blockchain, big.NewInt(1), testlog.Logger())
 	require.NoError(t, err)
 
 	// Start the TxPool
