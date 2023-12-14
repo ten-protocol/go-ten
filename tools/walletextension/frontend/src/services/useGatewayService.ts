@@ -43,15 +43,17 @@ const useGatewayService = () => {
           return;
         }
       }
-
+      showToast(ToastType.INFO, "Switching to Ten Network...");
       const switched = await switchToTenNetwork();
-
+      showToast(ToastType.SUCCESS, `Switched to Ten Network: ${switched}`);
       if (switched === SWITCHED_CODE || (token && !isValidTokenFormat(token))) {
         const user = await joinTestnet();
+        showToast(ToastType.SUCCESS, `Joined Ten Network: ${user}`);
         const rpcUrls = [
           `${tenGatewayAddress}/${tenGatewayVersion}/?token=${user}`,
         ];
         await addNetworkToMetaMask(rpcUrls);
+        showToast(ToastType.SUCCESS, "Added Ten Network to MetaMask");
       }
 
       if (!(await isMetamaskConnected())) {

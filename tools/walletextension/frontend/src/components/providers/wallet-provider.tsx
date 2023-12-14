@@ -154,8 +154,8 @@ export const WalletConnectionProvider = ({
       //     };
       //   })
       // );
-      if (!accounts) {
-        setAccounts(null);
+      if (!accounts || accounts.length === 0) {
+        setAccounts([]);
       } else {
         for (const account of accounts) {
           await ethService.authenticateWithGateway(token, account.name);

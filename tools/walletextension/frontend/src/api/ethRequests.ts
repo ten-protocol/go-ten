@@ -49,6 +49,7 @@ export const switchToTenNetwork = async () => {
 
     return 0;
   } catch (error: any) {
+    showToast(ToastType.DESTRUCTIVE, `switchToTenNetwork: ${error.code}`);
     return error.code;
   }
 };
