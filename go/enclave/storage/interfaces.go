@@ -142,6 +142,9 @@ type Storage interface {
 
 	// TrieDB - return the underlying trie database
 	TrieDB() *trie.Database
+
+	// StateDB - return the underlying state database
+	StateDB() state.Database
 }
 
 type ScanStorage interface {

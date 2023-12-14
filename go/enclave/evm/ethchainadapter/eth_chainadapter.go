@@ -1,7 +1,6 @@
 package ethchainadapter
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -104,17 +103,7 @@ func (e *EthChainAdapter) StateAt(root common.Hash) (*state.StateDB, error) {
 		return nil, nil //nolint:nilnil
 	}
 
-	currentBatchSeqNo := e.batchRegistry.HeadBatchSeq()
-	if currentBatchSeqNo == nil {
-		return nil, fmt.Errorf("not ready yet")
-	}
-	currentBatch, err := e.storage.FetchBatchBySeqNo(currentBatchSeqNo.Uint64())
-	if err != nil {
-		e.logger.Warn("unable to get batch by height", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
-		return nil, nil //nolint:nilnil
-	}
-
-	return e.storage.CreateStateDB(currentBatch.Hash())
+	return state.New(root, e.storage.StateDB(), nil)
 }
 
 func (e *EthChainAdapter) IngestNewBlock(batch *core.Batch) error {
