@@ -82,13 +82,31 @@ func (e *EthChainAdapter) SubscribeChainHeadEvent(ch chan<- gethcore.ChainHeadEv
 
 // GetBlock retrieves a specific block, used during pool resets.
 func (e *EthChainAdapter) GetBlock(_ common.Hash, number uint64) *gethtypes.Block {
-	nbatch, err := e.storage.FetchBatchByHeight(number)
+	var batch *core.Batch
+
+	// to avoid a costly select to the db, check whether the batches requested are the last ones which are cached
+	headBatch, err := e.storage.FetchBatchBySeqNo(e.batchRegistry.HeadBatchSeq().Uint64())
 	if err != nil {
-		e.logger.Warn("unable to get batch by height", "number", number, log.ErrKey, err)
+		e.logger.Error("unable to get head batch", log.ErrKey, err)
 		return nil
 	}
+	if headBatch.Number().Uint64() == number {
+		batch = headBatch
+	} else if headBatch.Number().Uint64()-1 == number {
+		batch, err = e.storage.FetchBatch(headBatch.Header.ParentHash)
+		if err != nil {
+			e.logger.Error("unable to get parent of head batch", log.ErrKey, err, log.BatchHashKey, headBatch.Header.ParentHash)
+			return nil
+		}
+	} else {
+		batch, err = e.storage.FetchBatchByHeight(number)
+		if err != nil {
+			e.logger.Error("unable to get batch by height", log.BatchHeightKey, number, log.ErrKey, err)
+			return nil
+		}
+	}
 
-	nfromBatch, err := gethencoding.CreateEthBlockFromBatch(nbatch)
+	nfromBatch, err := gethencoding.CreateEthBlockFromBatch(batch)
 	if err != nil {
 		e.logger.Error("unable to convert batch to eth block", log.ErrKey, err)
 		return nil
