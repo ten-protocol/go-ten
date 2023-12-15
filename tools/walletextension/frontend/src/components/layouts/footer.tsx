@@ -11,9 +11,9 @@ export default function Footer() {
   const { version } = useWalletConnection();
 
   return (
-    <div className="border-t px-2">
-      <div className="flex h-16 items-center px-4">
-        <div className="flex-1 flex items-center space-x-4">
+    <div className="border-t p-2">
+      <div className="flex h-16 items-center justify-between px-4 flex-wrap">
+        <div className="flex items-center space-x-4 pr-2">
           <a
             href={socialLinks.github}
             aria-label="GitHub"
@@ -36,7 +36,7 @@ export default function Footer() {
             <DiscordLogoIcon />
           </a>
         </div>
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex items-center justify-center space-x-4 pr-2">
           <h3 className="text-xs text-muted-foreground">
             Version: {version || "Unknown"}
           </h3>

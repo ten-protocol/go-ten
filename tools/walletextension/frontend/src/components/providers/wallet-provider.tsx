@@ -5,7 +5,7 @@ import {
   Account,
 } from "../../types/interfaces/WalletInterfaces";
 import { showToast } from "../ui/use-toast";
-import { ethereum } from "../../lib/utils";
+import { ethereum, isValidTokenFormat } from "../../lib/utils";
 import {
   accountIsAuthenticated,
   fetchVersion,
@@ -44,25 +44,23 @@ export const WalletConnectionProvider = ({
   const [provider, setProvider] = useState({} as ethers.providers.Web3Provider);
 
   const initialize = async () => {
-    try {
-      if (!ethereum) {
-        showToast(
-          ToastType.DESTRUCTIVE,
-          "Please install Metamask to connect your wallet."
-        );
-        return;
-      }
-      const providerInstance = new ethers.providers.Web3Provider(ethereum);
-      setProvider(providerInstance);
-      await ethService.checkIfMetamaskIsLoaded(providerInstance);
+    if (!provider) {
+      return showToast(
+        ToastType.INFO,
+        "Provider is required to initialize wallet connection."
+      );
+    }
 
-      const fetchedToken = await getToken(providerInstance);
+    try {
+      await ethService.checkIfMetamaskIsLoaded(provider);
+
+      const fetchedToken = await getToken(provider);
       setToken(fetchedToken);
 
       const status = await ethService.isUserConnectedToTenChain(fetchedToken);
       setWalletConnected(status);
 
-      const accounts = await ethService.getAccounts(providerInstance);
+      const accounts = await ethService.getAccounts(provider);
       setAccounts(accounts || null);
       setVersion(await fetchVersion());
     } catch (error) {
@@ -105,7 +103,7 @@ export const WalletConnectionProvider = ({
       } else {
         showToast(ToastType.DESTRUCTIVE, "Account authentication failed.");
       }
-    } catch (error) {
+    } catch (error: any) {
       showToast(ToastType.DESTRUCTIVE, "Account authentication failed.");
     }
   };
@@ -135,26 +133,48 @@ export const WalletConnectionProvider = ({
       );
       return;
     }
+    const token = await getToken(provider);
+
+    if (!isValidTokenFormat(token)) {
+      showToast(
+        ToastType.INFO,
+        "Invalid token format. Please refresh the page."
+      );
+      setAccounts([]);
+      setWalletConnected(false);
+      return;
+    }
+
+    setToken(token);
 
     try {
       const accounts = await ethService.getAccounts(provider);
-      const token = await getToken(provider);
-      setToken(token);
       let updatedAccounts: Account[] = [];
 
-      updatedAccounts = await Promise.all(
-        accounts!.map(async (account) => {
-          await ethService.authenticateWithGateway(token, account.name);
-          const { status } = await accountIsAuthenticated(token, account.name);
-          return {
-            ...account,
-            connected: status,
-          };
-        })
+      if (!accounts || accounts.length === 0) {
+        setAccounts([]);
+      } else {
+        updatedAccounts = await Promise.all(
+          accounts!.map(async (account) => {
+            await ethService.authenticateWithGateway(token, account.name);
+            const { status } = await accountIsAuthenticated(
+              token,
+              account.name
+            );
+            return {
+              ...account,
+              connected: status,
+            };
+          })
+        );
+        showToast(ToastType.INFO, "Accounts authenticated with gateway!");
+        setAccounts(updatedAccounts);
+      }
+    } catch (error: any) {
+      showToast(
+        ToastType.DESTRUCTIVE,
+        `Error fetching user accounts: ${error?.message}`
       );
-      setAccounts(updatedAccounts || null);
-    } catch (error) {
-      showToast(ToastType.DESTRUCTIVE, "Error fetching user accounts.");
     } finally {
       setWalletConnected(true);
       setLoading(false);
@@ -162,8 +182,23 @@ export const WalletConnectionProvider = ({
   };
 
   useEffect(() => {
-    initialize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (ethereum && ethereum.isMetaMask) {
+      const providerInstance = new ethers.providers.Web3Provider(ethereum);
+      setProvider(providerInstance);
+      initialize();
+
+      ethereum.on("accountsChanged", () => {
+        fetchUserAccounts();
+      });
+    }
+
+    return () => {
+      if (ethereum && ethereum.removeListener) {
+        ethereum.removeListener("accountsChanged", () => {
+          fetchUserAccounts();
+        });
+      }
+    };
   }, []);
 
   const walletConnectionContextValue: WalletConnectionContextType = {
