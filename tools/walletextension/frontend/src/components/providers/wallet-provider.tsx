@@ -189,18 +189,14 @@ export const WalletConnectionProvider = ({
       setProvider(providerInstance);
       initialize(providerInstance);
 
-      ethereum.on("accountsChanged", () => {
-        fetchUserAccounts();
-      });
+      ethereum.on("accountsChanged", fetchUserAccounts);
     } else {
       setLoading(false);
     }
 
     return () => {
       if (ethereum && ethereum.removeListener) {
-        ethereum.removeListener("accountsChanged", () => {
-          fetchUserAccounts();
-        });
+        ethereum.removeListener("accountsChanged", fetchUserAccounts);
       }
     };
   }, []);
