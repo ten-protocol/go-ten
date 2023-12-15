@@ -1,7 +1,6 @@
 package ethchainadapter
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -83,13 +82,31 @@ func (e *EthChainAdapter) SubscribeChainHeadEvent(ch chan<- gethcore.ChainHeadEv
 
 // GetBlock retrieves a specific block, used during pool resets.
 func (e *EthChainAdapter) GetBlock(_ common.Hash, number uint64) *gethtypes.Block {
-	nbatch, err := e.storage.FetchBatchByHeight(number)
+	var batch *core.Batch
+
+	// to avoid a costly select to the db, check whether the batches requested are the last ones which are cached
+	headBatch, err := e.storage.FetchBatchBySeqNo(e.batchRegistry.HeadBatchSeq().Uint64())
 	if err != nil {
-		e.logger.Warn("unable to get batch by height", "number", number, log.ErrKey, err)
+		e.logger.Error("unable to get head batch", log.ErrKey, err)
 		return nil
 	}
+	if headBatch.Number().Uint64() == number {
+		batch = headBatch
+	} else if headBatch.Number().Uint64()-1 == number {
+		batch, err = e.storage.FetchBatch(headBatch.Header.ParentHash)
+		if err != nil {
+			e.logger.Error("unable to get parent of head batch", log.ErrKey, err, log.BatchHashKey, headBatch.Header.ParentHash)
+			return nil
+		}
+	} else {
+		batch, err = e.storage.FetchBatchByHeight(number)
+		if err != nil {
+			e.logger.Error("unable to get batch by height", log.BatchHeightKey, number, log.ErrKey, err)
+			return nil
+		}
+	}
 
-	nfromBatch, err := gethencoding.CreateEthBlockFromBatch(nbatch)
+	nfromBatch, err := gethencoding.CreateEthBlockFromBatch(batch)
 	if err != nil {
 		e.logger.Error("unable to convert batch to eth block", log.ErrKey, err)
 		return nil
@@ -104,17 +121,7 @@ func (e *EthChainAdapter) StateAt(root common.Hash) (*state.StateDB, error) {
 		return nil, nil //nolint:nilnil
 	}
 
-	currentBatchSeqNo := e.batchRegistry.HeadBatchSeq()
-	if currentBatchSeqNo == nil {
-		return nil, fmt.Errorf("not ready yet")
-	}
-	currentBatch, err := e.storage.FetchBatchBySeqNo(currentBatchSeqNo.Uint64())
-	if err != nil {
-		e.logger.Warn("unable to get batch by height", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
-		return nil, nil //nolint:nilnil
-	}
-
-	return e.storage.CreateStateDB(currentBatch.Hash())
+	return state.New(root, e.storage.StateDB(), nil)
 }
 
 func (e *EthChainAdapter) IngestNewBlock(batch *core.Batch) error {
