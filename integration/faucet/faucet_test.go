@@ -60,6 +60,12 @@ func TestFaucet(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = faucetContainer.Start()
+	defer func(faucetContainer *container.FaucetContainer) {
+		err := faucetContainer.Stop()
+		if err != nil {
+			fmt.Printf("Could not stop faucet %s", err.Error())
+		}
+	}(faucetContainer)
 	assert.NoError(t, err)
 
 	initialFaucetBal, err := getFaucetBalance(faucetConfig.ServerPort)
