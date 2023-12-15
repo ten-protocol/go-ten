@@ -43,8 +43,10 @@ export const WalletConnectionProvider = ({
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [provider, setProvider] = useState({} as ethers.providers.Web3Provider);
 
-  const initialize = async () => {
-    if (!provider) {
+  const initialize = async (
+    providerInstance: ethers.providers.Web3Provider
+  ) => {
+    if (!providerInstance) {
       return showToast(
         ToastType.INFO,
         "Provider is required to initialize wallet connection."
@@ -52,15 +54,15 @@ export const WalletConnectionProvider = ({
     }
 
     try {
-      await ethService.checkIfMetamaskIsLoaded(provider);
+      await ethService.checkIfMetamaskIsLoaded(providerInstance);
 
-      const fetchedToken = await getToken(provider);
+      const fetchedToken = await getToken(providerInstance);
       setToken(fetchedToken);
 
       const status = await ethService.isUserConnectedToTenChain(fetchedToken);
       setWalletConnected(status);
 
-      const accounts = await ethService.getAccounts(provider);
+      const accounts = await ethService.getAccounts(providerInstance);
       setAccounts(accounts || null);
       setVersion(await fetchVersion());
     } catch (error) {
@@ -185,18 +187,16 @@ export const WalletConnectionProvider = ({
     if (ethereum && ethereum.isMetaMask) {
       const providerInstance = new ethers.providers.Web3Provider(ethereum);
       setProvider(providerInstance);
-      initialize();
+      initialize(providerInstance);
 
-      ethereum.on("accountsChanged", () => {
-        fetchUserAccounts();
-      });
+      ethereum.on("accountsChanged", fetchUserAccounts);
+    } else {
+      setLoading(false);
     }
 
     return () => {
       if (ethereum && ethereum.removeListener) {
-        ethereum.removeListener("accountsChanged", () => {
-          fetchUserAccounts();
-        });
+        ethereum.removeListener("accountsChanged", fetchUserAccounts);
       }
     };
   }, []);
