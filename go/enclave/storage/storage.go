@@ -108,6 +108,10 @@ func (s *storageImpl) TrieDB() *trie.Database {
 	return s.stateDB.TrieDB()
 }
 
+func (s *storageImpl) StateDB() state.Database {
+	return s.stateDB
+}
+
 func (s *storageImpl) Close() error {
 	return s.db.GetSQLDB().Close()
 }
