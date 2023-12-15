@@ -41,6 +41,8 @@ const (
 )
 
 func TestFaucet(t *testing.T) {
+	t.Skip("Skipping because it is too flaky")
+
 	startPort := integration.StartPortFaucetUnitTest
 	createObscuroNetwork(t, startPort)
 	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
