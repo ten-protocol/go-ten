@@ -46,7 +46,7 @@ export default function Dashboard() {
     },
     {
       title: "Latest L2 Batch",
-      value: batches?.result?.Total || "N/A",
+      value: latestBatch || "N/A",
       // TODO: add change
       // change: "+20.1%",
       icon: LayersIcon,
