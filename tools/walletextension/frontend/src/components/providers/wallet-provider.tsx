@@ -145,39 +145,29 @@ export const WalletConnectionProvider = ({
       return;
     }
 
-    showToast(ToastType.SUCCESS, "Token fetched!");
     setToken(token);
 
     try {
       const accounts = await ethService.getAccounts(provider);
-      showToast(ToastType.SUCCESS, "Accounts fetched!");
       let updatedAccounts: Account[] = [];
 
-      // updatedAccounts = await Promise.all(
-      //   accounts!.map(async (account) => {
-      //     await ethService.authenticateWithGateway(token, account.name);
-      //     showToast(ToastType.SUCCESS, "Account authenticated with gateway!");
-      //     const { status } = await accountIsAuthenticated(token, account.name);
-      //     showToast(ToastType.SUCCESS, "Account authenticated!");
-      //     return {
-      //       ...account,
-      //       connected: status,
-      //     };
-      //   })
-      // );
       if (!accounts || accounts.length === 0) {
         setAccounts([]);
       } else {
-        for (const account of accounts) {
-          await ethService.authenticateWithGateway(token, account.name);
-          showToast(ToastType.SUCCESS, "Account authenticated with gateway!");
-          const { status } = await accountIsAuthenticated(token, account.name);
-          showToast(ToastType.SUCCESS, "Account authenticated!");
-          updatedAccounts.push({
-            ...account,
-            connected: status,
-          });
-        }
+        updatedAccounts = await Promise.all(
+          accounts!.map(async (account) => {
+            await ethService.authenticateWithGateway(token, account.name);
+            const { status } = await accountIsAuthenticated(
+              token,
+              account.name
+            );
+            return {
+              ...account,
+              connected: status,
+            };
+          })
+        );
+        showToast(ToastType.INFO, "Accounts authenticated with gateway!");
         setAccounts(updatedAccounts);
       }
     } catch (error: any) {

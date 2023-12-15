@@ -87,7 +87,6 @@ export const getToken = async (provider: ethers.providers.Web3Provider) => {
   if (!provider.send) {
     return null;
   }
-  showToast(ToastType.INFO, "Getting token...");
   try {
     if (await isTenChain()) {
       const token = await provider.send(requestMethods.getStorageAt, [
@@ -95,14 +94,12 @@ export const getToken = async (provider: ethers.providers.Web3Provider) => {
         getRandomIntAsString(0, 1000),
         null,
       ]);
-      showToast(ToastType.SUCCESS, "Token found!");
       return token;
     } else {
       return null;
     }
   } catch (e: any) {
     console.error(e);
-    showToast(ToastType.DESTRUCTIVE, "Failed to get token");
     throw e;
   }
 };
