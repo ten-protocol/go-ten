@@ -12,7 +12,8 @@ const AddressDetails = () => {
       <EmptyState
         title="Address Details"
         description="Coming soon..."
-        image="/assets/images/clock.png"
+        imageSrc="/assets/images/clock.png"
+        imageAlt="Clock"
         action={<Button onClick={() => push("/")}>Go Home</Button>}
       />
     </Layout>

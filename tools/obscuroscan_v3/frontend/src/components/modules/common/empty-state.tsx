@@ -4,23 +4,25 @@ const EmptyState = ({
   title,
   description,
   icon,
-  image,
+  imageSrc,
+  imageAlt,
   action,
 }: {
   title?: string;
   description?: string;
   icon?: React.ReactNode;
-  image?: string;
+  imageSrc?: string;
+  imageAlt?: string;
   action?: React.ReactNode;
 }) => {
   return (
     <div className="flex flex-col items-center justify-center h-full">
       <div className="flex flex-col items-center justify-center space-y-4">
         {icon && <div className="w-24 h-24">{icon}</div>}
-        {image && (
+        {imageSrc && (
           <img
-            src={image}
-            alt="Empty state"
+            src={imageSrc}
+            alt={imageAlt || "Empty state"}
             className="w-24 h-24 rounded-full"
           />
         )}
