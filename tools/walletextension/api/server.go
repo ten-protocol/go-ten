@@ -11,13 +11,11 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
-//go:embed static
-//go:embed staticOG
+//go:embed all:static
 var staticFiles embed.FS
 
 const (
-	staticDir   = "static"
-	staticDirOG = "staticOG"
+	staticDir = "static"
 )
 
 // Server is a wrapper for the http server
@@ -67,13 +65,7 @@ func createHTTPServer(address string, routes []Route) *http.Server {
 	if err != nil {
 		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
 	}
-	serveMux.Handle(common.PathViewingKeys, http.StripPrefix(common.PathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
-
-	noPrefixStaticFilesOG, err := fs.Sub(staticFiles, staticDirOG)
-	if err != nil {
-		panic(fmt.Errorf("could not serve static files. Cause: %w", err).Error())
-	}
-	serveMux.Handle(common.PathObscuroGateway, http.StripPrefix(common.PathObscuroGateway, http.FileServer(http.FS(noPrefixStaticFilesOG))))
+	serveMux.Handle(common.PathObscuroGateway, http.StripPrefix(common.PathObscuroGateway, http.FileServer(http.FS(noPrefixStaticFiles))))
 
 	// Creates the actual http server with a ReadHeaderTimeout to avoid Potential Slowloris Attack
 	server := &http.Server{Addr: address, Handler: serveMux, ReadHeaderTimeout: common.ReaderHeadTimeout}

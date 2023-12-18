@@ -448,3 +448,7 @@ func (s *sequencer) OnL1Block(_ types.Block, _ *components.BlockIngestionType) e
 	// nothing to do
 	return nil
 }
+
+func (s *sequencer) Close() error {
+	return s.mempool.Close()
+}

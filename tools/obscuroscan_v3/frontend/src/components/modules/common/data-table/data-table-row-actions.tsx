@@ -18,7 +18,7 @@ import {
 
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
-  labels: { label: string; value: string }[];
+  labels: { label: string; value: string }[] | null;
 }
 
 export function DataTableRowActions<TData>({
@@ -38,20 +38,25 @@ export function DataTableRowActions<TData>({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
         <DropdownMenuItem>View</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        {labels && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Labels</DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              <DropdownMenuRadioGroup value={row.original.label}>
-                {labels?.map((label) => (
-                  <DropdownMenuRadioItem key={label.value} value={label.value}>
-                    {label.label}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+        {labels === null ? null : (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Labels</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup value={row.original.label}>
+                  {labels?.map((label) => (
+                    <DropdownMenuRadioItem
+                      key={label.value}
+                      value={label.value}
+                    >
+                      {label.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </>
         )}
         <DropdownMenuSeparator />
       </DropdownMenuContent>

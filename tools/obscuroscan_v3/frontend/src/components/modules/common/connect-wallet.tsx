@@ -2,26 +2,38 @@ import { useWalletConnection } from "@/src/components/providers/wallet-provider"
 import { Button } from "@/src/components/ui/button";
 import { Link2Icon, LinkBreak2Icon } from "@radix-ui/react-icons";
 import React from "react";
-const ConnectWalletButton = () => {
-  const { walletConnected, connectWallet, disconnectWallet } =
+import TruncatedAddress from "./truncated-address";
+import { downloadMetaMask, ethereum } from "@/src/lib/utils";
+const ConnectWalletButton = ({ text }: { text?: string }) => {
+  const { walletConnected, walletAddress, connectWallet, disconnectWallet } =
     useWalletConnection();
 
   return (
     <Button
       className="text-sm font-medium leading-none"
       variant={"outline"}
-      onClick={walletConnected ? disconnectWallet : connectWallet}
+      onClick={
+        ethereum
+          ? walletConnected
+            ? disconnectWallet
+            : connectWallet
+          : downloadMetaMask
+      }
+      suppressHydrationWarning
     >
       {walletConnected ? (
         <>
           <LinkBreak2Icon className="h-4 w-4 mr-1" />
-          Disconnect
+          {walletAddress ? (
+            <TruncatedAddress address={walletAddress} showCopy={false} />
+          ) : (
+            "Wallet"
+          )}
         </>
       ) : (
         <>
           <Link2Icon className="h-4 w-4 mr-1" />
-          Connect
-          <span className="hidden sm:inline">&nbsp;Wallet</span>
+          {ethereum ? "Connect Wallet" : text || "Install MetaMask"}
         </>
       )}
     </Button>

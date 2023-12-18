@@ -1,6 +1,6 @@
 import { fetchBatches, fetchLatestBatch } from "@/api/batches";
 import { useQuery } from "@tanstack/react-query";
-import { pollingInterval } from "../lib/constants";
+import { getOptions, pollingInterval } from "../lib/constants";
 import { useState } from "react";
 import { useRouter } from "next/router";
 
@@ -9,10 +9,7 @@ export const useBatchesService = () => {
 
   const [noPolling, setNoPolling] = useState(false);
 
-  const options = {
-    offset: query.page ? parseInt(query.page as string) : 1,
-    size: query.size ? parseInt(query.size as string) : 10,
-  };
+  const options = getOptions(query);
 
   const {
     data: batches,

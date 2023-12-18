@@ -192,7 +192,7 @@ func NewEnclave(
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, storage, logger)
 
 	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, logger)
-	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice)
+	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}
@@ -966,8 +966,13 @@ func (e *enclaveImpl) Stop() common.SystemError {
 		e.registry.UnsubscribeFromBatches()
 	}
 
+	err := e.service.Close()
+	if err != nil {
+		e.logger.Error("Could not stop node service", log.ErrKey, err)
+	}
+
 	time.Sleep(time.Second)
-	err := e.storage.Close()
+	err = e.storage.Close()
 	if err != nil {
 		e.logger.Error("Could not stop db", log.ErrKey, err)
 		return err

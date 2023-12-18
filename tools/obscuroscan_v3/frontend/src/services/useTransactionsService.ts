@@ -6,14 +6,19 @@ import {
 import { useWalletConnection } from "@/src/components/providers/wallet-provider";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { pollingInterval, pricePollingInterval } from "../lib/constants";
+import {
+  getOptions,
+  pollingInterval,
+  pricePollingInterval,
+} from "../lib/constants";
 import { PersonalTransactionsResponse } from "../types/interfaces/TransactionInterfaces";
-import { useToast } from "@/src/components/ui/use-toast";
 import { useRouter } from "next/router";
+import { showToast } from "../components/ui/use-toast";
+import { ToastType } from "../types/interfaces";
+import { ethMethods } from "../routes";
 
 export const useTransactionsService = () => {
   const { query } = useRouter();
-  const { toast } = useToast();
   const { walletAddress, provider } = useWalletConnection();
 
   const [personalTxnsLoading, setPersonalTxnsLoading] = useState(false);
@@ -27,13 +32,7 @@ export const useTransactionsService = () => {
 
   const [noPolling, setNoPolling] = useState(false);
 
-  const options = {
-    offset: query.page ? parseInt(query.page as string) : 1,
-    size: query.size ? parseInt(query.size as string) : 10,
-    // sort: query.sort ? (query.sort as string) : "blockNumber",
-    // order: query.order ? (query.order as string) : "desc",
-    // filter: query.filter ? (query.filter as string) : "",
-  };
+  const options = getOptions(query);
 
   const {
     data: transactions,
@@ -49,20 +48,20 @@ export const useTransactionsService = () => {
     useQuery({
       queryKey: ["transactionCount"],
       queryFn: () => fetchTransactionCount(),
-      refetchInterval: pollingInterval,
+      refetchInterval: noPolling ? false : pollingInterval,
     });
 
-  const personalTransactions = async (payload?: {
-    pagination: { offset: number; size: number };
-  }) => {
+  const personalTransactions = async () => {
     try {
       setPersonalTxnsLoading(true);
       if (provider) {
         const requestPayload = {
           address: walletAddress,
-          ...payload,
+          pagination: {
+            ...options,
+          },
         };
-        const personalTxData = await provider.send("eth_getStorageAt", [
+        const personalTxData = await provider.send(ethMethods.getStorageAt, [
           "listPersonalTransactions",
           requestPayload,
           null,
@@ -70,9 +69,10 @@ export const useTransactionsService = () => {
         setPersonalTxns(personalTxData);
       }
     } catch (error) {
-      toast({
-        description: "Error fetching personal transactions",
-      });
+      console.error("Error fetching personal transactions:", error);
+      setPersonalTxns(undefined);
+      showToast(ToastType.DESTRUCTIVE, "Error fetching personal transactions");
+      throw error;
     } finally {
       setPersonalTxnsLoading(false);
     }

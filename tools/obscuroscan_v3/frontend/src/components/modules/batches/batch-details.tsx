@@ -15,7 +15,7 @@ export function BatchDetailsComponent({
       <KeyValueList>
         <KeyValueItem
           label="Batch Number"
-          value={"#" + batchDetails?.Header?.number}
+          value={"#" + Number(batchDetails?.Header?.number)}
         />
         <KeyValueItem
           label="Hash"
@@ -59,10 +59,16 @@ export function BatchDetailsComponent({
         />
         <KeyValueItem
           label="Gas Limit"
-          value={batchDetails?.Header?.gasLimit}
+          value={Number(batchDetails?.Header?.gasLimit)}
         />
-        <KeyValueItem label="Gas Used" value={batchDetails?.Header?.gasUsed} />
-        <KeyValueItem label="Base Fee" value={batchDetails?.Header?.baseFee} />
+        <KeyValueItem
+          label="Gas Used"
+          value={Number(batchDetails?.Header?.gasUsed)}
+        />
+        <KeyValueItem
+          label="Base Fee"
+          value={batchDetails?.Header?.baseFee || "-"}
+        />
         <KeyValueItem
           label="Inbound Cross Chain Hash"
           value={
@@ -87,7 +93,7 @@ export function BatchDetailsComponent({
         />
         <KeyValueItem
           label="Base Fee Per Gas"
-          value={batchDetails?.Header?.baseFeePerGas}
+          value={Number(batchDetails?.Header?.baseFeePerGas)}
           isLastItem
         />
       </KeyValueList>
@@ -95,7 +101,7 @@ export function BatchDetailsComponent({
       <KeyValueList>
         <KeyValueItem
           label="No. of Transactions"
-          value={batchDetails?.TxHashes?.length || 0}
+          value={batchDetails?.TxHashes?.length || "-"}
           isLastItem
         />
       </KeyValueList>

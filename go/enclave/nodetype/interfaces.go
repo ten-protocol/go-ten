@@ -20,6 +20,8 @@ type NodeType interface {
 
 	// OnL1Block - performed after the block was processed
 	OnL1Block(block types.Block, result *components.BlockIngestionType) error
+
+	Close() error
 }
 
 type Sequencer interface {

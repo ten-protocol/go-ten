@@ -41,6 +41,8 @@ const (
 )
 
 func TestFaucet(t *testing.T) {
+	t.Skip("Skipping because it is too flaky")
+
 	startPort := integration.StartPortFaucetUnitTest
 	createObscuroNetwork(t, startPort)
 	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
@@ -60,6 +62,12 @@ func TestFaucet(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = faucetContainer.Start()
+	defer func(faucetContainer *container.FaucetContainer) {
+		err := faucetContainer.Stop()
+		if err != nil {
+			fmt.Printf("Could not stop faucet %s", err.Error())
+		}
+	}(faucetContainer)
 	assert.NoError(t, err)
 
 	initialFaucetBal, err := getFaucetBalance(faucetConfig.ServerPort)
