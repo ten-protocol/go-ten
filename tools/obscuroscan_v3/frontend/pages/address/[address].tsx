@@ -5,8 +5,7 @@ import { useRouter } from "next/router";
 import React from "react";
 
 const AddressDetails = () => {
-  //   const { query } = useRouter();
-  //   const { address } = query;
+  const { push } = useRouter();
 
   return (
     <Layout>
@@ -14,7 +13,7 @@ const AddressDetails = () => {
         title="Address Details"
         description="Coming soon..."
         image="/assets/images/clock.png"
-        action={<Button>Go Home</Button>}
+        action={<Button onClick={() => push("/")}>Go Home</Button>}
       />
     </Layout>
   );
