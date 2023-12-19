@@ -499,10 +499,6 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 	if e.crossChainProcessors.Local.IsSyntheticTransaction(*decryptedTx) {
 		return responses.AsPlaintextError(responses.ToInternalError(fmt.Errorf("synthetic transaction coming from external rpc"))), nil
 	}
-	if err = e.checkGas(decryptedTx); err != nil {
-		e.logger.Info("gas check failed", log.ErrKey, err.Error())
-		return responses.AsEncryptedError(err, vkHandler), nil
-	}
 
 	if err = e.service.SubmitTransaction(decryptedTx); err != nil {
 		e.logger.Debug("Could not submit transaction", log.TxKey, decryptedTx.Hash(), log.ErrKey, err)
@@ -1434,18 +1430,6 @@ func (e *revertError) ErrorCode() int {
 // ErrorData returns the hex encoded revert reason.
 func (e *revertError) ErrorData() interface{} {
 	return e.reason
-}
-
-func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
-	txGasPrice := tx.GasPrice()
-	if txGasPrice == nil {
-		return fmt.Errorf("rejected transaction %s. No gas price was set", tx.Hash())
-	}
-	minGasPrice := e.config.MinGasPrice
-	if txGasPrice.Cmp(minGasPrice) == -1 {
-		return fmt.Errorf("rejected transaction %s. Gas price was only %d, wanted at least %d", tx.Hash(), txGasPrice, minGasPrice)
-	}
-	return nil
 }
 
 // Returns the params extracted from an eth_getLogs request.
