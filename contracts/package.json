@@ -13,7 +13,7 @@
     "@nomicfoundation/hardhat-toolbox": "~2.0.0",
     "@openzeppelin/hardhat-upgrades": "^1.21.0",
     "@solidstate/hardhat-bytecode-exporter": "^1.1.1",
-    "hardhat": "~2.12.4",
+    "hardhat": "~2.19.3",
     "hardhat-abi-exporter": "^2.10.1",
     "hardhat-deploy": "0.11.42",
     "node-docker-api": "^1.1.22",
