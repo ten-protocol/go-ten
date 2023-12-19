@@ -4,6 +4,7 @@ pragma solidity >=0.7.0 <0.9.0;
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 
 import "./Structs.sol";
@@ -11,7 +12,10 @@ import * as MessageBus from "../messaging/MessageBus.sol";
 
 contract ManagementContract is Ownable, Initializable {
 
-    constructor() {
+    using MessageHashUtils for bytes32;
+    using MessageHashUtils for bytes;
+
+    constructor() Ownable(msg.sender) {
        // _disableInitializers(); //todo @siliev - figure out why the solidity compiler cant find this. Perhaps OZ needs a version upgrade?
     }
 
@@ -117,10 +121,10 @@ contract ManagementContract is Ownable, Initializable {
             // signature = f(PubKey, PrivateKey, message)
             // address = f(signature, message)
             // valid if attesterID = address
-            bytes32 calculatedHashSigned = ECDSA.toEthSignedMessageHash(abi.encodePacked(attesterID, requesterID, hostAddress, responseSecret));
+            bytes32 calculatedHashSigned = abi.encodePacked(attesterID, requesterID, hostAddress, responseSecret).toEthSignedMessageHash();
             address recoveredAddrSignedCalculated = ECDSA.recover(calculatedHashSigned, attesterSig);
 
-        require(recoveredAddrSignedCalculated == attesterID, "calculated address and attesterID dont match");
+            require(recoveredAddrSignedCalculated == attesterID, "calculated address and attesterID dont match");
         }
 
         // mark the requesterID aggregator as an attested aggregator and store its host address
