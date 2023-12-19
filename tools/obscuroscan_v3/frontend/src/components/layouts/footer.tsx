@@ -6,32 +6,41 @@ import {
   DiscordLogoIcon,
 } from "@radix-ui/react-icons";
 
+const SOCIAL_LINKS = [
+  {
+    name: "GitHub",
+    href: socialLinks.github,
+    icon: GitHubLogoIcon,
+  },
+  {
+    name: "Twitter",
+    href: socialLinks.twitter,
+    icon: TwitterLogoIcon,
+  },
+  {
+    name: "Discord",
+    href: socialLinks.discord,
+    icon: DiscordLogoIcon,
+  },
+];
+
 export default function Footer() {
   return (
     <div className="border-t p-2">
       <div className="flex h-16 items-center justify-between px-4 flex-wrap">
         <div className="flex items-center space-x-4 pr-2">
-          <a
-            href={socialLinks.github}
-            aria-label="GitHub"
-            className="text-muted-foreground hover:text-primary transition-colors"
-          >
-            <GitHubLogoIcon />
-          </a>
-          <a
-            href={socialLinks.twitter}
-            aria-label="Twitter"
-            className="text-muted-foreground hover:text-primary transition-colors"
-          >
-            <TwitterLogoIcon />
-          </a>
-          <a
-            href={socialLinks.discord}
-            aria-label="Discord"
-            className="text-muted-foreground hover:text-primary transition-colors"
-          >
-            <DiscordLogoIcon />
-          </a>
+          {SOCIAL_LINKS.map((item, index) => (
+            <a
+              key={index}
+              href={item.href}
+              aria-label={item.name}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-primary transition-colors"
+            >
+              <item.icon />
+            </a>
+          ))}
         </div>
         <div className="flex items-center justify-center space-x-4 pr-2">
           <h3 className="text-xs text-muted-foreground">
