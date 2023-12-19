@@ -1432,18 +1432,6 @@ func (e *revertError) ErrorData() interface{} {
 	return e.reason
 }
 
-func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
-	txGasPrice := tx.GasPrice()
-	if txGasPrice == nil {
-		return fmt.Errorf("rejected transaction %s. No gas price was set", tx.Hash())
-	}
-	minGasPrice := e.config.MinGasPrice
-	if txGasPrice.Cmp(minGasPrice) == -1 {
-		return fmt.Errorf("rejected transaction %s. Gas price was only %d, wanted at least %d", tx.Hash(), txGasPrice, minGasPrice)
-	}
-	return nil
-}
-
 // Returns the params extracted from an eth_getLogs request.
 func extractGetLogsParams(paramList []interface{}) (*filters.FilterCriteria, *gethcommon.Address, error) {
 	// We extract the first param, the filter for the logs.
