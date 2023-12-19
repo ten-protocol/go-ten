@@ -39,29 +39,6 @@ func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
 	return time.Duration(RndBtw(uint64(min.Nanoseconds()), uint64(max.Nanoseconds()))) * time.Nanosecond
 }
 
-/*
-func AwaitReceiptEth(client ethadapter.EthClient, txHash gethcommon.Hash, timeout time.Duration) error {
-	var receipt *types.Receipt
-	var err error
-	err = retry.Do(func() error {
-		receipt, err = client.TransactionReceipt(txHash)
-		if err != nil && !errors.Is(err, rpc.ErrNilResponse) && !errors.Is(err, ethereum.NotFound) {
-			// we only retry for a nil "not found" response. This is a different error, so we bail out of the retry loop
-			return retry.FailFast(err)
-		}
-		return err
-	}, retry.NewTimeoutStrategy(timeout, _awaitReceiptPollingInterval))
-	if err != nil {
-		return fmt.Errorf("could not retrieve receipt for transaction %s - %w", txHash.Hex(), err)
-	}
-
-	if receipt.Status == types.ReceiptStatusFailed {
-		return fmt.Errorf("receipt had status failed for transaction %s", txHash.Hex())
-	}
-
-	return nil
-}*/
-
 // AwaitReceipt blocks until the receipt for the transaction with the given hash has been received. Errors if the
 // transaction is unsuccessful or times out.
 func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash gethcommon.Hash, timeout time.Duration) error {
