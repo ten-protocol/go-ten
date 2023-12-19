@@ -499,10 +499,6 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 	if e.crossChainProcessors.Local.IsSyntheticTransaction(*decryptedTx) {
 		return responses.AsPlaintextError(responses.ToInternalError(fmt.Errorf("synthetic transaction coming from external rpc"))), nil
 	}
-	if err = e.checkGas(decryptedTx); err != nil {
-		e.logger.Info("gas check failed", log.ErrKey, err.Error())
-		return responses.AsEncryptedError(err, vkHandler), nil
-	}
 
 	if err = e.service.SubmitTransaction(decryptedTx); err != nil {
 		e.logger.Debug("Could not submit transaction", log.TxKey, decryptedTx.Hash(), log.ErrKey, err)
