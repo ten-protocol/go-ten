@@ -34,7 +34,7 @@ export default function Footer() {
         <div className="flex items-center space-x-4 pr-2">
           {SOCIAL_LINKS.map((item, index) => (
             <a
-              key={index}
+              key={item.name}
               href={item.href}
               aria-label={item.name}
               target="_blank"
