@@ -161,8 +161,6 @@ func (s *Simulation) bridgeFundingToObscuro() {
 		transactions = append(transactions, tx)
 	}
 
-	// time.Sleep(3 * time.Second)
-	// todo - fix the wait group, for whatever reason it does not find a receipt...
 	wg := sync.WaitGroup{}
 	for _, tx := range transactions {
 		wg.Add(1)
