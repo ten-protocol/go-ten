@@ -79,10 +79,15 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 		return nil, err
 	}
 
+	tailSize := "3"
+	if n.cfg.debugEnabled {
+		tailSize = "4"
+	}
+
 	logsOptions := types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
-		Tail:       "4",
+		Tail:       tailSize,
 	}
 
 	// Read the container logs
@@ -104,7 +109,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	fmt.Printf("L2 Deployer output %s\n", output)
 
 	lines := strings.Split(output, "\n")
-	
+
 	if n.cfg.debugEnabled {
 		// remove debugger lines
 		lines = lines[:len(lines)-2]
