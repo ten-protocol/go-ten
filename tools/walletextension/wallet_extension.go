@@ -2,32 +2,31 @@ package walletextension
 
 import (
 	"bytes"
-	"crypto/ecdsa"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/tools/walletextension/accountmanager"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
+	"github.com/ten-protocol/go-ten/tools/walletextension/config"
+
+	"github.com/ten-protocol/go-ten/go/common/log"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/useraccountmanager"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
-	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/storage"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
+	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
+	"github.com/ten-protocol/go-ten/tools/walletextension/userconn"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
-
-var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.Subscribe)
 
 // WalletExtension handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
@@ -38,6 +37,7 @@ type WalletExtension struct {
 	logger             gethlog.Logger
 	stopControl        *stopcontrol.StopControl
 	version            string
+	config             *config.Config
 }
 
 func New(
@@ -47,6 +47,7 @@ func New(
 	stopControl *stopcontrol.StopControl,
 	version string,
 	logger gethlog.Logger,
+	config *config.Config,
 ) *WalletExtension {
 	return &WalletExtension{
 		hostAddr:           hostAddr,
@@ -56,6 +57,7 @@ func New(
 		logger:             logger,
 		stopControl:        stopControl,
 		version:            version,
+		config:             config,
 	}
 }
 
@@ -70,7 +72,7 @@ func (w *WalletExtension) Logger() gethlog.Logger {
 }
 
 // ProxyEthRequest proxys an incoming user request to the enclave
-func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, conn userconn.UserConn, hexUserID string) (map[string]interface{}, error) {
+func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userconn.UserConn, hexUserID string) (map[string]interface{}, error) {
 	response := map[string]interface{}{}
 	// all responses must contain the request id. Both successful and unsuccessful.
 	response[common.JSONKeyRPCVersion] = jsonrpc.Version
@@ -95,19 +97,21 @@ func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, co
 	}
 
 	err = selectedAccountManager.ProxyRequest(request, &rpcResp, conn)
-
-	if err != nil && !errors.Is(err, rpc.ErrNilResponse) {
-		response = common.CraftErrorResponse(err)
-	} else if errors.Is(err, rpc.ErrNilResponse) {
-		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
-		response[common.JSONKeyResult] = nil
-	} else {
-		response[common.JSONKeyResult] = rpcResp
-
-		// todo (@ziga) - fix this upstream on the decode
-		// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
-		adjustStateRoot(rpcResp, response)
+	if err != nil {
+		if errors.Is(err, rpc.ErrNilResponse) {
+			// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
+			response[common.JSONKeyResult] = nil
+			return response, nil
+		}
+		return nil, err
 	}
+
+	response[common.JSONKeyResult] = rpcResp
+
+	// todo (@ziga) - fix this upstream on the decode
+	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
+	adjustStateRoot(rpcResp, response)
+
 	return response, nil
 }
 
@@ -145,6 +149,11 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 	signature[64] -= 27
 
 	vk.Signature = signature
+
+	err := w.storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
+	if err != nil {
+		return fmt.Errorf("error saving user: %s", common.DefaultUser)
+	}
 	// create an encrypted RPC client with the signed VK and register it with the enclave
 	// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
 	client, err := rpc.NewEncNetworkClient(w.hostAddr, vk, w.logger)
@@ -157,11 +166,6 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 	}
 
 	defaultAccountManager.AddClient(address, client)
-
-	err = w.storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
-	if err != nil {
-		return fmt.Errorf("error saving user: %s", common.DefaultUser)
-	}
 
 	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.Signature)
 	if err != nil {
@@ -189,7 +193,7 @@ func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
 	}
 
 	// create UserID and store it in the database with the private key
-	userID := common.CalculateUserID(common.PrivateKeyToCompressedPubKey(viewingPrivateKeyEcies))
+	userID := viewingkey.CalculateUserID(common.PrivateKeyToCompressedPubKey(viewingPrivateKeyEcies))
 	err = w.storage.AddUser(userID, crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
 	if err != nil {
 		w.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))
@@ -203,28 +207,13 @@ func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
 	return hexUserID, nil
 }
 
-// AddAddressToUser checks if message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
-func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, signature []byte) error {
-	// parse the message to get userID and account address
-	messageUserID, messageAddressHex, err := common.GetUserIDAndAddressFromMessage(message)
-	if err != nil {
-		w.Logger().Error(fmt.Errorf("submitted message (%s) is not in the correct format", message).Error())
-		return err
-	}
-
-	// check if userID corresponds to the one in the message and check if the length of hex encoded userID is correct
-	if hexUserID != messageUserID || len(messageUserID) != common.MessageUserIDLen {
-		w.Logger().Error(fmt.Errorf("submitted message (%s) is not in the correct format", message).Error())
-		return errors.New("userID from message does not match userID from request")
-	}
-
-	addressFromMessage := gethcommon.HexToAddress(messageAddressHex)
-
-	// check if message was signed by the correct address and if signature is valid
-	valid, err := verifySignature(message, signature, addressFromMessage)
+// AddAddressToUser checks if a message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
+func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, signature []byte) error {
+	addressFromMessage := gethcommon.HexToAddress(address)
+	// check if a message was signed by the correct address and if the signature is valid
+	valid, err := viewingkey.VerifySignatureEIP712(hexUserID, &addressFromMessage, signature, int64(w.config.TenChainID))
 	if !valid && err != nil {
-		w.Logger().Error(fmt.Errorf("error: signature is not valid: %s", string(signature)).Error())
-		return err
+		return fmt.Errorf("signature is not valid: %w", err)
 	}
 
 	// register the account for that viewing key
@@ -250,6 +239,7 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, sig
 	encClient, err := common.CreateEncClient(w.hostAddr, addressFromMessage.Bytes(), privateKeyBytes, signature, w.Logger())
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error creating encrypted client for user: (%s), %w", hexUserID, err).Error())
+		return fmt.Errorf("error creating encrypted client for user: (%s), %w", hexUserID, err)
 	}
 
 	accManager.AddClient(addressFromMessage, encClient)
@@ -328,44 +318,6 @@ func (w *WalletExtension) UserExists(hexUserID string) bool {
 	return len(key) > 0
 }
 
-// verifySignature checks if a message was signed by the correct address and if signature is valid
-func verifySignature(message string, signature []byte, address gethcommon.Address) (bool, error) {
-	// prefix the message like in the personal_sign method
-	prefixedMessage := fmt.Sprintf(common.PersonalSignMessagePrefix, len(message), message)
-	messageHash := crypto.Keccak256([]byte(prefixedMessage))
-
-	// check if the signature length is correct
-	if len(signature) != common.SignatureLen {
-		return false, errors.New("incorrect signature length")
-	}
-
-	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
-	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-	signature[64] -= 27
-
-	addressFromSignature, pubKeyFromSignature, err := common.GetAddressAndPubKeyFromSignature(messageHash, signature)
-	if err != nil {
-		return false, err
-	}
-
-	if !bytes.Equal(addressFromSignature.Bytes(), address.Bytes()) {
-		return false, errors.New("address from signature not the same as expected")
-	}
-
-	// Split signature into r, s
-	r := new(big.Int).SetBytes(signature[:32])
-	s := new(big.Int).SetBytes(signature[32:64])
-
-	// Verify the signature
-	isValid := ecdsa.Verify(pubKeyFromSignature, messageHash, r, s)
-
-	if !isValid {
-		return false, errors.New("signature is not valid")
-	}
-
-	return true, nil
-}
-
 func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
 	if resultMap, ok := rpcResp.(map[string]interface{}); ok {
 		if val, foundRoot := resultMap[common.JSONKeyRoot]; foundRoot {
@@ -378,7 +330,7 @@ func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
 
 // getStorageAtInterceptor checks if the parameters for getStorageAt are set to values that require interception
 // and return response or nil if the gateway should forward the request to the node.
-func (w *WalletExtension) getStorageAtInterceptor(request *accountmanager.RPCRequest, hexUserID string) map[string]interface{} {
+func (w *WalletExtension) getStorageAtInterceptor(request *common.RPCRequest, hexUserID string) map[string]interface{} {
 	// check if parameters are correct, and we can intercept a request, otherwise return nil
 	if w.checkParametersForInterceptedGetStorageAt(request.Params) {
 		// check if userID in the parameters is also in our database
@@ -386,6 +338,15 @@ func (w *WalletExtension) getStorageAtInterceptor(request *accountmanager.RPCReq
 		if err != nil {
 			w.logger.Warn("GetStorageAt called with appropriate parameters to return userID, but not found in the database: ", "userId", hexUserID)
 			return nil
+		}
+
+		// check if we have default user (we don't want to send userID of it out)
+		if hexUserID == hex.EncodeToString([]byte(common.DefaultUser)) {
+			response := map[string]interface{}{}
+			response[common.JSONKeyRPCVersion] = jsonrpc.Version
+			response[common.JSONKeyID] = request.ID
+			response[common.JSONKeyResult] = fmt.Sprintf(accountmanager.ErrNoViewingKey, "eth_getStorageAt")
+			return response
 		}
 
 		_, err = w.storage.GetUserPrivateKey(userID)

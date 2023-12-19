@@ -24,16 +24,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/migration"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/enclave/storage/init/migration"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
+	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/obscuronet/go-obscuro/go/common/httputil"
+	"github.com/ten-protocol/go-ten/go/common/httputil"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/core/egoutils"
+	"github.com/ten-protocol/go-ten/go/enclave/core/egoutils"
 
 	"github.com/go-sql-driver/mysql"
 )

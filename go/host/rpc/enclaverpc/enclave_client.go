@@ -8,20 +8,20 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/measure"
-	"github.com/obscuronet/go-obscuro/go/common/retry"
-	"github.com/obscuronet/go-obscuro/go/common/rpc"
-	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
-	"github.com/obscuronet/go-obscuro/go/common/syserr"
-	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/responses"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/common/rpc"
+	"github.com/ten-protocol/go-ten/go/common/rpc/generated"
+	"github.com/ten-protocol/go-ten/go/common/syserr"
+	"github.com/ten-protocol/go-ten/go/common/tracers"
+	"github.com/ten-protocol/go-ten/go/config"
+	"github.com/ten-protocol/go-ten/go/responses"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -399,13 +399,13 @@ func (c *Client) HealthCheck() (bool, common.SystemError) {
 	return response.Status, nil
 }
 
-func (c *Client) CreateBatch() common.SystemError {
+func (c *Client) CreateBatch(skipIfEmpty bool) common.SystemError {
 	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "CreateBatch rpc call")
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.CreateBatch(timeoutCtx, &generated.CreateBatchRequest{})
+	response, err := c.protoClient.CreateBatch(timeoutCtx, &generated.CreateBatchRequest{SkipIfEmpty: skipIfEmpty})
 	if err != nil {
 		return syserr.NewInternalError(err)
 	}
@@ -597,4 +597,20 @@ func (c *Client) GetPublicTransactionData(pagination *common.QueryPagination) (*
 	}
 
 	return &result, nil
+}
+
+func (c *Client) EnclavePublicConfig() (*common.EnclavePublicConfig, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.EnclavePublicConfig(timeoutCtx, &generated.EnclavePublicConfigRequest{})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+	return &common.EnclavePublicConfig{
+		L2MessageBusAddress: gethcommon.BytesToAddress(response.L2MessageBusAddress),
+	}, nil
 }

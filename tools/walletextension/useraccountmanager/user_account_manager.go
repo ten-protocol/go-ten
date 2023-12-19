@@ -1,23 +1,31 @@
 package useraccountmanager
 
 import (
+	"encoding/hex"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/tools/walletextension/accountmanager"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
 
 type UserAccountManager struct {
 	userAccountManager    map[string]*accountmanager.AccountManager
 	unauthenticatedClient rpc.Client
+	storage               storage.Storage
+	hostRPCBinAddr        string
 	logger                gethlog.Logger
 }
 
-func NewUserAccountManager(unauthenticatedClient rpc.Client, logger gethlog.Logger) UserAccountManager {
+func NewUserAccountManager(unauthenticatedClient rpc.Client, logger gethlog.Logger, storage storage.Storage, hostRPCBindAddr string) UserAccountManager {
 	return UserAccountManager{
 		userAccountManager:    make(map[string]*accountmanager.AccountManager),
 		unauthenticatedClient: unauthenticatedClient,
+		storage:               storage,
+		hostRPCBinAddr:        hostRPCBindAddr,
 		logger:                logger,
 	}
 }
@@ -34,14 +42,62 @@ func (m *UserAccountManager) AddAndReturnAccountManager(userID string) *accountm
 }
 
 // GetUserAccountManager retrieves the UserAccountManager associated with the given userID.
-// It returns the UserAccountManager and nil error if one exists.
+// it returns the UserAccountManager and nil error if one exists.
+// before returning it checks the database and creates all missing clients for that userID
+// (we are not loading all of them at startup to limit the number of established connections)
 // If a UserAccountManager does not exist for the userID, it returns nil and an error.
 func (m *UserAccountManager) GetUserAccountManager(userID string) (*accountmanager.AccountManager, error) {
 	userAccManager, exists := m.userAccountManager[userID]
-	if exists {
+	if !exists {
+		return nil, fmt.Errorf("UserAccountManager doesn't exist for user: %s", userID)
+	}
+
+	// we have userAccountManager as expected.
+	// now we need to create all clients that don't exist there yet
+	addressesWithClients := userAccManager.GetAllAddressesWithClients()
+
+	// get all addresses for current userID
+	userIDbytes, err := hex.DecodeString(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// log that we don't have a storage, but still return existing userAccountManager
+	// this should never happen, but is useful for tests
+	if m.storage == nil {
+		m.logger.Error("storage is nil in UserAccountManager")
 		return userAccManager, nil
 	}
-	return nil, fmt.Errorf("UserAccountManager doesn't exist for user: %s", userID)
+
+	databaseAccounts, err := m.storage.GetAccounts(userIDbytes)
+	if err != nil {
+		return nil, err
+	}
+
+	userPrivateKey, err := m.storage.GetUserPrivateKey(userIDbytes)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, account := range databaseAccounts {
+		addressHexString := common.BytesToAddress(account.AccountAddress).Hex()
+		// check if a client for the current address already exists (and skip it if it does)
+		if addressAlreadyExists(addressHexString, addressesWithClients) {
+			continue
+		}
+
+		// create a new client
+		encClient, err := wecommon.CreateEncClient(m.hostRPCBinAddr, account.AccountAddress, userPrivateKey, account.Signature, m.logger)
+		if err != nil {
+			m.logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
+		}
+
+		// add a client to requested userAccountManager
+		userAccManager.AddClient(common.BytesToAddress(account.AccountAddress), encClient)
+		addressesWithClients = append(addressesWithClients, addressHexString)
+	}
+
+	return userAccManager, nil
 }
 
 // DeleteUserAccountManager removes the UserAccountManager associated with the given userID.
@@ -53,4 +109,14 @@ func (m *UserAccountManager) DeleteUserAccountManager(userID string) error {
 	}
 	delete(m.userAccountManager, userID)
 	return nil
+}
+
+// addressAlreadyExists is a helper function to check if an address is already present in a list of existing addresses
+func addressAlreadyExists(str string, list []string) bool {
+	for _, v := range list {
+		if v == str {
+			return true
+		}
+	}
+	return false
 }

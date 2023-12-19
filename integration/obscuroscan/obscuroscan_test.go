@@ -12,25 +12,25 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/config"
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/container"
 	"github.com/stretchr/testify/require"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/go/enclave/genesis"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
+	"github.com/ten-protocol/go-ten/tools/obscuroscan_v2/backend/config"
+	"github.com/ten-protocol/go-ten/tools/obscuroscan_v2/backend/container"
 	"github.com/valyala/fasthttp"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/stretchr/testify/assert"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
 )
 
 func init() { //nolint:gochecknoinits
@@ -47,12 +47,12 @@ const (
 )
 
 func TestObscuroscan(t *testing.T) {
-	startPort := integration.StartPortObscuroscanUnitTest
+	startPort := integration.StartPortTenscanUnitTest
 	createObscuroNetwork(t, startPort)
 
 	obsScanConfig := &config.Config{
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
-		ServerAddress:   fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultObscuroscanHTTPPortOffset),
+		ServerAddress:   fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultTenscanHTTPPortOffset),
 		LogPath:         "sys_out",
 	}
 	serverAddress := fmt.Sprintf("http://%s", obsScanConfig.ServerAddress)
@@ -73,7 +73,7 @@ func TestObscuroscan(t *testing.T) {
 	issueTransactions(
 		t,
 		fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
-		wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger()),
+		wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.TenChainID, testlog.Logger()),
 		5,
 	)
 
@@ -81,7 +81,7 @@ func TestObscuroscan(t *testing.T) {
 	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "{\"count\":1}", string(body))
+	assert.Equal(t, "{\"count\":2}", string(body))
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/count/transactions/", serverAddress))
 	assert.NoError(t, err)
@@ -120,8 +120,8 @@ func TestObscuroscan(t *testing.T) {
 	publicTxsObj := publicTxsRes{}
 	err = json.Unmarshal(body, &publicTxsObj)
 	assert.NoError(t, err)
-	assert.Equal(t, 5, len(publicTxsObj.Result.TransactionsData))
-	assert.Equal(t, uint64(5), publicTxsObj.Result.Total)
+	assert.Equal(t, 6, len(publicTxsObj.Result.TransactionsData))
+	assert.Equal(t, uint64(6), publicTxsObj.Result.Total)
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batches/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)
@@ -136,6 +136,10 @@ func TestObscuroscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.LessOrEqual(t, 9, len(batchlistingObj.Result.BatchesData))
 	assert.LessOrEqual(t, uint64(9), batchlistingObj.Result.Total)
+	// check results are descending order (latest first)
+	assert.LessOrEqual(t, batchlistingObj.Result.BatchesData[1].Number.Cmp(batchlistingObj.Result.BatchesData[0].Number), 0)
+	// check "hash" field is included in json response
+	assert.Contains(t, string(body), "\"hash\"")
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/blocks/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)
@@ -203,7 +207,7 @@ func waitServerIsReady(serverAddr string) error {
 // Creates a single-node Obscuro network for testing.
 func createObscuroNetwork(t *testing.T, startPort int) {
 	// Create the Obscuro network.
-	wallets := params.NewSimWallets(1, 1, integration.EthereumChainID, integration.ObscuroChainID)
+	wallets := params.NewSimWallets(1, 1, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
 		NumberOfNodes:    1,
 		AvgBlockDuration: 1 * time.Second,
@@ -235,16 +239,17 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 	assert.Nil(t, err)
 
 	if balance.Cmp(big.NewInt(0)) <= 0 {
-		t.Errorf("not enough balance: has %s has %s obx", issuerWallet.Address().Hex(), balance.String())
+		t.Errorf("not enough balance: has %s has %s ten", issuerWallet.Address().Hex(), balance.String())
 	}
+
+	nonce, err := authClient.NonceAt(ctx, nil)
+	assert.Nil(t, err)
+	issuerWallet.SetNonce(nonce)
 
 	var receipts []gethcommon.Hash
 	for i := 0; i < numbTxs; i++ {
 		toAddr := datagenerator.RandomAddress()
-		nonce, err := authClient.NonceAt(ctx, nil)
-		assert.Nil(t, err)
 
-		issuerWallet.SetNonce(nonce)
 		estimatedTx := authClient.EstimateGasAndGasPrice(&types.LegacyTx{
 			Nonce:    issuerWallet.GetNonceAndIncrement(),
 			To:       &toAddr,

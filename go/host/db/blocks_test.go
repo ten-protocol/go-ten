@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/core/types"
 )

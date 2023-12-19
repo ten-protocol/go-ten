@@ -1,14 +1,24 @@
 package env
 
 import (
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
+	"github.com/ten-protocol/go-ten/go/enclave/genesis"
+	"github.com/ten-protocol/go-ten/integration/networktest"
 )
+
+func SepoliaTestnet() networktest.Environment {
+	connector := NewTestnetConnector(
+		"http://erpc.sepolia-testnet.obscu.ro:80", // this is actually a validator...
+		[]string{"http://erpc.sepolia-testnet.obscu.ro:80"},
+		"http://sepolia-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
+		"https://rpc.sepolia.org/",
+	)
+	return &testnetEnv{connector}
+}
 
 func Testnet() networktest.Environment {
 	connector := NewTestnetConnector(
-		"http://erpc.testnet.obscu.ro:80",
-		[]string{"http://erpc.testnet.obscu.ro:80"}, // for now we'll just use sequencer as validator node... todo (@matt)
+		"http://erpc.uat-testnet.obscu.ro:80", // this is actually a validator...
+		[]string{"http://erpc.uat-testnet.obscu.ro:80"},
 		"http://testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000",
 	)
@@ -17,8 +27,8 @@ func Testnet() networktest.Environment {
 
 func DevTestnet() networktest.Environment {
 	connector := NewTestnetConnector(
-		"http://erpc.dev-testnet.obscu.ro:80",
-		[]string{"http://erpc.dev-testnet.obscu.ro:80"}, // for now we'll just use sequencer as validator node... todo (@matt)
+		"http://erpc.dev-testnet.obscu.ro:80", // this is actually a validator...
+		[]string{"http://erpc.dev-testnet.obscu.ro:80"},
 		"http://dev-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
 	)

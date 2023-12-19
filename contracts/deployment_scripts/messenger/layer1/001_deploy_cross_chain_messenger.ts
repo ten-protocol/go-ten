@@ -13,16 +13,35 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const { deployer } = await hre.companionNetworks.layer1.getNamedAccounts();
 
-    // Read the message bus address from the management contract deployment.
+    // Use the contract addresses from the management contract deployment.
+    const mgmtContractAddress = process.env.MGMT_CONTRACT_ADDRESS!!
     const messageBusAddress : string = process.env.MESSAGE_BUS_ADDRESS!!
+    console.log(`Management Contract address ${mgmtContractAddress}`);
     console.log(`Message Bus address ${messageBusAddress}`);
 
     // Setup the cross chain messenger and point it to the message bus from the management contract to be used for validation
-    await deployments.deploy('CrossChainMessenger', {
+    const crossChainDeployment = await deployments.deploy('CrossChainMessenger', {
         from: deployer,
-        args: [ messageBusAddress ],
         log: true,
+        proxy: {
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: [ messageBusAddress ]
+                }
+            }
+        }
     });
+
+    // get management contract and write the cross chain messenger address to it
+    const mgmtContract = (await hre.ethers.getContractFactory('ManagementContract')).attach(mgmtContractAddress)
+    const tx = await mgmtContract.SetImportantContractAddress("L1CrossChainMessenger", crossChainDeployment.address);
+    const receipt = await tx.wait();
+    if (receipt.status !== 1) {
+        console.log("Failed to set L1CrossChainMessenger in management contract");
+    }
+    console.log(`L1CrossChainMessenger=${crossChainDeployment.address}`);
 };
 
 export default func;

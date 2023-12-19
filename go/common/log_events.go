@@ -5,7 +5,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
+	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
 )
 
 // LogSubscription is an authenticated subscription to logs.

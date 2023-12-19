@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"regexp"
 	"testing"
 	"time"
 
@@ -17,22 +16,22 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"github.com/gorilla/websocket"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/container"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/config"
+	"github.com/ten-protocol/go-ten/tools/walletextension/container"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethnode "github.com/ethereum/go-ethereum/node"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
+	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
 )
 
 const jsonID = "1"
 
-func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *config.Config {
+func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *config.Config { //nolint: unparam
 	testDBPath, err := os.CreateTemp("", "")
 	if err != nil {
 		panic("could not create persistence file for wallet extension tests")
@@ -62,7 +61,7 @@ func createWalExt(t *testing.T, walExtCfg *config.Config) func() error {
 }
 
 // Creates an RPC layer that the wallet extension can connect to. Returns a handle to shut down the host.
-func createDummyHost(t *testing.T, wsRPCPort int) (*DummyAPI, func() error) {
+func createDummyHost(t *testing.T, wsRPCPort int) (*DummyAPI, func() error) { //nolint: unparam
 	dummyAPI := NewDummyAPI()
 	cfg := gethnode.Config{
 		WSHost:    common.Localhost,
@@ -125,9 +124,9 @@ func makeHTTPEthJSONReqWithPath(port int, path string) []byte {
 }
 
 // Makes an Ethereum JSON RPC request over HTTP and returns the response body with userID query paremeter.
-func makeHTTPEthJSONReqWithUserID(port int, method string, params interface{}, userID string) []byte {
+func makeHTTPEthJSONReqWithUserID(port int, method string, params interface{}, userID string) []byte { //nolint: unparam
 	reqBody := prepareRequestBody(method, params)
-	return makeRequestHTTP(fmt.Sprintf("http://%s:%d/v1/?u=%s", common.Localhost, port, userID), reqBody)
+	return makeRequestHTTP(fmt.Sprintf("http://%s:%d/v1/?token=%s", common.Localhost, port, userID), reqBody)
 }
 
 // Makes an Ethereum JSON RPC request over websockets and returns the response body.
@@ -303,50 +302,50 @@ func issueRequestWS(conn *websocket.Conn, body []byte) []byte {
 }
 
 // Reads messages from the connection for the provided duration, and returns the read messages.
-func readMessagesForDuration(t *testing.T, conn *websocket.Conn, duration time.Duration) [][]byte {
-	// We set a timeout to kill the test, in case we never receive a log.
-	timeout := time.AfterFunc(duration*3, func() {
-		t.Fatalf("timed out waiting to receive a log via the subscription")
-	})
-	defer timeout.Stop()
-
-	var msgs [][]byte
-	endTime := time.Now().Add(duration)
-	for {
-		_, msg, err := conn.ReadMessage()
-		if err != nil {
-			t.Fatalf("could not read message from websocket. Cause: %s", err)
-		}
-		msgs = append(msgs, msg)
-		if time.Now().After(endTime) {
-			return msgs
-		}
-	}
-}
+//func readMessagesForDuration(t *testing.T, conn *websocket.Conn, duration time.Duration) [][]byte {
+//	// We set a timeout to kill the test, in case we never receive a log.
+//	timeout := time.AfterFunc(duration*3, func() {
+//		t.Fatalf("timed out waiting to receive a log via the subscription")
+//	})
+//	defer timeout.Stop()
+//
+//	var msgs [][]byte
+//	endTime := time.Now().Add(duration)
+//	for {
+//		_, msg, err := conn.ReadMessage()
+//		if err != nil {
+//			t.Fatalf("could not read message from websocket. Cause: %s", err)
+//		}
+//		msgs = append(msgs, msg)
+//		if time.Now().After(endTime) {
+//			return msgs
+//		}
+//	}
+//}
 
 // Asserts that there are no duplicate logs in the provided list.
-func assertNoDupeLogs(t *testing.T, logsJSON [][]byte) {
-	logCount := make(map[string]int)
-
-	for _, logJSON := range logsJSON {
-		// Check if the log is already in the logCount map.
-		_, exist := logCount[string(logJSON)]
-		if exist {
-			logCount[string(logJSON)]++ // If it is, increase the count for that log by one.
-		} else {
-			logCount[string(logJSON)] = 1 // Otherwise, start a count for that log starting at one.
-		}
-	}
-
-	for logJSON, count := range logCount {
-		if count > 1 {
-			t.Errorf("received duplicate log with body %s", logJSON)
-		}
-	}
-}
+//func assertNoDupeLogs(t *testing.T, logsJSON [][]byte) {
+//	logCount := make(map[string]int)
+//
+//	for _, logJSON := range logsJSON {
+//		// Check if the log is already in the logCount map.
+//		_, exist := logCount[string(logJSON)]
+//		if exist {
+//			logCount[string(logJSON)]++ // If it is, increase the count for that log by one.
+//		} else {
+//			logCount[string(logJSON)] = 1 // Otherwise, start a count for that log starting at one.
+//		}
+//	}
+//
+//	for logJSON, count := range logCount {
+//		if count > 1 {
+//			t.Errorf("received duplicate log with body %s", logJSON)
+//		}
+//	}
+//}
 
 // Checks that the response to a request is correctly formatted, and returns the result field.
-func validateJSONResponse(t *testing.T, resp []byte) interface{} {
+func validateJSONResponse(t *testing.T, resp []byte) {
 	var respJSON map[string]interface{}
 	err := json.Unmarshal(resp, &respJSON)
 	if err != nil {
@@ -366,16 +365,14 @@ func validateJSONResponse(t *testing.T, resp []byte) interface{} {
 	if result == nil {
 		t.Fatalf("response did not contain `result` field")
 	}
-
-	return result
 }
 
 // Checks that the response to a subscription request is correctly formatted.
-func validateSubscriptionResponse(t *testing.T, resp []byte) {
-	result := validateJSONResponse(t, resp)
-	pattern := "0x.*"
-	resultString, ok := result.(string)
-	if !ok || !regexp.MustCompile(pattern).MatchString(resultString) {
-		t.Fatalf("subscription response did not contain expected result. Expected pattern matching %s, got %s", pattern, resultString)
-	}
-}
+//func validateSubscriptionResponse(t *testing.T, resp []byte) {
+//	result := validateJSONResponse(t, resp)
+//	pattern := "0x.*"
+//	resultString, ok := result.(string)
+//	if !ok || !regexp.MustCompile(pattern).MatchString(resultString) {
+//		t.Fatalf("subscription response did not contain expected result. Expected pattern matching %s, got %s", pattern, resultString)
+//	}
+//}

@@ -14,15 +14,16 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
-	"github.com/obscuronet/go-obscuro/go/responses"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
+	"github.com/ten-protocol/go-ten/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const (
 	l2ChainIDHex         = "0x309"
+	l2ChainIDDecimal     = 443
 	enclavePrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
 )
 
@@ -171,7 +172,7 @@ func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (*responses.Enclave
 		return responses.AsEmptyResponse(), fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
 
-	encryptor, err := vkhandler.New(api.address, api.viewingKey, api.signature)
+	encryptor, err := vkhandler.New(api.address, api.viewingKey, api.signature, l2ChainIDDecimal)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create vk encryption for request - %w", err)
 	}

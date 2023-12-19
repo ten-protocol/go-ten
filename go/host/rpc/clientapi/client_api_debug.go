@@ -3,8 +3,8 @@ package clientapi
 import (
 	"context"
 
-	"github.com/obscuronet/go-obscuro/go/common/host"
-	"github.com/obscuronet/go-obscuro/go/common/tracers"
+	"github.com/ten-protocol/go-ten/go/common/host"
+	"github.com/ten-protocol/go-ten/go/common/tracers"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

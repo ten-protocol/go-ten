@@ -12,21 +12,21 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
-	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
+	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/erc20contract"
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
 )
 
 const (
@@ -56,7 +56,8 @@ func (s *Simulation) Start() {
 	s.waitForObscuroGenesisOnL1()
 
 	// Arbitrary sleep to wait for RPC clients to get up and running
-	time.Sleep(1 * time.Second)
+	// and for all l2 nodes to receive the genesis l2 batch
+	time.Sleep(2 * time.Second)
 
 	s.bridgeFundingToObscuro()
 	s.trackLogs()              // Create log subscriptions, to validate that they're working correctly later.
@@ -139,16 +140,14 @@ func (s *Simulation) bridgeFundingToObscuro() {
 		gethcommon.HexToAddress("0xDEe530E22045939e6f6a0A593F829e35A140D3F1"),
 	}
 
-	ethClient := s.RPCHandles.RndEthClient()
-
-	busCtr, err := MessageBus.NewMessageBus(destAddr, ethClient.EthClient())
+	busCtr, err := MessageBus.NewMessageBus(destAddr, s.RPCHandles.RndEthClient().EthClient())
 	if err != nil {
 		panic(err)
 	}
 
 	transactions := make(types.Transactions, 0)
-	for idx, wallet := range wallets {
-		opts, err := bind.NewKeyedTransactorWithChainID(wallet.PrivateKey(), wallet.ChainID())
+	for idx, w := range wallets {
+		opts, err := bind.NewKeyedTransactorWithChainID(w.PrivateKey(), w.ChainID())
 		if err != nil {
 			panic(err)
 		}
@@ -167,7 +166,7 @@ func (s *Simulation) bridgeFundingToObscuro() {
 		transaction := tx
 		go func() {
 			defer wg.Done()
-			err := testcommon.AwaitReceiptEth(s.RPCHandles.RndEthClient(), transaction.Hash(), 2*time.Minute)
+			_, err := testcommon.AwaitReceiptEth(context.Background(), s.RPCHandles.RndEthClient().EthClient(), transaction.Hash(), 2*time.Minute)
 			if err != nil {
 				panic(err)
 			}
@@ -231,6 +230,7 @@ func (s *Simulation) deployObscuroERC20s() {
 				Gas:       1025_000_000,
 				GasFeeCap: gethcommon.Big1, // This field is used to derive the gas price for dynamic fee transactions.
 				Data:      contractBytes,
+				GasTipCap: gethcommon.Big1,
 			}
 
 			signedTx, err := owner.SignTransaction(&deployContractTx)
@@ -289,7 +289,7 @@ func (s *Simulation) prefundL1Accounts() {
 func (s *Simulation) checkHealthStatus() {
 	for _, client := range s.RPCHandles.ObscuroClients {
 		if healthy, err := client.Health(); !healthy || err != nil {
-			panic("Client is not healthy")
+			panic("Client is not healthy: " + err.Error())
 		}
 	}
 }

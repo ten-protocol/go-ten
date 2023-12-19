@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/obsclient"
 
-	"github.com/obscuronet/go-obscuro/integration/networktest"
-	"github.com/obscuronet/go-obscuro/integration/networktest/actions"
-	"github.com/obscuronet/go-obscuro/integration/networktest/env"
+	"github.com/ten-protocol/go-ten/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest/actions"
+	"github.com/ten-protocol/go-ten/integration/networktest/env"
 )
 
 const _testTimeSpan = 120 * time.Second

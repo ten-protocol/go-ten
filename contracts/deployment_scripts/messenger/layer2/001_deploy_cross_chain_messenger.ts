@@ -11,25 +11,41 @@ import {DeployFunction} from 'hardhat-deploy/types';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { 
         deployments, 
-        getNamedAccounts
+        getNamedAccounts,
+        companionNetworks,
     } = hre;
+    // Use the contract addresses from the management contract deployment.
+    const mgmtContractAddress = process.env.MGMT_CONTRACT_ADDRESS!!
 
     // Get the prefunded L2 deployer account to use for deploying.
     const {deployer} = await getNamedAccounts();
 
-    console.log(`Deployer acc ${deployer}`);
+    console.log(`Script: 001_deploy_cross_chain_messenger.ts - address used: ${deployer}`);
 
     // TODO: Remove hardcoded L2 message bus address when properly exposed.
-    const busAddress = hre.ethers.utils.getAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b")
-
-    console.log(`Beginning deploy of cross chain messenger`);
-
+    const messageBusAddress = hre.ethers.utils.getAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b");
     // Deploy the L2 Cross chain messenger and use the L2 bus for validation
-    await deployments.deploy('CrossChainMessenger', {
+    const crossChainDeployment = await deployments.deploy('CrossChainMessenger', {
         from: deployer,
-        args: [ busAddress ],
         log: true,
+        proxy: {
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: [ messageBusAddress ]
+                }
+            }
+        }
     });
+    // get L1 management contract and write the cross chain messenger address to it
+    const mgmtContract = (await hre.ethers.getContractFactory('ManagementContract')).attach(mgmtContractAddress);
+    const tx = await mgmtContract.SetImportantContractAddress("L2CrossChainMessenger", crossChainDeployment.address);
+    const receipt = await tx.wait();
+    if (receipt.status !== 1) {
+        console.log("Failed to set L2CrossChainMessenger in management contract");
+    }
+    console.log(`L2CrossChainMessenger=${crossChainDeployment.address}`);
 };
 
 export default func;

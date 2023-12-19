@@ -7,30 +7,32 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/go-obscuro/go/host/l1"
+	"github.com/ten-protocol/go-ten/go/host/l1"
 
-	"github.com/obscuronet/go-obscuro/go/host"
+	"github.com/ten-protocol/go-ten/go/host"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/sqlite"
+	"github.com/ten-protocol/go-ten/go/enclave/storage/init/sqlite"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/metrics"
-	"github.com/obscuronet/go-obscuro/go/config"
-	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
-	"github.com/obscuronet/go-obscuro/go/host/p2p"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/metrics"
+	"github.com/ten-protocol/go-ten/go/config"
+	enclavecontainer "github.com/ten-protocol/go-ten/go/enclave/container"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
+	"github.com/ten-protocol/go-ten/go/host/p2p"
+	"github.com/ten-protocol/go-ten/go/host/rpc/clientrpc"
+	"github.com/ten-protocol/go-ten/go/host/rpc/enclaverpc"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
+
+	integrationCommon "github.com/ten-protocol/go-ten/integration/common"
 )
 
 // InMemNodeOperator represents an Obscuro node playing a role in a DevSimulation
@@ -123,7 +125,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		ManagementContractAddress: n.l1Data.MgmtContractAddress,
 		MessageBusAddress:         n.l1Data.MessageBusAddr,
 		L1ChainID:                 integration.EthereumChainID,
-		ObscuroChainID:            integration.ObscuroChainID,
+		ObscuroChainID:            integration.TenChainID,
 		L1StartHash:               n.l1Data.ObscuroStartBlock,
 		SequencerID:               n.config.SequencerID,
 		UseInMemoryDB:             false,
@@ -158,7 +160,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 	hostPort := n.config.PortStart + integration.DefaultHostP2pOffset + n.operatorIdx
 	hostAddr := fmt.Sprintf("%s:%d", network.Localhost, hostPort)
 
-	defaultCfg := config.DefaultEnclaveConfig()
+	defaultCfg := integrationCommon.DefaultEnclaveConfig()
 
 	enclaveConfig := &config.EnclaveConfig{
 		HostID:                    n.l1Wallet.Address(),
@@ -167,7 +169,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 		Address:                   enclaveAddr,
 		NodeType:                  n.nodeType,
 		L1ChainID:                 integration.EthereumChainID,
-		ObscuroChainID:            integration.ObscuroChainID,
+		ObscuroChainID:            integration.TenChainID,
 		ValidateL1Blocks:          false,
 		WillAttest:                false,
 		GenesisJSON:               nil,

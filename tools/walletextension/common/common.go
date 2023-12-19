@@ -1,22 +1,18 @@
 package common
 
 import (
-	"crypto/ecdsa"
 	"encoding/hex"
-	"errors"
+	"encoding/json"
 	"fmt"
-	"regexp"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
-	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/go/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
-
-var authenticateMessageRegex = regexp.MustCompile(MessageFormatRegex)
 
 // PrivateKeyToCompressedPubKey converts *ecies.PrivateKey to compressed PubKey ([]byte with length 33)
 func PrivateKeyToCompressedPubKey(prvKey *ecies.PrivateKey) []byte {
@@ -34,30 +30,6 @@ func BytesToPrivateKey(keyBytes []byte) (*ecies.PrivateKey, error) {
 
 	eciesPrivateKey := ecies.ImportECDSA(ecdsaPrivateKey)
 	return eciesPrivateKey, nil
-}
-
-// CalculateUserID calculates userID from public key
-func CalculateUserID(publicKeyBytes []byte) []byte {
-	return crypto.Keccak256Hash(publicKeyBytes).Bytes()
-}
-
-// GetUserIDAndAddressFromMessage checks if message is in correct format and extracts userID and address from it
-func GetUserIDAndAddressFromMessage(message string) (string, string, error) {
-	if authenticateMessageRegex.MatchString(message) {
-		params := authenticateMessageRegex.FindStringSubmatch(message)
-		return params[1], params[2], nil
-	}
-	return "", "", errors.New("invalid message format")
-}
-
-// GetAddressAndPubKeyFromSignature gets an address that was used to sign given signature
-func GetAddressAndPubKeyFromSignature(messageHash []byte, signature []byte) (gethcommon.Address, *ecdsa.PublicKey, error) {
-	pubKey, err := crypto.SigToPub(messageHash, signature)
-	if err != nil {
-		return gethcommon.Address{}, nil, err
-	}
-
-	return crypto.PubkeyToAddress(*pubKey), pubKey, nil
 }
 
 // GetUserIDbyte converts userID from string to correct byte format
@@ -90,4 +62,19 @@ func CreateEncClient(
 		return nil, fmt.Errorf("unable to create EncRPCClient: %w", err)
 	}
 	return encClient, nil
+}
+
+type RPCRequest struct {
+	ID     json.RawMessage
+	Method string
+	Params []interface{}
+}
+
+// Clone returns a new instance of the *RPCRequest
+func (r *RPCRequest) Clone() *RPCRequest {
+	return &RPCRequest{
+		ID:     r.ID,
+		Method: r.Method,
+		Params: r.Params,
+	}
 }

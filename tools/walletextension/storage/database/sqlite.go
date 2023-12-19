@@ -6,11 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
-	obscurocommon "github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	obscurocommon "github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
-	common "github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	common "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 type SqliteDatabase struct {
@@ -39,7 +39,7 @@ func NewSqliteDatabase(dbPath string) (*SqliteDatabase, error) {
 
 	// create users table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
-		user_id binary(32) PRIMARY KEY,
+		user_id binary(20) PRIMARY KEY,
 		private_key binary(32)
 	);`)
 
@@ -49,7 +49,7 @@ func NewSqliteDatabase(dbPath string) (*SqliteDatabase, error) {
 
 	// create accounts table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS accounts (
-		user_id binary(32),
+		user_id binary(20),
 		account_address binary(20),
 		signature binary(65),
     	FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE

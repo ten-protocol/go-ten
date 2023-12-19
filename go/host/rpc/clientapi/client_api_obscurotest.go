@@ -1,7 +1,7 @@
 package clientapi
 
 import (
-	"github.com/obscuronet/go-obscuro/go/common/container"
+	"github.com/ten-protocol/go-ten/go/common/container"
 )
 
 // TestAPI implements JSON RPC operations required for testing.

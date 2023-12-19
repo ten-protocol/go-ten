@@ -8,8 +8,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/gas"
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/gas"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -19,15 +19,17 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/measure"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
-	"github.com/obscuronet/go-obscuro/go/enclave/evm"
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
+	"github.com/ten-protocol/go-ten/go/enclave/evm"
+	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 )
+
+var ErrNoTransactionsToProcess = fmt.Errorf("no transactions to process")
 
 // batchExecutor - the component responsible for executing batches
 type batchExecutor struct {
@@ -128,7 +130,7 @@ func (executor *batchExecutor) refundL1Fees(stateDB *state.StateDB, context *Bat
 	}
 }
 
-func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
+func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) { //nolint:gocognit
 	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
 
 	// sanity check that the l1 block exists. We don't have to execute batches of forks.
@@ -206,10 +208,20 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 		return nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
 	}
 
-	executor.populateHeader(&copyBatch, allReceipts(txReceipts, ccReceipts))
+	allReceipts := append(txReceipts, ccReceipts...)
+	executor.populateHeader(&copyBatch, allReceipts)
+	if failForEmptyBatch &&
+		len(txReceipts) == 0 &&
+		len(ccReceipts) == 0 &&
+		len(transactionsToProcess)-len(excludedTxs) == 0 &&
+		len(crossChainTransactions) == 0 &&
+		len(messages) == 0 &&
+		len(transfers) == 0 {
+		return nil, ErrNoTransactionsToProcess
+	}
 
 	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
-	for _, receipt := range txReceipts {
+	for _, receipt := range allReceipts {
 		receipt.BlockHash = copyBatch.Hash()
 		for _, l := range receipt.Logs {
 			l.BlockHash = copyBatch.Hash()
@@ -218,7 +230,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 
 	return &ComputedBatch{
 		Batch:    &copyBatch,
-		Receipts: txReceipts,
+		Receipts: allReceipts,
 		Commit: func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
 			executor.stateDBMutex.Lock()
 			defer executor.stateDBMutex.Unlock()
@@ -250,7 +262,7 @@ func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, 
 		SequencerNo:  batch.Header.SequencerOrderNo,
 		Creator:      batch.Header.Coinbase,
 		BaseFee:      batch.Header.BaseFee,
-	})
+	}, false) // this execution is not used when first producing a batch, we never want to fail for empty batches
 	if err != nil {
 		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
 	}
@@ -416,10 +428,6 @@ func (executor *batchExecutor) processTransactions(
 	sort.Sort(sortByTxIndex(txReceipts))
 
 	return executedTransactions, excludedTransactions, txReceipts, nil
-}
-
-func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) types.Receipts {
-	return append(txReceipts, depositReceipts...)
 }
 
 type sortByTxIndex []*types.Receipt

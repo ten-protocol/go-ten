@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/common/retry"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/obsclient"
 )
 
 var defaultTimeoutInterval = 1 * time.Second

@@ -1,13 +1,13 @@
 ---
 ---
-# Obscuro JSON-RPC API
+# Ten JSON-RPC API
 
-Obscuro supports a subset of Ethereum's [JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/). This 
+Ten supports a subset of Ethereum's [JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/). This 
 page details which JSON-RPC API methods are supported.
 
 ## Supported JSON-RPC API methods
 
-Obscuro nodes support the following JSON-RPC API methods over both HTTP and websockets:
+Ten nodes support the following JSON-RPC API methods over both HTTP and websockets:
 
 * `eth_blockNumber`
 * `eth_call`

@@ -2,23 +2,16 @@ package manualtests
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
-	"github.com/stretchr/testify/require"
-	"github.com/valyala/fasthttp"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/stretchr/testify/require"
+	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
 )
 
 func TestSubscribeToOG(t *testing.T) {
@@ -29,21 +22,17 @@ func TestSubscribeToOG(t *testing.T) {
 	ogWSAddress := "wss://dev-testnet.obscu.ro:81"
 	// ogWSAddress := "ws://51.132.131.47:81"
 
-	// join the network
-	statusCode, userID, err := fasthttp.Get(nil, fmt.Sprintf("%s/v1/join/", ogHTTPAddress))
-	require.NoError(t, err) // dialing to the given TCP address timed out
-	fmt.Println(statusCode)
-	fmt.Println(userID)
+	ogClient := lib.NewTenGatewayLibrary(ogHTTPAddress, ogWSAddress)
 
-	// sign the message
-	messagePayload := signMessage(string(userID))
+	// join the network
+	err := ogClient.Join()
+	require.NoError(t, err)
+	fmt.Println(ogClient.UserID())
 
 	// register an account
-	var regAccountResp []byte
-	regAccountResp, err = registerAccount(ogHTTPAddress, string(userID), messagePayload)
+	err = ogClient.RegisterAccount(l2Wallet.PrivateKey(), l2Wallet.Address())
 	require.NoError(t, err)
-	fmt.Println(string(regAccountResp))
-	fmt.Println(hex.EncodeToString(regAccountResp))
+	fmt.Println("Registered account: ", l2Wallet.Address().Hex())
 
 	// Using WS ->
 
@@ -80,50 +69,4 @@ func TestSubscribeToOG(t *testing.T) {
 			log.Printf("Received log in block number: %v", vLog.BlockNumber)
 		}
 	}
-}
-
-func registerAccount(baseAddress, userID, payload string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(
-		context.Background(),
-		http.MethodPost,
-		baseAddress+"/v1/authenticate/?u="+userID,
-		strings.NewReader(payload),
-	)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-
-	client := &http.Client{}
-	response, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer response.Body.Close()
-	return io.ReadAll(response.Body)
-}
-
-//	{
-//	 "signature": "0xc784adea83ed3ec60528f4747418c85abe553b35a47fd2c95425de654bb9d0d40ede24aec182e6a2ec65c0c7c6aedab7823f21a9b9f7ff5db3a77a9f90dc97b41c",
-//	 "message": "Register e097c4a10d4285d13b377985834b4c57e069b5856cc6c2cd4a038f62da4bc459 for 0x06ed49a32fcc5094abee51a4ffd46dd23b62a191"
-//	}
-func signMessage(userID string) string {
-	pk := l2Wallet.PrivateKey()
-	address := l2Wallet.Address()
-	hexAddress := address.Hex()
-
-	message := fmt.Sprintf("Register %s for %s", userID, strings.ToLower(hexAddress))
-	prefixedMessage := fmt.Sprintf(common.PersonalSignMessagePrefix, len(message), message)
-
-	messageHash := crypto.Keccak256([]byte(prefixedMessage))
-	sig, err := crypto.Sign(messageHash, pk)
-	if err != nil {
-		log.Fatalf("Failed to sign message: %v", err)
-	}
-	sig[64] += 27
-	signature := "0x" + hex.EncodeToString(sig)
-	payload := fmt.Sprintf("{\"signature\": \"%s\", \"message\": \"%s\"}", signature, message)
-	fmt.Println(payload)
-	return payload
 }

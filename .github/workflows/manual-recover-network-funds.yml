@@ -12,7 +12,7 @@ on:
         type: choice
         options:
           - 'dev-testnet'
-          - 'testnet'
+          - 'uat-testnet'
           - 'sepolia-testnet'
       mgmt_contract_addr:
         description: 'Deployed management contract which will be used to request the funds'
@@ -29,6 +29,11 @@ jobs:
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
+      - name: 'Print GitHub variables'
+        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
+        run: |
+          echo "GitHub Variables = ${{ toJSON(vars) }}"
+
       - uses: actions/checkout@v3
 
       - name: 'Login to Azure docker registry'
@@ -40,8 +45,8 @@ jobs:
 
       - name: 'Build and push docker image'
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} -f tools/hardhatdeployer/Dockerfile .
-          docker push ${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} -f tools/hardhatdeployer/Dockerfile .
+          docker push ${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }}
 
       - name: 'Deploy L2 contracts'
         id: deployL2Contracts
@@ -49,9 +54,9 @@ jobs:
         run: |
           go run ./testnet/launcher/fundsrecovery/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
-          -private_key=${{ secrets.WORKER_PK }} \
+          -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -mgmt_contract_addr=${{ github.event.inputs.mgmt_contract_addr }} \
-          -docker_image=${{vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
+          -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
           -acc_to_pay=${{ github.event.inputs.acc_to_pay }}
 
       - name: 'Save container logs on failure'

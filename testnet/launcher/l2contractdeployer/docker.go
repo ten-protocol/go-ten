@@ -9,8 +9,8 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/obscuronet/go-obscuro/go/common/docker"
 	"github.com/sanity-io/litter"
+	"github.com/ten-protocol/go-ten/go/common/docker"
 )
 
 type ContractDeployer struct {
@@ -34,6 +34,7 @@ func (n *ContractDeployer) Start() error {
 
 	envs := map[string]string{
 		"PREFUND_FAUCET_AMOUNT": n.cfg.faucetPrefundAmount,
+		"MGMT_CONTRACT_ADDRESS": n.cfg.managementContractAddress,
 		"MESSAGE_BUS_ADDRESS":   n.cfg.messageBusAddress,
 		"NETWORK_JSON": fmt.Sprintf(`
 {

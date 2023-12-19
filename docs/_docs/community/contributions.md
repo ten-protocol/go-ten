@@ -1,14 +1,14 @@
 ---
 ---
-# Contributing to Obscuro
+# Contributing to Ten
 
-Obscuro will evolve to be *the* solution for privacy on Ethereum through the strength and dedication of the Obscuro community. Together we'll make Obscuro the most community-driven project in crypto.
+Ten will evolve to be *the* solution for privacy on Ethereum through the strength and dedication of the Ten community. Together we'll make Ten the most community-driven project in crypto.
 
-As detailed in the [whitepaper](https://whitepaper.obscu.ro), Obscuro is powered by OBX, a native utility token that provides security to the Obscuro network while allowing holders to pay transaction fees.
+As detailed in the [whitepaper](https://whitepaper.obscu.ro), Ten is powered by TEN, a native utility token that provides security to the Ten network while allowing holders to pay transaction fees.
 
 2% of tokens are set aside for early contributors. Each contributor's allocation is a percentage of their total contributions against the entire community contribution.
 
-For example, suppose you contribute work worth 10 'task points' and the community as a whole contributes 200 'task points'. In that case, you'll be allocated 5% of the contributor tokens or 0.1% of all available OBX tokens. These tokens will be held and distributed to you according to the vesting schedule detailed in the [tokenomics](https://github.com/obscuronet/foundation/blob/main/token-utility-whitepaper.md). Upon vesting, they will be sent to your wallet.
+For example, suppose you contribute work worth 10 'task points' and the community as a whole contributes 200 'task points'. In that case, you'll be allocated 5% of the contributor tokens or 0.1% of all available TEN tokens. These tokens will be held and distributed to you according to the vesting schedule detailed in the [tokenomics](https://github.com/ten-protocol/foundation/blob/main/token-utility-whitepaper.md). Upon vesting, they will be sent to your wallet.
 
 To help manage contributions, we use DeWork. It's a lot like Trello but crypto-native. The DeWork board has a load of suggested tasks. Anyone can add additional tasks and manage the lifecycle through to completion. 
 Anyone in the community can suggest a task that will benefit the project and community by adding it to the community suggestions group.

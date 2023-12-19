@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest"
 	"golang.org/x/sync/errgroup"
 )
 

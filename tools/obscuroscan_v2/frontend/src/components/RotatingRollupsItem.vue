@@ -26,14 +26,9 @@ export default {
   setup() {
     const rollupsStore = useRollupStore()
 
-    // Start polling when the component is mounted
+    // Reload rollup data onMount
     onMounted(() => {
-      rollupsStore.startPolling()
-    })
-
-    // Ensure to stop polling when component is destroyed or deactivated
-    onUnmounted(() => {
-      rollupsStore.stopPolling()
+      rollupsStore.fetch()
     })
 
     return {

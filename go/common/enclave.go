@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	"github.com/obscuronet/go-obscuro/go/responses"
+	"github.com/ten-protocol/go-ten/go/common/tracers"
+	"github.com/ten-protocol/go-ten/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -111,7 +111,7 @@ type Enclave interface {
 
 	// CreateBatch - creates a new head batch extending the previous one for the latest known L1 head if the node is
 	// a sequencer. Will panic otherwise.
-	CreateBatch() SystemError
+	CreateBatch(skipIfEmpty bool) SystemError
 
 	// CreateRollup - will create a new rollup by going through the sequencer if the node is a sequencer
 	// or panic otherwise.
@@ -137,6 +137,9 @@ type EnclaveScan interface {
 
 	// GetPublicTransactionData returns a list of public transaction data
 	GetPublicTransactionData(pagination *QueryPagination) (*TransactionListingResponse, SystemError)
+
+	// EnclavePublicConfig returns network data that is known to the enclave but can be shared publicly
+	EnclavePublicConfig() (*EnclavePublicConfig, SystemError)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
@@ -150,4 +153,8 @@ type ProducedSecretResponse struct {
 	Secret      []byte
 	RequesterID gethcommon.Address
 	HostAddress string
+}
+
+type EnclavePublicConfig struct {
+	L2MessageBusAddress gethcommon.Address
 }

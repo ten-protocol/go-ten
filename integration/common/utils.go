@@ -9,20 +9,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/retry"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 
-	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/obsclient"
 
-	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/ten-protocol/go-ten/go/wallet"
 
-	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/ten-protocol/go-ten/go/rpc"
 )
 
-var _awaitReceiptPollingInterval = 100 * time.Millisecond
+var _awaitReceiptPollingInterval = 200 * time.Millisecond
 
 func RndBtw(min uint64, max uint64) uint64 {
 	if min >= max {
@@ -38,6 +39,7 @@ func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
 	return time.Duration(RndBtw(uint64(min.Nanoseconds()), uint64(max.Nanoseconds()))) * time.Nanosecond
 }
 
+/*
 func AwaitReceiptEth(client ethadapter.EthClient, txHash gethcommon.Hash, timeout time.Duration) error {
 	var receipt *types.Receipt
 	var err error
@@ -58,7 +60,7 @@ func AwaitReceiptEth(client ethadapter.EthClient, txHash gethcommon.Hash, timeou
 	}
 
 	return nil
-}
+}*/
 
 // AwaitReceipt blocks until the receipt for the transaction with the given hash has been received. Errors if the
 // transaction is unsuccessful or times out.
@@ -82,6 +84,32 @@ func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash g
 	}
 
 	return nil
+}
+
+func AwaitReceiptEth(ctx context.Context, client *ethclient.Client, txHash gethcommon.Hash, timeout time.Duration) (*types.Receipt, error) {
+	var receipt *types.Receipt
+	var err error
+	startTime := time.Now()
+
+	fmt.Println("Fetching receipt for tx: ", txHash.Hex())
+	err = retry.Do(func() error {
+		receipt, err = client.TransactionReceipt(ctx, txHash)
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			// we only retry for a nil "not found" response. This is a different error, so we bail out of the retry loop
+			return retry.FailFast(err)
+		}
+		fmt.Println("No tx receipt after: ", time.Since(startTime))
+		return err
+	}, retry.NewTimeoutStrategy(timeout, _awaitReceiptPollingInterval))
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve receipt for transaction %s - %w", txHash.Hex(), err)
+	}
+
+	if receipt.Status == types.ReceiptStatusFailed {
+		return nil, fmt.Errorf("receipt had status failed for transaction %s", txHash.Hex())
+	}
+
+	return receipt, nil
 }
 
 // PrefundWallets sends an amount `alloc` from the faucet wallet to each listed wallet.
@@ -124,4 +152,34 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 		}(txHash)
 	}
 	wg.Wait()
+}
+
+func InteractWithSmartContract(client *ethclient.Client, wallet wallet.Wallet, contractAbi abi.ABI, methodName string, methodParam string, contractAddress gethcommon.Address) (*types.Receipt, error) {
+	contractInteractionData, err := contractAbi.Pack(methodName, methodParam)
+	if err != nil {
+		return nil, err
+	}
+
+	interactionTx := types.LegacyTx{
+		Nonce:    wallet.GetNonceAndIncrement(),
+		To:       &contractAddress,
+		Gas:      uint64(1_000_000),
+		GasPrice: gethcommon.Big1,
+		Data:     contractInteractionData,
+	}
+	signedTx, err := wallet.SignTransaction(&interactionTx)
+	if err != nil {
+		return nil, err
+	}
+	err = client.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		return nil, err
+	}
+
+	txReceipt, err := AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 2*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	return txReceipt, nil
 }

@@ -7,16 +7,16 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/components"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/enclave/components"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
 type obsValidator struct {
@@ -74,7 +74,11 @@ func (val *obsValidator) VerifySequencerSignature(b *core.Batch) error {
 }
 
 func (val *obsValidator) ExecuteStoredBatches() error {
-	batches, err := val.storage.FetchCanonicalUnexecutedBatches(val.batchRegistry.HeadBatchSeq())
+	headBatchSeq := val.batchRegistry.HeadBatchSeq()
+	if headBatchSeq == nil {
+		headBatchSeq = big.NewInt(int64(common.L2GenesisSeqNo))
+	}
+	batches, err := val.storage.FetchCanonicalUnexecutedBatches(headBatchSeq)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil
@@ -148,4 +152,8 @@ func (val *obsValidator) handleGenesis(batch *core.Batch) error {
 
 func (val *obsValidator) OnL1Block(_ types.Block, _ *components.BlockIngestionType) error {
 	return val.ExecuteStoredBatches()
+}
+
+func (val *obsValidator) Close() error {
+	return nil
 }

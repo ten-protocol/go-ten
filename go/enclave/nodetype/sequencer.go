@@ -9,25 +9,24 @@ import (
 	"sort"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/measure"
-
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
-	"github.com/obscuronet/go-obscuro/go/common/compression"
+	"github.com/ten-protocol/go-ten/go/common/compression"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/components"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
-	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/enclave/components"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
+	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 )
 
 const RollupDelay = 2 // number of L1 blocks to exclude when creating a rollup. This will minimize compression reorg issues.
@@ -53,11 +52,12 @@ type sequencer struct {
 	hostID                 gethcommon.Address
 	chainConfig            *params.ChainConfig
 	enclavePrivateKey      *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
-	mempool                mempool.Manager
+	mempool                *txpool.TxPool
 	storage                storage.Storage
 	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
+	blockchain             *ethchainadapter.EthChainAdapter
 }
 
 func NewSequencer(
@@ -67,17 +67,16 @@ func NewSequencer(
 	rollupProducer components.RollupProducer,
 	rollupConsumer components.RollupConsumer,
 	rollupCompression *components.RollupCompression,
-
 	logger gethlog.Logger,
-
 	hostID gethcommon.Address,
 	chainConfig *params.ChainConfig,
-	enclavePrivateKey *ecdsa.PrivateKey, // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
-	mempool mempool.Manager,
+	enclavePrivateKey *ecdsa.PrivateKey,
+	mempool *txpool.TxPool,
 	storage storage.Storage,
 	dataEncryptionService crypto.DataEncryptionService,
 	dataCompressionService compression.DataCompressionService,
 	settings SequencerSettings,
+	blockchain *ethchainadapter.EthChainAdapter,
 ) Sequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
@@ -95,10 +94,11 @@ func NewSequencer(
 		dataEncryptionService:  dataEncryptionService,
 		dataCompressionService: dataCompressionService,
 		settings:               settings,
+		blockchain:             blockchain,
 	}
 }
 
-func (s *sequencer) CreateBatch() error {
+func (s *sequencer) CreateBatch(skipBatchIfEmpty bool) error {
 	hasGenesis, err := s.batchRegistry.HasGenesisBatch()
 	if err != nil {
 		return fmt.Errorf("unknown genesis batch state. Cause: %w", err)
@@ -110,18 +110,28 @@ func (s *sequencer) CreateBatch() error {
 		return fmt.Errorf("failed retrieving l1 head. Cause: %w", err)
 	}
 
+	// the sequencer creates the initial genesis batch if one does not exist yet
 	if !hasGenesis {
-		return s.initGenesis(l1HeadBlock)
+		return s.createGenesisBatch(l1HeadBlock)
 	}
 
-	return s.createNewHeadBatch(l1HeadBlock)
+	if running := s.mempool.Running(); !running {
+		// the mempool can only be started after at least 1 block (the genesis) is in the blockchain object
+		// if the node restarted the mempool must be started again
+		err = s.mempool.Start()
+		if err != nil {
+			return err
+		}
+	}
+
+	return s.createNewHeadBatch(l1HeadBlock, skipBatchIfEmpty)
 }
 
 // TODO - This is iffy, the producer commits the stateDB. The producer
 // should only create batches and stateDBs but not commit them to the database,
 // this is the responsibility of the sequencer. Refactor the code so genesis state
 // won't be committed by the producer.
-func (s *sequencer) initGenesis(block *common.L1Block) error {
+func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 	s.logger.Info("Initializing genesis state", log.BlockHashKey, block.Hash())
 	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(
 		block.Hash(),
@@ -134,10 +144,6 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 		return err
 	}
 
-	if err = s.mempool.AddMempoolTx(msgBusTx); err != nil {
-		return fmt.Errorf("failed to queue message bus creation transaction to genesis. Cause: %w", err)
-	}
-
 	if err := s.signBatch(batch); err != nil {
 		return fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
@@ -146,11 +152,53 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 		return fmt.Errorf("1. failed storing batch. Cause: %w", err)
 	}
 
+	// this is the actual first block produced in chain
+	err = s.blockchain.IngestNewBlock(batch)
+	if err != nil {
+		return fmt.Errorf("unable to remove ingest new block into eth blockchain - %w", err)
+	}
+
+	// the mempool can only be started after at least 1 block is in the blockchain object
+	err = s.mempool.Start()
+	if err != nil {
+		return err
+	}
+
+	// produce batch #2 which has the message bus and any other system contracts
+	cb, err := s.produceBatch(
+		big.NewInt(0).Add(batch.Header.SequencerOrderNo, big.NewInt(1)),
+		block.Hash(),
+		batch.Hash(),
+		common.L2Transactions{msgBusTx},
+		uint64(time.Now().Unix()),
+		false,
+	)
+	if err != nil {
+		if errors.Is(err, components.ErrNoTransactionsToProcess) {
+			// skip batch production when there are no transactions to process
+			// todo: this might be a useful event to track for metrics (skipping batch production because empty batch)
+			s.logger.Debug("Skipping batch production, no transactions to execute")
+			return nil
+		}
+		return fmt.Errorf(" failed producing batch. Cause: %w", err)
+	}
+
+	if len(cb.Receipts) == 0 || cb.Receipts[0].TxHash.Hex() != msgBusTx.Hash().Hex() {
+		err = fmt.Errorf("message Bus contract not minted - no receipts in batch")
+		s.logger.Error(err.Error())
+		return err
+	}
+
+	s.logger.Info("Message Bus Contract minted successfully", "address", cb.Receipts[0].ContractAddress.Hex())
+
 	return nil
 }
 
-func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
+func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfEmpty bool) error {
 	headBatchSeq := s.batchRegistry.HeadBatchSeq()
+	if headBatchSeq == nil {
+		headBatchSeq = big.NewInt(int64(common.L2GenesisSeqNo))
+	}
 	headBatch, err := s.storage.FetchBatchBySeqNo(headBatchSeq.Uint64())
 	if err != nil {
 		return err
@@ -165,16 +213,25 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return fmt.Errorf("attempted to create batch on top of batch=%s. With l1 head=%s", headBatch.Hash(), l1HeadBlock.Hash())
 	}
 
-	stateDB, err := s.storage.CreateStateDB(headBatch.Hash())
-	if err != nil {
-		return fmt.Errorf("unable to create stateDB for selecting transactions. Batch: %s Cause: %w", headBatch.Hash(), err)
-	}
-
 	// todo (@stefan) - limit on receipts too
 	limiter := limiters.NewBatchSizeLimiter(s.settings.MaxBatchSize)
-	transactions, err := s.mempool.CurrentTxs(stateDB, limiter)
-	if err != nil {
-		return err
+	pendingTransactions := s.mempool.PendingTransactions()
+	var transactions []*types.Transaction
+	for _, group := range pendingTransactions {
+		// lazily resolve transactions until the batch runs out of space
+		for _, lazyTx := range group {
+			if tx := lazyTx.Resolve(); tx != nil {
+				err = limiter.AcceptTransaction(tx.Tx)
+				if err != nil {
+					if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
+						break
+					}
+					// Limiter encountered unexpected error
+					return fmt.Errorf("limiter encountered unexpected error - %w", err)
+				}
+				transactions = append(transactions, tx.Tx)
+			}
+		}
 	}
 
 	sequencerNo, err := s.storage.FetchCurrentSequencerNo()
@@ -183,18 +240,27 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	}
 
 	// todo - time is set only here; take from l1 block?
-	if _, err := s.produceBatch(sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), transactions, uint64(time.Now().Unix())); err != nil {
+	if _, err := s.produceBatch(sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), transactions, uint64(time.Now().Unix()), skipBatchIfEmpty); err != nil {
+		if errors.Is(err, components.ErrNoTransactionsToProcess) {
+			// skip batch production when there are no transactions to process
+			// todo: this might be a useful event to track for metrics (skipping batch production because empty batch)
+			s.logger.Debug("Skipping batch production, no transactions to execute")
+			return nil
+		}
 		return fmt.Errorf(" failed producing batch. Cause: %w", err)
-	}
-
-	if err := s.mempool.RemoveTxs(transactions); err != nil {
-		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
 	}
 
 	return nil
 }
 
-func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash, headBatch common.L2BatchHash, transactions common.L2Transactions, batchTime uint64) (*core.Batch, error) {
+func (s *sequencer) produceBatch(
+	sequencerNo *big.Int,
+	l1Hash common.L1BlockHash,
+	headBatch common.L2BatchHash,
+	transactions common.L2Transactions,
+	batchTime uint64,
+	failForEmptyBatch bool,
+) (*components.ComputedBatch, error) {
 	cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 		BlockPtr:     l1Hash,
 		ParentPtr:    headBatch,
@@ -204,7 +270,7 @@ func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash
 		BaseFee:      s.settings.BaseFee,
 		ChainConfig:  s.chainConfig,
 		SequencerNo:  sequencerNo,
-	})
+	}, failForEmptyBatch)
 	if err != nil {
 		return nil, fmt.Errorf("failed computing batch. Cause: %w", err)
 	}
@@ -224,7 +290,13 @@ func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash
 	s.logger.Info("Produced new batch", log.BatchHashKey, cb.Batch.Hash(),
 		"height", cb.Batch.Number(), "numTxs", len(cb.Batch.Transactions), log.BatchSeqNoKey, cb.Batch.SeqNo(), "parent", cb.Batch.Header.ParentHash)
 
-	return cb.Batch, nil
+	// add the batch to the chain so it can remove pending transactions from the pool
+	err = s.blockchain.IngestNewBlock(cb.Batch)
+	if err != nil {
+		return nil, fmt.Errorf("unable to remove tx from mempool - %w", err)
+	}
+
+	return cb, nil
 }
 
 // StoreExecutedBatch - stores an executed batch in one go. This can be done for the sequencer because it is guaranteed
@@ -254,7 +326,7 @@ func (s *sequencer) StoreExecutedBatch(batch *core.Batch, receipts types.Receipt
 func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) {
 	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
 
-	currentL1Head, err := s.storage.FetchHeadBlock()
+	currentL1Head, err := s.blockProcessor.GetHead()
 	if err != nil {
 		return nil, err
 	}
@@ -314,12 +386,12 @@ func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []c
 			return fmt.Errorf("could not fetch sequencer no. Cause %w", err)
 		}
 		sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))
-		// create the duplicate and store/broadcast it
-		b, err := s.produceBatch(sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time)
+		// create the duplicate and store/broadcast it, recreate batch even if it was empty
+		cb, err := s.produceBatch(sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time, false)
 		if err != nil {
 			return fmt.Errorf("could not produce batch. Cause %w", err)
 		}
-		currentHead = b.Hash()
+		currentHead = cb.Batch.Hash()
 		s.logger.Info("Duplicated batch", log.BatchHashKey, currentHead)
 	}
 
@@ -327,7 +399,7 @@ func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []c
 }
 
 func (s *sequencer) SubmitTransaction(transaction *common.L2Tx) error {
-	return s.mempool.AddMempoolTx(transaction)
+	return s.mempool.Add(transaction)
 }
 
 func (s *sequencer) OnL1Fork(fork *common.ChainFork) error {
@@ -376,4 +448,8 @@ func (s *sequencer) signRollup(rollup *common.ExtRollup) error {
 func (s *sequencer) OnL1Block(_ types.Block, _ *components.BlockIngestionType) error {
 	// nothing to do
 	return nil
+}
+
+func (s *sequencer) Close() error {
+	return s.mempool.Close()
 }

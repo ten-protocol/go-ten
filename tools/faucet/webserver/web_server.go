@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-gonic/gin"
-	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
+	"github.com/ten-protocol/go-ten/tools/faucet/faucet"
 )
 
 type WebServer struct {
@@ -34,6 +34,8 @@ func NewWebServer(faucetServer *faucet.Faucet, bindAddress string, jwtSecret []b
 
 	// todo (@matt) we need to remove this unsecure endpoint before we provide a fully public sepolia faucet
 	r.POST("/fund/:token", fundingHandler(faucetServer, defaultAmount))
+
+	r.GET("/balance", balanceReqHandler(faucetServer))
 
 	return &WebServer{
 		engine:      r,
@@ -116,7 +118,7 @@ func fundingHandler(faucetServer *faucet.Faucet, defaultAmount *big.Int) gin.Han
 		switch tokenReq {
 		case faucet.NativeToken:
 			token = faucet.NativeToken
-		// we leave this option in temporarily for tools that are still using `/obx` endpoint for native funds
+		// we leave this option in temporarily for tools that are still using `/ten` endpoint for native funds
 		case faucet.DeprecatedNativeToken:
 			token = faucet.NativeToken
 		case faucet.WrappedOBX:
@@ -145,11 +147,26 @@ func fundingHandler(faucetServer *faucet.Faucet, defaultAmount *big.Int) gin.Han
 
 		// fund the address
 		addr := common.HexToAddress(req.Address)
-		if err := faucetServer.Fund(&addr, token, defaultAmount); err != nil {
+		hash, err := faucetServer.Fund(&addr, token, defaultAmount)
+		if err != nil {
 			errorHandler(c, fmt.Errorf("unable to fund request %w", err), faucetServer.Logger)
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "tx": hash})
+	}
+}
+
+// returns the remaining native balance of the faucet
+func balanceReqHandler(faucetServer *faucet.Faucet) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// get the balance
+		balance, err := faucetServer.Balance(c)
+		if err != nil {
+			errorHandler(c, fmt.Errorf("unable to get balance %w", err), faucetServer.Logger)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"balance": balance.String()})
 	}
 }

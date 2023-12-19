@@ -4,22 +4,25 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/wallet"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
+	"github.com/ten-protocol/go-ten/integration/networktest/userwallet"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
-	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/ten-protocol/go-ten/integration"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest"
 )
 
 var _defaultFaucetAmount = big.NewInt(750_000_000_000_000)
@@ -28,7 +31,7 @@ type testnetConnector struct {
 	seqRPCAddress         string
 	validatorRPCAddresses []string
 	faucetHTTPAddress     string
-	l1WSURL               string
+	l1RPCURL              string
 	faucetWallet          *userwallet.UserWallet
 }
 
@@ -37,7 +40,7 @@ func NewTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, fau
 		seqRPCAddress:         seqRPCAddr,
 		validatorRPCAddresses: validatorRPCAddressses,
 		faucetHTTPAddress:     faucetHTTPAddress,
-		l1WSURL:               l1WSURL,
+		l1RPCURL:              l1WSURL,
 	}
 }
 
@@ -49,13 +52,13 @@ func NewTestnetConnectorWithFaucetAccount(seqRPCAddr string, validatorRPCAddress
 	return &testnetConnector{
 		seqRPCAddress:         seqRPCAddr,
 		validatorRPCAddresses: validatorRPCAddressses,
-		faucetWallet:          userwallet.NewUserWallet(ecdsaKey, validatorRPCAddressses[0], testlog.Logger(), userwallet.WithChainID(big.NewInt(integration.ObscuroChainID))),
-		l1WSURL:               l1RPCAddress,
+		faucetWallet:          userwallet.NewUserWallet(ecdsaKey, validatorRPCAddressses[0], testlog.Logger(), userwallet.WithChainID(big.NewInt(integration.TenChainID))),
+		l1RPCURL:              l1RPCAddress,
 	}
 }
 
 func (t *testnetConnector) ChainID() int64 {
-	return integration.ObscuroChainID
+	return integration.TenChainID
 }
 
 func (t *testnetConnector) AllocateFaucetFunds(ctx context.Context, account gethcommon.Address) error {
@@ -94,7 +97,7 @@ func (t *testnetConnector) NumValidators() int {
 }
 
 func (t *testnetConnector) GetL1Client() (ethadapter.EthClient, error) {
-	client, err := ethadapter.NewEthClientFromURL(t.l1WSURL, time.Minute, gethcommon.Address{}, testlog.Logger())
+	client, err := ethadapter.NewEthClientFromURL(t.l1RPCURL, time.Minute, gethcommon.Address{}, testlog.Logger())
 	if err != nil {
 		return nil, err
 	}
@@ -123,4 +126,8 @@ func (t *testnetConnector) AllocateFaucetFundsWithWallet(ctx context.Context, ac
 		return fmt.Errorf("faucet transaction receipt status not successful - %v", receipt.Status)
 	}
 	return nil
+}
+
+func (t *testnetConnector) GetMCOwnerWallet() (wallet.Wallet, error) {
+	return nil, errors.New("testnet connector environments cannot access the MC owner wallet")
 }

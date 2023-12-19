@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/node"
 	"github.com/sanity-io/litter"
+	"github.com/ten-protocol/go-ten/go/node"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/obscuronet/go-obscuro/go/common/docker"
+	"github.com/ten-protocol/go-ten/go/common/docker"
 )
 
 type ContractDeployer struct {
@@ -67,8 +67,8 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	}
 	defer cli.Close()
 
-	// make sure the container has finished execution
-	err = docker.WaitForContainerToFinish(n.containerID, time.Minute)
+	// make sure the container has finished execution (3 minutes allows time for L1 transactions to be mined)
+	err = docker.WaitForContainerToFinish(n.containerID, 3*time.Minute)
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +95,8 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 
 	// Get the last three lines
 	output := buf.String()
+	fmt.Printf("L2 Deployer output %s\n", output)
+
 	lines := strings.Split(output, "\n")
 
 	managementAddr, err := findAddress(lines[0])

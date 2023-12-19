@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/ten-protocol/go-ten/integration"
 
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
 
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
 )
 
 // This test creates a network of L2 nodes, then injects transactions, and finally checks the resulting output blockchain.
@@ -20,7 +20,7 @@ func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 	numberOfNodes := 5
 	numberOfSimWallets := 5
 
-	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
+	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 
 	simParams := &params.SimParams{
 		NumberOfNodes:              numberOfNodes,

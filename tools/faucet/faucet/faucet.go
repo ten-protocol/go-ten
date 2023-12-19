@@ -13,16 +13,16 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
 const (
 	_timeout    = 60 * time.Second
 	NativeToken = "eth"
-	// DeprecatedNativeToken is left in temporarily for tooling that is getting native funds using `/obx` URL
-	DeprecatedNativeToken = "obx" // todo (@matt) remove this once we have fixed the /obx usages
+	// DeprecatedNativeToken is left in temporarily for tooling that is getting native funds using `/ten` URL
+	DeprecatedNativeToken = "ten" // todo (@matt) remove this once we have fixed the /ten usages
 	WrappedOBX            = "wobx"
 	WrappedEth            = "weth"
 	WrappedUSDC           = "usdc"
@@ -51,34 +51,33 @@ func NewFaucet(rpcURL string, chainID int64, pkString string) (*Faucet, error) {
 	}, nil
 }
 
-func (f *Faucet) Fund(address *common.Address, token string, amount *big.Int) error {
+func (f *Faucet) Fund(address *common.Address, token string, amount *big.Int) (string, error) {
 	var err error
 	var signedTx *types.Transaction
 
 	if token == NativeToken || token == DeprecatedNativeToken {
 		signedTx, err = f.fundNativeToken(address, amount)
 	} else {
-		return fmt.Errorf("token not fundable atm")
-		// signedTx, err = f.fundERC20Token(address, token)
+		return "", fmt.Errorf("token not fundable atm")
 		// todo implement this when contracts are deployable somewhere
 	}
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// the faucet should be the only user of the faucet pk
 	txMarshal, err := json.Marshal(signedTx)
 	if err != nil {
-		return err
+		return "", err
 	}
 	f.Logger.Info(fmt.Sprintf("Funded address: %s - tx: %+v\n", address.Hex(), string(txMarshal)))
 	// todo handle tx receipt
 
 	if err := f.validateTx(signedTx); err != nil {
-		return fmt.Errorf("unable to validate tx %s: %w", signedTx.Hash(), err)
+		return "", fmt.Errorf("unable to validate tx %s: %w", signedTx.Hash(), err)
 	}
 
-	return nil
+	return signedTx.Hash().Hex(), nil
 }
 
 func (f *Faucet) validateTx(tx *types.Transaction) error {
@@ -139,4 +138,8 @@ func (f *Faucet) fundNativeToken(address *common.Address, amount *big.Int) (*typ
 	}
 
 	return signedTx, nil
+}
+
+func (f *Faucet) Balance(ctx context.Context) (*big.Int, error) {
+	return f.client.BalanceAt(ctx, nil)
 }

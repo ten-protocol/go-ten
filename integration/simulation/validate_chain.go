@@ -10,30 +10,30 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
-	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/obsclient"
 
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
-	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/ten-protocol/go-ten/go/rpc"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
-	erc20 "github.com/obscuronet/go-obscuro/integration/erc20contract/generated/EthERC20"
+	erc20 "github.com/ten-protocol/go-ten/integration/erc20contract/generated/EthERC20"
 )
 
 const (

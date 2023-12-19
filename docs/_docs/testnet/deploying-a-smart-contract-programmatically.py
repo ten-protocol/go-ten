@@ -66,7 +66,7 @@ def run():
     account = w3.eth.account.privateKeyToAccount(private_key)
     logging.info('Using account with address %s' % account.address)
 
-    # request native OBX from the faucet server
+    # request native ETH from the faucet server
     headers = {'Content-Type': 'application/json'}
     data = {"address": account.address}
     requests.post(FAUCET_URL, data=json.dumps(data), headers=headers)

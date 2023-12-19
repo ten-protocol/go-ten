@@ -3,7 +3,7 @@ package gethdb
 import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
 type InMemGethDB struct {
@@ -25,5 +25,6 @@ func (db *InMemGethDB) Get(key []byte) ([]byte, error) {
 		}
 		return nil, err
 	}
+
 	return value, nil
 }

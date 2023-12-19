@@ -7,20 +7,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/host"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
-	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
+	"github.com/ten-protocol/go-ten/go/common/host"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
+	"github.com/ten-protocol/go-ten/integration/simulation/p2p"
 
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
 	"golang.org/x/sync/errgroup"
 )
 

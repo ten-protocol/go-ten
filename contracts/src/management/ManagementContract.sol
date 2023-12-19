@@ -3,18 +3,32 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+
 
 import "./Structs.sol";
 import * as MessageBus from "../messaging/MessageBus.sol";
 
-contract ManagementContract is Ownable {
+contract ManagementContract is Ownable, Initializable {
+
+    constructor() {
+       // _disableInitializers(); //todo @siliev - figure out why the solidity compiler cant find this. Perhaps OZ needs a version upgrade?
+    }
 
     event LogManagementContractCreated(address messageBusAddress);
+    // Event to log changes to important contract addresses
+    event ImportantContractAddressUpdated(string key, address newAddress);
 
     mapping(address => string) private attestationRequests;
     mapping(address => bool) private attested;
     // TODO - Revisit the decision to store the host addresses in the smart contract.
     string[] private hostAddresses; // The addresses of all the Obscuro hosts on the network.
+
+    // In the near-term it is convenient to have an accessible source of truth for important contract addresses
+    // TODO - this is probably not appropriate long term but currently useful for testnets. Look to remove.
+    // We store the keys as well as the mapping for the key-value store for important contract addresses for convenience
+    string[] public importantContractKeys;
+    mapping (string => address) public importantContractAddresses;
 
     // networkSecretNotInitialized marks if the network secret has been initialized
     bool private networkSecretInitialized ;
@@ -22,12 +36,13 @@ contract ManagementContract is Ownable {
     // isWithdrawalAvailable marks if the contract allows withdrawals or not
     bool private isWithdrawalAvailable;
 
-    uint256 public lastBatchSeqNo = 0;
+    uint256 public lastBatchSeqNo;
 
     Structs.RollupStorage private rollups;
     //The messageBus where messages can be sent to Obscuro
     MessageBus.IMessageBus public messageBus;
-    constructor() {
+    function initialize() public initializer {
+        lastBatchSeqNo = 0;
         messageBus = new MessageBus.MessageBus();
         emit LogManagementContractCreated(address(messageBus));
     }
@@ -132,5 +147,18 @@ contract ManagementContract is Ownable {
     // Testnet function to allow the contract owner to retrieve **all** funds from the network bridge.
     function RetrieveAllBridgeFunds() public onlyOwner {
         messageBus.retrieveAllFunds(msg.sender);
+    }
+
+    // Function to set an important contract's address, only callable by owner
+    function SetImportantContractAddress(string memory key, address newAddress) public onlyOwner {
+        if (importantContractAddresses[key] == address(0)) {
+            importantContractKeys.push(key);
+        }
+        importantContractAddresses[key] = newAddress;
+        emit ImportantContractAddressUpdated(key, newAddress);
+    }
+
+    function GetImportantContractKeys() public view returns(string[] memory) {
+        return importantContractKeys;
     }
 }

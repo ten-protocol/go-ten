@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/stretchr/testify/assert"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
 )
 
 func TestClientGetRollup(t *testing.T) {
@@ -16,7 +16,7 @@ func TestClientGetRollup(t *testing.T) {
 	if os.Getenv(_IDEFlag) == "" {
 		t.Skipf("set flag %s to run this test in the IDE", _IDEFlag)
 	}
-	hostRPCAddress := "http://erpc.testnet.obscu.ro:80"
+	hostRPCAddress := "http://erpc.sepolia-testnet.obscu.ro:80"
 	client, err := rpc.NewNetworkClient(hostRPCAddress)
 	assert.Nil(t, err)
 

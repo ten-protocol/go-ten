@@ -32,6 +32,7 @@ const (
 	levelDBPathName              = "levelDBPath"
 	debugNamespaceEnabledName    = "debugNamespaceEnabled"
 	batchIntervalName            = "batchInterval"
+	maxBatchIntervalName         = "maxBatchInterval"
 	rollupIntervalName           = "rollupInterval"
 	isInboundP2PDisabledName     = "isInboundP2PDisabled"
 	maxRollupSizeFlagName        = "maxRollupSize"
@@ -71,6 +72,7 @@ func getFlagUsageMap() map[string]string {
 		levelDBPathName:              "Filepath for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable or if using InMemory DB)",
 		debugNamespaceEnabledName:    "Whether the debug names is enabled",
 		batchIntervalName:            "Duration between each batch. Can be put down as 1.0s",
+		maxBatchIntervalName:         "Max interval between each batch, if greater than batchInterval then some empty batches will be skipped. Can be put down as 1.0s",
 		rollupIntervalName:           "Duration between each rollup. Can be put down as 1.0s",
 		isInboundP2PDisabledName:     "Whether inbound p2p is enabled",
 		maxRollupSizeFlagName:        "Max size of a rollup",

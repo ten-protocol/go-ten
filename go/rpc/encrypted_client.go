@@ -14,11 +14,11 @@ import (
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
-	"github.com/obscuronet/go-obscuro/go/responses"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -89,7 +89,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	return c.executeSensitiveCall(ctx, result, method, args...)
 }
 
-func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
+func (c *EncRPCClient) Subscribe(ctx context.Context, _ interface{}, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("subscription did not specify its type")
 	}
@@ -122,15 +122,6 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namesp
 	clientChannel := make(chan common.IDAndEncLog)
 	subscriptionToObscuro, err := c.obscuroClient.Subscribe(ctx, nil, namespace, clientChannel, subscriptionType, encryptedParams)
 	if err != nil {
-		return nil, err
-	}
-
-	// We need to return the subscription ID, to allow unsubscribing. However, the client API has already converted
-	// from a subscription ID to a subscription object under the hood, so we can't retrieve the subscription ID.
-	// To hack around this, we always return the subscription ID as the first message on the newly-created subscription.
-	err = c.setResultToSubID(clientChannel, result, subscriptionToObscuro)
-	if err != nil {
-		subscriptionToObscuro.Unsubscribe()
 		return nil, err
 	}
 
@@ -212,24 +203,6 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 
 	logSubscription.Filter = &filterCriteria
 	return logSubscription, nil
-}
-
-func (c *EncRPCClient) setResultToSubID(clientChannel chan common.IDAndEncLog, result interface{}, subscription *rpc.ClientSubscription) error {
-	select {
-	case idAndEncLog := <-clientChannel:
-		if idAndEncLog.SubID == "" || idAndEncLog.EncLog != nil {
-			return fmt.Errorf("expected an initial subscription response with the subscription ID only")
-		}
-		if result != nil {
-			err := c.setResult([]byte(idAndEncLog.SubID), result)
-			if err != nil {
-				return fmt.Errorf("failed to extract result from subscription response: %w", err)
-			}
-		}
-	case <-subscription.Err():
-		return fmt.Errorf("did not receive the initial subscription response with the subscription ID")
-	}
-	return nil
 }
 
 func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
@@ -359,27 +332,6 @@ func (c *EncRPCClient) decryptResponse(encryptedBytes []byte) ([]byte, error) {
 		return nil, fmt.Errorf("could not decrypt bytes with viewing key. Cause: %w. Bytes: %s", err, string(encryptedBytes))
 	}
 	return decryptedResult, nil
-}
-
-// setResult tries to cast/unmarshal data into the result pointer, based on its type
-func (c *EncRPCClient) setResult(data []byte, result interface{}) error {
-	switch result := result.(type) {
-	case *string:
-		*result = string(data)
-		return nil
-
-	case *interface{}:
-		err := json.Unmarshal(data, result)
-		if err != nil {
-			// if unmarshal failed with generic return we can try to send it back as a string
-			*result = string(data)
-		}
-		return nil
-
-	default:
-		// for any other type we attempt to json unmarshal it
-		return json.Unmarshal(data, result)
-	}
 }
 
 // IsSensitiveMethod indicates whether the RPC method's requests and responses should be encrypted.

@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -9,15 +10,16 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
-	"github.com/obscuronet/go-obscuro/go/common/constants"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
-	"github.com/obscuronet/go-obscuro/integration/eth2network"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
+	"github.com/ten-protocol/go-ten/go/common/constants"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration"
+	integrationCommon "github.com/ten-protocol/go-ten/integration/common"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/erc20contract"
+	"github.com/ten-protocol/go-ten/integration/eth2network"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
 )
 
 const (
@@ -106,6 +108,21 @@ func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.
 	managementContract, err := ManagementContract.NewManagementContract(mgmtContractReceipt.ContractAddress, client.EthClient())
 	if err != nil {
 		return nil, fmt.Errorf("failed to instantiate management contract. Cause: %w", err)
+	}
+
+	opts, err := bind.NewKeyedTransactorWithChainID(wallets.MCOwnerWallet.PrivateKey(), wallets.MCOwnerWallet.ChainID())
+	if err != nil {
+		return nil, fmt.Errorf("unable to create a keyed transactor for initializing the management contract. Cause: %w", err)
+	}
+
+	tx, err := managementContract.Initialize(opts)
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize management contract. Cause: %w", err)
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("no receipt for management contract initialization")
 	}
 
 	l1BusAddress, err := managementContract.MessageBus(&bind.CallOpts{})

@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/retry"
-	"github.com/obscuronet/go-obscuro/go/node"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/testnet/launcher/eth2network"
 	"github.com/sanity-io/litter"
+	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/node"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/testnet/launcher/eth2network"
 
-	l1cd "github.com/obscuronet/go-obscuro/testnet/launcher/l1contractdeployer"
-	l2cd "github.com/obscuronet/go-obscuro/testnet/launcher/l2contractdeployer"
+	l1cd "github.com/ten-protocol/go-ten/testnet/launcher/l1contractdeployer"
+	l2cd "github.com/ten-protocol/go-ten/testnet/launcher/l2contractdeployer"
 )
 
 type Testnet struct {
@@ -62,8 +62,6 @@ func (t *Testnet) Start() error {
 		node.WithDebugNamespaceEnabled(true),
 		node.WithLogLevel(4),
 		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
-		node.WithBatchInterval("1s"),
-		node.WithRollupInterval("3s"),
 	)
 
 	sequencerNode := node.NewDockerNode(sequencerNodeConfig)
@@ -104,8 +102,6 @@ func (t *Testnet) Start() error {
 		node.WithDebugNamespaceEnabled(true),
 		node.WithLogLevel(4),
 		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
-		node.WithBatchInterval("1s"),
-		node.WithRollupInterval("3s"),
 	)
 
 	validatorNode := node.NewDockerNode(validatorNodeConfig)
@@ -128,7 +124,8 @@ func (t *Testnet) Start() error {
 			l2cd.WithL2Host("sequencer-host"),
 			l2cd.WithL2WSPort(81),
 			l2cd.WithL1PrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
-			l2cd.WithMessageBusContractAddress("0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"),
+			l2cd.WithMessageBusContractAddress("0xDaBD89EEA0f08B602Ec509c3C608Cb8ED095249C"),
+			l2cd.WithManagementContractAddress("0x51D43a3Ca257584E770B6188232b199E76B022A2"),
 			l2cd.WithL2PrivateKey("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
 			l2cd.WithHocPKString("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"),
 			l2cd.WithPocPKString("4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"),

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/obscuronet/go-obscuro/testnet/launcher"
+	"github.com/ten-protocol/go-ten/testnet/launcher"
 )
 
 func main() {

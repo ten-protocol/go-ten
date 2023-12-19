@@ -91,6 +91,8 @@ service EnclaveProto {
 
   rpc GetPublicTransactionData(GetPublicTransactionDataRequest) returns (GetPublicTransactionDataResponse) {}
 
+  // EnclavePublicConfig returns public network data that is known to the enclave but may not be known to the host
+  rpc EnclavePublicConfig(EnclavePublicConfigRequest) returns (EnclavePublicConfigResponse) {}
 }
 
 message GetPublicTransactionDataRequest {
@@ -99,6 +101,13 @@ message GetPublicTransactionDataRequest {
 
 message GetPublicTransactionDataResponse{
   bytes publicTransactionData = 1;
+  SystemError systemError = 2;
+}
+
+message EnclavePublicConfigRequest {}
+
+message EnclavePublicConfigResponse{
+  bytes l2MessageBusAddress = 1;
   SystemError systemError = 2;
 }
 
@@ -165,7 +174,9 @@ message DebugTraceTransactionResponse{
   SystemError systemError = 2;
 }
 
-message CreateBatchRequest{}
+message CreateBatchRequest{
+  bool skipIfEmpty = 1;
+}
 message CreateBatchResponse{
   string error = 2;
 }

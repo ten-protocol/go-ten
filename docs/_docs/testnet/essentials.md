@@ -6,19 +6,19 @@ Essential information, parameters and configuration settings for the Evan's Cat 
 ## Limitations on Evan's Cat
 These are the key limitations to be aware of when developing for the Evan's Cat testnet:
 
-1. New nodes cannot be added. For now the number of Obscuro nodes is fixed.
+1. New nodes cannot be added. For now the number of Ten nodes is fixed.
 1. Data revelation is not implemented yet.
 1. Security is not fully implemented. Some keys are still hardcoded.
 1. The decentralised bridge is limited to two hardcoded ERC20 tokens.
-1. The Layer 1 is currently a hosted network. In the next iteration we'll connect Obscuro to an Ethereum testnet.
-1. The "Wallet Extension" is not fully polished yet. You can expect a better UX as Obscuro develops
+1. The Layer 1 is currently a hosted network. In the next iteration we'll connect Ten to an Ethereum testnet.
+1. The "Wallet Extension" is not fully polished yet. You can expect a better UX as Ten develops
 
-## Connection to an Obscuro Node
-- **RPC http address:** `erpc.testnet.obscu.ro:80`
-- **RPC websocket address:** `erpc.testnet.obscu.ro:81`
+## Connection to an Ten Node
+- **RPC http address:** `erpc.sepolia-testnet.obscu.ro:80`
+- **RPC websocket address:** `erpc.sepolia-testnet.obscu.ro:81`
 
 ## Rollup Encryption/Decryption Key
-The symmetric key used to encrypt and decrypt transaction blobs in rollups on the Obscuro Testnet:
+The symmetric key used to encrypt and decrypt transaction blobs in rollups on the Ten Testnet:
 
 ```
 bddbc0d46a0666ce57a466168d99c1830b0c65e052d77188f2cbfc3f6486588c
@@ -26,7 +26,7 @@ bddbc0d46a0666ce57a466168d99c1830b0c65e052d77188f2cbfc3f6486588c
 
 N.B. Decrypting transaction blobs is only possible on testnet, where the rollup encryption key is long-lived and 
 well-known. On mainnet, rollups will use rotating keys that are not known to anyone - or anything - other than the 
-Obscuro enclaves.
+Ten enclaves.
 
 ## ERC20 Contracts
 We have a couple of testnet ERC20 tokens (HOC & POC) that are automatically deployed with a static address every time 

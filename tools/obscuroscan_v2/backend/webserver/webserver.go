@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend"
+	"github.com/ten-protocol/go-ten/tools/obscuroscan_v2/backend"
 )
 
 type WebServer struct {
@@ -63,6 +63,8 @@ func (w *WebServer) Start() error {
 	// Initializing the server in a goroutine so that
 	// it won't block the graceful shutdown handling
 	go func() {
+		w.logger.Info("Starting server on " + w.bindAddress)
+		println("Starting server on " + w.bindAddress)
 		if err := w.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			// todo don't panic
 			panic(err)

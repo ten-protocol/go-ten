@@ -6,19 +6,17 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/core/state"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/measure"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 )
 
 type batchRegistry struct {
@@ -35,8 +33,9 @@ func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegis
 	headBatch, err := storage.FetchHeadBatch()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			headBatchSeq = big.NewInt(int64(common.L2GenesisSeqNo))
+			headBatchSeq = nil
 		} else {
+			logger.Crit("Could not create batch registry", log.ErrKey, err)
 			return nil
 		}
 	} else {
@@ -79,21 +78,12 @@ func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Recei
 }
 
 func (br *batchRegistry) HasGenesisBatch() (bool, error) {
-	genesisBatchStored := true
-	_, err := br.storage.FetchHeadBatch()
-	if err != nil {
-		if !errors.Is(err, errutil.ErrNotFound) {
-			return false, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
-		}
-		genesisBatchStored = false
-	}
-
-	return genesisBatchStored, nil
+	return br.headBatchSeq != nil, nil
 }
 
 func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error) {
 	// sanity check
-	headBatch, err := br.storage.FetchHeadBatch()
+	headBatch, err := br.storage.FetchBatchBySeqNo(br.headBatchSeq.Uint64())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -176,6 +166,9 @@ func (br *batchRegistry) GetBatchStateAtHeight(blockNumber *gethrpc.BlockNumber)
 }
 
 func (br *batchRegistry) GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Batch, error) {
+	if br.headBatchSeq == nil {
+		return nil, fmt.Errorf("chain not initialised")
+	}
 	var batch *core.Batch
 	switch height {
 	case gethrpc.EarliestBlockNumber:
@@ -184,11 +177,9 @@ func (br *batchRegistry) GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Bat
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 		}
 		batch = genesisBatch
-	case gethrpc.PendingBlockNumber:
-		// todo - depends on the current pending rollup; leaving it for a different iteration as it will need more thought
-		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
-	case gethrpc.SafeBlockNumber, gethrpc.FinalizedBlockNumber, gethrpc.LatestBlockNumber:
-		headBatch, err := br.storage.FetchHeadBatch()
+	// note: our API currently treats all these block statuses the same for obscuro batches
+	case gethrpc.SafeBlockNumber, gethrpc.FinalizedBlockNumber, gethrpc.LatestBlockNumber, gethrpc.PendingBlockNumber:
+		headBatch, err := br.storage.FetchBatchBySeqNo(br.headBatchSeq.Uint64())
 		if err != nil {
 			return nil, fmt.Errorf("batch with requested height %d was not found. Cause: %w", height, err)
 		}

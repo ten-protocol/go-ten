@@ -10,26 +10,25 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/common/compression"
+	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
+	"github.com/ten-protocol/go-ten/go/enclave/gas"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/txpool"
+	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/gas"
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/components"
+	"github.com/ten-protocol/go-ten/go/enclave/nodetype"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
+	"github.com/ten-protocol/go-ten/go/enclave/l2chain"
+	"github.com/ten-protocol/go-ten/go/responses"
 
-	"github.com/obscuronet/go-obscuro/go/common/compression"
+	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/components"
-	"github.com/obscuronet/go-obscuro/go/enclave/nodetype"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
-	"github.com/obscuronet/go-obscuro/go/responses"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -38,25 +37,24 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/gethapi"
-	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/profiler"
-	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
-	"github.com/obscuronet/go-obscuro/go/common/syserr"
-	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
-	"github.com/obscuronet/go-obscuro/go/enclave/events"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/gethapi"
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/profiler"
+	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
+	"github.com/ten-protocol/go-ten/go/common/syserr"
+	"github.com/ten-protocol/go-ten/go/common/tracers"
+	"github.com/ten-protocol/go-ten/go/config"
+	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
+	"github.com/ten-protocol/go-ten/go/enclave/debugger"
+	"github.com/ten-protocol/go-ten/go/enclave/events"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
-	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/enclave/rpc"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
-	_ "github.com/obscuronet/go-obscuro/go/common/tracers/native" // make sure the tracers are loaded
+	_ "github.com/ten-protocol/go-ten/go/common/tracers/native" // make sure the tracers are loaded
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
@@ -127,29 +125,9 @@ func NewEnclave(
 		}
 	}
 
-	zeroTimestamp := uint64(0)
 	// Initialise the database
-	chainConfig := params.ChainConfig{
-		ChainID:             big.NewInt(config.ObscuroChainID),
-		HomesteadBlock:      gethcommon.Big0,
-		DAOForkBlock:        gethcommon.Big0,
-		EIP150Block:         gethcommon.Big0,
-		EIP155Block:         gethcommon.Big0,
-		EIP158Block:         gethcommon.Big0,
-		ByzantiumBlock:      gethcommon.Big0,
-		ConstantinopleBlock: gethcommon.Big0,
-		PetersburgBlock:     gethcommon.Big0,
-		IstanbulBlock:       gethcommon.Big0,
-		MuirGlacierBlock:    gethcommon.Big0,
-		BerlinBlock:         gethcommon.Big0,
-		LondonBlock:         gethcommon.Big0,
-
-		CancunTime:   &zeroTimestamp,
-		ShanghaiTime: &zeroTimestamp,
-		PragueTime:   &zeroTimestamp,
-		VerkleTime:   &zeroTimestamp,
-	}
-	storage := storage.NewStorageFromConfig(config, &chainConfig, logger)
+	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.ObscuroChainID))
+	storage := storage.NewStorageFromConfig(config, chainConfig, logger)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
 	// todo (#1056) - valid block
@@ -200,24 +178,28 @@ func NewEnclave(
 	dataEncryptionService := crypto.NewDataEncryptionService(logger)
 	dataCompressionService := compression.NewBrotliDataCompressionService()
 
-	memp := mempool.New(config.ObscuroChainID, logger)
-
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
-	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
+	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, config.ObscuroChainID, logger)
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, &chainConfig, logger)
+	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, chainConfig, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	registry := components.NewBatchRegistry(storage, logger)
 	rProducer := components.NewRollupProducer(config.SequencerID, storage, registry, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
-	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, &chainConfig, logger)
+	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, chainConfig, logger)
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, storage, logger)
+
+	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, logger)
+	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice, logger)
+	if err != nil {
+		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
+	}
 
 	var service nodetype.NodeType
 	if config.NodeType == common.Sequencer {
@@ -230,9 +212,9 @@ func NewEnclave(
 			rollupCompression,
 			logger,
 			config.HostID,
-			&chainConfig,
+			chainConfig,
 			enclaveKey,
-			memp,
+			mempool,
 			storage,
 			dataEncryptionService,
 			dataCompressionService,
@@ -243,27 +225,28 @@ func NewEnclave(
 				BatchGasLimit:     config.GasLimit,
 				BaseFee:           config.BaseFee,
 			},
+			blockchain,
 		)
 	} else {
-		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, &chainConfig, config.SequencerID, storage, sigVerifier, logger)
+		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, config.SequencerID, storage, sigVerifier, logger)
 	}
 
 	chain := l2chain.NewChain(
 		storage,
-		&chainConfig,
+		chainConfig,
 		genesis,
 		logger,
 		registry,
 	)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
-	err = restoreStateDBCache(storage, batchExecutor, genesis, logger)
+	err = restoreStateDBCache(storage, registry, batchExecutor, genesis, logger)
 	if err != nil {
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
 
 	// TODO ensure debug is allowed/disallowed
-	debug := debugger.New(chain, storage, &chainConfig)
+	debug := debugger.New(chain, storage, chainConfig)
 
 	logger.Info("Enclave service created with following config", log.CfgKey, config.HostID)
 	return &enclaveImpl{
@@ -339,7 +322,7 @@ func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 		return common.Status{StatusCode: common.Unavailable}, responses.ToInternalError(err)
 	}
 	var l1HeadHash gethcommon.Hash
-	l1Head, err := e.storage.FetchHeadBlock()
+	l1Head, err := e.l1BlockProcessor.GetHead()
 	if err != nil {
 		// this might be normal while enclave is starting up, just send empty hash
 		e.logger.Debug("failed to fetch L1 head block for status response", log.ErrKey, err)
@@ -508,17 +491,13 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(&viewingKeyAddress, paramList[0])
+	vkHandler, err := createVKHandler(&viewingKeyAddress, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
 
 	if e.crossChainProcessors.Local.IsSyntheticTransaction(*decryptedTx) {
 		return responses.AsPlaintextError(responses.ToInternalError(fmt.Errorf("synthetic transaction coming from external rpc"))), nil
-	}
-	if err = e.checkGas(decryptedTx); err != nil {
-		e.logger.Info("gas check failed", log.ErrKey, err.Error())
-		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
 	if err = e.service.SubmitTransaction(decryptedTx); err != nil {
@@ -581,7 +560,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 	return nil
 }
 
-func (e *enclaveImpl) CreateBatch() common.SystemError {
+func (e *enclaveImpl) CreateBatch(skipBatchIfEmpty bool) common.SystemError {
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateBatch call ended")
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested CreateBatch with the enclave stopping"))
@@ -590,7 +569,7 @@ func (e *enclaveImpl) CreateBatch() common.SystemError {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	err := e.Sequencer().CreateBatch()
+	err := e.Sequencer().CreateBatch(skipBatchIfEmpty)
 	if err != nil {
 		return responses.ToInternalError(err)
 	}
@@ -646,7 +625,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(apiArgs.From, paramList[0])
+	vkHandler, err := createVKHandler(apiArgs.From, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -706,13 +685,13 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	address := gethcommon.HexToAddress(addressStr)
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(&address, paramList[0])
+	vkHandler, err := createVKHandler(&address, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
 
 	var nonce uint64
-	l2Head, err := e.storage.FetchHeadBatch()
+	l2Head, err := e.storage.FetchBatchBySeqNo(e.registry.HeadBatchSeq().Uint64())
 	if err == nil {
 		// todo - we should return an error when head state is not available, but for current test situations with race
 		//  conditions we allow it to return zero while head state is uninitialized
@@ -765,7 +744,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(&viewingKeyAddress, paramList[0])
+	vkHandler, err := createVKHandler(&viewingKeyAddress, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -820,7 +799,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(&sender, paramList[0])
+	vkHandler, err := createVKHandler(&sender, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		e.logger.Trace("error getting the vk ", "txHash", txHash, log.ErrKey, err)
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
@@ -937,7 +916,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(encryptAddress, paramList[0])
+	vkHandler, err := createVKHandler(encryptAddress, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -989,8 +968,13 @@ func (e *enclaveImpl) Stop() common.SystemError {
 		e.registry.UnsubscribeFromBatches()
 	}
 
+	err := e.service.Close()
+	if err != nil {
+		e.logger.Error("Could not stop node service", log.ErrKey, err)
+	}
+
 	time.Sleep(time.Second)
-	err := e.storage.Close()
+	err = e.storage.Close()
 	if err != nil {
 		e.logger.Error("Could not stop db", log.ErrKey, err)
 		return err
@@ -1005,6 +989,8 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested EstimateGas with the enclave stopping"))
 	}
+
+	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "enclave.go:EstimateGas()")
 
 	// decode the received request into a []interface
 	paramList, err := e.decodeRequest(encryptedParams)
@@ -1030,7 +1016,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(callMsg.From, paramList[0])
+	vkHandler, err := createVKHandler(callMsg.From, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -1084,7 +1070,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(forAddress, paramList[0])
+	vkHandler, err := createVKHandler(forAddress, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -1099,7 +1085,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 
 	from := filter.FromBlock
 	if from != nil && from.Int64() < 0 {
-		batch, err := e.storage.FetchHeadBatch()
+		batch, err := e.storage.FetchBatchBySeqNo(e.registry.HeadBatchSeq().Uint64())
 		if err != nil {
 			return responses.AsPlaintextError(fmt.Errorf("could not retrieve head batch. Cause: %w", err)), nil
 		}
@@ -1348,7 +1334,7 @@ func (e *enclaveImpl) GetCustomQuery(encryptedParams common.EncryptedParamsGetSt
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(&privateCustomQuery.Address, paramList[0])
+	vkHandler, err := createVKHandler(&privateCustomQuery.Address, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -1393,9 +1379,18 @@ func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPaginatio
 	}, nil
 }
 
+func (e *enclaveImpl) EnclavePublicConfig() (*common.EnclavePublicConfig, common.SystemError) {
+	address, systemError := e.crossChainProcessors.GetL2MessageBusAddress()
+	if systemError != nil {
+		return nil, systemError
+	}
+	return &common.EnclavePublicConfig{L2MessageBusAddress: address}, nil
+}
+
 // Create a helper to check if a gas allowance results in an executable transaction
 // isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
 func (e *enclaveImpl) isGasEnough(args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error) {
+	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "enclave.go:IsGasEnough")
 	args.Gas = (*hexutil.Uint64)(&gas)
 	result, err := e.chain.ObsCallAtBlock(args, blkNumber)
 	if err != nil {
@@ -1437,18 +1432,6 @@ func (e *revertError) ErrorData() interface{} {
 	return e.reason
 }
 
-func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
-	txGasPrice := tx.GasPrice()
-	if txGasPrice == nil {
-		return fmt.Errorf("rejected transaction %s. No gas price was set", tx.Hash())
-	}
-	minGasPrice := e.config.MinGasPrice
-	if txGasPrice.Cmp(minGasPrice) == -1 {
-		return fmt.Errorf("rejected transaction %s. Gas price was only %d, wanted at least %d", tx.Hash(), txGasPrice, minGasPrice)
-	}
-	return nil
-}
-
 // Returns the params extracted from an eth_getLogs request.
 func extractGetLogsParams(paramList []interface{}) (*filters.FilterCriteria, *gethcommon.Address, error) {
 	// We extract the first param, the filter for the logs.
@@ -1476,7 +1459,7 @@ func extractGetLogsParams(paramList []interface{}) (*filters.FilterCriteria, *ge
 
 func (e *enclaveImpl) rejectBlockErr(cause error) *errutil.BlockRejectError {
 	var hash common.L1BlockHash
-	l1Head, err := e.storage.FetchHeadBlock()
+	l1Head, err := e.l1BlockProcessor.GetHead()
 	// todo - handle error
 	if err == nil {
 		hash = l1Head.Hash()
@@ -1523,8 +1506,12 @@ func serializeEVMError(err error) ([]byte, error) {
 
 // this function looks at the batch chain and makes sure the resulting stateDB snapshots are available, replaying them if needed
 // (if there had been a clean shutdown and all stateDB data was persisted this should do nothing)
-func restoreStateDBCache(storage storage.Storage, producer components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
-	batch, err := storage.FetchHeadBatch()
+func restoreStateDBCache(storage storage.Storage, registry components.BatchRegistry, producer components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
+	if registry.HeadBatchSeq() == nil {
+		// not initialised yet
+		return nil
+	}
+	batch, err := storage.FetchBatchBySeqNo(registry.HeadBatchSeq().Uint64())
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			// there is no head batch, this is probably a new node - there is no state to rebuild
@@ -1535,7 +1522,7 @@ func restoreStateDBCache(storage storage.Storage, producer components.BatchExecu
 	}
 	if !stateDBAvailableForBatch(storage, batch.Hash()) {
 		logger.Info("state not available for latest batch after restart - rebuilding stateDB cache from batches")
-		err = replayBatchesToValidState(storage, producer, gen, logger)
+		err = replayBatchesToValidState(storage, registry, producer, gen, logger)
 		if err != nil {
 			return fmt.Errorf("unable to replay batches to restore valid state - %w", err)
 		}
@@ -1556,13 +1543,13 @@ func stateDBAvailableForBatch(storage storage.Storage, hash common.L2BatchHash) 
 // 1. step backwards from head batch until we find a batch that is already in stateDB cache, builds list of batches to replay
 // 2. iterate that list of batches from the earliest, process the transactions to calculate and cache the stateDB
 // todo (#1416) - get unit test coverage around this (and L2 Chain code more widely, see ticket #1416 )
-func replayBatchesToValidState(storage storage.Storage, batchExecutor components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
+func replayBatchesToValidState(storage storage.Storage, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
 	// this slice will be a stack of batches to replay as we walk backwards in search of latest valid state
 	// todo - consider capping the size of this batch list using FIFO to avoid memory issues, and then repeating as necessary
 	var batchesToReplay []*core.Batch
 	// `batchToReplayFrom` variable will eventually be the latest batch for which we are able to produce a StateDB
 	// - we will then set that as the head of the L2 so that this node can rebuild its missing state
-	batchToReplayFrom, err := storage.FetchHeadBatch()
+	batchToReplayFrom, err := storage.FetchBatchBySeqNo(registry.HeadBatchSeq().Uint64())
 	if err != nil {
 		return fmt.Errorf("no head batch found in DB but expected to replay batches - %w", err)
 	}
@@ -1603,13 +1590,13 @@ func replayBatchesToValidState(storage storage.Storage, batchExecutor components
 	return nil
 }
 
-func createVKHandler(address *gethcommon.Address, vkIntf interface{}) (*vkhandler.VKHandler, error) {
+func createVKHandler(address *gethcommon.Address, vkIntf interface{}, chainID int64) (*vkhandler.VKHandler, error) {
 	vkPubKeyHexBytes, accountSignatureHexBytes, err := gethencoding.ExtractViewingKey(vkIntf)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode viewing key - %w", err)
 	}
 
-	encryptor, err := vkhandler.New(address, vkPubKeyHexBytes, accountSignatureHexBytes)
+	encryptor, err := vkhandler.New(address, vkPubKeyHexBytes, accountSignatureHexBytes, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create vk encryption for request - %w", err)
 	}

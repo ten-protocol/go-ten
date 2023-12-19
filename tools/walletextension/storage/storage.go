@@ -3,8 +3,8 @@ package storage
 import (
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/storage/database"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database"
 )
 
 type Storage interface {

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/obscuronet/go-obscuro/go/node"
+	"github.com/ten-protocol/go-ten/go/node"
 )
 
 func main() {
@@ -34,6 +34,7 @@ func main() {
 		node.WithLogLevel(cliConfig.logLevel),
 		node.WithInboundP2PDisabled(cliConfig.isInboundP2PDisabled),
 		node.WithBatchInterval(cliConfig.batchInterval),
+		node.WithMaxBatchInterval(cliConfig.maxBatchInterval),
 		node.WithRollupInterval(cliConfig.rollupInterval),
 		node.WithL1ChainID(cliConfig.l1ChainID),
 	)

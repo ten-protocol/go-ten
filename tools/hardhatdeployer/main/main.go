@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	contractdeployer "github.com/obscuronet/go-obscuro/tools/hardhatdeployer"
+	contractdeployer "github.com/ten-protocol/go-ten/tools/hardhatdeployer"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
 func main() {

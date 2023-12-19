@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"fmt"
 
-	generatedManagementContract "github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
+	generatedManagementContract "github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	ethereumclient "github.com/ethereum/go-ethereum/ethclient"

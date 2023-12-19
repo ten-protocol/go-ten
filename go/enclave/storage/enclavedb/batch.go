@@ -15,9 +15,9 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
 const (
@@ -44,8 +44,8 @@ const (
 
 	isCanonQuery = "select is_canonical from block where hash=?"
 
-	queryTxList      = "select tx.full_hash, batch.height from exec_tx join batch on batch.sequence=exec_tx.batch join tx on tx.hash=exec_tx.tx"
-	queryTxCountList = "select count(1) from exec_tx join batch on batch.sequence=exec_tx.batch"
+	queryTxList      = "select tx.full_hash, batch.height from exec_tx join batch on batch.sequence=exec_tx.batch join tx on tx.hash=exec_tx.tx where batch.is_canonical=true"
+	queryTxCountList = "select count(1) from exec_tx join batch on batch.sequence=exec_tx.batch where batch.is_canonical=true"
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions

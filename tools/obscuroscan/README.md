@@ -1,4 +1,4 @@
-# Obscuroscan
+# TenScan
 
 See the documentation [here](https://docs.obscu.ro/testnet/obscuroscan.html).
 

@@ -3,11 +3,11 @@ package erc20contract
 import (
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/integration/erc20contract/generated/EthERC20"
+	"github.com/ten-protocol/go-ten/integration/erc20contract/generated/EthERC20"
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/go-obscuro/integration/erc20contract/generated/ObsERC20"
+	"github.com/ten-protocol/go-ten/integration/erc20contract/generated/ObsERC20"
 )
 
 func L2BytecodeWithDefaultSupply(tokenName string, busAddress common.Address) []byte {

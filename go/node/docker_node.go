@@ -6,7 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/sanity-io/litter"
 
-	"github.com/obscuronet/go-obscuro/go/common/docker"
+	"github.com/ten-protocol/go-ten/go/common/docker"
 )
 
 var (
@@ -117,6 +117,7 @@ func (d *DockerNode) startHost() error {
 		fmt.Sprintf("-debugNamespaceEnabled=%t", d.cfg.debugNamespaceEnabled),
 		// todo (@stefan): once the limiter is in, increase it back to 5 or 10s
 		fmt.Sprintf("-batchInterval=%s", d.cfg.batchInterval),
+		fmt.Sprintf("-maxBatchInterval=%s", d.cfg.maxBatchInterval),
 		fmt.Sprintf("-rollupInterval=%s", d.cfg.rollupInterval),
 		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
 		fmt.Sprintf("-isInboundP2PDisabled=%t", d.cfg.isInboundP2PDisabled),

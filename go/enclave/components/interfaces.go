@@ -9,9 +9,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 )
 
 var ErrDuplicateRollup = errors.New("duplicate rollup received")
@@ -67,7 +67,8 @@ type BatchExecutor interface {
 	// ComputeBatch - a more primitive ExecuteBatch
 	// Call with same BatchContext should always produce identical extBatch - idempotent
 	// Should be safe to call in parallel
-	ComputeBatch(*BatchExecutionContext) (*ComputedBatch, error)
+	// failForEmptyBatch bool is used to skip batch production
+	ComputeBatch(batchContext *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error)
 
 	// ExecuteBatch - executes the transactions and xchain messages, returns the receipts, and updates the stateDB
 	ExecuteBatch(*core.Batch) (types.Receipts, error)

@@ -1,21 +1,21 @@
 ---
 ---
 # Getting Started
-In this tutorial, you build your own Obscuro dApp from the start. This is an excellent way to experience a typical development process as you learn how Obscuro dApps are built, design concepts, tools and terminology.
+In this tutorial, you build your own Ten dApp from the start. This is an excellent way to experience a typical development process as you learn how Ten dApps are built, design concepts, tools and terminology.
 
 # Let's go
 
-In this tutorial, we'll build a 'Guessing Game' dApp that provides an introduction to the fundamentals of Obscuro and shows you how to:
-- Set up your local Ethereum development environment for Obscuro.
-- Use Obscuro concepts to develop a dApp.
+In this tutorial, we'll build a 'Guessing Game' dApp that provides an introduction to the fundamentals of Ten and shows you how to:
+- Set up your local Ethereum development environment for Ten.
+- Use Ten concepts to develop a dApp.
 
 What is the *Guessing Game*?
 
-The Guessing Game is an example of a dApp that can only be built on Obscuro, and not on native Ethereum.
+The Guessing Game is an example of a dApp that can only be built on Ten, and not on native Ethereum.
 
-You will build a dApp that demonstrates a basic Obscuro use case, a simple number guessing game. The dApp's smart contract generates a random secret number, which is never revealed to anyone, including node operators, developers or end-user because of the privacy provided by Obscuro. The goal of the game is to guess this number, and each time an attempt is made, an entrance fee of 1 token is paid. If a user correctly guesses the number, the contract will pay out all of the accumulated entrance fees to them and reset itself with a new random number.
+You will build a dApp that demonstrates a basic Ten use case, a simple number guessing game. The dApp's smart contract generates a random secret number, which is never revealed to anyone, including node operators, developers or end-user because of the privacy provided by Ten. The goal of the game is to guess this number, and each time an attempt is made, an entrance fee of 1 token is paid. If a user correctly guesses the number, the contract will pay out all of the accumulated entrance fees to them and reset itself with a new random number.
 
-Without Obscuro, it would be possible to look up the internal state of the contract and cheat, and the game wouldn't work.
+Without Ten, it would be possible to look up the internal state of the contract and cheat, and the game wouldn't work.
 
 The dApp has many of the features that you'd expect to find, including:
 - Generating a random number known only to the dApp.
@@ -27,11 +27,11 @@ The dApp has many of the features that you'd expect to find, including:
 
 # Set up your environment
 - You'll need to install MetaMask following the instructions [here](https://metamask.io/)
-- Then download and run the Obscuro Wallet extension following the instructions [here](https://docs.obscu.ro/wallet-extension/wallet-extension)
-- Now connect MetaMask to the Obscuro testnet following the instructions [here](https://docs.obscu.ro/wallet-extension/configure-metamask)
+- Then download and run the Ten Wallet extension following the instructions [here](https://docs.obscu.ro/wallet-extension/wallet-extension)
+- Now connect MetaMask to the Ten testnet following the instructions [here](https://docs.obscu.ro/wallet-extension/configure-metamask)
 - Finally, check you can open the Remix IDE by visiting the following URL in your browser https://remix.ethereum.org
 
-That's it. You're all set to start building your first dApp on Obscuro.
+That's it. You're all set to start building your first dApp on Ten.
 
 ## 1. To begin, we'll clone a template smart contract from Github through Remix by following these instructions
 
@@ -39,7 +39,7 @@ That's it. You're all set to start building your first dApp on Obscuro.
 ![Step 1 screenshot](https://images.tango.us/workflows/57863807-6b96-4295-a7a1-42da1623f030/steps/919b227f-f1f5-4af3-aba1-7fb83576d505/8144f3f5-7855-4c83-86dd-c88e5476c367.png?crop=focalpoint&fit=crop&fp-x=0.5000&fp-y=0.5000&fp-z=1.0000&w=1200&mark-w=0.2&mark-pad=0&mark64=aHR0cHM6Ly9pbWFnZXMudGFuZ28udXMvc3RhdGljL21hZGUtd2l0aC10YW5nby13YXRlcm1hcmsucG5n&ar=874%3A594)
 
 
-#### Paste "https://github.com/obscuronet/tutorial/blob/main/number-guessing-game/contracts/Guess.sol" into input
+#### Paste "https://github.com/ten-protocol/tutorial/blob/main/number-guessing-game/contracts/Guess.sol" into input
 ![Step 2 screenshot](https://images.tango.us/workflows/57863807-6b96-4295-a7a1-42da1623f030/steps/4b3b212d-2518-4cc9-aab2-4befe128b38c/66a9a87d-0899-42d2-8f6a-98f204b25825.png?crop=focalpoint&fit=crop&fp-x=0.5000&fp-y=0.5000&fp-z=1.0000&w=1200&mark-w=0.2&mark-pad=0&mark64=aHR0cHM6Ly9pbWFnZXMudGFuZ28udXMvc3RhdGljL21hZGUtd2l0aC10YW5nby13YXRlcm1hcmsucG5n&ar=530%3A371)
 
 
@@ -48,7 +48,7 @@ That's it. You're all set to start building your first dApp on Obscuro.
 
 
 # Let's code
-Guess.sol is a Solidity file, and once we're done, it will contain everything we need for the Guessing Game. Inside the file you'll find the classic ERC-20 interface and a simple implementation named ERC20Basic representing OGG (Obscuro Guessing Game token). We'll use OGG as a means of entry to play and to generate the prize pool.
+Guess.sol is a Solidity file, and once we're done, it will contain everything we need for the Guessing Game. Inside the file you'll find the classic ERC-20 interface and a simple implementation named ERC20Basic representing OGG (Ten Guessing Game token). We'll use OGG as a means of entry to play and to generate the prize pool.
 
 There is also a skeleton contract called Guess inside Guess.sol, and this is what we'll be extending. The contract Guess will be written the same as any other Solidity contract in Ethereum. It'll run on the EVM and will exhibit the same behaviours.
 
@@ -60,7 +60,7 @@ Let's start by defining the key variables we'll need for the game. One is to sto
     uint8 private _target
     IERC20 public erc20
 ```
-Upon seeing this, you might think, hang on, I can see *_target* is set to private, but so what? Private variables in Ethereum don't really mean they're private, just that they can't be accessed or modified by other smart contracts. And you're right, that's the case in Ethereum. But in Obscuro, private variables *really* are private (unless you explicitly decide to reveal them!). This is because all contracts and contract data is encrypted and only accessible within enclaves.
+Upon seeing this, you might think, hang on, I can see *_target* is set to private, but so what? Private variables in Ethereum don't really mean they're private, just that they can't be accessed or modified by other smart contracts. And you're right, that's the case in Ethereum. But in Ten, private variables *really* are private (unless you explicitly decide to reveal them!). This is because all contracts and contract data is encrypted and only accessible within enclaves.
 
 Our variables should now look like this
 ![Step 1 screenshot](https://images.tango.us/workflows/dc61d575-7eea-457c-bdfe-8edccf79b366/steps/3d9b387b-a492-4096-aa8a-1d50084be0d5/6d08adce-70d2-4203-8d18-c09999536553.png?crop=focalpoint&fit=crop&fp-x=0.5000&fp-y=0.5000&fp-z=1.0000&w=1200&mark-w=0.2&mark-pad=0&mark64=aHR0cHM6Ly9pbWFnZXMudGFuZ28udXMvc3RhdGljL21hZGUtd2l0aC10YW5nby13YXRlcm1hcmsucG5n&ar=413%3A131)
@@ -128,13 +128,13 @@ If it's not correct, we do nothing. For example, your code might look something 
 ![Step 1 screenshot](https://images.tango.us/workflows/7073e589-7d79-491f-b4f1-27db2eb144c1/steps/ad4b9d9a-5793-420f-b21c-3a22ae8e83b5/b016b98e-203a-4362-9c14-6ff2928b9ba8.png?crop=focalpoint&fit=crop&fp-x=0.5000&fp-y=0.5000&fp-z=1.0000&w=1200&mark-w=0.2&mark-pad=0&mark64=aHR0cHM6Ly9pbWFnZXMudGFuZ28udXMvc3RhdGljL21hZGUtd2l0aC10YW5nby13YXRlcm1hcmsucG5n&ar=879%3A246)
 
 
-This works. You now have an Obscuro contract that will let players play the guessing game. But it's not very good. So how do players know if they've won or not? We need events!
+This works. You now have an Ten contract that will let players play the guessing game. But it's not very good. So how do players know if they've won or not? We need events!
 
-In Ethereum, events are typically written to the event log that is viewable by everyone. In Obscuro, events are viewable only to those they're intended for. This is done by encrypting events with a key that is known only to the intended recipient. This is handled automatically for the recipient through the Wallet Extension.
+In Ethereum, events are typically written to the event log that is viewable by everyone. In Ten, events are viewable only to those they're intended for. This is done by encrypting events with a key that is known only to the intended recipient. This is handled automatically for the recipient through the Wallet Extension.
 
 So let's go ahead and start adding in some events. First, we'll need to emit events letting a player know after they've played whether they have won or not.
 
-Events in Obscuro look exactly like events in any other EVM-based platform. All the complexity of ensuring privacy is abstracted away. So let's go ahead and define two new events in our contract.
+Events in Ten look exactly like events in any other EVM-based platform. All the complexity of ensuring privacy is abstracted away. So let's go ahead and define two new events in our contract.
 
 ```
 event Correct(address indexed player, uint8 guess, uint prize);
@@ -154,7 +154,7 @@ Our function to return the prize pool is:
 
 ![Step 1 screenshot](https://images.tango.us/workflows/74ec7481-8c33-401f-8476-07c777e7cd3d/steps/d4a753b9-f507-4f6c-b080-40587ec82c00/8ffdc581-6e95-40bb-9c11-d3fa0ef01d84.png?crop=focalpoint&fit=crop&fp-x=0.5000&fp-y=0.5000&fp-z=1.0000&w=1200&mark-w=0.2&mark-pad=0&mark64=aHR0cHM6Ly9pbWFnZXMudGFuZ28udXMvc3RhdGljL21hZGUtd2l0aC10YW5nby13YXRlcm1hcmsucG5n&ar=518%3A87)
 
-And that's it! Congratulations on writing your first Obscuro smart contract!
+And that's it! Congratulations on writing your first Ten smart contract!
 
 You can now go ahead and deploy the contract following the instructions [here](https://docs.obscu.ro/testnet/deploying-a-smart-contract)
 

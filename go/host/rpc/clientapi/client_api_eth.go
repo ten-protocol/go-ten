@@ -8,11 +8,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/host"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/responses"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/host"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -49,21 +48,21 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 }
 
 // GetBlockByNumber returns the header of the batch with the given height.
-func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (common.BatchHeader, error) {
+func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (*common.BatchHeader, error) {
 	batchHash, err := api.batchNumberToBatchHash(number)
 	if err != nil {
-		return common.BatchHeader{}, fmt.Errorf("could not find batch with height %d. Cause: %w", number, err)
+		return nil, fmt.Errorf("could not find batch with height %d. Cause: %w", number, err)
 	}
 	return api.GetBlockByHash(ctx, *batchHash, true)
 }
 
 // GetBlockByHash returns the header of the batch with the given hash.
-func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (common.BatchHeader, error) {
+func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (*common.BatchHeader, error) {
 	batchHeader, err := api.host.DB().GetBatchHeader(hash)
 	if err != nil {
-		return common.BatchHeader{}, err
+		return nil, err
 	}
-	return *batchHeader, nil
+	return batchHeader, nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -207,17 +206,15 @@ type FeeHistoryResult struct {
 // Given a batch number, returns the hash of the batch with that number.
 func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	// Handling the special cases first. No special handling is required for rpc.EarliestBlockNumber.
-	if batchNumber == rpc.LatestBlockNumber {
+	// note: our API currently treats all these block statuses the same for obscuro batches
+	if batchNumber == rpc.LatestBlockNumber || batchNumber == rpc.PendingBlockNumber ||
+		batchNumber == rpc.FinalizedBlockNumber || batchNumber == rpc.SafeBlockNumber {
 		batchHeader, err := api.host.DB().GetHeadBatchHeader()
 		if err != nil {
 			return nil, err
 		}
 		batchHash := batchHeader.Hash()
 		return &batchHash, nil
-	}
-
-	if batchNumber == rpc.PendingBlockNumber {
-		return nil, errutil.ErrNoImpl
 	}
 
 	batchNumberBig := big.NewInt(batchNumber.Int64())

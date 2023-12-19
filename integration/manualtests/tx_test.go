@@ -13,15 +13,15 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -50,7 +50,7 @@ var (
 		"4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8",
 		777,
 		gethlog.New())
-	l2Host = "erpc.testnet.obscu.ro"
+	l2Host = "erpc.uat-testnet.obscu.ro"
 	l2Port = 81
 )
 
@@ -154,7 +154,7 @@ func TestL2IssueContractInteractWaitReceipt(t *testing.T) {
 	require.NoError(t, err)
 
 	if balance.Cmp(big.NewInt(0)) <= 0 {
-		t.Errorf("not enough balance: has %s has %s obx", l2Wallet.Address().Hex(), balance.String())
+		t.Errorf("not enough balance: has %s has %s ten", l2Wallet.Address().Hex(), balance.String())
 	}
 
 	storeContractBytecode := "0x608060405234801561001057600080fd5b506101f3806100206000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b5780636057361d14610059575b600080fd5b610043610075565b60405161005091906100da565b60405180910390f35b610073600480360381019061006e9190610126565b61007e565b005b60008054905090565b806000819055507febfcf7c0a1b09f6499e519a8d8bb85ce33cd539ec6cbd964e116cd74943ead1a33826040516100b6929190610194565b60405180910390a150565b6000819050919050565b6100d4816100c1565b82525050565b60006020820190506100ef60008301846100cb565b92915050565b600080fd5b610103816100c1565b811461010e57600080fd5b50565b600081359050610120816100fa565b92915050565b60006020828403121561013c5761013b6100f5565b5b600061014a84828501610111565b91505092915050565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b600061017e82610153565b9050919050565b61018e81610173565b82525050565b60006040820190506101a96000830185610185565b6101b660208301846100cb565b939250505056fea264697066735822122071ae4262a5da0c5c7b417d9c6cd13b57b8fcfe79c9c526b96f482ee67ff3136c64736f6c63430008120033"
@@ -327,7 +327,7 @@ func TestL2IssueTxWaitReceipt(t *testing.T) {
 	require.NoError(t, err)
 
 	if balance.Cmp(big.NewInt(0)) <= 0 {
-		t.Fatalf("not enough balance: has %s has %s obx", l2Wallet.Address().Hex(), balance.String())
+		t.Fatalf("not enough balance: has %s has %s ten", l2Wallet.Address().Hex(), balance.String())
 	}
 	fmt.Println("balance: ", balance.String())
 
@@ -394,7 +394,7 @@ func TestL2IssueContractSubscribeChange(t *testing.T) {
 	require.NoError(t, err)
 
 	if balance.Cmp(big.NewInt(0)) <= 0 {
-		t.Errorf("not enough balance: has %s has %s obx", l2Wallet.Address().Hex(), balance.String())
+		t.Errorf("not enough balance: has %s has %s ten", l2Wallet.Address().Hex(), balance.String())
 	}
 
 	storeContractBytecode := "608060405234801561001057600080fd5b506101d7806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c80630f2723ea14610030575b600080fd5b61004a60048036038101906100459190610137565b61004c565b005b8173ffffffffffffffffffffffffffffffffffffffff167fe86bd59ccd77aa1a9fbc46604e341e1dcc72f2a6e6637d5422736d645a71625e826040516100929190610186565b60405180910390a25050565b600080fd5b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b60006100ce826100a3565b9050919050565b6100de816100c3565b81146100e957600080fd5b50565b6000813590506100fb816100d5565b92915050565b6000819050919050565b61011481610101565b811461011f57600080fd5b50565b6000813590506101318161010b565b92915050565b6000806040838503121561014e5761014d61009e565b5b600061015c858286016100ec565b925050602061016d85828601610122565b9150509250929050565b61018081610101565b82525050565b600060208201905061019b6000830184610177565b9291505056fea2646970667358221220d45d57b217a07cfd4ceecc8f5d2a9194a098e5fe1de98bc56c24cc400e21c96064736f6c63430008120033"

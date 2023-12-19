@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/naoina/toml"
 
-	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/ten-protocol/go-ten/go/config"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -47,6 +47,7 @@ type HostConfigToml struct {
 	LevelDBPath               string
 	DebugNamespaceEnabled     bool
 	BatchInterval             string
+	MaxBatchInterval          string
 	RollupInterval            string
 	IsInboundP2PDisabled      bool
 	L1BlockTime               int
@@ -88,6 +89,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	levelDBPath := flag.String(levelDBPathName, cfg.LevelDBPath, flagUsageMap[levelDBPathName])
 	debugNamespaceEnabled := flag.Bool(debugNamespaceEnabledName, cfg.DebugNamespaceEnabled, flagUsageMap[debugNamespaceEnabledName])
 	batchInterval := flag.String(batchIntervalName, cfg.BatchInterval.String(), flagUsageMap[batchIntervalName])
+	maxBatchInterval := flag.String(maxBatchIntervalName, cfg.MaxBatchInterval.String(), flagUsageMap[maxBatchIntervalName])
 	rollupInterval := flag.String(rollupIntervalName, cfg.RollupInterval.String(), flagUsageMap[rollupIntervalName])
 	isInboundP2PDisabled := flag.Bool(isInboundP2PDisabledName, cfg.IsInboundP2PDisabled, flagUsageMap[isInboundP2PDisabledName])
 	maxRollupSize := flag.Uint64(maxRollupSizeFlagName, cfg.MaxRollupSize, flagUsageMap[maxRollupSizeFlagName])
@@ -136,6 +138,10 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+	cfg.MaxBatchInterval, err = time.ParseDuration(*maxBatchInterval)
+	if err != nil {
+		return nil, err
+	}
 	cfg.RollupInterval, err = time.ParseDuration(*rollupInterval)
 	if err != nil {
 		return nil, err
@@ -164,12 +170,15 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		return &config.HostInputConfig{}, fmt.Errorf("unrecognised node type '%s'", tomlConfig.NodeType)
 	}
 
-	batchInterval, rollupInterval := 1*time.Second, 5*time.Second
+	batchInterval, maxBatchInterval, rollupInterval := 1*time.Second, 1*time.Second, 5*time.Second
 	if interval, err := time.ParseDuration(tomlConfig.BatchInterval); err == nil {
 		batchInterval = interval
 	}
 	if interval, err := time.ParseDuration(tomlConfig.RollupInterval); err == nil {
 		rollupInterval = interval
+	}
+	if interval, err := time.ParseDuration(tomlConfig.MaxBatchInterval); err == nil {
+		maxBatchInterval = interval
 	}
 
 	return &config.HostInputConfig{
@@ -202,6 +211,7 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,
 		LevelDBPath:               tomlConfig.LevelDBPath,
 		BatchInterval:             batchInterval,
+		MaxBatchInterval:          maxBatchInterval,
 		RollupInterval:            rollupInterval,
 		IsInboundP2PDisabled:      tomlConfig.IsInboundP2PDisabled,
 		L1BlockTime:               time.Duration(tomlConfig.L1BlockTime) * time.Second,
