@@ -27,10 +27,16 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 func (n *ContractDeployer) Start() error {
 	fmt.Printf("Starting L2 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
 
-	cmds := []string{
-		"npx", "hardhat", "obscuro:deploy",
-		"--network", "layer2",
+	cmds := []string{"npx"}
+	var ports []int
+
+	// inspect stops operation until debugger is hooked on port 9229 if debug is enabled
+	if n.cfg.debugEnabled {
+		cmds = append(cmds, "--node-options=\"--inspect-brk=0.0.0.0:9229\"")
+		ports = append(ports, 9229)
 	}
+
+	cmds = append(cmds, "hardhat", "obscuro:deploy", "--network", "layer2")
 
 	envs := map[string]string{
 		"PREFUND_FAUCET_AMOUNT": n.cfg.faucetPrefundAmount,
@@ -73,7 +79,7 @@ func (n *ContractDeployer) Start() error {
 `, n.cfg.l1HTTPURL, n.cfg.l1privateKey, n.cfg.l2Host, n.cfg.l2Port, n.cfg.l2PrivateKey, n.cfg.hocPKString, n.cfg.pocPKString),
 	}
 
-	containerID, err := docker.StartNewContainer("hh-l2-deployer", n.cfg.dockerImage, cmds, nil, envs, nil, nil)
+	containerID, err := docker.StartNewContainer("hh-l2-deployer", n.cfg.dockerImage, cmds, ports, envs, nil, nil)
 	if err != nil {
 		return err
 	}
