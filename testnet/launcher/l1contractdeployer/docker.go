@@ -31,10 +31,16 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 func (n *ContractDeployer) Start() error {
 	fmt.Printf("Starting L1 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
 
-	cmds := []string{
-		"npx", "hardhat", "deploy",
-		"--network", "layer1",
+	cmds := []string{"npx"}
+	var ports []int
+
+	// inspect stops operation until debugger is hooked on port 9229 if debug is enabled
+	if n.cfg.debugEnabled {
+		cmds = append(cmds, "--node-options=\"--inspect-brk=0.0.0.0:9229\"")
+		ports = append(ports, 9229)
 	}
+
+	cmds = append(cmds, "hardhat", "deploy", "--network", "layer1")
 
 	envs := map[string]string{
 		"NETWORK_JSON": fmt.Sprintf(`
@@ -52,7 +58,7 @@ func (n *ContractDeployer) Start() error {
 `, n.cfg.l1HTTPURL, n.cfg.privateKey),
 	}
 
-	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.dockerImage, cmds, nil, envs, nil, nil)
+	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.dockerImage, cmds, ports, envs, nil, nil)
 	if err != nil {
 		return err
 	}
