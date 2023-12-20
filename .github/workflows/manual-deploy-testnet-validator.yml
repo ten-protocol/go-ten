@@ -27,10 +27,6 @@ on:
         description: 'Node Account Address'
         required: true
         type: string
-      node_l1_ws_url:
-        description: 'Node L1 Connection String'
-        required: true
-        type: string
       MGMT_CONTRACT_ADDR:
         description: 'Management Contract Addr'
         required: true
@@ -43,14 +39,7 @@ on:
         description: 'L1 Starting Hash'
         required: true
         type: string
-      HOC_ERC20_ADDR:
-        description: 'HOC ERC20 Contract Addr'
-        required: true
-        type: string
-      POC_ERC20_ADDR:
-        description: 'POC ERC20 Contract Addr'
-        required: true
-        type: string
+
 
 jobs:
   build:
@@ -162,7 +151,7 @@ jobs:
                -node_type=validator \
                -is_sgx_enabled=true \
                -host_id=${{ github.event.inputs.node_account_address }} \
-               -l1_ws_url=${{  github.event.inputs.node_l1_ws_url }} \
+               -l1_ws_url=${{  secrets.ADD_NEW_NODE_L1_WS_URL }} \
                -management_contract_addr=${{ github.event.inputs.MGMT_CONTRACT_ADDR }} \
                -message_bus_contract_addr=${{ github.event.inputs.MSG_BUS_CONTRACT_ADDR }} \
                -l1_start=${{ github.event.inputs.L1_START_HASH }} \
