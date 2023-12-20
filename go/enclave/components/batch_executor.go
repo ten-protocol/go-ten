@@ -168,6 +168,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
+	snap := stateDB.Snapshot()
 
 	var messages common.CrossChainMessages
 	var transfers common.ValueTransferEvents
@@ -217,6 +218,8 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 		len(crossChainTransactions) == 0 &&
 		len(messages) == 0 &&
 		len(transfers) == 0 {
+		// revert any unexpected mutation to the statedb
+		stateDB.RevertToSnapshot(snap)
 		return nil, ErrNoTransactionsToProcess
 	}
 
