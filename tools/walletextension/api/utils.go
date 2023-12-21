@@ -25,14 +25,14 @@ func parseRequest(body []byte) (*common.RPCRequest, error) {
 	var method string
 	err = json.Unmarshal(reqJSONMap[common.JSONKeyMethod], &method)
 	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal method string from JSON-RPC request body: %w", err)
+		return nil, fmt.Errorf("could not unmarshal method string from JSON-RPC request body: %s ; %w", string(body), err)
 	}
 
 	// we extract the params into a JSON list
 	var params []interface{}
 	err = json.Unmarshal(reqJSONMap[common.JSONKeyParams], &params)
 	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %w", err)
+		return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %s ; %w", string(body), err)
 	}
 
 	return &common.RPCRequest{
