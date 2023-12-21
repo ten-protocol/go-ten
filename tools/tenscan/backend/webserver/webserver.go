@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ten-protocol/go-ten/tools/tenscan/backend"
 	"net/http"
 	"time"
+
+	"github.com/ten-protocol/go-ten/tools/tenscan/backend"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-contrib/cors"
@@ -85,7 +86,6 @@ func (w *WebServer) Stop() error {
 
 func (w *WebServer) health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"healthy": true})
-	w.backend.GetNodeCount()
 }
 
 func (w *WebServer) decryptTxBlob(c *gin.Context) {

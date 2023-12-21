@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ten-protocol/go-ten/tools/tenscan/backend/config"
-	"github.com/ten-protocol/go-ten/tools/tenscan/backend/container"
 	"math/big"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ten-protocol/go-ten/tools/tenscan/backend/config"
+	"github.com/ten-protocol/go-ten/tools/tenscan/backend/container"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"

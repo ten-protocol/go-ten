@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/ten-protocol/go-ten/tools/tenscan/backend/container"
 	"log"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/ten-protocol/go-ten/tools/tenscan/backend/container"
 )
 
 func main() {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+
 	"github.com/ten-protocol/go-ten/tools/tenscan/backend/config"
 )
 
