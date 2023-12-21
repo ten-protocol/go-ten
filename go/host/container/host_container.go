@@ -26,14 +26,14 @@ import (
 )
 
 const (
-	APIVersion1             = "1.0"
-	APINamespaceObscuro     = "obscuro"
-	APINamespaceEth         = "eth"
-	APINamespaceObscuroScan = "obscuroscan"
-	APINamespaceScan        = "scan"
-	APINamespaceNetwork     = "net"
-	APINamespaceTest        = "test"
-	APINamespaceDebug       = "debug"
+	APIVersion1         = "1.0"
+	APINamespaceObscuro = "obscuro"
+	APINamespaceEth     = "eth"
+	APINamespaceTenScan = "tenscan"
+	APINamespaceScan    = "scan"
+	APINamespaceNetwork = "net"
+	APINamespaceTest    = "test"
+	APINamespaceDebug   = "debug"
 )
 
 type HostContainer struct {
@@ -173,9 +173,9 @@ func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p
 				Public:    true,
 			},
 			{
-				Namespace: APINamespaceObscuroScan,
+				Namespace: APINamespaceTenScan,
 				Version:   APIVersion1,
-				Service:   clientapi.NewObscuroScanAPI(h),
+				Service:   clientapi.NewTenScanAPI(h),
 				Public:    true,
 			},
 			{
