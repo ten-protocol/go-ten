@@ -182,7 +182,7 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 		txData := &types.LegacyTx{
 			Nonce:    fromWallet.GetNonceAndIncrement(),
 			Value:    big.NewInt(int64(testcommon.RndBtw(1, 500))),
-			Gas:      uint64(1_000_000),
+			Gas:      uint64(1_000_000_000),
 			GasPrice: gethcommon.Big1,
 			To:       &toWalletAddr,
 		}

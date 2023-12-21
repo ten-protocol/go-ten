@@ -474,6 +474,7 @@ func getLoggedWithdrawals(minObscuroHeight uint64, obscuroClient *obsclient.ObsC
 // FindNotIncludedL2Txs returns the number of transfers and withdrawals that were injected but are not present in the L2 blockchain.
 func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) (int, int, int) {
 	transfers, withdrawals, nativeTransfers := txInjector.TxTracker.GetL2Transactions()
+
 	notFoundTransfers := 0
 	for _, tx := range transfers {
 		sender := getSender(tx)
