@@ -96,13 +96,15 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 	txHashes := make([]gethcommon.Hash, len(wallets))
 	for idx, w := range wallets {
 		destAddr := w.Address()
-		tx := &types.LegacyTx{
+		txData := &types.LegacyTx{
 			Nonce:    startingNonce + uint64(idx),
 			Value:    alloc,
 			Gas:      uint64(1_000_000),
 			GasPrice: gethcommon.Big1,
 			To:       &destAddr,
 		}
+
+		tx := faucetClient.EstimateGasAndGasPrice(txData)
 		signedTx, err := faucetWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)

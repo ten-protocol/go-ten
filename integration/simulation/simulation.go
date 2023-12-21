@@ -225,7 +225,7 @@ func (s *Simulation) deployObscuroERC20s() {
 			// 0x526c84529b2b8c11f57d93d3f5537aca3aecef9b - this is the address of the L2 contract which is currently hardcoded.
 			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), gethcommon.HexToAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b"))
 
-			deployContractTx := types.DynamicFeeTx{
+			deployContractTxData := types.DynamicFeeTx{
 				Nonce:     NextNonce(s.ctx, s.RPCHandles, owner),
 				Gas:       1025_000_000,
 				GasFeeCap: gethcommon.Big1, // This field is used to derive the gas price for dynamic fee transactions.
@@ -233,7 +233,8 @@ func (s *Simulation) deployObscuroERC20s() {
 				GasTipCap: gethcommon.Big1,
 			}
 
-			signedTx, err := owner.SignTransaction(&deployContractTx)
+			deployContractTx := s.RPCHandles.ObscuroWalletRndClient(owner).EstimateGasAndGasPrice(&deployContractTxData)
+			signedTx, err := owner.SignTransaction(deployContractTx)
 			if err != nil {
 				panic(err)
 			}
