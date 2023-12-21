@@ -194,7 +194,7 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 		}
 		ti.logger.Info("Native value transfer transaction injected into L2.", log.TxKey, signedTx.Hash(), "fromAddress", fromWallet.Address(), "toAddress", toWallet.Address())
 
-		ti.stats.Transfer()
+		ti.stats.NativeTransfer()
 
 		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {

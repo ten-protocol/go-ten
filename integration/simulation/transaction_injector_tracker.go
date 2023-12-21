@@ -28,12 +28,13 @@ type GasBridgingRecord struct {
 
 func newCounter() *txInjectorTracker {
 	return &txInjectorTracker{
-		l1TransactionsLock:       sync.RWMutex{},
-		L1Transactions:           []ethadapter.L1Transaction{},
-		l2TransactionsLock:       sync.RWMutex{},
-		TransferL2Transactions:   []*common.L2Tx{},
-		WithdrawalL2Transactions: []*common.L2Tx{},
-		GasBridgeTransactions:    []GasBridgingRecord{},
+		l1TransactionsLock:                sync.RWMutex{},
+		L1Transactions:                    []ethadapter.L1Transaction{},
+		l2TransactionsLock:                sync.RWMutex{},
+		TransferL2Transactions:            []*common.L2Tx{},
+		WithdrawalL2Transactions:          []*common.L2Tx{},
+		NativeValueTransferL2Transactions: []*common.L2Tx{},
+		GasBridgeTransactions:             []GasBridgingRecord{},
 	}
 }
 
