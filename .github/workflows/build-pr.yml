@@ -44,6 +44,7 @@ jobs:
             integration/.build/faucet/*
             integration/.build/tenscan/*
             integration/.build/tengateway/*
+            integration/.build/contractdeployer/*
           retention-days: 1
 
 
