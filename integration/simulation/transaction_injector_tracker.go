@@ -62,7 +62,7 @@ func (m *txInjectorTracker) trackTransferL2Tx(tx *common.L2Tx) {
 func (m *txInjectorTracker) trackNativeValueTransferL2Tx(tx *common.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()
-	m.NativeValueTransferL2Transactions = append(m.TransferL2Transactions, tx)
+	m.NativeValueTransferL2Transactions = append(m.NativeValueTransferL2Transactions, tx)
 }
 
 // GetL1Transactions returns all generated L1 L2Txs
