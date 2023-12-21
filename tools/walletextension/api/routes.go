@@ -160,6 +160,7 @@ func ethRequestHandler(walletExt *walletextension.WalletExtension, conn userconn
 	}
 
 	// Get userID
+	// TODO: @ziga - after removing old wallet extension endpoints we should prevent users doing anything without valid encryption token
 	hexUserID, err := getUserID(conn, 1)
 	if err != nil || !walletExt.UserExists(hexUserID) {
 		walletExt.Logger().Info("user not found in the query params: %w. Using the default user", log.ErrKey, err)
