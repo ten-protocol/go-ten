@@ -173,7 +173,7 @@ func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) er
 		startTime := time.Now()
 		healthy := false
 		for ; !healthy; time.Sleep(500 * time.Millisecond) {
-			healthy, _ = client.Health()
+			healthy, _ = client.HealthStatusOfNode()
 			if time.Now().After(startTime.Add(3 * time.Minute)) {
 				return fmt.Errorf("nodes not healthy after 3 minutes")
 			}

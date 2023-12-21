@@ -50,7 +50,7 @@ func awaitHealthStatus(rpcAddress string, timeout time.Duration) error {
 			return fmt.Errorf("failed dial host (%s): %w", rpcAddress, err)
 		}
 		defer c.Close()
-		healthy, err := c.Health()
+		healthy, err := c.HealthStatusOfNode()
 		if err != nil {
 			return fmt.Errorf("failed to get host health (%s): %w", rpcAddress, err)
 		}

@@ -17,6 +17,17 @@ func routeItems(r *gin.Engine, server *WebServer) {
 	r.GET("/items/batches/", server.getBatchListing)
 	r.GET("/items/blocks/", server.getBlockListing)
 	r.GET("/info/obscuro/", server.getConfig)
+	r.POST("/info/health/", server.getHealthStatus)
+}
+
+func (w *WebServer) getHealthStatus(c *gin.Context) {
+	healthStatus, err := w.backend.GetHealthStatus()
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, healthStatus)
 }
 
 func (w *WebServer) getLatestBatch(c *gin.Context) {
