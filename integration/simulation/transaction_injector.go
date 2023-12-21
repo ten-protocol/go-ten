@@ -192,7 +192,7 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 		if err != nil {
 			panic(err)
 		}
-		ti.logger.Info("Transfer transaction injected into L2.", log.TxKey, signedTx.Hash(), "fromAddress", fromWallet.Address(), "toAddress", toWallet.Address())
+		ti.logger.Info("Native value transfer transaction injected into L2.", log.TxKey, signedTx.Hash(), "fromAddress", fromWallet.Address(), "toAddress", toWallet.Address())
 
 		ti.stats.Transfer()
 
