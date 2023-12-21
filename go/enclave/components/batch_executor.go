@@ -66,9 +66,9 @@ func NewBatchExecutor(
 // payL1Fees - this function modifies the state db according to the transactions contained within the batch context
 // in order to subtract gas fees from the balance. It returns a list of the transactions that have prepaid for their L1
 // publishing costs.
-func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) (common.L2Transactions, common.L2Transactions) {
-	transactions := make(common.L2Transactions, 0)
-	freeTransactions := make(common.L2Transactions, 0)
+func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) (common.L2PricedTransactions, common.L2PricedTransactions) {
+	transactions := make(common.L2PricedTransactions, 0)
+	freeTransactions := make(common.L2PricedTransactions, 0)
 	block, _ := executor.storage.FetchBlock(context.BlockPtr)
 
 	for _, tx := range context.Transactions {
@@ -93,18 +93,25 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 		isFreeTransaction = isFreeTransaction && tx.GasPrice().Cmp(gethcommon.Big0) == 0
 
 		if isFreeTransaction {
-			freeTransactions = append(freeTransactions, tx)
+			freeTransactions = append(freeTransactions, common.L2PricedTransaction{
+				Tx:             tx,
+				PublishingCost: big.NewInt(0),
+			})
 			continue
 		}
 		if accBalance.Cmp(cost) == -1 {
 			executor.logger.Info(fmt.Sprintf("insufficient account balance for tx - want: %d have: %d", cost, accBalance), log.TxKey, tx.Hash(), "addr", sender.Hex())
 			continue
 		}
-		stateDB.SubBalance(*sender, cost)
-		stateDB.AddBalance(context.Creator, cost)
+
+		/*stateDB.SubBalance(*sender, cost)
+		stateDB.AddBalance(context.Creator, cost)*/
 		// todo - add refund logic.
 
-		transactions = append(transactions, tx)
+		transactions = append(transactions, common.L2PricedTransaction{
+			Tx:             tx,
+			PublishingCost: big.NewInt(0).Set(cost),
+		})
 	}
 	return transactions, freeTransactions
 }
@@ -180,16 +187,24 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 
 	transactionsToProcess, freeTransactions := executor.payL1Fees(stateDB, context)
 
-	crossChainTransactions = append(crossChainTransactions, freeTransactions...)
+	xchainTxs := make(common.L2PricedTransactions, 0)
+	for _, xTx := range crossChainTransactions {
+		xchainTxs = append(xchainTxs, common.L2PricedTransaction{
+			Tx:             xTx,
+			PublishingCost: big.NewInt(0),
+		})
+	}
+
+	xchainTxs = append(xchainTxs, freeTransactions...)
 
 	successfulTxs, excludedTxs, txReceipts, err := executor.processTransactions(batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
 
-	executor.refundL1Fees(stateDB, context, excludedTxs)
+	//executor.refundL1Fees(stateDB, context, excludedTxs)
 
-	ccSuccessfulTxs, _, ccReceipts, err := executor.processTransactions(batch, len(successfulTxs), crossChainTransactions, stateDB, context.ChainConfig, true)
+	ccSuccessfulTxs, _, ccReceipts, err := executor.processTransactions(batch, len(successfulTxs), xchainTxs, stateDB, context.ChainConfig, true)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +216,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	// we need to copy the batch to reset the internal hash cache
 	copyBatch := *batch
 	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
-	copyBatch.Transactions = append(successfulTxs, freeTransactions...)
+	copyBatch.Transactions = append(successfulTxs, freeTransactions.ToTransactions()...)
 	copyBatch.ResetHash()
 
 	if err = executor.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {
@@ -222,6 +237,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 
 	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
 	for _, receipt := range allReceipts {
+		executor.logger.Info("New receipt! ", log.TxKey, receipt.TxHash)
 		receipt.BlockHash = copyBatch.Hash()
 		for _, l := range receipt.Logs {
 			l.BlockHash = copyBatch.Hash()
@@ -400,7 +416,7 @@ func (executor *batchExecutor) verifyInboundCrossChainTransactions(transactions 
 func (executor *batchExecutor) processTransactions(
 	batch *core.Batch,
 	tCount int,
-	txs []*common.L2Tx,
+	txs common.L2PricedTransactions,
 	stateDB *state.StateDB,
 	cc *params.ChainConfig,
 	noBaseFee bool,
@@ -411,18 +427,18 @@ func (executor *batchExecutor) processTransactions(
 
 	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, executor.storage, cc, tCount, noBaseFee, executor.logger)
 	for _, tx := range txs {
-		result, f := txResults[tx.Hash()]
+		result, f := txResults[tx.Tx.Hash()]
 		if !f {
 			return nil, nil, nil, fmt.Errorf("there should be an entry for each transaction")
 		}
 		rec, foundReceipt := result.(*types.Receipt)
 		if foundReceipt {
-			executedTransactions = append(executedTransactions, tx)
+			executedTransactions = append(executedTransactions, tx.Tx)
 			txReceipts = append(txReceipts, rec)
 		} else {
 			// Exclude all errors
-			excludedTransactions = append(excludedTransactions, tx)
-			executor.logger.Info("Excluding transaction from batch", log.TxKey, tx.Hash(), log.BatchHashKey, batch.Hash(), "cause", result)
+			excludedTransactions = append(excludedTransactions, tx.Tx)
+			executor.logger.Info("Excluding transaction from batch", log.TxKey, tx.Tx.Hash(), log.BatchHashKey, batch.Hash(), "cause", result)
 		}
 	}
 	sort.Sort(sortByTxIndex(txReceipts))

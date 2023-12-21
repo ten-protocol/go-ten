@@ -11,9 +11,9 @@ set -euo pipefail
 port=3000
 portWS=3001
 host="0.0.0.0"
-nodeHost="erpc.sepolia-testnet.obscu.ro"
-nodePortHTTP=80
-nodePortWS=81
+nodeHost="host.docker.internal"
+nodePortHTTP=37900
+nodePortWS=37901
 logPath="wallet_extension_logs.txt"
 databasePath=".obscuro/gateway_database.db"
 image="obscuronet/obscuro_gateway_sepolia_testnet:latest"

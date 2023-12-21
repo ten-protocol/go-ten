@@ -44,6 +44,12 @@ type (
 	L2Receipt      = types.Receipt
 	L2Receipts     = types.Receipts
 
+	L2PricedTransaction struct {
+		Tx             *L2Tx
+		PublishingCost *big.Int
+	}
+	L2PricedTransactions []L2PricedTransaction
+
 	CrossChainMessage  = MessageBus.StructsCrossChainMessage
 	CrossChainMessages = []CrossChainMessage
 	ValueTransferEvent struct {
@@ -71,6 +77,14 @@ type (
 	EncodedBatchMsg     []byte
 	EncodedBatchRequest []byte
 )
+
+func (txs L2PricedTransactions) ToTransactions() types.Transactions {
+	ret := make(types.Transactions, 0)
+	for _, tx := range txs {
+		ret = append(ret, tx.Tx)
+	}
+	return ret
+}
 
 const (
 	L2GenesisHeight = uint64(0)

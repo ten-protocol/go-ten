@@ -184,15 +184,29 @@ func (api *EthereumAPI) GetStorageAt(_ context.Context, encryptedParams common.E
 
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.
 // rpc.DecimalOrHex -> []byte
-func (api *EthereumAPI) FeeHistory(context.Context, []byte, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
+func (api *EthereumAPI) FeeHistory(context.Context, string, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
 	// todo (#1621) - return a non-dummy fee history
+	header, err := api.host.DB().GetHeadBatchHeader()
+	if err != nil {
+		api.logger.Error(fmt.Sprintf("Unable to retrieve header for fee history. Cause: %w", err))
+		return nil, fmt.Errorf("unable to retrieve fee history")
+	}
 
-	return &FeeHistoryResult{
-		OldestBlock:  (*hexutil.Big)(big.NewInt(0)),
+	batches := make([]*common.BatchHeader, 0)
+	batches = append(batches, header)
+
+	feeHist := &FeeHistoryResult{
+		OldestBlock:  (*hexutil.Big)(header.Number),
 		Reward:       [][]*hexutil.Big{},
 		BaseFee:      []*hexutil.Big{},
 		GasUsedRatio: []float64{},
-	}, nil
+	}
+
+	for _, header := range batches {
+		feeHist.GasUsedRatio = append(feeHist.GasUsedRatio, 0.9) //todo @siliev - fix when baseFee is dynamic
+		feeHist.BaseFee = append(feeHist.BaseFee, (*hexutil.Big)(header.BaseFee))
+	}
+	return feeHist, nil
 }
 
 // FeeHistoryResult is the structure returned by Geth `eth_feeHistory` API.
