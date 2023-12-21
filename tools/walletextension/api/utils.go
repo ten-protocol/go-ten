@@ -138,7 +138,7 @@ func handleEthError(req *common.RPCRequest, conn userconn.UserConn, logger gethl
 }
 
 func handleError(conn userconn.UserConn, logger gethlog.Logger, err error) {
-	logger.Error("error processing request - Forwarding response to user", log.ErrKey, err)
+	logger.Warn("error processing request - Forwarding response to user", log.ErrKey, err)
 
 	if err = conn.WriteResponse([]byte(err.Error())); err != nil {
 		logger.Error("unable to write response back", log.ErrKey, err)
