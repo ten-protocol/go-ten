@@ -2,18 +2,18 @@ package integration
 
 // Tracks the start ports handed out to different tests, in a bid to minimise conflicts.
 const (
-	StartPortEth2NetworkTests        = 31000
-	StartPortNodeRunnerTest          = 33000
-	StartPortSimulationGethInMem     = 35000
-	StartPortSimulationInMem         = 37000
-	StartPortSimulationFullNetwork   = 39000
-	StartPortSmartContractTests      = 41000
-	StartPortContractDeployerTest    = 43000
-	StartPortWalletExtensionUnitTest = 45000
-	StartPortFaucetUnitTest          = 47000
-	StartPortFaucetHTTPUnitTest      = 49000
-	StartPortTenscanUnitTest         = 51000
-	StartPortTenGatewayUnitTest      = 53000
+	StartPortEth2NetworkTests        = 10000
+	StartPortNodeRunnerTest          = 14000
+	StartPortSimulationGethInMem     = 18000
+	StartPortSimulationInMem         = 22000
+	StartPortSimulationFullNetwork   = 26000
+	StartPortSmartContractTests      = 30000
+	StartPortContractDeployerTest    = 34000
+	StartPortWalletExtensionUnitTest = 38000
+	StartPortFaucetUnitTest          = 42000
+	StartPortFaucetHTTPUnitTest      = 48000
+	StartPortTenscanUnitTest         = 52000
+	StartPortTenGatewayUnitTest      = 56000
 
 	DefaultGethWSPortOffset         = 100
 	DefaultGethAUTHPortOffset       = 200
@@ -25,8 +25,8 @@ const (
 	DefaultHostRPCHTTPOffset        = 800 // The default offset for the host's RPC HTTP port
 	DefaultHostRPCWSOffset          = 900 // The default offset for the host's RPC websocket port
 	DefaultTenscanHTTPPortOffset    = 1000
-	DefaultTenGatewayHTTPPortOffset = 1100
-	DefaultTenGatewayWSPortOffset   = 1200
+	DefaultTenGatewayHTTPPortOffset = 1001
+	DefaultTenGatewayWSPortOffset   = 1002
 )
 
 const (
