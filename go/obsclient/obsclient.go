@@ -2,7 +2,6 @@ package obsclient
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 	"strings"
 
@@ -91,8 +90,6 @@ func (oc *ObsClient) BatchHeaderByHash(hash gethcommon.Hash) (*common.BatchHeade
 func (oc *ObsClient) HealthStatusOfNode() (bool, error) {
 	var healthy *hostcommon.HealthCheck
 	err := oc.rpcClient.Call(&healthy, rpc.Health)
-	// log to test
-	fmt.Println("HealthStatusOfNode", healthy, err)
 	if err != nil {
 		return false, err
 	}

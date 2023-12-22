@@ -22,12 +22,8 @@ func routeItems(r *gin.Engine, server *WebServer) {
 
 func (w *WebServer) getHealthStatus(c *gin.Context) {
 	healthStatus, err := w.backend.GetHealthStatus()
-	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
-		return
-	}
 
-	c.JSON(http.StatusOK, healthStatus)
+	c.JSON(http.StatusOK, gin.H{"result": healthStatus, "errors": fmt.Sprintf("%s", err)})
 }
 
 func (w *WebServer) getLatestBatch(c *gin.Context) {
