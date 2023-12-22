@@ -86,7 +86,7 @@ func (m *MessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, error) {
 	tx := &types.LegacyTx{
 		Nonce:    0, // The first transaction of the owner identity should always be deploying the contract
 		Value:    gethcommon.Big0,
-		Gas:      2_000_000,       // It's quite the expensive contract.
+		Gas:      4_000_000,
 		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 		Data:     gethcommon.FromHex(MessageBus.MessageBusMetaData.Bin),
 		To:       nil, // Geth requires nil instead of gethcommon.Address{} which equates to zero address in order to return receipt.
@@ -219,7 +219,7 @@ func (m *MessageBusManager) CreateSyntheticTransactions(messages common.CrossCha
 		tx := &types.LegacyTx{
 			Nonce:    startingNonce + uint64(idx),
 			Value:    gethcommon.Big0,
-			Gas:      2_000_000,
+			Gas:      4_900_000,
 			GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 			Data:     data,
 			To:       m.messageBusAddress,
