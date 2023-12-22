@@ -10,7 +10,11 @@ type Config struct {
 
 	validatorEnclaveDockerImage string
 	validatorEnclaveDebug       bool
-	isSGXEnabled                bool
+
+	contractDeployerDockerImage string
+	contractDeployerDebug       bool
+
+	isSGXEnabled bool
 }
 
 func NewTestnetConfig(opts ...Option) *Config {
@@ -50,5 +54,17 @@ func WithValidatorEnclaveDebug(b bool) Option {
 func WithSGXEnabled(b bool) Option {
 	return func(c *Config) {
 		c.isSGXEnabled = b
+	}
+}
+
+func WithContractDeployerDockerImage(s string) Option {
+	return func(c *Config) {
+		c.contractDeployerDockerImage = s
+	}
+}
+
+func WithContractDeployerDebug(b bool) Option {
+	return func(c *Config) {
+		c.contractDeployerDebug = b
 	}
 }

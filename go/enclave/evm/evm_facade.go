@@ -3,7 +3,6 @@ package evm
 import (
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -38,9 +37,11 @@ func ExecuteTransactions(
 	chainConfig *params.ChainConfig,
 	fromTxIndex int,
 	noBaseFee bool,
+	batchGasLimit uint64,
 	logger gethlog.Logger,
 ) map[common.TxHash]interface{} {
-	chain, vmCfg, gp := initParams(storage, noBaseFee, logger)
+	chain, vmCfg := initParams(storage, noBaseFee, logger)
+	gp := gethcore.GasPool(batchGasLimit)
 	zero := uint64(0)
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
@@ -57,7 +58,7 @@ func ExecuteTransactions(
 			s,
 			chainConfig,
 			chain,
-			gp,
+			&gp,
 			ethHeader,
 			t,
 			usedGas,
@@ -157,6 +158,7 @@ func ExecuteObsCall(
 	header *common.BatchHeader,
 	storage storage.Storage,
 	chainConfig *params.ChainConfig,
+	gasEstimationCap uint64,
 	logger gethlog.Logger,
 ) (*gethcore.ExecutionResult, error) {
 	noBaseFee := true
@@ -166,7 +168,9 @@ func ExecuteObsCall(
 
 	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "evm_facade.go:ObsCall()")
 
-	chain, vmCfg, gp := initParams(storage, noBaseFee, nil)
+	gp := gethcore.GasPool(gasEstimationCap)
+	gp.SetGas(gasEstimationCap)
+	chain, vmCfg := initParams(storage, noBaseFee, nil)
 	ethHeader, err := gethencoding.CreateEthHeaderForBatch(header, secret(storage))
 	if err != nil {
 		return nil, err
@@ -177,7 +181,7 @@ func ExecuteObsCall(
 	txContext := gethcore.NewEVMTxContext(msg)
 	vmenv := vm.NewEVM(blockContext, txContext, s, chainConfig, vmCfg)
 
-	result, err := gethcore.ApplyMessage(vmenv, msg, gp)
+	result, err := gethcore.ApplyMessage(vmenv, msg, &gp)
 	// Follow the same error check structure as in geth
 	// 1 - vmError / stateDB err check
 	// 2 - evm.Cancelled()  todo (#1576) - support the ability to cancel function call if it takes too long
@@ -202,12 +206,11 @@ func ExecuteObsCall(
 	return result, nil
 }
 
-func initParams(storage storage.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
+func initParams(storage storage.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {
 	vmCfg := vm.Config{
 		NoBaseFee: noBaseFee,
 	}
-	gp := gethcore.GasPool(math.MaxUint64)
-	return NewObscuroChainContext(storage, l), vmCfg, &gp
+	return NewObscuroChainContext(storage, l), vmCfg
 }
 
 // todo (#1053) - this is currently just returning the shared secret

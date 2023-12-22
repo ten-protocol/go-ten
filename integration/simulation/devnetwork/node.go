@@ -2,7 +2,6 @@ package devnetwork
 
 import (
 	"fmt"
-	"math/big"
 	"os"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -175,14 +174,15 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 		GenesisJSON:               nil,
 		UseInMemoryDB:             false,
 		ManagementContractAddress: n.l1Data.MgmtContractAddress,
-		MinGasPrice:               big.NewInt(1),
+		MinGasPrice:               gethcommon.Big1,
 		MessageBusAddress:         n.l1Data.MessageBusAddr,
 		SqliteDBPath:              n.enclaveDBFilepath,
 		DebugNamespaceEnabled:     true,
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,
 		BaseFee:                   defaultCfg.BaseFee, // todo @siliev:: fix test transaction builders so this can be different
-		GasLimit:                  defaultCfg.GasLimit,
+		GasBatchExecutionLimit:    defaultCfg.GasBatchExecutionLimit,
+		GasLocalExecutionCapFlag:  defaultCfg.GasLocalExecutionCapFlag,
 		GasPaymentAddress:         defaultCfg.GasPaymentAddress,
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
