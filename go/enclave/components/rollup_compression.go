@@ -436,6 +436,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 				incompleteBatch.time,
 				calldataRollupHeader.Coinbase,
 				calldataRollupHeader.BaseFee,
+				big.NewInt(0).SetUint64(calldataRollupHeader.GasLimit),
 			)
 			if err != nil {
 				return err

@@ -31,8 +31,7 @@ const (
 	MaxRollupSizeFlag             = "maxRollupSize"
 	L2BaseFeeFlag                 = "l2BaseFee"
 	L2CoinbaseFlag                = "l2Coinbase"
-	GasBatchExecutionLimit        = "gasBatchExecutionLimit"
-	GasLocalExecutionCapFlag      = "gasLocalExecutionCap"
+	L2GasLimitFlag                = "l2GasLimit"
 )
 
 // EnclaveFlags are the flags that the enclave can receive
@@ -55,14 +54,13 @@ var EnclaveFlags = map[string]*flag.TenFlag{
 	MaxRollupSizeFlag:             flag.NewUint64Flag(MaxRollupSizeFlag, 1024*64, "The maximum size a rollup is allowed to reach"),
 	L2BaseFeeFlag:                 flag.NewUint64Flag(L2BaseFeeFlag, 1, ""),
 	L2CoinbaseFlag:                flag.NewStringFlag(L2CoinbaseFlag, "0xd6C9230053f45F873Cb66D8A02439380a37A4fbF", ""),
-	GasBatchExecutionLimit:        flag.NewUint64Flag(GasBatchExecutionLimit, 3_000_000, "Max gas that can be executed in a single batch"),
+	L2GasLimitFlag:                flag.NewUint64Flag(L2GasLimitFlag, 9e18, ""),
 	ObscuroGenesisFlag:            flag.NewStringFlag(ObscuroGenesisFlag, "", "The json string with the obscuro genesis"),
 	L1ChainIDFlag:                 flag.NewInt64Flag(L1ChainIDFlag, 1337, "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)"),
 	ObscuroChainIDFlag:            flag.NewInt64Flag(ObscuroChainIDFlag, 443, "An integer representing the unique chain id of the Obscuro chain (default 443)"),
 	UseInMemoryDBFlag:             flag.NewBoolFlag(UseInMemoryDBFlag, true, "Whether the enclave will use an in-memory DB rather than persist data"),
 	ProfilerEnabledFlag:           flag.NewBoolFlag(ProfilerEnabledFlag, false, "Runs a profiler instance (Defaults to false)"),
 	DebugNamespaceEnabledFlag:     flag.NewBoolFlag(DebugNamespaceEnabledFlag, false, "Whether the debug namespace is enabled"),
-	GasLocalExecutionCapFlag:      flag.NewUint64Flag(GasLocalExecutionCapFlag, 3_000_000, "Max gas usage when executing local transactions"),
 }
 
 // enclaveRestrictedFlags are the flags that the enclave can receive ONLY over the Ego signed enclave.json
