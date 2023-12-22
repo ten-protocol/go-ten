@@ -92,7 +92,7 @@ func (cd *contractDeployer) run() (string, error) {
 	deployContractTx := types.LegacyTx{
 		Nonce:    cd.wallet.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(1),
-		Gas:      uint64(4_000_000), // todo @pedro review this
+		Gas:      uint64(2_900_000),
 		Data:     cd.contractCode,
 	}
 
