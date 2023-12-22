@@ -3,17 +3,17 @@ package integration
 // Tracks the start ports handed out to different tests, in a bid to minimise conflicts.
 const (
 	StartPortEth2NetworkTests        = 31000
-	StartPortNodeRunnerTest          = 32000
-	StartPortSimulationGethInMem     = 34000
-	StartPortSimulationInMem         = 35000
-	StartPortSimulationFullNetwork   = 37000
-	StartPortSmartContractTests      = 38000
-	StartPortContractDeployerTest    = 39000
-	StartPortWalletExtensionUnitTest = 40000
-	StartPortFaucetUnitTest          = 41000
-	StartPortFaucetHTTPUnitTest      = 42000
-	StartPortTenscanUnitTest         = 43000
-	StartPortTenGatewayUnitTest      = 44000
+	StartPortNodeRunnerTest          = 33000
+	StartPortSimulationGethInMem     = 35000
+	StartPortSimulationInMem         = 37000
+	StartPortSimulationFullNetwork   = 39000
+	StartPortSmartContractTests      = 41000
+	StartPortContractDeployerTest    = 43000
+	StartPortWalletExtensionUnitTest = 45000
+	StartPortFaucetUnitTest          = 47000
+	StartPortFaucetHTTPUnitTest      = 49000
+	StartPortTenscanUnitTest         = 51000
+	StartPortTenGatewayUnitTest      = 53000
 
 	DefaultGethWSPortOffset         = 100
 	DefaultGethAUTHPortOffset       = 200
@@ -24,9 +24,9 @@ const (
 	DefaultEnclaveOffset            = 700 // The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
 	DefaultHostRPCHTTPOffset        = 800 // The default offset for the host's RPC HTTP port
 	DefaultHostRPCWSOffset          = 900 // The default offset for the host's RPC websocket port
-	DefaultTenscanHTTPPortOffset    = 910
-	DefaultTenGatewayHTTPPortOffset = 930
-	DefaultTenGatewayWSPortOffset   = 940
+	DefaultTenscanHTTPPortOffset    = 1000
+	DefaultTenGatewayHTTPPortOffset = 1100
+	DefaultTenGatewayWSPortOffset   = 1200
 )
 
 const (
