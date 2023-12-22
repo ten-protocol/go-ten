@@ -324,7 +324,7 @@ func (executor *batchExecutor) CreateGenesisState(
 			Time:             timeNow,
 			Coinbase:         coinbase,
 			BaseFee:          baseFee,
-			GasLimit:         executor.batchGasLimit - 100, // todo review this
+			GasLimit:         executor.batchGasLimit,
 		},
 		Transactions: []*common.L2Tx{},
 	}
