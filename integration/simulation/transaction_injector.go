@@ -144,7 +144,7 @@ func (ti *TransactionInjector) Start() {
 	/*wg.Go(func() error {
 		ti.issueRandomTransfers()
 		return nil
-	})*/ //todo - fix
+	})*/
 
 	wg.Go(func() error {
 		ti.issueRandomValueTransfers()
@@ -381,7 +381,7 @@ func (ti *TransactionInjector) newTx(data []byte, nonce uint64, ercType testcomm
 	return &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    gethcommon.Big0,
-		Gas:      uint64(1_000_000),
+		Gas:      uint64(1_000_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     data,
 		To:       ti.wallets.Tokens[ercType].L2ContractAddress,
