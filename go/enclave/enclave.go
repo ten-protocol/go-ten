@@ -82,10 +82,6 @@ type enclaveImpl struct {
 	registry  components.BatchRegistry
 	gasOracle gas.Oracle
 
-	// todo (#627) - use the ethconfig.Config instead
-	GlobalGasCap uint64   //         5_000_000_000, // todo (#627) - make config
-	BaseFee      *big.Int //              gethcommon.Big0,
-
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
 	attestationProvider components.AttestationProvider // interface for producing attestation reports and verifying them
 
@@ -185,7 +181,7 @@ func NewEnclave(
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, chainConfig, logger)
+	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	registry := components.NewBatchRegistry(storage, logger)
 	rProducer := components.NewRollupProducer(config.SequencerID, storage, registry, logger)
@@ -223,7 +219,7 @@ func NewEnclave(
 				MaxBatchSize:      config.MaxBatchSize,
 				MaxRollupSize:     config.MaxRollupSize,
 				GasPaymentAddress: config.GasPaymentAddress,
-				BatchGasLimit:     config.GasLimit,
+				BatchGasLimit:     config.GasBatchExecutionLimit,
 				BaseFee:           config.BaseFee,
 			},
 			blockchain,
@@ -238,6 +234,7 @@ func NewEnclave(
 		genesis,
 		logger,
 		registry,
+		config.GasLocalExecutionCapFlag,
 	)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
@@ -276,9 +273,6 @@ func NewEnclave(
 		registry:  registry,
 		service:   service,
 		gasOracle: gasOracle,
-
-		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
-		BaseFee:      gethcommon.Big0,
 
 		mainMutex: sync.Mutex{},
 	}
@@ -1062,7 +1056,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	publishingGas := big.NewInt(0).Div(l1Cost, batch.Header.BaseFee)
 	publishingGas.Add(publishingGas, big.NewInt(0).Mod(l1Cost, batch.Header.BaseFee))
 
-	executionGasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.GlobalGasCap)
+	executionGasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.config.GasLocalExecutionCapFlag)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
@@ -1191,7 +1185,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 			}
 			hi = block.GasLimit()
 		*/
-		hi = e.GlobalGasCap
+		hi = e.config.GasLocalExecutionCapFlag
 	}
 	// Normalize the max fee per gas the call is willing to spend.
 	var feeCap *big.Int

@@ -41,6 +41,9 @@ jobs:
             integration/.build/noderunner/noderunner-*.txt
             integration/.build/wallet_extension/wal-ext-*.txt
             integration/.build/eth2/*
+            integration/.build/faucet/*
+            integration/.build/obscuroscan/*
+            integration/.build/tengateway/*
           retention-days: 1
 
 
