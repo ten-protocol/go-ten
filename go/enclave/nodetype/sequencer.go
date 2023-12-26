@@ -163,6 +163,7 @@ func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 		return err
 	}
 
+	time.Sleep(5 * time.Second)
 	// produce batch #2 which has the message bus and any other system contracts
 	cb, err := s.produceBatch(
 		big.NewInt(0).Add(batch.Header.SequencerOrderNo, big.NewInt(1)),
