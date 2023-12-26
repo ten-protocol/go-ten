@@ -685,15 +685,18 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	}
 
 	var nonce uint64
-	l2Head, err := e.storage.FetchBatchBySeqNo(e.registry.HeadBatchSeq().Uint64())
-	if err == nil {
-		// todo - we should return an error when head state is not available, but for current test situations with race
-		//  conditions we allow it to return zero while head state is uninitialized
-		s, err := e.storage.CreateStateDB(l2Head.Hash())
-		if err != nil {
-			return nil, responses.ToInternalError(err)
+	headBatch := e.registry.HeadBatchSeq()
+	if headBatch != nil {
+		l2Head, err := e.storage.FetchBatchBySeqNo(headBatch.Uint64())
+		if err == nil {
+			// todo - we should return an error when head state is not available, but for current test situations with race
+			//  conditions we allow it to return zero while head state is uninitialized
+			s, err := e.storage.CreateStateDB(l2Head.Hash())
+			if err != nil {
+				return nil, responses.ToInternalError(err)
+			}
+			nonce = s.GetNonce(address)
 		}
-		nonce = s.GetNonce(address)
 	}
 
 	encoded := hexutil.EncodeUint64(nonce)

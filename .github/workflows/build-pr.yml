@@ -44,6 +44,7 @@ jobs:
             integration/.build/faucet/*
             integration/.build/obscuroscan/*
             integration/.build/tengateway/*
+            integration/.build/smartcontracts/*
           retention-days: 1
 
 
