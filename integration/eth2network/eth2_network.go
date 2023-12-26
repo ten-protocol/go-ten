@@ -609,7 +609,7 @@ func (n *Impl) prefundedBalancesActive(client *ethclient.Client) error {
 		if balance.Cmp(gethcommon.Big0) == 0 {
 			return fmt.Errorf("unexpected %s balance for account %s", balance.String(), addr)
 		}
-		fmt.Printf("Account %s prefunded with %s", addr, balance.String())
+		fmt.Printf("Account %s prefunded with %s\n", addr, balance.String())
 	}
 
 	return nil
