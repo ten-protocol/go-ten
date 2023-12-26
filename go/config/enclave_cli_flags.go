@@ -62,7 +62,7 @@ var EnclaveFlags = map[string]*flag.TenFlag{
 	UseInMemoryDBFlag:             flag.NewBoolFlag(UseInMemoryDBFlag, true, "Whether the enclave will use an in-memory DB rather than persist data"),
 	ProfilerEnabledFlag:           flag.NewBoolFlag(ProfilerEnabledFlag, false, "Runs a profiler instance (Defaults to false)"),
 	DebugNamespaceEnabledFlag:     flag.NewBoolFlag(DebugNamespaceEnabledFlag, false, "Whether the debug namespace is enabled"),
-	GasLocalExecutionCapFlag:      flag.NewUint64Flag(GasLocalExecutionCapFlag, 5_000_000, "Max gas usage when executing local transactions"),
+	GasLocalExecutionCapFlag:      flag.NewUint64Flag(GasLocalExecutionCapFlag, 6_000_000, "Max gas usage when executing local transactions"),
 }
 
 // enclaveRestrictedFlags are the flags that the enclave can receive ONLY over the Ego signed enclave.json

@@ -84,6 +84,6 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		GasPaymentAddress:         gethcommon.HexToAddress("0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"),
 		BaseFee:                   new(big.Int).SetUint64(1),
 		GasLocalExecutionCapFlag:  5_000_000,
-		GasBatchExecutionLimit:    5_000_000,
+		GasBatchExecutionLimit:    6_000_000,
 	}
 }
