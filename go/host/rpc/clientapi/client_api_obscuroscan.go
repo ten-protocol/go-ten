@@ -16,19 +16,19 @@ import (
 
 const txLimit = 100
 
-// ObscuroScanAPI implements ObscuroScan-specific JSON RPC operations.
-type ObscuroScanAPI struct {
+// TenScanAPI implements TenScan-specific JSON RPC operations.
+type TenScanAPI struct {
 	host host.Host
 }
 
-func NewObscuroScanAPI(host host.Host) *ObscuroScanAPI {
-	return &ObscuroScanAPI{
+func NewTenScanAPI(host host.Host) *TenScanAPI {
+	return &TenScanAPI{
 		host: host,
 	}
 }
 
 // GetBlockHeaderByHash returns the header for the block with the given hash.
-func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*types.Header, error) {
+func (api *TenScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*types.Header, error) {
 	blockHeader, err := api.host.DB().GetBlockByHash(blockHash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -41,12 +41,12 @@ func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*typ
 
 // GetBatch returns the batch with the given hash. Unlike `EthereumAPI.GetBlockByHash()`, returns the full
 // `ExtBatch`, and not just the header.
-func (api *ObscuroScanAPI) GetBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
+func (api *TenScanAPI) GetBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
 	return api.host.DB().GetBatch(batchHash)
 }
 
 // GetBatchForTx returns the batch containing a given transaction hash.
-func (api *ObscuroScanAPI) GetBatchForTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
+func (api *TenScanAPI) GetBatchForTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
 	batchNumber, err := api.host.DB().GetBatchNumber(txHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve batch containing a transaction with hash %s. Cause: %w", txHash, err)
@@ -62,7 +62,7 @@ func (api *ObscuroScanAPI) GetBatchForTx(txHash gethcommon.Hash) (*common.ExtBat
 
 // GetLatestTransactions returns the hashes of the latest `num` transactions confirmed in batches (or all the
 // transactions if there are less than `num` total transactions).
-func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error) {
+func (api *TenScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error) {
 	// We prevent someone from requesting an excessive amount of transactions.
 	if num > txLimit {
 		return nil, fmt.Errorf("cannot request more than 100 latest transactions")
@@ -105,11 +105,11 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 }
 
 // GetTotalTransactions returns the number of recorded transactions on the network.
-func (api *ObscuroScanAPI) GetTotalTransactions() (*big.Int, error) {
+func (api *TenScanAPI) GetTotalTransactions() (*big.Int, error) {
 	return api.host.DB().GetTotalTransactions()
 }
 
 // Attestation returns the node's attestation details.
-func (api *ObscuroScanAPI) Attestation() (*common.AttestationReport, error) {
+func (api *TenScanAPI) Attestation() (*common.AttestationReport, error) {
 	return api.host.EnclaveClient().Attestation()
 }
