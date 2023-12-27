@@ -149,21 +149,29 @@ func NewWalletExtensionContainer(
 	}
 }
 
-// TODO Start should not be a locking process
+// Start starts the wallet extension container
 func (w *WalletExtensionContainer) Start() error {
 	httpErrChan := w.httpServer.Start()
 	wsErrChan := w.wsServer.Start()
 
-	select {
-	case err := <-httpErrChan:
-		if !errors.Is(err, http.ErrServerClosed) {
-			panic(err)
+	// Start a goroutine for handling HTTP server errors
+	go func() {
+		for err := range httpErrChan {
+			if !errors.Is(err, http.ErrServerClosed) {
+				w.logger.Error("HTTP server error: %v", err)
+			}
 		}
-	case err := <-wsErrChan:
-		if !errors.Is(err, http.ErrServerClosed) {
-			panic(err)
+	}()
+
+	// Start a goroutine for handling WebSocket server errors
+	go func() {
+		for err := range wsErrChan {
+			if !errors.Is(err, http.ErrServerClosed) {
+				w.logger.Error("WebSocket server error: %v", err)
+			}
 		}
-	}
+	}()
+
 	return nil
 }
 
