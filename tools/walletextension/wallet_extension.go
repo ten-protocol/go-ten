@@ -309,9 +309,11 @@ func (w *WalletExtension) UserExists(hexUserID string) bool {
 		return false
 	}
 
+	// Check if user exists and don't log error if user doesn't exist, because we expect this to happen in case of
+	// user revoking encryption token or using different testnet.
+	// todo add a counter here in the future
 	key, err := w.storage.GetUserPrivateKey(userIDBytes)
 	if err != nil {
-		w.Logger().Error(fmt.Errorf("error getting user's private key (%s), %w", hexUserID, err).Error())
 		return false
 	}
 

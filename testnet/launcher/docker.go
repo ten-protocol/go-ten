@@ -33,7 +33,7 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to start eth2network - %w", err)
 	}
 
-	networkConfig, err := deployL1Contracts()
+	networkConfig, err := t.deployL1Contracts()
 	if err != nil {
 		return fmt.Errorf("unable to deploy l1 contracts - %w", err)
 	}
@@ -129,7 +129,8 @@ func (t *Testnet) Start() error {
 			l2cd.WithL2PrivateKey("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
 			l2cd.WithHocPKString("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"),
 			l2cd.WithPocPKString("4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"),
-			l2cd.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"),
+			l2cd.WithDockerImage(t.cfg.contractDeployerDockerImage),
+			l2cd.WithDebugEnabled(t.cfg.contractDeployerDebug),
 			l2cd.WithFaucetFunds("10000"),
 		),
 	)
@@ -183,12 +184,13 @@ func startEth2Network() error {
 	return nil
 }
 
-func deployL1Contracts() (*node.NetworkConfig, error) {
+func (t *Testnet) deployL1Contracts() (*node.NetworkConfig, error) {
 	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
 		l1cd.NewContractDeployerConfig(
 			l1cd.WithL1HTTPURL("http://eth2network:8025"),
 			l1cd.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
-			l1cd.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"),
+			l1cd.WithDockerImage(t.cfg.contractDeployerDockerImage),
+			l1cd.WithDebugEnabled(t.cfg.contractDeployerDebug),
 		),
 	)
 	if err != nil {
