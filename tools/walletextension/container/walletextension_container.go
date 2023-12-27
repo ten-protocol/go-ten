@@ -159,7 +159,14 @@ func (w *WalletExtensionContainer) Start() error {
 		for {
 			select {
 			case err := <-httpErrChan:
-				if !errors.Is(err, http.ErrServerClosed) {
+				if errors.Is(err, http.ErrServerClosed) {
+					err = w.Stop() // Stop the container when the HTTP server is closed
+					if err != nil {
+						fmt.Printf("failed to stop gracefully - %s\n", err)
+						os.Exit(1)
+					}
+				} else {
+					// for other errors, we just log them
 					w.logger.Error("HTTP server error: %v", err)
 				}
 			case <-w.stopControl.Done():
@@ -173,8 +180,15 @@ func (w *WalletExtensionContainer) Start() error {
 		for {
 			select {
 			case err := <-wsErrChan:
-				if !errors.Is(err, http.ErrServerClosed) {
-					w.logger.Error("WebSocket server error: %v", err)
+				if errors.Is(err, http.ErrServerClosed) {
+					err = w.Stop() // Stop the container when the WS server is closed
+					if err != nil {
+						fmt.Printf("failed to stop gracefully - %s\n", err)
+						os.Exit(1)
+					}
+				} else {
+					// for other errors, we just log them
+					w.logger.Error("HTTP server error: %v", err)
 				}
 			case <-w.stopControl.Done():
 				return // Exit the goroutine when stop signal is received
