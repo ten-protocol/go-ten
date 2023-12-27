@@ -512,7 +512,7 @@
 
 # February 2023-02-23 (v0.10)
 * A list of the PRs merged in this release is as below;
-  * `d81f5f9a` Run a schedule deploy on the l1, and trigger l2 if succesful (#1129)
+  * `d81f5f9a` Run a schedule deploy on the l1, and trigger l2 if successful (#1129)
   * `481dc317` Wrap leveldb so its error types don't leak into our codebase (#1128)
   * `e5d8c398` Resilient to rpc requests while sequencer unknown (#1130)
   * `aa3eaea2` Updated go version and ego version. (#1124)
