@@ -163,6 +163,8 @@ func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 		return err
 	}
 
+        // errors in unit test seem to suggest that batch 2 was received before batch 1
+        // this ensures that there is enough gap so that batch 1 is issued before batch 2
 	time.Sleep(time.Second)
 	// produce batch #2 which has the message bus and any other system contracts
 	cb, err := s.produceBatch(
