@@ -189,34 +189,37 @@ jobs:
                start'
 
 
-  update-loadbalancer:
-    needs:
-      - build
-      - deploy
-    runs-on: ubuntu-latest
-    environment:
-      name: ${{ github.event.inputs.testnet_type }}
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: 'Login via Azure CLI'
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: 'Remove existing backend nodes from the load balancer'
-        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh ${{ github.event.inputs.testnet_type }}
-
-      - name: 'Add load balancer address pool to the IP configuration'
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az network nic ip-config address-pool add \
-              --address-pool ${{ github.event.inputs.testnet_type }}-backend-pool \
-              --ip-config-name ipconfig${{ vars.AZURE_RESOURCE_PREFIX }}-${{ github.event.inputs.node_id }}-${{ GITHUB.RUN_NUMBER }} \
-              --nic-name ${{ vars.AZURE_RESOURCE_PREFIX }}-${{ github.event.inputs.node_id }}-${{ GITHUB.RUN_NUMBER }}VMNic \
-              --resource-group Testnet \
-              --lb-name ${{ github.event.inputs.testnet_type }}-loadbalancer
+#
+# Load Balancer can't be updated until the L1 and L2 is bootstrapped
+#
+#  update-loadbalancer:
+#    needs:
+#      - build
+#      - deploy
+#    runs-on: ubuntu-latest
+#    environment:
+#      name: ${{ github.event.inputs.testnet_type }}
+#    steps:
+#      - uses: actions/checkout@v3
+#
+#      - name: 'Login via Azure CLI'
+#        uses: azure/login@v1
+#        with:
+#          creds: ${{ secrets.AZURE_CREDENTIALS }}
+#
+#      - name: 'Remove existing backend nodes from the load balancer'
+#        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh ${{ github.event.inputs.testnet_type }}
+#
+#      - name: 'Add load balancer address pool to the IP configuration'
+#        uses: azure/CLI@v1
+#        with:
+#          inlineScript: |
+#            az network nic ip-config address-pool add \
+#              --address-pool ${{ github.event.inputs.testnet_type }}-backend-pool \
+#              --ip-config-name ipconfig${{ vars.AZURE_RESOURCE_PREFIX }}-${{ github.event.inputs.node_id }}-${{ GITHUB.RUN_NUMBER }} \
+#              --nic-name ${{ vars.AZURE_RESOURCE_PREFIX }}-${{ github.event.inputs.node_id }}-${{ GITHUB.RUN_NUMBER }}VMNic \
+#              --resource-group Testnet \
+#              --lb-name ${{ github.event.inputs.testnet_type }}-loadbalancer
 
   check-obscuro-is-healthy:
     needs:
