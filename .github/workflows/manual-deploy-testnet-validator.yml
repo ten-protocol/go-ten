@@ -198,8 +198,8 @@ jobs:
           inlineScript: |
             az network nic ip-config address-pool add \
               --address-pool ${{ github.event.inputs.testnet_type }}-backend-pool \
-              --ip-config-name ipconfig${{ vars.AZURE_RESOURCE_PREFIX }}-1-${{ GITHUB.RUN_NUMBER }} \
-              --nic-name ${{ vars.AZURE_RESOURCE_PREFIX }}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
+              --ip-config-name ipconfig${{ vars.AZURE_RESOURCE_PREFIX }}-${{ github.event.inputs.node_id }}-${{ GITHUB.RUN_NUMBER }} \
+              --nic-name ${{ vars.AZURE_RESOURCE_PREFIX }}-${{ github.event.inputs.node_id }}-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
               --lb-name ${{ github.event.inputs.testnet_type }}-loadbalancer
 
@@ -216,5 +216,4 @@ jobs:
       - name: "Wait until obscuro node is healthy"
         shell: bash
         run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-${{ github.event.inputs.node_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
