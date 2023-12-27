@@ -38,7 +38,7 @@ var testLogs = "../.build/noderunner/"
 func init() { //nolint:gochecknoinits
 	testlog.Setup(&testlog.Cfg{
 		LogDir:      testLogs,
-		TestType:    "noderunner",
+		TestType:    "smartcontracts",
 		TestSubtype: "test",
 		LogLevel:    log.LvlInfo,
 	})

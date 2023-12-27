@@ -45,6 +45,7 @@ jobs:
             integration/.build/tenscan/*
             integration/.build/tengateway/*
             integration/.build/contractdeployer/*
+            integration/.build/smartcontracts/*
           retention-days: 1
 
 

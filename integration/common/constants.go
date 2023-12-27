@@ -83,7 +83,7 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		MaxRollupSize:             1024 * 64,
 		GasPaymentAddress:         gethcommon.HexToAddress("0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"),
 		BaseFee:                   new(big.Int).SetUint64(1),
-		GasLocalExecutionCapFlag:  3_000_000,
-		GasBatchExecutionLimit:    3_000_000,
+		GasBatchExecutionLimit:    30_000_000,
+		GasLocalExecutionCapFlag:  40_000_000,
 	}
 }
