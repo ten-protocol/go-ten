@@ -3,6 +3,21 @@
 # This script uses GitHub Environments for variables (vars) and secrets - these are configured on GitHub and
 #  the environments match the input.testnet_type options
 #
+# # # # README # # # #
+#
+# 1 - Fetch the Management, Msg Bus Contract addresses and L1 Start Hash from:
+# curl -X POST erpc.dev-testnet.obscu.ro:80  -H 'Content-Type: application/json'  \
+# -d '{"jsonrpc":"2.0","method":"obscuro_config","params":[],"id":1}'
+#
+# 2 - Update the secrets in Github
+# ADD_NEW_NODE_L1_WS_URL -> l1 WS url
+# ADD_NEW_NODE_PRIVATE_KEY -> L1 and L2 Private Key
+# Note: L1 PK Must have funds in it
+#
+# 3 - Trigger the flow and supply data from Step 1.
+# Node Id: is the node number
+# Node Account Address: is the Account Address of the ADD_NEW_NODE_PRIVATE_KEY
+#
 
 name: '[M] Deploy Testnet Validator'
 run-name: '[M] Deploy Testnet Validator ( ${{ github.event.inputs.testnet_type }} )'
