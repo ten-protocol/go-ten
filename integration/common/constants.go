@@ -84,7 +84,11 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		MaxRollupSize:             1024 * 64,
 		GasPaymentAddress:         gethcommon.HexToAddress("0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"),
 		BaseFee:                   new(big.Int).SetUint64(params.InitialBaseFee),
-		GasLocalExecutionCapFlag:  300_000_000_000,
-		GasBatchExecutionLimit:    300_000_000_000, // Arbitrum gas limit for reference - 1,125,899,906,842,624
+
+		// Due to hiding L1 costs in the gas quantity, the gas limit needs to be huge
+		// Arbitrum with the same approach has gas limit of 1,125,899,906,842,624,
+		// whilst the usage is small. Should be ok since execution is paid for anyway.
+		GasLocalExecutionCapFlag: 300_000_000_000,
+		GasBatchExecutionLimit:   300_000_000_000,
 	}
 }
