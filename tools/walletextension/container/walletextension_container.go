@@ -154,7 +154,7 @@ func (w *WalletExtensionContainer) Start() error {
 	httpErrChan := w.httpServer.Start()
 	wsErrChan := w.wsServer.Start()
 
-	// Start a goroutine for handling HTTP server errors
+	// Start a goroutine for handling HTTP and WS server errors
 	go func() {
 		for {
 			select {
@@ -169,16 +169,6 @@ func (w *WalletExtensionContainer) Start() error {
 					// for other errors, we just log them
 					w.logger.Error("HTTP server error: %v", err)
 				}
-			case <-w.stopControl.Done():
-				return // Exit the goroutine when stop signal is received
-			}
-		}
-	}()
-
-	// Start a goroutine for handling WebSocket server errors
-	go func() {
-		for {
-			select {
 			case err := <-wsErrChan:
 				if errors.Is(err, http.ErrServerClosed) {
 					err = w.Stop() // Stop the container when the WS server is closed
@@ -195,7 +185,6 @@ func (w *WalletExtensionContainer) Start() error {
 			}
 		}
 	}()
-
 	return nil
 }
 
