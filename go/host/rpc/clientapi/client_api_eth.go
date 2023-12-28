@@ -189,7 +189,7 @@ func (api *EthereumAPI) FeeHistory(context.Context, string, rpc.BlockNumber, []f
 	// todo (#1621) - return a non-dummy fee history
 	header, err := api.host.DB().GetHeadBatchHeader()
 	if err != nil {
-		api.logger.Error(fmt.Sprintf("Unable to retrieve header for fee history. Cause: %w", err))
+		api.logger.Error("Unable to retrieve header for fee history.", log.ErrKey, err)
 		return nil, fmt.Errorf("unable to retrieve fee history")
 	}
 
