@@ -112,7 +112,9 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 
 		err = faucetClient.SendTransaction(ctx, signedTx)
 		if err != nil {
-			panic(fmt.Sprintf("could not transfer from faucet. Cause: %s", err))
+			var txJson []byte
+			txJson, _ = signedTx.MarshalJSON()
+			panic(fmt.Sprintf("could not transfer from faucet for tx %s. Cause: %s", string(txJson[:]), err))
 		}
 
 		txHashes[idx] = signedTx.Hash()
@@ -126,7 +128,7 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 			defer wg.Done()
 			err := AwaitReceipt(ctx, faucetClient, txHash, timeout)
 			if err != nil {
-				panic(fmt.Sprintf("faucet transfer transaction unsuccessful. Cause: %s", err))
+				panic(fmt.Sprintf("faucet transfer transaction %s unsuccessful. Cause: %s", txHash, err))
 			}
 		}(txHash)
 	}

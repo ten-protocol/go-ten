@@ -141,10 +141,10 @@ func (ti *TransactionInjector) Start() {
 		})
 	}
 
-	/*wg.Go(func() error {
+	wg.Go(func() error {
 		ti.issueRandomTransfers()
 		return nil
-	})*/
+	})
 
 	wg.Go(func() error {
 		ti.issueRandomValueTransfers()
@@ -181,8 +181,8 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 		toWalletAddr := toWallet.Address()
 		txData := &types.LegacyTx{
 			Nonce:    fromWallet.GetNonceAndIncrement(),
-			Value:    big.NewInt(int64(testcommon.RndBtw(1, 500))),
-			Gas:      uint64(1_000_000_000),
+			Value:    big.NewInt(int64(testcommon.RndBtw(1, 100))),
+			Gas:      uint64(50_000),
 			GasPrice: gethcommon.Big1,
 			To:       &toWalletAddr,
 		}

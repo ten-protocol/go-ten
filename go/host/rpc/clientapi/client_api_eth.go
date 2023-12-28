@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/host"
@@ -73,7 +74,7 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 	}
 
 	if header.BaseFee == nil || header.BaseFee.Cmp(gethcommon.Big0) == 0 {
-		return (*hexutil.Big)(big.NewInt(1)), nil
+		return (*hexutil.Big)(big.NewInt(params.InitialBaseFee)), nil
 	}
 
 	return (*hexutil.Big)(big.NewInt(0).Set(header.BaseFee)), nil

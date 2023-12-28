@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/config"
@@ -82,8 +83,8 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,
 		GasPaymentAddress:         gethcommon.HexToAddress("0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"),
-		BaseFee:                   new(big.Int).SetUint64(1),
-		GasLocalExecutionCapFlag:  3_000_000,
-		GasBatchExecutionLimit:    3_000_000,
+		BaseFee:                   new(big.Int).SetUint64(params.InitialBaseFee),
+		GasLocalExecutionCapFlag:  300_000_000_000,
+		GasBatchExecutionLimit:    300_000_000_000, // Arbitrum gas limit for reference - 1,125,899,906,842,624
 	}
 }

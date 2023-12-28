@@ -1043,6 +1043,8 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsPlaintextError(fmt.Errorf("internal server error")), err
 	}
 
+	// The message is ran through the l1 publishing cost estimation for the current
+	// known head block.
 	l1Cost, err := e.gasOracle.EstimateL1CostForMsg(callMsg, block)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("internal server error")), err
@@ -1053,8 +1055,14 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsPlaintextError(fmt.Errorf("internal server error")), err
 	}
 
+	// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
+	// the expected cost into l2 gas based on current pricing.
+	// todo @siliev - add overhead when the base fee becomes dynamic.
 	publishingGas := big.NewInt(0).Div(l1Cost, batch.Header.BaseFee)
-	publishingGas.Add(publishingGas, big.NewInt(0).Mod(l1Cost, batch.Header.BaseFee))
+
+	// The one additional gas captures the modulo leftover in some edge cases
+	// where BaseFee is bigger than the l1cost.
+	publishingGas = big.NewInt(0).Add(publishingGas, gethcommon.Big1)
 
 	executionGasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.config.GasLocalExecutionCapFlag)
 	if err != nil {

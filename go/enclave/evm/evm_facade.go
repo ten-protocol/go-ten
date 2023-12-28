@@ -130,7 +130,7 @@ func executeTransaction(
 
 		if hasL1Cost {
 			l1Gas.Div(l1cost, header.BaseFee)
-			l1Gas.Add(l1Gas, big.NewInt(0).Mod(l1cost, header.BaseFee))
+			l1Gas.Add(l1Gas, big.NewInt(1)) //account for leftover
 
 			if msg.GasLimit < l1Gas.Uint64() {
 				return nil, fmt.Errorf("gas limit for tx too low. Want at least: %d have: %d", l1Gas, msg.GasLimit)

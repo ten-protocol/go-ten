@@ -43,12 +43,13 @@ type (
 // Data Types
 
 type (
-	BalanceType = hexutil.Big
-	CallType    = string
-	ReceiptType = types.Receipt
-	RawTxType   = common.Hash
-	TxType      = types.Transaction
-	NonceType   = string
-	GasType     = hexutil.Uint64
-	LogsType    = []*types.Log
+	BalanceType  = hexutil.Big
+	CallType     = string
+	ReceiptType  = types.Receipt
+	RawTxType    = common.Hash
+	TxType       = types.Transaction
+	NonceType    = string
+	GasType      = hexutil.Uint64
+	LogsType     = []*types.Log
+	GasPriceType = hexutil.Big
 )
