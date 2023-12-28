@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/common/retry"
 	"math/big"
 	"sync"
 	"time"
@@ -288,8 +289,15 @@ func (s *Simulation) prefundL1Accounts() {
 
 func (s *Simulation) checkHealthStatus() {
 	for _, client := range s.RPCHandles.ObscuroClients {
-		if healthy, err := client.Health(); !healthy || err != nil {
-			panic("Client is not healthy: " + err.Error())
+		err := retry.Do(func() error {
+			healthy, err := client.Health()
+			if !healthy || err != nil {
+				return fmt.Errorf("client is not healthy: %w", err)
+			}
+			return nil
+		}, retry.NewTimeoutStrategy(30*time.Second, 100*time.Millisecond))
+		if err != nil {
+			panic(err)
 		}
 	}
 }
