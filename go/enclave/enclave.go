@@ -709,6 +709,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 		if err != nil {
 			return nil, responses.ToInternalError(err)
 		}
+		nonce = s.GetNonce(address)
 	}
 
 	encoded := hexutil.EncodeUint64(nonce)
