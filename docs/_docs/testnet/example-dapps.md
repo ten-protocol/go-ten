@@ -24,7 +24,7 @@ Building the guessing game in Ten addresses both scenarios described above. The 
 1. The game should show you two messages, one confirming the success of the Approval transaction, and the second confirming the result of the guess attempt (whether correct, wrong, warmer or colder than the last guess).
 
 Once the guess transaction is completed you can check the guess transaction on TenScan:
-1. In MetaMask click on the transaction to open it then click `Copy Transaction ID`. Open [TenScan](http://testnet.tenscan.io/).
+1. In MetaMask click on the transaction to open it then click `Copy Transaction ID`. Open [TenScan](https://testnet.tenscan.io/).
 1. Paste your copied transaction ID into the search box to find your individual guess transaction. Note how the transaction data visible to everyone is encrypted in the field `EncryptedTxBlob` and how (for now) the transaction is decrypted to allow developers to confirm correct behaviour of the network.
 1. You can see your guess as the number at the right hand end of the `input` value in a hexadecimal format, e.g. a guess of 99 is shown as 63.
 
