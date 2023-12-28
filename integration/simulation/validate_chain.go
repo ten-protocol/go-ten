@@ -56,7 +56,7 @@ func checkNetworkValidity(t *testing.T, s *Simulation) {
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
 	checkObscuroBlockchainValidity(t, s, l1MaxHeight)
 	checkReceivedLogs(t, s)
-	checkObscuroscan(t, s)
+	checkTenscan(t, s)
 }
 
 // Ensures that L1 and L2 txs were actually issued.
@@ -720,8 +720,8 @@ func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
 	}
 }
 
-// Checks that the various APIs powering Obscuroscan are working correctly.
-func checkObscuroscan(t *testing.T, s *Simulation) {
+// Checks that the various APIs powering Tenscan are working correctly.
+func checkTenscan(t *testing.T, s *Simulation) {
 	for idx, client := range s.RPCHandles.RPCClients {
 		checkTotalTransactions(t, client, idx)
 		latestTxHashes := checkLatestTxs(t, client, idx)

@@ -179,7 +179,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
-	snap := stateDB.Snapshot()
+	// snap := stateDB.Snapshot()
 
 	var messages common.CrossChainMessages
 	var transfers common.ValueTransferEvents
@@ -237,8 +237,9 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 		len(crossChainTransactions) == 0 &&
 		len(messages) == 0 &&
 		len(transfers) == 0 {
-		// revert any unexpected mutation to the statedb
-		stateDB.RevertToSnapshot(snap)
+		// todo review why this is failing deployment with "panic: revision id 0 cannot be reverted" - https://github.com/ten-protocol/ten-internal/issues/2654
+		//// revert any unexpected mutation to the statedb
+		//stateDB.RevertToSnapshot(snap)
 		return nil, ErrNoTransactionsToProcess
 	}
 

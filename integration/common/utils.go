@@ -99,7 +99,7 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 		txData := &types.LegacyTx{
 			Nonce:    startingNonce + uint64(idx),
 			Value:    alloc,
-			Gas:      uint64(1_000_000),
+			Gas:      uint64(100_000),
 			GasPrice: gethcommon.Big1,
 			To:       &destAddr,
 		}

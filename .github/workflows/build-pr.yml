@@ -42,8 +42,10 @@ jobs:
             integration/.build/wallet_extension/wal-ext-*.txt
             integration/.build/eth2/*
             integration/.build/faucet/*
-            integration/.build/obscuroscan/*
+            integration/.build/tenscan/*
             integration/.build/tengateway/*
+            integration/.build/contractdeployer/*
+            integration/.build/smartcontracts/*
           retention-days: 1
 
 
