@@ -6,8 +6,8 @@ const HealthIndicator = () => {
   const { testnetStatus } = useGeneralService();
 
   return (
-    <div className="flex items-center space-x-2 border rounded-lg px-2 py-1">
-      <h3>Testnet Status: </h3>
+    <div className="flex items-center space-x-2 border rounded-lg p-2">
+      <h3 className="text-sm">Testnet Status: </h3>
       <Badge
         variant={
           (testnetStatus?.result
