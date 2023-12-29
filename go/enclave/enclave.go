@@ -1248,9 +1248,23 @@ func (e *enclaveImpl) HealthCheck() (bool, common.SystemError) {
 		e.logger.Info("HealthCheck failed for the enclave storage", log.ErrKey, err)
 		return false, nil
 	}
+
 	// todo (#1148) - enclave healthcheck operations
-	enclaveHealthy := true
-	return storageHealthy && enclaveHealthy, nil
+	l1blockHealthy, err := e.l1BlockProcessor.HealthCheck()
+	if err != nil {
+		// simplest iteration, log the error and just return that it's not healthy
+		e.logger.Info("HealthCheck failed for the l1 block processor", log.ErrKey, err)
+		return false, nil
+	}
+
+	l2batchHealthy, err := e.registry.HealthCheck()
+	if err != nil {
+		// simplest iteration, log the error and just return that it's not healthy
+		e.logger.Info("HealthCheck failed for the l2 batch registry", log.ErrKey, err)
+		return false, nil
+	}
+
+	return storageHealthy && l1blockHealthy && l2batchHealthy, nil
 }
 
 func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {
