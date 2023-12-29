@@ -48,4 +48,4 @@ Congratulations, your smart contract is now deployed to Ten Testnet!
 
 Because Ten provides full privacy, the details of your transaction are encrypted and only visible to you, as the holder of your wallet's private key.
 
-Now head over to the [TenScan page](https://docs.obscu.ro/testnet/obscuroscan/) to see how you can view the transaction details.
+Now head over to the [TenScan page](https://docs.obscu.ro/testnet/tenscan/) to see how you can view the transaction details.

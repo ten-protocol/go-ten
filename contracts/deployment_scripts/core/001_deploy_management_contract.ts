@@ -43,7 +43,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // This is required in CI/CD - look at testnet-deploy-contracts.sh for more information.
     // depends on grep -e MessageBusAddress and a positional cut of the address
     console.log(`MessageBusAddress= ${busAddress}`);
-    console.log(`L1Start=${mgmtContractDeployment.receipt.blockHash}`)
+    console.log(`L1Start= ${mgmtContractDeployment.receipt.blockHash}`)
 };
 
 export default func;

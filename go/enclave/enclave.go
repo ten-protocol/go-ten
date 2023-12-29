@@ -81,10 +81,6 @@ type enclaveImpl struct {
 	service  nodetype.NodeType
 	registry components.BatchRegistry
 
-	// todo (#627) - use the ethconfig.Config instead
-	GlobalGasCap uint64   //         5_000_000_000, // todo (#627) - make config
-	BaseFee      *big.Int //              gethcommon.Big0,
-
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
 	attestationProvider components.AttestationProvider // interface for producing attestation reports and verifying them
 
@@ -184,7 +180,7 @@ func NewEnclave(
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, chainConfig, logger)
+	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	registry := components.NewBatchRegistry(storage, logger)
 	rProducer := components.NewRollupProducer(config.SequencerID, storage, registry, logger)
@@ -222,7 +218,7 @@ func NewEnclave(
 				MaxBatchSize:      config.MaxBatchSize,
 				MaxRollupSize:     config.MaxRollupSize,
 				GasPaymentAddress: config.GasPaymentAddress,
-				BatchGasLimit:     config.GasLimit,
+				BatchGasLimit:     config.GasBatchExecutionLimit,
 				BaseFee:           config.BaseFee,
 			},
 			blockchain,
@@ -237,6 +233,7 @@ func NewEnclave(
 		genesis,
 		logger,
 		registry,
+		config.GasLocalExecutionCapFlag,
 	)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
@@ -274,9 +271,6 @@ func NewEnclave(
 		chain:    chain,
 		registry: registry,
 		service:  service,
-
-		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
-		BaseFee:      gethcommon.Big0,
 
 		mainMutex: sync.Mutex{},
 	}
@@ -499,10 +493,6 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 	if e.crossChainProcessors.Local.IsSyntheticTransaction(*decryptedTx) {
 		return responses.AsPlaintextError(responses.ToInternalError(fmt.Errorf("synthetic transaction coming from external rpc"))), nil
 	}
-	if err = e.checkGas(decryptedTx); err != nil {
-		e.logger.Info("gas check failed", log.ErrKey, err.Error())
-		return responses.AsEncryptedError(err, vkHandler), nil
-	}
 
 	if err = e.service.SubmitTransaction(decryptedTx); err != nil {
 		e.logger.Debug("Could not submit transaction", log.TxKey, decryptedTx.Hash(), log.ErrKey, err)
@@ -695,15 +685,18 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	}
 
 	var nonce uint64
-	l2Head, err := e.storage.FetchBatchBySeqNo(e.registry.HeadBatchSeq().Uint64())
-	if err == nil {
-		// todo - we should return an error when head state is not available, but for current test situations with race
-		//  conditions we allow it to return zero while head state is uninitialized
-		s, err := e.storage.CreateStateDB(l2Head.Hash())
-		if err != nil {
-			return nil, responses.ToInternalError(err)
+	headBatch := e.registry.HeadBatchSeq()
+	if headBatch != nil {
+		l2Head, err := e.storage.FetchBatchBySeqNo(headBatch.Uint64())
+		if err == nil {
+			// todo - we should return an error when head state is not available, but for current test situations with race
+			//  conditions we allow it to return zero while head state is uninitialized
+			s, err := e.storage.CreateStateDB(l2Head.Hash())
+			if err != nil {
+				return nil, responses.ToInternalError(err)
+			}
+			nonce = s.GetNonce(address)
 		}
-		nonce = s.GetNonce(address)
 	}
 
 	encoded := hexutil.EncodeUint64(nonce)
@@ -1032,7 +1025,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
-	executionGasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.GlobalGasCap)
+	executionGasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.config.GasLocalExecutionCapFlag)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
@@ -1159,7 +1152,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 			}
 			hi = block.GasLimit()
 		*/
-		hi = e.GlobalGasCap
+		hi = e.config.GasLocalExecutionCapFlag
 	}
 	// Normalize the max fee per gas the call is willing to spend.
 	var feeCap *big.Int
@@ -1434,18 +1427,6 @@ func (e *revertError) ErrorCode() int {
 // ErrorData returns the hex encoded revert reason.
 func (e *revertError) ErrorData() interface{} {
 	return e.reason
-}
-
-func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
-	txGasPrice := tx.GasPrice()
-	if txGasPrice == nil {
-		return fmt.Errorf("rejected transaction %s. No gas price was set", tx.Hash())
-	}
-	minGasPrice := e.config.MinGasPrice
-	if txGasPrice.Cmp(minGasPrice) == -1 {
-		return fmt.Errorf("rejected transaction %s. Gas price was only %d, wanted at least %d", tx.Hash(), txGasPrice, minGasPrice)
-	}
-	return nil
 }
 
 // Returns the params extracted from an eth_getLogs request.
