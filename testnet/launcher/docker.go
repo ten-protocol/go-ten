@@ -225,7 +225,7 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 			defer client.Stop()
 
 			obsClient := obsclient.NewObsClient(client)
-			health, err := obsClient.HealthStatusOfNode()
+			health, err := obsClient.Health()
 			if err != nil {
 				return err
 			}

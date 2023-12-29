@@ -21,8 +21,9 @@ func routeItems(r *gin.Engine, server *WebServer) {
 }
 
 func (w *WebServer) getHealthStatus(c *gin.Context) {
-	healthStatus, err := w.backend.GetHealthStatus()
+	healthStatus, err := w.backend.GetTenNodeHealthStatus()
 
+	// TODO: error handling, since this does not easily tell connection errors from health errors
 	c.JSON(http.StatusOK, gin.H{"result": healthStatus, "errors": fmt.Sprintf("%s", err)})
 }
 
