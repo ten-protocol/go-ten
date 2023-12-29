@@ -6,7 +6,7 @@ This is the Ten Doc Site and it looks like [this](https://docs.obscu.ro/).
 
 1. Clone this repository: https://github.com/ten-protocol/go-ten
 2. Create your new content as a Markdown file in the `/docs` folder of the repo. Take care with the folder structure. 
-   As a general rule, new titles in the left hand navigation menu should have their content contained in a seperate 
+   As a general rule, new titles in the left hand navigation menu should have their content contained in a separate 
    subfolder under docs, for example, `/docs/testnet` contains all the Markdown files relation to the testnet docs.
 3. To have this new content shown in the left-hand navigation menu you need to modify the file 
    `/docs/_data/navigation.yml`. Follow the same format to add new headings and content titles. Remember to specify the 
