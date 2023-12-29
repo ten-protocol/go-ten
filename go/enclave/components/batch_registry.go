@@ -202,6 +202,7 @@ func (br *batchRegistry) GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Bat
 	return batch, nil
 }
 
+// HealthCheck checks if the last executed batch was more than healthTimeout ago
 func (br *batchRegistry) HealthCheck() (bool, error) {
 	lastExecutedBatchTime := br.lastExecutedBatch.LastTimestamp()
 	if time.Now().After(lastExecutedBatchTime.Add(br.healthTimeout)) {

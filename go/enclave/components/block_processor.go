@@ -86,6 +86,7 @@ func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts) (*BlockIngestio
 	return ingestion, nil
 }
 
+// HealthCheck checks if the last ingested block was more than healthTimeout ago
 func (bp *l1BlockProcessor) HealthCheck() (bool, error) {
 	lastIngestedBlockTime := bp.lastIngestedBlock.LastTimestamp()
 	if time.Now().After(lastIngestedBlockTime.Add(bp.healthTimeout)) {
