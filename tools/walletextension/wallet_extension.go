@@ -11,6 +11,7 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/config"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/obsclient"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/useraccountmanager"
 
@@ -38,6 +39,7 @@ type WalletExtension struct {
 	stopControl        *stopcontrol.StopControl
 	version            string
 	config             *config.Config
+	obsClient          *obsclient.ObsClient
 }
 
 func New(
@@ -383,4 +385,8 @@ func (w *WalletExtension) checkParametersForInterceptedGetStorageAt(params []int
 
 func (w *WalletExtension) Version() string {
 	return w.version
+}
+
+func (w *WalletExtension) GetTenNodeHealthStatus() (bool, error) {
+	return w.obsClient.Health()
 }
