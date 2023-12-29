@@ -59,19 +59,12 @@ func main() {
 	logger := log.New(log.WalletExtCmp, int(logLvl), config.LogPath)
 
 	walletExtContainer := container.NewWalletExtensionContainerFromConfig(config, logger)
-	defer func() {
-		err := walletExtContainer.Start()
-		if err != nil {
-			fmt.Printf("error stopping WE - %s", err)
-		}
-	}()
 
-	go func() {
-		err := walletExtContainer.Start()
-		if err != nil {
-			fmt.Printf("error in WE - %s", err)
-		}
-	}()
+	// Start the wallet extension.
+	err := walletExtContainer.Start()
+	if err != nil {
+		fmt.Printf("error in WE - %s", err)
+	}
 
 	walletExtensionAddr := fmt.Sprintf("%s:%d", common.Localhost, config.WalletExtensionPortHTTP)
 	fmt.Printf("💡 Wallet extension started \n") // Some tests rely on seeing this message. Removed in next PR.

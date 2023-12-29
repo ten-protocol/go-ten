@@ -103,6 +103,8 @@ func TestTenGateway(t *testing.T) {
 	}
 
 	// Gracefully shutdown
+	// todo remove this sleep when tests stabilize
+	time.Sleep(20 * time.Second)
 	err = tenGwContainer.Stop()
 	assert.NoError(t, err)
 }

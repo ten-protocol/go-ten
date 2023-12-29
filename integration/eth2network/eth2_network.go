@@ -18,6 +18,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ten-protocol/go-ten/integration/datagenerator"
 	"golang.org/x/sync/errgroup"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -205,6 +207,10 @@ func NewEth2Network(
 func (n *Impl) Start() error {
 	startTime := time.Now()
 	var eg errgroup.Group
+
+	if err := n.ensureNoDuplicatedNetwork(); err != nil {
+		return err
+	}
 
 	// initialize the genesis data on the nodes
 	for _, nodeDataDir := range n.dataDirs {
@@ -506,6 +512,11 @@ func (n *Impl) waitForMergeEvent(startTime time.Time) error {
 	}
 
 	fmt.Printf("Reached the merge block after %s\n", time.Since(startTime))
+
+	if err = n.prefundedBalancesActive(dial); err != nil {
+		fmt.Printf("Error prefunding accounts %s\n", err.Error())
+		return err
+	}
 	return nil
 }
 
@@ -585,6 +596,31 @@ func (n *Impl) gethImportEnodes(enodes []string) error {
 			}
 		}
 		time.Sleep(time.Second)
+	}
+	return nil
+}
+
+func (n *Impl) prefundedBalancesActive(client *ethclient.Client) error {
+	for _, addr := range n.preFundedMinerAddrs {
+		balance, err := client.BalanceAt(context.Background(), gethcommon.HexToAddress(addr), nil)
+		if err != nil {
+			return fmt.Errorf("unable to check balance for account %s - %w", addr, err)
+		}
+		if balance.Cmp(gethcommon.Big0) == 0 {
+			return fmt.Errorf("unexpected %s balance for account %s", balance.String(), addr)
+		}
+		fmt.Printf("Account %s prefunded with %s\n", addr, balance.String())
+	}
+
+	return nil
+}
+
+func (n *Impl) ensureNoDuplicatedNetwork() error {
+	for nodeIdx, port := range n.gethWSPorts {
+		_, err := ethclient.Dial(fmt.Sprintf("ws://127.0.0.1:%d", port))
+		if err == nil {
+			return fmt.Errorf("unexpected geth node %d is active before the network is started", nodeIdx)
+		}
 	}
 	return nil
 }

@@ -58,8 +58,8 @@ sidebar-list:
 
   - title: Tools
     children:
-      - title: ObscuroScan
-        url: testnet/obscuroscan
+      - title: Tenscan
+        url: testnet/tenscan
       - title: Token Faucet
         url: testnet/faucet
     

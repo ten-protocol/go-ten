@@ -1,7 +1,11 @@
 package network
 
 import (
+	"bufio"
 	"fmt"
+	"os/exec"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/ten-protocol/go-ten/integration/noderunner"
@@ -112,6 +116,10 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		// start the nodes
 		err = nodes[i].Start()
 		if err != nil {
+			errCheck := checkProcessPort(err.Error())
+			if errCheck != nil {
+				testlog.Logger().Warn("no port found on error", log.ErrKey, err)
+			}
 			testlog.Logger().Crit("unable to start obscuro node ", log.ErrKey, err)
 		}
 	}
@@ -179,5 +187,37 @@ func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) er
 			}
 		}
 	}
+	return nil
+}
+
+// getProcessesUsingPort returns a slice of process details using the specified port.
+func checkProcessPort(errPort string) error {
+	re := regexp.MustCompile(`:(\d+):`)
+	matches := re.FindStringSubmatch(errPort)
+
+	if len(matches) < 2 {
+		return fmt.Errorf("no port found in string")
+	}
+
+	port := matches[1]
+
+	cmd := exec.Command("lsof", "-i", fmt.Sprintf(":%s", port)) //nolint:gosec
+
+	output, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+
+	var processes []string
+	scanner := bufio.NewScanner(strings.NewReader(string(output)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "LISTEN") || strings.Contains(line, "ESTABLISHED") {
+			processes = append(processes, line)
+		}
+	}
+
+	fmt.Printf("Found processes still opened on port %s - %+v\n", port, processes)
+
 	return nil
 }

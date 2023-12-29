@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ten-protocol/go-ten/tools/tenscan/backend/config"
+	"github.com/ten-protocol/go-ten/tools/tenscan/backend/container"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
@@ -19,8 +22,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration/datagenerator"
-	"github.com/ten-protocol/go-ten/tools/obscuroscan_v2/backend/config"
-	"github.com/ten-protocol/go-ten/tools/obscuroscan_v2/backend/container"
 	"github.com/valyala/fasthttp"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -36,31 +37,31 @@ import (
 func init() { //nolint:gochecknoinits
 	testlog.Setup(&testlog.Cfg{
 		LogDir:      testLogs,
-		TestType:    "obscuroscan",
+		TestType:    "tenscan",
 		TestSubtype: "test",
 		LogLevel:    log.LvlInfo,
 	})
 }
 
 const (
-	testLogs = "../.build/obscuroscan/"
+	testLogs = "../.build/tenscan/"
 )
 
-func TestObscuroscan(t *testing.T) {
+func TestTenscan(t *testing.T) {
 	startPort := integration.StartPortTenscanUnitTest
 	createObscuroNetwork(t, startPort)
 
-	obsScanConfig := &config.Config{
+	tenScanConfig := &config.Config{
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
 		ServerAddress:   fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultTenscanHTTPPortOffset),
 		LogPath:         "sys_out",
 	}
-	serverAddress := fmt.Sprintf("http://%s", obsScanConfig.ServerAddress)
+	serverAddress := fmt.Sprintf("http://%s", tenScanConfig.ServerAddress)
 
-	obsScanContainer, err := container.NewObscuroScanContainer(obsScanConfig)
+	tenScanContainer, err := container.NewTenScanContainer(tenScanConfig)
 	require.NoError(t, err)
 
-	err = obsScanContainer.Start()
+	err = tenScanContainer.Start()
 	require.NoError(t, err)
 
 	// wait for the msg bus contract to be deployed
@@ -182,7 +183,7 @@ func TestObscuroscan(t *testing.T) {
 	assert.NotEqual(t, configFetchObj.Item.SequencerID, gethcommon.Address{})
 
 	// Gracefully shutdown
-	err = obsScanContainer.Stop()
+	err = tenScanContainer.Stop()
 	assert.NoError(t, err)
 }
 

@@ -227,7 +227,7 @@ func (s *Simulation) deployObscuroERC20s() {
 
 			deployContractTx := types.DynamicFeeTx{
 				Nonce:     NextNonce(s.ctx, s.RPCHandles, owner),
-				Gas:       1025_000_000,
+				Gas:       5_000_000,
 				GasFeeCap: gethcommon.Big1, // This field is used to derive the gas price for dynamic fee transactions.
 				Data:      contractBytes,
 				GasTipCap: gethcommon.Big1,
