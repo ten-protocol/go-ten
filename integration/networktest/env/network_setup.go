@@ -15,12 +15,12 @@ func SepoliaTestnet() networktest.Environment {
 	return &testnetEnv{connector}
 }
 
-func Testnet() networktest.Environment {
+func UATTestnet() networktest.Environment {
 	connector := NewTestnetConnector(
 		"http://erpc.uat-testnet.obscu.ro:80", // this is actually a validator...
 		[]string{"http://erpc.uat-testnet.obscu.ro:80"},
-		"http://testnet-faucet.uksouth.azurecontainer.io/fund/eth",
-		"ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000",
+		"http://uat-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
+		"ws://uat-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
 	)
 	return &testnetEnv{connector}
 }
