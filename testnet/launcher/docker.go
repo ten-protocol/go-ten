@@ -151,9 +151,10 @@ func (t *Testnet) Start() error {
 	}
 	fmt.Println("L2 Contracts were successfully deployed...")
 
+	faucetPort := 99
 	faucetInst, err := faucet.NewDockerFaucet(
 		faucet.NewFaucetConfig(
-			faucet.WithFaucetPort(99),
+			faucet.WithFaucetPort(faucetPort),
 			faucet.WithTenNodePort(13010),
 			faucet.WithTenNodeHost("validator-host"),
 			faucet.WithFaucetPrivKey("0x8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
@@ -172,12 +173,13 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to wait for faucet to be ready - %w", err)
 	}
 
-	fmt.Println("Faucet ready to be accessed at http://127.0.0.1:99/ ...")
-	fmt.Println("Fund your account with `curl --request POST 'http://127.0.0.1:99/fund/eth' --header 'Content-Type: application/json' --data-raw '{ \"address\":\"0x0....\" } `")
+	fmt.Printf("Faucet ready to be accessed at http://127.0.0.1:%d/ ...\n", faucetPort)
+	fmt.Printf("Fund your account with `curl --request POST 'http://127.0.0.1:%d/fund/eth' --header 'Content-Type: application/json' --data-raw '{ \"address\":\"0x0....\" } `\n", faucetPort)
 
+	gatewayPort := 3000
 	gatewayInst, err := gateway.NewDockerGateway(
 		gateway.NewGatewayConfig(
-			gateway.WithGatewayHTTPPort(3000),
+			gateway.WithGatewayHTTPPort(gatewayPort),
 			gateway.WithGatewayWSPort(3001),
 			gateway.WithTenNodeHTTPPort(13010),
 			gateway.WithTenNodeWSPort(13011),
@@ -197,7 +199,7 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to wait for gateway to be ready - %w", err)
 	}
 
-	fmt.Println("Gateway ready to be accessed at http://127.0.0.1:3000 ...")
+	fmt.Printf("Gateway ready to be accessed at http://127.0.0.1:%d ...\n", gatewayPort)
 
 	fmt.Println("Network successfully launched !")
 	return nil
