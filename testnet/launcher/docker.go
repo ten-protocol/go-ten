@@ -172,7 +172,7 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to wait for faucet to be ready - %w", err)
 	}
 
-	fmt.Println("Faucet ready to be accessed at http://127.0.0.1:90/ ...")
+	fmt.Println("Faucet ready to be accessed at http://127.0.0.1:99/ ...")
 	fmt.Println("Fund your account with `curl --request POST 'http://127.0.0.1:99/fund/eth' --header 'Content-Type: application/json' --data-raw '{ \"address\":\"0x0....\" } `")
 
 	gatewayInst, err := gateway.NewDockerGateway(
