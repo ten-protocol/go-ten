@@ -35,7 +35,7 @@ func NewUserAccountManager(unauthenticatedClient rpc.Client, logger gethlog.Logg
 // AddAndReturnAccountManager adds new UserAccountManager if it doesn't exist and returns it, if UserAccountManager already exists for that user just return it
 func (m *UserAccountManager) AddAndReturnAccountManager(userID string) *accountmanager.AccountManager {
 	m.mu.RLock()
-	defer m.mu.Unlock()
+	defer m.mu.RUnlock()
 	existingUserAccountManager, exists := m.userAccountManager[userID]
 	if exists {
 		return existingUserAccountManager
