@@ -8,7 +8,7 @@ import (
 
 func parseCLIArgs() *config.Config {
 	defaultConfig := &config.Config{
-		NodeHostAddress: "http://erpc.dev-testnet.obscu.ro:80",
+		NodeHostAddress: "http://erpc.dev-testnet.ten.xyz:80",
 		ServerAddress:   "0.0.0.0:80",
 		LogPath:         "tenscan_logs.txt",
 	}

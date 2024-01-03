@@ -19,7 +19,7 @@ Key performance indicators (KPIs) will be used to determine the amount of Testne
 ### Selected KPIs for Developers
 | KPI NAME | RATIONALE | SOURCE | METRIC | TARGET |
 |--|--|--|--|--|
-| Testnet documentation page views (https://docs.obscu.ro/testnet/) | Gauges interest from developers in building on testnet. A good early indicator. Straightforward to capture | Google Analytics | Number of unique page views in the last 4 weeks |50|
+| Testnet documentation page views (https://docs.ten.xyz/testnet/) | Gauges interest from developers in building on testnet. A good early indicator. Straightforward to capture | Google Analytics | Number of unique page views in the last 4 weeks |50|
 |DApps in development| This is difficult to measure as it’s not something we can look to the network to accurately measure. We can use our business development CRM data as an indicator. | Airtable "Partnerships" tab| Number of partners with status changed to "Soft Commitment" in the last 4 weeks|40|
 | New dApps deployed on Testnet| Indicates how much new activity and commitment of effort from dApp builders| TenScan?| Number of new dApp addresses deployed in the last 4 weeks|20|
 

@@ -34,7 +34,7 @@ const (
 // Testnet values used for quick debugging:
 // l1 host: testnet-eth2network.uksouth.cloudapp.azure.com
 // l1 port: 9000
-// l2 host: erpc.testnet.obscu.ro
+// l2 host: erpc.testnet.ten.xyz
 // l2 port: 81
 // l2wallet: 8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b -> 0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77
 
@@ -50,7 +50,7 @@ var (
 		"4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8",
 		777,
 		gethlog.New())
-	l2Host = "erpc.uat-testnet.obscu.ro"
+	l2Host = "erpc.uat-testnet.ten.xyz"
 	l2Port = 81
 )
 
