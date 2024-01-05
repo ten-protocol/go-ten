@@ -132,7 +132,7 @@ func makeHTTPEthJSONReqWithUserID(port int, method string, params interface{}, u
 // Makes an Ethereum JSON RPC request over websockets and returns the response body.
 func makeWSEthJSONReq(port int, method string, params interface{}) ([]byte, *websocket.Conn) {
 	reqBody := prepareRequestBody(method, params)
-	return makeRequestWS(fmt.Sprintf("ws://%s:%d", common.Localhost, port), reqBody)
+	return makeRequestWS(fmt.Sprintf("ws://%s:%d%s/", common.Localhost, port, common.APIVersion1), reqBody)
 }
 
 func makeWSEthJSONReqWithConn(conn *websocket.Conn, method string, params interface{}) []byte {
@@ -141,7 +141,7 @@ func makeWSEthJSONReqWithConn(conn *websocket.Conn, method string, params interf
 }
 
 func openWSConn(port int) (*websocket.Conn, error) {
-	conn, dialResp, err := websocket.DefaultDialer.Dial(fmt.Sprintf("ws://%s:%d", common.Localhost, port), nil)
+	conn, dialResp, err := websocket.DefaultDialer.Dial(fmt.Sprintf("ws://%s:%d%s/", common.Localhost, port, common.APIVersion1), nil)
 	if dialResp != nil && dialResp.Body != nil {
 		defer dialResp.Body.Close()
 	}
