@@ -1,7 +1,7 @@
 ---
 ---
 # Privacy 
-_The full Litepaper is available to view [here](https://obscu.ro/litepaper)._
+_The full Litepaper is available to view [here](https://ten.xyz/litepaper)._
 
 The privacy Ten provides can be split into transactional and computational privacy.
 

@@ -1,6 +1,6 @@
 # Ten Doc Site
 
-This is the Ten Doc Site and it looks like [this](https://docs.obscu.ro/).
+This is the Ten Doc Site and it looks like [this](https://docs.ten.xyz/).
 
 ## Adding New Doc Site Pages
 
@@ -14,7 +14,7 @@ This is the Ten Doc Site and it looks like [this](https://docs.obscu.ro/).
 4. Push your changes to tennet/go-ten
 5. GitHub Pages will trigger a GitHub Action to use a Jekyll build job to create the static content and then publish 
    the pages at the custom URL.
-6. Browse to https://docs.obscu.ro/ and check your content. Remember your browser will cache some of the pages so hit 
+6. Browse to https://docs.ten.xyz/ and check your content. Remember your browser will cache some of the pages so hit 
    refresh a few times if it looks like the content is missing or the navigation menu is incorrect.
 
 ## Updating Existing Doc Site Pages

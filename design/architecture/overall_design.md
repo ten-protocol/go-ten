@@ -3,7 +3,7 @@
 ## Scope
 
 The purpose of this document is to describe aspects of Ten's technical design that are not addressed in the 
-[Ten whitepaper](https://whitepaper.obscu.ro/).
+[Ten whitepaper](https://whitepaper.ten.xyz/).
 
 ## Overview
 
@@ -17,7 +17,7 @@ The following additional components must be developed:
 * **The enclave:** The trusted part of the Ten node that runs inside a trusted execution environment (TEE)
 * **The host:** The remainder of the Ten node that runs outside the TEE
 * **The Ten management contract:** The Ethereum mainnet contracts required by the Ten protocol, described 
-  [here](https://whitepaper.obscu.ro/ten-whitepaper/l1-contracts)
+  [here](https://whitepaper.ten.xyz/ten-whitepaper/l1-contracts)
 * **Client apps:** Applications that interact with the Ten node (e.g. Ten wallets)
 
 ## Host/enclave split

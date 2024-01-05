@@ -1,7 +1,7 @@
 # Ten Faucet
 
 This tools contains a Faucet to allow allocation of ETH tokens within an Ten network. For more information 
-on Ten see the [Ten repo](https://github.com/ten-protocol/go-ten) and [documentation](https://docs.obscu.ro/).
+on Ten see the [Ten repo](https://github.com/ten-protocol/go-ten) and [documentation](https://docs.ten.xyz/).
 
 ## Repository Structure
 The top level structure of the tool is as below;
