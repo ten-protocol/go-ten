@@ -29,7 +29,7 @@ export const testnetUrls = {
     rpc: "https://rpc.dev-testnet.ten.xyz",
   },
   default: {
-    name: "Obscuro Testnet",
+    name: "Ten Testnet",
     url: tenGatewayAddress,
   },
 };
