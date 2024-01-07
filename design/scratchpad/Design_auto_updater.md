@@ -1,4 +1,4 @@
-# Ten Auto Updater
+# Ten Auto Updater - Scheduled callbacks
 
 ## Introduction
 
@@ -13,7 +13,7 @@ This feature suggestion would allow to circumvent the L1 publishing by creating 
 The synthetic transactions we currently have are not published to the L1. They are not included in the batch albeit mutating its state. This is not an issue, because the transactions are deterministically derived from the L1 state or more specifically, the L1 block that the batch points to. This means that when a validator is recomputing the batch, the data for rebuilding the transactions, in the same order is available implicitly. If we were to publish them to the L1 it would only be redundant and increase costs.
 
 
-### L2 State Derived transactions
+### L2 State Derived transactions / Scheduled callbacks
 
 L2 state derived transaction is a special synthetic transaction, also started by the sequencer that would call a specific contract. This contract would have to register itself as updateable and prepay L2 gas costs to the `block.coinbase`. Using this prepayed funding, the sequencer would create the implicit functions calling the entry point function with no calldata and no value. It is possible to extend to support implicit calldata sent through the prepayment, but its best to keep it simple for the initial design.
 
@@ -46,8 +46,9 @@ We'd need a predeployed system smart contract that allows for registering contra
 
 ```solidity
 interface TenAutomationRegistry {
-    function registerCallback(bytes memory callInstructions) external payable
+    function registerCallback(bytes memory callInstructions) external payable returns(uint256)
     function uniqueCaller(address targetContract, bytes memory callInstructions) pure returns (address)
+    function cancel(uint256 id)
 }
 ```
 
@@ -57,6 +58,11 @@ The `uniqueCaller` getter would return the unique address who will be the `tx.or
 
 
 To implement the whole feature we'd need to extend the logic in the `BatchExecutor` component and simply add another layer of transactions at the end to be executed by the `evm_facade`. Those transactions will be executed with gas priced same as normal user transactions. 
+
+**Cancellation** - There must be a way to cancel scheduled callbacks. Assuming that the implementation of the feature is inspired by javascript `setTimeout()` callbacks, we can have the registration return a `uniqueID` which can be used as a parameter to `cancel(id)`. Cancelling should refund collateral and prefunding, but this would require to pay to something else instead of `block.coinbase`. This could be the predeployed contract.
+
+The need to cancel might come from a contract being updated and signatures not matching, contract self destructing or some other imposed constraint that would mean a scheduled callback is a bad idea.
+
 
 ### Performance considerations
 
