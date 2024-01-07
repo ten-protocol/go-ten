@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -12,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/ten-protocol/go-ten/go/common/async"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/measure"
@@ -24,8 +26,10 @@ type batchRegistry struct {
 	logger       gethlog.Logger
 	headBatchSeq *big.Int // keep track of the last executed batch to optimise db access
 
-	batchesCallback func(*core.Batch, types.Receipts)
-	callbackMutex   sync.RWMutex
+	batchesCallback   func(*core.Batch, types.Receipts)
+	callbackMutex     sync.RWMutex
+	healthTimeout     time.Duration
+	lastExecutedBatch *async.Timestamp
 }
 
 func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegistry {
@@ -42,9 +46,11 @@ func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegis
 		headBatchSeq = headBatch.SeqNo()
 	}
 	return &batchRegistry{
-		storage:      storage,
-		headBatchSeq: headBatchSeq,
-		logger:       logger,
+		storage:           storage,
+		headBatchSeq:      headBatchSeq,
+		logger:            logger,
+		healthTimeout:     time.Minute,
+		lastExecutedBatch: async.NewAsyncTimestamp(time.Now().Add(-time.Minute)),
 	}
 }
 
@@ -75,6 +81,8 @@ func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Recei
 	if br.batchesCallback != nil {
 		br.batchesCallback(batch, receipts)
 	}
+
+	br.lastExecutedBatch.Mark()
 }
 
 func (br *batchRegistry) HasGenesisBatch() (bool, error) {
@@ -192,4 +200,14 @@ func (br *batchRegistry) GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Bat
 		batch = maybeBatch
 	}
 	return batch, nil
+}
+
+// HealthCheck checks if the last executed batch was more than healthTimeout ago
+func (br *batchRegistry) HealthCheck() (bool, error) {
+	lastExecutedBatchTime := br.lastExecutedBatch.LastTimestamp()
+	if time.Now().After(lastExecutedBatchTime.Add(br.healthTimeout)) {
+		return false, fmt.Errorf("last executed batch was %s ago", time.Since(lastExecutedBatchTime))
+	}
+
+	return true, nil
 }

@@ -34,7 +34,8 @@ type obscuroChain struct {
 
 	logger gethlog.Logger
 
-	Registry components.BatchRegistry
+	Registry         components.BatchRegistry
+	gasEstimationCap uint64
 }
 
 func NewChain(
@@ -43,13 +44,15 @@ func NewChain(
 	genesis *genesis.Genesis,
 	logger gethlog.Logger,
 	registry components.BatchRegistry,
+	gasEstimationCap uint64,
 ) ObscuroChain {
 	return &obscuroChain{
-		storage:     storage,
-		chainConfig: chainConfig,
-		logger:      logger,
-		genesis:     genesis,
-		Registry:    registry,
+		storage:          storage,
+		chainConfig:      chainConfig,
+		logger:           logger,
+		genesis:          genesis,
+		Registry:         registry,
+		gasEstimationCap: gasEstimationCap,
 	}
 }
 
@@ -144,7 +147,7 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 			batch.Header.Root.Hex())
 	}})
 
-	result, err := evm.ExecuteObsCall(callMsg, blockState, batch.Header, oc.storage, oc.chainConfig, oc.logger)
+	result, err := evm.ExecuteObsCall(callMsg, blockState, batch.Header, oc.storage, oc.chainConfig, oc.gasEstimationCap, oc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		return result, err

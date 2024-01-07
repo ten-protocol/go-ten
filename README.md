@@ -1,6 +1,6 @@
 # Go Ten
 
-This repository contains the reference implementation of the [Ten Protocol](https://whitepaper.obscu.ro/).
+This repository contains the reference implementation of the [Ten Protocol](https://whitepaper.ten.xyz/).
 
 *Note that this is still very much a work in progress, so there are many rough edges and unfinished components.*
 
@@ -62,7 +62,7 @@ extracts useful information from them, such as published rollups, deposits to th
 at this level to rollback the Ten state accordingly.
 
 To avoid the risk of the Enclave being fed invalid blocks which an attacker can use to probe for information, or to shorten the 
-[revelation period](https://whitepaper.obscu.ro/ten-whitepaper/detailed-design.html#revelation-mechanism), the blocks have to be checked for validity, which includes checking that enough "work" went into them.
+[revelation period](https://whitepaper.ten.xyz/ten-whitepaper/detailed-design.html#revelation-mechanism), the blocks have to be checked for validity, which includes checking that enough "work" went into them.
 To achieve this we depend on the [Blockchain](https://github.com/ethereum/go-ethereum/blob/e6fa102eb08c2b83ab75e85ca7860eea3a10dab0/core/blockchain.go) 
 logic.
 
@@ -183,7 +183,7 @@ The missing link to achieving fully private transactions while allowing end-user
 wallets (like MetaMask). This is a very thin component that is responsible for encrypting and decrypting traffic 
 between the Ten node and its clients.
 
-See the [docs](https://docs.obscu.ro/wallet-extension/wallet-extension/) for more information.
+See the [docs](https://docs.ten.xyz/wallet-extension/wallet-extension/) for more information.
 
 
 ## Repository Structure
@@ -388,7 +388,7 @@ Remix (see[docs/testnet/deploying-a-smart-contract.md](docs/testnet/deploying-a-
 e.g. using web3.py(see [docs/testnet/deploying-a-smart-contract-programmatically.md](docs/testnet/deploying-a-smart-contract-programmatically.md)). 
 
 Note that in order to interact with the main cloud hosted testnet, all that needs to be changed is to start the wallet 
-extension using the default parameters, where the `nodeHost` will default to the testnet host URL `erpc.sepolia-testnet.obscu.ro` i.e. 
+extension using the default parameters, where the `nodeHost` will default to the testnet host URL `erpc.sepolia-testnet.ten.xyz` i.e. 
 
 ```
 cd ./tools/walletextension/main/

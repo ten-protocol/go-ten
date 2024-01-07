@@ -81,10 +81,6 @@ type enclaveImpl struct {
 	service  nodetype.NodeType
 	registry components.BatchRegistry
 
-	// todo (#627) - use the ethconfig.Config instead
-	GlobalGasCap uint64   //         5_000_000_000, // todo (#627) - make config
-	BaseFee      *big.Int //              gethcommon.Big0,
-
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
 	attestationProvider components.AttestationProvider // interface for producing attestation reports and verifying them
 
@@ -184,7 +180,7 @@ func NewEnclave(
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, chainConfig, logger)
+	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	registry := components.NewBatchRegistry(storage, logger)
 	rProducer := components.NewRollupProducer(config.SequencerID, storage, registry, logger)
@@ -222,7 +218,7 @@ func NewEnclave(
 				MaxBatchSize:      config.MaxBatchSize,
 				MaxRollupSize:     config.MaxRollupSize,
 				GasPaymentAddress: config.GasPaymentAddress,
-				BatchGasLimit:     config.GasLimit,
+				BatchGasLimit:     config.GasBatchExecutionLimit,
 				BaseFee:           config.BaseFee,
 			},
 			blockchain,
@@ -237,6 +233,7 @@ func NewEnclave(
 		genesis,
 		logger,
 		registry,
+		config.GasLocalExecutionCapFlag,
 	)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
@@ -274,9 +271,6 @@ func NewEnclave(
 		chain:    chain,
 		registry: registry,
 		service:  service,
-
-		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
-		BaseFee:      gethcommon.Big0,
 
 		mainMutex: sync.Mutex{},
 	}
@@ -691,15 +685,18 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	}
 
 	var nonce uint64
-	l2Head, err := e.storage.FetchBatchBySeqNo(e.registry.HeadBatchSeq().Uint64())
-	if err == nil {
-		// todo - we should return an error when head state is not available, but for current test situations with race
-		//  conditions we allow it to return zero while head state is uninitialized
-		s, err := e.storage.CreateStateDB(l2Head.Hash())
-		if err != nil {
-			return nil, responses.ToInternalError(err)
+	headBatch := e.registry.HeadBatchSeq()
+	if headBatch != nil {
+		l2Head, err := e.storage.FetchBatchBySeqNo(headBatch.Uint64())
+		if err == nil {
+			// todo - we should return an error when head state is not available, but for current test situations with race
+			//  conditions we allow it to return zero while head state is uninitialized
+			s, err := e.storage.CreateStateDB(l2Head.Hash())
+			if err != nil {
+				return nil, responses.ToInternalError(err)
+			}
+			nonce = s.GetNonce(address)
 		}
-		nonce = s.GetNonce(address)
 	}
 
 	encoded := hexutil.EncodeUint64(nonce)
@@ -1028,7 +1025,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
-	executionGasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.GlobalGasCap)
+	executionGasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.config.GasLocalExecutionCapFlag)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
@@ -1155,7 +1152,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 			}
 			hi = block.GasLimit()
 		*/
-		hi = e.GlobalGasCap
+		hi = e.config.GasLocalExecutionCapFlag
 	}
 	// Normalize the max fee per gas the call is willing to spend.
 	var feeCap *big.Int
@@ -1251,9 +1248,23 @@ func (e *enclaveImpl) HealthCheck() (bool, common.SystemError) {
 		e.logger.Info("HealthCheck failed for the enclave storage", log.ErrKey, err)
 		return false, nil
 	}
+
 	// todo (#1148) - enclave healthcheck operations
-	enclaveHealthy := true
-	return storageHealthy && enclaveHealthy, nil
+	l1blockHealthy, err := e.l1BlockProcessor.HealthCheck()
+	if err != nil {
+		// simplest iteration, log the error and just return that it's not healthy
+		e.logger.Info("HealthCheck failed for the l1 block processor", log.ErrKey, err)
+		return false, nil
+	}
+
+	l2batchHealthy, err := e.registry.HealthCheck()
+	if err != nil {
+		// simplest iteration, log the error and just return that it's not healthy
+		e.logger.Info("HealthCheck failed for the l2 batch registry", log.ErrKey, err)
+		return false, nil
+	}
+
+	return storageHealthy && l1blockHealthy && l2batchHealthy, nil
 }
 
 func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {

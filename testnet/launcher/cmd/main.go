@@ -17,6 +17,8 @@ func main() {
 			launcher.WithValidatorEnclaveDebug(cliConfig.validatorEnclaveDebug),
 			launcher.WithSequencerEnclaveDockerImage(cliConfig.sequencerEnclaveDockerImage),
 			launcher.WithSequencerEnclaveDebug(cliConfig.sequencerEnclaveDebug),
+			launcher.WithContractDeployerDebug(cliConfig.contractDeployerDebug),
+			launcher.WithContractDeployerDockerImage(cliConfig.contractDeployerDockerImage),
 			launcher.WithSGXEnabled(cliConfig.isSGXEnabled),
 		),
 	)

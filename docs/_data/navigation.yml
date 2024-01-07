@@ -1,10 +1,10 @@
 main:
   - title: "Whitepaper"
-    url: https://whitepaper.obscu.ro
+    url: https://whitepaper.ten.xyz
   - title: "Tokenomics"
     url: https://github.com/obscuronet/foundation/blob/main/token-utility-whitepaper.md
   - title: "Community Contributions"
-    url: https://docs.obscu.ro/community/contributions
+    url: https://docs.ten.xyz/community/contributions
   - title: "Get Help"
     url: https://discord.gg/yQfmKeNzNd
 
@@ -58,8 +58,8 @@ sidebar-list:
 
   - title: Tools
     children:
-      - title: ObscuroScan
-        url: testnet/obscuroscan
+      - title: Tenscan
+        url: testnet/tenscan
       - title: Token Faucet
         url: testnet/faucet
     

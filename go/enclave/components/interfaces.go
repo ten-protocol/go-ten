@@ -37,6 +37,7 @@ type L1BlockProcessor interface {
 	Process(br *common.BlockAndReceipts) (*BlockIngestionType, error)
 	GetHead() (*common.L1Block, error)
 	GetCrossChainContractAddress() *gethcommon.Address
+	HealthCheck() (bool, error)
 }
 
 // BatchExecutionContext - Contains all of the data that each batch depends on
@@ -76,7 +77,7 @@ type BatchExecutor interface {
 	// CreateGenesisState - will create and commit the genesis state in the stateDB for the given block hash,
 	// and uint64 timestamp representing the time now. In this genesis state is where one can
 	// find preallocated funds for faucet. TODO - make this an option
-	CreateGenesisState(common.L1BlockHash, uint64, gethcommon.Address, *big.Int, *big.Int) (*core.Batch, *types.Transaction, error)
+	CreateGenesisState(common.L1BlockHash, uint64, gethcommon.Address, *big.Int) (*core.Batch, *types.Transaction, error)
 }
 
 type BatchRegistry interface {
@@ -102,6 +103,8 @@ type BatchRegistry interface {
 	HasGenesisBatch() (bool, error)
 
 	HeadBatchSeq() *big.Int
+
+	HealthCheck() (bool, error)
 }
 
 type RollupProducer interface {

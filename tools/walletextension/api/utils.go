@@ -25,14 +25,14 @@ func parseRequest(body []byte) (*common.RPCRequest, error) {
 	var method string
 	err = json.Unmarshal(reqJSONMap[common.JSONKeyMethod], &method)
 	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal method string from JSON-RPC request body: %w", err)
+		return nil, fmt.Errorf("could not unmarshal method string from JSON-RPC request body: %s ; %w", string(body), err)
 	}
 
 	// we extract the params into a JSON list
 	var params []interface{}
 	err = json.Unmarshal(reqJSONMap[common.JSONKeyParams], &params)
 	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %w", err)
+		return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %s ; %w", string(body), err)
 	}
 
 	return &common.RPCRequest{
@@ -138,7 +138,7 @@ func handleEthError(req *common.RPCRequest, conn userconn.UserConn, logger gethl
 }
 
 func handleError(conn userconn.UserConn, logger gethlog.Logger, err error) {
-	logger.Error("error processing request - Forwarding response to user", log.ErrKey, err)
+	logger.Warn("error processing request - Forwarding response to user", log.ErrKey, err)
 
 	if err = conn.WriteResponse([]byte(err.Error())); err != nil {
 		logger.Error("unable to write response back", log.ErrKey, err)

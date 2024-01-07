@@ -3,9 +3,10 @@ package components
 import (
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/async"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
-
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -27,7 +28,9 @@ type l1BlockProcessor struct {
 
 	// we store the l1 head to avoid expensive db access
 	// the host is responsible to always submitting the head l1 block
-	currentL1Head *common.L1BlockHash
+	currentL1Head     *common.L1BlockHash
+	healthTimeout     time.Duration
+	lastIngestedBlock *async.Timestamp
 }
 
 func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, gasOracle gas.Oracle, logger gethlog.Logger) L1BlockProcessor {
@@ -48,6 +51,8 @@ func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, gasOr
 		gasOracle:            gasOracle,
 		crossChainProcessors: cc,
 		currentL1Head:        l1BlockHash,
+		healthTimeout:        time.Minute,
+		lastIngestedBlock:    async.NewAsyncTimestamp(time.Now().Add(-time.Minute)),
 	}
 }
 
@@ -77,7 +82,18 @@ func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts) (*BlockIngestio
 
 	h := br.Block.Hash()
 	bp.currentL1Head = &h
+	bp.lastIngestedBlock.Mark()
 	return ingestion, nil
+}
+
+// HealthCheck checks if the last ingested block was more than healthTimeout ago
+func (bp *l1BlockProcessor) HealthCheck() (bool, error) {
+	lastIngestedBlockTime := bp.lastIngestedBlock.LastTimestamp()
+	if time.Now().After(lastIngestedBlockTime.Add(bp.healthTimeout)) {
+		return false, fmt.Errorf("last ingested block was %s ago", time.Since(lastIngestedBlockTime))
+	}
+
+	return true, nil
 }
 
 func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts) (*BlockIngestionType, error) {

@@ -16,6 +16,7 @@ type Config struct {
 	messageBusAddress         string
 	dockerImage               string
 	faucetPrefundAmount       string
+	debugEnabled              bool
 }
 
 func NewContractDeployerConfig(opts ...Option) *Config {
@@ -93,5 +94,11 @@ func WithPocPKString(s string) Option {
 func WithFaucetFunds(f string) Option {
 	return func(c *Config) {
 		c.faucetPrefundAmount = f
+	}
+}
+
+func WithDebugEnabled(b bool) Option {
+	return func(c *Config) {
+		c.debugEnabled = b
 	}
 }

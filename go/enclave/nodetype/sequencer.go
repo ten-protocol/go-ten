@@ -35,7 +35,7 @@ type SequencerSettings struct {
 	MaxBatchSize      uint64
 	MaxRollupSize     uint64
 	GasPaymentAddress gethcommon.Address
-	BatchGasLimit     *big.Int
+	BatchGasLimit     uint64
 	BaseFee           *big.Int
 }
 
@@ -138,7 +138,6 @@ func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 		uint64(time.Now().Unix()),
 		s.settings.GasPaymentAddress,
 		s.settings.BaseFee,
-		s.settings.BatchGasLimit,
 	)
 	if err != nil {
 		return err
@@ -164,6 +163,9 @@ func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 		return err
 	}
 
+	// errors in unit test seem to suggest that batch 2 was received before batch 1
+	// this ensures that there is enough gap so that batch 1 is issued before batch 2
+	time.Sleep(time.Second)
 	// produce batch #2 which has the message bus and any other system contracts
 	cb, err := s.produceBatch(
 		big.NewInt(0).Add(batch.Header.SequencerOrderNo, big.NewInt(1)),

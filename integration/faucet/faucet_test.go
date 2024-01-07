@@ -49,7 +49,6 @@ func TestFaucet(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	faucetConfig := &faucet.Config{
-		Port:              startPort,
 		Host:              "localhost",
 		HTTPPort:          startPort + integration.DefaultHostRPCHTTPOffset,
 		PK:                "0x" + contractDeployerPrivateKeyHex,

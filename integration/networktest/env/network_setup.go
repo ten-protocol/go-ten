@@ -7,28 +7,28 @@ import (
 
 func SepoliaTestnet() networktest.Environment {
 	connector := NewTestnetConnector(
-		"http://erpc.sepolia-testnet.obscu.ro:80", // this is actually a validator...
-		[]string{"http://erpc.sepolia-testnet.obscu.ro:80"},
+		"http://erpc.sepolia-testnet.ten.xyz:80", // this is actually a validator...
+		[]string{"http://erpc.sepolia-testnet.ten.xyz:80"},
 		"http://sepolia-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"https://rpc.sepolia.org/",
 	)
 	return &testnetEnv{connector}
 }
 
-func Testnet() networktest.Environment {
+func UATTestnet() networktest.Environment {
 	connector := NewTestnetConnector(
-		"http://erpc.uat-testnet.obscu.ro:80", // this is actually a validator...
-		[]string{"http://erpc.uat-testnet.obscu.ro:80"},
-		"http://testnet-faucet.uksouth.azurecontainer.io/fund/eth",
-		"ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000",
+		"http://erpc.uat-testnet.ten.xyz:80", // this is actually a validator...
+		[]string{"http://erpc.uat-testnet.ten.xyz:80"},
+		"http://uat-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
+		"ws://uat-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
 	)
 	return &testnetEnv{connector}
 }
 
 func DevTestnet() networktest.Environment {
 	connector := NewTestnetConnector(
-		"http://erpc.dev-testnet.obscu.ro:80", // this is actually a validator...
-		[]string{"http://erpc.dev-testnet.obscu.ro:80"},
+		"http://erpc.dev-testnet.ten.xyz:80", // this is actually a validator...
+		[]string{"http://erpc.dev-testnet.ten.xyz:80"},
 		"http://dev-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
 	)

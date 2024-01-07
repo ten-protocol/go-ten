@@ -35,11 +35,11 @@ COPY . /home/obscuro/go-obscuro
 # Create .env file for frontend
 WORKDIR /home/obscuro/go-obscuro/tools/walletextension/frontend
 RUN if [ "$TESTNET_TYPE" = "dev-testnet" ]; then \
-      echo "NEXT_PUBLIC_API_GATEWAY_URL=https://dev-testnet.obscu.ro" > .env; \
+      echo "NEXT_PUBLIC_API_GATEWAY_URL=https://dev-testnet.ten.xyz" > .env; \
     elif [ "$TESTNET_TYPE" = "uat-testnet" ]; then \
-      echo "NEXT_PUBLIC_API_GATEWAY_URL=https://uat-testnet.obscu.ro" > .env; \
+      echo "NEXT_PUBLIC_API_GATEWAY_URL=https://uat-testnet.ten.xyz" > .env; \
     elif [ "$TESTNET_TYPE" = "sepolia-testnet" ]; then \
-      echo "NEXT_PUBLIC_API_GATEWAY_URL=https://testnet.obscu.ro" > .env; \
+      echo "NEXT_PUBLIC_API_GATEWAY_URL=https://testnet.ten.xyz" > .env; \
     else \
       echo "NEXT_PUBLIC_API_GATEWAY_URL=http://127.0.0.1:3000" > .env; \
     fi

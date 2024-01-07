@@ -11,7 +11,7 @@ Consider for a moment how a secret number could be created without divulging it.
 Building the guessing game in Ten addresses both scenarios described above. The guessing game smart contract generates a random secret number when it is deployed. This number is never revealed to a player or node operator, or indeed anybody because it is generated within a Trusted Execution Environment. And when players make their guesses the transactions carrying the guesses are encrypted and therefore obscured in a block explorer.
 
 ### How to Play
-1. Start up the wallet extension. Follow instructions [here](https://docs.obscu.ro/wallet-extension/wallet-extension).
+1. Start up the wallet extension. Follow instructions [here](https://docs.ten.xyz/wallet-extension/wallet-extension).
 1. For the moment, the Guessing Game includes an ERC20 token (called OGG, short for Ten Guessing Game). This is partly because OGG is modified to have a built-in faucet: It allocates tokens to addresses as they make a request to allow other addresses to take tokens from their account.
 1. If you want to see this balance in your wallet, you have to import a new Token with the address: ``0x5FbDB2315678afecb367f032d93F642f64180aa3``
 1. Browse to [the number guessing game](http://tennet.github.io/sample-applications/number-guessing-game). Check you see `Network ID: 443` at the top of the game window to confirm you are connected to Ten Testnet.
@@ -24,7 +24,7 @@ Building the guessing game in Ten addresses both scenarios described above. The 
 1. The game should show you two messages, one confirming the success of the Approval transaction, and the second confirming the result of the guess attempt (whether correct, wrong, warmer or colder than the last guess).
 
 Once the guess transaction is completed you can check the guess transaction on TenScan:
-1. In MetaMask click on the transaction to open it then click `Copy Transaction ID`. Open [TenScan](http://testnet.tenscan.io/).
+1. In MetaMask click on the transaction to open it then click `Copy Transaction ID`. Open [TenScan](https://testnet.tenscan.io/).
 1. Paste your copied transaction ID into the search box to find your individual guess transaction. Note how the transaction data visible to everyone is encrypted in the field `EncryptedTxBlob` and how (for now) the transaction is decrypted to allow developers to confirm correct behaviour of the network.
 1. You can see your guess as the number at the right hand end of the `input` value in a hexadecimal format, e.g. a guess of 99 is shown as 63.
 
@@ -36,4 +36,4 @@ Once the guess transaction is completed you can check the guess transaction on T
 ### Next Steps
 
 Now you have enjoyed playing the guessing game you are invited to make it even better! Go ahead and fork the guessing game code in this [GitHub repository](https://github.com/ten-protocol/number-guessing-game) and bring your own contributions to Ten Testnet.
-Of course, you are free to [deploy any smart contract](https://docs.obscu.ro/testnet/deploying-a-smart-contract) to the testnet.   
+Of course, you are free to [deploy any smart contract](https://docs.ten.xyz/testnet/deploying-a-smart-contract) to the testnet.   

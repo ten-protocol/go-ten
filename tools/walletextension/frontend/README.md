@@ -40,9 +40,9 @@ Create a `.env.local` file in the root directory of the project and add the foll
    ```
    
    Possible values for `NEXT_PUBLIC_API_GATEWAY_URL` are:
-   - `https://https://uat-testnet.obscu.ro`
-   - `https://https://sepolia-testnet.obscu.ro`
-   - `https://https://dev-testnet.obscu.ro`
+   - `https://https://uat-testnet.ten.xyz`
+   - `https://https://sepolia-testnet.ten.xyz`
+   - `https://https://dev-testnet.ten.xyz`
 
 4. **Run the Development Server:**
    ```bash
