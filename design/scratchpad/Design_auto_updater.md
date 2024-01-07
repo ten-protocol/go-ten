@@ -13,7 +13,7 @@ This feature suggestion would allow to circumvent the L1 publishing by creating 
 The synthetic transactions we currently have are not published to the L1. They are not included in the batch albeit mutating its state. This is not an issue, because the transactions are deterministically derived from the L1 state or more specifically, the L1 block that the batch points to. This means that when a validator is recomputing the batch, the data for rebuilding the transactions, in the same order is available implicitly. If we were to publish them to the L1 it would only be redundant and increase costs.
 
 
-### L2 State Derived transactions / Scheduled callbacks
+## L2 State Derived transactions / Scheduled callbacks
 
 L2 state derived transaction is a special synthetic transaction, also started by the sequencer that would call a specific contract. This contract would have to register itself as updateable and prepay L2 gas costs to the `block.coinbase`. Using this prepayed funding, the sequencer would create the implicit functions calling the entry point function with no calldata and no value. It is possible to extend to support implicit calldata sent through the prepayment, but its best to keep it simple for the initial design.
 
@@ -40,7 +40,7 @@ It's important to note that most dApps aren't structured to be automated in such
 
 And lastly, there is a very exotic use case for this feature that isn't really possible anywhere - security monitoring. A contract can register an automatic callback that checks some constraints and if something is wrong pause everything automatically. 
 
-### Tech Requirements
+## Tech Requirements
 
 We'd need a predeployed system smart contract that allows for registering contracts:
 
@@ -73,7 +73,7 @@ As for potential slowdown of batch production due to the expensive computations 
 There shouldn't be any noticeable performance degradation even if this feature is heavily utilised. When looking at the performance of the sequencer previously the bottleneck was never in the EVM processing. Even a ton of storage mutating transactions were taking sub milliseconds. If contracts are engineered smartly, with dirty flags for example, the automatic updates will be blazing fast as they would be hitting storage slots that are already in the in memory state tree. The fact that the auto updates would be derived from the L2 state means that most of its use cases would be triggered by mutations to warm storage slots.
 
 
-### Futher improvements
+## Futher improvements
 
 This feature is very symbiotic with some newer L2 concepts like cross domain state reads. We can have scheduled callbacks query a system contract that provides them with data from the L1 - transactions for a block, state of a contract, balances and etc. This will enable implicit L1 to L2 state propogation without having to manually do cross chain message submission and consumption transactions on the L1 and L2 respectively. Potentially we can have automatic oracles, synthetics and other cool dApps spin out from this. Maybe some cool bridge. 
 
