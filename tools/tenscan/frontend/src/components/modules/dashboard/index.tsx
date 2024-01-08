@@ -47,7 +47,7 @@ export default function Dashboard() {
     {
       title: "Latest L2 Batch",
       value: latestBatch?.item?.number
-        ? Number(latestBatch?.item?.number)
+        ? Number(latestBatch.item.number)
         : "N/A",
       // TODO: add change
       // change: "+20.1%",
