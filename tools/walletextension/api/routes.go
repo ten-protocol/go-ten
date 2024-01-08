@@ -444,12 +444,16 @@ func networkHealthRequestHandler(walletExt *walletextension.WalletExtension, use
 
 	healthStatus, err := walletExt.GetTenNodeHealthStatus()
 
-	data := map[string]interface{}{
+	data, err := json.Marshal(map[string]interface{}{
 		"result": healthStatus,
 		"error":  err,
+	})
+	if err != nil {
+		walletExt.Logger().Error("error marshaling response", log.ErrKey, err)
+		return
 	}
 
-	err = userConn.WriteResponse([]byte(fmt.Sprintf("%v", data)))
+	err = userConn.WriteResponse(data)
 
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
