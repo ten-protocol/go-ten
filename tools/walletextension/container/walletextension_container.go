@@ -149,21 +149,42 @@ func NewWalletExtensionContainer(
 	}
 }
 
-// TODO Start should not be a locking process
+// Start starts the wallet extension container
 func (w *WalletExtensionContainer) Start() error {
 	httpErrChan := w.httpServer.Start()
 	wsErrChan := w.wsServer.Start()
 
-	select {
-	case err := <-httpErrChan:
-		if !errors.Is(err, http.ErrServerClosed) {
-			panic(err)
+	// Start a goroutine for handling HTTP and WS server errors
+	go func() {
+		for {
+			select {
+			case err := <-httpErrChan:
+				if errors.Is(err, http.ErrServerClosed) {
+					err = w.Stop() // Stop the container when the HTTP server is closed
+					if err != nil {
+						fmt.Printf("failed to stop gracefully - %s\n", err)
+						os.Exit(1)
+					}
+				} else {
+					// for other errors, we just log them
+					w.logger.Error("HTTP server error: %v", err)
+				}
+			case err := <-wsErrChan:
+				if errors.Is(err, http.ErrServerClosed) {
+					err = w.Stop() // Stop the container when the WS server is closed
+					if err != nil {
+						fmt.Printf("failed to stop gracefully - %s\n", err)
+						os.Exit(1)
+					}
+				} else {
+					// for other errors, we just log them
+					w.logger.Error("HTTP server error: %v", err)
+				}
+			case <-w.stopControl.Done():
+				return // Exit the goroutine when stop signal is received
+			}
 		}
-	case err := <-wsErrChan:
-		if !errors.Is(err, http.ErrServerClosed) {
-			panic(err)
-		}
-	}
+	}()
 	return nil
 }
 

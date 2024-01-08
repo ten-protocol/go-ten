@@ -202,7 +202,7 @@ When a transaction on the `L2` results in `LogMessagePublished`, the event will 
 
 ### Alternative approaches
 
-1. Ten only ever pushes the hash of the message. The user has the responsibility of providing the full message which will only be accepted if it matches one of the hashes, if neccessary.
+1. Ten only ever pushes the hash of the message. The user has the responsibility of providing the full message which will only be accepted if it matches one of the hashes, if necessary.
   * This simplifies gas cost calculations, but the problem described in the `Fees` section remains.
   * Contracts can hash their messages before passing them to the `MessageBus` and achieve nearly the same outcome if they want to. 
 2. Ten only pushes to L2. Messages on L1 are provided signed by the enclave through an RPC and the MessageBus contract verifies that they have been signed by a correct enclave-owned key. 
