@@ -39,7 +39,7 @@ type WalletExtension struct {
 	stopControl        *stopcontrol.StopControl
 	version            string
 	config             *config.Config
-	obsClient          *obsclient.ObsClient
+	tenClient          *obsclient.ObsClient
 }
 
 func New(
@@ -51,6 +51,12 @@ func New(
 	logger gethlog.Logger,
 	config *config.Config,
 ) *WalletExtension {
+	rpcClient, err := rpc.NewNetworkClient(hostAddr)
+	if err != nil {
+		logger.Error(fmt.Errorf("could not create RPC client on %s. Cause: %w", hostAddr, err).Error())
+		panic(err)
+	}
+	newTenClient := obsclient.NewObsClient(rpcClient)
 	return &WalletExtension{
 		hostAddr:           hostAddr,
 		userAccountManager: userAccountManager,
@@ -60,6 +66,7 @@ func New(
 		stopControl:        stopControl,
 		version:            version,
 		config:             config,
+		tenClient:          newTenClient,
 	}
 }
 
@@ -388,5 +395,5 @@ func (w *WalletExtension) Version() string {
 }
 
 func (w *WalletExtension) GetTenNodeHealthStatus() (bool, error) {
-	return w.obsClient.Health()
+	return w.tenClient.Health()
 }
