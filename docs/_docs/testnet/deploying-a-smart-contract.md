@@ -5,12 +5,12 @@ Using the steps below you will add an extension to your MetaMask wallet so it ca
 
 ## Prerequisites
 * [MetaMask](https://metamask.io/) wallet installed in your browser.
-* A local copy of the [Ten MetaMask wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension/)
+* A local copy of the [Ten MetaMask wallet extension](https://docs.ten.xyz/wallet-extension/wallet-extension/)
 
 ## Prepare Your MetaMask Wallet for Ten Testnet
 An essential part of how Ten provides full privacy is the encryption of communication between an Ten application and Ten nodes on the network.
 
-Follow the steps [here](https://docs.obscu.ro/wallet-extension/wallet-extension/) to configure and start the wallet extension and 
+Follow the steps [here](https://docs.ten.xyz/wallet-extension/wallet-extension/) to configure and start the wallet extension and 
 generate a viewing key. 
 
 
@@ -32,7 +32,7 @@ You can now go ahead and deploy your smart contract to the Ten Testnet.
 
 1. Compile your smart contract using the Remix Solidity Compiler.
 
-1. Log in to MetaMask and confirm you are connected to Ten Testnet network. The parameters for the Ten Testnet can be found [here](https://docs.obscu.ro/testnet/essentials/).
+1. Log in to MetaMask and confirm you are connected to Ten Testnet network. The parameters for the Ten Testnet can be found [here](https://docs.ten.xyz/testnet/essentials/).
 
 1. In the _Deploy & Run Transactions_ section of Remix change the Environment to _Injected Web3_. This tells Remix to use the network settings currently configured in your MetaMask wallet, which in this case is the Ten Testnet. If the connection to Ten Testnet is successful you will see the text _Custom (443) network_ displayed under _Injected Web3_.
 
@@ -48,4 +48,4 @@ Congratulations, your smart contract is now deployed to Ten Testnet!
 
 Because Ten provides full privacy, the details of your transaction are encrypted and only visible to you, as the holder of your wallet's private key.
 
-Now head over to the [TenScan page](https://docs.obscu.ro/testnet/tenscan/) to see how you can view the transaction details.
+Now head over to the [TenScan page](https://docs.ten.xyz/testnet/tenscan/) to see how you can view the transaction details.

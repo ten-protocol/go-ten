@@ -10,6 +10,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/testnet/launcher/eth2network"
+	"github.com/ten-protocol/go-ten/testnet/launcher/faucet"
+	"github.com/ten-protocol/go-ten/testnet/launcher/gateway"
 
 	l1cd "github.com/ten-protocol/go-ten/testnet/launcher/l1contractdeployer"
 	l2cd "github.com/ten-protocol/go-ten/testnet/launcher/l2contractdeployer"
@@ -149,6 +151,57 @@ func (t *Testnet) Start() error {
 	}
 	fmt.Println("L2 Contracts were successfully deployed...")
 
+	faucetPort := 99
+	faucetInst, err := faucet.NewDockerFaucet(
+		faucet.NewFaucetConfig(
+			faucet.WithFaucetPort(faucetPort),
+			faucet.WithTenNodePort(13010),
+			faucet.WithTenNodeHost("validator-host"),
+			faucet.WithFaucetPrivKey("0x8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
+			faucet.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/faucet:latest"),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to instantiate faucet - %w", err)
+	}
+
+	if err = faucetInst.Start(); err != nil {
+		return fmt.Errorf("unable to start faucet - %w", err)
+	}
+
+	if err = faucetInst.IsReady(); err != nil {
+		return fmt.Errorf("unable to wait for faucet to be ready - %w", err)
+	}
+
+	fmt.Printf("Faucet ready to be accessed at http://127.0.0.1:%d/ ...\n", faucetPort)
+	fmt.Printf("Fund your account with `curl --request POST 'http://127.0.0.1:%d/fund/eth' --header 'Content-Type: application/json' --data-raw '{ \"address\":\"0x0....\" } `\n", faucetPort)
+
+	gatewayPort := 3000
+	gatewayInst, err := gateway.NewDockerGateway(
+		gateway.NewGatewayConfig(
+			gateway.WithGatewayHTTPPort(gatewayPort),
+			gateway.WithGatewayWSPort(3001),
+			gateway.WithTenNodeHTTPPort(13010),
+			gateway.WithTenNodeWSPort(13011),
+			gateway.WithTenNodeHost("validator-host"),
+			gateway.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway:latest"),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to instantiate gateway - %w", err)
+	}
+
+	if err = gatewayInst.Start(); err != nil {
+		return fmt.Errorf("unable to start gateway - %w", err)
+	}
+
+	if err = gatewayInst.IsReady(); err != nil {
+		return fmt.Errorf("unable to wait for gateway to be ready - %w", err)
+	}
+
+	fmt.Printf("Gateway ready to be accessed at http://127.0.0.1:%d ...\n", gatewayPort)
+
+	fmt.Println("Network successfully launched !")
 	return nil
 }
 
