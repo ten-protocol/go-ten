@@ -1,6 +1,7 @@
-export const tenGatewayAddress = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://127.0.0.1:3000";
+export const tenGatewayAddress =
+  process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://127.0.0.1:3000";
 
-export const tenscanLink = "https://testnet.tenscan.com";
+export const tenscanLink = "https://testnet.tenscan.io";
 
 export const socialLinks = {
   github: "https://github.com/ten-protocol",
@@ -14,18 +15,18 @@ export const GOOGLE_ANALYTICS_ID = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
 export const testnetUrls = {
   sepolia: {
     name: "Obscuro Testnet",
-    url: "https://sepolia-testnet.obscu.ro",
-    rpc: "https://rpc.sepolia-testnet.obscu.ro",
+    url: "https://sepolia-testnet.ten.xyz",
+    rpc: "https://rpc.sepolia-testnet.ten.xyz",
   },
   uat: {
     name: "Ten UAT-Testnet",
-    url: "https://uat-testnet.obscu.ro",
-    rpc: "https://rpc.uat-testnet.obscu.ro",
+    url: "https://uat-testnet.ten.xyz",
+    rpc: "https://rpc.uat-testnet.ten.xyz",
   },
   dev: {
     name: "Ten Dev-Testnet",
-    url: "https://dev-testnet.obscu.ro",
-    rpc: "https://rpc.dev-testnet.obscu.ro",
+    url: "https://dev-testnet.ten.xyz",
+    rpc: "https://rpc.dev-testnet.ten.xyz",
   },
   default: {
     name: "Obscuro Testnet",

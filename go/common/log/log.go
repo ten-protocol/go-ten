@@ -41,7 +41,7 @@ const (
 	WalletExtCmp    = "wallet_extension"
 	TestGethNetwCmp = "test_geth_network"
 	EthereumL1Cmp   = "l1_host"
-	ObscuroscanCmp  = "obscuroscan"
+	TenscanCmp      = "tenscan"
 	CrossChainCmp   = "cross_chain"
 )
 

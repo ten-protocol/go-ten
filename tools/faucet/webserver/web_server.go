@@ -37,6 +37,8 @@ func NewWebServer(faucetServer *faucet.Faucet, bindAddress string, jwtSecret []b
 
 	r.GET("/balance", balanceReqHandler(faucetServer))
 
+	r.GET("/health", healthReqHandler())
+
 	return &WebServer{
 		engine:      r,
 		faucet:      faucetServer,
@@ -168,5 +170,12 @@ func balanceReqHandler(faucetServer *faucet.Faucet) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"balance": balance.String()})
+	}
+}
+
+// returns the remaining native balance of the faucet
+func healthReqHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"healthy": true})
 	}
 }

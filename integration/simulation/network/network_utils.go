@@ -6,9 +6,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/host/l1"
-
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/host"
+	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -88,13 +88,14 @@ func createInMemObscuroNode(
 		ValidateL1Blocks:          validateBlocks,
 		GenesisJSON:               genesisJSON,
 		UseInMemoryDB:             true,
-		MinGasPrice:               big.NewInt(1),
+		MinGasPrice:               gethcommon.Big1,
 		MessageBusAddress:         l1BusAddress,
 		ManagementContractAddress: *mgtContractAddress,
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,
 		BaseFee:                   big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
-		GasLimit:                  big.NewInt(1_000_000_000_000_000_000),
+		GasLocalExecutionCapFlag:  params.MaxGasLimit / 2,
+		GasBatchExecutionLimit:    params.MaxGasLimit / 2,
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)

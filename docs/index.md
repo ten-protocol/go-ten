@@ -8,9 +8,9 @@ Ten hyper-scales and encrypts Ethereum. 100% EVM, 100% Solidity.
 
 On this docsite you will find useful guidance on Ten, how to participate in the Testnet and, if you want to go deeper, read the whitepaper using the menu above. 
 
-The Litepaper is available to view [here](https://obscu.ro/litepaper).
+The Litepaper is available to view [here](https://ten.xyz/litepaper).
 
-A PDF version of the whitepaper is available [here](https://whitepaper.obscu.ro/assets/images/obscuro-whitepaper-0-10-0.pdf).
+A PDF version of the whitepaper is available [here](https://whitepaper.ten.xyz/assets/images/obscuro-whitepaper-0-10-0.pdf).
 
 
 ## Useful Resources

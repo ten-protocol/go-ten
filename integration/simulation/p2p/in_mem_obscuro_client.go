@@ -33,7 +33,7 @@ type inMemObscuroClient struct {
 	obscuroAPI       *clientapi.ObscuroAPI
 	ethAPI           *clientapi.EthereumAPI
 	filterAPI        *clientapi.FilterAPI
-	obscuroScanAPI   *clientapi.ObscuroScanAPI
+	tenScanAPI       *clientapi.TenScanAPI
 	testAPI          *clientapi.TestAPI
 	enclavePublicKey *ecies.PublicKey
 }
@@ -51,7 +51,7 @@ func NewInMemObscuroClient(hostContainer *container.HostContainer) rpc.Client {
 		obscuroAPI:       clientapi.NewObscuroAPI(hostContainer.Host()),
 		ethAPI:           clientapi.NewEthereumAPI(hostContainer.Host(), logger),
 		filterAPI:        clientapi.NewFilterAPI(hostContainer.Host(), logger),
-		obscuroScanAPI:   clientapi.NewObscuroScanAPI(hostContainer.Host()),
+		tenScanAPI:       clientapi.NewTenScanAPI(hostContainer.Host()),
 		testAPI:          clientapi.NewTestAPI(hostContainer),
 		enclavePublicKey: enclPubKey,
 	}
@@ -277,7 +277,7 @@ func (c *inMemObscuroClient) health(result interface{}) error {
 }
 
 func (c *inMemObscuroClient) getTotalTransactions(result interface{}) error {
-	totalTxs, err := c.obscuroScanAPI.GetTotalTransactions()
+	totalTxs, err := c.tenScanAPI.GetTotalTransactions()
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTotalTxs, err)
 	}
@@ -295,7 +295,7 @@ func (c *inMemObscuroClient) getLatestTransactions(result interface{}, args []in
 		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetLatestTxs, args[0])
 	}
 
-	latestTxs, err := c.obscuroScanAPI.GetLatestTransactions(numTxs)
+	latestTxs, err := c.tenScanAPI.GetLatestTransactions(numTxs)
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetLatestTxs, err)
 	}
@@ -313,7 +313,7 @@ func (c *inMemObscuroClient) getBatchForTx(result interface{}, args []interface{
 		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetBatchForTx, args[0])
 	}
 
-	batch, err := c.obscuroScanAPI.GetBatchForTx(txHash)
+	batch, err := c.tenScanAPI.GetBatchForTx(txHash)
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchForTx, err)
 	}
@@ -331,7 +331,7 @@ func (c *inMemObscuroClient) getBatch(result interface{}, args []interface{}) er
 		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetBatch, args[0])
 	}
 
-	batch, err := c.obscuroScanAPI.GetBatch(batchHash)
+	batch, err := c.tenScanAPI.GetBatch(batchHash)
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatch, err)
 	}

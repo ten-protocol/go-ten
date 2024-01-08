@@ -4,7 +4,7 @@
 
 Ten will evolve to be *the* solution for privacy on Ethereum through the strength and dedication of the Ten community. Together we'll make Ten the most community-driven project in crypto.
 
-As detailed in the [whitepaper](https://whitepaper.obscu.ro), Ten is powered by TEN, a native utility token that provides security to the Ten network while allowing holders to pay transaction fees.
+As detailed in the [whitepaper](https://whitepaper.ten.xyz), Ten is powered by TEN, a native utility token that provides security to the Ten network while allowing holders to pay transaction fees.
 
 2% of tokens are set aside for early contributors. Each contributor's allocation is a percentage of their total contributions against the entire community contribution.
 

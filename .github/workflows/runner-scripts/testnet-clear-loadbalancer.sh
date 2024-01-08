@@ -43,12 +43,12 @@ if [[ -z "${ipconfig_id}" ]]; then
     exit 0
 fi
 
-az network nic ip-config address-pool remove \
-   --address-pool ${pool} \
-   --ip-config-name "${ipconfig_id}" \
-   --nic-name "${nic_id}" \
-   --resource-group Testnet \
-   --lb-name ${lb} \
+#az network nic ip-config address-pool remove \
+#   --address-pool ${pool} \
+#   --ip-config-name "${ipconfig_id}" \
+#   --nic-name "${nic_id}" \
+#   --resource-group Testnet \
+#   --lb-name ${lb} \
    
 
 echo 'Load balancer removed successfully'

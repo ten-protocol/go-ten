@@ -65,9 +65,10 @@ type EnclaveConfig struct {
 	// to include a transaction if it goes above it
 	MaxRollupSize uint64
 
-	GasPaymentAddress gethcommon.Address
-	BaseFee           *big.Int
-	GasLimit          *big.Int
+	GasPaymentAddress        gethcommon.Address
+	BaseFee                  *big.Int
+	GasBatchExecutionLimit   uint64
+	GasLocalExecutionCapFlag uint64
 }
 
 func NewConfigFromFlags(cliFlags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
@@ -184,7 +185,8 @@ func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 	cfg.MaxRollupSize = flags[MaxRollupSizeFlag].Uint64()
 	cfg.BaseFee = big.NewInt(0).SetUint64(flags[L2BaseFeeFlag].Uint64())
 	cfg.GasPaymentAddress = gethcommon.HexToAddress(flags[L2CoinbaseFlag].String())
-	cfg.GasLimit = big.NewInt(0).SetUint64(flags[L2GasLimitFlag].Uint64())
+	cfg.GasBatchExecutionLimit = flags[GasBatchExecutionLimit].Uint64()
+	cfg.GasLocalExecutionCapFlag = flags[GasLocalExecutionCapFlag].Uint64()
 
 	return cfg, nil
 }

@@ -6,7 +6,7 @@ Using the steps below you will request testnet ETH from the faucet available on 
 ## Prerequisites
 * Access to the [Ten Discord server](https://discord.gg/yQfmKeNzNd).
 * (Optional) [MetaMask](https://metamask.io/) wallet installed in your browser.
-* (Optional) A local copy of the [Ten MetaMask wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension/).
+* (Optional) A local copy of the [Ten MetaMask wallet extension](https://docs.ten.xyz/wallet-extension/wallet-extension/).
 
 ## Requesting Testnet ETH
 1. Make a note of your wallet address or copy it to your clipboard.
@@ -21,7 +21,7 @@ Using the steps below you will request testnet ETH from the faucet available on 
 ## Viewing Your Wallet Balance
 To view the balance of your wallet you will need to establish a connection from your wallet to the Ten Testnet. An essential part of how Ten provides full privacy is the encryption of communication between an Ten application and Ten nodes on the network. As a result, you will need to use the wallet extension to allow your wallet to communication with the Ten Testnet.
 
-Use the steps [here](https://docs.obscu.ro/testnet/deploying-a-smart-contract/#prepare-your-metamask-wallet-for-ten-testnet) to prepare your MetaMask wallet for Ten Testnet.
+Use the steps [here](https://docs.ten.xyz/testnet/deploying-a-smart-contract/#prepare-your-metamask-wallet-for-ten-testnet) to prepare your MetaMask wallet for Ten Testnet.
 
 ## Requesting Testnet ETH directly
 In the event that you do not have access to Discord, or the faucet bot is not working, you can request ETH directly from 

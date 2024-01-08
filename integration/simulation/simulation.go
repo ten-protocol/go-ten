@@ -16,6 +16,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/retry"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
@@ -227,7 +228,7 @@ func (s *Simulation) deployObscuroERC20s() {
 
 			deployContractTx := types.DynamicFeeTx{
 				Nonce:     NextNonce(s.ctx, s.RPCHandles, owner),
-				Gas:       1025_000_000,
+				Gas:       5_000_000,
 				GasFeeCap: gethcommon.Big1, // This field is used to derive the gas price for dynamic fee transactions.
 				Data:      contractBytes,
 				GasTipCap: gethcommon.Big1,
@@ -288,8 +289,15 @@ func (s *Simulation) prefundL1Accounts() {
 
 func (s *Simulation) checkHealthStatus() {
 	for _, client := range s.RPCHandles.ObscuroClients {
-		if healthy, err := client.Health(); !healthy || err != nil {
-			panic("Client is not healthy: " + err.Error())
+		err := retry.Do(func() error {
+			healthy, err := client.Health()
+			if !healthy || err != nil {
+				return fmt.Errorf("client is not healthy: %w", err)
+			}
+			return nil
+		}, retry.NewTimeoutStrategy(30*time.Second, 100*time.Millisecond))
+		if err != nil {
+			panic(err)
 		}
 	}
 }
