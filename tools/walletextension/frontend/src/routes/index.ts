@@ -11,7 +11,7 @@ export const apiRoutes = {
   version: `/version/`,
 
   // **** INFO ****
-  getHealthStatus: "/network-health/",
+  getHealthStatus: `/${tenGatewayVersion}/network-health/`,
 };
 
 export const requestMethods = {
