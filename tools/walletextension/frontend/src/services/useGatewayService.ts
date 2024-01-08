@@ -79,7 +79,7 @@ const useGatewayService = () => {
 
   const getTestnetStatus = async () => {
     try {
-      await fetchTestnetStatus();
+      return await fetchTestnetStatus();
     } catch (error) {
       showToast(ToastType.DESTRUCTIVE, "Unable to connect to Obscuro Testnet");
       throw error;
