@@ -48,8 +48,9 @@ export const switchToTenNetwork = async () => {
     });
 
     return 0;
-  } catch (error: any) {
-    return error.code;
+  } catch (switchError: any) {
+    showToast(ToastType.DESTRUCTIVE, `switchToTenNetwork: ${switchError.code}`);
+    return switchError.code;
   }
 };
 
@@ -83,14 +84,9 @@ export const getSignature = async (account: string, data: any) => {
 };
 
 export const getToken = async (provider: ethers.providers.Web3Provider) => {
-  if (!provider) {
-    showToast(
-      ToastType.DESTRUCTIVE,
-      "No provider found. Please try again later."
-    );
+  if (!provider.send) {
     return null;
   }
-
   try {
     if (await isTenChain()) {
       const token = await provider.send(requestMethods.getStorageAt, [

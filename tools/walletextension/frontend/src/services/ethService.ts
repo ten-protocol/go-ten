@@ -96,7 +96,7 @@ const ethService = {
       })
     );
     updatedAccounts = await Promise.all(authenticationPromise);
-    showToast(ToastType.SUCCESS, "Account authentication status updated!");
+    showToast(ToastType.INFO, "Account authentication status updated!");
     return updatedAccounts;
   },
 
@@ -135,6 +135,7 @@ const ethService = {
     } catch (error) {
       console.error(error);
       showToast(ToastType.DESTRUCTIVE, "An error occurred. Please try again.");
+      throw error;
     }
   },
 

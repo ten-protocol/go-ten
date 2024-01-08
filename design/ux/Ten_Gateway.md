@@ -8,7 +8,7 @@ The TG will be a superset of the WE functionality, so this document will only co
 
 The TG will be a [Confidential Web Service](https://medium.com/p/983a2a67fc08), running inside SGX.
 
-The current WE is designed to be used by a single user holding multiple addresses accross potentially multiple wallets. 
+The current WE is designed to be used by a single user holding multiple addresses across potentially multiple wallets. 
 
 The TG must support mutiple users, each with multiple addresses. It can be seen as offering a WE per user.
 

@@ -38,7 +38,7 @@ const (
 func init() { //nolint:gochecknoinits
 	testlog.Setup(&testlog.Cfg{
 		LogDir:      testLogs,
-		TestType:    "noderunner",
+		TestType:    "contractdeployer",
 		TestSubtype: "test",
 		LogLevel:    log.LvlInfo,
 	})

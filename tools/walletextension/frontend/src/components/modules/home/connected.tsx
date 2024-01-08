@@ -57,7 +57,7 @@ const Connected = () => {
             </TableRow>
           ) : (
             accounts.map((account: Account, i: number) => (
-              <TableRow key={i}>
+              <TableRow key={account.name}>
                 <TableCell className="font-medium">
                   <TruncatedAddress address={account.name} />
                 </TableCell>

@@ -108,6 +108,10 @@ func (s *storageImpl) TrieDB() *trie.Database {
 	return s.stateDB.TrieDB()
 }
 
+func (s *storageImpl) StateDB() state.Database {
+	return s.stateDB
+}
+
 func (s *storageImpl) Close() error {
 	return s.db.GetSQLDB().Close()
 }
@@ -262,10 +266,14 @@ func (s *storageImpl) HealthCheck() (bool, error) {
 	defer s.logDuration("HealthCheck", measure.NewStopwatch())
 	headBatch, err := s.FetchHeadBatch()
 	if err != nil {
-		s.logger.Info("HealthCheck failed for enclave storage", log.ErrKey, err)
 		return false, err
 	}
-	return headBatch != nil, nil
+
+	if headBatch == nil {
+		return false, fmt.Errorf("head batch is nil")
+	}
+
+	return true, nil
 }
 
 func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error) {

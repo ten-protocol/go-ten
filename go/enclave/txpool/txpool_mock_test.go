@@ -57,6 +57,11 @@ func (m *mockBatchRegistry) HasGenesisBatch() (bool, error) {
 	panic("implement me")
 }
 
+func (m *mockBatchRegistry) HealthCheck() (bool, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (m *mockBatchRegistry) HeadBatchSeq() *big.Int {
 	return m.currentBatch.SeqNo()
 }
@@ -339,4 +344,8 @@ func (m *mockStorage) DebugGetLogs(_ common.TxHash) ([]*tracers.DebugLogs, error
 func (m *mockStorage) TrieDB() *trie.Database {
 	// TODO implement me
 	panic("implement me")
+}
+
+func (m *mockStorage) StateDB() state.Database {
+	return m.stateDB
 }

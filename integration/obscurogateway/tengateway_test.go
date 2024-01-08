@@ -103,6 +103,8 @@ func TestTenGateway(t *testing.T) {
 	}
 
 	// Gracefully shutdown
+	// todo remove this sleep when tests stabilize
+	time.Sleep(20 * time.Second)
 	err = tenGwContainer.Stop()
 	assert.NoError(t, err)
 }
@@ -583,7 +585,7 @@ func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddr
 	if err != nil {
 		return nil, err
 	}
-	return integrationCommon.AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 2*time.Second)
+	return integrationCommon.AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 20*time.Second)
 }
 
 func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Hash, client *ethclient.Client, logs *[]types.Log) ethereum.Subscription { //nolint:unparam

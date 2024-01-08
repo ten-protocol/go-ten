@@ -67,7 +67,7 @@ jobs:
 
       - name: 'Build and push obscuro node images'
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }} -f dockerfiles/enclave.Dockerfile  .
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }} --build-arg TESTMODE=true -f dockerfiles/enclave.Dockerfile  .
           docker push ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }}
           DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_HOST }} -f dockerfiles/host.Dockerfile .
           docker push ${{ vars.DOCKER_BUILD_TAG_HOST }}
@@ -118,7 +118,7 @@ jobs:
           name: deploy-l1-artifacts
           path: |
             deploy-l1-contracts.out
-          retention-days: 1
+          retention-days: 7
 
   deploy:
     needs: build
@@ -324,7 +324,7 @@ jobs:
           name: deploy-l2-artifacts
           path: |
             deploy-l2-contracts.out
-          retention-days: 1
+          retention-days: 7
 
   deploy-faucet:
     name: 'Trigger Faucet deployment for dev- / testnet on a new deployment'
