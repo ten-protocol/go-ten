@@ -55,7 +55,10 @@ func NewEthClientFromURL(rpcURL string, timeout time.Duration, l2ID gethcommon.A
 	logger.Trace(fmt.Sprintf("Initialized eth node connection - addr: %s", rpcURL))
 
 	// cache recent blocks to avoid re-fetching them (they are often re-used for checking for forks etc.)
-	blkCache, _ := lru.New[gethcommon.Hash, *types.Block](_defaultBlockCacheSize)
+	blkCache, err := lru.New[gethcommon.Hash, *types.Block](_defaultBlockCacheSize)
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize block cache - %w", err)
+	}
 
 	return &gethRPCClient{
 		client:     client,
