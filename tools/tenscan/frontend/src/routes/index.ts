@@ -23,6 +23,9 @@ export const apiRoutes = {
   // **** ROLLUPS ****
   getRollups: "/items/rollup/latest/",
   decryptEncryptedRollup: "/actions/decryptTxBlob/",
+
+  // **** INFO ****
+  getHealthStatus: "/info/health/",
 };
 
 export const ethMethods = {

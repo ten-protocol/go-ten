@@ -1,6 +1,6 @@
 # Ten design documents
 
-Ten started based on a (whitepaper)[https://whitepaper.obscu.ro/] published in Nov. 2021.
+Ten started based on a (whitepaper)[https://whitepaper.ten.xyz/] published in Nov. 2021.
 
 As we started development, we started thinking more deeply about some aspects and also getting feedback from the community
 and the users.

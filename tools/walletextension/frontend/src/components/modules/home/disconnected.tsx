@@ -75,19 +75,15 @@ const Disconnected = () => {
             </p>
             <div className="flex items-center space-x-2">
               <Badge className="h-4 w-4" />
-              <p className="text-sm">
-                RPC URL:{" "}
-                <a
-                  href={testnetUrls.default.url}
-                  className="underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {testnetUrls.default.url}
-                </a>
-              </p>
-              <Copy value={testnetUrls.default.url} />
+              <p className="text-sm">RPC URL: {testnetUrls.default.url}</p>
             </div>
+            <Alert variant={"warning"} className="flex items-center space-x-2">
+              <Terminal className="h-4 w-4" />
+              <AlertDescription>
+                You can only get your RPC link when you begin the connection
+                process.
+              </AlertDescription>
+            </Alert>
             <div className="flex items-center space-x-2">
               <Badge className="h-4 w-4" />
               <p className="text-sm">Chain ID: {tenChainIDDecimal}</p>

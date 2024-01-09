@@ -1,7 +1,7 @@
 ---
 ---
 # Encrypted Ethereum
-_The full Litepaper is available to view [here](https://obscu.ro/litepaper)._
+_The full Litepaper is available to view [here](https://ten.xyz/litepaper)._
 
 Ten brings to Ethereum what HTTPS brought to Web 2 leading to an explosion in applications and usage. Ten achieves this goal by building an encrypted Ethereum Layer 2, leveraging the consensus and security of Ethereum.
 

@@ -37,6 +37,7 @@ type L1BlockProcessor interface {
 	Process(br *common.BlockAndReceipts) (*BlockIngestionType, error)
 	GetHead() (*common.L1Block, error)
 	GetCrossChainContractAddress() *gethcommon.Address
+	HealthCheck() (bool, error)
 }
 
 // BatchExecutionContext - Contains all of the data that each batch depends on
@@ -102,6 +103,8 @@ type BatchRegistry interface {
 	HasGenesisBatch() (bool, error)
 
 	HeadBatchSeq() *big.Int
+
+	HealthCheck() (bool, error)
 }
 
 type RollupProducer interface {

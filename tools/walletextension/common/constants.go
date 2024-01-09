@@ -35,6 +35,7 @@ const (
 	PathRevoke                          = "/revoke/"
 	PathObscuroGateway                  = "/"
 	PathHealth                          = "/health/"
+	PathNetworkHealth                   = "/network-health/"
 	WSProtocol                          = "ws://"
 	DefaultUser                         = "defaultUser"
 	UserQueryParameter                  = "u"
