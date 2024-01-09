@@ -17,6 +17,14 @@ func routeItems(r *gin.Engine, server *WebServer) {
 	r.GET("/items/batches/", server.getBatchListing)
 	r.GET("/items/blocks/", server.getBlockListing)
 	r.GET("/info/obscuro/", server.getConfig)
+	r.POST("/info/health/", server.getHealthStatus)
+}
+
+func (w *WebServer) getHealthStatus(c *gin.Context) {
+	healthStatus, err := w.backend.GetTenNodeHealthStatus()
+
+	// TODO: error handling, since this does not easily tell connection errors from health errors
+	c.JSON(http.StatusOK, gin.H{"result": healthStatus, "errors": fmt.Sprintf("%s", err)})
 }
 
 func (w *WebServer) getLatestBatch(c *gin.Context) {

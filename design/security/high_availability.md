@@ -20,7 +20,7 @@ Introducing startup delays does not help too much in this case, because the oper
 
 
 An alternative solution is to introduce transparency into the lifecycle events of the sequencer enclaves, such that the Ten network 
-can assess the likelyhood of bad behaviour.  
+can assess the likelihood of bad behaviour.  
 
 Lifecycle events:
 - enclave starting up

@@ -57,6 +57,11 @@ func (m *mockBatchRegistry) HasGenesisBatch() (bool, error) {
 	panic("implement me")
 }
 
+func (m *mockBatchRegistry) HealthCheck() (bool, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (m *mockBatchRegistry) HeadBatchSeq() *big.Int {
 	return m.currentBatch.SeqNo()
 }

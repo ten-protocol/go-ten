@@ -64,6 +64,10 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 			Func: httpHandler(walletExt, healthRequestHandler),
 		},
 		{
+			Name: common.PathNetworkHealth,
+			Func: httpHandler(walletExt, networkHealthRequestHandler),
+		},
+		{
 			Name: common.PathVersion,
 			Func: httpHandler(walletExt, versionRequestHandler),
 		},
@@ -422,7 +426,35 @@ func healthRequestHandler(walletExt *walletextension.WalletExtension, conn userc
 		return
 	}
 
+	// TODO: connect to database and check if it is healthy
 	err = conn.WriteResponse([]byte(common.SuccessMsg))
+	if err != nil {
+		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+	}
+}
+
+// Handles request to /network-health endpoint.
+func networkHealthRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
+	// read the request
+	_, err := userConn.ReadRequest()
+	if err != nil {
+		walletExt.Logger().Error("error reading request", log.ErrKey, err)
+		return
+	}
+
+	healthStatus, err := walletExt.GetTenNodeHealthStatus()
+
+	data, err := json.Marshal(map[string]interface{}{
+		"result": healthStatus,
+		"error":  err,
+	})
+	if err != nil {
+		walletExt.Logger().Error("error marshaling response", log.ErrKey, err)
+		return
+	}
+
+	err = userConn.WriteResponse(data)
+
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}

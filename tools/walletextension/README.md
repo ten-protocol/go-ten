@@ -1,6 +1,6 @@
 # The Ten gateway
 
-See the documentation [here](https://docs.obscu.ro/wallet-extension/wallet-extension/).
+See the documentation [here](https://docs.ten.xyz/wallet-extension/wallet-extension/).
 
 ## Developer notes
 

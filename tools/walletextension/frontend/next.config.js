@@ -2,10 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   output: "export",
-  // distDir is where the static files are generated
-  // on dev mode, it is generated in .next folder in the root directory
-  // comment this during dev mode
-  distDir: "../api/static",
+  // distDir should be "../api/static" in production but .next in development
+  distDir: process.env.NODE_ENV === "development" ? ".next" : "../api/static",
 };
 
 module.exports = nextConfig;

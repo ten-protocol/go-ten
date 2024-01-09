@@ -266,10 +266,14 @@ func (s *storageImpl) HealthCheck() (bool, error) {
 	defer s.logDuration("HealthCheck", measure.NewStopwatch())
 	headBatch, err := s.FetchHeadBatch()
 	if err != nil {
-		s.logger.Info("HealthCheck failed for enclave storage", log.ErrKey, err)
 		return false, err
 	}
-	return headBatch != nil, nil
+
+	if headBatch == nil {
+		return false, fmt.Errorf("head batch is nil")
+	}
+
+	return true, nil
 }
 
 func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error) {

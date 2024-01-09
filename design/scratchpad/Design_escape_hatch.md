@@ -9,7 +9,7 @@ It describes the ultimate way by which users can exit Ten.
 ## High level requirement
 
 The "escape hatch" is the mechanism that kicks in when **all hope is lost**, the last resort. 
-Something that happens just before the network goes down permanently for some unforseen reason.
+Something that happens just before the network goes down permanently for some unforeseen reason.
 
 For example, wen the central sequencer is no longer able to produce blocks and the Ten foundation is unable to replace it with something working in due time.
 
@@ -29,7 +29,7 @@ The "Escape mode" will be a flag on the Management contract, that can be set und
 
 ### Assumptions
 
-There will be at least one node in posession of the master seed that is able to publish it when this event is triggered.
+There will be at least one node in possession of the master seed that is able to publish it when this event is triggered.
 
 
 ## High level overview of the solution

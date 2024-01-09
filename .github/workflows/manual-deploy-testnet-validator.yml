@@ -6,7 +6,7 @@
 # # # # README # # # #
 #
 # 1 - Fetch the Management, Msg Bus Contract addresses and L1 Start Hash from:
-# curl -X POST erpc.dev-testnet.obscu.ro:80  -H 'Content-Type: application/json'  \
+# curl -X POST erpc.dev-testnet.ten.xyz:80  -H 'Content-Type: application/json'  \
 # -d '{"jsonrpc":"2.0","method":"obscuro_config","params":[],"id":1}'
 #
 # 2 - Update the secrets in Github

@@ -3,6 +3,7 @@ package useraccountmanager
 import (
 	"encoding/hex"
 	"fmt"
+	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -18,6 +19,7 @@ type UserAccountManager struct {
 	storage               storage.Storage
 	hostRPCBinAddr        string
 	logger                gethlog.Logger
+	mu                    sync.RWMutex
 }
 
 func NewUserAccountManager(unauthenticatedClient rpc.Client, logger gethlog.Logger, storage storage.Storage, hostRPCBindAddr string) UserAccountManager {
@@ -32,6 +34,8 @@ func NewUserAccountManager(unauthenticatedClient rpc.Client, logger gethlog.Logg
 
 // AddAndReturnAccountManager adds new UserAccountManager if it doesn't exist and returns it, if UserAccountManager already exists for that user just return it
 func (m *UserAccountManager) AddAndReturnAccountManager(userID string) *accountmanager.AccountManager {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	existingUserAccountManager, exists := m.userAccountManager[userID]
 	if exists {
 		return existingUserAccountManager
@@ -47,6 +51,8 @@ func (m *UserAccountManager) AddAndReturnAccountManager(userID string) *accountm
 // (we are not loading all of them at startup to limit the number of established connections)
 // If a UserAccountManager does not exist for the userID, it returns nil and an error.
 func (m *UserAccountManager) GetUserAccountManager(userID string) (*accountmanager.AccountManager, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	userAccManager, exists := m.userAccountManager[userID]
 	if !exists {
 		return nil, fmt.Errorf("UserAccountManager doesn't exist for user: %s", userID)
@@ -103,6 +109,8 @@ func (m *UserAccountManager) GetUserAccountManager(userID string) (*accountmanag
 // DeleteUserAccountManager removes the UserAccountManager associated with the given userID.
 // It returns an error if no UserAccountManager exists for that userID.
 func (m *UserAccountManager) DeleteUserAccountManager(userID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	_, exists := m.userAccountManager[userID]
 	if !exists {
 		return fmt.Errorf("no UserAccountManager exists for userID %s", userID)

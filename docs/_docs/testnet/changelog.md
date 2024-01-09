@@ -512,7 +512,7 @@
 
 # February 2023-02-23 (v0.10)
 * A list of the PRs merged in this release is as below;
-  * `d81f5f9a` Run a schedule deploy on the l1, and trigger l2 if succesful (#1129)
+  * `d81f5f9a` Run a schedule deploy on the l1, and trigger l2 if successful (#1129)
   * `481dc317` Wrap leveldb so its error types don't leak into our codebase (#1128)
   * `e5d8c398` Resilient to rpc requests while sequencer unknown (#1130)
   * `aa3eaea2` Updated go version and ego version. (#1124)
@@ -787,22 +787,22 @@
 * The list of sensitive RPC API methods, where the request and response is encrypted in transit, now covers
   `eth_call`, `eth_estimateGas`, `eth_getBalance`, `eth_getLogs`, `eth_getTransactionByHash`, `eth_getTransactionCount`,
   `eth_getTransactionReceipt` and `eth_sendRawTransaction`. See the Obscuro
-  [documentation](https://docs.obscu.ro/api/sensitive-apis/) for more details.
+  [documentation](https://docs.ten.xyz/api/sensitive-apis/) for more details.
 * Calls to wait for a transaction receipt are now blocking, whereas previously they would return an error meaning the
   client side code needed to perform a specific wait and poll loop. The example on how to [programmatically deploy
-  a contract](https://docs.obscu.ro/testnet/deploying-a-smart-contract-programmatically/) has been updated accordingly.
+  a contract](https://docs.ten.xyz/testnet/deploying-a-smart-contract-programmatically/) has been updated accordingly.
 * The ability to start a faucet server against a local testnet deployment is now supported via a docker
   container. For more information see the Obscuro
   [readme](https://github.com/ten-protocol/go-ten#building-and-running-a-local-faucet).
 * Updates to the [Events](https://github.com/ten-protocol/go-ten/blob/main/design/ux/Events_design.md) design
   inclusion of the [Fast Finality](https://github.com/ten-protocol/go-ten/blob/main/design/finality_protocol/fast_finality.md) design.
-* The [Obscuro docs site](https://docs.obscu.ro/) is now searchable.
+* The [Obscuro docs site](https://docs.ten.xyz/) is now searchable.
 * Testnet is now officially termed `Evan's Cat`.
 
 * ObscuroScan:
   * ObscuroScan supports a single API at [/rollup/](http://testnet.obscuroscan.io/rollup/) which allows web clients to
     access a JSON representation of rollups and encrypted transactions. Further details
-    [here](https://docs.obscu.ro/testnet/obscuroscan)
+    [here](https://docs.ten.xyz/testnet/obscuroscan)
 
 ## October 2022-10-21 (v0.5)
 * Event Subscriptions:
@@ -814,7 +814,7 @@
 * Wallet extension:
   * The wallet extension now supports separate ports for HTTP and WebSocket connections. Use the `--port` and `--portWS`
     command line options respectively for each. For more information see the
-    [Wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension) documentation.
+    [Wallet extension](https://docs.ten.xyz/wallet-extension/wallet-extension) documentation.
 * Event subscription:
   * An early preview of event subscriptions is available in this release, though note that this is still undergoing
     testing and feature enhancements and therefore is liable to issues and instability. For more information on the
