@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/go/responses"
@@ -190,7 +191,7 @@ func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxDat
 
 	gasPrice, err := ac.GasPrice(context.Background())
 	if err != nil {
-		gasPrice = big.NewInt(1)
+		gasPrice = big.NewInt(params.InitialBaseFee)
 	}
 
 	return &types.LegacyTx{
