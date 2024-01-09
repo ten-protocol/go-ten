@@ -67,10 +67,10 @@ func NewBatchExecutor(
 	}
 }
 
-// payL1Fees - this function modifies the state db according to the transactions contained within the batch context
+// estimateL1Fees - this function modifies the state db according to the transactions contained within the batch context
 // in order to subtract gas fees from the balance. It returns a list of the transactions that have prepaid for their L1
 // publishing costs.
-func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) (common.L2PricedTransactions, common.L2PricedTransactions) {
+func (executor *batchExecutor) estimateL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) (common.L2PricedTransactions, common.L2PricedTransactions) {
 	transactions := make(common.L2PricedTransactions, 0)
 	freeTransactions := make(common.L2PricedTransactions, 0)
 	block, _ := executor.storage.FetchBlock(context.BlockPtr)
@@ -118,27 +118,6 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 		})
 	}
 	return transactions, freeTransactions
-}
-
-func (executor *batchExecutor) refundL1Fees(stateDB *state.StateDB, context *BatchExecutionContext, transactions []*common.L2Tx) {
-	block, _ := executor.storage.FetchBlock(context.BlockPtr)
-	for _, tx := range transactions {
-		cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block)
-		if err != nil {
-			executor.logger.Warn("Unable to get gas cost for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
-			continue
-		}
-
-		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
-		if err != nil {
-			// todo @siliev - is this critical? Potential desync spot
-			executor.logger.Warn("Unable to extract sender for tx", log.TxKey, tx.Hash())
-			continue
-		}
-
-		stateDB.AddBalance(*sender, cost)
-		stateDB.SubBalance(context.Creator, cost)
-	}
 }
 
 func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) { //nolint:gocognit
@@ -190,7 +169,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 	executor.crossChainProcessors.Local.ExecuteValueTransfers(transfers, stateDB)
 
-	transactionsToProcess, freeTransactions := executor.payL1Fees(stateDB, context)
+	transactionsToProcess, freeTransactions := executor.estimateL1Fees(stateDB, context)
 
 	xchainTxs := make(common.L2PricedTransactions, 0)
 	for _, xTx := range crossChainTransactions {
@@ -206,8 +185,6 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	if err != nil {
 		return nil, fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
-
-	//executor.refundL1Fees(stateDB, context, excludedTxs)
 
 	ccSuccessfulTxs, _, ccReceipts, err := executor.processTransactions(batch, len(successfulTxs), xchainTxs, stateDB, context.ChainConfig, true)
 	if err != nil {

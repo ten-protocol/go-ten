@@ -204,7 +204,7 @@ func (api *EthereumAPI) FeeHistory(context.Context, string, rpc.BlockNumber, []f
 	}
 
 	for _, header := range batches {
-		feeHist.GasUsedRatio = append(feeHist.GasUsedRatio, 0.9) //todo @siliev - fix when baseFee is dynamic
+		feeHist.GasUsedRatio = append(feeHist.GasUsedRatio, 0.9) // todo @siliev - fix when baseFee is dynamic
 		feeHist.BaseFee = append(feeHist.BaseFee, (*hexutil.Big)(header.BaseFee))
 	}
 	return feeHist, nil
