@@ -14,7 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	
+
 	"github.com/hashicorp/golang-lru/v2"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
