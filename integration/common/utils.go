@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -145,7 +146,7 @@ func InteractWithSmartContract(client *ethclient.Client, wallet wallet.Wallet, c
 		Nonce:    wallet.GetNonceAndIncrement(),
 		To:       &contractAddress,
 		Gas:      uint64(1_000_000),
-		GasPrice: gethcommon.Big1,
+		GasPrice: big.NewInt(params.InitialBaseFee),
 		Data:     contractInteractionData,
 	}
 	signedTx, err := wallet.SignTransaction(&interactionTx)

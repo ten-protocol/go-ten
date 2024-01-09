@@ -15,7 +15,7 @@ import (
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
@@ -587,26 +587,18 @@ func getFeeAndGas(client *ethclient.Client, wallet wallet.Wallet, legacyTx *type
 		return err
 	}
 
-	gasPrice := history.BaseFee[0]
-
-	msg, err := core.TransactionToMessage(tx, types.NewCancunSigner(wallet.ChainID()), gasPrice)
-	if err != nil {
-		return err
-	}
-
 	estimate, err := client.EstimateGas(context.Background(), ethereum.CallMsg{
-		From:     msg.From,
-		To:       msg.To,
-		GasPrice: msg.GasPrice,
-		Value:    msg.Value,
-		Data:     msg.Data,
+		From:  wallet.Address(),
+		To:    tx.To(),
+		Value: tx.Value(),
+		Data:  tx.Data(),
 	})
 	if err != nil {
 		return err
 	}
 
 	legacyTx.Gas = estimate
-	legacyTx.GasPrice = gasPrice
+	legacyTx.GasPrice = history.BaseFee[0] // big.NewInt(gethparams.InitialBaseFee)
 
 	return nil
 }
