@@ -8,23 +8,18 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/hashicorp/golang-lru/v2"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
-	"github.com/ten-protocol/go-ten/go/common/retry"
-
-	"github.com/ten-protocol/go-ten/go/common/log"
-
-	"github.com/ten-protocol/go-ten/go/common"
-
 	"github.com/ethereum/go-ethereum"
-
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/hashicorp/golang-lru/v2"
+
+	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/retry"
 )
 
 const (
