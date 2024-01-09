@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/hashicorp/golang-lru/v2"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -23,7 +25,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/hashicorp/golang-lru/v2"
 )
 
 const (
