@@ -8,21 +8,19 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
-	"github.com/ten-protocol/go-ten/go/common/retry"
-
-	"github.com/ten-protocol/go-ten/go/common/log"
-
-	"github.com/ten-protocol/go-ten/go/common"
-
 	"github.com/ethereum/go-ethereum"
-
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	gethlog "github.com/ethereum/go-ethereum/log"
+
+	lru "github.com/hashicorp/golang-lru/v2"
+
+	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/retry"
 )
 
 const (
@@ -30,15 +28,17 @@ const (
 	connRetryInterval       = 500 * time.Millisecond
 	_maxRetryPriceIncreases = 5
 	_retryPriceMultiplier   = 1.2
+	_defaultBlockCacheSize  = 51 // enough for 50 request batch size and one for previous block
 )
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
 type gethRPCClient struct {
-	client  *ethclient.Client  // the underlying eth rpc client
-	l2ID    gethcommon.Address // the address of the Obscuro node this client is dedicated to
-	timeout time.Duration      // the timeout for connecting to, or communicating with, the L1 node
-	logger  gethlog.Logger
-	rpcURL  string
+	client     *ethclient.Client  // the underlying eth rpc client
+	l2ID       gethcommon.Address // the address of the Obscuro node this client is dedicated to
+	timeout    time.Duration      // the timeout for connecting to, or communicating with, the L1 node
+	logger     gethlog.Logger
+	rpcURL     string
+	blockCache *lru.Cache[gethcommon.Hash, *types.Block]
 }
 
 // NewEthClientFromURL instantiates a new ethadapter.EthClient that connects to an ethereum node
@@ -49,12 +49,20 @@ func NewEthClientFromURL(rpcURL string, timeout time.Duration, l2ID gethcommon.A
 	}
 
 	logger.Trace(fmt.Sprintf("Initialized eth node connection - addr: %s", rpcURL))
+
+	// cache recent blocks to avoid re-fetching them (they are often re-used for checking for forks etc.)
+	blkCache, err := lru.New[gethcommon.Hash, *types.Block](_defaultBlockCacheSize)
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize block cache - %w", err)
+	}
+
 	return &gethRPCClient{
-		client:  client,
-		l2ID:    l2ID,
-		timeout: timeout,
-		logger:  logger,
-		rpcURL:  rpcURL,
+		client:     client,
+		l2ID:       l2ID,
+		timeout:    timeout,
+		logger:     logger,
+		rpcURL:     rpcURL,
+		blockCache: blkCache,
 	}, nil
 }
 
@@ -181,10 +189,21 @@ func (e *gethRPCClient) BlockByNumber(n *big.Int) (*types.Block, error) {
 }
 
 func (e *gethRPCClient) BlockByHash(hash gethcommon.Hash) (*types.Block, error) {
+	block, found := e.blockCache.Get(hash)
+	if found {
+		return block, nil
+	}
+
+	// not in cache, fetch from RPC
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
-	return e.client.BlockByHash(ctx, hash)
+	block, err := e.client.BlockByHash(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+	e.blockCache.Add(hash, block)
+	return block, nil
 }
 
 func (e *gethRPCClient) CallContract(msg ethereum.CallMsg) ([]byte, error) {
