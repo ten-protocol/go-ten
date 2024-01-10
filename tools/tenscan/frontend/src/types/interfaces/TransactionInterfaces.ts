@@ -2,6 +2,7 @@ export type Transaction = {
   Id: string;
   label: string;
   BatchHeight: number;
+  BatchTimestamp: number;
   Finality: string;
   TransactionHash: string;
 };

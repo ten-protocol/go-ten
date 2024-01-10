@@ -17,6 +17,11 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
                 #{transaction?.BatchHeight}
               </p>
             </div>
+            <div className="ml-4 space-y-1">
+              <p className="text-sm font-medium leading-none">
+                {transaction?.BatchTimestamp}
+              </p>
+            </div>
             <div className="ml-auto font-medium">
               <TruncatedAddress address={transaction?.TransactionHash} />
             </div>

@@ -28,6 +28,24 @@ export const columns: ColumnDef<Transaction>[] = [
   },
 
   {
+    accessorKey: "BatchTimestamp",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="BatchTimestamp" />
+    ),
+    cell: ({ row }) => {
+      return (
+          <div className="flex space-x-2">
+          <span className="max-w-[500px] truncate">
+            {row.getValue("BatchTimestamp")}
+          </span>
+          </div>
+      );
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
+
+  {
     accessorKey: "TransactionHash",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Transaction Hash" />
