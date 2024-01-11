@@ -33,6 +33,7 @@ type BlockListingResponse struct {
 type PublicTransaction struct {
 	TransactionHash TxHash
 	BatchHeight     *big.Int
+	BatchTimestamp  uint64
 	Finality        FinalityType
 }
 

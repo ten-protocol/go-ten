@@ -6,7 +6,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatTimeAgo(unixTimestampSeconds: string) {
+export function formatTimeAgo(unixTimestampSeconds: string | number) {
+  if (!unixTimestampSeconds) {
+    return "Unknown";
+  }
   const date = new Date(Number(unixTimestampSeconds) * 1000);
   return formatDistanceToNow(date, { addSuffix: true });
 }
