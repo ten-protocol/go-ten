@@ -159,11 +159,7 @@ func (m *AccountManager) suggestSubscriptionClient(rpcReq *wecommon.RPCRequest) 
 			}
 		}
 		// Go through each topic filter and look for registered addresses
-		for i, topicCondition := range filterCriteria.Topics {
-			// the first topic is always the signature of the event, so it can't be an address
-			if i == 0 {
-				continue
-			}
+		for _, topicCondition := range filterCriteria.Topics {
 			for _, topic := range topicCondition {
 				potentialAddr := common.ExtractPotentialAddress(topic)
 				m.logger.Info(fmt.Sprintf("Potential address (%s) found for the request %s", potentialAddr, rpcReq))
