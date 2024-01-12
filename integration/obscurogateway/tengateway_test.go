@@ -301,12 +301,14 @@ func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet
 	subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user0.WSClient, &user0logs)
 	subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, topics, user1.WSClient, &user1logs)
 
-	// TODO: add a comment
+	// user0 calls setMessage on deployed smart contract with the account twice and expects two events
 	_, err = integrationCommon.InteractWithSmartContract(user0.HTTPClient, user0.Wallets[0], eventsContractABI, "setMessage", "user0Event1", contractReceipt.ContractAddress)
 	require.NoError(t, err)
 	_, err = integrationCommon.InteractWithSmartContract(user0.HTTPClient, user0.Wallets[0], eventsContractABI, "setMessage", "user0Event2", contractReceipt.ContractAddress)
 	require.NoError(t, err)
 
+	// user1 calls setMessage on deployed smart contract with two different accounts and expects only one event,
+	// because only the first address is in the topic filter of the subscription
 	_, err = integrationCommon.InteractWithSmartContract(user1.HTTPClient, user1.Wallets[0], eventsContractABI, "setMessage", "user1Event1", contractReceipt.ContractAddress)
 	require.NoError(t, err)
 	_, err = integrationCommon.InteractWithSmartContract(user1.HTTPClient, user1.Wallets[1], eventsContractABI, "setMessage", "user1Event2", contractReceipt.ContractAddress)
