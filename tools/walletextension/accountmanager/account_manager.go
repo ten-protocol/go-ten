@@ -111,7 +111,7 @@ func (m *AccountManager) ProxyRequest(rpcReq *wecommon.RPCRequest, rpcResp *inte
 
 const emptyFilterCriteria = "[]" // This is the value that gets passed for an empty filter criteria.
 
-// suggestSubscriptionClient returns the client that should be used for the subscription request.
+// suggestSubscriptionClient returns clients that should be used for the subscription request.
 // For other requests we use http clients, but for subscriptions ws clients are required, that is the reason for
 // creating ws clients here.
 // We only want to have the connections open for the duration of the subscription, so we create the clients here and
@@ -119,82 +119,79 @@ const emptyFilterCriteria = "[]" // This is the value that gets passed for an em
 func (m *AccountManager) suggestSubscriptionClient(rpcReq *wecommon.RPCRequest) ([]rpc.Client, error) {
 	m.accountsMutex.RLock()
 	defer m.accountsMutex.RUnlock()
-	// TODO: fix cognitive complexity 36 of func `(*AccountManager).suggestSubscriptionClient` is high (> 30) (gocognit)
 
 	userIDBytes, err := wecommon.GetUserIDbyte(m.userID)
 	if err != nil {
-		m.logger.Error(fmt.Errorf("error decoding string (%s), %w", m.userID, err).Error())
-		return nil, err
+		return nil, fmt.Errorf("error decoding string (%s), %w", m.userID, err)
 	}
 
-	// get all accounts for current userID
 	accounts, err := m.storage.GetAccounts(userIDBytes)
 	if err != nil {
-		m.logger.Error(fmt.Errorf("error getting accounts for user: %s, %w", m.userID, err).Error())
-		return nil, err
+		return nil, fmt.Errorf("error getting accounts for user: %s, %w", m.userID, err)
 	}
 
-	// get private key for user - needed for creating WS clients
 	userPrivateKey, err := m.storage.GetUserPrivateKey(userIDBytes)
 	if err != nil {
-		m.logger.Error(fmt.Errorf("error getting private key for user: %s, %w", m.userID, err).Error())
-		return nil, err
+		return nil, fmt.Errorf("error getting private key for user: %s, %w", m.userID, err)
 	}
 
-	// We check if we have accounts in filter criteria - we only want to subscribe with those accounts
-	//  because the relevancy rule says that only those accounts are relevant for the subscription.
 	if len(rpcReq.Params) > 1 {
-		// We have to filter the accounts based on the filter criteria and select only the ones that match the filter.
-		var filteredClients []rpc.Client
-		// The filter is the second parameter
-		filterCriteriaJSON, err := json.Marshal(rpcReq.Params[1])
+		filteredClients, err := m.filterClients(rpcReq, accounts, userPrivateKey)
 		if err != nil {
-			return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
+			return nil, err
 		}
-		filterCriteria := filters.FilterCriteria{}
-		if string(filterCriteriaJSON) != emptyFilterCriteria {
-			err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
-			if err != nil {
-				return nil, fmt.Errorf("could not unmarshal filter criteria from the following JSON: `%s`. Cause: %w", string(filterCriteriaJSON), err)
-			}
-		}
-		// Go through each topic filter and look for registered addresses
-		for _, topicCondition := range filterCriteria.Topics {
-			for _, topic := range topicCondition {
-				potentialAddr := common.ExtractPotentialAddress(topic)
-				m.logger.Info(fmt.Sprintf("Potential address (%s) found for the request %s", potentialAddr, rpcReq))
-				if potentialAddr != nil {
-					// check if a potential address is registered with this user
-					for _, account := range accounts {
-						if bytes.Equal(account.AccountAddress, potentialAddr.Bytes()) {
-							// create a new WS client for each registered account
-							encClient, err := wecommon.CreateEncClient(m.hostRPCBindAddrWS, account.AccountAddress, userPrivateKey, account.Signature, m.logger)
-							if err != nil {
-								// log an error, but continue with other accounts - we don't want to fail the subscription for others
-								m.logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
-								continue
-							}
-							filteredClients = append(filteredClients, encClient)
-						}
-					}
-				}
-			}
-		}
-
-		// if we found any clients that match the filter, we return them and use them for the subscription
+		// return filtered clients if we found any
 		if len(filteredClients) > 0 {
 			return filteredClients, nil
 		}
 	}
+	// create clients for all accounts if we didn't find any clients that match the filter or if no topics were provided
+	return m.createClientsForAllAccounts(accounts, userPrivateKey)
+}
 
-	// in case we didn't find any clients that match the filter / there is no topic in subscription,
-	// we subscribe to all accounts for this user
+// filterClients creates and returns a list of clients that match the topics in the filter criteria
+func (m *AccountManager) filterClients(rpcReq *wecommon.RPCRequest, accounts []wecommon.AccountDB, userPrivateKey []byte) ([]rpc.Client, error) {
+	var filteredClients []rpc.Client
+	filterCriteriaJSON, err := json.Marshal(rpcReq.Params[1])
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
+	}
+	filterCriteria := filters.FilterCriteria{}
+	if string(filterCriteriaJSON) != emptyFilterCriteria {
+		err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
+		if err != nil {
+			return nil, fmt.Errorf("could not unmarshal filter criteria from the following JSON: `%s`. Cause: %w", string(filterCriteriaJSON), err)
+		}
+	}
+
+	for _, topicCondition := range filterCriteria.Topics {
+		for _, topic := range topicCondition {
+			potentialAddr := common.ExtractPotentialAddress(topic)
+			m.logger.Info(fmt.Sprintf("Potential address (%s) found for the request %s", potentialAddr, rpcReq))
+			if potentialAddr != nil {
+				for _, account := range accounts {
+					if bytes.Equal(account.AccountAddress, potentialAddr.Bytes()) {
+						encClient, err := wecommon.CreateEncClient(m.hostRPCBindAddrWS, account.AccountAddress, userPrivateKey, account.Signature, m.logger)
+						if err != nil {
+							m.logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
+							continue
+						}
+						filteredClients = append(filteredClients, encClient)
+					}
+				}
+			}
+		}
+	}
+
+	return filteredClients, nil
+}
+
+// createClientsForAllAccounts creates ws clients for all accounts for given user and returns them
+func (m *AccountManager) createClientsForAllAccounts(accounts []wecommon.AccountDB, userPrivateKey []byte) ([]rpc.Client, error) {
 	clients := make([]rpc.Client, 0, len(accounts))
 	for _, account := range accounts {
-		// create a new WS client for each registered account
 		encClient, err := wecommon.CreateEncClient(m.hostRPCBindAddrWS, account.AccountAddress, userPrivateKey, account.Signature, m.logger)
 		if err != nil {
-			// log an error, but continue with other accounts - we don't want to fail the subscription for others
 			m.logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
 			continue
 		}
