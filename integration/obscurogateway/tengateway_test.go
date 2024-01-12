@@ -90,12 +90,13 @@ func TestTenGateway(t *testing.T) {
 
 	// run the tests against the exis
 	for name, test := range map[string]func(*testing.T, string, string, wallet.Wallet){
-		//"testAreTxsMinted":            testAreTxsMinted, this breaks the other tests bc, enable once concurency issues are fixed
+		//"testAreTxsMinted":            testAreTxsMinted, this breaks the other tests bc, enable once concurrency issues are fixed
 		"testErrorHandling":                    testErrorHandling,
 		"testMultipleAccountsSubscription":     testMultipleAccountsSubscription,
 		"testErrorsRevertedArePassed":          testErrorsRevertedArePassed,
 		"testUnsubscribe":                      testUnsubscribe,
 		"testClosingConnectionWhileSubscribed": testClosingConnectionWhileSubscribed,
+		"testSubscriptionTopics":               testSubscriptionTopics,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, httpURL, wsURL, w)
@@ -242,6 +243,83 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	assert.Equal(t, 3, len(user1logs))
 	// user2 should see three events (two lifecycle events - same as user0) and event with his interaction with setMessage
 	assert.Equal(t, 3, len(user2logs))
+}
+
+func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+	user0, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
+	require.NoError(t, err)
+	fmt.Printf("Created user with encryption token: %s\n", user0.tgClient.UserID())
+
+	user1, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	fmt.Printf("Created user with encryption token: %s\n", user0.tgClient.UserID())
+
+	// register all the accounts for that user
+	err = user0.RegisterAccounts()
+	require.NoError(t, err)
+	err = user1.RegisterAccounts()
+	require.NoError(t, err)
+
+	var amountToTransfer int64 = 1_000_000_000_000_000_000
+	// Transfer some funds to user1 to be able to make transactions
+	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user1.Wallets[0].Address(), amountToTransfer)
+	require.NoError(t, err)
+	time.Sleep(5 * time.Second)
+	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user1.Wallets[1].Address(), amountToTransfer)
+	require.NoError(t, err)
+
+	// Print balances of all registered accounts to check if all accounts have funds
+	err = user0.PrintUserAccountsBalances()
+	require.NoError(t, err)
+	err = user1.PrintUserAccountsBalances()
+	require.NoError(t, err)
+
+	// deploy events contract
+	deployTx := &types.LegacyTx{
+		Nonce:    w.GetNonceAndIncrement(),
+		Gas:      uint64(1_000_000),
+		GasPrice: gethcommon.Big1,
+		Data:     gethcommon.FromHex(eventsContractBytecode),
+	}
+
+	signedTx, err := w.SignTransaction(deployTx)
+	require.NoError(t, err)
+
+	err = user0.HTTPClient.SendTransaction(context.Background(), signedTx)
+	require.NoError(t, err)
+
+	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user0.HTTPClient, signedTx.Hash(), time.Minute)
+	require.NoError(t, err)
+
+	//user0 subscribes to all events from that smart contract, user1 only an event with a topic of his first account
+	var user0logs []types.Log
+	var user1logs []types.Log
+	var topics [][]gethcommon.Hash
+	t1 := gethcommon.BytesToHash(user1.Wallets[1].Address().Bytes())
+	topics = append(topics, nil)
+	topics = append(topics, []gethcommon.Hash{t1})
+	subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user0.WSClient, &user0logs)
+	subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, topics, user1.WSClient, &user1logs)
+
+	// TODO: add a comment
+	_, err = integrationCommon.InteractWithSmartContract(user0.HTTPClient, user0.Wallets[0], eventsContractABI, "setMessage", "user0Event1", contractReceipt.ContractAddress)
+	require.NoError(t, err)
+	_, err = integrationCommon.InteractWithSmartContract(user0.HTTPClient, user0.Wallets[0], eventsContractABI, "setMessage", "user0Event2", contractReceipt.ContractAddress)
+	require.NoError(t, err)
+
+	_, err = integrationCommon.InteractWithSmartContract(user1.HTTPClient, user1.Wallets[0], eventsContractABI, "setMessage", "user1Event1", contractReceipt.ContractAddress)
+	require.NoError(t, err)
+	_, err = integrationCommon.InteractWithSmartContract(user1.HTTPClient, user1.Wallets[1], eventsContractABI, "setMessage", "user1Event2", contractReceipt.ContractAddress)
+	require.NoError(t, err)
+
+	// wait a few seconds to be completely sure all events arrived
+	time.Sleep(time.Second * 3)
+
+	// Assert the number of logs received by each client
+	// user0 should see two lifecycle events (1 for each interaction with the smart contract)
+	assert.Equal(t, 2, len(user0logs))
+	// user1 should see only one event (the other is filtered out because of the topic filter)
+	assert.Equal(t, 1, len(user1logs))
 }
 
 func testAreTxsMinted(t *testing.T, httpURL, wsURL string, w wallet.Wallet) { //nolint: unused
