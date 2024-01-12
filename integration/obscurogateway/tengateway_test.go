@@ -291,7 +291,7 @@ func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet
 	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user0.HTTPClient, signedTx.Hash(), time.Minute)
 	require.NoError(t, err)
 
-	//user0 subscribes to all events from that smart contract, user1 only an event with a topic of his first account
+	// user0 subscribes to all events from that smart contract, user1 only an event with a topic of his first account
 	var user0logs []types.Log
 	var user1logs []types.Log
 	var topics [][]gethcommon.Hash
@@ -666,7 +666,7 @@ func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddr
 	return integrationCommon.AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 20*time.Second)
 }
 
-func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Hash, client *ethclient.Client, logs *[]types.Log) ethereum.Subscription { //nolint:unparam
+func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Hash, client *ethclient.Client, logs *[]types.Log) ethereum.Subscription {
 	// Make a subscription
 	filterQuery := ethereum.FilterQuery{
 		Addresses: addresses,
