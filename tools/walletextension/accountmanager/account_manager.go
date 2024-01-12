@@ -1,11 +1,15 @@
 package accountmanager
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 
@@ -115,10 +119,6 @@ const emptyFilterCriteria = "[]" // This is the value that gets passed for an em
 func (m *AccountManager) suggestSubscriptionClient(rpcReq *wecommon.RPCRequest) ([]rpc.Client, error) {
 	m.accountsMutex.RLock()
 	defer m.accountsMutex.RUnlock()
-
-	// TODO: ASK - if no accounts are found after the filter - should we subscribe to all accounts or none?
-	// Possible different behaviour than before, but it makes sense to me.
-
 	// TODO: fix cognitive complexity 36 of func `(*AccountManager).suggestSubscriptionClient` is high (> 30) (gocognit)
 
 	userIDBytes, err := wecommon.GetUserIDbyte(m.userID)
@@ -141,69 +141,76 @@ func (m *AccountManager) suggestSubscriptionClient(rpcReq *wecommon.RPCRequest) 
 		return nil, err
 	}
 
-	// In case we have less than 2 parameters, we subscribe to all accounts, otherwise we only subscribe to filtered ones
-	//if len(rpcReq.Params) < 2 {
+	// We check if we have accounts in filter criteria - we only want to subscribe with those accounts
+	//  because the relevancy rule says that only those accounts are relevant for the subscription.
+	if len(rpcReq.Params) > 1 {
+		// We have to filter the accounts based on the filter criteria and select only the ones that match the filter.
+		var filteredClients []rpc.Client
+		// The filter is the second parameter
+		filterCriteriaJSON, err := json.Marshal(rpcReq.Params[1])
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
+		}
+		filterCriteria := filters.FilterCriteria{}
+		if string(filterCriteriaJSON) != emptyFilterCriteria {
+			err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
+			if err != nil {
+				return nil, fmt.Errorf("could not unmarshal filter criteria from the following JSON: `%s`. Cause: %w", string(filterCriteriaJSON), err)
+			}
+		}
+		// Go through each topic filter and look for registered addresses
+		for i, topicCondition := range filterCriteria.Topics {
+			// the first topic is always the signature of the event, so it can't be an address
+			if i == 0 {
+				continue
+			}
+			for _, topic := range topicCondition {
+				potentialAddr := common.ExtractPotentialAddress(topic)
+				m.logger.Info(fmt.Sprintf("Potential address (%s) found for the request %s", potentialAddr, rpcReq))
+				if potentialAddr != nil {
+					// check if a potential address is registered with this user
+					for _, account := range accounts {
+						if bytes.Equal(account.AccountAddress, potentialAddr.Bytes()) {
+							// create a new WS client for each registered account
+							encClient, err := wecommon.CreateEncClient(m.hostRPCBindAddrWS, account.AccountAddress, userPrivateKey, account.Signature, m.logger)
+							if err != nil {
+								// log an error, but continue with other accounts - we don't want to fail the subscription for others
+								m.logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
+								continue
+							}
+							filteredClients = append(filteredClients, encClient)
+						}
+					}
+				}
+			}
+		}
+
+		// if we found any clients that match the filter, we return them and use them for the subscription
+		if len(filteredClients) > 0 {
+			return filteredClients, nil
+		}
+	}
+
+	// in case we didn't find any clients that match the filter / there is no topic in subscription,
+	// we subscribe to all accounts for this user
 	clients := make([]rpc.Client, 0, len(accounts))
 	for _, account := range accounts {
 		// create a new WS client for each registered account
 		encClient, err := wecommon.CreateEncClient(m.hostRPCBindAddrWS, account.AccountAddress, userPrivateKey, account.Signature, m.logger)
 		if err != nil {
+			// log an error, but continue with other accounts - we don't want to fail the subscription for others
 			m.logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
 			continue
 		}
 		clients = append(clients, encClient)
 	}
 	return clients, nil
-	//}
-	//
-	//// We have to filter the accounts based on the filter criteria and select only the ones that match the filter.
-	//var clients []rpc.Client
-	//
-	//// The filter is the second parameter
-	//filterCriteriaJSON, err := json.Marshal(rpcReq.Params[1])
-	//if err != nil {
-	//	return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
-	//}
-	//
-	//filterCriteria := filters.FilterCriteria{}
-	//if string(filterCriteriaJSON) != emptyFilterCriteria {
-	//	err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
-	//	if err != nil {
-	//		return nil, fmt.Errorf("could not unmarshal filter criteria from the following JSON: `%s`. Cause: %w", string(filterCriteriaJSON), err)
-	//	}
-	//}
-	//// Go through each topic filter and look for registered addresses
-	//for i, topicCondition := range filterCriteria.Topics {
-	//	// the first topic is always the signature of the event, so it can't be an address
-	//	if i == 0 {
-	//		continue
-	//	}
-	//	for _, topic := range topicCondition {
-	//		potentialAddr := common.ExtractPotentialAddress(topic)
-	//		m.logger.Info(fmt.Sprintf("Potential address (%s) found for the request %s", potentialAddr, rpcReq))
-	//		if potentialAddr != nil {
-	//			// check if a potential address is registered with this user
-	//			for _, account := range accounts {
-	//				if bytes.Equal(account.AccountAddress, potentialAddr.Bytes()) {
-	//					// create a new WS client for each registered account
-	//					encClient, err := wecommon.CreateEncClient(m.hostRPCBindAddrWS, account.AccountAddress, userPrivateKey, account.Signature, m.logger)
-	//					if err != nil {
-	//						m.logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
-	//						continue
-	//					}
-	//					clients = append(clients, encClient)
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
-	//return clients, nil
 }
 
 func (m *AccountManager) executeCall(rpcReq *wecommon.RPCRequest, rpcResp *interface{}) error {
 	m.accountsMutex.RLock()
 	defer m.accountsMutex.RUnlock()
-	// for Ten RPC requests it is important we know the sender account for the viewing key encryption/decryption
+	// for Ten RPC requests, it is important we know the sender account for the viewing key encryption/decryption
 	suggestedClient := m.suggestAccountClient(rpcReq, m.accountClientsHTTP)
 
 	switch {
