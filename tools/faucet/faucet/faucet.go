@@ -117,18 +117,16 @@ func (f *Faucet) fundNativeToken(address *common.Address, amount *big.Int) (*typ
 	// this isn't great as the tx count might be incremented in between calls
 	// but only after removing the pk from other apps can we use a proper counter
 
-	// todo remove hardcoded gas values
-	gas := uint64(21000)
-
 	tx := &types.LegacyTx{
 		Nonce:    nonce,
 		GasPrice: big.NewInt(225),
-		Gas:      gas,
 		To:       address,
 		Value:    amount,
 	}
 
-	signedTx, err := f.wallet.SignTransaction(tx)
+	estimatedTx := f.client.EstimateGasAndGasPrice(tx)
+
+	signedTx, err := f.wallet.SignTransaction(estimatedTx)
 	if err != nil {
 		return nil, err
 	}
