@@ -108,10 +108,6 @@ func (executor *batchExecutor) estimateL1Fees(stateDB *state.StateDB, context *B
 			continue
 		}
 
-		/*stateDB.SubBalance(*sender, cost)
-		stateDB.AddBalance(context.Creator, cost)*/
-		// todo - add refund logic.
-
 		transactions = append(transactions, common.L2PricedTransaction{
 			Tx:             tx,
 			PublishingCost: big.NewInt(0).Set(cost),

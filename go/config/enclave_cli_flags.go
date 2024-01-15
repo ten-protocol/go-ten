@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/flag"
 )
@@ -53,7 +54,7 @@ var EnclaveFlags = map[string]*flag.TenFlag{
 	SequencerIDFlag:               flag.NewStringFlag(SequencerIDFlag, "", "The 20 bytes of the address of the sequencer for this network"),
 	MaxBatchSizeFlag:              flag.NewUint64Flag(MaxBatchSizeFlag, 1024*25, "The maximum size a batch is allowed to reach uncompressed"),
 	MaxRollupSizeFlag:             flag.NewUint64Flag(MaxRollupSizeFlag, 1024*64, "The maximum size a rollup is allowed to reach"),
-	L2BaseFeeFlag:                 flag.NewUint64Flag(L2BaseFeeFlag, 1, ""),
+	L2BaseFeeFlag:                 flag.NewUint64Flag(L2BaseFeeFlag, params.InitialBaseFee, ""),
 	L2CoinbaseFlag:                flag.NewStringFlag(L2CoinbaseFlag, "0xd6C9230053f45F873Cb66D8A02439380a37A4fbF", ""),
 	GasBatchExecutionLimit:        flag.NewUint64Flag(GasBatchExecutionLimit, 30_000_000, "Max gas that can be executed in a single batch"),
 	ObscuroGenesisFlag:            flag.NewStringFlag(ObscuroGenesisFlag, "", "The json string with the obscuro genesis"),

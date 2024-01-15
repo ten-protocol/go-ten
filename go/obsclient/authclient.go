@@ -191,6 +191,9 @@ func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxDat
 
 	gasPrice, err := ac.GasPrice(context.Background())
 	if err != nil {
+		// params.InitialBaseFee should be the new standard gas price.
+		// If the gas price is too low, then the gas required to be put in a transaction
+		// becomes astronomical.
 		gasPrice = big.NewInt(params.InitialBaseFee)
 	}
 

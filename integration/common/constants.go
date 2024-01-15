@@ -76,7 +76,7 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		EdgelessDBHost:            "",
 		SqliteDBPath:              "",
 		ProfilerEnabled:           false,
-		MinGasPrice:               big.NewInt(1),
+		MinGasPrice:               big.NewInt(params.InitialBaseFee),
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
 		ObscuroGenesis:            "",
 		DebugNamespaceEnabled:     false,

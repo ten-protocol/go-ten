@@ -4,6 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+
+	// unsafe package imported in order to link to a private function in go-ethereum.
+	// This allows us to customize the message generated from a signed transaction and inject custom gas logic.
 	_ "unsafe"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -130,10 +133,10 @@ func executeTransaction(
 
 		if hasL1Cost {
 			l1Gas.Div(l1cost, header.BaseFee)
-			l1Gas.Add(l1Gas, big.NewInt(1)) // account for leftover
+			l1Gas.Add(l1Gas, big.NewInt(1))
 
 			if msg.GasLimit < l1Gas.Uint64() {
-				return nil, fmt.Errorf("gas limit for tx too low. Want at least: %d have: %d", l1Gas, msg.GasLimit)
+				return nil, fmt.Errorf("gas limit set by user is too low to pay for execution and l1 fees. Want at least: %d have: %d", l1Gas, msg.GasLimit)
 			}
 			msg.GasLimit -= l1Gas.Uint64()
 
