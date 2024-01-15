@@ -191,7 +191,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 		return nil, err
 	}
 
-	if err = executor.verifyInboundCrossChainTransactions(crossChainTransactions, ccSuccessfulTxs, ccReceipts); err != nil {
+	if err = executor.verifyInboundCrossChainTransactions(xchainTxs, ccSuccessfulTxs, ccReceipts); err != nil {
 		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
 	}
 
@@ -378,8 +378,8 @@ func (executor *batchExecutor) populateHeader(batch *core.Batch, receipts types.
 	}
 }
 
-func (executor *batchExecutor) verifyInboundCrossChainTransactions(transactions types.Transactions, executedTxs types.Transactions, receipts types.Receipts) error {
-	if transactions.Len() != executedTxs.Len() {
+func (executor *batchExecutor) verifyInboundCrossChainTransactions(transactions common.L2PricedTransactions, executedTxs types.Transactions, receipts types.Receipts) error {
+	if len(transactions) != executedTxs.Len() {
 		return fmt.Errorf("some synthetic transactions have not been executed")
 	}
 
