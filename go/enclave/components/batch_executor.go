@@ -203,18 +203,6 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
 	}
 
-	// we need to copy the batch to reset the internal hash cache
-	copyBatch := *batch
-	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
-	copyBatch.Transactions = append(successfulTxs, freeTransactions...)
-	copyBatch.ResetHash()
-
-	if err = executor.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {
-		return nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
-	}
-
-	allReceipts := append(txReceipts, ccReceipts...)
-	executor.populateHeader(&copyBatch, allReceipts)
 	if failForEmptyBatch &&
 		len(txReceipts) == 0 &&
 		len(ccReceipts) == 0 &&
@@ -228,6 +216,19 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 		}
 		return nil, ErrNoTransactionsToProcess
 	}
+
+	// we need to copy the batch to reset the internal hash cache
+	copyBatch := *batch
+	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
+	copyBatch.Transactions = append(successfulTxs, freeTransactions...)
+	copyBatch.ResetHash()
+
+	if err = executor.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {
+		return nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
+	}
+
+	allReceipts := append(txReceipts, ccReceipts...)
+	executor.populateHeader(&copyBatch, allReceipts)
 
 	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
 	for _, receipt := range allReceipts {
