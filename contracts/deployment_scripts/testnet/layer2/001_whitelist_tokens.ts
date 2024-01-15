@@ -97,11 +97,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         setTimeout(fail, 30_000)
         const messageBusContract = (await hre.ethers.getContractAt('MessageBus', '0x526c84529b2b8c11f57d93d3f5537aca3aecef9b'));
         const gasLimit = await messageBusContract.estimateGas.verifyMessageFinalized(messages[1], {
-            maxFeePerGas: 2,
+            maxFeePerGas: 1000000001,
         })
         try {
             while (await messageBusContract.callStatic.verifyMessageFinalized(messages[1], {
-                maxFeePerGas: 2,
+                maxFeePerGas: 1000000001,
                 gasLimit: gasLimit.mul(2),
                 from: l2Accounts.deployer
             }) != true) {
