@@ -376,6 +376,8 @@ func (s *storageImpl) StoreBatch(batch *core.Batch) error {
 
 	dbTx := s.db.NewDBTransaction()
 	s.logger.Trace("write batch", log.BatchHashKey, batch.Hash(), "l1Proof", batch.Header.L1Proof, log.BatchSeqNoKey, batch.SeqNo())
+	// todo - read converted hash of parent
+
 	if err := enclavedb.WriteBatchAndTransactions(dbTx, batch); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
@@ -388,6 +390,8 @@ func (s *storageImpl) StoreBatch(batch *core.Batch) error {
 	cacheValue(s.batchCache, s.logger, batch.Hash(), batch.SeqNo())
 	return nil
 }
+
+//func (s *storageImpl) readConvertedHash(batchHash )
 
 func (s *storageImpl) StoreExecutedBatch(batch *core.Batch, receipts []*types.Receipt) error {
 	defer s.logDuration("StoreExecutedBatch", measure.NewStopwatch())

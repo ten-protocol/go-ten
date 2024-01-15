@@ -192,7 +192,8 @@ func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex in
 		txContext := gethcore.NewEVMTxContext(msg)
 
 		chain := evm.NewObscuroChainContext(oc.storage, oc.logger)
-		blockHeader, err := gethencoding.CreateEthHeaderForBatch(batch.Header, nil)
+		secret, _ := oc.storage.FetchSecret()
+		blockHeader, err := gethencoding.CreateEthHeaderForBatch(batch.Header, secret[:])
 		if err != nil {
 			return nil, vm.BlockContext{}, nil, fmt.Errorf("unable to convert batch header to eth header - %w", err)
 		}

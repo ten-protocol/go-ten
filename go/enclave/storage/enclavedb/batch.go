@@ -25,7 +25,7 @@ const (
 	txInsert      = "replace into tx values "
 	txInsertValue = "(?,?,?,?,?,?,?)"
 
-	bInsert             = "insert into batch values (?,?,?,?,?,?,?,?,?,?)"
+	bInsert             = "insert into batch values (?,?,?,?,?,?,?,?,?,?,?)"
 	updateBatchExecuted = "update batch set is_executed=true where sequence=?"
 
 	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.id"
@@ -80,6 +80,7 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 	dbtx.ExecuteSQL(bInsert,
 		batch.Header.SequencerOrderNo.Uint64(), // sequence
 		batch.Hash(),                           // full hash
+		batch.Hash(),                           // converted_hash - todo
 		truncTo16(batch.Hash()),                // index hash
 		parentBytes,                            // parent
 		batch.Header.Number.Uint64(),           // height
