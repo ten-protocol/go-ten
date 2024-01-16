@@ -20,18 +20,17 @@ const HealthIndicator = () => {
     }
   };
 
-  // using useRef to avoid memory leak
-  let isMounted = React.useRef(true);
-
   useEffect(() => {
+    let isMounted = true;
+
     testnetStatus().then((res) => {
-      if (isMounted.current) {
-        setStatus(res?.result);
+      if (isMounted) {
+        setStatus(res?.result?.OverallHealth);
       }
     });
 
     return () => {
-      isMounted.current = false;
+      isMounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
