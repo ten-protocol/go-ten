@@ -259,8 +259,9 @@ func (e *gethRPCClient) PrepareTransactionToRetry(txData types.TxData, from geth
 	}
 
 	// it should never happen but to avoid any risk of repeated price increases we cap the possible retry price bumps to 5
-	retryFloat := math.Max(_maxRetryPriceIncreases, float64(retryNumber))
+	retryFloat := math.Min(_maxRetryPriceIncreases, float64(retryNumber))
 	// we apply a 20% gas price increase for each retry (retrying with similar price gets rejected by mempool)
+	// Retry '0' is the first attempt, gives multiplier of 1.0
 	multiplier := math.Pow(_retryPriceMultiplier, retryFloat)
 
 	gasPriceFloat := new(big.Float).SetInt(gasPrice)
