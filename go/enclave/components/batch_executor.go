@@ -67,10 +67,10 @@ func NewBatchExecutor(
 	}
 }
 
-// estimateL1Fees - this function modifies the state db according to the transactions contained within the batch context
-// in order to subtract gas fees from the balance. It returns a list of the transactions that have prepaid for their L1
-// publishing costs.
-func (executor *batchExecutor) estimateL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) (common.L2PricedTransactions, common.L2PricedTransactions) {
+// filterTransactionsWithSufficientFunds - this function estimates hte l1 fees for the transaction in a given batch execution context. It does so by taking the price of the
+// pinned L1 block and using it as the cost per gas for the estimated gas of the calldata encoding of a transaction. It filters out any transactions that cannot afford to pay for their L1
+// publishing cost.
+func (executor *batchExecutor) filterTransactionsWithSufficientFunds(stateDB *state.StateDB, context *BatchExecutionContext) (common.L2PricedTransactions, common.L2PricedTransactions) {
 	transactions := make(common.L2PricedTransactions, 0)
 	freeTransactions := make(common.L2PricedTransactions, 0)
 	block, _ := executor.storage.FetchBlock(context.BlockPtr)
@@ -165,7 +165,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 	executor.crossChainProcessors.Local.ExecuteValueTransfers(transfers, stateDB)
 
-	transactionsToProcess, freeTransactions := executor.estimateL1Fees(stateDB, context)
+	transactionsToProcess, freeTransactions := executor.filterTransactionsWithSufficientFunds(stateDB, context)
 
 	xchainTxs := make(common.L2PricedTransactions, 0)
 	for _, xTx := range crossChainTransactions {
@@ -175,19 +175,19 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 		})
 	}
 
-	xchainTxs = append(xchainTxs, freeTransactions...)
+	syntheticTransactions := append(xchainTxs, freeTransactions...)
 
 	successfulTxs, excludedTxs, txReceipts, err := executor.processTransactions(batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
 
-	ccSuccessfulTxs, _, ccReceipts, err := executor.processTransactions(batch, len(successfulTxs), xchainTxs, stateDB, context.ChainConfig, true)
+	ccSuccessfulTxs, _, ccReceipts, err := executor.processTransactions(batch, len(successfulTxs), syntheticTransactions, stateDB, context.ChainConfig, true)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = executor.verifyInboundCrossChainTransactions(xchainTxs, ccSuccessfulTxs, ccReceipts); err != nil {
+	if err = executor.verifyInboundCrossChainTransactions(syntheticTransactions, ccSuccessfulTxs, ccReceipts); err != nil {
 		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
 	}
 
@@ -218,7 +218,6 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 
 	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
 	for _, receipt := range allReceipts {
-		executor.logger.Info("New receipt! ", log.TxKey, receipt.TxHash)
 		receipt.BlockHash = copyBatch.Hash()
 		for _, l := range receipt.Logs {
 			l.BlockHash = copyBatch.Hash()

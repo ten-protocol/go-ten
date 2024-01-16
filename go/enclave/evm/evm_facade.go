@@ -132,14 +132,21 @@ func executeTransaction(
 		hasL1Cost := l1cost.Cmp(big.NewInt(0)) != 0
 
 		if hasL1Cost {
-			l1Gas.Div(l1cost, header.BaseFee)
-			l1Gas.Add(l1Gas, big.NewInt(1))
+			l1Gas.Div(l1cost, header.BaseFee) // TotalCost/CostPerGas = Gas
+			l1Gas.Add(l1Gas, big.NewInt(1))   // Cover from leftover from the division
 
+			// The gas limit of the transaction (evm message) should always be higher than the gas overhead
+			// used to cover the l1 cost
 			if msg.GasLimit < l1Gas.Uint64() {
 				return nil, fmt.Errorf("gas limit set by user is too low to pay for execution and l1 fees. Want at least: %d have: %d", l1Gas, msg.GasLimit)
 			}
+
+			// Remove the gas overhead for l1 publishing from the gas limit in order to define
+			// the actual gas limit for execution
 			msg.GasLimit -= l1Gas.Uint64()
 
+			// Remove the l1 cost from the sender
+			// and pay it to the coinbase of the batch
 			statedb.SubBalance(msg.From, l1cost)
 			statedb.AddBalance(header.Coinbase, l1cost)
 
@@ -150,6 +157,8 @@ func executeTransaction(
 		vmenv := vm.NewEVM(blockContext, vm.TxContext{BlobHashes: tx.Tx.BlobHashes()}, statedb, config, cfg)
 		receipt, err := applyTransaction(msg, config, gp, statedb, header.Number, header.Hash(), tx.Tx, usedGas, vmenv)
 		if err != nil {
+			// If the transaction has l1 cost, then revert the funds exchange
+			// as it will not be published on error (no receipt condition)
 			if hasL1Cost {
 				statedb.SubBalance(header.Coinbase, l1cost)
 				statedb.AddBalance(msg.From, l1cost)
