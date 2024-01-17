@@ -12,6 +12,7 @@ const HealthIndicator = () => {
     setLoading(true);
     try {
       const status = await getTestnetStatus();
+
       return status;
     } catch (error) {
       console.error(error);
@@ -23,9 +24,19 @@ const HealthIndicator = () => {
   useEffect(() => {
     let isMounted = true;
 
+    // if overall health is true, status is set to true
+    // if overall health is false but if the error includes [p2p], status is set to true
+
     testnetStatus().then((res) => {
       if (isMounted) {
-        setStatus(res?.result?.OverallHealth);
+        // setStatus(res?.result?.OverallHealth);
+        if (res?.result?.OverallHealth) {
+          setStatus(true);
+        } else if (res?.result?.Errors?.includes("[p2p]")) {
+          setStatus(true);
+        } else {
+          setStatus(false);
+        }
       }
     });
 

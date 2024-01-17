@@ -4,9 +4,9 @@ import { pathToUrl } from "@/src/routes/router";
 import { apiRoutes } from "@/src/routes";
 
 export const fetchTestnetStatus = async (): Promise<
-  ResponseDataInterface<any>
+  ResponseDataInterface<boolean>
 > => {
-  return await httpRequest<ResponseDataInterface<any>>({
+  return await httpRequest<ResponseDataInterface<boolean>>({
     method: "post",
     url: pathToUrl(apiRoutes.getHealthStatus),
     data: { jsonrpc: "2.0", method: "obscuro_health", params: [], id: 1 },
