@@ -142,7 +142,7 @@ func (m *AccountManager) suggestSubscriptionClient(rpcReq *wecommon.RPCRequest) 
 		}
 		// return filtered clients if we found any
 		if len(filteredAccounts) > 0 {
-			return m.createClientsForAccounts(filteredAccounts, userPrivateKey)
+			accounts = filteredAccounts
 		}
 	}
 	// create clients for all accounts if we didn't find any clients that match the filter or if no topics were provided
