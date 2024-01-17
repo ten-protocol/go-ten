@@ -1,6 +1,7 @@
 package accountmanager
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,13 +9,15 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/ten-protocol/go-ten/go/common"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/subscriptions"
 
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/ten-protocol/go-ten/go/common"
 
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 
@@ -31,22 +34,27 @@ const (
 	ErrNoViewingKey = "method %s cannot be called with an unauthorised client - no signed viewing keys found"
 )
 
-// AccountManager provides a single location for code that helps wallet extension in determining the appropriate
-// account to use to send a request when multiple are registered
+// AccountManager provides a single location for code that helps the gateway in determining the appropriate
+// account to use to send a request for selected user when multiple accounts are registered
 type AccountManager struct {
-	unauthedClient rpc.Client
-	// todo (@ziga) - create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
+	userID               string
+	unauthedClient       rpc.Client
 	accountsMutex        sync.RWMutex
-	accountClients       map[gethcommon.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
+	accountClientsHTTP   map[gethcommon.Address]*rpc.EncRPCClient // An encrypted RPC http client per registered account
+	hostRPCBindAddrWS    string
 	subscriptionsManager *subscriptions.SubscriptionManager
+	storage              storage.Storage
 	logger               gethlog.Logger
 }
 
-func NewAccountManager(unauthedClient rpc.Client, logger gethlog.Logger) *AccountManager {
+func NewAccountManager(userID string, unauthedClient rpc.Client, hostRPCBindAddressWS string, storage storage.Storage, logger gethlog.Logger) *AccountManager {
 	return &AccountManager{
+		userID:               userID,
 		unauthedClient:       unauthedClient,
-		accountClients:       make(map[gethcommon.Address]*rpc.EncRPCClient),
+		accountClientsHTTP:   make(map[gethcommon.Address]*rpc.EncRPCClient),
+		hostRPCBindAddrWS:    hostRPCBindAddressWS,
 		subscriptionsManager: subscriptions.New(logger),
+		storage:              storage,
 		logger:               logger,
 	}
 }
@@ -56,8 +64,8 @@ func (m *AccountManager) GetAllAddressesWithClients() []string {
 	m.accountsMutex.RLock()
 	defer m.accountsMutex.RUnlock()
 
-	addresses := make([]string, 0, len(m.accountClients))
-	for address := range m.accountClients {
+	addresses := make([]string, 0, len(m.accountClientsHTTP))
+	for address := range m.accountClientsHTTP {
 		addresses = append(addresses, address.Hex())
 	}
 	return addresses
@@ -67,10 +75,10 @@ func (m *AccountManager) GetAllAddressesWithClients() []string {
 func (m *AccountManager) AddClient(address gethcommon.Address, client *rpc.EncRPCClient) {
 	m.accountsMutex.Lock()
 	defer m.accountsMutex.Unlock()
-	m.accountClients[address] = client
+	m.accountClientsHTTP[address] = client
 }
 
-// ProxyRequest tries to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt
+// ProxyRequest tries to identify the correct EncRPCClient to proxy the request to the Ten node, or it will attempt
 // the request with all clients until it succeeds
 func (m *AccountManager) ProxyRequest(rpcReq *wecommon.RPCRequest, rpcResp *interface{}, userConn userconn.UserConn) error {
 	// We need to handle a special case for subscribing and unsubscribing from events,
@@ -103,29 +111,51 @@ func (m *AccountManager) ProxyRequest(rpcReq *wecommon.RPCRequest, rpcResp *inte
 
 const emptyFilterCriteria = "[]" // This is the value that gets passed for an empty filter criteria.
 
-// determine the client based on the topics
-// if none is found use all clients from current user
+// suggestSubscriptionClient returns clients that should be used for the subscription request.
+// For other requests we use http clients, but for subscriptions ws clients are required, that is the reason for
+// creating ws clients here.
+// We only want to have the connections open for the duration of the subscription, so we create the clients here and
+// don't store them in the accountClients map.
 func (m *AccountManager) suggestSubscriptionClient(rpcReq *wecommon.RPCRequest) ([]rpc.Client, error) {
 	m.accountsMutex.RLock()
 	defer m.accountsMutex.RUnlock()
 
-	clients := make([]rpc.Client, 0, len(m.accountClients))
-
-	// by default, if no client is identified as a candidate, then subscribe to all accounts
-	for _, c := range m.accountClients {
-		clients = append(clients, c)
+	userIDBytes, err := wecommon.GetUserIDbyte(m.userID)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding string (%s), %w", m.userID, err)
 	}
 
-	if len(rpcReq.Params) < 2 {
-		return clients, nil
+	accounts, err := m.storage.GetAccounts(userIDBytes)
+	if err != nil {
+		return nil, fmt.Errorf("error getting accounts for user: %s, %w", m.userID, err)
 	}
 
-	// The filter is the second parameter
+	userPrivateKey, err := m.storage.GetUserPrivateKey(userIDBytes)
+	if err != nil {
+		return nil, fmt.Errorf("error getting private key for user: %s, %w", m.userID, err)
+	}
+
+	if len(rpcReq.Params) > 1 {
+		filteredAccounts, err := m.filterAccounts(rpcReq, accounts)
+		if err != nil {
+			return nil, err
+		}
+		// return filtered clients if we found any
+		if len(filteredAccounts) > 0 {
+			accounts = filteredAccounts
+		}
+	}
+	// create clients for all accounts if we didn't find any clients that match the filter or if no topics were provided
+	return m.createClientsForAccounts(accounts, userPrivateKey)
+}
+
+// filterClients checks if any of the accounts match the filter criteria and returns those accounts
+func (m *AccountManager) filterAccounts(rpcReq *wecommon.RPCRequest, accounts []wecommon.AccountDB) ([]wecommon.AccountDB, error) {
+	var filteredAccounts []wecommon.AccountDB
 	filterCriteriaJSON, err := json.Marshal(rpcReq.Params[1])
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
 	}
-
 	filterCriteria := filters.FilterCriteria{}
 	if string(filterCriteriaJSON) != emptyFilterCriteria {
 		err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
@@ -134,34 +164,43 @@ func (m *AccountManager) suggestSubscriptionClient(rpcReq *wecommon.RPCRequest) 
 		}
 	}
 
-	// Go through each topic filter and look for registered addresses
-	for i, topicCondition := range filterCriteria.Topics {
-		// the first topic is always the signature of the event, so it can't be an address
-		if i == 0 {
-			continue
-		}
+	for _, topicCondition := range filterCriteria.Topics {
 		for _, topic := range topicCondition {
 			potentialAddr := common.ExtractPotentialAddress(topic)
 			m.logger.Info(fmt.Sprintf("Potential address (%s) found for the request %s", potentialAddr, rpcReq))
 			if potentialAddr != nil {
-				cl, found := m.accountClients[*potentialAddr]
-				if found {
-					m.logger.Info("Client found for potential address: ", potentialAddr)
-					return []rpc.Client{cl}, nil
+				for _, account := range accounts {
+					// if we find a match, we append the account to the list of filtered accounts
+					if bytes.Equal(account.AccountAddress, potentialAddr.Bytes()) {
+						filteredAccounts = append(filteredAccounts, account)
+					}
 				}
-				m.logger.Info("Potential address does not have a client", potentialAddr)
 			}
 		}
 	}
 
+	return filteredAccounts, nil
+}
+
+// createClientsForAllAccounts creates ws clients for all accounts for given user and returns them
+func (m *AccountManager) createClientsForAccounts(accounts []wecommon.AccountDB, userPrivateKey []byte) ([]rpc.Client, error) {
+	clients := make([]rpc.Client, 0, len(accounts))
+	for _, account := range accounts {
+		encClient, err := wecommon.CreateEncClient(m.hostRPCBindAddrWS, account.AccountAddress, userPrivateKey, account.Signature, m.logger)
+		if err != nil {
+			m.logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
+			continue
+		}
+		clients = append(clients, encClient)
+	}
 	return clients, nil
 }
 
 func (m *AccountManager) executeCall(rpcReq *wecommon.RPCRequest, rpcResp *interface{}) error {
 	m.accountsMutex.RLock()
 	defer m.accountsMutex.RUnlock()
-	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
-	suggestedClient := m.suggestAccountClient(rpcReq, m.accountClients)
+	// for Ten RPC requests, it is important we know the sender account for the viewing key encryption/decryption
+	suggestedClient := m.suggestAccountClient(rpcReq, m.accountClientsHTTP)
 
 	switch {
 	case suggestedClient != nil: // use the suggested client if there is one
@@ -169,10 +208,10 @@ func (m *AccountManager) executeCall(rpcReq *wecommon.RPCRequest, rpcResp *inter
 		// 		The call data guessing won't often be wrong but there could be edge-cases there
 		return submitCall(suggestedClient, rpcReq, rpcResp)
 
-	case len(m.accountClients) > 0: // try registered clients until there's a successful execution
-		m.logger.Info(fmt.Sprintf("appropriate client not found, attempting request with up to %d clients", len(m.accountClients)))
+	case len(m.accountClientsHTTP) > 0: // try registered clients until there's a successful execution
+		m.logger.Info(fmt.Sprintf("appropriate client not found, attempting request with up to %d clients", len(m.accountClientsHTTP)))
 		var err error
-		for _, client := range m.accountClients {
+		for _, client := range m.accountClientsHTTP {
 			err = submitCall(client, rpcReq, rpcResp)
 			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
 				// request didn't fail, we don't need to continue trying the other clients

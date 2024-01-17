@@ -9,7 +9,7 @@ import (
 
 func TestAddingAndGettingUserAccountManagers(t *testing.T) {
 	unauthedClient, _ := rpc.NewNetworkClient("ws://test")
-	userAccountManager := NewUserAccountManager(unauthedClient, log.New(), nil, "ws://test")
+	userAccountManager := NewUserAccountManager(unauthedClient, log.New(), nil, "http://test", "ws://test")
 	userID1 := "4A6F686E20446F65"
 	userID2 := "7A65746F65A2676F"
 
@@ -50,7 +50,7 @@ func TestAddingAndGettingUserAccountManagers(t *testing.T) {
 
 func TestDeletingUserAccountManagers(t *testing.T) {
 	unauthedClient, _ := rpc.NewNetworkClient("ws://test")
-	userAccountManager := NewUserAccountManager(unauthedClient, log.New(), nil, "")
+	userAccountManager := NewUserAccountManager(unauthedClient, log.New(), nil, "", "")
 	userID := "user1"
 
 	// Add an account manager for the user
