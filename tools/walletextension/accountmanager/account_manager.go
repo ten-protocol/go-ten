@@ -136,7 +136,7 @@ func (m *AccountManager) suggestSubscriptionClient(rpcReq *wecommon.RPCRequest) 
 	}
 
 	if len(rpcReq.Params) > 1 {
-		filteredAccounts, err := m.filterAccounts(rpcReq, accounts, userPrivateKey)
+		filteredAccounts, err := m.filterAccounts(rpcReq, accounts)
 		if err != nil {
 			return nil, err
 		}
@@ -150,7 +150,7 @@ func (m *AccountManager) suggestSubscriptionClient(rpcReq *wecommon.RPCRequest) 
 }
 
 // filterClients checks if any of the accounts match the filter criteria and returns those accounts
-func (m *AccountManager) filterAccounts(rpcReq *wecommon.RPCRequest, accounts []wecommon.AccountDB, userPrivateKey []byte) ([]wecommon.AccountDB, error) {
+func (m *AccountManager) filterAccounts(rpcReq *wecommon.RPCRequest, accounts []wecommon.AccountDB) ([]wecommon.AccountDB, error) {
 	var filteredAccounts []wecommon.AccountDB
 	filterCriteriaJSON, err := json.Marshal(rpcReq.Params[1])
 	if err != nil {
