@@ -318,83 +318,38 @@ go test ./...
 ```
 
 ### Building and running a local testnet
-The testnet is constructed from docker images that have all executables built, installed and available for running. The 
-images are created from the working directory of the repository checkout. To build the images and to add them into the 
-docker images repository use;
-
-```
-./testnet/testnet-local-build_images.sh \
-&& go run ./testnet/launcher/cmd \
-&& ./testnet/start-tenscan.sh --rpcServerAddress=http://localhost:80 --receivingPort=8098
-```
-
-The above will perform all the relevant builds and ensure the images are ready for running each component. 
-Will then start each component with the alloted defaults. ~3-6 mins to complete depending on the build time. 
-
-The defaults used are:
-
-- `0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944` is the public address of the pre-funded account on the L1 network used 
-to deploy the Ten Management and the ERC20 contracts
-- `0x0654D8B60033144D567f25bF41baC1FB0D60F23B` is the public address of the pre-funded account on the L1 network used to 
-pay for Ten rollup transactions
-- `f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb` is the private key of the pre-funded 
-account on the L1 network used to deploy the Ten Management and the ERC20 contracts
-- `0x0000000000000000000000000000000000000001` is the host id of the Ten node when starting in a local mode
-- `0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF` is the address of the Ten Management contract which is known a-priori as a nonce of 0 is used 
-- `0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9` is the address of the ERC20 contract which represents TEN and is known a-priori as a nonce of 1 is used
-- `0x51D43a3Ca257584E770B6188232b199E76B022A2` is the address of the ERC20 contract which represents ETH and is known a-priori as a nonce of 2 is used
-
-Once started Tenscan is available on `http://0.0.0.0:8098`.
-
-
-### Building and running a local faucet
-Deploying and interacting with contracts on Ten requires ETH to be allocated to an account on the L2 via the faucet (or bridged across from the L1).
-The faucet image should be pulled (or optionally built from scratch), and the container built and started to allow requests to be made to it. 
-To pull the testnet faucet and run use;
-
-```
-cd tools/faucet
-docker pull testnetobscuronet.azurecr.io/obscuronet/faucet_sepolia_testnet:latest  
-./container_run.sh -image testnetobscuronet.azurecr.io/obscuronet/faucet_sepolia_testnet:latest
-```
-
-The faucet runs a web server within the container, with a port mapping of 8080 set to allow POST requests to be made to 
-it for an allocation to an externally owned addressed e.g. for the account `0x0d2166b7b3A1522186E809e83d925d7b0B6db084`
-the following curl command can be used;
+A local testnet is started from docker images that have all executables built, installed and available for running. 
+The images are created from the base directory of the go-ten repository; to build the images and start all required 
+components clone the repository and use the below;
 
 ```bash
-curl --location --request POST 'http://127.0.0.1:8080/fund/eth' \
---header 'Content-Type: application/json' \
---data-raw '{ "address":"0x0d2166b7b3A1522186E809e83d925d7b0B6db084" }'
+cd go-ten
+./testnet/testnet-local-build_images.sh 
+go run ./testnet/launcher/cmd 
 ```
 
+The network is started running both a sequencer and a validator node (SGX simulated). It will also start a faucet server 
+to fund accounts on the network, and a local instance of the Ten Gateway to mediate connections to the network. The 
+faucet server is started on `http://127.0.0.1:99` and the gateway on `http://127.0.0.1:3000`. To request funds for a 
+given account use the below command;
 
-### Deploying contracts into a local testnet
-Deploying and interacting with contracts on Ten requires the wallet extension to be running. The wallet extension is 
-the Ten component that ensures that sensitive information in RPC requests between client applications and Ten 
-cannot be seen by third parties. The wallet extension should be run local to the client application and is described in 
-more detail at [docs/wallet-extension/wallet-extension.md](docs/wallet-extension/wallet-extension.md).
-
-To start the wallet extension to run against a local testnet, in the go-ten repo use the below;
-
-```
-cd ./tools/walletextension/main/
-go build -o wallet_extension 
-./wallet_extension -nodeHost 127.0.0.1 -nodePortHTTP 80 -nodePortWS 81
+```bash
+curl --location --request POST 'http://127.0.0.1:99/fund/eth' --header 'Content-Type: application/json' \
+--data-raw '{ "address":"<address>" }'
 ```
 
-Once the wallet extension is running, a contract can be deployed and interacted with either manually using Metamask and 
-Remix (see[docs/testnet/deploying-a-smart-contract.md](docs/testnet/deploying-a-smart-contract.md)) or programmatically 
-e.g. using web3.py(see [docs/testnet/deploying-a-smart-contract-programmatically.md](docs/testnet/deploying-a-smart-contract-programmatically.md)). 
+Note that relevant contract addresses on the network are as below;
 
-Note that in order to interact with the main cloud hosted testnet, all that needs to be changed is to start the wallet 
-extension using the default parameters, where the `nodeHost` will default to the testnet host URL `erpc.sepolia-testnet.ten.xyz` i.e. 
+| Name                          | Address                                      | 
+|-------------------------------|----------------------------------------------|
+| L1ManagementAddress           | `0x51D43a3Ca257584E770B6188232b199E76B022A2` | 
+| L1BridgeAddress               | `0x19e98b050662b49D6AbDFBe2467016430197BA90` | 
+| L1MessageBusAddress           | `0xDaBD89EEA0f08B602Ec509c3C608Cb8ED095249C` | 
+| L1CrossChainMessengerAddress  | `0x16f41E9960da7C28F2c6d86284d2E1B26C82a184` |
+| L2BridgeAddress               | `0x1e553a8b477FaBaA664e2372FBc2C6Ce52A14E74` | 
+| L2MessageBusAddress           | `0x526c84529B2b8c11F57D93d3f5537aCA3AeCEf9B` | 
+| L2CrossChainMessengerAddress  | `0x3A8F3d0Eb8dA18da9e7Eb0DE1BC35d62B87c2eD4` |
 
-```
-cd ./tools/walletextension/main/
-go build -o wallet_extension 
-./wallet_extension 
-```
 
 ## Community 
 
