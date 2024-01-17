@@ -248,11 +248,9 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with encryption token: %s\n", user0.tgClient.UserID())
 
 	user1, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with encryption token: %s\n", user0.tgClient.UserID())
 
 	// register all the accounts for that user
 	err = user0.RegisterAccounts()
