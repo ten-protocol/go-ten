@@ -29,7 +29,6 @@ const HealthIndicator = () => {
 
     testnetStatus().then((res) => {
       if (isMounted) {
-        // setStatus(res?.result?.OverallHealth);
         if (res?.result?.OverallHealth) {
           setStatus(true);
         } else if (res?.result?.Errors?.includes("[p2p]")) {
