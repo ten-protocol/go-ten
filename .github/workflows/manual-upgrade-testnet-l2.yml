@@ -106,24 +106,34 @@ jobs:
             host_id: 0
           - is_genesis: false
             host_id: 1
+          - is_genesis: false
+            host_id: 2
           # Ensure there is a single sequencer
           - node_type: sequencer
             host_id: 0
           - node_type: validator
             host_id: 1
+          - node_type: validator
+            host_id: 2
           # Hardcoded lookup keys because GH actions doesn't let you build them inline with the host_id
           - node_pk_lookup: ACCOUNT_PK_NODE_0
             host_id: 0
           - node_pk_lookup: ACCOUNT_PK_NODE_1
             host_id: 1
+          - node_pk_lookup: ACCOUNT_PK_NODE_2
+            host_id: 2
           - node_addr_lookup: ACCOUNT_ADDR_NODE_0
             host_id: 0
           - node_addr_lookup: ACCOUNT_ADDR_NODE_1
             host_id: 1
+          - node_addr_lookup: ACCOUNT_ADDR_NODE_2
+            host_id: 2
           - node_l1_ws_lookup: L1_WS_URL_0
             host_id: 0
           - node_l1_ws_lookup: L1_WS_URL_1
             host_id: 1
+          - node_l1_ws_lookup: L1_WS_URL_2
+            host_id: 2
 
     steps:
       - name: 'Extract branch name'
