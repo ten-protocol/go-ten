@@ -264,7 +264,6 @@ func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet
 	// Transfer some funds to user1 to be able to make transactions
 	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user1.Wallets[0].Address(), amountToTransfer)
 	require.NoError(t, err)
-	time.Sleep(5 * time.Second)
 	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user1.Wallets[1].Address(), amountToTransfer)
 	require.NoError(t, err)
 
