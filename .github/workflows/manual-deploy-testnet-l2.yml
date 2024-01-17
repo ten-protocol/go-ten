@@ -135,6 +135,8 @@ jobs:
             host_id: 0
           - is_genesis: false
             host_id: 1
+          - is_genesis: false
+            host_id: 2
           # Ensure there is a single sequencer
           - node_type: sequencer
             host_id: 0
