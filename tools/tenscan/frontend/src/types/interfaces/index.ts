@@ -57,6 +57,7 @@ export interface PaginationInterface {
 
 export interface ResponseDataInterface<T> {
   result: T;
+  errors?: string[] | string;
   item: T;
   message: string;
   pagination?: PaginationInterface;

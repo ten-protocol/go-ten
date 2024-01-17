@@ -12,6 +12,7 @@ const HealthIndicator = () => {
     setLoading(true);
     try {
       const status = await getTestnetStatus();
+
       return status;
     } catch (error) {
       console.error(error);
@@ -20,18 +21,26 @@ const HealthIndicator = () => {
     }
   };
 
-  // using useRef to avoid memory leak
-  let isMounted = React.useRef(true);
-
   useEffect(() => {
+    let isMounted = true;
+
+    // if overall health is true, status is set to true
+    // if overall health is false but if the error includes [p2p], status is set to true
+
     testnetStatus().then((res) => {
-      if (isMounted.current) {
-        setStatus(res?.result);
+      if (isMounted) {
+        if (res?.result?.OverallHealth) {
+          setStatus(true);
+        } else if (res?.result?.Errors?.includes("[p2p]")) {
+          setStatus(true);
+        } else {
+          setStatus(false);
+        }
       }
     });
 
     return () => {
-      isMounted.current = false;
+      isMounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
