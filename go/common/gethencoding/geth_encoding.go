@@ -1,13 +1,25 @@
 package gethencoding
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
+	"sync/atomic"
+	"time"
+	"unsafe"
+
+	"github.com/ethereum/go-ethereum/rlp"
+
+	"github.com/allegro/bigcache/v3"
+	"github.com/eko/gocache/lib/v4/cache"
+	bigcache_store "github.com/eko/gocache/store/bigcache/v4"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
@@ -32,6 +44,40 @@ const (
 	callFieldMaxFeePerGas         = "maxfeepergas"
 	callFieldMaxPriorityFeePerGas = "maxpriorityfeepergas"
 )
+
+// EncodingService handles conversion to Geth data structures
+type EncodingService interface {
+	CreateEthHeaderForBatch(h *common.BatchHeader) (*types.Header, error)
+	CreateEthBlockFromBatch(b *core.Batch) (*types.Block, error)
+}
+
+type gethEncodingServiceImpl struct {
+	convertedCache *cache.Cache[[]byte]
+
+	// small converted cache
+	storage storage.Storage
+	logger  gethlog.Logger
+}
+
+func NewGethEncodingService(storage storage.Storage, logger gethlog.Logger) EncodingService {
+	// todo (tudor) figure out the context and the config
+	cfg := bigcache.DefaultConfig(2 * time.Minute)
+	cfg.Shards = 512
+	// 1GB cache. Max value in a shard is 2MB. No batch or block should be larger than that
+	cfg.HardMaxCacheSize = cfg.Shards * 4
+	bigcacheClient, err := bigcache.New(context.Background(), cfg)
+	if err != nil {
+		logger.Crit("Could not initialise bigcache", log.ErrKey, err)
+	}
+
+	bigcacheStore := bigcache_store.NewBigcache(bigcacheClient)
+
+	return &gethEncodingServiceImpl{
+		convertedCache: cache.New[[]byte](bigcacheStore),
+		storage:        storage,
+		logger:         logger,
+	}
+}
 
 // ExtractEthCallMapString extracts the eth_call gethapi.TransactionArgs from an interface{}
 // it ensures that :
@@ -228,39 +274,114 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 
 // CreateEthHeaderForBatch - the EVM requires an Ethereum "block" header.
 // In this function we are creating one from the Batch Header
-func CreateEthHeaderForBatch(h *common.BatchHeader, secret []byte) (*types.Header, error) {
-	// deterministically calculate private randomness that will be exposed to the evm
-	randomness := crypto.CalculateRootBatchEntropy(secret, h.Number)
+func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(h *common.BatchHeader) (*types.Header, error) {
+	// todo - cache only when there is some "final" arg
+	value, err := enc.convertedCache.Get(context.Background(), h.Hash())
+	if err == nil {
+		v := new(types.Header)
+		err = rlp.DecodeBytes(value, v)
+		if err != nil {
+			enc.logger.Error("Failed reading from the cache", log.ErrKey, err)
+		}
+		return v, err
+	}
+
+	// deterministically calculate the private randomness that will be exposed to the evm
+	secret, err := enc.storage.FetchSecret()
+	if err != nil {
+		enc.logger.Crit("Could not fetch shared secret. Exiting.", log.ErrKey, err)
+	}
+	randomness := crypto.CalculateRootBatchEntropy(secret[:], h.Number)
+
+	// calculate the converted hash of the parent, for a correct converted chain
+	convertedParentHash := gethcommon.Hash{}
+
+	// handle genesis
+	if h.SequencerOrderNo.Uint64() > common.L2GenesisSeqNo {
+		convertedParentHash, err = enc.storage.FetchConvertedHash(h.ParentHash)
+		if err != nil {
+			enc.logger.Error("Cannot find the converted value for the parent of", log.BatchSeqNoKey, h.SequencerOrderNo)
+			return nil, err
+		}
+	}
 
 	baseFee := uint64(0)
 	if h.BaseFee != nil {
 		baseFee = h.BaseFee.Uint64()
 	}
 
-	return &types.Header{
-		ParentHash:  h.ParentHash,
-		Root:        h.Root,
-		TxHash:      h.TxHash,
-		ReceiptHash: h.ReceiptHash,
-		Difficulty:  big.NewInt(0),
-		Number:      h.Number,
-		GasLimit:    h.GasLimit,
-		GasUsed:     h.GasUsed,
-		BaseFee:     big.NewInt(0).SetUint64(baseFee),
-		Coinbase:    h.Coinbase,
-		Time:        h.Time,
-		MixDigest:   randomness,
-		Nonce:       types.BlockNonce{},
-	}, nil
+	gethHeader := types.Header{
+		ParentHash:      convertedParentHash,
+		UncleHash:       gethcommon.Hash{},
+		Root:            h.Root,
+		TxHash:          h.TxHash,
+		ReceiptHash:     h.ReceiptHash,
+		Difficulty:      big.NewInt(0),
+		Number:          h.Number,
+		GasLimit:        h.GasLimit,
+		GasUsed:         h.GasUsed,
+		BaseFee:         big.NewInt(0).SetUint64(baseFee),
+		Coinbase:        h.Coinbase,
+		Time:            h.Time,
+		MixDigest:       randomness,
+		Nonce:           types.BlockNonce{},
+		Extra:           h.SequencerOrderNo.Bytes(),
+		WithdrawalsHash: nil,
+		BlobGasUsed:     nil,
+		ExcessBlobGas:   nil,
+		Bloom:           types.Bloom{},
+	}
+
+	// cache value
+	encoded, err := rlp.EncodeToBytes(&gethHeader)
+	if err != nil {
+		enc.logger.Error("Could not encode value to store in cache", log.ErrKey, err)
+		return nil, err
+	}
+	err = enc.convertedCache.Set(context.Background(), h.Hash(), encoded)
+	if err != nil {
+		enc.logger.Error("Could not store value in cache", log.ErrKey, err)
+	}
+
+	return &gethHeader, nil
 }
 
-func CreateEthBlockFromBatch(b *core.Batch) (*types.Block, error) {
-	blockHeader, err := CreateEthHeaderForBatch(b.Header, nil)
+// this type is needed for accessing the internals
+type localBlock struct {
+	header       *types.Header
+	uncles       []*types.Header
+	transactions types.Transactions
+	withdrawals  types.Withdrawals
+
+	// caches
+	hash atomic.Value
+	size atomic.Value
+
+	// These fields are used by package eth to track
+	// inter-peer block relay.
+	ReceivedAt   time.Time
+	ReceivedFrom interface{}
+}
+
+func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(b *core.Batch) (*types.Block, error) {
+	blockHeader, err := enc.CreateEthHeaderForBatch(b.Header)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create eth block from batch - %w", err)
 	}
 
-	return types.NewBlock(blockHeader, b.Transactions, nil, nil, trie.NewStackTrie(nil)), nil
+	//block := types.NewBlock(blockHeader, b.Transactions, nil, nil, trie.NewStackTrie(nil))
+	//
+	//localBlock := *(*localBlock)(unsafe.Pointer(&block))
+	//localBlock.header = blockHeader
+
+	lb := localBlock{
+		header:       blockHeader,
+		uncles:       nil,
+		transactions: b.Transactions,
+		withdrawals:  nil,
+	}
+	block := *(*types.Block)(unsafe.Pointer(&lb))
+	return &block, nil
 }
 
 // DecodeParamBytes decodes the parameters byte array into a slice of interfaces

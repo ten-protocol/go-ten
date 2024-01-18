@@ -25,7 +25,7 @@ const (
 	txInsert      = "replace into tx values "
 	txInsertValue = "(?,?,?,?,?,?,?)"
 
-	bInsert             = "insert into batch values (?,?,?,?,?,?,?,?,?,?,?)"
+	batchInsert         = "insert into batch values (?,?,?,?,?,?,?,?,?,?,?)"
 	updateBatchExecuted = "update batch set is_executed=true where sequence=?"
 
 	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.id"
@@ -49,7 +49,7 @@ const (
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
-func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
+func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch, convertedHash gethcommon.Hash) error {
 	// todo - optimize for reorgs
 	batchBodyID := batch.SeqNo().Uint64()
 
@@ -77,10 +77,10 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 		isCanon = false
 	}
 
-	dbtx.ExecuteSQL(bInsert,
+	dbtx.ExecuteSQL(batchInsert,
 		batch.Header.SequencerOrderNo.Uint64(), // sequence
 		batch.Hash(),                           // full hash
-		batch.Hash(),                           // converted_hash - todo
+		convertedHash,                          // converted_hash
 		truncTo16(batch.Hash()),                // index hash
 		parentBytes,                            // parent
 		batch.Header.Number.Uint64(),           // height
@@ -545,4 +545,19 @@ func GetPublicTransactionCount(db *sql.DB) (uint64, error) {
 	}
 
 	return count, nil
+}
+
+func FetchConvertedBatchHash(db *sql.DB, seqNo uint64) (gethcommon.Hash, error) {
+	var hash []byte
+
+	query := "select converted_hash from batch where sequence=?"
+	err := db.QueryRow(query, seqNo).Scan(&hash)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return gethcommon.Hash{}, errutil.ErrNotFound
+		}
+		return gethcommon.Hash{}, err
+	}
+	return gethcommon.BytesToHash(hash), nil
 }

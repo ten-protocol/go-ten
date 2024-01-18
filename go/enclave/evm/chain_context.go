@@ -16,15 +16,17 @@ import (
 
 // ObscuroChainContext - basic implementation of the ChainContext needed for the EVM integration
 type ObscuroChainContext struct {
-	storage storage.Storage
-	logger  gethlog.Logger
+	storage             storage.Storage
+	gethEncodingService gethencoding.EncodingService
+	logger              gethlog.Logger
 }
 
 // NewObscuroChainContext returns a new instance of the ObscuroChainContext given a storage ( and logger )
-func NewObscuroChainContext(storage storage.Storage, logger gethlog.Logger) *ObscuroChainContext {
+func NewObscuroChainContext(storage storage.Storage, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger) *ObscuroChainContext {
 	return &ObscuroChainContext{
-		storage: storage,
-		logger:  logger,
+		storage:             storage,
+		gethEncodingService: gethEncodingService,
+		logger:              logger,
 	}
 }
 
@@ -41,7 +43,7 @@ func (occ *ObscuroChainContext) GetHeader(hash common.Hash, _ uint64) *types.Hea
 		occ.logger.Crit("Could not retrieve rollup", log.ErrKey, err)
 	}
 
-	h, err := gethencoding.CreateEthHeaderForBatch(batch.Header, secret(occ.storage))
+	h, err := occ.gethEncodingService.CreateEthHeaderForBatch(batch.Header)
 	if err != nil {
 		occ.logger.Crit("Could not convert to eth header", log.ErrKey, err)
 		return nil

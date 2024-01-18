@@ -57,6 +57,8 @@ type storageImpl struct {
 	// to fetch a batch by hash will require 2 cache hits
 	batchCache *cache.Cache[[]byte]
 
+	cachedSharedSecret *crypto.SharedEnclaveSecret
+
 	stateDB     state.Database
 	chainConfig *params.ChainConfig
 	logger      gethlog.Logger
@@ -142,6 +144,22 @@ func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
 	return s.FetchBatchBySeqNo(seqNo.Uint64())
 }
 
+func (s *storageImpl) FetchConvertedHash(hash common.L2BatchHash) (gethcommon.Hash, error) {
+	defer s.logDuration("FetchConvertedHash", measure.NewStopwatch())
+	seqNo, err := getCachedValue(s.batchCache, s.logger, hash, func(v any) (*big.Int, error) {
+		batch, err := enclavedb.ReadBatchByHash(s.db.GetSQLDB(), v.(common.L2BatchHash))
+		if err != nil {
+			return nil, err
+		}
+		cacheValue(s.batchCache, s.logger, batch.SeqNo(), batch)
+		return batch.SeqNo(), nil
+	})
+	if err != nil {
+		return gethcommon.Hash{}, err
+	}
+	return enclavedb.FetchConvertedBatchHash(s.db.GetSQLDB(), seqNo.Uint64())
+}
+
 func (s *storageImpl) FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHeader, error) {
 	defer s.logDuration("FetchBatchHeader", measure.NewStopwatch())
 	b, err := s.FetchBatch(hash)
@@ -221,6 +239,11 @@ func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {
 
 func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
 	defer s.logDuration("FetchSecret", measure.NewStopwatch())
+
+	if s.cachedSharedSecret != nil {
+		return s.cachedSharedSecret, nil
+	}
+
 	var ss crypto.SharedEnclaveSecret
 
 	cfg, err := enclavedb.FetchConfig(s.db.GetSQLDB(), masterSeedCfg)
@@ -231,7 +254,8 @@ func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
 		return nil, fmt.Errorf("could not decode shared secret")
 	}
 
-	return &ss, nil
+	s.cachedSharedSecret = &ss
+	return s.cachedSharedSecret, nil
 }
 
 func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block) bool {
@@ -359,7 +383,7 @@ func (s *storageImpl) FetchBatchesByBlock(block common.L1BlockHash) ([]*core.Bat
 	return enclavedb.ReadBatchesByBlock(s.db.GetSQLDB(), block)
 }
 
-func (s *storageImpl) StoreBatch(batch *core.Batch) error {
+func (s *storageImpl) StoreBatch(batch *core.Batch, convertedHash gethcommon.Hash) error {
 	defer s.logDuration("StoreBatch", measure.NewStopwatch())
 	// sanity check that this is not overlapping
 	existingBatchWithSameSequence, _ := s.FetchBatchBySeqNo(batch.SeqNo().Uint64())
@@ -376,9 +400,8 @@ func (s *storageImpl) StoreBatch(batch *core.Batch) error {
 
 	dbTx := s.db.NewDBTransaction()
 	s.logger.Trace("write batch", log.BatchHashKey, batch.Hash(), "l1Proof", batch.Header.L1Proof, log.BatchSeqNoKey, batch.SeqNo())
-	// todo - read converted hash of parent
 
-	if err := enclavedb.WriteBatchAndTransactions(dbTx, batch); err != nil {
+	if err := enclavedb.WriteBatchAndTransactions(dbTx, batch, convertedHash); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
 
@@ -390,8 +413,6 @@ func (s *storageImpl) StoreBatch(batch *core.Batch) error {
 	cacheValue(s.batchCache, s.logger, batch.Hash(), batch.SeqNo())
 	return nil
 }
-
-//func (s *storageImpl) readConvertedHash(batchHash )
 
 func (s *storageImpl) StoreExecutedBatch(batch *core.Batch, receipts []*types.Receipt) error {
 	defer s.logDuration("StoreExecutedBatch", measure.NewStopwatch())

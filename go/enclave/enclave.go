@@ -89,6 +89,7 @@ type enclaveImpl struct {
 
 	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
+	gethEncodingService    gethencoding.EncodingService
 	profiler               *profiler.Profiler
 	debugger               *debugger.Debugger
 	logger                 gethlog.Logger
@@ -171,6 +172,7 @@ func NewEnclave(
 	obscuroKey := crypto.GetObscuroKey(logger)
 	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey))
 
+	gethEncodingService := gethencoding.NewGethEncodingService(storage, logger)
 	dataEncryptionService := crypto.NewDataEncryptionService(logger)
 	dataCompressionService := compression.NewBrotliDataCompressionService()
 
@@ -180,18 +182,18 @@ func NewEnclave(
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
+	batchExecutor := components.NewBatchExecutor(storage, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	registry := components.NewBatchRegistry(storage, logger)
 	rProducer := components.NewRollupProducer(config.SequencerID, storage, registry, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
-	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, chainConfig, logger)
+	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, storage, logger)
 
-	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, logger)
+	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, gethEncodingService, logger)
 	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
@@ -206,6 +208,7 @@ func NewEnclave(
 			rProducer,
 			rConsumer,
 			rollupCompression,
+			gethEncodingService,
 			logger,
 			config.HostID,
 			chainConfig,
@@ -229,6 +232,7 @@ func NewEnclave(
 
 	chain := l2chain.NewChain(
 		storage,
+		gethEncodingService,
 		chainConfig,
 		genesis,
 		logger,
@@ -263,6 +267,7 @@ func NewEnclave(
 		enclavePubKey:          serializedEnclavePubKey,
 		dataEncryptionService:  dataEncryptionService,
 		dataCompressionService: dataCompressionService,
+		gethEncodingService:    gethEncodingService,
 		profiler:               prof,
 		logger:                 logger,
 		debugger:               debug,
@@ -539,9 +544,13 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
+	convertedHeader, err := e.gethEncodingService.CreateEthHeaderForBatch(extBatch.Header)
+	if err != nil {
+		return err
+	}
 
 	// if the signature is valid, then store the batch
-	err = e.storage.StoreBatch(batch)
+	err = e.storage.StoreBatch(batch, convertedHeader.Hash())
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not store batch. Cause: %w", err))
 	}

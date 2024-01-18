@@ -3,7 +3,7 @@ package ethchainadapter
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/txpool/legacypool"
 	"github.com/ethereum/go-ethereum/event"
@@ -23,17 +23,19 @@ import (
 type EthChainAdapter struct {
 	newHeadChan   chan gethcore.ChainHeadEvent
 	batchRegistry components.BatchRegistry
+	gethEncoding  gethencoding.EncodingService
 	storage       storage.Storage
 	chainID       *big.Int
 	logger        gethlog.Logger
 }
 
 // NewEthChainAdapter returns a new instance
-func NewEthChainAdapter(chainID *big.Int, batchRegistry components.BatchRegistry, storage storage.Storage, logger gethlog.Logger) *EthChainAdapter {
+func NewEthChainAdapter(chainID *big.Int, batchRegistry components.BatchRegistry, storage storage.Storage, gethEncoding gethencoding.EncodingService, logger gethlog.Logger) *EthChainAdapter {
 	return &EthChainAdapter{
 		newHeadChan:   make(chan gethcore.ChainHeadEvent),
 		batchRegistry: batchRegistry,
 		storage:       storage,
+		gethEncoding:  gethEncoding,
 		chainID:       chainID,
 		logger:        logger,
 	}
@@ -52,10 +54,10 @@ func (e *EthChainAdapter) CurrentBlock() *gethtypes.Header {
 	}
 	currentBatch, err := e.storage.FetchBatchBySeqNo(currentBatchSeqNo.Uint64())
 	if err != nil {
-		e.logger.Warn("unable to retrieve batch seq no: %d", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
+		e.logger.Warn("unable to retrieve batch seq no", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
 		return nil
 	}
-	batch, err := gethencoding.CreateEthHeaderForBatch(currentBatch.Header, secret(e.storage))
+	batch, err := e.gethEncoding.CreateEthHeaderForBatch(currentBatch.Header)
 	if err != nil {
 		e.logger.Warn("unable to convert batch to eth header ", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
 		return nil
@@ -81,7 +83,7 @@ func (e *EthChainAdapter) SubscribeChainHeadEvent(ch chan<- gethcore.ChainHeadEv
 }
 
 // GetBlock retrieves a specific block, used during pool resets.
-func (e *EthChainAdapter) GetBlock(_ common.Hash, number uint64) *gethtypes.Block {
+func (e *EthChainAdapter) GetBlock(_ gethcommon.Hash, number uint64) *gethtypes.Block {
 	var batch *core.Batch
 
 	// to avoid a costly select to the db, check whether the batches requested are the last ones which are cached
@@ -106,7 +108,7 @@ func (e *EthChainAdapter) GetBlock(_ common.Hash, number uint64) *gethtypes.Bloc
 		}
 	}
 
-	nfromBatch, err := gethencoding.CreateEthBlockFromBatch(batch)
+	nfromBatch, err := e.gethEncoding.CreateEthBlockFromBatch(batch)
 	if err != nil {
 		e.logger.Error("unable to convert batch to eth block", log.ErrKey, err)
 		return nil
@@ -116,7 +118,7 @@ func (e *EthChainAdapter) GetBlock(_ common.Hash, number uint64) *gethtypes.Bloc
 }
 
 // StateAt returns a state database for a given root hash (generally the head).
-func (e *EthChainAdapter) StateAt(root common.Hash) (*state.StateDB, error) {
+func (e *EthChainAdapter) StateAt(root gethcommon.Hash) (*state.StateDB, error) {
 	if root.Hex() == gethtypes.EmptyCodeHash.Hex() {
 		return nil, nil //nolint:nilnil
 	}
@@ -125,7 +127,7 @@ func (e *EthChainAdapter) StateAt(root common.Hash) (*state.StateDB, error) {
 }
 
 func (e *EthChainAdapter) IngestNewBlock(batch *core.Batch) error {
-	convertedBlock, err := gethencoding.CreateEthBlockFromBatch(batch)
+	convertedBlock, err := e.gethEncoding.CreateEthBlockFromBatch(batch)
 	if err != nil {
 		return err
 	}
@@ -151,10 +153,4 @@ func NewLegacyPoolConfig() legacypool.Config {
 		GlobalQueue:  legacypool.DefaultConfig.GlobalQueue,
 		Lifetime:     legacypool.DefaultConfig.Lifetime,
 	}
-}
-
-func secret(storage storage.Storage) []byte {
-	// todo (#1053) - handle secret not being found.
-	secret, _ := storage.FetchSecret()
-	return secret[:]
 }
