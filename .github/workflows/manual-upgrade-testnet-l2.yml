@@ -99,7 +99,7 @@ jobs:
 
     strategy:
       matrix:
-        host_id: [ 0,1 ]
+        host_id: [ 0,1,2 ]
         include:
           # Ensure there is a single genesis node
           - is_genesis: true
