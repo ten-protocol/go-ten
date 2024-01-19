@@ -1,7 +1,6 @@
 package gethencoding
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -10,11 +9,10 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/ethereum/go-ethereum/rlp"
-
-	"github.com/allegro/bigcache/v3"
+	"github.com/dgraph-io/ristretto"
 	"github.com/eko/gocache/lib/v4/cache"
-	bigcache_store "github.com/eko/gocache/store/bigcache/v4"
+	ristretto_store "github.com/eko/gocache/store/ristretto/v4"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -52,7 +50,7 @@ type EncodingService interface {
 }
 
 type gethEncodingServiceImpl struct {
-	convertedCache *cache.Cache[[]byte]
+	convertedCache *cache.Cache[*types.Header]
 
 	// small converted cache
 	storage storage.Storage
@@ -61,19 +59,18 @@ type gethEncodingServiceImpl struct {
 
 func NewGethEncodingService(storage storage.Storage, logger gethlog.Logger) EncodingService {
 	// todo (tudor) figure out the context and the config
-	cfg := bigcache.DefaultConfig(2 * time.Minute)
-	cfg.Shards = 512
-	// 1GB cache. Max value in a shard is 2MB. No batch or block should be larger than that
-	cfg.HardMaxCacheSize = cfg.Shards * 4
-	bigcacheClient, err := bigcache.New(context.Background(), cfg)
+	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1000,    // number of keys to track frequency of 100.
+		MaxCost:     1 << 28, // maximum cost of cache (256MB).
+		BufferItems: 64,      // number of keys per Get buffer.
+	})
 	if err != nil {
-		logger.Crit("Could not initialise bigcache", log.ErrKey, err)
+		panic(err)
 	}
-
-	bigcacheStore := bigcache_store.NewBigcache(bigcacheClient)
+	ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
 
 	return &gethEncodingServiceImpl{
-		convertedCache: cache.New[[]byte](bigcacheStore),
+		convertedCache: cache.New[*types.Header](ristrettoStore),
 		storage:        storage,
 		logger:         logger,
 	}
@@ -275,75 +272,54 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 // CreateEthHeaderForBatch - the EVM requires an Ethereum "block" header.
 // In this function we are creating one from the Batch Header
 func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(h *common.BatchHeader) (*types.Header, error) {
-	// todo - cache only when there is some "final" arg
-	value, err := enc.convertedCache.Get(context.Background(), h.Hash())
-	if err == nil {
-		v := new(types.Header)
-		err = rlp.DecodeBytes(value, v)
+	return common.GetCachedValue(enc.convertedCache, enc.logger, h.Hash(), func(a any) (*types.Header, error) {
+		// deterministically calculate the private randomness that will be exposed to the evm
+		secret, err := enc.storage.FetchSecret()
 		if err != nil {
-			enc.logger.Error("Failed reading from the cache", log.ErrKey, err)
+			enc.logger.Crit("Could not fetch shared secret. Exiting.", log.ErrKey, err)
 		}
-		return v, err
-	}
+		randomness := crypto.CalculateRootBatchEntropy(secret[:], h.Number)
 
-	// deterministically calculate the private randomness that will be exposed to the evm
-	secret, err := enc.storage.FetchSecret()
-	if err != nil {
-		enc.logger.Crit("Could not fetch shared secret. Exiting.", log.ErrKey, err)
-	}
-	randomness := crypto.CalculateRootBatchEntropy(secret[:], h.Number)
+		// calculate the converted hash of the parent, for a correct converted chain
+		convertedParentHash := gethcommon.Hash{}
 
-	// calculate the converted hash of the parent, for a correct converted chain
-	convertedParentHash := gethcommon.Hash{}
-
-	// handle genesis
-	if h.SequencerOrderNo.Uint64() > common.L2GenesisSeqNo {
-		convertedParentHash, err = enc.storage.FetchConvertedHash(h.ParentHash)
-		if err != nil {
-			enc.logger.Error("Cannot find the converted value for the parent of", log.BatchSeqNoKey, h.SequencerOrderNo)
-			return nil, err
+		// handle genesis
+		if h.SequencerOrderNo.Uint64() > common.L2GenesisSeqNo {
+			convertedParentHash, err = enc.storage.FetchConvertedHash(h.ParentHash)
+			if err != nil {
+				enc.logger.Error("Cannot find the converted value for the parent of", log.BatchSeqNoKey, h.SequencerOrderNo)
+				return nil, err
+			}
 		}
-	}
 
-	baseFee := uint64(0)
-	if h.BaseFee != nil {
-		baseFee = h.BaseFee.Uint64()
-	}
+		baseFee := uint64(0)
+		if h.BaseFee != nil {
+			baseFee = h.BaseFee.Uint64()
+		}
 
-	gethHeader := types.Header{
-		ParentHash:      convertedParentHash,
-		UncleHash:       gethcommon.Hash{},
-		Root:            h.Root,
-		TxHash:          h.TxHash,
-		ReceiptHash:     h.ReceiptHash,
-		Difficulty:      big.NewInt(0),
-		Number:          h.Number,
-		GasLimit:        h.GasLimit,
-		GasUsed:         h.GasUsed,
-		BaseFee:         big.NewInt(0).SetUint64(baseFee),
-		Coinbase:        h.Coinbase,
-		Time:            h.Time,
-		MixDigest:       randomness,
-		Nonce:           types.BlockNonce{},
-		Extra:           h.SequencerOrderNo.Bytes(),
-		WithdrawalsHash: nil,
-		BlobGasUsed:     nil,
-		ExcessBlobGas:   nil,
-		Bloom:           types.Bloom{},
-	}
-
-	// cache value
-	encoded, err := rlp.EncodeToBytes(&gethHeader)
-	if err != nil {
-		enc.logger.Error("Could not encode value to store in cache", log.ErrKey, err)
-		return nil, err
-	}
-	err = enc.convertedCache.Set(context.Background(), h.Hash(), encoded)
-	if err != nil {
-		enc.logger.Error("Could not store value in cache", log.ErrKey, err)
-	}
-
-	return &gethHeader, nil
+		gethHeader := types.Header{
+			ParentHash:      convertedParentHash,
+			UncleHash:       gethcommon.Hash{},
+			Root:            h.Root,
+			TxHash:          h.TxHash,
+			ReceiptHash:     h.ReceiptHash,
+			Difficulty:      big.NewInt(0),
+			Number:          h.Number,
+			GasLimit:        h.GasLimit,
+			GasUsed:         h.GasUsed,
+			BaseFee:         big.NewInt(0).SetUint64(baseFee),
+			Coinbase:        h.Coinbase,
+			Time:            h.Time,
+			MixDigest:       randomness,
+			Nonce:           types.BlockNonce{},
+			Extra:           h.SequencerOrderNo.Bytes(),
+			WithdrawalsHash: nil,
+			BlobGasUsed:     nil,
+			ExcessBlobGas:   nil,
+			Bloom:           types.Bloom{},
+		}
+		return &gethHeader, nil
+	})
 }
 
 // this type is needed for accessing the internals

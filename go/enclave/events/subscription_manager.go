@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/ten-protocol/go-ten/go/common/log"
+
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -153,7 +155,7 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, recei
 			if relevant {
 				relevantLogsForSub = append(relevantLogsForSub, logItem)
 			}
-			s.logger.Debug(fmt.Sprintf("Subscription %s. Account %s. Log %v. Extracted addresses: %v. Relevant: %t", id, sub.Account, logItem, userAddrs, relevant))
+			s.logger.Debug("Subscription", log.SubIDKey, id, "acc", sub.Account, "log", logItem, "extr_addr", userAddrs, "relev", relevant)
 		}
 		if len(relevantLogsForSub) > 0 {
 			relevantLogsPerSubscription[id] = relevantLogsForSub
@@ -239,21 +241,21 @@ func filterLogs(logs []*types.Log, fromBlock, toBlock *big.Int, addresses []geth
 Logs:
 	for _, logItem := range logs {
 		if fromBlock != nil && fromBlock.Int64() >= 0 && fromBlock.Uint64() > logItem.BlockNumber {
-			logger.Debug(fmt.Sprintf("Skipping log = %v", logItem), "reason", "In the past. The starting block num for filter is bigger than log")
+			logger.Debug("Skipping log ", "log", logItem, "reason", "In the past. The starting block num for filter is bigger than log")
 			continue
 		}
 		if toBlock != nil && toBlock.Int64() > 0 && toBlock.Uint64() < logItem.BlockNumber {
-			logger.Debug(fmt.Sprintf("Skipping log = %v", logItem), "reason", "In the future. The ending block num for filter is smaller than log")
+			logger.Debug("Skipping log ", "log", logItem, "reason", "In the future. The ending block num for filter is smaller than log")
 			continue
 		}
 
 		if len(addresses) > 0 && !includes(addresses, logItem.Address) {
-			logger.Debug(fmt.Sprintf("Skipping log = %v", logItem), "reason", "The contract address of the log is not an address of interest")
+			logger.Debug("Skipping log ", "log", logItem, "reason", "The contract address of the log is not an address of interest")
 			continue
 		}
 		// If the to filtered topics is greater than the amount of topics in logs, skip.
 		if len(topics) > len(logItem.Topics) {
-			logger.Debug(fmt.Sprintf("Skipping log = %v", logItem), "reason", "Insufficient topics. The log has less topics than the required one to satisfy the query")
+			logger.Debug("Skipping log ", "log", logItem, "reason", "Insufficient topics. The log has less topics than the required one to satisfy the query")
 			continue
 		}
 		for i, sub := range topics {
@@ -265,7 +267,7 @@ Logs:
 				}
 			}
 			if !match {
-				logger.Debug(fmt.Sprintf("Skipping log = %v", logItem), "reason", "Topics do not match.")
+				logger.Debug("Skipping log ", "log", logItem, "reason", "Topics do not match.")
 				continue Logs
 			}
 		}

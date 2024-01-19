@@ -2,18 +2,17 @@ package storage
 
 import (
 	"bytes"
-	"context"
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"math/big"
 	"time"
 
+	"github.com/dgraph-io/ristretto"
+	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 
-	"github.com/allegro/bigcache/v3"
-	"github.com/eko/gocache/lib/v4/cache"
-	bigcache_store "github.com/eko/gocache/store/bigcache/v4"
+	ristretto_store "github.com/eko/gocache/store/ristretto/v4"
 
 	"github.com/ten-protocol/go-ten/go/config"
 
@@ -50,12 +49,13 @@ type storageImpl struct {
 
 	// cache for the immutable blocks and batches.
 	// this avoids a trip to the database.
-	blockCache *cache.Cache[[]byte]
+	blockCache *cache.Cache[*types.Block]
 
 	// stores batches using the sequence number as key
 	// stores a mapping between the hash and the sequence number
 	// to fetch a batch by hash will require 2 cache hits
-	batchCache *cache.Cache[[]byte]
+	batchCache    *cache.Cache[*core.Batch]
+	batchSeqCache *cache.Cache[*big.Int]
 
 	cachedSharedSecret *crypto.SharedEnclaveSecret
 
@@ -82,27 +82,26 @@ func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, 
 	}
 
 	// todo (tudor) figure out the context and the config
-	cfg := bigcache.DefaultConfig(2 * time.Minute)
-	cfg.Shards = 512
-	// 1GB cache. Max value in a shard is 2MB. No batch or block should be larger than that
-	cfg.HardMaxCacheSize = cfg.Shards * 4
-	bigcacheClient, err := bigcache.New(context.Background(), cfg)
+	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 10_000,  // number of keys to track frequency of 100.
+		MaxCost:     1 << 30, // maximum cost of cache (1GB).
+		BufferItems: 64,      // number of keys per Get buffer.
+	})
 	if err != nil {
-		logger.Crit("Could not initialise bigcache", log.ErrKey, err)
+		panic(err)
 	}
-
-	bigcacheStore := bigcache_store.NewBigcache(bigcacheClient)
-
+	ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
 	return &storageImpl{
 		db: backingDB,
 		stateDB: state.NewDatabaseWithConfig(backingDB, &trie.Config{
 			Cache:     cacheConfig.TrieCleanLimit,
 			Preimages: cacheConfig.Preimages,
 		}),
-		chainConfig: chainConfig,
-		batchCache:  cache.New[[]byte](bigcacheStore),
-		blockCache:  cache.New[[]byte](bigcacheStore),
-		logger:      logger,
+		chainConfig:   chainConfig,
+		batchCache:    cache.New[*core.Batch](ristrettoStore),
+		batchSeqCache: cache.New[*big.Int](ristrettoStore),
+		blockCache:    cache.New[*types.Block](ristrettoStore),
+		logger:        logger,
 	}
 }
 
@@ -130,12 +129,12 @@ func (s *storageImpl) FetchCurrentSequencerNo() (*big.Int, error) {
 
 func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
 	defer s.logDuration("FetchBatch", measure.NewStopwatch())
-	seqNo, err := getCachedValue(s.batchCache, s.logger, hash, func(v any) (*big.Int, error) {
+	seqNo, err := common.GetCachedValue(s.batchSeqCache, s.logger, hash, func(v any) (*big.Int, error) {
 		batch, err := enclavedb.ReadBatchByHash(s.db.GetSQLDB(), v.(common.L2BatchHash))
 		if err != nil {
 			return nil, err
 		}
-		cacheValue(s.batchCache, s.logger, batch.SeqNo(), batch)
+		common.CacheValue(s.batchCache, s.logger, batch.SeqNo(), batch)
 		return batch.SeqNo(), nil
 	})
 	if err != nil {
@@ -146,18 +145,11 @@ func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
 
 func (s *storageImpl) FetchConvertedHash(hash common.L2BatchHash) (gethcommon.Hash, error) {
 	defer s.logDuration("FetchConvertedHash", measure.NewStopwatch())
-	seqNo, err := getCachedValue(s.batchCache, s.logger, hash, func(v any) (*big.Int, error) {
-		batch, err := enclavedb.ReadBatchByHash(s.db.GetSQLDB(), v.(common.L2BatchHash))
-		if err != nil {
-			return nil, err
-		}
-		cacheValue(s.batchCache, s.logger, batch.SeqNo(), batch)
-		return batch.SeqNo(), nil
-	})
+	batch, err := s.FetchBatch(hash)
 	if err != nil {
 		return gethcommon.Hash{}, err
 	}
-	return enclavedb.FetchConvertedBatchHash(s.db.GetSQLDB(), seqNo.Uint64())
+	return enclavedb.FetchConvertedBatchHash(s.db.GetSQLDB(), batch.Header.SequencerOrderNo.Uint64())
 }
 
 func (s *storageImpl) FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHeader, error) {
@@ -198,14 +190,14 @@ func (s *storageImpl) StoreBlock(b *types.Block, chainFork *common.ChainFork) er
 		return fmt.Errorf("3. could not store block %s. Cause: %w", b.Hash(), err)
 	}
 
-	cacheValue(s.blockCache, s.logger, b.Hash(), b)
+	common.CacheValue(s.blockCache, s.logger, b.Hash(), b)
 
 	return nil
 }
 
 func (s *storageImpl) FetchBlock(blockHash common.L1BlockHash) (*types.Block, error) {
 	defer s.logDuration("FetchBlock", measure.NewStopwatch())
-	return getCachedValue(s.blockCache, s.logger, blockHash, func(hash any) (*types.Block, error) {
+	return common.GetCachedValue(s.blockCache, s.logger, blockHash, func(hash any) (*types.Block, error) {
 		return enclavedb.FetchBlock(s.db.GetSQLDB(), hash.(common.L1BlockHash))
 	})
 }
@@ -373,7 +365,7 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 
 func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error) {
 	defer s.logDuration("FetchBatchBySeqNo", measure.NewStopwatch())
-	return getCachedValue(s.batchCache, s.logger, seqNum, func(seq any) (*core.Batch, error) {
+	return common.GetCachedValue(s.batchCache, s.logger, seqNum, func(seq any) (*core.Batch, error) {
 		return enclavedb.ReadBatchBySeqNo(s.db.GetSQLDB(), seq.(uint64))
 	})
 }
@@ -409,8 +401,8 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, convertedHash gethcommon.Has
 		return fmt.Errorf("could not commit batch %w", err)
 	}
 
-	cacheValue(s.batchCache, s.logger, batch.SeqNo(), batch)
-	cacheValue(s.batchCache, s.logger, batch.Hash(), batch.SeqNo())
+	common.CacheValue(s.batchCache, s.logger, batch.SeqNo(), batch)
+	common.CacheValue(s.batchSeqCache, s.logger, batch.Hash(), batch.SeqNo())
 	return nil
 }
 

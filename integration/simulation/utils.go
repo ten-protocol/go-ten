@@ -31,7 +31,7 @@ func setupSimTestLog(simType string) {
 		LogDir:      testLogs,
 		TestType:    "sim-log",
 		TestSubtype: simType,
-		LogLevel:    log.LvlTrace,
+		LogLevel:    log.LvlInfo,
 	})
 }
 
@@ -129,5 +129,5 @@ func findRollupDups(list []*common.ExtRollup) map[common.L2BatchHash]int {
 }
 
 func sleepRndBtw(min time.Duration, max time.Duration) {
-	time.Sleep(testcommon.RndBtwTime(min, max))
+	time.Sleep(testcommon.RndBtwTime(min, max) / 5)
 }
