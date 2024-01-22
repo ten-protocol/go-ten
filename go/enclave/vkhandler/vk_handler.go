@@ -3,11 +3,13 @@ package vkhandler
 import (
 	"crypto/rand"
 	"fmt"
+	"io"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"gitlab.com/NebulousLabs/fastrand"
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 )
@@ -20,6 +22,17 @@ var placeholderResult = []byte("0x")
 // VKHandler handles encryption and validation of viewing keys
 type VKHandler struct {
 	publicViewingKey *ecies.PublicKey
+}
+
+// crypto.rand is quite slow. When this variable is true, we will use a fast CSPRNG algorithm
+const useFastRand = true
+
+func rndSource() io.Reader {
+	rndSource := rand.Reader
+	if useFastRand {
+		rndSource = fastrand.Reader
+	}
+	return rndSource
 }
 
 // VKHandler is responsible for:
@@ -70,7 +83,7 @@ func (m *VKHandler) Encrypt(bytes []byte) ([]byte, error) {
 		bytes = placeholderResult
 	}
 
-	encryptedBytes, err := ecies.Encrypt(rand.Reader, m.publicViewingKey, bytes, nil, nil)
+	encryptedBytes, err := ecies.Encrypt(rndSource(), m.publicViewingKey, bytes, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to encrypt with given public VK - %w", err)
 	}
