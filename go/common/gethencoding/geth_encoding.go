@@ -60,7 +60,7 @@ type gethEncodingServiceImpl struct {
 func NewGethEncodingService(storage storage.Storage, logger gethlog.Logger) EncodingService {
 	// todo (tudor) figure out the best values
 	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1000,    // number of keys to track frequency of 100.
+		NumCounters: 1000,    // number of keys to track frequency of.
 		MaxCost:     1 << 28, // maximum cost of cache (256MB).
 		BufferItems: 64,      // number of keys per Get buffer. Todo - what is this
 	})
@@ -355,8 +355,8 @@ func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(b *core.Batch) (*typ
 		transactions: b.Transactions,
 		withdrawals:  nil,
 	}
-	block := *(*types.Block)(unsafe.Pointer(&lb))
-	return &block, nil
+	// cast the correct local structure to the standard geth block.
+	return (*types.Block)(unsafe.Pointer(&lb)), nil
 }
 
 // DecodeParamBytes decodes the parameters byte array into a slice of interfaces
