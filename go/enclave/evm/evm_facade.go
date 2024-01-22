@@ -34,19 +34,20 @@ func ExecuteTransactions(
 	s *state.StateDB,
 	header *common.BatchHeader,
 	storage storage.Storage,
+	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
 	fromTxIndex int,
 	noBaseFee bool,
 	batchGasLimit uint64,
 	logger gethlog.Logger,
-) map[common.TxHash]interface{} {
-	chain, vmCfg := initParams(storage, noBaseFee, logger)
+) map[common.TxHash]interface{} { // todo - return error
+	chain, vmCfg := initParams(storage, gethEncodingService, noBaseFee, logger)
 	gp := gethcore.GasPool(batchGasLimit)
 	zero := uint64(0)
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
 
-	ethHeader, err := gethencoding.CreateEthHeaderForBatch(header, secret(storage))
+	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(header)
 	if err != nil {
 		logger.Crit("Could not convert to eth header", log.ErrKey, err)
 		return nil
@@ -157,6 +158,7 @@ func ExecuteObsCall(
 	s *state.StateDB,
 	header *common.BatchHeader,
 	storage storage.Storage,
+	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
 	gasEstimationCap uint64,
 	logger gethlog.Logger,
@@ -170,8 +172,9 @@ func ExecuteObsCall(
 
 	gp := gethcore.GasPool(gasEstimationCap)
 	gp.SetGas(gasEstimationCap)
-	chain, vmCfg := initParams(storage, noBaseFee, nil)
-	ethHeader, err := gethencoding.CreateEthHeaderForBatch(header, secret(storage))
+	chain, vmCfg := initParams(storage, gethEncodingService, noBaseFee, nil)
+
+	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(header)
 	if err != nil {
 		return nil, err
 	}
@@ -206,19 +209,11 @@ func ExecuteObsCall(
 	return result, nil
 }
 
-func initParams(storage storage.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {
+func initParams(storage storage.Storage, gethEncodingService gethencoding.EncodingService, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {
 	vmCfg := vm.Config{
 		NoBaseFee: noBaseFee,
 	}
-	return NewObscuroChainContext(storage, l), vmCfg
-}
-
-// todo (#1053) - this is currently just returning the shared secret
-// it should not use it directly, but derive some entropy from it
-func secret(storage storage.Storage) []byte {
-	// todo (#1053) - handle secret not being found.
-	secret, _ := storage.FetchSecret()
-	return secret[:]
+	return NewObscuroChainContext(storage, gethEncodingService, l), vmCfg
 }
 
 func newErrorWithReasonAndCode(err error) error {

@@ -74,6 +74,7 @@ create table if not exists obsdb.batch
 (
     sequence     int,
     full_hash    binary(32),
+    converted_hash binary(32) NOT NULL,
     hash         binary(16) NOT NULL,
     parent       binary(16),
     height       int        NOT NULL,

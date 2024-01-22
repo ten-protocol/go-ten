@@ -61,7 +61,7 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(block *common.L1Bl
 		return nil
 	}
 
-	m.logger.Trace(fmt.Sprintf("Storing %d value transfers for block", len(transfers)), log.BlockHashKey, block.Hash())
+	m.logger.Trace("Storing value transfers for block", "nr", len(transfers), log.BlockHashKey, block.Hash())
 	err = m.storage.StoreValueTransfers(block.Hash(), transfers)
 	if err != nil {
 		m.logger.Crit("Unable to store the transfers", log.ErrKey, err)
@@ -82,7 +82,7 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, r
 		return nil
 	}
 
-	lazilyLogReceiptChecksum(fmt.Sprintf("Processing block: %s receipts: %d", block.Hash(), len(receipts)), receipts, m.logger)
+	lazilyLogReceiptChecksum(block, receipts, m.logger)
 	messages, err := m.getCrossChainMessages(block, receipts)
 	if err != nil {
 		m.logger.Error("Converting receipts to messages failed.", log.ErrKey, err)
