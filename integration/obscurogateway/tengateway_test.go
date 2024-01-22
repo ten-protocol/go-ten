@@ -283,6 +283,9 @@ func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet
 		Data:     gethcommon.FromHex(eventsContractBytecode),
 	}
 
+	err = getFeeAndGas(user0.HTTPClient, w, deployTx)
+	require.NoError(t, err)
+
 	signedTx, err := w.SignTransaction(deployTx)
 	require.NoError(t, err)
 
