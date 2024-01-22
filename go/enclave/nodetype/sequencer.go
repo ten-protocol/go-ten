@@ -196,14 +196,6 @@ func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 	return nil
 }
 
-type SortableTransactions types.Transactions
-
-func (c SortableTransactions) Len() int      { return len(c) }
-func (c SortableTransactions) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
-func (c SortableTransactions) Less(i, j int) bool {
-	return c[i].Nonce() < c[j].Nonce()
-}
-
 func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfEmpty bool) error {
 	headBatchSeq := s.batchRegistry.HeadBatchSeq()
 	if headBatchSeq == nil {
@@ -243,8 +235,6 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfE
 			}
 		}
 	}
-
-	sort.Sort(SortableTransactions(transactions))
 
 	sequencerNo, err := s.storage.FetchCurrentSequencerNo()
 	if err != nil {

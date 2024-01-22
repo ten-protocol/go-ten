@@ -59,6 +59,9 @@ func (o *oracle) EstimateL1CostForMsg(args *gethapi.TransactionArgs, block *type
 		encoded = append(encoded, *args.Data...)
 	}
 
+	// We get the non zero gas cost per byte of calldata, and multiply it by the fixed bytes
+	// of a transaction. Then we take the data of a transaction and calculate the l1 gas used for it.
+	// Both are added together and multiplied by the base fee to give us the final cost for the message.
 	nonZeroGas := big.NewInt(int64(params.TxDataNonZeroGasEIP2028))
 	overhead := big.NewInt(0).Mul(big.NewInt(150), nonZeroGas)
 	l1Gas := CalculateL1GasUsed(encoded, overhead)

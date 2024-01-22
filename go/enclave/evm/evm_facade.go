@@ -131,6 +131,7 @@ func executeTransaction(
 		l1Gas := big.NewInt(0)
 		hasL1Cost := l1cost.Cmp(big.NewInt(0)) != 0
 
+		// If a transaction has to be published on the l1, it will have an l1 cost
 		if hasL1Cost {
 			l1Gas.Div(l1cost, header.BaseFee) // TotalCost/CostPerGas = Gas
 			l1Gas.Add(l1Gas, big.NewInt(1))   // Cover from leftover from the division
@@ -149,7 +150,6 @@ func executeTransaction(
 			// and pay it to the coinbase of the batch
 			statedb.SubBalance(msg.From, l1cost)
 			statedb.AddBalance(header.Coinbase, l1cost)
-
 		}
 
 		// Create a new context to be used in the EVM environment
@@ -163,7 +163,6 @@ func executeTransaction(
 				statedb.SubBalance(header.Coinbase, l1cost)
 				statedb.AddBalance(msg.From, l1cost)
 			}
-
 			return receipt, err
 		}
 
