@@ -80,6 +80,8 @@ const (
 	HeightCommittedBlocks = 15
 )
 
+var GethGenesisParentHash = common.Hash{}
+
 // SystemError is the interface for the internal errors generated in the Enclave and consumed by the Host
 type SystemError interface {
 	Error() string

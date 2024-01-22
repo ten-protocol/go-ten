@@ -58,7 +58,7 @@ func New(component string, level int, out string, ctx ...interface{}) gethlog.Lo
 	if out == SysOut {
 		s = gethlog.StreamHandler(os.Stdout, gethlog.TerminalFormat(false))
 	} else {
-		s1, err := gethlog.FileHandler(out, gethlog.TerminalFormat(false))
+		s1, err := gethlog.FileHandler(out, gethlog.LogfmtFormat())
 		if err != nil {
 			panic(err)
 		}

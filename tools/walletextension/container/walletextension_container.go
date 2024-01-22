@@ -38,8 +38,9 @@ type WalletExtensionContainer struct {
 
 func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.Logger) *WalletExtensionContainer {
 	// create the account manager with a single unauthenticated connection
-	hostRPCBindAddr := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
-	unAuthedClient, err := rpc.NewNetworkClient(hostRPCBindAddr)
+	hostRPCBindAddrWS := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
+	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
+	unAuthedClient, err := rpc.NewNetworkClient(hostRPCBindAddrHTTP)
 	if err != nil {
 		logger.Crit("unable to create temporary client for request ", log.ErrKey, err)
 		os.Exit(1)
@@ -51,7 +52,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
 		os.Exit(1)
 	}
-	userAccountManager := useraccountmanager.NewUserAccountManager(unAuthedClient, logger, databaseStorage, hostRPCBindAddr)
+	userAccountManager := useraccountmanager.NewUserAccountManager(unAuthedClient, logger, databaseStorage, hostRPCBindAddrHTTP, hostRPCBindAddrWS)
 
 	// add default user (when no UserID is provided in the query parameter - for WE endpoints)
 	defaultUserAccountManager := userAccountManager.AddAndReturnAccountManager(hex.EncodeToString([]byte(wecommon.DefaultUser)))
@@ -84,7 +85,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 				os.Exit(1)
 			}
 			for _, account := range accounts {
-				encClient, err := wecommon.CreateEncClient(hostRPCBindAddr, account.AccountAddress, user.PrivateKey, account.Signature, logger)
+				encClient, err := wecommon.CreateEncClient(hostRPCBindAddrWS, account.AccountAddress, user.PrivateKey, account.Signature, logger)
 				if err != nil {
 					logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
 					os.Exit(1)
@@ -109,14 +110,14 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 	}
 
 	stopControl := stopcontrol.New()
-	walletExt := walletextension.New(hostRPCBindAddr, &userAccountManager, databaseStorage, stopControl, version, logger, &config)
+	walletExt := walletextension.New(hostRPCBindAddrHTTP, hostRPCBindAddrWS, &userAccountManager, databaseStorage, stopControl, version, logger, &config)
 	httpRoutes := api.NewHTTPRoutes(walletExt)
 	httpServer := api.NewHTTPServer(fmt.Sprintf("%s:%d", config.WalletExtensionHost, config.WalletExtensionPortHTTP), httpRoutes)
 
 	wsRoutes := api.NewWSRoutes(walletExt)
 	wsServer := api.NewWSServer(fmt.Sprintf("%s:%d", config.WalletExtensionHost, config.WalletExtensionPortWS), wsRoutes)
 	return NewWalletExtensionContainer(
-		hostRPCBindAddr,
+		hostRPCBindAddrWS,
 		walletExt,
 		&userAccountManager,
 		databaseStorage,

@@ -491,7 +491,8 @@ func (c *Client) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func())
 		c.logger.Error("Error opening batch stream.", log.ErrKey, err)
 		cancel()
 		close(batchChan)
-		return nil, nil
+		// return closed channel and no-op cancel func
+		return batchChan, func() {}
 	}
 
 	stopIt := func() {

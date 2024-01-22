@@ -7,11 +7,13 @@ replace github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220224
 require (
 	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/andybalholm/brotli v1.0.5
+	github.com/dgraph-io/ristretto v0.1.1
 	github.com/docker/docker v1.6.2
 	github.com/docker/go-connections v0.4.0
 	github.com/edgelesssys/ego v1.1.0
-	github.com/eko/gocache/lib/v4 v4.1.2
-	github.com/eko/gocache/store/bigcache/v4 v4.1.2
+	github.com/eko/gocache/lib/v4 v4.1.5
+	github.com/eko/gocache/store/bigcache/v4 v4.2.1
+	github.com/eko/gocache/store/ristretto/v4 v4.2.1
 	github.com/ethereum/go-ethereum v1.12.2
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
@@ -20,6 +22,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/pkg/errors v0.9.1
@@ -64,6 +67,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/go-units v0.5.0 // indirect
+	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/ethereum/c-kzg-4844 v0.3.1 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
@@ -81,6 +85,7 @@ require (
 	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.3.0 // indirect
+	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect

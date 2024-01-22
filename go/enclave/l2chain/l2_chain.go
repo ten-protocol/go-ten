@@ -29,8 +29,9 @@ import (
 type obscuroChain struct {
 	chainConfig *params.ChainConfig
 
-	storage storage.Storage
-	genesis *genesis.Genesis
+	storage             storage.Storage
+	gethEncodingService gethencoding.EncodingService
+	genesis             *genesis.Genesis
 
 	logger gethlog.Logger
 
@@ -40,6 +41,7 @@ type obscuroChain struct {
 
 func NewChain(
 	storage storage.Storage,
+	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
 	genesis *genesis.Genesis,
 	logger gethlog.Logger,
@@ -47,12 +49,13 @@ func NewChain(
 	gasEstimationCap uint64,
 ) ObscuroChain {
 	return &obscuroChain{
-		storage:          storage,
-		chainConfig:      chainConfig,
-		logger:           logger,
-		genesis:          genesis,
-		Registry:         registry,
-		gasEstimationCap: gasEstimationCap,
+		storage:             storage,
+		gethEncodingService: gethEncodingService,
+		chainConfig:         chainConfig,
+		logger:              logger,
+		genesis:             genesis,
+		Registry:            registry,
+		gasEstimationCap:    gasEstimationCap,
 	}
 }
 
@@ -147,7 +150,7 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 			batch.Header.Root.Hex())
 	}})
 
-	result, err := evm.ExecuteObsCall(callMsg, blockState, batch.Header, oc.storage, oc.chainConfig, oc.gasEstimationCap, oc.logger)
+	result, err := evm.ExecuteObsCall(callMsg, blockState, batch.Header, oc.storage, oc.gethEncodingService, oc.chainConfig, oc.gasEstimationCap, oc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		return result, err
@@ -191,8 +194,9 @@ func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex in
 		}
 		txContext := gethcore.NewEVMTxContext(msg)
 
-		chain := evm.NewObscuroChainContext(oc.storage, oc.logger)
-		blockHeader, err := gethencoding.CreateEthHeaderForBatch(batch.Header, nil)
+		chain := evm.NewObscuroChainContext(oc.storage, oc.gethEncodingService, oc.logger)
+
+		blockHeader, err := oc.gethEncodingService.CreateEthHeaderForBatch(batch.Header)
 		if err != nil {
 			return nil, vm.BlockContext{}, nil, fmt.Errorf("unable to convert batch header to eth header - %w", err)
 		}

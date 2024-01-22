@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/ten-protocol/go-ten/go/common/log"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -23,8 +25,8 @@ var (
 	ValueTransferEventID   = MessageBusABI.Events["ValueTransfer"].ID
 )
 
-func lazilyLogReceiptChecksum(msg string, receipts types.Receipts, logger gethlog.Logger) {
-	logger.Trace(msg, "Hash",
+func lazilyLogReceiptChecksum(block *common.L1Block, receipts types.Receipts, logger gethlog.Logger) {
+	logger.Trace("Processing block", log.BlockHashKey, block.Hash(), "nr_rec", len(receipts), "Hash",
 		gethlog.Lazy{Fn: func() string {
 			hasher := sha3.NewLegacyKeccak256().(crypto.KeccakState)
 			hasher.Reset()

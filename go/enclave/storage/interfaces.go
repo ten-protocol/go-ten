@@ -55,6 +55,8 @@ type BatchResolver interface {
 	// FetchCanonicalUnexecutedBatches - return the list of the unexecuted batches that are canonical
 	FetchCanonicalUnexecutedBatches(*big.Int) ([]*core.Batch, error)
 
+	FetchConvertedHash(hash common.L2BatchHash) (gethcommon.Hash, error)
+
 	// BatchWasExecuted - return true if the batch was executed
 	BatchWasExecuted(hash common.L2BatchHash) (bool, error)
 
@@ -62,7 +64,7 @@ type BatchResolver interface {
 	FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error)
 
 	// StoreBatch stores an un-executed batch.
-	StoreBatch(batch *core.Batch) error
+	StoreBatch(batch *core.Batch, convertedHash gethcommon.Hash) error
 	// StoreExecutedBatch - store the batch after it was executed
 	StoreExecutedBatch(batch *core.Batch, receipts []*types.Receipt) error
 

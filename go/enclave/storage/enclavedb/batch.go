@@ -25,7 +25,7 @@ const (
 	txInsert      = "replace into tx values "
 	txInsertValue = "(?,?,?,?,?,?,?)"
 
-	bInsert             = "insert into batch values (?,?,?,?,?,?,?,?,?,?)"
+	batchInsert         = "insert into batch values (?,?,?,?,?,?,?,?,?,?,?)"
 	updateBatchExecuted = "update batch set is_executed=true where sequence=?"
 
 	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.id"
@@ -44,12 +44,12 @@ const (
 
 	isCanonQuery = "select is_canonical from block where hash=?"
 
-	queryTxList      = "select tx.full_hash, batch.height from exec_tx join batch on batch.sequence=exec_tx.batch join tx on tx.hash=exec_tx.tx where batch.is_canonical=true"
+	queryTxList      = "select tx.full_hash, batch.height, batch.header from exec_tx join batch on batch.sequence=exec_tx.batch join tx on tx.hash=exec_tx.tx where batch.is_canonical=true"
 	queryTxCountList = "select count(1) from exec_tx join batch on batch.sequence=exec_tx.batch where batch.is_canonical=true"
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
-func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
+func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch, convertedHash gethcommon.Hash) error {
 	// todo - optimize for reorgs
 	batchBodyID := batch.SeqNo().Uint64()
 
@@ -77,9 +77,10 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 		isCanon = false
 	}
 
-	dbtx.ExecuteSQL(bInsert,
+	dbtx.ExecuteSQL(batchInsert,
 		batch.Header.SequencerOrderNo.Uint64(), // sequence
 		batch.Hash(),                           // full hash
+		convertedHash,                          // converted_hash
 		truncTo16(batch.Hash()),                // index hash
 		parentBytes,                            // parent
 		batch.Header.Number.Uint64(),           // height
@@ -509,14 +510,21 @@ func selectPublicTxsBySender(db *sql.DB, query string, args ...any) ([]common.Pu
 	for rows.Next() {
 		var txHash []byte
 		var batchHeight uint64
-		err := rows.Scan(&txHash, &batchHeight)
+		var batchHeader string
+		err := rows.Scan(&txHash, &batchHeight, &batchHeader)
 		if err != nil {
 			return nil, err
+		}
+
+		h := new(common.BatchHeader)
+		if err := rlp.DecodeBytes([]byte(batchHeader), h); err != nil {
+			return nil, fmt.Errorf("could not decode batch header. Cause: %w", err)
 		}
 
 		publicTxs = append(publicTxs, common.PublicTransaction{
 			TransactionHash: gethcommon.BytesToHash(txHash),
 			BatchHeight:     big.NewInt(0).SetUint64(batchHeight),
+			BatchTimestamp:  h.Time,
 			Finality:        common.BatchFinal,
 		})
 	}
@@ -537,4 +545,19 @@ func GetPublicTransactionCount(db *sql.DB) (uint64, error) {
 	}
 
 	return count, nil
+}
+
+func FetchConvertedBatchHash(db *sql.DB, seqNo uint64) (gethcommon.Hash, error) {
+	var hash []byte
+
+	query := "select converted_hash from batch where sequence=?"
+	err := db.QueryRow(query, seqNo).Scan(&hash)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return gethcommon.Hash{}, errutil.ErrNotFound
+		}
+		return gethcommon.Hash{}, err
+	}
+	return gethcommon.BytesToHash(hash), nil
 }

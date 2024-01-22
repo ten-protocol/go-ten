@@ -8,6 +8,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
+
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -34,6 +36,7 @@ var ErrNoTransactionsToProcess = fmt.Errorf("no transactions to process")
 // batchExecutor - the component responsible for executing batches
 type batchExecutor struct {
 	storage              storage.Storage
+	gethEncodingService  gethencoding.EncodingService
 	crossChainProcessors *crosschain.Processors
 	genesis              *genesis.Genesis
 	logger               gethlog.Logger
@@ -48,6 +51,7 @@ type batchExecutor struct {
 
 func NewBatchExecutor(
 	storage storage.Storage,
+	gethEncodingService gethencoding.EncodingService,
 	cc *crosschain.Processors,
 	genesis *genesis.Genesis,
 	gasOracle gas.Oracle,
@@ -57,6 +61,7 @@ func NewBatchExecutor(
 ) BatchExecutor {
 	return &batchExecutor{
 		storage:              storage,
+		gethEncodingService:  gethEncodingService,
 		crossChainProcessors: cc,
 		genesis:              genesis,
 		chainConfig:          chainConfig,
@@ -172,7 +177,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
-	// snap := stateDB.Snapshot()
+	snap := stateDB.Snapshot()
 
 	var messages common.CrossChainMessages
 	var transfers common.ValueTransferEvents
@@ -203,6 +208,20 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
 	}
 
+	if failForEmptyBatch &&
+		len(txReceipts) == 0 &&
+		len(ccReceipts) == 0 &&
+		len(transactionsToProcess)-len(excludedTxs) == 0 &&
+		len(crossChainTransactions) == 0 &&
+		len(messages) == 0 &&
+		len(transfers) == 0 {
+		if snap > 0 {
+			//// revert any unexpected mutation to the statedb
+			stateDB.RevertToSnapshot(snap)
+		}
+		return nil, ErrNoTransactionsToProcess
+	}
+
 	// we need to copy the batch to reset the internal hash cache
 	copyBatch := *batch
 	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
@@ -215,18 +234,6 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 
 	allReceipts := append(txReceipts, ccReceipts...)
 	executor.populateHeader(&copyBatch, allReceipts)
-	if failForEmptyBatch &&
-		len(txReceipts) == 0 &&
-		len(ccReceipts) == 0 &&
-		len(transactionsToProcess)-len(excludedTxs) == 0 &&
-		len(crossChainTransactions) == 0 &&
-		len(messages) == 0 &&
-		len(transfers) == 0 {
-		// todo review why this is failing deployment with "panic: revision id 0 cannot be reverted" - https://github.com/ten-protocol/ten-internal/issues/2654
-		//// revert any unexpected mutation to the statedb
-		//stateDB.RevertToSnapshot(snap)
-		return nil, ErrNoTransactionsToProcess
-	}
 
 	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
 	for _, receipt := range allReceipts {
@@ -415,6 +422,7 @@ func (executor *batchExecutor) processTransactions(
 		stateDB,
 		batch.Header,
 		executor.storage,
+		executor.gethEncodingService,
 		cc,
 		tCount,
 		noBaseFee,

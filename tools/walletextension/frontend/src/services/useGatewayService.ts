@@ -14,6 +14,7 @@ import {
   getToken,
   switchToTenNetwork,
 } from "@/api/ethRequests";
+import { fetchTestnetStatus } from "@/api/general";
 
 const useGatewayService = () => {
   const { token, provider, fetchUserAccounts, setLoading } =
@@ -76,8 +77,18 @@ const useGatewayService = () => {
     }
   };
 
+  const getTestnetStatus = async () => {
+    try {
+      return await fetchTestnetStatus();
+    } catch (error) {
+      showToast(ToastType.DESTRUCTIVE, "Unable to connect to Obscuro Testnet");
+      throw error;
+    }
+  };
+
   return {
     connectToTenTestnet,
+    getTestnetStatus,
   };
 };
 

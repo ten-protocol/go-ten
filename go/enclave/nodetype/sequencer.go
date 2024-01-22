@@ -9,6 +9,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/measure"
@@ -46,6 +48,7 @@ type sequencer struct {
 	rollupProducer    components.RollupProducer
 	rollupConsumer    components.RollupConsumer
 	rollupCompression *components.RollupCompression
+	gethEncoding      gethencoding.EncodingService
 
 	logger gethlog.Logger
 
@@ -60,24 +63,7 @@ type sequencer struct {
 	blockchain             *ethchainadapter.EthChainAdapter
 }
 
-func NewSequencer(
-	blockProcessor components.L1BlockProcessor,
-	batchExecutor components.BatchExecutor,
-	registry components.BatchRegistry,
-	rollupProducer components.RollupProducer,
-	rollupConsumer components.RollupConsumer,
-	rollupCompression *components.RollupCompression,
-	logger gethlog.Logger,
-	hostID gethcommon.Address,
-	chainConfig *params.ChainConfig,
-	enclavePrivateKey *ecdsa.PrivateKey,
-	mempool *txpool.TxPool,
-	storage storage.Storage,
-	dataEncryptionService crypto.DataEncryptionService,
-	dataCompressionService compression.DataCompressionService,
-	settings SequencerSettings,
-	blockchain *ethchainadapter.EthChainAdapter,
-) Sequencer {
+func NewSequencer(blockProcessor components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupProducer components.RollupProducer, rollupConsumer components.RollupConsumer, rollupCompression *components.RollupCompression, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger, hostID gethcommon.Address, chainConfig *params.ChainConfig, enclavePrivateKey *ecdsa.PrivateKey, mempool *txpool.TxPool, storage storage.Storage, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, settings SequencerSettings, blockchain *ethchainadapter.EthChainAdapter) Sequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
 		batchProducer:          batchExecutor,
@@ -85,6 +71,7 @@ func NewSequencer(
 		rollupProducer:         rollupProducer,
 		rollupConsumer:         rollupConsumer,
 		rollupCompression:      rollupCompression,
+		gethEncoding:           gethEncodingService,
 		logger:                 logger,
 		hostID:                 hostID,
 		chainConfig:            chainConfig,
@@ -312,7 +299,12 @@ func (s *sequencer) StoreExecutedBatch(batch *core.Batch, receipts types.Receipt
 		return nil
 	}
 
-	if err := s.storage.StoreBatch(batch); err != nil {
+	convertedHeader, err := s.gethEncoding.CreateEthHeaderForBatch(batch.Header)
+	if err != nil {
+		return err
+	}
+
+	if err := s.storage.StoreBatch(batch, convertedHeader.Hash()); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 

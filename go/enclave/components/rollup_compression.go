@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
+
 	"golang.org/x/exp/slices"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -49,6 +51,7 @@ type RollupCompression struct {
 	dataCompressionService compression.DataCompressionService
 	batchRegistry          BatchRegistry
 	batchExecutor          BatchExecutor
+	gethEncodingService    gethencoding.EncodingService
 	storage                storage.Storage
 	chainConfig            *params.ChainConfig
 	logger                 gethlog.Logger
@@ -60,6 +63,7 @@ func NewRollupCompression(
 	dataEncryptionService crypto.DataEncryptionService,
 	dataCompressionService compression.DataCompressionService,
 	storage storage.Storage,
+	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
 	logger gethlog.Logger,
 ) *RollupCompression {
@@ -69,6 +73,7 @@ func NewRollupCompression(
 		dataEncryptionService:  dataEncryptionService,
 		dataCompressionService: dataCompressionService,
 		storage:                storage,
+		gethEncodingService:    gethEncodingService,
 		chainConfig:            chainConfig,
 		logger:                 logger,
 	}
@@ -421,10 +426,16 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 		switch {
 		// this batch was re-orged
 		case incompleteBatch.header != nil:
-			err := rc.storage.StoreBatch(&core.Batch{
+
+			convertedHeader, err := rc.gethEncodingService.CreateEthHeaderForBatch(incompleteBatch.header)
+			if err != nil {
+				return err
+			}
+
+			err = rc.storage.StoreBatch(&core.Batch{
 				Header:       incompleteBatch.header,
 				Transactions: incompleteBatch.transactions,
-			})
+			}, convertedHeader.Hash())
 			if err != nil {
 				return err
 			}
@@ -446,7 +457,12 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 				rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
 			}*/
 
-			err = rc.storage.StoreBatch(genBatch)
+			convertedHeader, err := rc.gethEncodingService.CreateEthHeaderForBatch(genBatch.Header)
+			if err != nil {
+				return err
+			}
+
+			err = rc.storage.StoreBatch(genBatch, convertedHeader.Hash())
 			if err != nil {
 				return err
 			}
@@ -483,7 +499,12 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 				return fmt.Errorf("cannot commit stateDB for incoming valid batch seq=%d. Cause: %w", incompleteBatch.seqNo, err)
 			}
 
-			err = rc.storage.StoreBatch(computedBatch.Batch)
+			convertedHeader, err := rc.gethEncodingService.CreateEthHeaderForBatch(computedBatch.Batch.Header)
+			if err != nil {
+				return err
+			}
+
+			err = rc.storage.StoreBatch(computedBatch.Batch, convertedHeader.Hash())
 			if err != nil {
 				return err
 			}
