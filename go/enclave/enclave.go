@@ -77,9 +77,10 @@ type enclaveImpl struct {
 	crossChainProcessors  *crosschain.Processors
 	sharedSecretProcessor *components.SharedSecretProcessor
 
-	chain    l2chain.ObscuroChain
-	service  nodetype.NodeType
-	registry components.BatchRegistry
+	chain     l2chain.ObscuroChain
+	service   nodetype.NodeType
+	registry  components.BatchRegistry
+	gasOracle gas.Oracle
 
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
 	attestationProvider components.AttestationProvider // interface for producing attestation reports and verifying them
@@ -273,9 +274,10 @@ func NewEnclave(
 		debugger:               debug,
 		stopControl:            stopcontrol.New(),
 
-		chain:    chain,
-		registry: registry,
-		service:  service,
+		chain:     chain,
+		registry:  registry,
+		service:   service,
+		gasOracle: gasOracle,
 
 		mainMutex: sync.Mutex{},
 	}
@@ -689,6 +691,20 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 
 	address := gethcommon.HexToAddress(addressStr)
 
+	seqNo := e.registry.HeadBatchSeq().Uint64()
+	if len(paramList) == 3 {
+		tag, err := gethencoding.ExtractBlockNumber(paramList[2])
+		if err != nil {
+			return responses.AsPlaintextError(fmt.Errorf("unexpected tag parameter. Cause: %w", err)), nil
+		}
+
+		b, err := e.registry.GetBatchAtHeight(*tag)
+		if err != nil {
+			return responses.AsPlaintextError(fmt.Errorf("cant retrieve batch for tag. Cause: %w", err)), nil
+		}
+		seqNo = b.SeqNo().Uint64()
+	}
+
 	// extract, create and validate the VK encryption handler
 	vkHandler, err := createVKHandler(&address, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
@@ -696,18 +712,15 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	}
 
 	var nonce uint64
-	headBatch := e.registry.HeadBatchSeq()
-	if headBatch != nil {
-		l2Head, err := e.storage.FetchBatchBySeqNo(headBatch.Uint64())
-		if err == nil {
-			// todo - we should return an error when head state is not available, but for current test situations with race
-			//  conditions we allow it to return zero while head state is uninitialized
-			s, err := e.storage.CreateStateDB(l2Head.Hash())
-			if err != nil {
-				return nil, responses.ToInternalError(err)
-			}
-			nonce = s.GetNonce(address)
+	l2Head, err := e.storage.FetchBatchBySeqNo(seqNo)
+	if err == nil {
+		// todo - we should return an error when head state is not available, but for current test situations with race
+		//  conditions we allow it to return zero while head state is uninitialized
+		s, err := e.storage.CreateStateDB(l2Head.Hash())
+		if err != nil {
+			return nil, responses.ToInternalError(err)
 		}
+		nonce = s.GetNonce(address)
 	}
 
 	encoded := hexutil.EncodeUint64(nonce)
@@ -1036,6 +1049,32 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
+	block, err := e.blockResolver.FetchHeadBlock()
+	if err != nil {
+		return responses.AsPlaintextError(fmt.Errorf("internal server error")), err
+	}
+
+	// The message is ran through the l1 publishing cost estimation for the current
+	// known head block.
+	l1Cost, err := e.gasOracle.EstimateL1CostForMsg(callMsg, block)
+	if err != nil {
+		return responses.AsPlaintextError(fmt.Errorf("internal server error")), err
+	}
+
+	batch, err := e.storage.FetchHeadBatch()
+	if err != nil {
+		return responses.AsPlaintextError(fmt.Errorf("internal server error")), err
+	}
+
+	// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
+	// the expected cost into l2 gas based on current pricing.
+	// todo @siliev - add overhead when the base fee becomes dynamic.
+	publishingGas := big.NewInt(0).Div(l1Cost, batch.Header.BaseFee)
+
+	// The one additional gas captures the modulo leftover in some edge cases
+	// where BaseFee is bigger than the l1cost.
+	publishingGas = big.NewInt(0).Add(publishingGas, gethcommon.Big1)
+
 	executionGasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.config.GasLocalExecutionCapFlag)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
@@ -1053,7 +1092,9 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
-	return responses.AsEncryptedResponse(&executionGasEstimate, vkHandler), nil
+	totalGasEstimate := hexutil.Uint64(publishingGas.Uint64() + uint64(executionGasEstimate))
+
+	return responses.AsEncryptedResponse(&totalGasEstimate, vkHandler), nil
 }
 
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) { //nolint

@@ -15,6 +15,7 @@ import (
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
@@ -159,6 +160,9 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 		Data:     gethcommon.FromHex(eventsContractBytecode),
 	}
 
+	err = getFeeAndGas(user0.HTTPClient, w, deployTx)
+	require.NoError(t, err)
+
 	signedTx, err := w.SignTransaction(deployTx)
 	require.NoError(t, err)
 
@@ -278,6 +282,9 @@ func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
 	}
+
+	err = getFeeAndGas(user0.HTTPClient, w, deployTx)
+	require.NoError(t, err)
 
 	signedTx, err := w.SignTransaction(deployTx)
 	require.NoError(t, err)
@@ -418,6 +425,9 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.W
 		Data:     gethcommon.FromHex(errorsContractBytecode),
 	}
 
+	err = getFeeAndGas(ethStdClient, w, deployTx)
+	require.NoError(t, err)
+
 	signedTx, err := w.SignTransaction(deployTx)
 	require.NoError(t, err)
 
@@ -478,10 +488,12 @@ func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// deploy events contract
 	deployTx := &types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
-		Gas:      uint64(1_000_000),
+		Gas:      uint64(10_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
 	}
+
+	require.NoError(t, getFeeAndGas(user.HTTPClient, w, deployTx))
 
 	signedTx, err := w.SignTransaction(deployTx)
 	require.NoError(t, err)
@@ -532,6 +544,8 @@ func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
 	}
+
+	require.NoError(t, getFeeAndGas(user.HTTPClient, w, deployTx))
 
 	signedTx, err := w.SignTransaction(deployTx)
 	require.NoError(t, err)
@@ -645,6 +659,30 @@ func waitServerIsReady(serverAddr string) error {
 	return fmt.Errorf("timed out before server was ready")
 }
 
+func getFeeAndGas(client *ethclient.Client, wallet wallet.Wallet, legacyTx *types.LegacyTx) error {
+	tx := types.NewTx(legacyTx)
+
+	history, err := client.FeeHistory(context.Background(), 1, nil, []float64{})
+	if err != nil || len(history.BaseFee) == 0 {
+		return err
+	}
+
+	estimate, err := client.EstimateGas(context.Background(), ethereum.CallMsg{
+		From:  wallet.Address(),
+		To:    tx.To(),
+		Value: tx.Value(),
+		Data:  tx.Data(),
+	})
+	if err != nil {
+		return err
+	}
+
+	legacyTx.Gas = estimate
+	legacyTx.GasPrice = history.BaseFee[0] // big.NewInt(gethparams.InitialBaseFee)
+
+	return nil
+}
+
 func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddress gethcommon.Address, amount int64) (*types.Receipt, error) { //nolint:unparam
 	transferTx1 := types.LegacyTx{
 		Nonce:    wallet.GetNonceAndIncrement(),
@@ -654,6 +692,12 @@ func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddr
 		GasPrice: gethcommon.Big1,
 		Data:     nil,
 	}
+
+	err := getFeeAndGas(client, wallet, &transferTx1)
+	if err != nil {
+		return nil, err
+	}
+
 	signedTx, err := wallet.SignTransaction(&transferTx1)
 	if err != nil {
 		return nil, err

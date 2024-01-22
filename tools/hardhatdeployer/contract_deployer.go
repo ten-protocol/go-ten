@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common/constants"
 	"github.com/ten-protocol/go-ten/go/common/retry"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -91,8 +92,8 @@ func (cd *contractDeployer) run() (string, error) {
 
 	deployContractTx := types.LegacyTx{
 		Nonce:    cd.wallet.GetNonceAndIncrement(),
-		GasPrice: big.NewInt(1),
-		Gas:      uint64(5_000_000),
+		GasPrice: big.NewInt(params.InitialBaseFee),
+		Gas:      uint64(500_000_000),
 		Data:     cd.contractCode,
 	}
 

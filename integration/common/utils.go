@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -96,13 +97,15 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 	txHashes := make([]gethcommon.Hash, len(wallets))
 	for idx, w := range wallets {
 		destAddr := w.Address()
-		tx := &types.LegacyTx{
+		txData := &types.LegacyTx{
 			Nonce:    startingNonce + uint64(idx),
 			Value:    alloc,
 			Gas:      uint64(100_000),
 			GasPrice: gethcommon.Big1,
 			To:       &destAddr,
 		}
+
+		tx := faucetClient.EstimateGasAndGasPrice(txData) //nolint: contextcheck
 		signedTx, err := faucetWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -110,7 +113,9 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 
 		err = faucetClient.SendTransaction(ctx, signedTx)
 		if err != nil {
-			panic(fmt.Sprintf("could not transfer from faucet. Cause: %s", err))
+			var txJSON []byte
+			txJSON, _ = signedTx.MarshalJSON()
+			panic(fmt.Sprintf("could not transfer from faucet for tx %s. Cause: %s", string(txJSON[:]), err))
 		}
 
 		txHashes[idx] = signedTx.Hash()
@@ -124,7 +129,7 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 			defer wg.Done()
 			err := AwaitReceipt(ctx, faucetClient, txHash, timeout)
 			if err != nil {
-				panic(fmt.Sprintf("faucet transfer transaction unsuccessful. Cause: %s", err))
+				panic(fmt.Sprintf("faucet transfer transaction %s unsuccessful. Cause: %s", txHash, err))
 			}
 		}(txHash)
 	}
@@ -141,7 +146,7 @@ func InteractWithSmartContract(client *ethclient.Client, wallet wallet.Wallet, c
 		Nonce:    wallet.GetNonceAndIncrement(),
 		To:       &contractAddress,
 		Gas:      uint64(1_000_000),
-		GasPrice: gethcommon.Big1,
+		GasPrice: big.NewInt(params.InitialBaseFee),
 		Data:     contractInteractionData,
 	}
 	signedTx, err := wallet.SignTransaction(&interactionTx)
