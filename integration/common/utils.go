@@ -105,7 +105,7 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 			To:       &destAddr,
 		}
 
-		tx := faucetClient.EstimateGasAndGasPrice(txData) // nolint: contextcheck
+		tx := faucetClient.EstimateGasAndGasPrice(txData) //nolint: contextcheck
 		signedTx, err := faucetWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
