@@ -45,7 +45,7 @@ func Setup(cfg *Cfg) *os.File {
 	}
 	logFile = f.Name()
 	// hardcode geth log level to error only
-	gethlog.Root().SetHandler(gethlog.LvlFilterHandler(cfg.LogLevel, gethlog.StreamHandler(f, gethlog.TerminalFormat(false))))
+	gethlog.Root().SetHandler(gethlog.LvlFilterHandler(cfg.LogLevel, gethlog.StreamHandler(f, gethlog.LogfmtFormat())))
 	testlog = gethlog.Root().New(log.CmpKey, log.TestLogCmp)
 	return f
 }

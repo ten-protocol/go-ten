@@ -44,7 +44,7 @@ const (
 
 	isCanonQuery = "select is_canonical from block where hash=?"
 
-	queryTxList      = "select tx.full_hash, batch.height from exec_tx join batch on batch.sequence=exec_tx.batch join tx on tx.hash=exec_tx.tx where batch.is_canonical=true"
+	queryTxList      = "select tx.full_hash, batch.height, batch.header from exec_tx join batch on batch.sequence=exec_tx.batch join tx on tx.hash=exec_tx.tx where batch.is_canonical=true"
 	queryTxCountList = "select count(1) from exec_tx join batch on batch.sequence=exec_tx.batch where batch.is_canonical=true"
 )
 
@@ -509,14 +509,21 @@ func selectPublicTxsBySender(db *sql.DB, query string, args ...any) ([]common.Pu
 	for rows.Next() {
 		var txHash []byte
 		var batchHeight uint64
-		err := rows.Scan(&txHash, &batchHeight)
+		var batchHeader string
+		err := rows.Scan(&txHash, &batchHeight, &batchHeader)
 		if err != nil {
 			return nil, err
+		}
+
+		h := new(common.BatchHeader)
+		if err := rlp.DecodeBytes([]byte(batchHeader), h); err != nil {
+			return nil, fmt.Errorf("could not decode batch header. Cause: %w", err)
 		}
 
 		publicTxs = append(publicTxs, common.PublicTransaction{
 			TransactionHash: gethcommon.BytesToHash(txHash),
 			BatchHeight:     big.NewInt(0).SetUint64(batchHeight),
+			BatchTimestamp:  h.Time,
 			Finality:        common.BatchFinal,
 		})
 	}

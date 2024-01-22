@@ -199,6 +199,7 @@ export const WalletConnectionProvider = ({
         ethereum.removeListener("accountsChanged", fetchUserAccounts);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const walletConnectionContextValue: WalletConnectionContextType = {

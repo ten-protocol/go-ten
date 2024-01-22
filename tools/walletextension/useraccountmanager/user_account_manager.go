@@ -13,21 +13,24 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
 
+// UserAccountManager is a struct that stores one account manager per user and other required data
 type UserAccountManager struct {
 	userAccountManager    map[string]*accountmanager.AccountManager
 	unauthenticatedClient rpc.Client
 	storage               storage.Storage
-	hostRPCBinAddr        string
+	hostRPCBinAddrHTTP    string
+	hostRPCBinAddrWS      string
 	logger                gethlog.Logger
 	mu                    sync.RWMutex
 }
 
-func NewUserAccountManager(unauthenticatedClient rpc.Client, logger gethlog.Logger, storage storage.Storage, hostRPCBindAddr string) UserAccountManager {
+func NewUserAccountManager(unauthenticatedClient rpc.Client, logger gethlog.Logger, storage storage.Storage, hostRPCBindAddrHTTP string, hostRPCBindAddrWS string) UserAccountManager {
 	return UserAccountManager{
 		userAccountManager:    make(map[string]*accountmanager.AccountManager),
 		unauthenticatedClient: unauthenticatedClient,
 		storage:               storage,
-		hostRPCBinAddr:        hostRPCBindAddr,
+		hostRPCBinAddrHTTP:    hostRPCBindAddrHTTP,
+		hostRPCBinAddrWS:      hostRPCBindAddrWS,
 		logger:                logger,
 	}
 }
@@ -40,7 +43,7 @@ func (m *UserAccountManager) AddAndReturnAccountManager(userID string) *accountm
 	if exists {
 		return existingUserAccountManager
 	}
-	newAccountManager := accountmanager.NewAccountManager(m.unauthenticatedClient, m.logger)
+	newAccountManager := accountmanager.NewAccountManager(userID, m.unauthenticatedClient, m.hostRPCBinAddrWS, m.storage, m.logger)
 	m.userAccountManager[userID] = newAccountManager
 	return newAccountManager
 }
@@ -93,7 +96,7 @@ func (m *UserAccountManager) GetUserAccountManager(userID string) (*accountmanag
 		}
 
 		// create a new client
-		encClient, err := wecommon.CreateEncClient(m.hostRPCBinAddr, account.AccountAddress, userPrivateKey, account.Signature, m.logger)
+		encClient, err := wecommon.CreateEncClient(m.hostRPCBinAddrWS, account.AccountAddress, userPrivateKey, account.Signature, m.logger)
 		if err != nil {
 			m.logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
 		}

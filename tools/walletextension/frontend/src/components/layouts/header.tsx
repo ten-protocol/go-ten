@@ -5,6 +5,7 @@ import Link from "next/link";
 import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 import { Button } from "../ui/button";
+import HealthIndicator from "../health-indicator";
 
 export default function Header() {
   return (
@@ -16,6 +17,7 @@ export default function Header() {
         <div className="hidden md:flex items-center space-x-4">
           <MainNav className="mx-6" />
           <div className="flex items-center space-x-4">
+            <HealthIndicator />
             <ModeToggle />
             <ConnectWalletButton />
           </div>

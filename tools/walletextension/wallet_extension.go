@@ -31,7 +31,8 @@ import (
 
 // WalletExtension handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	hostAddr           string // The address on which the Obscuro host can be reached.
+	hostAddrHTTP       string // The HTTP address on which the Ten host can be reached
+	hostAddrWS         string // The WS address on which the Ten host can be reached
 	userAccountManager *useraccountmanager.UserAccountManager
 	unsignedVKs        map[gethcommon.Address]*viewingkey.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
 	storage            storage.Storage
@@ -43,7 +44,8 @@ type WalletExtension struct {
 }
 
 func New(
-	hostAddr string,
+	hostAddrHTTP string,
+	hostAddrWS string,
 	userAccountManager *useraccountmanager.UserAccountManager,
 	storage storage.Storage,
 	stopControl *stopcontrol.StopControl,
@@ -51,14 +53,15 @@ func New(
 	logger gethlog.Logger,
 	config *config.Config,
 ) *WalletExtension {
-	rpcClient, err := rpc.NewNetworkClient(hostAddr)
+	rpcClient, err := rpc.NewNetworkClient(hostAddrHTTP)
 	if err != nil {
-		logger.Error(fmt.Errorf("could not create RPC client on %s. Cause: %w", hostAddr, err).Error())
+		logger.Error(fmt.Errorf("could not create RPC client on %s. Cause: %w", hostAddrHTTP, err).Error())
 		panic(err)
 	}
 	newTenClient := obsclient.NewObsClient(rpcClient)
 	return &WalletExtension{
-		hostAddr:           hostAddr,
+		hostAddrHTTP:       hostAddrHTTP,
+		hostAddrWS:         hostAddrWS,
 		userAccountManager: userAccountManager,
 		unsignedVKs:        map[gethcommon.Address]*viewingkey.ViewingKey{},
 		storage:            storage,
@@ -165,7 +168,7 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 	}
 	// create an encrypted RPC client with the signed VK and register it with the enclave
 	// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
-	client, err := rpc.NewEncNetworkClient(w.hostAddr, vk, w.logger)
+	client, err := rpc.NewEncNetworkClient(w.hostAddrHTTP, vk, w.logger)
 	if err != nil {
 		return fmt.Errorf("failed to create encrypted RPC client for account %s - %w", address, err)
 	}
@@ -237,7 +240,7 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, sig
 		return err
 	}
 
-	// Get account manager for current userID (and create it if it doesn't exist) accManager := w.userAccountManager.AddAndReturnAccountManager(messageUserID)
+	// Get account manager for current userID (and create it if it doesn't exist)
 	privateKeyBytes, err := w.storage.GetUserPrivateKey(userIDBytes)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error getting private key for user: (%s), %w", hexUserID, err).Error())
@@ -245,7 +248,7 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, sig
 
 	accManager := w.userAccountManager.AddAndReturnAccountManager(hexUserID)
 
-	encClient, err := common.CreateEncClient(w.hostAddr, addressFromMessage.Bytes(), privateKeyBytes, signature, w.Logger())
+	encClient, err := common.CreateEncClient(w.hostAddrHTTP, addressFromMessage.Bytes(), privateKeyBytes, signature, w.Logger())
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error creating encrypted client for user: (%s), %w", hexUserID, err).Error())
 		return fmt.Errorf("error creating encrypted client for user: (%s), %w", hexUserID, err)
