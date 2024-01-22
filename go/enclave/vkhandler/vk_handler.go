@@ -1,6 +1,7 @@
 package vkhandler
 
 import (
+	"crypto/rand"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/accounts"
@@ -63,26 +64,13 @@ func New(requestedAddr *gethcommon.Address, vkPubKeyBytes, accountSignatureHexBy
 	}, nil
 }
 
-type customRnd struct {
-}
-
-func (rnd *customRnd) Read(p []byte) (n int, err error) {
-	for i := range p {
-		p[i] = 1
-	}
-	return len(p), nil
-}
-
-// used for checking the source of slowness
-var nonRandomTestReader = &customRnd{}
-
 // Encrypt returns the payload encrypted with the viewingKey
 func (m *VKHandler) Encrypt(bytes []byte) ([]byte, error) {
 	if len(bytes) == 0 {
 		bytes = placeholderResult
 	}
 
-	encryptedBytes, err := ecies.Encrypt(nonRandomTestReader, m.publicViewingKey, bytes, nil, nil)
+	encryptedBytes, err := ecies.Encrypt(rand.Reader, m.publicViewingKey, bytes, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to encrypt with given public VK - %w", err)
 	}

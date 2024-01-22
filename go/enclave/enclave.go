@@ -542,14 +542,16 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 		return responses.ToInternalError(fmt.Errorf("invalid batch received. Could not verify signature. Cause: %w", err))
 	}
 
-	e.mainMutex.Lock()
-	defer e.mainMutex.Unlock()
+	// calculate the converted hash, and store it in the db for chaining of the converted chain
 	convertedHeader, err := e.gethEncodingService.CreateEthHeaderForBatch(extBatch.Header)
 	if err != nil {
 		return err
 	}
 
-	// if the signature is valid, then store the batch
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
+
+	// if the signature is valid, then store the batch together with the converted hash
 	err = e.storage.StoreBatch(batch, convertedHeader.Hash())
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not store batch. Cause: %w", err))

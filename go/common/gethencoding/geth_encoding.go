@@ -50,19 +50,19 @@ type EncodingService interface {
 }
 
 type gethEncodingServiceImpl struct {
-	convertedCache *cache.Cache[*types.Header]
+	// conversion is expensive. Cache the converted headers. The key is the hash of the batch.
+	gethHeaderCache *cache.Cache[*types.Header]
 
-	// small converted cache
 	storage storage.Storage
 	logger  gethlog.Logger
 }
 
 func NewGethEncodingService(storage storage.Storage, logger gethlog.Logger) EncodingService {
-	// todo (tudor) figure out the context and the config
+	// todo (tudor) figure out the best values
 	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 1000,    // number of keys to track frequency of 100.
 		MaxCost:     1 << 28, // maximum cost of cache (256MB).
-		BufferItems: 64,      // number of keys per Get buffer.
+		BufferItems: 64,      // number of keys per Get buffer. Todo - what is this
 	})
 	if err != nil {
 		panic(err)
@@ -70,9 +70,9 @@ func NewGethEncodingService(storage storage.Storage, logger gethlog.Logger) Enco
 	ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
 
 	return &gethEncodingServiceImpl{
-		convertedCache: cache.New[*types.Header](ristrettoStore),
-		storage:        storage,
-		logger:         logger,
+		gethHeaderCache: cache.New[*types.Header](ristrettoStore),
+		storage:         storage,
+		logger:          logger,
 	}
 }
 
@@ -269,21 +269,23 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 	return callMsg, nil
 }
 
-// CreateEthHeaderForBatch - the EVM requires an Ethereum "block" header.
-// In this function we are creating one from the Batch Header
+// CreateEthHeaderForBatch - the EVM requires an Ethereum header.
+// We convert the Batch headers to Ethereum headers to be able to use the Geth EVM.
+// Special care must be taken to maintain a valid chain of these converted headers.
 func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(h *common.BatchHeader) (*types.Header, error) {
-	return common.GetCachedValue(enc.convertedCache, enc.logger, h.Hash(), func(a any) (*types.Header, error) {
-		// deterministically calculate the private randomness that will be exposed to the evm
+	// wrap in a caching layer
+	return common.GetCachedValue(enc.gethHeaderCache, enc.logger, h.Hash(), func(a any) (*types.Header, error) {
+		// deterministically calculate the private randomness that will be exposed to the EVM
 		secret, err := enc.storage.FetchSecret()
 		if err != nil {
 			enc.logger.Crit("Could not fetch shared secret. Exiting.", log.ErrKey, err)
 		}
-		randomness := crypto.CalculateRootBatchEntropy(secret[:], h.Number)
+		perBatchRandomness := crypto.CalculateRootBatchEntropy(secret[:], h.Number)
 
 		// calculate the converted hash of the parent, for a correct converted chain
-		convertedParentHash := gethcommon.Hash{}
+		// default to the genesis
+		convertedParentHash := common.GethGenesisParentHash
 
-		// handle genesis
 		if h.SequencerOrderNo.Uint64() > common.L2GenesisSeqNo {
 			convertedParentHash, err = enc.storage.FetchConvertedHash(h.ParentHash)
 			if err != nil {
@@ -310,7 +312,7 @@ func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(h *common.BatchHeade
 			BaseFee:         big.NewInt(0).SetUint64(baseFee),
 			Coinbase:        h.Coinbase,
 			Time:            h.Time,
-			MixDigest:       randomness,
+			MixDigest:       perBatchRandomness,
 			Nonce:           types.BlockNonce{},
 			Extra:           h.SequencerOrderNo.Bytes(),
 			WithdrawalsHash: nil,
@@ -322,7 +324,8 @@ func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(h *common.BatchHeade
 	})
 }
 
-// this type is needed for accessing the internals
+// The Geth "Block" type doesn't expose the header directly.
+// This type is required for adjusting the header.
 type localBlock struct {
 	header       *types.Header
 	uncles       []*types.Header
@@ -345,11 +348,7 @@ func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(b *core.Batch) (*typ
 		return nil, fmt.Errorf("unable to create eth block from batch - %w", err)
 	}
 
-	//block := types.NewBlock(blockHeader, b.Transactions, nil, nil, trie.NewStackTrie(nil))
-	//
-	//localBlock := *(*localBlock)(unsafe.Pointer(&block))
-	//localBlock.header = blockHeader
-
+	// adjust the header of the returned block to make sure the hashes align
 	lb := localBlock{
 		header:       blockHeader,
 		uncles:       nil,

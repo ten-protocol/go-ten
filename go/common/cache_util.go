@@ -8,6 +8,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
+// GetCachedValue - returns the cached value for the provided key. If the key is not found, then invoke the 'onFailed' function
+// which returns the value, and cache it
 func GetCachedValue[V any](cache *cache.Cache[V], logger gethlog.Logger, key any, onFailed func(any) (V, error)) (V, error) {
 	value, err := cache.Get(context.Background(), key)
 	if err != nil {
