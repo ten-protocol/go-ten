@@ -38,12 +38,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // get management contract and write the L1 bridge address to it
     const mgmtContract = (await hre.ethers.getContractFactory('ManagementContract')).attach(mgmtContractAddress)
-    const recordL1AddressTx = await mgmtContract.SetImportantContractAddress("L1Bridge", layer1BridgeDeployment.address);
-    const receipt = await recordL1AddressTx.wait();
-    if (receipt.status !== 1) {
-        console.log("Failed to set L1BridgeAddress in management contract");
+    const recordL1AddressTx = await mgmtContract.populateTransaction.SetImportantContractAddress("L1Bridge", layer1BridgeDeployment.address);
+
+    const receipt = await hre.companionNetworks.layer1.deployments.rawTx({
+        from: accountsL1.deployer,
+        to: mgmtContractAddress,
+        data: recordL1AddressTx.data,
+        log: true,
+        waitConfirmations: 1,
+    });
+    if (receipt.events?.length === 0) {
+        console.log(`Failed to set L1BridgeAddress=${layer1BridgeDeployment.address} on management contract.`);
+    } else {
+        console.log(`L1BridgeAddress=${layer1BridgeDeployment.address}`);
     }
-    console.log(`L1BridgeAddress=${layer1BridgeDeployment.address}`)
 
     // We get the Cross chain messenger deployment on the layer 2 network.
     const messengerL2 = await deployments.get("CrossChainMessenger");
@@ -69,12 +77,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true,
     }, "setRemoteBridge", layer2BridgeDeployment.address);
 
-    const recordL2AddressTx = await mgmtContract.SetImportantContractAddress("L2Bridge", layer2BridgeDeployment.address);
-    const receipt2 = await recordL2AddressTx.wait();
-    if (receipt2.status !== 1) {
-        console.log("Failed to set L2BridgeAddress in management contract");
+    const recordL2AddressTx = await mgmtContract.populateTransaction.SetImportantContractAddress("L2Bridge", layer2BridgeDeployment.address);
+    const receipt2 = await hre.companionNetworks.layer1.deployments.rawTx({
+        from: accountsL1.deployer,
+        to: mgmtContractAddress,
+        data: recordL2AddressTx.data,
+        log: true,
+        waitConfirmations: 1,
+    });
+    if (receipt2.events?.length === 0) {
+        console.log(`Failed to set L2BridgeAddress=${layer2BridgeDeployment.address} on management contract.`);
+    } else {
+        console.log(`L2BridgeAddress=${layer2BridgeDeployment.address}`);
     }
-    console.log(`L2BridgeAddress=${layer2BridgeDeployment.address}`)
     console.log(` Bridge deployed with from L1 address=${accountsL1.deployer} L2 Address=${accountsL2.deployer}`);
 };
 
