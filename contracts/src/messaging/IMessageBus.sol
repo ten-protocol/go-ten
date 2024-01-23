@@ -9,7 +9,7 @@ import "./Structs.sol";
 interface IMessageBus {
 
     // The event emitted whenever a message is published. 
-    // The enclave listens for it on the deployed message bus addreses.
+    // The enclave listens for it on the deployed message bus addresses.
     event LogMessagePublished
     (
         address sender, 

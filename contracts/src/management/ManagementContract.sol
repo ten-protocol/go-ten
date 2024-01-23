@@ -12,7 +12,7 @@ import * as MessageBus from "../messaging/MessageBus.sol";
 contract ManagementContract is Ownable, Initializable {
 
     constructor() {
-       // _disableInitializers(); //todo @siliev - figure out why the solidity compiler cant find this. Perhaps OZ needs a version upgrade?
+       // _disableInitializers(); //todo @siliev - figure out why the solidity compiler can't find this. Perhaps OZ needs a version upgrade?
     }
 
     event LogManagementContractCreated(address messageBusAddress);

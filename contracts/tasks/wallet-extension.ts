@@ -49,7 +49,7 @@ task("obscuro:wallet-extension:start:local")
         });
     });
 
-    console.log("Wallet Exension started successfully");
+    console.log("Wallet Extension started successfully");
     return weProcess;
 });
 
@@ -131,7 +131,7 @@ task("obscuro:wallet-extension:stop:docker", "Stops the docker container with ma
     await container?.stop()
 });
 
-task("obscuro:wallet-extension:add-key", "Creates a viewing key for a specifiec address")
+task("obscuro:wallet-extension:add-key", "Creates a viewing key for a specific address")
 .addParam("address", "The address for which to add key")
 .setAction(async function(args, hre) {
     async function viewingKeyForAddress(address: string) : Promise<string> {
