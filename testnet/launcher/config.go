@@ -15,6 +15,8 @@ type Config struct {
 	contractDeployerDebug       bool
 
 	isSGXEnabled bool
+
+	logLevel int
 }
 
 func NewTestnetConfig(opts ...Option) *Config {
@@ -66,5 +68,11 @@ func WithContractDeployerDockerImage(s string) Option {
 func WithContractDeployerDebug(b bool) Option {
 	return func(c *Config) {
 		c.contractDeployerDebug = b
+	}
+}
+
+func WithLogLevel(i int) Option {
+	return func(c *Config) {
+		c.logLevel = i
 	}
 }

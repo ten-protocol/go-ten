@@ -13,6 +13,7 @@ type TestnetConfigCLI struct {
 	contractDeployerDockerImage string
 	contractDeployerDebug       bool
 	isSGXEnabled                bool
+	logLevel                    int
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
@@ -27,6 +28,7 @@ func ParseConfigCLI() *TestnetConfigCLI {
 	contractDeployerDockerImage := flag.String(contractDeployerDockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest", flagUsageMap[contractDeployerDockerImageFlag])
 	contractDeployerDebug := flag.Bool(contractDeployerDebugFlag, false, flagUsageMap[contractDeployerDebugFlag])
 	isSGXEnabled := flag.Bool(isSGXEnabledFlag, false, flagUsageMap[isSGXEnabledFlag])
+	logLevel := flag.Int(logLevelFlag, 4, flagUsageMap[isSGXEnabledFlag])
 	flag.Parse()
 
 	cfg.validatorEnclaveDockerImage = *validatorEnclaveDockerImage
@@ -36,6 +38,7 @@ func ParseConfigCLI() *TestnetConfigCLI {
 	cfg.contractDeployerDebug = *contractDeployerDebug
 	cfg.contractDeployerDockerImage = *contractDeployerDockerImage
 	cfg.isSGXEnabled = *isSGXEnabled
+	cfg.logLevel = *logLevel
 
 	return cfg
 }
