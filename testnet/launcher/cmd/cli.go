@@ -28,7 +28,7 @@ func ParseConfigCLI() *TestnetConfigCLI {
 	contractDeployerDockerImage := flag.String(contractDeployerDockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest", flagUsageMap[contractDeployerDockerImageFlag])
 	contractDeployerDebug := flag.Bool(contractDeployerDebugFlag, false, flagUsageMap[contractDeployerDebugFlag])
 	isSGXEnabled := flag.Bool(isSGXEnabledFlag, false, flagUsageMap[isSGXEnabledFlag])
-	logLevel := flag.Int(logLevelFlag, 4, flagUsageMap[isSGXEnabledFlag])
+	logLevel := flag.Int(logLevelFlag, 4, flagUsageMap[logLevelFlag])
 	flag.Parse()
 
 	cfg.validatorEnclaveDockerImage = *validatorEnclaveDockerImage
