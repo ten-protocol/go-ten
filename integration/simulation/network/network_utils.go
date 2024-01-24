@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/miner"
+
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/host"
 	"github.com/ten-protocol/go-ten/go/host/l1"
@@ -95,7 +97,7 @@ func createInMemObscuroNode(
 		MaxRollupSize:             1024 * 64,
 		BaseFee:                   big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
 		GasLocalExecutionCapFlag:  params.MaxGasLimit / 2,
-		GasBatchExecutionLimit:    params.MaxGasLimit / 2,
+		GasBatchExecutionLimit:    miner.DefaultConfig.GasCeil / 6,
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
