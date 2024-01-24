@@ -99,7 +99,7 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts) (*Blo
 		return nil, err
 	}
 	bp.logger.Trace("Block inserted successfully",
-		log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash(), "ingestionType", ingestionType)
+		log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash())
 
 	err = bp.storage.StoreBlock(block, ingestionType.ChainFork)
 	if err != nil {
