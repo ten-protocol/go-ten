@@ -399,7 +399,19 @@ func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []c
 }
 
 func (s *sequencer) SubmitTransaction(transaction *common.L2Tx) error {
-	s.logger.Trace("Submit tx", "tx", transaction, "type", transaction.Type())
+	s.logger.Debug("Submit tx",
+		log.TxKey, transaction.Hash(),
+		"type", transaction.Type(),
+		"payload", gethcommon.Bytes2Hex(transaction.Data()),
+		"time", transaction.Time(),
+		"to", transaction.To().Hex(),
+		"value", transaction.Value().Uint64(),
+		"size", transaction.Size(),
+		"nonce", transaction.Nonce(),
+		"gas", transaction.Gas(),
+		"gasPrice", transaction.GasPrice().Uint64(),
+		"chainId", transaction.ChainId().Uint64(),
+	)
 	return s.mempool.Add(transaction)
 }
 
