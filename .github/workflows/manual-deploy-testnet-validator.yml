@@ -196,6 +196,7 @@ jobs:
 #    needs:
 #      - build
 #      - deploy
+#      - check-obscuro-is-healthy
 #    runs-on: ubuntu-latest
 #    environment:
 #      name: ${{ github.event.inputs.testnet_type }}
