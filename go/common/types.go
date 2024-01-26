@@ -76,6 +76,8 @@ type (
 	EncodedRollup       []byte
 	EncodedBatchMsg     []byte
 	EncodedBatchRequest []byte
+
+	EnclaveID = common.Hash
 )
 
 func (txs L2PricedTransactions) ToTransactions() types.Transactions {

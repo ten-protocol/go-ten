@@ -21,6 +21,7 @@ const (
 	RollupHashKey    = "rollup"
 	CmpKey           = "component"
 	NodeIDKey        = "node_id"
+	EnclaveIDKey     = "enclave_id"
 	NetworkIDKey     = "network_id"
 	BlockHeightKey   = "block_height"
 	BlockHashKey     = "block_hash"

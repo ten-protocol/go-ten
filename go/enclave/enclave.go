@@ -87,6 +87,7 @@ type enclaveImpl struct {
 
 	enclaveKey    *ecdsa.PrivateKey // this is a key specific to this enclave, which is included in the Attestation. Used for signing rollups and for encryption of the shared secret.
 	enclavePubKey []byte            // the public key of the above
+	enclaveID     common.EnclaveID  // the hash of the above, used as the ID of this enclave in the Ten protocol
 
 	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
@@ -168,7 +169,8 @@ func NewEnclave(
 	}
 
 	serializedEnclavePubKey := gethcrypto.CompressPubkey(&enclaveKey.PublicKey)
-	logger.Info(fmt.Sprintf("Generated public key %s", gethcommon.Bytes2Hex(serializedEnclavePubKey)))
+	enclaveID := gethcrypto.Keccak256(serializedEnclavePubKey)
+	logger.Info(fmt.Sprintf("Generated public key. EnclaveID=%s, publicKey=%s", enclaveID, gethcommon.Bytes2Hex(serializedEnclavePubKey)))
 
 	obscuroKey := crypto.GetObscuroKey(logger)
 	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey))
@@ -266,6 +268,7 @@ func NewEnclave(
 		sharedSecretProcessor:  sharedSecretProcessor,
 		enclaveKey:             enclaveKey,
 		enclavePubKey:          serializedEnclavePubKey,
+		enclaveID:              common.EnclaveID(enclaveID),
 		dataEncryptionService:  dataEncryptionService,
 		dataCompressionService: dataCompressionService,
 		gethEncodingService:    gethEncodingService,
@@ -899,6 +902,10 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) common.
 	}
 	e.logger.Trace(fmt.Sprintf("Secret decrypted and stored. Secret: %v", secret))
 	return nil
+}
+
+func (e *enclaveImpl) EnclaveID() (common.EnclaveID, common.SystemError) {
+	return e.enclaveID, nil
 }
 
 // GetBalance handles param decryption, validation and encryption

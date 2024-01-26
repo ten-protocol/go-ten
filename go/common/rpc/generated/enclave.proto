@@ -18,6 +18,9 @@ service EnclaveProto {
   // Init - initialise an enclave with a seed received by another enclave
   rpc InitEnclave(InitEnclaveRequest) returns (InitEnclaveResponse) {}
 
+  // Init - initialise an enclave with a seed received by another enclave
+  rpc EnclaveID(EnclaveIDRequest) returns (EnclaveIDResponse) {}
+
   // SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
   //  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
   //  b. the latest block published by the L1, to which the enclave should respond with a rollup
@@ -216,6 +219,12 @@ message InitEnclaveRequest {
 }
 message InitEnclaveResponse {
   SystemError systemError = 1;
+}
+
+message EnclaveIDRequest {}
+message EnclaveIDResponse {
+  bytes enclaveID = 1;
+  SystemError systemError = 2;
 }
 
 message StartRequest {
