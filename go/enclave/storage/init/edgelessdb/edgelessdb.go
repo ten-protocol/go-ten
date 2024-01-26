@@ -467,6 +467,7 @@ func connectToEdgelessDB(edbHost string, tlsCfg *tls.Config, logger gethlog.Logg
 	dsn := cfg.FormatDSN()
 	logger.Info(fmt.Sprintf("Configuring mysql connection: %s", dsn))
 	db, err := sql.Open("mysql", dsn)
+	db.SetMaxOpenConns(50)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize mysql connection to edb - %w", err)
 	}
