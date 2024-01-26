@@ -12,7 +12,6 @@ const HealthIndicator = () => {
     setLoading(true);
     try {
       const status = await getTestnetStatus();
-
       return status;
     } catch (error) {
       console.error(error);
@@ -31,7 +30,9 @@ const HealthIndicator = () => {
       if (isMounted) {
         if (res?.result?.OverallHealth) {
           setStatus(true);
-        } else if (res?.result?.Errors?.includes("[p2p]")) {
+        } else if (
+          res?.result?.Errors?.map((e: string) => e.includes("[p2p]"))
+        ) {
           setStatus(true);
         } else {
           setStatus(false);
