@@ -309,8 +309,6 @@ jobs:
 
   update-loadbalancer:
     needs:
-      - build
-      - deploy
       - check-obscuro-is-healthy
     runs-on: ubuntu-latest
     environment:
