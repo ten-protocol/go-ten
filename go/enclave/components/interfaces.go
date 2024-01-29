@@ -58,9 +58,10 @@ type BatchExecutionContext struct {
 // the computation of the batch. One might not want to commit in case the
 // resulting batch differs than what is being validated for example.
 type ComputedBatch struct {
-	Batch    *core.Batch
-	Receipts types.Receipts
-	Commit   func(bool) (gethcommon.Hash, error)
+	Batch     *core.Batch
+	Receipts  types.Receipts
+	XChainTxs common.L2Transactions
+	Commit    func(bool) (gethcommon.Hash, error)
 }
 
 type BatchExecutor interface {

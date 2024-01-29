@@ -103,6 +103,7 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 		stateDB.SubBalance(*sender, cost)
 		stateDB.AddBalance(context.Creator, cost)
 		// todo - add refund logic.
+		executor.logger.Info("Tx L1 cost", log.TxKey, tx.Hash(), "cost", cost)
 
 		transactions = append(transactions, tx)
 	}
@@ -127,6 +128,7 @@ func (executor *batchExecutor) refundL1Fees(stateDB *state.StateDB, context *Bat
 
 		stateDB.AddBalance(*sender, cost)
 		stateDB.SubBalance(context.Creator, cost)
+		executor.logger.Info("Tx L1 cost refund", log.TxKey, tx.Hash(), "cost", cost)
 	}
 }
 
@@ -169,6 +171,8 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
+	snap := stateDB.Snapshot()
+
 	var messages common.CrossChainMessages
 	var transfers common.ValueTransferEvents
 	if context.SequencerNo.Int64() > int64(common.L2GenesisSeqNo+1) {
@@ -198,6 +202,30 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
 	}
 
+	if failForEmptyBatch &&
+		len(txReceipts) == 0 &&
+		len(ccReceipts) == 0 &&
+		len(transactionsToProcess)-len(excludedTxs) == 0 &&
+		len(crossChainTransactions) == 0 &&
+		len(messages) == 0 &&
+		len(transfers) == 0 {
+		if snap > 0 {
+			//// revert any unexpected mutation to the statedb
+			stateDB.RevertToSnapshot(snap)
+		}
+		return nil, ErrNoTransactionsToProcess
+	}
+
+	for _, xChainTx := range crossChainTransactions {
+		executor.logger.Info("Xchain tx",
+			log.TxKey, xChainTx.Hash(),
+			"type", xChainTx.Type(),
+			"time", xChainTx.Time(),
+			"payload", gethcommon.Bytes2Hex(xChainTx.Data()),
+			"gas", xChainTx.Gas(),
+		)
+	}
+
 	// we need to copy the batch to reset the internal hash cache
 	copyBatch := *batch
 	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
@@ -210,15 +238,6 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 
 	allReceipts := append(txReceipts, ccReceipts...)
 	executor.populateHeader(&copyBatch, allReceipts)
-	if failForEmptyBatch &&
-		len(txReceipts) == 0 &&
-		len(ccReceipts) == 0 &&
-		len(transactionsToProcess)-len(excludedTxs) == 0 &&
-		len(crossChainTransactions) == 0 &&
-		len(messages) == 0 &&
-		len(transfers) == 0 {
-		return nil, ErrNoTransactionsToProcess
-	}
 
 	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
 	for _, receipt := range allReceipts {
@@ -229,8 +248,9 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	}
 
 	return &ComputedBatch{
-		Batch:    &copyBatch,
-		Receipts: allReceipts,
+		Batch:     &copyBatch,
+		Receipts:  allReceipts,
+		XChainTxs: crossChainTransactions,
 		Commit: func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
 			executor.stateDBMutex.Lock()
 			defer executor.stateDBMutex.Unlock()
@@ -270,6 +290,15 @@ func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, 
 	if cb.Batch.Hash() != batch.Hash() {
 		// todo @stefan - generate a validator challenge here and return it
 		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v\n", cb.Batch.Header, batch.Header))
+		for _, xChainTx := range cb.XChainTxs {
+			executor.logger.Error("Xchain tx",
+				log.TxKey, xChainTx.Hash(),
+				"type", xChainTx.Type(),
+				"time", xChainTx.Time(),
+				"payload", gethcommon.Bytes2Hex(xChainTx.Data()),
+				"gas", xChainTx.Gas(),
+			)
+		}
 		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
 	}
 
