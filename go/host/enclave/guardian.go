@@ -37,9 +37,7 @@ const (
 	_maxWaitForSecretResponse = 2 * time.Minute
 )
 
-var (
-	_emptyEnclaveID = common.EnclaveID{}
-)
+var _emptyEnclaveID = common.EnclaveID{}
 
 // This private interface enforces the services that the guardian depends on
 type guardianServiceLocator interface {
