@@ -221,11 +221,8 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 			log.TxKey, xChainTx.Hash(),
 			"type", xChainTx.Type(),
 			"time", xChainTx.Time(),
-			"to", xChainTx.To().Hex(),
-			"value", xChainTx.Value().Uint64(),
 			"payload", gethcommon.Bytes2Hex(xChainTx.Data()),
 			"gas", xChainTx.Gas(),
-			"gasPrice", xChainTx.GasPrice().Uint64(),
 		)
 	}
 
@@ -298,11 +295,8 @@ func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, 
 				log.TxKey, xChainTx.Hash(),
 				"type", xChainTx.Type(),
 				"time", xChainTx.Time(),
-				"to", xChainTx.To().Hex(),
-				"value", xChainTx.Value().Uint64(),
 				"payload", gethcommon.Bytes2Hex(xChainTx.Data()),
 				"gas", xChainTx.Gas(),
-				"gasPrice", xChainTx.GasPrice().Uint64(),
 			)
 		}
 		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
