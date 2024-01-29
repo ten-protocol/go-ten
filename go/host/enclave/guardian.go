@@ -182,7 +182,9 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 }
 
 func (g *Guardian) HandleTransaction(tx common.EncryptedTx) {
-	if g.GetEnclaveState().status == Disconnected || g.GetEnclaveState().status == Unavailable {
+	if g.GetEnclaveState().status == Disconnected ||
+		g.GetEnclaveState().status == Unavailable ||
+		g.GetEnclaveState().status == AwaitingSecret {
 		g.logger.Info("Enclave is not ready yet, dropping transaction.")
 		return // ignore transactions when enclave unavailable
 	}
