@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -77,4 +78,21 @@ func (r *RPCRequest) Clone() *RPCRequest {
 		Method: r.Method,
 		Params: r.Params,
 	}
+}
+
+// NewFileLogger is a logger factory function
+func NewFileLogger() gethlog.Logger {
+	// Open or create your log file
+	file, err := os.OpenFile("gateway_logs.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create a new logger instance
+	logger := gethlog.New()
+
+	// Set the handler to the file
+	logger.SetHandler(gethlog.StreamHandler(file, gethlog.TerminalFormat(false)))
+
+	return logger
 }

@@ -37,6 +37,7 @@ type WalletExtension struct {
 	unsignedVKs        map[gethcommon.Address]*viewingkey.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
 	storage            storage.Storage
 	logger             gethlog.Logger
+	fileLogger         gethlog.Logger
 	stopControl        *stopcontrol.StopControl
 	version            string
 	config             *config.Config
@@ -59,6 +60,7 @@ func New(
 		panic(err)
 	}
 	newTenClient := obsclient.NewObsClient(rpcClient)
+	newFileLogger := common.NewFileLogger()
 	return &WalletExtension{
 		hostAddrHTTP:       hostAddrHTTP,
 		hostAddrWS:         hostAddrWS,
@@ -66,6 +68,7 @@ func New(
 		unsignedVKs:        map[gethcommon.Address]*viewingkey.ViewingKey{},
 		storage:            storage,
 		logger:             logger,
+		fileLogger:         newFileLogger,
 		stopControl:        stopControl,
 		version:            version,
 		config:             config,
@@ -92,11 +95,13 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
 	var rpcResp interface{}
+	w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s", request.Method, request.Params, hexUserID))
 
 	// wallet extension can override the GetStorageAt to retrieve the current userID
 	if request.Method == rpc.GetStorageAt {
 		if interceptedResponse := w.getStorageAtInterceptor(request, hexUserID); interceptedResponse != nil {
 			w.logger.Info("interception successful for getStorageAt, returning userID response")
+			w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s", request.Method, request.Params, hexUserID, interceptedResponse))
 			return interceptedResponse, nil
 		}
 	}
@@ -113,6 +118,7 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 		if errors.Is(err, rpc.ErrNilResponse) {
 			// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 			response[common.JSONKeyResult] = nil
+			w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s", request.Method, request.Params, hexUserID, response))
 			return response, nil
 		}
 		return nil, err
@@ -123,6 +129,7 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 	// todo (@ziga) - fix this upstream on the decode
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
 	adjustStateRoot(rpcResp, response)
+	w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s", request.Method, request.Params, hexUserID, response))
 
 	return response, nil
 }
