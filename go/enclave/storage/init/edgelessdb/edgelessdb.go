@@ -97,7 +97,7 @@ const (
 	initFile = "001_init.sql"
 
 	// maximum number of database connections maintained in the tx pool
-	maxDbPoolSize = 100
+	maxDBPoolSize = 100
 )
 
 var (
@@ -470,9 +470,9 @@ func connectToEdgelessDB(edbHost string, tlsCfg *tls.Config, logger gethlog.Logg
 	dsn := cfg.FormatDSN()
 	logger.Info(fmt.Sprintf("Configuring mysql connection: %s", dsn))
 	db, err := sql.Open("mysql", dsn)
-	db.SetMaxOpenConns(maxDbPoolSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize mysql connection to edb - %w", err)
 	}
+	db.SetMaxOpenConns(maxDBPoolSize)
 	return db, nil
 }
