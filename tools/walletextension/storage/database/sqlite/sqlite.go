@@ -1,23 +1,25 @@
-package database
+package sqlite
 
 import (
 	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	obscurocommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
 	common "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
-type SqliteDatabase struct {
+type Database struct {
 	db *sql.DB
 }
 
-func NewSqliteDatabase(dbPath string) (*SqliteDatabase, error) {
+func NewSqliteDatabase(dbPath string) (*Database, error) {
 	// load the db file
 	dbFilePath, err := createOrLoad(dbPath)
 	if err != nil {
@@ -31,38 +33,22 @@ func NewSqliteDatabase(dbPath string) (*SqliteDatabase, error) {
 		return nil, err
 	}
 
-	// enable foreign keys in sqlite
-	_, err = db.Exec("PRAGMA foreign_keys = ON;")
-	if err != nil {
+	// get the path to the migrations (they are always in the same directory as file containing connection function)
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		return nil, fmt.Errorf("failed to get current directory")
+	}
+	migrationsDir := filepath.Dir(filename)
+
+	// apply migrations
+	if err = database.ApplyMigrations(db, migrationsDir); err != nil {
 		return nil, err
 	}
 
-	// create users table
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
-		user_id binary(20) PRIMARY KEY,
-		private_key binary(32)
-	);`)
-
-	if err != nil {
-		return nil, err
-	}
-
-	// create accounts table
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS accounts (
-		user_id binary(20),
-		account_address binary(20),
-		signature binary(65),
-    	FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
-	);`)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &SqliteDatabase{db: db}, nil
+	return &Database{db: db}, nil
 }
 
-func (s *SqliteDatabase) AddUser(userID []byte, privateKey []byte) error {
+func (s *Database) AddUser(userID []byte, privateKey []byte) error {
 	stmt, err := s.db.Prepare("INSERT OR REPLACE INTO users(user_id, private_key) VALUES (?, ?)")
 	if err != nil {
 		return err
@@ -77,7 +63,7 @@ func (s *SqliteDatabase) AddUser(userID []byte, privateKey []byte) error {
 	return nil
 }
 
-func (s *SqliteDatabase) DeleteUser(userID []byte) error {
+func (s *Database) DeleteUser(userID []byte) error {
 	stmt, err := s.db.Prepare("DELETE FROM users WHERE user_id = ?")
 	if err != nil {
 		return err
@@ -92,7 +78,7 @@ func (s *SqliteDatabase) DeleteUser(userID []byte) error {
 	return nil
 }
 
-func (s *SqliteDatabase) GetUserPrivateKey(userID []byte) ([]byte, error) {
+func (s *Database) GetUserPrivateKey(userID []byte) ([]byte, error) {
 	var privateKey []byte
 	err := s.db.QueryRow("SELECT private_key FROM users WHERE user_id = ?", userID).Scan(&privateKey)
 	if err != nil {
@@ -106,7 +92,7 @@ func (s *SqliteDatabase) GetUserPrivateKey(userID []byte) ([]byte, error) {
 	return privateKey, nil
 }
 
-func (s *SqliteDatabase) AddAccount(userID []byte, accountAddress []byte, signature []byte) error {
+func (s *Database) AddAccount(userID []byte, accountAddress []byte, signature []byte) error {
 	stmt, err := s.db.Prepare("INSERT INTO accounts(user_id, account_address, signature) VALUES (?, ?, ?)")
 	if err != nil {
 		return err
@@ -121,7 +107,7 @@ func (s *SqliteDatabase) AddAccount(userID []byte, accountAddress []byte, signat
 	return nil
 }
 
-func (s *SqliteDatabase) GetAccounts(userID []byte) ([]common.AccountDB, error) {
+func (s *Database) GetAccounts(userID []byte) ([]common.AccountDB, error) {
 	rows, err := s.db.Query("SELECT account_address, signature FROM accounts WHERE user_id = ?", userID)
 	if err != nil {
 		return nil, err
@@ -143,7 +129,7 @@ func (s *SqliteDatabase) GetAccounts(userID []byte) ([]common.AccountDB, error) 
 	return accounts, nil
 }
 
-func (s *SqliteDatabase) GetAllUsers() ([]common.UserDB, error) {
+func (s *Database) GetAllUsers() ([]common.UserDB, error) {
 	rows, err := s.db.Query("SELECT user_id, private_key FROM users")
 	if err != nil {
 		return nil, err

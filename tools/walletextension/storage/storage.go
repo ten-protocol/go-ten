@@ -3,8 +3,10 @@ package storage
 import (
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/mariadb"
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/sqlite"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database"
 )
 
 type Storage interface {
@@ -19,9 +21,9 @@ type Storage interface {
 func New(dbType string, dbConnectionURL, dbPath string) (Storage, error) {
 	switch dbType {
 	case "mariaDB":
-		return database.NewMariaDB(dbConnectionURL)
+		return mariadb.NewMariaDB(dbConnectionURL)
 	case "sqlite":
-		return database.NewSqliteDatabase(dbPath)
+		return sqlite.NewSqliteDatabase(dbPath)
 	}
 	return nil, fmt.Errorf("unknown db %s", dbType)
 }
