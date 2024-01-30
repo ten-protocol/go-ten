@@ -169,7 +169,9 @@ func NewEnclave(
 	}
 
 	serializedEnclavePubKey := gethcrypto.CompressPubkey(&enclaveKey.PublicKey)
-	enclaveID := gethcrypto.Keccak256(serializedEnclavePubKey)
+	pubKeyHash := gethcrypto.Keccak256(serializedEnclavePubKey)
+	// the enclave ID is the address for its keypair (like eth addresses, the last 20 bytes of the hash of the public key)
+	enclaveID := pubKeyHash[gethcommon.HashLength-gethcommon.AddressLength:]
 	logger.Info(fmt.Sprintf("Generated public key. EnclaveID=%s, publicKey=%s", enclaveID, gethcommon.Bytes2Hex(serializedEnclavePubKey)))
 
 	obscuroKey := crypto.GetObscuroKey(logger)
