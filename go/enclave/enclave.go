@@ -153,7 +153,7 @@ func NewEnclave(
 		}
 		// enclave key not found - new key should be generated
 		// todo (#1053) - revisit the crypto for this key generation/lifecycle before production
-		logger.Info("Generating the Obscuro key")
+		logger.Info("Generating new enclave key")
 		enclaveKey, err = crypto.GenerateEnclaveKey()
 		if err != nil {
 			logger.Crit("Failed to generate enclave key.", log.ErrKey, err)
@@ -163,6 +163,7 @@ func NewEnclave(
 			logger.Crit("Failed to store enclave key.", log.ErrKey, err)
 		}
 	}
+	logger.Info(fmt.Sprintf("Enclave key available. EnclaveID=%s, publicKey=%s", enclaveKey.EnclaveID(), gethcommon.Bytes2Hex(enclaveKey.PublicKeyBytes())))
 
 	obscuroKey := crypto.GetObscuroKey(logger)
 	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey))
