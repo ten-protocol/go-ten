@@ -2,7 +2,6 @@ package enclave
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -85,9 +84,7 @@ type enclaveImpl struct {
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
 	attestationProvider components.AttestationProvider // interface for producing attestation reports and verifying them
 
-	enclaveKey    *ecdsa.PrivateKey // this is a key specific to this enclave, which is included in the Attestation. Used for signing rollups and for encryption of the shared secret.
-	enclavePubKey []byte            // the public key of the above
-	enclaveID     common.EnclaveID  // the hash of the above, used as the ID of this enclave in the Ten protocol
+	enclaveKey *crypto.EnclaveKey // the enclave's private key (used to identify the enclave and sign messages)
 
 	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
@@ -158,7 +155,7 @@ func NewEnclave(
 		// enclave key not found - new key should be generated
 		// todo (#1053) - revisit the crypto for this key generation/lifecycle before production
 		logger.Info("Generating the Obscuro key")
-		enclaveKey, err = gethcrypto.GenerateKey()
+		enclaveKey, err = crypto.GenerateEnclaveKey()
 		if err != nil {
 			logger.Crit("Failed to generate enclave key.", log.ErrKey, err)
 		}
@@ -168,7 +165,7 @@ func NewEnclave(
 		}
 	}
 
-	serializedEnclavePubKey := gethcrypto.CompressPubkey(&enclaveKey.PublicKey)
+	serializedEnclavePubKey := gethcrypto.CompressPubkey(enclaveKey.PublicKey())
 	pubKeyHash := gethcrypto.Keccak256(serializedEnclavePubKey)
 	// the enclave ID is the address for its keypair (like eth addresses, the last 20 bytes of the hash of the public key)
 	enclaveID := pubKeyHash[gethcommon.HashLength-gethcommon.AddressLength:]
@@ -269,8 +266,6 @@ func NewEnclave(
 		attestationProvider:    attestationProvider,
 		sharedSecretProcessor:  sharedSecretProcessor,
 		enclaveKey:             enclaveKey,
-		enclavePubKey:          serializedEnclavePubKey,
-		enclaveID:              common.EnclaveID(enclaveID),
 		dataEncryptionService:  dataEncryptionService,
 		dataCompressionService: dataCompressionService,
 		gethEncodingService:    gethEncodingService,
@@ -860,10 +855,10 @@ func (e *enclaveImpl) Attestation() (*common.AttestationReport, common.SystemErr
 		return nil, responses.ToInternalError(fmt.Errorf("requested ObsCall with the enclave stopping"))
 	}
 
-	if e.enclavePubKey == nil {
+	if e.enclaveKey == nil {
 		return nil, responses.ToInternalError(fmt.Errorf("public key not initialized, we can't produce the attestation report"))
 	}
-	report, err := e.attestationProvider.GetReport(e.enclavePubKey, e.config.HostID, e.config.HostAddress)
+	report, err := e.attestationProvider.GetReport(e.enclaveKey.PublicKeyBytes(), e.config.HostID, e.config.HostAddress)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not produce remote report. Cause %w", err))
 	}
@@ -881,7 +876,7 @@ func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, com
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not store secret. Cause: %w", err))
 	}
-	encSec, err := crypto.EncryptSecret(e.enclavePubKey, secret, e.logger)
+	encSec, err := crypto.EncryptSecret(e.enclaveKey.PublicKeyBytes(), secret, e.logger)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("failed to encrypt secret. Cause: %w", err))
 	}
@@ -894,7 +889,7 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) common.
 		return responses.ToInternalError(fmt.Errorf("requested InitEnclave with the enclave stopping"))
 	}
 
-	secret, err := crypto.DecryptSecret(s, e.enclaveKey)
+	secret, err := crypto.DecryptSecret(s, e.enclaveKey.PrivateKey())
 	if err != nil {
 		return responses.ToInternalError(err)
 	}
@@ -907,7 +902,7 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) common.
 }
 
 func (e *enclaveImpl) EnclaveID() (common.EnclaveID, common.SystemError) {
-	return e.enclaveID, nil
+	return e.enclaveKey.EnclaveID(), nil
 }
 
 // GetBalance handles param decryption, validation and encryption

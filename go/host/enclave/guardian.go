@@ -37,8 +37,6 @@ const (
 	_maxWaitForSecretResponse = 2 * time.Minute
 )
 
-var _emptyEnclaveID = common.EnclaveID{}
-
 // This private interface enforces the services that the guardian depends on
 type guardianServiceLocator interface {
 	P2P() host.P2P
@@ -73,7 +71,7 @@ type Guardian struct {
 	logger           gethlog.Logger
 	maxBatchInterval time.Duration
 	lastBatchCreated time.Time
-	enclaveID        common.EnclaveID
+	enclaveID        *common.EnclaveID
 }
 
 func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
@@ -96,20 +94,20 @@ func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator 
 
 func (g *Guardian) Start() error {
 	// sanity check, Start() spawns new go-routines and should only be called once
-	if g.enclaveID != _emptyEnclaveID {
+	if g.enclaveID != nil {
 		return errors.New("guardian already started")
 	}
 
 	// Identify the enclave before starting (the enclave generates its ID immediately at startup)
 	// (retry until we get the enclave ID or the host is stopping)
-	for g.enclaveID == _emptyEnclaveID && !g.hostInterrupter.IsStopping() {
+	for g.enclaveID == nil && !g.hostInterrupter.IsStopping() {
 		enclID, err := g.enclaveClient.EnclaveID()
 		if err != nil {
 			g.logger.Warn("could not get enclave ID", log.ErrKey, err)
 			time.Sleep(_retryInterval)
 			continue
 		}
-		g.enclaveID = enclID
+		g.enclaveID = &enclID
 		// include the enclave ID in guardian log messages (for multi-enclave nodes)
 		g.logger = g.logger.New(log.EnclaveIDKey, g.enclaveID)
 		g.logger.Info("Starting guardian process.")

@@ -461,28 +461,28 @@ func (s *storageImpl) GetL1Transfers(blockHash common.L1BlockHash) (common.Value
 
 const enclaveKeyKey = "ek"
 
-func (s *storageImpl) StoreEnclaveKey(enclaveKey *ecdsa.PrivateKey) error {
+func (s *storageImpl) StoreEnclaveKey(enclaveKey *crypto.EnclaveKey) error {
 	defer s.logDuration("StoreEnclaveKey", measure.NewStopwatch())
 	if enclaveKey == nil {
 		return errors.New("enclaveKey cannot be nil")
 	}
-	keyBytes := gethcrypto.FromECDSA(enclaveKey)
+	keyBytes := gethcrypto.FromECDSA(enclaveKey.PrivateKey())
 
 	_, err := enclavedb.WriteConfig(s.db.GetSQLDB(), enclaveKeyKey, keyBytes)
 	return err
 }
 
-func (s *storageImpl) GetEnclaveKey() (*ecdsa.PrivateKey, error) {
+func (s *storageImpl) GetEnclaveKey() (*crypto.EnclaveKey, error) {
 	defer s.logDuration("GetEnclaveKey", measure.NewStopwatch())
 	keyBytes, err := enclavedb.FetchConfig(s.db.GetSQLDB(), enclaveKeyKey)
 	if err != nil {
 		return nil, err
 	}
-	enclaveKey, err := gethcrypto.ToECDSA(keyBytes)
+	ecdsaKey, err := gethcrypto.ToECDSA(keyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("unable to construct ECDSA private key from enclave key bytes - %w", err)
 	}
-	return enclaveKey, nil
+	return crypto.NewEnclaveKey(ecdsaKey), nil
 }
 
 func (s *storageImpl) StoreRollup(rollup *common.ExtRollup, internalHeader *common.CalldataRollupHeader) error {

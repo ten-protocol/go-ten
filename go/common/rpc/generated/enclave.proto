@@ -18,7 +18,7 @@ service EnclaveProto {
   // Init - initialise an enclave with a seed received by another enclave
   rpc InitEnclave(InitEnclaveRequest) returns (InitEnclaveResponse) {}
 
-  // Init - initialise an enclave with a seed received by another enclave
+  // EnclaveID - request the EnclaveID from the enclave
   rpc EnclaveID(EnclaveIDRequest) returns (EnclaveIDResponse) {}
 
   // SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
