@@ -80,7 +80,7 @@ func checkViewingKeyAndRecoverAddress(vk *AuthenticatedViewingKey, chainID int64
 	userID := viewingkey.CalculateUserIDHex(vk.VkPubKey)
 
 	// check signature and recover the address
-	address, err := viewingkey.CheckEIP712Signature(userID, vk.Signature, chainID) //nolint:ineffassign
+	address, err := viewingkey.CheckEIP712Signature(userID, vk.Signature, chainID) //nolint
 	if err != nil {
 		// try the legacy format
 		legacyMessage := viewingkey.GenerateSignMessage(vk.VkPubKey)

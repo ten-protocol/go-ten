@@ -233,6 +233,7 @@ func CheckSignatureAndReturnAccountAddress(hashBytes []byte, signature []byte) (
 	return nil, fmt.Errorf("invalid signature")
 }
 
+// CheckEIP712Signature checks if signature is valid for provided userID and chainID and return address or nil if not valid
 func CheckEIP712Signature(userID string, signature []byte, chainID int64) (*gethcommon.Address, error) {
 	if len(signature) != 65 {
 		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
