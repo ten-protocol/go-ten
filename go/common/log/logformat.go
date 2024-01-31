@@ -51,7 +51,7 @@ var fieldPadding = make(map[string]int)
 // fieldPaddingLock is a global mutex protecting the field padding map.
 var fieldPaddingLock sync.RWMutex
 
-// TenLogFormat - returns a log format that is used by the Ten logger
+// TenLogFormat - returns a log format that is used by the Ten logger for both console and file logging.
 // Note: this is mostly a copy of gethlog.TerminalFormat but putting it here gives us control and
 // means we aren't forced to use the shortened hash format
 func TenLogFormat() gethlog.Format {
@@ -97,7 +97,7 @@ func logfmt(buf *bytes.Buffer, ctx []interface{}, term bool) {
 		}
 
 		k, ok := ctx[i].(string)
-		v := formatLogfmtValue(ctx[i+1], term)
+		v := formatLogfmtValue(ctx[i+1])
 		if !ok {
 			k, v = ErrKey, fmt.Sprintf("%+T is not a string key", ctx[i])
 		} else {
@@ -154,7 +154,7 @@ func formatShared(value interface{}) (result interface{}) {
 }
 
 // formatValue formats a value for serialization
-func formatLogfmtValue(value interface{}, term bool) string {
+func formatLogfmtValue(value interface{}) string {
 	if value == nil {
 		return "nil"
 	}
