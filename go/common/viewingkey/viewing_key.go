@@ -253,7 +253,7 @@ func CheckEIP712Signature(userID string, signature []byte, chainID int64) (*geth
 		// create a hash of structured message (needed for signature verification)
 		hashBytes := crypto.Keccak256(rawData)
 
-		// current signature is valid - return true
+		// current signature is valid - return account address
 		address, err := CheckSignatureAndReturnAccountAddress(hashBytes, signature)
 		if err == nil {
 			return address, nil
