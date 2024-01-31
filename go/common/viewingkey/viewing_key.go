@@ -209,7 +209,7 @@ func CalculateUserID(publicKeyBytes []byte) []byte {
 
 // CheckSignatureAndReturnAccountAddress checks if the signature is valid for hash of the message and checks if
 // signer is an address provided to the function.
-// It returns true if both conditions are true and false otherwise
+// It returns an address if the signature is valid and nil otherwise
 func CheckSignatureAndReturnAccountAddress(hashBytes []byte, signature []byte) (*gethcommon.Address, error) {
 	pubKeyBytes, err := crypto.Ecrecover(hashBytes, signature)
 	if err != nil {
