@@ -85,12 +85,12 @@ func TenLogFormat() gethlog.Format {
 			b.Write(bytes.Repeat([]byte{' '}, termMsgJust-length))
 		}
 		// print the keys logfmt style
-		logfmt(b, r.Ctx, true)
+		logfmt(b, r.Ctx)
 		return b.Bytes()
 	})
 }
 
-func logfmt(buf *bytes.Buffer, ctx []interface{}, term bool) {
+func logfmt(buf *bytes.Buffer, ctx []interface{}) {
 	for i := 0; i < len(ctx); i += 2 {
 		if i != 0 {
 			buf.WriteByte(' ')
