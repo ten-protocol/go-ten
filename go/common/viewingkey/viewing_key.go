@@ -1,7 +1,6 @@
 package viewingkey
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"encoding/hex"
 	"errors"
@@ -208,44 +207,40 @@ func CalculateUserID(publicKeyBytes []byte) []byte {
 	return crypto.Keccak256Hash(publicKeyBytes).Bytes()[:20]
 }
 
-// CheckSignatureAndAddress checks if the signature is valid for hash of the message and checks if
+// CheckSignatureAndReturnAccountAddress checks if the signature is valid for hash of the message and checks if
 // signer is an address provided to the function.
 // It returns true if both conditions are true and false otherwise
-func CheckSignatureAndAddress(hashBytes []byte, signature []byte, address *gethcommon.Address) bool {
-	hash := gethcommon.BytesToHash(hashBytes)
-	pubKeyBytes, err := crypto.Ecrecover(hash[:], signature)
+func CheckSignatureAndReturnAccountAddress(hashBytes []byte, signature []byte) (*gethcommon.Address, error) {
+	pubKeyBytes, err := crypto.Ecrecover(hashBytes, signature)
 	if err != nil {
-		return false
+		return nil, err
 	}
 
 	pubKey, err := crypto.UnmarshalPubkey(pubKeyBytes)
 	if err != nil {
-		return false
-	}
-
-	recoveredAddr := crypto.PubkeyToAddress(*pubKey)
-
-	if !bytes.Equal(recoveredAddr.Bytes(), address.Bytes()) {
-		return false
+		return nil, err
 	}
 
 	r := new(big.Int).SetBytes(signature[:32])
 	s := new(big.Int).SetBytes(signature[32:64])
 
 	// Verify the signature and return the result (all the checks above passed)
-	return ecdsa.Verify(pubKey, hashBytes, r, s)
+	isSigValid := ecdsa.Verify(pubKey, hashBytes, r, s)
+	if isSigValid {
+		address := crypto.PubkeyToAddress(*pubKey)
+		return &address, nil
+	}
+	return nil, fmt.Errorf("invalid signature")
 }
 
-func VerifySignatureEIP712(userID string, address *gethcommon.Address, signature []byte, chainID int64) (bool, error) {
-	var rawDataOptions [][]byte
+func CheckEIP712Signature(userID string, signature []byte, chainID int64) (*gethcommon.Address, error) {
+	if len(signature) != 65 {
+		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
+	}
 
 	rawDataOptions, err := GenerateAuthenticationEIP712RawDataOptions(userID, chainID)
 	if err != nil {
-		return false, err
-	}
-
-	if len(signature) != 65 {
-		return false, fmt.Errorf("invalid signaure length: %d", len(signature))
+		return nil, fmt.Errorf("cannot generate eip712 message. Cause %w", err)
 	}
 
 	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
@@ -259,9 +254,10 @@ func VerifySignatureEIP712(userID string, address *gethcommon.Address, signature
 		hashBytes := crypto.Keccak256(rawData)
 
 		// current signature is valid - return true
-		if CheckSignatureAndAddress(hashBytes, signature, address) {
-			return true, nil
+		address, err := CheckSignatureAndReturnAccountAddress(hashBytes, signature)
+		if err == nil {
+			return address, nil
 		}
 	}
-	return false, errors.New("signature verification failed")
+	return nil, errors.New("EIP 712 signature verification failed")
 }

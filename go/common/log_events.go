@@ -5,7 +5,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
 )
 
 // LogSubscription is an authenticated subscription to logs.
@@ -23,9 +22,6 @@ type LogSubscription struct {
 
 	// A subscriber-defined filter to apply to the stream of logs.
 	Filter *filters.FilterCriteria
-
-	// Handles the viewing key encryption
-	VkHandler *vkhandler.VKHandler
 }
 
 // IDAndEncLog pairs an encrypted log with the ID of the subscription that generated it.

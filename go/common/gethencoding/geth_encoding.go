@@ -359,41 +359,6 @@ func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(b *core.Batch) (*typ
 	return (*types.Block)(unsafe.Pointer(&lb)), nil
 }
 
-// DecodeParamBytes decodes the parameters byte array into a slice of interfaces
-// Helps each calling method to manage the positional data
-func DecodeParamBytes(paramBytes []byte) ([]interface{}, error) {
-	var paramList []interface{}
-
-	if err := json.Unmarshal(paramBytes, &paramList); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal params - %w", err)
-	}
-	return paramList, nil
-}
-
-// ExtractViewingKey returns the viewingkey pubkey and the signature from the request
-func ExtractViewingKey(vkBytesIntf interface{}) ([]byte, []byte, error) {
-	vkBytesList, ok := vkBytesIntf.([]interface{})
-	if !ok {
-		return nil, nil, fmt.Errorf("unable to cast the vk to []interface")
-	}
-
-	if len(vkBytesList) != 2 {
-		return nil, nil, fmt.Errorf("wrong size of viewing key params")
-	}
-
-	vkPubkeyHexBytes, err := hexutil.Decode(vkBytesList[0].(string))
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not decode data in vk pub key - %w", err)
-	}
-
-	accountSignatureHexBytes, err := hexutil.Decode(vkBytesList[1].(string))
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not decode data in vk signature - %w", err)
-	}
-
-	return vkPubkeyHexBytes, accountSignatureHexBytes, nil
-}
-
 func ExtractPrivateCustomQuery(_ interface{}, query interface{}) (*common.PrivateCustomQueryListTransactions, error) {
 	// Convert the map to a JSON string
 	jsonData, err := json.Marshal(query)

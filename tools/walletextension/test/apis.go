@@ -172,7 +172,7 @@ func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (*responses.Enclave
 		return responses.AsEmptyResponse(), fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
 
-	encryptor, err := vkhandler.New(api.address, api.viewingKey, api.signature, l2ChainIDDecimal)
+	encryptor, err := vkhandler.AuthenticateViewingKey(api.viewingKey, api.signature, l2ChainIDDecimal)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create vk encryption for request - %w", err)
 	}

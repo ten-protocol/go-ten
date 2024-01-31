@@ -18,7 +18,6 @@ func TestVKHandler(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	userAddr := crypto.PubkeyToAddress(userPrivKey.PublicKey)
 
 	// generate ViewingKey private Key
 	vkPrivKey, err := crypto.GenerateKey()
@@ -48,7 +47,7 @@ func TestVKHandler(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Create a new vk Handler
-			_, err = New(&userAddr, vkPubKeyBytes, signature, chainID)
+			_, err = AuthenticateViewingKey(vkPubKeyBytes, signature, chainID)
 			assert.NoError(t, err)
 		})
 	}

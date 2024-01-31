@@ -6,22 +6,22 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
+
 	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/rpc"
-	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 const (
@@ -29,13 +29,19 @@ const (
 	zeroBytesHex = "000000000000000000000000"
 )
 
+type logSubscription struct {
+	Subscription *common.LogSubscription
+	// Handles the viewing key encryption
+	ViewingKeyEncryptor *vkhandler.AuthenticatedViewingKey
+}
+
 // SubscriptionManager manages the creation/deletion of subscriptions, and the filtering and encryption of logs for
 // active subscriptions.
 type SubscriptionManager struct {
 	rpcEncryptionManager *rpc.EncryptionManager
 	storage              storage.Storage
 
-	subscriptions     map[gethrpc.ID]*common.LogSubscription
+	subscriptions     map[gethrpc.ID]*logSubscription
 	chainID           int64
 	subscriptionMutex *sync.RWMutex // the mutex guards the subscriptions/lastHead pair
 
@@ -47,7 +53,7 @@ func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage
 		rpcEncryptionManager: rpcEncryptionManager,
 		storage:              storage,
 
-		subscriptions:     map[gethrpc.ID]*common.LogSubscription{},
+		subscriptions:     map[gethrpc.ID]*logSubscription{},
 		chainID:           chainID,
 		subscriptionMutex: &sync.RWMutex{},
 		logger:            logger,
@@ -67,16 +73,21 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 		return fmt.Errorf("could not decocde log subscription from RLP. Cause: %w", err)
 	}
 
-	// create viewing key encryption handler for pushing future logs
-	encryptor, err := vkhandler.New(subscription.Account, subscription.PublicViewingKey, subscription.Signature, s.chainID)
+	// verify the viewing key
+	authenticateViewingKey, err := vkhandler.AuthenticateViewingKey(subscription.PublicViewingKey, subscription.Signature, s.chainID)
 	if err != nil {
 		return fmt.Errorf("unable to create vk encryption for request - %w", err)
 	}
-	subscription.VkHandler = encryptor
+	if authenticateViewingKey.AccountAddress.Hex() != subscription.Account.Hex() {
+		return fmt.Errorf("subscription invalid. Viewing key address %s does not match subscription address %s", authenticateViewingKey.AccountAddress, subscription.Account)
+	}
 
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
-	s.subscriptions[id] = subscription
+	s.subscriptions[id] = &logSubscription{
+		Subscription:        subscription,
+		ViewingKeyEncryptor: authenticateViewingKey,
+	}
 
 	return nil
 }
@@ -142,7 +153,7 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, recei
 
 	for id, sub := range s.subscriptions {
 		// first filter the logs
-		filteredLogs := filterLogs(allLogs, sub.Filter.FromBlock, sub.Filter.ToBlock, sub.Filter.Addresses, sub.Filter.Topics, s.logger)
+		filteredLogs := filterLogs(allLogs, sub.Subscription.Filter.FromBlock, sub.Subscription.Filter.ToBlock, sub.Subscription.Filter.Addresses, sub.Subscription.Filter.Topics, s.logger)
 
 		relevantLogsForSub := []*types.Log{}
 		for _, logItem := range filteredLogs {
@@ -151,11 +162,11 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, recei
 				userAddrs = getUserAddrsFromLogTopics(logItem, stateDB)
 				userAddrsForLog[logItem] = userAddrs
 			}
-			relevant := isRelevant(sub.Account, userAddrs)
+			relevant := isRelevant(sub.Subscription.Account, userAddrs)
 			if relevant {
 				relevantLogsForSub = append(relevantLogsForSub, logItem)
 			}
-			s.logger.Debug("Subscription", log.SubIDKey, id, "acc", sub.Account, "log", logItem, "extr_addr", userAddrs, "relev", relevant)
+			s.logger.Debug("Subscription", log.SubIDKey, id, "acc", sub.Subscription.Account, "log", logItem, "extr_addr", userAddrs, "relev", relevant)
 		}
 		if len(relevantLogsForSub) > 0 {
 			relevantLogsPerSubscription[id] = relevantLogsForSub
@@ -194,7 +205,7 @@ func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 			return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
 		}
 
-		encryptedLogs, err := subscription.VkHandler.Encrypt(jsonLogs)
+		encryptedLogs, err := subscription.ViewingKeyEncryptor.Encrypt(jsonLogs)
 		if err != nil {
 			return nil, fmt.Errorf("unable to encrypt logs - %w", err)
 		}

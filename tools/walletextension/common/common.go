@@ -15,7 +15,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-// PrivateKeyToCompressedPubKey converts *ecies.PrivateKey to compressed PubKey ([]byte with length 33)
+// PrivateKeyToCompressedPubKey converts *ecies.PrivateKey to compressed VkPubKey ([]byte with length 33)
 func PrivateKeyToCompressedPubKey(prvKey *ecies.PrivateKey) []byte {
 	ecdsaPublicKey := prvKey.PublicKey.ExportECDSA()
 	compressedPubKey := crypto.CompressPubkey(ecdsaPublicKey)
