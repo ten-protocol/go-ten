@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"sync"
 
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -19,9 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/enclave/rpc"
 )
 
 const (
@@ -38,8 +37,7 @@ type logSubscription struct {
 // SubscriptionManager manages the creation/deletion of subscriptions, and the filtering and encryption of logs for
 // active subscriptions.
 type SubscriptionManager struct {
-	rpcEncryptionManager *rpc.EncryptionManager
-	storage              storage.Storage
+	storage storage.Storage
 
 	subscriptions     map[gethrpc.ID]*logSubscription
 	chainID           int64
@@ -48,10 +46,9 @@ type SubscriptionManager struct {
 	logger gethlog.Logger
 }
 
-func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage storage.Storage, chainID int64, logger gethlog.Logger) *SubscriptionManager {
+func NewSubscriptionManager(storage storage.Storage, chainID int64, logger gethlog.Logger) *SubscriptionManager {
 	return &SubscriptionManager{
-		rpcEncryptionManager: rpcEncryptionManager,
-		storage:              storage,
+		storage: storage,
 
 		subscriptions:     map[gethrpc.ID]*logSubscription{},
 		chainID:           chainID,
@@ -62,14 +59,9 @@ func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage
 
 // AddSubscription adds a log subscription to the enclave under the given ID, provided the request is authenticated
 // correctly. If there is an existing subscription with the given ID, it is overwritten.
-func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) error {
-	encodedSubscription, err := s.rpcEncryptionManager.DecryptBytes(encryptedSubscription)
-	if err != nil {
-		return fmt.Errorf("could not decrypt params in eth_subscribe logs request. Cause: %w", err)
-	}
-
+func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encodedSubscription []byte) error {
 	subscription := &common.LogSubscription{}
-	if err = rlp.DecodeBytes(encodedSubscription, subscription); err != nil {
+	if err := rlp.DecodeBytes(encodedSubscription, subscription); err != nil {
 		return fmt.Errorf("could not decocde log subscription from RLP. Cause: %w", err)
 	}
 
@@ -101,9 +93,9 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 }
 
 // FilterLogsForReceipt removes the logs that the sender of a transaction is not allowed to view
-func (s *SubscriptionManager) FilterLogsForReceipt(receipt *types.Receipt, account *gethcommon.Address) ([]*types.Log, error) {
+func FilterLogsForReceipt(receipt *types.Receipt, account *gethcommon.Address, storage storage.Storage) ([]*types.Log, error) {
 	filteredLogs := []*types.Log{}
-	stateDB, err := s.storage.CreateStateDB(receipt.BlockHash)
+	stateDB, err := storage.CreateStateDB(receipt.BlockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 	}

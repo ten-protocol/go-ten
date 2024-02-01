@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/common"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -56,4 +58,17 @@ func LogMethodDuration(logger gethlog.Logger, stopWatch *measure.Stopwatch, msg 
 	}
 	newArgs := append([]any{log.DurationKey, stopWatch}, args...)
 	f(fmt.Sprintf("LogMethodDuration::%s", msg), newArgs...)
+}
+
+// GetSender returns the address whose viewing key should be used to encrypt the response,
+// given a transaction.
+func GetSender(tx *common.L2Tx) (gethcommon.Address, error) {
+	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
+
+	from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
+	}
+
+	return from, nil
 }
