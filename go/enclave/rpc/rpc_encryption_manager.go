@@ -30,8 +30,8 @@ type EncryptionManager struct {
 	logger                 gethlog.Logger
 }
 
-func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey, storage storage.Storage, registry components.BatchRegistry, processors *crosschain.Processors, service nodetype.NodeType, config *config.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, chain l2chain.ObscuroChain, logger gethlog.Logger) EncryptionManager {
-	return EncryptionManager{
+func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey, storage storage.Storage, registry components.BatchRegistry, processors *crosschain.Processors, service nodetype.NodeType, config *config.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, chain l2chain.ObscuroChain, logger gethlog.Logger) *EncryptionManager {
+	return &EncryptionManager{
 		storage:                storage,
 		registry:               registry,
 		processors:             processors,

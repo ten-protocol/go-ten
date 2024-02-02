@@ -29,21 +29,21 @@ type UserResponse[R any] struct {
 	Err error // the error will be encrypted
 }
 
-// handles the VK management, authentication and encryption
+// WithVKEncryption1- handles the VK management, authentication and encryption
 // P represents the single request parameter
 // R represents the response which will be encrypted
-func withVKEncryption1[P any, R any](
+func WithVKEncryption1[P any, R any](
 	encManager *EncryptionManager,
 	chainID int64,
 	encReq []byte, // encrypted request that contains a signed viewing key
-	extractFromAndParams func([]any) (*UserRPCRequest1[P], error), // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
-	executeCall func(*UserRPCRequest1[P]) (*UserResponse[R], error), // execute the user call against the authenticated request.
+	extractFromAndParams func([]any, *EncryptionManager) (*UserRPCRequest1[P], error), // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
+	executeCall func(*UserRPCRequest1[P], *EncryptionManager) (*UserResponse[R], error), // execute the user call against the authenticated request.
 ) (*responses.EnclaveResponse, common.SystemError) {
-	return withVKEncryption2[P, P, R](encManager,
+	return WithVKEncryption2[P, P, R](encManager,
 		chainID,
 		encReq,
-		func(params []any) (*UserRPCRequest2[P, P], error) {
-			res, err := extractFromAndParams(params)
+		func(params []any, em *EncryptionManager) (*UserRPCRequest2[P, P], error) {
+			res, err := extractFromAndParams(params, em)
 			if err != nil {
 				return nil, err
 			}
@@ -52,18 +52,18 @@ func withVKEncryption1[P any, R any](
 			}
 			return &UserRPCRequest2[P, P]{res.Sender, res.Param1, nil}, nil
 		},
-		func(req *UserRPCRequest2[P, P]) (*UserResponse[R], error) {
-			return executeCall(&UserRPCRequest1[P]{req.Sender, req.Param1})
+		func(req *UserRPCRequest2[P, P], em *EncryptionManager) (*UserResponse[R], error) {
+			return executeCall(&UserRPCRequest1[P]{req.Sender, req.Param1}, em)
 		})
 }
 
-// similar to withVKEncryption1, but supports two arguments
-func withVKEncryption2[P1 any, P2 any, R any](
+// WithVKEncryption2 - similar to WithVKEncryption1, but supports two arguments
+func WithVKEncryption2[P1 any, P2 any, R any](
 	encManager *EncryptionManager,
 	chainID int64,
 	encReq []byte, // encrypted request that contains a signed viewing key
-	extractFromAndParams func([]any) (*UserRPCRequest2[P1, P2], error), // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
-	executeCall func(*UserRPCRequest2[P1, P2]) (*UserResponse[R], error), // execute the user call. Returns a user error or a system error
+	extractFromAndParams func([]any, *EncryptionManager) (*UserRPCRequest2[P1, P2], error), // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
+	executeCall func(*UserRPCRequest2[P1, P2], *EncryptionManager) (*UserResponse[R], error), // execute the user call. Returns a user error or a system error
 ) (*responses.EnclaveResponse, common.SystemError) {
 	// 1. Decrypt request
 	plaintextRequest, err := encManager.DecryptBytes(encReq)
@@ -87,7 +87,7 @@ func withVKEncryption2[P1 any, P2 any, R any](
 	}
 
 	// 4. Call the function that knows how to extract request specific params from the request
-	decodedParams, err := extractFromAndParams(decodedRequest[1:])
+	decodedParams, err := extractFromAndParams(decodedRequest[1:], encManager)
 	if err != nil {
 		return responses.AsEncryptedError(fmt.Errorf("unable to decode params - %w", err), vk), nil
 	}
@@ -110,7 +110,7 @@ func withVKEncryption2[P1 any, P2 any, R any](
 	}
 
 	// 6. Make the backend call and convert the response.
-	response, sysErr := executeCall(decodedParams)
+	response, sysErr := executeCall(decodedParams, encManager)
 	if sysErr != nil {
 		return nil, responses.ToInternalError(sysErr)
 	}

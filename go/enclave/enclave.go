@@ -9,6 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/ten-protocol/go-ten/go/common/gethapi"
+
 	"github.com/ten-protocol/go-ten/go/common/compression"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
@@ -63,7 +67,7 @@ type enclaveImpl struct {
 	l1BlockProcessor      components.L1BlockProcessor
 	rollupConsumer        components.RollupConsumer
 	l1Blockchain          *gethcore.BlockChain
-	rpcEncryptionManager  rpc.EncryptionManager
+	rpcEncryptionManager  *rpc.EncryptionManager
 	subscriptionManager   *events.SubscriptionManager
 	crossChainProcessors  *crosschain.Processors
 	sharedSecretProcessor *components.SharedSecretProcessor
@@ -449,7 +453,13 @@ func (e *enclaveImpl) SubmitTx(encryptedTxParams common.EncryptedTx) (*responses
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitTx with the enclave stopping"))
 	}
-	return e.rpcEncryptionManager.SubmitTx(encryptedTxParams)
+	return rpc.WithVKEncryption1[common.L2Tx, gethcommon.Hash](
+		e.rpcEncryptionManager,
+		e.config.ObscuroChainID,
+		encryptedTxParams,
+		rpc.ExtractSubmitTxRequest,
+		rpc.ExecuteSubmitTx,
+	)
 }
 
 func (e *enclaveImpl) Validator() nodetype.ObsValidator {
@@ -550,7 +560,12 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 		return nil, responses.ToInternalError(fmt.Errorf("requested ObsCall with the enclave stopping"))
 	}
 
-	return e.rpcEncryptionManager.ObsCall(encryptedParams)
+	return rpc.WithVKEncryption2[gethapi.TransactionArgs, gethrpc.BlockNumber, string](
+		e.rpcEncryptionManager,
+		e.config.ObscuroChainID,
+		encryptedParams,
+		rpc.ExtractObsCallRequest,
+		rpc.ExecuteObsCallGas)
 }
 
 func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (*responses.TxCount, common.SystemError) {
@@ -558,7 +573,12 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionCount with the enclave stopping"))
 	}
 
-	return e.rpcEncryptionManager.GetTransactionCount(encryptedParams)
+	return rpc.WithVKEncryption1[uint64, string](
+		e.rpcEncryptionManager,
+		e.config.ObscuroChainID,
+		encryptedParams,
+		rpc.ExtractGetTransactionCountRequest,
+		rpc.ExecuteGetTransactionCount)
 }
 
 func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (*responses.TxByHash, common.SystemError) {
@@ -566,7 +586,12 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransaction with the enclave stopping"))
 	}
 
-	return e.rpcEncryptionManager.GetTransaction(encryptedParams)
+	return rpc.WithVKEncryption1[rpc.TxData, rpc.RpcTransaction](
+		e.rpcEncryptionManager,
+		e.config.ObscuroChainID,
+		encryptedParams,
+		rpc.ExtractGetTransactionRequest,
+		rpc.ExecuteGetTransaction)
 }
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (*responses.TxReceipt, common.SystemError) {
@@ -574,7 +599,12 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionReceipt with the enclave stopping"))
 	}
 
-	return e.rpcEncryptionManager.GetTransactionReceipt(encryptedParams)
+	return rpc.WithVKEncryption1[types.Transaction, types.Receipt](
+		e.rpcEncryptionManager,
+		e.config.ObscuroChainID,
+		encryptedParams,
+		rpc.ExtractGetTransactionReceiptRequest,
+		rpc.ExecuteGetTransactionReceipt)
 }
 
 func (e *enclaveImpl) Attestation() (*common.AttestationReport, common.SystemError) {
@@ -639,7 +669,12 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetBalance with the enclave stopping"))
 	}
 
-	return e.rpcEncryptionManager.GetBalance(encryptedParams)
+	return rpc.WithVKEncryption1[hexutil.Big, hexutil.Big](
+		e.rpcEncryptionManager,
+		e.config.ObscuroChainID,
+		encryptedParams,
+		rpc.ExtractGetBalanceRequestreqParams,
+		rpc.ExecuteGetBalance)
 }
 
 func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2BatchHash) ([]byte, common.SystemError) {
@@ -714,15 +749,24 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "enclave.go:EstimateGas()")
-	return e.rpcEncryptionManager.EstimateGas(encryptedParams)
+	return rpc.WithVKEncryption2[gethapi.TransactionArgs, gethrpc.BlockNumber, hexutil.Uint64](
+		e.rpcEncryptionManager,
+		e.config.ObscuroChainID,
+		encryptedParams,
+		rpc.ExtractEstimateGasRequest,
+		rpc.ExecuteEstimateGas)
 }
 
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetLogs with the enclave stopping"))
 	}
-
-	return e.rpcEncryptionManager.GetLogs(encryptedParams)
+	return rpc.WithVKEncryption1[filters.FilterCriteria, []*types.Log](
+		e.rpcEncryptionManager,
+		e.config.ObscuroChainID,
+		encryptedParams,
+		rpc.ExtractGetLogsRequest,
+		rpc.ExecuteGetLogs)
 }
 
 // HealthCheck returns whether the enclave is deemed healthy
@@ -818,7 +862,12 @@ func (e *enclaveImpl) GetCustomQuery(encryptedParams common.EncryptedParamsGetSt
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetReceiptsByAddress with the enclave stopping"))
 	}
 
-	return e.rpcEncryptionManager.GetCustomQuery(encryptedParams)
+	return rpc.WithVKEncryption1[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse](
+		e.rpcEncryptionManager,
+		e.config.ObscuroChainID,
+		encryptedParams,
+		rpc.ExtractGetCustomQueryRequest,
+		rpc.ExecuteGetCustomQuery)
 }
 
 func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPagination) (*common.TransactionListingResponse, common.SystemError) {
