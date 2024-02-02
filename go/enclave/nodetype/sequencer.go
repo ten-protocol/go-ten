@@ -221,7 +221,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfE
 		// lazily resolve transactions until the batch runs out of space
 		for _, lazyTx := range group {
 			if tx := lazyTx.Resolve(); tx != nil {
-				err = limiter.AcceptTransaction(tx.Tx)
+				err = limiter.AcceptTransaction(tx)
 				if err != nil {
 					if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
 						break
@@ -229,7 +229,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfE
 					// Limiter encountered unexpected error
 					return fmt.Errorf("limiter encountered unexpected error - %w", err)
 				}
-				transactions = append(transactions, tx.Tx)
+				transactions = append(transactions, tx)
 			}
 		}
 	}
