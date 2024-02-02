@@ -94,7 +94,6 @@ func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, 
 	return &storageImpl{
 		db: backingDB,
 		stateDB: state.NewDatabaseWithConfig(backingDB, &trie.Config{
-			Cache:     cacheConfig.TrieCleanLimit,
 			Preimages: cacheConfig.Preimages,
 		}),
 		chainConfig: chainConfig,

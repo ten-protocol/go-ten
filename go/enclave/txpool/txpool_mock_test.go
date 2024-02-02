@@ -74,9 +74,7 @@ type mockStorage struct {
 }
 
 func newMockStorage() *mockStorage {
-	db := state.NewDatabaseWithConfig(rawdb.NewMemoryDatabase(), &trie.Config{
-		Cache: 1_000_000,
-	})
+	db := state.NewDatabaseWithConfig(rawdb.NewMemoryDatabase(), &trie.Config{})
 	stateDB, err := state.New(types.EmptyRootHash, db, nil)
 	if err != nil {
 		panic(err)
