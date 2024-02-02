@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/go/rpc"
 
@@ -92,7 +93,7 @@ func NewFileLogger() gethlog.Logger {
 	logger := gethlog.New()
 
 	// Set the handler to the file
-	logger.SetHandler(gethlog.StreamHandler(file, gethlog.TerminalFormat(false)))
+	logger.SetHandler(gethlog.StreamHandler(file, log.TenLogFormat()))
 
 	return logger
 }

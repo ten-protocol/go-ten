@@ -54,7 +54,7 @@ type sequencer struct {
 
 	hostID                 gethcommon.Address
 	chainConfig            *params.ChainConfig
-	enclavePrivateKey      *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
+	enclaveKey             *crypto.EnclaveKey
 	mempool                *txpool.TxPool
 	storage                storage.Storage
 	dataEncryptionService  crypto.DataEncryptionService
@@ -63,7 +63,7 @@ type sequencer struct {
 	blockchain             *ethchainadapter.EthChainAdapter
 }
 
-func NewSequencer(blockProcessor components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupProducer components.RollupProducer, rollupConsumer components.RollupConsumer, rollupCompression *components.RollupCompression, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger, hostID gethcommon.Address, chainConfig *params.ChainConfig, enclavePrivateKey *ecdsa.PrivateKey, mempool *txpool.TxPool, storage storage.Storage, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, settings SequencerSettings, blockchain *ethchainadapter.EthChainAdapter) Sequencer {
+func NewSequencer(blockProcessor components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupProducer components.RollupProducer, rollupConsumer components.RollupConsumer, rollupCompression *components.RollupCompression, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger, hostID gethcommon.Address, chainConfig *params.ChainConfig, enclavePrivateKey *crypto.EnclaveKey, mempool *txpool.TxPool, storage storage.Storage, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, settings SequencerSettings, blockchain *ethchainadapter.EthChainAdapter) Sequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
 		batchProducer:          batchExecutor,
@@ -75,7 +75,7 @@ func NewSequencer(blockProcessor components.L1BlockProcessor, batchExecutor comp
 		logger:                 logger,
 		hostID:                 hostID,
 		chainConfig:            chainConfig,
-		enclavePrivateKey:      enclavePrivateKey,
+		enclaveKey:             enclavePrivateKey,
 		mempool:                mempool,
 		storage:                storage,
 		dataEncryptionService:  dataEncryptionService,
@@ -422,7 +422,7 @@ func (s *sequencer) OnL1Fork(fork *common.ChainFork) error {
 func (s *sequencer) signBatch(batch *core.Batch) error {
 	var err error
 	h := batch.Hash()
-	batch.Header.R, batch.Header.S, err = ecdsa.Sign(rand.Reader, s.enclavePrivateKey, h[:])
+	batch.Header.R, batch.Header.S, err = ecdsa.Sign(rand.Reader, s.enclaveKey.PrivateKey(), h[:])
 	if err != nil {
 		return fmt.Errorf("could not sign batch. Cause: %w", err)
 	}
@@ -432,7 +432,7 @@ func (s *sequencer) signBatch(batch *core.Batch) error {
 func (s *sequencer) signRollup(rollup *common.ExtRollup) error {
 	var err error
 	h := rollup.Header.Hash()
-	rollup.Header.R, rollup.Header.S, err = ecdsa.Sign(rand.Reader, s.enclavePrivateKey, h[:])
+	rollup.Header.R, rollup.Header.S, err = ecdsa.Sign(rand.Reader, s.enclaveKey.PrivateKey(), h[:])
 	if err != nil {
 		return fmt.Errorf("could not sign batch. Cause: %w", err)
 	}

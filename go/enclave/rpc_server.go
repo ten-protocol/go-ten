@@ -107,6 +107,15 @@ func (s *RPCServer) InitEnclave(_ context.Context, request *generated.InitEnclav
 	return &generated.InitEnclaveResponse{SystemError: toRPCError(sysError)}, nil
 }
 
+func (s *RPCServer) EnclaveID(_ context.Context, _ *generated.EnclaveIDRequest) (*generated.EnclaveIDResponse, error) {
+	id, sysError := s.enclave.EnclaveID()
+	if sysError != nil {
+		s.logger.Error("Error getting enclave ID", log.ErrKey, sysError)
+		return &generated.EnclaveIDResponse{SystemError: toRPCError(sysError)}, nil
+	}
+	return &generated.EnclaveIDResponse{EnclaveID: id.Bytes()}, nil
+}
+
 func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
 	bl, err := s.decodeBlock(request.EncodedBlock)
 	if err != nil {

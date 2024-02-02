@@ -146,6 +146,20 @@ func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) common.
 	return nil
 }
 
+func (c *Client) EnclaveID() (common.EnclaveID, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.EnclaveID(timeoutCtx, &generated.EnclaveIDRequest{})
+	if err != nil {
+		return common.EnclaveID{}, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return common.EnclaveID{}, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+	return common.EnclaveID(response.EnclaveID), nil
+}
+
 func (c *Client) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
