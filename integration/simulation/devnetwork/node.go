@@ -177,7 +177,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 		MessageBusAddress:         n.l1Data.MessageBusAddr,
 		SqliteDBPath:              n.enclaveDBFilepath,
 		DebugNamespaceEnabled:     true,
-		MaxBatchSize:              1024 * 25,
+		MaxBatchSize:              1024 * 32,
 		MaxRollupSize:             1024 * 64,
 		BaseFee:                   defaultCfg.BaseFee, // todo @siliev:: fix test transaction builders so this can be different
 		GasLimit:                  defaultCfg.GasLimit,

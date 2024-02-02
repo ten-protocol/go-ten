@@ -91,7 +91,7 @@ func createInMemObscuroNode(
 		MinGasPrice:               big.NewInt(1),
 		MessageBusAddress:         l1BusAddress,
 		ManagementContractAddress: *mgtContractAddress,
-		MaxBatchSize:              1024 * 25,
+		MaxBatchSize:              1024 * 32,
 		MaxRollupSize:             1024 * 64,
 		BaseFee:                   big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
 		GasLimit:                  big.NewInt(1_000_000_000_000_000_000),
