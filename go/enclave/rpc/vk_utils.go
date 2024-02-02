@@ -37,7 +37,7 @@ func withVKEncryption1[P any, R any](
 	chainID int64,
 	encReq []byte, // encrypted request that contains a signed viewing key
 	extractFromAndParams func([]any) (*UserRPCRequest1[P], error), // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
-	executeCall func(*UserRPCRequest1[P]) (*UserResponse[R], error), // execute the user call. Returns a user error or a system error
+	executeCall func(*UserRPCRequest1[P]) (*UserResponse[R], error), // execute the user call against the authenticated request.
 ) (*responses.EnclaveResponse, common.SystemError) {
 	return withVKEncryption2[P, P, R](encManager,
 		chainID,
@@ -103,8 +103,10 @@ func withVKEncryption2[P1 any, P2 any, R any](
 	if decodedParams.Sender == nil {
 		return responses.AsEncryptedError(fmt.Errorf("invalid request - `from` field is mandatory"), vk), nil
 	}
+
+	// IMPORTANT!: this is where we authenticate the call.
 	if decodedParams.Sender.Hex() != vk.AccountAddress.Hex() {
-		return responses.AsEncryptedError(fmt.Errorf("viewing key account address: %s -does not match the requester: %s", vk.AccountAddress, decodedParams.Sender), vk), nil
+		return responses.AsEncryptedError(fmt.Errorf("failed authentication: account: %s does not match the requester: %s", vk.AccountAddress, decodedParams.Sender), vk), nil
 	}
 
 	// 6. Make the backend call and convert the response.
