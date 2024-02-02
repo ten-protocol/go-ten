@@ -16,7 +16,7 @@ import (
 )
 
 func (rpc *EncryptionManager) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (*responses.TxReceipt, common.SystemError) {
-	return withVKEncryption1[types.Transaction](
+	return withVKEncryption1[types.Transaction, types.Receipt](
 		rpc,
 		rpc.config.ObscuroChainID,
 		encryptedParams,
@@ -55,9 +55,9 @@ func (rpc *EncryptionManager) GetTransactionReceipt(encryptedParams common.Encry
 			return &UserRPCRequest1[types.Transaction]{&sender, tx}, nil
 		},
 		// make call and return result
-		func(decodedParams *UserRPCRequest1[types.Transaction]) (any, error, error) {
+		func(decodedParams *UserRPCRequest1[types.Transaction]) (*UserResponse[types.Receipt], error) {
 			if decodedParams == nil {
-				return nil, nil, nil
+				return nil, nil
 			}
 			tx := decodedParams.Param1
 			sender := decodedParams.Sender
@@ -69,11 +69,11 @@ func (rpc *EncryptionManager) GetTransactionReceipt(encryptedParams common.Encry
 				rpc.logger.Trace("error getting tx receipt", log.TxKey, txHash, log.ErrKey, err)
 				if errors.Is(err, errutil.ErrNotFound) {
 					// like geth return an empty response when a not-found tx is requested
-					return nil, nil, nil
+					return nil, nil
 				}
 				// this is a system error
 				err = fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
-				return nil, nil, err
+				return nil, err
 			}
 
 			// We filter out irrelevant logs.
@@ -81,11 +81,11 @@ func (rpc *EncryptionManager) GetTransactionReceipt(encryptedParams common.Encry
 			if err != nil {
 				rpc.logger.Error("error filter logs ", log.TxKey, txHash, log.ErrKey, err)
 				// this is a system error
-				return nil, nil, err
+				return nil, err
 			}
 
 			rpc.logger.Trace("Successfully retrieved receipt for ", log.TxKey, txHash, "rec", txReceipt)
 
-			return txReceipt, nil, nil
+			return &UserResponse[types.Receipt]{txReceipt, nil}, nil
 		})
 }

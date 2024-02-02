@@ -24,7 +24,7 @@ type txData struct {
 }
 
 func (rpc *EncryptionManager) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (*responses.TxByHash, common.SystemError) {
-	return withVKEncryption1[txData](
+	return withVKEncryption1[txData, rpcTransaction](
 		rpc,
 		rpc.config.ObscuroChainID,
 		encryptedParams,
@@ -59,15 +59,15 @@ func (rpc *EncryptionManager) GetTransaction(encryptedParams common.EncryptedPar
 			return &UserRPCRequest1[txData]{&viewingKeyAddress, &txData{tx, blockHash, blockNumber, index}}, nil
 		},
 		// make call and return result
-		func(data *UserRPCRequest1[txData]) (any, error, error) {
+		func(data *UserRPCRequest1[txData]) (*UserResponse[rpcTransaction], error) {
 			if data == nil {
-				return nil, nil, nil
+				return nil, nil
 			}
 			// Unlike in the Geth impl, we hardcode the use of a London signer.
 			// todo (#1553) - once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`
 			signer := types.NewLondonSigner(data.Param1.tx.ChainId())
 			rpcTx := newRPCTransaction(data.Param1.tx, data.Param1.blockHash, data.Param1.blockNumber, data.Param1.index, gethcommon.Big0, signer)
-			return rpcTx, nil, nil
+			return &UserResponse[rpcTransaction]{rpcTx, nil}, nil
 		})
 }
 

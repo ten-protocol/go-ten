@@ -9,7 +9,7 @@ import (
 )
 
 func (rpc *EncryptionManager) GetCustomQuery(encryptedParams common.EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, common.SystemError) {
-	return withVKEncryption1[common.PrivateCustomQueryListTransactions](
+	return withVKEncryption1[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse](
 		rpc,
 		rpc.config.ObscuroChainID,
 		encryptedParams,
@@ -28,21 +28,21 @@ func (rpc *EncryptionManager) GetCustomQuery(encryptedParams common.EncryptedPar
 			return &UserRPCRequest1[common.PrivateCustomQueryListTransactions]{&privateCustomQuery.Address, privateCustomQuery}, nil
 		},
 		// execute
-		func(params *UserRPCRequest1[common.PrivateCustomQueryListTransactions]) (any, error, error) {
+		func(params *UserRPCRequest1[common.PrivateCustomQueryListTransactions]) (*UserResponse[common.PrivateQueryResponse], error) {
 			// params are correct, fetch the receipts of the requested address
 			encryptReceipts, err := rpc.storage.GetReceiptsPerAddress(&params.Param1.Address, &params.Param1.Pagination)
 			if err != nil {
-				return nil, nil, fmt.Errorf("unable to get storage - %w", err)
+				return nil, fmt.Errorf("unable to get storage - %w", err)
 			}
 
 			receiptsCount, err := rpc.storage.GetReceiptsPerAddressCount(&params.Param1.Address)
 			if err != nil {
-				return nil, nil, fmt.Errorf("unable to get storage - %w", err)
+				return nil, fmt.Errorf("unable to get storage - %w", err)
 			}
 
-			return common.PrivateQueryResponse{
+			return &UserResponse[common.PrivateQueryResponse]{&common.PrivateQueryResponse{
 				Receipts: encryptReceipts,
 				Total:    receiptsCount,
-			}, nil, nil
+			}, nil}, nil
 		})
 }

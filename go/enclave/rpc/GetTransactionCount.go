@@ -11,7 +11,7 @@ import (
 )
 
 func (rpc *EncryptionManager) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (*responses.TxCount, common.SystemError) {
-	return withVKEncryption1[uint64](
+	return withVKEncryption1[uint64, string](
 		rpc,
 		rpc.config.ObscuroChainID,
 		encryptedParams,
@@ -45,7 +45,7 @@ func (rpc *EncryptionManager) GetTransactionCount(encryptedParams common.Encrypt
 			return &UserRPCRequest1[uint64]{&address, &seqNo}, nil
 		},
 		// make call and return result
-		func(decodedParams *UserRPCRequest1[uint64]) (any, error, error) {
+		func(decodedParams *UserRPCRequest1[uint64]) (*UserResponse[string], error) {
 			var nonce uint64
 			l2Head, err := rpc.storage.FetchBatchBySeqNo(*decodedParams.Param1)
 			if err == nil {
@@ -53,12 +53,12 @@ func (rpc *EncryptionManager) GetTransactionCount(encryptedParams common.Encrypt
 				//  conditions we allow it to return zero while head state is uninitialized
 				s, err := rpc.storage.CreateStateDB(l2Head.Hash())
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 				nonce = s.GetNonce(*decodedParams.Sender)
 			}
 
 			encoded := hexutil.EncodeUint64(nonce)
-			return encoded, nil, nil
+			return &UserResponse[string]{&encoded, nil}, nil
 		})
 }

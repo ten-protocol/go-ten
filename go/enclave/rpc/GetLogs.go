@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -13,7 +15,7 @@ import (
 )
 
 func (rpc *EncryptionManager) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) { //nolint
-	return withVKEncryption1[filters.FilterCriteria](
+	return withVKEncryption1[filters.FilterCriteria, []*types.Log](
 		rpc,
 		rpc.config.ObscuroChainID,
 		encryptedParams,
@@ -32,21 +34,21 @@ func (rpc *EncryptionManager) GetLogs(encryptedParams common.EncryptedParamsGetL
 			return &UserRPCRequest1[filters.FilterCriteria]{forAddress, filter}, nil
 		},
 		// execute
-		func(decodedParams *UserRPCRequest1[filters.FilterCriteria]) (any, error, error) {
+		func(decodedParams *UserRPCRequest1[filters.FilterCriteria]) (*UserResponse[[]*types.Log], error) {
 			filter := decodedParams.Param1
 			// todo logic to check that the filter is valid
 			// can't have both from and blockhash
 			// from <=to
 			// todo (@stefan) - return user error
 			if filter.BlockHash != nil && filter.FromBlock != nil {
-				return nil, fmt.Errorf("invalid filter. Cannot have both blockhash and fromBlock"), nil
+				return &UserResponse[[]*types.Log]{nil, fmt.Errorf("invalid filter. Cannot have both blockhash and fromBlock")}, nil
 			}
 
 			from := filter.FromBlock
 			if from != nil && from.Int64() < 0 {
 				batch, err := rpc.storage.FetchBatchBySeqNo(rpc.registry.HeadBatchSeq().Uint64())
 				if err != nil {
-					return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err), nil
+					return &UserResponse[[]*types.Log]{nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)}, nil
 				}
 				from = batch.Number()
 			}
@@ -55,7 +57,7 @@ func (rpc *EncryptionManager) GetLogs(encryptedParams common.EncryptedParamsGetL
 			if from == nil && filter.BlockHash != nil {
 				batch, err := rpc.storage.FetchBatchHeader(*filter.BlockHash)
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 				from = batch.Number
 			}
@@ -67,19 +69,19 @@ func (rpc *EncryptionManager) GetLogs(encryptedParams common.EncryptedParamsGetL
 			}
 
 			if from != nil && to != nil && from.Cmp(to) > 0 {
-				return nil, fmt.Errorf("invalid filter. from (%d) > to (%d)", from, to), nil
+				return &UserResponse[[]*types.Log]{nil, fmt.Errorf("invalid filter. from (%d) > to (%d)", from, to)}, nil
 			}
 
 			// We retrieve the relevant logs that match the filter.
 			filteredLogs, err := rpc.storage.FilterLogs(decodedParams.Sender, from, to, nil, filter.Addresses, filter.Topics)
 			if err != nil {
 				if errors.Is(err, syserr.InternalError{}) {
-					return nil, nil, err
+					return nil, err
 				}
 				err = fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
-				return nil, err, nil
+				return &UserResponse[[]*types.Log]{nil, err}, nil
 			}
-			return filteredLogs, nil, nil
+			return &UserResponse[[]*types.Log]{&filteredLogs, nil}, nil
 		})
 }
 

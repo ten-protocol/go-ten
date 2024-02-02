@@ -22,16 +22,21 @@ type UserRPCRequest2[P any, Q any] struct {
 	Param2 *Q
 }
 
+type UserResponse[R any] struct {
+	Val *R
+	Err error // the error will be encrypted
+}
+
 // handles the VK management, authentication and encryption
 // P represents the single request parameter
-func withVKEncryption1[P any](
+func withVKEncryption1[P any, R any](
 	encManager *EncryptionManager,
 	chainID int64,
 	encReq []byte, // encrypted request that contains a signed viewing key
 	extractFromAndParams func([]any) (*UserRPCRequest1[P], error), // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
-	execute func(*UserRPCRequest1[P]) (any, error, error), // execute the user call. Returns a user error or a system error
+	executeCall func(*UserRPCRequest1[P]) (*UserResponse[R], error), // execute the user call. Returns a user error or a system error
 ) (*responses.EnclaveResponse, common.SystemError) {
-	return withVKEncryption2[P, P](encManager,
+	return withVKEncryption2[P, P, R](encManager,
 		chainID,
 		encReq,
 		func(params []any) (*UserRPCRequest2[P, P], error) {
@@ -44,17 +49,17 @@ func withVKEncryption1[P any](
 			}
 			return &UserRPCRequest2[P, P]{res.Sender, res.Param1, nil}, nil
 		},
-		func(req *UserRPCRequest2[P, P]) (any, error, error) {
-			return execute(&UserRPCRequest1[P]{req.Sender, req.Param1})
+		func(req *UserRPCRequest2[P, P]) (*UserResponse[R], error) {
+			return executeCall(&UserRPCRequest1[P]{req.Sender, req.Param1})
 		})
 }
 
-func withVKEncryption2[P any, Q any](
+func withVKEncryption2[P1 any, P2 any, R any](
 	encManager *EncryptionManager,
 	chainID int64,
 	encReq []byte, // encrypted request that contains a signed viewing key
-	extractFromAndParams func([]any) (*UserRPCRequest2[P, Q], error), // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
-	execute func(*UserRPCRequest2[P, Q]) (any, error, error), // execute the user call. Returns a user error or a system error
+	extractFromAndParams func([]any) (*UserRPCRequest2[P1, P2], error), // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
+	executeCall func(*UserRPCRequest2[P1, P2]) (*UserResponse[R], error), // execute the user call. Returns a user error or a system error
 ) (*responses.EnclaveResponse, common.SystemError) {
 	// 1. Decrypt request
 	plaintextRequest, err := encManager.DecryptBytes(encReq)
@@ -99,15 +104,15 @@ func withVKEncryption2[P any, Q any](
 	}
 
 	// 6. Make the backend call and convert the response.
-	result, userErr, sysErr := execute(decodedParams)
+	response, sysErr := executeCall(decodedParams)
 	if sysErr != nil {
 		return nil, responses.ToInternalError(sysErr)
 	}
-	if userErr != nil {
-		return responses.AsEncryptedError(userErr, vk), nil
+	if response.Err != nil {
+		return responses.AsEncryptedError(response.Err, vk), nil //nolint:nilerr
 	}
-	if result == nil {
+	if response.Val == nil {
 		return responses.AsEncryptedEmptyResponse(vk), nil
 	}
-	return responses.AsEncryptedResponse[any](&result, vk), nil
+	return responses.AsEncryptedResponse[R](response.Val, vk), nil
 }

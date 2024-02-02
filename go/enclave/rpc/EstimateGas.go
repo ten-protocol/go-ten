@@ -22,7 +22,7 @@ import (
 )
 
 func (rpc *EncryptionManager) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (*responses.Gas, common.SystemError) {
-	return withVKEncryption2[gethapi.TransactionArgs, gethrpc.BlockNumber](
+	return withVKEncryption2[gethapi.TransactionArgs, gethrpc.BlockNumber, hexutil.Uint64](
 		rpc,
 		rpc.config.ObscuroChainID,
 		encryptedParams,
@@ -52,24 +52,24 @@ func (rpc *EncryptionManager) EstimateGas(encryptedParams common.EncryptedParams
 			return &UserRPCRequest2[gethapi.TransactionArgs, gethrpc.BlockNumber]{callMsg.From, callMsg, blockNumber}, nil
 		},
 		// make call and return result
-		func(decodedParams *UserRPCRequest2[gethapi.TransactionArgs, gethrpc.BlockNumber]) (any, error, error) {
+		func(decodedParams *UserRPCRequest2[gethapi.TransactionArgs, gethrpc.BlockNumber]) (*UserResponse[hexutil.Uint64], error) {
 			txArgs := decodedParams.Param1
 			blockNumber := decodedParams.Param2
 			block, err := rpc.blockResolver.FetchHeadBlock()
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 
 			// The message is run through the l1 publishing cost estimation for the current
 			// known head block.
 			l1Cost, err := rpc.gasOracle.EstimateL1CostForMsg(txArgs, block)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 
 			batch, err := rpc.storage.FetchHeadBatch()
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 
 			// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
@@ -87,7 +87,7 @@ func (rpc *EncryptionManager) EstimateGas(encryptedParams common.EncryptedParams
 
 				// make sure it's not some internal error
 				if errors.Is(err, syserr.InternalError{}) {
-					return nil, nil, err
+					return nil, err
 				}
 
 				// make sure to serialize any possible EVM error
@@ -95,12 +95,12 @@ func (rpc *EncryptionManager) EstimateGas(encryptedParams common.EncryptedParams
 				if err == nil {
 					err = fmt.Errorf(string(evmErr))
 				}
-				return nil, err, nil
+				return &UserResponse[hexutil.Uint64]{nil, err}, nil
 			}
 
 			totalGasEstimate := hexutil.Uint64(publishingGas.Uint64() + uint64(executionGasEstimate))
 
-			return totalGasEstimate, nil, nil
+			return &UserResponse[hexutil.Uint64]{&totalGasEstimate, nil}, nil
 		})
 }
 
@@ -126,9 +126,9 @@ func (rpc *EncryptionManager) doEstimateGas(args *gethapi.TransactionArgs, blkNu
 		// todo (#627) - review this with the gas mechanics/tokenomics work
 		/*
 			//Retrieve the block to act as the gas ceiling
-			block, err := b.BlockByNumberOrHash(ctx, blockNrOrHash)
-			if err != nil {
-				return 0, err
+			block, Err := b.BlockByNumberOrHash(ctx, blockNrOrHash)
+			if Err != nil {
+				return 0, Err
 			}
 			if block == nil {
 				return 0, errors.New("block not found")

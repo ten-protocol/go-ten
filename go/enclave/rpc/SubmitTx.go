@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -13,7 +14,7 @@ import (
 )
 
 func (rpc *EncryptionManager) SubmitTx(encryptedTxParams common.EncryptedTx) (*responses.RawTx, common.SystemError) {
-	return withVKEncryption1[common.L2Tx](
+	return withVKEncryption1[common.L2Tx, gethcommon.Hash](
 		rpc,
 		rpc.config.ObscuroChainID,
 		encryptedTxParams,
@@ -33,16 +34,17 @@ func (rpc *EncryptionManager) SubmitTx(encryptedTxParams common.EncryptedTx) (*r
 			return &UserRPCRequest1[common.L2Tx]{&sender, l2Tx}, nil
 		},
 		// make call and return result
-		func(decodedParams *UserRPCRequest1[common.L2Tx]) (any, error, error) {
+		func(decodedParams *UserRPCRequest1[common.L2Tx]) (*UserResponse[gethcommon.Hash], error) {
 			if rpc.processors.Local.IsSyntheticTransaction(*decodedParams.Param1) {
-				return nil, fmt.Errorf("synthetic transaction coming from external rpc"), nil
+				return &UserResponse[gethcommon.Hash]{nil, fmt.Errorf("synthetic transaction coming from external rpc")}, nil
 			}
 
 			if err := rpc.service.SubmitTransaction(decodedParams.Param1); err != nil {
 				rpc.logger.Debug("Could not submit transaction", log.TxKey, decodedParams.Param1.Hash(), log.ErrKey, err)
-				return nil, err, nil
+				return &UserResponse[gethcommon.Hash]{nil, err}, nil
 			}
-			return decodedParams.Param1.Hash(), nil, nil
+			h := decodedParams.Param1.Hash()
+			return &UserResponse[gethcommon.Hash]{&h, nil}, nil
 		},
 	)
 }

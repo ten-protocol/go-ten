@@ -19,7 +19,7 @@ import (
 // ObsCall handles param decryption, validation and encryption
 // and requests the Rollup chain to execute the payload (eth_call)
 func (rpc *EncryptionManager) ObsCall(encryptedParams common.EncryptedParamsCall) (*responses.Call, common.SystemError) {
-	return withVKEncryption2[gethapi.TransactionArgs, gethrpc.BlockNumber](
+	return withVKEncryption2[gethapi.TransactionArgs, gethrpc.BlockNumber, string](
 		rpc,
 		rpc.config.ObscuroChainID,
 		encryptedParams,
@@ -47,7 +47,7 @@ func (rpc *EncryptionManager) ObsCall(encryptedParams common.EncryptedParamsCall
 			return &UserRPCRequest2[gethapi.TransactionArgs, gethrpc.BlockNumber]{apiArgs.From, apiArgs, blkNumber}, nil
 		},
 		// make call and return result
-		func(decodedParams *UserRPCRequest2[gethapi.TransactionArgs, gethrpc.BlockNumber]) (any, error, error) {
+		func(decodedParams *UserRPCRequest2[gethapi.TransactionArgs, gethrpc.BlockNumber]) (*UserResponse[string], error) {
 			apiArgs := decodedParams.Param1
 			blkNumber := decodedParams.Param2
 			execResult, err := rpc.chain.ObsCall(apiArgs, blkNumber)
@@ -56,7 +56,7 @@ func (rpc *EncryptionManager) ObsCall(encryptedParams common.EncryptedParamsCall
 
 				// make sure it's not some internal error
 				if errors.Is(err, syserr.InternalError{}) {
-					return nil, nil, err
+					return nil, err
 				}
 
 				// make sure to serialize any possible EVM error
@@ -64,7 +64,7 @@ func (rpc *EncryptionManager) ObsCall(encryptedParams common.EncryptedParamsCall
 				if err == nil {
 					err = fmt.Errorf(string(evmErr))
 				}
-				return nil, err, nil
+				return &UserResponse[string]{nil, err}, nil
 			}
 
 			var encodedResult string
@@ -72,7 +72,7 @@ func (rpc *EncryptionManager) ObsCall(encryptedParams common.EncryptedParamsCall
 				encodedResult = hexutil.Encode(execResult.ReturnData)
 			}
 
-			return encodedResult, nil, nil
+			return &UserResponse[string]{&encodedResult, nil}, nil
 		})
 }
 

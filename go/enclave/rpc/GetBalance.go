@@ -10,7 +10,7 @@ import (
 )
 
 func (rpc *EncryptionManager) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (*responses.Balance, common.SystemError) {
-	return withVKEncryption1[hexutil.Big](
+	return withVKEncryption1[hexutil.Big, hexutil.Big](
 		rpc,
 		rpc.config.ObscuroChainID,
 		encryptedParams,
@@ -38,7 +38,7 @@ func (rpc *EncryptionManager) GetBalance(encryptedParams common.EncryptedParamsG
 			return &UserRPCRequest1[hexutil.Big]{encryptAddress, balance}, nil
 		},
 		// make call and return result
-		func(decodedParams *UserRPCRequest1[hexutil.Big]) (any, error, error) {
-			return decodedParams.Param1, nil, nil
+		func(decodedParams *UserRPCRequest1[hexutil.Big]) (*UserResponse[hexutil.Big], error) {
+			return &UserResponse[hexutil.Big]{decodedParams.Param1, nil}, nil
 		})
 }
