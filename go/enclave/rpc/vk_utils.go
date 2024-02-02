@@ -10,18 +10,20 @@ import (
 	"github.com/ten-protocol/go-ten/go/responses"
 )
 
-// UserRPCRequest1 - contains the values
+// UserRPCRequest1 - decoded RPC argument accompanied by a logical sender
 type UserRPCRequest1[P any] struct {
 	Sender *gethcommon.Address
 	Param1 *P
 }
 
-type UserRPCRequest2[P any, Q any] struct {
+// UserRPCRequest2 - decoded RPC arguments accompanied by a logical sender (2 arguments)
+type UserRPCRequest2[P1 any, P2 any] struct {
 	Sender *gethcommon.Address
-	Param1 *P
-	Param2 *Q
+	Param1 *P1
+	Param2 *P2
 }
 
+// UserResponse - the result of executing the Request against the services. Paired with a validation error that must be returned to the user.
 type UserResponse[R any] struct {
 	Val *R
 	Err error // the error will be encrypted
@@ -29,6 +31,7 @@ type UserResponse[R any] struct {
 
 // handles the VK management, authentication and encryption
 // P represents the single request parameter
+// R represents the response which will be encrypted
 func withVKEncryption1[P any, R any](
 	encManager *EncryptionManager,
 	chainID int64,
@@ -54,6 +57,7 @@ func withVKEncryption1[P any, R any](
 		})
 }
 
+// similar to withVKEncryption1, but supports two arguments
 func withVKEncryption2[P1 any, P2 any, R any](
 	encManager *EncryptionManager,
 	chainID int64,
