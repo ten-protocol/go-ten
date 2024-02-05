@@ -2,7 +2,7 @@
 
 ## 1. Why cache requests on Gateway?
 
-Currently, all `eth_` requests that hit the gateway are forwarded to our Sequencer. 
+Currently, all `eth_` requests that hit the gateway are forwarded to the Ten Nodes and are executed by the Ten enclave. 
 This is not ideal since there is only one Sequencer and it can be overloaded with requests
 and there can be timeouts or errors in the sequencer.
 
@@ -22,7 +22,7 @@ Cacheable request methods are:
 - `eth_getBlockTransactionCountByHash`
 - `eth_getBlockTransactionCountByNumber`
 - `eth_getCode`
-- `eth_getStorageAt (Not used)`
+- `eth_getStorageAt`
 - `eth_getTransactionByBlockHashAndIndex`
 - `eth_getTransactionByBlockNumberAndIndex`
 - `eth_getTransactionByHash`
@@ -33,7 +33,7 @@ Cacheable request methods are:
 - `eth_sign`
 - `eth_signTransaction`
 
-Non-cacheable request methods are:
+Methods cachable for a short period of time (TTL until next batch):
 
 - `eth_getBalance`
 - `eth_blockNumber`
