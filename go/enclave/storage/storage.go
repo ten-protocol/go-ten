@@ -428,7 +428,7 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, convertedHash gethcommon.Has
 	common.CacheValue(s.batchCacheBySeqNo, s.logger, batch.SeqNo().Uint64(), batch)
 	common.CacheValue(s.seqCacheByHash, s.logger, batch.Hash(), batch.SeqNo())
 	// note: the key is (height+1), because for some reason it doesn't like a key of 0
-	// should always contain the canonical batch because the cache is overriden by each new batch after a reorg
+	// should always contain the canonical batch because the cache is overwritten by each new batch after a reorg
 	common.CacheValue(s.seqCacheByHeight, s.logger, batch.NumberU64()+1, batch.SeqNo())
 	return nil
 }
