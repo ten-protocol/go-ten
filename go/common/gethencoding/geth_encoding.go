@@ -34,7 +34,8 @@ const (
 	// The relevant fields in an eth_call request's params.
 	callFieldTo                   = "to"
 	CallFieldFrom                 = "from"
-	callFieldData                 = "input"
+	callFieldData                 = "data" // this field was renamed in geth CallMsg to 'input' but we need to support both
+	callFieldInput                = "input"
 	callFieldValue                = "value"
 	callFieldGas                  = "gas"
 	callFieldNonce                = "nonce"
@@ -106,8 +107,8 @@ func ExtractEthCallMapString(paramBytes interface{}) (map[string]string, error) 
 			callMsg[callFieldTo] = valString
 		case CallFieldFrom:
 			callMsg[CallFieldFrom] = valString
-		case callFieldData:
-			callMsg[callFieldData] = valString
+		case callFieldData, callFieldInput:
+			callMsg[callFieldInput] = valString
 		case callFieldValue:
 			callMsg[callFieldValue] = valString
 		case callFieldGas:
@@ -204,7 +205,7 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 		case CallFieldFrom:
 			fromVal := gethcommon.HexToAddress(valString)
 			from = &fromVal
-		case callFieldData:
+		case callFieldData, callFieldInput:
 			dataVal, err := hexutil.Decode(valString)
 			if err != nil {
 				return nil, fmt.Errorf("could not decode data in CallMsg - %w", err)
