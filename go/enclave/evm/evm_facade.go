@@ -58,6 +58,14 @@ func ExecuteTransactions(
 	}
 
 	hash := header.Hash()
+
+	// tCountRollback - every time a transaction errors out, rather than producing a receipt
+	// we push back the index in the "block" (batch) it will have. This means that errored out transactions
+	// will be shunted by their follow up successful transaction.
+	// This also means the mix digest can be the same for two transactions, but
+	// as the error one reverts and cant mutate the state in order to push back the counter
+	// this should not open up any attack vectors on the randomness.
+	tCountRollback := 0
 	for i, t := range txs {
 		r, err := executeTransaction(
 			s,
@@ -68,11 +76,12 @@ func ExecuteTransactions(
 			t,
 			usedGas,
 			vmCfg,
-			fromTxIndex+i,
+			(fromTxIndex+i)-tCountRollback,
 			hash,
 			header.Number.Uint64(),
 		)
 		if err != nil {
+			tCountRollback++
 			result[t.Tx.Hash()] = err
 			logger.Info("Failed to execute tx:", log.TxKey, t.Tx.Hash(), log.CtrErrKey, err)
 			continue
@@ -156,7 +165,8 @@ func executeTransaction(
 		// Create a new context to be used in the EVM environment
 		blockContext := gethcore.NewEVMBlockContext(header, bc, author)
 		vmenv := vm.NewEVM(blockContext, vm.TxContext{BlobHashes: tx.Tx.BlobHashes()}, statedb, config, cfg)
-		receipt, err := applyTransaction(msg, config, gp, statedb, header.Number, header.Hash(), tx.Tx, usedGas, vmenv)
+		var receipt *types.Receipt
+		receipt, err = applyTransaction(msg, config, gp, statedb, header.Number, header.Hash(), tx.Tx, usedGas, vmenv)
 		if err != nil {
 			// If the transaction has l1 cost, then revert the funds exchange
 			// as it will not be published on error (no receipt condition)
