@@ -4,7 +4,9 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ten-protocol/go-ten/go/common/gethapi"
 )
 
 // Oracle - the interface for the future precompiled gas oracle contract
@@ -12,6 +14,7 @@ import (
 type Oracle interface {
 	ProcessL1Block(block *types.Block)
 	EstimateL1StorageGasCost(tx *types.Transaction, block *types.Block) (*big.Int, error)
+	EstimateL1CostForMsg(args *gethapi.TransactionArgs, block *types.Block) (*big.Int, error)
 }
 
 type oracle struct {
@@ -47,5 +50,20 @@ func (o *oracle) EstimateL1StorageGasCost(tx *types.Transaction, block *types.Bl
 	}
 
 	l1Gas := CalculateL1GasUsed(encodedTx, big.NewInt(0))
+	return big.NewInt(0).Mul(l1Gas, block.BaseFee()), nil
+}
+
+func (o *oracle) EstimateL1CostForMsg(args *gethapi.TransactionArgs, block *types.Block) (*big.Int, error) {
+	encoded := make([]byte, 0)
+	if args.Data != nil {
+		encoded = append(encoded, *args.Data...)
+	}
+
+	// We get the non zero gas cost per byte of calldata, and multiply it by the fixed bytes
+	// of a transaction. Then we take the data of a transaction and calculate the l1 gas used for it.
+	// Both are added together and multiplied by the base fee to give us the final cost for the message.
+	nonZeroGas := big.NewInt(int64(params.TxDataNonZeroGasEIP2028))
+	overhead := big.NewInt(0).Mul(big.NewInt(150), nonZeroGas)
+	l1Gas := CalculateL1GasUsed(encoded, overhead)
 	return big.NewInt(0).Mul(l1Gas, block.BaseFee()), nil
 }

@@ -5,14 +5,12 @@ go 1.20
 replace github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220224222438-c78f6963a1c0+incompatible
 
 require (
-	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/andybalholm/brotli v1.0.5
 	github.com/dgraph-io/ristretto v0.1.1
 	github.com/docker/docker v1.6.2
 	github.com/docker/go-connections v0.4.0
 	github.com/edgelesssys/ego v1.1.0
 	github.com/eko/gocache/lib/v4 v4.1.5
-	github.com/eko/gocache/store/bigcache/v4 v4.2.1
 	github.com/eko/gocache/store/ristretto/v4 v4.2.1
 	github.com/ethereum/go-ethereum v1.12.2
 	github.com/gin-contrib/cors v1.4.0
@@ -23,6 +21,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/golang-lru/v2 v2.0.7
+	github.com/holiman/uint256 v1.2.3
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/pkg/errors v0.9.1
@@ -32,6 +31,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tidwall/gjson v1.11.0
 	github.com/valyala/fasthttp v1.48.0
+	gitlab.com/NebulousLabs/fastrand v0.0.0-20181126182046-603482d69e40
 	golang.org/x/crypto v0.12.0
 	golang.org/x/exp v0.0.0-20230810033253-352e893a4cad
 	golang.org/x/sync v0.3.0
@@ -92,7 +92,6 @@ require (
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
 	github.com/holiman/billy v0.0.0-20230718173358-1c7e68d277a7 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
-	github.com/holiman/uint256 v1.2.3 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect

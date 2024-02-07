@@ -181,8 +181,8 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 		toWalletAddr := toWallet.Address()
 		txData := &types.LegacyTx{
 			Nonce:    fromWallet.GetNonceAndIncrement(),
-			Value:    big.NewInt(int64(testcommon.RndBtw(1, 500))),
-			Gas:      uint64(1_000_000),
+			Value:    big.NewInt(int64(testcommon.RndBtw(1, 100))),
+			Gas:      uint64(50_000),
 			GasPrice: gethcommon.Big1,
 			To:       &toWalletAddr,
 		}
@@ -192,9 +192,9 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 		if err != nil {
 			panic(err)
 		}
-		ti.logger.Info("Transfer transaction injected into L2.", log.TxKey, signedTx.Hash(), "fromAddress", fromWallet.Address(), "toAddress", toWallet.Address())
+		ti.logger.Info("Native value transfer transaction injected into L2.", log.TxKey, signedTx.Hash(), "fromAddress", fromWallet.Address(), "toAddress", toWallet.Address())
 
-		ti.stats.Transfer()
+		ti.stats.NativeTransfer()
 
 		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
@@ -219,7 +219,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500))
+		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500), testcommon.HOC)
 		tx = obscuroClient.EstimateGasAndGasPrice(tx)
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
@@ -287,24 +287,22 @@ func (ti *TransactionInjector) bridgeRandomGasTransfers() {
 func (ti *TransactionInjector) issueRandomDeposits() {
 	// todo (@stefan) - this implementation transfers from the hoc and poc owner contracts
 	// a better implementation should use the bridge
-	fromWalletHoc := ti.wallets.Tokens[testcommon.HOC].L2Owner
-	fromWalletPoc := ti.wallets.Tokens[testcommon.POC].L2Owner
-
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
-		fromWallet := fromWalletHoc
+		fromWalletToken := testcommon.HOC
 		if txCounter%2 == 0 {
-			fromWallet = fromWalletPoc
+			fromWalletToken = testcommon.POC
 		}
+		fromWallet := ti.wallets.Tokens[fromWalletToken].L2Owner
 		toWallet := ti.rndObsWallet()
 		obscuroClient := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
 		v := testcommon.RndBtw(500, 2000)
-		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), v)
-		tx = obscuroClient.EstimateGasAndGasPrice(tx)
+		txData := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), v, fromWalletToken)
+		tx := obscuroClient.EstimateGasAndGasPrice(txData)
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}
-		ti.logger.Info("Deposit  transaction injected into L2.", log.TxKey, signedTx.Hash(), "fromAddress", fromWallet.Address(), "toAddress", toWallet.Address())
+		ti.logger.Info("Deposit transaction injected into L2.", log.TxKey, signedTx.Hash(), "fromAddress", fromWallet.Address(), "toAddress", toWallet.Address())
 
 		ti.stats.Deposit(big.NewInt(int64(v)))
 
@@ -337,8 +335,9 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		tx := ti.newCustomObscuroWithdrawalTx(testcommon.RndBtw(1, 100))
+		txData := ti.newCustomObscuroWithdrawalTx(testcommon.RndBtw(1, 100))
 
+		tx := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).EstimateGasAndGasPrice(txData)
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
 
 		err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).SendTransaction(ti.ctx, signedTx)
@@ -368,24 +367,24 @@ func (ti *TransactionInjector) rndObsWallet() wallet.Wallet {
 	return ti.wallets.SimObsWallets[rand.Intn(len(ti.wallets.SimObsWallets))] //nolint:gosec
 }
 
-func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64) types.TxData {
+func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64, ercType testcommon.ERC20) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, common.ValueInWei(big.NewInt(int64(amount))))
-	return ti.newTx(data, from.GetNonceAndIncrement())
+	return ti.newTx(data, from.GetNonceAndIncrement(), ercType)
 }
 
 func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types.TxData {
 	transferERC20data := erc20contractlib.CreateTransferTxData(testcommon.BridgeAddress, common.ValueInWei(big.NewInt(int64(amount))))
-	return ti.newTx(transferERC20data, 1)
+	return ti.newTx(transferERC20data, 1, testcommon.HOC)
 }
 
-func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
+func (ti *TransactionInjector) newTx(data []byte, nonce uint64, ercType testcommon.ERC20) types.TxData {
 	return &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    gethcommon.Big0,
-		Gas:      uint64(1_000_000),
+		Gas:      uint64(1_000_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     data,
-		To:       ti.wallets.Tokens[testcommon.HOC].L2ContractAddress,
+		To:       ti.wallets.Tokens[ercType].L2ContractAddress,
 	}
 }
 

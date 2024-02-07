@@ -28,12 +28,13 @@ type GasBridgingRecord struct {
 
 func newCounter() *txInjectorTracker {
 	return &txInjectorTracker{
-		l1TransactionsLock:       sync.RWMutex{},
-		L1Transactions:           []ethadapter.L1Transaction{},
-		l2TransactionsLock:       sync.RWMutex{},
-		TransferL2Transactions:   []*common.L2Tx{},
-		WithdrawalL2Transactions: []*common.L2Tx{},
-		GasBridgeTransactions:    []GasBridgingRecord{},
+		l1TransactionsLock:                sync.RWMutex{},
+		L1Transactions:                    []ethadapter.L1Transaction{},
+		l2TransactionsLock:                sync.RWMutex{},
+		TransferL2Transactions:            []*common.L2Tx{},
+		WithdrawalL2Transactions:          []*common.L2Tx{},
+		NativeValueTransferL2Transactions: []*common.L2Tx{},
+		GasBridgeTransactions:             []GasBridgingRecord{},
 	}
 }
 
@@ -62,7 +63,7 @@ func (m *txInjectorTracker) trackTransferL2Tx(tx *common.L2Tx) {
 func (m *txInjectorTracker) trackNativeValueTransferL2Tx(tx *common.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()
-	m.NativeValueTransferL2Transactions = append(m.TransferL2Transactions, tx)
+	m.NativeValueTransferL2Transactions = append(m.NativeValueTransferL2Transactions, tx)
 }
 
 // GetL1Transactions returns all generated L1 L2Txs

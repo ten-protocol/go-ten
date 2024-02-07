@@ -45,6 +45,9 @@ type Enclave interface {
 	// InitEnclave - initialise an enclave with a seed received by another enclave
 	InitEnclave(secret EncryptedSharedEnclaveSecret) SystemError
 
+	// EnclaveID - returns the enclave's ID
+	EnclaveID() (EnclaveID, SystemError)
+
 	// SubmitL1Block - Used for the host to submit L1 blocks to the enclave, these may be:
 	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
 	//  b. the latest block published by the L1, to which the enclave should respond with a rollup

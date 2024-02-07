@@ -9,6 +9,7 @@ const (
 	contractDeployerDockerImageFlag = "contract-deployer-docker-image"
 	contractDeployerDebugFlag       = "contract-deployer-debug"
 	isSGXEnabledFlag                = "is-sgx-enabled"
+	logLevelFlag                    = "log-level"
 )
 
 // Returns a map of the flag usages.
@@ -22,5 +23,6 @@ func getFlagUsageMap() map[string]string {
 		contractDeployerDockerImageFlag: "The docker image that runs the contract deployer",
 		contractDeployerDebugFlag:       "Enables the use of node inspector to debug the contract deployer",
 		isSGXEnabledFlag:                "Enables the SGX usage",
+		logLevelFlag:                    "Log level for all network",
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
+	gethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -23,15 +24,12 @@ import (
 	"github.com/ten-protocol/go-ten/integration/erc20contract"
 	"github.com/ten-protocol/go-ten/integration/ethereummock"
 	"github.com/ten-protocol/go-ten/integration/simulation/network"
+
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
 	"github.com/ten-protocol/go-ten/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
-)
-
-const (
-	allocObsWallets = 750_000_000_000_000 // The amount the faucet allocates to each Obscuro wallet.
 )
 
 var initialBalance = common.ValueInWei(big.NewInt(5000))
@@ -58,7 +56,7 @@ func (s *Simulation) Start() {
 
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	// and for all l2 nodes to receive the genesis l2 batch
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	s.bridgeFundingToObscuro()
 	s.trackLogs()              // Create log subscriptions, to validate that they're working correctly later.
@@ -208,9 +206,14 @@ func (s *Simulation) trackLogs() {
 // Prefunds the L2 wallets with `allocObsWallets` each.
 func (s *Simulation) prefundObscuroAccounts() {
 	faucetWallet := s.Params.Wallets.L2FaucetWallet
-	faucetClient := s.RPCHandles.ObscuroWalletRndClient(faucetWallet)
+	faucetClient := s.RPCHandles.ObscuroWalletClient(faucetWallet.Address(), 0) // get sequencer, else errors on submission get swallowed
 	nonce := NextNonce(s.ctx, s.RPCHandles, faucetWallet)
-	testcommon.PrefundWallets(s.ctx, faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), big.NewInt(allocObsWallets), s.Params.ReceiptTimeout)
+
+	// Give 100 ether per account - ether is 1e18 so best convert it by code
+	// as a lot of the hardcodes were giving way too little and choking the gas payments
+	allocObsWallets := big.NewInt(0).Mul(big.NewInt(100), big.NewInt(gethparams.Ether))
+
+	testcommon.PrefundWallets(s.ctx, faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), allocObsWallets, s.Params.ReceiptTimeout)
 }
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
@@ -226,7 +229,7 @@ func (s *Simulation) deployObscuroERC20s() {
 			// 0x526c84529b2b8c11f57d93d3f5537aca3aecef9b - this is the address of the L2 contract which is currently hardcoded.
 			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), gethcommon.HexToAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b"))
 
-			deployContractTx := types.DynamicFeeTx{
+			deployContractTxData := types.DynamicFeeTx{
 				Nonce:     NextNonce(s.ctx, s.RPCHandles, owner),
 				Gas:       5_000_000,
 				GasFeeCap: gethcommon.Big1, // This field is used to derive the gas price for dynamic fee transactions.
@@ -234,7 +237,8 @@ func (s *Simulation) deployObscuroERC20s() {
 				GasTipCap: gethcommon.Big1,
 			}
 
-			signedTx, err := owner.SignTransaction(&deployContractTx)
+			deployContractTx := s.RPCHandles.ObscuroWalletRndClient(owner).EstimateGasAndGasPrice(&deployContractTxData)
+			signedTx, err := owner.SignTransaction(deployContractTx)
 			if err != nil {
 				panic(err)
 			}
