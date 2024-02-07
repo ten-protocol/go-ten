@@ -546,6 +546,10 @@ func (e *enclaveImpl) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
+	if e.registry.HeadBatchSeq() == nil {
+		return nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))
+	}
+
 	rollup, err := e.Sequencer().CreateRollup(fromSeqNo)
 	if err != nil {
 		return nil, responses.ToInternalError(err)
