@@ -34,7 +34,7 @@ const (
 	// The relevant fields in an eth_call request's params.
 	callFieldTo                   = "to"
 	CallFieldFrom                 = "from"
-	callFieldData                 = "data"
+	callFieldData                 = "input"
 	callFieldValue                = "value"
 	callFieldGas                  = "gas"
 	callFieldNonce                = "nonce"
