@@ -1,42 +1,36 @@
 package rpc
 
 import (
-	"errors"
 	"fmt"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/go/enclave/core"
-
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
-// todo - do you really need authentication?
-func ExtractSubmitTxRequest(reqParams []any, _ *EncryptionManager) (*UserRPCRequest1[common.L2Tx], error) {
+func ExtractSubmitTxRequest(reqParams []any, builder *RpcCallBuilder1[common.L2Tx, gethcommon.Hash], _ *EncryptionManager) error {
 	l2Tx, err := ExtractTx(reqParams[0].(string))
 	if err != nil {
-		return nil, fmt.Errorf("could not extract transaction. Cause: %w", err)
+		builder.Err = fmt.Errorf("could not extract transaction. Cause: %w", err)
+		return nil
 	}
-	sender, err := core.GetSender(l2Tx)
-	if err != nil {
-		if errors.Is(err, types.ErrInvalidSig) {
-			return nil, fmt.Errorf("invalid signature")
-		}
-		return nil, fmt.Errorf("could not recover from address. Cause: %w", err)
-	}
-	return &UserRPCRequest1[common.L2Tx]{&sender, l2Tx}, nil
+	// we don't return the sender because this call is not authenticated
+	builder.Param = l2Tx
+	return nil
 }
 
-func ExecuteSubmitTx(decodedParams *UserRPCRequest1[common.L2Tx], rpc *EncryptionManager) (*UserResponse[gethcommon.Hash], error) {
-	if rpc.processors.Local.IsSyntheticTransaction(*decodedParams.Param1) {
-		return &UserResponse[gethcommon.Hash]{nil, fmt.Errorf("synthetic transaction coming from external rpc")}, nil
+func ExecuteSubmitTx(rpcBuilder *RpcCallBuilder1[common.L2Tx, gethcommon.Hash], rpc *EncryptionManager) error {
+	if rpc.processors.Local.IsSyntheticTransaction(*rpcBuilder.Param) {
+		rpcBuilder.Err = fmt.Errorf("synthetic transaction coming from external rpc")
+		return nil
 	}
 
-	if err := rpc.service.SubmitTransaction(decodedParams.Param1); err != nil {
-		rpc.logger.Debug("Could not submit transaction", log.TxKey, decodedParams.Param1.Hash(), log.ErrKey, err)
-		return &UserResponse[gethcommon.Hash]{nil, err}, nil
+	if err := rpc.service.SubmitTransaction(rpcBuilder.Param); err != nil {
+		rpc.logger.Debug("Could not submit transaction", log.TxKey, rpcBuilder.Param.Hash(), log.ErrKey, err)
+		rpcBuilder.Err = err
+		return nil
 	}
-	h := decodedParams.Param1.Hash()
-	return &UserResponse[gethcommon.Hash]{&h, nil}, nil
+	h := rpcBuilder.Param.Hash()
+	rpcBuilder.ReturnValue = &h
+	return nil
 }

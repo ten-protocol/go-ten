@@ -13,70 +13,73 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/events"
 )
 
-func ExtractGetTransactionReceiptRequest(reqParams []any, rpc *EncryptionManager) (*UserRPCRequest1[types.Transaction], error) {
+func ExtractGetTransactionReceiptRequest(reqParams []any, builder *RpcCallBuilder1[gethcommon.Hash, types.Receipt], _ *EncryptionManager) error {
 	// Parameters are [Hash]
 	if len(reqParams) < 1 {
-		return nil, fmt.Errorf("unexpected number of parameters")
+		builder.Err = fmt.Errorf("unexpected number of parameters")
+		return nil
 	}
 	txHashStr, ok := reqParams[0].(string)
 	if !ok {
-		return nil, fmt.Errorf("unexpected address parameter")
+		builder.Err = fmt.Errorf("invalid transaction hash")
+		return nil
 	}
 
 	txHash := gethcommon.HexToHash(txHashStr)
+	builder.Param = &txHash
+	return nil
+}
 
+func ExecuteGetTransactionReceipt(rpcBuilder *RpcCallBuilder1[gethcommon.Hash, types.Receipt], rpc *EncryptionManager) error {
+	txHash := *rpcBuilder.Param
 	// todo - optimise these calls. This can be done with a single sql
 	rpc.logger.Trace("Get receipt for ", log.TxKey, txHash)
 	// We retrieve the transaction.
-	tx, _, _, _, err := rpc.storage.GetTransaction(txHash)
+	tx, _, _, _, err := rpc.storage.GetTransaction(txHash) //nolint:dogsled
 	if err != nil {
 		rpc.logger.Trace("error getting tx ", log.TxKey, txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
-			// like geth return an empty response when a not-found tx is requested
-			return nil, nil
+			rpcBuilder.Status = NotFound
+			return nil
 		}
-		return nil, err
+		return err
 	}
 
 	// We retrieve the sender's address.
-	sender, err := core.GetSender(tx)
+	sender, err := core.GetTxSender(tx)
 	if err != nil {
 		rpc.logger.Trace("error getting sender tx ", log.TxKey, txHash, log.ErrKey, err)
-		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err)
+		rpcBuilder.Err = err
+		return nil
 	}
-	return &UserRPCRequest1[types.Transaction]{&sender, tx}, nil
-}
+	rpcBuilder.ResourceOwner = &sender
 
-func ExecuteGetTransactionReceipt(decodedParams *UserRPCRequest1[types.Transaction], rpc *EncryptionManager) (*UserResponse[types.Receipt], error) {
-	if decodedParams == nil {
-		return nil, nil
+	if sender.Hex() != rpcBuilder.VK.AccountAddress.Hex() {
+		rpcBuilder.Status = NotAuthorised
+		return nil
 	}
-	tx := decodedParams.Param1
-	sender := decodedParams.Sender
 
-	txHash := tx.Hash()
 	// We retrieve the transaction receipt.
 	txReceipt, err := rpc.storage.GetTransactionReceipt(txHash)
 	if err != nil {
 		rpc.logger.Trace("error getting tx receipt", log.TxKey, txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
-			// like geth return an empty response when a not-found tx is requested
-			return nil, nil
+			rpcBuilder.Status = NotFound
+			return nil
 		}
 		// this is a system error
-		err = fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
-		return nil, err
+		return fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 
 	// We filter out irrelevant logs.
-	txReceipt.Logs, err = events.FilterLogsForReceipt(txReceipt, sender, rpc.storage)
+	txReceipt.Logs, err = events.FilterLogsForReceipt(txReceipt, &sender, rpc.storage)
 	if err != nil {
 		rpc.logger.Error("error filter logs ", log.TxKey, txHash, log.ErrKey, err)
 		// this is a system error
-		return nil, err
+		return err
 	}
 
 	rpc.logger.Trace("Successfully retrieved receipt for ", log.TxKey, txHash, "rec", txReceipt)
-
-	return &UserResponse[types.Receipt]{txReceipt, nil}, nil
+	rpcBuilder.ReturnValue = txReceipt
+	return nil
 }

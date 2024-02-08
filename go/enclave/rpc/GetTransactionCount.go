@@ -8,14 +8,16 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
 
-func ExtractGetTransactionCountRequest(reqParams []any, rpc *EncryptionManager) (*UserRPCRequest1[uint64], error) {
+func ExtractGetTransactionCountRequest(reqParams []any, builder *RpcCallBuilder1[uint64, string], rpc *EncryptionManager) error {
 	// Parameters are [Address, Block?]
 	if len(reqParams) < 1 {
-		return nil, fmt.Errorf("unexpected number of parameters")
+		builder.Err = fmt.Errorf("unexpected number of parameters")
+		return nil
 	}
 	addressStr, ok := reqParams[0].(string)
 	if !ok {
-		return nil, fmt.Errorf("unexpected address parameter")
+		builder.Err = fmt.Errorf("unexpected address parameter")
+		return nil
 	}
 
 	address := gethcommon.HexToAddress(addressStr)
@@ -24,32 +26,37 @@ func ExtractGetTransactionCountRequest(reqParams []any, rpc *EncryptionManager) 
 	if len(reqParams) == 2 {
 		tag, err := gethencoding.ExtractBlockNumber(reqParams[1])
 		if err != nil {
-			return nil, fmt.Errorf("unexpected tag parameter. Cause: %w", err)
+			builder.Err = fmt.Errorf("unexpected tag parameter. Cause: %w", err)
+			return nil
 		}
 
 		b, err := rpc.registry.GetBatchAtHeight(*tag)
 		if err != nil {
-			return nil, fmt.Errorf("cant retrieve batch for tag. Cause: %w", err)
+			builder.Err = fmt.Errorf("cant retrieve batch for tag. Cause: %w", err)
+			return nil
 		}
 		seqNo = b.SeqNo().Uint64()
 	}
 
-	return &UserRPCRequest1[uint64]{&address, &seqNo}, nil
+	builder.From = &address
+	builder.Param = &seqNo
+	return nil
 }
 
-func ExecuteGetTransactionCount(decodedParams *UserRPCRequest1[uint64], rpc *EncryptionManager) (*UserResponse[string], error) {
+func ExecuteGetTransactionCount(rpcBuilder *RpcCallBuilder1[uint64, string], rpc *EncryptionManager) error {
 	var nonce uint64
-	l2Head, err := rpc.storage.FetchBatchBySeqNo(*decodedParams.Param1)
+	l2Head, err := rpc.storage.FetchBatchBySeqNo(*rpcBuilder.Param)
 	if err == nil {
 		// todo - we should return an error when head state is not available, but for current test situations with race
 		//  conditions we allow it to return zero while head state is uninitialized
 		s, err := rpc.storage.CreateStateDB(l2Head.Hash())
 		if err != nil {
-			return nil, err
+			return err
 		}
-		nonce = s.GetNonce(*decodedParams.Sender)
+		nonce = s.GetNonce(*rpcBuilder.From)
 	}
 
-	encoded := hexutil.EncodeUint64(nonce)
-	return &UserResponse[string]{&encoded, nil}, nil
+	enc := hexutil.EncodeUint64(nonce)
+	rpcBuilder.ReturnValue = &enc
+	return nil
 }

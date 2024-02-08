@@ -3,33 +3,40 @@ package rpc
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
 
-func ExtractGetBalanceRequestreqParams(reqParams []any, rpc *EncryptionManager) (*UserRPCRequest1[hexutil.Big], error) {
+func ExtractGetBalanceRequestParams(reqParams []any, builder *RpcCallBuilder1[rpc.BlockNumber, hexutil.Big], _ *EncryptionManager) error {
 	// Parameters are [Address, BlockNumber]
 	if len(reqParams) != 2 {
-		return nil, fmt.Errorf("unexpected number of parameters")
+		builder.Err = fmt.Errorf("unexpected number of parameters")
+		return nil
 	}
 	requestedAddress, err := gethencoding.ExtractAddress(reqParams[0])
 	if err != nil {
-		return nil, fmt.Errorf("unable to extract requested address - %w", err)
+		builder.Err = fmt.Errorf("unable to extract requested address - %w", err)
+		return nil
 	}
 
 	blockNumber, err := gethencoding.ExtractBlockNumber(reqParams[1])
 	if err != nil {
-		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
+		builder.Err = fmt.Errorf("unable to extract requested block number - %w", err)
+		return nil
 	}
-
-	encryptAddress, balance, err := rpc.chain.GetBalance(*requestedAddress, blockNumber)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get balance - %w", err)
-	}
-
-	return &UserRPCRequest1[hexutil.Big]{encryptAddress, balance}, nil
+	builder.From = requestedAddress
+	builder.Param = blockNumber
+	return nil
 }
 
-func ExecuteGetBalance(decodedParams *UserRPCRequest1[hexutil.Big], _ *EncryptionManager) (*UserResponse[hexutil.Big], error) {
-	return &UserResponse[hexutil.Big]{decodedParams.Param1, nil}, nil
+func ExecuteGetBalance(rpcBuilder *RpcCallBuilder1[rpc.BlockNumber, hexutil.Big], rpc *EncryptionManager) error {
+	encryptAddress, balance, err := rpc.chain.GetBalance(*rpcBuilder.From, rpcBuilder.Param)
+	if err != nil {
+		return fmt.Errorf("unable to get balance - %w", err)
+	}
+	rpcBuilder.ResourceOwner = encryptAddress
+	rpcBuilder.ReturnValue = balance
+	return nil
 }

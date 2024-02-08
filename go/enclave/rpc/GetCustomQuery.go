@@ -7,34 +7,38 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
 
-func ExtractGetCustomQueryRequest(reqParams []any, _ *EncryptionManager) (*UserRPCRequest1[common.PrivateCustomQueryListTransactions], error) {
+func ExtractGetCustomQueryRequest(reqParams []any, builder *RpcCallBuilder1[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], _ *EncryptionManager) error {
 	// Parameters are [PrivateCustomQueryHeader, PrivateCustomQueryArgs, null]
 	if len(reqParams) != 3 {
-		return nil, fmt.Errorf("unexpected number of parameters")
+		builder.Err = fmt.Errorf("unexpected number of parameters")
+		return nil
 	}
 
 	privateCustomQuery, err := gethencoding.ExtractPrivateCustomQuery(reqParams[0], reqParams[1])
 	if err != nil {
-		return nil, fmt.Errorf("unable to extract query - %w", err)
+		builder.Err = fmt.Errorf("unable to extract query - %w", err)
+		return nil
 	}
-
-	return &UserRPCRequest1[common.PrivateCustomQueryListTransactions]{&privateCustomQuery.Address, privateCustomQuery}, nil
+	builder.From = &privateCustomQuery.Address
+	builder.Param = privateCustomQuery
+	return nil
 }
 
-func ExecuteGetCustomQuery(params *UserRPCRequest1[common.PrivateCustomQueryListTransactions], rpc *EncryptionManager) (*UserResponse[common.PrivateQueryResponse], error) {
-	// params are correct, fetch the receipts of the requested address
-	encryptReceipts, err := rpc.storage.GetReceiptsPerAddress(&params.Param1.Address, &params.Param1.Pagination)
+func ExecuteGetCustomQuery(rpcBuilder *RpcCallBuilder1[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], rpc *EncryptionManager) error {
+	// rpcBuilder are correct, fetch the receipts of the requested address
+	encryptReceipts, err := rpc.storage.GetReceiptsPerAddress(&rpcBuilder.Param.Address, &rpcBuilder.Param.Pagination)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get storage - %w", err)
+		return fmt.Errorf("GetReceiptsPerAddress - %w", err)
 	}
 
-	receiptsCount, err := rpc.storage.GetReceiptsPerAddressCount(&params.Param1.Address)
+	receiptsCount, err := rpc.storage.GetReceiptsPerAddressCount(&rpcBuilder.Param.Address)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get storage - %w", err)
+		return fmt.Errorf("GetReceiptsPerAddressCount - %w", err)
 	}
 
-	return &UserResponse[common.PrivateQueryResponse]{&common.PrivateQueryResponse{
+	rpcBuilder.ReturnValue = &common.PrivateQueryResponse{
 		Receipts: encryptReceipts,
 		Total:    receiptsCount,
-	}, nil}, nil
+	}
+	return nil
 }

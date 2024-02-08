@@ -347,7 +347,7 @@ func (s *storageImpl) GetReceiptsByBatchHash(hash gethcommon.Hash) (types.Receip
 	return enclavedb.ReadReceiptsByBatchHash(s.db.GetSQLDB(), hash, s.chainConfig)
 }
 
-func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
+func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error) {
 	defer s.logDuration("GetTransaction", measure.NewStopwatch())
 	return enclavedb.ReadTransaction(s.db.GetSQLDB(), txHash)
 }

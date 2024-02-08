@@ -56,7 +56,7 @@ func NewObscuroMessageBusManager(
 }
 
 func (m *MessageBusManager) IsSyntheticTransaction(transaction common.L2Tx) bool {
-	sender, err := core.GetSender(&transaction)
+	sender, err := core.GetTxSender(&transaction)
 	if err != nil {
 		return false
 	}

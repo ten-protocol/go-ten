@@ -20,49 +20,56 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
-func ExtractEstimateGasRequest(reqParams []any, _ *EncryptionManager) (*UserRPCRequest2[gethapi.TransactionArgs, gethrpc.BlockNumber], error) {
+func ExtractEstimateGasRequest(reqParams []any, builder *RpcCallBuilder2[gethapi.TransactionArgs, gethrpc.BlockNumber, hexutil.Uint64], _ *EncryptionManager) error {
 	// Parameters are [callMsg, block number (optional)]
 	if len(reqParams) < 1 {
-		return nil, fmt.Errorf("unexpected number of parameters")
+		builder.Err = fmt.Errorf("unexpected number of parameters")
+		return nil
 	}
 
 	callMsg, err := gethencoding.ExtractEthCall(reqParams[0])
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
+		builder.Err = fmt.Errorf("unable to decode EthCall Params - %w", err)
+		return nil
 	}
 
 	// encryption will fail if From address is not provided
 	if callMsg.From == nil {
-		return nil, fmt.Errorf("no from address provided")
+		builder.Err = fmt.Errorf("no from address provided")
+		return nil
 	}
 
 	// extract optional block number - defaults to the latest block if not avail
 	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(reqParams, 1)
 	if err != nil {
-		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
+		builder.Err = fmt.Errorf("unable to extract requested block number - %w", err)
+		return nil
 	}
 
-	return &UserRPCRequest2[gethapi.TransactionArgs, gethrpc.BlockNumber]{callMsg.From, callMsg, blockNumber}, nil
+	builder.From = callMsg.From
+	builder.Param1 = callMsg
+	builder.Param2 = blockNumber
+	return nil
 }
 
-func ExecuteEstimateGas(decodedParams *UserRPCRequest2[gethapi.TransactionArgs, gethrpc.BlockNumber], rpc *EncryptionManager) (*UserResponse[hexutil.Uint64], error) {
-	txArgs := decodedParams.Param1
-	blockNumber := decodedParams.Param2
+func ExecuteEstimateGas(rpcBuilder *RpcCallBuilder2[gethapi.TransactionArgs, gethrpc.BlockNumber, hexutil.Uint64], rpc *EncryptionManager) error {
+	txArgs := rpcBuilder.Param1
+	blockNumber := rpcBuilder.Param2
 	block, err := rpc.blockResolver.FetchHeadBlock()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// The message is run through the l1 publishing cost estimation for the current
 	// known head block.
 	l1Cost, err := rpc.gasOracle.EstimateL1CostForMsg(txArgs, block)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	batch, err := rpc.storage.FetchHeadBatch()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
@@ -78,22 +85,22 @@ func ExecuteEstimateGas(decodedParams *UserRPCRequest2[gethapi.TransactionArgs, 
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
-		// make sure it's not some internal error
 		if errors.Is(err, syserr.InternalError{}) {
-			return nil, err
+			return err
 		}
 
-		// make sure to serialize any possible EVM error
+		// return EVM error
 		evmErr, err := serializeEVMError(err)
 		if err == nil {
 			err = fmt.Errorf(string(evmErr))
 		}
-		return &UserResponse[hexutil.Uint64]{nil, err}, nil
+		rpcBuilder.Err = err
+		return nil
 	}
 
 	totalGasEstimate := hexutil.Uint64(publishingGas.Uint64() + uint64(executionGasEstimate))
-
-	return &UserResponse[hexutil.Uint64]{&totalGasEstimate, nil}, nil
+	rpcBuilder.ReturnValue = &totalGasEstimate
+	return nil
 }
 
 // DoEstimateGas returns the estimation of minimum gas required to execute transaction

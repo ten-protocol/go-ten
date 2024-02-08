@@ -21,49 +21,53 @@ type TxData struct {
 	index       uint64
 }
 
-func ExtractGetTransactionRequest(reqParams []any, rpc *EncryptionManager) (*UserRPCRequest1[TxData], error) {
+func ExtractGetTransactionRequest(reqParams []any, builder *RpcCallBuilder1[gethcommon.Hash, RpcTransaction], _ *EncryptionManager) error {
 	// Parameters are [Hash]
 	if len(reqParams) != 1 {
-		return nil, fmt.Errorf("unexpected address parameter")
+		builder.Err = fmt.Errorf("unexpected address parameter")
+		return nil
 	}
 	txHashStr, ok := reqParams[0].(string)
 	if !ok {
-		return nil, fmt.Errorf("unexpected tx hash parameter")
+		builder.Err = fmt.Errorf("unexpected tx hash parameter")
+		return nil
 	}
 	txHash := gethcommon.HexToHash(txHashStr)
-
-	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
-	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(txHash)
-	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			// like geth, return an empty response when a not found tx is requested
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	viewingKeyAddress, err := core.GetSender(tx)
-	if err != nil {
-		err = fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionByHash response. Cause: %w", err)
-		return nil, err
-	}
-
-	return &UserRPCRequest1[TxData]{&viewingKeyAddress, &TxData{tx, blockHash, blockNumber, index}}, nil
+	builder.Param = &txHash
+	return nil
 }
 
-func ExecuteGetTransaction(data *UserRPCRequest1[TxData], _ *EncryptionManager) (*UserResponse[RpcTransaction], error) {
-	if data == nil {
-		return nil, nil
+func ExecuteGetTransaction(rpcBuilder *RpcCallBuilder1[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
+	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
+	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(*rpcBuilder.Param)
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			rpcBuilder.Status = NotFound
+			return nil
+		}
+		return err
 	}
+
+	sender, err := core.GetTxSender(tx)
+	if err != nil {
+		return fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionByHash response. Cause: %w", err)
+	}
+	rpcBuilder.ResourceOwner = &sender
+	if sender.Hex() != rpcBuilder.VK.AccountAddress.Hex() {
+		rpcBuilder.Status = NotAuthorised
+		return nil
+	}
+
 	// Unlike in the Geth impl, we hardcode the use of a London signer.
 	// todo (#1553) - once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`
-	signer := types.NewLondonSigner(data.Param1.tx.ChainId())
-	rpcTx := newRPCTransaction(data.Param1.tx, data.Param1.blockHash, data.Param1.blockNumber, data.Param1.index, gethcommon.Big0, signer)
-	return &UserResponse[RpcTransaction]{rpcTx, nil}, nil
+	signer := types.NewLondonSigner(tx.ChainId())
+	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
+	rpcBuilder.ReturnValue = rpcTx
+	return nil
 }
 
 // Lifted from Geth's internal `ethapi` package.
-type RpcTransaction struct {
+type RpcTransaction struct { //nolint
 	BlockHash        *gethcommon.Hash    `json:"blockHash"`
 	BlockNumber      *hexutil.Big        `json:"blockNumber"`
 	From             gethcommon.Address  `json:"from"`

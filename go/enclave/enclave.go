@@ -9,10 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/eth/filters"
-	"github.com/ten-protocol/go-ten/go/common/gethapi"
-
 	"github.com/ten-protocol/go-ten/go/common/compression"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
@@ -564,7 +561,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 		return nil, responses.ToInternalError(fmt.Errorf("requested ObsCall with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption2[gethapi.TransactionArgs, gethrpc.BlockNumber, string](
+	return rpc.WithVKEncryption2(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
@@ -577,7 +574,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionCount with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption1[uint64, string](
+	return rpc.WithVKEncryption1(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
@@ -590,7 +587,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransaction with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption1[rpc.TxData, rpc.RpcTransaction](
+	return rpc.WithVKEncryption1(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
@@ -603,7 +600,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionReceipt with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption1[types.Transaction, types.Receipt](
+	return rpc.WithVKEncryption1(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
@@ -673,11 +670,11 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetBalance with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption1[hexutil.Big, hexutil.Big](
+	return rpc.WithVKEncryption1(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
-		rpc.ExtractGetBalanceRequestreqParams,
+		rpc.ExtractGetBalanceRequestParams,
 		rpc.ExecuteGetBalance)
 }
 
@@ -753,7 +750,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "enclave.go:EstimateGas()")
-	return rpc.WithVKEncryption2[gethapi.TransactionArgs, gethrpc.BlockNumber, hexutil.Uint64](
+	return rpc.WithVKEncryption2(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
@@ -866,7 +863,7 @@ func (e *enclaveImpl) GetCustomQuery(encryptedParams common.EncryptedParamsGetSt
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetReceiptsByAddress with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption1[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse](
+	return rpc.WithVKEncryption1(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,

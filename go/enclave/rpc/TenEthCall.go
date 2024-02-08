@@ -14,55 +14,64 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 )
 
-func ExtractObsCallRequest(reqParams []any, _ *EncryptionManager) (*UserRPCRequest2[gethapi.TransactionArgs, gethrpc.BlockNumber], error) {
+func ExtractObsCallRequest(reqParams []any, builder *RpcCallBuilder2[gethapi.TransactionArgs, gethrpc.BlockNumber, string], _ *EncryptionManager) error {
 	// Parameters are [TransactionArgs, BlockNumber]
 	if len(reqParams) != 2 {
-		return nil, fmt.Errorf("unexpected number of parameters")
+		builder.Err = fmt.Errorf("unexpected number of parameters")
+		return nil
 	}
 	apiArgs, err := gethencoding.ExtractEthCall(reqParams[0])
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
+		builder.Err = fmt.Errorf("unable to decode EthCall Params - %w", err)
+		return nil
 	}
 
 	// encryption will fail if no From address is provided
 	if apiArgs.From == nil {
-		return nil, fmt.Errorf("no from address provided")
+		builder.Err = fmt.Errorf("no from address provided")
+		return nil
 	}
 
 	blkNumber, err := gethencoding.ExtractBlockNumber(reqParams[1])
 	if err != nil {
-		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
+		builder.Err = fmt.Errorf("unable to extract requested block number - %w", err)
+		return nil
 	}
 
-	return &UserRPCRequest2[gethapi.TransactionArgs, gethrpc.BlockNumber]{apiArgs.From, apiArgs, blkNumber}, nil
+	builder.From = apiArgs.From
+	builder.Param1 = apiArgs
+	builder.Param2 = blkNumber
+
+	return nil
 }
 
-func ExecuteObsCallGas(decodedParams *UserRPCRequest2[gethapi.TransactionArgs, gethrpc.BlockNumber], rpc *EncryptionManager) (*UserResponse[string], error) {
-	apiArgs := decodedParams.Param1
-	blkNumber := decodedParams.Param2
+func ExecuteObsCallGas(rpcBuilder *RpcCallBuilder2[gethapi.TransactionArgs, gethrpc.BlockNumber, string], rpc *EncryptionManager) error {
+	apiArgs := rpcBuilder.Param1
+	blkNumber := rpcBuilder.Param2
 	execResult, err := rpc.chain.ObsCall(apiArgs, blkNumber)
 	if err != nil {
 		rpc.logger.Debug("Failed eth_call.", log.ErrKey, err)
 
-		// make sure it's not some internal error
+		// return system errors to the host
 		if errors.Is(err, syserr.InternalError{}) {
-			return nil, err
+			return err
 		}
 
-		// make sure to serialize any possible EVM error
+		// extract the EVM error
 		evmErr, err := serializeEVMError(err)
 		if err == nil {
 			err = fmt.Errorf(string(evmErr))
 		}
-		return &UserResponse[string]{nil, err}, nil
+		rpcBuilder.Err = err
+		return nil
 	}
 
 	var encodedResult string
 	if len(execResult.ReturnData) != 0 {
 		encodedResult = hexutil.Encode(execResult.ReturnData)
 	}
-
-	return &UserResponse[string]{&encodedResult, nil}, nil
+	rpcBuilder.ReturnValue = &encodedResult
+	return nil
 }
 
 func serializeEVMError(err error) ([]byte, error) {

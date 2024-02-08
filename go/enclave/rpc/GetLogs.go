@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -12,35 +14,40 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 )
 
-func ExtractGetLogsRequest(reqParams []any, _ *EncryptionManager) (*UserRPCRequest1[filters.FilterCriteria], error) {
+func ExtractGetLogsRequest(reqParams []any, builder *RpcCallBuilder1[filters.FilterCriteria, []*types.Log], _ *EncryptionManager) error {
 	// Parameters are [Filter, Address]
 	if len(reqParams) != 2 {
-		return nil, fmt.Errorf("unexpected number of parameters")
+		builder.Err = fmt.Errorf("unexpected number of parameters")
+		return nil
 	}
 	// We extract the arguments from the param bytes.
 	filter, forAddress, err := extractGetLogsParams(reqParams)
 	if err != nil {
-		return nil, err
+		builder.Err = err
+		return nil
 	}
-
-	return &UserRPCRequest1[filters.FilterCriteria]{forAddress, filter}, nil
+	builder.From = forAddress
+	builder.Param = filter
+	return nil
 }
 
-func ExecuteGetLogs(decodedParams *UserRPCRequest1[filters.FilterCriteria], rpc *EncryptionManager) (*UserResponse[[]*types.Log], error) {
-	filter := decodedParams.Param1
+func ExecuteGetLogs(rpcBuilder *RpcCallBuilder1[filters.FilterCriteria, []*types.Log], rpc *EncryptionManager) error {
+	filter := rpcBuilder.Param
 	// todo logic to check that the filter is valid
 	// can't have both from and blockhash
 	// from <=to
 	// todo (@stefan) - return user error
 	if filter.BlockHash != nil && filter.FromBlock != nil {
-		return &UserResponse[[]*types.Log]{nil, fmt.Errorf("invalid filter. Cannot have both blockhash and fromBlock")}, nil
+		rpcBuilder.Err = fmt.Errorf("invalid filter. Cannot have both blockhash and fromBlock")
+		return nil
 	}
 
 	from := filter.FromBlock
 	if from != nil && from.Int64() < 0 {
 		batch, err := rpc.storage.FetchBatchBySeqNo(rpc.registry.HeadBatchSeq().Uint64())
 		if err != nil {
-			return &UserResponse[[]*types.Log]{nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)}, nil
+			// system error
+			return fmt.Errorf("could not retrieve head batch. Cause: %w", err)
 		}
 		from = batch.Number()
 	}
@@ -49,7 +56,11 @@ func ExecuteGetLogs(decodedParams *UserRPCRequest1[filters.FilterCriteria], rpc 
 	if from == nil && filter.BlockHash != nil {
 		batch, err := rpc.storage.FetchBatchHeader(*filter.BlockHash)
 		if err != nil {
-			return nil, err
+			if errors.Is(err, errutil.ErrNotFound) {
+				rpcBuilder.Status = NotFound
+				return nil
+			}
+			return err
 		}
 		from = batch.Number
 	}
@@ -61,19 +72,22 @@ func ExecuteGetLogs(decodedParams *UserRPCRequest1[filters.FilterCriteria], rpc 
 	}
 
 	if from != nil && to != nil && from.Cmp(to) > 0 {
-		return &UserResponse[[]*types.Log]{nil, fmt.Errorf("invalid filter. from (%d) > to (%d)", from, to)}, nil
+		rpcBuilder.Err = fmt.Errorf("invalid filter. from (%d) > to (%d)", from, to)
+		return nil
 	}
 
 	// We retrieve the relevant logs that match the filter.
-	filteredLogs, err := rpc.storage.FilterLogs(decodedParams.Sender, from, to, nil, filter.Addresses, filter.Topics)
+	filteredLogs, err := rpc.storage.FilterLogs(rpcBuilder.From, from, to, nil, filter.Addresses, filter.Topics)
 	if err != nil {
 		if errors.Is(err, syserr.InternalError{}) {
-			return nil, err
+			return err
 		}
-		err = fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
-		return &UserResponse[[]*types.Log]{nil, err}, nil
+		rpcBuilder.Err = fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
+		return nil
 	}
-	return &UserResponse[[]*types.Log]{&filteredLogs, nil}, nil
+
+	rpcBuilder.ReturnValue = &filteredLogs
+	return nil
 }
 
 // Returns the params extracted from an eth_getLogs request.

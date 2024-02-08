@@ -12,50 +12,70 @@ import (
 	"github.com/ten-protocol/go-ten/go/responses"
 )
 
-// UserRPCRequest1 - decoded RPC argument accompanied by a logical sender
-type UserRPCRequest1[P any] struct {
-	Sender *gethcommon.Address
-	Param1 *P
+// ResourceStatus used as Status for the UserRPCRequests
+type ResourceStatus int
+
+const (
+	NotSet        ResourceStatus = iota // after initialisation
+	Found                               // the parameters were parsed correctly and a From found
+	NotAuthorised                       // not allowed to access the resource
+	NotFound                            // resource not found
+)
+
+// RpcCallBuilder1 - used during processing of an RPC request, which is a multi-step process
+type RpcCallBuilder1[P any, R any] struct {
+	Param         *P                                 // value calculated during phase 1 to be used during the execution phase
+	VK            *vkhandler.AuthenticatedViewingKey // the vk accompanying the request
+	From          *gethcommon.Address                // extracted from the request
+	ResourceOwner *gethcommon.Address                // extracted from the database Not applicable for all requests. E.g. For a tx, the owner is the original tx sender
+	Status        ResourceStatus                     //
+	ReturnValue   *R                                 // the value to be returned to the user
+	Err           error                              // encrypted error to be returned to the user
 }
 
-// UserRPCRequest2 - decoded RPC arguments accompanied by a logical sender (2 arguments)
-type UserRPCRequest2[P1 any, P2 any] struct {
-	Sender *gethcommon.Address
-	Param1 *P1
-	Param2 *P2
+// RpcCallBuilder2 - same as RpcCallBuilder1 but with 2 typed intermediate arguments
+type RpcCallBuilder2[P1 any, P2 any, R any] struct {
+	Param1        *P1
+	Param2        *P2
+	VK            *vkhandler.AuthenticatedViewingKey
+	From          *gethcommon.Address
+	ResourceOwner *gethcommon.Address
+	Status        ResourceStatus
+	ReturnValue   *R
+	Err           error
 }
 
-// UserResponse - the result of executing the Request against the services. Paired with a validation error that must be returned to the user.
-type UserResponse[R any] struct {
-	Val *R
-	Err error // the error will be encrypted
-}
-
-// WithVKEncryption1- handles the VK management, authentication and encryption
+// WithVKEncryption1 - handles the VK management, authentication and encryption
 // P represents the single request parameter
 // R represents the response which will be encrypted
+// note - this is a thin wrapper over WithVKEncryption2
 func WithVKEncryption1[P any, R any](
 	encManager *EncryptionManager,
 	chainID int64,
 	encReq []byte, // encrypted request that contains a signed viewing key
-	extractFromAndParams func([]any, *EncryptionManager) (*UserRPCRequest1[P], error), // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
-	executeCall func(*UserRPCRequest1[P], *EncryptionManager) (*UserResponse[R], error), // execute the user call against the authenticated request.
+	extractFromAndParams func([]any, *RpcCallBuilder1[P, R], *EncryptionManager) error, // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
+	executeCall func(*RpcCallBuilder1[P, R], *EncryptionManager) error, // execute the user call against the authenticated request.
 ) (*responses.EnclaveResponse, common.SystemError) {
 	return WithVKEncryption2[P, P, R](encManager,
 		chainID,
 		encReq,
-		func(params []any, em *EncryptionManager) (*UserRPCRequest2[P, P], error) {
-			res, err := extractFromAndParams(params, em)
+		func(params []any, rpcBuilder *RpcCallBuilder2[P, P, R], em *EncryptionManager) error {
+			temp := toOneParam(rpcBuilder)
+			err := extractFromAndParams(params, temp, em)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			if res == nil {
-				return nil, nil
-			}
-			return &UserRPCRequest2[P, P]{res.Sender, res.Param1, nil}, nil
+			copyBuilder(rpcBuilder, temp)
+			return nil
 		},
-		func(req *UserRPCRequest2[P, P], em *EncryptionManager) (*UserResponse[R], error) {
-			return executeCall(&UserRPCRequest1[P]{req.Sender, req.Param1}, em)
+		func(rpcBuilder *RpcCallBuilder2[P, P, R], em *EncryptionManager) error {
+			temp := toOneParam(rpcBuilder)
+			err := executeCall(temp, em)
+			if err != nil {
+				return err
+			}
+			copyBuilder(rpcBuilder, temp)
+			return nil
 		})
 }
 
@@ -64,8 +84,8 @@ func WithVKEncryption2[P1 any, P2 any, R any](
 	encManager *EncryptionManager,
 	chainID int64,
 	encReq []byte, // encrypted request that contains a signed viewing key
-	extractFromAndParams func([]any, *EncryptionManager) (*UserRPCRequest2[P1, P2], error), // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
-	executeCall func(*UserRPCRequest2[P1, P2], *EncryptionManager) (*UserResponse[R], error), // execute the user call. Returns a user error or a system error
+	extractFromAndParams func([]any, *RpcCallBuilder2[P1, P2, R], *EncryptionManager) error, // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
+	executeCall func(*RpcCallBuilder2[P1, P2, R], *EncryptionManager) error, // execute the user call. Returns a user error or a system error
 ) (*responses.EnclaveResponse, common.SystemError) {
 	// 1. Decrypt request
 	plaintextRequest, err := encManager.DecryptBytes(encReq)
@@ -79,7 +99,7 @@ func WithVKEncryption2[P1 any, P2 any, R any](
 		return responses.AsPlaintextError(fmt.Errorf("could not unmarshal params - %w", err)), nil
 	}
 
-	// 3. Extract the VK from the first element
+	// 3. Extract the VK from the first element and verify it
 	if len(decodedRequest) < 1 {
 		return responses.AsPlaintextError(fmt.Errorf("invalid request. viewing key is missing")), nil
 	}
@@ -92,39 +112,67 @@ func WithVKEncryption2[P1 any, P2 any, R any](
 		return responses.AsPlaintextError(fmt.Errorf("invalid viewing key - %w", err)), nil
 	}
 
-	// 4. Call the function that knows how to extract request specific params from the request
-	decodedParams, err := extractFromAndParams(decodedRequest[1:], encManager)
+	// 4. Call the function that knows how to validate the request
+	builder := &RpcCallBuilder2[P1, P2, R]{Status: NotSet, VK: vk}
+
+	err = extractFromAndParams(decodedRequest[1:], builder, encManager)
 	if err != nil {
-		return responses.AsEncryptedError(fmt.Errorf("unable to decode params - %w", err), vk), nil
+		return nil, responses.ToInternalError(err)
+	}
+	if builder == nil {
+		return nil, responses.ToInternalError(fmt.Errorf("should not happen"))
+	}
+	if builder.Err != nil {
+		return responses.AsEncryptedError(fmt.Errorf("invalid request - %w", builder.Err), vk), nil
 	}
 
-	// when all return values are null, by convention this is "Not found", so we just return an empty value
-	if decodedParams == nil && err == nil {
+	// 5. IMPORTANT!: authenticate the call.
+	if builder.From != nil && builder.From.Hex() != vk.AccountAddress.Hex() {
+		return responses.AsEncryptedError(fmt.Errorf("failed authentication. Account: %s does not match the from: %s", vk.AccountAddress, builder.From), vk), nil
+	}
+
+	// 6. Make the backend call and convert the response.
+	err = executeCall(builder, encManager)
+	if err != nil {
+		return nil, responses.ToInternalError(err)
+	}
+	if builder.Err != nil {
+		return responses.AsEncryptedError(fmt.Errorf("invalid request - %w", builder.Err), vk), nil
+	}
+	if builder.Status == NotFound || builder.Status == NotAuthorised {
+		// if the requested resource was not found, return an empty response
 		// todo - this must be encrypted
 		// return responses.AsEncryptedEmptyResponse(vk), nil
 		return responses.AsEmptyResponse(), nil
 	}
 
-	// 5. Validate the logical sender
-	if decodedParams.Sender == nil {
-		return responses.AsEncryptedError(fmt.Errorf("invalid request - `from` field is mandatory"), vk), nil
+	// double check authorisation
+	if builder.ResourceOwner != nil && builder.ResourceOwner.Hex() != vk.AccountAddress.Hex() {
+		return responses.AsEmptyResponse(), nil
 	}
 
-	// IMPORTANT!: this is where we authenticate the call.
-	if decodedParams.Sender.Hex() != vk.AccountAddress.Hex() {
-		return responses.AsEncryptedError(fmt.Errorf("failed authentication: account: %s does not match the requester: %s", vk.AccountAddress, decodedParams.Sender), vk), nil
-	}
+	return responses.AsEncryptedResponse[R](builder.ReturnValue, vk), nil
+}
 
-	// 6. Make the backend call and convert the response.
-	response, sysErr := executeCall(decodedParams, encManager)
-	if sysErr != nil {
-		return nil, responses.ToInternalError(sysErr)
+func copyBuilder[P any, R any](rpcBuilder *RpcCallBuilder2[P, P, R], temp *RpcCallBuilder1[P, R]) {
+	rpcBuilder.Param1 = temp.Param
+	rpcBuilder.Param2 = nil
+	rpcBuilder.From = temp.From
+	rpcBuilder.ReturnValue = temp.ReturnValue
+	rpcBuilder.ResourceOwner = temp.ResourceOwner
+	rpcBuilder.VK = temp.VK
+	rpcBuilder.Status = temp.Status
+	rpcBuilder.Err = temp.Err
+}
+
+func toOneParam[P any, R any](rpcBuilder *RpcCallBuilder2[P, P, R]) *RpcCallBuilder1[P, R] {
+	return &RpcCallBuilder1[P, R]{
+		Param:         rpcBuilder.Param1,
+		From:          rpcBuilder.From,
+		ReturnValue:   rpcBuilder.ReturnValue,
+		ResourceOwner: rpcBuilder.ResourceOwner,
+		VK:            rpcBuilder.VK,
+		Status:        rpcBuilder.Status,
+		Err:           rpcBuilder.Err,
 	}
-	if response.Err != nil {
-		return responses.AsEncryptedError(response.Err, vk), nil //nolint:nilerr
-	}
-	if response.Val == nil {
-		return responses.AsEncryptedEmptyResponse(vk), nil
-	}
-	return responses.AsEncryptedResponse[R](response.Val, vk), nil
 }
