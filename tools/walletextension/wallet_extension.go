@@ -155,10 +155,10 @@ func (w *WalletExtension) GenerateViewingKey(addr gethcommon.Address) (string, e
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
 
 	w.unsignedVKs[addr] = &viewingkey.ViewingKey{
-		Account:    &addr,
-		PrivateKey: viewingPrivateKeyEcies,
-		PublicKey:  viewingPublicKeyBytes,
-		Signature:  nil, // we await a signature from the user before we can set up the EncRPCClient
+		Account:                 &addr,
+		PrivateKey:              viewingPrivateKeyEcies,
+		PublicKey:               viewingPublicKeyBytes,
+		SignatureWithAccountKey: nil, // we await a signature from the user before we can set up the EncRPCClient
 	}
 
 	// compress the viewing key and convert it to hex string ( this is what Metamask signs)
@@ -178,7 +178,7 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
 	signature[64] -= 27
 
-	vk.Signature = signature
+	vk.SignatureWithAccountKey = signature
 
 	err := w.storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
 	if err != nil {
@@ -197,7 +197,7 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 
 	defaultAccountManager.AddClient(address, client)
 
-	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.Signature)
+	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.SignatureWithAccountKey)
 	if err != nil {
 		return fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser)
 	}

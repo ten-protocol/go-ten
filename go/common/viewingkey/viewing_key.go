@@ -48,10 +48,18 @@ var EIP712EncryptionTokens = [...]string{
 
 // ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave
 type ViewingKey struct {
-	Account    *gethcommon.Address // Account address that this Viewing Key is bound to - Users Pubkey address
-	PrivateKey *ecies.PrivateKey   // ViewingKey private key to encrypt data to the enclave
-	PublicKey  []byte              // ViewingKey public key in decrypt data from the enclave
-	Signature  []byte              // ViewingKey public key signed by the Accounts Private key - Allows to retrieve the Account address
+	Account                 *gethcommon.Address // Account address that this Viewing Key is bound to - Users Pubkey address
+	PrivateKey              *ecies.PrivateKey   // ViewingKey private key to encrypt data to the enclave
+	PublicKey               []byte              // ViewingKey public key in decrypt data from the enclave
+	SignatureWithAccountKey []byte              // ViewingKey public key signed by the Accounts Private key - Allows to retrieve the Account address
+}
+
+// RPCSignedViewingKey - used for transporting the viewing key via RPC
+// every RPC request to a sensitive method, including Log subscriptions, must contain this object
+// only the public key and the signature are required
+type RPCSignedViewingKey struct {
+	PublicKey               []byte
+	SignatureWithAccountKey []byte
 }
 
 // GenerateViewingKeyForWallet takes an account wallet, generates a viewing key and signs the key with the acc's private key
@@ -77,10 +85,10 @@ func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
 
 	accAddress := wal.Address()
 	return &ViewingKey{
-		Account:    &accAddress,
-		PrivateKey: viewingPrivateKeyECIES,
-		PublicKey:  viewingPubKeyBytes,
-		Signature:  signature,
+		Account:                 &accAddress,
+		PrivateKey:              viewingPrivateKeyECIES,
+		PublicKey:               viewingPubKeyBytes,
+		SignatureWithAccountKey: signature,
 	}, nil
 }
 

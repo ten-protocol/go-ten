@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-
 	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -21,48 +19,20 @@ var placeholderResult = []byte("0x")
 
 // AuthenticatedViewingKey - This data accompanies every RPC request.
 type AuthenticatedViewingKey struct {
-	VkPubKey       []byte
-	Signature      []byte
+	rpcVK          viewingkey.RPCSignedViewingKey
 	AccountAddress *gethcommon.Address
 	ecdsaKey       *ecies.PublicKey
 }
 
-// ExtractAndAuthenticateViewingKey extracts the VK from the request and authenticates the signature against the account key
-func ExtractAndAuthenticateViewingKey(rawVk interface{}, chainID int64) (*AuthenticatedViewingKey, error) {
-	// 1. Extract
-	vkBytesList, ok := rawVk.([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("unable to cast the vk to []any")
-	}
-
-	if len(vkBytesList) != 2 {
-		return nil, fmt.Errorf("wrong size of viewing key params")
-	}
-
-	vkPubkey, err := hexutil.Decode(vkBytesList[0].(string))
-	if err != nil {
-		return nil, fmt.Errorf("could not decode data in vk pub key - %w", err)
-	}
-
-	accountSignatureHex, err := hexutil.Decode(vkBytesList[1].(string))
-	if err != nil {
-		return nil, fmt.Errorf("could not decode data in vk signature - %w", err)
-	}
-
-	// 2. Authenticate
-	return AuthenticateViewingKey(vkPubkey, accountSignatureHex, chainID)
-}
-
-func AuthenticateViewingKey(vkPubkey []byte, accountSignatureHex []byte, chainID int64) (*AuthenticatedViewingKey, error) {
-	vkPubKey, err := crypto.DecompressPubkey(vkPubkey)
+func VerifyViewingKey(rpcVK viewingkey.RPCSignedViewingKey, chainID int64) (*AuthenticatedViewingKey, error) {
+	vkPubKey, err := crypto.DecompressPubkey(rpcVK.PublicKey)
 	if err != nil {
 		return nil, fmt.Errorf("could not decompress viewing key bytes - %w", err)
 	}
 
 	rvk := &AuthenticatedViewingKey{
-		VkPubKey:  vkPubkey,
-		ecdsaKey:  ecies.ImportECDSAPublic(vkPubKey),
-		Signature: accountSignatureHex,
+		rpcVK:    rpcVK,
+		ecdsaKey: ecies.ImportECDSAPublic(vkPubKey),
 	}
 
 	// 2. Authenticate
@@ -77,23 +47,23 @@ func AuthenticateViewingKey(vkPubkey []byte, accountSignatureHex []byte, chainID
 
 func checkViewingKeyAndRecoverAddress(vk *AuthenticatedViewingKey, chainID int64) (*gethcommon.Address, error) {
 	// get userID from viewingKey public key
-	userID := viewingkey.CalculateUserIDHex(vk.VkPubKey)
+	userID := viewingkey.CalculateUserIDHex(vk.rpcVK.PublicKey)
 
 	// check signature and recover the address
-	address, err := viewingkey.CheckEIP712Signature(userID, vk.Signature, chainID) //nolint
+	address, err := viewingkey.CheckEIP712Signature(userID, vk.rpcVK.SignatureWithAccountKey, chainID) //nolint
 	if err != nil {
 		// try the legacy format
-		legacyMessage := viewingkey.GenerateSignMessage(vk.VkPubKey)
+		legacyMessage := viewingkey.GenerateSignMessage(vk.rpcVK.PublicKey)
 		legacyMessageHash := accounts.TextHash([]byte(legacyMessage))
-		address, err = viewingkey.CheckSignatureAndReturnAccountAddress(legacyMessageHash, vk.Signature)
+		address, err = viewingkey.CheckSignatureAndReturnAccountAddress(legacyMessageHash, vk.rpcVK.SignatureWithAccountKey)
 		if err == nil {
 			return address, nil
 		}
 	}
 
 	// TODO @Ziga - this must be removed.
-	msgToSignLegacy := viewingkey.GenerateSignMessage(vk.VkPubKey)
-	recoveredAccountPublicKeyLegacy, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSignLegacy)), vk.Signature)
+	msgToSignLegacy := viewingkey.GenerateSignMessage(vk.rpcVK.PublicKey)
+	recoveredAccountPublicKeyLegacy, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSignLegacy)), vk.rpcVK.SignatureWithAccountKey)
 	if err != nil {
 		return nil, fmt.Errorf("viewing key but could not validate its signature - %w", err)
 	}

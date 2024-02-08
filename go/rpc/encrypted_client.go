@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -168,9 +167,7 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 
 func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*common.LogSubscription, error) {
 	logSubscription := &common.LogSubscription{
-		Account:          c.Account(),
-		Signature:        c.viewingKey.Signature,
-		PublicViewingKey: c.viewingKey.PublicKey,
+		ViewingKey: viewingkey.RPCSignedViewingKey{PublicKey: c.viewingKey.PublicKey, SignatureWithAccountKey: c.viewingKey.SignatureWithAccountKey},
 	}
 
 	// If there are less than two arguments, it means no filter criteria was passed.
@@ -303,9 +300,9 @@ func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
 	}
 
 	argsWithVK := append([]interface{}{
-		[]interface{}{
-			hexutil.Encode(c.viewingKey.PublicKey),
-			hexutil.Encode(c.viewingKey.Signature),
+		viewingkey.RPCSignedViewingKey{
+			PublicKey:               c.viewingKey.PublicKey,
+			SignatureWithAccountKey: c.viewingKey.SignatureWithAccountKey,
 		},
 	},
 		args...)

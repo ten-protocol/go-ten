@@ -5,20 +5,13 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 )
 
 // LogSubscription is an authenticated subscription to logs.
 type LogSubscription struct {
-	// The account the events relate to.
-	Account *common.Address
-
-	// A signature over the account address using a private viewing key. Prevents attackers from subscribing to
-	// (encrypted) logs for other accounts to see the pattern of logs.
-	// todo - this does not protect against replay attacks, where someone resends an intercepted subscription request.
-	Signature []byte
-
-	// PublicViewingKey stores the viewing key used for this subscription
-	PublicViewingKey []byte
+	// ViewingKey - links this subscription request to an externally owed account
+	ViewingKey viewingkey.RPCSignedViewingKey
 
 	// A subscriber-defined filter to apply to the stream of logs.
 	Filter *filters.FilterCriteria

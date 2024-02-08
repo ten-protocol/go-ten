@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
@@ -81,7 +83,11 @@ func WithVKEncryption2[P1 any, P2 any, R any](
 	if len(decodedRequest) < 1 {
 		return responses.AsPlaintextError(fmt.Errorf("invalid request. viewing key is missing")), nil
 	}
-	vk, err := vkhandler.ExtractAndAuthenticateViewingKey(decodedRequest[0], chainID)
+	rpcVK, ok := decodedRequest[0].(viewingkey.RPCSignedViewingKey)
+	if !ok {
+		return responses.AsPlaintextError(fmt.Errorf("invalid request. viewing key encoded incorrectly")), nil
+	}
+	vk, err := vkhandler.VerifyViewingKey(rpcVK, chainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("invalid viewing key - %w", err)), nil
 	}

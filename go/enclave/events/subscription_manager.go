@@ -66,12 +66,9 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encodedSubscription
 	}
 
 	// verify the viewing key
-	authenticateViewingKey, err := vkhandler.AuthenticateViewingKey(subscription.PublicViewingKey, subscription.Signature, s.chainID)
+	authenticateViewingKey, err := vkhandler.VerifyViewingKey(subscription.ViewingKey, s.chainID)
 	if err != nil {
-		return fmt.Errorf("unable to create vk encryption for request - %w", err)
-	}
-	if authenticateViewingKey.AccountAddress.Hex() != subscription.Account.Hex() {
-		return fmt.Errorf("subscription invalid. Viewing key address %s does not match subscription address %s", authenticateViewingKey.AccountAddress, subscription.Account)
+		return fmt.Errorf("unable to authenticate the viewing key for subscription  - %w", err)
 	}
 
 	s.subscriptionMutex.Lock()
@@ -147,6 +144,7 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, recei
 		// first filter the logs
 		filteredLogs := filterLogs(allLogs, sub.Subscription.Filter.FromBlock, sub.Subscription.Filter.ToBlock, sub.Subscription.Filter.Addresses, sub.Subscription.Filter.Topics, s.logger)
 
+		account := sub.ViewingKeyEncryptor.AccountAddress
 		relevantLogsForSub := []*types.Log{}
 		for _, logItem := range filteredLogs {
 			userAddrs, f := userAddrsForLog[logItem]
@@ -154,11 +152,11 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, recei
 				userAddrs = getUserAddrsFromLogTopics(logItem, stateDB)
 				userAddrsForLog[logItem] = userAddrs
 			}
-			relevant := isRelevant(sub.Subscription.Account, userAddrs)
+			relevant := isRelevant(account, userAddrs)
 			if relevant {
 				relevantLogsForSub = append(relevantLogsForSub, logItem)
 			}
-			s.logger.Debug("Subscription", log.SubIDKey, id, "acc", sub.Subscription.Account, "log", logItem, "extr_addr", userAddrs, "relev", relevant)
+			s.logger.Debug("Subscription", log.SubIDKey, id, "acc", account, "log", logItem, "extr_addr", userAddrs, "relev", relevant)
 		}
 		if len(relevantLogsForSub) > 0 {
 			relevantLogsPerSubscription[id] = relevantLogsForSub

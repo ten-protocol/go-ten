@@ -47,7 +47,7 @@ func TestVKHandler(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Create a new vk Handler
-			_, err = AuthenticateViewingKey(vkPubKeyBytes, signature, chainID)
+			_, err = VerifyViewingKey(vkPubKeyBytes, signature, chainID)
 			assert.NoError(t, err)
 		})
 	}

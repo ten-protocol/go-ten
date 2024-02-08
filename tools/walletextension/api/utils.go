@@ -133,7 +133,7 @@ func handleEthError(req *common.RPCRequest, conn userconn.UserConn, logger gethl
 	logger.Info(fmt.Sprintf("Forwarding %s error response from Obscuro node: %s", method, errBytes))
 
 	if err = conn.WriteResponse(errBytes); err != nil {
-		logger.Error("unable to write response back - %w", log.ErrKey, err)
+		logger.Error("unable to write response back", log.ErrKey, err)
 	}
 }
 
