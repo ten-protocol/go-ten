@@ -32,7 +32,6 @@ var cacheableRPCMethods = map[string]time.Duration{
 	"eth_getTransactionCount":   shortCacheTTL,
 	"eth_estimateGas":           shortCacheTTL,
 	"eth_feeHistory":            shortCacheTTL,
-	"eth_getStorageAt":          shortCacheTTL,
 }
 
 type Cache interface {
