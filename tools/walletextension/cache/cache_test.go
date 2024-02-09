@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
@@ -31,7 +33,8 @@ func TestGatewayCaching(t *testing.T) {
 	// cache tests
 	for name, test := range cacheTests {
 		t.Run(name, func(t *testing.T) {
-			cache, err := NewCache()
+			logger := log.New()
+			cache, err := NewCache(logger)
 			if err != nil {
 				t.Errorf("failed to create cache: %v", err)
 			}
