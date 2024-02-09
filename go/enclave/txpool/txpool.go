@@ -11,6 +11,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethtxpool "github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/txpool/legacypool"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 )
@@ -65,7 +66,7 @@ func (t *TxPool) PendingTransactions() map[gethcommon.Address][]*gethtxpool.Lazy
 // Add adds a new transactions to the pool
 func (t *TxPool) Add(transaction *common.L2Tx) error {
 	var strErrors []string
-	for _, err := range t.pool.Add([]*gethtxpool.Transaction{{Tx: transaction}}, false, false) {
+	for _, err := range t.pool.Add([]*types.Transaction{transaction}, false, false) {
 		if err != nil {
 			strErrors = append(strErrors, err.Error())
 		}

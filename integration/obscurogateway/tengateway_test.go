@@ -444,7 +444,7 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.W
 		Data: pack,
 	}, nil)
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "execution reverted: Forced require")
+	require.Equal(t, "execution reverted: Forced require", err.Error())
 
 	// convert error to WE error
 	errBytes, err := json.Marshal(err)
@@ -452,9 +452,10 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.W
 	weError := wecommon.JSONError{}
 	err = json.Unmarshal(errBytes, &weError)
 	require.NoError(t, err)
-	require.Equal(t, weError.Message, "execution reverted: Forced require")
-	require.Equal(t, weError.Data, "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e466f726365642072657175697265000000000000000000000000000000000000")
-	require.Equal(t, weError.Code, 3)
+	require.Equal(t, "execution reverted: Forced require", weError.Message)
+	expectedData := "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e466f726365642072657175697265000000000000000000000000000000000000"
+	require.Equal(t, expectedData, weError.Data)
+	require.Equal(t, 3, weError.Code)
 
 	pack, _ = errorsContractABI.Pack("force_revert")
 	_, err = ethStdClient.CallContract(context.Background(), ethereum.CallMsg{
@@ -463,7 +464,7 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.W
 		Data: pack,
 	}, nil)
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "execution reverted: Forced revert")
+	require.Equal(t, "execution reverted: Forced revert", err.Error())
 
 	pack, _ = errorsContractABI.Pack("force_assert")
 	_, err = ethStdClient.CallContract(context.Background(), ethereum.CallMsg{
@@ -472,7 +473,7 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.W
 		Data: pack,
 	}, nil)
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "execution reverted")
+	require.Equal(t, "execution reverted: assert(false)", err.Error())
 }
 
 func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
