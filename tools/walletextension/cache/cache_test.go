@@ -64,7 +64,7 @@ func testNonCacheableMethods(t *testing.T) {
 
 // testMethodsWithLatestOrPendingParameter tests if the methods with latest or pending parameter are cacheable
 func testMethodsWithLatestOrPendingParameter(t *testing.T) {
-	methods := []string{"eth_getCode", "eth_getBalance", "eth_getTransactionCount", "eth_estimateGas", "eth_getStorageAt", "eth_call"}
+	methods := []string{"eth_getCode", "eth_getBalance", "eth_getTransactionCount", "eth_estimateGas", "eth_call"}
 	for _, method := range methods {
 		key := &common.RPCRequest{Method: method, Params: []interface{}{"0x123", "latest"}}
 		_, _, ttl := IsCacheable(key)

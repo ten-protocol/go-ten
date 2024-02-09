@@ -55,7 +55,7 @@ func IsCacheable(key *common.RPCRequest) (bool, string, time.Duration) {
 	if isCacheable {
 		// method is cacheable - select cache key
 		switch key.Method {
-		case "eth_getCode", "eth_getBalance", "eth_getTransactionCount", "eth_estimateGas", "eth_getStorageAt", "eth_call":
+		case "eth_getCode", "eth_getBalance", "eth_getTransactionCount", "eth_estimateGas", "eth_call":
 			if len(key.Params) == 1 || len(key.Params) == 2 && (key.Params[1] == "latest" || key.Params[1] == "pending") {
 				return true, GenerateCacheKey(key.Method, key.Params...), ttl
 			}
