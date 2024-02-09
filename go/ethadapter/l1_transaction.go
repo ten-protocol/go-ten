@@ -46,17 +46,20 @@ func (l *L1RespondSecretTx) Sign(privateKey *ecdsa.PrivateKey) *L1RespondSecretT
 	data = append(data, l.HostAddress...)
 	data = append(data, string(l.Secret)...)
 
-	// form the data
-	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), string(data))
-	// hash the data
-	hashedData := crypto.Keccak256Hash([]byte(msg))
+	ethereumMessageHash := func(data []byte) []byte {
+		prefix := fmt.Sprintf("\x19Ethereum Signed Message:\n%d", len(data))
+		return crypto.Keccak256([]byte(prefix), data)
+	}
+
+	hashedData := ethereumMessageHash(data)
 	// sign the hash
-	signedHash, err := crypto.Sign(hashedData.Bytes(), privateKey)
+	signedHash, err := crypto.Sign(hashedData, privateKey)
 	if err != nil {
 		return nil
 	}
-	// remove ECDSA recovery id
-	signedHash = signedHash[:len(signedHash)-1]
+
+	//set recovery id to 27; prevent malleable signatures
+	signedHash[64] += 27
 	l.AttesterSig = signedHash
 	return l
 }

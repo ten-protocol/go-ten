@@ -118,6 +118,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         require(isAggAttested);
 
         if (verifyAttester) {
+            
             // the data must be signed with by the correct private key
             // signature = f(PubKey, PrivateKey, message)
             // address = f(signature, message)
@@ -126,7 +127,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
             address recoveredAddrSignedCalculated = ECDSA.recover(calculatedHashSigned, attesterSig);
 
             require(recoveredAddrSignedCalculated == attesterID, "calculated address and attesterID dont match");
-        }
+        } 
 
         // mark the requesterID aggregator as an attested aggregator and store its host address
         attested[requesterID] = true;
