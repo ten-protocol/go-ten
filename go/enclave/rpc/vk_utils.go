@@ -22,21 +22,20 @@ const (
 	NotFound                            // resource not found
 )
 
-// RpcCallBuilder - used during processing of an RPC request, which is a multi-step process
+// RpcCallBuilder - builder used during processing of an RPC request, which is a multi-step process
 type RpcCallBuilder[P any, R any] struct {
 	Param         *P                                 // value calculated during phase 1 to be used during the execution phase
 	VK            *vkhandler.AuthenticatedViewingKey // the vk accompanying the request
 	From          *gethcommon.Address                // extracted from the request
 	ResourceOwner *gethcommon.Address                // extracted from the database Not applicable for all requests. E.g. For a tx, the owner is the original tx sender
-	Status        ResourceStatus                     //
-	ReturnValue   *R                                 // the value to be returned to the user
-	Err           error                              // encrypted error to be returned to the user
+	Status        ResourceStatus
+	ReturnValue   *R    // encrypted value to be returned to the user
+	Err           error // encrypted error to be returned to the user
 }
 
 // WithVKEncryption - handles the VK management, authentication and encryption
-// P represents the single request parameter
-// R represents the response which will be encrypted
-// note - this is a thin wrapper over WithVKEncryption2
+// P - the type of the temporary parameter calculated after phase 1
+// R - the type of the result
 func WithVKEncryption[P any, R any](
 	encManager *EncryptionManager,
 	chainID int64,
