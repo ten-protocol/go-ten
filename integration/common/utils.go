@@ -158,7 +158,7 @@ func InteractWithSmartContract(client *ethclient.Client, wallet wallet.Wallet, c
 		return nil, err
 	}
 
-	txReceipt, err := AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 3*time.Second)
+	txReceipt, err := AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
