@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"time"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
@@ -39,8 +40,8 @@ type Cache interface {
 	Get(key string) (value map[string]interface{}, ok bool)
 }
 
-func NewCache() (Cache, error) {
-	return NewRistrettoCache() // TODO: Fix signatures..
+func NewCache(logger log.Logger) (Cache, error) {
+	return NewRistrettoCache(logger)
 }
 
 // IsCacheable checks if the given RPC request is cacheable and returns the cache key and TTL

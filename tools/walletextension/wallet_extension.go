@@ -65,7 +65,7 @@ func New(
 	}
 	newTenClient := obsclient.NewObsClient(rpcClient)
 	newFileLogger := common.NewFileLogger()
-	newGatewayCache, err := cache.NewCache()
+	newGatewayCache, err := cache.NewCache(logger)
 	if err != nil {
 		logger.Error(fmt.Errorf("could not create cache. Cause: %w", err).Error())
 		panic(err)

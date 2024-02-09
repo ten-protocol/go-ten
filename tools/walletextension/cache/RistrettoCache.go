@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"github.com/ethereum/go-ethereum/log"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -15,10 +16,11 @@ const (
 
 type RistrettoCache struct {
 	cache *ristretto.Cache
+	quit  chan struct{}
 }
 
 // NewRistrettoCache returns a new RistrettoCache.
-func NewRistrettoCache() (*RistrettoCache, error) {
+func NewRistrettoCache(logger log.Logger) (*RistrettoCache, error) {
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: numCounters,
 		MaxCost:     maxCost,
@@ -28,7 +30,16 @@ func NewRistrettoCache() (*RistrettoCache, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &RistrettoCache{cache}, nil
+
+	c := &RistrettoCache{
+		cache: cache,
+		quit:  make(chan struct{}),
+	}
+
+	// Start the metrics logging
+	go c.startMetricsLogging(logger)
+
+	return c, nil
 }
 
 // Set adds the key and value to the cache.
@@ -51,4 +62,20 @@ func (c *RistrettoCache) Get(key string) (value map[string]interface{}, ok bool)
 	}
 
 	return value, true
+}
+
+// startMetricsLogging starts logging cache metrics every hour.
+func (c *RistrettoCache) startMetricsLogging(logger log.Logger) {
+	ticker := time.NewTicker(1 * time.Hour)
+	for {
+		select {
+		case <-ticker.C:
+			metrics := c.cache.Metrics
+			logger.Info("Cache metrics: Hits: %d, Misses: %d, Cost Added: %d\n",
+				metrics.Hits(), metrics.Misses(), metrics.CostAdded())
+		case <-c.quit:
+			ticker.Stop()
+			return
+		}
+	}
 }
