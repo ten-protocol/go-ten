@@ -58,7 +58,7 @@ func (l *L1RespondSecretTx) Sign(privateKey *ecdsa.PrivateKey) *L1RespondSecretT
 		return nil
 	}
 
-	//set recovery id to 27; prevent malleable signatures
+	// set recovery id to 27; prevent malleable signatures
 	signedHash[64] += 27
 	l.AttesterSig = signedHash
 	return l

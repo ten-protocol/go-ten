@@ -203,7 +203,7 @@ func InitializeContract(workerClient ethadapter.EthClient, w wallet.Wallet, cont
 			if receipt.Status != types.ReceiptStatusSuccessful {
 				return nil, errors.New("unable to initialize contract")
 			}
-			testlog.Logger().Info(fmt.Sprintf("Contract initialized"))
+			testlog.Logger().Info("Contract initialized")
 			return receipt, nil
 		}
 	}
