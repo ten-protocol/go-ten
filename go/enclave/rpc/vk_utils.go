@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/go/common/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -50,20 +50,16 @@ func WithVKEncryption[P any, R any](
 	}
 
 	// 2. Unmarshall into a generic []any array
-	var decodedRequest []any
+	var decodedRequest rpc.RequestWithVk
 	if err := json.Unmarshal(plaintextRequest, &decodedRequest); err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("could not unmarshal params - %w", err)), nil
 	}
 
 	// 3. Extract the VK from the first element and verify it
-	if len(decodedRequest) < 1 {
+	if decodedRequest.VK == nil {
 		return responses.AsPlaintextError(fmt.Errorf("invalid request. viewing key is missing")), nil
 	}
-	rpcVK, ok := decodedRequest[0].(viewingkey.RPCSignedViewingKey)
-	if !ok {
-		return responses.AsPlaintextError(fmt.Errorf("invalid request. viewing key encoded incorrectly")), nil
-	}
-	vk, err := vkhandler.VerifyViewingKey(rpcVK, chainID)
+	vk, err := vkhandler.VerifyViewingKey(decodedRequest.VK, chainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("invalid viewing key - %w", err)), nil
 	}
@@ -71,7 +67,7 @@ func WithVKEncryption[P any, R any](
 	// 4. Call the function that knows how to validate the request
 	builder := &RpcCallBuilder[P, R]{Status: NotSet, VK: vk}
 
-	err = extractFromAndParams(decodedRequest[1:], builder, encManager)
+	err = extractFromAndParams(decodedRequest.Params, builder, encManager)
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}

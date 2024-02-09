@@ -11,7 +11,7 @@ import (
 // LogSubscription is an authenticated subscription to logs.
 type LogSubscription struct {
 	// ViewingKey - links this subscription request to an externally owed account
-	ViewingKey viewingkey.RPCSignedViewingKey
+	ViewingKey *viewingkey.RPCSignedViewingKey
 
 	// A subscriber-defined filter to apply to the stream of logs.
 	Filter *filters.FilterCriteria

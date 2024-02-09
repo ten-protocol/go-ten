@@ -17,14 +17,14 @@ import (
 // Used when the result to an eth_call is equal to nil. Attempting to encrypt then decrypt nil using ECIES throws an exception.
 var placeholderResult = []byte("0x")
 
-// AuthenticatedViewingKey - This data accompanies every RPC request.
+// AuthenticatedViewingKey - the enclave side of the viewing key. Used for authenticating requests and for encryption
 type AuthenticatedViewingKey struct {
-	rpcVK          viewingkey.RPCSignedViewingKey
+	rpcVK          *viewingkey.RPCSignedViewingKey
 	AccountAddress *gethcommon.Address
 	ecdsaKey       *ecies.PublicKey
 }
 
-func VerifyViewingKey(rpcVK viewingkey.RPCSignedViewingKey, chainID int64) (*AuthenticatedViewingKey, error) {
+func VerifyViewingKey(rpcVK *viewingkey.RPCSignedViewingKey, chainID int64) (*AuthenticatedViewingKey, error) {
 	vkPubKey, err := crypto.DecompressPubkey(rpcVK.PublicKey)
 	if err != nil {
 		return nil, fmt.Errorf("could not decompress viewing key bytes - %w", err)

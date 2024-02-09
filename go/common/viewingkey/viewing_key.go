@@ -46,7 +46,8 @@ var EIP712EncryptionTokens = [...]string{
 	EIP712EncryptionTokenV2,
 }
 
-// ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave
+// ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave.
+// It is th client-side perspective of the viewing key used for decrypting incoming traffic.
 type ViewingKey struct {
 	Account                 *gethcommon.Address // Account address that this Viewing Key is bound to - Users Pubkey address
 	PrivateKey              *ecies.PrivateKey   // ViewingKey private key to encrypt data to the enclave
@@ -54,8 +55,8 @@ type ViewingKey struct {
 	SignatureWithAccountKey []byte              // ViewingKey public key signed by the Accounts Private key - Allows to retrieve the Account address
 }
 
-// RPCSignedViewingKey - used for transporting the viewing key via RPC
-// every RPC request to a sensitive method, including Log subscriptions, must contain this object
+// RPCSignedViewingKey - used for transporting a minimalist viewing key via
+// every RPC request to a sensitive method, including Log subscriptions.
 // only the public key and the signature are required
 type RPCSignedViewingKey struct {
 	PublicKey               []byte
