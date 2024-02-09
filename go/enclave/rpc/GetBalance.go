@@ -9,7 +9,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
 
-func ExtractGetBalanceRequestParams(reqParams []any, builder *RPCCallBuilder[rpc.BlockNumber, hexutil.Big], _ *EncryptionManager) error {
+func ExtractGetBalanceRequestParams(reqParams []any, builder *CallBuilder[rpc.BlockNumber, hexutil.Big], _ *EncryptionManager) error {
 	// Parameters are [Address, BlockNumber]
 	if len(reqParams) != 2 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -31,7 +31,7 @@ func ExtractGetBalanceRequestParams(reqParams []any, builder *RPCCallBuilder[rpc
 	return nil
 }
 
-func ExecuteGetBalance(rpcBuilder *RPCCallBuilder[rpc.BlockNumber, hexutil.Big], rpc *EncryptionManager) error {
+func ExecuteGetBalance(rpcBuilder *CallBuilder[rpc.BlockNumber, hexutil.Big], rpc *EncryptionManager) error {
 	encryptAddress, balance, err := rpc.chain.GetBalance(*rpcBuilder.From, rpcBuilder.Param)
 	if err != nil {
 		return fmt.Errorf("unable to get balance - %w", err)
