@@ -14,7 +14,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 )
 
-func ExtractGetLogsRequest(reqParams []any, builder *RpcCallBuilder1[filters.FilterCriteria, []*types.Log], _ *EncryptionManager) error {
+func ExtractGetLogsRequest(reqParams []any, builder *RpcCallBuilder[filters.FilterCriteria, []*types.Log], _ *EncryptionManager) error {
 	// Parameters are [Filter, Address]
 	if len(reqParams) != 2 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -31,7 +31,7 @@ func ExtractGetLogsRequest(reqParams []any, builder *RpcCallBuilder1[filters.Fil
 	return nil
 }
 
-func ExecuteGetLogs(rpcBuilder *RpcCallBuilder1[filters.FilterCriteria, []*types.Log], rpc *EncryptionManager) error {
+func ExecuteGetLogs(rpcBuilder *RpcCallBuilder[filters.FilterCriteria, []*types.Log], rpc *EncryptionManager) error {
 	filter := rpcBuilder.Param
 	// todo logic to check that the filter is valid
 	// can't have both from and blockhash

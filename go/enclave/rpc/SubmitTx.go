@@ -8,7 +8,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
-func ExtractSubmitTxRequest(reqParams []any, builder *RpcCallBuilder1[common.L2Tx, gethcommon.Hash], _ *EncryptionManager) error {
+func ExtractSubmitTxRequest(reqParams []any, builder *RpcCallBuilder[common.L2Tx, gethcommon.Hash], _ *EncryptionManager) error {
 	l2Tx, err := ExtractTx(reqParams[0].(string))
 	if err != nil {
 		builder.Err = fmt.Errorf("could not extract transaction. Cause: %w", err)
@@ -19,7 +19,7 @@ func ExtractSubmitTxRequest(reqParams []any, builder *RpcCallBuilder1[common.L2T
 	return nil
 }
 
-func ExecuteSubmitTx(rpcBuilder *RpcCallBuilder1[common.L2Tx, gethcommon.Hash], rpc *EncryptionManager) error {
+func ExecuteSubmitTx(rpcBuilder *RpcCallBuilder[common.L2Tx, gethcommon.Hash], rpc *EncryptionManager) error {
 	if rpc.processors.Local.IsSyntheticTransaction(*rpcBuilder.Param) {
 		rpcBuilder.Err = fmt.Errorf("synthetic transaction coming from external rpc")
 		return nil

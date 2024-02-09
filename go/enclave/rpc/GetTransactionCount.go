@@ -8,7 +8,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
 
-func ExtractGetTransactionCountRequest(reqParams []any, builder *RpcCallBuilder1[uint64, string], rpc *EncryptionManager) error {
+func ExtractGetTransactionCountRequest(reqParams []any, builder *RpcCallBuilder[uint64, string], rpc *EncryptionManager) error {
 	// Parameters are [Address, Block?]
 	if len(reqParams) < 1 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -43,7 +43,7 @@ func ExtractGetTransactionCountRequest(reqParams []any, builder *RpcCallBuilder1
 	return nil
 }
 
-func ExecuteGetTransactionCount(rpcBuilder *RpcCallBuilder1[uint64, string], rpc *EncryptionManager) error {
+func ExecuteGetTransactionCount(rpcBuilder *RpcCallBuilder[uint64, string], rpc *EncryptionManager) error {
 	var nonce uint64
 	l2Head, err := rpc.storage.FetchBatchBySeqNo(*rpcBuilder.Param)
 	if err == nil {

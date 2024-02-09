@@ -3,6 +3,9 @@ package rpc
 import (
 	"fmt"
 
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/ten-protocol/go-ten/go/common/gethapi"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
 )
@@ -19,4 +22,9 @@ func ExtractTx(txBinary string) (*common.L2Tx, error) {
 	}
 
 	return tx, nil
+}
+
+type CallParamsWithBlock struct {
+	callParams *gethapi.TransactionArgs
+	block      *gethrpc.BlockNumber
 }

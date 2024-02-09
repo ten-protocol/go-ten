@@ -20,7 +20,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
-func ExtractEstimateGasRequest(reqParams []any, builder *RpcCallBuilder2[gethapi.TransactionArgs, gethrpc.BlockNumber, hexutil.Uint64], _ *EncryptionManager) error {
+func ExtractEstimateGasRequest(reqParams []any, builder *RpcCallBuilder[CallParamsWithBlock, hexutil.Uint64], _ *EncryptionManager) error {
 	// Parameters are [callMsg, block number (optional)]
 	if len(reqParams) < 1 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -47,14 +47,13 @@ func ExtractEstimateGasRequest(reqParams []any, builder *RpcCallBuilder2[gethapi
 	}
 
 	builder.From = callMsg.From
-	builder.Param1 = callMsg
-	builder.Param2 = blockNumber
+	builder.Param = &CallParamsWithBlock{callMsg, blockNumber}
 	return nil
 }
 
-func ExecuteEstimateGas(rpcBuilder *RpcCallBuilder2[gethapi.TransactionArgs, gethrpc.BlockNumber, hexutil.Uint64], rpc *EncryptionManager) error {
-	txArgs := rpcBuilder.Param1
-	blockNumber := rpcBuilder.Param2
+func ExecuteEstimateGas(rpcBuilder *RpcCallBuilder[CallParamsWithBlock, hexutil.Uint64], rpc *EncryptionManager) error {
+	txArgs := rpcBuilder.Param.callParams
+	blockNumber := rpcBuilder.Param.block
 	block, err := rpc.blockResolver.FetchHeadBlock()
 	if err != nil {
 		return err

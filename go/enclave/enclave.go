@@ -450,7 +450,7 @@ func (e *enclaveImpl) SubmitTx(encryptedTxParams common.EncryptedTx) (*responses
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitTx with the enclave stopping"))
 	}
-	return rpc.WithVKEncryption1[common.L2Tx, gethcommon.Hash](
+	return rpc.WithVKEncryption[common.L2Tx, gethcommon.Hash](
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedTxParams,
@@ -561,7 +561,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 		return nil, responses.ToInternalError(fmt.Errorf("requested ObsCall with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption2(
+	return rpc.WithVKEncryption(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
@@ -574,7 +574,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionCount with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption1(
+	return rpc.WithVKEncryption(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
@@ -587,7 +587,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransaction with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption1(
+	return rpc.WithVKEncryption(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
@@ -600,7 +600,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionReceipt with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption1(
+	return rpc.WithVKEncryption(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
@@ -670,7 +670,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetBalance with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption1(
+	return rpc.WithVKEncryption(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
@@ -750,7 +750,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "enclave.go:EstimateGas()")
-	return rpc.WithVKEncryption2(
+	return rpc.WithVKEncryption(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
@@ -762,7 +762,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetLogs with the enclave stopping"))
 	}
-	return rpc.WithVKEncryption1[filters.FilterCriteria, []*types.Log](
+	return rpc.WithVKEncryption[filters.FilterCriteria, []*types.Log](
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
@@ -863,7 +863,7 @@ func (e *enclaveImpl) GetCustomQuery(encryptedParams common.EncryptedParamsGetSt
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetReceiptsByAddress with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption1(
+	return rpc.WithVKEncryption(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,

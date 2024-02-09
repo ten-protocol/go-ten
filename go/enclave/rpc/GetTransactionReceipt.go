@@ -13,7 +13,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/events"
 )
 
-func ExtractGetTransactionReceiptRequest(reqParams []any, builder *RpcCallBuilder1[gethcommon.Hash, types.Receipt], _ *EncryptionManager) error {
+func ExtractGetTransactionReceiptRequest(reqParams []any, builder *RpcCallBuilder[gethcommon.Hash, types.Receipt], _ *EncryptionManager) error {
 	// Parameters are [Hash]
 	if len(reqParams) < 1 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -30,7 +30,7 @@ func ExtractGetTransactionReceiptRequest(reqParams []any, builder *RpcCallBuilde
 	return nil
 }
 
-func ExecuteGetTransactionReceipt(rpcBuilder *RpcCallBuilder1[gethcommon.Hash, types.Receipt], rpc *EncryptionManager) error {
+func ExecuteGetTransactionReceipt(rpcBuilder *RpcCallBuilder[gethcommon.Hash, types.Receipt], rpc *EncryptionManager) error {
 	txHash := *rpcBuilder.Param
 	// todo - optimise these calls. This can be done with a single sql
 	rpc.logger.Trace("Get receipt for ", log.TxKey, txHash)

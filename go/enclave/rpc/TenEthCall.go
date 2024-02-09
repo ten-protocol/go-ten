@@ -6,15 +6,13 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
-	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 )
 
-func ExtractObsCallRequest(reqParams []any, builder *RpcCallBuilder2[gethapi.TransactionArgs, gethrpc.BlockNumber, string], _ *EncryptionManager) error {
+func ExtractObsCallRequest(reqParams []any, builder *RpcCallBuilder[CallParamsWithBlock, string], _ *EncryptionManager) error {
 	// Parameters are [TransactionArgs, BlockNumber]
 	if len(reqParams) != 2 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -39,15 +37,14 @@ func ExtractObsCallRequest(reqParams []any, builder *RpcCallBuilder2[gethapi.Tra
 	}
 
 	builder.From = apiArgs.From
-	builder.Param1 = apiArgs
-	builder.Param2 = blkNumber
+	builder.Param = &CallParamsWithBlock{apiArgs, blkNumber}
 
 	return nil
 }
 
-func ExecuteObsCallGas(rpcBuilder *RpcCallBuilder2[gethapi.TransactionArgs, gethrpc.BlockNumber, string], rpc *EncryptionManager) error {
-	apiArgs := rpcBuilder.Param1
-	blkNumber := rpcBuilder.Param2
+func ExecuteObsCallGas(rpcBuilder *RpcCallBuilder[CallParamsWithBlock, string], rpc *EncryptionManager) error {
+	apiArgs := rpcBuilder.Param.callParams
+	blkNumber := rpcBuilder.Param.block
 	execResult, err := rpc.chain.ObsCall(apiArgs, blkNumber)
 	if err != nil {
 		rpc.logger.Debug("Failed eth_call.", log.ErrKey, err)

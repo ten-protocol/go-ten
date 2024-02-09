@@ -21,7 +21,7 @@ type TxData struct {
 	index       uint64
 }
 
-func ExtractGetTransactionRequest(reqParams []any, builder *RpcCallBuilder1[gethcommon.Hash, RpcTransaction], _ *EncryptionManager) error {
+func ExtractGetTransactionRequest(reqParams []any, builder *RpcCallBuilder[gethcommon.Hash, RpcTransaction], _ *EncryptionManager) error {
 	// Parameters are [Hash]
 	if len(reqParams) != 1 {
 		builder.Err = fmt.Errorf("unexpected address parameter")
@@ -37,7 +37,7 @@ func ExtractGetTransactionRequest(reqParams []any, builder *RpcCallBuilder1[geth
 	return nil
 }
 
-func ExecuteGetTransaction(rpcBuilder *RpcCallBuilder1[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
+func ExecuteGetTransaction(rpcBuilder *RpcCallBuilder[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
 	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(*rpcBuilder.Param)
 	if err != nil {
