@@ -71,7 +71,7 @@ func WithVKEncryption[P any, R any](
 		return nil, responses.ToInternalError(err)
 	}
 	if builder.Err != nil {
-		return responses.AsEncryptedError(fmt.Errorf("invalid request - %w", builder.Err), vk), nil //nolint:nilerr
+		return responses.AsEncryptedError(builder.Err, vk), nil //nolint:nilerr
 	}
 
 	// 5. IMPORTANT!: authenticate the call.
@@ -88,7 +88,7 @@ func WithVKEncryption[P any, R any](
 		return nil, responses.ToInternalError(err)
 	}
 	if builder.Err != nil {
-		return responses.AsEncryptedError(fmt.Errorf("invalid request - %w", builder.Err), vk), nil //nolint:nilerr
+		return responses.AsEncryptedError(builder.Err, vk), nil //nolint:nilerr
 	}
 	if builder.Status == NotFound || builder.Status == NotAuthorised {
 		// if the requested resource was not found, return an empty response

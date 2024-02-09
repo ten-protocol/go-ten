@@ -554,7 +554,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 		return nil, responses.ToInternalError(fmt.Errorf("requested ObsCall with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption(e.rpcEncryptionManager, encryptedParams, rpc.ExtractObsCallRequest, rpc.ExecuteObsCallGas)
+	return rpc.WithVKEncryption(e.rpcEncryptionManager, encryptedParams, rpc.ExtractTenCallRequest, rpc.ExecuteTenCall)
 }
 
 func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (*responses.TxCount, common.SystemError) {
