@@ -75,19 +75,19 @@ func WithVKEncryption[P any, R any](
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
-	if builder == nil {
-		return nil, responses.ToInternalError(fmt.Errorf("should not happen"))
-	}
 	if builder.Err != nil {
 		return responses.AsEncryptedError(fmt.Errorf("invalid request - %w", builder.Err), vk), nil
 	}
 
 	// 5. IMPORTANT!: authenticate the call.
+	// Note: not all RPC calls require authentication.
+	// It is the responsibility of the `extractFromAndParams` function to validate the "from" field.
 	if builder.From != nil && builder.From.Hex() != vk.AccountAddress.Hex() {
 		return responses.AsEncryptedError(fmt.Errorf("failed authentication. Account: %s does not match the from: %s", vk.AccountAddress, builder.From), vk), nil
 	}
 
 	// 6. Make the backend call and convert the response.
+	// Note - it is the responsibility of this function to check that the authenticated address is authorised to access that resource
 	err = executeCall(builder, encManager)
 	if err != nil {
 		return nil, responses.ToInternalError(err)
@@ -97,7 +97,7 @@ func WithVKEncryption[P any, R any](
 	}
 	if builder.Status == NotFound || builder.Status == NotAuthorised {
 		// if the requested resource was not found, return an empty response
-		// todo - this must be encrypted
+		// todo - this must be encrypted - but we have some logic that expects it unencrypted, which is a bug
 		// return responses.AsEncryptedEmptyResponse(vk), nil
 		return responses.AsEmptyResponse(), nil
 	}

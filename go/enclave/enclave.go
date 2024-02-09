@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ten-protocol/go-ten/go/common/compression"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
@@ -450,7 +449,7 @@ func (e *enclaveImpl) SubmitTx(encryptedTxParams common.EncryptedTx) (*responses
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitTx with the enclave stopping"))
 	}
-	return rpc.WithVKEncryption[common.L2Tx, gethcommon.Hash](
+	return rpc.WithVKEncryption(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedTxParams,
@@ -762,7 +761,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetLogs with the enclave stopping"))
 	}
-	return rpc.WithVKEncryption[filters.FilterCriteria, []*types.Log](
+	return rpc.WithVKEncryption(
 		e.rpcEncryptionManager,
 		e.config.ObscuroChainID,
 		encryptedParams,
