@@ -58,7 +58,10 @@ type ViewingKey struct {
 // RPCSignedViewingKey - used for transporting a minimalist viewing key via
 // every RPC request to a sensitive method, including Log subscriptions.
 // only the public key and the signature are required
+// the account address is sent as well to aid validation
+// todo - send the type of Message that was signed instead of the Account
 type RPCSignedViewingKey struct {
+	Account                 *gethcommon.Address
 	PublicKey               []byte
 	SignatureWithAccountKey []byte
 }

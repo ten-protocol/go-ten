@@ -31,8 +31,9 @@ func VerifyViewingKey(rpcVK *viewingkey.RPCSignedViewingKey, chainID int64) (*Au
 	}
 
 	rvk := &AuthenticatedViewingKey{
-		rpcVK:    rpcVK,
-		ecdsaKey: ecies.ImportECDSAPublic(vkPubKey),
+		AccountAddress: rpcVK.Account,
+		rpcVK:          rpcVK,
+		ecdsaKey:       ecies.ImportECDSAPublic(vkPubKey),
 	}
 
 	// 2. Authenticate
@@ -45,32 +46,41 @@ func VerifyViewingKey(rpcVK *viewingkey.RPCSignedViewingKey, chainID int64) (*Au
 	return rvk, nil
 }
 
+// this method is unnecessarily complex due to a legacy signing format
 func checkViewingKeyAndRecoverAddress(vk *AuthenticatedViewingKey, chainID int64) (*gethcommon.Address, error) {
 	// get userID from viewingKey public key
 	userID := viewingkey.CalculateUserIDHex(vk.rpcVK.PublicKey)
 
-	// check signature and recover the address
-	address, err := viewingkey.CheckEIP712Signature(userID, vk.rpcVK.SignatureWithAccountKey, chainID) //nolint
+	// check signature and recover the address assuming the message was signed with EIP712
+	recoveredSignerAddress, err := viewingkey.CheckEIP712Signature(userID, vk.rpcVK.SignatureWithAccountKey, chainID) //nolint
 	if err != nil {
-		// try the legacy format
-		legacyMessage := viewingkey.GenerateSignMessage(vk.rpcVK.PublicKey)
-		legacyMessageHash := accounts.TextHash([]byte(legacyMessage))
-		address, err = viewingkey.CheckSignatureAndReturnAccountAddress(legacyMessageHash, vk.rpcVK.SignatureWithAccountKey)
-		if err == nil {
-			return address, nil
+		// Signature failed
+		// Either it is invalid or it might have been using the legacy format
+		legacyMessageHash := accounts.TextHash([]byte(viewingkey.GenerateSignMessage(vk.rpcVK.PublicKey)))
+		_, err = viewingkey.CheckSignatureAndReturnAccountAddress(legacyMessageHash, vk.rpcVK.SignatureWithAccountKey)
+		if err != nil {
+			return nil, fmt.Errorf("invalid vk signature")
 		}
 	}
 
+	// compare the recovered address against the address declared in the vk
+	if recoveredSignerAddress != nil && recoveredSignerAddress.Hex() == vk.AccountAddress.Hex() {
+		return vk.AccountAddress, nil
+	}
+
+	// recover the address using the legacy format and compare with the vk address
 	// TODO @Ziga - this must be removed.
 	msgToSignLegacy := viewingkey.GenerateSignMessage(vk.rpcVK.PublicKey)
 	recoveredAccountPublicKeyLegacy, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSignLegacy)), vk.rpcVK.SignatureWithAccountKey)
 	if err != nil {
-		return nil, fmt.Errorf("viewing key but could not validate its signature - %w", err)
+		return nil, fmt.Errorf("invalid vk signature - %w", err)
 	}
 	recoveredAccountAddressLegacy := crypto.PubkeyToAddress(*recoveredAccountPublicKeyLegacy)
-	address = &recoveredAccountAddressLegacy
+	if recoveredAccountAddressLegacy.Hex() != vk.AccountAddress.Hex() {
+		return nil, fmt.Errorf("invalid VK")
+	}
 
-	return address, err
+	return vk.AccountAddress, err
 }
 
 // crypto.rand is quite slow. When this variable is true, we will use a fast CSPRNG algorithm

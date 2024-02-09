@@ -169,7 +169,11 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 
 func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*common.LogSubscription, error) {
 	logSubscription := &common.LogSubscription{
-		ViewingKey: &viewingkey.RPCSignedViewingKey{PublicKey: c.viewingKey.PublicKey, SignatureWithAccountKey: c.viewingKey.SignatureWithAccountKey},
+		ViewingKey: &viewingkey.RPCSignedViewingKey{
+			PublicKey:               c.viewingKey.PublicKey,
+			SignatureWithAccountKey: c.viewingKey.SignatureWithAccountKey,
+			Account:                 c.Account(),
+		},
 	}
 
 	// If there are less than two arguments, it means no filter criteria was passed.
@@ -301,6 +305,7 @@ func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
 		return nil, nil
 	}
 	vk := viewingkey.RPCSignedViewingKey{
+		Account:                 c.Account(),
 		PublicKey:               c.viewingKey.PublicKey,
 		SignatureWithAccountKey: c.viewingKey.SignatureWithAccountKey,
 	}

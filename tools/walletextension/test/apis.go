@@ -174,7 +174,8 @@ func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (*responses.Enclave
 		return responses.AsEmptyResponse(), fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
 
-	encryptor, err := vkhandler.VerifyViewingKey(viewingkey.RPCSignedViewingKey{
+	encryptor, err := vkhandler.VerifyViewingKey(&viewingkey.RPCSignedViewingKey{
+		Account:                 api.address,
 		PublicKey:               api.viewingKey,
 		SignatureWithAccountKey: api.signature,
 	}, l2ChainIDDecimal)
