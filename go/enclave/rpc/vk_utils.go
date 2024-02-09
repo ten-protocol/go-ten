@@ -38,7 +38,6 @@ type RpcCallBuilder[P any, R any] struct {
 // R - the type of the result
 func WithVKEncryption[P any, R any](
 	encManager *EncryptionManager,
-	chainID int64,
 	encReq []byte, // encrypted request that contains a signed viewing key
 	extractFromAndParams func([]any, *RpcCallBuilder[P, R], *EncryptionManager) error, // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
 	executeCall func(*RpcCallBuilder[P, R], *EncryptionManager) error, // execute the user call. Returns a user error or a system error
@@ -59,7 +58,7 @@ func WithVKEncryption[P any, R any](
 	if decodedRequest.VK == nil {
 		return responses.AsPlaintextError(fmt.Errorf("invalid request. viewing key is missing")), nil
 	}
-	vk, err := vkhandler.VerifyViewingKey(decodedRequest.VK, chainID)
+	vk, err := vkhandler.VerifyViewingKey(decodedRequest.VK, encManager.config.ObscuroChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("invalid viewing key - %w", err)), nil
 	}
