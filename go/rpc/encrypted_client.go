@@ -309,7 +309,7 @@ func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
 		PublicKey:               c.viewingKey.PublicKey,
 		SignatureWithAccountKey: c.viewingKey.SignatureWithAccountKey,
 	}
-	argsWithVK := &rpc.RequestWithVk{&vk, args}
+	argsWithVK := &rpc.RequestWithVk{VK: &vk, Params: args}
 
 	paramsJSON, err := json.Marshal(argsWithVK)
 	if err != nil {

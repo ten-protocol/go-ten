@@ -12,7 +12,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 )
 
-func ExtractObsCallRequest(reqParams []any, builder *RpcCallBuilder[CallParamsWithBlock, string], _ *EncryptionManager) error {
+func ExtractObsCallRequest(reqParams []any, builder *RPCCallBuilder[CallParamsWithBlock, string], _ *EncryptionManager) error {
 	// Parameters are [TransactionArgs, BlockNumber]
 	if len(reqParams) != 2 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -42,7 +42,7 @@ func ExtractObsCallRequest(reqParams []any, builder *RpcCallBuilder[CallParamsWi
 	return nil
 }
 
-func ExecuteObsCallGas(rpcBuilder *RpcCallBuilder[CallParamsWithBlock, string], rpc *EncryptionManager) error {
+func ExecuteObsCallGas(rpcBuilder *RPCCallBuilder[CallParamsWithBlock, string], rpc *EncryptionManager) error {
 	apiArgs := rpcBuilder.Param.callParams
 	blkNumber := rpcBuilder.Param.block
 	execResult, err := rpc.chain.ObsCall(apiArgs, blkNumber)

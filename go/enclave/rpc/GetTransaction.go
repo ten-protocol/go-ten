@@ -14,14 +14,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
-type TxData struct {
-	tx          *types.Transaction
-	blockHash   gethcommon.Hash
-	blockNumber uint64
-	index       uint64
-}
-
-func ExtractGetTransactionRequest(reqParams []any, builder *RpcCallBuilder[gethcommon.Hash, RpcTransaction], _ *EncryptionManager) error {
+func ExtractGetTransactionRequest(reqParams []any, builder *RPCCallBuilder[gethcommon.Hash, RpcTransaction], _ *EncryptionManager) error {
 	// Parameters are [Hash]
 	if len(reqParams) != 1 {
 		builder.Err = fmt.Errorf("unexpected address parameter")
@@ -37,7 +30,7 @@ func ExtractGetTransactionRequest(reqParams []any, builder *RpcCallBuilder[gethc
 	return nil
 }
 
-func ExecuteGetTransaction(rpcBuilder *RpcCallBuilder[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
+func ExecuteGetTransaction(rpcBuilder *RPCCallBuilder[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
 	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(*rpcBuilder.Param)
 	if err != nil {

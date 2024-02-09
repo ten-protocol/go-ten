@@ -22,8 +22,8 @@ const (
 	NotFound                            // resource not found
 )
 
-// RpcCallBuilder - builder used during processing of an RPC request, which is a multi-step process
-type RpcCallBuilder[P any, R any] struct {
+// RPCCallBuilder - builder used during processing of an RPC request, which is a multi-step process
+type RPCCallBuilder[P any, R any] struct {
 	Param         *P                                 // value calculated during phase 1 to be used during the execution phase
 	VK            *vkhandler.AuthenticatedViewingKey // the vk accompanying the request
 	From          *gethcommon.Address                // extracted from the request
@@ -39,8 +39,8 @@ type RpcCallBuilder[P any, R any] struct {
 func WithVKEncryption[P any, R any](
 	encManager *EncryptionManager,
 	encReq []byte, // encrypted request that contains a signed viewing key
-	extractFromAndParams func([]any, *RpcCallBuilder[P, R], *EncryptionManager) error, // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
-	executeCall func(*RpcCallBuilder[P, R], *EncryptionManager) error, // execute the user call. Returns a user error or a system error
+	extractFromAndParams func([]any, *RPCCallBuilder[P, R], *EncryptionManager) error, // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
+	executeCall func(*RPCCallBuilder[P, R], *EncryptionManager) error, // execute the user call. Returns a user error or a system error
 ) (*responses.EnclaveResponse, common.SystemError) {
 	// 1. Decrypt request
 	plaintextRequest, err := encManager.DecryptBytes(encReq)
@@ -64,14 +64,14 @@ func WithVKEncryption[P any, R any](
 	}
 
 	// 4. Call the function that knows how to validate the request
-	builder := &RpcCallBuilder[P, R]{Status: NotSet, VK: vk}
+	builder := &RPCCallBuilder[P, R]{Status: NotSet, VK: vk}
 
 	err = extractFromAndParams(decodedRequest.Params, builder, encManager)
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
 	if builder.Err != nil {
-		return responses.AsEncryptedError(fmt.Errorf("invalid request - %w", builder.Err), vk), nil
+		return responses.AsEncryptedError(fmt.Errorf("invalid request - %w", builder.Err), vk), nil //nolint:nilerr
 	}
 
 	// 5. IMPORTANT!: authenticate the call.

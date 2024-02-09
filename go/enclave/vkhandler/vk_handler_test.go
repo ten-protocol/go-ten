@@ -47,7 +47,7 @@ func TestVKHandler(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Create a new vk Handler
-			_, err = VerifyViewingKey(viewingkey.RPCSignedViewingKey{
+			_, err = VerifyViewingKey(&viewingkey.RPCSignedViewingKey{
 				PublicKey:               vkPubKeyBytes,
 				SignatureWithAccountKey: signature,
 			}, chainID)

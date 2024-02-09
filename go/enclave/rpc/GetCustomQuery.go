@@ -7,7 +7,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
 
-func ExtractGetCustomQueryRequest(reqParams []any, builder *RpcCallBuilder[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], _ *EncryptionManager) error {
+func ExtractGetCustomQueryRequest(reqParams []any, builder *RPCCallBuilder[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], _ *EncryptionManager) error {
 	// Parameters are [PrivateCustomQueryHeader, PrivateCustomQueryArgs, null]
 	if len(reqParams) != 3 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -24,7 +24,7 @@ func ExtractGetCustomQueryRequest(reqParams []any, builder *RpcCallBuilder[commo
 	return nil
 }
 
-func ExecuteGetCustomQuery(rpcBuilder *RpcCallBuilder[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], rpc *EncryptionManager) error {
+func ExecuteGetCustomQuery(rpcBuilder *RPCCallBuilder[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], rpc *EncryptionManager) error {
 	// rpcBuilder are correct, fetch the receipts of the requested address
 	encryptReceipts, err := rpc.storage.GetReceiptsPerAddress(&rpcBuilder.Param.Address, &rpcBuilder.Param.Pagination)
 	if err != nil {
