@@ -60,8 +60,8 @@ func LogMethodDuration(logger gethlog.Logger, stopWatch *measure.Stopwatch, msg 
 	f(fmt.Sprintf("LogMethodDuration::%s", msg), newArgs...)
 }
 
-// GetTxSender returns the address that signed a transaction
-func GetTxSender(tx *common.L2Tx) (gethcommon.Address, error) {
+// GetTxSigner returns the address that signed a transaction
+func GetTxSigner(tx *common.L2Tx) (gethcommon.Address, error) {
 	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
 
 	from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)

@@ -7,7 +7,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
 
-func ExtractGetCustomQueryRequest(reqParams []any, builder *CallBuilder[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], _ *EncryptionManager) error {
+func GetCustomQueryValidate(reqParams []any, builder *CallBuilder[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], _ *EncryptionManager) error {
 	// Parameters are [PrivateCustomQueryHeader, PrivateCustomQueryArgs, null]
 	if len(reqParams) != 3 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -24,19 +24,24 @@ func ExtractGetCustomQueryRequest(reqParams []any, builder *CallBuilder[common.P
 	return nil
 }
 
-func ExecuteGetCustomQuery(rpcBuilder *CallBuilder[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], rpc *EncryptionManager) error {
-	// rpcBuilder are correct, fetch the receipts of the requested address
-	encryptReceipts, err := rpc.storage.GetReceiptsPerAddress(&rpcBuilder.Param.Address, &rpcBuilder.Param.Pagination)
+func GetCustomQueryExecute(builder *CallBuilder[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], rpc *EncryptionManager) error {
+	err := authenticateFrom(builder.VK, builder.From)
+	if err != nil {
+		builder.Err = err
+		return nil
+	}
+
+	encryptReceipts, err := rpc.storage.GetReceiptsPerAddress(&builder.Param.Address, &builder.Param.Pagination)
 	if err != nil {
 		return fmt.Errorf("GetReceiptsPerAddress - %w", err)
 	}
 
-	receiptsCount, err := rpc.storage.GetReceiptsPerAddressCount(&rpcBuilder.Param.Address)
+	receiptsCount, err := rpc.storage.GetReceiptsPerAddressCount(&builder.Param.Address)
 	if err != nil {
 		return fmt.Errorf("GetReceiptsPerAddressCount - %w", err)
 	}
 
-	rpcBuilder.ReturnValue = &common.PrivateQueryResponse{
+	builder.ReturnValue = &common.PrivateQueryResponse{
 		Receipts: encryptReceipts,
 		Total:    receiptsCount,
 	}

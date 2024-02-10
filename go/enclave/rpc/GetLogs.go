@@ -14,7 +14,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 )
 
-func ExtractGetLogsRequest(reqParams []any, builder *CallBuilder[filters.FilterCriteria, []*types.Log], _ *EncryptionManager) error {
+func GetLogsValidate(reqParams []any, builder *CallBuilder[filters.FilterCriteria, []*types.Log], _ *EncryptionManager) error {
 	// Parameters are [Filter, Address]
 	if len(reqParams) != 2 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -31,14 +31,20 @@ func ExtractGetLogsRequest(reqParams []any, builder *CallBuilder[filters.FilterC
 	return nil
 }
 
-func ExecuteGetLogs(rpcBuilder *CallBuilder[filters.FilterCriteria, []*types.Log], rpc *EncryptionManager) error { //nolint:gocognit
-	filter := rpcBuilder.Param
+func GetLogsExecute(builder *CallBuilder[filters.FilterCriteria, []*types.Log], rpc *EncryptionManager) error { //nolint:gocognit
+	err := authenticateFrom(builder.VK, builder.From)
+	if err != nil {
+		builder.Err = err
+		return nil
+	}
+
+	filter := builder.Param
 	// todo logic to check that the filter is valid
 	// can't have both from and blockhash
 	// from <=to
 	// todo (@stefan) - return user error
 	if filter.BlockHash != nil && filter.FromBlock != nil {
-		rpcBuilder.Err = fmt.Errorf("invalid filter. Cannot have both blockhash and fromBlock")
+		builder.Err = fmt.Errorf("invalid filter. Cannot have both blockhash and fromBlock")
 		return nil
 	}
 
@@ -57,7 +63,7 @@ func ExecuteGetLogs(rpcBuilder *CallBuilder[filters.FilterCriteria, []*types.Log
 		batch, err := rpc.storage.FetchBatchHeader(*filter.BlockHash)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
-				rpcBuilder.Status = NotFound
+				builder.Status = NotFound
 				return nil
 			}
 			return err
@@ -72,21 +78,21 @@ func ExecuteGetLogs(rpcBuilder *CallBuilder[filters.FilterCriteria, []*types.Log
 	}
 
 	if from != nil && to != nil && from.Cmp(to) > 0 {
-		rpcBuilder.Err = fmt.Errorf("invalid filter. from (%d) > to (%d)", from, to)
+		builder.Err = fmt.Errorf("invalid filter. from (%d) > to (%d)", from, to)
 		return nil
 	}
 
 	// We retrieve the relevant logs that match the filter.
-	filteredLogs, err := rpc.storage.FilterLogs(rpcBuilder.From, from, to, nil, filter.Addresses, filter.Topics)
+	filteredLogs, err := rpc.storage.FilterLogs(builder.From, from, to, nil, filter.Addresses, filter.Topics)
 	if err != nil {
 		if errors.Is(err, syserr.InternalError{}) {
 			return err
 		}
-		rpcBuilder.Err = fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
+		builder.Err = fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
 		return nil
 	}
 
-	rpcBuilder.ReturnValue = &filteredLogs
+	builder.ReturnValue = &filteredLogs
 	return nil
 }
 

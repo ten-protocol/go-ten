@@ -6,22 +6,23 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethcore "github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/params"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
-	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/common/syserr"
-	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
-func ExtractEstimateGasRequest(reqParams []any, builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64], _ *EncryptionManager) error {
-	// Parameters are [callMsg, block number (optional)]
+func EstimateGasValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64], _ *EncryptionManager) error {
+	// Parameters are [callMsg, Block number (optional)]
 	if len(reqParams) < 1 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
 		return nil
@@ -33,16 +34,15 @@ func ExtractEstimateGasRequest(reqParams []any, builder *CallBuilder[CallParamsW
 		return nil
 	}
 
-	// encryption will fail if From address is not provided
 	if callMsg.From == nil {
-		builder.Err = fmt.Errorf("no from address provided")
+		builder.Err = fmt.Errorf("no from Addr provided")
 		return nil
 	}
 
-	// extract optional block number - defaults to the latest block if not avail
+	// extract optional Block number - defaults to the latest Block if not avail
 	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(reqParams, 1)
 	if err != nil {
-		builder.Err = fmt.Errorf("unable to extract requested block number - %w", err)
+		builder.Err = fmt.Errorf("unable to extract requested Block number - %w", err)
 		return nil
 	}
 
@@ -51,16 +51,22 @@ func ExtractEstimateGasRequest(reqParams []any, builder *CallBuilder[CallParamsW
 	return nil
 }
 
-func ExecuteEstimateGas(rpcBuilder *CallBuilder[CallParamsWithBlock, hexutil.Uint64], rpc *EncryptionManager) error {
-	txArgs := rpcBuilder.Param.callParams
-	blockNumber := rpcBuilder.Param.block
+func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64], rpc *EncryptionManager) error {
+	err := authenticateFrom(builder.VK, builder.From)
+	if err != nil {
+		builder.Err = err
+		return nil
+	}
+
+	txArgs := builder.Param.callParams
+	blockNumber := builder.Param.block
 	block, err := rpc.blockResolver.FetchHeadBlock()
 	if err != nil {
 		return err
 	}
 
 	// The message is run through the l1 publishing cost estimation for the current
-	// known head block.
+	// known head Block.
 	l1Cost, err := rpc.gasOracle.EstimateL1CostForMsg(txArgs, block)
 	if err != nil {
 		return err
@@ -93,12 +99,12 @@ func ExecuteEstimateGas(rpcBuilder *CallBuilder[CallParamsWithBlock, hexutil.Uin
 		if err == nil {
 			err = fmt.Errorf(string(evmErr))
 		}
-		rpcBuilder.Err = err
+		builder.Err = err
 		return nil
 	}
 
 	totalGasEstimate := hexutil.Uint64(publishingGas.Uint64() + uint64(executionGasEstimate))
-	rpcBuilder.ReturnValue = &totalGasEstimate
+	builder.ReturnValue = &totalGasEstimate
 	return nil
 }
 

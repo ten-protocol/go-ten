@@ -14,10 +14,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
-func ExtractGetTransactionRequest(reqParams []any, builder *CallBuilder[gethcommon.Hash, RpcTransaction], _ *EncryptionManager) error {
+func GetTransactionValidate(reqParams []any, builder *CallBuilder[gethcommon.Hash, RpcTransaction], _ *EncryptionManager) error {
 	// Parameters are [Hash]
 	if len(reqParams) != 1 {
-		builder.Err = fmt.Errorf("unexpected address parameter")
+		builder.Err = fmt.Errorf("wrong parameters")
 		return nil
 	}
 	txHashStr, ok := reqParams[0].(string)
@@ -30,24 +30,25 @@ func ExtractGetTransactionRequest(reqParams []any, builder *CallBuilder[gethcomm
 	return nil
 }
 
-func ExecuteGetTransaction(rpcBuilder *CallBuilder[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
+func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
-	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(*rpcBuilder.Param)
+	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(*builder.Param)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			rpcBuilder.Status = NotFound
+			builder.Status = NotFound
 			return nil
 		}
 		return err
 	}
 
-	sender, err := core.GetTxSender(tx)
+	sender, err := core.GetTxSigner(tx)
 	if err != nil {
-		return fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionByHash response. Cause: %w", err)
+		return fmt.Errorf("could not recover the tx %s sender. Cause: %w", tx.Hash(), err)
 	}
-	rpcBuilder.ResourceOwner = &sender
-	if sender.Hex() != rpcBuilder.VK.AccountAddress.Hex() {
-		rpcBuilder.Status = NotAuthorised
+
+	// authorise - only the signer can request the transaction
+	if sender.Hex() != builder.VK.AccountAddress.Hex() {
+		builder.Status = NotAuthorised
 		return nil
 	}
 
@@ -55,7 +56,7 @@ func ExecuteGetTransaction(rpcBuilder *CallBuilder[gethcommon.Hash, RpcTransacti
 	// todo (#1553) - once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`
 	signer := types.NewLondonSigner(tx.ChainId())
 	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
-	rpcBuilder.ReturnValue = rpcTx
+	builder.ReturnValue = rpcTx
 	return nil
 }
 

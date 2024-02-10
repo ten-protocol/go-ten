@@ -59,41 +59,35 @@ func NewChain(
 	}
 }
 
-func (oc *obscuroChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
-	// get account balance at certain block/height
-	balance, err := oc.GetBalanceAtBlock(accountAddress, blockNumber)
-	if err != nil {
-		return nil, nil, err
-	}
-
+func (oc *obscuroChain) AccountOwner(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, error) {
 	// check if account is a contract
-	isAddrContract, err := oc.isAccountContractAtBlock(accountAddress, blockNumber)
+	isContract, err := oc.isAccountContractAtBlock(accountAddress, blockNumber)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Decide which address to encrypt the result with
 	address := accountAddress
 	// If the accountAddress is a contract, encrypt with the address of the contract owner
-	if isAddrContract {
+	if isContract {
 		txHash, err := oc.storage.GetContractCreationTx(accountAddress)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		transaction, _, _, _, err := oc.storage.GetTransaction(*txHash)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		signer := types.NewLondonSigner(oc.chainConfig.ChainID)
 
 		sender, err := signer.Sender(transaction)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		address = sender
 	}
 
-	return &address, balance, nil
+	return &address, nil
 }
 
 func (oc *obscuroChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {

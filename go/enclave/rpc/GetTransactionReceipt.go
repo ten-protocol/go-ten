@@ -13,7 +13,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/events"
 )
 
-func ExtractGetTransactionReceiptRequest(reqParams []any, builder *CallBuilder[gethcommon.Hash, types.Receipt], _ *EncryptionManager) error {
+func GetTransactionReceiptValidate(reqParams []any, builder *CallBuilder[gethcommon.Hash, types.Receipt], _ *EncryptionManager) error {
 	// Parameters are [Hash]
 	if len(reqParams) < 1 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -30,8 +30,8 @@ func ExtractGetTransactionReceiptRequest(reqParams []any, builder *CallBuilder[g
 	return nil
 }
 
-func ExecuteGetTransactionReceipt(rpcBuilder *CallBuilder[gethcommon.Hash, types.Receipt], rpc *EncryptionManager) error {
-	txHash := *rpcBuilder.Param
+func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, types.Receipt], rpc *EncryptionManager) error {
+	txHash := *builder.Param
 	// todo - optimise these calls. This can be done with a single sql
 	rpc.logger.Trace("Get receipt for ", log.TxKey, txHash)
 	// We retrieve the transaction.
@@ -39,23 +39,21 @@ func ExecuteGetTransactionReceipt(rpcBuilder *CallBuilder[gethcommon.Hash, types
 	if err != nil {
 		rpc.logger.Trace("error getting tx ", log.TxKey, txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
-			rpcBuilder.Status = NotFound
+			builder.Status = NotFound
 			return nil
 		}
 		return err
 	}
 
-	// We retrieve the sender's address.
-	sender, err := core.GetTxSender(tx)
+	// We retrieve the txSigner's address.
+	txSigner, err := core.GetTxSigner(tx)
 	if err != nil {
-		rpc.logger.Trace("error getting sender tx ", log.TxKey, txHash, log.ErrKey, err)
-		rpcBuilder.Err = err
+		builder.Err = err
 		return nil
 	}
-	rpcBuilder.ResourceOwner = &sender
 
-	if sender.Hex() != rpcBuilder.VK.AccountAddress.Hex() {
-		rpcBuilder.Status = NotAuthorised
+	if txSigner.Hex() != builder.VK.AccountAddress.Hex() {
+		builder.Status = NotAuthorised
 		return nil
 	}
 
@@ -64,7 +62,7 @@ func ExecuteGetTransactionReceipt(rpcBuilder *CallBuilder[gethcommon.Hash, types
 	if err != nil {
 		rpc.logger.Trace("error getting tx receipt", log.TxKey, txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
-			rpcBuilder.Status = NotFound
+			builder.Status = NotFound
 			return nil
 		}
 		// this is a system error
@@ -72,7 +70,7 @@ func ExecuteGetTransactionReceipt(rpcBuilder *CallBuilder[gethcommon.Hash, types
 	}
 
 	// We filter out irrelevant logs.
-	txReceipt.Logs, err = events.FilterLogsForReceipt(txReceipt, &sender, rpc.storage)
+	txReceipt.Logs, err = events.FilterLogsForReceipt(txReceipt, &txSigner, rpc.storage)
 	if err != nil {
 		rpc.logger.Error("error filter logs ", log.TxKey, txHash, log.ErrKey, err)
 		// this is a system error
@@ -80,6 +78,6 @@ func ExecuteGetTransactionReceipt(rpcBuilder *CallBuilder[gethcommon.Hash, types
 	}
 
 	rpc.logger.Trace("Successfully retrieved receipt for ", log.TxKey, txHash, "rec", txReceipt)
-	rpcBuilder.ReturnValue = txReceipt
+	builder.ReturnValue = txReceipt
 	return nil
 }

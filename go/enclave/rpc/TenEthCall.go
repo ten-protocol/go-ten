@@ -12,7 +12,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 )
 
-func ExtractTenCallRequest(reqParams []any, builder *CallBuilder[CallParamsWithBlock, string], _ *EncryptionManager) error {
+func TenCallValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlock, string], _ *EncryptionManager) error {
 	// Parameters are [TransactionArgs, BlockNumber]
 	if len(reqParams) != 2 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -24,7 +24,6 @@ func ExtractTenCallRequest(reqParams []any, builder *CallBuilder[CallParamsWithB
 		return nil
 	}
 
-	// encryption will fail if no From address is provided
 	if apiArgs.From == nil {
 		builder.Err = fmt.Errorf("no from address provided")
 		return nil
@@ -42,9 +41,15 @@ func ExtractTenCallRequest(reqParams []any, builder *CallBuilder[CallParamsWithB
 	return nil
 }
 
-func ExecuteTenCall(rpcBuilder *CallBuilder[CallParamsWithBlock, string], rpc *EncryptionManager) error {
-	apiArgs := rpcBuilder.Param.callParams
-	blkNumber := rpcBuilder.Param.block
+func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *EncryptionManager) error {
+	err := authenticateFrom(builder.VK, builder.From)
+	if err != nil {
+		builder.Err = err
+		return nil
+	}
+
+	apiArgs := builder.Param.callParams
+	blkNumber := builder.Param.block
 	execResult, err := rpc.chain.ObsCall(apiArgs, blkNumber)
 	if err != nil {
 		rpc.logger.Debug("Failed eth_call.", log.ErrKey, err)
@@ -59,7 +64,7 @@ func ExecuteTenCall(rpcBuilder *CallBuilder[CallParamsWithBlock, string], rpc *E
 		if err == nil {
 			err = fmt.Errorf(string(evmErr))
 		}
-		rpcBuilder.Err = err
+		builder.Err = err
 		return nil
 	}
 
@@ -67,7 +72,7 @@ func ExecuteTenCall(rpcBuilder *CallBuilder[CallParamsWithBlock, string], rpc *E
 	if len(execResult.ReturnData) != 0 {
 		encodedResult = hexutil.Encode(execResult.ReturnData)
 	}
-	rpcBuilder.ReturnValue = &encodedResult
+	builder.ReturnValue = &encodedResult
 	return nil
 }
 

@@ -24,23 +24,27 @@ const (
 
 // CallBuilder - builder used during processing of an RPC request, which is a multi-step process
 type CallBuilder[P any, R any] struct {
-	Param         *P                                 // value calculated during phase 1 to be used during the execution phase
-	VK            *vkhandler.AuthenticatedViewingKey // the vk accompanying the request
-	From          *gethcommon.Address                // extracted from the request
-	ResourceOwner *gethcommon.Address                // extracted from the database Not applicable for all requests. E.g. For a tx, the owner is the original tx sender
-	Status        ResourceStatus
-	ReturnValue   *R    // encrypted value to be returned to the user
-	Err           error // encrypted error to be returned to the user
+	Param       *P                                 // value calculated during phase 1 to be used during the execution phase
+	VK          *vkhandler.AuthenticatedViewingKey // the vk accompanying the request
+	From        *gethcommon.Address                // extracted from the request
+	Status      ResourceStatus
+	ReturnValue *R    // encrypted value to be returned to the user
+	Err         error // encrypted error to be returned to the user
 }
 
-// WithVKEncryption - handles the VK management, authentication and encryption
+// WithVKEncryption - handles the decryption, VK, and encryption
 // P - the type of the temporary parameter calculated after phase 1
 // R - the type of the result
+// validate - extract and validate the arguments
+// execute - execute the user call only after authorising
+// note - authorisation is specific to each call
+// e.g. - "getTransaction" or "getBalance" have to perform authorisation
+// "Ten_call" , "Estimate_Gas" - have to authenticate the "From" - which will be used by the EVM
 func WithVKEncryption[P any, R any](
 	encManager *EncryptionManager,
 	encReq []byte, // encrypted request that contains a signed viewing key
-	extractFromAndParams func([]any, *CallBuilder[P, R], *EncryptionManager) error, // extract the arguments and the logical sender from the plaintext request. Make sure to not return any information from the db in the error.
-	executeCall func(*CallBuilder[P, R], *EncryptionManager) error, // execute the user call. Returns a user error or a system error
+	validate func([]any, *CallBuilder[P, R], *EncryptionManager) error,
+	execute func(*CallBuilder[P, R], *EncryptionManager) error,
 ) (*responses.EnclaveResponse, common.SystemError) {
 	// 1. Decrypt request
 	plaintextRequest, err := encManager.DecryptBytes(encReq)
@@ -48,13 +52,13 @@ func WithVKEncryption[P any, R any](
 		return responses.AsPlaintextError(fmt.Errorf("could not decrypt params - %w", err)), nil
 	}
 
-	// 2. Unmarshall into a generic []any array
+	// 2. Unmarshall
 	var decodedRequest rpc.RequestWithVk
 	if err := json.Unmarshal(plaintextRequest, &decodedRequest); err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("could not unmarshal params - %w", err)), nil
 	}
 
-	// 3. Extract the VK from the first element and verify it
+	// 3. Verify the VK
 	if decodedRequest.VK == nil {
 		return responses.AsPlaintextError(fmt.Errorf("invalid request. viewing key is missing")), nil
 	}
@@ -66,7 +70,7 @@ func WithVKEncryption[P any, R any](
 	// 4. Call the function that knows how to validate the request
 	builder := &CallBuilder[P, R]{Status: NotSet, VK: vk}
 
-	err = extractFromAndParams(decodedRequest.Params, builder, encManager)
+	err = validate(decodedRequest.Params, builder, encManager)
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
@@ -74,16 +78,9 @@ func WithVKEncryption[P any, R any](
 		return responses.AsEncryptedError(builder.Err, vk), nil //nolint:nilerr
 	}
 
-	// 5. IMPORTANT!: authenticate the call.
-	// Note: not all RPC calls require authentication.
-	// It is the responsibility of the `extractFromAndParams` function to validate the "from" field.
-	if builder.From != nil && builder.From.Hex() != vk.AccountAddress.Hex() {
-		return responses.AsEncryptedError(fmt.Errorf("failed authentication. Account: %s does not match the from: %s", vk.AccountAddress, builder.From), vk), nil
-	}
-
-	// 6. Make the backend call and convert the response.
-	// Note - it is the responsibility of this function to check that the authenticated address is authorised to access that resource
-	err = executeCall(builder, encManager)
+	// 5. Execute the authorisation and call
+	// Note - it is the responsibility of this function to check that the authenticated address is authorised to view the data
+	err = execute(builder, encManager)
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
@@ -97,10 +94,12 @@ func WithVKEncryption[P any, R any](
 		return responses.AsEmptyResponse(), nil
 	}
 
-	// double check authorisation
-	if builder.ResourceOwner != nil && builder.ResourceOwner.Hex() != vk.AccountAddress.Hex() {
-		return responses.AsEmptyResponse(), nil
-	}
-
 	return responses.AsEncryptedResponse[R](builder.ReturnValue, vk), nil
+}
+
+func authenticateFrom(vk *vkhandler.AuthenticatedViewingKey, from *gethcommon.Address) error {
+	if from == nil || from.Hex() != vk.AccountAddress.Hex() {
+		return fmt.Errorf("failed authentication. Account: %s does not match the from: %s", vk.AccountAddress, from)
+	}
+	return nil
 }

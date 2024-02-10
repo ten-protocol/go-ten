@@ -8,7 +8,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
 
-func ExtractGetTransactionCountRequest(reqParams []any, builder *CallBuilder[uint64, string], rpc *EncryptionManager) error {
+func GetTransactionCountValidate(reqParams []any, builder *CallBuilder[uint64, string], rpc *EncryptionManager) error {
 	// Parameters are [Address, Block?]
 	if len(reqParams) < 1 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -43,9 +43,15 @@ func ExtractGetTransactionCountRequest(reqParams []any, builder *CallBuilder[uin
 	return nil
 }
 
-func ExecuteGetTransactionCount(rpcBuilder *CallBuilder[uint64, string], rpc *EncryptionManager) error {
+func GetTransactionCountExecute(builder *CallBuilder[uint64, string], rpc *EncryptionManager) error {
+	err := authenticateFrom(builder.VK, builder.From)
+	if err != nil {
+		builder.Err = err
+		return nil
+	}
+
 	var nonce uint64
-	l2Head, err := rpc.storage.FetchBatchBySeqNo(*rpcBuilder.Param)
+	l2Head, err := rpc.storage.FetchBatchBySeqNo(*builder.Param)
 	if err == nil {
 		// todo - we should return an error when head state is not available, but for current test situations with race
 		//  conditions we allow it to return zero while head state is uninitialized
@@ -53,10 +59,10 @@ func ExecuteGetTransactionCount(rpcBuilder *CallBuilder[uint64, string], rpc *En
 		if err != nil {
 			return err
 		}
-		nonce = s.GetNonce(*rpcBuilder.From)
+		nonce = s.GetNonce(*builder.From)
 	}
 
 	enc := hexutil.EncodeUint64(nonce)
-	rpcBuilder.ReturnValue = &enc
+	builder.ReturnValue = &enc
 	return nil
 }
