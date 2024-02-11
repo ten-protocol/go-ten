@@ -28,7 +28,7 @@ func GetCustomQueryExecute(builder *CallBuilder[common.PrivateCustomQueryListTra
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
 		builder.Err = err
-		return nil
+		return nil //nolint:nilerr
 	}
 
 	encryptReceipts, err := rpc.storage.GetReceiptsPerAddress(&builder.Param.Address, &builder.Param.Pagination)

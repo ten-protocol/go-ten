@@ -28,15 +28,15 @@ type CallBuilder[P any, R any] struct {
 	VK          *vkhandler.AuthenticatedViewingKey // the vk accompanying the request
 	From        *gethcommon.Address                // extracted from the request
 	Status      ResourceStatus
-	ReturnValue *R    // encrypted value to be returned to the user
-	Err         error // encrypted error to be returned to the user
+	ReturnValue *R    // value to be returned to the user, encrypted
+	Err         error // error to be returned to the user, encrypted
 }
 
 // WithVKEncryption - handles the decryption, VK, and encryption
 // P - the type of the temporary parameter calculated after phase 1
 // R - the type of the result
 // validate - extract and validate the arguments
-// execute - execute the user call only after authorising
+// execute - execute the user call only after authorising. Make sure to return a default value that makes sense in case of NotAuthorised
 // note - authorisation is specific to each call
 // e.g. - "getTransaction" or "getBalance" have to perform authorisation
 // "Ten_call" , "Estimate_Gas" - have to authenticate the "From" - which will be used by the EVM

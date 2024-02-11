@@ -49,7 +49,7 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, types.Re
 	txSigner, err := core.GetTxSigner(tx)
 	if err != nil {
 		builder.Err = err
-		return nil
+		return nil //nolint:nilerr
 	}
 
 	if txSigner.Hex() != builder.VK.AccountAddress.Hex() {

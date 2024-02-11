@@ -89,7 +89,7 @@ func GetLogsExecute(builder *CallBuilder[filters.FilterCriteria, []*types.Log], 
 			return err
 		}
 		builder.Err = fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
-		return nil
+		return nil //nolint:nilerr
 	}
 
 	builder.ReturnValue = &filteredLogs

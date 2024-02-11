@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 
@@ -48,7 +49,8 @@ func GetBalanceExecute(builder *CallBuilder[BalanceReq, hexutil.Big], rpc *Encry
 
 	// authorise the call
 	if acctOwner.Hex() != builder.VK.AccountAddress.Hex() {
-		builder.Status = NotAuthorised
+		// return a default value
+		builder.ReturnValue = (*hexutil.Big)(big.NewInt(0))
 		return nil
 	}
 

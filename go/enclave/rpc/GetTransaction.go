@@ -49,6 +49,7 @@ func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction]
 	// authorise - only the signer can request the transaction
 	if sender.Hex() != builder.VK.AccountAddress.Hex() {
 		builder.Status = NotAuthorised
+		// builder.ReturnValue= []byte{}
 		return nil
 	}
 

@@ -47,7 +47,7 @@ func GetTransactionCountExecute(builder *CallBuilder[uint64, string], rpc *Encry
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
 		builder.Err = err
-		return nil
+		return nil //nolint:nilerr
 	}
 
 	var nonce uint64
