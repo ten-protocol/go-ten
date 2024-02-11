@@ -45,7 +45,7 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
 		builder.Err = err
-		return nil
+		return nil //nolint:nilerr
 	}
 
 	apiArgs := builder.Param.callParams

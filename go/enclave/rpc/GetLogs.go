@@ -35,7 +35,7 @@ func GetLogsExecute(builder *CallBuilder[filters.FilterCriteria, []*types.Log], 
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
 		builder.Err = err
-		return nil
+		return nil //nolint:nilerr
 	}
 
 	filter := builder.Param
@@ -89,7 +89,7 @@ func GetLogsExecute(builder *CallBuilder[filters.FilterCriteria, []*types.Log], 
 			return err
 		}
 		builder.Err = fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
-		return nil //nolint:nilerr
+		return nil
 	}
 
 	builder.ReturnValue = &filteredLogs

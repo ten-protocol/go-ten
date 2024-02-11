@@ -201,11 +201,11 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 	var start time.Time
 	var receipt *types.Receipt
 	// todo (@matt) these timings should be driven by the L2 batch times and L1 block times
-	for start = time.Now(); time.Since(start) < 80*time.Second; time.Sleep(2 * time.Second) {
+	for start = time.Now(); time.Since(start) < 20*time.Second; time.Sleep(1 * time.Second) {
 		receipt, err = workerClient.TransactionReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {
-				return nil, errors.New("unable to deploy contract")
+				return nil, errors.New(fmt.Sprintf("unable to deploy contract: %w", receipt))
 			}
 			testlog.Logger().Info(fmt.Sprintf("Contract successfully deployed to %s", receipt.ContractAddress))
 			return receipt, nil

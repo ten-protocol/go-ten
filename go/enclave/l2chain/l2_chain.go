@@ -74,7 +74,7 @@ func (oc *obscuroChain) AccountOwner(address gethcommon.Address, blockNumber *ge
 	if err != nil {
 		return nil, err
 	}
-	transaction, _, _, _, err := oc.storage.GetTransaction(*txHash)
+	transaction, _, _, _, err := oc.storage.GetTransaction(*txHash) //nolint:dogsled
 	if err != nil {
 		return nil, err
 	}
