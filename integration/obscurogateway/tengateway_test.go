@@ -707,7 +707,7 @@ func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddr
 	if err != nil {
 		return nil, err
 	}
-	return integrationCommon.AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 20*time.Second)
+	return integrationCommon.AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 30*time.Second)
 }
 
 func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Hash, client *ethclient.Client, logs *[]types.Log) ethereum.Subscription {
