@@ -32,10 +32,20 @@ describe("Bridge", function () {
     const L1Bridge = await hre.ethers.getContractFactory("ObscuroBridge");
     const L2Bridge = await hre.ethers.getContractFactory("EthereumBridge");
 
-    const ERC20 = await hre.ethers.getContractFactory("ERC20");
+    const [owner] = await ethers.getSigners();
 
-    const erc20 = await ERC20.deploy("XXX", "XXX");
-    erc20address = erc20.address;
+    const ERC20 = await hre.ethers.getContractFactory("ConstantSupplyERC20", owner);
+
+    console.log(`Deploying erc20`);
+    try {
+      const erc20 = await ERC20.deploy("XXX", "XXX", 100000);
+      erc20address = erc20.address;
+    } catch(err) {
+      console.error(err);
+    }
+
+
+    console.log(`Deployed erc20`);
 
     busL1 = await MessageBus.deploy();
     busL2 = await MessageBus.deploy();
