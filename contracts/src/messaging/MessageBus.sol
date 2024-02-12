@@ -7,9 +7,6 @@ import "./Structs.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MessageBus is IMessageBus, Ownable {
-
-    constructor() Ownable(msg.sender) {}
-
     function messageFee() internal virtual returns (uint256) {
         return 0;
     }

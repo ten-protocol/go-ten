@@ -20,7 +20,7 @@ const config: HardhatUserConfig = {
     sources: "src"
   },
   solidity: {
-    version: "0.8.20",
+    version: "0.8.9",
     settings: {
       optimizer: {
         enabled: true,
@@ -55,9 +55,6 @@ const config: HardhatUserConfig = {
   warnings : {
     '*' : {
       default: 'error'
-    },
-    'src/testing/**/*': {
-      default: 'off'
     }
   }
 };

@@ -113,30 +113,11 @@ func TestManagementContract(t *testing.T) {
 			if err != nil {
 				panic(err)
 			}
-
-			nonce, err := client.Nonce(w.Address())
-			if err != nil {
-				t.Error(err)
-			}
-
-			w.SetNonce(nonce)
 			// deploy the same contract to a new address
 			receipt, err := network.DeployContract(client, w, bytecode)
 			if err != nil {
 				t.Error(err)
 			}
-
-			_, err = network.InitializeContract(client, w, receipt.ContractAddress)
-			if err != nil {
-				t.Error(err)
-			}
-
-			nonce, err = client.Nonce(w.Address())
-			if err != nil {
-				t.Error(err)
-			}
-
-			w.SetNonce(nonce)
 
 			// run the test using the new contract, but same wallet
 			test(t,
