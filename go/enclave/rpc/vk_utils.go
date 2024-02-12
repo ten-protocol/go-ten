@@ -90,11 +90,16 @@ func WithVKEncryption[P any, R any](
 	if builder.Err != nil {
 		return responses.AsEncryptedError(builder.Err, vk), nil //nolint:nilerr
 	}
-	if builder.Status == NotFound || builder.Status == NotAuthorised {
+	if builder.Status == NotFound {
 		// if the requested resource was not found, return an empty response
 		// todo - this must be encrypted - but we have some logic that expects it unencrypted, which is a bug
 		// return responses.AsEncryptedEmptyResponse(vk), nil
 		return responses.AsEmptyResponse(), nil
+	}
+	if builder.Status == NotAuthorised {
+		// if the requested resource was not found, return an empty response
+		// todo - this must be encrypted - but we have some logic that expects it unencrypted, which is a bug
+		return responses.AsEncryptedError(errors.New("not authorised"), vk), nil
 	}
 
 	return responses.AsEncryptedResponse[R](builder.ReturnValue, vk), nil
