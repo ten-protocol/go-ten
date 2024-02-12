@@ -37,7 +37,7 @@ There are some considerations here around the behaviour of tenscan for testnet v
 the encrypted blob on testnet we are able to retrieve the number of transactions but on mainnet this wont be possible so 
 we need to store the TxCount in 
 
-### Rollup 
+### Rollup
 ```sql
 create table if not exists rollup
 (
