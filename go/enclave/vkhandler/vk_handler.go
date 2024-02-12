@@ -22,7 +22,7 @@ type AuthenticatedViewingKey struct {
 	rpcVK          *viewingkey.RPCSignedViewingKey
 	AccountAddress *gethcommon.Address
 	ecdsaKey       *ecies.PublicKey
-	UserId         string
+	UserID         string
 }
 
 func VerifyViewingKey(rpcVK *viewingkey.RPCSignedViewingKey, chainID int64) (*AuthenticatedViewingKey, error) {
@@ -51,7 +51,7 @@ func VerifyViewingKey(rpcVK *viewingkey.RPCSignedViewingKey, chainID int64) (*Au
 func checkViewingKeyAndRecoverAddress(vk *AuthenticatedViewingKey, chainID int64) (*gethcommon.Address, error) {
 	// get userID from viewingKey public key
 	userID := viewingkey.CalculateUserIDHex(vk.rpcVK.PublicKey)
-	vk.UserId = userID
+	vk.UserID = userID
 
 	// check signature and recover the address assuming the message was signed with EIP712
 	recoveredSignerAddress, err := viewingkey.CheckEIP712Signature(userID, vk.rpcVK.SignatureWithAccountKey, chainID)
