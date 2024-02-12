@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"math/big"
 
+	// unsafe package imported in order to link to a private function in go-ethereum.
+	// This allows us to customize the message generated from a signed transaction and inject custom gas logic.
+	_ "unsafe"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -30,7 +34,7 @@ import (
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
 func ExecuteTransactions(
-	txs []*common.L2Tx,
+	txs common.L2PricedTransactions,
 	s *state.StateDB,
 	header *common.BatchHeader,
 	storage storage.Storage,
@@ -54,6 +58,14 @@ func ExecuteTransactions(
 	}
 
 	hash := header.Hash()
+
+	// tCountRollback - every time a transaction errors out, rather than producing a receipt
+	// we push back the index in the "block" (batch) it will have. This means that errored out transactions
+	// will be shunted by their follow up successful transaction.
+	// This also means the mix digest can be the same for two transactions, but
+	// as the error one reverts and cant mutate the state in order to push back the counter
+	// this should not open up any attack vectors on the randomness.
+	tCountRollback := 0
 	for i, t := range txs {
 		r, err := executeTransaction(
 			s,
@@ -64,21 +76,25 @@ func ExecuteTransactions(
 			t,
 			usedGas,
 			vmCfg,
-			fromTxIndex+i,
+			(fromTxIndex+i)-tCountRollback,
 			hash,
 			header.Number.Uint64(),
 		)
 		if err != nil {
-			result[t.Hash()] = err
-			logger.Info("Failed to execute tx:", log.TxKey, t.Hash(), log.CtrErrKey, err)
+			tCountRollback++
+			result[t.Tx.Hash()] = err
+			logger.Info("Failed to execute tx:", log.TxKey, t.Tx.Hash(), log.CtrErrKey, err)
 			continue
 		}
-		result[t.Hash()] = r
+		result[t.Tx.Hash()] = r
 		logReceipt(r, logger)
 	}
 	s.Finalise(true)
 	return result
 }
+
+//go:linkname applyTransaction github.com/ethereum/go-ethereum/core.applyTransaction
+func applyTransaction(msg *gethcore.Message, config *params.ChainConfig, gp *gethcore.GasPool, statedb *state.StateDB, blockNumber *big.Int, blockHash gethcommon.Hash, tx *types.Transaction, usedGas *uint64, evm *vm.EVM) (*types.Receipt, error)
 
 func executeTransaction(
 	s *state.StateDB,
@@ -86,7 +102,7 @@ func executeTransaction(
 	chain *ObscuroChainContext,
 	gp *gethcore.GasPool,
 	header *types.Header,
-	t *common.L2Tx,
+	t common.L2PricedTransaction,
 	usedGas *uint64,
 	vmCfg vm.Config,
 	tCount int,
@@ -94,26 +110,71 @@ func executeTransaction(
 	batchHeight uint64,
 ) (*types.Receipt, error) {
 	rules := cc.Rules(big.NewInt(0), true, 0)
-	from, err := types.Sender(types.LatestSigner(cc), t)
+	from, err := types.Sender(types.LatestSigner(cc), t.Tx)
 	if err != nil {
 		return nil, err
 	}
-	s.Prepare(rules, from, gethcommon.Address{}, t.To(), nil, nil)
+	s.Prepare(rules, from, gethcommon.Address{}, t.Tx.To(), nil, nil)
 	snap := s.Snapshot()
-	s.SetTxContext(t.Hash(), tCount)
+	s.SetTxContext(t.Tx.Hash(), tCount)
 
 	before := header.MixDigest
 	// calculate a random value per transaction
 	header.MixDigest = crypto.CalculateTxRnd(before.Bytes(), tCount)
-	receipt, err := gethcore.ApplyTransaction(cc, chain, nil, gp, s, header, t, usedGas, vmCfg)
 
-	// adjust the receipt to point to the right batch hash
-	if receipt != nil {
-		receipt.Logs = s.GetLogs(t.Hash(), batchHeight, batchHash)
-		receipt.BlockHash = batchHash
-		receipt.BlockNumber = big.NewInt(int64(batchHeight))
-		for _, l := range receipt.Logs {
-			l.BlockHash = batchHash
+	applyTx := func(
+		config *params.ChainConfig,
+		bc gethcore.ChainContext,
+		author *gethcommon.Address,
+		gp *gethcore.GasPool,
+		statedb *state.StateDB,
+		header *types.Header,
+		tx common.L2PricedTransaction,
+		usedGas *uint64,
+		cfg vm.Config,
+	) (*types.Receipt, error) {
+		msg, err := gethcore.TransactionToMessage(tx.Tx, types.MakeSigner(config, header.Number, header.Time), header.BaseFee)
+		if err != nil {
+			return nil, err
+		}
+		l1cost := tx.PublishingCost
+		l1Gas := big.NewInt(0)
+		hasL1Cost := l1cost.Cmp(big.NewInt(0)) != 0
+
+		// If a transaction has to be published on the l1, it will have an l1 cost
+		if hasL1Cost {
+			l1Gas.Div(l1cost, header.BaseFee) // TotalCost/CostPerGas = Gas
+			l1Gas.Add(l1Gas, big.NewInt(1))   // Cover from leftover from the division
+
+			// The gas limit of the transaction (evm message) should always be higher than the gas overhead
+			// used to cover the l1 cost
+			if msg.GasLimit < l1Gas.Uint64() {
+				return nil, fmt.Errorf("gas limit set by user is too low to pay for execution and l1 fees. Want at least: %d have: %d", l1Gas, msg.GasLimit)
+			}
+
+			// Remove the gas overhead for l1 publishing from the gas limit in order to define
+			// the actual gas limit for execution
+			msg.GasLimit -= l1Gas.Uint64()
+
+			// Remove the l1 cost from the sender
+			// and pay it to the coinbase of the batch
+			statedb.SubBalance(msg.From, l1cost)
+			statedb.AddBalance(header.Coinbase, l1cost)
+		}
+
+		// Create a new context to be used in the EVM environment
+		blockContext := gethcore.NewEVMBlockContext(header, bc, author)
+		vmenv := vm.NewEVM(blockContext, vm.TxContext{BlobHashes: tx.Tx.BlobHashes()}, statedb, config, cfg)
+		var receipt *types.Receipt
+		receipt, err = applyTransaction(msg, config, gp, statedb, header.Number, header.Hash(), tx.Tx, usedGas, vmenv)
+		if err != nil {
+			// If the transaction has l1 cost, then revert the funds exchange
+			// as it will not be published on error (no receipt condition)
+			if hasL1Cost {
+				statedb.SubBalance(header.Coinbase, l1cost)
+				statedb.AddBalance(msg.From, l1cost)
+			}
+			return receipt, err
 		}
 
 		// Do not increase the balance of zero address as it is the contract deployment address.
@@ -123,7 +184,22 @@ func executeTransaction(
 			executionGasCost := big.NewInt(0).Mul(gasUsed, header.BaseFee)
 			// As the baseFee is burned, we add it back to the coinbase.
 			// Geth should automatically add the tips.
-			s.AddBalance(header.Coinbase, executionGasCost)
+			statedb.AddBalance(header.Coinbase, executionGasCost)
+		}
+		receipt.GasUsed += l1Gas.Uint64()
+
+		return receipt, err
+	}
+
+	receipt, err := applyTx(cc, chain, nil, gp, s, header, t, usedGas, vmCfg)
+
+	// adjust the receipt to point to the right batch hash
+	if receipt != nil {
+		receipt.Logs = s.GetLogs(t.Tx.Hash(), batchHeight, batchHash)
+		receipt.BlockHash = batchHash
+		receipt.BlockNumber = big.NewInt(int64(batchHeight))
+		for _, l := range receipt.Logs {
+			l.BlockHash = batchHash
 		}
 	}
 

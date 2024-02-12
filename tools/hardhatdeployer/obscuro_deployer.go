@@ -60,13 +60,14 @@ func fundDeployerWithFaucet(cfg *Config, client *obsclient.AuthObsClient, logger
 	}
 
 	destAddr := client.Address()
-	tx := &types.LegacyTx{
+	txData := &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    big.NewInt(Prealloc),
 		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		To:       &destAddr,
 	}
+	tx := faucetClient.EstimateGasAndGasPrice(txData)
 	signedTx, err := faucetWallet.SignTransaction(tx)
 	if err != nil {
 		return fmt.Errorf("failed to sign faucet transaction: %w", err)

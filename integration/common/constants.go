@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/config"
@@ -75,15 +76,19 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		EdgelessDBHost:            "",
 		SqliteDBPath:              "",
 		ProfilerEnabled:           false,
-		MinGasPrice:               big.NewInt(1),
+		MinGasPrice:               big.NewInt(params.InitialBaseFee),
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
 		ObscuroGenesis:            "",
 		DebugNamespaceEnabled:     false,
-		MaxBatchSize:              1024 * 25,
+		MaxBatchSize:              1024 * 32,
 		MaxRollupSize:             1024 * 64,
 		GasPaymentAddress:         gethcommon.HexToAddress("0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"),
-		BaseFee:                   new(big.Int).SetUint64(1),
-		GasBatchExecutionLimit:    30_000_000,
-		GasLocalExecutionCapFlag:  40_000_000,
+		BaseFee:                   new(big.Int).SetUint64(params.InitialBaseFee),
+
+		// Due to hiding L1 costs in the gas quantity, the gas limit needs to be huge
+		// Arbitrum with the same approach has gas limit of 1,125,899,906,842,624,
+		// whilst the usage is small. Should be ok since execution is paid for anyway.
+		GasLocalExecutionCapFlag: 300_000_000_000,
+		GasBatchExecutionLimit:   300_000_000_000,
 	}
 }

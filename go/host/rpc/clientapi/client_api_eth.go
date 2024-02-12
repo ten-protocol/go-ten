@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/host"
@@ -73,7 +74,7 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 	}
 
 	if header.BaseFee == nil || header.BaseFee.Cmp(gethcommon.Big0) == 0 {
-		return (*hexutil.Big)(big.NewInt(1)), nil
+		return (*hexutil.Big)(big.NewInt(params.InitialBaseFee)), nil
 	}
 
 	return (*hexutil.Big)(big.NewInt(0).Set(header.BaseFee)), nil
@@ -184,15 +185,31 @@ func (api *EthereumAPI) GetStorageAt(_ context.Context, encryptedParams common.E
 
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.
 // rpc.DecimalOrHex -> []byte
-func (api *EthereumAPI) FeeHistory(context.Context, []byte, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
+func (api *EthereumAPI) FeeHistory(context.Context, string, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
 	// todo (#1621) - return a non-dummy fee history
+	header, err := api.host.DB().GetHeadBatchHeader()
+	if err != nil {
+		api.logger.Error("Unable to retrieve header for fee history.", log.ErrKey, err)
+		return nil, fmt.Errorf("unable to retrieve fee history")
+	}
 
-	return &FeeHistoryResult{
-		OldestBlock:  (*hexutil.Big)(big.NewInt(0)),
+	batches := make([]*common.BatchHeader, 0)
+	batches = append(batches, header)
+
+	feeHist := &FeeHistoryResult{
+		OldestBlock:  (*hexutil.Big)(header.Number),
 		Reward:       [][]*hexutil.Big{},
 		BaseFee:      []*hexutil.Big{},
 		GasUsedRatio: []float64{},
-	}, nil
+	}
+
+	for _, header := range batches {
+		// 0.9 - This number represents how full the block is. As we dont have a dynamic base fee, we tell whomever is requesting that
+		// we expect the baseFee to increase, rather than decrease in order to avoid underpriced transactions.
+		feeHist.GasUsedRatio = append(feeHist.GasUsedRatio, 0.9)
+		feeHist.BaseFee = append(feeHist.BaseFee, (*hexutil.Big)(header.BaseFee))
+	}
+	return feeHist, nil
 }
 
 // FeeHistoryResult is the structure returned by Geth `eth_feeHistory` API.

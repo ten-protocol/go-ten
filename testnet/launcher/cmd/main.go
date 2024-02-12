@@ -20,6 +20,7 @@ func main() {
 			launcher.WithContractDeployerDebug(cliConfig.contractDeployerDebug),
 			launcher.WithContractDeployerDockerImage(cliConfig.contractDeployerDockerImage),
 			launcher.WithSGXEnabled(cliConfig.isSGXEnabled),
+			launcher.WithLogLevel(cliConfig.logLevel),
 		),
 	)
 	err := testnet.Start()

@@ -30,6 +30,8 @@ type EnclaveProtoClient interface {
 	GenerateSecret(ctx context.Context, in *GenerateSecretRequest, opts ...grpc.CallOption) (*GenerateSecretResponse, error)
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error)
+	// Init - initialise an enclave with a seed received by another enclave
+	EnclaveID(ctx context.Context, in *EnclaveIDRequest, opts ...grpc.CallOption) (*EnclaveIDResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
 	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
 	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
@@ -119,6 +121,15 @@ func (c *enclaveProtoClient) GenerateSecret(ctx context.Context, in *GenerateSec
 func (c *enclaveProtoClient) InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error) {
 	out := new(InitEnclaveResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/InitEnclave", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *enclaveProtoClient) EnclaveID(ctx context.Context, in *EnclaveIDRequest, opts ...grpc.CallOption) (*EnclaveIDResponse, error) {
+	out := new(EnclaveIDResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/EnclaveID", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -394,6 +405,8 @@ type EnclaveProtoServer interface {
 	GenerateSecret(context.Context, *GenerateSecretRequest) (*GenerateSecretResponse, error)
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error)
+	// Init - initialise an enclave with a seed received by another enclave
+	EnclaveID(context.Context, *EnclaveIDRequest) (*EnclaveIDResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
 	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
 	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
@@ -461,6 +474,9 @@ func (UnimplementedEnclaveProtoServer) GenerateSecret(context.Context, *Generate
 }
 func (UnimplementedEnclaveProtoServer) InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InitEnclave not implemented")
+}
+func (UnimplementedEnclaveProtoServer) EnclaveID(context.Context, *EnclaveIDRequest) (*EnclaveIDResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EnclaveID not implemented")
 }
 func (UnimplementedEnclaveProtoServer) SubmitL1Block(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitL1Block not implemented")
@@ -621,6 +637,24 @@ func _EnclaveProto_InitEnclave_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).InitEnclave(ctx, req.(*InitEnclaveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _EnclaveProto_EnclaveID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnclaveIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).EnclaveID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/EnclaveID",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).EnclaveID(ctx, req.(*EnclaveIDRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1118,6 +1152,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "InitEnclave",
 			Handler:    _EnclaveProto_InitEnclave_Handler,
+		},
+		{
+			MethodName: "EnclaveID",
+			Handler:    _EnclaveProto_EnclaveID_Handler,
 		},
 		{
 			MethodName: "SubmitL1Block",

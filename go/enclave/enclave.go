@@ -2,7 +2,6 @@ package enclave
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -58,7 +57,6 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
-	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
@@ -77,15 +75,15 @@ type enclaveImpl struct {
 	crossChainProcessors  *crosschain.Processors
 	sharedSecretProcessor *components.SharedSecretProcessor
 
-	chain    l2chain.ObscuroChain
-	service  nodetype.NodeType
-	registry components.BatchRegistry
+	chain     l2chain.ObscuroChain
+	service   nodetype.NodeType
+	registry  components.BatchRegistry
+	gasOracle gas.Oracle
 
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
 	attestationProvider components.AttestationProvider // interface for producing attestation reports and verifying them
 
-	enclaveKey    *ecdsa.PrivateKey // this is a key specific to this enclave, which is included in the Attestation. Used for signing rollups and for encryption of the shared secret.
-	enclavePubKey []byte            // the public key of the above
+	enclaveKey *crypto.EnclaveKey // the enclave's private key (used to identify the enclave and sign messages)
 
 	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
@@ -155,8 +153,8 @@ func NewEnclave(
 		}
 		// enclave key not found - new key should be generated
 		// todo (#1053) - revisit the crypto for this key generation/lifecycle before production
-		logger.Info("Generating the Obscuro key")
-		enclaveKey, err = gethcrypto.GenerateKey()
+		logger.Info("Generating new enclave key")
+		enclaveKey, err = crypto.GenerateEnclaveKey()
 		if err != nil {
 			logger.Crit("Failed to generate enclave key.", log.ErrKey, err)
 		}
@@ -165,9 +163,7 @@ func NewEnclave(
 			logger.Crit("Failed to store enclave key.", log.ErrKey, err)
 		}
 	}
-
-	serializedEnclavePubKey := gethcrypto.CompressPubkey(&enclaveKey.PublicKey)
-	logger.Info(fmt.Sprintf("Generated public key %s", gethcommon.Bytes2Hex(serializedEnclavePubKey)))
+	logger.Info(fmt.Sprintf("Enclave key available. EnclaveID=%s, publicKey=%s", enclaveKey.EnclaveID(), gethcommon.Bytes2Hex(enclaveKey.PublicKeyBytes())))
 
 	obscuroKey := crypto.GetObscuroKey(logger)
 	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey))
@@ -264,7 +260,6 @@ func NewEnclave(
 		attestationProvider:    attestationProvider,
 		sharedSecretProcessor:  sharedSecretProcessor,
 		enclaveKey:             enclaveKey,
-		enclavePubKey:          serializedEnclavePubKey,
 		dataEncryptionService:  dataEncryptionService,
 		dataCompressionService: dataCompressionService,
 		gethEncodingService:    gethEncodingService,
@@ -273,9 +268,10 @@ func NewEnclave(
 		debugger:               debug,
 		stopControl:            stopcontrol.New(),
 
-		chain:    chain,
-		registry: registry,
-		service:  service,
+		chain:     chain,
+		registry:  registry,
+		service:   service,
+		gasOracle: gasOracle,
 
 		mainMutex: sync.Mutex{},
 	}
@@ -592,6 +588,10 @@ func (e *enclaveImpl) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
+	if e.registry.HeadBatchSeq() == nil {
+		return nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))
+	}
+
 	rollup, err := e.Sequencer().CreateRollup(fromSeqNo)
 	if err != nil {
 		return nil, responses.ToInternalError(err)
@@ -689,6 +689,20 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 
 	address := gethcommon.HexToAddress(addressStr)
 
+	seqNo := e.registry.HeadBatchSeq().Uint64()
+	if len(paramList) == 3 {
+		tag, err := gethencoding.ExtractBlockNumber(paramList[2])
+		if err != nil {
+			return responses.AsPlaintextError(fmt.Errorf("unexpected tag parameter. Cause: %w", err)), nil
+		}
+
+		b, err := e.registry.GetBatchAtHeight(*tag)
+		if err != nil {
+			return responses.AsPlaintextError(fmt.Errorf("cant retrieve batch for tag. Cause: %w", err)), nil
+		}
+		seqNo = b.SeqNo().Uint64()
+	}
+
 	// extract, create and validate the VK encryption handler
 	vkHandler, err := createVKHandler(&address, paramList[0], e.config.ObscuroChainID)
 	if err != nil {
@@ -696,18 +710,15 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	}
 
 	var nonce uint64
-	headBatch := e.registry.HeadBatchSeq()
-	if headBatch != nil {
-		l2Head, err := e.storage.FetchBatchBySeqNo(headBatch.Uint64())
-		if err == nil {
-			// todo - we should return an error when head state is not available, but for current test situations with race
-			//  conditions we allow it to return zero while head state is uninitialized
-			s, err := e.storage.CreateStateDB(l2Head.Hash())
-			if err != nil {
-				return nil, responses.ToInternalError(err)
-			}
-			nonce = s.GetNonce(address)
+	l2Head, err := e.storage.FetchBatchBySeqNo(seqNo)
+	if err == nil {
+		// todo - we should return an error when head state is not available, but for current test situations with race
+		//  conditions we allow it to return zero while head state is uninitialized
+		s, err := e.storage.CreateStateDB(l2Head.Hash())
+		if err != nil {
+			return nil, responses.ToInternalError(err)
 		}
+		nonce = s.GetNonce(address)
 	}
 
 	encoded := hexutil.EncodeUint64(nonce)
@@ -842,10 +853,10 @@ func (e *enclaveImpl) Attestation() (*common.AttestationReport, common.SystemErr
 		return nil, responses.ToInternalError(fmt.Errorf("requested ObsCall with the enclave stopping"))
 	}
 
-	if e.enclavePubKey == nil {
+	if e.enclaveKey == nil {
 		return nil, responses.ToInternalError(fmt.Errorf("public key not initialized, we can't produce the attestation report"))
 	}
-	report, err := e.attestationProvider.GetReport(e.enclavePubKey, e.config.HostID, e.config.HostAddress)
+	report, err := e.attestationProvider.GetReport(e.enclaveKey.PublicKeyBytes(), e.config.HostID, e.config.HostAddress)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not produce remote report. Cause %w", err))
 	}
@@ -863,7 +874,7 @@ func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, com
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not store secret. Cause: %w", err))
 	}
-	encSec, err := crypto.EncryptSecret(e.enclavePubKey, secret, e.logger)
+	encSec, err := crypto.EncryptSecret(e.enclaveKey.PublicKeyBytes(), secret, e.logger)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("failed to encrypt secret. Cause: %w", err))
 	}
@@ -876,7 +887,7 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) common.
 		return responses.ToInternalError(fmt.Errorf("requested InitEnclave with the enclave stopping"))
 	}
 
-	secret, err := crypto.DecryptSecret(s, e.enclaveKey)
+	secret, err := crypto.DecryptSecret(s, e.enclaveKey.PrivateKey())
 	if err != nil {
 		return responses.ToInternalError(err)
 	}
@@ -886,6 +897,10 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) common.
 	}
 	e.logger.Trace(fmt.Sprintf("Secret decrypted and stored. Secret: %v", secret))
 	return nil
+}
+
+func (e *enclaveImpl) EnclaveID() (common.EnclaveID, common.SystemError) {
+	return e.enclaveKey.EnclaveID(), nil
 }
 
 // GetBalance handles param decryption, validation and encryption
@@ -1036,6 +1051,32 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
+	block, err := e.blockResolver.FetchHeadBlock()
+	if err != nil {
+		return responses.AsPlaintextError(fmt.Errorf("internal server error")), err
+	}
+
+	// The message is ran through the l1 publishing cost estimation for the current
+	// known head block.
+	l1Cost, err := e.gasOracle.EstimateL1CostForMsg(callMsg, block)
+	if err != nil {
+		return responses.AsPlaintextError(fmt.Errorf("internal server error")), err
+	}
+
+	batch, err := e.storage.FetchHeadBatch()
+	if err != nil {
+		return responses.AsPlaintextError(fmt.Errorf("internal server error")), err
+	}
+
+	// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
+	// the expected cost into l2 gas based on current pricing.
+	// todo @siliev - add overhead when the base fee becomes dynamic.
+	publishingGas := big.NewInt(0).Div(l1Cost, batch.Header.BaseFee)
+
+	// The one additional gas captures the modulo leftover in some edge cases
+	// where BaseFee is bigger than the l1cost.
+	publishingGas = big.NewInt(0).Add(publishingGas, gethcommon.Big1)
+
 	executionGasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.config.GasLocalExecutionCapFlag)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
@@ -1053,7 +1094,9 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
-	return responses.AsEncryptedResponse(&executionGasEstimate, vkHandler), nil
+	totalGasEstimate := hexutil.Uint64(publishingGas.Uint64() + uint64(executionGasEstimate))
+
+	return responses.AsEncryptedResponse(&totalGasEstimate, vkHandler), nil
 }
 
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) { //nolint
@@ -1213,6 +1256,12 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 	// Execute the binary search and hone in on an isGasEnough gas limit
 	for lo+1 < hi {
 		mid := (hi + lo) / 2
+		if mid > lo*2 {
+			// Most txs don't need much higher gas limit than their gas used, and most txs don't
+			// require near the full block limit of gas, so the selection of where to bisect the
+			// range here is skewed to favor the low side.
+			mid = lo * 2
+		}
 		failed, _, err := e.isGasEnough(args, mid, blkNumber)
 		// If the error is not nil(consensus error), it means the provided message
 		// call or transaction will never be accepted no matter how much gas it is

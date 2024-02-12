@@ -133,6 +133,7 @@ func (o *OutputStats) String() string {
 		"totalWithdrawnAmount: %d\n"+
 		"rollupWithMoreRecentProof: %d\n"+
 		"nrTransferTransactions: %d\n"+
+		"nrNativeTransferTransactions: %d\n"+
 		"nrBlockParsedERC20Deposits: %d\n"+
 		"gasBridgeCount: %d\n",
 		o.simulation.Stats.NrMiners,
@@ -151,6 +152,7 @@ func (o *OutputStats) String() string {
 		o.simulation.Stats.TotalWithdrawalRequestedAmount,
 		o.simulation.Stats.RollupWithMoreRecentProofCount,
 		o.simulation.Stats.NrTransferTransactions,
+		o.simulation.Stats.NrNativeTransferTransactions,
 		o.canonicalERC20DepositCount,
 		len(o.simulation.TxInjector.TxTracker.GasBridgeTransactions),
 	)

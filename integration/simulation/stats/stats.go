@@ -27,6 +27,7 @@ type Stats struct {
 	TotalWithdrawalRequestedAmount *big.Int
 	RollupWithMoreRecentProofCount uint64
 	NrTransferTransactions         int
+	NrNativeTransferTransactions   int
 	statsMu                        *sync.RWMutex
 }
 
@@ -73,6 +74,12 @@ func (s *Stats) Deposit(v *big.Int) {
 func (s *Stats) Transfer() {
 	s.statsMu.Lock()
 	s.NrTransferTransactions++
+	s.statsMu.Unlock()
+}
+
+func (s *Stats) NativeTransfer() {
+	s.statsMu.Lock()
+	s.NrNativeTransferTransactions++
 	s.statsMu.Unlock()
 }
 

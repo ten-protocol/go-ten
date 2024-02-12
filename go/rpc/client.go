@@ -22,6 +22,7 @@ const (
 	EstimateGas           = "eth_estimateGas"
 	GetLogs               = "eth_getLogs"
 	GetStorageAt          = "eth_getStorageAt"
+	GasPrice              = "eth_gasPrice"
 
 	Health = "obscuro_health"
 	Config = "obscuro_config"

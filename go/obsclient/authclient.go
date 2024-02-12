@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/go/responses"
@@ -60,7 +61,9 @@ func DialWithAuth(rpcurl string, wal wallet.Wallet, logger gethlog.Logger) (*Aut
 	if err != nil {
 		return nil, err
 	}
-	return NewAuthObsClient(encClient), nil
+
+	authClient := NewAuthObsClient(encClient)
+	return authClient, nil
 }
 
 // TransactionByHash returns transaction (if found), isPending (always false currently as we don't search the mempool), error
@@ -72,6 +75,16 @@ func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash gethcommon.
 	}
 	// todo (#1491) - revisit isPending result value, included for ethclient equivalence but hardcoded currently
 	return &tx, false, nil
+}
+
+func (ac *AuthObsClient) GasPrice(ctx context.Context) (*big.Int, error) {
+	var result responses.GasPriceType
+	err := ac.rpcClient.CallContext(ctx, &result, rpc.GasPrice)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.ToInt(), nil
 }
 
 func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash gethcommon.Hash) (*types.Receipt, error) {
@@ -165,7 +178,6 @@ func (ac *AuthObsClient) EstimateGas(ctx context.Context, msg *ethereum.CallMsg)
 
 func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxData {
 	unEstimatedTx := types.NewTx(txData)
-	gasPrice := gethcommon.Big1 // constant gas price atm
 
 	gasLimit, err := ac.EstimateGas(context.Background(), &ethereum.CallMsg{
 		From:  ac.Address(),
@@ -175,6 +187,14 @@ func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxDat
 	})
 	if err != nil {
 		gasLimit = unEstimatedTx.Gas()
+	}
+
+	gasPrice, err := ac.GasPrice(context.Background())
+	if err != nil {
+		// params.InitialBaseFee should be the new standard gas price.
+		// If the gas price is too low, then the gas required to be put in a transaction
+		// becomes astronomical.
+		gasPrice = big.NewInt(params.InitialBaseFee)
 	}
 
 	return &types.LegacyTx{

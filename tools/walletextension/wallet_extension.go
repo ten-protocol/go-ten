@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/accountmanager"
 
@@ -37,6 +38,7 @@ type WalletExtension struct {
 	unsignedVKs        map[gethcommon.Address]*viewingkey.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
 	storage            storage.Storage
 	logger             gethlog.Logger
+	fileLogger         gethlog.Logger
 	stopControl        *stopcontrol.StopControl
 	version            string
 	config             *config.Config
@@ -59,6 +61,7 @@ func New(
 		panic(err)
 	}
 	newTenClient := obsclient.NewObsClient(rpcClient)
+	newFileLogger := common.NewFileLogger()
 	return &WalletExtension{
 		hostAddrHTTP:       hostAddrHTTP,
 		hostAddrWS:         hostAddrWS,
@@ -66,6 +69,7 @@ func New(
 		unsignedVKs:        map[gethcommon.Address]*viewingkey.ViewingKey{},
 		storage:            storage,
 		logger:             logger,
+		fileLogger:         newFileLogger,
 		stopControl:        stopControl,
 		version:            version,
 		config:             config,
@@ -85,6 +89,9 @@ func (w *WalletExtension) Logger() gethlog.Logger {
 
 // ProxyEthRequest proxys an incoming user request to the enclave
 func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userconn.UserConn, hexUserID string) (map[string]interface{}, error) {
+	// start measuring time for request
+	requestStartTime := time.Now()
+
 	response := map[string]interface{}{}
 	// all responses must contain the request id. Both successful and unsuccessful.
 	response[common.JSONKeyRPCVersion] = jsonrpc.Version
@@ -97,6 +104,9 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 	if request.Method == rpc.GetStorageAt {
 		if interceptedResponse := w.getStorageAtInterceptor(request, hexUserID); interceptedResponse != nil {
 			w.logger.Info("interception successful for getStorageAt, returning userID response")
+			requestEndTime := time.Now()
+			duration := requestEndTime.Sub(requestStartTime)
+			w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, interceptedResponse, duration.Milliseconds()))
 			return interceptedResponse, nil
 		}
 	}
@@ -113,6 +123,9 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 		if errors.Is(err, rpc.ErrNilResponse) {
 			// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 			response[common.JSONKeyResult] = nil
+			requestEndTime := time.Now()
+			duration := requestEndTime.Sub(requestStartTime)
+			w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, response, duration.Milliseconds()))
 			return response, nil
 		}
 		return nil, err
@@ -123,12 +136,16 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 	// todo (@ziga) - fix this upstream on the decode
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
 	adjustStateRoot(rpcResp, response)
+	requestEndTime := time.Now()
+	duration := requestEndTime.Sub(requestStartTime)
+	w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, response, duration.Milliseconds()))
 
 	return response, nil
 }
 
 // GenerateViewingKey generates the user viewing key and waits for signature
 func (w *WalletExtension) GenerateViewingKey(addr gethcommon.Address) (string, error) {
+	w.fileLogger.Info(fmt.Sprintf("Requested to generate viewing key for address(old way): %s", addr.Hex()))
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	if err != nil {
 		return "", fmt.Errorf("unable to generate a new keypair - %w", err)
@@ -151,6 +168,7 @@ func (w *WalletExtension) GenerateViewingKey(addr gethcommon.Address) (string, e
 
 // SubmitViewingKey checks the signed viewing key and stores it
 func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature []byte) error {
+	w.fileLogger.Info(fmt.Sprintf("Requested to submit a viewing key (old way): %s", address.Hex()))
 	vk, found := w.unsignedVKs[address]
 	if !found {
 		return fmt.Errorf(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", address, common.PathGenerateViewingKey))
@@ -196,6 +214,7 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 
 // GenerateAndStoreNewUser generates new key-pair and userID, stores it in the database and returns hex encoded userID and error
 func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
+	requestStartTime := time.Now()
 	// generate new key-pair
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
@@ -215,12 +234,15 @@ func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
 	hexUserID := hex.EncodeToString(userID)
 
 	w.userAccountManager.AddAndReturnAccountManager(hexUserID)
-
+	requestEndTime := time.Now()
+	duration := requestEndTime.Sub(requestStartTime)
+	w.fileLogger.Info(fmt.Sprintf("Storing new userID: %s, duration: %d ", hexUserID, duration.Milliseconds()))
 	return hexUserID, nil
 }
 
 // AddAddressToUser checks if a message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
 func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, signature []byte) error {
+	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
 	// check if a message was signed by the correct address and if the signature is valid
 	valid, err := viewingkey.VerifySignatureEIP712(hexUserID, &addressFromMessage, signature, int64(w.config.TenChainID))
@@ -255,12 +277,15 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, sig
 	}
 
 	accManager.AddClient(addressFromMessage, encClient)
-
+	requestEndTime := time.Now()
+	duration := requestEndTime.Sub(requestStartTime)
+	w.fileLogger.Info(fmt.Sprintf("Storing new address for user: %s, address: %s, duration: %d ", hexUserID, address, duration.Milliseconds()))
 	return nil
 }
 
 // UserHasAccount checks if provided account exist in the database for given userID
 func (w *WalletExtension) UserHasAccount(hexUserID string, address string) (bool, error) {
+	w.fileLogger.Info(fmt.Sprintf("Checkinf if user has account: %s, address: %s", hexUserID, address))
 	userIDBytes, err := common.GetUserIDbyte(hexUserID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID[2:], err).Error())
@@ -293,6 +318,7 @@ func (w *WalletExtension) UserHasAccount(hexUserID string, address string) (bool
 
 // DeleteUser deletes user and accounts associated with user from the database for given userID
 func (w *WalletExtension) DeleteUser(hexUserID string) error {
+	w.fileLogger.Info(fmt.Sprintf("Deleting user: %s", hexUserID))
 	userIDBytes, err := common.GetUserIDbyte(hexUserID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID, err).Error())
@@ -315,6 +341,7 @@ func (w *WalletExtension) DeleteUser(hexUserID string) error {
 }
 
 func (w *WalletExtension) UserExists(hexUserID string) bool {
+	w.fileLogger.Info(fmt.Sprintf("Checking if user exists: %s", hexUserID))
 	userIDBytes, err := common.GetUserIDbyte(hexUserID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID, err).Error())
