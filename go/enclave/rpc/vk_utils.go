@@ -16,7 +16,7 @@ import (
 // ResourceStatus used as Status for the UserRPCRequests
 type ResourceStatus int
 
-var internalError = errors.New("internal error")
+var errInt = errors.New("internal error")
 
 const (
 	NotSet        ResourceStatus = iota // after initialisation
@@ -75,7 +75,7 @@ func WithVKEncryption[P any, R any](
 
 	err = validate(decodedRequest.Params, builder, encManager)
 	if err != nil {
-		return responses.AsPlaintextError(internalError), responses.ToInternalError(err)
+		return responses.AsPlaintextError(errInt), responses.ToInternalError(err)
 	}
 	if builder.Err != nil {
 		return responses.AsEncryptedError(builder.Err, vk), nil //nolint:nilerr
@@ -85,7 +85,7 @@ func WithVKEncryption[P any, R any](
 	// Note - it is the responsibility of this function to check that the authenticated address is authorised to view the data
 	err = execute(builder, encManager)
 	if err != nil {
-		return responses.AsPlaintextError(internalError), responses.ToInternalError(err)
+		return responses.AsPlaintextError(errInt), responses.ToInternalError(err)
 	}
 	if builder.Err != nil {
 		return responses.AsEncryptedError(builder.Err, vk), nil //nolint:nilerr

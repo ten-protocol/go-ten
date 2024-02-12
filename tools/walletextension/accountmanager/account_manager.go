@@ -242,6 +242,9 @@ func (m *AccountManager) suggestAccountClient(req *wecommon.RPCRequest, accClien
 	if req.Method == rpc.Call {
 		return m.handleEthCall(req, accClients)
 	} else if req.Method == rpc.GetBalance {
+		if len(req.Params) == 0 {
+			return nil
+		}
 		requestedAddress, err := gethencoding.ExtractAddress(req.Params[0])
 		if err == nil {
 			return accClients[*requestedAddress]
