@@ -41,15 +41,15 @@ we need to store the TxCount in
 * `rollupHash` PK
 * `FirstBatchSeqNo`
 * `LastBatchSeqNo`
-* `StartTime`
 * `L1BlockHash` 
 
 Calculating the `L1BlockHeight` as done in `calculateL1HeightsFromDeltas` will be quite computationally expensive so we 
-can just order them by `LastBatchSeqNo`.
+can just order them by `LastBatchSeqNo`. I don't see any requirements for us to store the encoded headers since this is 
+the only information we actually need to link to the batches/ L1 blocks. 
 
 ### Batch 
-* `batchHash` PK
-* `SequencerOrderNo`
+* `SequencerOrderNo` PK
+* `batchHash`
 * `Number`
 * `TxCount`
 * `BatchHeader`
