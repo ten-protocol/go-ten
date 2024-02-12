@@ -238,13 +238,12 @@ func (m *AccountManager) suggestAccountClient(req *wecommon.RPCRequest, accClien
 		}
 	}
 
-	paramsMap, err := parseParams(req.Params)
-	if err != nil {
-		// no further info to deduce calling client
-		return nil
-	}
-
 	if req.Method == rpc.Call {
+		paramsMap, err := parseParams(req.Params)
+		if err != nil {
+			// no further info to deduce calling client
+			return nil
+		}
 		// check if request params had a "from" address and if we had a client for that address
 		fromClient, found := checkForFromField(paramsMap, accClients)
 		if found {
@@ -255,6 +254,11 @@ func (m *AccountManager) suggestAccountClient(req *wecommon.RPCRequest, accClien
 		addr, err := searchDataFieldForAccount(paramsMap, accClients)
 		if err == nil {
 			return accClients[*addr]
+		}
+	} else if req.Method == rpc.GetBalance {
+		requestedAddress, err := gethencoding.ExtractAddress(req.Params[0])
+		if err == nil {
+			return accClients[*requestedAddress]
 		}
 	}
 

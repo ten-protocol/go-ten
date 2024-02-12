@@ -3,6 +3,9 @@ package faucet
 import (
 	"context"
 	"fmt"
+	"math/big"
+
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
 
@@ -52,19 +55,21 @@ func (u GatewayUser) RegisterAccounts() error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Successfully registered address %s for user: %s.\n", w.Address().Hex(), u.tgClient.UserID())
+		testlog.Logger().Info(fmt.Sprintf("Successfully registered address %s for user: %s.", w.Address().Hex(), u.tgClient.UserID()))
 	}
 
 	return nil
 }
 
-func (u GatewayUser) PrintUserAccountsBalances() error {
+func (u GatewayUser) GetUserAccountsBalances() ([]*big.Int, error) {
+	balances := []*big.Int{}
 	for _, w := range u.Wallets {
 		balance, err := u.HTTPClient.BalanceAt(context.Background(), w.Address(), nil)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		fmt.Println("Balance for account ", w.Address().Hex(), " - ", balance.String())
+		balances = append(balances, balance)
+		testlog.Logger().Info("Balance for", "account ", w.Address().Hex(), " bal ", balance.String(), "user", u.tgClient.UserID())
 	}
-	return nil
+	return balances, nil
 }

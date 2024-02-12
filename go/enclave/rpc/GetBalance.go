@@ -49,6 +49,7 @@ func GetBalanceExecute(builder *CallBuilder[BalanceReq, hexutil.Big], rpc *Encry
 
 	// authorise the call
 	if acctOwner.Hex() != builder.VK.AccountAddress.Hex() {
+		rpc.logger.Debug("Unauthorised call", "address", acctOwner, "vk", builder.VK.AccountAddress, "userId", builder.VK.UserId)
 		// return a default value
 		builder.ReturnValue = (*hexutil.Big)(big.NewInt(0))
 		return nil
