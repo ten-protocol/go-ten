@@ -201,7 +201,7 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 	var start time.Time
 	var receipt *types.Receipt
 	// todo (@matt) these timings should be driven by the L2 batch times and L1 block times
-	for start = time.Now(); time.Since(start) < 20*time.Second; time.Sleep(1 * time.Second) {
+	for start = time.Now(); time.Since(start) < 50*time.Second; time.Sleep(1 * time.Second) {
 		receipt, err = workerClient.TransactionReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {
