@@ -38,33 +38,57 @@ the encrypted blob on testnet we are able to retrieve the number of transactions
 we need to store the TxCount in 
 
 ### Rollup 
-* `rollupHash` PK
-* `FirstBatchSeqNo`
-* `LastBatchSeqNo`
-* `StartTime`
-* `L1BlockHash` 
+```sql
+create table if not exists rollup
+(
+    hash              binary(16) primary key,
+    start_seq         int        NOT NULL,
+    end_seq           int        NOT NULL,
+    started_at        int        NOT NULL,
+    compression_block binary(16) NOT NULL
+);
+
+create index IDX_ROLLUP_PROOF on rollup (compression_block);
+create index IDX_ROLLUP_SEQ on rollup (start_seq, end_seq);
+```
 
 Calculating the `L1BlockHeight` as done in `calculateL1HeightsFromDeltas` will be quite computationally expensive so we 
-can just order them by `LastBatchSeqNo`.
+can just order them by `end_seq`.
 
 ### Batch 
-* `batchHash` PK
-* `SequencerOrderNo`
-* `Number`
-* `TxCount`
-* `BatchHeader`
+```sql
+create table if not exists batch
+(
+    sequence       int primary key,
+    hash           binary(16) NOT NULL unique,
+    height         int        NOT NULL,
+    tx_count       int        NOT NULL,
+    header         blob       NOT NULL,
+    body           int        NOT NULL REFERENCES batch_body
+    );
+create index IDX_BATCH_HASH on batch (hash);
+create index IDX_BATCH_HEIGHT on batch (height);
+```
 
 Because we are able to decrypt the encrypted blob on testnet we are able to retrieve the number of transactions that way
- but on mainnet this won't be possible so we need to store the TxCount in this table. There is a plan to remove 
+ but on mainnet this won't be possible, so we need to store the `tx_count` in this table. There is a plan to remove 
  `ExtBatch.TxHashes` and expose a new Enclave API to retrieve this. 
 
 We don't need to store the TX data since it's provided by the `EnclaveClient` which returns a `PublicTransaction`
-containing the `BatchHeight` which can be used to navigate to the batch. The `Number` is stored to provide an efficient 
-lookup otherwise we'd need to decode the batch header and find it that way. 
+containing the `BatchHeight` which can be used to navigate to the batch. The `height` is stored outside the header to 
+provide an efficient lookup otherwise we'd need to decode the batch header and find it that way. 
+
+Storing the encoded batch header so that we can provide rich data to the UI including gas, receipt, cross-chain hash etc.   
 
 ### BatchBody
-* `batchHash` PK
-* `EncryptedTxBlob`
+```sql
+create table if not exists batch_body
+(
+    id          int        NOT NULL primary key,
+    content     mediumblob NOT NULL
+);
+
+```
 
 Splitting this out means we only fetch when a user inspects a batch which will reduce the overhead on the table pages. 
 
@@ -75,28 +99,28 @@ can be solved.
 
 List all batches allowing for pagination 
 ```sql 
-SELECT * FROM batch ORDER BY SequencerOrderNo DESC
+SELECT * FROM batch ORDER BY height DESC
 ``` 
 
 Return the list of transactions within the batch (FE can decrypt and count the results)
 ```sql 
-SELECT EncryptedTxBlob FROM batch_body WHERE batchHash =?
+SELECT content FROM batch_body WHERE id =?
 ```
 
 Return a list of rollups in descending order
 ```sql 
-SELECT * FROM rollup ORDER BY LastBatchSeqNo DESC
+SELECT * FROM rollup ORDER BY end_seq DESC
 ```
 
 Return list of batches in the rollup
 ```sql
   SELECT b.* 
-  FROM batch b JOIN rollup r ON b.SequencerOrderNo BETWEEN r.FirstBatchSeqNo AND r.LastBatchSeqNo
-  WHERE r.rollupHash = ?
+  FROM batch b JOIN rollup r ON b.height BETWEEN r.start_seq AND r.end_seq
+  WHERE r.hash = ?
 ```
-Navigate from the batch to the rollup it was included in
+Navigate from to the rollup from the batch
 ```sql
-SELECT r.rollupHash
+SELECT r.hash
 FROM rollup r
-WHERE ? BETWEEN r.FirstBatchSeqNo AND r.LastBatchSeqNo;
+WHERE ? BETWEEN r.start_seq AND r.end_seq;
 ```

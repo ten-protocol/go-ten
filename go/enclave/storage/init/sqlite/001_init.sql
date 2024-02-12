@@ -59,9 +59,9 @@ create table if not exists batch
 (
     sequence       int primary key,
     full_hash      binary(32),
-    converted_hash binary(32),
-    hash           binary(16) NOT NULL unique,
-    parent         binary(16),
+    converted_hash binary(32), -- hash of the virtual geth block required for each batch
+    hash           binary(16) NOT NULL unique, -- shortened version of the "full_hash" used for indexing
+    parent         binary(16), -- points to the shortened parent batch hash
     height         int        NOT NULL,
     is_canonical   boolean    NOT NULL,
     header         blob       NOT NULL,
