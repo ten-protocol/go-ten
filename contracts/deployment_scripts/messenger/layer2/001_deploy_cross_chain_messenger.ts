@@ -19,6 +19,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // Get the prefunded L2 deployer account to use for deploying.
     const {deployer} = await getNamedAccounts();
+    const l1Accounts = await companionNetworks.layer1.getNamedAccounts();
 
     console.log(`Script: 001_deploy_cross_chain_messenger.ts - address used: ${deployer}`);
 
@@ -42,7 +43,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const mgmtContract = (await hre.ethers.getContractFactory('ManagementContract')).attach(mgmtContractAddress);
     const tx = await mgmtContract.populateTransaction.SetImportantContractAddress("L2CrossChainMessenger", crossChainDeployment.address);
     const receipt = await companionNetworks.layer1.deployments.rawTx({
-        from: deployer,
+        from: l1Accounts.deployer,
         to: mgmtContractAddress,
         data: tx.data,
         log: true,
