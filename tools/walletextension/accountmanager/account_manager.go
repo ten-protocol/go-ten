@@ -238,23 +238,9 @@ func (m *AccountManager) suggestAccountClient(req *wecommon.RPCRequest, accClien
 		}
 	}
 
+	// todo - more calls
 	if req.Method == rpc.Call {
-		paramsMap, err := parseParams(req.Params)
-		if err != nil {
-			// no further info to deduce calling client
-			return nil
-		}
-		// check if request params had a "from" address and if we had a client for that address
-		fromClient, found := checkForFromField(paramsMap, accClients)
-		if found {
-			return fromClient
-		}
-
-		// Otherwise, we search the `data` field for an address matching a registered viewing key.
-		addr, err := searchDataFieldForAccount(paramsMap, accClients)
-		if err == nil {
-			return accClients[*addr]
-		}
+		return m.handleEthCall(req, accClients)
 	} else if req.Method == rpc.GetBalance {
 		requestedAddress, err := gethencoding.ExtractAddress(req.Params[0])
 		if err == nil {
@@ -262,6 +248,26 @@ func (m *AccountManager) suggestAccountClient(req *wecommon.RPCRequest, accClien
 		}
 	}
 
+	return nil
+}
+
+func (m *AccountManager) handleEthCall(req *wecommon.RPCRequest, accClients map[gethcommon.Address]*rpc.EncRPCClient) *rpc.EncRPCClient {
+	paramsMap, err := parseParams(req.Params)
+	if err != nil {
+		// no further info to deduce calling client
+		return nil
+	}
+	// check if request params had a "from" address and if we had a client for that address
+	fromClient, found := checkForFromField(paramsMap, accClients)
+	if found {
+		return fromClient
+	}
+
+	// Otherwise, we search the `data` field for an address matching a registered viewing key.
+	addr, err := searchDataFieldForAccount(paramsMap, accClients)
+	if err == nil {
+		return accClients[*addr]
+	}
 	return nil
 }
 

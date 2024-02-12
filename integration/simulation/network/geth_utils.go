@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -204,7 +205,7 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 		receipt, err = workerClient.TransactionReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {
-				return nil, fmt.Errorf("unable to deploy contract: %v", receipt)
+				return nil, errors.New("unable to deploy contract")
 			}
 			testlog.Logger().Info(fmt.Sprintf("Contract successfully deployed to %s", receipt.ContractAddress))
 			return receipt, nil
