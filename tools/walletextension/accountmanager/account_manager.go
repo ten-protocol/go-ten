@@ -196,6 +196,17 @@ func (m *AccountManager) createClientsForAccounts(accounts []wecommon.AccountDB,
 	return clients, nil
 }
 
+// todo - better way
+const notAuthorised = "not authorised"
+
+var platformAuthorisedCalls = map[string]bool{
+	rpc.GetBalance: true,
+	// rpc.GetCode, //todo
+	rpc.GetTransactionCount:   true,
+	rpc.GetTransactionReceipt: true,
+	rpc.GetLogs:               true,
+}
+
 func (m *AccountManager) executeCall(rpcReq *wecommon.RPCRequest, rpcResp *interface{}) error {
 	m.accountsMutex.RLock()
 	defer m.accountsMutex.RUnlock()
@@ -216,6 +227,11 @@ func (m *AccountManager) executeCall(rpcReq *wecommon.RPCRequest, rpcResp *inter
 			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
 				// request didn't fail, we don't need to continue trying the other clients
 				return nil
+			}
+			// platform calls return a standard error for calls that are not authorised.
+			// any other error can be returned early
+			if platformAuthorisedCalls[rpcReq.Method] && err.Error() != notAuthorised {
+				return err
 			}
 		}
 		// every attempt errored
@@ -238,8 +254,8 @@ func (m *AccountManager) suggestAccountClient(req *wecommon.RPCRequest, accClien
 		}
 	}
 
-	// todo - more calls
-	if req.Method == rpc.Call {
+	// per call specific logic to determine the sender.
+	if req.Method == rpc.Call || req.Method == rpc.EstimateGas {
 		return m.handleEthCall(req, accClients)
 	} else if req.Method == rpc.GetBalance {
 		if len(req.Params) == 0 {
@@ -249,6 +265,20 @@ func (m *AccountManager) suggestAccountClient(req *wecommon.RPCRequest, accClien
 		if err == nil {
 			return accClients[*requestedAddress]
 		}
+	} else if req.Method == rpc.GetLogs {
+		forAddressHex, ok := req.Params[1].(string)
+		if !ok {
+			return nil
+		}
+		forAddress := gethcommon.HexToAddress(forAddressHex)
+		return accClients[forAddress]
+	} else if req.Method == rpc.GetTransactionCount {
+		forAddressHex, ok := req.Params[0].(string)
+		if !ok {
+			return nil
+		}
+		forAddress := gethcommon.HexToAddress(forAddressHex)
+		return accClients[forAddress]
 	}
 
 	return nil
