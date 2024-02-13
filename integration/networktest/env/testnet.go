@@ -113,7 +113,7 @@ func (t *testnetConnector) GetValidatorNode(_ int) networktest.NodeOperator {
 }
 
 func (t *testnetConnector) AllocateFaucetFundsWithWallet(ctx context.Context, account gethcommon.Address) error {
-	txHash, err := t.faucetWallet.SendFunds(ctx, account, _defaultFaucetAmount, 1_000_000)
+	txHash, err := t.faucetWallet.SendFunds(ctx, account, _defaultFaucetAmount)
 	if err != nil {
 		return err
 	}

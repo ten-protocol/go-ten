@@ -85,19 +85,18 @@ func (s *UserWallet) ChainID() *big.Int {
 	return big.NewInt(integration.TenChainID)
 }
 
-func (s *UserWallet) SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int, gas uint64) (*gethcommon.Hash, error) {
+func (s *UserWallet) SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int) (*gethcommon.Hash, error) {
 	err := s.EnsureClientSetup(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to prepare client to send funds - %w", err)
 	}
 
-	tx := &types.LegacyTx{
-		Nonce:    s.nonce,
-		Value:    value,
-		Gas:      gas,
-		GasPrice: gethcommon.Big1,
-		To:       &addr,
+	txData := &types.LegacyTx{
+		Nonce: s.nonce,
+		Value: value,
+		To:    &addr,
 	}
+	tx := s.client.EstimateGasAndGasPrice(txData)
 
 	txHash, err := s.SendTransaction(ctx, tx)
 	if err != nil {
@@ -107,7 +106,7 @@ func (s *UserWallet) SendFunds(ctx context.Context, addr gethcommon.Address, val
 	return txHash, nil
 }
 
-func (s *UserWallet) SendTransaction(ctx context.Context, tx *types.LegacyTx) (*gethcommon.Hash, error) {
+func (s *UserWallet) SendTransaction(ctx context.Context, tx types.TxData) (*gethcommon.Hash, error) {
 	signedTx, err := s.SignTransaction(tx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to sign transaction - %w", err)
