@@ -38,6 +38,15 @@ type obsValidator struct {
 }
 
 func NewValidator(consumer components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupConsumer components.RollupConsumer, chainConfig *params.ChainConfig, sequencerID gethcommon.Address, storage storage.Storage, sigValidator *components.SignatureValidator, mempool *txpool.TxPool, logger gethlog.Logger) ObsValidator {
+	// the mempool can only be started when there are a couple of blocks already processed
+	headBatchSeq := registry.HeadBatchSeq()
+	if !mempool.Running() && headBatchSeq != nil && headBatchSeq.Uint64() > common.L2GenesisSeqNo+1 {
+		err := mempool.Start()
+		if err != nil {
+			panic(fmt.Errorf("could not start mempool: %w", err))
+		}
+	}
+
 	return &obsValidator{
 		blockProcessor: consumer,
 		batchExecutor:  batchExecutor,
@@ -53,7 +62,11 @@ func NewValidator(consumer components.L1BlockProcessor, batchExecutor components
 }
 
 func (val *obsValidator) SubmitTransaction(tx *common.L2Tx) error {
-	return val.mempool.Validate(tx)
+	headBatch := val.batchRegistry.HeadBatchSeq()
+	if headBatch != nil && headBatch.Uint64() > common.L2GenesisSeqNo+1 {
+		return val.mempool.Validate(tx)
+	}
+	return fmt.Errorf("not initialised")
 }
 
 func (val *obsValidator) OnL1Fork(_ *common.ChainFork) error {
