@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+
+	// unsafe package imported in order to link to a private function in go-ethereum.
+	// This allows us to validate transactions against the tx pool rules.
 	_ "unsafe"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
