@@ -253,34 +253,28 @@ func (m *AccountManager) suggestAccountClient(req *wecommon.RPCRequest, accClien
 			return client
 		}
 	}
-
-	// per call specific logic to determine the sender.
-	if req.Method == rpc.Call || req.Method == rpc.EstimateGas {
+	switch req.Method {
+	case rpc.Call, rpc.EstimateGas:
 		return m.handleEthCall(req, accClients)
-	} else if req.Method == rpc.GetBalance {
-		if len(req.Params) == 0 {
-			return nil
-		}
-		requestedAddress, err := gethencoding.ExtractAddress(req.Params[0])
-		if err == nil {
-			return accClients[*requestedAddress]
-		}
-	} else if req.Method == rpc.GetLogs {
-		forAddressHex, ok := req.Params[1].(string)
-		if !ok {
-			return nil
-		}
-		forAddress := gethcommon.HexToAddress(forAddressHex)
-		return accClients[forAddress]
-	} else if req.Method == rpc.GetTransactionCount {
-		forAddressHex, ok := req.Params[0].(string)
-		if !ok {
-			return nil
-		}
-		forAddress := gethcommon.HexToAddress(forAddressHex)
-		return accClients[forAddress]
+	case rpc.GetBalance:
+		return extractAddress(0, req.Params, accClients)
+	case rpc.GetLogs:
+		return extractAddress(1, req.Params, accClients)
+	case rpc.GetTransactionCount:
+		return extractAddress(0, req.Params, accClients)
+	default:
+		return nil
 	}
+}
 
+func extractAddress(pos int, params []interface{}, accClients map[gethcommon.Address]*rpc.EncRPCClient) *rpc.EncRPCClient {
+	if len(params) < pos+1 {
+		return nil
+	}
+	requestedAddress, err := gethencoding.ExtractAddress(params[pos])
+	if err == nil {
+		return accClients[*requestedAddress]
+	}
 	return nil
 }
 
