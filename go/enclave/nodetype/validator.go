@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/enclave/txpool"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -30,22 +32,12 @@ type obsValidator struct {
 	sequencerID  gethcommon.Address
 	storage      storage.Storage
 	sigValidator *components.SignatureValidator
-	logger       gethlog.Logger
+	mempool      *txpool.TxPool
+
+	logger gethlog.Logger
 }
 
-func NewValidator(
-	consumer components.L1BlockProcessor,
-	batchExecutor components.BatchExecutor,
-	registry components.BatchRegistry,
-	rollupConsumer components.RollupConsumer,
-
-	chainConfig *params.ChainConfig,
-
-	sequencerID gethcommon.Address,
-	storage storage.Storage,
-	sigValidator *components.SignatureValidator,
-	logger gethlog.Logger,
-) ObsValidator {
+func NewValidator(consumer components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupConsumer components.RollupConsumer, chainConfig *params.ChainConfig, sequencerID gethcommon.Address, storage storage.Storage, sigValidator *components.SignatureValidator, mempool *txpool.TxPool, logger gethlog.Logger) ObsValidator {
 	return &obsValidator{
 		blockProcessor: consumer,
 		batchExecutor:  batchExecutor,
@@ -55,13 +47,13 @@ func NewValidator(
 		sequencerID:    sequencerID,
 		storage:        storage,
 		sigValidator:   sigValidator,
+		mempool:        mempool,
 		logger:         logger,
 	}
 }
 
-func (val *obsValidator) SubmitTransaction(transaction *common.L2Tx) error {
-	val.logger.Trace(fmt.Sprintf("Transaction %s submitted to validator but there is nothing to do with it.", transaction.Hash().Hex()))
-	return nil
+func (val *obsValidator) SubmitTransaction(tx *common.L2Tx) error {
+	return val.mempool.Validate(tx)
 }
 
 func (val *obsValidator) OnL1Fork(_ *common.ChainFork) error {
@@ -84,6 +76,14 @@ func (val *obsValidator) ExecuteStoredBatches() error {
 			return nil
 		}
 		return err
+	}
+
+	// the mempool can only be started when there are a couple of blocks already processed
+	if !val.mempool.Running() && headBatchSeq != nil && headBatchSeq.Uint64() > common.L2GenesisSeqNo+1 {
+		err := val.mempool.Start()
+		if err != nil {
+			return err
+		}
 	}
 
 	for _, batch := range batches {
@@ -155,5 +155,5 @@ func (val *obsValidator) OnL1Block(_ types.Block, _ *components.BlockIngestionTy
 }
 
 func (val *obsValidator) Close() error {
-	return nil
+	return val.mempool.Close()
 }

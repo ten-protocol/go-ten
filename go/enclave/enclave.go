@@ -84,6 +84,7 @@ type enclaveImpl struct {
 	profiler               *profiler.Profiler
 	debugger               *debugger.Debugger
 	logger                 gethlog.Logger
+	mempool                *txpool.TxPool
 
 	stopControl *stopcontrol.StopControl
 	mainMutex   sync.Mutex // serialises all data ingestion or creation to avoid weird races
@@ -213,7 +214,7 @@ func NewEnclave(
 			blockchain,
 		)
 	} else {
-		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, config.SequencerID, storage, sigVerifier, logger)
+		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, config.SequencerID, storage, sigVerifier, mempool, logger)
 	}
 
 	chain := l2chain.NewChain(
