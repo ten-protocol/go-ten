@@ -59,41 +59,32 @@ func NewChain(
 	}
 }
 
-func (oc *obscuroChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
-	// get account balance at certain block/height
-	balance, err := oc.GetBalanceAtBlock(accountAddress, blockNumber)
-	if err != nil {
-		return nil, nil, err
-	}
-
+func (oc *obscuroChain) AccountOwner(address gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, error) {
 	// check if account is a contract
-	isAddrContract, err := oc.isAccountContractAtBlock(accountAddress, blockNumber)
+	isContract, err := oc.isAccountContractAtBlock(address, blockNumber)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+	if !isContract {
+		return &address, nil
 	}
 
-	// Decide which address to encrypt the result with
-	address := accountAddress
-	// If the accountAddress is a contract, encrypt with the address of the contract owner
-	if isAddrContract {
-		txHash, err := oc.storage.GetContractCreationTx(accountAddress)
-		if err != nil {
-			return nil, nil, err
-		}
-		transaction, _, _, _, err := oc.storage.GetTransaction(*txHash)
-		if err != nil {
-			return nil, nil, err
-		}
-		signer := types.NewLondonSigner(oc.chainConfig.ChainID)
-
-		sender, err := signer.Sender(transaction)
-		if err != nil {
-			return nil, nil, err
-		}
-		address = sender
+	// If the address is a contract, find the signer of the deploy transaction
+	txHash, err := oc.storage.GetContractCreationTx(address)
+	if err != nil {
+		return nil, err
 	}
+	transaction, _, _, _, err := oc.storage.GetTransaction(*txHash) //nolint:dogsled
+	if err != nil {
+		return nil, err
+	}
+	signer := types.NewLondonSigner(oc.chainConfig.ChainID)
 
-	return &address, balance, nil
+	sender, err := signer.Sender(transaction)
+	if err != nil {
+		return nil, err
+	}
+	return &sender, nil
 }
 
 func (oc *obscuroChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
@@ -217,7 +208,7 @@ func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex in
 	return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction index %d out of range for batch %#x", txIndex, batch.Hash())
 }
 
-// Returns the whether the account is a contract or not at a certain height
+// Returns whether the account is a contract
 func (oc *obscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (bool, error) {
 	chainState, err := oc.Registry.GetBatchStateAtHeight(blockNumber)
 	if err != nil {

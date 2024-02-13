@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -15,7 +17,6 @@ import (
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/enclave/rpc"
 	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
@@ -55,7 +56,7 @@ func NewObscuroMessageBusManager(
 }
 
 func (m *MessageBusManager) IsSyntheticTransaction(transaction common.L2Tx) bool {
-	sender, err := rpc.GetSender(&transaction)
+	sender, err := core.GetTxSigner(&transaction)
 	if err != nil {
 		return false
 	}

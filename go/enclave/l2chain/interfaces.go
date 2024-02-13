@@ -14,9 +14,11 @@ import (
 // ObscuroChain - the interface that provides the data access layer to the obscuro l2.
 // Operations here should be read only.
 type ObscuroChain interface {
-	// GetBalance - Returns the balance of an address given the standard provided BlockNumber which in our case is batch number.
-	// Note this method also returns the address we should encrypt the balance for, unlike `GetBalanceAtBlock`
-	GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error)
+	// AccountOwner - returns the account that owns the address.
+	// For EOA - the actual address.
+	// For Contracts - the address of the deployer.
+	// Note - this might be subject to change if we implement a more flexible mechanism
+	AccountOwner(address gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, error)
 
 	// GetBalanceAtBlock - will return the balance of a specific address at the specific given block number (batch number).
 	GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error)

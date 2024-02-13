@@ -401,7 +401,7 @@ func ReadReceipt(db *sql.DB, hash common.L2TxHash, config *params.ChainConfig) (
 	return receipts[0], nil
 }
 
-func ReadTransaction(db *sql.DB, txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
+func ReadTransaction(db *sql.DB, txHash gethcommon.Hash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error) {
 	row := db.QueryRow(selectTxQuery, truncTo16(txHash))
 
 	// tx, batch, height, idx
