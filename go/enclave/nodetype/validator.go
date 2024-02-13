@@ -38,14 +38,7 @@ type obsValidator struct {
 }
 
 func NewValidator(consumer components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupConsumer components.RollupConsumer, chainConfig *params.ChainConfig, sequencerID gethcommon.Address, storage storage.Storage, sigValidator *components.SignatureValidator, mempool *txpool.TxPool, logger gethlog.Logger) ObsValidator {
-	// the mempool can only be started when there are a couple of blocks already processed
-	headBatchSeq := registry.HeadBatchSeq()
-	if !mempool.Running() && headBatchSeq != nil && headBatchSeq.Uint64() > common.L2GenesisSeqNo+1 {
-		err := mempool.Start()
-		if err != nil {
-			panic(fmt.Errorf("could not start mempool: %w", err))
-		}
-	}
+	startMempool(registry, mempool)
 
 	return &obsValidator{
 		blockProcessor: consumer,
@@ -91,13 +84,7 @@ func (val *obsValidator) ExecuteStoredBatches() error {
 		return err
 	}
 
-	// the mempool can only be started when there are a couple of blocks already processed
-	if !val.mempool.Running() && headBatchSeq != nil && headBatchSeq.Uint64() > common.L2GenesisSeqNo+1 {
-		err := val.mempool.Start()
-		if err != nil {
-			return err
-		}
-	}
+	startMempool(val.batchRegistry, val.mempool)
 
 	for _, batch := range batches {
 		if batch.IsGenesis() {
@@ -169,4 +156,15 @@ func (val *obsValidator) OnL1Block(_ types.Block, _ *components.BlockIngestionTy
 
 func (val *obsValidator) Close() error {
 	return val.mempool.Close()
+}
+
+func startMempool(registry components.BatchRegistry, mempool *txpool.TxPool) {
+	// the mempool can only be started when there are a couple of blocks already processed
+	headBatchSeq := registry.HeadBatchSeq()
+	if !mempool.Running() && headBatchSeq != nil && headBatchSeq.Uint64() > common.L2GenesisSeqNo+1 {
+		err := mempool.Start()
+		if err != nil {
+			panic(fmt.Errorf("could not start mempool: %w", err))
+		}
+	}
 }
