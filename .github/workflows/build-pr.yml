@@ -44,7 +44,7 @@ jobs:
             done
             for pid in $pids; do
               echo "Killing process $pid on one of the ports from $lowest_port to $highest_port"
-              kill -9 $pid || true
+              kill $pid || true
             done
           fi
 
