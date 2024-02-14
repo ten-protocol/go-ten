@@ -324,17 +324,14 @@ func (n *Impl) Stop() error {
 		err := n.gethProcesses[i].Process.Kill()
 		if err != nil {
 			fmt.Printf("unable to kill geth node - %s\n", err.Error())
-			return err
 		}
 		err = n.prysmBeaconProcesses[i].Process.Kill()
 		if err != nil {
 			fmt.Printf("unable to kill prysm beacon node - %s\n", err.Error())
-			return err
 		}
 		err = n.prysmValidatorProcesses[i].Process.Kill()
 		if err != nil {
 			fmt.Printf("unable to kill prysm validator node - %s\n", err.Error())
-			return err
 		}
 	}
 	return nil
