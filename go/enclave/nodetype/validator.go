@@ -56,10 +56,10 @@ func NewValidator(consumer components.L1BlockProcessor, batchExecutor components
 
 func (val *obsValidator) SubmitTransaction(tx *common.L2Tx) error {
 	headBatch := val.batchRegistry.HeadBatchSeq()
-	if headBatch != nil && headBatch.Uint64() > common.L2GenesisSeqNo+1 {
-		return val.mempool.Validate(tx)
+	if headBatch == nil || headBatch.Uint64() <= common.L2GenesisSeqNo+1 {
+		return fmt.Errorf("not initialised")
 	}
-	return fmt.Errorf("not initialised")
+	return val.mempool.Validate(tx)
 }
 
 func (val *obsValidator) OnL1Fork(_ *common.ChainFork) error {
