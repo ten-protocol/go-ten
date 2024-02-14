@@ -23,7 +23,7 @@ fi
 echo "fetch pids"
 # Use || true to prevent script exit in case of command failure
 echo "cmd: lsof -iTCP:$lowest_port-$highest_port -sTCP:LISTEN -t"
-pids=$(lsof -iTCP:$lowest_port-$highest_port -sTCP:LISTEN -t)
+pids=$(sudo lsof -iTCP:$lowest_port-$highest_port -sTCP:LISTEN -t)
 
 # Check if the lsof command was successful
 if [ -z "$pids" ] && [ $? -ne 0 ]; then
@@ -40,14 +40,14 @@ else
     done
     for pid in $pids; do
         echo "Killing process $pid on one of the ports from $lowest_port to $highest_port"
-        kill $pid || echo "Failed to kill process $pid"
+        sudo kill $pid || echo "Failed to kill process $pid"
     done
 fi
 echo "range done"
 echo "Additional ports: ${additional_ports[@]}"
 for port in "${additional_ports[@]}"; do
     echo "cmd: lsof -ti TCP:$port"
-    pids=$(lsof -ti TCP:$port)
+    pids=$(sudo lsof -ti TCP:$port)
 
     # Check if the lsof command was successful
     if [ -z "$pids" ] && [ $? -ne 0 ]; then
@@ -60,7 +60,7 @@ for port in "${additional_ports[@]}"; do
     else
         for pid in $pids; do
             echo "Killing process $pid on port $port"
-            kill $pid || echo "Failed to kill process $pid"
+            sudo kill $pid || echo "Failed to kill process $pid"
         done
     fi
 done
