@@ -245,7 +245,7 @@ func (n *Impl) Start() error {
 	for i := range n.dataDirs {
 		nodeID := i
 		eg.Go(func() error {
-			return n.waitForNodeUp(nodeID, 30*time.Second)
+			return n.waitForNodeUp(nodeID, time.Minute)
 		})
 	}
 	err = eg.Wait()
