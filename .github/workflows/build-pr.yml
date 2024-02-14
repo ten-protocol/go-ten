@@ -31,7 +31,7 @@ jobs:
       # Close specified ports using lsof before testing / local port list compiled from ./testnet/launcher/docker.go
       - name: Close Ports
         run: |
-          for port in 11000 80 81 15000 11010 13010 13011 15010 99 3000 3001 8025 9000; do
+          for port in 11000 80 81 15000 11010 13010 13011 15010 99 3000 3001 8025 9000 52300; do
             kill $(lsof -t -i :$port) || true
           done
 
