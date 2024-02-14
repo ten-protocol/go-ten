@@ -28,10 +28,10 @@ jobs:
       - name: Download eth2network binaries
         run: go test ./... -v -count=1 -run TestEnsureBinariesAreAvail
 
-      # Close processes on all ports
-      - name: Close All Ports
+      # Close specified ports using lsof before testing / local port list compiled from ./testnet/launcher/docker.go
+      - name: Close Ports
         run: |
-          for port in $(seq 1 65535); do
+          for port in 11000 80 81 15000 11010 13010 13011 15010 99 3000 3001 8025 9000; do
             kill $(lsof -t -i :$port) || true
           done
 
