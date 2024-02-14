@@ -334,6 +334,8 @@ func (n *Impl) Stop() error {
 			fmt.Printf("unable to kill prysm validator node - %s\n", err.Error())
 		}
 	}
+	// wait a second for the kill signal
+	time.Sleep(time.Second)
 	return nil
 }
 
