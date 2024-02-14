@@ -96,7 +96,7 @@ func (s *UserWallet) SendFunds(ctx context.Context, addr gethcommon.Address, val
 		Value: value,
 		To:    &addr,
 	}
-	tx := s.client.EstimateGasAndGasPrice(txData)
+	tx := s.client.EstimateGasAndGasPrice(txData) //nolint: contextcheck
 
 	txHash, err := s.SendTransaction(ctx, tx)
 	if err != nil {
