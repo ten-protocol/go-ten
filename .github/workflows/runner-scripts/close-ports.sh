@@ -26,12 +26,13 @@ if [ $lsof_exit_status -eq 0 ]; then
             kill $pid || echo "Failed to kill process $pid"
         done
     fi
+elif [ $lsof_exit_status -eq 1 ]; then # lsof returns 1 if no processes are found
+    echo "No processes found on ports from $lowest_port to $highest_port, which is expected."
 else
     echo "lsof command failed with exit status $lsof_exit_status"
 fi
 echo "range done"
 
-# Similar handling for the additional ports
 echo "Additional ports: ${additional_ports[@]}"
 for port in "${additional_ports[@]}"; do
     pids=$(lsof -ti TCP:$port)
@@ -46,6 +47,8 @@ for port in "${additional_ports[@]}"; do
                 kill $pid || echo "Failed to kill process $pid"
             done
         fi
+    elif [ $lsof_exit_status -eq 1 ]; then # lsof returns 1 if no processes are found
+        echo "No processes found on port $port, which is expected."
     else
         echo "lsof command for port $port failed with exit status $lsof_exit_status"
     fi
