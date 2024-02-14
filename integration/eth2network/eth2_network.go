@@ -3,6 +3,7 @@ package eth2network
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -321,21 +322,36 @@ func (n *Impl) Start() error {
 // Stop stops the network
 func (n *Impl) Stop() error {
 	for i := 0; i < len(n.dataDirs); i++ {
-		err := n.gethProcesses[i].Process.Kill()
+		err := kill(n.gethProcesses[i].Process, 0)
 		if err != nil {
 			fmt.Printf("unable to kill geth node - %s\n", err.Error())
 		}
-		err = n.prysmBeaconProcesses[i].Process.Kill()
+		err = kill(n.prysmBeaconProcesses[i].Process, 0)
 		if err != nil {
 			fmt.Printf("unable to kill prysm beacon node - %s\n", err.Error())
 		}
-		err = n.prysmValidatorProcesses[i].Process.Kill()
+		err = kill(n.prysmValidatorProcesses[i].Process, 0)
 		if err != nil {
 			fmt.Printf("unable to kill prysm validator node - %s\n", err.Error())
 		}
 	}
 	// wait a second for the kill signal
 	time.Sleep(time.Second)
+	return nil
+}
+
+const maxTryKill = 5
+
+func kill(p *os.Process, cnt int) error {
+	if killErr := p.Kill(); killErr == nil {
+		return nil
+	} else if !errors.Is(killErr, os.ErrProcessDone) {
+		if cnt >= maxTryKill {
+			return killErr
+		}
+		time.Sleep(time.Second)
+		return kill(p, cnt+1)
+	}
 	return nil
 }
 
