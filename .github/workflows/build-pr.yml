@@ -31,10 +31,6 @@ jobs:
       # Close specified ports using lsof before testing / local port list compiled from ./integration/constants.go
       - name: Close Integration Test Ports
         run: |
-          lowest_port=8000
-          highest_port=58000
-          additional_ports=(80 81 99)
-
           pids=$(lsof -iTCP:$lowest_port-$highest_port -sTCP:LISTEN -t)
           if [ -z "$pids" ]; then
             echo "No processes are listening on ports from $lowest_port to $highest_port"
@@ -60,6 +56,11 @@ jobs:
               done
             fi
           done
+        shell: bash
+        env:
+          lowest_port: 8000
+          highest_port: 58000
+          additional_ports: '80 81 99'
 
       - name: Test
         run: go test --failfast -v ./... -count=1 -timeout 5m
