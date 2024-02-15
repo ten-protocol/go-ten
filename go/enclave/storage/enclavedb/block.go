@@ -152,7 +152,7 @@ func WriteRollup(dbtx DBTransaction, rollup *common.RollupHeader, internalHeader
 	if err != nil {
 		return fmt.Errorf("could not encode batch header. Cause: %w", err)
 	}
-	dbtx.ExecuteSQL(rollupInsert,x
+	dbtx.ExecuteSQL(rollupInsert,
 		truncTo16(rollup.Hash()),
 		internalHeader.FirstBatchSequence.Uint64(),
 		rollup.LastBatchSeqNo,
