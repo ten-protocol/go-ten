@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	log2 "github.com/ten-protocol/go-ten/go/common/log"
+
 	"github.com/ethereum/go-ethereum"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 
@@ -114,15 +116,15 @@ func TestTenGateway(t *testing.T) {
 func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with encryption token: %s\n", user0.tgClient.UserID())
+	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
 
 	user1, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with encryption token: %s\n", user0.tgClient.UserID())
+	testlog.Logger().Info("Created user with encryption token", "t", user1.tgClient.UserID())
 
 	user2, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with encryption token: %s\n", user0.tgClient.UserID())
+	testlog.Logger().Info("Created user with encryption token", "t", user2.tgClient.UserID())
 
 	// register all the accounts for that user
 	err = user0.RegisterAccounts()
@@ -136,7 +138,6 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	// Transfer some funds to user1 and user2 wallets, because they need it to make transactions
 	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user1.Wallets[0].Address(), amountToTransfer)
 	require.NoError(t, err)
-	time.Sleep(5 * time.Second)
 	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user1.Wallets[1].Address(), amountToTransfer)
 	require.NoError(t, err)
 	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user2.Wallets[0].Address(), amountToTransfer)
@@ -145,12 +146,21 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	require.NoError(t, err)
 
 	// Print balances of all registered accounts to check if all accounts have funds
-	err = user0.PrintUserAccountsBalances()
+	balances, err := user0.GetUserAccountsBalances()
 	require.NoError(t, err)
-	err = user1.PrintUserAccountsBalances()
+	for _, balance := range balances {
+		require.NotZero(t, balance.Uint64())
+	}
+	balances, err = user1.GetUserAccountsBalances()
 	require.NoError(t, err)
-	err = user2.PrintUserAccountsBalances()
+	for _, balance := range balances {
+		require.NotZero(t, balance.Uint64())
+	}
+	balances, err = user2.GetUserAccountsBalances()
 	require.NoError(t, err)
+	for _, balance := range balances {
+		require.NotZero(t, balance.Uint64())
+	}
 
 	// deploy events contract
 	deployTx := &types.LegacyTx{
@@ -270,10 +280,16 @@ func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet
 	require.NoError(t, err)
 
 	// Print balances of all registered accounts to check if all accounts have funds
-	err = user0.PrintUserAccountsBalances()
+	balances, err := user0.GetUserAccountsBalances()
 	require.NoError(t, err)
-	err = user1.PrintUserAccountsBalances()
+	for _, balance := range balances {
+		require.NotZero(t, balance.Uint64())
+	}
+	balances, err = user1.GetUserAccountsBalances()
 	require.NoError(t, err)
+	for _, balance := range balances {
+		require.NotZero(t, balance.Uint64())
+	}
 
 	// deploy events contract
 	deployTx := &types.LegacyTx{
@@ -480,7 +496,7 @@ func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// create a user with multiple accounts
 	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with encryption token: %s\n", user.tgClient.UserID())
+	testlog.Logger().Info("Created user with encryption token: %s\n", user.tgClient.UserID())
 
 	// register all the accounts for the user
 	err = user.RegisterAccounts()
@@ -505,7 +521,7 @@ func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user.HTTPClient, signedTx.Hash(), time.Minute)
 	require.NoError(t, err)
 
-	fmt.Println("Deployed contract address: ", contractReceipt.ContractAddress)
+	testlog.Logger().Info("Deployed contract address: ", contractReceipt.ContractAddress)
 
 	// subscribe to an event
 	var userLogs []types.Log
@@ -532,7 +548,7 @@ func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w
 	// create a user with multiple accounts
 	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Printf("Created user with encryption token: %s\n", user.tgClient.UserID())
+	testlog.Logger().Info("Created user with encryption token: %s\n", user.tgClient.UserID())
 
 	// register all the accounts for the user
 	err = user.RegisterAccounts()
@@ -557,7 +573,7 @@ func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w
 	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user.HTTPClient, signedTx.Hash(), time.Minute)
 	require.NoError(t, err)
 
-	fmt.Println("Deployed contract address: ", contractReceipt.ContractAddress)
+	testlog.Logger().Info("Deployed contract address: ", contractReceipt.ContractAddress)
 
 	// subscribe to an event
 	var userLogs []types.Log
@@ -604,7 +620,7 @@ func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet)
 	}
 	assert.Nil(t, err)
 
-	fmt.Println("Transferring from:", w.Address(), " to:", toAddr)
+	testlog.Logger().Info("Transferring from:", "addr", w.Address(), " to:", toAddr)
 
 	signedTx, err := w.SignTransaction(estimatedTx)
 	assert.Nil(t, err)
@@ -615,7 +631,7 @@ func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet)
 	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client, signedTx.Hash(), time.Minute)
 	assert.NoError(t, err)
 
-	fmt.Println("Successfully minted the transaction - ", signedTx.Hash())
+	testlog.Logger().Info("Successfully minted the transaction - ", "tx", signedTx.Hash())
 	return signedTx.Hash()
 }
 
@@ -707,7 +723,7 @@ func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddr
 	if err != nil {
 		return nil, err
 	}
-	return integrationCommon.AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 20*time.Second)
+	return integrationCommon.AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 30*time.Second)
 }
 
 func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Hash, client *ethclient.Client, logs *[]types.Log) ethereum.Subscription {
@@ -722,7 +738,7 @@ func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Has
 
 	subscription, err := client.SubscribeFilterLogs(context.Background(), filterQuery, logsCh)
 	if err != nil {
-		fmt.Printf("Failed to subscribe to filter logs: %v\n", err)
+		testlog.Logger().Info("Failed to subscribe to filter logs: %v", log2.ErrKey, err)
 	}
 
 	// Listen for logs in a goroutine
@@ -730,7 +746,7 @@ func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Has
 		for {
 			select {
 			case err := <-subscription.Err():
-				fmt.Printf("Error from logs subscription: %v\n", err)
+				testlog.Logger().Info("Error from logs subscription: %v", log2.ErrKey, err)
 				return
 			case log := <-logsCh:
 				// append logs to be visible from the main thread

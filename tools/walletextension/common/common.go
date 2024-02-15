@@ -54,10 +54,10 @@ func CreateEncClient(
 	address := gethcommon.BytesToAddress(addressBytes)
 
 	vk := &viewingkey.ViewingKey{
-		Account:    &address,
-		PrivateKey: privateKey,
-		PublicKey:  PrivateKeyToCompressedPubKey(privateKey),
-		Signature:  signature,
+		Account:                 &address,
+		PrivateKey:              privateKey,
+		PublicKey:               PrivateKeyToCompressedPubKey(privateKey),
+		SignatureWithAccountKey: signature,
 	}
 	encClient, err := rpc.NewEncNetworkClient(hostRPCBindAddr, vk, logger)
 	if err != nil {

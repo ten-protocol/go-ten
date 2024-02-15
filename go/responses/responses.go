@@ -5,16 +5,15 @@ import (
 	"fmt"
 
 	"github.com/ten-protocol/go-ten/go/common/syserr"
-	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
 )
 
 // InternalErrMsg is the common response returned to the user when an InternalError occurs
 var InternalErrMsg = "internal system error"
 
-// This is the encoded & encrypted form of a UserResponse[Type]
+// EncryptedUserResponse - This is the encoded & encrypted form of a UserResponse[Type]
 type EncryptedUserResponse []byte
 
-// The response that the enclave returns for sensitive API calls
+// EnclaveResponse - The response that the enclave returns for sensitive API calls
 // The user response is encrypted while the error is in plaintext
 type EnclaveResponse struct {
 	EncUserResponse EncryptedUserResponse
@@ -41,6 +40,7 @@ func (er *EnclaveResponse) Error() error {
 // AsPlaintextResponse - creates the plaintext part of the enclave response
 // It would be visible that there is an enclave response,
 // but the bytes in it will still be encrypted
+// todo - rename
 func AsPlaintextResponse(encResp EncryptedUserResponse) *EnclaveResponse {
 	return &EnclaveResponse{
 		EncUserResponse: encResp,
@@ -71,9 +71,13 @@ func AsPlaintextError(err error) *EnclaveResponse {
 	}
 }
 
+type Encryptor interface {
+	Encrypt(bytes []byte) ([]byte, error)
+}
+
 // AsEncryptedResponse - wraps the data passed into the proper format, serializes it and encrypts it.
 // It is then encoded in a plaintext response.
-func AsEncryptedResponse[T any](data *T, encryptHandler *vkhandler.VKHandler) *EnclaveResponse {
+func AsEncryptedResponse[T any](data *T, encryptHandler Encryptor) *EnclaveResponse {
 	userResp := UserResponse[T]{
 		Result: data,
 	}
@@ -91,8 +95,27 @@ func AsEncryptedResponse[T any](data *T, encryptHandler *vkhandler.VKHandler) *E
 	return AsPlaintextResponse(encrypted)
 }
 
+// AsEncryptedEmptyResponse - encrypts an empty message
+func AsEncryptedEmptyResponse(encryptHandler Encryptor) *EnclaveResponse {
+	userResp := UserResponse[any]{
+		Result: nil,
+	}
+
+	encoded, err := json.Marshal(userResp)
+	if err != nil {
+		return AsPlaintextError(err)
+	}
+
+	encrypted, err := encryptHandler.Encrypt(encoded)
+	if err != nil {
+		return AsPlaintextError(err)
+	}
+
+	return AsPlaintextResponse(encrypted)
+}
+
 // AsEncryptedError - Encodes and encrypts an error to be returned for a concrete user.
-func AsEncryptedError(err error, encrypt *vkhandler.VKHandler) *EnclaveResponse {
+func AsEncryptedError(err error, encrypt Encryptor) *EnclaveResponse {
 	errStr := err.Error()
 	userResp := UserResponse[string]{
 		ErrStr: &errStr,

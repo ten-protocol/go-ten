@@ -3,8 +3,10 @@ package rpc
 import (
 	"fmt"
 
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/ten-protocol/go-ten/go/common/gethapi"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
@@ -22,15 +24,7 @@ func ExtractTx(txBinary string) (*common.L2Tx, error) {
 	return tx, nil
 }
 
-// GetSender returns the address whose viewing key should be used to encrypt the response,
-// given a transaction.
-func GetSender(tx *common.L2Tx) (gethcommon.Address, error) {
-	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
-
-	from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
-	if err != nil {
-		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
-	}
-
-	return from, nil
+type CallParamsWithBlock struct {
+	callParams *gethapi.TransactionArgs
+	block      *gethrpc.BlockNumber
 }

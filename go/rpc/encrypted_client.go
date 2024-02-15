@@ -7,13 +7,14 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ten-protocol/go-ten/go/common/rpc"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/rpc"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -89,7 +90,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	return c.executeSensitiveCall(ctx, result, method, args...)
 }
 
-func (c *EncRPCClient) Subscribe(ctx context.Context, _ interface{}, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
+func (c *EncRPCClient) Subscribe(ctx context.Context, _ interface{}, namespace string, ch interface{}, args ...interface{}) (*gethrpc.ClientSubscription, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("subscription did not specify its type")
 	}
@@ -130,7 +131,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, _ interface{}, namespace s
 	return subscriptionToObscuro, nil
 }
 
-func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh chan common.IDAndLog, subscription *rpc.ClientSubscription) {
+func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh chan common.IDAndLog, subscription *gethrpc.ClientSubscription) {
 	for {
 		select {
 		case idAndEncLog := <-clientChannel:
@@ -168,9 +169,11 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 
 func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*common.LogSubscription, error) {
 	logSubscription := &common.LogSubscription{
-		Account:          c.Account(),
-		Signature:        c.viewingKey.Signature,
-		PublicViewingKey: c.viewingKey.PublicKey,
+		ViewingKey: &viewingkey.RPCSignedViewingKey{
+			PublicKey:               c.viewingKey.PublicKey,
+			SignatureWithAccountKey: c.viewingKey.SignatureWithAccountKey,
+			Account:                 c.Account(),
+		},
 	}
 
 	// If there are less than two arguments, it means no filter criteria was passed.
@@ -301,14 +304,12 @@ func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
 	if len(args) == 0 {
 		return nil, nil
 	}
-
-	argsWithVK := append([]interface{}{
-		[]interface{}{
-			hexutil.Encode(c.viewingKey.PublicKey),
-			hexutil.Encode(c.viewingKey.Signature),
-		},
-	},
-		args...)
+	vk := viewingkey.RPCSignedViewingKey{
+		Account:                 c.Account(),
+		PublicKey:               c.viewingKey.PublicKey,
+		SignatureWithAccountKey: c.viewingKey.SignatureWithAccountKey,
+	}
+	argsWithVK := &rpc.RequestWithVk{VK: &vk, Params: args}
 
 	paramsJSON, err := json.Marshal(argsWithVK)
 	if err != nil {

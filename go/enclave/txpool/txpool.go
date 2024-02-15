@@ -5,6 +5,10 @@ import (
 	"math/big"
 	"strings"
 
+	// unsafe package imported in order to link to a private function in go-ethereum.
+	// This allows us to validate transactions against the tx pool rules.
+	_ "unsafe"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/log"
 
@@ -76,6 +80,14 @@ func (t *TxPool) Add(transaction *common.L2Tx) error {
 		return fmt.Errorf(strings.Join(strErrors, "; "))
 	}
 	return nil
+}
+
+//go:linkname validateTxBasics github.com/ethereum/go-ethereum/core/txpool/legacypool.(*LegacyPool).validateTxBasics
+func validateTxBasics(_ *legacypool.LegacyPool, _ *types.Transaction, _ bool) error
+
+// Validate - run the underlying tx pool validation logic
+func (t *TxPool) Validate(tx *common.L2Tx) error {
+	return validateTxBasics(t.legacyPool, tx, false)
 }
 
 func (t *TxPool) Running() bool {

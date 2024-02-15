@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -172,7 +174,11 @@ func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (*responses.Enclave
 		return responses.AsEmptyResponse(), fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
 
-	encryptor, err := vkhandler.New(api.address, api.viewingKey, api.signature, l2ChainIDDecimal)
+	encryptor, err := vkhandler.VerifyViewingKey(&viewingkey.RPCSignedViewingKey{
+		Account:                 api.address,
+		PublicKey:               api.viewingKey,
+		SignatureWithAccountKey: api.signature,
+	}, l2ChainIDDecimal)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create vk encryption for request - %w", err)
 	}

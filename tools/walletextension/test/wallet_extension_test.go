@@ -5,8 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/integration"
@@ -89,6 +87,8 @@ func canInvokeSensitiveMethodsWithViewingKey(t *testing.T, testHelper *testHelpe
 	}
 }
 
+var ErrInvalidAddressSignature = fmt.Errorf("invalid viewing key signature for requested address")
+
 func cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.T, testHelper *testHelper) {
 	addr1, _, _ := simulateViewingKeyRegister(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
 
@@ -104,7 +104,7 @@ func cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.T, t
 		}
 
 		respBody := makeHTTPEthJSONReq(testHelper.walletHTTPPort, method, []interface{}{map[string]interface{}{}})
-		if !strings.Contains(string(respBody), vkhandler.ErrInvalidAddressSignature.Error()) {
+		if !strings.Contains(string(respBody), ErrInvalidAddressSignature.Error()) {
 			t.Fatalf("expected response containing '%s', got '%s'", errFailedDecrypt, string(respBody))
 		}
 	}
