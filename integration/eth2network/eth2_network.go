@@ -540,7 +540,7 @@ func (n *Impl) waitForNodeUp(nodeID int, timeout time.Duration) error {
 			return nil
 		}
 	}
-	fmt.Printf("Geth node error:\n%s", n.gethProcesses[nodeID].Stderr)
+	fmt.Printf("Geth node error:\n%s\n", n.gethProcesses[nodeID].Stderr)
 	return fmt.Errorf("node not responsive after %s", timeout)
 }
 
