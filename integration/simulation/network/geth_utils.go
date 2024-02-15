@@ -31,18 +31,18 @@ const (
 func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, blockDurationSeconds int) (*params.L1SetupData, []ethadapter.EthClient, eth2network.Eth2Network) {
 	eth2Network, err := StartGethNetwork(wallets, startPort, blockDurationSeconds)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("error starting geth network %w", err))
 	}
 
 	// connect to the first host to deploy
 	tmpEthClient, err := ethadapter.NewEthClient(Localhost, uint(startPort+100), DefaultL1RPCTimeout, common.HexToAddress("0x0"), testlog.Logger())
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("error connecting to te first host %w", err))
 	}
 
 	l1Data, err := DeployObscuroNetworkContracts(tmpEthClient, wallets, true)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("error deploying obscuro contract %w", err))
 	}
 
 	ethClients := make([]ethadapter.EthClient, nrNodes)
