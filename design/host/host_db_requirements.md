@@ -4,32 +4,63 @@ The current implementation uses the `ethdb.KeyValueStore` which provides fast ac
 querying capabilities required by Tenscan. We want to move to an SQL implementation similar to what the Enclave uses.
 
 ## Current Storage 
-| Data Type        | Key             | Value                                     |
-|------------------|-----------------|-------------------------------------------|
-| **Batch**        | Batch Hash      | Batch Header                              |
-| **Batch**        | Batch Hash      | Transaction Hashes                        |
-| **Batch**        | Batch Hash      | Batch Data                                |
-| **Batch**        | Batch Hash      | Transaction hashes belonging to the Batch |
-| **Block**        | L1 Block Hash   | L1 Block Header                           |
-| **Block**        | L1 Block Number | L1 Block Header                           |
-| **Rollup**       | L1 Block Hash   | Rollup Header                             |
-| **Rollup**       | Rollup Hash     | Rollup Header                             |
-| **Transactions** | Transactions    | Total number of transactions              |
+### Schema Keys
+```go
+var (
+	blockHeaderPrefix       = []byte("b")
+	blockNumberHeaderPrefix = []byte("bnh")
+	batchHeaderPrefix       = []byte("ba")
+	batchHashPrefix         = []byte("bh")
+	batchNumberPrefix       = []byte("bn")
+	batchPrefix             = []byte("bp")
+	batchHashForSeqNoPrefix = []byte("bs")
+	batchTxHashesPrefix     = []byte("bt")
+	headBatch               = []byte("hb")
+	totalTransactionsKey    = []byte("t")
+	rollupHeaderPrefix      = []byte("rh")
+	rollupHeaderBlockPrefix = []byte("rhb")
+	tipRollupHash           = []byte("tr")
+	blockHeadedAtTip        = []byte("bht")
+)
+```
+Some of the schema keys are dummy keys for entries where we only have one entry that is updated such as totals or tip 
+data. The rest of the schema keys are used as prefixes appended with the `byte[]` representation of the key.
+
+| Data Type        | Description                     | Schema    | Key                          | Value (Encoded)    |
+|------------------|---------------------------------|-----------|------------------------------|--------------------|
+| **Batch**        | Batch hash to headers           | ba        | BatchHeader.Hash()           | BatchHeader        |
+| **Batch**        | Batch hash to ExtBatch          | bp        | ExtBatch.Hash()              | ExtBatch           |
+| **Batch**        | Batch hash to TX hashes         | bt        | ExtBatch.Hash()              | ExtBatch.TxHashes  |
+| **Batch**        | Batch number to batch hash      | bh        | BatchHeader.Number           | BatchHeader.Hash() |
+| **Batch**        | Batch seq no to batch hash      | bs        | BatchHeader.SequencerOrderNo | BatchHeader.Hash() |
+| **Batch**        | TX hash to batch number         | bn        | ExtBatch.TxHashes[i]         | BatchHeader.Number |
+| **Batch**        | Head Batch                      | hb        | "hb"                         | ExtBatch.Hash()    |
+| **Block**        | L1 Block hash to block header   | b         | Header.Hash()                | Header             |
+| **Block**        | L1 Block height to block header | bnh       | Header.Number                | Header             |
+| **Block**        | Latest Block                    | bht       | "bht"                        | Header.Hash()      |
+| **Rollup**       | Rollup hash to header           | rh        | RollupHeader.Hash()          | RollupHeader       |
+| **Rollup**       | L1 Block hash to rollup header  | rhb       | L1Block.Hash()               | RollupHeader       |
+| **Rollup**       | Tip rollup header               |           | "tr"                         | RollupHeader       |
+| **Transactions** | Total number of transactions    |           | "t"                          | Int                |
 
 ## Tenscan Functionality Requirements
 
-### Supported
+#### Currently supported 
 * Return the list of batches in descending order 
 * Return the list of transactions within the batch (once decrypted)
 * Return the list of transactions in descending order 
 * Decrypt the encrypted TX blob
 
-### Not supported
+### Not currently supported
 * Return a list of rollups in descending order
 * Navigate to the L1 block on etherscan from the rollup
 * Return the list of batches within the rollup
 * Navigate from the transaction to the batch it was included in
 * Navigate from the batch to the rollup that it was included in
+
+### TODO Cross chain messaging data & mainnet vs testnet
+
+Will add these after quick in person meeting next week
 
 ## SQL Schema
 
