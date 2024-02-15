@@ -84,7 +84,7 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int, blockDurationSe
 		2,
 		2,
 		walletAddresses,
-		time.Minute,
+		2*time.Minute,
 	)
 
 	err = eth2Network.Start()

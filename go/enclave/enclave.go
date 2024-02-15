@@ -213,7 +213,7 @@ func NewEnclave(
 			blockchain,
 		)
 	} else {
-		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, config.SequencerID, storage, sigVerifier, logger)
+		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, config.SequencerID, storage, sigVerifier, mempool, logger)
 	}
 
 	chain := l2chain.NewChain(
@@ -473,9 +473,17 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 		return responses.ToInternalError(fmt.Errorf("requested SubmitBatch with the enclave stopping"))
 	}
 
-	core.LogMethodDuration(e.logger, measure.NewStopwatch(), "SubmitBatch call completed.", log.BatchHashKey, extBatch.Hash())
+	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "SubmitBatch call completed.", log.BatchHashKey, extBatch.Hash())
 
 	e.logger.Info("Received new p2p batch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
+	seqNo := extBatch.Header.SequencerOrderNo.Uint64()
+	if seqNo > common.L2GenesisSeqNo+1 {
+		_, err := e.storage.FetchBatchBySeqNo(seqNo - 1)
+		if err != nil {
+			return responses.ToInternalError(fmt.Errorf("could not find previous batch with seq: %d", seqNo-1))
+		}
+	}
+
 	batch, err := core.ToBatch(extBatch, e.dataEncryptionService, e.dataCompressionService)
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not convert batch. Cause: %w", err))
