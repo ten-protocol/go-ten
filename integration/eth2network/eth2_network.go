@@ -3,7 +3,6 @@ package eth2network
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -86,7 +85,7 @@ func NewEth2Network(
 	timeout time.Duration,
 ) Eth2Network {
 	// Build dirs are suffixed with a timestamp so multiple executions don't collide
-	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	timestamp := strconv.FormatInt(time.Now().UnixMicro(), 10)
 
 	// set the paths
 	buildDir := path.Join(basepath, "../.build/eth2", timestamp)
@@ -98,6 +97,11 @@ func NewEth2Network(
 	prysmBeaconBinaryPath := path.Join(binDir, _prysmBeaconChainFileNameVersion)
 	prysmBinaryPath := path.Join(binDir, _prysmCTLFileNameVersion)
 	prysmValidatorBinaryPath := path.Join(binDir, _prysmValidatorFileNameVersion)
+
+	// catch any issues due to folder collision early
+	if _, err := os.Stat(buildDir); err == nil {
+		panic(fmt.Sprintf("folder %s already exists", buildDir))
+	}
 
 	// Nodes logs and execution related files are written in the build folder
 	err := os.MkdirAll(buildDir, os.ModePerm)
@@ -322,15 +326,15 @@ func (n *Impl) Start() error {
 // Stop stops the network
 func (n *Impl) Stop() error {
 	for i := 0; i < len(n.dataDirs); i++ {
-		err := kill(n.gethProcesses[i].Process, 0)
+		err := kill(n.gethProcesses[i].Process)
 		if err != nil {
 			fmt.Printf("unable to kill geth node - %s\n", err.Error())
 		}
-		err = kill(n.prysmBeaconProcesses[i].Process, 0)
+		err = kill(n.prysmBeaconProcesses[i].Process)
 		if err != nil {
 			fmt.Printf("unable to kill prysm beacon node - %s\n", err.Error())
 		}
-		err = kill(n.prysmValidatorProcesses[i].Process, 0)
+		err = kill(n.prysmValidatorProcesses[i].Process)
 		if err != nil {
 			fmt.Printf("unable to kill prysm validator node - %s\n", err.Error())
 		}
@@ -340,17 +344,15 @@ func (n *Impl) Stop() error {
 	return nil
 }
 
-const maxTryKill = 5
-
-func kill(p *os.Process, cnt int) error {
-	if killErr := p.Kill(); killErr == nil {
-		return nil
-	} else if !errors.Is(killErr, os.ErrProcessDone) {
-		if cnt >= maxTryKill {
-			return killErr
-		}
-		time.Sleep(time.Second)
-		return kill(p, cnt+1)
+func kill(p *os.Process) error {
+	killErr := p.Kill()
+	if killErr != nil {
+		fmt.Printf("Error killing process %s", killErr)
+	}
+	time.Sleep(200 * time.Millisecond)
+	err := p.Release()
+	if err != nil {
+		fmt.Printf("Error releasing process %s", err)
 	}
 	return nil
 }
@@ -547,7 +549,7 @@ func (n *Impl) waitForNodeUp(nodeID int, timeout time.Duration) error {
 			return nil
 		}
 	}
-
+	fmt.Printf("Geth node error:\n%s", n.gethProcesses[nodeID].Stderr)
 	return fmt.Errorf("node not responsive after %s", timeout)
 }
 
