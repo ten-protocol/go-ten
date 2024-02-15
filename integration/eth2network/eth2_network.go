@@ -326,25 +326,16 @@ func (n *Impl) Start() error {
 // Stop stops the network
 func (n *Impl) Stop() error {
 	for i := 0; i < len(n.dataDirs); i++ {
-		err := kill(n.gethProcesses[i].Process)
-		if err != nil {
-			fmt.Printf("unable to kill geth node - %s\n", err.Error())
-		}
-		err = kill(n.prysmBeaconProcesses[i].Process)
-		if err != nil {
-			fmt.Printf("unable to kill prysm beacon node - %s\n", err.Error())
-		}
-		err = kill(n.prysmValidatorProcesses[i].Process)
-		if err != nil {
-			fmt.Printf("unable to kill prysm validator node - %s\n", err.Error())
-		}
+		kill(n.gethProcesses[i].Process)
+		kill(n.prysmBeaconProcesses[i].Process)
+		kill(n.prysmValidatorProcesses[i].Process)
 	}
 	// wait a second for the kill signal
 	time.Sleep(time.Second)
 	return nil
 }
 
-func kill(p *os.Process) error {
+func kill(p *os.Process) {
 	killErr := p.Kill()
 	if killErr != nil {
 		fmt.Printf("Error killing process %s", killErr)
@@ -354,7 +345,6 @@ func kill(p *os.Process) error {
 	if err != nil {
 		fmt.Printf("Error releasing process %s", err)
 	}
-	return nil
 }
 
 // GethGenesis returns the Genesis used in geth to boot up the network
