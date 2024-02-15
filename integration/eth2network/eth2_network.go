@@ -243,6 +243,7 @@ func (n *Impl) Start() error {
 			if err != nil {
 				panic(err)
 			}
+			time.Sleep(time.Second)
 		}()
 	}
 
