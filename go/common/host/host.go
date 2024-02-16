@@ -5,7 +5,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/config"
-	"github.com/ten-protocol/go-ten/go/host/db"
+	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"github.com/ten-protocol/go-ten/go/responses"
 )
 

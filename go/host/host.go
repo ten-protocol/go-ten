@@ -3,6 +3,7 @@ package host
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -20,7 +21,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
-	"github.com/ten-protocol/go-ten/go/host/db"
 	"github.com/ten-protocol/go-ten/go/host/events"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/go/wallet"

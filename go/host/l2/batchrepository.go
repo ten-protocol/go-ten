@@ -2,6 +2,7 @@ package l2
 
 import (
 	"errors"
+	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -13,7 +14,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/config"
-	"github.com/ten-protocol/go-ten/go/host/db"
 )
 
 const (

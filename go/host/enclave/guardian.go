@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"math/big"
 	"strings"
 	"sync"
@@ -22,7 +23,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
 	"github.com/ten-protocol/go-ten/go/config"
-	"github.com/ten-protocol/go-ten/go/host/db"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 )
 
