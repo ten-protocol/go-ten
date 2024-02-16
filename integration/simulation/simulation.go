@@ -61,9 +61,12 @@ func (s *Simulation) Start() {
 	s.bridgeFundingToObscuro()
 	s.trackLogs()              // Create log subscriptions, to validate that they're working correctly later.
 	s.prefundObscuroAccounts() // Prefund every L2 wallet
-	s.deployObscuroERC20s()    // Deploy the Obscuro HOC and POC ERC20 contracts
-	s.prefundL1Accounts()      // Prefund every L1 wallet
-	s.checkHealthStatus()      // Checks the nodes health status
+
+	// wait for the validator to become up to date
+	time.Sleep(1 * time.Second)
+	s.deployObscuroERC20s() // Deploy the Obscuro HOC and POC ERC20 contracts
+	s.prefundL1Accounts()   // Prefund every L1 wallet
+	s.checkHealthStatus()   // Checks the nodes health status
 
 	timer := time.Now()
 	fmt.Printf("Starting injection\n")
