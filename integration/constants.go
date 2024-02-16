@@ -3,7 +3,9 @@ package integration
 // Tracks the start ports handed out to different tests, in a bid to minimise conflicts.
 const (
 	StartPortEth2NetworkTests        = 10000
+	StartPortTenscanUnitTest         = 12000
 	StartPortNodeRunnerTest          = 14000
+	StartPortTenGatewayUnitTest      = 16000
 	StartPortSimulationGethInMem     = 18000
 	StartPortSimulationInMem         = 22000
 	StartPortSimulationFullNetwork   = 26000
@@ -13,8 +15,6 @@ const (
 	StartPortWalletExtensionUnitTest = 38000
 	StartPortFaucetUnitTest          = 42000
 	StartPortFaucetHTTPUnitTest      = 48000
-	StartPortTenscanUnitTest         = 12000
-	StartPortTenGatewayUnitTest      = 16000
 
 	DefaultGethWSPortOffset         = 100
 	DefaultGethAUTHPortOffset       = 200

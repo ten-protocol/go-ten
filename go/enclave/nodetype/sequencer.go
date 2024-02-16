@@ -141,7 +141,7 @@ func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 	// this is the actual first block produced in chain
 	err = s.blockchain.IngestNewBlock(batch)
 	if err != nil {
-		return fmt.Errorf("unable to remove ingest new block into eth blockchain - %w", err)
+		return fmt.Errorf("failed to feed batch into the virtual eth chain - %w", err)
 	}
 
 	// the mempool can only be started after at least 1 block is in the blockchain object
@@ -282,7 +282,7 @@ func (s *sequencer) produceBatch(
 	// add the batch to the chain so it can remove pending transactions from the pool
 	err = s.blockchain.IngestNewBlock(cb.Batch)
 	if err != nil {
-		return nil, fmt.Errorf("unable to remove tx from mempool - %w", err)
+		return nil, fmt.Errorf("failed to feed batch into the virtual eth chain - %w", err)
 	}
 
 	return cb, nil
