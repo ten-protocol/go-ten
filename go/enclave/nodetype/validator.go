@@ -113,7 +113,6 @@ func (val *obsValidator) ExecuteStoredBatches() error {
 			if err != nil {
 				return fmt.Errorf("unable to remove ingest new block into eth blockchain - %w", err)
 			}
-
 		}
 	}
 	return nil
