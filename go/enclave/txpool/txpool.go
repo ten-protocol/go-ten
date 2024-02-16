@@ -82,12 +82,12 @@ func (t *TxPool) Add(transaction *common.L2Tx) error {
 	return nil
 }
 
-//go:linkname validateTxBasics github.com/ethereum/go-ethereum/core/txpool/legacypool.(*LegacyPool).validateTxBasics
-func validateTxBasics(_ *legacypool.LegacyPool, _ *types.Transaction, _ bool) error
+//go:linkname validateTx github.com/ethereum/go-ethereum/core/txpool/legacypool.(*LegacyPool).validateTx
+func validateTx(_ *legacypool.LegacyPool, _ *types.Transaction, _ bool) error
 
 // Validate - run the underlying tx pool validation logic
 func (t *TxPool) Validate(tx *common.L2Tx) error {
-	return validateTxBasics(t.legacyPool, tx, false)
+	return validateTx(t.legacyPool, tx, false)
 }
 
 func (t *TxPool) Running() bool {
