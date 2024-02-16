@@ -25,7 +25,7 @@ type TxPool struct {
 	txPoolConfig legacypool.Config
 	legacyPool   *legacypool.LegacyPool
 	pool         *gethtxpool.TxPool
-	blockchain   *ethchainadapter.EthChainAdapter
+	Chain        *ethchainadapter.EthChainAdapter
 	gasTip       *big.Int
 	running      bool
 	logger       gethlog.Logger
@@ -37,7 +37,7 @@ func NewTxPool(blockchain *ethchainadapter.EthChainAdapter, gasTip *big.Int, log
 	legacyPool := legacypool.New(txPoolConfig, blockchain)
 
 	return &TxPool{
-		blockchain:   blockchain,
+		Chain:        blockchain,
 		txPoolConfig: txPoolConfig,
 		legacyPool:   legacyPool,
 		gasTip:       gasTip,
@@ -52,7 +52,7 @@ func (t *TxPool) Start() error {
 		return fmt.Errorf("tx pool already started")
 	}
 
-	memp, err := gethtxpool.New(t.gasTip, t.blockchain, []gethtxpool.SubPool{t.legacyPool})
+	memp, err := gethtxpool.New(t.gasTip, t.Chain, []gethtxpool.SubPool{t.legacyPool})
 	if err != nil {
 		return fmt.Errorf("unable to init geth tx pool - %w", err)
 	}

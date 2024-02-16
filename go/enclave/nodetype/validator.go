@@ -109,6 +109,11 @@ func (val *obsValidator) ExecuteStoredBatches() error {
 				return fmt.Errorf("could not store executed batch %s. Cause: %w", batch.Hash(), err)
 			}
 			val.batchRegistry.OnBatchExecuted(batch, receipts)
+			err = val.mempool.Chain.IngestNewBlock(batch)
+			if err != nil {
+				return fmt.Errorf("unable to remove ingest new block into eth blockchain - %w", err)
+			}
+
 		}
 	}
 	return nil

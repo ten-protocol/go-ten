@@ -63,7 +63,7 @@ func (s *Simulation) Start() {
 	s.prefundObscuroAccounts() // Prefund every L2 wallet
 
 	// wait for the validator to become up to date
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 	s.deployObscuroERC20s() // Deploy the Obscuro HOC and POC ERC20 contracts
 	s.prefundL1Accounts()   // Prefund every L1 wallet
 	s.checkHealthStatus()   // Checks the nodes health status
@@ -232,6 +232,7 @@ func (s *Simulation) deployObscuroERC20s() {
 			// 0x526c84529b2b8c11f57d93d3f5537aca3aecef9b - this is the address of the L2 contract which is currently hardcoded.
 			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), gethcommon.HexToAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b"))
 
+			fmt.Printf("Deploy contract from: %s\n", owner.Address().Hex())
 			deployContractTxData := types.DynamicFeeTx{
 				Nonce:     NextNonce(s.ctx, s.RPCHandles, owner),
 				Gas:       5_000_000,
@@ -246,12 +247,13 @@ func (s *Simulation) deployObscuroERC20s() {
 				panic(err)
 			}
 
-			err = s.RPCHandles.ObscuroWalletRndClient(owner).SendTransaction(s.ctx, signedTx)
+			rpc := s.RPCHandles.ObscuroWalletClient(owner.Address(), 1)
+			err = rpc.SendTransaction(s.ctx, signedTx)
 			if err != nil {
 				panic(err)
 			}
 
-			err = testcommon.AwaitReceipt(s.ctx, s.RPCHandles.ObscuroWalletRndClient(owner), signedTx.Hash(), s.Params.ReceiptTimeout)
+			err = testcommon.AwaitReceipt(s.ctx, rpc, signedTx.Hash(), s.Params.ReceiptTimeout)
 			if err != nil {
 				panic(fmt.Sprintf("ERC20 deployment transaction unsuccessful. Cause: %s", err))
 			}
