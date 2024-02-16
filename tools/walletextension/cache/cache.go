@@ -25,15 +25,15 @@ var cacheableRPCMethods = map[string]time.Duration{
 	"eth_chainId":              longCacheTTL,
 
 	// Ethereum JSON-RPC methods that can be cached short time
-	"eth_blockNumber":           shortCacheTTL,
-	"eth_getCode":               shortCacheTTL,
-	"eth_getBalance":            shortCacheTTL,
+	"eth_blockNumber": shortCacheTTL,
+	"eth_getCode":     shortCacheTTL,
+	// "eth_getBalance":            shortCacheTTL,// excluded for test: gen_cor_059
 	"eth_getTransactionReceipt": shortCacheTTL,
 	"eth_call":                  shortCacheTTL,
 	"eth_gasPrice":              shortCacheTTL,
-	"eth_getTransactionCount":   shortCacheTTL,
-	"eth_estimateGas":           shortCacheTTL,
-	"eth_feeHistory":            shortCacheTTL,
+	// "eth_getTransactionCount": shortCacheTTL, // excluded for test: gen_cor_009
+	"eth_estimateGas": shortCacheTTL,
+	"eth_feeHistory":  shortCacheTTL,
 }
 
 type Cache interface {
