@@ -2,7 +2,26 @@
 ---
 # Ten Testnet Change Log
 
-# Oct 2024-01-15 (v0.21.0)
+# Feb 2024-02-16 (v0.22.0)
+* Validator nodes now return errors on transaction submission. Previously, transactions that would fail validation were
+  accepted into the mempool of the validator without error (e.g. insufficient funds for a transfer, gas below the 
+  intrinsic gas limit etc). This change will mean that invalid transactions are rejected immediately. 
+* The Gateway now performs caching on RPC requests. For a list of the cached requests see the design proposal in 
+  go-ten/design/gateway/gateway_caching.md. Note that we expect the caching logic to change over time as we optimise
+  the user experience. 
+* A full list of the PRs merged in this release is as below;
+    * `5b5e7d98` Ten gateway caching (#1779)
+    * `7792864a` Adjust port offset (#1798)
+    * `1837bcc6` More flakiness fixes (#1795)
+    * `83469ca8` Validator nodes return error on tx submission (#1792)
+    * `aee40a81` Network tests: fix local run gas error (#1789)
+    * `337c8544` Improve multi-acct logic (#1793)
+    * `a5061634` Copy update (#1791)
+    * `4d79eea2` Tenscan: update api domain (#1790)
+    * `c83b965a` Contract deployers: configure signer for address publishing (#1676)
+    * `31e25322` Refactor the encryption/vk logic (#1769)
+  
+# Feb 2024-02-14 (v0.21.0)
 * A list of the PRs merged in this release is as below;
     * `cc3b1048` Upgrade oz libraries (#1707)
     * `0a573d75` Deploy scripts: enable debug api on upgrades (#1780)
@@ -84,7 +103,7 @@
     * `4551c81b` Enclave no panic for bad rlp format (#1679)
     * `fb50c7ba` Use the cached head block (#1678)
 
-# Oct 2023-12-01 (v0.20.0)
+# Dec 2023-12-01 (v0.20.0)
 * A list of the PRs merged in this release is as below;
   * `1433e41e` Tenscan updates (#1661)
   * `dc769561` Host rpc: use checksum format for contract addresses (#1674)
