@@ -25,7 +25,7 @@ type TxPool struct {
 	txPoolConfig legacypool.Config
 	legacyPool   *legacypool.LegacyPool
 	pool         *gethtxpool.TxPool
-	blockchain   *ethchainadapter.EthChainAdapter
+	Chain        *ethchainadapter.EthChainAdapter
 	gasTip       *big.Int
 	running      bool
 	logger       gethlog.Logger
@@ -37,7 +37,7 @@ func NewTxPool(blockchain *ethchainadapter.EthChainAdapter, gasTip *big.Int, log
 	legacyPool := legacypool.New(txPoolConfig, blockchain)
 
 	return &TxPool{
-		blockchain:   blockchain,
+		Chain:        blockchain,
 		txPoolConfig: txPoolConfig,
 		legacyPool:   legacyPool,
 		gasTip:       gasTip,
@@ -52,7 +52,7 @@ func (t *TxPool) Start() error {
 		return fmt.Errorf("tx pool already started")
 	}
 
-	memp, err := gethtxpool.New(t.gasTip, t.blockchain, []gethtxpool.SubPool{t.legacyPool})
+	memp, err := gethtxpool.New(t.gasTip, t.Chain, []gethtxpool.SubPool{t.legacyPool})
 	if err != nil {
 		return fmt.Errorf("unable to init geth tx pool - %w", err)
 	}
@@ -85,9 +85,19 @@ func (t *TxPool) Add(transaction *common.L2Tx) error {
 //go:linkname validateTxBasics github.com/ethereum/go-ethereum/core/txpool/legacypool.(*LegacyPool).validateTxBasics
 func validateTxBasics(_ *legacypool.LegacyPool, _ *types.Transaction, _ bool) error
 
+//go:linkname validateTx github.com/ethereum/go-ethereum/core/txpool/legacypool.(*LegacyPool).validateTx
+func validateTx(_ *legacypool.LegacyPool, _ *types.Transaction, _ bool) error
+
 // Validate - run the underlying tx pool validation logic
 func (t *TxPool) Validate(tx *common.L2Tx) error {
-	return validateTxBasics(t.legacyPool, tx, false)
+	// validate against the consensus rules
+	err := validateTxBasics(t.legacyPool, tx, false)
+	if err != nil {
+		return err
+	}
+
+	// validate against the state. Things like nonce, balance, etc
+	return validateTx(t.legacyPool, tx, false)
 }
 
 func (t *TxPool) Running() bool {
