@@ -85,7 +85,7 @@ func NewEth2Network(
 	timeout time.Duration,
 ) Eth2Network {
 	// Build dirs are suffixed with a timestamp so multiple executions don't collide
-	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	timestamp := strconv.FormatInt(time.Now().UnixMicro(), 10)
 
 	// set the paths
 	buildDir := path.Join(basepath, "../.build/eth2", timestamp)
@@ -97,6 +97,11 @@ func NewEth2Network(
 	prysmBeaconBinaryPath := path.Join(binDir, _prysmBeaconChainFileNameVersion)
 	prysmBinaryPath := path.Join(binDir, _prysmCTLFileNameVersion)
 	prysmValidatorBinaryPath := path.Join(binDir, _prysmValidatorFileNameVersion)
+
+	// catch any issues due to folder collision early
+	if _, err := os.Stat(buildDir); err == nil {
+		panic(fmt.Sprintf("folder %s already exists", buildDir))
+	}
 
 	// Nodes logs and execution related files are written in the build folder
 	err := os.MkdirAll(buildDir, os.ModePerm)
@@ -238,6 +243,7 @@ func (n *Impl) Start() error {
 			if err != nil {
 				panic(err)
 			}
+			time.Sleep(time.Second)
 		}()
 	}
 
@@ -245,7 +251,7 @@ func (n *Impl) Start() error {
 	for i := range n.dataDirs {
 		nodeID := i
 		eg.Go(func() error {
-			return n.waitForNodeUp(nodeID, 30*time.Second)
+			return n.waitForNodeUp(nodeID, time.Minute)
 		})
 	}
 	err = eg.Wait()
@@ -321,23 +327,25 @@ func (n *Impl) Start() error {
 // Stop stops the network
 func (n *Impl) Stop() error {
 	for i := 0; i < len(n.dataDirs); i++ {
-		err := n.gethProcesses[i].Process.Kill()
-		if err != nil {
-			fmt.Printf("unable to kill geth node - %s\n", err.Error())
-			return err
-		}
-		err = n.prysmBeaconProcesses[i].Process.Kill()
-		if err != nil {
-			fmt.Printf("unable to kill prysm beacon node - %s\n", err.Error())
-			return err
-		}
-		err = n.prysmValidatorProcesses[i].Process.Kill()
-		if err != nil {
-			fmt.Printf("unable to kill prysm validator node - %s\n", err.Error())
-			return err
-		}
+		kill(n.gethProcesses[i].Process)
+		kill(n.prysmBeaconProcesses[i].Process)
+		kill(n.prysmValidatorProcesses[i].Process)
 	}
+	// wait a second for the kill signal
+	time.Sleep(time.Second)
 	return nil
+}
+
+func kill(p *os.Process) {
+	killErr := p.Kill()
+	if killErr != nil {
+		fmt.Printf("Error killing process %s", killErr)
+	}
+	time.Sleep(200 * time.Millisecond)
+	err := p.Release()
+	if err != nil {
+		fmt.Printf("Error releasing process %s", err)
+	}
 }
 
 // GethGenesis returns the Genesis used in geth to boot up the network
@@ -532,7 +540,7 @@ func (n *Impl) waitForNodeUp(nodeID int, timeout time.Duration) error {
 			return nil
 		}
 	}
-
+	fmt.Printf("Geth node error:\n%s\n", n.gethProcesses[nodeID].Stderr)
 	return fmt.Errorf("node not responsive after %s", timeout)
 }
 

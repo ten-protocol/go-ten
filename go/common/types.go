@@ -76,6 +76,8 @@ type (
 	EncodedRollup       []byte
 	EncodedBatchMsg     []byte
 	EncodedBatchRequest []byte
+
+	EnclaveID = common.Address
 )
 
 func (txs L2PricedTransactions) ToTransactions() types.Transactions {
@@ -184,6 +186,9 @@ func (cf *ChainFork) IsFork() bool {
 }
 
 func (cf *ChainFork) String() string {
+	if cf == nil {
+		return ""
+	}
 	return fmt.Sprintf("ChainFork{NewCanonical: %s, OldCanonical: %s, CommonAncestor: %s, CanonicalPath: %s, NonCanonicalPath: %s}",
 		cf.NewCanonical.Hash(), cf.OldCanonical.Hash(), cf.CommonAncestor.Hash(), cf.CanonicalPath, cf.NonCanonicalPath)
 }

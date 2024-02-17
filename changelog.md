@@ -2,8 +2,54 @@
 ---
 # Ten Testnet Change Log
 
-# Oct 2024-01-15 (v0.21.0)
+# Feb 2024-02-16 (v0.22.0)
+* Validator nodes now return errors on transaction submission. Previously, transactions that would fail validation were
+  accepted into the mempool of the validator without error (e.g. insufficient funds for a transfer, gas below the 
+  intrinsic gas limit etc). This change will mean that invalid transactions are rejected immediately. 
+* The Gateway now performs caching on RPC requests. For a list of the cached requests see the design proposal in 
+  go-ten/design/gateway/gateway_caching.md. Note that we expect the caching logic to change over time as we optimise
+  the user experience. 
+* A full list of the PRs merged in this release is as below;
+    * `5b5e7d98` Ten gateway caching (#1779)
+    * `7792864a` Adjust port offset (#1798)
+    * `1837bcc6` More flakiness fixes (#1795)
+    * `83469ca8` Validator nodes return error on tx submission (#1792)
+    * `aee40a81` Network tests: fix local run gas error (#1789)
+    * `337c8544` Improve multi-acct logic (#1793)
+    * `a5061634` Copy update (#1791)
+    * `4d79eea2` Tenscan: update api domain (#1790)
+    * `c83b965a` Contract deployers: configure signer for address publishing (#1676)
+    * `31e25322` Refactor the encryption/vk logic (#1769)
+  
+# Feb 2024-02-14 (v0.21.0)
 * A list of the PRs merged in this release is as below;
+    * `cc3b1048` Upgrade oz libraries (#1707)
+    * `0a573d75` Deploy scripts: enable debug api on upgrades (#1780)
+    * `f8b3b76c` Geth: cherry pick emergency geth upgrade from release branch #1771 (#1772)
+    * `3da65b55` Upped batch size limit (#1775)
+    * `3322ad9e` Fix for desync issue (#1778)
+    * `7927b17e` Tweak caching (#1777)
+    * `9ae2825e` Add estimate optimisation that geth added (#1776)
+    * `22b397de` Logging: use terminal format with full hashes (#1770)
+    * `b69bb7f9` Introduce enclaveid as identifier (#1760)
+    * `6a7b5f54` Add maxdbpoolsize for edglessdb (#1767)
+    * `42d9a38b` Add basic file logging in the gateway (#1763)
+    * `634a5b79` Host: drop transactions received when enclave not ready (#1762)
+    * `26d7db4f` [ghaction] reorder deploy l2 jobs (#1758)
+    * `0789f261` Fix health indicator bug (#1759)
+    * `9c81010b` Add log-level to launcher + fix trace debug (#1757)
+    * `2019eac0` Use fast cspring for encrypting responses (#1753)
+    * `206dbffc` [gas mechanics] implement gas history; migrate to arbitrum gas model (#1714)
+    * `0fe01b4e` Mempool perf fix (#1752)
+    * `843d6cbb` 2 validators deploy (#1750)
+    * `dcf96c93` Ten gateway use http instead of ws (#1743)
+    * `b49b4c0d` Loggers: use log format rather than terminal format for files (#1751)
+    * `01980954` Remove old docs (#1749)
+    * `7f0ad72b` Refactor testnet status update  (#1748)
+    * `3ba9d7c2` Host: fix bug causing unnecessary multiplier on l1 gas fees (#1747)
+    * `bdce4a85` Statedb revert to snapshot for ignored batches (#1742)
+    * `16173af2` Update and simplify local testnet startup docs (#1745)
+    * `7c1ebad2` Update of prs so far for a v0.21 release (#1744)
     * `cdc02ebe` Adding batch timestamp to the public tx api (#1740)
     * `a41bff9e` Fix the enclave stream reconnect (#1741)
     * `f72e986c` Host: small cache of blocks by hash (#1738)
@@ -57,7 +103,7 @@
     * `4551c81b` Enclave no panic for bad rlp format (#1679)
     * `fb50c7ba` Use the cached head block (#1678)
 
-# Oct 2023-12-01 (v0.20.0)
+# Dec 2023-12-01 (v0.20.0)
 * A list of the PRs merged in this release is as below;
   * `1433e41e` Tenscan updates (#1661)
   * `dc769561` Host rpc: use checksum format for contract addresses (#1674)

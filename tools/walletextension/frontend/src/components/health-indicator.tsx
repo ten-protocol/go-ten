@@ -1,18 +1,17 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Badge, badgeVariants } from "./ui/badge";
 import useGatewayService from "@/services/useGatewayService";
 import { Skeleton } from "./ui/skeleton";
 
 const HealthIndicator = () => {
   const { getTestnetStatus } = useGatewayService();
-  const [loading, setLoading] = React.useState(false);
-  const [status, setStatus] = React.useState<boolean>();
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<boolean>();
 
   const testnetStatus = async () => {
     setLoading(true);
     try {
       const status = await getTestnetStatus();
-
       return status;
     } catch (error) {
       console.error(error);
@@ -31,7 +30,9 @@ const HealthIndicator = () => {
       if (isMounted) {
         if (res?.result?.OverallHealth) {
           setStatus(true);
-        } else if (res?.result?.Errors?.includes("[p2p]")) {
+        } else if (
+          res?.result?.Errors?.some((e: string) => e.includes("[p2p]"))
+        ) {
           setStatus(true);
         } else {
           setStatus(false);

@@ -4,9 +4,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/go/rpc"
 
@@ -52,10 +54,10 @@ func CreateEncClient(
 	address := gethcommon.BytesToAddress(addressBytes)
 
 	vk := &viewingkey.ViewingKey{
-		Account:    &address,
-		PrivateKey: privateKey,
-		PublicKey:  PrivateKeyToCompressedPubKey(privateKey),
-		Signature:  signature,
+		Account:                 &address,
+		PrivateKey:              privateKey,
+		PublicKey:               PrivateKeyToCompressedPubKey(privateKey),
+		SignatureWithAccountKey: signature,
 	}
 	encClient, err := rpc.NewEncNetworkClient(hostRPCBindAddr, vk, logger)
 	if err != nil {
@@ -77,4 +79,21 @@ func (r *RPCRequest) Clone() *RPCRequest {
 		Method: r.Method,
 		Params: r.Params,
 	}
+}
+
+// NewFileLogger is a logger factory function
+func NewFileLogger() gethlog.Logger {
+	// Open or create your log file
+	file, err := os.OpenFile("gateway_logs.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create a new logger instance
+	logger := gethlog.New()
+
+	// Set the handler to the file
+	logger.SetHandler(gethlog.StreamHandler(file, log.TenLogFormat()))
+
+	return logger
 }

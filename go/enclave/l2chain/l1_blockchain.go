@@ -61,8 +61,7 @@ func NewL1Blockchain(genesisJSON []byte, logger gethlog.Logger) *core.BlockChain
 
 func createTrie(db ethdb.Database, cacheConfig *core.CacheConfig) *trie.Database {
 	// Open trie database with provided config
-	return trie.NewDatabaseWithConfig(db, &trie.Config{
-		Cache:     cacheConfig.TrieCleanLimit,
+	return trie.NewDatabase(db, &trie.Config{
 		Preimages: cacheConfig.Preimages,
 	})
 }

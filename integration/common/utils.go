@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/params"
 
@@ -69,14 +71,14 @@ func AwaitReceiptEth(ctx context.Context, client *ethclient.Client, txHash gethc
 	var err error
 	startTime := time.Now()
 
-	fmt.Println("Fetching receipt for tx: ", txHash.Hex())
+	testlog.Logger().Info("Fetching receipt for tx: ", "tx", txHash.Hex())
 	err = retry.Do(func() error {
 		receipt, err = client.TransactionReceipt(ctx, txHash)
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			// we only retry for a nil "not found" response. This is a different error, so we bail out of the retry loop
 			return retry.FailFast(err)
 		}
-		fmt.Println("No tx receipt after: ", time.Since(startTime))
+		testlog.Logger().Info("No tx receipt after: ", "time", time.Since(startTime))
 		return err
 	}, retry.NewTimeoutStrategy(timeout, _awaitReceiptPollingInterval))
 	if err != nil {
@@ -97,6 +99,7 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 	txHashes := make([]gethcommon.Hash, len(wallets))
 	for idx, w := range wallets {
 		destAddr := w.Address()
+		fmt.Printf("L2 prefund: %s\n", destAddr.Hex())
 		txData := &types.LegacyTx{
 			Nonce:    startingNonce + uint64(idx),
 			Value:    alloc,
@@ -158,7 +161,7 @@ func InteractWithSmartContract(client *ethclient.Client, wallet wallet.Wallet, c
 		return nil, err
 	}
 
-	txReceipt, err := AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 2*time.Second)
+	txReceipt, err := AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 10*time.Second)
 	if err != nil {
 		return nil, err
 	}

@@ -34,7 +34,8 @@ const (
 	// The relevant fields in an eth_call request's params.
 	callFieldTo                   = "to"
 	CallFieldFrom                 = "from"
-	callFieldData                 = "data"
+	callFieldData                 = "data" // this field was renamed in geth CallMsg to 'input' but we need to support both
+	callFieldInput                = "input"
 	callFieldValue                = "value"
 	callFieldGas                  = "gas"
 	callFieldNonce                = "nonce"
@@ -106,8 +107,8 @@ func ExtractEthCallMapString(paramBytes interface{}) (map[string]string, error) 
 			callMsg[callFieldTo] = valString
 		case CallFieldFrom:
 			callMsg[CallFieldFrom] = valString
-		case callFieldData:
-			callMsg[callFieldData] = valString
+		case callFieldData, callFieldInput:
+			callMsg[callFieldInput] = valString
 		case callFieldValue:
 			callMsg[callFieldValue] = valString
 		case callFieldGas:
@@ -204,7 +205,7 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 		case CallFieldFrom:
 			fromVal := gethcommon.HexToAddress(valString)
 			from = &fromVal
-		case callFieldData:
+		case callFieldData, callFieldInput:
 			dataVal, err := hexutil.Decode(valString)
 			if err != nil {
 				return nil, fmt.Errorf("could not decode data in CallMsg - %w", err)
@@ -357,41 +358,6 @@ func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(b *core.Batch) (*typ
 	}
 	// cast the correct local structure to the standard geth block.
 	return (*types.Block)(unsafe.Pointer(&lb)), nil
-}
-
-// DecodeParamBytes decodes the parameters byte array into a slice of interfaces
-// Helps each calling method to manage the positional data
-func DecodeParamBytes(paramBytes []byte) ([]interface{}, error) {
-	var paramList []interface{}
-
-	if err := json.Unmarshal(paramBytes, &paramList); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal params - %w", err)
-	}
-	return paramList, nil
-}
-
-// ExtractViewingKey returns the viewingkey pubkey and the signature from the request
-func ExtractViewingKey(vkBytesIntf interface{}) ([]byte, []byte, error) {
-	vkBytesList, ok := vkBytesIntf.([]interface{})
-	if !ok {
-		return nil, nil, fmt.Errorf("unable to cast the vk to []interface")
-	}
-
-	if len(vkBytesList) != 2 {
-		return nil, nil, fmt.Errorf("wrong size of viewing key params")
-	}
-
-	vkPubkeyHexBytes, err := hexutil.Decode(vkBytesList[0].(string))
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not decode data in vk pub key - %w", err)
-	}
-
-	accountSignatureHexBytes, err := hexutil.Decode(vkBytesList[1].(string))
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not decode data in vk signature - %w", err)
-	}
-
-	return vkPubkeyHexBytes, accountSignatureHexBytes, nil
 }
 
 func ExtractPrivateCustomQuery(_ interface{}, query interface{}) (*common.PrivateCustomQueryListTransactions, error) {

@@ -2,17 +2,21 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 
 import "./Structs.sol";
 import * as MessageBus from "../messaging/MessageBus.sol";
 
-contract ManagementContract is Ownable, Initializable {
+contract ManagementContract is Initializable, OwnableUpgradeable {
+
+    using MessageHashUtils for bytes32;
+    using MessageHashUtils for bytes;
 
     constructor() {
-       // _disableInitializers(); //todo @siliev - figure out why the solidity compiler can't find this. Perhaps OZ needs a version upgrade?
+      //  _disableInitializers();
+        _transferOwnership(msg.sender);
     }
 
     event LogManagementContractCreated(address messageBusAddress);
@@ -42,6 +46,7 @@ contract ManagementContract is Ownable, Initializable {
     //The messageBus where messages can be sent to Obscuro
     MessageBus.IMessageBus public messageBus;
     function initialize() public initializer {
+        __Ownable_init(msg.sender);
         lastBatchSeqNo = 0;
         messageBus = new MessageBus.MessageBus();
         emit LogManagementContractCreated(address(messageBus));
@@ -113,15 +118,16 @@ contract ManagementContract is Ownable, Initializable {
         require(isAggAttested);
 
         if (verifyAttester) {
+            
             // the data must be signed with by the correct private key
             // signature = f(PubKey, PrivateKey, message)
             // address = f(signature, message)
             // valid if attesterID = address
-            bytes32 calculatedHashSigned = ECDSA.toEthSignedMessageHash(abi.encodePacked(attesterID, requesterID, hostAddress, responseSecret));
+            bytes32 calculatedHashSigned = abi.encodePacked(attesterID, requesterID, hostAddress, responseSecret).toEthSignedMessageHash();
             address recoveredAddrSignedCalculated = ECDSA.recover(calculatedHashSigned, attesterSig);
 
-        require(recoveredAddrSignedCalculated == attesterID, "calculated address and attesterID dont match");
-        }
+            require(recoveredAddrSignedCalculated == attesterID, "calculated address and attesterID dont match");
+        } 
 
         // mark the requesterID aggregator as an attested aggregator and store its host address
         attested[requesterID] = true;

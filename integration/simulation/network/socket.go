@@ -120,7 +120,8 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 			if errCheck != nil {
 				testlog.Logger().Warn("no port found on error", log.ErrKey, err)
 			}
-			testlog.Logger().Crit("unable to start obscuro node ", log.ErrKey, err)
+			fmt.Printf("unable to start obscuro node: %s", err)
+			testlog.Logger().Error("unable to start obscuro node ", log.ErrKey, err)
 		}
 	}
 

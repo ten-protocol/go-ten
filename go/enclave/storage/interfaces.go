@@ -89,7 +89,7 @@ type SharedSecretStorage interface {
 
 type TransactionStorage interface {
 	// GetTransaction - returns the positional metadata of the tx by hash
-	GetTransaction(txHash common.L2TxHash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error)
+	GetTransaction(txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error)
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
 	GetTransactionReceipt(txHash common.L2TxHash) (*types.Receipt, error)
 	// GetReceiptsByBatchHash retrieves the receipts for all transactions in a given rollup.
@@ -114,8 +114,8 @@ type CrossChainMessagesStorage interface {
 }
 
 type EnclaveKeyStorage interface {
-	StoreEnclaveKey(enclaveKey *ecdsa.PrivateKey) error
-	GetEnclaveKey() (*ecdsa.PrivateKey, error)
+	StoreEnclaveKey(enclaveKey *crypto.EnclaveKey) error
+	GetEnclaveKey() (*crypto.EnclaveKey, error)
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore

@@ -182,11 +182,14 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 
 	syntheticTransactions := append(xchainTxs, freeTransactions...)
 
+	// fromTxIndex - Here we start from the 0 index. This will be the same for a validator.
 	successfulTxs, excludedTxs, txReceipts, err := executor.processTransactions(batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
 
+	// fromTxIndex - Here we start from the len of the successful transactions; As long as we have the exact same successful transactions in a batch,
+	// we will start from the same place.
 	ccSuccessfulTxs, _, ccReceipts, err := executor.processTransactions(batch, len(successfulTxs), syntheticTransactions, stateDB, context.ChainConfig, true)
 	if err != nil {
 		return nil, err
