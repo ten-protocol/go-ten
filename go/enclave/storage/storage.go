@@ -95,9 +95,9 @@ func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, 
 
 	// todo (tudor) figure out the config
 	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 10_000,  // number of keys to track frequency of.
-		MaxCost:     1 << 30, // maximum cost of cache (1GB).
-		BufferItems: 64,      // number of keys per Get buffer.
+		NumCounters: 20_000, // 10*MaxCost
+		MaxCost:     2000,   // - how many items to cache
+		BufferItems: 64,     // number of keys per Get buffer.
 	})
 	if err != nil {
 		logger.Crit("Could not initialise ristretto cache", log.ErrKey, err)
