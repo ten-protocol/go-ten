@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 
 	// unsafe package imported in order to link to a private function in go-ethereum.
 	// This allows us to validate transactions against the tx pool rules.
@@ -28,6 +29,7 @@ type TxPool struct {
 	Chain        *ethchainadapter.EthChainAdapter
 	gasTip       *big.Int
 	running      bool
+	stateMutex   sync.Mutex
 	logger       gethlog.Logger
 }
 
@@ -41,6 +43,7 @@ func NewTxPool(blockchain *ethchainadapter.EthChainAdapter, gasTip *big.Int, log
 		txPoolConfig: txPoolConfig,
 		legacyPool:   legacyPool,
 		gasTip:       gasTip,
+		stateMutex:   sync.Mutex{},
 		logger:       logger,
 	}, nil
 }
@@ -96,6 +99,8 @@ func (t *TxPool) Validate(tx *common.L2Tx) error {
 		return err
 	}
 
+	t.stateMutex.Lock()
+	defer t.stateMutex.Unlock()
 	// validate against the state. Things like nonce, balance, etc
 	return validateTx(t.legacyPool, tx, false)
 }
