@@ -99,7 +99,6 @@ func (w *WalletExtension) Logger() gethlog.Logger {
 
 // ProxyEthRequest proxys an incoming user request to the enclave
 func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userconn.UserConn, hexUserID string) (map[string]interface{}, error) {
-
 	response := map[string]interface{}{}
 	// all responses must contain the request id. Both successful and unsuccessful.
 	response[common.JSONKeyRPCVersion] = jsonrpc.Version
