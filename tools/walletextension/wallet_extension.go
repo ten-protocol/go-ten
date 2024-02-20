@@ -99,6 +99,11 @@ func (w *WalletExtension) Logger() gethlog.Logger {
 
 // ProxyEthRequest proxys an incoming user request to the enclave
 func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userconn.UserConn, hexUserID string) (map[string]interface{}, error) {
+	response := map[string]interface{}{}
+	// all responses must contain the request id. Both successful and unsuccessful.
+	response[common.JSONKeyRPCVersion] = jsonrpc.Version
+	response[common.JSONKeyID] = request.ID
+
 	// start measuring time for request
 	requestStartTime := time.Now()
 
@@ -111,14 +116,11 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 			requestEndTime := time.Now()
 			duration := requestEndTime.Sub(requestStartTime)
 			w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, value, duration.Milliseconds()))
+			// adjust requestID
+			value[common.JSONKeyID] = request.ID
 			return value, nil
 		}
 	}
-
-	response := map[string]interface{}{}
-	// all responses must contain the request id. Both successful and unsuccessful.
-	response[common.JSONKeyRPCVersion] = jsonrpc.Version
-	response[common.JSONKeyID] = request.ID
 
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
 	var rpcResp interface{}
