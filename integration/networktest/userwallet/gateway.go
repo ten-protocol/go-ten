@@ -138,7 +138,7 @@ func (g *GatewayUser) SignTransactionForChainID(tx types.TxData, chainID *big.In
 	return types.SignNewTx(g.privateKey, types.NewLondonSigner(chainID), tx)
 }
 
-func (g *GatewayUser) SetNonce(nonce uint64) {
+func (g *GatewayUser) SetNonce(_ uint64) {
 	panic("GatewayUser is designed to manage its own nonce - this method exists to support legacy interface methods")
 }
 
