@@ -18,7 +18,7 @@ type SendNativeFunds struct {
 	GasLimit   *big.Int
 	SkipVerify bool
 
-	user   *userwallet.UserWallet
+	user   userwallet.User
 	txHash *common.Hash
 }
 

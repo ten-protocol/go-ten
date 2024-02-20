@@ -9,6 +9,8 @@ import (
 
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/simulation/network"
+	gatewaycfg "github.com/ten-protocol/go-ten/tools/walletextension/config"
+	"github.com/ten-protocol/go-ten/tools/walletextension/container"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 
@@ -23,6 +25,12 @@ import (
 	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/networktest"
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
+)
+
+const (
+	// these ports were picked arbitrarily, if we want plan to use these tests on CI we need to use ports in the constants.go file
+	_gwHTTPPort = 11180
+	_gwWSPort   = 11181
 )
 
 var _defaultFaucetAmount = big.NewInt(750_000_000_000_000)
@@ -46,12 +54,22 @@ type InMemDevNetwork struct {
 	// - if it is nil when `Start()` is called then Obscuro contracts will be deployed on the L1
 	l1SetupData *params.L1SetupData
 
-	obscuroConfig     ObscuroConfig
-	obscuroSequencer  *InMemNodeOperator
-	obscuroValidators []*InMemNodeOperator
+	obscuroConfig       ObscuroConfig
+	obscuroSequencer    *InMemNodeOperator
+	obscuroValidators   []*InMemNodeOperator
+	tenGatewayContainer *container.WalletExtensionContainer
 
-	faucet     *userwallet.UserWallet
+	tenGatewayEnabled bool
+
+	faucet     userwallet.User
 	faucetLock sync.Mutex
+}
+
+func (s *InMemDevNetwork) GetGatewayURL() (string, error) {
+	if !s.tenGatewayEnabled {
+		return "", fmt.Errorf("ten gateway not enabled")
+	}
+	return fmt.Sprintf("http://localhost:%d", _gwHTTPPort), nil
 }
 
 func (s *InMemDevNetwork) GetMCOwnerWallet() (wallet.Wallet, error) {
@@ -88,12 +106,12 @@ func (s *InMemDevNetwork) AllocateFaucetFunds(ctx context.Context, account gethc
 
 func (s *InMemDevNetwork) SequencerRPCAddress() string {
 	seq := s.GetSequencerNode()
-	return seq.HostRPCAddress()
+	return seq.HostRPCWSAddress()
 }
 
 func (s *InMemDevNetwork) ValidatorRPCAddress(idx int) string {
 	val := s.GetValidatorNode(idx)
-	return val.HostRPCAddress()
+	return val.HostRPCWSAddress()
 }
 
 // GetL1Client returns the first client we have for our local L1 network
@@ -129,10 +147,16 @@ func (s *InMemDevNetwork) Start() {
 	}
 	fmt.Println("Starting obscuro nodes")
 	s.startNodes()
+
+	if s.tenGatewayEnabled {
+		s.startTenGateway()
+	}
+	// sleep to allow the nodes to start
+	time.Sleep(10 * time.Second)
 }
 
-func (s *InMemDevNetwork) DeployL1StandardContracts() {
-	// todo (@matt) - separate out L1 contract deployment from the geth network setup to give better sim control
+func (s *InMemDevNetwork) GetGatewayClient() (ethadapter.EthClient, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 func (s *InMemDevNetwork) startNodes() {
@@ -162,6 +186,37 @@ func (s *InMemDevNetwork) startNodes() {
 	s.faucet = userwallet.NewUserWallet(s.networkWallets.L2FaucetWallet.PrivateKey(), s.SequencerRPCAddress(), s.logger)
 }
 
+func (s *InMemDevNetwork) startTenGateway() {
+	validator := s.GetValidatorNode(0)
+	validatorHTTP := validator.HostRPCHTTPAddress()
+	// remove http:// prefix for the gateway config
+	validatorHTTP = validatorHTTP[len("http://"):]
+	validatorWS := validator.HostRPCWSAddress()
+	// remove ws:// prefix for the gateway config
+	validatorWS = validatorWS[len("ws://"):]
+	cfg := gatewaycfg.Config{
+		WalletExtensionHost:     "127.0.0.1",
+		WalletExtensionPortHTTP: _gwHTTPPort,
+		WalletExtensionPortWS:   _gwWSPort,
+		NodeRPCHTTPAddress:      validatorHTTP,
+		NodeRPCWebsocketAddress: validatorWS,
+		LogPath:                 "sys_out",
+		VerboseFlag:             false,
+		DBType:                  "sqlite",
+		TenChainID:              integration.TenChainID,
+	}
+	tenGWContainer := container.NewWalletExtensionContainerFromConfig(cfg, s.logger)
+	go func() {
+		fmt.Println("Starting Ten Gateway")
+		err := tenGWContainer.Start()
+		if err != nil {
+			s.logger.Error("failed to start ten gateway", "err", err)
+			panic(err)
+		}
+		s.tenGatewayContainer = tenGWContainer
+	}()
+}
+
 func (s *InMemDevNetwork) CleanUp() {
 	for _, v := range s.obscuroValidators {
 		go func(v networktest.NodeOperator) {
@@ -178,6 +233,9 @@ func (s *InMemDevNetwork) CleanUp() {
 		}
 	}()
 	go s.l1Network.CleanUp()
+	if s.tenGatewayContainer != nil {
+		go s.tenGatewayContainer.Stop()
+	}
 
 	s.logger.Info("Waiting for servers to stop.")
 	time.Sleep(3 * time.Second)

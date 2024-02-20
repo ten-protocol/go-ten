@@ -12,7 +12,8 @@ import (
 )
 
 type CreateTestUser struct {
-	UserID int
+	UserID     int
+	UseGateway bool
 }
 
 func (c *CreateTestUser) String() string {
@@ -21,9 +22,22 @@ func (c *CreateTestUser) String() string {
 
 func (c *CreateTestUser) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 	logger := testlog.Logger()
+
 	wal := datagenerator.RandomWallet(integration.TenChainID)
-	// traffic sim users are round robin-ed onto the validators for now (todo (@matt) - make that overridable)
-	user := userwallet.NewUserWallet(wal.PrivateKey(), network.ValidatorRPCAddress(c.UserID%network.NumValidators()), logger)
+	var user userwallet.User
+	if c.UseGateway {
+		gwURL, err := network.GetGatewayURL()
+		if err != nil {
+			return ctx, fmt.Errorf("failed to get required gateway URL: %w", err)
+		}
+		user, err = userwallet.NewGatewayUser(wal.PrivateKey(), gwURL, logger)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to create gateway user: %w", err)
+		}
+	} else {
+		// traffic sim users are round robin-ed onto the validators for now (todo (@matt) - make that overridable)
+		user = userwallet.NewUserWallet(wal.PrivateKey(), network.ValidatorRPCAddress(c.UserID%network.NumValidators()), logger)
+	}
 	return storeTestUser(ctx, c.UserID, user), nil
 }
 
@@ -64,24 +78,4 @@ func CreateAndFundTestUsers(numUsers int) *MultiAction {
 	newUserActions = append(newUserActions, SetContextValue(KeyNumberOfTestUsers, numUsers))
 	newUserActions = append(newUserActions, SnapshotUserBalances(SnapAfterAllocation))
 	return Series(newUserActions...)
-}
-
-func AuthenticateAllUsers() networktest.Action {
-	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
-		numUsers, err := FetchNumberOfTestUsers(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("expected number of test users to be set on the context")
-		}
-		for i := 0; i < numUsers; i++ {
-			user, err := FetchTestUser(ctx, i)
-			if err != nil {
-				return nil, err
-			}
-			err = user.ResetClient(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("unable to (re)authenticate client %d - %w", i, err)
-			}
-		}
-		return ctx, nil
-	})
 }

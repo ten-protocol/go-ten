@@ -32,19 +32,21 @@ type testnetConnector struct {
 	validatorRPCAddresses []string
 	faucetHTTPAddress     string
 	l1RPCURL              string
-	faucetWallet          *userwallet.UserWallet
+	tenGatewayURL         string
+	faucetWallet          userwallet.User
 }
 
-func NewTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string, l1WSURL string) networktest.NetworkConnector {
+func NewTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string, l1WSURL string, tenGatewayURL string) networktest.NetworkConnector {
 	return &testnetConnector{
 		seqRPCAddress:         seqRPCAddr,
 		validatorRPCAddresses: validatorRPCAddressses,
 		faucetHTTPAddress:     faucetHTTPAddress,
 		l1RPCURL:              l1WSURL,
+		tenGatewayURL:         tenGatewayURL,
 	}
 }
 
-func NewTestnetConnectorWithFaucetAccount(seqRPCAddr string, validatorRPCAddressses []string, faucetPK string, l1RPCAddress string) networktest.NetworkConnector {
+func NewTestnetConnectorWithFaucetAccount(seqRPCAddr string, validatorRPCAddressses []string, faucetPK string, l1RPCAddress string, tenGatewayURL string) networktest.NetworkConnector {
 	ecdsaKey, err := crypto.HexToECDSA(faucetPK)
 	if err != nil {
 		panic(err)
@@ -54,6 +56,7 @@ func NewTestnetConnectorWithFaucetAccount(seqRPCAddr string, validatorRPCAddress
 		validatorRPCAddresses: validatorRPCAddressses,
 		faucetWallet:          userwallet.NewUserWallet(ecdsaKey, validatorRPCAddressses[0], testlog.Logger(), userwallet.WithChainID(big.NewInt(integration.TenChainID))),
 		l1RPCURL:              l1RPCAddress,
+		tenGatewayURL:         tenGatewayURL,
 	}
 }
 
@@ -130,4 +133,15 @@ func (t *testnetConnector) AllocateFaucetFundsWithWallet(ctx context.Context, ac
 
 func (t *testnetConnector) GetMCOwnerWallet() (wallet.Wallet, error) {
 	return nil, errors.New("testnet connector environments cannot access the MC owner wallet")
+}
+
+func (t *testnetConnector) GetGatewayClient() (ethadapter.EthClient, error) {
+	if t.tenGatewayURL == "" {
+		return nil, errors.New("gateway client not set for this environment")
+	}
+	return ethadapter.NewEthClientFromURL(t.tenGatewayURL, time.Minute, gethcommon.Address{}, testlog.Logger())
+}
+
+func (t *testnetConnector) GetGatewayURL() (string, error) {
+	return t.tenGatewayURL, nil
 }
