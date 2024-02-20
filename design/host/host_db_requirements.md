@@ -174,4 +174,9 @@ would make deployment simpler as the scripts are already there. Main benefits of
 * Supports a large number of concurrent connections 
 
 Postgres would be the obvious other alternative but given it is favoured for advanced data types, complex queries and 
-geospatial capabilities, it doesn't offer us any benefit for this use case over MariaDB. 
+geospatial capabilities, it doesn't offer us any benefit for this use case over MariaDB.
+
+## Cross Chain Messages
+
+We want to display L2 > L1 and L1 > L2 transaction data. We will expose an API to retrieve these and the implementation
+for retrieving the data will either be via subscriptions to the events API or we will store them in the database. TBC   

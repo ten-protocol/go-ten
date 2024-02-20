@@ -37,3 +37,20 @@ create table if not exists batch
     );
 create index IDX_BATCH_HASH on batch (hash);
 create index IDX_BATCH_HEIGHT on batch (height);
+
+create table if not exists tx
+(
+    hash           binary(16) primary key,
+    full_hash      binary(32) NOT NULL,
+    content        mediumblob NOT NULL,
+    sender_address binary(20) NOT NULL,
+    nonce          int        NOT NULL,
+    idx            int        NOT NULL,
+    body           int REFERENCES batch_body
+    );
+
+create table if not exists transaction_count
+(
+    id          int  NOT NULL primary key,
+    count       int  NOT NULL
+);

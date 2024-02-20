@@ -1,18 +1,18 @@
 package host
 
 import (
+	"database/sql"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/config"
-	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"github.com/ten-protocol/go-ten/go/responses"
 )
 
 // Host is the half of the Obscuro node that lives outside the enclave.
 type Host interface {
 	Config() *config.HostConfig
-	DB() *db.DB
+	DB() *sql.DB
 	EnclaveClient() common.Enclave
 
 	// Start initializes the main loop of the host.

@@ -30,6 +30,11 @@ type BlockListingResponse struct {
 	Total      uint64
 }
 
+type RollupListingResponse struct {
+	BlocksData []PublicRollup
+	Total      uint64
+}
+
 type PublicTransaction struct {
 	TransactionHash TxHash
 	BatchHeight     *big.Int
@@ -38,8 +43,17 @@ type PublicTransaction struct {
 }
 
 type PublicBatch struct {
-	BatchHeader
-	TxHashes []TxHash `json:"txHashes"`
+	SequencerOrderNo *big.Int              `json:"sequence"`
+	Hash             []byte                `json:"hash"`
+	FullHash         common.Hash           `json:"fullHash"`
+	Height           *big.Int              `json:"height"`
+	TxCount          *big.Int              `json:"txCount"`
+	Header           *BatchHeader          `json:"header"`
+	EncryptedTxBlob  EncryptedTransactions `json:"encryptedTxBlob"`
+}
+
+type PublicRollup struct {
+	//FIXME
 }
 
 type PublicBlock struct {

@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/host"
+	hostdb "github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -30,7 +31,8 @@ func (s *ScanAPI) GetTotalContractCount() (*big.Int, error) {
 
 // GetTotalTransactionCount returns the number of recorded transactions on the network.
 func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
-	return s.host.DB().GetTotalTransactions()
+
+	return s.host.EnclaveClient().GetTotalTransactionCount()
 }
 
 func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {
@@ -42,13 +44,13 @@ func (s *ScanAPI) GetPublicTransactionData(pagination *common.QueryPagination) (
 }
 
 func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
-	return s.host.DB().GetBatchListing(pagination)
+	return hostdb.GetBatchListing(s.host.DB(), pagination)
 }
 
 func (s *ScanAPI) GetBatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
-	return s.host.DB().GetBatch(hash)
+	return hostdb.GetBatch(s.host.DB(), hash)
 }
 
-func (s *ScanAPI) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
-	return s.host.DB().GetBlockListing(pagination)
+func (s *ScanAPI) GetRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
+	panic("implement me")
 }
