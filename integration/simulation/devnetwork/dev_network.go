@@ -234,7 +234,12 @@ func (s *InMemDevNetwork) CleanUp() {
 	}()
 	go s.l1Network.CleanUp()
 	if s.tenGatewayContainer != nil {
-		go s.tenGatewayContainer.Stop()
+		go func() {
+			err := s.tenGatewayContainer.Stop()
+			if err != nil {
+				fmt.Println("failed to stop ten gateway", err.Error())
+			}
+		}()
 	}
 
 	s.logger.Info("Waiting for servers to stop.")
