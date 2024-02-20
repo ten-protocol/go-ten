@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -27,7 +28,7 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 func (n *ContractDeployer) Start() error {
 	fmt.Printf("Starting L2 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
 
-	cmds := []string{"npx"}
+	cmds := []string{"/bin/sh"}
 	var ports []int
 
 	// inspect stops operation until debugger is hooked on port 9229 if debug is enabled
@@ -36,9 +37,11 @@ func (n *ContractDeployer) Start() error {
 		ports = append(ports, 9229)
 	}
 
-	cmds = append(cmds, "hardhat", "obscuro:deploy", "--network", "layer2")
+	cmds = append(cmds, "/home/obscuro/go-obscuro/entrypoint.sh", "obscuro:deploy", "--network", "layer2")
 
 	envs := map[string]string{
+		"L2_HOST":               n.cfg.l2Host,
+		"L2_PORT":               strconv.Itoa(n.cfg.l2Port),
 		"PREFUND_FAUCET_AMOUNT": n.cfg.faucetPrefundAmount,
 		"MGMT_CONTRACT_ADDRESS": n.cfg.managementContractAddress,
 		"MESSAGE_BUS_ADDRESS":   n.cfg.messageBusAddress,
