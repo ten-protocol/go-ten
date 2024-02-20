@@ -23,9 +23,9 @@ const (
 	_receiptPollInterval = 1 * time.Second // todo (@matt) this should be configured using network timings provided by env
 )
 
-// authClientUser is a test user that uses the auth client to talk to directly to a node
-// Note: authClientUser is **not** thread-safe for a single wallet (creates nonce conflicts etc.)
-type authClientUser struct {
+// AuthClientUser is a test user that uses the auth client to talk to directly to a node
+// Note: AuthClientUser is **not** thread-safe for a single wallet (creates nonce conflicts etc.)
+type AuthClientUser struct {
 	privateKey     *ecdsa.PrivateKey
 	publicKey      *ecdsa.PublicKey
 	accountAddress gethcommon.Address
@@ -39,16 +39,16 @@ type authClientUser struct {
 	logger gethlog.Logger
 }
 
-// Option modifies a authClientUser. See below for options, in the form `WithXxx(xxx)` that can be chained into constructor
-type Option func(wallet *authClientUser)
+// Option modifies a AuthClientUser. See below for options, in the form `WithXxx(xxx)` that can be chained into constructor
+type Option func(wallet *AuthClientUser)
 
-func NewUserWallet(pk *ecdsa.PrivateKey, rpcEndpoint string, logger gethlog.Logger, opts ...Option) *authClientUser {
+func NewUserWallet(pk *ecdsa.PrivateKey, rpcEndpoint string, logger gethlog.Logger, opts ...Option) *AuthClientUser {
 	publicKeyECDSA, ok := pk.Public().(*ecdsa.PublicKey)
 	if !ok {
 		// this shouldn't happen
 		logger.Crit("error casting public key to ECDSA")
 	}
-	wal := &authClientUser{
+	wal := &AuthClientUser{
 		privateKey:     pk,
 		publicKey:      publicKeyECDSA,
 		accountAddress: crypto.PubkeyToAddress(*publicKeyECDSA),
@@ -63,7 +63,7 @@ func NewUserWallet(pk *ecdsa.PrivateKey, rpcEndpoint string, logger gethlog.Logg
 	return wal
 }
 
-func (s *authClientUser) SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int) (*gethcommon.Hash, error) {
+func (s *AuthClientUser) SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int) (*gethcommon.Hash, error) {
 	err := s.EnsureClientSetup(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to prepare client to send funds - %w", err)
@@ -84,7 +84,7 @@ func (s *authClientUser) SendFunds(ctx context.Context, addr gethcommon.Address,
 	return txHash, nil
 }
 
-func (s *authClientUser) SendTransaction(ctx context.Context, tx types.TxData) (*gethcommon.Hash, error) {
+func (s *AuthClientUser) SendTransaction(ctx context.Context, tx types.TxData) (*gethcommon.Hash, error) {
 	signedTx, err := s.SignTransaction(tx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to sign transaction - %w", err)
@@ -101,7 +101,7 @@ func (s *authClientUser) SendTransaction(ctx context.Context, tx types.TxData) (
 	return &txHash, nil
 }
 
-func (s *authClientUser) AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash) (*types.Receipt, error) {
+func (s *AuthClientUser) AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash) (*types.Receipt, error) {
 	var receipt *types.Receipt
 	var err error
 	err = retry.Do(func() error {
@@ -115,23 +115,23 @@ func (s *authClientUser) AwaitReceipt(ctx context.Context, txHash *gethcommon.Ha
 	return receipt, err
 }
 
-func (s *authClientUser) Address() gethcommon.Address {
+func (s *AuthClientUser) Address() gethcommon.Address {
 	return s.accountAddress
 }
 
-func (s *authClientUser) SignTransaction(tx types.TxData) (*types.Transaction, error) {
+func (s *AuthClientUser) SignTransaction(tx types.TxData) (*types.Transaction, error) {
 	return s.SignTransactionForChainID(tx, s.chainID)
 }
 
-func (s *authClientUser) SignTransactionForChainID(tx types.TxData, chainID *big.Int) (*types.Transaction, error) {
+func (s *AuthClientUser) SignTransactionForChainID(tx types.TxData, chainID *big.Int) (*types.Transaction, error) {
 	return types.SignNewTx(s.privateKey, types.NewLondonSigner(chainID), tx)
 }
 
-func (s *authClientUser) GetNonce() uint64 {
+func (s *AuthClientUser) GetNonce() uint64 {
 	return s.nonce
 }
 
-func (s *authClientUser) PrivateKey() *ecdsa.PrivateKey {
+func (s *AuthClientUser) PrivateKey() *ecdsa.PrivateKey {
 	return s.privateKey
 }
 
@@ -139,21 +139,21 @@ func (s *authClientUser) PrivateKey() *ecdsa.PrivateKey {
 // These methods allow the user to comply with the wallet.Wallet interface
 //
 
-func (s *authClientUser) ChainID() *big.Int {
+func (s *AuthClientUser) ChainID() *big.Int {
 	return s.chainID
 }
 
-func (s *authClientUser) SetNonce(_ uint64) {
-	panic("authClientUser is designed to manage its own nonce - this method exists to support legacy interface methods")
+func (s *AuthClientUser) SetNonce(_ uint64) {
+	panic("AuthClientUser is designed to manage its own nonce - this method exists to support legacy interface methods")
 }
 
-func (s *authClientUser) GetNonceAndIncrement() uint64 {
-	panic("authClientUser is designed to manage its own nonce - this method exists to support legacy interface methods")
+func (s *AuthClientUser) GetNonceAndIncrement() uint64 {
+	panic("AuthClientUser is designed to manage its own nonce - this method exists to support legacy interface methods")
 }
 
 // EnsureClientSetup creates an authenticated RPC client (with a viewing key generated, signed and registered) when first called
 // Also fetches current nonce value.
-func (s *authClientUser) EnsureClientSetup(ctx context.Context) error {
+func (s *AuthClientUser) EnsureClientSetup(ctx context.Context) error {
 	if s.client != nil {
 		// client already setup
 		return nil
@@ -174,7 +174,7 @@ func (s *authClientUser) EnsureClientSetup(ctx context.Context) error {
 	return nil
 }
 
-func (s *authClientUser) NativeBalance(ctx context.Context) (*big.Int, error) {
+func (s *AuthClientUser) NativeBalance(ctx context.Context) (*big.Int, error) {
 	err := s.EnsureClientSetup(ctx)
 	if err != nil {
 		return nil, err
@@ -183,7 +183,7 @@ func (s *authClientUser) NativeBalance(ctx context.Context) (*big.Int, error) {
 }
 
 // Init forces VK setup: currently the faucet http server requires a viewing key for a wallet to even *receive* funds :(
-func (s *authClientUser) Init(ctx context.Context) (*authClientUser, error) {
+func (s *AuthClientUser) Init(ctx context.Context) (*AuthClientUser, error) {
 	return s, s.EnsureClientSetup(ctx)
 }
 
@@ -192,7 +192,7 @@ func (s *authClientUser) Init(ctx context.Context) (*authClientUser, error) {
 // NewUserWallet(pk, rpcAddr, logger, WithChainId(123), WithRPCTimeout(20*time.Second)), )
 
 func WithChainID(chainID *big.Int) Option {
-	return func(wallet *authClientUser) {
+	return func(wallet *AuthClientUser) {
 		wallet.chainID = chainID
 	}
 }

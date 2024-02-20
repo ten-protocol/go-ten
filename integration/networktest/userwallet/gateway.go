@@ -20,7 +20,7 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
 )
 
-type gatewayUser struct {
+type GatewayUser struct {
 	privateKey     *ecdsa.PrivateKey
 	publicKey      *ecdsa.PublicKey
 	accountAddress gethcommon.Address
@@ -35,7 +35,7 @@ type gatewayUser struct {
 	logger gethlog.Logger
 }
 
-func NewGatewayUser(pk *ecdsa.PrivateKey, gatewayURL string, logger gethlog.Logger) (*gatewayUser, error) {
+func NewGatewayUser(pk *ecdsa.PrivateKey, gatewayURL string, logger gethlog.Logger) (*GatewayUser, error) {
 	publicKeyECDSA, ok := pk.Public().(*ecdsa.PublicKey)
 	if !ok {
 		// this shouldn't happen
@@ -60,7 +60,7 @@ func NewGatewayUser(pk *ecdsa.PrivateKey, gatewayURL string, logger gethlog.Logg
 
 	fmt.Printf("Registered acc with TenGateway: %s (%s)\n", crypto.PubkeyToAddress(*publicKeyECDSA).Hex(), gwLib.HTTP())
 
-	wal := &gatewayUser{
+	wal := &GatewayUser{
 		privateKey:     pk,
 		publicKey:      publicKeyECDSA,
 		accountAddress: crypto.PubkeyToAddress(*publicKeyECDSA),
@@ -73,7 +73,7 @@ func NewGatewayUser(pk *ecdsa.PrivateKey, gatewayURL string, logger gethlog.Logg
 	return wal, nil
 }
 
-func (g *gatewayUser) SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int) (*gethcommon.Hash, error) {
+func (g *GatewayUser) SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int) (*gethcommon.Hash, error) {
 	txData := &types.LegacyTx{
 		Nonce: g.nonce,
 		Value: value,
@@ -101,10 +101,12 @@ func (g *gatewayUser) SendFunds(ctx context.Context, addr gethcommon.Address, va
 		return nil, fmt.Errorf("unable to send transaction - %w", err)
 	}
 	txHash := signedTx.Hash()
+	// transaction has been sent, we increment the nonce
+	g.nonce++
 	return &txHash, nil
 }
 
-func (g *gatewayUser) AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash) (*types.Receipt, error) {
+func (g *GatewayUser) AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash) (*types.Receipt, error) {
 	var receipt *types.Receipt
 	var err error
 	err = retry.Do(func() error {
@@ -120,38 +122,38 @@ func (g *gatewayUser) AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash)
 	return receipt, nil
 }
 
-func (g *gatewayUser) NativeBalance(ctx context.Context) (*big.Int, error) {
+func (g *GatewayUser) NativeBalance(ctx context.Context) (*big.Int, error) {
 	return g.client.BalanceAt(ctx, g.accountAddress, nil)
 }
 
-func (g *gatewayUser) Address() gethcommon.Address {
+func (g *GatewayUser) Address() gethcommon.Address {
 	return g.accountAddress
 }
 
-func (g *gatewayUser) SignTransaction(tx types.TxData) (*types.Transaction, error) {
+func (g *GatewayUser) SignTransaction(tx types.TxData) (*types.Transaction, error) {
 	return g.SignTransactionForChainID(tx, g.chainID)
 }
 
-func (g *gatewayUser) SignTransactionForChainID(tx types.TxData, chainID *big.Int) (*types.Transaction, error) {
+func (g *GatewayUser) SignTransactionForChainID(tx types.TxData, chainID *big.Int) (*types.Transaction, error) {
 	return types.SignNewTx(g.privateKey, types.NewLondonSigner(chainID), tx)
 }
 
-func (g *gatewayUser) SetNonce(nonce uint64) {
-	panic("gatewayUser is designed to manage its own nonce - this method exists to support legacy interface methods")
+func (g *GatewayUser) SetNonce(nonce uint64) {
+	panic("GatewayUser is designed to manage its own nonce - this method exists to support legacy interface methods")
 }
 
-func (g *gatewayUser) GetNonceAndIncrement() uint64 {
-	panic("gatewayUser is designed to manage its own nonce - this method exists to support legacy interface methods")
+func (g *GatewayUser) GetNonceAndIncrement() uint64 {
+	panic("GatewayUser is designed to manage its own nonce - this method exists to support legacy interface methods")
 }
 
-func (g *gatewayUser) GetNonce() uint64 {
+func (g *GatewayUser) GetNonce() uint64 {
 	return g.nonce
 }
 
-func (g *gatewayUser) ChainID() *big.Int {
+func (g *GatewayUser) ChainID() *big.Int {
 	return g.chainID
 }
 
-func (g *gatewayUser) PrivateKey() *ecdsa.PrivateKey {
+func (g *GatewayUser) PrivateKey() *ecdsa.PrivateKey {
 	return g.privateKey
 }
