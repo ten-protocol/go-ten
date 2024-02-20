@@ -2,7 +2,7 @@
 ---
 # Ten Testnet Change Log
 
-# Feb 2024-02-16 (v0.22.0)
+# Feb 2024-02-20 (v0.22.0)
 * Validator nodes now return errors on transaction submission. Previously, transactions that would fail validation were
   accepted into the mempool of the validator without error (e.g. insufficient funds for a transfer, gas below the 
   intrinsic gas limit etc). This change will mean that invalid transactions are rejected immediately. 
