@@ -15,9 +15,8 @@ import (
 //
 // This abstraction allows us to use the same tests for both types of users
 type User interface {
+	Wallet() wallet.Wallet
 	SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int) (*gethcommon.Hash, error)
 	AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash) (*types.Receipt, error)
 	NativeBalance(ctx context.Context) (*big.Int, error)
-	SignTransaction(tx types.TxData) (*types.Transaction, error)
-	wallet.Wallet
 }

@@ -2,7 +2,6 @@ package userwallet
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"math/big"
@@ -11,20 +10,16 @@ import (
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
 	"github.com/ten-protocol/go-ten/go/rpc"
-	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
 )
 
 type GatewayUser struct {
-	privateKey     *ecdsa.PrivateKey
-	publicKey      *ecdsa.PublicKey
-	accountAddress gethcommon.Address
-	chainID        *big.Int
+	wal wallet.Wallet
 
 	gwLib  *lib.TGLib // TenGateway utility
 	client *ethclient.Client
@@ -35,20 +30,14 @@ type GatewayUser struct {
 	logger gethlog.Logger
 }
 
-func NewGatewayUser(pk *ecdsa.PrivateKey, gatewayURL string, logger gethlog.Logger) (*GatewayUser, error) {
-	publicKeyECDSA, ok := pk.Public().(*ecdsa.PublicKey)
-	if !ok {
-		// this shouldn't happen
-		logger.Crit("error casting public key to ECDSA")
-	}
-
+func NewGatewayUser(wal wallet.Wallet, gatewayURL string, logger gethlog.Logger) (*GatewayUser, error) {
 	gwLib := lib.NewTenGatewayLibrary(gatewayURL, "") // not providing wsURL for now, add if we need it
 
 	err := gwLib.Join()
 	if err != nil {
 		return nil, fmt.Errorf("failed to join TenGateway: %w", err)
 	}
-	err = gwLib.RegisterAccount(pk, crypto.PubkeyToAddress(*publicKeyECDSA))
+	err = gwLib.RegisterAccount(wal.PrivateKey(), wal.Address())
 	if err != nil {
 		return nil, fmt.Errorf("failed to register account with TenGateway: %w", err)
 	}
@@ -58,19 +47,14 @@ func NewGatewayUser(pk *ecdsa.PrivateKey, gatewayURL string, logger gethlog.Logg
 		return nil, fmt.Errorf("failed to dial TenGateway HTTP: %w", err)
 	}
 
-	fmt.Printf("Registered acc with TenGateway: %s (%s)\n", crypto.PubkeyToAddress(*publicKeyECDSA).Hex(), gwLib.HTTP())
+	fmt.Printf("Registered acc with TenGateway: %s (%s)\n", wal.Address(), gwLib.HTTP())
 
-	wal := &GatewayUser{
-		privateKey:     pk,
-		publicKey:      publicKeyECDSA,
-		accountAddress: crypto.PubkeyToAddress(*publicKeyECDSA),
-		chainID:        big.NewInt(integration.TenChainID),
-		gwLib:          gwLib,
-		client:         client,
-		logger:         logger,
-	}
-
-	return wal, nil
+	return &GatewayUser{
+		wal:    wal,
+		gwLib:  gwLib,
+		client: client,
+		logger: logger,
+	}, nil
 }
 
 func (g *GatewayUser) SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int) (*gethcommon.Hash, error) {
@@ -85,14 +69,14 @@ func (g *GatewayUser) SendFunds(ctx context.Context, addr gethcommon.Address, va
 	}
 	txData.GasPrice = gasPrice
 	gasLimit, err := g.client.EstimateGas(ctx, ethereum.CallMsg{
-		From: g.accountAddress,
+		From: g.wal.Address(),
 		To:   &addr,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to estimate gas - %w", err)
 	}
 	txData.Gas = gasLimit
-	signedTx, err := g.SignTransaction(txData)
+	signedTx, err := g.wal.SignTransaction(txData)
 	if err != nil {
 		return nil, fmt.Errorf("unable to sign transaction - %w", err)
 	}
@@ -123,37 +107,9 @@ func (g *GatewayUser) AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash)
 }
 
 func (g *GatewayUser) NativeBalance(ctx context.Context) (*big.Int, error) {
-	return g.client.BalanceAt(ctx, g.accountAddress, nil)
+	return g.client.BalanceAt(ctx, g.wal.Address(), nil)
 }
 
-func (g *GatewayUser) Address() gethcommon.Address {
-	return g.accountAddress
-}
-
-func (g *GatewayUser) SignTransaction(tx types.TxData) (*types.Transaction, error) {
-	return g.SignTransactionForChainID(tx, g.chainID)
-}
-
-func (g *GatewayUser) SignTransactionForChainID(tx types.TxData, chainID *big.Int) (*types.Transaction, error) {
-	return types.SignNewTx(g.privateKey, types.NewLondonSigner(chainID), tx)
-}
-
-func (g *GatewayUser) SetNonce(_ uint64) {
-	panic("GatewayUser is designed to manage its own nonce - this method exists to support legacy interface methods")
-}
-
-func (g *GatewayUser) GetNonceAndIncrement() uint64 {
-	panic("GatewayUser is designed to manage its own nonce - this method exists to support legacy interface methods")
-}
-
-func (g *GatewayUser) GetNonce() uint64 {
-	return g.nonce
-}
-
-func (g *GatewayUser) ChainID() *big.Int {
-	return g.chainID
-}
-
-func (g *GatewayUser) PrivateKey() *ecdsa.PrivateKey {
-	return g.privateKey
+func (g *GatewayUser) Wallet() wallet.Wallet {
+	return g.wal
 }

@@ -30,13 +30,13 @@ func (c *CreateTestUser) Run(ctx context.Context, network networktest.NetworkCon
 		if err != nil {
 			return ctx, fmt.Errorf("failed to get required gateway URL: %w", err)
 		}
-		user, err = userwallet.NewGatewayUser(wal.PrivateKey(), gwURL, logger)
+		user, err = userwallet.NewGatewayUser(wal, gwURL, logger)
 		if err != nil {
 			return ctx, fmt.Errorf("failed to create gateway user: %w", err)
 		}
 	} else {
 		// traffic sim users are round robin-ed onto the validators for now (todo (@matt) - make that overridable)
-		user = userwallet.NewUserWallet(wal.PrivateKey(), network.ValidatorRPCAddress(c.UserID%network.NumValidators()), logger)
+		user = userwallet.NewUserWallet(wal, network.ValidatorRPCAddress(c.UserID%network.NumValidators()), logger)
 	}
 	return storeTestUser(ctx, c.UserID, user), nil
 }
@@ -58,7 +58,7 @@ func (a *AllocateFaucetFunds) Run(ctx context.Context, network networktest.Netwo
 	if err != nil {
 		return ctx, err
 	}
-	return ctx, network.AllocateFaucetFunds(ctx, user.Address())
+	return ctx, network.AllocateFaucetFunds(ctx, user.Wallet().Address())
 }
 
 func (a *AllocateFaucetFunds) Verify(_ context.Context, _ networktest.NetworkConnector) error {

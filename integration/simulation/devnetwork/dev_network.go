@@ -183,7 +183,7 @@ func (s *InMemDevNetwork) startNodes() {
 			}
 		}(v)
 	}
-	s.faucet = userwallet.NewUserWallet(s.networkWallets.L2FaucetWallet.PrivateKey(), s.SequencerRPCAddress(), s.logger)
+	s.faucet = userwallet.NewUserWallet(s.networkWallets.L2FaucetWallet, s.SequencerRPCAddress(), s.logger)
 }
 
 func (s *InMemDevNetwork) startTenGateway() {

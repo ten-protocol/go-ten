@@ -51,10 +51,11 @@ func NewTestnetConnectorWithFaucetAccount(seqRPCAddr string, validatorRPCAddress
 	if err != nil {
 		panic(err)
 	}
+	wal := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.TenChainID), ecdsaKey, testlog.Logger())
 	return &testnetConnector{
 		seqRPCAddress:         seqRPCAddr,
 		validatorRPCAddresses: validatorRPCAddressses,
-		faucetWallet:          userwallet.NewUserWallet(ecdsaKey, validatorRPCAddressses[0], testlog.Logger(), userwallet.WithChainID(big.NewInt(integration.TenChainID))),
+		faucetWallet:          userwallet.NewUserWallet(wal, validatorRPCAddressses[0], testlog.Logger()),
 		l1RPCURL:              l1RPCAddress,
 		tenGatewayURL:         tenGatewayURL,
 	}
