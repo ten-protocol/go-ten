@@ -1,8 +1,8 @@
 package enclave
 
 import (
+	"database/sql"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"math/big"
 	"strings"
 	"sync"
@@ -56,7 +56,7 @@ type Guardian struct {
 	enclaveClient common.Enclave
 
 	sl guardianServiceLocator
-	db *db.DB
+	db *sql.DB
 
 	submitDataLock sync.Mutex // we only submit one block, batch or transaction to enclave at a time
 
@@ -74,7 +74,7 @@ type Guardian struct {
 	enclaveID        *common.EnclaveID
 }
 
-func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
+func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *sql.DB, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
 	return &Guardian{
 		hostData:         hostData,
 		state:            NewStateTracker(logger),

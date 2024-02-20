@@ -1,16 +1,16 @@
 package host
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/go/host/l2"
 
 	"github.com/ten-protocol/go-ten/go/host/enclave"
 	"github.com/ten-protocol/go-ten/go/host/l1"
+	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/naoina/toml"
@@ -39,7 +39,7 @@ type host struct {
 	// ignore incoming requests
 	stopControl *stopcontrol.StopControl
 
-	db *db.DB // Stores the host's publicly-available data
+	db *sql.DB // Stores the host's publicly-available data
 
 	logger gethlog.Logger
 
@@ -50,7 +50,7 @@ type host struct {
 }
 
 func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
-	database, err := db.CreateDBFromConfig(config, regMetrics, logger)
+	database, err := storage.CreateDBFromConfig(config, logger)
 	if err != nil {
 		logger.Crit("unable to create database for host", log.ErrKey, err)
 	}
@@ -131,7 +131,7 @@ func (h *host) Config() *config.HostConfig {
 	return h.config
 }
 
-func (h *host) DB() *db.DB {
+func (h *host) DB() *sql.DB {
 	return h.db
 }
 

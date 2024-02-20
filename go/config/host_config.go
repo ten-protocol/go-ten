@@ -191,8 +191,11 @@ type HostConfig struct {
 	LogPath string
 	// Whether the host should use in-memory or persistent storage
 	UseInMemoryDB bool
-	// filepath for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable, or if using InMemory DB)
-	LevelDBPath string
+	// Host address for Maria DB instance (can be empty if using InMemory DB or if attestation is disabled)
+	MariaDBHost string
+	// filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or
+	// if using InMemory DB)
+	SqliteDBPath string
 
 	//////
 	// NODE NETWORKING

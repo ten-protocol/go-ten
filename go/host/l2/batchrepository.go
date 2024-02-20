@@ -1,8 +1,8 @@
 package l2
 
 import (
+	"database/sql"
 	"errors"
-	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -36,7 +36,7 @@ type Repository struct {
 	subscribers []host.L2BatchHandler
 
 	sl          batchRepoServiceLocator
-	db          *db.DB
+	db          *sql.DB
 	isSequencer bool
 
 	// high watermark for batch sequence numbers seen so far. If we can't find batch for seq no < this, then we should ask peers for missing batches
@@ -54,7 +54,7 @@ type Repository struct {
 	logger  gethlog.Logger
 }
 
-func NewBatchRepository(cfg *config.HostConfig, hostService batchRepoServiceLocator, database *db.DB, logger gethlog.Logger) *Repository {
+func NewBatchRepository(cfg *config.HostConfig, hostService batchRepoServiceLocator, database *sql.DB, logger gethlog.Logger) *Repository {
 	return &Repository{
 		sl:               hostService,
 		db:               database,

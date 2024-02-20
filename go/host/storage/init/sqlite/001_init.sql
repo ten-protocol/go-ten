@@ -28,6 +28,7 @@ create table if not exists batch_body
 create table if not exists batch
 (
     sequence       int primary key,
+    full_hash      binary(32) NOT NULL,
     hash           binary(16) NOT NULL unique,
     height         int        NOT NULL,
     tx_count       int        NOT NULL,

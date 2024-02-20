@@ -4,8 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
-
 	"github.com/ten-protocol/go-ten/go/common/storage/database/init/sqlite"
 	"github.com/ten-protocol/go-ten/go/enclave/storage/init/edgelessdb"
 
@@ -22,39 +20,29 @@ func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (*sql.DB,
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
 		// this creates a temporary sqlite sqldb
-		return sqlite.CreateTemporarySQLiteHostDB(cfg.HostID.String(), "mode=memory&cache=shared&_foreign_keys=on", logger, "001_init.sql")
+		return sqlite.CreateTemporarySQLiteHostDB(cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", logger, "001_init.sql")
 	}
 
 	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
-	logger.Info(fmt.Sprintf("Preparing Edgeless DB connection to %s...", cfg.EdgelessDBHost))
-	return nil, err
-	//return getEdgelessDB(cfg, logger)
+	logger.Info(fmt.Sprintf("Preparing Edgeless DB connection to %s...", cfg.MariaDBHost))
+	return getMariaDBHost(cfg, logger)
 }
 
 // validateDBConf high-level checks that you have a valid configuration for DB creation
 func validateDBConf(cfg *config.HostConfig) error {
-	if cfg.UseInMemoryDB && cfg.EdgelessDBHost != "" {
-		return fmt.Errorf("invalid db config, useInMemoryDB=true so EdgelessDB host not expected, but EdgelessDBHost=%s", cfg.EdgelessDBHost)
-	}
-	if !cfg.WillAttest && cfg.EdgelessDBHost != "" {
-		return fmt.Errorf("invalid db config, willAttest=false so EdgelessDB host not supported, but EdgelessDBHost=%s", cfg.EdgelessDBHost)
-	}
-	if !cfg.UseInMemoryDB && cfg.WillAttest && cfg.EdgelessDBHost == "" {
-		return fmt.Errorf("useInMemoryDB=false, willAttest=true so expected an EdgelessDB host but none was provided")
+	if cfg.UseInMemoryDB && cfg.MariaDBHost != "" {
+		return fmt.Errorf("invalid db config, useInMemoryDB=true so MariaDB host not expected, but MariaDBHost=%s", cfg.MariaDBHost)
 	}
 	if cfg.SqliteDBPath != "" && cfg.UseInMemoryDB {
 		return fmt.Errorf("useInMemoryDB=true so sqlite database will not be used and no path is needed, but sqliteDBPath=%s", cfg.SqliteDBPath)
 	}
-	if cfg.SqliteDBPath != "" && cfg.WillAttest {
-		return fmt.Errorf("willAttest=true so sqlite database will not be used and no path is needed, but sqliteDBPath=%s", cfg.SqliteDBPath)
-	}
 	return nil
 }
 
-func getEdgelessDB(cfg *config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
-	if cfg.EdgelessDBHost == "" {
-		return nil, fmt.Errorf("failed to prepare EdgelessDB connection - EdgelessDBHost was not set on enclave config")
+func getMariaDBHost(cfg *config.HostConfig, logger gethlog.Logger) (*sql.DB, error) {
+	if cfg.MariaDBHost == "" {
+		return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
 	}
-	dbConfig := edgelessdb.Config{Host: cfg.EdgelessDBHost}
+	dbConfig := edgelessdb.Config{Host: cfg.MariaDBHost}
 	return edgelessdb.Connector(&dbConfig, logger)
 }
