@@ -108,7 +108,7 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 	requestStartTime := time.Now()
 
 	// Check if the request is in the cache
-	isCacheable, key, ttl := cache.IsCacheable(request)
+	isCacheable, key, ttl := cache.IsCacheable(request, hexUserID)
 
 	// in case of cache hit return the response from the cache
 	if isCacheable {
