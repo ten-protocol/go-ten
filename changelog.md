@@ -10,6 +10,15 @@
   go-ten/design/gateway/gateway_caching.md. Note that we expect the caching logic to change over time as we optimise
   the user experience. 
 * A full list of the PRs merged in this release is as below;
+    * `038f6a64` Cache fixes for e2e tests (#1803)
+    * `b70a894d` Update ten's visual identity (#1797)
+    * `1782b623` Update ten's visual identity (#1796)
+    * `ada2d2c1` Concurrency fix (#1802)
+    * `6eda211d` Chore(contracts): a bit of proofreading (#1754)
+    * `2ab4fc3e` Tweak cache params (#1801)
+    * `3a74586b` Change mempool validation function (#1800)
+    * `597cf0ec` Change log for the v0.22 release (#1799)
+    * `a2a080aa` Gateway caching proposal (#1773)
     * `5b5e7d98` Ten gateway caching (#1779)
     * `7792864a` Adjust port offset (#1798)
     * `1837bcc6` More flakiness fixes (#1795)
