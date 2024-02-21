@@ -200,9 +200,14 @@ func (n *InMemNodeOperator) Stop() error {
 	return nil
 }
 
-func (n *InMemNodeOperator) HostRPCAddress() string {
+func (n *InMemNodeOperator) HostRPCWSAddress() string {
 	hostPort := n.config.PortStart + integration.DefaultHostRPCWSOffset + n.operatorIdx
 	return fmt.Sprintf("ws://%s:%d", network.Localhost, hostPort)
+}
+
+func (n *InMemNodeOperator) HostRPCHTTPAddress() string {
+	hostPort := n.config.PortStart + integration.DefaultHostRPCHTTPOffset + n.operatorIdx
+	return fmt.Sprintf("http://%s:%d", network.Localhost, hostPort)
 }
 
 func (n *InMemNodeOperator) StopEnclave() error {

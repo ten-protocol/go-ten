@@ -141,7 +141,7 @@ func (w *waitForValidatorHealthCheckAction) Run(ctx context.Context, network net
 	validator := network.GetValidatorNode(w.validatorIdx)
 	// poll the health check until success or timeout
 	err := retry.Do(func() error {
-		return networktest.NodeHealthCheck(validator.HostRPCAddress())
+		return networktest.NodeHealthCheck(validator.HostRPCWSAddress())
 	}, retry.NewTimeoutStrategy(w.maxWait, 1*time.Second))
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func WaitForSequencerHealthCheck(maxWait time.Duration) networktest.Action {
 		sequencer := network.GetSequencerNode()
 		// poll the health check until success or timeout
 		err := retry.Do(func() error {
-			return networktest.NodeHealthCheck(sequencer.HostRPCAddress())
+			return networktest.NodeHealthCheck(sequencer.HostRPCWSAddress())
 		}, retry.NewTimeoutStrategy(maxWait, 1*time.Second))
 		if err != nil {
 			return nil, err
