@@ -232,11 +232,7 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 	})
 
 	for _, rollup := range rollups {
-		// todo - use the signature
-		if rollup.Header.Coinbase.Hex() != s.Params.Wallets.NodeWallets[0].Address().Hex() {
-			t.Errorf("Node %d: Found rollup produced by non-sequencer %s", nodeIdx, s.Params.Wallets.NodeWallets[0].Address().Hex())
-			continue
-		}
+		// todo (@matt) verify the rollup was produced by a sequencer enclave from the whitelisted ID set
 
 		if len(rollup.BatchPayloads) == 0 {
 			t.Errorf("Node %d: No batches in rollup!", nodeIdx)

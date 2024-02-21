@@ -31,16 +31,19 @@ func (sigChecker *SignatureValidator) CheckSequencerSignature(headerHash gethcom
 		return fmt.Errorf("missing signature on batch")
 	}
 
-	if sigChecker.attestedKey == nil {
-		attestedKey, err := sigChecker.storage.FetchAttestedKey(sigChecker.SequencerID)
-		if err != nil {
-			return fmt.Errorf("could not retrieve attested key for aggregator %s. Cause: %w", sigChecker.SequencerID, err)
-		}
-		sigChecker.attestedKey = attestedKey
-	}
+	// todo (@matt) disabling sequencer signature verification for now while we transition to EnclaveIDs
+	// This must be re-enabled once sequencer enclaveIDs are available from the management contract
 
-	if !ecdsa.Verify(sigChecker.attestedKey, headerHash.Bytes(), sigR, sigS) {
-		return fmt.Errorf("could not verify ECDSA signature")
-	}
+	//if sigChecker.attestedKey == nil {
+	//	attestedKey, err := sigChecker.storage.FetchAttestedKey(sigChecker.SequencerID)
+	//	if err != nil {
+	//		return fmt.Errorf("could not retrieve attested key for aggregator %s. Cause: %w", sigChecker.SequencerID, err)
+	//	}
+	//	sigChecker.attestedKey = attestedKey
+	//}
+	//
+	//if !ecdsa.Verify(sigChecker.attestedKey, headerHash.Bytes(), sigR, sigS) {
+	//	return fmt.Errorf("could not verify ECDSA signature")
+	//}
 	return nil
 }

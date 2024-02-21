@@ -11,7 +11,7 @@ import (
 func RandomRollup(_ *types.Block) common.ExtRollup {
 	extRollup := common.ExtRollup{
 		Header: &common.RollupHeader{
-			Coinbase: RandomAddress(),
+			EnclaveID: RandomAddress(),
 		},
 	}
 

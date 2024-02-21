@@ -13,22 +13,23 @@ import (
 )
 
 type IDData struct {
-	Owner       gethcommon.Address
+	EnclaveID   gethcommon.Address
 	PubKey      []byte
 	HostAddress string
 }
 
 type AttestationProvider interface {
 	// GetReport returns the verifiable attestation report
-	GetReport(pubKey []byte, owner gethcommon.Address, hostAddress string) (*common.AttestationReport, error)
+	GetReport(pubKey []byte, enclaveID gethcommon.Address, hostAddress string) (*common.AttestationReport, error)
 	// VerifyReport returns the embedded report data
 	VerifyReport(att *common.AttestationReport) ([]byte, error)
 }
 
 type EgoAttestationProvider struct{}
 
-func (e *EgoAttestationProvider) GetReport(pubKey []byte, owner gethcommon.Address, hostAddress string) (*common.AttestationReport, error) {
-	idHash, err := getIDHash(owner, pubKey, hostAddress)
+func (e *EgoAttestationProvider) GetReport(pubKey []byte, enclaveID gethcommon.Address, hostAddress string) (*common.AttestationReport, error) {
+	// todo (@matt) - do we need to sign something here with the enclave's private key or is the signed report enough?
+	idHash, err := getIDHash(enclaveID, pubKey, hostAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +41,7 @@ func (e *EgoAttestationProvider) GetReport(pubKey []byte, owner gethcommon.Addre
 	return &common.AttestationReport{
 		Report:      report,
 		PubKey:      pubKey,
-		Owner:       owner,
+		EnclaveID:   enclaveID,
 		HostAddress: hostAddress,
 	}, nil
 }
@@ -56,23 +57,23 @@ func (e *EgoAttestationProvider) VerifyReport(att *common.AttestationReport) ([]
 
 type DummyAttestationProvider struct{}
 
-func (e *DummyAttestationProvider) GetReport(pubKey []byte, owner gethcommon.Address, hostAddress string) (*common.AttestationReport, error) {
+func (e *DummyAttestationProvider) GetReport(pubKey []byte, enclaveID gethcommon.Address, hostAddress string) (*common.AttestationReport, error) {
 	return &common.AttestationReport{
 		Report:      []byte("MOCK REPORT"),
 		PubKey:      pubKey,
-		Owner:       owner,
+		EnclaveID:   enclaveID,
 		HostAddress: hostAddress,
 	}, nil
 }
 
 func (e *DummyAttestationProvider) VerifyReport(att *common.AttestationReport) ([]byte, error) {
-	return getIDHash(att.Owner, att.PubKey, att.HostAddress)
+	return getIDHash(att.EnclaveID, att.PubKey, att.HostAddress)
 }
 
 // getIDHash provides a hash of identifying data to be included in an attestation report (or verified against the contents of an attestation report)
-func getIDHash(owner gethcommon.Address, pubKey []byte, hostAddress string) ([]byte, error) {
+func getIDHash(enclaveID gethcommon.Address, pubKey []byte, hostAddress string) ([]byte, error) {
 	idData := IDData{
-		Owner:       owner,
+		EnclaveID:   enclaveID,
 		PubKey:      pubKey,
 		HostAddress: hostAddress,
 	}
@@ -85,13 +86,13 @@ func getIDHash(owner gethcommon.Address, pubKey []byte, hostAddress string) ([]b
 }
 
 func VerifyIdentity(data []byte, att *common.AttestationReport) error {
-	expectedIDHash, err := getIDHash(att.Owner, att.PubKey, att.HostAddress)
+	expectedIDHash, err := getIDHash(att.EnclaveID, att.PubKey, att.HostAddress)
 	if err != nil {
-		return fmt.Errorf("failed to create ID data to check attestation report with owner: %s. Cause: %w", att.Owner, err)
+		return fmt.Errorf("failed to create ID data to check attestation report with enclaveID: %s. Cause: %w", att.EnclaveID, err)
 	}
 	// we trim the actual data because data extracted from the verified attestation is always 64 bytes long (padded with zeroes at the end)
 	if !bytes.Equal(expectedIDHash, data[:len(expectedIDHash)]) {
-		return fmt.Errorf("failed to verify hash for attestation report with owner: %s", att.Owner)
+		return fmt.Errorf("failed to verify hash for attestation report with enclaveID: %s", att.EnclaveID)
 	}
 	return nil
 }

@@ -54,7 +54,7 @@ func (re *rollupProducerImpl) CreateInternalRollup(fromBatchNo uint64, upToL1Hei
 
 	rh := common.RollupHeader{}
 	rh.CompressionL1Head = block.Hash()
-	rh.Coinbase = re.sequencerID
+	rh.EnclaveID = re.sequencerID
 
 	rh.CrossChainMessages = make([]MessageBus.StructsCrossChainMessage, 0)
 	for _, b := range batches {

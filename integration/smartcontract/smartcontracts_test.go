@@ -175,7 +175,7 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 	aggregatorID := datagenerator.RandomAddress()
 	txData := mgmtContractLib.CreateInitializeSecret(
 		&ethadapter.L1InitializeSecretTx{
-			AggregatorID: &aggregatorID,
+			EnclaveID: &aggregatorID,
 		},
 	)
 
@@ -201,7 +201,7 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 	aggregatorID = datagenerator.RandomAddress()
 	txData = mgmtContractLib.CreateInitializeSecret(
 		&ethadapter.L1InitializeSecretTx{
-			AggregatorID: &aggregatorID,
+			EnclaveID: &aggregatorID,
 		},
 	)
 
@@ -224,7 +224,7 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
 		&ethadapter.L1InitializeSecretTx{
-			AggregatorID: requesterID,
+			EnclaveID: requesterID,
 		},
 	)
 
@@ -255,7 +255,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 	// aggregator A starts the network secret
 	txData := mgmtContractLib.CreateInitializeSecret(
 		&ethadapter.L1InitializeSecretTx{
-			AggregatorID: &aggAID,
+			EnclaveID: &aggAID,
 		},
 	)
 
@@ -340,7 +340,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
 		&ethadapter.L1InitializeSecretTx{
-			AggregatorID:  &aggAID,
+			EnclaveID:     &aggAID,
 			InitialSecret: secretBytes,
 		},
 	)
@@ -471,7 +471,7 @@ func attestedNodeHostAddressesAreStored(t *testing.T, mgmtContractLib *debugMgmt
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
 		&ethadapter.L1InitializeSecretTx{
-			AggregatorID:  &aggAID,
+			EnclaveID:     &aggAID,
 			InitialSecret: secretBytes,
 			HostAddress:   aggAHostAddr,
 		},

@@ -15,14 +15,14 @@ import (
 // Protobuf message classes.
 
 func ToAttestationReportMsg(report *common.AttestationReport) generated.AttestationReportMsg {
-	return generated.AttestationReportMsg{Report: report.Report, PubKey: report.PubKey, Owner: report.Owner.Bytes(), HostAddress: report.HostAddress}
+	return generated.AttestationReportMsg{Report: report.Report, PubKey: report.PubKey, EnclaveID: report.EnclaveID.Bytes(), HostAddress: report.HostAddress}
 }
 
 func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.AttestationReport {
 	return &common.AttestationReport{
 		Report:      msg.Report,
 		PubKey:      msg.PubKey,
-		Owner:       gethcommon.BytesToAddress(msg.Owner),
+		EnclaveID:   gethcommon.BytesToAddress(msg.EnclaveID),
 		HostAddress: msg.HostAddress,
 	}
 }
@@ -46,6 +46,7 @@ func ToSecretRespMsg(responses []*common.ProducedSecretResponse) []*generated.Se
 		msg := generated.SecretResponseMsg{
 			Secret:      resp.Secret,
 			RequesterID: resp.RequesterID.Bytes(),
+			AttesterID:  resp.AttesterID.Bytes(),
 			HostAddress: resp.HostAddress,
 		}
 		respMsgs[i] = &msg
@@ -61,6 +62,7 @@ func FromSecretRespMsg(secretResponses []*generated.SecretResponseMsg) []*common
 		r := common.ProducedSecretResponse{
 			Secret:      msgResp.Secret,
 			RequesterID: gethcommon.BytesToAddress(msgResp.RequesterID),
+			AttesterID:  gethcommon.BytesToAddress(msgResp.AttesterID),
 			HostAddress: msgResp.HostAddress,
 		}
 		respList[i] = &r
@@ -223,7 +225,7 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		CompressionL1Head:  header.CompressionL1Head.Bytes(),
 		R:                  header.R.Bytes(),
 		S:                  header.S.Bytes(),
-		Coinbase:           header.Coinbase.Bytes(),
+		EnclaveID:          header.EnclaveID.Bytes(),
 		CrossChainMessages: ToCrossChainMsgs(header.CrossChainMessages),
 		LastBatchSeqNo:     header.LastBatchSeqNo,
 	}
@@ -256,7 +258,7 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 		CompressionL1Head:  gethcommon.BytesToHash(header.CompressionL1Head),
 		R:                  r.SetBytes(header.R),
 		S:                  s.SetBytes(header.S),
-		Coinbase:           gethcommon.BytesToAddress(header.Coinbase),
+		EnclaveID:          gethcommon.BytesToAddress(header.EnclaveID),
 		CrossChainMessages: FromCrossChainMsgs(header.CrossChainMessages),
 		LastBatchSeqNo:     header.LastBatchSeqNo,
 	}

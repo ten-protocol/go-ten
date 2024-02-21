@@ -52,7 +52,6 @@ type sequencer struct {
 
 	logger gethlog.Logger
 
-	hostID                 gethcommon.Address
 	chainConfig            *params.ChainConfig
 	enclaveKey             *crypto.EnclaveKey
 	mempool                *txpool.TxPool
@@ -63,7 +62,7 @@ type sequencer struct {
 	blockchain             *ethchainadapter.EthChainAdapter
 }
 
-func NewSequencer(blockProcessor components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupProducer components.RollupProducer, rollupConsumer components.RollupConsumer, rollupCompression *components.RollupCompression, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger, hostID gethcommon.Address, chainConfig *params.ChainConfig, enclavePrivateKey *crypto.EnclaveKey, mempool *txpool.TxPool, storage storage.Storage, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, settings SequencerSettings, blockchain *ethchainadapter.EthChainAdapter) Sequencer {
+func NewSequencer(blockProcessor components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupProducer components.RollupProducer, rollupConsumer components.RollupConsumer, rollupCompression *components.RollupCompression, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger, chainConfig *params.ChainConfig, enclavePrivateKey *crypto.EnclaveKey, mempool *txpool.TxPool, storage storage.Storage, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, settings SequencerSettings, blockchain *ethchainadapter.EthChainAdapter) Sequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
 		batchProducer:          batchExecutor,
@@ -73,7 +72,6 @@ func NewSequencer(blockProcessor components.L1BlockProcessor, batchExecutor comp
 		rollupCompression:      rollupCompression,
 		gethEncoding:           gethEncodingService,
 		logger:                 logger,
-		hostID:                 hostID,
 		chainConfig:            chainConfig,
 		enclaveKey:             enclavePrivateKey,
 		mempool:                mempool,
