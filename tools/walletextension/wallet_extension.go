@@ -107,20 +107,20 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 	// start measuring time for request
 	requestStartTime := time.Now()
 
-	//// Check if the request is in the cache
-	//isCacheable, key, ttl := cache.IsCacheable(request)
-	//
-	//// in case of cache hit return the response from the cache
-	//if isCacheable {
-	//	if value, ok := w.cache.Get(key); ok {
-	//		requestEndTime := time.Now()
-	//		duration := requestEndTime.Sub(requestStartTime)
-	//		w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, value, duration.Milliseconds()))
-	//		// adjust requestID
-	//		value[common.JSONKeyID] = request.ID
-	//		return value, nil
-	//	}
-	//}
+	// Check if the request is in the cache
+	isCacheable, key, ttl := cache.IsCacheable(request, hexUserID)
+
+	// in case of cache hit return the response from the cache
+	if isCacheable {
+		if value, ok := w.cache.Get(key); ok {
+			requestEndTime := time.Now()
+			duration := requestEndTime.Sub(requestStartTime)
+			w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, value, duration.Milliseconds()))
+			// adjust requestID
+			value[common.JSONKeyID] = request.ID
+			return value, nil
+		}
+	}
 
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
 	var rpcResp interface{}
@@ -166,9 +166,9 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 	w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, response, duration.Milliseconds()))
 
 	// if the request is cacheable, store the response in the cache
-	//if isCacheable {
-	//	w.cache.Set(key, response, ttl)
-	//}
+	if isCacheable {
+		w.cache.Set(key, response, ttl)
+	}
 
 	return response, nil
 }

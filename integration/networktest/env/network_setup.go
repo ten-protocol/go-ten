@@ -11,6 +11,7 @@ func SepoliaTestnet() networktest.Environment {
 		[]string{"http://erpc.sepolia-testnet.ten.xyz:80"},
 		"http://sepolia-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"https://rpc.sepolia.org/",
+		"https://testnet.ten.xyz", // :81 for websocket
 	)
 	return &testnetEnv{connector}
 }
@@ -21,6 +22,7 @@ func UATTestnet() networktest.Environment {
 		[]string{"http://erpc.uat-testnet.ten.xyz:80"},
 		"http://uat-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"ws://uat-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
+		"https://uat-testnet.ten.xyz",
 	)
 	return &testnetEnv{connector}
 }
@@ -31,6 +33,7 @@ func DevTestnet() networktest.Environment {
 		[]string{"http://erpc.dev-testnet.ten.xyz:80"},
 		"http://dev-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
+		"https://dev-testnet.ten.xyz",
 	)
 	return &testnetEnv{connector}
 }
@@ -42,6 +45,7 @@ func LongRunningLocalNetwork(l1WSURL string) networktest.Environment {
 		[]string{"ws://127.0.0.1:37901"},
 		genesis.TestnetPrefundedPK,
 		l1WSURL,
+		"",
 	)
 	return &testnetEnv{connector}
 }
