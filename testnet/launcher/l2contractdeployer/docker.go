@@ -59,7 +59,7 @@ func (n *ContractDeployer) Start() error {
             ]
         },
         "layer2" : {
-            "url": "http://127.0.0.1:3000/v1",
+            "url": "http://127.0.0.1:3000/v1/",
 			"useGateway": true,
             "live" : false,
             "saveDeployments" : true,
