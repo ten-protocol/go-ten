@@ -5,15 +5,7 @@ import {on, exit} from 'process';
 import { HardhatNetworkUserConfig } from "hardhat/types/config";
 
 task("obscuro:deploy", "Prepares for deploying.")
-.setAction(async function(args, hre, runSuper) {
-
-    const rpcURL = (hre.network.config as HardhatNetworkUserConfig).obscuroEncRpcUrl;
-    
-    if (!rpcURL) {
-        console.log(`obscuro:deploy requires "obscuroEncRpcUrl" to be set as part of the selected network's config.`)
-        return;
-    } 
-    
+.setAction(async function(args, hre, runSuper) {    
     // Trigger shutdown on CTRL + C
     process.on('SIGINT', ()=>exit(1));
     
