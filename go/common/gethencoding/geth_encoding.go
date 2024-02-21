@@ -61,9 +61,9 @@ type gethEncodingServiceImpl struct {
 func NewGethEncodingService(storage storage.Storage, logger gethlog.Logger) EncodingService {
 	// todo (tudor) figure out the best values
 	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1000,    // number of keys to track frequency of.
-		MaxCost:     1 << 28, // maximum cost of cache (256MB).
-		BufferItems: 64,      // number of keys per Get buffer. Todo - what is this
+		NumCounters: 5000, // number of keys to track frequency of.
+		MaxCost:     500,  // todo - this represents how many items.
+		BufferItems: 64,   // number of keys per Get buffer. Todo - what is this
 	})
 	if err != nil {
 		panic(err)

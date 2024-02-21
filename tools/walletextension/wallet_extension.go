@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/accountmanager"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/config"
@@ -43,6 +45,7 @@ type WalletExtension struct {
 	version            string
 	config             *config.Config
 	tenClient          *obsclient.ObsClient
+	cache              cache.Cache
 }
 
 func New(
@@ -62,6 +65,12 @@ func New(
 	}
 	newTenClient := obsclient.NewObsClient(rpcClient)
 	newFileLogger := common.NewFileLogger()
+	newGatewayCache, err := cache.NewCache(logger)
+	if err != nil {
+		logger.Error(fmt.Errorf("could not create cache. Cause: %w", err).Error())
+		panic(err)
+	}
+
 	return &WalletExtension{
 		hostAddrHTTP:       hostAddrHTTP,
 		hostAddrWS:         hostAddrWS,
@@ -74,6 +83,7 @@ func New(
 		version:            version,
 		config:             config,
 		tenClient:          newTenClient,
+		cache:              newGatewayCache,
 	}
 }
 
@@ -89,13 +99,28 @@ func (w *WalletExtension) Logger() gethlog.Logger {
 
 // ProxyEthRequest proxys an incoming user request to the enclave
 func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userconn.UserConn, hexUserID string) (map[string]interface{}, error) {
-	// start measuring time for request
-	requestStartTime := time.Now()
-
 	response := map[string]interface{}{}
 	// all responses must contain the request id. Both successful and unsuccessful.
 	response[common.JSONKeyRPCVersion] = jsonrpc.Version
 	response[common.JSONKeyID] = request.ID
+
+	// start measuring time for request
+	requestStartTime := time.Now()
+
+	// Check if the request is in the cache
+	isCacheable, key, ttl := cache.IsCacheable(request)
+
+	// in case of cache hit return the response from the cache
+	if isCacheable {
+		if value, ok := w.cache.Get(key); ok {
+			requestEndTime := time.Now()
+			duration := requestEndTime.Sub(requestStartTime)
+			w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, value, duration.Milliseconds()))
+			// adjust requestID
+			value[common.JSONKeyID] = request.ID
+			return value, nil
+		}
+	}
 
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
 	var rpcResp interface{}
@@ -139,6 +164,11 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 	requestEndTime := time.Now()
 	duration := requestEndTime.Sub(requestStartTime)
 	w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, response, duration.Milliseconds()))
+
+	// if the request is cacheable, store the response in the cache
+	if isCacheable {
+		w.cache.Set(key, response, ttl)
+	}
 
 	return response, nil
 }

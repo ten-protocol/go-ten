@@ -2,7 +2,35 @@
 ---
 # Ten Testnet Change Log
 
-# Oct 2024-01-15 (v0.21.0)
+# Feb 2024-02-20 (v0.22.0)
+* Validator nodes now return errors on transaction submission. Previously, transactions that would fail validation were
+  accepted into the mempool of the validator without error (e.g. insufficient funds for a transfer, gas below the 
+  intrinsic gas limit etc). This change will mean that invalid transactions are rejected immediately. 
+* The Gateway now performs caching on RPC requests. For a list of the cached requests see the design proposal in 
+  go-ten/design/gateway/gateway_caching.md. Note that we expect the caching logic to change over time as we optimise
+  the user experience. 
+* A full list of the PRs merged in this release is as below;
+    * `038f6a64` Cache fixes for e2e tests (#1803)
+    * `b70a894d` Update ten's visual identity (#1797)
+    * `1782b623` Update ten's visual identity (#1796)
+    * `ada2d2c1` Concurrency fix (#1802)
+    * `6eda211d` Chore(contracts): a bit of proofreading (#1754)
+    * `2ab4fc3e` Tweak cache params (#1801)
+    * `3a74586b` Change mempool validation function (#1800)
+    * `597cf0ec` Change log for the v0.22 release (#1799)
+    * `a2a080aa` Gateway caching proposal (#1773)
+    * `5b5e7d98` Ten gateway caching (#1779)
+    * `7792864a` Adjust port offset (#1798)
+    * `1837bcc6` More flakiness fixes (#1795)
+    * `83469ca8` Validator nodes return error on tx submission (#1792)
+    * `aee40a81` Network tests: fix local run gas error (#1789)
+    * `337c8544` Improve multi-acct logic (#1793)
+    * `a5061634` Copy update (#1791)
+    * `4d79eea2` Tenscan: update api domain (#1790)
+    * `c83b965a` Contract deployers: configure signer for address publishing (#1676)
+    * `31e25322` Refactor the encryption/vk logic (#1769)
+  
+# Feb 2024-02-14 (v0.21.0)
 * A list of the PRs merged in this release is as below;
     * `cc3b1048` Upgrade oz libraries (#1707)
     * `0a573d75` Deploy scripts: enable debug api on upgrades (#1780)
@@ -84,7 +112,7 @@
     * `4551c81b` Enclave no panic for bad rlp format (#1679)
     * `fb50c7ba` Use the cached head block (#1678)
 
-# Oct 2023-12-01 (v0.20.0)
+# Dec 2023-12-01 (v0.20.0)
 * A list of the PRs merged in this release is as below;
   * `1433e41e` Tenscan updates (#1661)
   * `dc769561` Host rpc: use checksum format for contract addresses (#1674)

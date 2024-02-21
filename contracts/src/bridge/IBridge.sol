@@ -20,7 +20,7 @@ interface IBridge {
     // before calling this function for more or equal to the amount being bridged over. 
     // This can be done using IERC20(asset).approve(bridge, amount); 
     // asset - the address of the smart contract of the ERC20 token.
-    // amount - the number of tokens being transfered.
+    // amount - the number of tokens being transferred.
     // receiver - the L2 address receiving the assets.
     function sendERC20(
         address asset,
