@@ -11,11 +11,11 @@ import (
 
 func routeItems(r *gin.Engine, server *WebServer) {
 	r.GET("/items/batch/latest/", server.getLatestBatch)
-	r.GET("/items/rollup/latest/", server.getLatestRollupHeader)
 	r.GET("/items/batch/:hash", server.getBatch)
-	r.GET("/items/transactions/", server.getPublicTransactions)
+	r.GET("/items/rollups/", server.getBlockListing) //Deprecated
 	r.GET("/items/batches/", server.getBatchListing)
-	r.GET("/items/blocks/", server.getBlockListing)
+	r.GET("/items/transactions/", server.getPublicTransactions)
+	r.GET("/items/blocks/", server.getBlockListing) //Deprecated
 	r.GET("/info/obscuro/", server.getConfig)
 	r.POST("/info/health/", server.getHealthStatus)
 }

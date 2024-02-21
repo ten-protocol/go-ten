@@ -3,6 +3,7 @@ package l2
 import (
 	"database/sql"
 	"errors"
+	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -175,7 +176,7 @@ func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
 // If the repository already has the batch it returns an AlreadyExists error which is typically ignored.
 func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	r.logger.Debug("Saving batch", log.BatchSeqNoKey, batch.Header.SequencerOrderNo, log.BatchHashKey, batch.Hash())
-	err := r.db.AddBatch(batch)
+	err := hostdb.AddBatch(r.db, batch)
 	if err != nil {
 		return err
 	}

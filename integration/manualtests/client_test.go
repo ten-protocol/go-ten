@@ -26,7 +26,7 @@ func TestClientGetRollup(t *testing.T) {
 	assert.Nil(t, err)
 
 	var rollup *common.ExtRollup
-	err = client.Call(&rollup, rpc.GetBatch, rollupHeader.Hash())
+	err = client.Call(&rollup, rpc.GetFullBatchByHash, rollupHeader.Hash())
 	assert.Nil(t, err)
 }
 

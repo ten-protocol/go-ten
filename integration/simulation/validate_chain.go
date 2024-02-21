@@ -734,7 +734,7 @@ func checkTenscan(t *testing.T, s *Simulation) {
 // Checks that the node has stored sufficient transactions.
 func checkTotalTransactions(t *testing.T, client rpc.Client, nodeIdx int) {
 	var totalTxs *big.Int
-	err := client.Call(&totalTxs, rpc.GetTotalTxs)
+	err := client.Call(&totalTxs, rpc.GetTotalTransactionCount)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve total transactions. Cause: %s", nodeIdx, err)
 	}
@@ -776,7 +776,7 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 	}
 
 	var batchByHash *common.ExtBatch
-	err = client.Call(&batchByHash, rpc.GetBatch, batchByTx.Header.Hash())
+	err = client.Call(&batchByHash, rpc.GetFullBatchByHash, batchByTx.Header.Hash())
 	if err != nil {
 		t.Errorf("node %d: could not retrieve batch by hash. Cause: %s", nodeIdx, err)
 		return

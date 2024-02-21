@@ -27,12 +27,6 @@ const (
 	Health = "obscuro_health"
 	Config = "obscuro_config"
 
-	GetBlockHeaderByHash = "tenscan_getBlockHeaderByHash"
-	GetBatch             = "tenscan_getBatch"
-	GetBatchForTx        = "tenscan_getBatchForTx"
-	GetLatestTxs         = "tenscan_getLatestTransactions"
-	GetTotalTxs          = "tenscan_getTotalTransactions"
-	Attestation          = "tenscan_attestation"
 	StopHost             = "test_stopHost"
 	Subscribe            = "eth_subscribe"
 	Unsubscribe          = "eth_unsubscribe"
@@ -42,13 +36,16 @@ const (
 	// GetL1RollupHeaderByHash  = "scan_getL1RollupHeaderByHash"
 	// GetActiveNodeCount       = "scan_getActiveNodeCount"
 
+	GetBatchForTx            = "tenscan_getBatchForTx" //TODO this returns ExtBatch
+	GetLatestTxs             = "tenscan_getLatestTransactions"
 	GetLatestRollupHeader    = "scan_getLatestRollupHeader"
 	GetTotalTransactionCount = "scan_getTotalTransactionCount"
 	GetTotalContractCount    = "scan_getTotalContractCount"
 	GetPublicTransactionData = "scan_getPublicTransactionData"
-	GetBatchListing          = "scan_getBatchListing"
+	GetPublicBatchListing    = "scan_getBatchListing"
 	GetBlockListing          = "scan_getBlockListing"
-	GetFullBatchByHash       = "scan_getBatchByHash"
+	GetFullBatchByHash       = "scan_getFullBatchByHash"
+	GetPublicBatchByHash     = "scan_getPublicBatchByHash"
 )
 
 var ErrNilResponse = errors.New("nil response received from Obscuro node")

@@ -94,7 +94,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.Health:
 		return c.health(result)
 
-	case rpc.GetTotalTxs:
+	case rpc.GetTotalTransactionCount:
 		return c.getTotalTransactions(result)
 
 	case rpc.GetLatestTxs:

@@ -4,19 +4,28 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"math/big"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethdb"
-
-	"github.com/ten-protocol/go-ten/go/common"
 )
 
 const (
-	selectBatch     = "SELECT b.sequence, b.full_hash, b.hash, b.height, b.tx_count, b.header_blob, b.body_id, bb.body FROM batches b JOIN batch_body bb ON b.body_id = bb.id"
-	selectBatchBody = "SELECT body FROM batch_body WHERE id = ?"
+	selectTxCount           = "SELECT count FROM transaction_count WHERE id = 1"
+	selectBatch             = "SELECT b.sequence, b.full_hash, b.hash, b.height, b.tx_count, b.header_blob, b.body_id, bb.body FROM batches b JOIN batch_body bb ON b.body_id = bb.id"
+	selectBatchBody         = "SELECT body FROM batch_body WHERE id = ?"
+	selectDescendingBatches = `
+		SELECT b.sequence, b.full_hash, b.hash, b.height, b.tx_count, b.header_blob, bb.body
+		FROM batches b
+		JOIN batch_body bb ON b.body_id = bb.id
+		ORDER BY b.sequence DESC
+		LIMIT 1
+	`
+
+	insertBatchBody = "INSERT INTO batch_body (id, body) VALUES (?, ?)"
+	insertBatch     = "INSERT INTO batches (sequence, full_hash, hash, height, tx_count, header_blob, body_id) VALUES (?, ?, ?, ?, ?, ?)"
+	insertTxCount   = "INSERT INTO transaction_count (id, count) VALUES (?,?) ON DUPLICATE KEY UPDATE count = count + ?"
 )
 
 // AddBatch adds a batch and its header to the DB
@@ -24,21 +33,21 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 	return BeginTx(db, func(tx *sql.Tx) error {
 
 		// Batch body insert
-		batchBodyStmt, err := db.Prepare("INSERT INTO batch_body (id, body) VALUES (?, ?)")
+		batchBodyStmt, err := db.Prepare(insertBatchBody)
 		if err != nil {
 			return fmt.Errorf("failed to prepare body insert statement: %w", err)
 		}
 		defer batchBodyStmt.Close()
 
 		// Batch insert
-		batchStmt, err := db.Prepare("INSERT INTO batches (sequence, full_hash, hash, height, tx_count, header_blob, body_id) VALUES (?, ?, ?, ?, ?, ?)")
+		batchStmt, err := db.Prepare(insertBatch)
 		if err != nil {
 			return fmt.Errorf("failed to prepare batch insert statement: %w", err)
 		}
 		defer batchStmt.Close()
 
 		// Tx count insert
-		txStmt, err := db.Prepare("INSERT INTO transaction_count (id, count) VALUES (?,?) ON DUPLICATE KEY UPDATE count = count + ?")
+		txStmt, err := db.Prepare(insertTxCount)
 		if err != nil {
 			return fmt.Errorf("failed to prepare tx count insert statement: %w", err)
 		}
@@ -97,7 +106,7 @@ func GetBatchListing(db *sql.DB, pagination *common.QueryPagination) (*common.Ba
 
 	var batches []common.PublicBatch
 	for i := batchesFrom; i >= uint64(batchesTo); i-- {
-		batch, err := GetBatchBySequenceNumber(db, uint64(i))
+		batch, err := GetBatchBySequenceNumber(db, i)
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return nil, err
 		}
@@ -114,10 +123,10 @@ func GetBatchListing(db *sql.DB, pagination *common.QueryPagination) (*common.Ba
 
 // GetBatchBySequenceNumber returns the batch with the given sequence number.
 func GetBatchBySequenceNumber(db *sql.DB, seqNo uint64) (*common.PublicBatch, error) {
-	return fetchBatch(db, " WHERE sequence=?", seqNo)
+	return fetchPublicBatch(db, " WHERE sequence=?", seqNo)
 }
 
-func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*common.PublicBatch, error) {
+func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.PublicBatch, error) {
 	var sequenceInt64 int
 	var fullHash common.TxHash
 	var hash []byte
@@ -152,7 +161,7 @@ func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*common.PublicBatch
 
 	// Fetch batch_body from the database
 	var encryptedTxBlob common.EncryptedTransactions
-	err = db.QueryRow("SELECT body FROM batch_body WHERE id = ?", bodyID).Scan(&encryptedTxBlob)
+	err = db.QueryRow(selectBatchBody, bodyID).Scan(&encryptedTxBlob)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve batch body: %w", err)
 	}
@@ -177,6 +186,60 @@ func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*common.PublicBatch
 	return batch, nil
 }
 
+func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatch, error) {
+	var sequenceInt64 int
+	var fullHash common.TxHash
+	var shorthash []byte
+	var heightInt64 int
+	var txCountInt64 int
+	var headerBlob []byte
+	var bodyID uint64
+
+	query := selectBatch + " " + whereQuery
+
+	var err error
+	if len(args) > 0 {
+		err = db.QueryRow(query, args...).Scan(&sequenceInt64, &fullHash, &shorthash, &heightInt64, &txCountInt64, &headerBlob, &bodyID)
+	} else {
+		err = db.QueryRow(query).Scan(&sequenceInt64, &fullHash, &shorthash, &heightInt64, &txCountInt64, &headerBlob, &bodyID)
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	// Decode the batch header
+	var header common.BatchHeader
+	err = rlp.DecodeBytes(headerBlob, &header)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode batch header: %w", err)
+	}
+
+	// Fetch batch_body from the database
+	var encryptedTxBlob common.EncryptedTransactions
+	err = db.QueryRow(selectBatchBody, bodyID).Scan(&encryptedTxBlob)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve batch body: %w", err)
+	}
+
+	var batchBody []byte
+	err = rlp.DecodeBytes(encryptedTxBlob, &batchBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode batch body: %w", err)
+	}
+
+	var placeHolderTxHashes []common.TxHash //FIXME remove from ExtBatch?
+
+	batch := &common.ExtBatch{
+		Header:          &header,
+		TxHashes:        placeHolderTxHashes,
+		EncryptedTxBlob: encryptedTxBlob,
+	}
+
+	return batch, nil
+}
+
 // GetCurrentHeadBatch retrieves the current head batch with the largest sequence number (or height)
 func GetCurrentHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 	var sequenceInt64 int
@@ -187,18 +250,9 @@ func GetCurrentHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 	var headerBlob []byte
 	var encryptedTxBlob common.EncryptedTransactions
 
-	query := `
-
-		SELECT b.sequence, b.full_hash, b.hash, b.height, b.tx_count, b.header_blob, bb.body
-		FROM batches b
-		JOIN batch_body bb ON b.body_id = bb.id
-		ORDER BY b.sequence DESC
-		LIMIT 1
-	`
-
-	err := db.QueryRow(query).Scan(&sequenceInt64, &fullHash, &hash, &heightInt64, &txCountInt64, &headerBlob, &encryptedTxBlob)
+	err := db.QueryRow(selectDescendingBatches).Scan(&sequenceInt64, &fullHash, &hash, &heightInt64, &txCountInt64, &headerBlob, &encryptedTxBlob)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no batches found")
 		}
 		return nil, fmt.Errorf("failed to fetch current head batch: %w", err)
@@ -251,93 +305,20 @@ func GetBatchNumber(db *sql.DB, txHash gethcommon.Hash) (*big.Int, error) {
 
 // GetTotalTransactions returns the total number of batched transactions.
 func GetTotalTransactions(db *sql.DB) (*big.Int, error) {
-	panic("implement me")
+	var totalCount int
+	err := db.QueryRow(selectTxCount).Scan(&totalCount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve total transaction count: %w", err)
+	}
+	return big.NewInt(int64(totalCount)), nil
 }
 
-// GetBatch returns the batch with the given hash.
-func GetBatch(db *sql.DB, batchHash gethcommon.Hash) (*common.ExtBatch, error) {
-	//FIXME NEXT
-	//FIXME NEXT
-	//FIXME NEXT
-	//FIXME NEXT
-	panic("implement me")
+// GetPublicBatch returns the batch with the given hash.
+func GetPublicBatch(db *sql.DB, hash common.L2BatchHash) (*common.PublicBatch, error) {
+	return fetchPublicBatch(db, " where b.hash=?", truncTo16(hash))
 }
 
-// Retrieves the batch header corresponding to the hash.
-func readBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, error) {
-	panic("implement me")
-}
-
-// Retrieves the hash of the head batch.
-func readHeadBatchHash(db *sql.DB) (*gethcommon.Hash, error) {
-	panic("implement me")
-}
-
-// Stores a batch header into the database.
-func writeBatchHeader(db *sql.DB, w ethdb.KeyValueWriter, header *common.BatchHeader) error {
-	panic("implement me")
-}
-
-// Stores the head batch header hash into the database.
-func writeHeadBatchHash(db *sql.DB, w ethdb.KeyValueWriter, val gethcommon.Hash) error {
-	panic("implement me")
-}
-
-// Stores a batch's hash in the database, keyed by the batch's number.
-func writeBatchHash(db *sql.DB, w ethdb.KeyValueWriter, header *common.BatchHeader) error {
-	panic("implement me")
-}
-
-// Stores a batch's hash in the database, keyed by the batch's sequencer number.
-func writeBatchSeqNo(db *sql.DB, w ethdb.KeyValueWriter, header *common.BatchHeader) error {
-	panic("implement me")
-}
-
-// Retrieves the hash for the batch with the given number..
-func readBatchHash(db *sql.DB, number *big.Int) (*gethcommon.Hash, error) {
-	panic("implement me")
-}
-
-// Returns the transaction hashes in the batch with the given hash.
-func readBatchTxHashes(db *sql.DB, batchHash common.L2BatchHash) ([]gethcommon.Hash, error) {
-	panic("implement me")
-}
-
-// Stores a batch's number in the database, keyed by the hash of a transaction in that rollup.
-func writeBatchNumber(db *sql.DB, w ethdb.KeyValueWriter, header *common.BatchHeader, txHash gethcommon.Hash) error {
-	panic("implement me")
-}
-
-// Writes the transaction hashes against the batch containing them.
-func writeBatchTxHashes(db *sql.DB, w ethdb.KeyValueWriter, batchHash common.L2BatchHash, txHashes []gethcommon.Hash) error {
-	panic("implement me")
-}
-
-// Retrieves the number of the batch containing the transaction with the given hash.
-func readBatchNumber(db *sql.DB, txHash gethcommon.Hash) (*big.Int, error) {
-	panic("implement me")
-}
-
-func readBatchHashBySequenceNumber(db *sql.DB, seqNum *big.Int) (*gethcommon.Hash, error) {
-	panic("implement me")
-}
-
-// Retrieves the total number of rolled-up transactions - returns 0 if no tx count is found
-func readTotalTransactions(db *sql.DB) (*big.Int, error) {
-	panic("implement me")
-}
-
-// Stores the total number of transactions in the database.
-func writeTotalTransactions(db *sql.DB, w ethdb.KeyValueWriter, newTotal *big.Int) error {
-	panic("implement me")
-}
-
-// Stores a batch into the database.
-func writeBatch(db *sql.DB, w ethdb.KeyValueWriter, batch *common.ExtBatch) error {
-	panic("implement me")
-}
-
-// Retrieves the batch corresponding to the hash.
-func readBatch(db *sql.DB, hash gethcommon.Hash) (*common.ExtBatch, error) {
-	panic("implement me")
+// GetFullBatch returns the batch with the given hash.
+func GetFullBatch(db *sql.DB, hash common.L2BatchHash) (*common.ExtBatch, error) {
+	return fetchFullBatch(db, " where b.hash=?", truncTo16(hash))
 }
