@@ -18,16 +18,18 @@ import (
 
 const currentMigrationVersionKey = "CURRENT_MIGRATION_VERSION"
 
-func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
+func CommonDBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 	migrationFiles, err := readMigrationFiles(sqlFiles)
 	if err != nil {
 		return err
 	}
 
+	println("Migration files ", migrationFiles)
 	maxMigration := int64(len(migrationFiles))
 
 	var maxDB int64
 	config, err := database.FetchConfig(db, currentMigrationVersionKey)
+	println("config ", config)
 	if err != nil {
 		// first time there is no entry, so 001 was executed already ( triggered at launch/manifest time )
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -42,6 +44,7 @@ func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 	// write to the database
 	for i := maxDB; i < maxMigration; i++ {
 		logger.Info("Executing db migration", "file", migrationFiles[i].Name())
+		println("Executing db migration", "file", migrationFiles[i].Name())
 		content, err := sqlFiles.ReadFile(migrationFiles[i].Name())
 		if err != nil {
 			return err
@@ -51,6 +54,7 @@ func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 			return fmt.Errorf("unable to execute migration for %s - %w", migrationFiles[i].Name(), err)
 		}
 		logger.Info("Successfully executed", "file", migrationFiles[i].Name(), "index", i)
+		println("Successfully executed", "file", migrationFiles[i].Name(), "index", i)
 	}
 
 	return nil
@@ -80,6 +84,7 @@ func readMigrationFiles(sqlFiles embed.FS) ([]fs.DirEntry, error) {
 		return nil, err
 	}
 
+	println("HERE")
 	// sort the migrationFiles based on the prefix (before "_")
 	sort.Slice(migrationFiles, func(i, j int) bool {
 		// Extract the number prefix and compare

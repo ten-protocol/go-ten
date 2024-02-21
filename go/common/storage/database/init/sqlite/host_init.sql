@@ -27,7 +27,7 @@ create table if not exists batch_body
 
 create table if not exists batch
 (
-    sequenceOrder       int primary key,
+    sequence_order int primary key,
     full_hash      binary(32) NOT NULL,
     hash           binary(16) NOT NULL unique,
     height         int        NOT NULL,
@@ -41,5 +41,5 @@ create index IDX_BATCH_HEIGHT on batch (height);
 create table if not exists transaction_count
 (
     id          int  NOT NULL primary key,
-    count       int  NOT NULL
+    total       int  NOT NULL
 );
