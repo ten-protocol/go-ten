@@ -31,18 +31,18 @@ const (
 func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, blockDurationSeconds int) (*params.L1SetupData, []ethadapter.EthClient, eth2network.Eth2Network) {
 	eth2Network, err := StartGethNetwork(wallets, startPort, blockDurationSeconds)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("error starting geth network %w", err))
 	}
 
 	// connect to the first host to deploy
 	tmpEthClient, err := ethadapter.NewEthClient(Localhost, uint(startPort+100), DefaultL1RPCTimeout, common.HexToAddress("0x0"), testlog.Logger())
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("error connecting to te first host %w", err))
 	}
 
 	l1Data, err := DeployObscuroNetworkContracts(tmpEthClient, wallets, true)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("error deploying obscuro contract %w", err))
 	}
 
 	ethClients := make([]ethadapter.EthClient, nrNodes)
@@ -84,7 +84,7 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int, blockDurationSe
 		2,
 		2,
 		walletAddresses,
-		time.Minute,
+		2*time.Minute,
 	)
 
 	err = eth2Network.Start()
@@ -235,7 +235,7 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 	var start time.Time
 	var receipt *types.Receipt
 	// todo (@matt) these timings should be driven by the L2 batch times and L1 block times
-	for start = time.Now(); time.Since(start) < 80*time.Second; time.Sleep(2 * time.Second) {
+	for start = time.Now(); time.Since(start) < 50*time.Second; time.Sleep(1 * time.Second) {
 		receipt, err = workerClient.TransactionReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {

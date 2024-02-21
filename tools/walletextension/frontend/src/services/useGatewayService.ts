@@ -34,39 +34,39 @@ const useGatewayService = () => {
   };
 
   const connectToTenTestnet = async () => {
-    showToast(ToastType.INFO, "Connecting to Obscuro Testnet...");
+    showToast(ToastType.INFO, "Connecting to Ten Testnet...");
     setLoading(true);
     try {
       if (await isTenChain()) {
         if (!token || !isValidTokenFormat(token)) {
           showToast(
             ToastType.DESTRUCTIVE,
-            "Existing Obscuro Testnet detected in MetaMask. Please remove before hitting begin"
+            "Existing Ten Testnet detected in MetaMask. Please remove before hitting begin"
           );
           return;
         }
       }
-      showToast(ToastType.INFO, "Switching to Obscuro Testnet...");
+      showToast(ToastType.INFO, "Switching to Ten Testnet...");
       const switched = await switchToTenNetwork();
-      showToast(ToastType.SUCCESS, `Switched to Obscuro Testnet: ${switched}`);
+      showToast(ToastType.SUCCESS, `Switched to Ten Testnet: ${switched}`);
       // SWITCHED_CODE=4902; error 4902 means that the chain does not exist
       if (
         switched === SWITCHED_CODE ||
         !isValidTokenFormat(await getToken(provider))
       ) {
-        showToast(ToastType.INFO, "Adding Obscuro Testnet...");
+        showToast(ToastType.INFO, "Adding Ten Testnet...");
         const user = await joinTestnet();
         const rpcUrls = [
           `${tenGatewayAddress}/${tenGatewayVersion}/?token=${user}`,
         ];
         await addNetworkToMetaMask(rpcUrls);
-        showToast(ToastType.SUCCESS, "Added Obscuro Testnet");
+        showToast(ToastType.SUCCESS, "Added Ten Testnet");
       }
 
       if (!(await isMetamaskConnected())) {
         showToast(ToastType.INFO, "No accounts found, connecting...");
         await connectAccounts();
-        showToast(ToastType.SUCCESS, "Connected to Obscuro Testnet");
+        showToast(ToastType.SUCCESS, "Connected to Ten Testnet");
       }
       await fetchUserAccounts();
     } catch (error: any) {
@@ -81,7 +81,7 @@ const useGatewayService = () => {
     try {
       return await fetchTestnetStatus();
     } catch (error) {
-      showToast(ToastType.DESTRUCTIVE, "Unable to connect to Obscuro Testnet");
+      showToast(ToastType.DESTRUCTIVE, "Unable to connect to Ten Testnet");
       throw error;
     }
   };

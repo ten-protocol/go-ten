@@ -1,7 +1,6 @@
 package viewingkey
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"encoding/hex"
 	"errors"
@@ -47,12 +46,24 @@ var EIP712EncryptionTokens = [...]string{
 	EIP712EncryptionTokenV2,
 }
 
-// ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave
+// ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave.
+// It is th client-side perspective of the viewing key used for decrypting incoming traffic.
 type ViewingKey struct {
-	Account    *gethcommon.Address // Account address that this Viewing Key is bound to - Users Pubkey address
-	PrivateKey *ecies.PrivateKey   // ViewingKey private key to encrypt data to the enclave
-	PublicKey  []byte              // ViewingKey public key in decrypt data from the enclave
-	Signature  []byte              // ViewingKey public key signed by the Accounts Private key - Allows to retrieve the Account address
+	Account                 *gethcommon.Address // Account address that this Viewing Key is bound to - Users Pubkey address
+	PrivateKey              *ecies.PrivateKey   // ViewingKey private key to encrypt data to the enclave
+	PublicKey               []byte              // ViewingKey public key in decrypt data from the enclave
+	SignatureWithAccountKey []byte              // ViewingKey public key signed by the Accounts Private key - Allows to retrieve the Account address
+}
+
+// RPCSignedViewingKey - used for transporting a minimalist viewing key via
+// every RPC request to a sensitive method, including Log subscriptions.
+// only the public key and the signature are required
+// the account address is sent as well to aid validation
+// todo - send the type of Message that was signed instead of the Account
+type RPCSignedViewingKey struct {
+	Account                 *gethcommon.Address
+	PublicKey               []byte
+	SignatureWithAccountKey []byte
 }
 
 // GenerateViewingKeyForWallet takes an account wallet, generates a viewing key and signs the key with the acc's private key
@@ -78,10 +89,10 @@ func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
 
 	accAddress := wal.Address()
 	return &ViewingKey{
-		Account:    &accAddress,
-		PrivateKey: viewingPrivateKeyECIES,
-		PublicKey:  viewingPubKeyBytes,
-		Signature:  signature,
+		Account:                 &accAddress,
+		PrivateKey:              viewingPrivateKeyECIES,
+		PublicKey:               viewingPubKeyBytes,
+		SignatureWithAccountKey: signature,
 	}, nil
 }
 
@@ -208,44 +219,41 @@ func CalculateUserID(publicKeyBytes []byte) []byte {
 	return crypto.Keccak256Hash(publicKeyBytes).Bytes()[:20]
 }
 
-// CheckSignatureAndAddress checks if the signature is valid for hash of the message and checks if
+// CheckSignatureAndReturnAccountAddress checks if the signature is valid for hash of the message and checks if
 // signer is an address provided to the function.
-// It returns true if both conditions are true and false otherwise
-func CheckSignatureAndAddress(hashBytes []byte, signature []byte, address *gethcommon.Address) bool {
-	hash := gethcommon.BytesToHash(hashBytes)
-	pubKeyBytes, err := crypto.Ecrecover(hash[:], signature)
+// It returns an address if the signature is valid and nil otherwise
+func CheckSignatureAndReturnAccountAddress(hashBytes []byte, signature []byte) (*gethcommon.Address, error) {
+	pubKeyBytes, err := crypto.Ecrecover(hashBytes, signature)
 	if err != nil {
-		return false
+		return nil, err
 	}
 
 	pubKey, err := crypto.UnmarshalPubkey(pubKeyBytes)
 	if err != nil {
-		return false
-	}
-
-	recoveredAddr := crypto.PubkeyToAddress(*pubKey)
-
-	if !bytes.Equal(recoveredAddr.Bytes(), address.Bytes()) {
-		return false
+		return nil, err
 	}
 
 	r := new(big.Int).SetBytes(signature[:32])
 	s := new(big.Int).SetBytes(signature[32:64])
 
 	// Verify the signature and return the result (all the checks above passed)
-	return ecdsa.Verify(pubKey, hashBytes, r, s)
+	isSigValid := ecdsa.Verify(pubKey, hashBytes, r, s)
+	if isSigValid {
+		address := crypto.PubkeyToAddress(*pubKey)
+		return &address, nil
+	}
+	return nil, fmt.Errorf("invalid signature")
 }
 
-func VerifySignatureEIP712(userID string, address *gethcommon.Address, signature []byte, chainID int64) (bool, error) {
-	var rawDataOptions [][]byte
+// CheckEIP712Signature checks if signature is valid for provided userID and chainID and return address or nil if not valid
+func CheckEIP712Signature(userID string, signature []byte, chainID int64) (*gethcommon.Address, error) {
+	if len(signature) != 65 {
+		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
+	}
 
 	rawDataOptions, err := GenerateAuthenticationEIP712RawDataOptions(userID, chainID)
 	if err != nil {
-		return false, err
-	}
-
-	if len(signature) != 65 {
-		return false, fmt.Errorf("invalid signaure length: %d", len(signature))
+		return nil, fmt.Errorf("cannot generate eip712 message. Cause %w", err)
 	}
 
 	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
@@ -258,10 +266,11 @@ func VerifySignatureEIP712(userID string, address *gethcommon.Address, signature
 		// create a hash of structured message (needed for signature verification)
 		hashBytes := crypto.Keccak256(rawData)
 
-		// current signature is valid - return true
-		if CheckSignatureAndAddress(hashBytes, signature, address) {
-			return true, nil
+		// current signature is valid - return account address
+		address, err := CheckSignatureAndReturnAccountAddress(hashBytes, signature)
+		if err == nil {
+			return address, nil
 		}
 	}
-	return false, errors.New("signature verification failed")
+	return nil, errors.New("EIP 712 signature verification failed")
 }

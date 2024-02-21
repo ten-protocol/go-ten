@@ -61,9 +61,9 @@ type gethEncodingServiceImpl struct {
 func NewGethEncodingService(storage storage.Storage, logger gethlog.Logger) EncodingService {
 	// todo (tudor) figure out the best values
 	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1000,    // number of keys to track frequency of.
-		MaxCost:     1 << 28, // maximum cost of cache (256MB).
-		BufferItems: 64,      // number of keys per Get buffer. Todo - what is this
+		NumCounters: 5000, // number of keys to track frequency of.
+		MaxCost:     500,  // todo - this represents how many items.
+		BufferItems: 64,   // number of keys per Get buffer. Todo - what is this
 	})
 	if err != nil {
 		panic(err)
@@ -358,41 +358,6 @@ func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(b *core.Batch) (*typ
 	}
 	// cast the correct local structure to the standard geth block.
 	return (*types.Block)(unsafe.Pointer(&lb)), nil
-}
-
-// DecodeParamBytes decodes the parameters byte array into a slice of interfaces
-// Helps each calling method to manage the positional data
-func DecodeParamBytes(paramBytes []byte) ([]interface{}, error) {
-	var paramList []interface{}
-
-	if err := json.Unmarshal(paramBytes, &paramList); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal params - %w", err)
-	}
-	return paramList, nil
-}
-
-// ExtractViewingKey returns the viewingkey pubkey and the signature from the request
-func ExtractViewingKey(vkBytesIntf interface{}) ([]byte, []byte, error) {
-	vkBytesList, ok := vkBytesIntf.([]interface{})
-	if !ok {
-		return nil, nil, fmt.Errorf("unable to cast the vk to []interface")
-	}
-
-	if len(vkBytesList) != 2 {
-		return nil, nil, fmt.Errorf("wrong size of viewing key params")
-	}
-
-	vkPubkeyHexBytes, err := hexutil.Decode(vkBytesList[0].(string))
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not decode data in vk pub key - %w", err)
-	}
-
-	accountSignatureHexBytes, err := hexutil.Decode(vkBytesList[1].(string))
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not decode data in vk signature - %w", err)
-	}
-
-	return vkPubkeyHexBytes, accountSignatureHexBytes, nil
 }
 
 func ExtractPrivateCustomQuery(_ interface{}, query interface{}) (*common.PrivateCustomQueryListTransactions, error) {

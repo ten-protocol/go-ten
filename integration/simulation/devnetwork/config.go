@@ -36,7 +36,7 @@ type ObscuroConfig struct {
 }
 
 // DefaultDevNetwork provides an off-the-shelf default config for a sim network
-func DefaultDevNetwork() *InMemDevNetwork {
+func DefaultDevNetwork(tenGateway bool) *InMemDevNetwork {
 	numNodes := 4 // Default sim currently uses 4 L1 nodes. Obscuro nodes: 1 seq, 3 validators
 	networkWallets := params.NewSimWallets(0, numNodes, integration.EthereumChainID, integration.TenChainID)
 	l1Config := &L1Config{
@@ -57,7 +57,8 @@ func DefaultDevNetwork() *InMemDevNetwork {
 			L1BlockTime:       15 * time.Second,
 			SequencerID:       networkWallets.NodeWallets[0].Address(),
 		},
-		faucetLock: sync.Mutex{},
+		tenGatewayEnabled: tenGateway,
+		faucetLock:        sync.Mutex{},
 	}
 }
 

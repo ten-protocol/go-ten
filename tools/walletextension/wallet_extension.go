@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/accountmanager"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/config"
@@ -43,6 +45,7 @@ type WalletExtension struct {
 	version            string
 	config             *config.Config
 	tenClient          *obsclient.ObsClient
+	cache              cache.Cache
 }
 
 func New(
@@ -62,6 +65,12 @@ func New(
 	}
 	newTenClient := obsclient.NewObsClient(rpcClient)
 	newFileLogger := common.NewFileLogger()
+	newGatewayCache, err := cache.NewCache(logger)
+	if err != nil {
+		logger.Error(fmt.Errorf("could not create cache. Cause: %w", err).Error())
+		panic(err)
+	}
+
 	return &WalletExtension{
 		hostAddrHTTP:       hostAddrHTTP,
 		hostAddrWS:         hostAddrWS,
@@ -74,6 +83,7 @@ func New(
 		version:            version,
 		config:             config,
 		tenClient:          newTenClient,
+		cache:              newGatewayCache,
 	}
 }
 
@@ -89,13 +99,28 @@ func (w *WalletExtension) Logger() gethlog.Logger {
 
 // ProxyEthRequest proxys an incoming user request to the enclave
 func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userconn.UserConn, hexUserID string) (map[string]interface{}, error) {
-	// start measuring time for request
-	requestStartTime := time.Now()
-
 	response := map[string]interface{}{}
 	// all responses must contain the request id. Both successful and unsuccessful.
 	response[common.JSONKeyRPCVersion] = jsonrpc.Version
 	response[common.JSONKeyID] = request.ID
+
+	// start measuring time for request
+	requestStartTime := time.Now()
+
+	// Check if the request is in the cache
+	isCacheable, key, ttl := cache.IsCacheable(request)
+
+	// in case of cache hit return the response from the cache
+	if isCacheable {
+		if value, ok := w.cache.Get(key); ok {
+			requestEndTime := time.Now()
+			duration := requestEndTime.Sub(requestStartTime)
+			w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, value, duration.Milliseconds()))
+			// adjust requestID
+			value[common.JSONKeyID] = request.ID
+			return value, nil
+		}
+	}
 
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
 	var rpcResp interface{}
@@ -140,6 +165,11 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 	duration := requestEndTime.Sub(requestStartTime)
 	w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, response, duration.Milliseconds()))
 
+	// if the request is cacheable, store the response in the cache
+	if isCacheable {
+		w.cache.Set(key, response, ttl)
+	}
+
 	return response, nil
 }
 
@@ -155,10 +185,10 @@ func (w *WalletExtension) GenerateViewingKey(addr gethcommon.Address) (string, e
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
 
 	w.unsignedVKs[addr] = &viewingkey.ViewingKey{
-		Account:    &addr,
-		PrivateKey: viewingPrivateKeyEcies,
-		PublicKey:  viewingPublicKeyBytes,
-		Signature:  nil, // we await a signature from the user before we can set up the EncRPCClient
+		Account:                 &addr,
+		PrivateKey:              viewingPrivateKeyEcies,
+		PublicKey:               viewingPublicKeyBytes,
+		SignatureWithAccountKey: nil, // we await a signature from the user before we can set up the EncRPCClient
 	}
 
 	// compress the viewing key and convert it to hex string ( this is what Metamask signs)
@@ -178,7 +208,7 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
 	signature[64] -= 27
 
-	vk.Signature = signature
+	vk.SignatureWithAccountKey = signature
 
 	err := w.storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
 	if err != nil {
@@ -197,7 +227,7 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 
 	defaultAccountManager.AddClient(address, client)
 
-	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.Signature)
+	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.SignatureWithAccountKey)
 	if err != nil {
 		return fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser)
 	}
@@ -245,9 +275,13 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, sig
 	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
 	// check if a message was signed by the correct address and if the signature is valid
-	valid, err := viewingkey.VerifySignatureEIP712(hexUserID, &addressFromMessage, signature, int64(w.config.TenChainID))
-	if !valid && err != nil {
+	sigAddrs, err := viewingkey.CheckEIP712Signature(hexUserID, signature, int64(w.config.TenChainID))
+	if err != nil {
 		return fmt.Errorf("signature is not valid: %w", err)
+	}
+
+	if sigAddrs.Hex() != address {
+		return fmt.Errorf("signature is not valid. Signature address %s!=%s ", sigAddrs, address)
 	}
 
 	// register the account for that viewing key

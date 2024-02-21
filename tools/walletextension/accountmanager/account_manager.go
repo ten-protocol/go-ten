@@ -196,6 +196,17 @@ func (m *AccountManager) createClientsForAccounts(accounts []wecommon.AccountDB,
 	return clients, nil
 }
 
+// todo - better way
+const notAuthorised = "not authorised"
+
+var platformAuthorisedCalls = map[string]bool{
+	rpc.GetBalance: true,
+	// rpc.GetCode, //todo
+	rpc.GetTransactionCount:   true,
+	rpc.GetTransactionReceipt: true,
+	rpc.GetLogs:               true,
+}
+
 func (m *AccountManager) executeCall(rpcReq *wecommon.RPCRequest, rpcResp *interface{}) error {
 	m.accountsMutex.RLock()
 	defer m.accountsMutex.RUnlock()
@@ -217,6 +228,11 @@ func (m *AccountManager) executeCall(rpcReq *wecommon.RPCRequest, rpcResp *inter
 				// request didn't fail, we don't need to continue trying the other clients
 				return nil
 			}
+			// platform calls return a standard error for calls that are not authorised.
+			// any other error can be returned early
+			if platformAuthorisedCalls[rpcReq.Method] && err.Error() != notAuthorised {
+				return err
+			}
 		}
 		// every attempt errored
 		return err
@@ -237,27 +253,48 @@ func (m *AccountManager) suggestAccountClient(req *wecommon.RPCRequest, accClien
 			return client
 		}
 	}
+	switch req.Method {
+	case rpc.Call, rpc.EstimateGas:
+		return m.handleEthCall(req, accClients)
+	case rpc.GetBalance:
+		return extractAddress(0, req.Params, accClients)
+	case rpc.GetLogs:
+		return extractAddress(1, req.Params, accClients)
+	case rpc.GetTransactionCount:
+		return extractAddress(0, req.Params, accClients)
+	default:
+		return nil
+	}
+}
 
+func extractAddress(pos int, params []interface{}, accClients map[gethcommon.Address]*rpc.EncRPCClient) *rpc.EncRPCClient {
+	if len(params) < pos+1 {
+		return nil
+	}
+	requestedAddress, err := gethencoding.ExtractAddress(params[pos])
+	if err == nil {
+		return accClients[*requestedAddress]
+	}
+	return nil
+}
+
+func (m *AccountManager) handleEthCall(req *wecommon.RPCRequest, accClients map[gethcommon.Address]*rpc.EncRPCClient) *rpc.EncRPCClient {
 	paramsMap, err := parseParams(req.Params)
 	if err != nil {
 		// no further info to deduce calling client
 		return nil
 	}
-
-	if req.Method == rpc.Call {
-		// check if request params had a "from" address and if we had a client for that address
-		fromClient, found := checkForFromField(paramsMap, accClients)
-		if found {
-			return fromClient
-		}
-
-		// Otherwise, we search the `data` field for an address matching a registered viewing key.
-		addr, err := searchDataFieldForAccount(paramsMap, accClients)
-		if err == nil {
-			return accClients[*addr]
-		}
+	// check if request params had a "from" address and if we had a client for that address
+	fromClient, found := checkForFromField(paramsMap, accClients)
+	if found {
+		return fromClient
 	}
 
+	// Otherwise, we search the `data` field for an address matching a registered viewing key.
+	addr, err := searchDataFieldForAccount(paramsMap, accClients)
+	if err == nil {
+		return accClients[*addr]
+	}
 	return nil
 }
 

@@ -1,16 +1,68 @@
-package enclave
+package rpc
 
 import (
+	"errors"
+	"fmt"
 	"math/big"
+
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
+func GetTransactionValidate(reqParams []any, builder *CallBuilder[gethcommon.Hash, RpcTransaction], _ *EncryptionManager) error {
+	// Parameters are [Hash]
+	if len(reqParams) != 1 {
+		builder.Err = fmt.Errorf("wrong parameters")
+		return nil
+	}
+	txHashStr, ok := reqParams[0].(string)
+	if !ok {
+		builder.Err = fmt.Errorf("unexpected tx hash parameter")
+		return nil
+	}
+	txHash := gethcommon.HexToHash(txHashStr)
+	builder.Param = &txHash
+	return nil
+}
+
+func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
+	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
+	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(*builder.Param)
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			builder.Status = NotFound
+			return nil
+		}
+		return err
+	}
+
+	sender, err := core.GetTxSigner(tx)
+	if err != nil {
+		return fmt.Errorf("could not recover the tx %s sender. Cause: %w", tx.Hash(), err)
+	}
+
+	// authorise - only the signer can request the transaction
+	if sender.Hex() != builder.VK.AccountAddress.Hex() {
+		builder.Status = NotAuthorised
+		// builder.ReturnValue= []byte{}
+		return nil
+	}
+
+	// Unlike in the Geth impl, we hardcode the use of a London signer.
+	// todo (#1553) - once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`
+	signer := types.NewLondonSigner(tx.ChainId())
+	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
+	builder.ReturnValue = rpcTx
+	return nil
+}
+
 // Lifted from Geth's internal `ethapi` package.
-type rpcTransaction struct {
+type RpcTransaction struct { //nolint
 	BlockHash        *gethcommon.Hash    `json:"blockHash"`
 	BlockNumber      *hexutil.Big        `json:"blockNumber"`
 	From             gethcommon.Address  `json:"from"`
@@ -33,10 +85,10 @@ type rpcTransaction struct {
 }
 
 // Lifted from Geth's internal `ethapi` package.
-func newRPCTransaction(tx *types.Transaction, blockHash gethcommon.Hash, blockNumber uint64, index uint64, baseFee *big.Int, signer types.Signer) *rpcTransaction {
+func newRPCTransaction(tx *types.Transaction, blockHash gethcommon.Hash, blockNumber uint64, index uint64, baseFee *big.Int, signer types.Signer) *RpcTransaction {
 	from, _ := types.Sender(signer, tx)
 	v, r, s := tx.RawSignatureValues()
-	result := &rpcTransaction{
+	result := &RpcTransaction{
 		Type:     hexutil.Uint64(tx.Type()),
 		From:     from,
 		Gas:      hexutil.Uint64(tx.Gas()),

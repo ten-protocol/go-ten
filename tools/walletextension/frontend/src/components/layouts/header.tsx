@@ -6,13 +6,27 @@ import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 import { Button } from "../ui/button";
 import HealthIndicator from "../health-indicator";
+import Image from "next/image";
 
 export default function Header() {
   return (
     <div className="border-b">
       <div className="flex h-16 justify-between items-center px-4">
         <Link href="/">
-          <h1 className="text-40">TEN.</h1>
+          <Image
+            src="/assets/images/black_logotype.png"
+            alt="Logo"
+            width={150}
+            height={40}
+            className="cursor-pointer dark:hidden"
+          />
+          <Image
+            src="/assets/images/white_logotype.png"
+            alt="Logo"
+            width={150}
+            height={40}
+            className="cursor-pointer hidden dark:block"
+          />
         </Link>
         <div className="hidden md:flex items-center space-x-4">
           <MainNav className="mx-6" />

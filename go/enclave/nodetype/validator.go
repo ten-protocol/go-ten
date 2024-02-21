@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/enclave/txpool"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -30,22 +32,14 @@ type obsValidator struct {
 	sequencerID  gethcommon.Address
 	storage      storage.Storage
 	sigValidator *components.SignatureValidator
-	logger       gethlog.Logger
+	mempool      *txpool.TxPool
+
+	logger gethlog.Logger
 }
 
-func NewValidator(
-	consumer components.L1BlockProcessor,
-	batchExecutor components.BatchExecutor,
-	registry components.BatchRegistry,
-	rollupConsumer components.RollupConsumer,
+func NewValidator(consumer components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupConsumer components.RollupConsumer, chainConfig *params.ChainConfig, sequencerID gethcommon.Address, storage storage.Storage, sigValidator *components.SignatureValidator, mempool *txpool.TxPool, logger gethlog.Logger) ObsValidator {
+	startMempool(registry, mempool)
 
-	chainConfig *params.ChainConfig,
-
-	sequencerID gethcommon.Address,
-	storage storage.Storage,
-	sigValidator *components.SignatureValidator,
-	logger gethlog.Logger,
-) ObsValidator {
 	return &obsValidator{
 		blockProcessor: consumer,
 		batchExecutor:  batchExecutor,
@@ -55,13 +49,17 @@ func NewValidator(
 		sequencerID:    sequencerID,
 		storage:        storage,
 		sigValidator:   sigValidator,
+		mempool:        mempool,
 		logger:         logger,
 	}
 }
 
-func (val *obsValidator) SubmitTransaction(transaction *common.L2Tx) error {
-	val.logger.Trace(fmt.Sprintf("Transaction %s submitted to validator but there is nothing to do with it.", transaction.Hash().Hex()))
-	return nil
+func (val *obsValidator) SubmitTransaction(tx *common.L2Tx) error {
+	headBatch := val.batchRegistry.HeadBatchSeq()
+	if headBatch == nil || headBatch.Uint64() <= common.L2GenesisSeqNo+1 {
+		return fmt.Errorf("not initialised")
+	}
+	return val.mempool.Validate(tx)
 }
 
 func (val *obsValidator) OnL1Fork(_ *common.ChainFork) error {
@@ -86,6 +84,8 @@ func (val *obsValidator) ExecuteStoredBatches() error {
 		return err
 	}
 
+	startMempool(val.batchRegistry, val.mempool)
+
 	for _, batch := range batches {
 		if batch.IsGenesis() {
 			if err = val.handleGenesis(batch); err != nil {
@@ -107,6 +107,10 @@ func (val *obsValidator) ExecuteStoredBatches() error {
 			err = val.storage.StoreExecutedBatch(batch, receipts)
 			if err != nil {
 				return fmt.Errorf("could not store executed batch %s. Cause: %w", batch.Hash(), err)
+			}
+			err = val.mempool.Chain.IngestNewBlock(batch)
+			if err != nil {
+				return fmt.Errorf("failed to feed batch into the virtual eth chain- %w", err)
 			}
 			val.batchRegistry.OnBatchExecuted(batch, receipts)
 		}
@@ -155,5 +159,16 @@ func (val *obsValidator) OnL1Block(_ types.Block, _ *components.BlockIngestionTy
 }
 
 func (val *obsValidator) Close() error {
-	return nil
+	return val.mempool.Close()
+}
+
+func startMempool(registry components.BatchRegistry, mempool *txpool.TxPool) {
+	// the mempool can only be started when there are a couple of blocks already processed
+	headBatchSeq := registry.HeadBatchSeq()
+	if !mempool.Running() && headBatchSeq != nil && headBatchSeq.Uint64() > common.L2GenesisSeqNo+1 {
+		err := mempool.Start()
+		if err != nil {
+			panic(fmt.Errorf("could not start mempool: %w", err))
+		}
+	}
 }
