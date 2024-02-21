@@ -18,7 +18,7 @@ type SendNativeFunds struct {
 	GasLimit   *big.Int
 	SkipVerify bool
 
-	user   *userwallet.UserWallet
+	user   userwallet.User
 	txHash *common.Hash
 }
 
@@ -35,7 +35,7 @@ func (s *SendNativeFunds) Run(ctx context.Context, _ networktest.NetworkConnecto
 	if err != nil {
 		return ctx, err
 	}
-	txHash, err := user.SendFunds(ctx, target.Address(), s.Amount)
+	txHash, err := user.SendFunds(ctx, target.Wallet().Address(), s.Amount)
 	if err != nil {
 		return nil, err
 	}

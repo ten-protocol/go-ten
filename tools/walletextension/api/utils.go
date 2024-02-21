@@ -30,9 +30,15 @@ func parseRequest(body []byte) (*common.RPCRequest, error) {
 
 	// we extract the params into a JSON list
 	var params []interface{}
-	err = json.Unmarshal(reqJSONMap[common.JSONKeyParams], &params)
-	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %s ; %w", string(body), err)
+	// params key is optional in JSON-RPC request
+	_, exists := reqJSONMap[common.JSONKeyParams]
+	if exists {
+		err = json.Unmarshal(reqJSONMap[common.JSONKeyParams], &params)
+		if err != nil {
+			return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %s ; %w", string(body), err)
+		}
+	} else {
+		params = []interface{}{}
 	}
 
 	return &common.RPCRequest{

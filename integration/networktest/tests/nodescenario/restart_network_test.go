@@ -56,10 +56,6 @@ func TestRestartNetwork(t *testing.T) {
 			// 	This needs investigating but it suggests to me that the health check is succeeding prematurely
 			actions.SleepAction(5*time.Second), // allow time for re-sync
 
-			// resubmit user viewing keys (all users will have lost their "session")
-			// todo: get rid of this once the enclave persists viewing keys correctly
-			actions.AuthenticateAllUsers(),
-
 			// another load test, check that the network is still working
 			actions.GenerateUsersRandomisedTransferActionsInParallel(4, 60*time.Second),
 		),
