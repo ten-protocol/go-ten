@@ -3,16 +3,12 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
-	"os"
-	"path/filepath"
-	"runtime"
-
+	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
 	obscurocommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database"
-
-	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
 	common "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"os"
+	"path/filepath"
 )
 
 type Database struct {
@@ -33,15 +29,31 @@ func NewSqliteDatabase(dbPath string) (*Database, error) {
 		return nil, err
 	}
 
-	// get the path to the migrations (they are always in the same directory as file containing connection function)
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return nil, fmt.Errorf("failed to get current directory")
+	// enable foreign keys in sqlite
+	_, err = db.Exec("PRAGMA foreign_keys = ON;")
+	if err != nil {
+		return nil, err
 	}
-	migrationsDir := filepath.Dir(filename)
 
-	// apply migrations
-	if err = database.ApplyMigrations(db, migrationsDir); err != nil {
+	// create users table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
+		user_id binary(20) PRIMARY KEY,
+		private_key binary(32)
+	);`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// create accounts table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS accounts (
+		user_id binary(20),
+		account_address binary(20),
+		signature binary(65),
+    	FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+	);`)
+
+	if err != nil {
 		return nil, err
 	}
 
