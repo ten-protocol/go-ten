@@ -3,12 +3,13 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
 	obscurocommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	common "github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"os"
-	"path/filepath"
 )
 
 type Database struct {
