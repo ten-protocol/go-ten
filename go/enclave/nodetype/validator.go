@@ -112,10 +112,6 @@ func (val *obsValidator) ExecuteStoredBatches() error {
 			if err != nil {
 				return fmt.Errorf("could not store executed batch %s. Cause: %w", batch.Hash(), err)
 			}
-			err = val.mempool.Chain.IngestNewBlock(batch)
-			if err != nil {
-				return fmt.Errorf("failed to feed batch into the virtual eth chain- %w", err)
-			}
 			val.batchRegistry.OnBatchExecuted(batch, receipts)
 		}
 	}
