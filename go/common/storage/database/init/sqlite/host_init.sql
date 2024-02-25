@@ -34,12 +34,22 @@ create table if not exists batch
     tx_count       int        NOT NULL,
     header         blob       NOT NULL,
     body_id        int        NOT NULL REFERENCES batch_body
-    );
+);
 create index IDX_BATCH_HASH on batch (hash);
 create index IDX_BATCH_HEIGHT on batch (height);
+
+create table if not exists transactions
+(
+    hash           binary(16) primary key,
+    full_hash      binary(32) NOT NULL,
+    body_id        int REFERENCES batch_body
+);
 
 create table if not exists transaction_count
 (
     id          int  NOT NULL primary key,
     total       int  NOT NULL
 );
+
+insert into transaction_count (id, total)
+values (1, 0) on CONFLICT (id) DO NOTHING;

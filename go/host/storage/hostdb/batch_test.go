@@ -114,7 +114,6 @@ func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) { //nolint:dupl
 }
 
 func TestHeadBatchHeaderIsNotSetInitially(t *testing.T) {
-	//FIXME
 	db, err := createSQLiteDB(t)
 
 	_, err = GetHeadBatchHeader(db)
@@ -124,7 +123,6 @@ func TestHeadBatchHeaderIsNotSetInitially(t *testing.T) {
 }
 
 func TestCanRetrieveBatchHashByNumber(t *testing.T) {
-	//FIXME Implement me
 	db, err := createSQLiteDB(t)
 	batch, err := getBatch(batchNumber, []common.L2TxHash{})
 	if err != nil {
@@ -136,7 +134,7 @@ func TestCanRetrieveBatchHashByNumber(t *testing.T) {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
-	batchHash, err := GetBatchHash(db, batch.Header.Number)
+	batchHash, err := GetBatchHashByNumber(db, batch.Header.Number)
 	if err != nil {
 		t.Errorf("stored batch but could not retrieve headers hash by number. Cause: %s", err)
 	}
@@ -149,7 +147,7 @@ func TestUnknownBatchNumberReturnsNotFound(t *testing.T) {
 	db, err := createSQLiteDB(t)
 	header := types.Header{}
 
-	_, err = GetBatchHash(db, header.Number)
+	_, err = GetBatchHashByNumber(db, header.Number)
 	if !errors.Is(err, errutil.ErrNotFound) {
 		t.Errorf("did not store batch hash but was able to retrieve it")
 	}

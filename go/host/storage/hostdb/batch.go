@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	selectTxCount           = "SELECT count FROM transaction_count WHERE id = 1"
+	selectTxCount           = "SELECT total FROM transaction_count WHERE id = 1"
 	selectBatch             = "SELECT b.sequence_order, b.full_hash, b.hash, b.height, b.tx_count, b.header, b.body_id, bb.body FROM batch b JOIN batch_body bb ON b.body_id = bb.id"
 	selectBatchBody         = "SELECT content FROM batch_body WHERE id = ?"
 	selectDescendingBatches = `
@@ -23,16 +23,17 @@ const (
 		ORDER BY b.sequence_order DESC
 		LIMIT 1
 	`
-	selectHeader = "select b.header from batch b"
+	selectHeader       = "SELECt b.header FROM batch b"
+	selectTransactions = "SELECT t.hash FROM transactions t JOIN batch b ON t.body_id = b.body_id WHERE b.full_hash = ?"
 
-	insertBatchBody = "INSERT INTO batch_body (id, content) VALUES (?, ?)"
-	insertBatch     = "INSERT INTO batch (sequence_order, full_hash, hash, height, tx_count, header, body_id) VALUES (?, ?, ?, ?, ?, ?,?)"
-	insertTxCount   = "INSERT INTO transaction_count (id, count) VALUES (?, ?) ON DUPLICATE KEY UPDATE count = ?"
+	insertBatchBody    = "INSERT INTO batch_body (id, content) VALUES (?, ?)"
+	insertBatch        = "INSERT INTO batch (sequence_order, full_hash, hash, height, tx_count, header, body_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
+	insertTransactions = "INSERT INTO transactions (hash, full_hash, body_id) VALUES (?, ?, ?)"
+	insertTxCount      = "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET total = excluded.total;"
 )
 
 // AddBatch adds a batch and its header to the DB
 func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
-
 	// Encode batch data
 	batchBodyID := batch.Header.SequencerOrderNo.Uint64()
 	body, err := rlp.EncodeToBytes(batch.EncryptedTxBlob)
@@ -44,25 +45,34 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 		return fmt.Errorf("could not encode batch header: %w", err)
 	}
 
-	// Execute body insert
+	// Insert the batch body data
 	_, err = db.Exec(insertBatchBody, batchBodyID, body)
-	//_, err = batchBodyStmt.Exec(batchBodyID, body)
 	if err != nil {
 		return fmt.Errorf("failed to insert body: %w", err)
 	}
 	if len(batch.TxHashes) > 0 {
+		//Insert transactions
+		for _, transaction := range batch.TxHashes {
+			// GET LAST 16 s
+			shortHash := truncTo16(transaction)
+			fullHash := transaction.Bytes()
+			_, err := db.Exec(insertTransactions, shortHash, fullHash, batchBodyID)
+			if err != nil {
+				return fmt.Errorf("failed to insert transaction with hash: %d", err)
+			}
+		}
+		//Increment total count
 		var currentTotal int
 		err := db.QueryRow(selectTxCount).Scan(&currentTotal)
-		if err != nil {
-			return fmt.Errorf("failed to retrieve current tx total value: %w", err)
-		}
 		newTotal := currentTotal + len(batch.TxHashes)
+		// Increase the TX count
 		_, err = db.Exec(insertTxCount, 1, newTotal, newTotal)
 		if err != nil {
 			return fmt.Errorf("failed to update transaction count: %w", err)
 		}
 	}
 
+	// Insert the batch data
 	_, err = db.Exec(insertBatch,
 		batch.Header.SequencerOrderNo.Uint64(), // sequence
 		batch.Hash(),                           // full hash
@@ -121,27 +131,56 @@ func GetBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, erro
 	return fetchBatchHeader(db, " where hash=?", truncTo16(hash))
 }
 
-// GetBatchHash returns the hash of a batch given its number.
-func GetBatchHash(db *sql.DB, number *big.Int) (*gethcommon.Hash, error) {
-	panic("implement me")
-}
-
-// GetBatchTxs returns the transaction hashes of the batch with the given hash.
-func GetBatchTxs(db *sql.DB, batchHash gethcommon.Hash) ([]gethcommon.Hash, error) {
-	panic("implement me")
+// GetBatchHashByNumber returns the hash of a batch given its number.
+func GetBatchHashByNumber(db *sql.DB, number *big.Int) (*gethcommon.Hash, error) {
+	batch, err := fetchBatchHeader(db, " where sequence_order=?", number.Uint64())
+	if err != nil {
+		return nil, err
+	}
+	l2BatchHash := batch.Hash()
+	return &l2BatchHash, nil
 }
 
 func GetHeadBatchHeader(db *sql.DB) (*common.BatchHeader, error) {
 	batch, err := fetchHeadBatch(db)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch head batch: %w", err)
+		return nil, err
 	}
 	return batch.Header, nil
 }
 
 // GetBatchNumber returns the number of the batch containing the given transaction hash.
 func GetBatchNumber(db *sql.DB, txHash gethcommon.Hash) (*big.Int, error) {
-	panic("implement me")
+	batch, err := fetchBatchHeader(db, " where b.hash=?", truncTo16(txHash))
+	if err != nil {
+		return nil, err
+	}
+	return batch.Number, nil
+}
+
+// GetBatchTxs returns the transaction hashes of the batch with the given hash.
+func GetBatchTxs(db *sql.DB, batchHash gethcommon.Hash) ([]gethcommon.Hash, error) {
+	rows, err := db.Query(selectTransactions, batchHash)
+	if err != nil {
+		return nil, fmt.Errorf("query execution failed: %w", err)
+	}
+	defer rows.Close()
+
+	var transactions []gethcommon.Hash
+	for rows.Next() {
+		var txHashBytes []byte
+		if err := rows.Scan(&txHashBytes); err != nil {
+			return nil, fmt.Errorf("failed to scan transaction hash: %w", err)
+		}
+		txHash := gethcommon.BytesToHash(txHashBytes)
+		transactions = append(transactions, txHash)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error looping through transacion rows: %w", err)
+	}
+
+	return transactions, nil
 }
 
 // GetTotalTransactions returns the total number of batched transactions.
@@ -309,22 +348,22 @@ func fetchHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 	var heightInt64 int
 	var txCountInt64 int
 	var headerBlob []byte
-	var body_id int
+	var bodyId int
 
-	err := db.QueryRow(selectDescendingBatches).Scan(&sequenceInt64, &fullHash, &hash, &heightInt64, &txCountInt64, &headerBlob, &body_id)
+	err := db.QueryRow(selectDescendingBatches).Scan(&sequenceInt64, &fullHash, &hash, &heightInt64, &txCountInt64, &headerBlob, &bodyId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("no batches found")
+			return nil, errutil.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to fetch current head batch: %w", err)
 	}
-	//Select from batch_body table
+
 	var content []byte
-	err = db.QueryRow(selectBatchBody, &body_id).Scan(&content)
+	err = db.QueryRow(selectBatchBody, &bodyId).Scan(&content)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch batch content given the id: %w", err)
 	}
-	// Decode the batch header
+
 	var header common.BatchHeader
 	err = rlp.DecodeBytes(headerBlob, &header)
 	if err != nil {
