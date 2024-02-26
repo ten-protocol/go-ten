@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
 	"sync"
 	"time"
@@ -293,6 +294,15 @@ func (e *enclaveImpl) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, common.Sy
 		return nil, responses.ToInternalError(err)
 	}
 	return b, nil
+}
+
+func (e *enclaveImpl) GetRollupData(internalRollup []byte) (*big.Int, *uint64, common.SystemError) {
+	calldataRollupHeader := new(common.CalldataRollupHeader)
+	err := e.decryptDecompressAndDeserialise(internalRollup, calldataRollupHeader)
+	if err != nil {
+		return nil, nil, err
+	}
+	return calldataRollupHeader.FirstBatchSequence, &calldataRollupHeader.StartTime, nil
 }
 
 // Status is only implemented by the RPC wrapper
@@ -960,5 +970,21 @@ func replayBatchesToValidState(storage storage.Storage, registry components.Batc
 		}
 	}
 
+	return nil
+}
+
+func (e *enclaveImpl) decryptDecompressAndDeserialise(blob []byte, obj any) error {
+	plaintextBlob, err := e.dataEncryptionService.Decrypt(blob)
+	if err != nil {
+		return err
+	}
+	serialisedBlob, err := e.dataCompressionService.Decompress(plaintextBlob)
+	if err != nil {
+		return err
+	}
+	err = rlp.DecodeBytes(serialisedBlob, obj)
+	if err != nil {
+		return err
+	}
 	return nil
 }
