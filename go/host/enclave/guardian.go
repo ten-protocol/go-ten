@@ -3,6 +3,7 @@ package enclave
 import (
 	"database/sql"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"math/big"
 	"strings"
 	"sync"
@@ -470,7 +471,9 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 		if err != nil {
 			g.logger.Error("Could not decode rollup.", log.ErrKey, err)
 		}
-		err = g.db.AddRollupHeader(r, block)
+
+		// FIXME fetch
+		err = hostdb.AddRollupHeader(g.db, r, block)
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())

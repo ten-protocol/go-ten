@@ -54,7 +54,6 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 	if len(batch.TxHashes) > 0 {
 		//Insert transactions
 		for _, transaction := range batch.TxHashes {
-			// GET LAST 16 s
 			shortHash := truncTo16(transaction)
 			fullHash := transaction.Bytes()
 			_, err := db.Exec(insertTransactions, shortHash, fullHash, batchBodyID)

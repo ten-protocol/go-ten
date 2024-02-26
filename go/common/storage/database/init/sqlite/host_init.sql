@@ -13,6 +13,7 @@ create table if not exists rollup
     start_seq         int        NOT NULL,
     end_seq           int        NOT NULL,
     started_at        int        NOT NULL,
+    header            blob       NOT NULL
     compression_block binary(16) NOT NULL
 );
 

@@ -14,7 +14,6 @@ import (
 )
 
 // An arbitrary number to put in the header, to check that the header is retrieved correctly from the DB.
-const batchNumber = 777
 
 func TestCanStoreAndRetrieveBatchHeader(t *testing.T) {
 	db, err := createSQLiteDB(t)
@@ -260,5 +259,7 @@ func createBatch(batchNum int64, txHashes []common.L2BatchHash) (common.ExtBatch
 
 	return batch, nil
 }
+
+// Duplicate TX hash test
 
 // todo (#718) - add tests of writing and reading extbatches.

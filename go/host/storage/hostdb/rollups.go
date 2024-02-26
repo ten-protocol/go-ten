@@ -1,81 +1,95 @@
 package hostdb
 
-//
-//import (
-//	"bytes"
-//	"fmt"
-//
-//	"github.com/ethereum/go-ethereum/ethdb"
-//	"github.com/ethereum/go-ethereum/rlp"
-//	"github.com/pkg/errors"
-//	"github.com/ten-protocol/go-ten/go/common"
-//	"github.com/ten-protocol/go-ten/go/common/errutil"
-//
-//	gethcommon "github.com/ethereum/go-ethereum/common"
-//)
-//
-//// DB methods relating to rollup transactions.
-//
-//// AddRollupHeader adds a rollup to the DB
-//func (db *DB) AddRollupHeader(rollup *common.ExtRollup, block *common.L1Block) error {
-//	// Check if the Header is already stored
-//	_, err := db.GetRollupHeader(rollup.Hash())
-//	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-//		return fmt.Errorf("could not retrieve rollup header. Cause: %w", err)
-//	}
-//	if err == nil {
-//		// The rollup is already stored, so we return early.
-//		return errutil.ErrAlreadyExists
-//	}
-//
-//	b := db.kvStore.NewBatch()
-//
-//	if err := db.writeRollupHeader(b, rollup.Header); err != nil {
-//		return fmt.Errorf("could not write rollup header. Cause: %w", err)
-//	}
-//
-//	if err := db.writeRollupByBlockHash(b, rollup.Header, block.Hash()); err != nil {
-//		return fmt.Errorf("could not write rollup block. Cause: %w", err)
-//	}
-//
-//	// Update the tip if the new height is greater than the existing one.
-//	tipRollupHeader, err := db.GetTipRollupHeader()
-//	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-//		return fmt.Errorf("could not retrieve rollup header at tip. Cause: %w", err)
-//	}
-//	if tipRollupHeader == nil || tipRollupHeader.LastBatchSeqNo < rollup.Header.LastBatchSeqNo {
-//		err = db.writeTipRollupHeader(b, rollup.Hash())
-//		if err != nil {
-//			return fmt.Errorf("could not write new rollup hash at tip. Cause: %w", err)
-//		}
-//	}
-//
-//	if err = b.Write(); err != nil {
-//		return fmt.Errorf("could not write batch to DB. Cause: %w", err)
-//	}
-//	return nil
-//}
-//
-//// GetRollupHeader returns the rollup with the given hash.
-//func (db *DB) GetRollupHeader(hash gethcommon.Hash) (*common.RollupHeader, error) {
-//	return db.readRollupHeader(rollupHashKey(hash))
-//}
-//
-//// GetTipRollupHeader returns the header of the node's current tip rollup.
-//func (db *DB) GetTipRollupHeader() (*common.RollupHeader, error) {
-//	headBatchHash, err := db.readTipRollupHash()
-//	if err != nil {
-//		return nil, err
-//	}
-//	return db.readRollupHeader(rollupHashKey(*headBatchHash))
-//}
-//
-//// GetRollupHeaderByBlock returns the rollup for the given block
-//func (db *DB) GetRollupHeaderByBlock(blockHash gethcommon.Hash) (*common.RollupHeader, error) {
-//	return db.readRollupHeader(rollupBlockKey(blockHash))
-//}
-//
-//// Retrieves the rollup corresponding to the hash.
+import (
+	"database/sql"
+	"fmt"
+	"github.com/ethereum/go-ethereum/rlp"
+
+	"github.com/pkg/errors"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+)
+
+// DB methods relating to rollup transactions.
+
+// AddRollupHeader adds a rollup to the DB
+func AddRollupHeader(db *sql.DB, rollup *common.ExtRollup, block *common.L1Block) error {
+	// Check if the Header is already stored
+	_, err := GetRollupHeader(db, rollup.Hash())
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("could not retrieve rollup. Cause: %w", err)
+	}
+	if err == nil {
+		// The rollup is already stored, so we return early.
+		return errutil.ErrAlreadyExists
+	}
+
+	b := db.kvStore.NewBatch()
+
+	if err := db.writeRollupHeader(b, rollup.Header); err != nil {
+		return fmt.Errorf("could not write rollup header. Cause: %w", err)
+	}
+
+	if err := db.writeRollupByBlockHash(b, rollup.Header, block.Hash()); err != nil {
+		return fmt.Errorf("could not write rollup block. Cause: %w", err)
+	}
+
+	// Update the tip if the new height is greater than the existing one.
+	tipRollupHeader, err := db.GetTipRollupHeader()
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("could not retrieve rollup header at tip. Cause: %w", err)
+	}
+	if tipRollupHeader == nil || tipRollupHeader.LastBatchSeqNo < rollup.Header.LastBatchSeqNo {
+		err = db.writeTipRollupHeader(b, rollup.Hash())
+		if err != nil {
+			return fmt.Errorf("could not write new rollup hash at tip. Cause: %w", err)
+		}
+	}
+
+	if err = b.Write(); err != nil {
+		return fmt.Errorf("could not write batch to DB. Cause: %w", err)
+	}
+	return nil
+}
+
+func WriteRollup(db *sql.DB, rollup *common.RollupHeader, internalHeader *common.CalldataRollupHeader) error {
+	// Write the encoded header
+	data, err := rlp.EncodeToBytes(rollup)
+	if err != nil {
+		return fmt.Errorf("could not encode batch header. Cause: %w", err)
+	}
+	//db.ExecuteSQL(rollupInsert,
+	//	truncTo16(rollup.Hash()),
+	//	internalHeader.FirstBatchSequence.Uint64(),
+	//	rollup.LastBatchSeqNo,
+	//	data,
+	//	truncTo16(rollup.CompressionL1Head),
+	//)
+	return nil
+}
+
+// GetRollupHeader returns the rollup with the given hash.
+func GetRollupHeader(db *sql.DB, hash gethcommon.Hash) (*common.RollupHeader, error) {
+	return db.readRollupHeader(rollupHashKey(hash))
+}
+
+// GetTipRollupHeader returns the header of the node's current tip rollup.
+func GetTipRollupHeader(db *sql.DB) (*common.RollupHeader, error) {
+	headBatchHash, err := db.readTipRollupHash()
+	if err != nil {
+		return nil, err
+	}
+	return db.readRollupHeader(rollupHashKey(*headBatchHash))
+}
+
+// GetRollupHeaderByBlock returns the rollup for the given block
+func GetRollupHeaderByBlock(db *sql.DB, blockHash gethcommon.Hash) (*common.RollupHeader, error) {
+	return db.readRollupHeader(rollupBlockKey(blockHash))
+}
+
+// Retrieves the rollup corresponding to the hash.
 //func (db *DB) readRollupHeader(key []byte) (*common.RollupHeader, error) {
 //	data, err := db.kvStore.Get(key)
 //	if err != nil {
