@@ -22,7 +22,7 @@ func TestCanStoreAndRetrieveBatchHeader(t *testing.T) {
 		t.Fatalf("unable to initialise test db: %s", err)
 	}
 
-	batch, err := getBatch(batchNumber, []common.L2TxHash{})
+	batch, err := createBatch(batchNumber, []common.L2TxHash{})
 	if err != nil {
 		t.Errorf("could not create batch. Cause: %s", err)
 	}
@@ -53,7 +53,7 @@ func TestUnknownBatchHeaderReturnsNotFound(t *testing.T) {
 
 func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) { //nolint:dupl
 	db, err := createSQLiteDB(t)
-	batchOne, err := getBatch(batchNumber, []common.L2TxHash{})
+	batchOne, err := createBatch(batchNumber, []common.L2TxHash{})
 	if err != nil {
 		t.Errorf("could not create batch. Cause: %s", err)
 	}
@@ -63,7 +63,7 @@ func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) { //nolint:dupl
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
-	batchTwo, err := getBatch(batchNumber+1, []common.L2TxHash{})
+	batchTwo, err := createBatch(batchNumber+1, []common.L2TxHash{})
 	if err != nil {
 		t.Errorf("could not create batch. Cause: %s", err)
 	}
@@ -84,7 +84,7 @@ func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) { //nolint:dupl
 
 func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) { //nolint:dupl
 	db, err := createSQLiteDB(t)
-	batchOne, err := getBatch(batchNumber, []common.L2TxHash{})
+	batchOne, err := createBatch(batchNumber, []common.L2TxHash{})
 	if err != nil {
 		t.Errorf("could not create batch. Cause: %s", err)
 	}
@@ -94,7 +94,7 @@ func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) { //nolint:dupl
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
-	batchTwo, err := getBatch(batchNumber-1, []common.L2TxHash{})
+	batchTwo, err := createBatch(batchNumber-1, []common.L2TxHash{})
 	if err != nil {
 		t.Errorf("could not create batch. Cause: %s", err)
 	}
@@ -124,7 +124,7 @@ func TestHeadBatchHeaderIsNotSetInitially(t *testing.T) {
 
 func TestCanRetrieveBatchHashByNumber(t *testing.T) {
 	db, err := createSQLiteDB(t)
-	batch, err := getBatch(batchNumber, []common.L2TxHash{})
+	batch, err := createBatch(batchNumber, []common.L2TxHash{})
 	if err != nil {
 		t.Errorf("could not create batch. Cause: %s", err)
 	}
@@ -145,7 +145,7 @@ func TestCanRetrieveBatchHashByNumber(t *testing.T) {
 
 func TestUnknownBatchNumberReturnsNotFound(t *testing.T) {
 	db, err := createSQLiteDB(t)
-	header := types.Header{}
+	header := types.Header{Number: big.NewInt(10)}
 
 	_, err = GetBatchHashByNumber(db, header.Number)
 	if !errors.Is(err, errutil.ErrNotFound) {
@@ -156,7 +156,7 @@ func TestUnknownBatchNumberReturnsNotFound(t *testing.T) {
 func TestCanRetrieveBatchNumberByTxHash(t *testing.T) {
 	db, err := createSQLiteDB(t)
 	txHash := gethcommon.BytesToHash([]byte("magicString"))
-	batch, err := getBatch(batchNumber, []common.L2TxHash{txHash})
+	batch, err := createBatch(batchNumber, []common.L2TxHash{txHash})
 	if err != nil {
 		t.Errorf("could not create batch. Cause: %s", err)
 	}
@@ -187,7 +187,7 @@ func TestUnknownBatchTxHashReturnsNotFound(t *testing.T) {
 func TestCanRetrieveBatchTransactions(t *testing.T) {
 	db, err := createSQLiteDB(t)
 	txHashes := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	batch, err := getBatch(batchNumber, txHashes)
+	batch, err := createBatch(batchNumber, txHashes)
 	if err != nil {
 		t.Errorf("could not create batch. Cause: %s", err)
 	}
@@ -223,7 +223,7 @@ func TestTransactionsForUnknownBatchReturnsNotFound(t *testing.T) {
 func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 	db, err := createSQLiteDB(t)
 	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	batchOne, err := getBatch(batchNumber, txHashesOne)
+	batchOne, err := createBatch(batchNumber, txHashesOne)
 
 	err = AddBatch(db, &batchOne)
 	if err != nil {
@@ -231,7 +231,7 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 	}
 
 	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
-	batchTwo, err := getBatch(batchNumber, txHashesTwo)
+	batchTwo, err := createBatch(batchNumber+1, txHashesTwo)
 
 	err = AddBatch(db, &batchTwo)
 	if err != nil {
@@ -248,7 +248,7 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 	}
 }
 
-func getBatch(batchNum int64, txHashes []common.L2BatchHash) (common.ExtBatch, error) {
+func createBatch(batchNum int64, txHashes []common.L2BatchHash) (common.ExtBatch, error) {
 	header := common.BatchHeader{
 		SequencerOrderNo: big.NewInt(batchNum),
 		Number:           big.NewInt(batchNum),

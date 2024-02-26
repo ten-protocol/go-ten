@@ -23,8 +23,9 @@ const (
 		ORDER BY b.sequence_order DESC
 		LIMIT 1
 	`
-	selectHeader       = "SELECt b.header FROM batch b"
-	selectTransactions = "SELECT t.hash FROM transactions t JOIN batch b ON t.body_id = b.body_id WHERE b.full_hash = ?"
+	selectHeader                      = "SELECt b.header FROM batch b"
+	selectTransactionsAndBatch        = "SELECT t.hash FROM transactions t JOIN batch b ON t.body_id = b.body_id WHERE b.full_hash = ?"
+	selectBatchNumberFromTransactions = "SELECT t.body_id FROM transactions t WHERE t.full_hash = ?"
 
 	insertBatchBody    = "INSERT INTO batch_body (id, content) VALUES (?, ?)"
 	insertBatch        = "INSERT INTO batch (sequence_order, full_hash, hash, height, tx_count, header, body_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -151,16 +152,16 @@ func GetHeadBatchHeader(db *sql.DB) (*common.BatchHeader, error) {
 
 // GetBatchNumber returns the number of the batch containing the given transaction hash.
 func GetBatchNumber(db *sql.DB, txHash gethcommon.Hash) (*big.Int, error) {
-	batch, err := fetchBatchHeader(db, " where b.hash=?", truncTo16(txHash))
+	batchNumber, err := fetchBatchNumber(db, txHash)
 	if err != nil {
 		return nil, err
 	}
-	return batch.Number, nil
+	return batchNumber, nil
 }
 
 // GetBatchTxs returns the transaction hashes of the batch with the given hash.
 func GetBatchTxs(db *sql.DB, batchHash gethcommon.Hash) ([]gethcommon.Hash, error) {
-	rows, err := db.Query(selectTransactions, batchHash)
+	rows, err := db.Query(selectTransactionsAndBatch, batchHash)
 	if err != nil {
 		return nil, fmt.Errorf("query execution failed: %w", err)
 	}
@@ -225,6 +226,25 @@ func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.Batch
 	}
 
 	return h, nil
+}
+
+func fetchBatchNumber(db *sql.DB, args ...any) (*big.Int, error) {
+	var batchNumber uint64
+	query := selectBatchNumberFromTransactions
+	var err error
+	if len(args) > 0 {
+		err = db.QueryRow(query, args...).Scan(&batchNumber)
+	} else {
+		err = db.QueryRow(query).Scan(&batchNumber)
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	var bigIntBatchNumber = new(big.Int).SetInt64(int64(batchNumber))
+	return bigIntBatchNumber, nil
 }
 
 func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.PublicBatch, error) {
