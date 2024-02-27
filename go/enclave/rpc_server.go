@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"net"
 
@@ -360,6 +361,32 @@ func (s *RPCServer) GetBatchBySeqNo(_ context.Context, request *generated.GetBat
 	return &generated.GetBatchResponse{
 		Batch:       encodedBatch,
 		SystemError: sysErr,
+	}, err
+}
+
+func (s *RPCServer) GetRollupData(_ context.Context, request *generated.GetRollupDataRequest) (*generated.GetRollupDataResponse, error) {
+	startSeqBigInt, timestampPtr, err := s.enclave.GetRollupData(request.InternalRollup)
+	if err != nil {
+		s.logger.Error("Error rollup data", log.ErrKey, err)
+		return nil, err
+	}
+	var startSeq uint64
+	if startSeqBigInt != nil {
+		if startSeqBigInt.IsInt64() && startSeqBigInt.Uint64() <= math.MaxUint64 {
+			startSeq = startSeqBigInt.Uint64()
+		} else {
+			s.logger.Error("startSeq value is out of uint64 range")
+			return nil, errors.New("startSeq value is out of uint64 range")
+		}
+	}
+	if timestampPtr == nil {
+		s.logger.Error("timestamp is nil")
+		return nil, errors.New("timestamp is nil")
+	}
+
+	return &generated.GetRollupDataResponse{
+		StartSeq:  startSeq,
+		Timestamp: *timestampPtr,
 	}, err
 }
 
