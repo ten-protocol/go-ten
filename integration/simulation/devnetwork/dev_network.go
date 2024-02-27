@@ -207,7 +207,7 @@ func (s *InMemDevNetwork) startTenGateway() {
 	}
 	tenGWContainer := container.NewWalletExtensionContainerFromConfig(cfg, s.logger)
 	go func() {
-		fmt.Println("Starting Ten Gateway")
+		fmt.Println("Starting Ten Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
 		err := tenGWContainer.Start()
 		if err != nil {
 			s.logger.Error("failed to start ten gateway", "err", err)
