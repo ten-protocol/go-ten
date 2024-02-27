@@ -9,6 +9,10 @@ task("obscuro:deploy", "Prepares for deploying.")
     // Trigger shutdown on CTRL + C
     process.on('SIGINT', ()=>exit(1));
     
+    const accounts = await hre.getUnnamedAccounts()
+    console.log(`Found ${accounts.length} accounts.`);
+    accounts.forEach((acc)=>console.log(`Account: ${acc}`));
+
     // Execute the deploy task provided by the HH deploy plugin.
     await hre.run('deploy');
 });

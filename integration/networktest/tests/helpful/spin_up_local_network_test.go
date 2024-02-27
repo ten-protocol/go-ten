@@ -30,9 +30,9 @@ const (
 )
 
 func TestRunLocalNetwork(t *testing.T) {
-	networktest.TestOnlyRunsInIDE(t)
+	//networktest.TestOnlyRunsInIDE(t)
 	networktest.EnsureTestLogsSetUp("local-geth-network")
-	networkConnector, cleanUp, err := env.LocalDevNetwork().Prepare()
+	networkConnector, cleanUp, err := env.LocalDevNetwork(env.WithTenGateway()).Prepare()
 	if err != nil {
 		t.Fatal(err)
 	}
