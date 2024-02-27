@@ -108,17 +108,23 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 	requestStartTime := time.Now()
 
 	// Check if the request is in the cache
-	isCacheable, key, ttl := cache.IsCacheable(request)
+	isCacheable, key, ttl := cache.IsCacheable(request, hexUserID)
 
 	// in case of cache hit return the response from the cache
 	if isCacheable {
 		if value, ok := w.cache.Get(key); ok {
+			// do a shallow copy of the map to avoid concurrent map iteration and map write
+			returnValue := make(map[string]interface{})
+			for k, v := range value {
+				returnValue[k] = v
+			}
+
 			requestEndTime := time.Now()
 			duration := requestEndTime.Sub(requestStartTime)
-			w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, value, duration.Milliseconds()))
 			// adjust requestID
-			value[common.JSONKeyID] = request.ID
-			return value, nil
+			returnValue[common.JSONKeyID] = request.ID
+			w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, returnValue, duration.Milliseconds()))
+			return returnValue, nil
 		}
 	}
 
