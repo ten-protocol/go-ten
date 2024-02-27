@@ -91,13 +91,13 @@
   }
 
   html {
-    font-family: "DMSans", sans-serif;
+    font-family: "Quicksand", sans-serif;
   }
 
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
-    font-family: "DMSans", sans-serif;
+    font-family: "Quicksand", sans-serif;
   }
 
   h1,
@@ -107,7 +107,7 @@
   h5,
   h6 {
     font-weight: 500;
-    font-family: "Quicksand", cursive;
+    font-family: "DMSans", sans-serif;
   }
 
   /* styles for docs */
