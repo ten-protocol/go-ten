@@ -67,7 +67,6 @@ func (a *AllocateFaucetFunds) Run(ctx context.Context, network networktest.Netwo
 			return ctx, err
 		}
 		acc = user.Wallet().Address()
-
 	}
 	return ctx, network.AllocateFaucetFunds(ctx, acc)
 }
