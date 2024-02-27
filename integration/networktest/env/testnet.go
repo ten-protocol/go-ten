@@ -25,7 +25,7 @@ import (
 	"github.com/ten-protocol/go-ten/integration/networktest"
 )
 
-var _defaultFaucetAmount = big.NewInt(750_000_000_000_000)
+var _defaultFaucetAmount = big.NewInt(5_000_000_000_000_000)
 
 type testnetConnector struct {
 	seqRPCAddress         string
