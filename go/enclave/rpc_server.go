@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"net"
 
@@ -372,12 +371,7 @@ func (s *RPCServer) GetRollupData(_ context.Context, request *generated.GetRollu
 	}
 	var startSeq uint64
 	if startSeqBigInt != nil {
-		if startSeqBigInt.IsInt64() && startSeqBigInt.Uint64() <= math.MaxUint64 {
-			startSeq = startSeqBigInt.Uint64()
-		} else {
-			s.logger.Error("startSeq value is out of uint64 range")
-			return nil, errors.New("startSeq value is out of uint64 range")
-		}
+		startSeq = startSeqBigInt.Uint64()
 	}
 	if timestampPtr == nil {
 		s.logger.Error("timestamp is nil")
