@@ -495,6 +495,17 @@ func (c *Client) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, common.SystemE
 	return common.DecodeExtBatch(batchMsg.Batch)
 }
 
+func (c *Client) GetRollupData(internalRollup []byte) (*common.PublicRollupMetadata, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetRollupData(timeoutCtx, &generated.GetRollupDataRequest{InternalRollup: internalRollup})
+	if err != nil {
+		return nil, fmt.Errorf("rpc GetRollupData failed. Cause: %w", err)
+	}
+	return common.DecodePublicRollupMetadata(response.RollupMetadata)
+}
+
 func (c *Client) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func()) {
 	// channel size is 10 to allow for some buffering but caller is expected to read immediately to avoid blocking
 	batchChan := make(chan common.StreamL2UpdatesResponse, 10)

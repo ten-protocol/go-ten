@@ -21,7 +21,7 @@ type UserAccountManager struct {
 	hostRPCBinAddrHTTP    string
 	hostRPCBinAddrWS      string
 	logger                gethlog.Logger
-	mu                    sync.RWMutex
+	mu                    sync.Mutex
 }
 
 func NewUserAccountManager(unauthenticatedClient rpc.Client, logger gethlog.Logger, storage storage.Storage, hostRPCBindAddrHTTP string, hostRPCBindAddrWS string) UserAccountManager {
@@ -37,8 +37,8 @@ func NewUserAccountManager(unauthenticatedClient rpc.Client, logger gethlog.Logg
 
 // AddAndReturnAccountManager adds new UserAccountManager if it doesn't exist and returns it, if UserAccountManager already exists for that user just return it
 func (m *UserAccountManager) AddAndReturnAccountManager(userID string) *accountmanager.AccountManager {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	existingUserAccountManager, exists := m.userAccountManager[userID]
 	if exists {
 		return existingUserAccountManager

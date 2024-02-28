@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/datagenerator"
@@ -45,8 +46,11 @@ func (c *CreateTestUser) Verify(_ context.Context, _ networktest.NetworkConnecto
 	return nil
 }
 
+// AllocateFaucetFunds is an action that allocates funds from the network faucet to a user,
+// either UserID or Account must be set (not both) to fund a test user or a specific account respectively
 type AllocateFaucetFunds struct {
-	UserID int
+	UserID  int
+	Account *common.Address
 }
 
 func (a *AllocateFaucetFunds) String() string {
@@ -54,11 +58,17 @@ func (a *AllocateFaucetFunds) String() string {
 }
 
 func (a *AllocateFaucetFunds) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
-	user, err := FetchTestUser(ctx, a.UserID)
-	if err != nil {
-		return ctx, err
+	var acc common.Address
+	if a.Account != nil {
+		acc = *a.Account
+	} else {
+		user, err := FetchTestUser(ctx, a.UserID)
+		if err != nil {
+			return ctx, err
+		}
+		acc = user.Wallet().Address()
 	}
-	return ctx, network.AllocateFaucetFunds(ctx, user.Wallet().Address())
+	return ctx, network.AllocateFaucetFunds(ctx, acc)
 }
 
 func (a *AllocateFaucetFunds) Verify(_ context.Context, _ networktest.NetworkConnector) error {

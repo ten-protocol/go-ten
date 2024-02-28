@@ -77,6 +77,9 @@ service EnclaveProto {
   // GetBatch returns the encrypted batch based on a hash
   rpc GetBatchBySeqNo(GetBatchBySeqNoRequest) returns (GetBatchResponse) {}
 
+  // GetRollupData returns the first batch sequence number in the rollup and the timestamp
+  rpc GetRollupData(GetRollupDataRequest) returns (GetRollupDataResponse) {}
+
   rpc CreateBatch(CreateBatchRequest) returns (CreateBatchResponse) {}
 
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
@@ -133,6 +136,15 @@ message GetBatchBySeqNoRequest {
 
 message GetBatchResponse {
   bytes batch = 1;
+  SystemError systemError = 2;
+}
+
+message GetRollupDataRequest {
+  bytes internalRollup = 1;
+}
+
+message GetRollupDataResponse {
+  bytes rollupMetadata = 1;
   SystemError systemError = 2;
 }
 
