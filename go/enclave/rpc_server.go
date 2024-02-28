@@ -364,23 +364,24 @@ func (s *RPCServer) GetBatchBySeqNo(_ context.Context, request *generated.GetBat
 }
 
 func (s *RPCServer) GetRollupData(_ context.Context, request *generated.GetRollupDataRequest) (*generated.GetRollupDataResponse, error) {
-	startSeqBigInt, timestampPtr, err := s.enclave.GetRollupData(request.InternalRollup)
+	rollupMetadata, err := s.enclave.GetRollupData(request.InternalRollup)
 	if err != nil {
-		s.logger.Error("Error rollup data", log.ErrKey, err)
+		s.logger.Error("Error fetching rollup metadata", log.ErrKey, err)
 		return nil, err
 	}
-	var startSeq uint64
-	if startSeqBigInt != nil {
-		startSeq = startSeqBigInt.Uint64()
-	}
-	if timestampPtr == nil {
-		s.logger.Error("timestamp is nil")
-		return nil, errors.New("timestamp is nil")
+
+	encodedRollup, encodingErr := rollupMetadata.Encoded()
+	var sysErr *generated.SystemError
+	if encodingErr != nil {
+		sysErr = &generated.SystemError{
+			ErrorCode:   2,
+			ErrorString: encodingErr.Error(),
+		}
 	}
 
 	return &generated.GetRollupDataResponse{
-		StartSeq:  startSeq,
-		Timestamp: *timestampPtr,
+		RollupMetadata: encodedRollup,
+		SystemError:    sysErr,
 	}, err
 }
 

@@ -144,9 +144,8 @@ message GetRollupDataRequest {
 }
 
 message GetRollupDataResponse {
-  uint64 startSeq = 1;
-  uint64 timestamp = 2;
-  SystemError systemError = 3;
+  bytes rollupMetadata = 1;
+  SystemError systemError = 2;
 }
 
 message StreamL2UpdatesRequest {}

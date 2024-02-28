@@ -108,6 +108,7 @@ type EnclaveProtoClient interface {
 	GetBatch(ctx context.Context, in *GetBatchRequest, opts ...grpc.CallOption) (*GetBatchResponse, error)
 	// GetBatch returns the encrypted batch based on a hash
 	GetBatchBySeqNo(ctx context.Context, in *GetBatchBySeqNoRequest, opts ...grpc.CallOption) (*GetBatchResponse, error)
+	// GetRollupData returns the first batch sequence number in the rollup and the timestamp
 	GetRollupData(ctx context.Context, in *GetRollupDataRequest, opts ...grpc.CallOption) (*GetRollupDataResponse, error)
 	CreateBatch(ctx context.Context, in *CreateBatchRequest, opts ...grpc.CallOption) (*CreateBatchResponse, error)
 	CreateRollup(ctx context.Context, in *CreateRollupRequest, opts ...grpc.CallOption) (*CreateRollupResponse, error)
@@ -495,6 +496,7 @@ type EnclaveProtoServer interface {
 	GetBatch(context.Context, *GetBatchRequest) (*GetBatchResponse, error)
 	// GetBatch returns the encrypted batch based on a hash
 	GetBatchBySeqNo(context.Context, *GetBatchBySeqNoRequest) (*GetBatchResponse, error)
+	// GetRollupData returns the first batch sequence number in the rollup and the timestamp
 	GetRollupData(context.Context, *GetRollupDataRequest) (*GetRollupDataResponse, error)
 	CreateBatch(context.Context, *CreateBatchRequest) (*CreateBatchResponse, error)
 	CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error)

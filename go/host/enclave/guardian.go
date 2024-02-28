@@ -472,9 +472,6 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 		}
 		err = g.db.AddRollupHeader(r, block)
 		if err != nil {
-			g.logger.Error("Could not decode rollup.", log.ErrKey, err)
-		}
-		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())
 			} else {

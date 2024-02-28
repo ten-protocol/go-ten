@@ -495,15 +495,15 @@ func (c *Client) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, common.SystemE
 	return common.DecodeExtBatch(batchMsg.Batch)
 }
 
-func (c *Client) GetRollupData(internalRollup []byte) (*big.Int, *uint64, common.SystemError) {
+func (c *Client) GetRollupData(internalRollup []byte) (*common.PublicRollupMetadata, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.GetRollupData(timeoutCtx, &generated.GetRollupDataRequest{InternalRollup: internalRollup})
 	if err != nil {
-		return nil, nil, fmt.Errorf("rpc GetBatchBySeqNo failed. Cause: %w", err)
+		return nil, fmt.Errorf("rpc GetRollupData failed. Cause: %w", err)
 	}
-	return new(big.Int).SetUint64(response.StartSeq), &response.Timestamp, nil
+	return common.DecodePublicRollupMetadata(response.RollupMetadata)
 }
 
 func (c *Client) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func()) {

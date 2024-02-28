@@ -296,13 +296,17 @@ func (e *enclaveImpl) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, common.Sy
 	return b, nil
 }
 
-func (e *enclaveImpl) GetRollupData(internalRollup []byte) (*big.Int, *uint64, common.SystemError) {
+func (e *enclaveImpl) GetRollupData(internalRollup []byte) (*common.PublicRollupMetadata, common.SystemError) {
 	calldataRollupHeader := new(common.CalldataRollupHeader)
 	err := e.decryptDecompressAndDeserialise(internalRollup, calldataRollupHeader)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return calldataRollupHeader.FirstBatchSequence, &calldataRollupHeader.StartTime, nil
+	metadata := &common.PublicRollupMetadata{
+		FirstBatchSequence: calldataRollupHeader.FirstBatchSequence,
+		StartTime:          calldataRollupHeader.StartTime,
+	}
+	return metadata, nil
 }
 
 // Status is only implemented by the RPC wrapper

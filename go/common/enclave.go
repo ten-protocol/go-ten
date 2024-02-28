@@ -113,7 +113,7 @@ type Enclave interface {
 	GetBatchBySeqNo(seqNo uint64) (*ExtBatch, SystemError)
 
 	// GetRollupData - retrieve the first batch sequence and start time for a given rollup.
-	GetRollupData(internalRollup []byte) (*big.Int, *uint64, SystemError)
+	GetRollupData(internalRollup []byte) (*PublicRollupMetadata, SystemError)
 
 	// CreateBatch - creates a new head batch extending the previous one for the latest known L1 head if the node is
 	// a sequencer. Will panic otherwise.
