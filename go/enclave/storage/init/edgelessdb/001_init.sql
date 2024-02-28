@@ -55,6 +55,7 @@ create table if not exists obsdb.rollup
     hash              binary(16),
     start_seq         int        NOT NULL,
     end_seq           int        NOT NULL,
+    time_stamp        int        NOT NULL,
     header            blob       NOT NULL,
     compression_block binary(16) NOT NULL,
     INDEX (compression_block),

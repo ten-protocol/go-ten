@@ -295,6 +295,18 @@ func (e *enclaveImpl) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, common.Sy
 	return b, nil
 }
 
+func (e *enclaveImpl) GetRollupData(hash common.L2RollupHash) (*common.PublicRollupMetadata, common.SystemError) {
+	rollupMetadata, err := e.storage.FetchRollupMetadata(hash)
+	if err != nil {
+		return nil, err
+	}
+	metadata := &common.PublicRollupMetadata{
+		FirstBatchSequence: rollupMetadata.FirstBatchSequence,
+		StartTime:          rollupMetadata.StartTime,
+	}
+	return metadata, nil
+}
+
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 	if e.stopControl.IsStopping() {
