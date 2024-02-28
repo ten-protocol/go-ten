@@ -471,11 +471,6 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 			g.logger.Error("Could not decode rollup.", log.ErrKey, err)
 		}
 		err = g.db.AddRollupHeader(r, block)
-		// rlp, err := g.enclaveClient.GetRollupData(truncTo16(r.Header.Hash()))
-		rlp, err := g.enclaveClient.GetRollupData(r.Header.Hash())
-		println("ROLLUP DATA FirstBatchSequence", rlp.FirstBatchSequence.String())
-		println("ROLLUP DATA LasttBatchSequence", r.Header.LastBatchSeqNo)
-		println("ROLLUP DATA timestamp", rlp.StartTime)
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())
