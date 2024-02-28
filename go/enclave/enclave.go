@@ -51,7 +51,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
@@ -296,15 +295,14 @@ func (e *enclaveImpl) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, common.Sy
 	return b, nil
 }
 
-func (e *enclaveImpl) GetRollupData(internalRollup []byte) (*common.PublicRollupMetadata, common.SystemError) {
-	calldataRollupHeader := new(common.CalldataRollupHeader)
-	err := e.decryptDecompressAndDeserialise(internalRollup, calldataRollupHeader)
+func (e *enclaveImpl) GetRollupData(hash common.L2RollupHash) (*common.PublicRollupMetadata, common.SystemError) {
+	rollupMetadata, err := e.storage.FetchRollupMetadata(hash)
 	if err != nil {
 		return nil, err
 	}
 	metadata := &common.PublicRollupMetadata{
-		FirstBatchSequence: calldataRollupHeader.FirstBatchSequence,
-		StartTime:          calldataRollupHeader.StartTime,
+		FirstBatchSequence: rollupMetadata.FirstBatchSequence,
+		StartTime:          rollupMetadata.StartTime,
 	}
 	return metadata, nil
 }
@@ -974,21 +972,5 @@ func replayBatchesToValidState(storage storage.Storage, registry components.Batc
 		}
 	}
 
-	return nil
-}
-
-func (e *enclaveImpl) decryptDecompressAndDeserialise(blob []byte, obj any) error {
-	plaintextBlob, err := e.dataEncryptionService.Decrypt(blob)
-	if err != nil {
-		return err
-	}
-	serialisedBlob, err := e.dataCompressionService.Decompress(plaintextBlob)
-	if err != nil {
-		return err
-	}
-	err = rlp.DecodeBytes(serialisedBlob, obj)
-	if err != nil {
-		return err
-	}
 	return nil
 }

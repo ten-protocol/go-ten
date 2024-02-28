@@ -364,7 +364,7 @@ func (s *RPCServer) GetBatchBySeqNo(_ context.Context, request *generated.GetBat
 }
 
 func (s *RPCServer) GetRollupData(_ context.Context, request *generated.GetRollupDataRequest) (*generated.GetRollupDataResponse, error) {
-	rollupMetadata, err := s.enclave.GetRollupData(request.InternalRollup)
+	rollupMetadata, err := s.enclave.GetRollupData(gethcommon.BytesToHash(request.Hash))
 	if err != nil {
 		s.logger.Error("Error fetching rollup metadata", log.ErrKey, err)
 		return nil, err

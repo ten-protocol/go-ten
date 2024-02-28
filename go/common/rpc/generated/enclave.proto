@@ -140,7 +140,7 @@ message GetBatchResponse {
 }
 
 message GetRollupDataRequest {
-  bytes internalRollup = 1;
+  bytes hash = 1;
 }
 
 message GetRollupDataResponse {
