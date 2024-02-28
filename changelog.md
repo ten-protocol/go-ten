@@ -2,6 +2,17 @@
 ---
 # Ten Testnet Change Log
 
+# Feb 2024-02-27 (v0.23.0)
+* An upgrade release to fix issues in the batch limit size which can stop deployment of some large contracts, and to
+  over-estimate the L1 gas cost to ensure it is possible to submit a transaction for rollup.
+* A full list of the PRs merged in this release is as below;
+  * `21860c19` Overestimate L1 gas costs (#1821)
+  * `5e057c69` Switch primary and secondary fonts on gateway and tenscan (#1819)
+  * `d43ae52c` Batch limit: increase max to 36kb (#1817)
+  * `33d3de82` Network test: local network qol (#1818)
+  * `b7bea2c4` Fix mutex error (#1810)
+  * `25f4f5b6` Networktests: add options for test users to use gateway (#1806
+  
 # Feb 2024-02-20 (v0.22.0)
 * Validator nodes now return errors on transaction submission. Previously, transactions that would fail validation were
   accepted into the mempool of the validator without error (e.g. insufficient funds for a transfer, gas below the 

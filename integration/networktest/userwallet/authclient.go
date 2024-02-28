@@ -46,6 +46,7 @@ func (s *AuthClientUser) SendFunds(ctx context.Context, addr gethcommon.Address,
 	}
 
 	txData := &types.LegacyTx{
+		Nonce: s.wal.GetNonce(),
 		Value: value,
 		To:    &addr,
 	}
