@@ -1,16 +1,12 @@
-CREATE DATABASE ogdb;
+/*
+ This file is used to create the database and set the necessary permissions for the user that will be used by the gateway.
+ */
 
-USE ogdb;
+-- Create the database
+CREATE DATABASE IF NOT EXISTS ogdb;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON ogdb.* TO 'obscurouser';
+-- Grant the necessary permissions
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP ON ogdb.* TO 'obscurouser';
 
-CREATE TABLE IF NOT EXISTS ogdb.users (
-    user_id varbinary(20) PRIMARY KEY,
-    private_key varbinary(32)
-    );
-CREATE TABLE IF NOT EXISTS ogdb.accounts (
-    user_id varbinary(20),
-    account_address varbinary(20),
-    signature varbinary(65),
-    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
-    );
+-- Reload the privileges from the grant tables in the mysql database
+FLUSH PRIVILEGES;
