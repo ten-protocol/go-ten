@@ -498,7 +498,6 @@ func (c *Client) GetRollupData(hash common.L2RollupHash) (*common.PublicRollupMe
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	// rollupMsg := rpc.ToRollupDataMsg
 	response, err := c.protoClient.GetRollupData(timeoutCtx, &generated.GetRollupDataRequest{Hash: hash.Bytes()})
 	if err != nil {
 		return nil, fmt.Errorf("rpc GetRollupData failed. Cause: %w", err)

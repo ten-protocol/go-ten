@@ -454,6 +454,7 @@ func networkHealthRequestHandler(walletExt *walletextension.WalletExtension, use
 	}
 
 	err = userConn.WriteResponse(data)
+
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}

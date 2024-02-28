@@ -42,6 +42,7 @@ func NewSqliteDatabase(dbPath string) (*SqliteDatabase, error) {
 		user_id binary(20) PRIMARY KEY,
 		private_key binary(32)
 	);`)
+
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +54,7 @@ func NewSqliteDatabase(dbPath string) (*SqliteDatabase, error) {
 		signature binary(65),
     	FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
 	);`)
+
 	if err != nil {
 		return nil, err
 	}
