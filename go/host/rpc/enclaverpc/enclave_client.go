@@ -498,11 +498,12 @@ func (c *Client) GetRollupData(hash common.L2RollupHash) (*common.PublicRollupMe
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
+	// rollupMsg := rpc.ToRollupDataMsg
 	response, err := c.protoClient.GetRollupData(timeoutCtx, &generated.GetRollupDataRequest{Hash: hash.Bytes()})
 	if err != nil {
 		return nil, fmt.Errorf("rpc GetRollupData failed. Cause: %w", err)
 	}
-	return common.DecodePublicRollupMetadata(response.RollupMetadata)
+	return rpc.FromRollupDataMsg(response.Msg)
 }
 
 func (c *Client) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func()) {

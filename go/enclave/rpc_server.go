@@ -364,25 +364,18 @@ func (s *RPCServer) GetBatchBySeqNo(_ context.Context, request *generated.GetBat
 }
 
 func (s *RPCServer) GetRollupData(_ context.Context, request *generated.GetRollupDataRequest) (*generated.GetRollupDataResponse, error) {
-	rollupMetadata, err := s.enclave.GetRollupData(gethcommon.BytesToHash(request.Hash))
-	if err != nil {
-		s.logger.Error("Error fetching rollup metadata", log.ErrKey, err)
-		return nil, err
+	rollupMetadata, sysError := s.enclave.GetRollupData(gethcommon.BytesToHash(request.Hash))
+	if sysError != nil {
+		s.logger.Error("Error fetching rollup metadata", log.ErrKey, sysError)
+		return nil, sysError
 	}
 
-	encodedRollup, encodingErr := rollupMetadata.Encoded()
-	var sysErr *generated.SystemError
-	if encodingErr != nil {
-		sysErr = &generated.SystemError{
-			ErrorCode:   2,
-			ErrorString: encodingErr.Error(),
-		}
-	}
+	msg := rpc.ToRollupDataMsg(rollupMetadata)
 
 	return &generated.GetRollupDataResponse{
-		RollupMetadata: encodedRollup,
-		SystemError:    sysErr,
-	}, err
+		Msg:         &msg,
+		SystemError: toRPCError(sysError),
+	}, nil
 }
 
 func (s *RPCServer) StreamL2Updates(_ *generated.StreamL2UpdatesRequest, stream generated.EnclaveProto_StreamL2UpdatesServer) error {
