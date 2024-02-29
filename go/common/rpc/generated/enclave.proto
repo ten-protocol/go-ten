@@ -140,12 +140,17 @@ message GetBatchResponse {
 }
 
 message GetRollupDataRequest {
-  bytes internalRollup = 1;
+  bytes hash = 1;
 }
 
 message GetRollupDataResponse {
-  bytes rollupMetadata = 1;
+  PublicRollupDataMsg msg = 1;
   SystemError systemError = 2;
+}
+
+message PublicRollupDataMsg {
+  uint64 startSeq = 1;
+  uint64 timestamp = 2;
 }
 
 message StreamL2UpdatesRequest {}

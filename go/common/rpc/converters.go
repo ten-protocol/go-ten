@@ -261,3 +261,29 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 		LastBatchSeqNo:     header.LastBatchSeqNo,
 	}
 }
+
+func ToRollupDataMsg(rollupData *common.PublicRollupMetadata) generated.PublicRollupDataMsg {
+	if rollupData == nil {
+		return generated.PublicRollupDataMsg{}
+	}
+
+	return generated.PublicRollupDataMsg{StartSeq: rollupData.FirstBatchSequence.Uint64(), Timestamp: rollupData.StartTime}
+}
+
+func FromRollupDataMsg(msg *generated.PublicRollupDataMsg) (*common.PublicRollupMetadata, error) {
+	if msg.Timestamp == 0 {
+		return nil, fmt.Errorf("timestamp on the rollup can not be zero")
+	}
+
+	if msg.StartSeq == 0 {
+		return &common.PublicRollupMetadata{
+			FirstBatchSequence: nil,
+			StartTime:          msg.Timestamp,
+		}, nil
+	}
+
+	return &common.PublicRollupMetadata{
+		FirstBatchSequence: big.NewInt(int64(msg.StartSeq)),
+		StartTime:          msg.Timestamp,
+	}, nil
+}

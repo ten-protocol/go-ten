@@ -1,12 +1,15 @@
-package database
+package mariadb
 
 import (
 	"database/sql"
 	"fmt"
+	"path/filepath"
+	"runtime"
 
 	_ "github.com/go-sql-driver/mysql" // Importing MariaDB driver
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database"
 )
 
 type MariaDB struct {
@@ -15,9 +18,21 @@ type MariaDB struct {
 
 // NewMariaDB creates a new MariaDB connection instance
 func NewMariaDB(dbURL string) (*MariaDB, error) {
-	db, err := sql.Open("mysql", dbURL)
+	db, err := sql.Open("mysql", dbURL+"?multiStatements=true")
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	// get the path to the migrations (they are always in the same directory as file containing connection function)
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		return nil, fmt.Errorf("failed to get current directory")
+	}
+	migrationsDir := filepath.Dir(filename)
+
+	// apply migrations
+	if err = database.ApplyMigrations(db, migrationsDir); err != nil {
+		return nil, err
 	}
 
 	return &MariaDB{db: db}, nil

@@ -529,6 +529,10 @@ func (s *storageImpl) FetchReorgedRollup(reorgedBlocks []common.L1BlockHash) (*c
 	return enclavedb.FetchReorgedRollup(s.db.GetSQLDB(), reorgedBlocks)
 }
 
+func (s *storageImpl) FetchRollupMetadata(hash common.L2RollupHash) (*common.PublicRollupMetadata, error) {
+	return enclavedb.FetchRollupMetadata(s.db.GetSQLDB(), hash)
+}
+
 func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, error) {
 	defer s.logDuration("DebugGetLogs", measure.NewStopwatch())
 	return enclavedb.DebugGetLogs(s.db.GetSQLDB(), txHash)

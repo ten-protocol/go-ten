@@ -61,7 +61,6 @@ func NewClient(config *config.HostConfig, logger gethlog.Logger) common.Enclave 
 		// connection is ready, break out of the loop
 		return nil
 	}, retry.NewBackoffAndRetryForeverStrategy([]time.Duration{500 * time.Millisecond, 1 * time.Second, 5 * time.Second}, 10*time.Second))
-
 	if err != nil {
 		// this should not happen as we retry forever...
 		logger.Crit("failed to connect to enclave", log.ErrKey, err)
@@ -495,15 +494,15 @@ func (c *Client) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, common.SystemE
 	return common.DecodeExtBatch(batchMsg.Batch)
 }
 
-func (c *Client) GetRollupData(internalRollup []byte) (*common.PublicRollupMetadata, common.SystemError) {
+func (c *Client) GetRollupData(hash common.L2RollupHash) (*common.PublicRollupMetadata, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.GetRollupData(timeoutCtx, &generated.GetRollupDataRequest{InternalRollup: internalRollup})
+	response, err := c.protoClient.GetRollupData(timeoutCtx, &generated.GetRollupDataRequest{Hash: hash.Bytes()})
 	if err != nil {
 		return nil, fmt.Errorf("rpc GetRollupData failed. Cause: %w", err)
 	}
-	return common.DecodePublicRollupMetadata(response.RollupMetadata)
+	return rpc.FromRollupDataMsg(response.Msg)
 }
 
 func (c *Client) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func()) {

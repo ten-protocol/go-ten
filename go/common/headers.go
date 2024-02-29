@@ -168,18 +168,6 @@ type PublicRollupMetadata struct {
 	StartTime          uint64
 }
 
-func (r *PublicRollupMetadata) Encoded() ([]byte, error) {
-	return rlp.EncodeToBytes(r)
-}
-
-func DecodePublicRollupMetadata(encoded []byte) (*PublicRollupMetadata, error) {
-	var rollupMetadata PublicRollupMetadata
-	if err := rlp.DecodeBytes(encoded, &rollupMetadata); err != nil {
-		return nil, err
-	}
-	return &rollupMetadata, nil
-}
-
 // MarshalJSON custom marshals the RollupHeader into a json
 func (r *RollupHeader) MarshalJSON() ([]byte, error) {
 	type Alias RollupHeader

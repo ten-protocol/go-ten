@@ -70,6 +70,7 @@ type BatchResolver interface {
 
 	// StoreRollup
 	StoreRollup(rollup *common.ExtRollup, header *common.CalldataRollupHeader) error
+	FetchRollupMetadata(hash common.L2RollupHash) (*common.PublicRollupMetadata, error)
 	FetchReorgedRollup(reorgedBlocks []common.L1BlockHash) (*common.L2BatchHash, error)
 }
 
