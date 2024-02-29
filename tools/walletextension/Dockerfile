@@ -55,5 +55,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # Lightweight final build stage. Includes bare minimum to start wallet extension
 FROM alpine:3.18
 
+# copy over the gateway executable
 COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/bin /home/obscuro/go-obscuro/tools/walletextension/bin
+
+# copy over the .sql migration files
+COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/storage/database /home/obscuro/go-obscuro/tools/walletextension/storage/database
+
 WORKDIR /home/obscuro/go-obscuro/tools/walletextension/bin

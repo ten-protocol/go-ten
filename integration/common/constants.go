@@ -80,7 +80,7 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
 		ObscuroGenesis:            "",
 		DebugNamespaceEnabled:     false,
-		MaxBatchSize:              1024 * 32,
+		MaxBatchSize:              1024 * 36,
 		MaxRollupSize:             1024 * 64,
 		GasPaymentAddress:         gethcommon.HexToAddress("0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"),
 		BaseFee:                   new(big.Int).SetUint64(params.InitialBaseFee),

@@ -162,6 +162,12 @@ type CalldataRollupHeader struct {
 	ReOrgs [][]byte `rlp:"optional"` // sparse list of reorged headers - non null only for reorgs.
 }
 
+// PublicRollupMetadata contains internal rollup data that can be requested from the enclave.
+type PublicRollupMetadata struct {
+	FirstBatchSequence *big.Int
+	StartTime          uint64
+}
+
 // MarshalJSON custom marshals the RollupHeader into a json
 func (r *RollupHeader) MarshalJSON() ([]byte, error) {
 	type Alias RollupHeader

@@ -22,11 +22,11 @@ const (
 	l1msgValue  = "(?,?,?)"
 	selectL1Msg = "select message from l1_msg "
 
-	rollupInsert = "replace into rollup values (?,?,?,?,?)"
-	rollupSelect = "select hash from rollup where compression_block in "
+	rollupInsert         = "replace into rollup values (?,?,?,?,?,?)"
+	rollupSelect         = "select hash from rollup where compression_block in "
+	rollupSelectMetadata = "select start_seq, time_stamp from rollup where hash = ? "
 
 	updateCanonicalBlock = "update block set is_canonical=? where hash in "
-
 	// todo - do we need the is_canonical field?
 	updateCanonicalBatches = "update batch set is_canonical=? where l1_proof in "
 )
@@ -74,10 +74,6 @@ func updateCanonicalValue(dbtx DBTransaction, isCanonical bool, values []common.
 	}
 	dbtx.ExecuteSQL(updateBlocks, args...)
 	dbtx.ExecuteSQL(updateBatches, args...)
-}
-
-func FetchBlockHeader(db *sql.DB, hash common.L1BlockHash) (*types.Header, error) {
-	return fetchBlockHeader(db, " where hash=?", truncTo16(hash))
 }
 
 // todo - remove this. For now creates a "block" but without a body.
@@ -156,6 +152,7 @@ func WriteRollup(dbtx DBTransaction, rollup *common.RollupHeader, internalHeader
 		truncTo16(rollup.Hash()),
 		internalHeader.FirstBatchSequence.Uint64(),
 		rollup.LastBatchSeqNo,
+		internalHeader.StartTime,
 		data,
 		truncTo16(rollup.CompressionL1Head),
 	)
@@ -181,6 +178,23 @@ func FetchReorgedRollup(db *sql.DB, reorgedBlocks []common.L1BlockHash) (*common
 		}
 		return nil, err
 	}
+	return rollup, nil
+}
+
+func FetchRollupMetadata(db *sql.DB, hash common.L2RollupHash) (*common.PublicRollupMetadata, error) {
+	var startSeq int64
+	var startTime uint64
+
+	rollup := new(common.PublicRollupMetadata)
+	err := db.QueryRow(rollupSelectMetadata, truncTo16(hash)).Scan(&startSeq, &startTime)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	rollup.FirstBatchSequence = big.NewInt(startSeq)
+	rollup.StartTime = startTime
 	return rollup, nil
 }
 

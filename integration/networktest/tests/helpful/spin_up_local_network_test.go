@@ -80,12 +80,19 @@ func checkBalance(walDesc string, wal wallet.Wallet, rpcAddress string) {
 }
 
 func keepRunning(networkConnector networktest.NetworkConnector) {
+	gatewayURL, err := networkConnector.GetGatewayURL()
+	hasGateway := err == nil
+
 	fmt.Println("----")
 	fmt.Println("Sequencer RPC", networkConnector.SequencerRPCAddress())
 	for i := 0; i < networkConnector.NumValidators(); i++ {
 		fmt.Println("Validator  ", i, networkConnector.ValidatorRPCAddress(i))
 	}
+	if hasGateway {
+		fmt.Println("Gateway      ", gatewayURL)
+	}
 	fmt.Println("----")
+
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 	fmt.Println("Network running until test is stopped...")

@@ -109,8 +109,11 @@ type Enclave interface {
 	// GetBatch - retrieve a batch if existing within the enclave db.
 	GetBatch(hash L2BatchHash) (*ExtBatch, SystemError)
 
-	// GetBatchBySeqNo - retrieve batch by sequencer number if it's in the db
+	// GetBatchBySeqNo - retrieve batch by sequencer number if it's in the db.
 	GetBatchBySeqNo(seqNo uint64) (*ExtBatch, SystemError)
+
+	// GetRollupData - retrieve the first batch sequence and start time for a given rollup.
+	GetRollupData(hash L2RollupHash) (*PublicRollupMetadata, SystemError)
 
 	// CreateBatch - creates a new head batch extending the previous one for the latest known L1 head if the node is
 	// a sequencer. Will panic otherwise.
