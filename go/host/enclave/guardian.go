@@ -472,8 +472,11 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 			g.logger.Error("Could not decode rollup.", log.ErrKey, err)
 		}
 
-		// FIXME fetch
-		err = hostdb.AddRollupHeader(g.db, r, block)
+		metaData, err := g.enclaveClient.GetRollupData(r.Header.Hash())
+		if err != nil {
+			g.logger.Error("Could not fetch rollup metadata from enclave.", log.ErrKey, err)
+		}
+		err = hostdb.AddRollupHeader(g.db, r, metaData, block)
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())

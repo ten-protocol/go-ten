@@ -9,13 +9,16 @@ values ('CURRENT_SEQ', -1);
 
 create table if not exists rollup
 (
-    hash              binary(16) primary key,
+    id                int PRIMARY KEY AUTO_INCREMENT,
+    hash              binary(16) NOT NULL UNIQUE,
     start_seq         int        NOT NULL,
     end_seq           int        NOT NULL,
-    started_at        int        NOT NULL,
-    compression_block binary(16) NOT NULL
+    time_stamp        int        NOT NULL,
+    header            blob       NOT NULL,
+    compression_block binary(32) NOT NULL
 );
 
+create index IDX_ROLLUP_HASH on rollup (hash);
 create index IDX_ROLLUP_PROOF on rollup (compression_block);
 create index IDX_ROLLUP_SEQ on rollup (start_seq, end_seq);
 

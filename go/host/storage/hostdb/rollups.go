@@ -4,156 +4,128 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/ethereum/go-ethereum/rlp"
-
 	"github.com/pkg/errors"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
-// DB methods relating to rollup transactions.
+const (
+	selectRollupHeader = "SELECT header from rollup"
+	selectRollups      = "SELECT id, hash, start_seq, end_seq, time_stamp, header, compression_block FROM rollup ORDER BY id DESC LIMIT ? OFFSET ?"
+	insertRollup       = "INSERT INTO rollup (hash, start_seq, end_seq, time_stamp, header, compression_block) values (?,?,?,?,?,?)"
+)
 
 // AddRollupHeader adds a rollup to the DB
-func AddRollupHeader(db *sql.DB, rollup *common.ExtRollup, block *common.L1Block) error {
+func AddRollupHeader(db *sql.DB, rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
 	// Check if the Header is already stored
-	_, err := GetRollupHeader(db, rollup.Hash())
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("could not retrieve rollup. Cause: %w", err)
-	}
+	_, err := GetRollupHeader(db, rollup.Header.Hash())
 	if err == nil {
 		// The rollup is already stored, so we return early.
 		return errutil.ErrAlreadyExists
 	}
 
-	b := db.kvStore.NewBatch()
-
-	if err := db.writeRollupHeader(b, rollup.Header); err != nil {
-		return fmt.Errorf("could not write rollup header. Cause: %w", err)
+	rollupHeader := rollup.Header
+	header, err := rlp.EncodeToBytes(rollupHeader)
+	if err != nil {
+		return fmt.Errorf("could not encode batch header: %w", err)
 	}
+	_, err = db.Exec(insertRollup,
+		truncTo16(rollup.Header.Hash()),      // short hash
+		metadata.FirstBatchSequence.Uint64(), // first batch sequence
+		rollupHeader.LastBatchSeqNo,          // last batch sequence
+		metadata.StartTime,                   // timestamp
+		header,                               // header blob
+		block.Hash(),                         // l1 block hash
+	)
 
-	if err := db.writeRollupByBlockHash(b, rollup.Header, block.Hash()); err != nil {
-		return fmt.Errorf("could not write rollup block. Cause: %w", err)
-	}
-
-	// Update the tip if the new height is greater than the existing one.
-	tipRollupHeader, err := db.GetTipRollupHeader()
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("could not retrieve rollup header at tip. Cause: %w", err)
-	}
-	if tipRollupHeader == nil || tipRollupHeader.LastBatchSeqNo < rollup.Header.LastBatchSeqNo {
-		err = db.writeTipRollupHeader(b, rollup.Hash())
-		if err != nil {
-			return fmt.Errorf("could not write new rollup hash at tip. Cause: %w", err)
-		}
+	if err != nil {
+		return fmt.Errorf("could not store rollup in db: %w", err)
 	}
 
-	if err = b.Write(); err != nil {
-		return fmt.Errorf("could not write batch to DB. Cause: %w", err)
-	}
 	return nil
 }
 
-func WriteRollup(db *sql.DB, rollup *common.RollupHeader, internalHeader *common.CalldataRollupHeader) error {
-	// Write the encoded header
-	data, err := rlp.EncodeToBytes(rollup)
+// GetRollupListing returns latest rollups given a pagination.
+// For example, offset 1, size 10 will return the latest 11-20 rollups.
+func GetRollupListing(db *sql.DB, pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
+	rows, err := db.Query(selectRollups, pagination.Size, pagination.Offset)
 	if err != nil {
-		return fmt.Errorf("could not encode batch header. Cause: %w", err)
+		return nil, err
 	}
-	//db.ExecuteSQL(rollupInsert,
-	//	truncTo16(rollup.Hash()),
-	//	internalHeader.FirstBatchSequence.Uint64(),
-	//	rollup.LastBatchSeqNo,
-	//	data,
-	//	truncTo16(rollup.CompressionL1Head),
-	//)
-	return nil
+	defer rows.Close()
+	var rollups []common.PublicRollup
+
+	for rows.Next() {
+		var id, startSeq, endSeq, timeStamp int
+		var hash, headerBlob, compressionBlock []byte
+
+		var rollup common.PublicRollup
+		err = rows.Scan(&id, &hash, &startSeq, &endSeq, &timeStamp, &headerBlob, &compressionBlock)
+		if err != nil {
+			return nil, err
+		}
+
+		header := new(common.RollupHeader)
+		if err := rlp.DecodeBytes(headerBlob, header); err != nil {
+			return nil, fmt.Errorf("could not decode batch header. Cause: %w", err)
+		}
+
+		rollup = common.PublicRollup{
+			ID:        big.NewInt(int64(id)),
+			Hash:      hash,
+			FirstSeq:  big.NewInt(int64(startSeq)),
+			LastSeq:   big.NewInt(int64(endSeq)),
+			Timestamp: uint64(timeStamp),
+			Header:    header,
+			L1Hash:    compressionBlock,
+		}
+		rollups = append(rollups, rollup)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &common.RollupListingResponse{
+		Rollups: rollups,
+		Total:   uint64(len(rollups)),
+	}, nil
 }
 
 // GetRollupHeader returns the rollup with the given hash.
 func GetRollupHeader(db *sql.DB, hash gethcommon.Hash) (*common.RollupHeader, error) {
-	return db.readRollupHeader(rollupHashKey(hash))
-}
 
-// GetTipRollupHeader returns the header of the node's current tip rollup.
-func GetTipRollupHeader(db *sql.DB) (*common.RollupHeader, error) {
-	headBatchHash, err := db.readTipRollupHash()
-	if err != nil {
-		return nil, err
-	}
-	return db.readRollupHeader(rollupHashKey(*headBatchHash))
+	return fetchRollupHeader(db, " where r.hash=?", truncTo16(hash))
 }
 
 // GetRollupHeaderByBlock returns the rollup for the given block
 func GetRollupHeaderByBlock(db *sql.DB, blockHash gethcommon.Hash) (*common.RollupHeader, error) {
-	return db.readRollupHeader(rollupBlockKey(blockHash))
+	return fetchRollupHeader(db, " where r.compression_block=?", truncTo16(blockHash))
 }
 
-// Retrieves the rollup corresponding to the hash.
-//func (db *DB) readRollupHeader(key []byte) (*common.RollupHeader, error) {
-//	data, err := db.kvStore.Get(key)
-//	if err != nil {
-//		return nil, err
-//	}
-//	if len(data) == 0 {
-//		return nil, errutil.ErrNotFound
-//	}
-//	rollupHeader := new(common.RollupHeader)
-//	if err := rlp.Decode(bytes.NewReader(data), rollupHeader); err != nil {
-//		return nil, err
-//	}
-//	return rollupHeader, nil
-//}
-//
-//// Stores a rollup header into the database.
-//func (db *DB) writeRollupHeader(w ethdb.KeyValueWriter, header *common.RollupHeader) error {
-//	// Write the encoded header
-//	data, err := rlp.EncodeToBytes(header)
-//	if err != nil {
-//		return err
-//	}
-//	key := rollupHashKey(header.Hash())
-//
-//	return w.Put(key, data)
-//}
-//
-//// Retrieves the hash of the rollup at tip
-//func (db *DB) readTipRollupHash() (*gethcommon.Hash, error) {
-//	value, err := db.kvStore.Get(tipRollupHash)
-//	if err != nil {
-//		return nil, err
-//	}
-//	h := gethcommon.BytesToHash(value)
-//	return &h, nil
-//}
-//
-//// Stores the tip rollup header hash into the database
-//func (db *DB) writeTipRollupHeader(w ethdb.KeyValueWriter, val gethcommon.Hash) error {
-//	err := w.Put(tipRollupHash, val.Bytes())
-//	if err != nil {
-//		return err
-//	}
-//	return nil
-//}
-//
-//// Stores if a rollup is in a block
-//func (db *DB) writeRollupByBlockHash(w ethdb.KeyValueWriter, header *common.RollupHeader, blockHash gethcommon.Hash) error {
-//	// Write the encoded header
-//	data, err := rlp.EncodeToBytes(header)
-//	if err != nil {
-//		return err
-//	}
-//	key := rollupBlockKey(blockHash)
-//
-//	return w.Put(key, data)
-//}
-//
-//// rollupHashKey = rollupHeaderPrefix  + hash
-//func rollupHashKey(hash gethcommon.Hash) []byte {
-//	return append(rollupHeaderPrefix, hash.Bytes()...)
-//}
-//
-//// rollupBlockKey = rollupHeaderBlockPrefix  + hash
-//func rollupBlockKey(hash gethcommon.Hash) []byte {
-//	return append(rollupHeaderBlockPrefix, hash.Bytes()...)
-//}
+func fetchRollupHeader(db *sql.DB, whereQuery string, args ...any) (*common.RollupHeader, error) {
+	var headerBlob []byte
+
+	query := selectRollupHeader + whereQuery
+	var err error
+	if len(args) > 0 {
+		err = db.QueryRow(query, args...).Scan(&headerBlob)
+	} else {
+		err = db.QueryRow(query).Scan(&headerBlob)
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to fetch rollup header by hash: %w", err)
+	}
+	var header common.RollupHeader
+	err = rlp.DecodeBytes(headerBlob, &header)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode rollup header: %w", err)
+	}
+
+	return &header, nil
+}

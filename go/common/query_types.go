@@ -31,8 +31,8 @@ type BlockListingResponse struct {
 }
 
 type RollupListingResponse struct {
-	BlocksData []PublicRollup
-	Total      uint64
+	Rollups []PublicRollup
+	Total   uint64
 }
 
 type PublicTransaction struct {
@@ -53,7 +53,13 @@ type PublicBatch struct {
 }
 
 type PublicRollup struct {
-	//FIXME
+	ID        *big.Int
+	Hash      []byte
+	FirstSeq  *big.Int
+	LastSeq   *big.Int
+	Timestamp uint64
+	Header    *RollupHeader
+	L1Hash    []byte
 }
 
 type PublicBlock struct {
