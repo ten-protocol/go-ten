@@ -138,11 +138,12 @@ func DefaultHostConfig() *HostConfig {
 		MetricsHTTPPort:           14000,
 		UseInMemoryDB:             true,
 		LevelDBPath:               "",
-		DebugNamespaceEnabled:     false, BatchInterval: 1 * time.Second,
-		MaxBatchInterval:     1 * time.Second,
-		RollupInterval:       5 * time.Second,
-		L1BlockTime:          15 * time.Second,
-		IsInboundP2PDisabled: false,
-		MaxRollupSize:        1024 * 64,
+		DebugNamespaceEnabled:     false,
+		BatchInterval:             1 * time.Second,
+		MaxBatchInterval:          1 * time.Second,
+		RollupInterval:            5 * time.Second,
+		L1BlockTime:               15 * time.Second,
+		IsInboundP2PDisabled:      false,
+		MaxRollupSize:             1024 * 64,
 	}
 }

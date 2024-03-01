@@ -30,7 +30,7 @@ func TestConfigIsParsedFromTomlFileIfConfigFlagIsPresent(t *testing.T) {
 
 func TestConfigIsParsedFromCmdLineFlagsIfConfigFlagIsNotPresent(t *testing.T) {
 	p2pConnectionTimeout := 6 * time.Second
-	os.Args = append(os.Args, "--"+p2pConnectionTimeoutSecsName, strconv.FormatInt(int64(p2pConnectionTimeout.Seconds()), 10))
+	os.Args = append(os.Args, "--"+p2pConnectionTimeoutSecsFlag, strconv.FormatInt(int64(p2pConnectionTimeout.Seconds()), 10))
 
 	cfg, err := ParseHostConfig()
 	if err != nil {
