@@ -53,7 +53,6 @@ func TestRunLocalGatewayAgainstRemoteTestnet(t *testing.T) {
 	defer cleanUp()
 
 	keepRunning(networkConnector)
-
 }
 
 func TestRunLocalNetworkAgainstSepolia(t *testing.T) {

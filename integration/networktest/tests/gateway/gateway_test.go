@@ -23,7 +23,7 @@ func TestGatewayHappyPath(t *testing.T) {
 	networktest.Run(
 		"gateway-happy-path",
 		t,
-		env.LocalDevNetwork(env.WithTenGateway()),
+		env.SepoliaTestnet(env.WithLocalTenGateway()),
 		actions.Series(
 			&actions.CreateTestUser{UserID: 0, UseGateway: true},
 			&actions.CreateTestUser{UserID: 1, UseGateway: true},
