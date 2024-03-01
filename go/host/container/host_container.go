@@ -94,8 +94,8 @@ func (h *HostContainer) Host() hostcommon.Host {
 
 // NewHostContainerFromConfig uses config to create all HostContainer dependencies and inject them into a new HostContainer
 // (Note: it does not start the HostContainer process, `Start()` must be called on the container)
-func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger gethlog.Logger) *HostContainer {
-	cfg := parsedConfig.ToHostConfig()
+func NewHostContainerFromConfig(parsedConfig *config.HostConfig, logger gethlog.Logger) *HostContainer {
+	cfg := parsedConfig
 
 	addr, err := wallet.RetrieveAddress(parsedConfig.PrivateKeyString)
 	if err != nil {

@@ -3,6 +3,7 @@ package flag
 import (
 	"flag"
 	"fmt"
+	"time"
 )
 
 type TenFlag struct {
@@ -43,6 +44,16 @@ func NewBoolFlag(name string, defaultValue bool, description string) *TenFlag {
 	}
 }
 
+func NewUIntFlag(name string, defaultValue uint, description string) *TenFlag {
+	return &TenFlag{
+		Name:         name,
+		Value:        0,
+		FlagType:     "uint",
+		Description:  description,
+		DefaultValue: defaultValue,
+	}
+}
+
 func NewInt64Flag(name string, defaultValue int64, description string) *TenFlag {
 	return &TenFlag{
 		Name:         name,
@@ -63,6 +74,23 @@ func NewUint64Flag(name string, defaultValue uint64, description string) *TenFla
 	}
 }
 
+func NewDurationFlag(name string, defaultValue time.Duration, description string) *TenFlag {
+	return &TenFlag{
+		Name:         name,
+		Value:        time.Now(),
+		FlagType:     "duration",
+		Description:  description,
+		DefaultValue: defaultValue,
+	}
+}
+
+func (f TenFlag) Duration() time.Duration {
+	if ptrVal, ok := f.Value.(*time.Duration); ok {
+		return *ptrVal
+	}
+	return f.Value.(time.Duration)
+}
+
 func (f TenFlag) String() string {
 	if ptrVal, ok := f.Value.(*string); ok {
 		return *ptrVal
@@ -75,6 +103,13 @@ func (f TenFlag) Int() int {
 		return *ptrVal
 	}
 	return f.Value.(int)
+}
+
+func (f TenFlag) UInt() uint {
+	if ptrVal, ok := f.Value.(*uint); ok {
+		return *ptrVal
+	}
+	return f.Value.(uint)
 }
 
 func (f TenFlag) Int64() int64 {
@@ -111,12 +146,16 @@ func (f TenFlag) IsSet() bool {
 func CreateCLIFlags(flags map[string]*TenFlag) error {
 	for _, tflag := range flags {
 		switch tflag.FlagType {
+		case "duration":
+			tflag.Value = flag.Duration(tflag.Name, tflag.DefaultValue.(time.Duration), tflag.Description)
 		case "string":
 			tflag.Value = flag.String(tflag.Name, tflag.DefaultValue.(string), tflag.Description)
 		case "bool":
 			tflag.Value = flag.Bool(tflag.Name, tflag.DefaultValue.(bool), tflag.Description)
 		case "int":
 			tflag.Value = flag.Int(tflag.Name, tflag.DefaultValue.(int), tflag.Description)
+		case "uint":
+			tflag.Value = flag.Uint(tflag.Name, tflag.DefaultValue.(uint), tflag.Description)
 		case "int64":
 			tflag.Value = flag.Int64(tflag.Name, tflag.DefaultValue.(int64), tflag.Description)
 		case "uint64":
