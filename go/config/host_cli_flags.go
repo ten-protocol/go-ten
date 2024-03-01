@@ -1,4 +1,4 @@
-package container
+package config
 
 // Flag names.
 const (

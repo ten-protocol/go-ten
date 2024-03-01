@@ -1,4 +1,4 @@
-package container
+package config
 
 import (
 	"flag"
@@ -9,14 +9,13 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/naoina/toml"
-
-	"github.com/ten-protocol/go-ten/go/config"
+	"gopkg.in/yaml.v3"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
-// HostConfigToml is the structure that a host's .toml config is parsed into.
-type HostConfigToml struct {
+// HostFileConfig is the structure that a host's .toml config is parsed into.
+type HostFileConfig struct {
 	IsGenesis                 bool
 	NodeType                  string
 	HasClientRPCHTTP          bool
@@ -35,6 +34,7 @@ type HostConfigToml struct {
 	MessageBusAddress         string
 	LogLevel                  int
 	LogPath                   string
+	ID                        string
 	PrivateKeyString          string
 	L1ChainID                 int64
 	ObscuroChainID            int64
@@ -54,13 +54,25 @@ type HostConfigToml struct {
 	MaxRollupSize             int
 }
 
-// ParseConfig returns a config.HostInputConfig based on either the file identified by the `config` flag, or the flags with
-// specific defaults (if the `config` flag isn't specified).
-func ParseConfig() (*config.HostInputConfig, error) {
-	cfg := config.DefaultHostParsedConfig()
+// ParseHostConfig returns a config.HostConfig based on either the file identified by the `config` flag, or with
+// specific defaults (if the `config` flag isn't specified). Flags may override values. Order of override, flag > (file || default).
+func ParseHostConfig() (*HostConfig, error) {
 	flagUsageMap := getFlagUsageMap()
+	cfg := &HostConfig{}
 
+	// sets the base template to either the file or default
 	configPath := flag.String(configName, "", flagUsageMap[configName])
+	if *configPath != "" {
+		fileCfg, err := fileBasedConfig(*configPath)
+		if err != nil {
+			return nil, err
+		}
+		cfg = fileCfg
+	} else {
+		cfg = DefaultHostConfig()
+	}
+
+	// process flag overrides
 	isGenesis := flag.Bool(isGenesisName, cfg.IsGenesis, flagUsageMap[isGenesisName])
 	nodeTypeStr := flag.String(nodeTypeName, cfg.NodeType.String(), flagUsageMap[nodeTypeName])
 	clientRPCPortHTTP := flag.Uint64(clientRPCPortHTTPName, cfg.ClientRPCPortHTTP, flagUsageMap[clientRPCPortHTTPName])
@@ -96,13 +108,9 @@ func ParseConfig() (*config.HostInputConfig, error) {
 
 	flag.Parse()
 
-	if *configPath != "" {
-		return fileBasedConfig(*configPath)
-	}
-
 	nodeType, err := common.ToNodeType(*nodeTypeStr)
 	if err != nil {
-		return &config.HostInputConfig{}, fmt.Errorf("unrecognised node type '%s'", *nodeTypeStr)
+		return &HostConfig{}, fmt.Errorf("unrecognised node type '%s'", *nodeTypeStr)
 	}
 
 	cfg.IsGenesis = *isGenesis
@@ -152,68 +160,72 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	return cfg, nil
 }
 
-// Parses the config from the .toml file at configPath.
-func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
+// Parses the config from the .yaml or .toml file at configPath.
+func fileBasedConfig(configPath string) (*HostConfig, error) {
 	bytes, err := os.ReadFile(configPath)
 	if err != nil {
 		panic(fmt.Sprintf("could not read config file at %s. Cause: %s", configPath, err))
 	}
 
-	var tomlConfig HostConfigToml
-	err = toml.Unmarshal(bytes, &tomlConfig)
+	var fileConfig HostFileConfig
+	err = yaml.Unmarshal(bytes, &fileConfig)
 	if err != nil {
-		panic(fmt.Sprintf("could not read config file at %s. Cause: %s", configPath, err))
+		// If yaml unmarshall failed, use toml
+		err = toml.Unmarshal(bytes, &fileConfig)
+		if err != nil {
+			panic(fmt.Sprintf("could not read config file (.yaml or .toml) at %s. Cause: %s", configPath, err))
+		}
 	}
 
-	nodeType, err := common.ToNodeType(tomlConfig.NodeType)
+	nodeType, err := common.ToNodeType(fileConfig.NodeType)
 	if err != nil {
-		return &config.HostInputConfig{}, fmt.Errorf("unrecognised node type '%s'", tomlConfig.NodeType)
+		return &HostConfig{}, fmt.Errorf("unrecognised node type '%s'", fileConfig.NodeType)
 	}
 
 	batchInterval, maxBatchInterval, rollupInterval := 1*time.Second, 1*time.Second, 5*time.Second
-	if interval, err := time.ParseDuration(tomlConfig.BatchInterval); err == nil {
+	if interval, err := time.ParseDuration(fileConfig.BatchInterval); err == nil {
 		batchInterval = interval
 	}
-	if interval, err := time.ParseDuration(tomlConfig.RollupInterval); err == nil {
+	if interval, err := time.ParseDuration(fileConfig.RollupInterval); err == nil {
 		rollupInterval = interval
 	}
-	if interval, err := time.ParseDuration(tomlConfig.MaxBatchInterval); err == nil {
+	if interval, err := time.ParseDuration(fileConfig.MaxBatchInterval); err == nil {
 		maxBatchInterval = interval
 	}
 
-	return &config.HostInputConfig{
-		IsGenesis:                 tomlConfig.IsGenesis,
+	return &HostConfig{
+		IsGenesis:                 fileConfig.IsGenesis,
 		NodeType:                  nodeType,
-		HasClientRPCHTTP:          tomlConfig.HasClientRPCHTTP,
-		ClientRPCPortHTTP:         uint64(tomlConfig.ClientRPCPortHTTP),
-		HasClientRPCWebsockets:    tomlConfig.HasClientRPCWebsockets,
-		ClientRPCPortWS:           uint64(tomlConfig.ClientRPCPortWS),
-		ClientRPCHost:             tomlConfig.ClientRPCHost,
-		EnclaveRPCAddress:         tomlConfig.EnclaveRPCAddress,
-		P2PBindAddress:            tomlConfig.P2PBindAddress,
-		P2PPublicAddress:          tomlConfig.P2PPublicAddress,
-		L1WebsocketURL:            tomlConfig.L1WebsocketURL,
-		EnclaveRPCTimeout:         time.Duration(tomlConfig.EnclaveRPCTimeout) * time.Second,
-		L1RPCTimeout:              time.Duration(tomlConfig.L1RPCTimeout) * time.Second,
-		P2PConnectionTimeout:      time.Duration(tomlConfig.P2PConnectionTimeout) * time.Second,
-		ManagementContractAddress: gethcommon.HexToAddress(tomlConfig.ManagementContractAddress),
-		MessageBusAddress:         gethcommon.HexToAddress(tomlConfig.MessageBusAddress),
-		LogLevel:                  tomlConfig.LogLevel,
-		LogPath:                   tomlConfig.LogPath,
-		PrivateKeyString:          tomlConfig.PrivateKeyString,
-		L1ChainID:                 tomlConfig.L1ChainID,
-		ObscuroChainID:            tomlConfig.ObscuroChainID,
-		ProfilerEnabled:           tomlConfig.ProfilerEnabled,
-		L1StartHash:               gethcommon.HexToHash(tomlConfig.L1StartHash),
-		SequencerID:               gethcommon.HexToAddress(tomlConfig.SequencerID),
-		MetricsEnabled:            tomlConfig.MetricsEnabled,
-		MetricsHTTPPort:           tomlConfig.MetricsHTTPPort,
-		UseInMemoryDB:             tomlConfig.UseInMemoryDB,
-		LevelDBPath:               tomlConfig.LevelDBPath,
+		HasClientRPCHTTP:          fileConfig.HasClientRPCHTTP,
+		ClientRPCPortHTTP:         uint64(fileConfig.ClientRPCPortHTTP),
+		HasClientRPCWebsockets:    fileConfig.HasClientRPCWebsockets,
+		ClientRPCPortWS:           uint64(fileConfig.ClientRPCPortWS),
+		ClientRPCHost:             fileConfig.ClientRPCHost,
+		EnclaveRPCAddress:         fileConfig.EnclaveRPCAddress,
+		P2PBindAddress:            fileConfig.P2PBindAddress,
+		P2PPublicAddress:          fileConfig.P2PPublicAddress,
+		L1WebsocketURL:            fileConfig.L1WebsocketURL,
+		EnclaveRPCTimeout:         time.Duration(fileConfig.EnclaveRPCTimeout) * time.Second,
+		L1RPCTimeout:              time.Duration(fileConfig.L1RPCTimeout) * time.Second,
+		P2PConnectionTimeout:      time.Duration(fileConfig.P2PConnectionTimeout) * time.Second,
+		ManagementContractAddress: gethcommon.HexToAddress(fileConfig.ManagementContractAddress),
+		MessageBusAddress:         gethcommon.HexToAddress(fileConfig.MessageBusAddress),
+		LogLevel:                  fileConfig.LogLevel,
+		LogPath:                   fileConfig.LogPath,
+		PrivateKeyString:          fileConfig.PrivateKeyString,
+		L1ChainID:                 fileConfig.L1ChainID,
+		ObscuroChainID:            fileConfig.ObscuroChainID,
+		ProfilerEnabled:           fileConfig.ProfilerEnabled,
+		L1StartHash:               gethcommon.HexToHash(fileConfig.L1StartHash),
+		SequencerID:               gethcommon.HexToAddress(fileConfig.SequencerID),
+		MetricsEnabled:            fileConfig.MetricsEnabled,
+		MetricsHTTPPort:           fileConfig.MetricsHTTPPort,
+		UseInMemoryDB:             fileConfig.UseInMemoryDB,
+		LevelDBPath:               fileConfig.LevelDBPath,
 		BatchInterval:             batchInterval,
 		MaxBatchInterval:          maxBatchInterval,
 		RollupInterval:            rollupInterval,
-		IsInboundP2PDisabled:      tomlConfig.IsInboundP2PDisabled,
-		L1BlockTime:               time.Duration(tomlConfig.L1BlockTime) * time.Second,
+		IsInboundP2PDisabled:      fileConfig.IsInboundP2PDisabled,
+		L1BlockTime:               time.Duration(fileConfig.L1BlockTime) * time.Second,
 	}, nil
 }
