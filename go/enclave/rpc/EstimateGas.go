@@ -60,7 +60,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 
 	txArgs := builder.Param.callParams
 	blockNumber := builder.Param.block
-	block, err := rpc.blockResolver.FetchHeadBlock()
+	block, err := rpc.l1BlockProcessor.GetHead()
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,8 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 		return err
 	}
 
-	batch, err := rpc.storage.FetchHeadBatch()
+	headBatchSeq := rpc.registry.HeadBatchSeq()
+	batch, err := rpc.storage.FetchBatchBySeqNo(headBatchSeq.Uint64())
 	if err != nil {
 		return err
 	}
