@@ -59,7 +59,7 @@ func NewSqliteDatabase(dbPath string) (*Database, error) {
 	}
 
 	// create transactions table
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS ogdb.transactions (
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS transactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id binary(20),
     tx TEXT,
