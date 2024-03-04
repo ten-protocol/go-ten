@@ -86,7 +86,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	metricsEnabled := flag.Bool(metricsEnabledName, cfg.MetricsEnabled, flagUsageMap[metricsEnabledName])
 	metricsHTPPPort := flag.Uint(metricsHTTPPortName, cfg.MetricsHTTPPort, flagUsageMap[metricsHTTPPortName])
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, flagUsageMap[useInMemoryDBName])
-	levelDBPath := flag.String(levelDBPathName, cfg.LevelDBPath, flagUsageMap[levelDBPathName])
+	//levelDBPath := flag.String(levelDBPathName, cfg.LevelDBPath, flagUsageMap[levelDBPathName])
 	debugNamespaceEnabled := flag.Bool(debugNamespaceEnabledName, cfg.DebugNamespaceEnabled, flagUsageMap[debugNamespaceEnabledName])
 	batchInterval := flag.String(batchIntervalName, cfg.BatchInterval.String(), flagUsageMap[batchIntervalName])
 	maxBatchInterval := flag.String(maxBatchIntervalName, cfg.MaxBatchInterval.String(), flagUsageMap[maxBatchIntervalName])
@@ -132,7 +132,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.MetricsEnabled = *metricsEnabled
 	cfg.MetricsHTTPPort = *metricsHTPPPort
 	cfg.UseInMemoryDB = *useInMemoryDB
-	cfg.LevelDBPath = *levelDBPath
+	//cfg.LevelDBPath = *levelDBPath
 	cfg.DebugNamespaceEnabled = *debugNamespaceEnabled
 	cfg.BatchInterval, err = time.ParseDuration(*batchInterval)
 	if err != nil {
@@ -209,11 +209,11 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		MetricsEnabled:            tomlConfig.MetricsEnabled,
 		MetricsHTTPPort:           tomlConfig.MetricsHTTPPort,
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,
-		LevelDBPath:               tomlConfig.LevelDBPath,
-		BatchInterval:             batchInterval,
-		MaxBatchInterval:          maxBatchInterval,
-		RollupInterval:            rollupInterval,
-		IsInboundP2PDisabled:      tomlConfig.IsInboundP2PDisabled,
-		L1BlockTime:               time.Duration(tomlConfig.L1BlockTime) * time.Second,
+		//LevelDBPath:               tomlConfig.LevelDBPath,
+		BatchInterval:        batchInterval,
+		MaxBatchInterval:     maxBatchInterval,
+		RollupInterval:       rollupInterval,
+		IsInboundP2PDisabled: tomlConfig.IsInboundP2PDisabled,
+		L1BlockTime:          time.Duration(tomlConfig.L1BlockTime) * time.Second,
 	}, nil
 }

@@ -46,8 +46,13 @@ func (s *ScanAPI) GetFullBatchByHash(batchHash gethcommon.Hash) (*common.ExtBatc
 	return hostdb.GetFullBatch(s.host.DB(), batchHash)
 }
 
+// GetFullBatchByTxHash returns the full `ExtBatch` with the given hash.
+func (s *ScanAPI) GetFullBatchByTxHash(txHash gethcommon.Hash) (*common.ExtBatch, error) {
+	return hostdb.GetFullBatchByTx(s.host.DB(), txHash)
+}
+
 func (s *ScanAPI) GetRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
-	panic("implement me")
+	return hostdb.GetRollupListing(s.host.DB(), pagination)
 }
 
 func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {

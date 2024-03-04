@@ -191,7 +191,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 		g.logger.Error("Repo received batch but we are a sequencer, ignoring")
 		return
 	}
-	g.logger.Debug("Received L2 block", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
+	g.logger.Debug("Received L2 block", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
 	// record the newest batch we've seen
 	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
 	if !g.state.IsUpToDate() {
@@ -444,8 +444,6 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	g.state.OnProcessedBlock(block.Hash())
 	g.processL1BlockTransactions(block)
 
-	// todo (@matt) this should not be here, it is only used by the RPC API server for batch data which will eventually just use L1 repo
-	err = g.db.AddBlock(block.Header())
 	if err != nil {
 		return false, fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}
@@ -477,6 +475,10 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 			g.logger.Error("Could not fetch rollup metadata from enclave.", log.ErrKey, err)
 		}
 		err = hostdb.AddRollupHeader(g.db, r, metaData, block)
+		println("ROLLUP DATA start time", metaData.StartTime)
+		println("ROLLUP DATA First batch", metaData.FirstBatchSequence.String())
+		//FIXME need to store this data?
+		//err = hostdb.AddBlock(g.db, block, r.Header.Hash())
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())

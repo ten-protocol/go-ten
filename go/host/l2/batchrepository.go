@@ -127,7 +127,7 @@ func (r *Repository) HandleBatchRequest(requesterID string, fromSeqNo *big.Int) 
 	batches := make([]*common.ExtBatch, 0)
 	nextSeqNum := fromSeqNo
 	for len(batches) <= _maxBatchesInP2PResponse {
-		batch, err := r.db.GetBatchBySequenceNumber(nextSeqNum)
+		batch, err := hostdb.GetFullBatchBySequenceNumber(r.db, nextSeqNum.Uint64())
 		if err != nil {
 			if !errors.Is(err, errutil.ErrNotFound) {
 				r.logger.Warn("unexpected error fetching batches for peer req", log.BatchSeqNoKey, nextSeqNum, log.ErrKey, err)
@@ -153,7 +153,7 @@ func (r *Repository) Subscribe(subscriber host.L2BatchHandler) {
 }
 
 func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error) {
-	b, err := r.db.GetBatchBySequenceNumber(seqNo)
+	b, err := hostdb.GetFullBatchBySequenceNumber(r.db, seqNo.Uint64())
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) && seqNo.Cmp(r.latestBatchSeqNo) < 0 {
 			if r.isSequencer {

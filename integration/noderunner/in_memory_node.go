@@ -34,11 +34,13 @@ func (d *InMemNode) Start() error {
 
 	err := d.startEnclave()
 	if err != nil {
+		println("ENCLAVE ERROR")
 		return err
 	}
 
 	err = d.startHost()
 	if err != nil {
+		println("HOST ERROR")
 		return err
 	}
 

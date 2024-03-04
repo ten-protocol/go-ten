@@ -99,7 +99,7 @@ func CreateTemporarySQLiteHostDB(dbPath string, dbOptions string, logger gethlog
 
 	err = initialiseDB(db, initFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't initialise db - %w", err)
 	}
 
 	return db, nil

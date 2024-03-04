@@ -32,7 +32,7 @@ func (b *ExtBatch) Hash() L2BatchHash {
 func (b *ExtBatch) Encoded() ([]byte, error) {
 	return rlp.EncodeToBytes(b)
 }
-
+func (b *ExtBatch) SeqNo() *big.Int { return new(big.Int).Set(b.Header.SequencerOrderNo) }
 func DecodeExtBatch(encoded []byte) (*ExtBatch, error) {
 	var batch ExtBatch
 	if err := rlp.DecodeBytes(encoded, &batch); err != nil {

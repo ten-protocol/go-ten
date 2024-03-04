@@ -724,10 +724,8 @@ func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
 func checkTenscan(t *testing.T, s *Simulation) {
 	for idx, client := range s.RPCHandles.RPCClients {
 		checkTotalTransactions(t, client, idx)
-		latestTxHashes := checkLatestTxs(t, client, idx)
-		for _, txHash := range latestTxHashes {
-			checkBatchFromTxs(t, client, txHash, idx)
-		}
+		checkForLatestBatches(t, client, idx)
+		checkForLatestRollups(t, client, idx)
 	}
 }
 
@@ -743,17 +741,30 @@ func checkTotalTransactions(t *testing.T, client rpc.Client, nodeIdx int) {
 	}
 }
 
-// Checks that we can retrieve the latest transactions for the node.
-func checkLatestTxs(t *testing.T, client rpc.Client, nodeIdx int) []gethcommon.Hash {
-	var latestTxHashes []gethcommon.Hash
-	err := client.Call(&latestTxHashes, rpc.GetLatestTxs, txThreshold)
+// Checks that we can retrieve the latest batches
+func checkForLatestBatches(t *testing.T, client rpc.Client, nodeIdx int) {
+	var latestBatches common.BatchListingResponse
+	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(5)}
+	err := client.Call(&latestBatches, rpc.GetBatchListing, &pagination)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve latest batches. Cause: %s", nodeIdx, err)
+	}
+	if len(latestBatches.BatchesData) != 5 {
+		t.Errorf("node %d: expected at least %d batches, but only received %d", nodeIdx, 5, len(latestBatches.BatchesData))
+	}
+}
+
+// Checks that we can retrieve the latest rollups
+func checkForLatestRollups(t *testing.T, client rpc.Client, nodeIdx int) {
+	var latestRollups common.RollupListingResponse
+	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(5)}
+	err := client.Call(&latestRollups, rpc.GetRollupListing, &pagination)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve latest transactions. Cause: %s", nodeIdx, err)
 	}
-	if len(latestTxHashes) != txThreshold {
-		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, txThreshold, len(latestTxHashes))
+	if len(latestRollups.Rollups) != 5 {
+		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, 5, len(latestRollups.Rollups))
 	}
-	return latestTxHashes
 }
 
 // Retrieves the batch using the transaction hash, and validates it.

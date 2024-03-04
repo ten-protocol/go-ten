@@ -3,11 +3,8 @@ package storage
 import (
 	"database/sql"
 	"fmt"
-
-	"github.com/ten-protocol/go-ten/go/common/storage/database/init/sqlite"
-	"github.com/ten-protocol/go-ten/go/enclave/storage/init/edgelessdb"
-
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/common/storage/database/init/sqlite"
 
 	"github.com/ten-protocol/go-ten/go/config"
 )
@@ -20,12 +17,12 @@ func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (*sql.DB,
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
 		// this creates a temporary sqlite sqldb
-		return sqlite.CreateTemporarySQLiteHostDB(cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", logger, "001_init.sql")
+		return sqlite.CreateTemporarySQLiteHostDB(cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", logger, "host_init.sql")
 	}
 
-	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
-	logger.Info(fmt.Sprintf("Preparing Edgeless DB connection to %s...", cfg.MariaDBHost))
-	return getMariaDBHost(cfg, logger)
+	logger.Info(fmt.Sprintf("Preparing Maria DB connection to %s...", cfg.MariaDBHost))
+	return nil, nil
+	//return getMariaDBHost(cfg, logger)
 }
 
 // validateDBConf high-level checks that you have a valid configuration for DB creation
@@ -39,10 +36,10 @@ func validateDBConf(cfg *config.HostConfig) error {
 	return nil
 }
 
-func getMariaDBHost(cfg *config.HostConfig, logger gethlog.Logger) (*sql.DB, error) {
-	if cfg.MariaDBHost == "" {
-		return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
-	}
-	dbConfig := edgelessdb.Config{Host: cfg.MariaDBHost}
-	return edgelessdb.Connector(&dbConfig, logger)
-}
+//func getMariaDBHost(cfg *config.HostConfig, logger gethlog.Logger) (*sql.DB, error) {
+//	if cfg.MariaDBHost == "" {
+//		return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
+//	}
+//	dbConfig := edgelessdb.Config{Host: cfg.MariaDBHost}
+//	return edgelessdb.Connector(&dbConfig, logger)
+//}

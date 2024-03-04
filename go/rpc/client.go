@@ -36,14 +36,15 @@ const (
 	// GetL1RollupHeaderByHash  = "scan_getL1RollupHeaderByHash"
 	// GetActiveNodeCount       = "scan_getActiveNodeCount"
 
-	GetBatchForTx            = "tenscan_getBatchForTx" //TODO this returns ExtBatch
-	GetLatestTxs             = "tenscan_getLatestTransactions"
+	GetBatchForTx            = "scan_getBatchForTx" //TODO this returns ExtBatch
+	GetLatestTxs             = "scan_getLatestTransactions"
 	GetLatestRollupHeader    = "scan_getLatestRollupHeader"
 	GetTotalTransactionCount = "scan_getTotalTransactionCount"
 	GetTotalContractCount    = "scan_getTotalContractCount"
 	GetPublicTransactionData = "scan_getPublicTransactionData"
-	GetPublicBatchListing    = "scan_getBatchListing"
+	GetBatchListing          = "scan_getBatchListing"
 	GetBlockListing          = "scan_getBlockListing"
+	GetRollupListing         = "scan_getRollupListing"
 	GetFullBatchByHash       = "scan_getFullBatchByHash"
 	GetPublicBatchByHash     = "scan_getPublicBatchByHash"
 )

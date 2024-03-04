@@ -173,7 +173,7 @@ func (h *host) Stop() error {
 		}
 	}
 
-	if err := h.db.Stop(); err != nil {
+	if err := h.db.Close(); err != nil {
 		h.logger.Error("Failed to stop DB", log.ErrKey, err)
 	}
 
