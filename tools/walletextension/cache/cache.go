@@ -25,18 +25,18 @@ type RPCMethodCacheConfig struct {
 // CacheableRPCMethods is a map of Ethereum JSON-RPC methods that can be cached and their TTL
 var cacheableRPCMethods = map[string]RPCMethodCacheConfig{
 	// Ethereum JSON-RPC methods that can be cached long time
-	"eth_getBlockByNumber":     {longCacheTTL, false},
-	"eth_getBlockByHash":       {longCacheTTL, false},
-	"eth_getTransactionByHash": {longCacheTTL, true},
-	"eth_chainId":              {longCacheTTL, false},
+	"eth_getBlockByNumber": {longCacheTTL, false},
+	"eth_getBlockByHash":   {longCacheTTL, false},
+	//"eth_getTransactionByHash": {longCacheTTL, true},
+	"eth_chainId": {longCacheTTL, false},
 
 	// Ethereum JSON-RPC methods that can be cached short time
 	"eth_blockNumber": {shortCacheTTL, false},
 	"eth_getCode":     {shortCacheTTL, true},
 	// "eth_getBalance":            {longCacheTTL, true},// excluded for test: gen_cor_059
-	"eth_getTransactionReceipt": {shortCacheTTL, true},
-	"eth_call":                  {shortCacheTTL, true},
-	"eth_gasPrice":              {shortCacheTTL, false},
+	//"eth_getTransactionReceipt": {shortCacheTTL, true},
+	"eth_call":     {shortCacheTTL, true},
+	"eth_gasPrice": {shortCacheTTL, false},
 	// "eth_getTransactionCount": {longCacheTTL, true}, // excluded for test: gen_cor_009
 	"eth_estimateGas": {shortCacheTTL, true},
 	"eth_feeHistory":  {shortCacheTTL, false},

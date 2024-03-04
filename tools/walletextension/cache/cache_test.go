@@ -155,9 +155,9 @@ func testCacheTTL(cache Cache, t *testing.T) {
 func testCachingAuthenticatedMethods(cache Cache, t *testing.T) {
 	// eth_getTransactionByHash
 	authMethods := []string{
-		"eth_getTransactionByHash",
+		//"eth_getTransactionByHash",
 		"eth_getCode",
-		"eth_getTransactionReceipt",
+		//"eth_getTransactionReceipt",
 		"eth_call",
 		"eth_estimateGas",
 	}
