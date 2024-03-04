@@ -14,6 +14,7 @@ var tests = map[string]func(storage Storage, t *testing.T){
 	"testAddAndGetAccounts": testAddAndGetAccounts,
 	"testDeleteUser":        testDeleteUser,
 	"testGetAllUsers":       testGetAllUsers,
+	"testStoringNewTx":      testStoringNewTx,
 }
 
 func TestSQLiteGatewayDB(t *testing.T) {
@@ -142,5 +143,15 @@ func testGetAllUsers(storage Storage, t *testing.T) {
 
 	if len(afterInsertUsers) != len(initialUsers)+1 {
 		t.Errorf("Expected user count to increase by 1. Got %d initially and %d after insert", len(initialUsers), len(afterInsertUsers))
+	}
+}
+
+func testStoringNewTx(storage Storage, t *testing.T) {
+	userID := []byte("userID")
+	rawTransaction := "0x0123456789"
+
+	err := storage.StoreTransaction(rawTransaction, userID)
+	if err != nil {
+		t.Fatal(err)
 	}
 }

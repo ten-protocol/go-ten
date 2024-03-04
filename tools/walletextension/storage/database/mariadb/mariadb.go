@@ -142,3 +142,18 @@ func (m *MariaDB) GetAllUsers() ([]common.UserDB, error) {
 
 	return users, nil
 }
+
+func (m *MariaDB) StoreTransaction(rawTx string, userID []byte) error {
+	stmt, err := m.db.Prepare("INSERT INTO transactions(user_id, tx) VALUES (?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(userID, rawTx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

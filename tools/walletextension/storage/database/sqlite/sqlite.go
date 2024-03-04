@@ -58,6 +58,18 @@ func NewSqliteDatabase(dbPath string) (*Database, error) {
 		return nil, err
 	}
 
+	// create transactions table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS ogdb.transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id binary(20),
+    tx TEXT,
+    tx_time TEXT DEFAULT (datetime('now'))
+)	;`)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &Database{db: db}, nil
 }
 
@@ -186,4 +198,19 @@ func createOrLoad(dbPath string) (string, error) {
 	}
 
 	return dbPath, nil
+}
+
+func (s *Database) StoreTransaction(rawTx string, userID []byte) error {
+	stmt, err := s.db.Prepare("INSERT INTO transactions(user_id, tx) VALUES (?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(userID, rawTx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

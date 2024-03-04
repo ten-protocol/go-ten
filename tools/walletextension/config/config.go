@@ -13,4 +13,5 @@ type Config struct {
 	DBType                  string
 	DBConnectionURL         string
 	TenChainID              int
+	StoreIncomingTxs        bool
 }
