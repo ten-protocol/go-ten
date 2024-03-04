@@ -13,7 +13,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
-
 	"github.com/ten-protocol/go-ten/integration/networktest"
 	"github.com/ten-protocol/go-ten/integration/networktest/env"
 )
@@ -33,6 +32,21 @@ func TestRunLocalNetwork(t *testing.T) {
 	networktest.TestOnlyRunsInIDE(t)
 	networktest.EnsureTestLogsSetUp("local-geth-network")
 	networkConnector, cleanUp, err := env.LocalDevNetwork(env.WithTenGateway()).Prepare()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanUp()
+
+	keepRunning(networkConnector)
+}
+
+func TestRunLocalGatewayAgainstRemoteTestnet(t *testing.T) {
+	networktest.TestOnlyRunsInIDE(t)
+	networktest.EnsureTestLogsSetUp("local-faucet-remote-testnet")
+
+	// set the testnet the gateway will connect to here
+	netw := env.SepoliaTestnet(env.WithLocalTenGateway())
+	networkConnector, cleanUp, err := netw.Prepare()
 	if err != nil {
 		t.Fatal(err)
 	}

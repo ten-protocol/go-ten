@@ -36,7 +36,7 @@ type testnetConnector struct {
 	faucetWallet          userwallet.User
 }
 
-func NewTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string, l1WSURL string, tenGatewayURL string) networktest.NetworkConnector {
+func newTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string, l1WSURL string, tenGatewayURL string) *testnetConnector {
 	return &testnetConnector{
 		seqRPCAddress:         seqRPCAddr,
 		validatorRPCAddresses: validatorRPCAddressses,
@@ -46,7 +46,7 @@ func NewTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, fau
 	}
 }
 
-func NewTestnetConnectorWithFaucetAccount(seqRPCAddr string, validatorRPCAddressses []string, faucetPK string, l1RPCAddress string, tenGatewayURL string) networktest.NetworkConnector {
+func newTestnetConnectorWithFaucetAccount(seqRPCAddr string, validatorRPCAddressses []string, faucetPK string, l1RPCAddress string, tenGatewayURL string) *testnetConnector {
 	ecdsaKey, err := crypto.HexToECDSA(faucetPK)
 	if err != nil {
 		panic(err)
