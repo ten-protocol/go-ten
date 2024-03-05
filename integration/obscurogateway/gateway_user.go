@@ -51,11 +51,25 @@ func NewUser(wallets []wallet.Wallet, serverAddressHTTP string, serverAddressWS 
 
 func (u GatewayUser) RegisterAccounts() error {
 	for _, w := range u.Wallets {
+		fmt.Println("Registering account", w.Address().Hex())
 		err := u.tgClient.RegisterAccount(w.PrivateKey(), w.Address())
 		if err != nil {
 			return err
 		}
 		testlog.Logger().Info(fmt.Sprintf("Successfully registered address %s for user: %s.", w.Address().Hex(), u.tgClient.UserID()))
+	}
+
+	return nil
+}
+
+func (u GatewayUser) RegisterAccountsPersonalSign() error {
+	for _, w := range u.Wallets {
+		fmt.Println("Registering account with personal sign", w.Address().Hex())
+		err := u.tgClient.RegisterAccountPersonalSign(w.PrivateKey(), w.Address())
+		if err != nil {
+			return err
+		}
+		testlog.Logger().Info(fmt.Sprintf("Successfully registered address %s for user: %s. With personal sign message", w.Address().Hex(), u.tgClient.UserID()))
 	}
 
 	return nil

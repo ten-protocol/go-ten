@@ -34,10 +34,12 @@ const (
 	EIP712EncryptionToken = "Encryption Token"
 	// EIP712EncryptionTokenV2 is used to support older versions of third party libraries
 	// that don't have the support for spaces in type names
-	EIP712EncryptionTokenV2  = "EncryptionToken"
-	EIP712DomainNameValue    = "Ten"
-	EIP712DomainVersionValue = "1.0"
-	UserIDHexLength          = 40
+	EIP712EncryptionTokenV2   = "EncryptionToken"
+	EIP712DomainNameValue     = "Ten"
+	EIP712DomainVersionValue  = "1.0"
+	UserIDHexLength           = 40
+	PersonalSignMessagePrefix = "\x19Ethereum Signed Message:\n%d%s"
+	PersonalSignMessageFormat = "Token: %s on: %d version: v%d"
 )
 
 // EIP712EncryptionTokens is a list of all possible options for Encryption token name
@@ -45,6 +47,9 @@ var EIP712EncryptionTokens = [...]string{
 	EIP712EncryptionToken,
 	EIP712EncryptionTokenV2,
 }
+
+// PersonalSignMessageSupportedVersions is a list of supported versions for the personal sign message
+var PersonalSignMessageSupportedVersions = []int{1}
 
 // ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave.
 // It is th client-side perspective of the viewing key used for decrypting incoming traffic.
@@ -137,6 +142,10 @@ func Sign(userPrivKey *ecdsa.PrivateKey, vkPubKey []byte) ([]byte, error) {
 // todo (@ziga) Remove this method once old WE endpoints are removed
 func GenerateSignMessage(vkPubKey []byte) string {
 	return SignedMsgPrefix + hex.EncodeToString(vkPubKey)
+}
+
+func GeneratePersonalSignMessage(encryptionToken string, chainID int64, version int) string {
+	return fmt.Sprintf(PersonalSignMessageFormat, encryptionToken, chainID, version)
 }
 
 // getBytesFromTypedData creates EIP-712 compliant hash from typedData.
@@ -273,4 +282,48 @@ func CheckEIP712Signature(userID string, signature []byte, chainID int64) (*geth
 		}
 	}
 	return nil, errors.New("EIP 712 signature verification failed")
+}
+
+// CheckPersonalSignSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
+func CheckPersonalSignSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error) {
+	if len(signature) != 65 {
+		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
+	}
+	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	if signature[64] == 27 || signature[64] == 28 {
+		signature[64] -= 27
+	}
+
+	// create all possible hashes (for all the supported versions) of the message (needed for signature verification)
+	for _, version := range PersonalSignMessageSupportedVersions {
+		message := GeneratePersonalSignMessage(encryptionToken, chainID, version)
+		fmt.Println("recreated message: ", message)
+		prefixedMessage := fmt.Sprintf(PersonalSignMessagePrefix, len(message), message)
+		messageHash := crypto.Keccak256([]byte(prefixedMessage))
+
+		// current signature is valid - return account address
+		address, err := CheckSignatureAndReturnAccountAddress(messageHash, signature)
+		if err == nil {
+			return address, nil
+		}
+	}
+
+	return nil, fmt.Errorf("signature verification failed")
+}
+
+// CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
+// TODO @Ziga - refactor this method when we have version of the signature
+func CheckSignature(encryptionToken string, signature []byte, chainID int64, expectedAddress string) (*gethcommon.Address, error) {
+	addr, err := CheckPersonalSignSignature(encryptionToken, signature, chainID)
+	if err == nil && addr.Hex() == expectedAddress {
+		return addr, nil
+	}
+	fmt.Println("Personal signature verification failed - checking PersonalSign signature")
+
+	addr, err = CheckEIP712Signature(encryptionToken, signature, chainID)
+	if err == nil && addr.Hex() == expectedAddress {
+		return addr, nil
+	}
+	return nil, fmt.Errorf("signature verification failed")
 }

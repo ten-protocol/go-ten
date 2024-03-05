@@ -93,6 +93,52 @@ func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 	return nil
 }
 
+func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
+	// create the registration message
+	personalSignMessage := viewingkey.GeneratePersonalSignMessage(string(o.userID), integration.TenChainID, 1)
+	fmt.Println("personalSignMessage: ", personalSignMessage)
+	prefixedMessage := fmt.Sprintf(viewingkey.PersonalSignMessagePrefix, len(personalSignMessage), personalSignMessage)
+	messageHash := crypto.Keccak256([]byte(prefixedMessage))
+
+	sig, err := crypto.Sign(messageHash, pk)
+	if err != nil {
+		return fmt.Errorf("failed to sign message: %w", err)
+	}
+	sig[64] += 27
+	signature := "0x" + hex.EncodeToString(sig)
+	fmt.Println("signature: ", signature)
+	payload := fmt.Sprintf("{\"signature\": \"%s\", \"address\": \"%s\"}", signature, addr.Hex())
+
+	// issue the registration message
+	req, err := http.NewRequestWithContext(
+		context.Background(),
+		http.MethodPost,
+		o.httpURL+"/v1/authenticate/?token="+string(o.userID),
+		strings.NewReader(payload),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to create request - %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+
+	client := &http.Client{}
+	response, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("unable to issue request - %w", err)
+	}
+
+	defer response.Body.Close()
+	r, err := io.ReadAll(response.Body)
+	if err != nil {
+		return fmt.Errorf("unable to read response - %w", err)
+	}
+	if string(r) != "success" {
+		return fmt.Errorf("expected success, got %s", string(r))
+	}
+	return nil
+}
+
 func (o *TGLib) HTTP() string {
 	return fmt.Sprintf("%s/v1/?token=%s", o.httpURL, o.userID)
 }
