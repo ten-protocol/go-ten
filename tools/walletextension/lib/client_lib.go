@@ -96,7 +96,6 @@ func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
 	personalSignMessage := viewingkey.GeneratePersonalSignMessage(string(o.userID), integration.TenChainID, 1)
-	fmt.Println("personalSignMessage: ", personalSignMessage)
 	prefixedMessage := fmt.Sprintf(viewingkey.PersonalSignMessagePrefix, len(personalSignMessage), personalSignMessage)
 	messageHash := crypto.Keccak256([]byte(prefixedMessage))
 
@@ -106,8 +105,7 @@ func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommo
 	}
 	sig[64] += 27
 	signature := "0x" + hex.EncodeToString(sig)
-	fmt.Println("signature: ", signature)
-	payload := fmt.Sprintf("{\"signature\": \"%s\", \"address\": \"%s\"}", signature, addr.Hex())
+	payload := fmt.Sprintf("{\"signature\": \"%s\", \"address\": \"%s\", \"type\": \"%s\"}", signature, addr.Hex(), "Personal")
 
 	// issue the registration message
 	req, err := http.NewRequestWithContext(

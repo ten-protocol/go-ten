@@ -291,11 +291,11 @@ func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
 }
 
 // AddAddressToUser checks if a message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
-func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, signature []byte) error {
+func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, signature []byte, messageType int) error {
 	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
 	// check if a message was signed by the correct address and if the signature is valid
-	_, err := viewingkey.CheckSignature(hexUserID, signature, int64(w.config.TenChainID), address)
+	_, err := viewingkey.CheckSignatureWithType(hexUserID, signature, int64(w.config.TenChainID), address, messageType)
 	if err != nil {
 		return fmt.Errorf("signature is not valid: %w", err)
 	}

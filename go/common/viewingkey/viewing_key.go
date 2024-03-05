@@ -40,6 +40,9 @@ const (
 	UserIDHexLength           = 40
 	PersonalSignMessagePrefix = "\x19Ethereum Signed Message:\n%d%s"
 	PersonalSignMessageFormat = "Token: %s on: %d version: v%d"
+	EIP712SignatureType       = 0
+	PersonalSignSignatureType = 1
+	//LegacySignatureType       = 2
 )
 
 // EIP712EncryptionTokens is a list of all possible options for Encryption token name
@@ -312,7 +315,7 @@ func CheckPersonalSignSignature(encryptionToken string, signature []byte, chainI
 }
 
 // CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
-// TODO @Ziga - refactor this method when we have version of the signature
+// TODO @Ziga - DELETE THIS FUNCTION LATER...
 func CheckSignature(encryptionToken string, signature []byte, chainID int64, expectedAddress string) (*gethcommon.Address, error) {
 	addr, err := CheckPersonalSignSignature(encryptionToken, signature, chainID)
 	if err == nil && addr.Hex() == expectedAddress {
@@ -323,5 +326,22 @@ func CheckSignature(encryptionToken string, signature []byte, chainID int64, exp
 	if err == nil && addr.Hex() == expectedAddress {
 		return addr, nil
 	}
+	return nil, fmt.Errorf("signature verification failed")
+}
+
+// CheckSignatureWithType TODO @Ziga - Refactor and simplify this function
+func CheckSignatureWithType(encryptionToken string, signature []byte, chainID int64, expectedAddress string, messageType int) (*gethcommon.Address, error) {
+	if messageType == PersonalSignSignatureType {
+		addr, err := CheckPersonalSignSignature(encryptionToken, signature, chainID)
+		if err == nil && addr.Hex() == expectedAddress {
+			return addr, nil
+		}
+	} else if messageType == EIP712SignatureType {
+		addr, err := CheckEIP712Signature(encryptionToken, signature, chainID)
+		if err == nil && addr.Hex() == expectedAddress {
+			return addr, nil
+		}
+	}
+	// TODO: add also legacy signature type
 	return nil, fmt.Errorf("signature verification failed")
 }
