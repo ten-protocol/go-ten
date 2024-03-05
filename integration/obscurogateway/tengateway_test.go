@@ -95,13 +95,13 @@ func TestTenGateway(t *testing.T) {
 	// run the tests against the exis
 	for name, test := range map[string]func(*testing.T, string, string, wallet.Wallet){
 		//"testAreTxsMinted":            testAreTxsMinted, this breaks the other tests bc, enable once concurrency issues are fixed
-		//"testErrorHandling":                    testErrorHandling,
-		//"testMultipleAccountsSubscription":     testMultipleAccountsSubscription,
-		//"testErrorsRevertedArePassed":          testErrorsRevertedArePassed,
-		//"testUnsubscribe":                      testUnsubscribe,
-		//"testClosingConnectionWhileSubscribed": testClosingConnectionWhileSubscribed,
-		//"testSubscriptionTopics":               testSubscriptionTopics,
-		"testDifferentMessagesOnRegister": testDifferentMessagesOnRegister,
+		"testErrorHandling":                    testErrorHandling,
+		"testMultipleAccountsSubscription":     testMultipleAccountsSubscription,
+		"testErrorsRevertedArePassed":          testErrorsRevertedArePassed,
+		"testUnsubscribe":                      testUnsubscribe,
+		"testClosingConnectionWhileSubscribed": testClosingConnectionWhileSubscribed,
+		"testSubscriptionTopics":               testSubscriptionTopics,
+		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, httpURL, wsURL, w)

@@ -295,13 +295,9 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, sig
 	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
 	// check if a message was signed by the correct address and if the signature is valid
-	sigAddrs, err := viewingkey.CheckSignature(hexUserID, signature, int64(w.config.TenChainID), address)
+	_, err := viewingkey.CheckSignature(hexUserID, signature, int64(w.config.TenChainID), address)
 	if err != nil {
 		return fmt.Errorf("signature is not valid: %w", err)
-	}
-
-	if sigAddrs.Hex() != address {
-		return fmt.Errorf("signature is not valid. Signature address %s!=%s ", sigAddrs, address)
 	}
 
 	// register the account for that viewing key

@@ -298,7 +298,6 @@ func CheckPersonalSignSignature(encryptionToken string, signature []byte, chainI
 	// create all possible hashes (for all the supported versions) of the message (needed for signature verification)
 	for _, version := range PersonalSignMessageSupportedVersions {
 		message := GeneratePersonalSignMessage(encryptionToken, chainID, version)
-		fmt.Println("recreated message: ", message)
 		prefixedMessage := fmt.Sprintf(PersonalSignMessagePrefix, len(message), message)
 		messageHash := crypto.Keccak256([]byte(prefixedMessage))
 
@@ -319,7 +318,6 @@ func CheckSignature(encryptionToken string, signature []byte, chainID int64, exp
 	if err == nil && addr.Hex() == expectedAddress {
 		return addr, nil
 	}
-	fmt.Println("Personal signature verification failed - checking PersonalSign signature")
 
 	addr, err = CheckEIP712Signature(encryptionToken, signature, chainID)
 	if err == nil && addr.Hex() == expectedAddress {
