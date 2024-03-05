@@ -54,6 +54,7 @@ func NewSqliteDatabase(dbPath string) (*Database, error) {
 		user_id binary(20),
 		account_address binary(20),
 		signature binary(65),
+		signature_type int,
     	FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
 	);`)
 
@@ -121,14 +122,14 @@ func (s *Database) GetUserPrivateKey(userID []byte) ([]byte, error) {
 	return privateKey, nil
 }
 
-func (s *Database) AddAccount(userID []byte, accountAddress []byte, signature []byte) error {
-	stmt, err := s.db.Prepare("INSERT INTO accounts(user_id, account_address, signature) VALUES (?, ?, ?)")
+func (s *Database) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType int) error {
+	stmt, err := s.db.Prepare("INSERT INTO accounts(user_id, account_address, signature, signature_type) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(userID, accountAddress, signature)
+	_, err = stmt.Exec(userID, accountAddress, signature, signatureType)
 	if err != nil {
 		return err
 	}

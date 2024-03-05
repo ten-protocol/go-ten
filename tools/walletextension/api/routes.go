@@ -38,7 +38,6 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 			Name: common.PathGenerateViewingKey,
 			Func: httpHandler(walletExt, generateViewingKeyRequestHandler),
 		},
-
 		{
 			Name: common.PathSubmitViewingKey,
 			Func: httpHandler(walletExt, submitViewingKeyRequestHandler),
@@ -324,14 +323,11 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, conn
 		messageTypeValue = typeFromRequest
 	}
 
-	fmt.Println("messageTypeValue", messageTypeValue)
 	// check if message type is valid
 	messageType, ok := common.TypeMap[messageTypeValue]
 	if !ok {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid message type + %s", messageTypeValue))
 	}
-
-	fmt.Println("messageType", messageType)
 
 	// read userID from query params
 	hexUserID, err := getUserID(conn, 2)

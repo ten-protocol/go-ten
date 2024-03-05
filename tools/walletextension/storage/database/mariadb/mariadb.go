@@ -85,14 +85,14 @@ func (m *MariaDB) GetUserPrivateKey(userID []byte) ([]byte, error) {
 	return privateKey, nil
 }
 
-func (m *MariaDB) AddAccount(userID []byte, accountAddress []byte, signature []byte) error {
-	stmt, err := m.db.Prepare("INSERT INTO accounts(user_id, account_address, signature) VALUES (?, ?, ?)")
+func (m *MariaDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType int) error {
+	stmt, err := m.db.Prepare("INSERT INTO accounts(user_id, account_address, signature, signature_type) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(userID, accountAddress, signature)
+	_, err = stmt.Exec(userID, accountAddress, signature, signatureType)
 	if err != nil {
 		return err
 	}

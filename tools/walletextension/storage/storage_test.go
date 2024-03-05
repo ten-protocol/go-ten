@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"errors"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -59,7 +60,7 @@ func testAddAndGetAccounts(storage Storage, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = storage.AddAccount(userID, accountAddress1, signature1)
+	err = storage.AddAccount(userID, accountAddress1, signature1, viewingkey.EIP712SignatureType)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +68,7 @@ func testAddAndGetAccounts(storage Storage, t *testing.T) {
 	accountAddress2 := []byte("accountAddress2")
 	signature2 := []byte("signature2")
 
-	err = storage.AddAccount(userID, accountAddress2, signature2)
+	err = storage.AddAccount(userID, accountAddress2, signature2, viewingkey.EIP712SignatureType)
 	if err != nil {
 		t.Fatal(err)
 	}

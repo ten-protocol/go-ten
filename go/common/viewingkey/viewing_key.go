@@ -42,7 +42,7 @@ const (
 	PersonalSignMessageFormat = "Token: %s on: %d version: v%d"
 	EIP712SignatureType       = 0
 	PersonalSignSignatureType = 1
-	//LegacySignatureType       = 2
+	LegacySignatureType       = 2
 )
 
 // EIP712EncryptionTokens is a list of all possible options for Encryption token name

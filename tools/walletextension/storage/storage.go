@@ -13,7 +13,7 @@ type Storage interface {
 	AddUser(userID []byte, privateKey []byte) error
 	DeleteUser(userID []byte) error
 	GetUserPrivateKey(userID []byte) ([]byte, error)
-	AddAccount(userID []byte, accountAddress []byte, signature []byte) error
+	AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType int) error
 	GetAccounts(userID []byte) ([]common.AccountDB, error)
 	GetAllUsers() ([]common.UserDB, error)
 	StoreTransaction(rawTx string, userID []byte) error
