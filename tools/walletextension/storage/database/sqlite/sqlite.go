@@ -211,16 +211,19 @@ func (s *Database) StoreTransaction(rawTx string, userID []byte) error {
 	}
 	defer stmt.Close()
 
-	// Calculate tx hash
+	txHash := ""
 	if len(rawTx) < 3 {
 		fmt.Println("Invalid rawTx: ", rawTx)
-		return nil
+	} else {
+		// Decode the hex string to bytes, excluding the '0x' prefix
+		rawTxBytes, err := hex.DecodeString(rawTx[2:])
+		if err != nil {
+			fmt.Println("Error decoding rawTx: ", err)
+		} else {
+			// Compute Keccak-256 hash
+			txHash = crypto.Keccak256Hash(rawTxBytes).Hex()
+		}
 	}
-	rawTxBytes, err := hex.DecodeString(rawTx[2:])
-	if err != nil {
-		fmt.Println("Error decoding rawTx: ", rawTx)
-	}
-	txHash := crypto.Keccak256Hash(rawTxBytes)
 
 	_, err = stmt.Exec(userID, txHash, rawTx)
 	if err != nil {
