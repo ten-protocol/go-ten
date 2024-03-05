@@ -67,6 +67,7 @@ func TestTenGateway(t *testing.T) {
 		VerboseFlag:             false,
 		DBType:                  "sqlite",
 		TenChainID:              443,
+		StoreIncomingTxs:        true,
 	}
 
 	tenGwContainer := container.NewWalletExtensionContainerFromConfig(tenGatewayConf, testlog.Logger())
