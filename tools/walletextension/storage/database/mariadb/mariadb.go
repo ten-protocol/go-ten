@@ -2,7 +2,9 @@ package mariadb
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
 	"path/filepath"
 	"runtime"
 
@@ -144,13 +146,20 @@ func (m *MariaDB) GetAllUsers() ([]common.UserDB, error) {
 }
 
 func (m *MariaDB) StoreTransaction(rawTx string, userID []byte) error {
-	stmt, err := m.db.Prepare("INSERT INTO transactions(user_id, tx) VALUES (?, ?)")
+	stmt, err := m.db.Prepare("INSERT INTO transactions(user_id, tx_hash, tx) VALUES (?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(userID, rawTx)
+	// Calculate tx hash
+	rawTxBytes, err := hex.DecodeString(rawTx[2:])
+	if err != nil {
+		panic(err)
+	}
+	txHash := crypto.Keccak256Hash(rawTxBytes)
+
+	_, err = stmt.Exec(userID, txHash, rawTx)
 	if err != nil {
 		return err
 	}

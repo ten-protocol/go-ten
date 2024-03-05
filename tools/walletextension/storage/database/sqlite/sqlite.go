@@ -2,7 +2,9 @@ package sqlite
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
 	"os"
 	"path/filepath"
 
@@ -62,6 +64,7 @@ func NewSqliteDatabase(dbPath string) (*Database, error) {
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS transactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id binary(20),
+    tx_hash TEXT,
     tx TEXT,
     tx_time TEXT DEFAULT (datetime('now'))
 )	;`)
@@ -201,13 +204,20 @@ func createOrLoad(dbPath string) (string, error) {
 }
 
 func (s *Database) StoreTransaction(rawTx string, userID []byte) error {
-	stmt, err := s.db.Prepare("INSERT INTO transactions(user_id, tx) VALUES (?, ?)")
+	stmt, err := s.db.Prepare("INSERT INTO transactions(user_id, tx_hash, tx) VALUES (?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(userID, rawTx)
+	// Calculate tx hash
+	rawTxBytes, err := hex.DecodeString(rawTx[2:])
+	if err != nil {
+		panic(err)
+	}
+	txHash := crypto.Keccak256Hash(rawTxBytes)
+
+	_, err = stmt.Exec(userID, txHash, rawTx)
 	if err != nil {
 		return err
 	}
