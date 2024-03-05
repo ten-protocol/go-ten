@@ -4,9 +4,10 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"path/filepath"
 	"runtime"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	_ "github.com/go-sql-driver/mysql" // Importing MariaDB driver
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -153,9 +154,13 @@ func (m *MariaDB) StoreTransaction(rawTx string, userID []byte) error {
 	defer stmt.Close()
 
 	// Calculate tx hash
+	if len(rawTx) < 3 {
+		fmt.Println("Invalid rawTx: ", rawTx)
+		return nil
+	}
 	rawTxBytes, err := hex.DecodeString(rawTx[2:])
 	if err != nil {
-		panic(err)
+		fmt.Println("Error decoding rawTx: ", rawTx)
 	}
 	txHash := crypto.Keccak256Hash(rawTxBytes)
 

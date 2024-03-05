@@ -171,6 +171,11 @@ func ethRequestHandler(walletExt *walletextension.WalletExtension, conn userconn
 		hexUserID = hex.EncodeToString([]byte(common.DefaultUser)) // todo (@ziga) - this can be removed once old WE endpoints are removed
 	}
 
+	if len(hexUserID) < 3 {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("encryption token length is incorrect"))
+		return
+	}
+
 	// todo (@pedro) remove this conn dependency
 	response, err := walletExt.ProxyEthRequest(request, conn, hexUserID)
 	if err != nil {
