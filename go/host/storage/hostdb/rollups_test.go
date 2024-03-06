@@ -22,12 +22,20 @@ func TestCanStoreAndRetrieveRollup(t *testing.T) {
 		t.Errorf("could not store rollup. Cause: %s", err)
 	}
 
+	extRollup, err := GetExtRollup(db, rollup.Header.Hash())
+	if err != nil {
+		t.Errorf("stored rollup but could not retrieve ext rollup. Cause: %s", err)
+	}
+
 	rollupHeader, err := GetRollupHeader(db, rollup.Header.Hash())
 	if err != nil {
 		t.Errorf("stored rollup but could not retrieve header. Cause: %s", err)
 	}
 	if big.NewInt(int64(rollupHeader.LastBatchSeqNo)).Cmp(big.NewInt(batchNumber)) != 0 {
 		t.Errorf("rollup header was not stored correctly")
+	}
+	if rollup.Hash() != extRollup.Hash() {
+		t.Errorf("rollup was not stored correctly")
 	}
 }
 
