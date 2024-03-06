@@ -14,7 +14,7 @@ import (
 
 const (
 	selectTxCount           = "SELECT total FROM transaction_count WHERE id = 1"
-	selectBatch             = "SELECT b.sequence_order, b.full_hash, b.hash, b.height, b.tx_count, b.header, b.body_id, bb.body FROM batch b JOIN batch_body_host bb ON b.body_id = bb.id"
+	selectBatch             = "SELECT b.sequence_order, b.full_hash, b.hash, b.height, b.tx_count, b.header, b.body_id, bb.body FROM batch_host b JOIN batch_body_host bb ON b.body_id = bb.id"
 	selectBatchBody         = "SELECT content FROM batch_body_host WHERE id = ?"
 	selectDescendingBatches = `
 		SELECT b.sequence_order, b.full_hash, b.hash, b.height, b.tx_count, b.header, b.body_id
@@ -24,7 +24,7 @@ const (
 		LIMIT 1
 	`
 	selectHeader                      = "SELECt b.header FROM batch_host b"
-	selectTxsAndBatch                 = "SELECT t.full_hash FROM transactions_host t JOIN batch b ON t.body_id = b.body_id WHERE b.full_hash = ?"
+	selectTxsAndBatch                 = "SELECT t.full_hash FROM transactions_host t JOIN batch_host b ON t.body_id = b.body_id WHERE b.full_hash = ?"
 	selectBatchNumberFromTransactions = "SELECT t.body_id FROM transactions_host t WHERE t.full_hash = ?"
 	selectTxsBySequence               = "SELECT t.full_hash FROM transactions_host t WHERE t.body_id = ?"
 	selectTxByHash                    = "SELECT t.body_id FROM transaction_host t WHERE t.full_hash = ?"
