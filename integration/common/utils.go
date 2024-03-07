@@ -120,7 +120,8 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 			txJSON, _ = signedTx.MarshalJSON()
 			panic(fmt.Sprintf("could not transfer from faucet for tx %s. Cause: %s", string(txJSON[:]), err))
 		}
-
+		println("funds deployed for ", destAddr.String())
+		println("funds deployed with ", alloc)
 		txHashes[idx] = signedTx.Hash()
 	}
 

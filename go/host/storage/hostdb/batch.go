@@ -37,17 +37,21 @@ const (
 
 // AddBatch adds a batch and its header to the DB
 func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
+	// Check if the Batch is already stored
+	_, err := GetBatchBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
+	if err == nil {
+		return errutil.ErrAlreadyExists
+	}
+
+	_, err = GetBatchBodyBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
+	if err == nil {
+		return errutil.ErrAlreadyExists
+	}
 	// Start a transaction
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
-	// Check if the Batch is already stored
-	_, err = GetBatchBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
-	if err == nil {
-		return errutil.ErrAlreadyExists
-	}
-	// Encode batch data
 	batchBodyID := batch.SeqNo().Uint64()
 	body, err := rlp.EncodeToBytes(batch.EncryptedTxBlob)
 	if err != nil {
@@ -58,37 +62,31 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 		return fmt.Errorf("could not encode batch header: %w", err)
 	}
 
-	_, err = GetBatchBodyBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
-	if err == nil {
-		return errutil.ErrAlreadyExists
-	}
 	_, err = tx.Exec(insertBatchBody, batchBodyID, body)
 	if err != nil {
 		return fmt.Errorf("failed to insert body: %w", err)
 	}
 	if len(batch.TxHashes) > 0 {
-		//Insert transactions
 		for _, transaction := range batch.TxHashes {
 			shortHash := truncTo16(transaction)
 			fullHash := transaction.Bytes()
-			_, err := db.Exec(insertTransactions, shortHash, fullHash, batchBodyID)
+			_, err := tx.Exec(insertTransactions, shortHash, fullHash, batchBodyID)
 			if err != nil {
 				return fmt.Errorf("failed to insert transaction with hash: %d", err)
 			}
 		}
 		//Increment total count
 		var currentTotal int
-		err := db.QueryRow(selectTxCount).Scan(&currentTotal)
+		err := tx.QueryRow(selectTxCount).Scan(&currentTotal)
 		newTotal := currentTotal + len(batch.TxHashes)
 		// Increase the TX count
-		_, err = db.Exec(insertTxCount, 1, newTotal, newTotal)
+		_, err = tx.Exec(insertTxCount, 1, newTotal, newTotal)
 		if err != nil {
 			return fmt.Errorf("failed to update transaction count: %w", err)
 		}
 	}
 
-	// Insert the batch data
-	_, err = db.Exec(insertBatch,
+	_, err = tx.Exec(insertBatch,
 		batch.SeqNo().Uint64(),       // sequence
 		batch.Hash(),                 // full hash
 		truncTo16(batch.Hash()),      // shortened hash
@@ -97,6 +95,10 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 		header,                       // header blob
 		batchBodyID,                  // reference to the batch body
 	)
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("could not store batch in db: %w", err)
+	}
 
 	return nil
 }

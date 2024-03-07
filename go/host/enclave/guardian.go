@@ -478,7 +478,7 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 		println("ROLLUP DATA First batch", metaData.FirstBatchSequence.String())
 		println("ROLLUP DATA Last batch", r.Header.LastBatchSeqNo)
 		//FIXME need to store this data?
-		//err = hostdb.AddBlock(g.db, block, r.Header.Hash())
+		err = hostdb.AddBlock(g.db, block.Header(), r.Header.Hash())
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())
