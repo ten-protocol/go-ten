@@ -17,8 +17,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // The compiled contract artifact.
     const contractArtifact = await hre.artifacts.readArtifact("ManagementContract");
 
-    console.log(`Deployer ist ${deployer}`);
-
     // Deploying the management contract
     const mgmtContractDeployment = await deployments.deploy('ManagementContract', {
         from: deployer,
