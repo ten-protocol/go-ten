@@ -2,11 +2,14 @@ package mariadb
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"path/filepath"
 	"runtime"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	_ "github.com/go-sql-driver/mysql" // Importing MariaDB driver
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -142,4 +145,34 @@ func (m *MariaDB) GetAllUsers() ([]common.UserDB, error) {
 	}
 
 	return users, nil
+}
+
+func (m *MariaDB) StoreTransaction(rawTx string, userID []byte) error {
+	stmt, err := m.db.Prepare("INSERT INTO transactions(user_id, tx_hash, tx) VALUES (?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Validate rawTx length and get the txHash
+	txHash := ""
+	if len(rawTx) < 3 {
+		fmt.Println("Invalid rawTx: ", rawTx)
+	} else {
+		// Decode the hex string to bytes, excluding the '0x' prefix
+		rawTxBytes, err := hex.DecodeString(rawTx[2:])
+		if err != nil {
+			fmt.Println("Error decoding rawTx: ", err)
+		} else {
+			// Compute Keccak-256 hash
+			txHash = crypto.Keccak256Hash(rawTxBytes).Hex()
+		}
+	}
+
+	_, err = stmt.Exec(userID, txHash, rawTx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

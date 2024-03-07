@@ -52,7 +52,7 @@ var EnclaveFlags = map[string]*flag.TenFlag{
 	MinGasPriceFlag:               flag.NewInt64Flag(MinGasPriceFlag, 1, "The minimum gas price for mining a transaction"),
 	MessageBusAddressFlag:         flag.NewStringFlag(MessageBusAddressFlag, "", "The address of the L1 message bus contract owned by the management contract."),
 	SequencerIDFlag:               flag.NewStringFlag(SequencerIDFlag, "", "The 20 bytes of the address of the sequencer for this network"),
-	MaxBatchSizeFlag:              flag.NewUint64Flag(MaxBatchSizeFlag, 1024*36, "The maximum size a batch is allowed to reach uncompressed"),
+	MaxBatchSizeFlag:              flag.NewUint64Flag(MaxBatchSizeFlag, 1024*55, "The maximum size a batch is allowed to reach uncompressed"),
 	MaxRollupSizeFlag:             flag.NewUint64Flag(MaxRollupSizeFlag, 1024*64, "The maximum size a rollup is allowed to reach"),
 	L2BaseFeeFlag:                 flag.NewUint64Flag(L2BaseFeeFlag, params.InitialBaseFee, ""),
 	L2CoinbaseFlag:                flag.NewStringFlag(L2CoinbaseFlag, "0xd6C9230053f45F873Cb66D8A02439380a37A4fbF", ""),

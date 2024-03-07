@@ -14,14 +14,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     
     
     const gasConsumerBalance = await hre.ethers.getContractAt("GasConsumerBalance", gcb.address)
-    const gasEstimation = await gasConsumerBalance.estimateGas.get_balance({
+    const gasEstimation = await gasConsumerBalance.getFunction('get_balance').estimateGas({
         from: deployer,
         gasPrice: 2,
     });
     
     await hre.deployments.execute("GasConsumerBalance", {
         from: deployer,
-        gasLimit: gasEstimation,
+        gasLimit: gasEstimation.toString(),
         log: true
     }, "get_balance");
 };

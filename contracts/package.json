@@ -10,8 +10,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "~2.0.0",
-    "@openzeppelin/hardhat-upgrades": "^1.21.0",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/hardhat-upgrades": "^3.0.0",
     "@solidstate/hardhat-bytecode-exporter": "^1.1.1",
     "hardhat": "~2.19.3",
     "hardhat-abi-exporter": "^2.10.1",
@@ -23,6 +23,8 @@
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.1",
     "@openzeppelin/contracts-upgradeable": "^5.0.1",
-    "hardhat-ignore-warnings": "^0.2.6"
+    "ethers": "^6.6.0",
+    "hardhat-ignore-warnings": "^0.2.6",
+    "ten-hardhat-plugin": "^0.0.8"
   }
 }

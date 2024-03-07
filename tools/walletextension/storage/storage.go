@@ -16,6 +16,7 @@ type Storage interface {
 	AddAccount(userID []byte, accountAddress []byte, signature []byte) error
 	GetAccounts(userID []byte) ([]common.AccountDB, error)
 	GetAllUsers() ([]common.UserDB, error)
+	StoreTransaction(rawTx string, userID []byte) error
 }
 
 func New(dbType string, dbConnectionURL, dbPath string) (Storage, error) {
