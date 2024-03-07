@@ -1,8 +1,9 @@
 package common
 
 import (
-	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 )
 
 const (

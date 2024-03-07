@@ -3,8 +3,9 @@ package storage
 import (
 	"bytes"
 	"errors"
-	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"testing"
+
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
