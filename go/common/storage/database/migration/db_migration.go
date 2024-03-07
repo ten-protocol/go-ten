@@ -24,12 +24,10 @@ func CommonDBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) err
 		return err
 	}
 
-	println("Migration files ", migrationFiles)
 	maxMigration := int64(len(migrationFiles))
 
 	var maxDB int64
 	config, err := database.FetchConfig(db, currentMigrationVersionKey)
-	println("config ", config)
 	if err != nil {
 		// first time there is no entry, so 001 was executed already ( triggered at launch/manifest time )
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -84,7 +82,6 @@ func readMigrationFiles(sqlFiles embed.FS) ([]fs.DirEntry, error) {
 		return nil, err
 	}
 
-	println("HERE")
 	// sort the migrationFiles based on the prefix (before "_")
 	sort.Slice(migrationFiles, func(i, j int) bool {
 		// Extract the number prefix and compare

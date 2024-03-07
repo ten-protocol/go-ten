@@ -99,7 +99,7 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 	txHashes := make([]gethcommon.Hash, len(wallets))
 	for idx, w := range wallets {
 		destAddr := w.Address()
-		fmt.Printf("L2 prefund: %s\n", destAddr.Hex())
+		fmt.Printf("L2 prefund: %s\n", destAddr.String())
 		txData := &types.LegacyTx{
 			Nonce:    startingNonce + uint64(idx),
 			Value:    alloc,

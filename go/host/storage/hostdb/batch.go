@@ -37,14 +37,17 @@ const (
 
 // AddBatch adds a batch and its header to the DB
 func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
+	// Start a transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
 	// Check if the Batch is already stored
-	_, err := GetBatchBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
+	_, err = GetBatchBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
 	if err == nil {
-		println("DUPLICATE BATCH SEQ", batch.Header.SequencerOrderNo.String())
 		return errutil.ErrAlreadyExists
 	}
 	// Encode batch data
-	println("[SQL] Adding batch with seq number: ", batch.SeqNo().Uint64())
 	batchBodyID := batch.SeqNo().Uint64()
 	body, err := rlp.EncodeToBytes(batch.EncryptedTxBlob)
 	if err != nil {
@@ -57,10 +60,9 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 
 	_, err = GetBatchBodyBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
 	if err == nil {
-		println("DUPLICATE BATCH BODY", batch.Header.SequencerOrderNo.String())
 		return errutil.ErrAlreadyExists
 	}
-	_, err = db.Exec(insertBatchBody, batchBodyID, body)
+	_, err = tx.Exec(insertBatchBody, batchBodyID, body)
 	if err != nil {
 		return fmt.Errorf("failed to insert body: %w", err)
 	}
@@ -317,7 +319,9 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 	// Fetch batch_body from the database
 	var encryptedTxBlob common.EncryptedTransactions
 	encryptedTxBlob, err = fetchBatchBody(db, bodyID)
-	if err != nil { return nil, fmt.Errorf("failed to fetch batch body: %w", err) }
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch batch body: %w", err)
+	}
 
 	// Construct the batch
 	batch := &common.PublicBatch{

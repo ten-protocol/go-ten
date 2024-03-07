@@ -475,8 +475,8 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 			g.logger.Error("Could not fetch rollup metadata from enclave.", log.ErrKey, err)
 		}
 		err = hostdb.AddRollupHeader(g.db, r, metaData, block)
-		println("ROLLUP DATA start time", metaData.StartTime)
 		println("ROLLUP DATA First batch", metaData.FirstBatchSequence.String())
+		println("ROLLUP DATA Last batch", r.Header.LastBatchSeqNo)
 		//FIXME need to store this data?
 		//err = hostdb.AddBlock(g.db, block, r.Header.Hash())
 		if err != nil {
