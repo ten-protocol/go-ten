@@ -8,7 +8,7 @@ import { Receipt } from 'hardhat-deploy/dist/types';
 */
 
 
-async function sleep(ms) {
+async function sleep(ms: number) {
     return new Promise((resolve) => {
       setTimeout(resolve, ms);
     });
@@ -51,10 +51,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const eventSignature = "LogMessagePublished(address,uint64,uint32,uint32,bytes,uint8)";
     // Get the hash id of the event signature
-    const topic = hre.ethers.utils.id(eventSignature)
+    const topic = hre.ethers.id(eventSignature)
 
     // Get the interface for the event in order to convert it to cross chain message.
-    let eventIface = new hre.ethers.utils.Interface([ `event ${eventSignature}`]);
+    let eventIface = new hre.ethers.Interface([ `event ${eventSignature}`]);
 
     // This function converts the logs from transaction receipts into cross chain messages
     function getXChainMessages(result: Receipt) {
@@ -69,7 +69,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             const decodedEvent = eventIface.parseLog({
                 topics: event!.topics!,
                 data: event!.data
-            });
+            })!!;
         
             //Construct the cross chain message.
             const xchainMessage = {
@@ -96,13 +96,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await new Promise(async (resolve, fail)=> { 
         setTimeout(fail, 30_000)
         const messageBusContract = (await hre.ethers.getContractAt('MessageBus', '0x526c84529b2b8c11f57d93d3f5537aca3aecef9b'));
-        const gasLimit = await messageBusContract.estimateGas.verifyMessageFinalized(messages[1], {
+        const gasLimit = await messageBusContract.getFunction('verifyMessageFinalized').estimateGas(messages[1], {
             maxFeePerGas: 1000000001,
         })
         try {
-            while (await messageBusContract.callStatic.verifyMessageFinalized(messages[1], {
+            while (await messageBusContract.getFunction('verifyMessageFinalized').staticCall(messages[1], {
                 maxFeePerGas: 1000000001,
-                gasLimit: gasLimit.add(gasLimit.div(2)),
+                gasLimit: gasLimit + (gasLimit/BigInt(2)),
                 from: l2Accounts.deployer
             }) != true) {
                 console.log(`Messages not stored on L2 yet, retrying...`);
@@ -126,10 +126,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         }, "relayMessage", msg);
     };
 
-    console.log(`Relaying message - ${JSON.stringify(messages[0])}`);
+    console.log(`Relaying message - 0`);
     let results = [await relayMsg(messages[0])];
 
-    console.log(`Relaying message - ${JSON.stringify(messages[1])}`);
+    console.log(`Relaying message - 1`);
     results = results.concat(await relayMsg(messages[1]))
 
     results.forEach(res=>{

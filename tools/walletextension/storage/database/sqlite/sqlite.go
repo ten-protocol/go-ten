@@ -2,9 +2,12 @@ package sqlite
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
 	obscurocommon "github.com/ten-protocol/go-ten/go/common"
@@ -53,6 +56,19 @@ func NewSqliteDatabase(dbPath string) (*Database, error) {
 		signature binary(65),
     	FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
 	);`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// create transactions table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id binary(20),
+    tx_hash TEXT,
+    tx TEXT,
+    tx_time TEXT DEFAULT (datetime('now'))
+)	;`)
 
 	if err != nil {
 		return nil, err
@@ -186,4 +202,33 @@ func createOrLoad(dbPath string) (string, error) {
 	}
 
 	return dbPath, nil
+}
+
+func (s *Database) StoreTransaction(rawTx string, userID []byte) error {
+	stmt, err := s.db.Prepare("INSERT INTO transactions(user_id, tx_hash, tx) VALUES (?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	txHash := ""
+	if len(rawTx) < 3 {
+		fmt.Println("Invalid rawTx: ", rawTx)
+	} else {
+		// Decode the hex string to bytes, excluding the '0x' prefix
+		rawTxBytes, err := hex.DecodeString(rawTx[2:])
+		if err != nil {
+			fmt.Println("Error decoding rawTx: ", err)
+		} else {
+			// Compute Keccak-256 hash
+			txHash = crypto.Keccak256Hash(rawTxBytes).Hex()
+		}
+	}
+
+	_, err = stmt.Exec(userID, txHash, rawTx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

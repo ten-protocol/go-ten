@@ -38,8 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // get management contract and write the L1 bridge address to it
     const mgmtContract = (await hre.ethers.getContractFactory('ManagementContract')).attach(mgmtContractAddress)
-    const recordL1AddressTx = await mgmtContract.populateTransaction.SetImportantContractAddress("L1Bridge", layer1BridgeDeployment.address);
-
+    const recordL1AddressTx = await mgmtContract.getFunction("SetImportantContractAddress").populateTransaction("L1Bridge", layer1BridgeDeployment.address);
     const receipt = await hre.companionNetworks.layer1.deployments.rawTx({
         from: accountsL1.deployer,
         to: mgmtContractAddress,
@@ -77,7 +76,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true,
     }, "setRemoteBridge", layer2BridgeDeployment.address);
 
-    const recordL2AddressTx = await mgmtContract.populateTransaction.SetImportantContractAddress("L2Bridge", layer2BridgeDeployment.address);
+    const recordL2AddressTx = await mgmtContract.getFunction("SetImportantContractAddress").populateTransaction("L2Bridge", layer2BridgeDeployment.address);
     const receipt2 = await hre.companionNetworks.layer1.deployments.rawTx({
         from: accountsL1.deployer,
         to: mgmtContractAddress,

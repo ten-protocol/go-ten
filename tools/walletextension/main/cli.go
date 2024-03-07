@@ -55,6 +55,10 @@ const (
 	tenChainIDName      = "tenChainID"
 	tenChainIDDefault   = 443
 	tenChainIDFlagUsage = "ChainID of Ten network that the gateway is communicating with"
+
+	storeIncomingTxs        = "storeIncomingTxs"
+	storeIncomingTxsDefault = true
+	storeIncomingTxsUsage   = "Flag to enable storing incoming transactions in the database for debugging purposes. Default: true"
 )
 
 func parseCLIArgs() config.Config {
@@ -70,6 +74,7 @@ func parseCLIArgs() config.Config {
 	dbType := flag.String(dbTypeFlagName, dbTypeFlagDefault, dbTypeFlagUsage)
 	dbConnectionURL := flag.String(dbConnectionURLFlagName, dbConnectionURLFlagDefault, dbConnectionURLFlagUsage)
 	tenChainID := flag.Int(tenChainIDName, tenChainIDDefault, tenChainIDFlagUsage)
+	storeIncomingTransactions := flag.Bool(storeIncomingTxs, storeIncomingTxsDefault, storeIncomingTxsUsage)
 	flag.Parse()
 
 	return config.Config{
@@ -84,5 +89,6 @@ func parseCLIArgs() config.Config {
 		DBType:                  *dbType,
 		DBConnectionURL:         *dbConnectionURL,
 		TenChainID:              *tenChainID,
+		StoreIncomingTxs:        *storeIncomingTransactions,
 	}
 }

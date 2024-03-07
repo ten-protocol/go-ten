@@ -16,8 +16,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     const messageBus = (await hre.ethers.getContractFactory('MessageBus')).attach(messageBusAddress)
-    const prefundAmount = hre.ethers.utils.parseEther(prefundAmountStr);
-    const tx = await messageBus.populateTransaction.sendValueToL2("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", prefundAmount, {
+    const prefundAmount = hre.ethers.parseEther(prefundAmountStr);
+    const tx = await messageBus.getFunction("sendValueToL2").populateTransaction("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", prefundAmount, {
         value: prefundAmount
     });
 
@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const receipt = await layer1.deployments.rawTx({
         from: l1Accs.deployer,
         to: messageBusAddress,
-        value: prefundAmount,
+        value: prefundAmount.toString(),
         data: tx.data,
         log: true,
         waitConfirmations: 1,

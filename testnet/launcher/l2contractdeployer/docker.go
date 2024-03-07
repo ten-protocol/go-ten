@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -27,7 +28,7 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 func (n *ContractDeployer) Start() error {
 	fmt.Printf("Starting L2 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
 
-	cmds := []string{"npx"}
+	cmds := []string{"/bin/sh"}
 	var ports []int
 
 	// inspect stops operation until debugger is hooked on port 9229 if debug is enabled
@@ -36,9 +37,11 @@ func (n *ContractDeployer) Start() error {
 		ports = append(ports, 9229)
 	}
 
-	cmds = append(cmds, "hardhat", "obscuro:deploy", "--network", "layer2")
+	cmds = append(cmds, "/home/obscuro/go-obscuro/entrypoint.sh", "obscuro:deploy", "--network", "layer2")
 
 	envs := map[string]string{
+		"L2_HOST":               n.cfg.l2Host,
+		"L2_PORT":               strconv.Itoa(n.cfg.l2Port),
 		"PREFUND_FAUCET_AMOUNT": n.cfg.faucetPrefundAmount,
 		"MGMT_CONTRACT_ADDRESS": n.cfg.managementContractAddress,
 		"MESSAGE_BUS_ADDRESS":   n.cfg.messageBusAddress,
@@ -56,8 +59,8 @@ func (n *ContractDeployer) Start() error {
             ]
         },
         "layer2" : {
-            "obscuroEncRpcUrl" : "ws://%s:%d",
-            "url": "http://127.0.0.1:3000/v1",
+            "url": "http://127.0.0.1:3000/v1/",
+			"useGateway": true,
             "live" : false,
             "saveDeployments" : true,
             "companionNetworks" : { "layer1" : "layer1" },
@@ -76,7 +79,7 @@ func (n *ContractDeployer) Start() error {
             ]
         }
     }
-`, n.cfg.l1HTTPURL, n.cfg.l1privateKey, n.cfg.l2Host, n.cfg.l2Port, n.cfg.l2PrivateKey, n.cfg.hocPKString, n.cfg.pocPKString),
+`, n.cfg.l1HTTPURL, n.cfg.l1privateKey, n.cfg.l2PrivateKey, n.cfg.hocPKString, n.cfg.pocPKString),
 	}
 
 	containerID, err := docker.StartNewContainer("hh-l2-deployer", n.cfg.dockerImage, cmds, ports, envs, nil, nil)
@@ -99,7 +102,7 @@ func (n *ContractDeployer) WaitForFinish() error {
 	defer cli.Close()
 
 	// make sure the container has finished execution
-	err = docker.WaitForContainerToFinish(n.containerID, 10*time.Minute)
+	err = docker.WaitForContainerToFinish(n.containerID, 15*time.Minute)
 	if err != nil {
 		n.PrintLogs(cli)
 		return err

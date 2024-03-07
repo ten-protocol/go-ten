@@ -212,6 +212,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfE
 			if tx := lazyTx.Resolve(); tx != nil {
 				err = limiter.AcceptTransaction(tx)
 				if err != nil {
+					s.logger.Info("Unable to accept transaction", log.TxKey, tx.Hash(), log.ErrKey, err)
 					if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
 						break
 					}

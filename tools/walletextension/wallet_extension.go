@@ -142,6 +142,20 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 		}
 	}
 
+	// check if user is sending a new transaction and if we should store it in the database for debugging purposes
+	if request.Method == rpc.SendRawTransaction && w.config.StoreIncomingTxs {
+		userIDBytes, err := common.GetUserIDbyte(hexUserID)
+		if err != nil {
+			w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID[2:], err).Error())
+			return nil, errors.New("error decoding userID. It should be in hex format")
+		}
+		err = w.storage.StoreTransaction(request.Params[0].(string), userIDBytes)
+		if err != nil {
+			w.Logger().Error(fmt.Errorf("error storing transaction in the database: %w", err).Error())
+			return nil, err
+		}
+	}
+
 	// get account manager for current user (if there is no users in the query parameters - use defaultUser for WE endpoints)
 	selectedAccountManager, err := w.userAccountManager.GetUserAccountManager(hexUserID)
 	if err != nil {

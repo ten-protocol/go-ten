@@ -59,7 +59,11 @@ func (val *obsValidator) SubmitTransaction(tx *common.L2Tx) error {
 	if headBatch == nil || headBatch.Uint64() <= common.L2GenesisSeqNo+1 {
 		return fmt.Errorf("not initialised")
 	}
-	return val.mempool.Validate(tx)
+	err := val.mempool.Validate(tx)
+	if err != nil {
+		val.logger.Info("Error validating transaction.", log.ErrKey, err, log.TxKey, tx.Hash())
+	}
+	return err
 }
 
 func (val *obsValidator) OnL1Fork(_ *common.ChainFork) error {
