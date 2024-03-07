@@ -219,7 +219,7 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 	}
 
 	rollup := datagenerator.RandomRollup(block)
-	requesterID := &rollup.Header.Coinbase
+	requesterID := &rollup.Header.EnclaveID
 
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
