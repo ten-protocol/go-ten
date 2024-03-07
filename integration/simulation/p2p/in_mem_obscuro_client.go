@@ -18,8 +18,8 @@ import (
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	hostcommon "github.com/ten-protocol/go-ten/go/common/host"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 const (

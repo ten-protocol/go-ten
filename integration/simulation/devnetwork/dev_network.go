@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension"
+
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/simulation/network"
-	gatewaycfg "github.com/ten-protocol/go-ten/tools/walletextension/config"
-	"github.com/ten-protocol/go-ten/tools/walletextension/container"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 
@@ -57,7 +57,7 @@ type InMemDevNetwork struct {
 	obscuroConfig       ObscuroConfig
 	obscuroSequencer    *InMemNodeOperator
 	obscuroValidators   []*InMemNodeOperator
-	tenGatewayContainer *container.WalletExtensionContainer
+	tenGatewayContainer *walletextension.WalletExtensionContainer
 
 	tenGatewayEnabled bool
 
@@ -194,7 +194,7 @@ func (s *InMemDevNetwork) startTenGateway() {
 	validatorWS := validator.HostRPCWSAddress()
 	// remove ws:// prefix for the gateway config
 	validatorWS = validatorWS[len("ws://"):]
-	cfg := gatewaycfg.Config{
+	cfg := walletextension.Config{
 		WalletExtensionHost:     "127.0.0.1",
 		WalletExtensionPortHTTP: _gwHTTPPort,
 		WalletExtensionPortWS:   _gwWSPort,
@@ -205,7 +205,7 @@ func (s *InMemDevNetwork) startTenGateway() {
 		DBType:                  "sqlite",
 		TenChainID:              integration.TenChainID,
 	}
-	tenGWContainer := container.NewWalletExtensionContainerFromConfig(cfg, s.logger)
+	tenGWContainer := walletextension.NewWalletExtensionContainerFromConfig(cfg, s.logger)
 	go func() {
 		fmt.Println("Starting Ten Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
 		err := tenGWContainer.Start()

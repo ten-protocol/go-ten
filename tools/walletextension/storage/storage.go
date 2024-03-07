@@ -3,10 +3,10 @@ package storage
 import (
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/mariadb"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/sqlite"
-
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 type Storage interface {

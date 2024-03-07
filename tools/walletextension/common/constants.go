@@ -50,6 +50,7 @@ const (
 	MethodEthSubscription               = "eth_subscription"
 	PathVersion                         = "/version/"
 	DeduplicationBufferSize             = 20
+	ErrNoViewingKey                     = "authentication failed"
 )
 
 var ReaderHeadTimeout = 10 * time.Second

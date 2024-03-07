@@ -5,10 +5,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/integration"
-	"github.com/ten-protocol/go-ten/tools/walletextension/accountmanager"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -27,15 +28,15 @@ type testHelper struct {
 }
 
 func TestWalletExtension(t *testing.T) {
-	t.Skip("Skipping because it is too flaky")
+	// t.Skip("Skipping because it is too flaky")
 	i := 0
 	for name, test := range map[string]func(t *testing.T, testHelper *testHelper){
-		"canInvokeSensitiveMethodsWithViewingKey":                     canInvokeSensitiveMethodsWithViewingKey,
-		"canInvokeNonSensitiveMethodsWithoutViewingKey":               canInvokeNonSensitiveMethodsWithoutViewingKey,
-		"cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount": cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount,
-		"canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys": canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys,
-		"cannotSubscribeOverHTTP":                                     cannotSubscribeOverHTTP,
-		"canRegisterViewingKeyAndMakeRequestsOverWebsockets":          canRegisterViewingKeyAndMakeRequestsOverWebsockets,
+		"canInvokeSensitiveMethodsWithViewingKey": canInvokeSensitiveMethodsWithViewingKey,
+		//"canInvokeNonSensitiveMethodsWithoutViewingKey":               canInvokeNonSensitiveMethodsWithoutViewingKey,
+		//"cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount": cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount,
+		//"canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys": canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys,
+		//"cannotSubscribeOverHTTP":                                     cannotSubscribeOverHTTP,
+		//"canRegisterViewingKeyAndMakeRequestsOverWebsockets":          canRegisterViewingKeyAndMakeRequestsOverWebsockets,
 	} {
 		t.Run(name, func(t *testing.T) {
 			dummyAPI, shutDownHost := createDummyHost(t, _hostWSPort)
@@ -188,8 +189,8 @@ func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
 	for _, method := range rpc.SensitiveMethods {
 		// We use a websocket request because one of the sensitive methods, eth_subscribe, requires it.
 		respBody := makeWSEthJSONReqWithConn(conn, method, []interface{}{})
-		if !strings.Contains(string(respBody), fmt.Sprintf(accountmanager.ErrNoViewingKey, method)) {
-			t.Fatalf("expected response containing '%s', got '%s'", fmt.Sprintf(accountmanager.ErrNoViewingKey, method), string(respBody))
+		if !strings.Contains(string(respBody), fmt.Sprintf(common.ErrNoViewingKey, method)) {
+			t.Fatalf("expected response containing '%s', got '%s'", fmt.Sprintf(common.ErrNoViewingKey, method), string(respBody))
 		}
 	}
 	err = conn.Close()

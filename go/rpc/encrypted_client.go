@@ -14,12 +14,12 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rlp"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/go/responses"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -182,23 +182,10 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 		return logSubscription, nil
 	}
 
-	// TODO - Consider switching to using the common.FilterCriteriaJSON type. Should allow us to avoid RLP serialisation.
-	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
-	// because the filter criteria arrives as a map, and there is no way to convert it from a map directly into a
-	// FilterCriteria.
-	filterCriteriaJSON, err := json.Marshal(args[1])
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
+	filterCriteria, ok := args[1].(filters.FilterCriteria)
+	if !ok {
+		return nil, fmt.Errorf("invalid subscription")
 	}
-
-	filterCriteria := filters.FilterCriteria{}
-	if string(filterCriteriaJSON) != emptyFilterCriteria {
-		err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
-		if err != nil {
-			return nil, fmt.Errorf("could not unmarshal filter criteria from the following JSON: `%s`. Cause: %w", string(filterCriteriaJSON), err)
-		}
-	}
-
 	// If we do not override a nil block hash to an empty one, RLP decoding will fail on the enclave side.
 	if filterCriteria.BlockHash == nil {
 		filterCriteria.BlockHash = &gethcommon.Hash{}
@@ -235,7 +222,7 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 
 	// If there is no encrypted response then this is equivalent to nil response
 	if rawResult.EncUserResponse == nil || len(rawResult.EncUserResponse) == 0 {
-		return ErrNilResponse
+		return nil
 	}
 
 	// We decrypt the user response from the enclave response.

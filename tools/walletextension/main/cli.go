@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/config"
+	"github.com/ten-protocol/go-ten/tools/walletextension"
 )
 
 const (
@@ -57,7 +57,7 @@ const (
 	tenChainIDFlagUsage = "ChainID of Ten network that the gateway is communicating with"
 )
 
-func parseCLIArgs() config.Config {
+func parseCLIArgs() walletextension.Config {
 	walletExtensionHost := flag.String(walletExtensionHostName, walletExtensionHostDefault, walletExtensionHostUsage)
 	walletExtensionPort := flag.Int(walletExtensionPortName, walletExtensionPortDefault, walletExtensionPortUsage)
 	walletExtensionPortWS := flag.Int(walletExtensionPortWSName, walletExtensionPortWSDefault, walletExtensionPortWSUsage)
@@ -72,7 +72,7 @@ func parseCLIArgs() config.Config {
 	tenChainID := flag.Int(tenChainIDName, tenChainIDDefault, tenChainIDFlagUsage)
 	flag.Parse()
 
-	return config.Config{
+	return walletextension.Config{
 		WalletExtensionHost:     *walletExtensionHost,
 		WalletExtensionPortHTTP: *walletExtensionPort,
 		WalletExtensionPortWS:   *walletExtensionPortWS,

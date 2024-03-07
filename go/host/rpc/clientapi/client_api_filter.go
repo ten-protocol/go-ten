@@ -6,6 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
+
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/responses"
 
@@ -13,8 +15,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ten-protocol/go-ten/go/common"
-
-	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // FilterAPI exposes a subset of Geth's PublicFilterAPI operations.

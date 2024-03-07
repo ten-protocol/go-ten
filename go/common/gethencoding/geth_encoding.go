@@ -23,11 +23,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 const (
@@ -145,33 +144,58 @@ func ExtractAddress(param interface{}) (*gethcommon.Address, error) {
 }
 
 // ExtractOptionalBlockNumber defaults nil or empty block number params to latest block number
-func ExtractOptionalBlockNumber(params []interface{}, idx int) (*gethrpc.BlockNumber, error) {
+func ExtractOptionalBlockNumber(params []interface{}, idx int) (*gethrpc.BlockNumberOrHash, error) {
+	latest := gethrpc.BlockNumberOrHashWithNumber(gethrpc.LatestBlockNumber)
 	if len(params) <= idx {
-		return ExtractBlockNumber("latest")
+		return &latest, nil
 	}
 	if params[idx] == nil {
-		return ExtractBlockNumber("latest")
+		return &latest, nil
 	}
 	if emptyStr, ok := params[idx].(string); ok && len(strings.TrimSpace(emptyStr)) == 0 {
-		return ExtractBlockNumber("latest")
+		return &latest, nil
 	}
 
 	return ExtractBlockNumber(params[idx])
 }
 
 // ExtractBlockNumber returns a gethrpc.BlockNumber given an interface{}, errors if unexpected values are used
-func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumber, error) {
+func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumberOrHash, error) {
 	if param == nil {
-		return nil, errutil.ErrNotFound
+		latest := gethrpc.BlockNumberOrHashWithNumber(gethrpc.LatestBlockNumber)
+		return &latest, nil
 	}
 
-	blockNumber := gethrpc.BlockNumber(0)
-	err := blockNumber.UnmarshalJSON([]byte(param.(string)))
-	if err != nil {
-		return nil, fmt.Errorf("could not parse requested rollup number %s - %w", param.(string), err)
+	p, ok := param.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("invalid block or hash parameter %s", param.(string))
+	}
+	var blockNo *gethrpc.BlockNumber
+	var blockHa *gethcommon.Hash
+	var reqCanon bool
+	if p["blockNumber"] != nil {
+		b := p["blockNumber"].(string)
+		blockNumber := gethrpc.BlockNumber(0)
+		err := blockNumber.UnmarshalJSON([]byte(b))
+		if err != nil {
+			return nil, fmt.Errorf("invalid block number %s - %w", b, err)
+		}
+		blockNo = &blockNumber
+	}
+	if p["blockHash"] != nil {
+		bh := p["blockHash"].(gethcommon.Hash)
+		blockHa = &bh
+	}
+	if p["RequireCanonical"] != nil {
+		reqCanon = p["RequireCanonical"].(bool)
+	}
+	blockNumber := gethrpc.BlockNumberOrHash{
+		BlockNumber:      blockNo,
+		BlockHash:        blockHa,
+		RequireCanonical: reqCanon,
 	}
 
-	return &blockNumber, err
+	return &blockNumber, nil
 }
 
 // ExtractEthCall extracts the eth_call gethapi.TransactionArgs from an interface{}

@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+
 	_ "github.com/go-sql-driver/mysql" // Importing MariaDB driver
 	"github.com/ten-protocol/go-ten/go/common/errutil"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database"
 )
 

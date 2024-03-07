@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
+
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -15,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
 	"github.com/ten-protocol/go-ten/go/responses"

@@ -37,15 +37,15 @@ func ShortNonce(nonce types.BlockNonce) uint64 {
 }
 
 // ExtractPotentialAddress - given a 32 byte hash , it checks whether it can be an address and extracts that
-func ExtractPotentialAddress(hash gethcommon.Hash) *gethcommon.Address {
-	bitlen := hash.Big().BitLen()
+func ExtractPotentialAddress(topic gethcommon.Hash) *gethcommon.Address {
+	bitlen := topic.Big().BitLen()
 	// Addresses have 20 bytes. If the field has more, it means it is clearly not an address
 	// Discovering addresses with more than 20 leading 0s is very unlikely, so we assume that
 	// any topic that has less than 80 bits of data to not be an address for sure
 	if bitlen < 80 || bitlen > 160 {
 		return nil
 	}
-	a := gethcommon.BytesToAddress(hash.Bytes())
+	a := gethcommon.BytesToAddress(topic.Bytes())
 	return &a
 }
 
