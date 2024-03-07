@@ -101,7 +101,7 @@ func (m *MariaDB) AddAccount(userID []byte, accountAddress []byte, signature []b
 }
 
 func (m *MariaDB) GetAccounts(userID []byte) ([]common.AccountDB, error) {
-	rows, err := m.db.Query("SELECT account_address, signature FROM accounts WHERE user_id = ?", userID)
+	rows, err := m.db.Query("SELECT account_address, signature, signature_type FROM accounts WHERE user_id = ?", userID)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (m *MariaDB) GetAccounts(userID []byte) ([]common.AccountDB, error) {
 	var accounts []common.AccountDB
 	for rows.Next() {
 		var account common.AccountDB
-		if err := rows.Scan(&account.AccountAddress, &account.Signature); err != nil {
+		if err := rows.Scan(&account.AccountAddress, &account.Signature, &account.SignatureType); err != nil {
 			return nil, err
 		}
 		accounts = append(accounts, account)
