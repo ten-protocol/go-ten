@@ -55,5 +55,6 @@ RUN npm config set update-notifier false
 RUN npx hardhat compile
 
 COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/bin /home/obscuro/go-obscuro/tools/walletextension/bin
+COPY --from=build-wallet /home/obscuro/go-obscuro/tools/hardhatdeployer/scripts/entrypoint.sh /home/obscuro/go-obscuro/entrypoint.sh
 
-ENTRYPOINT [ "npx", "hardhat" ]
+ENTRYPOINT [ "/home/obscuro/go-obscuro/entrypoint.sh" ]

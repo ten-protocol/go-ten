@@ -11,9 +11,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const messageBusAddress = process.env.MESSAGE_BUS_ADDRESS!!
 
     const messageBus = (await hre.ethers.getContractFactory('MessageBus')).attach(messageBusAddress)
-    const prefundAmount = hre.ethers.utils.parseEther("0.5");
-    const tx = await messageBus.populateTransaction.sendValueToL2(deployer, prefundAmount, {
-        value: prefundAmount
+    const prefundAmount = hre.ethers.parseEther("0.5");
+    console.log(`Prefund amount ${prefundAmount}; MB = ${messageBus}`);
+
+    const tx = await messageBus.getFunction("sendValueToL2").populateTransaction(deployer, prefundAmount, {
+        value: prefundAmount.toString()
     });
 
     console.log(`Sending ${prefundAmount} to ${deployer} through MessageBus ${messageBusAddress}`);
@@ -21,7 +23,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const receipt = await layer1.deployments.rawTx({
         from: l1Accs.deployer,
         to: messageBusAddress,
-        value: prefundAmount,
+        value: prefundAmount.toString(),
         data: tx.data,
         log: true,
         waitConfirmations: 1,
