@@ -221,7 +221,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 // this function only performs a very brief check.
 // the ultimate check that everything works fine is that each node is able to respond to queries
 // and has processed all batches correctly.
-func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.ExtRollup) {
+func checkRollups(t *testing.T, _ *Simulation, nodeIdx int, rollups []*common.ExtRollup) {
 	if len(rollups) < 2 {
 		t.Errorf("Node %d: Found less than two submitted rollups! Successful simulation should always produce more than 2", nodeIdx)
 	}

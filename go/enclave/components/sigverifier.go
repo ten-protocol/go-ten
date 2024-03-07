@@ -26,7 +26,7 @@ func NewSignatureValidator(seqID gethcommon.Address, storage storage.Storage) (*
 }
 
 // CheckSequencerSignature - verifies the signature against the registered sequencer
-func (sigChecker *SignatureValidator) CheckSequencerSignature(headerHash gethcommon.Hash, sigR *big.Int, sigS *big.Int) error {
+func (sigChecker *SignatureValidator) CheckSequencerSignature(_ gethcommon.Hash, sigR *big.Int, sigS *big.Int) error {
 	if sigR == nil || sigS == nil {
 		return fmt.Errorf("missing signature on batch")
 	}
