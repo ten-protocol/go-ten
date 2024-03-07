@@ -37,7 +37,14 @@ const (
 
 // AddBatch adds a batch and its header to the DB
 func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
+	// Check if the Batch is already stored
+	_, err := GetBatchBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
+	if err == nil {
+		println("DUPLICATE BATCH SEQ", batch.Header.SequencerOrderNo.String())
+		return errutil.ErrAlreadyExists
+	}
 	// Encode batch data
+	println("[SQL] Adding batch with seq number: ", batch.SeqNo().Uint64())
 	batchBodyID := batch.SeqNo().Uint64()
 	body, err := rlp.EncodeToBytes(batch.EncryptedTxBlob)
 	if err != nil {
@@ -48,7 +55,11 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 		return fmt.Errorf("could not encode batch header: %w", err)
 	}
 
-	// Insert the batch body data
+	_, err = GetBatchBodyBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
+	if err == nil {
+		println("DUPLICATE BATCH BODY", batch.Header.SequencerOrderNo.String())
+		return errutil.ErrAlreadyExists
+	}
 	_, err = db.Exec(insertBatchBody, batchBodyID, body)
 	if err != nil {
 		return fmt.Errorf("failed to insert body: %w", err)
@@ -121,6 +132,10 @@ func GetBatchListing(db *sql.DB, pagination *common.QueryPagination) (*common.Ba
 // GetBatchBySequenceNumber returns the batch with the given sequence number.
 func GetBatchBySequenceNumber(db *sql.DB, seqNo uint64) (*common.PublicBatch, error) {
 	return fetchPublicBatch(db, " WHERE sequence=?", seqNo)
+}
+
+func GetBatchBodyBySequenceNumber(db *sql.DB, seqNo uint64) (common.EncryptedTransactions, error) {
+	return fetchBatchBody(db, seqNo)
 }
 
 func GetFullBatchBySequenceNumber(db *sql.DB, seqNo uint64) (*common.ExtBatch, error) {
@@ -301,16 +316,8 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 
 	// Fetch batch_body from the database
 	var encryptedTxBlob common.EncryptedTransactions
-	err = db.QueryRow(selectBatchBody, bodyID).Scan(&encryptedTxBlob)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve batch body: %w", err)
-	}
-
-	var batchBody []byte
-	err = rlp.DecodeBytes(encryptedTxBlob, &batchBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode batch body: %w", err)
-	}
+	encryptedTxBlob, err = fetchBatchBody(db, bodyID)
+	if err != nil { return nil, fmt.Errorf("failed to fetch batch body: %w", err) }
 
 	// Construct the batch
 	batch := &common.PublicBatch{
@@ -357,18 +364,10 @@ func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatc
 	}
 
 	// Fetch batch_body from the database
-	var encryptedTxBlob common.EncryptedTransactions
-	err = db.QueryRow(selectBatchBody, bodyID).Scan(&encryptedTxBlob)
+	encryptedTxBlob, err := fetchBatchBody(db, bodyID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve batch body: %w", err)
+		return nil, fmt.Errorf("failed to fetch batch body from seq no: %w", err)
 	}
-
-	var batchBody []byte
-	err = rlp.DecodeBytes(encryptedTxBlob, &batchBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode batch body: %w", err)
-	}
-
 	txHashes, err := fetchTxBySeq(db, header.SequencerOrderNo.Uint64())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tx hashes for batch ")
@@ -452,4 +451,20 @@ func fetchHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 	}
 
 	return batch, nil
+}
+
+func fetchBatchBody(db *sql.DB, seqNo uint64) (common.EncryptedTransactions, error) {
+	var encryptedTxBlob common.EncryptedTransactions
+	err := db.QueryRow(selectBatchBody, seqNo).Scan(&encryptedTxBlob)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve batch body: %w", err)
+	}
+
+	var batchBody []byte
+	err = rlp.DecodeBytes(encryptedTxBlob, &batchBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode batch body: %w", err)
+	}
+
+	return encryptedTxBlob, nil
 }

@@ -117,7 +117,6 @@ func fetchRollupHeader(db *sql.DB, whereQuery string, args ...any) (*common.Roll
 
 func fetchExtRollup(db *sql.DB, whereQuery string, args ...any) (*common.ExtRollup, error) {
 	var rollupBlob []byte
-	println(args)
 	query := selectExtRollup + whereQuery
 	var err error
 	if len(args) > 0 {
