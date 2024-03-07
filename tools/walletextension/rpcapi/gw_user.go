@@ -51,6 +51,7 @@ func getUser(userId []byte, s storage.Storage) (*GWUser, error) {
 
 func (account *GWAccount) connect(url string, logger gethlog.Logger) (*rpc.EncRPCClient, error) {
 	// create a new client
+	// todo - close and cache
 	encClient, err := wecommon.CreateEncClient(url, account.address.Bytes(), account.user.userKey, account.signature, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new client, %w", err)

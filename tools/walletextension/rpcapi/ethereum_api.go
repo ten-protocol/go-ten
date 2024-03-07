@@ -19,12 +19,12 @@ func NewEthereumAPI(we *Services,
 }
 
 func (api *EthereumAPI) GasPrice(ctx context.Context) (*hexutil.Big, error) {
-	return PlaintextTenRPCCall[hexutil.Big](ctx, api.we, &CacheCfg{cacheTTL: shortCacheTTL}, "eth_gasPrice")
+	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, &CacheCfg{TTL: shortCacheTTL}, "eth_gasPrice")
 }
 
 func (api *EthereumAPI) MaxPriorityFeePerGas(ctx context.Context) (*hexutil.Big, error) {
 	// todo
-	return PlaintextTenRPCCall[hexutil.Big](ctx, api.we, nil, "eth_maxPriorityFeePerGas")
+	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, nil, "eth_maxPriorityFeePerGas")
 }
 
 type feeHistoryResult struct {
@@ -35,7 +35,7 @@ type feeHistoryResult struct {
 }
 
 func (api *EthereumAPI) FeeHistory(ctx context.Context, blockCount math.HexOrDecimal64, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (*feeHistoryResult, error) {
-	return PlaintextTenRPCCall[feeHistoryResult](ctx, api.we, &CacheCfg{cacheTTLCallback: func() time.Duration {
+	return UnauthenticatedTenRPCCall[feeHistoryResult](ctx, api.we, &CacheCfg{TTLCallback: func() time.Duration {
 		if lastBlock > 0 {
 			return longCacheTTL
 		}

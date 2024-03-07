@@ -21,7 +21,7 @@ func NewTransactionAPI(we *Services) *TransactionAPI {
 }
 
 func (s *TransactionAPI) GetBlockTransactionCountByNumber(ctx context.Context, blockNr rpc.BlockNumber) *hexutil.Uint {
-	count, err := PlaintextTenRPCCall[hexutil.Uint](ctx, s.we, &CacheCfg{cacheTTLCallback: func() time.Duration {
+	count, err := UnauthenticatedTenRPCCall[hexutil.Uint](ctx, s.we, &CacheCfg{TTLCallback: func() time.Duration {
 		if blockNr > 0 {
 			return longCacheTTL
 		}
@@ -34,7 +34,7 @@ func (s *TransactionAPI) GetBlockTransactionCountByNumber(ctx context.Context, b
 }
 
 func (s *TransactionAPI) GetBlockTransactionCountByHash(ctx context.Context, blockHash common.Hash) *hexutil.Uint {
-	count, err := PlaintextTenRPCCall[hexutil.Uint](ctx, s.we, &CacheCfg{cacheTTL: longCacheTTL}, "eth_getBlockTransactionCountByHash", blockHash)
+	count, err := UnauthenticatedTenRPCCall[hexutil.Uint](ctx, s.we, &CacheCfg{TTL: longCacheTTL}, "eth_getBlockTransactionCountByHash", blockHash)
 	if err != nil {
 		return nil
 	}

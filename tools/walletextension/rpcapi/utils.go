@@ -26,17 +26,17 @@ const (
 
 type ExecCfg struct {
 	account             *common.Address
+	computeFromCallback func(user *GWUser) *common.Address
 	tryAll              bool
 	tryUntilAuthorised  bool
-	computeFromCallback func(user *GWUser) *common.Address
 	adjustArgs          func(acct *GWAccount) []any
 	cacheCfg            *CacheCfg
 }
 
 type CacheCfg struct {
-	cacheTTL time.Duration
+	TTL time.Duration
 	// logic based on block
-	cacheTTLCallback func() time.Duration
+	TTLCallback func() time.Duration
 }
 
 func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method string, args ...any) (*R, error) {
@@ -51,6 +51,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		return nil, err
 	}
 
+	// todo - add method to args
 	return withCache(w.Cache, cfg.cacheCfg, args, func() (*R, error) {
 		// determine candidate "from"
 		candidateAccts := make([]*GWAccount, 0)
@@ -98,6 +99,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 			}
 			err = rpcClient.CallContext(ctx, result, method, adjustedArgs...)
 			if err != nil {
+				// todo - is this correct?
 				if cfg.tryUntilAuthorised && err.Error() != notAuthorised {
 					return nil, err
 				}
@@ -110,7 +112,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 	})
 }
 
-func PlaintextTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg, method string, args ...any) (*R, error) {
+func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg, method string, args ...any) (*R, error) {
 	return withCache(w.Cache, cfg, args, func() (*R, error) {
 		resp := new(R)
 		unauthedRPC, err := w.UnauthenticatedClient()
@@ -124,6 +126,7 @@ func PlaintextTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg,
 
 func extractUserId(ctx context.Context) ([]byte, error) {
 	params := ctx.Value(exposedParams).(map[string]string)
+	// todo handle errors
 	userId := params[common2.EncryptedTokenQueryParameter]
 	return common2.GetUserIDbyte(userId)
 }
@@ -149,11 +152,11 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, args []any, onCacheMiss 
 		return onCacheMiss()
 	}
 
-	cacheTTL := cfg.cacheTTL
-	if cfg.cacheTTLCallback != nil {
-		cacheTTL = cfg.cacheTTLCallback()
+	cacheTTL := cfg.TTL
+	if cfg.TTLCallback != nil {
+		cacheTTL = cfg.TTLCallback()
 	}
-	isCacheable := cfg.cacheTTL > 0
+	isCacheable := cfg.TTL > 0
 
 	var cacheKey []byte
 	if isCacheable {

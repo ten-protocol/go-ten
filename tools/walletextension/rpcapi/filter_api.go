@@ -6,12 +6,13 @@ import (
 	"reflect"
 	"time"
 
-	common3 "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
-	"github.com/ethereum/go-ethereum/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
-	common2 "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
@@ -49,7 +50,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit filters.FilterCriteria) (*r
 		return nil, fmt.Errorf("invalid subscription")
 	}
 
-	uid, err := common3.GetUserIDbyte(not.UserId)
+	uid, err := wecommon.GetUserIDbyte(not.UserId)
 	if err != nil {
 		return nil, fmt.Errorf("invald token: %s, %w", not.UserId, err)
 	}
@@ -72,14 +73,14 @@ func (api *FilterAPI) Logs(ctx context.Context, crit filters.FilterCriteria) (*r
 			candidateAddresses = user.GetAllAddresses()
 		}
 	}
-	inputChannels := make([]chan common2.IDAndLog, 0)
+	inputChannels := make([]chan common.IDAndLog, 0)
 	clientSubscriptions := make([]*rpc.ClientSubscription, 0)
 	for _, address := range candidateAddresses {
 		rpcWSClient, err := user.accounts[*address].connect(api.we.HostAddrWS, api.we.Logger())
 		if err != nil {
 			return nil, err
 		}
-		inCh := make(chan common2.IDAndLog)
+		inCh := make(chan common.IDAndLog)
 		inputChannels = append(inputChannels, inCh)
 		clientSubscription, err := rpcWSClient.Subscribe(ctx, nil, "eth", inCh, "logs", crit)
 		if err != nil {
@@ -91,12 +92,12 @@ func (api *FilterAPI) Logs(ctx context.Context, crit filters.FilterCriteria) (*r
 	return subscription, err
 }
 
-func searchForAddressInFilterCriteria(filterCriteria filters.FilterCriteria, possibleAddresses []*common.Address) ([]*common.Address, error) {
-	result := make([]*common.Address, 0)
+func searchForAddressInFilterCriteria(filterCriteria filters.FilterCriteria, possibleAddresses []*gethcommon.Address) ([]*gethcommon.Address, error) {
+	result := make([]*gethcommon.Address, 0)
 	addrMap := toMap(possibleAddresses)
 	for _, topicCondition := range filterCriteria.Topics {
 		for _, topic := range topicCondition {
-			potentialAddr := common2.ExtractPotentialAddress(topic)
+			potentialAddr := common.ExtractPotentialAddress(topic)
 			if potentialAddr != nil && addrMap[*potentialAddr] != nil {
 				result = append(result, potentialAddr)
 			}
@@ -105,8 +106,8 @@ func searchForAddressInFilterCriteria(filterCriteria filters.FilterCriteria, pos
 	return result, nil
 }
 
-func forwardMsgs(inputChannels []chan common2.IDAndLog, _ []*rpc.ClientSubscription, outSub *rpc.Subscription, notifier *rpc.Notifier) {
-	buffer := NewCircularBuffer(common3.DeduplicationBufferSize)
+func forwardMsgs(inputChannels []chan common.IDAndLog, _ []*rpc.ClientSubscription, outSub *rpc.Subscription, notifier *rpc.Notifier) {
+	buffer := NewCircularBuffer(wecommon.DeduplicationBufferSize)
 	cases := make([]reflect.SelectCase, len(inputChannels))
 	for i, ch := range inputChannels {
 		cases[i] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ch)}
@@ -121,7 +122,7 @@ func forwardMsgs(inputChannels []chan common2.IDAndLog, _ []*rpc.ClientSubscript
 			continue
 		}
 
-		data := value.Interface().(common2.IDAndLog)
+		data := value.Interface().(common.IDAndLog)
 		uniqueLogKey := LogKey{
 			BlockHash: data.Log.BlockHash,
 			TxHash:    data.Log.TxHash,
@@ -152,7 +153,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit filters.FilterCriteria) 
 		api.we,
 		&ExecCfg{
 			cacheCfg: &CacheCfg{
-				cacheTTLCallback: func() time.Duration {
+				TTLCallback: func() time.Duration {
 					if crit.ToBlock != nil {
 						return longCacheTTL
 					}

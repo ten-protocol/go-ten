@@ -11,6 +11,7 @@ import (
 func searchFromAndData(possibleAddresses []*common.Address, args gethapi.TransactionArgs) *common.Address {
 	addressesMap := toMap(possibleAddresses)
 
+	// todo - is this correct
 	if args.From != nil && addressesMap[*args.From] != nil {
 		return args.From
 	}
