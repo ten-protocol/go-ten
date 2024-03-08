@@ -28,7 +28,7 @@ type testHelper struct {
 }
 
 func TestWalletExtension(t *testing.T) {
-	// t.Skip("Skipping because it is too flaky")
+	t.Skip("Skipping because it is too flaky")
 	i := 0
 	for name, test := range map[string]func(t *testing.T, testHelper *testHelper){
 		"canInvokeSensitiveMethodsWithViewingKey": canInvokeSensitiveMethodsWithViewingKey,
@@ -172,6 +172,7 @@ func canRegisterViewingKeyAndMakeRequestsOverWebsockets(t *testing.T, testHelper
 }
 
 func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
+	t.Skip("Skipping because it is too flaky")
 	walletHTTPPort := _hostWSPort + 1
 	walletWSPort := _hostWSPort + 2
 

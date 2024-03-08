@@ -141,7 +141,13 @@ func (cd *contractDeployer) signAndSendTxWithReceipt(wallet wallet.Wallet, deplo
 	var receipt *types.Receipt
 	err = retry.Do(func() error {
 		receipt, err = deployer.TransactionReceipt(signedTx.Hash())
-		return err
+		if err != nil {
+			return err
+		}
+		if receipt != nil {
+			return nil
+		}
+		return fmt.Errorf("not found")
 	}, retry.NewTimeoutStrategy(timeoutWait, retryInterval))
 
 	if err != nil {

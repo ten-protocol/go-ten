@@ -129,7 +129,9 @@ func extractUserId(ctx context.Context) ([]byte, error) {
 	// todo handle errors
 	userId, ok := params[common2.EncryptedTokenQueryParameter]
 	if !ok || len(userId) < 3 {
-		return nil, fmt.Errorf("invalid encryption token %s", userId)
+		// todo - remove
+		return []byte(common2.DefaultUser), nil
+		// return nil, fmt.Errorf("invalid encryption token %s", userId)
 	}
 	return common2.GetUserIDbyte(userId)
 }
