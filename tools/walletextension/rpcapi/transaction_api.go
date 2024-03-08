@@ -81,28 +81,26 @@ func (s *TransactionAPI) GetRawTransactionByHash(ctx context.Context, hash commo
 
 func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error) {
 	txRec, err := ExecAuthRPC[map[string]interface{}](ctx, s.we, &ExecCfg{tryUntilAuthorised: true}, "eth_getTransactionReceipt", hash)
-	if txRec != nil {
-		return *txRec, err
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return *txRec, err
 }
 
 func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.TransactionArgs) (common.Hash, error) {
-	// txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{account: args.From}, "eth_sendTransaction", args)
-	txRec, err := UnauthenticatedTenRPCCall[common.Hash](ctx, s.we, nil, "eth_sendTransaction", args)
+	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{account: args.From}, "eth_sendTransaction", args)
 	if err != nil {
 		return common.Hash{}, err
 	}
 	if s.we.Config.StoreIncomingTxs {
-		userIDBytes, err := extractUserId(ctx)
-		if err != nil {
-			return common.Hash{}, err
-		}
-		tx, err := json.Marshal(args)
-		if err != nil {
-			err = s.we.Storage.StoreTransaction(string(tx), userIDBytes)
+		userIDBytes, _ := extractUserId(ctx)
+		if len(userIDBytes) > 10 {
+			tx, err := json.Marshal(args)
 			if err != nil {
-				s.we.Logger().Error(fmt.Errorf("error storing transaction in the database: %w", err).Error())
+				err = s.we.Storage.StoreTransaction(string(tx), userIDBytes)
+				if err != nil {
+					s.we.Logger().Error(fmt.Errorf("error storing transaction in the database: %w", err).Error())
+				}
 			}
 		}
 	}
@@ -120,19 +118,17 @@ func (s *TransactionAPI) FillTransaction(ctx context.Context, args gethapi.Trans
 }
 
 func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.Bytes) (common.Hash, error) {
-	// txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{tryAll: true}, "eth_sendRawTransaction", input)
-	txRec, err := UnauthenticatedTenRPCCall[common.Hash](ctx, s.we, nil, "eth_sendRawTransaction", input)
+	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{tryAll: true}, "eth_sendRawTransaction", input)
 	if err != nil {
 		return common.Hash{}, err
 	}
 	if s.we.Config.StoreIncomingTxs {
 		userIDBytes, err := extractUserId(ctx)
-		if err != nil {
-			return common.Hash{}, err
-		}
-		err = s.we.Storage.StoreTransaction(input.String(), userIDBytes)
-		if err != nil {
-			s.we.Logger().Error(fmt.Errorf("error storing transaction in the database: %w", err).Error())
+		if len(userIDBytes) > 10 {
+			err = s.we.Storage.StoreTransaction(input.String(), userIDBytes)
+			if err != nil {
+				s.we.Logger().Error(fmt.Errorf("error storing transaction in the database: %w", err).Error())
+			}
 		}
 	}
 

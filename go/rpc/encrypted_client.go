@@ -265,6 +265,7 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 	// We put the raw json in the passed result object.
 	// This works for structs, strings, integers and interface types.
 	err = json.Unmarshal(resultBytes, result)
+	err = json.Unmarshal(resultBytes, result)
 	if err != nil {
 		return fmt.Errorf("could not populate the response object with the json_rpc result. Cause: %w", err)
 	}

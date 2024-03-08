@@ -14,7 +14,7 @@ import (
 
 func TenCallValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlock, string], _ *EncryptionManager) error {
 	// Parameters are [TransactionArgs, BlockNumber, a few more]
-	if len(reqParams) != 4 {
+	if len(reqParams) < 2 && len(reqParams) > 4 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
 		return nil
 	}

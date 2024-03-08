@@ -161,41 +161,50 @@ func ExtractOptionalBlockNumber(params []interface{}, idx int) (*gethrpc.BlockNu
 
 // ExtractBlockNumber returns a gethrpc.BlockNumber given an interface{}, errors if unexpected values are used
 func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumberOrHash, error) {
+	var blockNo *gethrpc.BlockNumber
+	var blockHa *gethcommon.Hash
+	var reqCanon bool
+
 	if param == nil {
 		latest := gethrpc.BlockNumberOrHashWithNumber(gethrpc.LatestBlockNumber)
 		return &latest, nil
 	}
-
-	p, ok := param.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("invalid block or hash parameter %s", param.(string))
-	}
-	var blockNo *gethrpc.BlockNumber
-	var blockHa *gethcommon.Hash
-	var reqCanon bool
-	if p["blockNumber"] != nil {
-		b := p["blockNumber"].(string)
+	blockString, ok := param.(string)
+	if ok {
 		blockNumber := gethrpc.BlockNumber(0)
-		err := blockNumber.UnmarshalJSON([]byte(b))
+		err := blockNumber.UnmarshalJSON([]byte(blockString))
 		if err != nil {
-			return nil, fmt.Errorf("invalid block number %s - %w", b, err)
+			return nil, fmt.Errorf("invalid block number %s - %w", blockString, err)
 		}
 		blockNo = &blockNumber
+	} else {
+		blockAndHash, ok := param.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("invalid block or hash parameter %s", param.(string))
+		}
+		if blockAndHash["blockNumber"] != nil {
+			b := blockAndHash["blockNumber"].(string)
+			blockNumber := gethrpc.BlockNumber(0)
+			err := blockNumber.UnmarshalJSON([]byte(b))
+			if err != nil {
+				return nil, fmt.Errorf("invalid block number %s - %w", b, err)
+			}
+			blockNo = &blockNumber
+		}
+		if blockAndHash["blockHash"] != nil {
+			bh := blockAndHash["blockHash"].(gethcommon.Hash)
+			blockHa = &bh
+		}
+		if blockAndHash["RequireCanonical"] != nil {
+			reqCanon = blockAndHash["RequireCanonical"].(bool)
+		}
 	}
-	if p["blockHash"] != nil {
-		bh := p["blockHash"].(gethcommon.Hash)
-		blockHa = &bh
-	}
-	if p["RequireCanonical"] != nil {
-		reqCanon = p["RequireCanonical"].(bool)
-	}
-	blockNumber := gethrpc.BlockNumberOrHash{
+
+	return &gethrpc.BlockNumberOrHash{
 		BlockNumber:      blockNo,
 		BlockHash:        blockHa,
 		RequireCanonical: reqCanon,
-	}
-
-	return &blockNumber, nil
+	}, nil
 }
 
 // ExtractEthCall extracts the eth_call gethapi.TransactionArgs from an interface{}

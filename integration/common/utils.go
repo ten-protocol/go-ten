@@ -23,7 +23,6 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ten-protocol/go-ten/go/rpc"
 )
 
 var _awaitReceiptPollingInterval = 200 * time.Millisecond
@@ -49,11 +48,13 @@ func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash g
 	var err error
 	err = retry.Do(func() error {
 		receipt, err = client.TransactionReceipt(ctx, txHash)
-		if err != nil && !errors.Is(err, rpc.ErrNilResponse) {
-			// we only retry for a nil "not found" response. This is a different error, so we bail out of the retry loop
+		if err != nil {
 			return retry.FailFast(err)
 		}
-		return err
+		if receipt != nil {
+			return nil
+		}
+		return fmt.Errorf("not found")
 	}, retry.NewTimeoutStrategy(timeout, _awaitReceiptPollingInterval))
 	if err != nil {
 		return fmt.Errorf("could not retrieve receipt for transaction %s - %w", txHash.Hex(), err)
@@ -130,10 +131,12 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 		wg.Add(1)
 		go func(txHash gethcommon.Hash) {
 			defer wg.Done()
+			fmt.Printf("get receipt tx: %s\n", txHash)
 			err := AwaitReceipt(ctx, faucetClient, txHash, timeout)
 			if err != nil {
 				panic(fmt.Sprintf("faucet transfer transaction %s unsuccessful. Cause: %s", txHash, err))
 			}
+			fmt.Printf("success receipt tx: %s\n", txHash)
 		}(txHash)
 	}
 	wg.Wait()

@@ -19,14 +19,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-const (
-	filterKeyBlockHash = "blockHash"
-	filterKeyFromBlock = "fromBlock"
-	filterKeyToBlock   = "toBlock"
-	filterKeyAddress   = "address"
-	filterKeyTopics    = "topics"
-)
-
 // AuthObsClient extends the functionality of the ObsClient for all methods that require encryption when communicating with the enclave
 // It is created with an EncRPCClient rather than basic RPC client so encryption/decryption is supported
 //
@@ -89,12 +81,16 @@ func (ac *AuthObsClient) GasPrice(ctx context.Context) (*big.Int, error) {
 
 func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash gethcommon.Hash) (*types.Receipt, error) {
 	var result responses.ReceiptType
+	var emptyHash gethcommon.Hash
 	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetTransactionReceipt, txHash)
 	if err != nil {
 		return nil, err
 	}
+	if result.TxHash != emptyHash {
+		return &result, nil
+	}
 
-	return &result, nil
+	return nil, nil
 }
 
 // NonceAt retrieves the nonce for the account registered on this client (due to obscuro privacy restrictions,
@@ -125,7 +121,7 @@ func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Tr
 	if err != nil {
 		return err
 	}
-
+	println(result.Hex())
 	return nil
 }
 
@@ -142,14 +138,7 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 }
 
 func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria filters.FilterCriteria, ch chan common.IDAndLog) (ethereum.Subscription, error) {
-	filterCriteriaMap := map[string]interface{}{
-		filterKeyBlockHash: filterCriteria.BlockHash,
-		filterKeyFromBlock: filterCriteria.FromBlock,
-		filterKeyToBlock:   filterCriteria.ToBlock,
-		filterKeyAddress:   filterCriteria.Addresses,
-		filterKeyTopics:    filterCriteria.Topics,
-	}
-	return ac.rpcClient.Subscribe(ctx, nil, rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeLogs, filterCriteriaMap)
+	return ac.rpcClient.Subscribe(ctx, nil, rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeLogs, filterCriteria)
 }
 
 func (ac *AuthObsClient) GetLogs(ctx context.Context, filterCriteria common.FilterCriteriaJSON) ([]*types.Log, error) {
