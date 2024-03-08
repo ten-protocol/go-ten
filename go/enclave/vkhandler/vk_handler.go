@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
@@ -46,41 +45,23 @@ func VerifyViewingKey(rpcVK *viewingkey.RPCSignedViewingKey, chainID int64) (*Au
 	return rvk, nil
 }
 
-// this method is unnecessarily complex due to a legacy signing format
+// checkViewingKeyAndRecoverAddress checks the signature and recovers the address from the viewing key
 func checkViewingKeyAndRecoverAddress(vk *AuthenticatedViewingKey, chainID int64) (*gethcommon.Address, error) {
 	// get userID from viewingKey public key
 	userID := viewingkey.CalculateUserIDHex(vk.rpcVK.PublicKey)
 	vk.UserID = userID
 
-	// check signature and recover the address assuming the message was signed with EIP712
-	recoveredSignerAddress, err := viewingkey.CheckSignatureWithType(userID, vk.rpcVK.SignatureWithAccountKey, chainID, vk.rpcVK.SignatureType)
-	if err != nil {
-		// Signature failed
-		// Either it is invalid or it might have been using the legacy format
-		legacyMessageHash := accounts.TextHash([]byte(viewingkey.GenerateSignMessage(vk.rpcVK.PublicKey)))
-		_, err = viewingkey.CheckSignatureAndReturnAccountAddress(legacyMessageHash, vk.rpcVK.SignatureWithAccountKey)
-		if err != nil {
-			return nil, fmt.Errorf("invalid vk signature")
-		}
+	// todo - remove this when the legacy format is no longer supported
+	// this is a temporary fix to support the legacy format which will be removed soon
+	if vk.rpcVK.SignatureType == viewingkey.Legacy {
+		userID = string(vk.rpcVK.PublicKey) // for legacy format, the userID is the public key
 	}
 
-	// TODO @Ziga - check this -> vk.AccountAddress is nil here and the address is set after this function returns.
-	//// compare the recovered address against the address declared in the vk
-	//if recoveredSignerAddress != nil && recoveredSignerAddress.Hex() == vk.AccountAddress.Hex() {
-	//	return vk.AccountAddress, nil
-	//}
-
-	// recover the address using the legacy format and compare with the vk address
-	// TODO @Ziga - this must be removed.
-	//msgToSignLegacy := viewingkey.GenerateSignMessage(vk.rpcVK.PublicKey)
-	//recoveredAccountPublicKeyLegacy, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSignLegacy)), vk.rpcVK.SignatureWithAccountKey)
-	//if err != nil {
-	//	return nil, fmt.Errorf("invalid vk signature - %w", err)
-	//}
-	//recoveredAccountAddressLegacy := crypto.PubkeyToAddress(*recoveredAccountPublicKeyLegacy)
-	//if recoveredAccountAddressLegacy.Hex() != vk.AccountAddress.Hex() {
-	//	return nil, fmt.Errorf("invalid VK")
-	//}
+	// check the signature and recover the address assuming the message was signed with EIP712
+	recoveredSignerAddress, err := viewingkey.CheckSignatureWithType(userID, vk.rpcVK.SignatureWithAccountKey, chainID, vk.rpcVK.SignatureType)
+	if err != nil {
+		return nil, fmt.Errorf("signature verification failed %w", err)
+	}
 
 	return recoveredSignerAddress, err
 }

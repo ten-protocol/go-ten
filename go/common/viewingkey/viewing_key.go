@@ -352,6 +352,15 @@ func CheckSignatureWithType(encryptionToken string, signature []byte, chainID in
 			return addr, nil
 		}
 	} else if signatureType == Legacy {
+		// todo - this part is only for the legacy format and will be removed once the legacy format is no longer supported
+		publicKey := []byte(encryptionToken)
+		msgToSignLegacy := GenerateSignMessage(publicKey)
+		recoveredAccountPublicKeyLegacy, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSignLegacy)), signature)
+		if err != nil {
+			return nil, fmt.Errorf("failed to recover account public key from legacy signature: %w", err)
+		}
+		recoveredAccountAddressLegacy := crypto.PubkeyToAddress(*recoveredAccountPublicKeyLegacy)
+		return &recoveredAccountAddressLegacy, nil
 	}
 	return nil, fmt.Errorf("signature verification failed")
 }
