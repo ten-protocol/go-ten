@@ -17,7 +17,6 @@
 package node
 
 import (
-	"crypto/ecdsa"
 	"fmt"
 	"net"
 	"os"
@@ -26,9 +25,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
@@ -50,9 +47,6 @@ type Config struct {
 	// value is specified, the basename of the current executable is used.
 	Name string `toml:"-"`
 
-	// UserIdent, if set, is used as an additional component in the devp2p node identifier.
-	UserIdent string `toml:",omitempty"`
-
 	// Version should be set to the version number of the program. It is used
 	// in the devp2p node identifier.
 	Version string `toml:"-"`
@@ -63,38 +57,6 @@ type Config struct {
 	// databases or flat files. This enables ephemeral nodes which can fully reside
 	// in memory.
 	DataDir string
-
-	// Configuration of peer-to-peer networking.
-	P2P p2p.Config
-
-	// KeyStoreDir is the file system folder that contains private keys. The directory can
-	// be specified as a relative path, in which case it is resolved relative to the
-	// current directory.
-	//
-	// If KeyStoreDir is empty, the default location is the "keystore" subdirectory of
-	// DataDir. If DataDir is unspecified and KeyStoreDir is empty, an ephemeral directory
-	// is created by New and destroyed when the node is stopped.
-	KeyStoreDir string `toml:",omitempty"`
-
-	// ExternalSigner specifies an external URI for a clef-type signer.
-	ExternalSigner string `toml:",omitempty"`
-
-	// UseLightweightKDF lowers the memory and CPU requirements of the key store
-	// scrypt KDF at the expense of security.
-	UseLightweightKDF bool `toml:",omitempty"`
-
-	// InsecureUnlockAllowed allows user to unlock accounts in unsafe http environment.
-	InsecureUnlockAllowed bool `toml:",omitempty"`
-
-	// NoUSB disables hardware wallet monitoring and connectivity.
-	// Deprecated: USB monitoring is disabled by default and must be enabled explicitly.
-	NoUSB bool `toml:",omitempty"`
-
-	// USB enables hardware wallet monitoring and connectivity.
-	USB bool `toml:",omitempty"`
-
-	// SmartCardDaemonPath is the path to the smartcard daemon's socket.
-	SmartCardDaemonPath string `toml:",omitempty"`
 
 	// IPCPath is the requested location to place the IPC endpoint. If the path is
 	// a simple file name, it is placed inside the data directory (or on the root
@@ -210,8 +172,6 @@ type Config struct {
 	// EnablePersonal enables the deprecated personal namespace.
 	EnablePersonal bool `toml:"-"`
 
-	DBEngine string `toml:",omitempty"`
-
 	// TEN
 	ExposedURLParamNames []string
 }
@@ -304,9 +264,6 @@ func (c *Config) NodeName() string {
 	if name == "geth" || name == "geth-testnet" {
 		name = "Geth"
 	}
-	if c.UserIdent != "" {
-		name += "/" + c.UserIdent
-	}
 	if c.Version != "" {
 		name += "/v" + c.Version
 	}
@@ -366,118 +323,4 @@ func (c *Config) instanceDir() string {
 		return ""
 	}
 	return filepath.Join(c.DataDir, c.name())
-}
-
-// NodeKey retrieves the currently configured private key of the node, checking
-// first any manually set key, falling back to the one found in the configured
-// data folder. If no key can be found, a new one is generated.
-func (c *Config) NodeKey() *ecdsa.PrivateKey {
-	// Use any specifically configured key.
-	if c.P2P.PrivateKey != nil {
-		return c.P2P.PrivateKey
-	}
-	// Generate ephemeral key if no datadir is being used.
-	if c.DataDir == "" {
-		key, err := crypto.GenerateKey()
-		if err != nil {
-			log.Crit(fmt.Sprintf("Failed to generate ephemeral node key: %v", err))
-		}
-		return key
-	}
-
-	keyfile := c.ResolvePath(datadirPrivateKey)
-	if key, err := crypto.LoadECDSA(keyfile); err == nil {
-		return key
-	}
-	// No persistent key found, generate and store a new one.
-	key, err := crypto.GenerateKey()
-	if err != nil {
-		log.Crit(fmt.Sprintf("Failed to generate node key: %v", err))
-	}
-	instanceDir := filepath.Join(c.DataDir, c.name())
-	if err := os.MkdirAll(instanceDir, 0o700); err != nil {
-		log.Error(fmt.Sprintf("Failed to persist node key: %v", err))
-		return key
-	}
-	keyfile = filepath.Join(instanceDir, datadirPrivateKey)
-	if err := crypto.SaveECDSA(keyfile, key); err != nil {
-		log.Error(fmt.Sprintf("Failed to persist node key: %v", err))
-	}
-	return key
-}
-
-// checkLegacyFiles inspects the datadir for signs of legacy static-nodes
-// and trusted-nodes files. If they exist it raises an error.
-func (c *Config) checkLegacyFiles() {
-	c.checkLegacyFile(c.ResolvePath(datadirStaticNodes))
-	c.checkLegacyFile(c.ResolvePath(datadirTrustedNodes))
-}
-
-// checkLegacyFile will only raise an error if a file at the given path exists.
-func (c *Config) checkLegacyFile(path string) {
-	// Short circuit if no node config is present
-	if c.DataDir == "" {
-		return
-	}
-	if _, err := os.Stat(path); err != nil {
-		return
-	}
-	logger := c.Logger
-	if logger == nil {
-		logger = log.Root()
-	}
-	switch fname := filepath.Base(path); fname {
-	case "static-nodes.json":
-		logger.Error("The static-nodes.json file is deprecated and ignored. Use P2P.StaticNodes in config.toml instead.")
-	case "trusted-nodes.json":
-		logger.Error("The trusted-nodes.json file is deprecated and ignored. Use P2P.TrustedNodes in config.toml instead.")
-	default:
-		// We shouldn't wind up here, but better print something just in case.
-		logger.Error("Ignoring deprecated file.", "file", path)
-	}
-}
-
-// KeyDirConfig determines the settings for keydirectory
-func (c *Config) KeyDirConfig() (string, error) {
-	var (
-		keydir string
-		err    error
-	)
-	switch {
-	case filepath.IsAbs(c.KeyStoreDir):
-		keydir = c.KeyStoreDir
-	case c.DataDir != "":
-		if c.KeyStoreDir == "" {
-			keydir = filepath.Join(c.DataDir, datadirDefaultKeyStore)
-		} else {
-			keydir, err = filepath.Abs(c.KeyStoreDir)
-		}
-	case c.KeyStoreDir != "":
-		keydir, err = filepath.Abs(c.KeyStoreDir)
-	}
-	return keydir, err
-}
-
-// GetKeyStoreDir retrieves the key directory and will create
-// and ephemeral one if necessary.
-func (c *Config) GetKeyStoreDir() (string, bool, error) {
-	keydir, err := c.KeyDirConfig()
-	if err != nil {
-		return "", false, err
-	}
-	isEphemeral := false
-	if keydir == "" {
-		// There is no datadir.
-		keydir, err = os.MkdirTemp("", "go-ethereum-keystore")
-		isEphemeral = true
-	}
-
-	if err != nil {
-		return "", false, err
-	}
-	if err := os.MkdirAll(keydir, 0o700); err != nil {
-		return "", false, err
-	}
-
-	return keydir, isEphemeral, nil
 }

@@ -30,14 +30,10 @@ import (
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
-	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/gofrs/flock"
 )
 
@@ -45,13 +41,9 @@ import (
 type Node struct {
 	eventmux      *event.TypeMux
 	config        *Config
-	accman        *accounts.Manager
 	log           log.Logger
-	keyDir        string        // key store directory
-	keyDirTemp    bool          // If true, key directory will be removed by Stop
 	dirLock       *flock.Flock  // prevents concurrent use of instance directory
 	stop          chan struct{} // Channel to wait for termination notifications
-	server        *p2p.Server   // Currently running P2P networking layer
 	startStopLock sync.Mutex    // Start/Stop are protected by an additional lock
 	state         int           // Tracks state of node lifecycle
 
@@ -65,7 +57,6 @@ type Node struct {
 	ipc           *ipcServer  // Stores information about the ipc http server
 	inprocHandler *rpc.Server // In-process RPC request handler to process the API requests
 
-	databases map[*closeTrackingDB]struct{} // All open databases
 }
 
 const (
@@ -110,8 +101,6 @@ func New(conf *Config) (*Node, error) {
 		eventmux:      new(event.TypeMux),
 		log:           conf.Logger,
 		stop:          make(chan struct{}),
-		server:        &p2p.Server{Config: conf.P2P},
-		databases:     make(map[*closeTrackingDB]struct{}),
 	}
 
 	// Register built-in APIs.
@@ -120,24 +109,6 @@ func New(conf *Config) (*Node, error) {
 	// Acquire the instance directory lock.
 	if err := node.openDataDir(); err != nil {
 		return nil, err
-	}
-	keyDir, isEphem, err := conf.GetKeyStoreDir()
-	if err != nil {
-		return nil, err
-	}
-	node.keyDir = keyDir
-	node.keyDirTemp = isEphem
-	// Creates an empty AccountManager with no backends. Callers (e.g. cmd/geth)
-	// are required to add the backends later on.
-	node.accman = accounts.NewManager(&accounts.Config{InsecureUnlockAllowed: conf.InsecureUnlockAllowed})
-
-	// Initialize the p2p server. This creates the node key and discovery databases.
-	node.server.Config.PrivateKey = node.config.NodeKey()
-	node.server.Config.Name = node.config.NodeName()
-	node.server.Config.Logger = node.log
-	node.config.checkLegacyFiles()
-	if node.server.Config.NodeDatabase == "" {
-		node.server.Config.NodeDatabase = node.config.NodeDB()
 	}
 
 	// Check HTTP/WS prefixes are valid.
@@ -230,21 +201,6 @@ func (n *Node) Close() error {
 
 // doClose releases resources acquired by New(), collecting errors.
 func (n *Node) doClose(errs []error) error {
-	// Close databases. This needs the lock because it needs to
-	// synchronize with OpenDatabase*.
-	n.lock.Lock()
-	n.state = closedState
-	errs = append(errs, n.closeDatabases()...)
-	n.lock.Unlock()
-
-	if err := n.accman.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if n.keyDirTemp {
-		if err := os.RemoveAll(n.keyDir); err != nil {
-			errs = append(errs, err)
-		}
-	}
 
 	// Release instance directory lock.
 	n.closeDataDir()
@@ -265,16 +221,10 @@ func (n *Node) doClose(errs []error) error {
 
 // openEndpoints starts all network and RPC endpoints.
 func (n *Node) openEndpoints() error {
-	// start networking endpoints
-	n.log.Info("Starting peer-to-peer node", "instance", n.server.Name)
-	if err := n.server.Start(); err != nil {
-		return convertFileLockError(err)
-	}
 	// start RPC endpoints
 	err := n.startRPC()
 	if err != nil {
 		n.stopRPC()
-		n.server.Stop()
 	}
 	return err
 }
@@ -301,9 +251,6 @@ func (n *Node) stopServices(running []Lifecycle) error {
 			failure.Services[reflect.TypeOf(running[i])] = err
 		}
 	}
-
-	// Stop p2p networking.
-	n.server.Stop()
 
 	if len(failure.Services) > 0 {
 		return failure
@@ -570,17 +517,6 @@ func (n *Node) RegisterLifecycle(lifecycle Lifecycle) {
 	n.lifecycles = append(n.lifecycles, lifecycle)
 }
 
-// RegisterProtocols adds backend's protocols to the node's p2p server.
-func (n *Node) RegisterProtocols(protocols []p2p.Protocol) {
-	n.lock.Lock()
-	defer n.lock.Unlock()
-
-	if n.state != initializingState {
-		panic("can't register protocols on running/stopped node")
-	}
-	n.server.Protocols = append(n.server.Protocols, protocols...)
-}
-
 // RegisterAPIs registers the APIs a service provides on the node.
 func (n *Node) RegisterAPIs(apis []rpc.API) {
 	n.lock.Lock()
@@ -640,16 +576,6 @@ func (n *Node) Config() *Config {
 	return n.config
 }
 
-// Server retrieves the currently running P2P network layer. This method is meant
-// only to inspect fields of the currently running server. Callers should not
-// start or stop the returned server.
-func (n *Node) Server() *p2p.Server {
-	n.lock.Lock()
-	defer n.lock.Unlock()
-
-	return n.server
-}
-
 // DataDir retrieves the current datadir used by the protocol stack.
 // Deprecated: No files should be stored in this directory, use InstanceDir instead.
 func (n *Node) DataDir() string {
@@ -659,16 +585,6 @@ func (n *Node) DataDir() string {
 // InstanceDir retrieves the instance directory used by the protocol stack.
 func (n *Node) InstanceDir() string {
 	return n.config.instanceDir()
-}
-
-// KeyStoreDir retrieves the key directory
-func (n *Node) KeyStoreDir() string {
-	return n.keyDir
-}
-
-// AccountManager retrieves the account manager used by the protocol stack.
-func (n *Node) AccountManager() *accounts.Manager {
-	return n.accman
 }
 
 // IPCEndpoint retrieves the current IPC endpoint used by the protocol stack.
@@ -709,115 +625,7 @@ func (n *Node) EventMux() *event.TypeMux {
 	return n.eventmux
 }
 
-// OpenDatabase opens an existing database with the given name (or creates one if no
-// previous can be found) from within the node's instance directory. If the node is
-// ephemeral, a memory database is returned.
-func (n *Node) OpenDatabase(name string, cache, handles int, namespace string, readonly bool) (ethdb.Database, error) {
-	n.lock.Lock()
-	defer n.lock.Unlock()
-	if n.state == closedState {
-		return nil, ErrNodeStopped
-	}
-
-	var db ethdb.Database
-	var err error
-	if n.config.DataDir == "" {
-		db = rawdb.NewMemoryDatabase()
-	} else {
-		db, err = rawdb.Open(rawdb.OpenOptions{
-			Type:      n.config.DBEngine,
-			Directory: n.ResolvePath(name),
-			Namespace: namespace,
-			Cache:     cache,
-			Handles:   handles,
-			ReadOnly:  readonly,
-		})
-	}
-
-	if err == nil {
-		db = n.wrapDatabase(db)
-	}
-	return db, err
-}
-
-// OpenDatabaseWithFreezer opens an existing database with the given name (or
-// creates one if no previous can be found) from within the node's data directory,
-// also attaching a chain freezer to it that moves ancient chain data from the
-// database to immutable append-only files. If the node is an ephemeral one, a
-// memory database is returned.
-func (n *Node) OpenDatabaseWithFreezer(name string, cache, handles int, ancient string, namespace string, readonly bool) (ethdb.Database, error) {
-	n.lock.Lock()
-	defer n.lock.Unlock()
-	if n.state == closedState {
-		return nil, ErrNodeStopped
-	}
-	var db ethdb.Database
-	var err error
-	if n.config.DataDir == "" {
-		db = rawdb.NewMemoryDatabase()
-	} else {
-		db, err = rawdb.Open(rawdb.OpenOptions{
-			Type:              n.config.DBEngine,
-			Directory:         n.ResolvePath(name),
-			AncientsDirectory: n.ResolveAncient(name, ancient),
-			Namespace:         namespace,
-			Cache:             cache,
-			Handles:           handles,
-			ReadOnly:          readonly,
-		})
-	}
-
-	if err == nil {
-		db = n.wrapDatabase(db)
-	}
-	return db, err
-}
-
 // ResolvePath returns the absolute path of a resource in the instance directory.
 func (n *Node) ResolvePath(x string) string {
 	return n.config.ResolvePath(x)
-}
-
-// ResolveAncient returns the absolute path of the root ancient directory.
-func (n *Node) ResolveAncient(name string, ancient string) string {
-	switch {
-	case ancient == "":
-		ancient = filepath.Join(n.ResolvePath(name), "ancient")
-	case !filepath.IsAbs(ancient):
-		ancient = n.ResolvePath(ancient)
-	}
-	return ancient
-}
-
-// closeTrackingDB wraps the Close method of a database. When the database is closed by the
-// service, the wrapper removes it from the node's database map. This ensures that Node
-// won't auto-close the database if it is closed by the service that opened it.
-type closeTrackingDB struct {
-	ethdb.Database
-	n *Node
-}
-
-func (db *closeTrackingDB) Close() error {
-	db.n.lock.Lock()
-	delete(db.n.databases, db)
-	db.n.lock.Unlock()
-	return db.Database.Close()
-}
-
-// wrapDatabase ensures the database will be auto-closed when Node is closed.
-func (n *Node) wrapDatabase(db ethdb.Database) ethdb.Database {
-	wrapper := &closeTrackingDB{db, n}
-	n.databases[wrapper] = struct{}{}
-	return wrapper
-}
-
-// closeDatabases closes all open databases.
-func (n *Node) closeDatabases() (errors []error) {
-	for db := range n.databases {
-		delete(n.databases, db)
-		if err := db.Database.Close(); err != nil {
-			errors = append(errors, err)
-		}
-	}
-	return errors
 }
