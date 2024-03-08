@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension"
 
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
@@ -194,7 +196,7 @@ func (s *InMemDevNetwork) startTenGateway() {
 	validatorWS := validator.HostRPCWSAddress()
 	// remove ws:// prefix for the gateway config
 	validatorWS = validatorWS[len("ws://"):]
-	cfg := walletextension.Config{
+	cfg := wecommon.Config{
 		WalletExtensionHost:     "127.0.0.1",
 		WalletExtensionPortHTTP: _gwHTTPPort,
 		WalletExtensionPortWS:   _gwWSPort,

@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 const (
@@ -61,7 +61,7 @@ const (
 	storeIncomingTxsUsage   = "Flag to enable storing incoming transactions in the database for debugging purposes. Default: true"
 )
 
-func parseCLIArgs() walletextension.Config {
+func parseCLIArgs() wecommon.Config {
 	walletExtensionHost := flag.String(walletExtensionHostName, walletExtensionHostDefault, walletExtensionHostUsage)
 	walletExtensionPort := flag.Int(walletExtensionPortName, walletExtensionPortDefault, walletExtensionPortUsage)
 	walletExtensionPortWS := flag.Int(walletExtensionPortWSName, walletExtensionPortWSDefault, walletExtensionPortWSUsage)
@@ -77,7 +77,7 @@ func parseCLIArgs() walletextension.Config {
 	storeIncomingTransactions := flag.Bool(storeIncomingTxs, storeIncomingTxsDefault, storeIncomingTxsUsage)
 	flag.Parse()
 
-	return walletextension.Config{
+	return wecommon.Config{
 		WalletExtensionHost:     *walletExtensionHost,
 		WalletExtensionPortHTTP: *walletExtensionPort,
 		WalletExtensionPortWS:   *walletExtensionPortWS,

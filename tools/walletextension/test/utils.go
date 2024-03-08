@@ -32,12 +32,12 @@ import (
 
 const jsonID = "1"
 
-func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *walletextension.Config { //nolint: unparam
+func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *common.Config { //nolint: unparam
 	testDBPath, err := os.CreateTemp("", "")
 	if err != nil {
 		panic("could not create persistence file for wallet extension tests")
 	}
-	return &walletextension.Config{
+	return &common.Config{
 		WalletExtensionHost:     "127.0.0.1",
 		NodeRPCWebsocketAddress: fmt.Sprintf("localhost:%d", connectPort),
 		DBPathOverride:          testDBPath.Name(),
@@ -47,7 +47,7 @@ func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *walletextension
 	}
 }
 
-func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() error {
+func createWalExt(t *testing.T, walExtCfg *common.Config) func() error {
 	// todo (@ziga) - log somewhere else?
 	logger := log.New(log.WalletExtCmp, int(gethlog.LvlInfo), log.SysOut)
 
