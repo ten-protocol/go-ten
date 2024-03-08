@@ -50,9 +50,9 @@ func (api *FilterAPI) Logs(ctx context.Context, crit filters.FilterCriteria) (*r
 		return nil, fmt.Errorf("invalid subscription")
 	}
 
-	uid, err := wecommon.GetUserIDbyte(not.UserId)
+	uid, err := wecommon.GetUserIDbyte(not.UserID)
 	if err != nil {
-		return nil, fmt.Errorf("invald token: %s, %w", not.UserId, err)
+		return nil, fmt.Errorf("invald token: %s, %w", not.UserID, err)
 	}
 
 	user, err := getUser(uid, api.we.Storage)

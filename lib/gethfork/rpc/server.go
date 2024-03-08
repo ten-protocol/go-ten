@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
+// nolint
 package rpc
 
 import (
@@ -105,7 +106,7 @@ func (s *Server) ServeCodec(codec ServerCodec, options CodecOption, userId strin
 		idgen:              s.idgen,
 		batchItemLimit:     s.batchItemLimit,
 		batchResponseLimit: s.batchResponseLimit,
-		UserId:             userId,
+		UserID:             userId,
 	}
 	c := initClient(codec, &s.services, cfg)
 	<-codec.closed()

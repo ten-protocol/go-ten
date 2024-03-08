@@ -3,13 +3,14 @@ package env
 import (
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/networktest"
-	gatewaycfg "github.com/ten-protocol/go-ten/tools/walletextension/config"
-	"github.com/ten-protocol/go-ten/tools/walletextension/container"
 )
 
 const (
@@ -68,7 +69,7 @@ type TestnetEnvOption func(env *testnetEnv)
 type testnetEnv struct {
 	testnetConnector    *testnetConnector
 	localTenGateway     bool
-	tenGatewayContainer *container.WalletExtensionContainer
+	tenGatewayContainer *walletextension.WalletExtensionContainer
 	logger              gethlog.Logger
 }
 
@@ -99,7 +100,7 @@ func (t *testnetEnv) startTenGateway() {
 	validatorHTTP := validator[len("http://"):]
 	// replace the last character with a 1 (expect it to be zero), this is good enough for these tests
 	validatorWS := validatorHTTP[:len(validatorHTTP)-1] + "1"
-	cfg := gatewaycfg.Config{
+	cfg := common.Config{
 		WalletExtensionHost:     "127.0.0.1",
 		WalletExtensionPortHTTP: _gwHTTPPort,
 		WalletExtensionPortWS:   _gwWSPort,
@@ -110,7 +111,7 @@ func (t *testnetEnv) startTenGateway() {
 		DBType:                  "sqlite",
 		TenChainID:              integration.TenChainID,
 	}
-	tenGWContainer := container.NewWalletExtensionContainerFromConfig(cfg, t.logger)
+	tenGWContainer := walletextension.NewWalletExtensionContainerFromConfig(cfg, t.logger)
 	go func() {
 		fmt.Println("Starting Ten Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
 		err := tenGWContainer.Start()

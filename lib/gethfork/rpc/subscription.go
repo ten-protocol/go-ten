@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
+// nolint
 package rpc
 
 import (
@@ -101,7 +102,7 @@ func NotifierFromContext(ctx context.Context) (*Notifier, bool) {
 // Server callbacks use the notifier to send notifications.
 type Notifier struct {
 	h         *handler
-	UserId    string
+	UserID    string
 	namespace string
 
 	mu           sync.Mutex

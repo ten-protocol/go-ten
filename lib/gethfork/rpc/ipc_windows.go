@@ -17,6 +17,7 @@
 //go:build windows
 // +build windows
 
+// nolint
 package rpc
 
 import (

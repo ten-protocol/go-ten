@@ -60,7 +60,10 @@ You must always call Close on Node, even if the node was not started.
 All file-system resources used by a node instance are located in a directory called the
 data directory. The location of each resource can be overridden through additional node
 configuration. The data directory is optional. If it is not set and the location of a
-resource is otherwise unspecified, package node will create the resource in memory.
+resource is otherwise unspecified, //nolint
+package node
+
+	will create the resource in memory.
 
 To access to the devp2p network, Node configures and starts p2p.Server. Each host on the
 devp2p network has a unique identifier, the node key. The Node instance persists this key

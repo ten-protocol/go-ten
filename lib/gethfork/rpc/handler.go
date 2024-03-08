@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
+// nolint
 package rpc
 
 import (
@@ -65,7 +66,7 @@ type handler struct {
 
 	subLock    sync.Mutex
 	serverSubs map[ID]*Subscription
-	UserId     string
+	UserID     string
 }
 
 type callProc struct {
@@ -88,7 +89,7 @@ func newHandler(connCtx context.Context, conn jsonWriter, idgen func() ID, reg *
 		log:                  log.Root(),
 		batchRequestLimit:    batchRequestLimit,
 		batchResponseMaxSize: batchResponseMaxSize,
-		UserId:               userId,
+		UserID:               userId,
 	}
 	if conn.remoteAddr() != "" {
 		h.log = h.log.New("conn", conn.remoteAddr())
@@ -555,7 +556,7 @@ func (h *handler) handleSubscribe(cp *callProc, msg *jsonrpcMessage) *jsonrpcMes
 	args = args[1:]
 
 	// Install notifier in context so the subscription handler can find it.
-	n := &Notifier{h: h, namespace: namespace, UserId: h.UserId}
+	n := &Notifier{h: h, namespace: namespace, UserID: h.UserID}
 	cp.notifiers = append(cp.notifiers, n)
 	ctx := context.WithValue(cp.ctx, notifierKey{}, n)
 

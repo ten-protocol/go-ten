@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
+// nolint
 package rpc
 
 import (
@@ -76,7 +77,7 @@ type BatchElem struct {
 
 // Client represents a connection to an RPC server.
 type Client struct {
-	UserId   string
+	UserID   string
 	idgen    func() ID // for subscriptions
 	isHTTP   bool      // connection type: http, ws or ipc
 	services *serviceRegistry
@@ -120,7 +121,7 @@ func (c *Client) newClientConn(conn ServerCodec) *clientConn {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, clientContextKey{}, c)
 	ctx = context.WithValue(ctx, peerInfoContextKey{}, conn.peerInfo())
-	handler := newHandler(ctx, conn, c.idgen, c.services, c.batchItemLimit, c.batchResponseMaxSize, c.UserId)
+	handler := newHandler(ctx, conn, c.idgen, c.services, c.batchItemLimit, c.batchResponseMaxSize, c.UserID)
 	return &clientConn{conn, handler}
 }
 
@@ -243,7 +244,7 @@ func newClient(initctx context.Context, cfg *clientConfig, connect reconnectFunc
 func initClient(conn ServerCodec, services *serviceRegistry, cfg *clientConfig) *Client {
 	_, isHTTP := conn.(*httpConn)
 	c := &Client{
-		UserId:               cfg.UserId,
+		UserID:               cfg.UserID,
 		isHTTP:               isHTTP,
 		services:             services,
 		idgen:                cfg.idgen,
