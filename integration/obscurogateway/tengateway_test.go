@@ -129,11 +129,11 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	testlog.Logger().Info("Created user with encryption token", "t", user2.tgClient.UserID())
 
 	// register all the accounts for that user
-	err = user0.RegisterAccounts()
+	err = user0.RegisterAccountsPersonalSign()
 	require.NoError(t, err)
-	err = user1.RegisterAccounts()
+	err = user1.RegisterAccountsPersonalSign()
 	require.NoError(t, err)
-	err = user2.RegisterAccounts()
+	err = user2.RegisterAccountsPersonalSign()
 	require.NoError(t, err)
 
 	var amountToTransfer int64 = 1_000_000_000_000_000_000

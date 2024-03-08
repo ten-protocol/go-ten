@@ -186,7 +186,7 @@ func (m *AccountManager) filterAccounts(rpcReq *wecommon.RPCRequest, accounts []
 func (m *AccountManager) createClientsForAccounts(accounts []wecommon.AccountDB, userPrivateKey []byte) ([]rpc.Client, error) {
 	clients := make([]rpc.Client, 0, len(accounts))
 	for _, account := range accounts {
-		encClient, err := wecommon.CreateEncClient(m.hostRPCBindAddrWS, account.AccountAddress, userPrivateKey, account.Signature, m.logger)
+		encClient, err := wecommon.CreateEncClient(m.hostRPCBindAddrWS, account.AccountAddress, userPrivateKey, account.Signature, account.SignatureType, m.logger)
 		if err != nil {
 			m.logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
 			continue

@@ -61,7 +61,7 @@ func testAddAndGetAccounts(storage Storage, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = storage.AddAccount(userID, accountAddress1, signature1, viewingkey.EIP712SignatureType)
+	err = storage.AddAccount(userID, accountAddress1, signature1, viewingkey.EIP712SignatureTypeInt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func testAddAndGetAccounts(storage Storage, t *testing.T) {
 	accountAddress2 := []byte("accountAddress2")
 	signature2 := []byte("signature2")
 
-	err = storage.AddAccount(userID, accountAddress2, signature2, viewingkey.EIP712SignatureType)
+	err = storage.AddAccount(userID, accountAddress2, signature2, viewingkey.EIP712SignatureTypeInt)
 	if err != nil {
 		t.Fatal(err)
 	}

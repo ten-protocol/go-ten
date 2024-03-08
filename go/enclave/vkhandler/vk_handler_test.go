@@ -55,6 +55,7 @@ func TestVKHandler(t *testing.T) {
 				Account:                 &userAccAddress,
 				PublicKey:               vkPubKeyBytes,
 				SignatureWithAccountKey: signature,
+				SignatureType:           viewingkey.EIP712Signature, // todo - fix this test
 			}, chainID)
 			assert.NoError(t, err)
 		})

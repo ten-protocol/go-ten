@@ -85,7 +85,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 				os.Exit(1)
 			}
 			for _, account := range accounts {
-				encClient, err := wecommon.CreateEncClient(hostRPCBindAddrWS, account.AccountAddress, user.PrivateKey, account.Signature, logger)
+				encClient, err := wecommon.CreateEncClient(hostRPCBindAddrWS, account.AccountAddress, user.PrivateKey, account.Signature, account.SignatureType, logger)
 				if err != nil {
 					logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
 					os.Exit(1)

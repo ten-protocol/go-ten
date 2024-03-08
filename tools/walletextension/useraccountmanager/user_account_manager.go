@@ -96,7 +96,7 @@ func (m *UserAccountManager) GetUserAccountManager(userID string) (*accountmanag
 		}
 
 		// create a new client
-		encClient, err := wecommon.CreateEncClient(m.hostRPCBinAddrWS, account.AccountAddress, userPrivateKey, account.Signature, m.logger)
+		encClient, err := wecommon.CreateEncClient(m.hostRPCBinAddrWS, account.AccountAddress, userPrivateKey, account.Signature, account.SignatureType, m.logger)
 		if err != nil {
 			m.logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
 		}

@@ -324,9 +324,9 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, conn
 	}
 
 	// check if message type is valid
-	messageType, ok := common.TypeMap[messageTypeValue]
+	messageType, ok := common.SignatureTypeMap[messageTypeValue]
 	if !ok {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid message type + %s", messageTypeValue))
+		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid message type: %s", messageTypeValue))
 	}
 
 	// read userID from query params

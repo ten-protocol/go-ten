@@ -54,7 +54,7 @@ func checkViewingKeyAndRecoverAddress(vk *AuthenticatedViewingKey, chainID int64
 	vk.UserID = userID
 
 	// check signature and recover the address assuming the message was signed with EIP712
-	recoveredSignerAddress, err := viewingkey.CheckSignature(userID, vk.rpcVK.SignatureWithAccountKey, chainID, vk.AccountAddress.Hex())
+	recoveredSignerAddress, err := viewingkey.CheckSignatureWithType(userID, vk.rpcVK.SignatureWithAccountKey, chainID, vk.AccountAddress.Hex(), vk.rpcVK.SignatureType)
 	if err != nil {
 		// Signature failed
 		// Either it is invalid or it might have been using the legacy format

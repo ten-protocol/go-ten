@@ -34,15 +34,21 @@ const (
 	EIP712EncryptionToken = "Encryption Token"
 	// EIP712EncryptionTokenV2 is used to support older versions of third party libraries
 	// that don't have the support for spaces in type names
-	EIP712EncryptionTokenV2   = "EncryptionToken"
-	EIP712DomainNameValue     = "Ten"
-	EIP712DomainVersionValue  = "1.0"
-	UserIDHexLength           = 40
-	PersonalSignMessagePrefix = "\x19Ethereum Signed Message:\n%d%s"
-	PersonalSignMessageFormat = "Token: %s on: %d version: v%d"
-	EIP712SignatureType       = 0
-	PersonalSignSignatureType = 1
-	LegacySignatureType       = 2
+	EIP712EncryptionTokenV2      = "EncryptionToken"
+	EIP712DomainNameValue        = "Ten"
+	EIP712DomainVersionValue     = "1.0"
+	UserIDHexLength              = 40
+	PersonalSignMessagePrefix    = "\x19Ethereum Signed Message:\n%d%s"
+	PersonalSignMessageFormat    = "Token: %s on chain: %d version:%d"
+	EIP712SignatureTypeInt       = 0
+	PersonalSignSignatureTypeInt = 1
+	LegacySignatureTypeInt       = 2
+)
+
+const (
+	EIP712Signature SignatureType = "EIP712"
+	PersonalSign    SignatureType = "PersonalSign"
+	Legacy          SignatureType = "Legacy"
 )
 
 // EIP712EncryptionTokens is a list of all possible options for Encryption token name
@@ -54,6 +60,23 @@ var EIP712EncryptionTokens = [...]string{
 // PersonalSignMessageSupportedVersions is a list of supported versions for the personal sign message
 var PersonalSignMessageSupportedVersions = []int{1}
 
+// SignatureType is used to differentiate between different signature types (string is used, because int is not RLP-serializable)
+type SignatureType string
+
+// IntToSignatureType converts an int to a SignatureType
+func IntToSignatureType(signatureType int) SignatureType {
+	switch signatureType {
+	case EIP712SignatureTypeInt:
+		return EIP712Signature
+	case PersonalSignSignatureTypeInt:
+		return PersonalSign
+	case LegacySignatureTypeInt:
+		return Legacy
+	default:
+		return ""
+	}
+}
+
 // ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave.
 // It is th client-side perspective of the viewing key used for decrypting incoming traffic.
 type ViewingKey struct {
@@ -61,6 +84,7 @@ type ViewingKey struct {
 	PrivateKey              *ecies.PrivateKey   // ViewingKey private key to encrypt data to the enclave
 	PublicKey               []byte              // ViewingKey public key in decrypt data from the enclave
 	SignatureWithAccountKey []byte              // ViewingKey public key signed by the Accounts Private key - Allows to retrieve the Account address
+	SignatureType           SignatureType       // Type of signature used to sign the public key
 }
 
 // RPCSignedViewingKey - used for transporting a minimalist viewing key via
@@ -72,10 +96,12 @@ type RPCSignedViewingKey struct {
 	Account                 *gethcommon.Address
 	PublicKey               []byte
 	SignatureWithAccountKey []byte
+	SignatureType           SignatureType
 }
 
 // GenerateViewingKeyForWallet takes an account wallet, generates a viewing key and signs the key with the acc's private key
 // uses the same method of signature handling as Metamask/geth
+// TODO @Ziga - update this method to use the new EIP-712 signature format / personal sign after the removal of the legacy format
 func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
 	// generate an ECDSA key pair to encrypt sensitive communications with the obscuro enclave
 	vk, err := crypto.GenerateKey()
@@ -101,6 +127,7 @@ func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
 		PrivateKey:              viewingPrivateKeyECIES,
 		PublicKey:               viewingPubKeyBytes,
 		SignatureWithAccountKey: signature,
+		SignatureType:           Legacy,
 	}, nil
 }
 
@@ -257,8 +284,8 @@ func CheckSignatureAndReturnAccountAddress(hashBytes []byte, signature []byte) (
 	return nil, fmt.Errorf("invalid signature")
 }
 
-// CheckEIP712Signature checks if signature is valid for provided userID and chainID and return address or nil if not valid
-func CheckEIP712Signature(userID string, signature []byte, chainID int64) (*gethcommon.Address, error) {
+// checkEIP712Signature checks if signature is valid for provided userID and chainID and return address or nil if not valid
+func checkEIP712Signature(userID string, signature []byte, chainID int64) (*gethcommon.Address, error) {
 	if len(signature) != 65 {
 		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
 	}
@@ -287,8 +314,8 @@ func CheckEIP712Signature(userID string, signature []byte, chainID int64) (*geth
 	return nil, errors.New("EIP 712 signature verification failed")
 }
 
-// CheckPersonalSignSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
-func CheckPersonalSignSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error) {
+// checkPersonalSignSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
+func checkPersonalSignSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error) {
 	if len(signature) != 65 {
 		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
 	}
@@ -314,34 +341,19 @@ func CheckPersonalSignSignature(encryptionToken string, signature []byte, chainI
 	return nil, fmt.Errorf("signature verification failed")
 }
 
-// CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
-// TODO @Ziga - DELETE THIS FUNCTION LATER...
-func CheckSignature(encryptionToken string, signature []byte, chainID int64, expectedAddress string) (*gethcommon.Address, error) {
-	addr, err := CheckPersonalSignSignature(encryptionToken, signature, chainID)
-	if err == nil && addr.Hex() == expectedAddress {
-		return addr, nil
-	}
-
-	addr, err = CheckEIP712Signature(encryptionToken, signature, chainID)
-	if err == nil && addr.Hex() == expectedAddress {
-		return addr, nil
-	}
-	return nil, fmt.Errorf("signature verification failed")
-}
-
 // CheckSignatureWithType TODO @Ziga - Refactor and simplify this function
-func CheckSignatureWithType(encryptionToken string, signature []byte, chainID int64, expectedAddress string, messageType int) (*gethcommon.Address, error) {
-	if messageType == PersonalSignSignatureType {
-		addr, err := CheckPersonalSignSignature(encryptionToken, signature, chainID)
+func CheckSignatureWithType(encryptionToken string, signature []byte, chainID int64, expectedAddress string, signatureType SignatureType) (*gethcommon.Address, error) {
+	if signatureType == PersonalSign {
+		addr, err := checkPersonalSignSignature(encryptionToken, signature, chainID)
 		if err == nil && addr.Hex() == expectedAddress {
 			return addr, nil
 		}
-	} else if messageType == EIP712SignatureType {
-		addr, err := CheckEIP712Signature(encryptionToken, signature, chainID)
+	} else if signatureType == EIP712Signature {
+		addr, err := checkEIP712Signature(encryptionToken, signature, chainID)
 		if err == nil && addr.Hex() == expectedAddress {
 			return addr, nil
 		}
+	} else if signatureType == Legacy {
 	}
-	// TODO: add also legacy signature type
 	return nil, fmt.Errorf("signature verification failed")
 }
