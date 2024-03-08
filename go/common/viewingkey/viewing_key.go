@@ -26,15 +26,12 @@ import (
 const SignedMsgPrefix = "vk"
 
 const (
-	EIP712Domain          = "EIP712Domain"
-	EIP712Type            = "Authentication"
-	EIP712DomainName      = "name"
-	EIP712DomainVersion   = "version"
-	EIP712DomainChainID   = "chainId"
-	EIP712EncryptionToken = "Encryption Token"
-	// EIP712EncryptionTokenV2 is used to support older versions of third party libraries
-	// that don't have the support for spaces in type names
-	EIP712EncryptionTokenV2      = "EncryptionToken"
+	EIP712Domain                 = "EIP712Domain"
+	EIP712Type                   = "Authentication"
+	EIP712DomainName             = "name"
+	EIP712DomainVersion          = "version"
+	EIP712DomainChainID          = "chainId"
+	EIP712EncryptionToken        = "Encryption Token"
 	EIP712DomainNameValue        = "Ten"
 	EIP712DomainVersionValue     = "1.0"
 	UserIDHexLength              = 40
@@ -54,7 +51,6 @@ const (
 // EIP712EncryptionTokens is a list of all possible options for Encryption token name
 var EIP712EncryptionTokens = [...]string{
 	EIP712EncryptionToken,
-	EIP712EncryptionTokenV2,
 }
 
 // PersonalSignMessageSupportedVersions is a list of supported versions for the personal sign message
@@ -196,6 +192,7 @@ func getBytesFromTypedData(typedData apitypes.TypedData) ([]byte, error) {
 
 // GenerateAuthenticationEIP712RawDataOptions generates all the options or raw data messages (bytes)
 // for an EIP-712 message used to authenticate an address with user
+// (currently only one option is supported, but function leaves room for future expansion of options)
 func GenerateAuthenticationEIP712RawDataOptions(userID string, chainID int64) ([][]byte, error) {
 	if len(userID) != UserIDHexLength {
 		return nil, fmt.Errorf("userID hex length must be %d, received %d", UserIDHexLength, len(userID))
@@ -208,40 +205,35 @@ func GenerateAuthenticationEIP712RawDataOptions(userID string, chainID int64) ([
 		ChainId: (*math.HexOrDecimal256)(big.NewInt(chainID)),
 	}
 
-	typedDataList := make([]apitypes.TypedData, 0, len(EIP712EncryptionTokens))
-	for _, encTokenName := range EIP712EncryptionTokens {
-		message := map[string]interface{}{
-			encTokenName: encryptionToken,
-		}
-
-		types := apitypes.Types{
-			EIP712Domain: {
-				{Name: EIP712DomainName, Type: "string"},
-				{Name: EIP712DomainVersion, Type: "string"},
-				{Name: EIP712DomainChainID, Type: "uint256"},
-			},
-			EIP712Type: {
-				{Name: encTokenName, Type: "address"},
-			},
-		}
-
-		newTypeElement := apitypes.TypedData{
-			Types:       types,
-			PrimaryType: EIP712Type,
-			Domain:      domain,
-			Message:     message,
-		}
-		typedDataList = append(typedDataList, newTypeElement)
+	message := map[string]interface{}{
+		EIP712EncryptionToken: encryptionToken,
 	}
 
-	rawDataOptions := make([][]byte, 0, len(typedDataList))
-	for _, typedDataItem := range typedDataList {
-		rawData, err := getBytesFromTypedData(typedDataItem)
-		if err != nil {
-			return nil, err
-		}
-		rawDataOptions = append(rawDataOptions, rawData)
+	types := apitypes.Types{
+		EIP712Domain: {
+			{Name: EIP712DomainName, Type: "string"},
+			{Name: EIP712DomainVersion, Type: "string"},
+			{Name: EIP712DomainChainID, Type: "uint256"},
+		},
+		EIP712Type: {
+			{Name: EIP712EncryptionToken, Type: "address"},
+		},
 	}
+
+	newTypeElement := apitypes.TypedData{
+		Types:       types,
+		PrimaryType: EIP712Type,
+		Domain:      domain,
+		Message:     message,
+	}
+
+	rawDataOptions := make([][]byte, 0)
+	rawData, err := getBytesFromTypedData(newTypeElement)
+	if err != nil {
+		return nil, err
+	}
+	rawDataOptions = append(rawDataOptions, rawData)
+
 	return rawDataOptions, nil
 }
 
@@ -339,18 +331,12 @@ func checkPersonalSignSignature(encryptionToken string, signature []byte, chainI
 	return nil, fmt.Errorf("signature verification failed")
 }
 
-// CheckSignatureWithType TODO @Ziga - Refactor and simplify this function
-func CheckSignatureWithType(encryptionToken string, signature []byte, chainID int64, signatureType SignatureType) (*gethcommon.Address, error) {
+// CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
+func CheckSignature(encryptionToken string, signature []byte, chainID int64, signatureType SignatureType) (*gethcommon.Address, error) {
 	if signatureType == PersonalSign {
-		addr, err := checkPersonalSignSignature(encryptionToken, signature, chainID)
-		if err == nil {
-			return addr, nil
-		}
+		return checkPersonalSignSignature(encryptionToken, signature, chainID)
 	} else if signatureType == EIP712Signature {
-		addr, err := checkEIP712Signature(encryptionToken, signature, chainID)
-		if err == nil {
-			return addr, nil
-		}
+		return checkEIP712Signature(encryptionToken, signature, chainID)
 	} else if signatureType == Legacy {
 		// todo - this part is only for the legacy format and will be removed once the legacy format is no longer supported
 		publicKey := []byte(encryptionToken)
