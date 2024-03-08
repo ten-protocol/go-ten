@@ -56,7 +56,6 @@ type Node struct {
 	wsAuth        *httpServer //
 	ipc           *ipcServer  // Stores information about the ipc http server
 	inprocHandler *rpc.Server // In-process RPC request handler to process the API requests
-
 }
 
 const (
@@ -201,7 +200,6 @@ func (n *Node) Close() error {
 
 // doClose releases resources acquired by New(), collecting errors.
 func (n *Node) doClose(errs []error) error {
-
 	// Release instance directory lock.
 	n.closeDataDir()
 
