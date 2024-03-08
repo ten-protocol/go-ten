@@ -91,9 +91,7 @@ type ViewingKey struct {
 // every RPC request to a sensitive method, including Log subscriptions.
 // only the public key and the signature are required
 // the account address is sent as well to aid validation
-// todo - send the type of Message that was signed instead of the Account
 type RPCSignedViewingKey struct {
-	Account                 *gethcommon.Address
 	PublicKey               []byte
 	SignatureWithAccountKey []byte
 	SignatureType           SignatureType
@@ -342,15 +340,15 @@ func checkPersonalSignSignature(encryptionToken string, signature []byte, chainI
 }
 
 // CheckSignatureWithType TODO @Ziga - Refactor and simplify this function
-func CheckSignatureWithType(encryptionToken string, signature []byte, chainID int64, expectedAddress string, signatureType SignatureType) (*gethcommon.Address, error) {
+func CheckSignatureWithType(encryptionToken string, signature []byte, chainID int64, signatureType SignatureType) (*gethcommon.Address, error) {
 	if signatureType == PersonalSign {
 		addr, err := checkPersonalSignSignature(encryptionToken, signature, chainID)
-		if err == nil && addr.Hex() == expectedAddress {
+		if err == nil {
 			return addr, nil
 		}
 	} else if signatureType == EIP712Signature {
 		addr, err := checkEIP712Signature(encryptionToken, signature, chainID)
-		if err == nil && addr.Hex() == expectedAddress {
+		if err == nil {
 			return addr, nil
 		}
 	} else if signatureType == Legacy {
