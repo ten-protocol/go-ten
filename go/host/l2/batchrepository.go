@@ -128,7 +128,6 @@ func (r *Repository) HandleBatchRequest(requesterID string, fromSeqNo *big.Int) 
 	batches := make([]*common.ExtBatch, 0)
 	nextSeqNum := fromSeqNo
 	for len(batches) <= _maxBatchesInP2PResponse {
-		println("[BATCHREPO] HandleBatchRequest: ", nextSeqNum.Uint64())
 		batch, err := hostdb.GetFullBatchBySequenceNumber(r.db, nextSeqNum.Uint64())
 		if err != nil {
 			if !errors.Is(err, errutil.ErrNotFound) {
@@ -155,9 +154,9 @@ func (r *Repository) Subscribe(subscriber host.L2BatchHandler) {
 }
 
 func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error) {
-	println("[BATCHREPO] FetchBatchBySeqNo: ", seqNo.Uint64())
 	b, err := hostdb.GetFullBatchBySequenceNumber(r.db, seqNo.Uint64())
 	if err != nil {
+		println("FetchBatchBySeqNo ERR ", err.Error())
 		if errors.Is(err, errutil.ErrNotFound) && seqNo.Cmp(r.latestBatchSeqNo) < 0 {
 			if r.isSequencer {
 				// sequencer does not request batches from peers, it checks if its enclave has the batch
@@ -170,7 +169,6 @@ func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
 		}
 		return nil, err
 	}
-	println("got batch from db: ", b)
 	return b, nil
 }
 

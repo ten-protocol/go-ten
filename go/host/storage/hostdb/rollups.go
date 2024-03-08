@@ -72,7 +72,7 @@ func GetRollupListing(db *sql.DB, pagination *common.QueryPagination) (*common.R
 
 		extRollupDecoded := new(common.ExtRollup)
 		if err := rlp.DecodeBytes(extRollup, extRollupDecoded); err != nil {
-			return nil, fmt.Errorf("could not decode batch header. Cause: %w", err)
+			return nil, fmt.Errorf("could not decode rollup header. Cause: %w", err)
 		}
 
 		rollup = common.PublicRollup{

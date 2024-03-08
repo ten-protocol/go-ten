@@ -138,7 +138,7 @@ func TestTenscan(t *testing.T) {
 	assert.LessOrEqual(t, 9, len(batchlistingObj.Result.BatchesData))
 	assert.LessOrEqual(t, uint64(9), batchlistingObj.Result.Total)
 	// check results are descending order (latest first)
-	assert.LessOrEqual(t, batchlistingObj.Result.BatchesData[1].Number.Cmp(batchlistingObj.Result.BatchesData[0].Number), 0)
+	assert.LessOrEqual(t, batchlistingObj.Result.BatchesData[1].Height.Cmp(batchlistingObj.Result.BatchesData[0].Height), 0)
 	// check "hash" field is included in json response
 	assert.Contains(t, string(body), "\"hash\"")
 
@@ -156,7 +156,7 @@ func TestTenscan(t *testing.T) {
 	// assert.LessOrEqual(t, 9, len(blocklistingObj.Result.BlocksData))
 	// assert.LessOrEqual(t, uint64(9), blocklistingObj.Result.Total)
 
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/%s", serverAddress, batchlistingObj.Result.BatchesData[0].Hash()))
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/%s", serverAddress, batchlistingObj.Result.BatchesData[0].Hash))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
@@ -167,7 +167,7 @@ func TestTenscan(t *testing.T) {
 	batchObj := batchFetch{}
 	err = json.Unmarshal(body, &batchObj)
 	assert.NoError(t, err)
-	assert.Equal(t, batchlistingObj.Result.BatchesData[0].Hash(), batchObj.Item.Hash())
+	assert.Equal(t, batchlistingObj.Result.BatchesData[0].Hash, batchObj.Item.Hash())
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/obscuro/", serverAddress))
 	assert.NoError(t, err)

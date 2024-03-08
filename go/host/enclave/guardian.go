@@ -687,6 +687,7 @@ func (g *Guardian) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error)
 	for {
 		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(big.NewInt(int64(currentNo)))
 		if err != nil {
+			println("Could not estimate non rolled up batch currentNo: ", currentNo)
 			if errors.Is(err, errutil.ErrNotFound) {
 				break // no more batches
 			}
@@ -696,6 +697,8 @@ func (g *Guardian) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error)
 		bSize := len(batch.EncryptedTxBlob)
 		size += uint64(bSize)
 		currentNo++
+		println("Got rollup batch size: ", size)
+		println("Got rollup batch currentNo: ", currentNo)
 	}
 
 	return size, nil

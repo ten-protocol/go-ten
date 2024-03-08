@@ -232,7 +232,7 @@ func (s *Simulation) deployObscuroERC20s() {
 			// 0x526c84529b2b8c11f57d93d3f5537aca3aecef9b - this is the address of the L2 contract which is currently hardcoded.
 			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), gethcommon.HexToAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b"))
 
-			fmt.Printf("Deploy contract from: %s\n", owner.Address().Hex())
+			fmt.Printf("Attempting to deploy contract from: %s\n", owner.Address().Hex())
 			deployContractTxData := types.DynamicFeeTx{
 				Nonce:     NextNonce(s.ctx, s.RPCHandles, owner),
 				Gas:       5_000_000,
@@ -252,6 +252,7 @@ func (s *Simulation) deployObscuroERC20s() {
 			if err != nil {
 				panic(err)
 			}
+			fmt.Printf("Deployed contract succesful from: %s\n", owner.Address().Hex())
 
 			err = testcommon.AwaitReceipt(s.ctx, rpc, signedTx.Hash(), s.Params.ReceiptTimeout)
 			if err != nil {
