@@ -3,6 +3,7 @@ package l2
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"math/big"
 	"sync"
@@ -127,6 +128,7 @@ func (r *Repository) HandleBatchRequest(requesterID string, fromSeqNo *big.Int) 
 	batches := make([]*common.ExtBatch, 0)
 	nextSeqNum := fromSeqNo
 	for len(batches) <= _maxBatchesInP2PResponse {
+		println("[BATCHREPO] HandleBatchRequest: ", nextSeqNum.Uint64())
 		batch, err := hostdb.GetFullBatchBySequenceNumber(r.db, nextSeqNum.Uint64())
 		if err != nil {
 			if !errors.Is(err, errutil.ErrNotFound) {
@@ -153,6 +155,7 @@ func (r *Repository) Subscribe(subscriber host.L2BatchHandler) {
 }
 
 func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error) {
+	println("[BATCHREPO] FetchBatchBySeqNo: ", seqNo.Uint64())
 	b, err := hostdb.GetFullBatchBySequenceNumber(r.db, seqNo.Uint64())
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) && seqNo.Cmp(r.latestBatchSeqNo) < 0 {
@@ -167,6 +170,7 @@ func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
 		}
 		return nil, err
 	}
+	println("got batch from db: ", b)
 	return b, nil
 }
 
@@ -178,7 +182,7 @@ func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	r.logger.Debug("Saving batch", log.BatchSeqNoKey, batch.Header.SequencerOrderNo, log.BatchHashKey, batch.Hash())
 	err := hostdb.AddBatch(r.db, batch)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not add batch: %w", err)
 	}
 	// atomically compare and swap latest batch sequence number if successfully added batch is newer
 	r.latestSeqNoMutex.Lock()

@@ -121,8 +121,9 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 			panic(fmt.Sprintf("could not transfer from faucet for tx %s. Cause: %s", string(txJSON[:]), err))
 		}
 		println("funds deployed for ", destAddr.String())
-		println("funds deployed with ", alloc)
+		println("funds deployed with ", alloc.String())
 		txHashes[idx] = signedTx.Hash()
+		time.Sleep(5 * time.Second)
 	}
 
 	// Then we await the receipts in parallel.

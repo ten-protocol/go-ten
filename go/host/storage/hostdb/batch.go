@@ -14,13 +14,14 @@ import (
 
 const (
 	selectTxCount           = "SELECT total FROM transaction_count WHERE id = 1"
-	selectBatch             = "SELECT b.sequence_order, b.full_hash, b.hash, b.height, b.tx_count, b.header, b.body_id, bb.body FROM batch_host b JOIN batch_body_host bb ON b.body_id = bb.id"
+	selectBatch             = "SELECT b.sequence, b.full_hash, b.hash, b.height, b.tx_count, b.header, b.body_id, bb.content FROM batch_host b JOIN batch_body_host bb ON b.body_id = bb.id"
+	selectBatch1            = "SELECT b.header, b.body_id FROM batch_host b"
 	selectBatchBody         = "SELECT content FROM batch_body_host WHERE id = ?"
 	selectDescendingBatches = `
-		SELECT b.sequence_order, b.full_hash, b.hash, b.height, b.tx_count, b.header, b.body_id
+		SELECT b.sequence, b.full_hash, b.hash, b.height, b.tx_count, b.header, b.body_id
 		FROM batch_host b
 		JOIN batch_body_host bb ON b.body_id = bb.id
-		ORDER BY b.sequence_order DESC
+		ORDER BY b.sequence DESC
 		LIMIT 1
 	`
 	selectHeader                      = "SELECt b.header FROM batch_host b"
@@ -30,7 +31,7 @@ const (
 	selectTxByHash                    = "SELECT t.body_id FROM transaction_host t WHERE t.full_hash = ?"
 
 	insertBatchBody    = "INSERT INTO batch_body_host (id, content) VALUES (?, ?)"
-	insertBatch        = "INSERT INTO batch_host (sequence_order, full_hash, hash, height, tx_count, header, body_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
+	insertBatch        = "INSERT INTO batch_host (sequence, full_hash, hash, height, tx_count, header, body_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
 	insertTransactions = "INSERT INTO transactions_host (hash, full_hash, body_id) VALUES (?, ?, ?)"
 	insertTxCount      = "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET total = excluded.total;"
 )
@@ -64,7 +65,7 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 
 	_, err = tx.Exec(insertBatchBody, batchBodyID, body)
 	if err != nil {
-		return fmt.Errorf("failed to insert body: %w", err)
+		println("failed to insert body", err)
 	}
 	if len(batch.TxHashes) > 0 {
 		for _, transaction := range batch.TxHashes {
@@ -95,7 +96,9 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 		header,                       // header blob
 		batchBodyID,                  // reference to the batch body
 	)
-
+	if err != nil {
+		println("failed to insert batch with seq", batch.SeqNo().Uint64(), err)
+	}
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("could not store batch in db: %w", err)
 	}
@@ -143,7 +146,7 @@ func GetBatchBodyBySequenceNumber(db *sql.DB, seqNo uint64) (common.EncryptedTra
 }
 
 func GetFullBatchBySequenceNumber(db *sql.DB, seqNo uint64) (*common.ExtBatch, error) {
-	return fetchFullBatch(db, " WHERE sequence=?", seqNo)
+	return testFetchFullBatch(db, " where sequence=?", seqNo)
 }
 
 // GetCurrentHeadBatch retrieves the current head batch with the largest sequence number (or height)
@@ -158,7 +161,7 @@ func GetBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, erro
 
 // GetBatchHashByNumber returns the hash of a batch given its number.
 func GetBatchHashByNumber(db *sql.DB, number *big.Int) (*gethcommon.Hash, error) {
-	batch, err := fetchBatchHeader(db, " where sequence_order=?", number.Uint64())
+	batch, err := fetchBatchHeader(db, " where sequence=?", number.Uint64())
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +289,7 @@ func fetchBatchNumber(db *sql.DB, args ...any) (*big.Int, error) {
 }
 
 func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.PublicBatch, error) {
-	var sequenceInt64 int
+	var sequenceInt64 uint64
 	var fullHash common.TxHash
 	var hash []byte
 	var heightInt64 int
@@ -340,16 +343,15 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 }
 
 func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatch, error) {
-	var sequenceInt64 int
+	var sequenceInt64 sql.NullInt64
 	var fullHash common.TxHash
 	var shorthash []byte
 	var heightInt64 int
 	var txCountInt64 int
 	var headerBlob []byte
 	var bodyID uint64
-
-	query := selectBatch + " " + whereQuery
-
+	query := selectBatch + whereQuery
+	println("fetching batch with seq ", args[0])
 	var err error
 	if len(args) > 0 {
 		err = db.QueryRow(query, args...).Scan(&sequenceInt64, &fullHash, &shorthash, &heightInt64, &txCountInt64, &headerBlob, &bodyID)
@@ -381,6 +383,50 @@ func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatc
 
 	batch := &common.ExtBatch{
 		Header:          &header,
+		TxHashes:        txHashes,
+		EncryptedTxBlob: encryptedTxBlob,
+	}
+
+	return batch, nil
+}
+func testFetchFullBatch(db *sql.DB, whereQuery string, seqNo uint64) (*common.ExtBatch, error) {
+	//var sequenceInt64 sql.NullInt64
+	//var fullHash common.TxHash
+	//var shorthash []byte
+	//var heightInt64 int
+	//var txCountInt64 int
+	var header string
+	var bodyID uint64
+	row := db.QueryRow("select b.header, b.body_id FROM batch_host b where sequence=?", seqNo)
+	err := row.Scan(&header, &bodyID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			println("[ERROR] fetching with seq: ", seqNo)
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	println("[SUCCESS] fetching with seq: ", seqNo)
+	println("[SUCCESS] fetching bodyID: ", bodyID)
+
+	var h common.BatchHeader
+	err = rlp.DecodeBytes([]byte(header), &header)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode batch header: %w", err)
+	}
+
+	// Fetch batch_body from the database
+	encryptedTxBlob, err := fetchBatchBody(db, bodyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch batch body from seq no: %w", err)
+	}
+	txHashes, err := fetchTxBySeq(db, h.SequencerOrderNo.Uint64())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tx hashes for batch ")
+	}
+
+	batch := &common.ExtBatch{
+		Header:          &h,
 		TxHashes:        txHashes,
 		EncryptedTxBlob: encryptedTxBlob,
 	}

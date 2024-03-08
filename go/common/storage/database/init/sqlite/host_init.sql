@@ -31,7 +31,7 @@ create table if not exists batch_body_host
 
 create table if not exists batch_host
 (
-    sequence_order int primary key,
+    sequence       int primary key,
     full_hash      binary(32) NOT NULL,
     hash           binary(16) NOT NULL unique,
     height         int        NOT NULL,
