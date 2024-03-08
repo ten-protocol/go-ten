@@ -2,6 +2,7 @@ package rpcapi
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -105,10 +106,21 @@ func (s *TransactionAPI) FillTransaction(ctx context.Context, args gethapi.Trans
 
 func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.Bytes) (common.Hash, error) {
 	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{tryAll: true}, "eth_sendRawTransaction", input)
-	if txRec != nil {
-		return *txRec, err
+	if err != nil {
+		return common.Hash{}, err
 	}
-	return common.Hash{}, err
+	if s.we.Config.StoreIncomingTxs {
+		userIDBytes, err := extractUserId(ctx)
+		if err != nil {
+			return common.Hash{}, err
+		}
+		err = s.we.Storage.StoreTransaction(input.String(), userIDBytes)
+		if err != nil {
+			s.we.Logger().Error(fmt.Errorf("error storing transaction in the database: %w", err).Error())
+		}
+	}
+
+	return *txRec, err
 }
 
 func (s *TransactionAPI) PendingTransactions() ([]*rpc2.RpcTransaction, error) {

@@ -24,7 +24,7 @@ func NewBlockChainAPI(we *Services) *BlockChainAPI {
 func (api *BlockChainAPI) ChainId() *hexutil.Big {
 	// chainid, _ := UnauthenticatedTenRPCCall[hexutil.Big](nil, api.we, &CacheCfg{TTL: longCacheTTL}, "eth_chainId")
 	// return chainid
-	return (*hexutil.Big)(big.NewInt(int64(api.we.TenChainID)))
+	return (*hexutil.Big)(big.NewInt(int64(api.we.Config.TenChainID)))
 }
 
 func (s *BlockChainAPI) BlockNumber() hexutil.Uint64 {

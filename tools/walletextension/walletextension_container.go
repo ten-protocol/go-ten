@@ -24,7 +24,7 @@ type WalletExtensionContainer struct {
 	rpcServer   node.Server
 }
 
-func NewWalletExtensionContainerFromConfig(config Config, logger gethlog.Logger) *WalletExtensionContainer {
+func NewWalletExtensionContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *WalletExtensionContainer {
 	// create the account manager with a single unauthenticated connection
 	hostRPCBindAddrWS := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
 	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
@@ -42,7 +42,7 @@ func NewWalletExtensionContainerFromConfig(config Config, logger gethlog.Logger)
 	}
 
 	stopControl := stopcontrol.New()
-	walletExt := rpcapi.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, databaseStorage, stopControl, version, logger, config.TenChainID)
+	walletExt := rpcapi.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, databaseStorage, stopControl, version, logger, &config)
 	cfg := &node.RPCConfig{
 		EnableHttp: true,
 		HttpPort:   config.WalletExtensionPortHTTP,

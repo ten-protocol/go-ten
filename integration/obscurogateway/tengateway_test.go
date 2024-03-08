@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension"
 
 	log2 "github.com/ten-protocol/go-ten/go/common/log"
@@ -55,7 +57,7 @@ func TestTenGateway(t *testing.T) {
 	startPort := integration.StartPortTenGatewayUnitTest
 	createTenNetwork(t, startPort)
 
-	tenGatewayConf := walletextension.Config{
+	tenGatewayConf := wecommon.Config{
 		WalletExtensionHost:     "127.0.0.1",
 		WalletExtensionPortHTTP: startPort + integration.DefaultTenGatewayHTTPPortOffset,
 		WalletExtensionPortWS:   startPort + integration.DefaultTenGatewayWSPortOffset,

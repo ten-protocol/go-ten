@@ -127,7 +127,10 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *Cac
 func extractUserId(ctx context.Context) ([]byte, error) {
 	params := ctx.Value(exposedParams).(map[string]string)
 	// todo handle errors
-	userId := params[common2.EncryptedTokenQueryParameter]
+	userId, ok := params[common2.EncryptedTokenQueryParameter]
+	if !ok || len(userId) < 3 {
+		return nil, fmt.Errorf("invalid encryption token %s", userId)
+	}
 	return common2.GetUserIDbyte(userId)
 }
 

@@ -1,4 +1,4 @@
-package walletextension
+package common
 
 // Config contains the configuration required by the WalletExtension.
 type Config struct {

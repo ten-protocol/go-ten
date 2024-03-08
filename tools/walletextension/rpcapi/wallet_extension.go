@@ -34,18 +34,10 @@ type Services struct {
 	version      string
 	tenClient    *obsclient.ObsClient
 	Cache        cache.Cache
-	TenChainID   int
+	Config       *common.Config
 }
 
-func NewServices(
-	hostAddrHTTP string,
-	hostAddrWS string,
-	storage storage.Storage,
-	stopControl *stopcontrol.StopControl,
-	version string,
-	logger gethlog.Logger,
-	TenChainID int,
-) *Services {
+func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, config *common.Config) *Services {
 	rpcClient, err := rpc.NewNetworkClient(hostAddrHTTP)
 	if err != nil {
 		logger.Error(fmt.Errorf("could not create RPC client on %s. Cause: %w", hostAddrHTTP, err).Error())
@@ -70,7 +62,7 @@ func NewServices(
 		version:      version,
 		tenClient:    newTenClient,
 		Cache:        newGatewayCache,
-		TenChainID:   TenChainID,
+		Config:       config,
 	}
 }
 
@@ -177,7 +169,7 @@ func (w *Services) AddAddressToUser(hexUserID string, address string, signature 
 	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
 	// check if a message was signed by the correct address and if the signature is valid
-	sigAddrs, err := viewingkey.CheckEIP712Signature(hexUserID, signature, int64(w.TenChainID))
+	sigAddrs, err := viewingkey.CheckEIP712Signature(hexUserID, signature, int64(w.Config.TenChainID))
 	if err != nil {
 		return fmt.Errorf("signature is not valid: %w", err)
 	}
