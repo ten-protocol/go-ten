@@ -38,7 +38,7 @@ const (
 	PathNetworkHealth                   = "/network-health/"
 	WSProtocol                          = "ws://"
 	HTTPProtocol                        = "http://"
-	DefaultUser                         = "defaultUser"
+	DefaultUser                         = "0x00000000000000000000"
 	UserQueryParameter                  = "u"
 	EncryptedTokenQueryParameter        = "token"
 	AddressQueryParameter               = "a"

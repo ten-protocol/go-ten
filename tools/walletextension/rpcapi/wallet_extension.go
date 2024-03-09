@@ -51,6 +51,15 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		panic(err)
 	}
 
+	vk, err := crypto.GenerateKey()
+	if err != nil {
+		panic(fmt.Errorf("error saving user: %s", common.DefaultUser))
+	}
+	err = storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk))
+	if err != nil {
+		panic(fmt.Errorf("error saving user: %s", common.DefaultUser))
+	}
+
 	return &Services{
 		HostAddrHTTP: hostAddrHTTP,
 		HostAddrWS:   hostAddrWS,
@@ -119,8 +128,6 @@ func (w *Services) SubmitViewingKey(address gethcommon.Address, signature []byte
 	if err != nil {
 		return fmt.Errorf("error saving user: %s", common.DefaultUser)
 	}
-	// create an encrypted RPC client with the signed VK and register it with the enclave
-	// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
 
 	err = w.Storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.SignatureWithAccountKey)
 	if err != nil {
