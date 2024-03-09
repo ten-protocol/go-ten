@@ -12,7 +12,10 @@ func searchFromAndData(possibleAddresses []*common.Address, args gethapi.Transac
 	addressesMap := toMap(possibleAddresses)
 
 	// todo - is this correct
-	if args.From != nil && addressesMap[*args.From] != nil {
+	//if args.From != nil && addressesMap[*args.From] != nil {
+	//	return args.From
+	//}
+	if args.From != nil {
 		return args.From
 	}
 
