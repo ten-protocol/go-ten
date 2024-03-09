@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
@@ -72,7 +73,10 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 			}
 			acc := user.accounts[*addr]
 			if acc == nil {
-				return nil, fmt.Errorf("invalid account %s", addr)
+				// todo - return an account
+				a := reflect.ValueOf(user.accounts).MapKeys()[0].Interface().(common.Address)
+				candidateAccts = append(candidateAccts, user.accounts[a])
+				break
 			}
 			candidateAccts = append(candidateAccts, acc)
 
