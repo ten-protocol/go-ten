@@ -171,7 +171,7 @@ func NewEnclave(
 	batchExecutor := components.NewBatchExecutor(storage, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	registry := components.NewBatchRegistry(storage, logger)
-	rProducer := components.NewRollupProducer(config.SequencerID, storage, registry, logger)
+	rProducer := components.NewRollupProducer(enclaveKey.EnclaveID(), storage, registry, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}

@@ -20,15 +20,15 @@ import (
 )
 
 type rollupProducerImpl struct {
-	sequencerID   gethcommon.Address
+	enclaveID     gethcommon.Address
 	storage       storage.Storage
 	batchRegistry BatchRegistry
 	logger        gethlog.Logger
 }
 
-func NewRollupProducer(sequencerID gethcommon.Address, storage storage.Storage, batchRegistry BatchRegistry, logger gethlog.Logger) RollupProducer {
+func NewRollupProducer(enclaveID gethcommon.Address, storage storage.Storage, batchRegistry BatchRegistry, logger gethlog.Logger) RollupProducer {
 	return &rollupProducerImpl{
-		sequencerID:   sequencerID,
+		enclaveID:     enclaveID,
 		logger:        logger,
 		batchRegistry: batchRegistry,
 		storage:       storage,
@@ -54,7 +54,7 @@ func (re *rollupProducerImpl) CreateInternalRollup(fromBatchNo uint64, upToL1Hei
 
 	rh := common.RollupHeader{}
 	rh.CompressionL1Head = block.Hash()
-	rh.EnclaveID = re.sequencerID
+	rh.EnclaveID = re.enclaveID
 
 	rh.CrossChainMessages = make([]MessageBus.StructsCrossChainMessage, 0)
 	for _, b := range batches {
