@@ -254,6 +254,8 @@ func (s *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.Transactio
 		computeFromCallback: func(user *GWUser) *common.Address {
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
+		// is this a security risk?
+		useDefaultUser: true,
 	}, "eth_estimateGas", args, blockNrOrHash, overrides)
 	if resp == nil {
 		return 0, err

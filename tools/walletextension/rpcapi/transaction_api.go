@@ -88,7 +88,7 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 }
 
 func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.TransactionArgs) (common.Hash, error) {
-	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{account: args.From}, "eth_sendTransaction", args)
+	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{account: args.From, useDefaultUser: true}, "eth_sendTransaction", args)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -118,7 +118,7 @@ func (s *TransactionAPI) FillTransaction(ctx context.Context, args gethapi.Trans
 }
 
 func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.Bytes) (common.Hash, error) {
-	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{tryAll: true}, "eth_sendRawTransaction", input)
+	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{tryAll: true, useDefaultUser: true}, "eth_sendRawTransaction", input)
 	if err != nil {
 		return common.Hash{}, err
 	}

@@ -7,24 +7,16 @@ import (
 const (
 	Localhost = "127.0.0.1"
 
-	JSONKeyAddress      = "address"
-	JSONKeyData         = "data"
-	JSONKeyErr          = "error"
-	JSONKeyFrom         = "from"
-	JSONKeyID           = "id"
-	JSONKeyMethod       = "method"
-	JSONKeyParams       = "params"
-	JSONKeyResult       = "result"
-	JSONKeyRoot         = "root"
-	JSONKeyRPCVersion   = "jsonrpc"
-	JSONKeySignature    = "signature"
-	JSONKeySubscription = "subscription"
-	JSONKeyCode         = "code"
-	JSONKeyMessage      = "message"
+	JSONKeyAddress    = "address"
+	JSONKeyID         = "id"
+	JSONKeyMethod     = "method"
+	JSONKeyParams     = "params"
+	JSONKeyResult     = "result"
+	JSONKeyRPCVersion = "jsonrpc"
+	JSONKeySignature  = "signature"
 )
 
 const (
-	PathRoot                            = "/"
 	PathReady                           = "/ready/"
 	PathViewingKeys                     = "/viewingkeys/"
 	PathGenerateViewingKey              = "/generateviewingkey/"
@@ -33,7 +25,6 @@ const (
 	PathAuthenticate                    = "/authenticate/"
 	PathQuery                           = "/query/"
 	PathRevoke                          = "/revoke/"
-	PathObscuroGateway                  = "/"
 	PathHealth                          = "/health/"
 	PathNetworkHealth                   = "/network-health/"
 	WSProtocol                          = "ws://"
@@ -47,7 +38,6 @@ const (
 	GetStorageAtUserIDRequestMethodName = "getUserID"
 	SuccessMsg                          = "success"
 	APIVersion1                         = "/v1"
-	MethodEthSubscription               = "eth_subscription"
 	PathVersion                         = "/version/"
 	DeduplicationBufferSize             = 20
 	ErrNoViewingKey                     = "authentication failed %s"

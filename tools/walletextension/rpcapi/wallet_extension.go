@@ -5,7 +5,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/wallet"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
@@ -51,13 +54,24 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		panic(err)
 	}
 
-	vk, err := crypto.GenerateKey()
+	defaultPrivateKey, err := crypto.GenerateKey()
+	if err != nil {
+		panic(fmt.Errorf("error generating default user key"))
+	}
+
+	wallet := wallet.NewInMemoryWalletFromPK(big.NewInt(int64(config.TenChainID)), defaultPrivateKey, logger)
+	vk, err := viewingkey.GenerateViewingKeyForWallet(wallet)
+	if err != nil {
+		panic(err)
+	}
+	err = storage.AddUser(defaultUserId, crypto.FromECDSA(defaultPrivateKey))
 	if err != nil {
 		panic(fmt.Errorf("error saving user: %s", common.DefaultUser))
 	}
-	err = storage.AddUser(defaultUserId, crypto.FromECDSA(vk))
+
+	err = storage.AddAccount(defaultUserId, vk.Account.Bytes(), vk.SignatureWithAccountKey)
 	if err != nil {
-		panic(fmt.Errorf("error saving user: %s", common.DefaultUser))
+		panic(fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser))
 	}
 
 	return &Services{
@@ -89,7 +103,7 @@ func (w *Services) Logger() gethlog.Logger {
 
 // GenerateViewingKey generates the user viewing key and waits for signature
 func (w *Services) GenerateViewingKey(addr gethcommon.Address) (string, error) {
-	w.FileLogger.Info(fmt.Sprintf("Requested to generate viewing key for address(old way): %s", addr.Hex()))
+	//nolint"Requested to generate viewing key for address(old way): %s", addr.Hex()))
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	if err != nil {
 		return "", fmt.Errorf("unable to generate a new keypair - %w", err)
@@ -112,7 +126,7 @@ func (w *Services) GenerateViewingKey(addr gethcommon.Address) (string, error) {
 
 // SubmitViewingKey checks the signed viewing key and stores it
 func (w *Services) SubmitViewingKey(address gethcommon.Address, signature []byte) error {
-	w.FileLogger.Info(fmt.Sprintf("Requested to submit a viewing key (old way): %s", address.Hex()))
+	audit(w, "Requested to submit a viewing key (old way): %s", address.Hex())
 	vk, found := w.unsignedVKs[address]
 	if !found {
 		return fmt.Errorf(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", address, common.PathGenerateViewingKey))
@@ -132,10 +146,6 @@ func (w *Services) SubmitViewingKey(address gethcommon.Address, signature []byte
 	err = w.Storage.AddAccount(defaultUserId, vk.Account.Bytes(), vk.SignatureWithAccountKey)
 	if err != nil {
 		return fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser)
-	}
-
-	if err != nil {
-		return fmt.Errorf("error saving viewing key to the database: %w", err)
 	}
 
 	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
@@ -167,7 +177,7 @@ func (w *Services) GenerateAndStoreNewUser() (string, error) {
 
 	requestEndTime := time.Now()
 	duration := requestEndTime.Sub(requestStartTime)
-	w.FileLogger.Info(fmt.Sprintf("Storing new userID: %s, duration: %d ", hexUserID, duration.Milliseconds()))
+	audit(w, "Storing new userID: %s, duration: %d ", hexUserID, duration.Milliseconds())
 	return hexUserID, nil
 }
 
@@ -199,13 +209,13 @@ func (w *Services) AddAddressToUser(hexUserID string, address string, signature 
 
 	requestEndTime := time.Now()
 	duration := requestEndTime.Sub(requestStartTime)
-	w.FileLogger.Info(fmt.Sprintf("Storing new address for user: %s, address: %s, duration: %d ", hexUserID, address, duration.Milliseconds()))
+	audit(w, "Storing new address for user: %s, address: %s, duration: %d ", hexUserID, address, duration.Milliseconds())
 	return nil
 }
 
 // UserHasAccount checks if provided account exist in the database for given userID
 func (w *Services) UserHasAccount(hexUserID string, address string) (bool, error) {
-	w.FileLogger.Info(fmt.Sprintf("Checkinf if user has account: %s, address: %s", hexUserID, address))
+	audit(w, "Checkinf if user has account: %s, address: %s", hexUserID, address)
 	userIDBytes, err := common.GetUserIDbyte(hexUserID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID[2:], err).Error())
@@ -238,7 +248,7 @@ func (w *Services) UserHasAccount(hexUserID string, address string) (bool, error
 
 // DeleteUser deletes user and accounts associated with user from the database for given userID
 func (w *Services) DeleteUser(hexUserID string) error {
-	w.FileLogger.Info(fmt.Sprintf("Deleting user: %s", hexUserID))
+	audit(w, "Deleting user: %s", hexUserID)
 	userIDBytes, err := common.GetUserIDbyte(hexUserID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID, err).Error())
@@ -255,7 +265,7 @@ func (w *Services) DeleteUser(hexUserID string) error {
 }
 
 func (w *Services) UserExists(hexUserID string) bool {
-	w.FileLogger.Info(fmt.Sprintf("Checking if user exists: %s", hexUserID))
+	audit(w, "Checking if user exists: %s", hexUserID)
 	userIDBytes, err := common.GetUserIDbyte(hexUserID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID, err).Error())

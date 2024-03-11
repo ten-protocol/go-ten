@@ -33,6 +33,7 @@ type ExecCfg struct {
 	tryUntilAuthorised  bool
 	adjustArgs          func(acct *GWAccount) []any
 	cacheCfg            *CacheCfg
+	useDefaultUser      bool
 }
 
 type CacheCfg struct {
@@ -42,7 +43,7 @@ type CacheCfg struct {
 }
 
 func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method string, args ...any) (*R, error) {
-	// requestStartTime := time.Now()
+	requestStartTime := time.Now()
 	userId, err := extractUserId(ctx)
 	if err != nil {
 		return nil, err
@@ -54,7 +55,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 	}
 
 	// todo - add method to args
-	return withCache(w.Cache, cfg.cacheCfg, args, func() (*R, error) {
+	res, err := withCache(w.Cache, cfg.cacheCfg, args, func() (*R, error) {
 		// determine candidate "from"
 		candidateAccts := make([]*GWAccount, 0)
 
@@ -62,10 +63,9 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		switch {
 		case cfg.account != nil:
 			acc := user.accounts[*cfg.account]
-			if acc == nil {
-				return nil, fmt.Errorf("invalid account %s", cfg.account)
+			if acc != nil {
+				candidateAccts = append(candidateAccts, acc)
 			}
-			candidateAccts = append(candidateAccts, acc)
 
 		case cfg.computeFromCallback != nil:
 			addr := cfg.computeFromCallback(user)
@@ -73,16 +73,9 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 				return nil, fmt.Errorf("invalid request")
 			}
 			acc := user.accounts[*addr]
-			if acc == nil {
-				// todo - this is a hack - this should error
-				defaultUser, err := getUser(defaultUserId, w.Storage)
-				if err != nil {
-					panic(err)
-				}
-				randomUserAddr := defaultUser.GetAllAddresses()[0]
-				candidateAccts = append(candidateAccts, defaultUser.accounts[*randomUserAddr])
+			if acc != nil {
+				candidateAccts = append(candidateAccts, acc)
 			}
-			candidateAccts = append(candidateAccts, acc)
 
 		case cfg.tryAll, cfg.tryUntilAuthorised:
 			for _, acc := range user.accounts {
@@ -91,6 +84,16 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 
 		default:
 			return nil, fmt.Errorf("programming error. invalid owner detection strategy")
+		}
+
+		// when there is no matching address, some calls, like submitting a transactions are allowed to go through
+		if len(candidateAccts) == 0 && cfg.useDefaultUser {
+			defaultUser, err := getUser(defaultUserId, w.Storage)
+			if err != nil {
+				panic(err)
+			}
+			defaultAcct := defaultUser.GetAllAddresses()[0]
+			candidateAccts = append(candidateAccts, defaultUser.accounts[*defaultAcct])
 		}
 
 		var rpcErr error
@@ -118,10 +121,13 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		}
 		return nil, rpcErr
 	})
+	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", userId, method, args, res, err, time.Now().Sub(requestStartTime).Milliseconds())
+	return res, err
 }
 
 func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg, method string, args ...any) (*R, error) {
-	return withCache(w.Cache, cfg, args, func() (*R, error) {
+	requestStartTime := time.Now()
+	res, err := withCache(w.Cache, cfg, args, func() (*R, error) {
 		resp := new(R)
 		unauthedRPC, err := w.UnauthenticatedClient()
 		if err != nil {
@@ -130,6 +136,8 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *Cac
 		err = unauthedRPC.CallContext(ctx, resp, method, args...)
 		return resp, err
 	})
+	audit(w, "RPC call. method=%s args=%v result=%s error=%s time=%d", method, args, res, err, time.Now().Sub(requestStartTime).Milliseconds())
+	return res, err
 }
 
 func extractUserId(ctx context.Context) ([]byte, error) {
@@ -191,6 +199,8 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, args []any, onCacheMiss 
 	return result, err
 }
 
-//func withLogging(fun func()) {
-//
-//}
+func audit(services *Services, msg string, params ...any) {
+	if services.Config.VerboseFlag {
+		services.FileLogger.Info(fmt.Sprintf(msg, params...))
+	}
+}
