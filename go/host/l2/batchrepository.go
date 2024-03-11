@@ -178,6 +178,9 @@ func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
 // If the repository already has the batch it returns an AlreadyExists error which is typically ignored.
 func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	r.logger.Debug("Saving batch", log.BatchSeqNoKey, batch.Header.SequencerOrderNo, log.BatchHashKey, batch.Hash())
+	println("------------")
+	println("Adding batch with: ", batch.SeqNo().String())
+	println("Adding batch is sequencer: ", r.isSequencer)
 	err := hostdb.AddBatch(r.db, batch)
 	if err != nil {
 		return fmt.Errorf("could not add batch: %w", err)

@@ -161,7 +161,6 @@ func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) er
 		startTime := time.Now()
 		for connected := false; !connected; time.Sleep(500 * time.Millisecond) {
 			port := simParams.StartPort + integration.DefaultHostRPCWSOffset + i
-			println("CREATING network port at 127.0.0.1:", port)
 			client, err = rpc.NewNetworkClient(fmt.Sprintf("ws://127.0.0.1:%d", port))
 			connected = err == nil // The client cannot be created until the node has started.
 			if time.Now().After(startTime.Add(2 * time.Minute)) {

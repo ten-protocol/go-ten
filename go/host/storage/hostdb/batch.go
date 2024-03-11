@@ -7,6 +7,7 @@ import (
 	"fmt"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/status-im/keycard-go/hexutils"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"math/big"
@@ -39,8 +40,9 @@ const (
 // AddBatch adds a batch and its header to the DB
 func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 	// Check if the Batch is already stored
-	_, err := GetBatchBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
+	_, err := GetBatchHeader(db, batch.Hash())
 	if err == nil {
+		println("batch already exists not adding batch with hash: ", hexutils.BytesToHex(truncTo16(batch.Hash())))
 		return errutil.ErrAlreadyExists
 	}
 
@@ -93,13 +95,16 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 		batch.SeqNo().Uint64(),       // batch_body ID
 	)
 	if err != nil {
-		println("failed to insert batch:", err.Error())
+		println("[ERROR-HOST] failed to insert batch with hash:", hexutils.BytesToHex(truncTo16(batch.Hash())))
+		println("[ERROR-HOST] failed to insert batch with seq no:", batch.SeqNo().Uint64())
+		println("[ERROR-HOST] failed to insert batch:", err.Error())
 		return fmt.Errorf("failed to insert batch: %w", err)
 	}
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("could not commit batch tx: %w", err)
 	}
-
+	println("[SUCCESS-HOST] Added batch with seq no: ", batch.SeqNo().String())
+	println("[SUCCESS-HOST] Added batch with hash: ", hexutils.BytesToHex(truncTo16(batch.Hash())))
 	return nil
 }
 

@@ -45,6 +45,7 @@ func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegis
 	} else {
 		headBatchSeq = headBatch.SeqNo()
 	}
+
 	return &batchRegistry{
 		storage:           storage,
 		headBatchSeq:      headBatchSeq,
@@ -81,7 +82,7 @@ func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Recei
 	if br.batchesCallback != nil {
 		br.batchesCallback(batch, receipts)
 	}
-
+	println("ENCLAVE headBatchSeq updated: ", br.headBatchSeq.String())
 	br.lastExecutedBatch.Mark()
 }
 

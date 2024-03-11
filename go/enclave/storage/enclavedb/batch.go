@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/status-im/keycard-go/hexutils"
 	"math/big"
 	"strings"
 
@@ -118,7 +119,14 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch, convertedH
 		}
 		dbtx.ExecuteSQL(insert, args...)
 	}
-
+	if err != nil {
+		println("[ERROR-ENCLAVE] failed to insert batch with hash:", hexutils.BytesToHex(truncTo16(batch.Hash())))
+		println("[ERROR-ENCLAVE] failed to insert batch with seq no:", batch.SeqNo().Uint64())
+		println("[ERROR-ENCLAVE] failed to insert batch:", err.Error())
+		return fmt.Errorf("failed to insert batch: %w", err)
+	}
+	println("[SUCCESS-HOST] Added batch with seq no: ", batch.SeqNo().String())
+	println("[SUCCESS-HOST] Added batch with hash: ", hexutils.BytesToHex(truncTo16(batch.Hash())))
 	return nil
 }
 

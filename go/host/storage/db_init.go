@@ -9,6 +9,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/config"
 )
 
+const HOST = "HOST_"
+
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
 func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (*sql.DB, error) {
 	if err := validateDBConf(cfg); err != nil {
@@ -17,7 +19,7 @@ func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (*sql.DB,
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
 		// this creates a temporary sqlite sqldb
-		return sqlite.CreateTemporarySQLiteHostDB(cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", logger, "host_init.sql")
+		return sqlite.CreateTemporarySQLiteHostDB(HOST+cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", logger, "host_init.sql")
 	}
 
 	logger.Info(fmt.Sprintf("Preparing Maria DB connection to %s...", cfg.MariaDBHost))

@@ -96,6 +96,7 @@ func (t *TxPool) Validate(tx *common.L2Tx) error {
 	// validate against the consensus rules
 	err := validateTxBasics(t.legacyPool, tx, false)
 	if err != nil {
+		println("FAILED CONSENSUS")
 		return err
 	}
 

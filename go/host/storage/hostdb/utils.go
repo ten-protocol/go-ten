@@ -59,6 +59,7 @@ func truncFirstTo16(bytes []byte) []byte {
 	copy(c, b)
 	return c
 }
+
 func createSQLiteDB(t *testing.T) (*sql.DB, error) {
 	db, err := sqlite.CreateTemporarySQLiteHostDB("", "mode=memory", testlog.Logger(), "host_init.sql")
 	if err != nil {

@@ -56,6 +56,7 @@ func NewValidator(consumer components.L1BlockProcessor, batchExecutor components
 
 func (val *obsValidator) SubmitTransaction(tx *common.L2Tx) error {
 	headBatch := val.batchRegistry.HeadBatchSeq()
+	println("HEAD BATCH: ", headBatch.Uint64())
 	if headBatch == nil || headBatch.Uint64() <= common.L2GenesisSeqNo+1 {
 		return fmt.Errorf("not initialised")
 	}
