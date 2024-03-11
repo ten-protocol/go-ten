@@ -28,11 +28,11 @@ type testHelper struct {
 }
 
 func TestWalletExtension(t *testing.T) {
-	t.Skip("Skipping because it is too flaky")
+	// t.Skip("Skipping because it is too flaky")
 	i := 0
 	for name, test := range map[string]func(t *testing.T, testHelper *testHelper){
-		"canInvokeSensitiveMethodsWithViewingKey": canInvokeSensitiveMethodsWithViewingKey,
-		//"canInvokeNonSensitiveMethodsWithoutViewingKey":               canInvokeNonSensitiveMethodsWithoutViewingKey,
+		//"canInvokeSensitiveMethodsWithViewingKey":       canInvokeSensitiveMethodsWithViewingKey,
+		"canInvokeNonSensitiveMethodsWithoutViewingKey": canInvokeNonSensitiveMethodsWithoutViewingKey,
 		//"cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount": cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount,
 		//"canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys": canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys,
 		//"cannotSubscribeOverHTTP":                                     cannotSubscribeOverHTTP,
@@ -44,8 +44,8 @@ func TestWalletExtension(t *testing.T) {
 
 			h := &testHelper{
 				hostPort:       _hostWSPort,
-				walletHTTPPort: _hostWSPort + 1,
-				walletWSPort:   _hostWSPort + 2,
+				walletHTTPPort: _hostWSPort + i*10 + 1,
+				walletWSPort:   _hostWSPort + i*10 + 2,
 				hostAPI:        dummyAPI,
 			}
 
@@ -276,13 +276,14 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 //}
 
 func TestGetStorageAtForReturningUserID(t *testing.T) {
-	walletHTTPPort := _hostWSPort + 1
-	walletWSPort := _hostWSPort + 2
+	walletHTTPPort := _hostWSPort + 3
+	walletWSPort := _hostWSPort + 4
 
 	createDummyHost(t, _hostWSPort)
 	walExtCfg := createWalExtCfg(_hostWSPort, walletHTTPPort, walletWSPort)
 	createWalExtCfg(_hostWSPort, walletHTTPPort, walletWSPort)
-	createWalExt(t, walExtCfg)
+	shutdownWallet := createWalExt(t, walExtCfg)
+	defer shutdownWallet() //nolint: errcheck
 
 	// create userID
 	respJoin := makeHTTPEthJSONReqWithPath(walletHTTPPort, "v1/join")
@@ -307,7 +308,7 @@ func TestGetStorageAtForReturningUserID(t *testing.T) {
 	}
 
 	// make a request to GetStorageAt with userID that is in the database, but wrong parameters
-	respBody3 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{"abc", "0", nil}, userID)
+	respBody3 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{"0x0000000000000000000000000000000000000001", "0", nil}, userID)
 	if strings.Contains(string(respBody3), userID) {
 		t.Fatalf("expected response not containing userID as the parameters are wrong ")
 	}
