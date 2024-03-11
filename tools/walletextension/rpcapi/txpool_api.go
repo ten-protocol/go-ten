@@ -23,7 +23,7 @@ func (s *TxPoolAPI) Content() map[string]map[string]map[string]*rpc2.RpcTransact
 	return content
 }
 
-func (s *TxPoolAPI) ContentFrom(addr common.Address) map[string]map[string]*rpc2.RpcTransaction {
+func (s *TxPoolAPI) ContentFrom(_ common.Address) map[string]map[string]*rpc2.RpcTransaction {
 	content := make(map[string]map[string]*rpc2.RpcTransaction, 2)
 	return content
 }

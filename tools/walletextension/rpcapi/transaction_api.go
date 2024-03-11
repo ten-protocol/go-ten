@@ -43,7 +43,7 @@ func (s *TransactionAPI) GetBlockTransactionCountByHash(ctx context.Context, blo
 	return count
 }
 
-func (s *TransactionAPI) GetTransactionByBlockNumberAndIndex(ctx context.Context, blockNr gethrpc.BlockNumber, index hexutil.Uint) *rpc.RpcTransaction {
+/*func (s *TransactionAPI) GetTransactionByBlockNumberAndIndex(ctx context.Context, blockNr gethrpc.BlockNumber, index hexutil.Uint) *rpc.RpcTransaction {
 	// not implemented
 	return nil
 }
@@ -61,7 +61,7 @@ func (s *TransactionAPI) GetRawTransactionByBlockNumberAndIndex(ctx context.Cont
 func (s *TransactionAPI) GetRawTransactionByBlockHashAndIndex(ctx context.Context, blockHash common.Hash, index hexutil.Uint) hexutil.Bytes {
 	// not implemented
 	return nil
-}
+}*/
 
 func (s *TransactionAPI) GetTransactionCount(ctx context.Context, address common.Address, blockNrOrHash gethrpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
 	return ExecAuthRPC[hexutil.Uint64](ctx, s.we, &ExecCfg{account: &address}, "eth_getTransactionCount", address, blockNrOrHash)
@@ -113,10 +113,10 @@ type SignTransactionResult struct {
 	Tx  *types.Transaction `json:"tx"`
 }
 
-func (s *TransactionAPI) FillTransaction(ctx context.Context, args gethapi.TransactionArgs) (*SignTransactionResult, error) {
+/*func (s *TransactionAPI) FillTransaction(ctx context.Context, args gethapi.TransactionArgs) (*SignTransactionResult, error) {
 	// not implemented
 	return nil, nil
-}
+}*/
 
 func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.Bytes) (common.Hash, error) {
 	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{tryAll: true, useDefaultUser: true}, "eth_sendRawTransaction", input)
@@ -133,11 +133,12 @@ func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.B
 	return *txRec, err
 }
 
-func (s *TransactionAPI) PendingTransactions() ([]*rpc.RpcTransaction, error) {
-	// not implemented
-	return nil, nil
-}
-
+/*
+	func (s *TransactionAPI) PendingTransactions() ([]*rpc.RpcTransaction, error) {
+		// not implemented
+		return nil, nil
+	}
+*/
 func (s *TransactionAPI) Resend(ctx context.Context, sendArgs gethapi.TransactionArgs, gasPrice *hexutil.Big, gasLimit *hexutil.Uint64) (common.Hash, error) {
 	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{account: sendArgs.From}, "eth_resend", sendArgs, gasPrice, gasLimit)
 	if txRec != nil {

@@ -1,7 +1,6 @@
 package rpcapi
 
-import "github.com/ethereum/go-ethereum/common/hexutil"
-
+/*
 type NetAPI struct{}
 
 // NewNetAPI creates a new net API instance.
@@ -23,3 +22,4 @@ func (s *NetAPI) PeerCount() hexutil.Uint {
 func (s *NetAPI) Version() string {
 	return "1"
 }
+*/
