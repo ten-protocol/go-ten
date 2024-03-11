@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -48,13 +50,10 @@ func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash g
 	var err error
 	err = retry.Do(func() error {
 		receipt, err = client.TransactionReceipt(ctx, txHash)
-		if err != nil {
+		if err != nil && !errors.Is(err, ethereum.NotFound) {
 			return retry.FailFast(err)
 		}
-		if receipt != nil {
-			return nil
-		}
-		return fmt.Errorf("not found")
+		return err
 	}, retry.NewTimeoutStrategy(timeout, _awaitReceiptPollingInterval))
 	if err != nil {
 		return fmt.Errorf("could not retrieve receipt for transaction %s - %w", txHash.Hex(), err)

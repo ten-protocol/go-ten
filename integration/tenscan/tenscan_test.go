@@ -3,12 +3,15 @@ package faucet
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum"
 
 	"github.com/ten-protocol/go-ten/tools/tenscan/backend/config"
 	"github.com/ten-protocol/go-ten/tools/tenscan/backend/container"
@@ -279,12 +282,12 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 			if err == nil {
 				break
 			}
-			//
+
 			// Currently when a receipt is not available the obscuro node is returning nil instead of err ethereum.NotFound
 			// once that's fixed this commented block should be removed
-			//if !errors.Is(err, ethereum.NotFound) {
-			//	t.Fatal(err)
-			//}
+			if !errors.Is(err, ethereum.NotFound) {
+				t.Fatal(err)
+			}
 			if receipt != nil && receipt.Status == 1 {
 				break
 			}
