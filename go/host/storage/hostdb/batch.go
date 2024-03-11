@@ -7,6 +7,7 @@ import (
 	"fmt"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/status-im/keycard-go/hexutils"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"math/big"
@@ -30,7 +31,7 @@ const (
 	selectTxsBySequence               = "SELECT t.full_hash FROM transactions_host t WHERE t.body_id = ?"
 	selectTxByHash                    = "SELECT t.body_id FROM transaction_host t WHERE t.full_hash = ?"
 
-	insertBatchBody    = "INSERT INTO batch_body_host (id, content) VALUES (?, ?)"
+	insertBatchBody    = "REPLACE INTO batch_body_host (id, content) VALUES (?, ?)"
 	insertBatch        = "INSERT INTO batch_host (sequence, full_hash, hash, height, tx_count, header, body_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
 	insertTransactions = "INSERT INTO transactions_host (hash, full_hash, body_id) VALUES (?, ?, ?)"
 	insertTxCount      = "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET total = excluded.total;"
@@ -44,10 +45,6 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 		return errutil.ErrAlreadyExists
 	}
 
-	_, err = GetBatchBodyBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
-	if err == nil {
-		return errutil.ErrAlreadyExists
-	}
 	// Start a transaction
 	tx, err := db.Begin()
 	if err != nil {
@@ -98,12 +95,15 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 	)
 	if err != nil {
 		println("failed to insert batch:", err.Error())
+		println("failed to insert batch with short hash:", hexutils.BytesToHex(truncTo16(batch.Hash())))
+		println("failed to insert batch with full hash:", hexutils.BytesToHex(batch.Hash().Bytes()))
 		return fmt.Errorf("failed to insert batch: %w", err)
 	}
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("could not commit batch tx: %w", err)
 	}
-	println("successfully inserted batch: ", batch.SeqNo().Uint64())
+
+	println("inserted batch with short hash:", hexutils.BytesToHex(truncTo16(batch.Hash())))
 	return nil
 }
 
@@ -140,10 +140,6 @@ func GetBatchListing(db *sql.DB, pagination *common.QueryPagination) (*common.Ba
 // GetBatchBySequenceNumber returns the batch with the given sequence number.
 func GetBatchBySequenceNumber(db *sql.DB, seqNo uint64) (*common.PublicBatch, error) {
 	return fetchPublicBatch(db, " WHERE sequence=?", seqNo)
-}
-
-func GetBatchBodyBySequenceNumber(db *sql.DB, seqNo uint64) (common.EncryptedTransactions, error) {
-	return fetchBatchBody(db, seqNo)
 }
 
 func GetFullBatchBySequenceNumber(db *sql.DB, seqNo uint64) (*common.ExtBatch, error) {
@@ -230,7 +226,7 @@ func GetPublicBatch(db *sql.DB, hash common.L2BatchHash) (*common.PublicBatch, e
 // GetFullBatchByTx returns the batch with the given hash.
 func GetFullBatchByTx(db *sql.DB, txHash gethcommon.Hash) (*common.ExtBatch, error) {
 	var seqNo uint64
-	err := db.QueryRow(selectTxByHash).Scan(&seqNo)
+	err := db.QueryRow(selectTxByHash, txHash).Scan(&seqNo)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error

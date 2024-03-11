@@ -13,10 +13,28 @@ const truncHash = 16
 // An arbitrary number to put in the header
 const batchNumber = 777
 
+// truncTo16 checks if the leading half of the hash is filled with zeros and decides whether to truncate the first or last 16 bytes.
 func truncTo16(hash gethcommon.Hash) []byte {
-	return truncLastTo16(hash.Bytes())
+	hashBytes := hash.Bytes()
+	// Check if the first half of the hash is all zeros
+	if isLeadingHalfZeros(hashBytes) {
+		return truncLastTo16(hashBytes)
+	}
+	return truncFirstTo16(hashBytes)
 }
 
+// isLeadingHalfZeros checks if the leading half of the hash is all zeros.
+func isLeadingHalfZeros(bytes []byte) bool {
+	halfLength := len(bytes) / 2
+	for i := 0; i < halfLength; i++ {
+		if bytes[i] != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// truncLastTo16 truncates the last 16 bytes of the hash.
 func truncLastTo16(bytes []byte) []byte {
 	if len(bytes) == 0 {
 		return bytes
@@ -31,6 +49,16 @@ func truncLastTo16(bytes []byte) []byte {
 	return c
 }
 
+// truncFirstTo16 truncates the first 16 bytes of the hash.
+func truncFirstTo16(bytes []byte) []byte {
+	if len(bytes) == 0 {
+		return bytes
+	}
+	b := bytes[0:truncHash]
+	c := make([]byte, truncHash)
+	copy(c, b)
+	return c
+}
 func createSQLiteDB(t *testing.T) (*sql.DB, error) {
 	db, err := sqlite.CreateTemporarySQLiteHostDB("", "mode=memory", testlog.Logger(), "host_init.sql")
 	if err != nil {

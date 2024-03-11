@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	selectExtRollup = "SELECT ext_batch from rollup_host r"
-	selectRollups   = "SELECT id, hash, start_seq, end_seq, time_stamp, ext_batch, compression_block FROM rollup_host ORDER BY id DESC LIMIT ? OFFSET ?"
-	insertRollup    = "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_batch, compression_block) values (?,?,?,?,?,?)"
+	selectExtRollup = "SELECT ext_rollup from rollup_host r"
+	selectRollups   = "SELECT id, hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block FROM rollup_host ORDER BY id DESC LIMIT ? OFFSET ?"
+	insertRollup    = "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) values (?,?,?,?,?,?)"
 )
 
 // AddRollupHeader adds a rollup to the DB

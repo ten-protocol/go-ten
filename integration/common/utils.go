@@ -122,7 +122,6 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 		}
 		fmt.Printf("L2 prefund with: %s\n", alloc.String())
 		txHashes[idx] = signedTx.Hash()
-		time.Sleep(5 * time.Second)
 	}
 
 	// Then we await the receipts in parallel.

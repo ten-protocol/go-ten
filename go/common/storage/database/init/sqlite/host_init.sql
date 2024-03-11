@@ -15,7 +15,7 @@ create table if not exists rollup_host
     start_seq         int        NOT NULL,
     end_seq           int        NOT NULL,
     time_stamp        int        NOT NULL,
-    ext_batch            blob       NOT NULL,
+    ext_rollup        blob       NOT NULL,
     compression_block binary(32) NOT NULL
 );
 

@@ -156,7 +156,7 @@ func (r *Repository) Subscribe(subscriber host.L2BatchHandler) {
 func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error) {
 	b, err := hostdb.GetFullBatchBySequenceNumber(r.db, seqNo.Uint64())
 	if err != nil {
-		println("FetchBatchBySeqNo ERR ", err.Error())
+		//println("FetchBatchBySeqNo ERR ", err.Error())
 		if errors.Is(err, errutil.ErrNotFound) && seqNo.Cmp(r.latestBatchSeqNo) < 0 {
 			if r.isSequencer {
 				// sequencer does not request batches from peers, it checks if its enclave has the batch
