@@ -38,6 +38,7 @@ type Services struct {
 	tenClient    *obsclient.ObsClient
 	Cache        cache.Cache
 	Config       *common.Config
+	DefaultUser  []byte
 }
 
 func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, config *common.Config) *Services {
@@ -54,25 +55,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		panic(err)
 	}
 
-	defaultPrivateKey, err := crypto.GenerateKey()
-	if err != nil {
-		panic(fmt.Errorf("error generating default user key"))
-	}
-
-	wallet := wallet.NewInMemoryWalletFromPK(big.NewInt(int64(config.TenChainID)), defaultPrivateKey, logger)
-	vk, err := viewingkey.GenerateViewingKeyForWallet(wallet)
-	if err != nil {
-		panic(err)
-	}
-	err = storage.AddUser(defaultUserId, crypto.FromECDSA(defaultPrivateKey))
-	if err != nil {
-		panic(fmt.Errorf("error saving user: %s", common.DefaultUser))
-	}
-
-	err = storage.AddAccount(defaultUserId, vk.Account.Bytes(), vk.SignatureWithAccountKey)
-	if err != nil {
-		panic(fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser))
-	}
+	userID := addDefaultUser(config, logger, storage)
 
 	return &Services{
 		HostAddrHTTP: hostAddrHTTP,
@@ -86,7 +69,39 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		tenClient:    newTenClient,
 		Cache:        newGatewayCache,
 		Config:       config,
+		DefaultUser:  userID,
 	}
+}
+
+func addDefaultUser(config *common.Config, logger gethlog.Logger, storage storage.Storage) []byte {
+	defaultPrivateKey, err := crypto.GenerateKey()
+	if err != nil {
+		panic(fmt.Errorf("error generating default user key"))
+	}
+
+	wallet := wallet.NewInMemoryWalletFromPK(big.NewInt(int64(config.TenChainID)), defaultPrivateKey, logger)
+	vk, err := viewingkey.GenerateViewingKeyForWallet(wallet)
+	if err != nil {
+		panic(err)
+	}
+	viewingPrivateKeyEcies := ecies.ImportECDSA(defaultPrivateKey)
+	if err != nil {
+		panic(fmt.Sprintf("could not convert key: %s", err))
+	}
+
+	// create UserID and store it in the database with the private key
+	userID := viewingkey.CalculateUserID(common.PrivateKeyToCompressedPubKey(viewingPrivateKeyEcies))
+
+	err = storage.AddUser(userID, crypto.FromECDSA(defaultPrivateKey))
+	if err != nil {
+		panic(fmt.Errorf("error saving default user"))
+	}
+
+	err = storage.AddAccount(userID, vk.Account.Bytes(), vk.SignatureWithAccountKey)
+	if err != nil {
+		panic(fmt.Errorf("error saving account %s for default user %s", vk.Account.Hex(), userID))
+	}
+	return userID
 }
 
 // IsStopping returns whether the WE is stopping
@@ -138,15 +153,15 @@ func (w *Services) SubmitViewingKey(address gethcommon.Address, signature []byte
 
 	vk.SignatureWithAccountKey = signature
 
-	err := w.Storage.AddUser(defaultUserId, crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
-	if err != nil {
-		return fmt.Errorf("error saving user: %s", common.DefaultUser)
-	}
-
-	err = w.Storage.AddAccount(defaultUserId, vk.Account.Bytes(), vk.SignatureWithAccountKey)
-	if err != nil {
-		return fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser)
-	}
+	//err := w.Storage.AddUser(defaultUserId, crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
+	//if err != nil {
+	//	return fmt.Errorf("error saving user: %s", common.DefaultUser)
+	//}
+	//
+	//err = w.Storage.AddAccount(defaultUserId, vk.Account.Bytes(), vk.SignatureWithAccountKey)
+	//if err != nil {
+	//	return fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser)
+	//}
 
 	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
 	delete(w.unsignedVKs, address)

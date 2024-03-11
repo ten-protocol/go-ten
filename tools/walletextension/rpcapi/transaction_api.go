@@ -92,16 +92,17 @@ func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.Trans
 	if err != nil {
 		return common.Hash{}, err
 	}
-	if s.we.Config.StoreIncomingTxs {
-		userIDBytes, _ := extractUserId(ctx)
-		if len(userIDBytes) > 10 {
-			tx, err := json.Marshal(args)
-			if err != nil {
-				err = s.we.Storage.StoreTransaction(string(tx), userIDBytes)
-				if err != nil {
-					s.we.Logger().Error(fmt.Errorf("error storing transaction in the database: %w", err).Error())
-				}
-			}
+	userIDBytes, _ := extractUserId(ctx, s.we)
+	if s.we.Config.StoreIncomingTxs && len(userIDBytes) > 10 {
+		tx, err := json.Marshal(args)
+		if err != nil {
+			s.we.Logger().Error("error marshalling transaction: %s", err)
+			return *txRec, nil
+		}
+		err = s.we.Storage.StoreTransaction(string(tx), userIDBytes)
+		if err != nil {
+			s.we.Logger().Error("error storing transaction in the database: %s", err)
+			return *txRec, nil
 		}
 	}
 	return *txRec, err
@@ -122,16 +123,13 @@ func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.B
 	if err != nil {
 		return common.Hash{}, err
 	}
-	if s.we.Config.StoreIncomingTxs {
-		userIDBytes, err := extractUserId(ctx)
-		if len(userIDBytes) > 10 {
-			err = s.we.Storage.StoreTransaction(input.String(), userIDBytes)
-			if err != nil {
-				s.we.Logger().Error(fmt.Errorf("error storing transaction in the database: %w", err).Error())
-			}
+	userIDBytes, err := extractUserId(ctx, s.we)
+	if s.we.Config.StoreIncomingTxs && len(userIDBytes) > 10 {
+		err = s.we.Storage.StoreTransaction(input.String(), userIDBytes)
+		if err != nil {
+			s.we.Logger().Error(fmt.Errorf("error storing transaction in the database: %w", err).Error())
 		}
 	}
-
 	return *txRec, err
 }
 

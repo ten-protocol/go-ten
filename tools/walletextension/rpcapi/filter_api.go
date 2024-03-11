@@ -65,10 +65,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit filters.FilterCriteria) (*r
 
 	candidateAddresses := user.GetAllAddresses()
 	if len(candidateAddresses) > 1 {
-		candidateAddresses, err = searchForAddressInFilterCriteria(crit, user.GetAllAddresses())
-		if err != nil {
-			return nil, err
-		}
+		candidateAddresses = searchForAddressInFilterCriteria(crit, user.GetAllAddresses())
 		if len(candidateAddresses) == 0 {
 			candidateAddresses = user.GetAllAddresses()
 		}
@@ -92,7 +89,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit filters.FilterCriteria) (*r
 	return subscription, err
 }
 
-func searchForAddressInFilterCriteria(filterCriteria filters.FilterCriteria, possibleAddresses []*gethcommon.Address) ([]*gethcommon.Address, error) {
+func searchForAddressInFilterCriteria(filterCriteria filters.FilterCriteria, possibleAddresses []*gethcommon.Address) []*gethcommon.Address {
 	result := make([]*gethcommon.Address, 0)
 	addrMap := toMap(possibleAddresses)
 	for _, topicCondition := range filterCriteria.Topics {
@@ -103,7 +100,7 @@ func searchForAddressInFilterCriteria(filterCriteria filters.FilterCriteria, pos
 			}
 		}
 	}
-	return result, nil
+	return result
 }
 
 func forwardMsgs(inputChannels []chan common.IDAndLog, _ []*rpc.ClientSubscription, outSub *rpc.Subscription, notifier *rpc.Notifier) {

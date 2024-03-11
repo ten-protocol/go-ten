@@ -24,8 +24,6 @@ const (
 	shortCacheTTL = 1 * time.Second
 )
 
-var defaultUserId, _ = wecommon.GetUserIDbyte(wecommon.DefaultUser)
-
 type ExecCfg struct {
 	account             *common.Address
 	computeFromCallback func(user *GWUser) *common.Address
@@ -44,18 +42,22 @@ type CacheCfg struct {
 
 func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method string, args ...any) (*R, error) {
 	requestStartTime := time.Now()
-	userId, err := extractUserId(ctx)
+	userID, err := extractUserId(ctx, w)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := getUser(userId, w.Storage)
+	user, err := getUser(userID, w.Storage)
 	if err != nil {
 		return nil, err
 	}
 
-	// todo - add method to args
-	res, err := withCache(w.Cache, cfg.cacheCfg, args, func() (*R, error) {
+	cacheKey := make([]any, 0)
+	cacheKey = append(cacheKey, userID)
+	cacheKey = append(cacheKey, method)
+	cacheKey = append(cacheKey, args...)
+
+	res, err := withCache(w.Cache, cfg.cacheCfg, cacheKey, func() (*R, error) {
 		// determine candidate "from"
 		candidateAccts := make([]*GWAccount, 0)
 
@@ -88,7 +90,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 
 		// when there is no matching address, some calls, like submitting a transactions are allowed to go through
 		if len(candidateAccts) == 0 && cfg.useDefaultUser {
-			defaultUser, err := getUser(defaultUserId, w.Storage)
+			defaultUser, err := getUser(w.DefaultUser, w.Storage)
 			if err != nil {
 				panic(err)
 			}
@@ -121,7 +123,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		}
 		return nil, rpcErr
 	})
-	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", userId, method, args, res, err, time.Now().Sub(requestStartTime).Milliseconds())
+	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", userID, method, args, res, err, time.Now().Sub(requestStartTime).Milliseconds())
 	return res, err
 }
 
@@ -140,16 +142,15 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *Cac
 	return res, err
 }
 
-func extractUserId(ctx context.Context) ([]byte, error) {
+func extractUserId(ctx context.Context, w *Services) ([]byte, error) {
 	params := ctx.Value(exposedParams).(map[string]string)
 	// todo handle errors
-	userId, ok := params[wecommon.EncryptedTokenQueryParameter]
-	if !ok || len(userId) < 3 {
-		// todo - remove
-		return defaultUserId, nil
-		// return nil, fmt.Errorf("invalid encryption token %s", userId)
+	userID, ok := params[wecommon.EncryptedTokenQueryParameter]
+	if !ok || len(userID) < 3 {
+		return w.DefaultUser, nil
+		// return nil, fmt.Errorf("invalid encryption token %s", userID)
 	}
-	return wecommon.GetUserIDbyte(userId)
+	return wecommon.GetUserIDbyte(userID)
 }
 
 // generateCacheKey generates a cache key for the given method, encryptionToken and parameters

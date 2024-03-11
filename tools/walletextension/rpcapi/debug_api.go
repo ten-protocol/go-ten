@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 type DebugAPI struct {
@@ -16,7 +14,7 @@ func NewDebugAPI(we *Services) *DebugAPI {
 	return &DebugAPI{we}
 }
 
-func (api *DebugAPI) GetRawHeader(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+/*func (api *DebugAPI) GetRawHeader(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	// not implemented
 	return nil, nil
 }
@@ -54,9 +52,10 @@ func (api *DebugAPI) ChaindbCompact() error {
 func (api *DebugAPI) SetHead(number hexutil.Uint64) {
 	// not implemented
 }
+*/
 
-// EventLogRelevancy - specific to Ten
-func (api *DebugAPI) EventLogRelevancy(_ context.Context, hash common.Hash) (interface{}, error) {
+// EventLogRelevancy - specific to Ten - todo
+func (api *DebugAPI) EventLogRelevancy(_ context.Context, _ common.Hash) (interface{}, error) {
 	// todo
 	return nil, nil
 }

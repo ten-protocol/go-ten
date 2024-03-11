@@ -30,7 +30,7 @@ func GetTransactionCountValidate(reqParams []any, builder *CallBuilder[uint64, s
 			return nil
 		}
 
-		// todo
+		// todo - support BlockNumberOrHash
 		b, err := rpc.registry.GetBatchAtHeight(*tag.BlockNumber)
 		if err != nil {
 			builder.Err = fmt.Errorf("cant retrieve batch for tag. Cause: %w", err)

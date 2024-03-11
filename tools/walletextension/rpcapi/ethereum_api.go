@@ -27,15 +27,15 @@ func (api *EthereumAPI) MaxPriorityFeePerGas(ctx context.Context) (*hexutil.Big,
 	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, nil, "eth_maxPriorityFeePerGas")
 }
 
-type feeHistoryResult struct {
+type FeeHistoryResult struct {
 	OldestBlock  *hexutil.Big     `json:"oldestBlock"`
 	Reward       [][]*hexutil.Big `json:"reward,omitempty"`
 	BaseFee      []*hexutil.Big   `json:"baseFeePerGas,omitempty"`
 	GasUsedRatio []float64        `json:"gasUsedRatio"`
 }
 
-func (api *EthereumAPI) FeeHistory(ctx context.Context, blockCount math.HexOrDecimal64, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (*feeHistoryResult, error) {
-	return UnauthenticatedTenRPCCall[feeHistoryResult](ctx, api.we, &CacheCfg{TTLCallback: func() time.Duration {
+func (api *EthereumAPI) FeeHistory(ctx context.Context, blockCount math.HexOrDecimal64, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (*FeeHistoryResult, error) {
+	return UnauthenticatedTenRPCCall[FeeHistoryResult](ctx, api.we, &CacheCfg{TTLCallback: func() time.Duration {
 		if lastBlock > 0 {
 			return longCacheTTL
 		}

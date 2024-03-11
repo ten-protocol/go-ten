@@ -95,9 +95,9 @@ func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 
 func (o *TGLib) HTTP() string {
 	return fmt.Sprintf("%s/v1/?token=%s", o.httpURL, o.userID)
-	// return fmt.Sprintf("%s/?token=%s", o.httpURL, o.userID)
 }
 
 func (o *TGLib) WS() string {
+	// todo - add /v1
 	return fmt.Sprintf("%s/?token=%s", o.wsURL, o.userID)
 }

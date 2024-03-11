@@ -2,8 +2,6 @@ package container
 
 import (
 	"fmt"
-	//"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-	//"github.com/ten-protocol/go-ten/go/gethrpcserver"
 	"time"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
@@ -44,7 +42,6 @@ type HostContainer struct {
 	logger         gethlog.Logger
 	metricsService *metrics.Service
 	rpcServer      node.Server
-	// rpcServer gethrpcserver.Server
 }
 
 func (h *HostContainer) Start() error {
@@ -141,13 +138,6 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 
 	aggP2P := p2p.NewSocketP2PLayer(cfg, services, p2pLogger, metricsService.Registry())
 
-	//rpcServer := gethrpcserver.NewServer(&gethrpcserver.RPCConfig{
-	//	EnableHttp: cfg.HasClientRPCHTTP,
-	//	HttpPort:   int(cfg.ClientRPCPortHTTP),
-	//	EnableWs:   cfg.HasClientRPCWebsockets,
-	//	WsPort:     int(cfg.ClientRPCPortWS),
-	//	Host:       cfg.ClientRPCHost,
-	//}, logger)
 	rpcServer := node.NewServer(&node.RPCConfig{
 		EnableHttp: cfg.HasClientRPCHTTP,
 		HttpPort:   int(cfg.ClientRPCPortHTTP),
@@ -166,7 +156,6 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
 func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service) *HostContainer {
-	// func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer gethrpcserver.Server, logger gethlog.Logger, metricsService *metrics.Service) *HostContainer {
 	h := host.NewHost(cfg, services, p2p, l1Client, l1Repo, enclaveClient, hostWallet, contractLib, logger, metricsService.Registry())
 
 	hostContainer := &HostContainer{

@@ -94,7 +94,7 @@ func (s *Server) RegisterName(name string, receiver interface{}) error {
 // server is stopped. In either case the codec is closed.
 //
 // Note that codec options are no longer supported.
-func (s *Server) ServeCodec(codec ServerCodec, options CodecOption, userId string) {
+func (s *Server) ServeCodec(codec ServerCodec, options CodecOption, userID string) {
 	defer codec.close()
 
 	if !s.trackCodec(codec) {
@@ -106,7 +106,7 @@ func (s *Server) ServeCodec(codec ServerCodec, options CodecOption, userId strin
 		idgen:              s.idgen,
 		batchItemLimit:     s.batchItemLimit,
 		batchResponseLimit: s.batchResponseLimit,
-		UserID:             userId,
+		UserID:             userID,
 	}
 	c := initClient(codec, &s.services, cfg)
 	<-codec.closed()

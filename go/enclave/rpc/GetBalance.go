@@ -41,7 +41,6 @@ func GetBalanceValidate(reqParams []any, builder *CallBuilder[BalanceReq, hexuti
 }
 
 func GetBalanceExecute(builder *CallBuilder[BalanceReq, hexutil.Big], rpc *EncryptionManager) error {
-	// todo
 	acctOwner, err := rpc.chain.AccountOwner(*builder.Param.Addr, builder.Param.Block.BlockNumber)
 	if err != nil {
 		return err

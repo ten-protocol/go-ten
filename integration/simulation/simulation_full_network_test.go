@@ -29,7 +29,7 @@ func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:      0.2,
 		Wallets:                    wallets,
 		StartPort:                  integration.StartPortSimulationFullNetwork,
-		ReceiptTimeout:             30 * time.Second,
+		ReceiptTimeout:             20 * time.Second,
 		StoppingDelay:              15 * time.Second,
 		NodeWithInboundP2PDisabled: 2,
 	}

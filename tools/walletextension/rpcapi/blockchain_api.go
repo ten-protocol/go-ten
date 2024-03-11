@@ -75,19 +75,6 @@ type StorageResult struct {
 	Proof []string     `json:"proof"`
 }
 
-// proofList implements ethdb.KeyValueWriter and collects the proofs as
-// hex-strings for delivery to rpc-caller.
-type proofList []string
-
-func (n *proofList) Put(key []byte, value []byte) error {
-	*n = append(*n, hexutil.Encode(value))
-	return nil
-}
-
-func (n *proofList) Delete(key []byte) error {
-	panic("not supported")
-}
-
 func (s *BlockChainAPI) GetProof(ctx context.Context, address common.Address, storageKeys []string, blockNrOrHash rpc.BlockNumberOrHash) (*AccountResult, error) {
 	// not implemented
 	return nil, nil
@@ -166,18 +153,18 @@ func (s *BlockChainAPI) GetCode(ctx context.Context, address common.Address, blo
 }
 
 func (s *BlockChainAPI) GetStorageAt(ctx context.Context, address common.Address, hexKey string, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
-	// GetStorageAt is repurposed to return the userId
+	// GetStorageAt is repurposed to return the userID
 	if hexKey == wecommon.GetStorageAtUserIDRequestMethodName {
-		userId, err := extractUserId(ctx)
+		userID, err := extractUserId(ctx, s.we)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = getUser(userId, s.we.Storage)
+		_, err = getUser(userID, s.we.Storage)
 		if err != nil {
 			return nil, err
 		}
-		return userId, nil
+		return userID, nil
 	}
 
 	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, s.we, &ExecCfg{account: &address}, "eth_getStorageAt", address, hexKey, blockNrOrHash)
@@ -190,10 +177,6 @@ func (s *BlockChainAPI) GetStorageAt(ctx context.Context, address common.Address
 func (s *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]map[string]interface{}, error) {
 	// not implemented
 	return nil, nil
-}
-
-type ChainContext struct {
-	we *Services
 }
 
 type OverrideAccount struct {

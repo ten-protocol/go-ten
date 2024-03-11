@@ -17,7 +17,7 @@ type GWAccount struct {
 }
 
 type GWUser struct {
-	userId   []byte
+	userID   []byte
 	accounts map[common.Address]*GWAccount
 	userKey  []byte
 }
@@ -30,14 +30,14 @@ func (u GWUser) GetAllAddresses() []*common.Address {
 	return accts
 }
 
-func getUser(userId []byte, s storage.Storage) (*GWUser, error) {
-	result := GWUser{userId: userId, accounts: map[common.Address]*GWAccount{}}
-	userPrivateKey, err := s.GetUserPrivateKey(userId)
+func getUser(userID []byte, s storage.Storage) (*GWUser, error) {
+	result := GWUser{userID: userID, accounts: map[common.Address]*GWAccount{}}
+	userPrivateKey, err := s.GetUserPrivateKey(userID)
 	if err != nil {
-		return nil, fmt.Errorf("user %s not found. %w", userId, err)
+		return nil, fmt.Errorf("user %s not found. %w", userID, err)
 	}
 	result.userKey = userPrivateKey
-	allAccounts, err := s.GetAccounts(userId)
+	allAccounts, err := s.GetAccounts(userID)
 	if err != nil {
 		return nil, err
 	}

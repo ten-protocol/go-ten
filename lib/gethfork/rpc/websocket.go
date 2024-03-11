@@ -63,16 +63,16 @@ func (s *Server) WebsocketHandler(allowedOrigins []string) http.Handler {
 		}
 		codec := newWebsocketCodec(conn, r.Host, r.Header)
 
-		s.ServeCodec(codec, 0, extractUserId(r.Context()))
+		s.ServeCodec(codec, 0, extractUserID(r.Context()))
 	})
 }
 
 const exposedParams = "exposedParams"
 
-func extractUserId(ctx context.Context) string {
+func extractUserID(ctx context.Context) string {
 	params := ctx.Value(exposedParams).(map[string]string)
-	userId := params["token"]
-	return userId
+	userID := params["token"]
+	return userID
 }
 
 // wsHandshakeValidator returns a handler that verifies the origin during the
