@@ -53,11 +53,11 @@ func EstimateGasValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlo
 }
 
 func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64], rpc *EncryptionManager) error {
-	err := authenticateFrom(builder.VK, builder.From)
-	if err != nil {
-		builder.Err = err
-		return nil //nolint:nilerr
-	}
+	//err := authenticateFrom(builder.VK, builder.From)
+	//if err != nil {
+	//	builder.Err = err
+	//	return nil //nolint:nilerr
+	//}
 
 	txArgs := builder.Param.callParams
 	blockNumber := builder.Param.block
