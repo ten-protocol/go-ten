@@ -154,7 +154,7 @@ func (s *BlockChainAPI) GetCode(ctx context.Context, address common.Address, blo
 
 func (s *BlockChainAPI) GetStorageAt(ctx context.Context, address common.Address, hexKey string, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	// GetStorageAt is repurposed to return the userID
-	if hexKey == wecommon.GetStorageAtUserIDRequestMethodName {
+	if address.Hex() == wecommon.GetStorageAtUserIDRequestMethodName {
 		userID, err := extractUserId(ctx, s.we)
 		if err != nil {
 			return nil, err

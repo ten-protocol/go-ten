@@ -29,13 +29,12 @@ const (
 	PathNetworkHealth                   = "/network-health/"
 	WSProtocol                          = "ws://"
 	HTTPProtocol                        = "http://"
-	DefaultUser                         = "0x00000000000000000000"
 	UserQueryParameter                  = "u"
 	EncryptedTokenQueryParameter        = "token"
 	AddressQueryParameter               = "a"
 	MessageUserIDLen                    = 40
 	EthereumAddressLen                  = 42
-	GetStorageAtUserIDRequestMethodName = "getUserID"
+	GetStorageAtUserIDRequestMethodName = "0x0000000000000000000000000000000000000000"
 	SuccessMsg                          = "success"
 	APIVersion1                         = "/v1"
 	PathVersion                         = "/version/"

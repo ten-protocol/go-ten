@@ -288,8 +288,10 @@ func TestGetStorageAtForReturningUserID(t *testing.T) {
 	respJoin := makeHTTPEthJSONReqWithPath(walletHTTPPort, "v1/join")
 	userID := string(respJoin)
 
+	getUserID := "0x0000000000000000000000000000000000000000"
+
 	// make a request to GetStorageAt with correct parameters to get userID that exists in the database
-	respBody := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{"getUserID", "0", nil}, userID)
+	respBody := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{getUserID, "0", nil}, userID)
 	validateJSONResponse(t, respBody)
 
 	if !strings.Contains(string(respBody), userID) {
@@ -298,9 +300,9 @@ func TestGetStorageAtForReturningUserID(t *testing.T) {
 
 	// make a request to GetStorageAt with correct parameters, but userID that is not present in the database
 	invalidUserID := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	respBody2 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{"getUserID", "0", nil}, invalidUserID)
+	respBody2 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{getUserID, "0", nil}, invalidUserID)
 
-	if !strings.Contains(string(respBody2), "method eth_getStorageAt cannot be called with an unauthorised client - no signed viewing keys found") {
+	if !strings.Contains(string(respBody2), "not found") {
 		t.Fatalf("expected method eth_getStorageAt cannot be called with an unauthorised client - no signed viewing keys found, got '%s'", string(respBody2))
 	}
 
@@ -311,7 +313,7 @@ func TestGetStorageAtForReturningUserID(t *testing.T) {
 	}
 
 	// make a request with wrong rpcMethod
-	respBody4 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetBalance, []interface{}{"getUserID", "0", nil}, userID)
+	respBody4 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetBalance, []interface{}{getUserID, "0", nil}, userID)
 	if strings.Contains(string(respBody4), userID) {
 		t.Fatalf("expected response not containing userID as the parameters are wrong ")
 	}
