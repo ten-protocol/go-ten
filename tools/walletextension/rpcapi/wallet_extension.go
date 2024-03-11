@@ -84,7 +84,7 @@ func addDefaultUser(config *common.Config, logger gethlog.Logger, storage storag
 	if err != nil {
 		panic(err)
 	}
-	viewingPrivateKeyEcies := ecies.ImportECDSA(userAccountKey)
+	viewingPrivateKeyEcies := ecies.ImportECDSA(wallet.PrivateKey())
 	if err != nil {
 		panic(fmt.Sprintf("could not convert key: %s", err))
 	}
