@@ -2,9 +2,12 @@ package userwallet
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -80,8 +83,7 @@ func (s *AuthClientUser) AwaitReceipt(ctx context.Context, txHash *gethcommon.Ha
 	var err error
 	err = retry.Do(func() error {
 		receipt, err = s.client.TransactionReceipt(ctx, *txHash)
-		if err != nil {
-			// nil response means not found. Any other error is unexpected, so we stop polling and fail immediately
+		if err != nil && !errors.Is(err, ethereum.NotFound) {
 			return retry.FailFast(err)
 		}
 		return err

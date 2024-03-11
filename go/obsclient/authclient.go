@@ -83,14 +83,13 @@ func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash gethcomm
 	var result responses.ReceiptType
 	var emptyHash gethcommon.Hash
 	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetTransactionReceipt, txHash)
-	if err != nil {
-		return nil, err
-	}
-	if result.TxHash != emptyHash {
-		return &result, nil
+	if err == nil {
+		if result.TxHash == emptyHash {
+			return nil, ethereum.NotFound
+		}
 	}
 
-	return nil, nil
+	return &result, err
 }
 
 // NonceAt retrieves the nonce for the account registered on this client (due to obscuro privacy restrictions,

@@ -2,6 +2,7 @@ package userwallet
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -93,7 +94,7 @@ func (g *GatewayUser) AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash)
 	var err error
 	err = retry.Do(func() error {
 		receipt, err = g.client.TransactionReceipt(ctx, *txHash)
-		if err != nil {
+		if err != nil && !errors.Is(err, ethereum.NotFound) {
 			return retry.FailFast(err)
 		}
 		return err
