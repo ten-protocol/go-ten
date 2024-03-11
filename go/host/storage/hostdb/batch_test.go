@@ -247,6 +247,8 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 	}
 }
 
+//TODO Get Batch by TX hash
+
 func createBatch(batchNum int64, txHashes []common.L2BatchHash) (common.ExtBatch, error) {
 	header := common.BatchHeader{
 		SequencerOrderNo: big.NewInt(batchNum),

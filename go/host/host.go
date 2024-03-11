@@ -193,9 +193,12 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 	for name, service := range h.services.All() {
 		status := service.HealthStatus()
 		if !status.OK() {
+			println("HEALTH ERROR: ", name, status.Message())
 			healthErrors = append(healthErrors, fmt.Sprintf("[%s] not healthy - %s", name, status.Message()))
 		}
 	}
+
+	//println("HEALTH ERRORS size: ", len(healthErrors))
 
 	return &hostcommon.HealthCheck{
 		OverallHealth: len(healthErrors) == 0,

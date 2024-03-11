@@ -7,7 +7,6 @@ import (
 	"fmt"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/status-im/keycard-go/hexutils"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"math/big"
@@ -95,15 +94,12 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 	)
 	if err != nil {
 		println("failed to insert batch:", err.Error())
-		println("failed to insert batch with short hash:", hexutils.BytesToHex(truncTo16(batch.Hash())))
-		println("failed to insert batch with full hash:", hexutils.BytesToHex(batch.Hash().Bytes()))
 		return fmt.Errorf("failed to insert batch: %w", err)
 	}
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("could not commit batch tx: %w", err)
 	}
 
-	println("inserted batch with short hash:", hexutils.BytesToHex(truncTo16(batch.Hash())))
 	return nil
 }
 
