@@ -55,7 +55,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 	if err != nil {
 		panic(fmt.Errorf("error saving user: %s", common.DefaultUser))
 	}
-	err = storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk))
+	err = storage.AddUser(defaultUserId, crypto.FromECDSA(vk))
 	if err != nil {
 		panic(fmt.Errorf("error saving user: %s", common.DefaultUser))
 	}
@@ -124,12 +124,12 @@ func (w *Services) SubmitViewingKey(address gethcommon.Address, signature []byte
 
 	vk.SignatureWithAccountKey = signature
 
-	err := w.Storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
+	err := w.Storage.AddUser(defaultUserId, crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
 	if err != nil {
 		return fmt.Errorf("error saving user: %s", common.DefaultUser)
 	}
 
-	err = w.Storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.SignatureWithAccountKey)
+	err = w.Storage.AddAccount(defaultUserId, vk.Account.Bytes(), vk.SignatureWithAccountKey)
 	if err != nil {
 		return fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser)
 	}

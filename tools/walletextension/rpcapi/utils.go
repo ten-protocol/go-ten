@@ -10,7 +10,7 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
 	"github.com/ethereum/go-ethereum/common"
-	common2 "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 const (
@@ -23,6 +23,8 @@ const (
 	longCacheTTL  = 5 * time.Hour
 	shortCacheTTL = 1 * time.Second
 )
+
+var defaultUserId, _ = wecommon.GetUserIDbyte(wecommon.DefaultUser)
 
 type ExecCfg struct {
 	account             *common.Address
@@ -72,14 +74,11 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 			}
 			acc := user.accounts[*addr]
 			if acc == nil {
-				// todo - return an account
-				if len(user.accounts) > 0 {
-					randomUserAddr := user.GetAllAddresses()[0]
-					candidateAccts = append(candidateAccts, user.accounts[*randomUserAddr])
-					break
+				// todo - this is a hack - this should error
+				defaultUser, err := getUser(defaultUserId, w.Storage)
+				if err != nil {
+					panic(err)
 				}
-				defaultUser, err := getUser([]byte(common2.DefaultUser), w.Storage)
-				println(err)
 				randomUserAddr := defaultUser.GetAllAddresses()[0]
 				candidateAccts = append(candidateAccts, defaultUser.accounts[*randomUserAddr])
 			}
@@ -136,13 +135,13 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *Cac
 func extractUserId(ctx context.Context) ([]byte, error) {
 	params := ctx.Value(exposedParams).(map[string]string)
 	// todo handle errors
-	userId, ok := params[common2.EncryptedTokenQueryParameter]
+	userId, ok := params[wecommon.EncryptedTokenQueryParameter]
 	if !ok || len(userId) < 3 {
 		// todo - remove
-		return []byte(common2.DefaultUser), nil
+		return defaultUserId, nil
 		// return nil, fmt.Errorf("invalid encryption token %s", userId)
 	}
-	return common2.GetUserIDbyte(userId)
+	return wecommon.GetUserIDbyte(userId)
 }
 
 // generateCacheKey generates a cache key for the given method, encryptionToken and parameters
@@ -191,3 +190,7 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, args []any, onCacheMiss 
 
 	return result, err
 }
+
+//func withLogging(fun func()) {
+//
+//}

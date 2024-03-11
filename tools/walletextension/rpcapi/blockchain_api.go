@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-	common2 "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 type BlockChainAPI struct {
@@ -167,7 +167,7 @@ func (s *BlockChainAPI) GetCode(ctx context.Context, address common.Address, blo
 
 func (s *BlockChainAPI) GetStorageAt(ctx context.Context, address common.Address, hexKey string, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	// GetStorageAt is repurposed to return the userId
-	if hexKey == common2.GetStorageAtUserIDRequestMethodName {
+	if hexKey == wecommon.GetStorageAtUserIDRequestMethodName {
 		userId, err := extractUserId(ctx)
 		if err != nil {
 			return nil, err
