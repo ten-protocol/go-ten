@@ -74,17 +74,17 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 }
 
 func addDefaultUser(config *common.Config, logger gethlog.Logger, storage storage.Storage) []byte {
-	defaultPrivateKey, err := crypto.GenerateKey()
+	userAccountKey, err := crypto.GenerateKey()
 	if err != nil {
 		panic(fmt.Errorf("error generating default user key"))
 	}
 
-	wallet := wallet.NewInMemoryWalletFromPK(big.NewInt(int64(config.TenChainID)), defaultPrivateKey, logger)
+	wallet := wallet.NewInMemoryWalletFromPK(big.NewInt(int64(config.TenChainID)), userAccountKey, logger)
 	vk, err := viewingkey.GenerateViewingKeyForWallet(wallet)
 	if err != nil {
 		panic(err)
 	}
-	viewingPrivateKeyEcies := ecies.ImportECDSA(defaultPrivateKey)
+	viewingPrivateKeyEcies := ecies.ImportECDSA(userAccountKey)
 	if err != nil {
 		panic(fmt.Sprintf("could not convert key: %s", err))
 	}
@@ -92,7 +92,7 @@ func addDefaultUser(config *common.Config, logger gethlog.Logger, storage storag
 	// create UserID and store it in the database with the private key
 	userID := viewingkey.CalculateUserID(common.PrivateKeyToCompressedPubKey(viewingPrivateKeyEcies))
 
-	err = storage.AddUser(userID, crypto.FromECDSA(defaultPrivateKey))
+	err = storage.AddUser(userID, crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
 	if err != nil {
 		panic(fmt.Errorf("error saving default user"))
 	}
