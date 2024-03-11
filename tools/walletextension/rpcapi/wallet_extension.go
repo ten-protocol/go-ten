@@ -84,15 +84,11 @@ func addDefaultUser(config *common.Config, logger gethlog.Logger, storage storag
 	if err != nil {
 		panic(err)
 	}
-	viewingPrivateKeyEcies := ecies.ImportECDSA(wallet.PrivateKey())
-	if err != nil {
-		panic(fmt.Sprintf("could not convert key: %s", err))
-	}
 
 	// create UserID and store it in the database with the private key
-	userID := viewingkey.CalculateUserID(common.PrivateKeyToCompressedPubKey(viewingPrivateKeyEcies))
+	userID := viewingkey.CalculateUserID(common.PrivateKeyToCompressedPubKey(vk.PrivateKey))
 
-	err = storage.AddUser(userID, crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
+	err = storage.AddUser(userID, crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
 	if err != nil {
 		panic(fmt.Errorf("error saving default user"))
 	}
