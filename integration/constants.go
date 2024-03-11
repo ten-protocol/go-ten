@@ -9,6 +9,7 @@ const (
 	StartPortSimulationGethInMem     = 18000
 	StartPortSimulationInMem         = 22000
 	StartPortSimulationFullNetwork   = 26000
+	StartPortNetworkTests            = 28000
 	StartPortSmartContractTests      = 30000
 	StartPortContractDeployerTest1   = 34000
 	StartPortContractDeployerTest2   = 35000
