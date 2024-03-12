@@ -1,5 +1,6 @@
 package rpcapi
 
+//goland:noinspection ALL
 import (
 	"context"
 	"math/big"
@@ -20,26 +21,26 @@ func NewBlockChainAPI(we *Services) *BlockChainAPI {
 	return &BlockChainAPI{we}
 }
 
-func (api *BlockChainAPI) ChainId() *hexutil.Big {
+func (api *BlockChainAPI) ChainId() *hexutil.Big { //nolint: revive
 	// chainid, _ := UnauthenticatedTenRPCCall[hexutil.Big](nil, api.we, &CacheCfg{TTL: longCacheTTL}, "eth_chainId")
 	// return chainid
-	chainId := big.NewInt(int64(api.we.Config.TenChainID))
-	return (*hexutil.Big)(chainId)
+	chainID := big.NewInt(int64(api.we.Config.TenChainID))
+	return (*hexutil.Big)(chainID)
 }
 
-func (s *BlockChainAPI) BlockNumber() hexutil.Uint64 {
-	nr, err := UnauthenticatedTenRPCCall[hexutil.Uint64](nil, s.we, &CacheCfg{TTL: shortCacheTTL}, "eth_blockNumber")
+func (api *BlockChainAPI) BlockNumber() hexutil.Uint64 {
+	nr, err := UnauthenticatedTenRPCCall[hexutil.Uint64](nil, api.we, &CacheCfg{TTL: shortCacheTTL}, "eth_blockNumber")
 	if err != nil {
 		return hexutil.Uint64(0)
 	}
 	return *nr
 }
 
-func (s *BlockChainAPI) GetBalance(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Big, error) {
+func (api *BlockChainAPI) GetBalance(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Big, error) {
 	// todo - how do you handle getBalance for contracts
 	return ExecAuthRPC[hexutil.Big](
 		ctx,
-		s.we,
+		api.we,
 		&ExecCfg{
 			cacheCfg: &CacheCfg{
 				TTLCallback: func() time.Duration {
@@ -80,8 +81,8 @@ type StorageResult struct {
 		return nil, nil
 	}
 */
-func (s *BlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (map[string]interface{}, error) {
-	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, s.we, &CacheCfg{TTLCallback: func() time.Duration {
+func (api *BlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (map[string]interface{}, error) {
+	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &CacheCfg{TTLCallback: func() time.Duration {
 		if number > 0 {
 			return longCacheTTL
 		}
@@ -93,18 +94,18 @@ func (s *BlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.BlockN
 	return *resp, err
 }
 
-func (s *BlockChainAPI) GetHeaderByHash(ctx context.Context, hash common.Hash) map[string]interface{} {
-	resp, _ := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, s.we, &CacheCfg{TTL: longCacheTTL}, "eth_getHeaderByHash", hash)
+func (api *BlockChainAPI) GetHeaderByHash(ctx context.Context, hash common.Hash) map[string]interface{} {
+	resp, _ := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &CacheCfg{TTL: longCacheTTL}, "eth_getHeaderByHash", hash)
 	if resp == nil {
 		return nil
 	}
 	return *resp
 }
 
-func (s *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, fullTx bool) (map[string]interface{}, error) {
+func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, fullTx bool) (map[string]interface{}, error) {
 	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](
 		ctx,
-		s.we,
+		api.we,
 		&CacheCfg{
 			TTLCallback: func() time.Duration {
 				if number > 0 {
@@ -119,18 +120,18 @@ func (s *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNu
 	return *resp, err
 }
 
-func (s *BlockChainAPI) GetBlockByHash(ctx context.Context, hash common.Hash, fullTx bool) (map[string]interface{}, error) {
-	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, s.we, &CacheCfg{TTL: longCacheTTL}, "eth_getBlockByHash", hash, fullTx)
+func (api *BlockChainAPI) GetBlockByHash(ctx context.Context, hash common.Hash, fullTx bool) (map[string]interface{}, error) {
+	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &CacheCfg{TTL: longCacheTTL}, "eth_getBlockByHash", hash, fullTx)
 	if resp == nil {
 		return nil, err
 	}
 	return *resp, err
 }
 
-func (s *BlockChainAPI) GetCode(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+func (api *BlockChainAPI) GetCode(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	resp, err := ExecAuthRPC[hexutil.Bytes](
 		ctx,
-		s.we,
+		api.we,
 		&ExecCfg{
 			cacheCfg: &CacheCfg{
 				TTLCallback: func() time.Duration {
@@ -152,22 +153,22 @@ func (s *BlockChainAPI) GetCode(ctx context.Context, address common.Address, blo
 	return *resp, err
 }
 
-func (s *BlockChainAPI) GetStorageAt(ctx context.Context, address common.Address, hexKey string, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address common.Address, hexKey string, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	// GetStorageAt is repurposed to return the userID
 	if address.Hex() == wecommon.GetStorageAtUserIDRequestMethodName {
-		userID, err := extractUserId(ctx, s.we)
+		userID, err := extractUserID(ctx, api.we)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = getUser(userID, s.we.Storage)
+		_, err = getUser(userID, api.we.Storage)
 		if err != nil {
 			return nil, err
 		}
 		return userID, nil
 	}
 
-	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, s.we, &ExecCfg{account: &address}, "eth_getStorageAt", address, hexKey, blockNrOrHash)
+	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, api.we, &ExecCfg{account: &address}, "eth_getStorageAt", address, hexKey, blockNrOrHash)
 	if resp == nil {
 		return nil, err
 	}
@@ -200,8 +201,8 @@ type (
 	}
 )
 
-func (s *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash rpc.BlockNumberOrHash, overrides *StateOverride, blockOverrides *BlockOverrides) (hexutil.Bytes, error) {
-	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, s.we, &ExecCfg{
+func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash rpc.BlockNumberOrHash, overrides *StateOverride, blockOverrides *BlockOverrides) (hexutil.Bytes, error) {
+	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, api.we, &ExecCfg{
 		cacheCfg: &CacheCfg{
 			TTLCallback: func() time.Duration {
 				if blockNrOrHash.BlockNumber != nil && blockNrOrHash.BlockNumber.Int64() <= 0 {
@@ -225,8 +226,8 @@ func (s *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs, 
 	return *resp, err
 }
 
-func (s *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash *rpc.BlockNumberOrHash, overrides *StateOverride) (hexutil.Uint64, error) {
-	resp, err := ExecAuthRPC[hexutil.Uint64](ctx, s.we, &ExecCfg{
+func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash *rpc.BlockNumberOrHash, overrides *StateOverride) (hexutil.Uint64, error) {
+	resp, err := ExecAuthRPC[hexutil.Uint64](ctx, api.we, &ExecCfg{
 		cacheCfg: &CacheCfg{
 			TTLCallback: func() time.Duration {
 				if blockNrOrHash != nil && blockNrOrHash.BlockNumber != nil && blockNrOrHash.BlockNumber.Int64() <= 0 {

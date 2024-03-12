@@ -1,5 +1,6 @@
 package rpcapi
 
+//goland:noinspection ALL
 import (
 	"context"
 	"encoding/json"
@@ -92,7 +93,7 @@ func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.Trans
 	if err != nil {
 		return common.Hash{}, err
 	}
-	userIDBytes, _ := extractUserId(ctx, s.we)
+	userIDBytes, _ := extractUserID(ctx, s.we)
 	if s.we.Config.StoreIncomingTxs && len(userIDBytes) > 10 {
 		tx, err := json.Marshal(args)
 		if err != nil {
@@ -123,7 +124,7 @@ func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.B
 	if err != nil {
 		return common.Hash{}, err
 	}
-	userIDBytes, err := extractUserId(ctx, s.we)
+	userIDBytes, err := extractUserID(ctx, s.we)
 	if s.we.Config.StoreIncomingTxs && len(userIDBytes) > 10 {
 		err = s.we.Storage.StoreTransaction(input.String(), userIDBytes)
 		if err != nil {

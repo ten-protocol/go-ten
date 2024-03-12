@@ -43,7 +43,8 @@ func (api *EthereumAPI) FeeHistory(ctx context.Context, blockCount math.HexOrDec
 	}}, "eth_feeHistory", blockCount, lastBlock, rewardPercentiles)
 }
 
-func (api *EthereumAPI) Syncing() (interface{}, error) {
+/*func (api *EthereumAPI) Syncing() (interface{}, error) {
 	// todo
 	return nil, nil
 }
+*/

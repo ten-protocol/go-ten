@@ -5,8 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/status-im/keycard-go/hexutils"
 	"time"
+
+	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
@@ -43,7 +44,7 @@ type CacheCfg struct {
 
 func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method string, args ...any) (*R, error) {
 	requestStartTime := time.Now()
-	userID, err := extractUserId(ctx, w)
+	userID, err := extractUserID(ctx, w)
 	if err != nil {
 		return nil, err
 	}
@@ -60,43 +61,9 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 
 	res, err := withCache(w.Cache, cfg.cacheCfg, cacheKey, func() (*R, error) {
 		// determine candidate "from"
-		candidateAccts := make([]*GWAccount, 0)
-
-		// for users with multiple accounts determine a candidate account
-		switch {
-		case cfg.account != nil:
-			acc := user.accounts[*cfg.account]
-			if acc != nil {
-				candidateAccts = append(candidateAccts, acc)
-			}
-
-		case cfg.computeFromCallback != nil:
-			addr := cfg.computeFromCallback(user)
-			if addr == nil {
-				return nil, fmt.Errorf("invalid request")
-			}
-			acc := user.accounts[*addr]
-			if acc != nil {
-				candidateAccts = append(candidateAccts, acc)
-			}
-
-		case cfg.tryAll, cfg.tryUntilAuthorised:
-			for _, acc := range user.accounts {
-				candidateAccts = append(candidateAccts, acc)
-			}
-
-		default:
-			return nil, fmt.Errorf("programming error. invalid owner detection strategy")
-		}
-
-		// when there is no matching address, some calls, like submitting a transactions are allowed to go through
-		if len(candidateAccts) == 0 && cfg.useDefaultUser {
-			defaultUser, err := getUser(w.DefaultUser, w.Storage)
-			if err != nil {
-				panic(err)
-			}
-			defaultAcct := defaultUser.GetAllAddresses()[0]
-			candidateAccts = append(candidateAccts, defaultUser.accounts[*defaultAcct])
+		candidateAccts, err := getCandidateAccounts(user, w, cfg)
+		if err != nil {
+			return nil, err
 		}
 
 		var rpcErr error
@@ -124,8 +91,49 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		}
 		return nil, rpcErr
 	})
-	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(userID), method, args, res, err, time.Now().Sub(requestStartTime).Milliseconds())
+	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(userID), method, args, res, err, time.Since(requestStartTime).Milliseconds())
 	return res, err
+}
+
+func getCandidateAccounts(user *GWUser, w *Services, cfg *ExecCfg) ([]*GWAccount, error) {
+	candidateAccts := make([]*GWAccount, 0)
+	// for users with multiple accounts determine a candidate account
+	switch {
+	case cfg.account != nil:
+		acc := user.accounts[*cfg.account]
+		if acc != nil {
+			candidateAccts = append(candidateAccts, acc)
+		}
+
+	case cfg.computeFromCallback != nil:
+		addr := cfg.computeFromCallback(user)
+		if addr == nil {
+			return nil, fmt.Errorf("invalid request")
+		}
+		acc := user.accounts[*addr]
+		if acc != nil {
+			candidateAccts = append(candidateAccts, acc)
+		}
+
+	case cfg.tryAll, cfg.tryUntilAuthorised:
+		for _, acc := range user.accounts {
+			candidateAccts = append(candidateAccts, acc)
+		}
+
+	default:
+		return nil, fmt.Errorf("programming error. invalid owner detection strategy")
+	}
+
+	// when there is no matching address, some calls, like submitting a transactions are allowed to go through
+	if len(candidateAccts) == 0 && cfg.useDefaultUser {
+		defaultUser, err := getUser(w.DefaultUser, w.Storage)
+		if err != nil {
+			panic(err)
+		}
+		defaultAcct := defaultUser.GetAllAddresses()[0]
+		candidateAccts = append(candidateAccts, defaultUser.accounts[*defaultAcct])
+	}
+	return candidateAccts, nil
 }
 
 func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg, method string, args ...any) (*R, error) {
@@ -139,11 +147,11 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *Cac
 		err = unauthedRPC.CallContext(ctx, resp, method, args...)
 		return resp, err
 	})
-	audit(w, "RPC call. method=%s args=%v result=%s error=%s time=%d", method, args, res, err, time.Now().Sub(requestStartTime).Milliseconds())
+	audit(w, "RPC call. method=%s args=%v result=%s error=%s time=%d", method, args, res, err, time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
-func extractUserId(ctx context.Context, w *Services) ([]byte, error) {
+func extractUserID(ctx context.Context, w *Services) ([]byte, error) {
 	params := ctx.Value(exposedParams).(map[string]string)
 	// todo handle errors
 	userID, ok := params[wecommon.EncryptedTokenQueryParameter]

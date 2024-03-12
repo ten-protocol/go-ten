@@ -2,6 +2,7 @@ package rpcapi
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -57,5 +58,5 @@ func (api *DebugAPI) SetHead(number hexutil.Uint64) {
 // EventLogRelevancy - specific to Ten - todo
 func (api *DebugAPI) EventLogRelevancy(_ context.Context, _ common.Hash) (interface{}, error) {
 	// todo
-	return nil, nil
+	return nil, fmt.Errorf("not implemented")
 }

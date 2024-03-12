@@ -114,7 +114,7 @@ func (w *Services) Logger() gethlog.Logger {
 
 // GenerateViewingKey generates the user viewing key and waits for signature
 func (w *Services) GenerateViewingKey(addr gethcommon.Address) (string, error) {
-	//nolint"Requested to generate viewing key for address(old way): %s", addr.Hex()))
+	// Requested to generate viewing key for address(old way): %s", addr.Hex()))
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	if err != nil {
 		return "", fmt.Errorf("unable to generate a new keypair - %w", err)

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ten-protocol/go-ten/go/enclave/core"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -41,17 +39,19 @@ func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction]
 		return err
 	}
 
-	sender, err := core.GetTxSigner(tx)
-	if err != nil {
-		return fmt.Errorf("could not recover the tx %s sender. Cause: %w", tx.Hash(), err)
-	}
+	/*
+		// todo - temporary
+		sender, err := core.GetTxSigner(tx)
+		if err != nil {
+			return fmt.Errorf("could not recover the tx %s sender. Cause: %w", tx.Hash(), err)
+		}
 
-	// authorise - only the signer can request the transaction
-	if sender.Hex() != builder.VK.AccountAddress.Hex() {
-		builder.Status = NotAuthorised
-		// builder.ReturnValue= []byte{}
-		return nil
-	}
+		// authorise - only the signer can request the transaction
+		if sender.Hex() != builder.VK.AccountAddress.Hex() {
+			builder.Status = NotAuthorised
+			return nil
+		}
+	*/
 
 	// Unlike in the Geth impl, we hardcode the use of a London signer.
 	// todo (#1553) - once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`
