@@ -99,7 +99,7 @@ func httpRequestHandler(walletExt *walletextension.WalletExtension, resp http.Re
 func NewWSRoutes(walletExt *walletextension.WalletExtension) []Route {
 	return []Route{
 		{
-			Name: common.PathRoot,
+			Name: common.APIVersion1 + common.PathRoot,
 			Func: wsHandler(walletExt, ethRequestHandler),
 		},
 		{
