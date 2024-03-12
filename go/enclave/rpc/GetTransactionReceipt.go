@@ -52,10 +52,10 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, types.Re
 		return nil //nolint:nilerr
 	}
 
-	if txSigner.Hex() != builder.VK.AccountAddress.Hex() {
-		builder.Status = NotAuthorised
-		return nil
-	}
+	//if txSigner.Hex() != builder.VK.AccountAddress.Hex() {
+	//	builder.Status = NotAuthorised
+	//	return nil
+	//}
 
 	// We retrieve the transaction receipt.
 	txReceipt, err := rpc.storage.GetTransactionReceipt(txHash)
