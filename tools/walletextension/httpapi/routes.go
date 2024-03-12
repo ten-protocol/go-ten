@@ -34,7 +34,6 @@ func NewHTTPRoutes(walletExt *rpcapi.Services) []Route {
 			Name: common.PathGenerateViewingKey,
 			Func: httpHandler(walletExt, generateViewingKeyRequestHandler),
 		},
-
 		{
 			Name: common.PathSubmitViewingKey,
 			Func: httpHandler(walletExt, submitViewingKeyRequestHandler),
@@ -160,6 +159,7 @@ func submitViewingKeyRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 
 // This function handles request to /join endpoint. It is responsible to create new user (new key-pair) and store it to the db
 func joinRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
+	// audit()
 	// todo (@ziga) add protection against DDOS attacks
 	_, err := conn.ReadRequest()
 	if err != nil {

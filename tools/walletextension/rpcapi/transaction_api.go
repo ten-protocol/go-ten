@@ -69,7 +69,7 @@ func (s *TransactionAPI) GetTransactionCount(ctx context.Context, address common
 }
 
 func (s *TransactionAPI) GetTransactionByHash(ctx context.Context, hash common.Hash) (*rpc.RpcTransaction, error) {
-	return ExecAuthRPC[rpc.RpcTransaction](ctx, s.we, &ExecCfg{tryAll: true}, "eth_getTransactionByHash", hash)
+	return ExecAuthRPC[rpc.RpcTransaction](ctx, s.we, &ExecCfg{tryAll: true, useDefaultUser: true}, "eth_getTransactionByHash", hash)
 }
 
 func (s *TransactionAPI) GetRawTransactionByHash(ctx context.Context, hash common.Hash) (hexutil.Bytes, error) {
@@ -83,6 +83,9 @@ func (s *TransactionAPI) GetRawTransactionByHash(ctx context.Context, hash commo
 func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error) {
 	txRec, err := ExecAuthRPC[map[string]interface{}](ctx, s.we, &ExecCfg{tryUntilAuthorised: true}, "eth_getTransactionReceipt", hash)
 	if err != nil {
+		return nil, err
+	}
+	if txRec == nil {
 		return nil, err
 	}
 	return *txRec, err

@@ -2,6 +2,8 @@ package obsclient
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
@@ -42,8 +44,7 @@ func NewAuthObsClient(client *rpc.EncRPCClient) *AuthObsClient {
 }
 
 // DialWithAuth will generate and sign a viewing key for given wallet, then initiate a connection with the RPC node and
-//
-//	register the viewing key
+// register the viewing key
 func DialWithAuth(rpcurl string, wal wallet.Wallet, logger gethlog.Logger) (*AuthObsClient, error) {
 	viewingKey, err := viewingkey.GenerateViewingKeyForWallet(wal)
 	if err != nil {
@@ -58,15 +59,78 @@ func DialWithAuth(rpcurl string, wal wallet.Wallet, logger gethlog.Logger) (*Aut
 	return authClient, nil
 }
 
+type rpcTransaction struct {
+	tx *types.Transaction
+	txExtraInfo
+}
+
+type txExtraInfo struct {
+	BlockNumber *string             `json:"blockNumber,omitempty"`
+	BlockHash   *gethcommon.Hash    `json:"blockHash,omitempty"`
+	From        *gethcommon.Address `json:"from,omitempty"`
+}
+
+func (tx *rpcTransaction) UnmarshalJSON(msg []byte) error {
+	if err := json.Unmarshal(msg, &tx.tx); err != nil {
+		return err
+	}
+	return json.Unmarshal(msg, &tx.txExtraInfo)
+}
+
 // TransactionByHash returns transaction (if found), isPending (always false currently as we don't search the mempool), error
-func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash gethcommon.Hash) (*types.Transaction, bool, error) {
-	var tx responses.TxType
-	err := ac.rpcClient.CallContext(ctx, &tx, rpc.GetTransactionByHash, hash.Hex())
+func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash gethcommon.Hash) (tx *types.Transaction, isPending bool, err error) {
+	var json *rpcTransaction
+	err = ac.rpcClient.CallContext(ctx, &json, "eth_getTransactionByHash", hash)
 	if err != nil {
 		return nil, false, err
+	} else if json == nil {
+		return nil, false, ethereum.NotFound
+	} else if _, r, _ := json.tx.RawSignatureValues(); r == nil {
+		return nil, false, errors.New("server returned transaction without signature")
 	}
-	// todo (#1491) - revisit isPending result value, included for ethclient equivalence but hardcoded currently
-	return &tx, false, nil
+	if json.From != nil && json.BlockHash != nil {
+		setSenderFromServer(json.tx, *json.From, *json.BlockHash)
+	}
+	return json.tx, json.BlockNumber == nil, nil
+}
+
+// senderFromServer is a types.Signer that remembers the sender address returned by the RPC
+// server. It is stored in the transaction's sender address cache to avoid an additional
+// request in TransactionSender.
+type senderFromServer struct {
+	addr      gethcommon.Address
+	blockhash gethcommon.Hash
+}
+
+var errNotCached = errors.New("sender not cached")
+
+func setSenderFromServer(tx *types.Transaction, addr gethcommon.Address, block gethcommon.Hash) {
+	// Use types.Sender for side-effect to store our signer into the cache.
+	types.Sender(&senderFromServer{addr, block}, tx)
+}
+
+func (s *senderFromServer) Equal(other types.Signer) bool {
+	os, ok := other.(*senderFromServer)
+	return ok && os.blockhash == s.blockhash
+}
+
+func (s *senderFromServer) Sender(tx *types.Transaction) (gethcommon.Address, error) {
+	if s.addr == (gethcommon.Address{}) {
+		return gethcommon.Address{}, errNotCached
+	}
+	return s.addr, nil
+}
+
+func (s *senderFromServer) ChainID() *big.Int {
+	panic("can't sign with senderFromServer")
+}
+
+func (s *senderFromServer) Hash(tx *types.Transaction) gethcommon.Hash {
+	panic("can't sign with senderFromServer")
+}
+
+func (s *senderFromServer) SignatureValues(tx *types.Transaction, sig []byte) (R, S, V *big.Int, err error) {
+	panic("can't sign with senderFromServer")
 }
 
 func (ac *AuthObsClient) GasPrice(ctx context.Context) (*big.Int, error) {
@@ -80,16 +144,14 @@ func (ac *AuthObsClient) GasPrice(ctx context.Context) (*big.Int, error) {
 }
 
 func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash gethcommon.Hash) (*types.Receipt, error) {
-	var result responses.ReceiptType
-	var emptyHash gethcommon.Hash
-	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetTransactionReceipt, txHash)
+	var r *types.Receipt
+	err := ac.rpcClient.CallContext(ctx, &r, "eth_getTransactionReceipt", txHash)
 	if err == nil {
-		if result.TxHash == emptyHash {
+		if r == nil {
 			return nil, ethereum.NotFound
 		}
 	}
-
-	return &result, err
+	return r, err
 }
 
 // NonceAt retrieves the nonce for the account registered on this client (due to obscuro privacy restrictions,
@@ -120,20 +182,15 @@ func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Tr
 	if err != nil {
 		return err
 	}
-	println(result.Hex())
 	return nil
 }
 
 // BalanceAt retrieves the native balance for the account registered on this client (due to obscuro privacy restrictions,
 // balance cannot be requested for other accounts)
 func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*big.Int, error) {
-	var result responses.BalanceType
-	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetBalance, ac.account, toBlockNumArg(blockNumber))
-	if err != nil {
-		return big.NewInt(0), err
-	}
-
-	return result.ToInt(), nil
+	var result hexutil.Big
+	err := ac.rpcClient.CallContext(ctx, &result, "eth_getBalance", ac.account, toBlockNumArg(blockNumber))
+	return (*big.Int)(&result), err
 }
 
 func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria filters.FilterCriteria, ch chan common.IDAndLog) (ethereum.Subscription, error) {
@@ -154,20 +211,19 @@ func (ac *AuthObsClient) Address() gethcommon.Address {
 	return ac.account
 }
 
-func (ac *AuthObsClient) EstimateGas(ctx context.Context, msg *ethereum.CallMsg) (uint64, error) {
-	var result responses.GasType
-	err := ac.rpcClient.CallContext(ctx, &result, rpc.EstimateGas, ToCallArg(*msg))
+func (ac *AuthObsClient) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
+	var hex hexutil.Uint64
+	err := ac.rpcClient.CallContext(ctx, &hex, "eth_estimateGas", ToCallArg(msg))
 	if err != nil {
 		return 0, err
 	}
-
-	return hexutil.DecodeUint64(result.String())
+	return uint64(hex), nil
 }
 
 func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxData {
 	unEstimatedTx := types.NewTx(txData)
 
-	gasLimit, err := ac.EstimateGas(context.Background(), &ethereum.CallMsg{
+	gasLimit, err := ac.EstimateGas(context.Background(), ethereum.CallMsg{
 		From:  ac.Address(),
 		To:    unEstimatedTx.To(),
 		Value: unEstimatedTx.Value(),

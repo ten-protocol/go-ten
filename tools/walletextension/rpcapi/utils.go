@@ -37,8 +37,10 @@ type ExecCfg struct {
 }
 
 type CacheCfg struct {
+	// ResetWhenNewBlock bool todo
 	TTL time.Duration
 	// logic based on block
+	// todo - handle block in the future
 	TTLCallback func() time.Duration
 }
 
@@ -68,7 +70,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 
 		var rpcErr error
 		for _, acct := range candidateAccts {
-			result := new(R)
+			var result *R
 			rpcClient, err := acct.connect(w.HostAddrHTTP, w.Logger())
 			if err != nil {
 				rpcErr = err
@@ -78,7 +80,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 			if cfg.adjustArgs != nil {
 				adjustedArgs = cfg.adjustArgs(acct)
 			}
-			err = rpcClient.CallContext(ctx, result, method, adjustedArgs...)
+			err = rpcClient.CallContext(ctx, &result, method, adjustedArgs...)
 			if err != nil {
 				// todo - is this correct?
 				if cfg.tryUntilAuthorised && err.Error() != notAuthorised {
@@ -125,6 +127,7 @@ func getCandidateAccounts(user *GWUser, w *Services, cfg *ExecCfg) ([]*GWAccount
 	}
 
 	// when there is no matching address, some calls, like submitting a transactions are allowed to go through
+	// todo - remove
 	if len(candidateAccts) == 0 && cfg.useDefaultUser {
 		defaultUser, err := getUser(w.DefaultUser, w.Storage)
 		if err != nil {

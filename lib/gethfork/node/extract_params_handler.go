@@ -25,6 +25,7 @@ func newHttpParamsHandler(exposedParams []string, next http.Handler) http.Handle
 func (handler *httpParamsHandler) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 	result := make(map[string]string)
 	q := r.URL.Query()
+	// todo use the config
 	searchParams := []string{"token"}
 	// for _, param := range handler.exposedParams {
 	// todo wire in

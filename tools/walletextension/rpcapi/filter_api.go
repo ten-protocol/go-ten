@@ -104,6 +104,7 @@ func searchForAddressInFilterCriteria(filterCriteria filters.FilterCriteria, pos
 	return result
 }
 
+// todo - comment
 func forwardMsgs(inputChannels []chan common.IDAndLog, _ []*rpc.ClientSubscription, outSub *rpc.Subscription, notifier *rpc.Notifier) {
 	buffer := NewCircularBuffer(wecommon.DeduplicationBufferSize)
 	cases := make([]reflect.SelectCase, len(inputChannels))
@@ -132,7 +133,6 @@ func forwardMsgs(inputChannels []chan common.IDAndLog, _ []*rpc.ClientSubscripti
 			buffer.Push(uniqueLogKey)
 			err := notifier.Notify(outSub.ID, data.Log)
 			if err != nil {
-				println(err)
 				return
 			}
 		}
