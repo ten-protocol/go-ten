@@ -72,7 +72,7 @@ func (val *obsValidator) OnL1Fork(_ *common.ChainFork) error {
 }
 
 func (val *obsValidator) VerifySequencerSignature(b *core.Batch) error {
-	return val.sigValidator.CheckSequencerSignature(b.Hash(), b.Header.R, b.Header.S)
+	return val.sigValidator.CheckSequencerSignature(b.Hash(), b.Header.Signature)
 }
 
 func (val *obsValidator) ExecuteStoredBatches() error {
