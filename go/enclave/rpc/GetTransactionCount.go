@@ -45,12 +45,13 @@ func GetTransactionCountValidate(reqParams []any, builder *CallBuilder[uint64, s
 }
 
 func GetTransactionCountExecute(builder *CallBuilder[uint64, string], rpc *EncryptionManager) error {
-	err := authenticateFrom(builder.VK, builder.From)
-	if err != nil {
-		builder.Err = err
-		return nil //nolint:nilerr
-	}
-
+	// todo temporarily commented
+	/*	err := authenticateFrom(builder.VK, builder.From)
+		if err != nil {
+			builder.Err = err
+			return nil //nolint:nilerr
+		}
+	*/
 	var nonce uint64
 	l2Head, err := rpc.storage.FetchBatchBySeqNo(*builder.Param)
 	if err == nil {

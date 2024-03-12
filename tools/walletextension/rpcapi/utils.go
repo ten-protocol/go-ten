@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/status-im/keycard-go/hexutils"
 	"time"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
@@ -123,7 +124,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		}
 		return nil, rpcErr
 	})
-	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", userID, method, args, res, err, time.Now().Sub(requestStartTime).Milliseconds())
+	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(userID), method, args, res, err, time.Now().Sub(requestStartTime).Milliseconds())
 	return res, err
 }
 
