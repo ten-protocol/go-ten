@@ -13,6 +13,7 @@ const HOST = "HOST_"
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
 func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (*sql.DB, error) {
+	println("CREATING DB with path: ", HOST+cfg.ID.String())
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/status-im/keycard-go/hexutils"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"math/big"
@@ -25,7 +24,7 @@ const (
 		ORDER BY b.sequence DESC
 		LIMIT 1
 	`
-	selectHeader                      = "SELECt b.header FROM batch_host b"
+	selectHeader                      = "SELECT b.header FROM batch_host b"
 	selectTxsAndBatch                 = "SELECT t.full_hash FROM transactions_host t JOIN batch_host b ON t.body_id = b.body_id WHERE b.full_hash = ?"
 	selectBatchNumberFromTransactions = "SELECT t.body_id FROM transactions_host t WHERE t.full_hash = ?"
 	selectTxsBySequence               = "SELECT t.full_hash FROM transactions_host t WHERE t.body_id = ?"
@@ -42,7 +41,6 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 	// Check if the Batch is already stored
 	_, err := GetBatchHeader(db, batch.Hash())
 	if err == nil {
-		println("batch already exists not adding batch with hash: ", hexutils.BytesToHex(truncTo16(batch.Hash())))
 		return errutil.ErrAlreadyExists
 	}
 
@@ -95,16 +93,17 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 		batch.SeqNo().Uint64(),       // batch_body ID
 	)
 	if err != nil {
-		println("[ERROR-HOST] failed to insert batch with hash:", hexutils.BytesToHex(truncTo16(batch.Hash())))
-		println("[ERROR-HOST] failed to insert batch with seq no:", batch.SeqNo().Uint64())
-		println("[ERROR-HOST] failed to insert batch:", err.Error())
 		return fmt.Errorf("failed to insert batch: %w", err)
 	}
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("could not commit batch tx: %w", err)
 	}
-	println("[SUCCESS-HOST] Added batch with seq no: ", batch.SeqNo().String())
-	println("[SUCCESS-HOST] Added batch with hash: ", hexutils.BytesToHex(truncTo16(batch.Hash())))
+	//println("[SUCCESS-HOST] Added batch with seq no: ", batch.SeqNo().String())
+	//println("[SUCCESS-HOST] Added batch with hash: ", hexutils.BytesToHex(truncTo16(batch.Hash())))
+
+	if batch.SeqNo().Uint64() == 0 {
+		println("[SUCCESS-HOST] Added batch with 0 seq no: ", batch.SeqNo().String())
+	}
 	return nil
 }
 
@@ -159,8 +158,10 @@ func GetBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, erro
 
 // GetBatchHashByNumber returns the hash of a batch given its number.
 func GetBatchHashByNumber(db *sql.DB, number *big.Int) (*gethcommon.Hash, error) {
-	batch, err := fetchBatchHeader(db, " where sequence=?", number.Uint64())
+	batch, err := fetchBatchHeader(db, " where b.sequence=?", number.Uint64())
+	println("trying to fetch hash by number: ", number.Uint64())
 	if err != nil {
+		println("GETBATCHHASHBYNNUMBER HERE ", err.Error())
 		return nil, err
 	}
 	l2BatchHash := batch.Hash()

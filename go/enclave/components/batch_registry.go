@@ -77,12 +77,12 @@ func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Recei
 	defer br.callbackMutex.RUnlock()
 
 	defer core.LogMethodDuration(br.logger, measure.NewStopwatch(), "Sending batch and events", log.BatchHashKey, batch.Hash())
-	println("ENCLAVE headBatchSeq: ", br.headBatchSeq.String())
+	//println("ENCLAVE headBatchSeq: ", br.headBatchSeq.String())
 	br.headBatchSeq = batch.SeqNo()
 	if br.batchesCallback != nil {
 		br.batchesCallback(batch, receipts)
 	}
-	println("ENCLAVE headBatchSeq updated: ", br.headBatchSeq.String())
+	//println("ENCLAVE headBatchSeq updated: ", br.headBatchSeq.String())
 	br.lastExecutedBatch.Mark()
 }
 
