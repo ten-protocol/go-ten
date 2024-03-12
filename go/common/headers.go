@@ -128,13 +128,12 @@ func (b *BatchHeader) UnmarshalJSON(data []byte) error {
 // RollupHeader is a public / plaintext struct that holds common properties of rollups.
 // All these fields are processed by the Management contract
 type RollupHeader struct {
-	EnclaveID         common.Address // the enclave that signed the rollup
-	CompressionL1Head L1BlockHash    // the l1 block that the sequencer considers canonical at the time when this rollup is created
+	CompressionL1Head L1BlockHash // the l1 block that the sequencer considers canonical at the time when this rollup is created
 
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 
 	PayloadHash common.Hash // The hash of the compressed batches. TODO
-	R, S        *big.Int    // signature values
+	Signature   []byte      // The signature of the sequencer enclave on the payload hash
 
 	LastBatchSeqNo uint64
 }
@@ -197,8 +196,7 @@ func (b *BatchHeader) Hash() L2BatchHash {
 // RLP encoding excluding the signature.
 func (r *RollupHeader) Hash() L2RollupHash {
 	cp := *r
-	cp.R = nil
-	cp.S = nil
+	cp.Signature = nil
 	hash, err := rlpHash(cp)
 	if err != nil {
 		panic("err hashing rollup header")

@@ -23,9 +23,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     // Event to log changes to important contract addresses
     event ImportantContractAddressUpdated(string key, address newAddress);
 
-    // mapping of enclaveID to attestation request report
-    //mapping(address => string) private attestationRequests; todo: do we need to store this mapping?
-
     // mapping of enclaveID to whether it is attested
     mapping(address => bool) private attested;
     // TODO - Revisit the decision to store the host addresses in the smart contract.
@@ -107,9 +104,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     // Enclaves can request the Network Secret given an attestation request report
     function RequestNetworkSecret(string calldata requestReport) public {
-        // todo (@matt) should we store the request report against enclaveID?
-        // Attestations should only be allowed to produce once ?
-        // attestationRequests[msg.sender] = requestReport;
+        // currently this is a no-op, nodes will monitor for these transactions and respond to them
     }
 
     // An attested enclave will pickup the Network Secret Request

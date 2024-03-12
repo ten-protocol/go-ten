@@ -28,7 +28,6 @@ type AttestationProvider interface {
 type EgoAttestationProvider struct{}
 
 func (e *EgoAttestationProvider) GetReport(pubKey []byte, enclaveID gethcommon.Address, hostAddress string) (*common.AttestationReport, error) {
-	// todo (@matt) - do we need to sign something here with the enclave's private key or is the signed report enough?
 	idHash, err := getIDHash(enclaveID, pubKey, hostAddress)
 	if err != nil {
 		return nil, err
