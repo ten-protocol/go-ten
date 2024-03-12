@@ -12,7 +12,7 @@ import (
 // todo (#718) - expand this structure to contain the required fields.
 type ExtBatch struct {
 	Header *BatchHeader
-	// todo - remove
+	// todo - remove and replace with
 	TxHashes        []TxHash // The hashes of the transactions included in the batch.
 	EncryptedTxBlob EncryptedTransactions
 	hash            atomic.Value
