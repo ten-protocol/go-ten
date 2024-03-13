@@ -472,11 +472,8 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 			g.logger.Error("Could not decode rollup.", log.ErrKey, err)
 		}
 
-		println("Trying to fetch metadata for rollup: ", r.Header.LastBatchSeqNo)
 		metaData, err := g.enclaveClient.GetRollupData(r.Header.Hash())
 		if err != nil {
-			println("Failed to get Metadata: ", metaData.StartTime)
-			println("Failed to get Metadata: ", metaData.FirstBatchSequence.Uint64())
 			g.logger.Error("Could not fetch rollup metadata from enclave.", log.ErrKey, err)
 		}
 		err = hostdb.AddRollupHeader(g.db, r, metaData, block)
@@ -524,7 +521,6 @@ func (g *Guardian) submitL2Batch(batch *common.ExtBatch) error {
 	err := g.enclaveClient.SubmitBatch(batch)
 	g.submitDataLock.Unlock()
 	if err != nil {
-		println("ERROR submitting batch ", err.Error())
 		// something went wrong, return error and let the main loop check status and try again when appropriate
 		return errors.Wrap(err, "could not submit L2 batch to enclave")
 
@@ -590,7 +586,6 @@ func (g *Guardian) periodicRollupProduction() {
 			}
 
 			fromBatch, err := g.getLatestBatchNo()
-			//println("latest l1 batch ", fromBatch)
 			if err != nil {
 				g.logger.Error("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
 				continue
@@ -693,10 +688,8 @@ func (g *Guardian) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error)
 
 	currentNo := seqNo
 	for {
-		println("calculating rollup size for batch seq: ", seqNo)
 		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(big.NewInt(int64(currentNo)))
 		if err != nil {
-			//println("Could not estimate batch size: ", currentNo)
 			if errors.Is(err, errutil.ErrNotFound) {
 				break // no more batches
 			}
@@ -706,8 +699,6 @@ func (g *Guardian) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error)
 		bSize := len(batch.EncryptedTxBlob)
 		size += uint64(bSize)
 		currentNo++
-		//println("Got rollup batch size: ", size)
-		//println("Got rollup batch currentNo: ", currentNo)
 	}
 
 	return size, nil

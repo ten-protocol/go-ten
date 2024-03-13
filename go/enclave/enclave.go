@@ -489,7 +489,6 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 
 	e.logger.Info("Received new p2p batch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	seqNo := extBatch.Header.SequencerOrderNo.Uint64()
-	println("extBatch seq", extBatch.Header.SequencerOrderNo.String())
 	if seqNo > common.L2GenesisSeqNo+1 {
 		_, err := e.storage.FetchBatchBySeqNo(seqNo - 1)
 		if err != nil {

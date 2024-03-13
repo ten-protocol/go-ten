@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/status-im/keycard-go/hexutils"
 	"math/big"
 	"strings"
 
@@ -157,7 +158,6 @@ func WriteRollup(dbtx DBTransaction, rollup *common.RollupHeader, internalHeader
 		truncTo16(rollup.CompressionL1Head),
 	)
 
-	println("WRITING ROLLUP DATA :", internalHeader.FirstBatchSequence.Uint64(), rollup.LastBatchSeqNo)
 	return nil
 }
 
@@ -190,7 +190,7 @@ func FetchRollupMetadata(db *sql.DB, hash common.L2RollupHash) (*common.PublicRo
 	rollup := new(common.PublicRollupMetadata)
 	err := db.QueryRow(rollupSelectMetadata, truncTo16(hash)).Scan(&startSeq, &startTime)
 	if err != nil {
-		println("COULDNT find rollup metadata for: ", startSeq)
+		println("COULDNT find rollup with hash: ", hexutils.BytesToHex(truncTo16(hash)))
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
 		}

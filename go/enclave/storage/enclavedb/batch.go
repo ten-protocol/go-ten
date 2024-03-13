@@ -118,9 +118,7 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch, convertedH
 		}
 		dbtx.ExecuteSQL(insert, args...)
 	}
-	if err != nil {
-		return fmt.Errorf("enclave failed to insert batch: %w", err)
-	}
+
 	return nil
 }
 

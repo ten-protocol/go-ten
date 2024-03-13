@@ -230,8 +230,6 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfE
 	}
 
 	// todo - time is set only here; take from l1 block?
-	//println("Sequence no: ", sequencerNo.String())
-	//println("Head batch Sequence no: ", headBatch.Header.SequencerOrderNo.String())
 	if _, err := s.produceBatch(sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), transactions, uint64(time.Now().Unix()), skipBatchIfEmpty); err != nil {
 		if errors.Is(err, components.ErrNoTransactionsToProcess) {
 			// skip batch production when there are no transactions to process
