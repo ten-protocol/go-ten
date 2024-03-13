@@ -17,7 +17,6 @@ const ENCLAVE = "ENCLAVE_"
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
 func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
-	println("CREATING DB with path: ", ENCLAVE+cfg.HostID.String())
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}

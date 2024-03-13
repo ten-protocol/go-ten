@@ -99,7 +99,7 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 	txHashes := make([]gethcommon.Hash, len(wallets))
 	for idx, w := range wallets {
 		destAddr := w.Address()
-		fmt.Printf("L2 prefund: %s\n", destAddr.String())
+		fmt.Printf("L2 prefund: %s\n", destAddr.Hex())
 		txData := &types.LegacyTx{
 			Nonce:    startingNonce + uint64(idx),
 			Value:    alloc,
@@ -120,7 +120,7 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 			txJSON, _ = signedTx.MarshalJSON()
 			panic(fmt.Sprintf("could not transfer from faucet for tx %s. Cause: %s", string(txJSON[:]), err))
 		}
-		fmt.Printf("L2 prefund with: %s\n", alloc.String())
+
 		txHashes[idx] = signedTx.Hash()
 	}
 

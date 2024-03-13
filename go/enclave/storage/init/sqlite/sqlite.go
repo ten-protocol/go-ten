@@ -74,7 +74,6 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Log
 	}
 
 	logger.Info(fmt.Sprintf("Opened %s sqlite db file at %s", description, dbPath))
-	println("CREATED DB with path: ", dbPath)
 	return enclavedb.NewEnclaveDB(db, logger)
 }
 

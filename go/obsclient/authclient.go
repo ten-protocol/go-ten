@@ -134,6 +134,7 @@ func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Tr
 func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*big.Int, error) {
 	var result responses.BalanceType
 	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetBalance, ac.account, toBlockNumArg(blockNumber))
+	//println("BALANCE AT: ", result.ToInt().String(), ac.account.String())
 	if err != nil {
 		return big.NewInt(0), err
 	}

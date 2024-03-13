@@ -15,6 +15,7 @@ import (
 const (
 	selectTxCount           = "SELECT total FROM transaction_count WHERE id = 1"
 	selectBatch             = "SELECT b.sequence, b.full_hash, b.hash, b.height, b.tx_count, b.header, b.body_id, bb.content FROM batch_host b JOIN batch_body_host bb ON b.body_id = bb.id"
+	selectBatch2            = "SELECT b.sequence, b.full_hash, b.hash, b.height, b.tx_count, b.header, b.body_id FROM batch_host b"
 	selectBatch1            = "SELECT b.header, b.body_id FROM batch_host b"
 	selectBatchBody         = "SELECT content FROM batch_body_host WHERE id = ?"
 	selectDescendingBatches = `
@@ -98,12 +99,7 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("could not commit batch tx: %w", err)
 	}
-	//println("[SUCCESS-HOST] Added batch with seq no: ", batch.SeqNo().String())
-	//println("[SUCCESS-HOST] Added batch with hash: ", hexutils.BytesToHex(truncTo16(batch.Hash())))
 
-	if batch.SeqNo().Uint64() == 0 {
-		println("[SUCCESS-HOST] Added batch with 0 seq no: ", batch.SeqNo().String())
-	}
 	return nil
 }
 
@@ -113,11 +109,13 @@ func GetBatchListing(db *sql.DB, pagination *common.QueryPagination) (*common.Ba
 	headBatch, err := GetCurrentHeadBatch(db)
 	if err != nil {
 		return nil, err
+
 	}
 	batchesFrom := headBatch.SequencerOrderNo.Uint64() - pagination.Offset
 	batchesTo := int(batchesFrom) - int(pagination.Size) + 1
-	if batchesTo < 0 {
-		batchesTo = 0
+
+	if batchesTo <= 0 {
+		batchesTo = 1
 	}
 
 	var batches []common.PublicBatch
@@ -139,11 +137,11 @@ func GetBatchListing(db *sql.DB, pagination *common.QueryPagination) (*common.Ba
 
 // GetBatchBySequenceNumber returns the batch with the given sequence number.
 func GetBatchBySequenceNumber(db *sql.DB, seqNo uint64) (*common.PublicBatch, error) {
-	return fetchPublicBatch(db, " WHERE sequence=?", seqNo)
+	return fetchPublicBatch(db, " WHERE b.sequence=?", seqNo)
 }
 
 func GetFullBatchBySequenceNumber(db *sql.DB, seqNo uint64) (*common.ExtBatch, error) {
-	return testFetchFullBatch(db, " where sequence=?", seqNo)
+	return testFetchFullBatch(db, " WHERE b.sequence=?", seqNo)
 }
 
 // GetCurrentHeadBatch retrieves the current head batch with the largest sequence number (or height)
@@ -153,15 +151,13 @@ func GetCurrentHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 
 // GetBatchHeader returns the batch header given the hash.
 func GetBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, error) {
-	return fetchBatchHeader(db, " where hash=?", truncTo16(hash))
+	return fetchBatchHeader(db, " where b.hash=?", truncTo16(hash))
 }
 
 // GetBatchHashByNumber returns the hash of a batch given its number.
 func GetBatchHashByNumber(db *sql.DB, number *big.Int) (*gethcommon.Hash, error) {
-	batch, err := fetchBatchHeader(db, " where b.sequence=?", number.Uint64())
-	println("trying to fetch hash by number: ", number.Uint64())
+	batch, err := fetchBatchHeader(db, " where b.height=?", number.Uint64())
 	if err != nil {
-		println("GETBATCHHASHBYNNUMBER HERE ", err.Error())
 		return nil, err
 	}
 	l2BatchHash := batch.Hash()
@@ -296,7 +292,7 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 	var headerBlob []byte
 	var bodyID uint64
 
-	query := selectBatch + " " + whereQuery
+	query := selectBatch2 + " " + whereQuery
 
 	var err error
 	if len(args) > 0 {
@@ -314,26 +310,22 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 	var header common.BatchHeader
 	err = rlp.DecodeBytes(headerBlob, &header)
 	if err != nil {
-		return nil, fmt.Errorf("1 failed to decode batch header: %w", err)
+		return nil, fmt.Errorf("failed to decode batch header: %w", err)
 	}
-	sequence := new(big.Int).SetInt64(int64(sequenceInt64))
-	height := new(big.Int).SetInt64(int64(heightInt64))
-	txCount := new(big.Int).SetInt64(int64(txCountInt64))
 
-	// Fetch batch_body from the database
-	var encryptedTxBlob common.EncryptedTransactions
-	encryptedTxBlob, err = fetchBatchBody(db, bodyID)
+	// Separate query to handle large tx blobs
+	encryptedTxBlob, err := fetchBatchBody(db, bodyID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch batch body: %w", err)
+		return nil, fmt.Errorf("failed to fetch batch body from seq no: %w", err)
 	}
 
 	// Construct the batch
 	batch := &common.PublicBatch{
-		SequencerOrderNo: sequence,
+		SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
 		Hash:             hash,
 		FullHash:         fullHash,
-		Height:           height,
-		TxCount:          txCount,
+		Height:           new(big.Int).SetInt64(int64(heightInt64)),
+		TxCount:          new(big.Int).SetInt64(int64(txCountInt64)),
 		Header:           &header,
 		EncryptedTxBlob:  encryptedTxBlob,
 	}
@@ -349,12 +341,13 @@ func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatc
 	var txCountInt64 int
 	var headerBlob []byte
 	var bodyID uint64
+	var bodyBlob []byte
 	query := selectBatch + whereQuery
 	var err error
 	if len(args) > 0 {
-		err = db.QueryRow(query, args...).Scan(&sequenceInt64, &fullHash, &shorthash, &heightInt64, &txCountInt64, &headerBlob, &bodyID)
+		err = db.QueryRow(query, args...).Scan(&sequenceInt64, &fullHash, &shorthash, &heightInt64, &txCountInt64, &headerBlob, &bodyID, &bodyBlob)
 	} else {
-		err = db.QueryRow(query).Scan(&sequenceInt64, &fullHash, &shorthash, &heightInt64, &txCountInt64, &headerBlob, &bodyID)
+		err = db.QueryRow(query).Scan(&sequenceInt64, &fullHash, &shorthash, &heightInt64, &txCountInt64, &headerBlob, &bodyID, &bodyBlob)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -367,14 +360,15 @@ func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatc
 	err = rlp.DecodeBytes(headerBlob, &header)
 	if err != nil {
 
-		return nil, fmt.Errorf("2 failed to decode batch header: %w", err)
+		return nil, fmt.Errorf("failed to decode batch header: %w", err)
 	}
 
-	// Fetch batch_body from the database
-	encryptedTxBlob, err := fetchBatchBody(db, bodyID)
+	var encryptedTxBlob common.EncryptedTransactions
+	err = rlp.DecodeBytes(encryptedTxBlob, &bodyBlob)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch batch body from seq no: %w", err)
+		return nil, fmt.Errorf("failed to decode batch body: %w", err)
 	}
+
 	txHashes, err := fetchTxBySeq(db, header.SequencerOrderNo.Uint64())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tx hashes for batch ")
@@ -391,7 +385,7 @@ func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatc
 func testFetchFullBatch(db *sql.DB, whereQuery string, seqNo uint64) (*common.ExtBatch, error) {
 	var header string
 	var bodyID uint64
-	row := db.QueryRow("select b.header, b.body_id FROM batch_host b where sequence=?", seqNo)
+	row := db.QueryRow("select b.header, b.body_id FROM batch_host b where b.sequence=?", seqNo)
 	err := row.Scan(&header, &bodyID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -403,20 +397,17 @@ func testFetchFullBatch(db *sql.DB, whereQuery string, seqNo uint64) (*common.Ex
 	h := new(common.BatchHeader)
 	err = rlp.DecodeBytes([]byte(header), h)
 	if err != nil {
-		println("3 failed to decode batch header: ", err)
-		return nil, fmt.Errorf("3 failed to decode batch header: %w", err)
+		return nil, fmt.Errorf("failed to decode batch header: %w", err)
 	}
 
 	// Fetch batch_body from the database
 	encryptedTxBlob, err := fetchBatchBody(db, bodyID)
 	if err != nil {
-		println("error getting encrypted blob ", err.Error())
 		return nil, fmt.Errorf("failed to fetch batch body from seq no: %w", err)
 
 	}
 	txHashes, err := fetchTxBySeq(db, h.SequencerOrderNo.Uint64())
 	if err != nil {
-		println("error getting txHashes ", err.Error())
 		return nil, fmt.Errorf("failed to get tx hashes for batch ")
 	}
 
@@ -479,7 +470,7 @@ func fetchHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 	var header common.BatchHeader
 	err = rlp.DecodeBytes(headerBlob, &header)
 	if err != nil {
-		return nil, fmt.Errorf("4 failed to decode batch header: %w", err)
+		return nil, fmt.Errorf("failed to decode batch header: %w", err)
 	}
 
 	sequence := new(big.Int).SetInt64(int64(sequenceInt64))

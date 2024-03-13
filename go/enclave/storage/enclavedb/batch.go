@@ -121,9 +121,6 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch, convertedH
 	if err != nil {
 		return fmt.Errorf("failed to insert batch: %w", err)
 	}
-	if batch.SeqNo().Uint64() == 0 {
-		println("[SUCCESS-ENCLAVE] Added batch with 0 seq no: ", batch.SeqNo().String())
-	}
 	return nil
 }
 
