@@ -3,6 +3,7 @@ package enclave
 import (
 	"database/sql"
 	"fmt"
+	"github.com/status-im/keycard-go/hexutils"
 	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"math/big"
 	"strings"
@@ -398,6 +399,9 @@ func (g *Guardian) catchupWithL2() error {
 
 		g.logger.Trace("fetching next batch", log.BatchSeqNoKey, nextHead)
 		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(nextHead)
+		println("HERE CHECK EncryptedTxBlob")
+		println("EncryptedTxBlob ", hexutils.BytesToHex(batch.EncryptedTxBlob))
+
 		if err != nil {
 			return errors.Wrap(err, "could not fetch next L2 batch")
 		}
@@ -518,7 +522,7 @@ func (g *Guardian) publishSharedSecretResponses(scrtResponses []*common.Produced
 
 func (g *Guardian) submitL2Batch(batch *common.ExtBatch) error {
 	g.submitDataLock.Lock()
-	println("Submitting L2 batch: ", batch.Header.SequencerOrderNo.String(), gethcommon.Bytes2Hex(batch.Header.Hash().Bytes()))
+	println("Submitting L2 batch: ", hexutils.BytesToHex(batch.EncryptedTxBlob))
 	err := g.enclaveClient.SubmitBatch(batch)
 	g.submitDataLock.Unlock()
 	if err != nil {
