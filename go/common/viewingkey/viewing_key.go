@@ -3,6 +3,7 @@ package viewingkey
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -100,8 +101,10 @@ func (psc PersonalSignChecker) CheckSignature(encryptionToken string, signature 
 
 	// create all possible hashes (for all the supported versions) of the message (needed for signature verification)
 	for _, version := range PersonalSignMessageSupportedVersions {
-		message := GeneratePersonalSignMessage(encryptionToken, chainID, version)
-		messageHash := accounts.TextHash([]byte(message))
+		messageHash, err := GenerateMessage(encryptionToken, chainID, version, PersonalSign, true)
+		if err != nil {
+			return nil, fmt.Errorf("cannot generate message. Cause %w", err)
+		}
 
 		// current signature is valid - return account address
 		address, err := CheckSignatureAndReturnAccountAddress(messageHash, signature)
@@ -118,9 +121,9 @@ func (e EIP712Checker) CheckSignature(encryptionToken string, signature []byte, 
 		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
 	}
 
-	rawDataOptions, err := GenerateAuthenticationEIP712RawDataOptions(encryptionToken, chainID)
+	messageHash, err := GenerateMessage(encryptionToken, chainID, 1, EIP712Signature, true)
 	if err != nil {
-		return nil, fmt.Errorf("cannot generate eip712 message. Cause %w", err)
+		return nil, fmt.Errorf("cannot generate message. Cause %w", err)
 	}
 
 	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
@@ -129,16 +132,12 @@ func (e EIP712Checker) CheckSignature(encryptionToken string, signature []byte, 
 		signature[64] -= 27
 	}
 
-	for _, rawData := range rawDataOptions {
-		// create a hash of structured message (needed for signature verification)
-		hashBytes := crypto.Keccak256(rawData)
-
-		// current signature is valid - return account address
-		address, err := CheckSignatureAndReturnAccountAddress(hashBytes, signature)
-		if err == nil {
-			return address, nil
-		}
+	// current signature is valid - return account address
+	address, err := CheckSignatureAndReturnAccountAddress(messageHash, signature)
+	if err == nil {
+		return address, nil
 	}
+
 	return nil, errors.New("EIP 712 signature verification failed")
 }
 
@@ -249,10 +248,6 @@ func GenerateSignMessage(vkPubKey []byte) string {
 	return SignedMsgPrefix + hex.EncodeToString(vkPubKey)
 }
 
-func GeneratePersonalSignMessage(encryptionToken string, chainID int64, version int) string {
-	return fmt.Sprintf(PersonalSignMessageFormat, encryptionToken, chainID, version)
-}
-
 // getBytesFromTypedData creates EIP-712 compliant hash from typedData.
 // It involves hashing the message with its structure, hashing domain separator,
 // and then encoding both hashes with specific EIP-712 bytes to construct the final message format.
@@ -269,53 +264,6 @@ func getBytesFromTypedData(typedData apitypes.TypedData) ([]byte, error) {
 	// Prefix domain and message hashes with EIP-712 version and encoding bytes
 	rawData := append([]byte("\x19\x01"), append(domainSeparator, typedDataHash...)...)
 	return rawData, nil
-}
-
-// GenerateAuthenticationEIP712RawDataOptions generates all the options or raw data messages (bytes)
-// for an EIP-712 message used to authenticate an address with user
-// (currently only one option is supported, but function leaves room for future expansion of options)
-func GenerateAuthenticationEIP712RawDataOptions(userID string, chainID int64) ([][]byte, error) {
-	if len(userID) != UserIDHexLength {
-		return nil, fmt.Errorf("userID hex length must be %d, received %d", UserIDHexLength, len(userID))
-	}
-	encryptionToken := "0x" + userID
-
-	domain := apitypes.TypedDataDomain{
-		Name:    EIP712DomainNameValue,
-		Version: EIP712DomainVersionValue,
-		ChainId: (*math.HexOrDecimal256)(big.NewInt(chainID)),
-	}
-
-	message := map[string]interface{}{
-		EIP712EncryptionToken: encryptionToken,
-	}
-
-	types := apitypes.Types{
-		EIP712Domain: {
-			{Name: EIP712DomainName, Type: "string"},
-			{Name: EIP712DomainVersion, Type: "string"},
-			{Name: EIP712DomainChainID, Type: "uint256"},
-		},
-		EIP712Type: {
-			{Name: EIP712EncryptionToken, Type: "address"},
-		},
-	}
-
-	newTypeElement := apitypes.TypedData{
-		Types:       types,
-		PrimaryType: EIP712Type,
-		Domain:      domain,
-		Message:     message,
-	}
-
-	rawDataOptions := make([][]byte, 0)
-	rawData, err := getBytesFromTypedData(newTypeElement)
-	if err != nil {
-		return nil, err
-	}
-	rawDataOptions = append(rawDataOptions, rawData)
-
-	return rawDataOptions, nil
 }
 
 // CalculateUserIDHex CalculateUserID calculates userID from a public key
@@ -353,4 +301,86 @@ func CheckSignatureAndReturnAccountAddress(hashBytes []byte, signature []byte) (
 		return &address, nil
 	}
 	return nil, fmt.Errorf("invalid signature")
+}
+
+type MessageGenerator interface {
+	generateMessage(encryptionToken string, chainID int64, version int, hash bool) ([]byte, error)
+}
+
+type (
+	PersonalMessageGenerator struct{}
+	EIP712MessageGenerator   struct{}
+)
+
+var messageGenerators = map[SignatureType]MessageGenerator{
+	PersonalSign:    PersonalMessageGenerator{},
+	EIP712Signature: EIP712MessageGenerator{},
+}
+
+// GenerateMessage generates a message for the given encryptionToken, chainID, version and signatureType
+func (p PersonalMessageGenerator) generateMessage(encryptionToken string, chainID int64, version int, hash bool) ([]byte, error) {
+	textMessage := fmt.Sprintf(PersonalSignMessageFormat, encryptionToken, chainID, version)
+	if hash {
+		return accounts.TextHash([]byte(textMessage)), nil
+	}
+	return []byte(textMessage), nil
+}
+
+func (e EIP712MessageGenerator) generateMessage(encryptionToken string, chainID int64, _ int, hash bool) ([]byte, error) {
+	if len(encryptionToken) != UserIDHexLength {
+		return nil, fmt.Errorf("userID hex length must be %d, received %d", UserIDHexLength, len(encryptionToken))
+	}
+	encryptionToken = "0x" + encryptionToken
+
+	domain := apitypes.TypedDataDomain{
+		Name:    EIP712DomainNameValue,
+		Version: EIP712DomainVersionValue,
+		ChainId: (*math.HexOrDecimal256)(big.NewInt(chainID)),
+	}
+
+	message := map[string]interface{}{
+		EIP712EncryptionToken: encryptionToken,
+	}
+
+	types := apitypes.Types{
+		EIP712Domain: {
+			{Name: EIP712DomainName, Type: "string"},
+			{Name: EIP712DomainVersion, Type: "string"},
+			{Name: EIP712DomainChainID, Type: "uint256"},
+		},
+		EIP712Type: {
+			{Name: EIP712EncryptionToken, Type: "address"},
+		},
+	}
+
+	newTypeElement := apitypes.TypedData{
+		Types:       types,
+		PrimaryType: EIP712Type,
+		Domain:      domain,
+		Message:     message,
+	}
+
+	rawData, err := getBytesFromTypedData(newTypeElement)
+	if err != nil {
+		return nil, err
+	}
+
+	// add the JSON message to the list of messages
+	jsonData, err := json.Marshal(newTypeElement)
+	if err != nil {
+		return nil, err
+	}
+
+	if hash {
+		return crypto.Keccak256(rawData), nil
+	}
+	return jsonData, nil
+}
+
+func GenerateMessage(encryptionToken string, chainID int64, version int, signatureType SignatureType, hash bool) ([]byte, error) {
+	generator, exists := messageGenerators[signatureType]
+	if !exists {
+		return nil, fmt.Errorf("unsupported signature type")
+	}
+	return generator.generateMessage(encryptionToken, chainID, version, hash)
 }

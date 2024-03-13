@@ -478,3 +478,19 @@ func (w *WalletExtension) Version() string {
 func (w *WalletExtension) GetTenNodeHealthStatus() (bool, error) {
 	return w.tenClient.Health()
 }
+
+func (w *WalletExtension) GetMessage(encryptionToken string, formatsSlice []string) (string, error) {
+	// Check if the formats are valid
+	for _, format := range formatsSlice {
+		if _, exists := common.SignatureTypeMap[format]; !exists {
+			return "", fmt.Errorf("invalid format: %s", format)
+		}
+	}
+
+	messageFormat := common.GetBestFormat(formatsSlice)
+	message, err := viewingkey.GenerateMessage(encryptionToken, int64(w.config.TenChainID), viewingkey.PersonalSignMessageSupportedVersions[0], messageFormat, false)
+	if err != nil {
+		return "", fmt.Errorf("error generating message: %w", err)
+	}
+	return string(message), nil
+}

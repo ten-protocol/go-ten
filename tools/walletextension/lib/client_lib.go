@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/accounts"
-
 	"github.com/ten-protocol/go-ten/integration"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -48,15 +46,11 @@ func (o *TGLib) Join() error {
 
 func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	rawMessageOptions, err := viewingkey.GenerateAuthenticationEIP712RawDataOptions(string(o.userID), integration.TenChainID)
+	messageHash, err := viewingkey.GenerateMessage(string(o.userID), integration.TenChainID, 1, viewingkey.EIP712Signature, true)
 	if err != nil {
 		return err
 	}
-	if len(rawMessageOptions) == 0 {
-		return fmt.Errorf("GenerateAuthenticationEIP712RawDataOptions returned 0 options")
-	}
 
-	messageHash := crypto.Keccak256(rawMessageOptions[0])
 	sig, err := crypto.Sign(messageHash, pk)
 	if err != nil {
 		return fmt.Errorf("failed to sign message: %w", err)
@@ -97,8 +91,10 @@ func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 
 func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	personalSignMessage := viewingkey.GeneratePersonalSignMessage(string(o.userID), integration.TenChainID, 1)
-	messageHash := accounts.TextHash([]byte(personalSignMessage))
+	messageHash, err := viewingkey.GenerateMessage(string(o.userID), integration.TenChainID, viewingkey.PersonalSignMessageSupportedVersions[0], viewingkey.PersonalSign, true)
+	if err != nil {
+		return err
+	}
 
 	sig, err := crypto.Sign(messageHash, pk)
 	if err != nil {

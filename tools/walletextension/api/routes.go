@@ -47,6 +47,10 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 			Func: httpHandler(walletExt, joinRequestHandler),
 		},
 		{
+			Name: common.APIVersion1 + common.PathGetMessage,
+			Func: httpHandler(walletExt, getMessageRequestHandler),
+		},
+		{
 			Name: common.APIVersion1 + common.PathAuthenticate,
 			Func: httpHandler(walletExt, authenticateRequestHandler),
 		},
@@ -486,6 +490,62 @@ func versionRequestHandler(walletExt *walletextension.WalletExtension, userConn 
 	}
 
 	err = userConn.WriteResponse([]byte(walletExt.Version()))
+	if err != nil {
+		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+	}
+}
+
+// ethRequestHandler parses the user eth request, passes it on to the WE to proxy it and processes the response
+func getMessageRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
+	// read the request
+	body, err := conn.ReadRequest()
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		return
+	}
+
+	// read body of the request
+	var reqJSONMap map[string]interface{}
+	err = json.Unmarshal(body, &reqJSONMap)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("could not unmarshal address request - %w", err))
+		return
+	}
+
+	// get address from the request
+	encryptionToken, ok := reqJSONMap[common.JSONKeyEncryptionToken]
+	if !ok || len(encryptionToken.(string)) != common.MessageUserIDLen {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("unable to read encryptionToken field from the request or it is not of correct length"))
+		return
+	}
+
+	// get formats from the request, if present
+	var formatsSlice []string
+	if formatsInterface, ok := reqJSONMap[common.JSONKeyFormats]; ok {
+		formats, ok := formatsInterface.([]interface{})
+		if !ok {
+			handleError(conn, walletExt.Logger(), fmt.Errorf("formats field is not an array"))
+			return
+		}
+
+		for _, f := range formats {
+			formatStr, ok := f.(string)
+			if !ok {
+				handleError(conn, walletExt.Logger(), fmt.Errorf("format value is not a string"))
+				return
+			}
+			formatsSlice = append(formatsSlice, formatStr)
+		}
+	}
+
+	message, err := walletExt.GetMessage(encryptionToken.(string), formatsSlice)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
+		walletExt.Logger().Error("error getting message", log.ErrKey, err)
+		return
+	}
+
+	err = conn.WriteResponse([]byte(message))
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}

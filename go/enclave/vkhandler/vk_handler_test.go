@@ -7,7 +7,6 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
-	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/stretchr/testify/assert"
@@ -49,13 +48,15 @@ func TestCheckSignature(t *testing.T) {
 	userPrivKey, _, userID, userAddress := generateRandomUserKeys()
 
 	// Generate all message types and create map with the corresponding signature type
-	// Test EIP712 message format
-	EIP712MessageDataOptions, err := viewingkey.GenerateAuthenticationEIP712RawDataOptions(userID, chainID)
+	message, err := viewingkey.GenerateMessage(userID, chainID, 0, viewingkey.EIP712Signature, true)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	EIP712MessageHash := crypto.Keccak256(EIP712MessageDataOptions[0])
-	PersonalSignMessageHash := accounts.TextHash([]byte(viewingkey.GeneratePersonalSignMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0])))
+	EIP712MessageHash := crypto.Keccak256(message)
+	PersonalSignMessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0], viewingkey.PersonalSign, true)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 
 	messages := map[string]MessageWithSignatureType{
 		"EIP712MessageHash": {
@@ -86,12 +87,16 @@ func TestVerifyViewingKey(t *testing.T) {
 	userPrivKey, vkPrivKey, userID, userAddress := generateRandomUserKeys()
 	// Generate all message types and create map with the corresponding signature type
 	// Test EIP712 message format
-	EIP712MessageDataOptions, err := viewingkey.GenerateAuthenticationEIP712RawDataOptions(userID, chainID)
+
+	message, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0], viewingkey.EIP712Signature, true)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	EIP712MessageHash := crypto.Keccak256(EIP712MessageDataOptions[0])
-	PersonalSignMessageHash := accounts.TextHash([]byte(viewingkey.GeneratePersonalSignMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0])))
+	EIP712MessageHash := crypto.Keccak256(message)
+	PersonalSignMessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0], viewingkey.PersonalSign, true)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 
 	messages := map[string]MessageWithSignatureType{
 		"EIP712MessageHash": {
