@@ -191,7 +191,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 		g.logger.Error("Repo received batch but we are a sequencer, ignoring")
 		return
 	}
-	g.logger.Debug("Received L2 block", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
+	g.logger.Debug("Received L2 block", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
 	// record the newest batch we've seen
 	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
 	if !g.state.IsUpToDate() {
@@ -199,6 +199,8 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	}
 	err := g.submitL2Batch(batch)
 	if err != nil {
+		g.logger.Error("IS SEQUENCER", log.ErrKey, g.hostData.IsSequencer)
+		g.logger.Error("IS SEQUENCER", log.ErrKey, g.hostData.ID.String())
 		g.logger.Error("Error submitting batch to enclave", log.ErrKey, err)
 	}
 }
@@ -516,11 +518,14 @@ func (g *Guardian) publishSharedSecretResponses(scrtResponses []*common.Produced
 
 func (g *Guardian) submitL2Batch(batch *common.ExtBatch) error {
 	g.submitDataLock.Lock()
+	println("Submitting L2 batch: ", batch.Header.SequencerOrderNo.String(), gethcommon.Bytes2Hex(batch.Header.Hash().Bytes()))
 	err := g.enclaveClient.SubmitBatch(batch)
 	g.submitDataLock.Unlock()
 	if err != nil {
+		println("ERROR submitting batch ", err.Error())
 		// something went wrong, return error and let the main loop check status and try again when appropriate
 		return errors.Wrap(err, "could not submit L2 batch to enclave")
+
 	}
 	// successfully processed batch, update the state
 	g.state.OnProcessedBatch(batch.Header.SequencerOrderNo)

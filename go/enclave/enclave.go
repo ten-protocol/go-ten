@@ -489,6 +489,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 
 	e.logger.Info("Received new p2p batch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	seqNo := extBatch.Header.SequencerOrderNo.Uint64()
+	println("extBatch seq", extBatch.Header.SequencerOrderNo.String())
 	if seqNo > common.L2GenesisSeqNo+1 {
 		_, err := e.storage.FetchBatchBySeqNo(seqNo - 1)
 		if err != nil {
@@ -497,6 +498,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 	}
 
 	batch, err := core.ToBatch(extBatch, e.dataEncryptionService, e.dataCompressionService)
+	println("Tried to convert batch ", extBatch.Header.SequencerOrderNo.String(), gethcommon.Bytes2Hex(extBatch.Header.Hash().Bytes()))
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not convert batch. Cause: %w", err))
 	}
@@ -966,6 +968,7 @@ func replayBatchesToValidState(storage storage.Storage, registry components.Batc
 		}
 
 		// calculate the stateDB after this batch and store it in the cache
+		println("ENCALVE ExecuteBatch: ", batch.Header.SequencerOrderNo.Uint64())
 		_, err := batchExecutor.ExecuteBatch(batch)
 		if err != nil {
 			return err

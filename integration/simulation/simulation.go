@@ -249,9 +249,9 @@ func (s *Simulation) deployObscuroERC20s() {
 
 			rpc := s.RPCHandles.ObscuroWalletClient(owner.Address(), 1)
 			err = rpc.SendTransaction(s.ctx, signedTx)
+
 			if err != nil {
-				println("PANIC", err.Error())
-				//panic(err)
+				panic(err)
 			}
 
 			err = testcommon.AwaitReceipt(s.ctx, rpc, signedTx.Hash(), s.Params.ReceiptTimeout)
