@@ -87,9 +87,6 @@ func (executor *batchExecutor) filterTransactionsWithSufficientFunds(stateDB *st
 			continue
 		}
 		accBalance := stateDB.GetBalance(*sender)
-		if sender.String() == "0xDEe530E22045939e6f6a0A593F829e35A140D3F1" || sender.String() == "0x987E0a0692475bCc5F13D97E700bb43c1913EFfe" {
-			println("Account balance: ", accBalance.Uint64(), sender.String())
-		}
 		cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block)
 		if err != nil {
 			executor.logger.Error("Unable to get gas cost for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)

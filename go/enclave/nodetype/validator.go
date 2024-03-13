@@ -104,7 +104,6 @@ func (val *obsValidator) ExecuteStoredBatches() error {
 		}
 
 		if canExecute {
-			println("VALIDATOR ExecuteBatch: ", batch.Header.SequencerOrderNo.String())
 			receipts, err := val.batchExecutor.ExecuteBatch(batch)
 			if err != nil {
 				return fmt.Errorf("could not execute batch %s. Cause: %w", batch.Hash(), err)

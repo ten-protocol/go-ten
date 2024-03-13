@@ -156,6 +156,8 @@ func WriteRollup(dbtx DBTransaction, rollup *common.RollupHeader, internalHeader
 		data,
 		truncTo16(rollup.CompressionL1Head),
 	)
+
+	println("WRITING ROLLUP DATA :", internalHeader.FirstBatchSequence.Uint64(), rollup.LastBatchSeqNo)
 	return nil
 }
 
@@ -188,6 +190,7 @@ func FetchRollupMetadata(db *sql.DB, hash common.L2RollupHash) (*common.PublicRo
 	rollup := new(common.PublicRollupMetadata)
 	err := db.QueryRow(rollupSelectMetadata, truncTo16(hash)).Scan(&startSeq, &startTime)
 	if err != nil {
+		println("COULDNT find rollup metadata for: ", startSeq)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
 		}

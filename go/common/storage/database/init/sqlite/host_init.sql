@@ -23,21 +23,13 @@ create index IDX_ROLLUP_HASH_HOST on rollup_host (hash);
 create index IDX_ROLLUP_PROOF_HOST on rollup_host (compression_block);
 create index IDX_ROLLUP_SEQ_HOST on rollup_host (start_seq, end_seq);
 
-create table if not exists batch_body_host
-(
-    id          int        NOT NULL primary key,
-    content     mediumblob NOT NULL
-);
-
 create table if not exists batch_host
 (
     sequence       int primary key,
     full_hash      binary(32) NOT NULL,
     hash           binary(16) NOT NULL unique,
     height         int        NOT NULL,
-    tx_count       int        NOT NULL,
-    header         blob       NOT NULL,
-    body_id        int        NOT NULL REFERENCES batch_body_host
+    ext_batch      mediumblob NOT NULL
 );
 create index IDX_BATCH_HEIGHT_HOST on batch_host (height);
 
@@ -45,7 +37,7 @@ create table if not exists transactions_host
 (
     hash           binary(16) primary key,
     full_hash      binary(32) NOT NULL,
-    body_id        int REFERENCES batch_body_host
+    b_sequence     int REFERENCES batch_host
 );
 
 create table if not exists transaction_count

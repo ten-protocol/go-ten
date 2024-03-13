@@ -52,6 +52,16 @@ type PublicBatch struct {
 	EncryptedTxBlob  EncryptedTransactions `json:"encryptedTxBlob"`
 }
 
+//type PublicBatch struct {
+//	SequencerOrderNo *big.Int              `json:"sequence"`
+//	Hash             []byte                `json:"hash"`
+//	FullHash         common.Hash           `json:"fullHash"`
+//	Height           *big.Int              `json:"height"`
+//	TxCount          *big.Int              `json:"txCount"`
+//	Header           *BatchHeader          `json:"header"`
+//	EncryptedTxBlob  EncryptedTransactions `json:"encryptedTxBlob"`
+//}
+
 type PublicRollup struct {
 	ID        *big.Int
 	Hash      []byte

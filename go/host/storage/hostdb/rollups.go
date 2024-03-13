@@ -31,16 +31,16 @@ func AddRollupHeader(db *sql.DB, rollup *common.ExtRollup, metadata *common.Publ
 	if err != nil {
 		return err
 	}
-	extBatch, err := rlp.EncodeToBytes(rollup)
+	extRollup, err := rlp.EncodeToBytes(rollup)
 	if err != nil {
-		return fmt.Errorf("could not encode batch header: %w", err)
+		return fmt.Errorf("could not encode rollup: %w", err)
 	}
 	_, err = tx.Exec(insertRollup,
 		truncTo16(rollup.Header.Hash()),      // short hash
 		metadata.FirstBatchSequence.Uint64(), // first batch sequence
 		rollup.Header.LastBatchSeqNo,         // last batch sequence
 		metadata.StartTime,                   // timestamp
-		extBatch,                             // rollup blob
+		extRollup,                            // rollup blob
 		block.Hash(),                         // l1 block hash
 	)
 	if err = tx.Commit(); err != nil {
