@@ -216,7 +216,9 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 		},
 		adjustArgs: func(acct *GWAccount) []any {
 			// set the from
-			args.From = acct.address
+			if args.From == nil {
+				args.From = acct.address
+			}
 			return []any{args, blockNrOrHash, overrides, blockOverrides}
 		},
 		useDefaultUser: true,
