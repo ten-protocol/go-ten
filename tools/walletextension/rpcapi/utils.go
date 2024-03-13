@@ -151,14 +151,14 @@ func getCandidateAccounts(user *GWUser, w *Services, cfg *ExecCfg) ([]*GWAccount
 
 	// when there is no matching address, some calls, like submitting a transactions are allowed to go through
 	// todo - remove
-	if len(candidateAccts) == 0 && cfg.useDefaultUser {
-		defaultUser, err := getUser(w.DefaultUser, w.Storage)
-		if err != nil {
-			panic(err)
-		}
-		defaultAcct := defaultUser.GetAllAddresses()[0]
-		candidateAccts = append(candidateAccts, defaultUser.accounts[*defaultAcct])
-	}
+	//if len(candidateAccts) == 0 && cfg.useDefaultUser {
+	//	defaultUser, err := getUser(w.DefaultUser, w.Storage)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	defaultAcct := defaultUser.GetAllAddresses()[0]
+	//	candidateAccts = append(candidateAccts, defaultUser.accounts[*defaultAcct])
+	//}
 	return candidateAccts, nil
 }
 

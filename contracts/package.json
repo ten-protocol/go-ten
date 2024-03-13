@@ -25,6 +25,6 @@
     "@openzeppelin/contracts-upgradeable": "^5.0.1",
     "ethers": "^6.6.0",
     "hardhat-ignore-warnings": "^0.2.6",
-    "ten-hardhat-plugin": "^0.0.8"
+    "ten-hardhat-plugin": "^0.0.9"
   }
 }

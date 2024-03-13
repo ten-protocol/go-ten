@@ -35,12 +35,20 @@ type FeeHistoryResult struct {
 }
 
 func (api *EthereumAPI) FeeHistory(ctx context.Context, blockCount math.HexOrDecimal64, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (*FeeHistoryResult, error) {
-	return UnauthenticatedTenRPCCall[FeeHistoryResult](ctx, api.we, &CacheCfg{TTLCallback: func() time.Duration {
-		if lastBlock > 0 {
-			return longCacheTTL
-		}
-		return shortCacheTTL
-	}}, "eth_feeHistory", blockCount, lastBlock, rewardPercentiles)
+	return UnauthenticatedTenRPCCall[FeeHistoryResult](
+		ctx,
+		api.we,
+		&CacheCfg{TTLCallback: func() time.Duration {
+			if lastBlock > 0 {
+				return longCacheTTL
+			}
+			return shortCacheTTL
+		}},
+		"eth_feeHistory",
+		blockCount,
+		lastBlock,
+		rewardPercentiles,
+	)
 }
 
 /*func (api *EthereumAPI) Syncing() (interface{}, error) {
