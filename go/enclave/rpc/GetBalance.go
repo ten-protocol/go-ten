@@ -41,17 +41,17 @@ func GetBalanceValidate(reqParams []any, builder *CallBuilder[BalanceReq, hexuti
 }
 
 func GetBalanceExecute(builder *CallBuilder[BalanceReq, hexutil.Big], rpc *EncryptionManager) error {
-	//acctOwner, err := rpc.chain.AccountOwner(*builder.Param.Addr, builder.Param.Block.BlockNumber)
-	//if err != nil {
-	//	return err
-	//}
-	//
+	acctOwner, err := rpc.chain.AccountOwner(*builder.Param.Addr, builder.Param.Block.BlockNumber)
+	if err != nil {
+		return err
+	}
+
 	// authorise the call
-	//if acctOwner.Hex() != builder.VK.AccountAddress.Hex() {
-	//	rpc.logger.Debug("Unauthorised call", "address", acctOwner, "vk", builder.VK.AccountAddress, "userId", builder.VK.UserID)
-	//	builder.Status = NotAuthorised
-	//	return nil
-	//}
+	if acctOwner.Hex() != builder.VK.AccountAddress.Hex() {
+		rpc.logger.Debug("Unauthorised call", "address", acctOwner, "vk", builder.VK.AccountAddress, "userId", builder.VK.UserID)
+		builder.Status = NotAuthorised
+		return nil
+	}
 
 	balance, err := rpc.chain.GetBalanceAtBlock(*builder.Param.Addr, builder.Param.Block.BlockNumber)
 	if err != nil {

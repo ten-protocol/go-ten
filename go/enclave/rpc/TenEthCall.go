@@ -43,11 +43,11 @@ func TenCallValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlock, 
 }
 
 func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *EncryptionManager) error {
-	//err := authenticateFrom(builder.VK, builder.From)
-	//if err != nil {
-	//	builder.Err = err
-	//	return nil //nolint:nilerr
-	//}
+	err := authenticateFrom(builder.VK, builder.From)
+	if err != nil {
+		builder.Err = err
+		return nil //nolint:nilerr
+	}
 
 	apiArgs := builder.Param.callParams
 	blkNumber := builder.Param.block

@@ -46,6 +46,7 @@ type CacheCfg struct {
 }
 
 func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg, method string, args ...any) (*R, error) {
+	audit(w, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
 	res, err := withCache(w.Cache, cfg, args, func() (*R, error) {
 		var resp *R
@@ -65,6 +66,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *Cac
 }
 
 func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method string, args ...any) (*R, error) {
+	audit(w, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
 	userID, err := extractUserID(ctx, w)
 	if err != nil {
@@ -196,7 +198,7 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, args []any, onCacheMiss 
 	if cfg.TTLCallback != nil {
 		cacheTTL = cfg.TTLCallback()
 	}
-	isCacheable := cfg.TTL > 0
+	isCacheable := cacheTTL > 0
 
 	var cacheKey []byte
 	if isCacheable {
