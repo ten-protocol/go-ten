@@ -1,7 +1,11 @@
 package vkhandler
 
 import (
+	"crypto/ecdsa"
+	"fmt"
 	"testing"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -12,101 +16,110 @@ import (
 
 const chainID = 443
 
-func TestVKHandler(t *testing.T) {
-	// generate user private Key
-	userPrivKey, err := crypto.GenerateKey()
+// generateRandomUserKeys -
+// generates a random user private key and a random viewing key private key and returns the user private key,
+// the viewing key private key, the userID and the user address
+func generateRandomUserKeys() (*ecdsa.PrivateKey, *ecdsa.PrivateKey, string, gethcommon.Address) {
+	userPrivKey, err := crypto.GenerateKey() // user private key
 	if err != nil {
-		t.Fatalf(err.Error())
+		return nil, nil, "", gethcommon.Address{}
+	}
+	vkPrivKey, _ := crypto.GenerateKey() // viewingkey generated in the gateway
+	if err != nil {
+		return nil, nil, "", gethcommon.Address{}
 	}
 
-	// generate ViewingKey private Key
-	vkPrivKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	// get the address from userPrivKey
+	userAddress := crypto.PubkeyToAddress(userPrivKey.PublicKey)
+
+	// get userID from viewingKey public key
 	vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
 	userID := viewingkey.CalculateUserIDHex(vkPubKeyBytes)
-	WEMessageFormatTestHash := accounts.TextHash([]byte(viewingkey.GenerateSignMessage(vkPubKeyBytes)))
+
+	return userPrivKey, vkPrivKey, userID, userAddress
+}
+
+// MessageWithSignatureType - struct to hold the message hash and the signature type for testing purposes
+type MessageWithSignatureType struct {
+	Hash          []byte
+	SignatureType viewingkey.SignatureType
+}
+
+func TestCheckSignature(t *testing.T) {
+	userPrivKey, _, userID, userAddress := generateRandomUserKeys()
+
+	// Generate all message types and create map with the corresponding signature type
+	// Test EIP712 message format
 	EIP712MessageDataOptions, err := viewingkey.GenerateAuthenticationEIP712RawDataOptions(userID, chainID)
-	PersonalSignMessage := viewingkey.GeneratePersonalSignMessage(userID, chainID, 1)
-	PersonalSignMessageHash := accounts.TextHash([]byte(PersonalSignMessage))
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	if len(EIP712MessageDataOptions) == 0 {
-		t.Fatalf("GenerateAuthenticationEIP712RawDataOptions returned no results")
-	}
-	EIP712MessageFormatTestHash := crypto.Keccak256(EIP712MessageDataOptions[0])
+	EIP712MessageHash := crypto.Keccak256(EIP712MessageDataOptions[0])
+	PersonalSignMessageHash := accounts.TextHash([]byte(viewingkey.GeneratePersonalSignMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0])))
 
-	tests := map[string][]byte{
-		"WEMessageFormatTest":           WEMessageFormatTestHash,
-		"EIP712MessageFormatTest":       EIP712MessageFormatTestHash,
-		"PersonalSignMessageFormatTest": PersonalSignMessageHash,
+	messages := map[string]MessageWithSignatureType{
+		"EIP712MessageHash": {
+			Hash:          EIP712MessageHash,
+			SignatureType: viewingkey.EIP712Signature,
+		},
+		"PersonalSignMessageHash": {
+			Hash:          PersonalSignMessageHash,
+			SignatureType: viewingkey.PersonalSign,
+		},
 	}
-
-	for testName, msgHashToSign := range tests {
+	// sign each message hash with the user private key and check the signature with the corresponding signature type
+	for testName, message := range messages {
+		fmt.Println(testName)
 		t.Run(testName, func(t *testing.T) {
-			signature, err := crypto.Sign(msgHashToSign, userPrivKey)
+			signature, err := crypto.Sign(message.Hash, userPrivKey)
 			assert.NoError(t, err)
 
-			// Create a new vk Handler
-			_, err = VerifyViewingKey(&viewingkey.RPCSignedViewingKey{
-				PublicKey:               vkPubKeyBytes,
-				SignatureWithAccountKey: signature,
-				SignatureType:           viewingkey.EIP712Signature, // todo - fix this test
-			}, chainID)
+			addr, err := viewingkey.CheckSignature(userID, signature, chainID, message.SignatureType)
 			assert.NoError(t, err)
+
+			assert.Equal(t, userAddress.Hex(), addr.Hex())
 		})
 	}
 }
 
-func TestSignAndCheckSignature(t *testing.T) {
-	// generate user private Key
-	userPrivKey, err := crypto.GenerateKey()
+func TestVerifyViewingKey(t *testing.T) {
+	userPrivKey, vkPrivKey, userID, userAddress := generateRandomUserKeys()
+	fmt.Println("User Address: ", userAddress.Hex())
+	// Generate all message types and create map with the corresponding signature type
+	// Test EIP712 message format
+	EIP712MessageDataOptions, err := viewingkey.GenerateAuthenticationEIP712RawDataOptions(userID, chainID)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	userAddr := crypto.PubkeyToAddress(userPrivKey.PublicKey)
+	EIP712MessageHash := crypto.Keccak256(EIP712MessageDataOptions[0])
+	PersonalSignMessageHash := accounts.TextHash([]byte(viewingkey.GeneratePersonalSignMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0])))
 
-	// generate ViewingKey private Key
-	vkPrivKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
-	userID := viewingkey.CalculateUserIDHex(vkPubKeyBytes)
-	WEMessageFormatTestHash := accounts.TextHash([]byte(viewingkey.GenerateSignMessage(vkPubKeyBytes)))
-	EIP712MessageData, err := viewingkey.GenerateAuthenticationEIP712RawDataOptions(userID, chainID)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	EIP712MessageFormatTestHash := crypto.Keccak256(EIP712MessageData[0])
-	PersonalSignMessage := viewingkey.GeneratePersonalSignMessage(userID, chainID, 1)
-	PersonalSignMessageHash := accounts.TextHash([]byte(PersonalSignMessage))
-
-	tests := map[string][]byte{
-		"WEMessageFormatTest":           WEMessageFormatTestHash,
-		"EIP712MessageFormatTest":       EIP712MessageFormatTestHash,
-		"PersonalSignMessageFormatTest": PersonalSignMessageHash,
+	messages := map[string]MessageWithSignatureType{
+		"EIP712MessageHash": {
+			Hash:          EIP712MessageHash,
+			SignatureType: viewingkey.EIP712Signature,
+		},
+		"PersonalSignMessageHash": {
+			Hash:          PersonalSignMessageHash,
+			SignatureType: viewingkey.PersonalSign,
+		},
 	}
 
-	for testName, msgHashToSign := range tests {
+	for testName, message := range messages {
 		t.Run(testName, func(t *testing.T) {
-			// sign the message
-			signature, err := crypto.Sign(msgHashToSign, userPrivKey)
+			signature, err := crypto.Sign(message.Hash, userPrivKey)
 			assert.NoError(t, err)
 
-			// Recover the key based on the signed message and the signature.
-			recoveredAccountPublicKey, err := crypto.SigToPub(msgHashToSign, signature)
+			vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
+			// Create a new vk Handler
+			rpcSignedVK, err := VerifyViewingKey(&viewingkey.RPCSignedViewingKey{
+				PublicKey:               vkPubKeyBytes,
+				SignatureWithAccountKey: signature,
+				SignatureType:           message.SignatureType,
+			}, chainID)
 			assert.NoError(t, err)
-			recoveredAccountAddress := crypto.PubkeyToAddress(*recoveredAccountPublicKey)
-
-			if recoveredAccountAddress.Hex() != userAddr.Hex() {
-				t.Fatalf("Expected user address %s, got %s", userAddr.Hex(), recoveredAccountAddress.Hex())
-			}
-
-			_, err = crypto.DecompressPubkey(vkPubKeyBytes)
-			assert.NoError(t, err)
+			assert.Equal(t, rpcSignedVK.UserID, userID)
+			assert.Equal(t, rpcSignedVK.AccountAddress.Hex(), userAddress.Hex())
 		})
 	}
 }
