@@ -45,6 +45,25 @@ type CacheCfg struct {
 	TTLCallback func() time.Duration
 }
 
+func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg, method string, args ...any) (*R, error) {
+	requestStartTime := time.Now()
+	res, err := withCache(w.Cache, cfg, args, func() (*R, error) {
+		var resp *R
+		unauthedRPC, err := w.UnauthenticatedClient()
+		if err != nil {
+			return nil, err
+		}
+		if ctx == nil {
+			err = unauthedRPC.Call(&resp, method, args...)
+			return resp, err
+		}
+		err = unauthedRPC.CallContext(ctx, &resp, method, args...)
+		return resp, err
+	})
+	defer audit(w, "RPC call. method=%s args=%v result=%s error=%s time=%d", method, args, res, err, time.Since(requestStartTime).Milliseconds())
+	return res, err
+}
+
 func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method string, args ...any) (*R, error) {
 	requestStartTime := time.Now()
 	userID, err := extractUserID(ctx, w)
@@ -141,21 +160,6 @@ func getCandidateAccounts(user *GWUser, w *Services, cfg *ExecCfg) ([]*GWAccount
 		candidateAccts = append(candidateAccts, defaultUser.accounts[*defaultAcct])
 	}
 	return candidateAccts, nil
-}
-
-func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg, method string, args ...any) (*R, error) {
-	requestStartTime := time.Now()
-	res, err := withCache(w.Cache, cfg, args, func() (*R, error) {
-		resp := new(R)
-		unauthedRPC, err := w.UnauthenticatedClient()
-		if err != nil {
-			return nil, err
-		}
-		err = unauthedRPC.CallContext(ctx, resp, method, args...)
-		return resp, err
-	})
-	defer audit(w, "RPC call. method=%s args=%v result=%s error=%s time=%d", method, args, res, err, time.Since(requestStartTime).Milliseconds())
-	return res, err
 }
 
 func extractUserID(ctx context.Context, w *Services) ([]byte, error) {
