@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package node
 
 import (
@@ -74,6 +73,7 @@ func (api *adminAPI) StartHTTP(host *string, port *int, cors *string, apis *stri
 			batchItemLimit:         api.node.config.BatchRequestLimit,
 			batchResponseSizeLimit: api.node.config.BatchResponseMaxSize,
 		},
+		ExposedParam: "token",
 	}
 	if cors != nil {
 		config.CorsAllowedOrigins = nil
@@ -152,6 +152,7 @@ func (api *adminAPI) StartWS(host *string, port *int, allowedOrigins *string, ap
 			batchItemLimit:         api.node.config.BatchRequestLimit,
 			batchResponseSizeLimit: api.node.config.BatchResponseMaxSize,
 		},
+		ExposedParam: "token",
 	}
 	if apis != nil {
 		config.Modules = nil

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
+
 	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
@@ -16,7 +18,6 @@ import (
 )
 
 const (
-	exposedParams       = "exposedParams"
 	ethCallPaddedArgLen = 64
 	ethCallAddrPadding  = "000000000000000000000000"
 
@@ -66,6 +67,9 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		candidateAccts, err := getCandidateAccounts(user, w, cfg)
 		if err != nil {
 			return nil, err
+		}
+		if len(candidateAccts) == 0 {
+			return nil, fmt.Errorf("illegal access")
 		}
 
 		var rpcErr error
@@ -155,10 +159,8 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *Cac
 }
 
 func extractUserID(ctx context.Context, w *Services) ([]byte, error) {
-	params := ctx.Value(exposedParams).(map[string]string)
-	// todo handle errors
-	userID, ok := params[wecommon.EncryptedTokenQueryParameter]
-	if !ok || len(userID) < 3 {
+	userID, ok := ctx.Value(rpc.GWTokenKey{}).(string)
+	if !ok {
 		return w.DefaultUser, nil
 		// return nil, fmt.Errorf("invalid encryption token %s", userID)
 	}

@@ -17,7 +17,6 @@
 //go:build darwin || dragonfly || freebsd || linux || nacl || netbsd || openbsd || solaris
 // +build darwin dragonfly freebsd linux nacl netbsd openbsd solaris
 
-// nolint
 package rpc
 
 import (
@@ -53,7 +52,7 @@ func ipcListen(endpoint string) (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	os.Chmod(endpoint, 0o600)
+	os.Chmod(endpoint, 0o600) //nolint:errcheck
 	return l, nil
 }
 

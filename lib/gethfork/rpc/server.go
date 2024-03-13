@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package rpc
 
 import (
@@ -94,7 +93,7 @@ func (s *Server) RegisterName(name string, receiver interface{}) error {
 // server is stopped. In either case the codec is closed.
 //
 // Note that codec options are no longer supported.
-func (s *Server) ServeCodec(codec ServerCodec, options CodecOption, userID string) {
+func (s *Server) ServeCodec(codec ServerCodec, _ CodecOption, userID string) {
 	defer codec.close()
 
 	if !s.trackCodec(codec) {

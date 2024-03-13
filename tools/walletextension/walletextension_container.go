@@ -18,13 +18,13 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
 
-type WalletExtensionContainer struct {
+type Container struct {
 	stopControl *stopcontrol.StopControl
 	logger      gethlog.Logger
 	rpcServer   node.Server
 }
 
-func NewWalletExtensionContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *WalletExtensionContainer {
+func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Container {
 	// create the account manager with a single unauthenticated connection
 	hostRPCBindAddrWS := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
 	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
@@ -44,12 +44,12 @@ func NewWalletExtensionContainerFromConfig(config wecommon.Config, logger gethlo
 	stopControl := stopcontrol.New()
 	walletExt := rpcapi.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, databaseStorage, stopControl, version, logger, &config)
 	cfg := &node.RPCConfig{
-		EnableHttp: true,
-		HttpPort:   config.WalletExtensionPortHTTP,
+		EnableHTTP: true,
+		HTTPPort:   config.WalletExtensionPortHTTP,
 		EnableWs:   true,
 		WsPort:     config.WalletExtensionPortWS,
 		WsPath:     "/v1/",
-		HttpPath:   "/v1/",
+		HTTPPath:   "/v1/",
 		Host:       config.WalletExtensionHost,
 	}
 	rpcServer := node.NewServer(cfg, logger)
@@ -95,8 +95,8 @@ func NewWalletExtensionContainer(
 	stopControl *stopcontrol.StopControl,
 	rpcServer node.Server,
 	logger gethlog.Logger,
-) *WalletExtensionContainer {
-	return &WalletExtensionContainer{
+) *Container {
+	return &Container{
 		stopControl: stopControl,
 		rpcServer:   rpcServer,
 		logger:      logger,
@@ -104,7 +104,7 @@ func NewWalletExtensionContainer(
 }
 
 // Start starts the wallet extension container
-func (w *WalletExtensionContainer) Start() error {
+func (w *Container) Start() error {
 	err := w.rpcServer.Start()
 	if err != nil {
 		return err
@@ -112,7 +112,7 @@ func (w *WalletExtensionContainer) Start() error {
 	return nil
 }
 
-func (w *WalletExtensionContainer) Stop() error {
+func (w *Container) Stop() error {
 	w.stopControl.Stop()
 
 	if w.rpcServer != nil {

@@ -148,8 +148,8 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, n.l1Wallet.Address()))
 	rpcConfig := node.RPCConfig{
 		Host:                 hostConfig.ClientRPCHost,
-		EnableHttp:           hostConfig.HasClientRPCHTTP,
-		HttpPort:             int(hostConfig.ClientRPCPortHTTP),
+		EnableHTTP:           hostConfig.HasClientRPCHTTP,
+		HTTPPort:             int(hostConfig.ClientRPCPortHTTP),
 		EnableWs:             hostConfig.HasClientRPCWebsockets,
 		WsPort:               int(hostConfig.ClientRPCPortWS),
 		ExposedURLParamNames: nil,

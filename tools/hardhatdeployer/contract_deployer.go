@@ -149,7 +149,6 @@ func (cd *contractDeployer) signAndSendTxWithReceipt(wallet wallet.Wallet, deplo
 		}
 		return fmt.Errorf("not found")
 	}, retry.NewTimeoutStrategy(timeoutWait, retryInterval))
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy contract - %w", err)
 	}

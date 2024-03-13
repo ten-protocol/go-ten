@@ -173,7 +173,7 @@ func (s *storageImpl) FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHe
 func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
 	defer s.logDuration("FetchBatchByHeight", measure.NewStopwatch())
 	// the key is (height+1), because for some reason it doesn't like a key of 0
-	seqNo, err := common.GetCachedValue(s.seqCacheByHeight, s.logger, height+1, func(h any) (*big.Int, error) {
+	seqNo, err := common.GetCachedValue(s.seqCacheByHeight, s.logger, height+1, func(_ any) (*big.Int, error) {
 		batch, err := enclavedb.ReadCanonicalBatchByHeight(s.db.GetSQLDB(), height)
 		if err != nil {
 			return nil, err
@@ -384,7 +384,7 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 
 func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error) {
 	defer s.logDuration("FetchBatchBySeqNo", measure.NewStopwatch())
-	b, err := common.GetCachedValue(s.batchCacheBySeqNo, s.logger, seqNum, func(seq any) (*core.Batch, error) {
+	b, err := common.GetCachedValue(s.batchCacheBySeqNo, s.logger, seqNum, func(_ any) (*core.Batch, error) {
 		return enclavedb.ReadBatchBySeqNo(s.db.GetSQLDB(), seqNum)
 	})
 	if err == nil && b == nil {

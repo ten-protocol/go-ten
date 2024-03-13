@@ -21,7 +21,7 @@ func NewBlockChainAPI(we *Services) *BlockChainAPI {
 	return &BlockChainAPI{we}
 }
 
-func (api *BlockChainAPI) ChainId() *hexutil.Big { //nolint: revive
+func (api *BlockChainAPI) ChainId() *hexutil.Big { //nolint:stylecheck
 	// chainid, _ := UnauthenticatedTenRPCCall[hexutil.Big](nil, api.we, &CacheCfg{TTL: longCacheTTL}, "eth_chainId")
 	// return chainid
 	chainID := big.NewInt(int64(api.we.Config.TenChainID))
@@ -50,7 +50,7 @@ func (api *BlockChainAPI) GetBalance(ctx context.Context, address common.Address
 					return longCacheTTL
 				},
 			},
-			account: &address,
+			tryUntilAuthorised: true, // the user can request the balance of a contract account
 		},
 		"eth_getBalance",
 		address,

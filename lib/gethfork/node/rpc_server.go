@@ -1,4 +1,3 @@
-// nolint
 package node
 
 import (
@@ -17,12 +16,12 @@ const (
 
 type RPCConfig struct {
 	Host       string
-	EnableHttp bool
-	HttpPort   int
+	EnableHTTP bool
+	HTTPPort   int
 	EnableWs   bool
 	WsPort     int
 	WsPath     string
-	HttpPath   string
+	HTTPPath   string
 
 	// ExposedURLParamNames - url prams that are available in the services
 	ExposedURLParamNames []string
@@ -47,12 +46,12 @@ func NewServer(config *RPCConfig, logger gethlog.Logger) Server {
 		Logger:               logger,
 		ExposedURLParamNames: config.ExposedURLParamNames,
 	}
-	if config.EnableHttp {
+	if config.EnableHTTP {
 		rpcConfig.HTTPHost = config.Host
-		rpcConfig.HTTPPort = config.HttpPort
+		rpcConfig.HTTPPort = config.HTTPPort
 		// todo (@pedro) - review if this poses a security issue
 		rpcConfig.HTTPVirtualHosts = []string{allOrigins}
-		rpcConfig.HTTPPathPrefix = config.HttpPath
+		rpcConfig.HTTPPathPrefix = config.HTTPPath
 	}
 	if config.EnableWs {
 		rpcConfig.WSHost = config.Host

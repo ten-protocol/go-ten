@@ -70,7 +70,7 @@ func TestTenGateway(t *testing.T) {
 		StoreIncomingTxs:        true,
 	}
 
-	tenGwContainer := walletextension.NewWalletExtensionContainerFromConfig(tenGatewayConf, testlog.Logger())
+	tenGwContainer := walletextension.NewContainerFromConfig(tenGatewayConf, testlog.Logger())
 	go func() {
 		err := tenGwContainer.Start()
 		if err != nil {

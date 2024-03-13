@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package rpc
 
 import (
@@ -205,7 +204,7 @@ func (c *callback) call(ctx context.Context, method string, args []reflect.Value
 	// Run the callback.
 	results := c.fn.Call(fullargs)
 	if len(results) == 0 {
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 	if c.errPos >= 0 && !results[c.errPos].IsNil() {
 		// Method has returned non-nil error value.

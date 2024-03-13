@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package rpc
 
 import (
@@ -236,7 +235,7 @@ func newClient(initctx context.Context, cfg *clientConfig, connect reconnectFunc
 	if err != nil {
 		return nil, err
 	}
-	c := initClient(conn, new(serviceRegistry), cfg)
+	c := initClient(conn, new(serviceRegistry), cfg) //nolint:contextcheck
 	c.reconnectFunc = connect
 	return c, nil
 }
@@ -715,9 +714,10 @@ func (c *Client) drainRead() {
 func (c *Client) read(codec ServerCodec) {
 	for {
 		msgs, batch, err := codec.readBatch()
-		if _, ok := err.(*json.SyntaxError); ok {
+		var syntaxError *json.SyntaxError
+		if errors.As(err, &syntaxError) {
 			msg := errorMessage(&parseError{err.Error()})
-			codec.writeJSON(context.Background(), msg, true)
+			codec.writeJSON(context.Background(), msg, true) //nolint:errcheck
 		}
 		if err != nil {
 			c.readErr <- err

@@ -31,7 +31,7 @@ func GetLogsValidate(reqParams []any, builder *CallBuilder[filters.FilterCriteri
 	return nil
 }
 
-func GetLogsExecute(builder *CallBuilder[filters.FilterCriteria, []*types.Log], rpc *EncryptionManager) error { //nolint:gocognit
+func GetLogsExecute(builder *CallBuilder[filters.FilterCriteria, []*types.Log], rpc *EncryptionManager) error {
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
 		builder.Err = err

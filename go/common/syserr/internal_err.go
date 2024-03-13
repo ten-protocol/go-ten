@@ -35,12 +35,12 @@ func NewRPCError(err error) error {
 }
 
 func (e InternalError) Is(target error) bool {
-	_, ok := target.(*InternalError) //nolint: errorlint
+	_, ok := target.(*InternalError)
 	return ok || errors.Is(e.err, target)
 }
 
 func (e RPCError) Is(target error) bool {
-	_, ok := target.(*RPCError) //nolint: errorlint
+	_, ok := target.(*RPCError)
 	return ok || errors.Is(e.err, target)
 }
 

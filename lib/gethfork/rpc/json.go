@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package rpc
 
 import (
@@ -245,7 +244,7 @@ func (c *jsonCodec) writeJSON(ctx context.Context, v interface{}, isErrorRespons
 	if !ok {
 		deadline = time.Now().Add(defaultWriteTimeout)
 	}
-	c.conn.SetWriteDeadline(deadline)
+	c.conn.SetWriteDeadline(deadline) //nolint:errcheck
 	return c.encode(v, isErrorResponse)
 }
 
@@ -268,15 +267,15 @@ func (c *jsonCodec) closed() <-chan interface{} {
 func parseMessage(raw json.RawMessage) ([]*jsonrpcMessage, bool) {
 	if !isBatch(raw) {
 		msgs := []*jsonrpcMessage{{}}
-		json.Unmarshal(raw, &msgs[0])
+		json.Unmarshal(raw, &msgs[0]) //nolint:errcheck
 		return msgs, false
 	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.Token() // skip '['
+	dec.Token() // skip '['//nolint:errcheck
 	var msgs []*jsonrpcMessage
 	for dec.More() {
 		msgs = append(msgs, new(jsonrpcMessage))
-		dec.Decode(&msgs[len(msgs)-1])
+		dec.Decode(&msgs[len(msgs)-1]) //nolint:errcheck
 	}
 	return msgs, true
 }
@@ -301,7 +300,7 @@ func parsePositionalArguments(rawArgs json.RawMessage, types []reflect.Type) ([]
 	var args []reflect.Value
 	tok, err := dec.Token()
 	switch {
-	case err == io.EOF || tok == nil && err == nil:
+	case errors.Is(err, io.EOF) || tok == nil && err == nil:
 		// "params" is optional and may be empty. Also allow "params":null even though it's
 		// not in the spec because our own client used to send it.
 	case err != nil:
@@ -332,7 +331,7 @@ func parseArgumentArray(dec *json.Decoder, types []reflect.Type) ([]reflect.Valu
 		}
 		argval := reflect.New(types[i])
 		if err := dec.Decode(argval.Interface()); err != nil {
-			return args, fmt.Errorf("invalid argument %d: %v", i, err)
+			return args, fmt.Errorf("invalid argument %d: %w", i, err)
 		}
 		if argval.IsNil() && types[i].Kind() != reflect.Ptr {
 			return args, fmt.Errorf("missing value for required argument %d", i)

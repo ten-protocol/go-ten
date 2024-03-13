@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package rpc
 
 import (
@@ -164,7 +163,7 @@ func newClientTransportHTTP(endpoint string, cfg *clientConfig) reconnectFunc {
 		closeCh: make(chan interface{}),
 	}
 
-	return func(ctx context.Context) (ServerCodec, error) {
+	return func(_ context.Context) (ServerCodec, error) {
 		return hc, nil
 	}
 }

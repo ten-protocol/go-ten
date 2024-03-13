@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package node
 
 import (
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -43,16 +43,16 @@ type httpConfig struct {
 	CorsAllowedOrigins []string
 	Vhosts             []string
 	prefix             string // path prefix on which to mount http handler
-	exposedParams      []string
+	ExposedParam       string
 	rpcEndpointConfig
 }
 
 // wsConfig is the JSON-RPC/Websocket configuration
 type wsConfig struct {
-	Origins       []string
-	Modules       []string
-	prefix        string // path prefix on which to mount ws handler
-	exposedParams []string
+	Origins      []string
+	Modules      []string
+	prefix       string // path prefix on which to mount ws handler
+	ExposedParam string
 	rpcEndpointConfig
 }
 
@@ -141,7 +141,7 @@ func (h *httpServer) start() error {
 	}
 
 	// Initialize the server.
-	h.server = &http.Server{Handler: h}
+	h.server = &http.Server{Handler: h} //nolint:gosec
 	if h.timeouts != (rpc.HTTPTimeouts{}) {
 		CheckTimeouts(&h.timeouts)
 		h.server.ReadTimeout = h.timeouts.ReadTimeout
@@ -160,7 +160,7 @@ func (h *httpServer) start() error {
 		return err
 	}
 	h.listener = listener
-	go h.server.Serve(listener)
+	go h.server.Serve(listener) //nolint:errcheck
 
 	if h.wsAllowed() {
 		url := fmt.Sprintf("ws://%v", listener.Addr())
@@ -182,7 +182,7 @@ func (h *httpServer) start() error {
 	)
 
 	// Log all handlers mounted on server.
-	var paths []string
+	var paths []string //nolint:prealloc
 	for path := range h.handlerNames {
 		paths = append(paths, path)
 	}
@@ -283,7 +283,7 @@ func (h *httpServer) doStop() {
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	err := h.server.Shutdown(ctx)
-	if err != nil && err == ctx.Err() {
+	if err != nil && errors.Is(err, ctx.Err()) {
 		h.log.Warn("HTTP server graceful shutdown timed out")
 		h.server.Close()
 	}
@@ -313,7 +313,7 @@ func (h *httpServer) enableRPC(apis []rpc.API, config httpConfig) error {
 	}
 	h.httpConfig = config
 	h.httpHandler.Store(&rpcHandler{
-		Handler: NewHTTPHandlerStack(srv, config.CorsAllowedOrigins, config.Vhosts, config.jwtSecret, config.exposedParams),
+		Handler: NewHTTPHandlerStack(srv, config.CorsAllowedOrigins, config.Vhosts, config.jwtSecret, config.ExposedParam),
 		server:  srv,
 	})
 	return nil
@@ -345,7 +345,7 @@ func (h *httpServer) enableWS(apis []rpc.API, config wsConfig) error {
 	}
 	h.wsConfig = config
 	h.wsHandler.Store(&rpcHandler{
-		Handler: NewWSHandlerStack(srv.WebsocketHandler(config.Origins), config.jwtSecret, config.exposedParams),
+		Handler: NewWSHandlerStack(srv.WebsocketHandler(config.Origins), config.jwtSecret, config.ExposedParam),
 		server:  srv,
 	})
 	return nil
@@ -390,10 +390,10 @@ func isWebsocket(r *http.Request) bool {
 }
 
 // NewHTTPHandlerStack returns wrapped http-related handlers
-func NewHTTPHandlerStack(srv http.Handler, cors []string, vhosts []string, jwtSecret []byte, exposedParams []string) http.Handler {
+func NewHTTPHandlerStack(srv http.Handler, cors []string, vhosts []string, jwtSecret []byte, exposedParam string) http.Handler {
 	// Wrap the CORS-handler within a host-handler
 	handler := newCorsHandler(srv, cors)
-	handler = newHttpParamsHandler(exposedParams, handler)
+	handler = newHTTPParamsHandler(exposedParam, handler)
 	handler = newVHostHandler(vhosts, handler)
 	if len(jwtSecret) != 0 {
 		handler = newJWTHandler(jwtSecret, handler)
@@ -402,9 +402,9 @@ func NewHTTPHandlerStack(srv http.Handler, cors []string, vhosts []string, jwtSe
 }
 
 // NewWSHandlerStack returns a wrapped ws-related handler.
-func NewWSHandlerStack(srv http.Handler, jwtSecret []byte, exposedParams []string) http.Handler {
+func NewWSHandlerStack(srv http.Handler, jwtSecret []byte, exposedParam string) http.Handler {
 	handler := srv
-	handler = newHttpParamsHandler(exposedParams, handler)
+	handler = newHTTPParamsHandler(exposedParam, handler)
 	if len(jwtSecret) != 0 {
 		handler = newJWTHandler(jwtSecret, handler)
 	}

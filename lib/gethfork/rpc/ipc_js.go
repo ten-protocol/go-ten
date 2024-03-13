@@ -17,7 +17,6 @@
 //go:build js
 // +build js
 
-// nolint
 package rpc
 
 import (

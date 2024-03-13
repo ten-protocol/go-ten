@@ -59,7 +59,7 @@ type InMemDevNetwork struct {
 	obscuroConfig       ObscuroConfig
 	obscuroSequencer    *InMemNodeOperator
 	obscuroValidators   []*InMemNodeOperator
-	tenGatewayContainer *walletextension.WalletExtensionContainer
+	tenGatewayContainer *walletextension.Container
 
 	tenGatewayEnabled bool
 
@@ -207,7 +207,7 @@ func (s *InMemDevNetwork) startTenGateway() {
 		DBType:                  "sqlite",
 		TenChainID:              integration.TenChainID,
 	}
-	tenGWContainer := walletextension.NewWalletExtensionContainerFromConfig(cfg, s.logger)
+	tenGWContainer := walletextension.NewContainerFromConfig(cfg, s.logger)
 	go func() {
 		fmt.Println("Starting Ten Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
 		err := tenGWContainer.Start()

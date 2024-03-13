@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package node
 
 import (
@@ -35,7 +34,7 @@ type jwtHandler struct {
 // newJWTHandler creates a http.Handler with jwt authentication support.
 func newJWTHandler(secret []byte, next http.Handler) http.Handler {
 	return &jwtHandler{
-		keyFunc: func(token *jwt.Token) (interface{}, error) {
+		keyFunc: func(_ *jwt.Token) (interface{}, error) {
 			return secret, nil
 		},
 		next: next,

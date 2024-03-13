@@ -79,19 +79,19 @@ func (tx *rpcTransaction) UnmarshalJSON(msg []byte) error {
 
 // TransactionByHash returns transaction (if found), isPending (always false currently as we don't search the mempool), error
 func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash gethcommon.Hash) (tx *types.Transaction, isPending bool, err error) {
-	var json *rpcTransaction
-	err = ac.rpcClient.CallContext(ctx, &json, "eth_getTransactionByHash", hash)
+	var result *rpcTransaction
+	err = ac.rpcClient.CallContext(ctx, &result, "eth_getTransactionByHash", hash)
 	if err != nil {
 		return nil, false, err
-	} else if json == nil {
+	} else if result == nil {
 		return nil, false, ethereum.NotFound
-	} else if _, r, _ := json.tx.RawSignatureValues(); r == nil {
+	} else if _, r, _ := result.tx.RawSignatureValues(); r == nil {
 		return nil, false, errors.New("server returned transaction without signature")
 	}
-	if json.From != nil && json.BlockHash != nil {
-		setSenderFromServer(json.tx, *json.From, *json.BlockHash)
+	if result.From != nil && result.BlockHash != nil {
+		setSenderFromServer(result.tx, *result.From, *result.BlockHash)
 	}
-	return json.tx, json.BlockNumber == nil, nil
+	return result.tx, result.BlockNumber == nil, nil
 }
 
 // senderFromServer is a types.Signer that remembers the sender address returned by the RPC
@@ -106,7 +106,7 @@ var errNotCached = errors.New("sender not cached")
 
 func setSenderFromServer(tx *types.Transaction, addr gethcommon.Address, block gethcommon.Hash) {
 	// Use types.Sender for side-effect to store our signer into the cache.
-	types.Sender(&senderFromServer{addr, block}, tx)
+	_, _ = types.Sender(&senderFromServer{addr, block}, tx)
 }
 
 func (s *senderFromServer) Equal(other types.Signer) bool {
@@ -114,7 +114,7 @@ func (s *senderFromServer) Equal(other types.Signer) bool {
 	return ok && os.blockhash == s.blockhash
 }
 
-func (s *senderFromServer) Sender(tx *types.Transaction) (gethcommon.Address, error) {
+func (s *senderFromServer) Sender(_ *types.Transaction) (gethcommon.Address, error) {
 	if s.addr == (gethcommon.Address{}) {
 		return gethcommon.Address{}, errNotCached
 	}
@@ -125,11 +125,11 @@ func (s *senderFromServer) ChainID() *big.Int {
 	panic("can't sign with senderFromServer")
 }
 
-func (s *senderFromServer) Hash(tx *types.Transaction) gethcommon.Hash {
+func (s *senderFromServer) Hash(_ *types.Transaction) gethcommon.Hash {
 	panic("can't sign with senderFromServer")
 }
 
-func (s *senderFromServer) SignatureValues(tx *types.Transaction, sig []byte) (R, S, V *big.Int, err error) {
+func (s *senderFromServer) SignatureValues(_ *types.Transaction, _ []byte) (R, S, V *big.Int, err error) {
 	panic("can't sign with senderFromServer")
 }
 

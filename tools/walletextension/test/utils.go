@@ -51,7 +51,7 @@ func createWalExt(t *testing.T, walExtCfg *common.Config) func() error {
 	// todo (@ziga) - log somewhere else?
 	logger := log.New(log.WalletExtCmp, int(gethlog.LvlInfo), log.SysOut)
 
-	wallExtContainer := walletextension.NewWalletExtensionContainerFromConfig(*walExtCfg, logger)
+	wallExtContainer := walletextension.NewContainerFromConfig(*walExtCfg, logger)
 	go wallExtContainer.Start() //nolint: errcheck
 
 	err := waitForEndpoint(fmt.Sprintf("http://%s:%d%s", walExtCfg.WalletExtensionHost, walExtCfg.WalletExtensionPortHTTP, common.PathReady))

@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package node
 
 import (
@@ -157,7 +156,7 @@ func (n *Node) Start() error {
 		return err
 	}
 	// Start all registered lifecycles.
-	var started []Lifecycle
+	var started []Lifecycle //nolint:prealloc
 	for _, lifecycle := range lifecycles {
 		if err = lifecycle.Start(); err != nil {
 			break
@@ -166,8 +165,8 @@ func (n *Node) Start() error {
 	}
 	// Check if any lifecycle failed to start.
 	if err != nil {
-		n.stopServices(started)
-		n.doClose(nil)
+		n.stopServices(started) //nolint:errcheck
+		n.doClose(nil)          //nolint:errcheck
 	}
 	return err
 }
@@ -307,7 +306,7 @@ func (n *Node) obtainJWTSecret(cliParam string) ([]byte, error) {
 	}
 	// Need to generate one
 	jwtSecret := make([]byte, 32)
-	crand.Read(jwtSecret)
+	crand.Read(jwtSecret) //nolint:errcheck
 	// if we're in --dev mode, don't bother saving, just show it
 	if fileName == "" {
 		log.Info("Generated ephemeral JWT secret", "secret", hexutil.Encode(jwtSecret))
@@ -323,9 +322,11 @@ func (n *Node) obtainJWTSecret(cliParam string) ([]byte, error) {
 // startRPC is a helper method to configure all the various RPC endpoints during node
 // startup. It's not meant to be called at any time afterwards as it makes certain
 // assumptions about the state of the node.
+//
+//nolint:gocognit
 func (n *Node) startRPC() error {
 	// Filter out personal api
-	var apis []rpc.API
+	var apis []rpc.API //nolint:prealloc
 	for _, api := range n.rpcAPIs {
 		if api.Namespace == "personal" {
 			if n.config.EnablePersonal {
@@ -356,7 +357,7 @@ func (n *Node) startRPC() error {
 		batchResponseSizeLimit: n.config.BatchResponseMaxSize,
 	}
 
-	initHttp := func(server *httpServer, port int) error {
+	initHTTP := func(server *httpServer, port int) error {
 		if err := server.setListenAddr(n.config.HTTPHost, port); err != nil {
 			return err
 		}
@@ -366,6 +367,7 @@ func (n *Node) startRPC() error {
 			Modules:            n.config.HTTPModules,
 			prefix:             n.config.HTTPPathPrefix,
 			rpcEndpointConfig:  rpcConfig,
+			ExposedParam:       "token",
 		}); err != nil {
 			return err
 		}
@@ -383,6 +385,7 @@ func (n *Node) startRPC() error {
 			Origins:           n.config.WSOrigins,
 			prefix:            n.config.WSPathPrefix,
 			rpcEndpointConfig: rpcConfig,
+			ExposedParam:      "token",
 		}); err != nil {
 			return err
 		}
@@ -432,7 +435,7 @@ func (n *Node) startRPC() error {
 	// Set up HTTP.
 	if n.config.HTTPHost != "" {
 		// Configure legacy unauthenticated HTTP.
-		if err := initHttp(n.http, n.config.HTTPPort); err != nil {
+		if err := initHTTP(n.http, n.config.HTTPPort); err != nil {
 			return err
 		}
 	}
@@ -478,7 +481,7 @@ func (n *Node) stopRPC() {
 	n.ws.stop()
 	n.httpAuth.stop()
 	n.wsAuth.stop()
-	n.ipc.stop()
+	n.ipc.stop() //nolint:errcheck
 	n.stopInProc()
 }
 

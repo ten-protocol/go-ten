@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package rpc
 
 import (
@@ -163,7 +162,7 @@ func (b *batchCallBuffer) doWrite(ctx context.Context, conn jsonWriter, isErrorR
 	}
 	b.wrote = true // can only write once
 	if len(b.resp) > 0 {
-		conn.writeJSON(ctx, b.resp, isErrorResponse)
+		conn.writeJSON(ctx, b.resp, isErrorResponse) //nolint:errcheck
 	}
 }
 
@@ -173,7 +172,7 @@ func (h *handler) handleBatch(msgs []*jsonrpcMessage) {
 	if len(msgs) == 0 {
 		h.startCallProc(func(cp *callProc) {
 			resp := errorMessage(&invalidRequestError{"empty batch"})
-			h.conn.writeJSON(cp.ctx, resp, true)
+			h.conn.writeJSON(cp.ctx, resp, true) //nolint:errcheck
 		})
 		return
 	}
@@ -245,7 +244,7 @@ func (h *handler) handleBatch(msgs []*jsonrpcMessage) {
 		h.addSubscriptions(cp.notifiers)
 		callBuffer.write(cp.ctx, h.conn)
 		for _, n := range cp.notifiers {
-			n.activate()
+			n.activate() //nolint:errcheck
 		}
 	})
 }
@@ -261,7 +260,7 @@ func (h *handler) respondWithBatchTooLarge(cp *callProc, batch []*jsonrpcMessage
 			break
 		}
 	}
-	h.conn.writeJSON(cp.ctx, []*jsonrpcMessage{resp}, true)
+	h.conn.writeJSON(cp.ctx, []*jsonrpcMessage{resp}, true) //nolint:errcheck
 }
 
 // handleMsg handles a single non-batch message.
@@ -291,7 +290,7 @@ func (h *handler) handleNonBatchCall(cp *callProc, msg *jsonrpcMessage) {
 			cancel()
 			responded.Do(func() {
 				resp := msg.errorResponse(&internalServerError{errcodeTimeout, errMsgTimeout})
-				h.conn.writeJSON(cp.ctx, resp, true)
+				h.conn.writeJSON(cp.ctx, resp, true) //nolint:errcheck
 			})
 		})
 	}
@@ -303,11 +302,11 @@ func (h *handler) handleNonBatchCall(cp *callProc, msg *jsonrpcMessage) {
 	h.addSubscriptions(cp.notifiers)
 	if answer != nil {
 		responded.Do(func() {
-			h.conn.writeJSON(cp.ctx, answer, false)
+			h.conn.writeJSON(cp.ctx, answer, false) //nolint:errcheck
 		})
 	}
 	for _, n := range cp.notifiers {
-		n.activate()
+		n.activate() //nolint:errcheck
 	}
 }
 
@@ -573,7 +572,7 @@ func (h *handler) runMethod(ctx context.Context, msg *jsonrpcMessage, callb *cal
 }
 
 // unsubscribe is the callback function for all *_unsubscribe calls.
-func (h *handler) unsubscribe(ctx context.Context, id ID) (bool, error) {
+func (h *handler) unsubscribe(_ context.Context, id ID) (bool, error) {
 	h.subLock.Lock()
 	defer h.subLock.Unlock()
 

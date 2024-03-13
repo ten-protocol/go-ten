@@ -121,7 +121,7 @@ func (executor *batchExecutor) filterTransactionsWithSufficientFunds(stateDB *st
 	return transactions, freeTransactions
 }
 
-func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) { //nolint:gocognit
+func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) {
 	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
 
 	// sanity check that the l1 block exists. We don't have to execute batches of forks.

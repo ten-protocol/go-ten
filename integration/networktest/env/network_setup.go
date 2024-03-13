@@ -69,7 +69,7 @@ type TestnetEnvOption func(env *testnetEnv)
 type testnetEnv struct {
 	testnetConnector    *testnetConnector
 	localTenGateway     bool
-	tenGatewayContainer *walletextension.WalletExtensionContainer
+	tenGatewayContainer *walletextension.Container
 	logger              gethlog.Logger
 }
 
@@ -111,7 +111,7 @@ func (t *testnetEnv) startTenGateway() {
 		DBType:                  "sqlite",
 		TenChainID:              integration.TenChainID,
 	}
-	tenGWContainer := walletextension.NewWalletExtensionContainerFromConfig(cfg, t.logger)
+	tenGWContainer := walletextension.NewContainerFromConfig(cfg, t.logger)
 	go func() {
 		fmt.Println("Starting Ten Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
 		err := tenGWContainer.Start()

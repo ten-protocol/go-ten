@@ -48,7 +48,7 @@ func TestExecuteNativeFundsTransferNoGas(t *testing.T) {
 				UserID:          1,
 				ExpectedBalance: common.Big0,
 			},
-			actions.VerifyOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) error {
+			actions.VerifyOnlyAction(func(ctx context.Context, _ networktest.NetworkConnector) error {
 				logFile, ok := (ctx.Value(networktest.LogFileKey)).(*os.File)
 				if !ok {
 					return fmt.Errorf("log file not provided in context")

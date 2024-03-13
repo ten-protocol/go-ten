@@ -159,16 +159,13 @@ func ExtractOptionalBlockNumber(params []interface{}, idx int) (*gethrpc.BlockNu
 	return ExtractBlockNumber(params[idx])
 }
 
-// ExtractBlockNumber returns a gethrpc.BlockNumber given an interface{}, errors if unexpected values are used
 func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumberOrHash, error) {
-	var blockNo *gethrpc.BlockNumber
-	var blockHa *gethcommon.Hash
-	var reqCanon bool
-
 	if param == nil {
 		latest := gethrpc.BlockNumberOrHashWithNumber(gethrpc.LatestBlockNumber)
 		return &latest, nil
 	}
+
+	// when the param is a single string we try to convert it to a block number
 	blockString, ok := param.(string)
 	if ok {
 		blockNumber := gethrpc.BlockNumber(0)
@@ -176,28 +173,32 @@ func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumberOrHash, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid block number %s - %w", blockString, err)
 		}
+		return &gethrpc.BlockNumberOrHash{BlockNumber: &blockNumber}, nil
+	}
+
+	var blockNo *gethrpc.BlockNumber
+	var blockHa *gethcommon.Hash
+	var reqCanon bool
+
+	blockAndHash, ok := param.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("invalid block or hash parameter %s", param.(string))
+	}
+	if blockAndHash["blockNumber"] != nil {
+		b := blockAndHash["blockNumber"].(string)
+		blockNumber := gethrpc.BlockNumber(0)
+		err := blockNumber.UnmarshalJSON([]byte(b))
+		if err != nil {
+			return nil, fmt.Errorf("invalid block number %s - %w", b, err)
+		}
 		blockNo = &blockNumber
-	} else {
-		blockAndHash, ok := param.(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("invalid block or hash parameter %s", param.(string))
-		}
-		if blockAndHash["blockNumber"] != nil {
-			b := blockAndHash["blockNumber"].(string)
-			blockNumber := gethrpc.BlockNumber(0)
-			err := blockNumber.UnmarshalJSON([]byte(b))
-			if err != nil {
-				return nil, fmt.Errorf("invalid block number %s - %w", b, err)
-			}
-			blockNo = &blockNumber
-		}
-		if blockAndHash["blockHash"] != nil {
-			bh := blockAndHash["blockHash"].(gethcommon.Hash)
-			blockHa = &bh
-		}
-		if blockAndHash["RequireCanonical"] != nil {
-			reqCanon = blockAndHash["RequireCanonical"].(bool)
-		}
+	}
+	if blockAndHash["blockHash"] != nil {
+		bh := blockAndHash["blockHash"].(gethcommon.Hash)
+		blockHa = &bh
+	}
+	if blockAndHash["RequireCanonical"] != nil {
+		reqCanon = blockAndHash["RequireCanonical"].(bool)
 	}
 
 	return &gethrpc.BlockNumberOrHash{
@@ -308,7 +309,7 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 // Special care must be taken to maintain a valid chain of these converted headers.
 func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(h *common.BatchHeader) (*types.Header, error) {
 	// wrap in a caching layer
-	return common.GetCachedValue(enc.gethHeaderCache, enc.logger, h.Hash(), func(a any) (*types.Header, error) {
+	return common.GetCachedValue(enc.gethHeaderCache, enc.logger, h.Hash(), func(_ any) (*types.Header, error) {
 		// deterministically calculate the private randomness that will be exposed to the EVM
 		secret, err := enc.storage.FetchSecret()
 		if err != nil {

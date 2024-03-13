@@ -238,7 +238,7 @@ func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []*gethcommon.
 
 // Lifted from eth/filters/filter.go in the go-ethereum repository.
 // filterLogs creates a slice of logs matching the given criteria.
-func filterLogs(logs []*types.Log, fromBlock, toBlock *big.Int, addresses []gethcommon.Address, topics [][]gethcommon.Hash, logger gethlog.Logger) []*types.Log { //nolint:gocognit
+func filterLogs(logs []*types.Log, fromBlock, toBlock *big.Int, addresses []gethcommon.Address, topics [][]gethcommon.Hash, logger gethlog.Logger) []*types.Log {
 	var ret []*types.Log
 Logs:
 	for _, logItem := range logs {

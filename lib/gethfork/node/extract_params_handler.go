@@ -1,40 +1,32 @@
-// nolint
 package node
 
 import (
 	"context"
 	"net/http"
+
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
-const exposedParams = "exposedParams"
-
 type httpParamsHandler struct {
-	exposedParams []string
-	next          http.Handler
+	exposedParam string
+	next         http.Handler
 }
 
 // newTenTokenHandler creates a http.Handler that extracts params
-func newHttpParamsHandler(exposedParams []string, next http.Handler) http.Handler {
+func newHTTPParamsHandler(exposedParam string, next http.Handler) http.Handler {
 	return &httpParamsHandler{
-		exposedParams: exposedParams,
-		next:          next,
+		exposedParam: exposedParam,
+		next:         next,
 	}
 }
 
 // ServeHTTP implements http.Handler
 func (handler *httpParamsHandler) ServeHTTP(out http.ResponseWriter, r *http.Request) {
-	result := make(map[string]string)
 	q := r.URL.Query()
-	// todo use the config
-	searchParams := []string{"token"}
-	// for _, param := range handler.exposedParams {
-	// todo wire in
-	for _, param := range searchParams {
-		val := q.Get(param)
-		if len(val) > 0 {
-			result[param] = val
-		}
+	val := q.Get(handler.exposedParam)
+	if len(val) > 0 {
+		ctx := context.WithValue(r.Context(), rpc.GWTokenKey{}, val)
+		handler.next.ServeHTTP(out, r.WithContext(ctx))
 	}
-	ctx := context.WithValue(r.Context(), exposedParams, result)
-	handler.next.ServeHTTP(out, r.WithContext(ctx))
+	handler.next.ServeHTTP(out, r)
 }

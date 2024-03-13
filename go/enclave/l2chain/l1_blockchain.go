@@ -23,11 +23,8 @@ import (
 )
 
 const (
-	gethDir             = "geth"
-	chainDataDir        = "chaindata"
-	chainDataAncientDir = "chaindata/ancient"
-	trieCacheDir        = "triecache"
-	ethashDir           = "ethash"
+	gethDir      = "geth"
+	chainDataDir = "chaindata"
 	// todo (#1471) - use a constant that makes sense outside of the simulation.
 	dataDirRoot = "../.build/simulations/gethDataDir"
 )
@@ -152,7 +149,7 @@ func createGenesis(genesisJSON []byte, logger gethlog.Logger) *core.Genesis {
 
 // We indicate that no blocks are authored by local accounts, and thus all blocks are discarded during reorgs.
 func createShouldPreserve() func(header *types.Header) bool {
-	return func(header *types.Header) bool {
+	return func(_ *types.Header) bool {
 		return false
 	}
 }

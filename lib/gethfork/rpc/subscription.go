@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package rpc
 
 import (
@@ -312,12 +311,12 @@ func (sub *ClientSubscription) run() {
 
 	// Call the unsubscribe method on the server.
 	if unsubscribe {
-		sub.requestUnsubscribe()
+		_ = sub.requestUnsubscribe()
 	}
 
 	// Send the error.
 	if err != nil {
-		if err == ErrClientQuit {
+		if errors.Is(err, ErrClientQuit) {
 			// ErrClientQuit gets here when Client.Close is called. This is reported as a
 			// nil error because it's not an error, but we can't close sub.err here.
 			err = nil
@@ -353,7 +352,7 @@ func (sub *ClientSubscription) forward() (unsubscribeServer bool, err error) {
 			if !recv.IsNil() {
 				err = recv.Interface().(error)
 			}
-			if err == errUnsubscribed {
+			if errors.Is(err, errUnsubscribed) {
 				// Exiting because Unsubscribe was called, unsubscribe on server.
 				return true, nil
 			}

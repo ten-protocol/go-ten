@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package rpc
 
 import (
@@ -67,12 +66,12 @@ func (s *Server) WebsocketHandler(allowedOrigins []string) http.Handler {
 	})
 }
 
-const exposedParams = "exposedParams"
-
 func extractUserID(ctx context.Context) string {
-	params := ctx.Value(exposedParams).(map[string]string)
-	userID := params["token"]
-	return userID
+	token, ok := ctx.Value(GWTokenKey{}).(string)
+	if !ok {
+		return ""
+	}
+	return token
 }
 
 // wsHandshakeValidator returns a handler that verifies the origin during the
@@ -253,7 +252,7 @@ func newClientTransportWS(endpoint string, cfg *clientConfig) (reconnectFunc, er
 				return nil, err
 			}
 		}
-		conn, resp, err := dialer.DialContext(ctx, dialURL, header)
+		conn, resp, err := dialer.DialContext(ctx, dialURL, header) //nolint:bodyclose
 		if err != nil {
 			hErr := wsHandshakeError{err: err}
 			if resp != nil {
@@ -313,7 +312,7 @@ func newWebsocketCodec(conn *websocket.Conn, host string, req http.Header) Serve
 	wc.info.HTTP.Origin = req.Get("Origin")
 	wc.info.HTTP.UserAgent = req.Get("User-Agent")
 	// Start pinger.
-	conn.SetPongHandler(func(appData string) error {
+	conn.SetPongHandler(func(_ string) error {
 		select {
 		case wc.pongReceived <- struct{}{}:
 		case <-wc.closed():
@@ -365,14 +364,14 @@ func (wc *websocketCodec) pingLoop() {
 
 		case <-pingTimer.C:
 			wc.jsonCodec.encMu.Lock()
-			wc.conn.SetWriteDeadline(time.Now().Add(wsPingWriteTimeout))
-			wc.conn.WriteMessage(websocket.PingMessage, nil)
-			wc.conn.SetReadDeadline(time.Now().Add(wsPongTimeout))
+			wc.conn.SetWriteDeadline(time.Now().Add(wsPingWriteTimeout)) //nolint:errcheck
+			wc.conn.WriteMessage(websocket.PingMessage, nil)             //nolint:errcheck
+			wc.conn.SetReadDeadline(time.Now().Add(wsPongTimeout))       //nolint:errcheck
 			wc.jsonCodec.encMu.Unlock()
 			pingTimer.Reset(wsPingInterval)
 
 		case <-wc.pongReceived:
-			wc.conn.SetReadDeadline(time.Time{})
+			wc.conn.SetReadDeadline(time.Time{}) //nolint:errcheck
 		}
 	}
 }

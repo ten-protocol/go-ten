@@ -14,31 +14,19 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package node
 
 import (
 	"errors"
 	"fmt"
 	"reflect"
-	"syscall"
 )
 
 var (
-	ErrDatadirUsed    = errors.New("datadir already used by another process")
-	ErrNodeStopped    = errors.New("node not started")
-	ErrNodeRunning    = errors.New("node already running")
-	ErrServiceUnknown = errors.New("unknown service")
-
-	datadirInUseErrnos = map[uint]bool{11: true, 32: true, 35: true}
+	ErrDatadirUsed = errors.New("datadir already used by another process")
+	ErrNodeStopped = errors.New("node not started")
+	ErrNodeRunning = errors.New("node already running")
 )
-
-func convertFileLockError(err error) error {
-	if errno, ok := err.(syscall.Errno); ok && datadirInUseErrnos[uint(errno)] {
-		return ErrDatadirUsed
-	}
-	return err
-}
 
 // StopError is returned if a Node fails to stop either any of its registered
 // services or itself.

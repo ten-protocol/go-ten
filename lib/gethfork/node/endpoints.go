@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// nolint
 package node
 
 import (
@@ -46,7 +45,7 @@ func StartHTTPEndpoint(endpoint string, timeouts rpc.HTTPTimeouts, handler http.
 		WriteTimeout:      timeouts.WriteTimeout,
 		IdleTimeout:       timeouts.IdleTimeout,
 	}
-	go httpSrv.Serve(listener)
+	go httpSrv.Serve(listener) //nolint:errcheck
 	return httpSrv, listener.Addr(), err
 }
 

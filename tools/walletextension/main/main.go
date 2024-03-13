@@ -59,7 +59,7 @@ func main() {
 	}
 	logger := log.New(log.WalletExtCmp, int(logLvl), config.LogPath)
 
-	walletExtContainer := walletextension.NewWalletExtensionContainerFromConfig(config, logger)
+	walletExtContainer := walletextension.NewContainerFromConfig(config, logger)
 
 	// Start the wallet extension.
 	err := walletExtContainer.Start()
