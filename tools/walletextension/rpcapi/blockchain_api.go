@@ -219,6 +219,7 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 			args.From = acct.address
 			return []any{args, blockNrOrHash, overrides, blockOverrides}
 		},
+		useDefaultUser: true,
 	}, "eth_call", args, blockNrOrHash, overrides, blockOverrides)
 	if resp == nil {
 		return nil, err
