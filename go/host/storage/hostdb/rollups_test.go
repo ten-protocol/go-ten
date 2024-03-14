@@ -149,7 +149,7 @@ func TestGetRollupListing(t *testing.T) {
 		t.Errorf("rollup listing was not paginated correctly")
 	}
 
-	// page 2, size 4
+	// page 5, size 1
 	rollupListing3, err := GetRollupListing(db, &common.QueryPagination{Offset: 5, Size: 1})
 	if err != nil {
 		t.Errorf("could not get rollup listing. Cause: %s", err)

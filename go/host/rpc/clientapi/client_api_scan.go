@@ -33,10 +33,17 @@ func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
 	return hostdb.GetTotalTransactions(s.host.DB())
 }
 
+// GetBatchListing returns a paginated list of batches
 func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	return hostdb.GetBatchListing(s.host.DB(), pagination)
 }
 
+// GetBatchListingDeprecated returns the deprecated version of batch listing
+func (s *ScanAPI) GetBatchListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
+	return hostdb.GetBatchListingDeprecated(s.host.DB(), pagination)
+}
+
+// GetPublicBatchByHash returns the public batch
 func (s *ScanAPI) GetPublicBatchByHash(hash common.L2BatchHash) (*common.PublicBatch, error) {
 	return hostdb.GetPublicBatch(s.host.DB(), hash)
 }
@@ -69,10 +76,6 @@ func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {
 func (s *ScanAPI) GetPublicTransactionData(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
 	return s.host.EnclaveClient().GetPublicTransactionData(pagination)
 }
-
-//func (s *ScanAPI) GetLatestTransactionHashes(pagination *common.QueryPagination) ([]gethcommon.Hash, error) {
-//	panic("I don't think this is even needed")
-//}
 
 func (s *ScanAPI) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
 	return hostdb.GetBlockListing(s.host.DB(), pagination)

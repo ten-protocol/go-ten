@@ -23,12 +23,12 @@ const (
 	`
 	selectTxsAndBatch                 = "SELECT t.hash FROM transactions_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.full_hash = ?"
 	selectBatchNumberFromTransactions = "SELECT b_sequence FROM transactions_host WHERE hash = ?"
-	selectTxByHash                    = "SELECT b_sequence FROM transaction_host t WHERE hash = ?"
+	selectTxByHash                    = "SELECT b_sequence FROM transactions_host WHERE hash = ?"
+	selectTxBySeq                     = "SELECT hash FROM transactions_host WHERE b_sequence = ?"
 
 	insertBatch        = "INSERT INTO batch_host (sequence, full_hash, hash, height, ext_batch) VALUES (?, ?, ?, ?, ?)"
 	insertTransactions = "INSERT INTO transactions_host (hash, b_sequence) VALUES (?, ?)"
-	//insertTransactions = "INSERT INTO transactions_host (hash, full_hash, b_sequence) VALUES (?, ?, ?)"
-	insertTxCount = "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET total = excluded.total;"
+	insertTxCount      = "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET total = excluded.total;"
 )
 
 // AddBatch adds a batch and its header to the DB
@@ -120,16 +120,66 @@ func GetBatchListing(db *sql.DB, pagination *common.QueryPagination) (*common.Ba
 	}, nil
 }
 
+// GetBatchListingDeprecated returns latest batches given a pagination.
+// For example, page 0, size 10 will return the latest 10 batches.
+func GetBatchListingDeprecated(db *sql.DB, pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
+	headBatch, err := GetCurrentHeadBatch(db)
+	if err != nil {
+		return nil, err
+
+	}
+	batchesFrom := headBatch.SequencerOrderNo.Uint64() - pagination.Offset
+	batchesTo := int(batchesFrom) - int(pagination.Size) + 1
+
+	if batchesTo <= 0 {
+		batchesTo = 1
+	}
+
+	var batches []common.PublicBatchDeprecated
+	var txHashes []common.TxHash
+	for i := batchesFrom; i >= uint64(batchesTo); i-- {
+		batch, err := GetBatchBySequenceNumber(db, i)
+		if batch == nil {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to get batch by seq no: %w", err)
+		}
+
+		txHashes, err = GetTxsBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get tx hashes by seq no: %w", err)
+		}
+		publicBatchDeprecated := common.PublicBatchDeprecated{
+			BatchHeader: *batch.Header,
+			TxHashes:    txHashes,
+		}
+		if batch != nil {
+			batches = append(batches, publicBatchDeprecated)
+		}
+	}
+
+	return &common.BatchListingResponseDeprecated{
+		BatchesData: batches,
+		Total:       uint64(len(batches)),
+	}, nil
+}
+
 // GetBatchBySequenceNumber returns the batch with the given sequence number.
 func GetBatchBySequenceNumber(db *sql.DB, seqNo uint64) (*common.PublicBatch, error) {
 	return fetchPublicBatch(db, " WHERE sequence=?", seqNo)
+}
+
+// GetTxsBySequenceNumber returns the transaction hashes with sequence number.
+func GetTxsBySequenceNumber(db *sql.DB, seqNo uint64) ([]common.TxHash, error) {
+	return fetchTx(db, seqNo)
 }
 
 func GetFullBatchBySequenceNumber(db *sql.DB, seqNo uint64) (*common.ExtBatch, error) {
 	return fetchFullBatch(db, " WHERE sequence=?", seqNo)
 }
 
-// GetCurrentHeadBatch retrieves the current head batch with the largest sequence number (or height)
+// GetCurrentHeadBatch retrieves the current head batch with the largest sequence number (or height).
 func GetCurrentHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 	return fetchHeadBatch(db)
 }
@@ -387,4 +437,28 @@ func fetchHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 	}
 
 	return batch, nil
+}
+
+func fetchTx(db *sql.DB, seqNo uint64) ([]common.TxHash, error) {
+	rows, err := db.Query(selectTxBySeq, seqNo)
+	if err != nil {
+		return nil, fmt.Errorf("query execution for select txs failed: %w", err)
+	}
+	defer rows.Close()
+
+	var transactions []gethcommon.Hash
+	for rows.Next() {
+		var txHashBytes []byte
+		if err := rows.Scan(&txHashBytes); err != nil {
+			return nil, fmt.Errorf("failed to scan transaction hash: %w", err)
+		}
+		txHash := gethcommon.BytesToHash(txHashBytes)
+		transactions = append(transactions, txHash)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error looping through transacion rows: %w", err)
+	}
+
+	return transactions, nil
 }

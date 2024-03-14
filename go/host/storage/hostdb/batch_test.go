@@ -275,6 +275,176 @@ func TestGetLatestBatch(t *testing.T) {
 	}
 }
 
+func TestGetBatchListing(t *testing.T) {
+	db, err := createSQLiteDB(t)
+	if err != nil {
+		t.Fatalf("unable to initialise test db: %s", err)
+	}
+
+	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
+	batchOne, err := createBatch(batchNumber, txHashesOne)
+
+	err = AddBatch(db, &batchOne)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+
+	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
+	batchTwo, err := createBatch(batchNumber+1, txHashesTwo)
+
+	err = AddBatch(db, &batchTwo)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+
+	txHashesThree := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringFive")), gethcommon.BytesToHash([]byte("magicStringSix"))}
+	batchThree, err := createBatch(batchNumber+2, txHashesThree)
+
+	err = AddBatch(db, &batchThree)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+
+	// page 1, size 2
+	batchListing, err := GetBatchListing(db, &common.QueryPagination{Offset: 1, Size: 2})
+	if err != nil {
+		t.Errorf("could not get batch listing. Cause: %s", err)
+	}
+
+	// should be two elements
+	if big.NewInt(int64(batchListing.Total)).Cmp(big.NewInt(2)) != 0 {
+		t.Errorf("batch listing was not paginated correctly")
+	}
+
+	// first element should be the second batch
+	if batchListing.BatchesData[0].SequencerOrderNo.Cmp(batchTwo.SeqNo()) != 0 {
+		t.Errorf("batch listing was not paginated correctly")
+	}
+
+	// page 0, size 3
+	batchListing1, err := GetBatchListing(db, &common.QueryPagination{Offset: 0, Size: 3})
+	if err != nil {
+		t.Errorf("could not get batch listing. Cause: %s", err)
+	}
+
+	// first element should be the most recent batch since they're in descending order
+	if batchListing1.BatchesData[0].SequencerOrderNo.Cmp(batchThree.SeqNo()) != 0 {
+		t.Errorf("batch listing was not paginated correctly")
+	}
+
+	// should be 3 elements
+	if big.NewInt(int64(batchListing1.Total)).Cmp(big.NewInt(3)) != 0 {
+		t.Errorf("batch listing was not paginated correctly")
+	}
+
+	// page 0, size 4
+	batchListing2, err := GetBatchListing(db, &common.QueryPagination{Offset: 0, Size: 4})
+	if err != nil {
+		t.Errorf("could not get batch listing. Cause: %s", err)
+	}
+
+	// should be 3 elements
+	if big.NewInt(int64(batchListing2.Total)).Cmp(big.NewInt(3)) != 0 {
+		t.Errorf("rollup listing was not paginated correctly")
+	}
+
+	// page 5, size 1
+	rollupListing3, err := GetBatchListing(db, &common.QueryPagination{Offset: 5, Size: 1})
+	if err != nil {
+		t.Errorf("could not get batch listing. Cause: %s", err)
+	}
+
+	// should be 0 elements
+	if big.NewInt(int64(rollupListing3.Total)).Cmp(big.NewInt(0)) != 0 {
+		t.Errorf("batch listing was not paginated correctly")
+	}
+}
+
+func TestGetBatchListingDeprecated(t *testing.T) {
+	db, err := createSQLiteDB(t)
+	if err != nil {
+		t.Fatalf("unable to initialise test db: %s", err)
+	}
+
+	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
+	batchOne, err := createBatch(batchNumber, txHashesOne)
+
+	err = AddBatch(db, &batchOne)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+
+	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
+	batchTwo, err := createBatch(batchNumber+1, txHashesTwo)
+
+	err = AddBatch(db, &batchTwo)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+
+	txHashesThree := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringFive")), gethcommon.BytesToHash([]byte("magicStringSix"))}
+	batchThree, err := createBatch(batchNumber+2, txHashesThree)
+
+	err = AddBatch(db, &batchThree)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+
+	// page 1, size 2
+	batchListing, err := GetBatchListingDeprecated(db, &common.QueryPagination{Offset: 1, Size: 2})
+	if err != nil {
+		t.Errorf("could not get batch listing. Cause: %s", err)
+	}
+
+	// should be two elements
+	if big.NewInt(int64(batchListing.Total)).Cmp(big.NewInt(2)) != 0 {
+		t.Errorf("batch listing was not paginated correctly")
+	}
+
+	// first element should be the second batch
+	if batchListing.BatchesData[0].BatchHeader.SequencerOrderNo.Cmp(batchTwo.SeqNo()) != 0 {
+		t.Errorf("batch listing was not paginated correctly")
+	}
+
+	// page 0, size 3
+	batchListing1, err := GetBatchListingDeprecated(db, &common.QueryPagination{Offset: 0, Size: 3})
+	if err != nil {
+		t.Errorf("could not get batch listing. Cause: %s", err)
+	}
+
+	// first element should be the most recent batch since they're in descending order
+	if batchListing1.BatchesData[0].BatchHeader.SequencerOrderNo.Cmp(batchThree.SeqNo()) != 0 {
+		t.Errorf("batch listing was not paginated correctly")
+	}
+
+	// should be 3 elements
+	if big.NewInt(int64(batchListing1.Total)).Cmp(big.NewInt(3)) != 0 {
+		t.Errorf("batch listing was not paginated correctly")
+	}
+
+	// page 0, size 4
+	batchListing2, err := GetBatchListingDeprecated(db, &common.QueryPagination{Offset: 0, Size: 4})
+	if err != nil {
+		t.Errorf("could not get batch listing. Cause: %s", err)
+	}
+
+	// should be 3 elements
+	if big.NewInt(int64(batchListing2.Total)).Cmp(big.NewInt(3)) != 0 {
+		t.Errorf("rollup listing was not paginated correctly")
+	}
+
+	// page 5, size 1
+	rollupListing3, err := GetBatchListing(db, &common.QueryPagination{Offset: 5, Size: 1})
+	if err != nil {
+		t.Errorf("could not get batch listing. Cause: %s", err)
+	}
+
+	// should be 0 elements
+	if big.NewInt(int64(rollupListing3.Total)).Cmp(big.NewInt(0)) != 0 {
+		t.Errorf("batch listing was not paginated correctly")
+	}
+}
+
 //TODO Get Batch by height
 //TODO Get Batch by TX hash
 //TODO Duplicate TX hash test

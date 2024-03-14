@@ -36,18 +36,19 @@ const (
 	// GetL1RollupHeaderByHash  = "scan_getL1RollupHeaderByHash"
 	// GetActiveNodeCount       = "scan_getActiveNodeCount"
 
-	GetBatchForTx            = "scan_getBatchForTx" //TODO this returns ExtBatch
-	GetLatestRollupHeader    = "scan_getLatestRollupHeader"
-	GetTotalTransactionCount = "scan_getTotalTransactionCount"
-	GetTotalContractCount    = "scan_getTotalContractCount"
-	GetPublicTransactionData = "scan_getPublicTransactionData"
-	GetBatchListing          = "scan_getBatchListing"
-	GetBlockListing          = "scan_getBlockListing"
-	GetRollupListing         = "scan_getRollupListing"
-	GetFullBatchByHash       = "scan_getFullBatchByHash"
-	GetPublicBatchByHash     = "scan_getPublicBatchByHash"
-	GetLatestBatch           = "scan_getLatestBatch"
-	GetBatchByHeight         = "scan_getBatchByHeight"
+	GetBatchForTx             = "scan_getBatchForTx" //TODO this returns ExtBatch
+	GetLatestRollupHeader     = "scan_getLatestRollupHeader"
+	GetTotalTransactionCount  = "scan_getTotalTransactionCount"
+	GetTotalContractCount     = "scan_getTotalContractCount"
+	GetPublicTransactionData  = "scan_getPublicTransactionData"
+	GetBatchListing           = "scan_getBatchListing"
+	GetBatchListingDeprecated = "scan_getBatchListingDeprecated"
+	GetBlockListing           = "scan_getBlockListing"
+	GetRollupListing          = "scan_getRollupListing"
+	GetFullBatchByHash        = "scan_getFullBatchByHash"
+	GetPublicBatchByHash      = "scan_getPublicBatchByHash"
+	GetLatestBatch            = "scan_getLatestBatch"
+	GetBatchByHeight          = "scan_getBatchByHeight"
 )
 
 var ErrNilResponse = errors.New("nil response received from Obscuro node")
