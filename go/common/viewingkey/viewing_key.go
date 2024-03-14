@@ -100,6 +100,7 @@ type SignatureChecker interface {
 type (
 	PersonalSignChecker struct{}
 	EIP712Checker       struct{}
+	LegacyChecker       struct{}
 )
 
 // CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
@@ -157,10 +158,16 @@ func (e EIP712Checker) CheckSignature(encryptionToken string, signature []byte, 
 	return nil, errors.New("EIP 712 signature verification failed")
 }
 
+func (lsc LegacyChecker) CheckSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error) {
+	legacyMessageHash := accounts.TextHash([]byte(encryptionToken))
+	return CheckSignatureAndReturnAccountAddress(legacyMessageHash, signature)
+}
+
 // SignatureChecker is a map of SignatureType to SignatureChecker
 var signatureCheckers = map[SignatureType]SignatureChecker{
 	PersonalSign:    PersonalSignChecker{},
 	EIP712Signature: EIP712Checker{},
+	Legacy:          LegacyChecker{},
 }
 
 // CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
