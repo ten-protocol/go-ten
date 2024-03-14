@@ -1,8 +1,6 @@
 package nodetype
 
 import (
-	"crypto/ecdsa"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"math/big"
@@ -10,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
+	"github.com/ten-protocol/go-ten/go/common/signature"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -421,7 +420,7 @@ func (s *sequencer) OnL1Fork(fork *common.ChainFork) error {
 func (s *sequencer) signBatch(batch *core.Batch) error {
 	var err error
 	h := batch.Hash()
-	batch.Header.R, batch.Header.S, err = ecdsa.Sign(rand.Reader, s.enclaveKey.PrivateKey(), h[:])
+	batch.Header.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
 	if err != nil {
 		return fmt.Errorf("could not sign batch. Cause: %w", err)
 	}
@@ -431,7 +430,7 @@ func (s *sequencer) signBatch(batch *core.Batch) error {
 func (s *sequencer) signRollup(rollup *common.ExtRollup) error {
 	var err error
 	h := rollup.Header.Hash()
-	rollup.Header.R, rollup.Header.S, err = ecdsa.Sign(rand.Reader, s.enclaveKey.PrivateKey(), h[:])
+	rollup.Header.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
 	if err != nil {
 		return fmt.Errorf("could not sign batch. Cause: %w", err)
 	}

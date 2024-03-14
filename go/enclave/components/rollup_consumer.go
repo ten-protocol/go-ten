@@ -94,7 +94,7 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 
 	// loop through the rollups, find the one that is signed, verify the signature, make sure it's the only one
 	for _, rollup := range rollups {
-		if err := rc.sigValidator.CheckSequencerSignature(rollup.Hash(), rollup.Header.R, rollup.Header.S); err != nil {
+		if err := rc.sigValidator.CheckSequencerSignature(rollup.Hash(), rollup.Header.Signature); err != nil {
 			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
