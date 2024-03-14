@@ -158,7 +158,7 @@ func (e EIP712Checker) CheckSignature(encryptionToken string, signature []byte, 
 	return nil, errors.New("EIP 712 signature verification failed")
 }
 
-func (lsc LegacyChecker) CheckSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error) {
+func (lsc LegacyChecker) CheckSignature(encryptionToken string, signature []byte, _ int64) (*gethcommon.Address, error) {
 	legacyMessageHash := accounts.TextHash([]byte(encryptionToken))
 	return CheckSignatureAndReturnAccountAddress(legacyMessageHash, signature)
 }
