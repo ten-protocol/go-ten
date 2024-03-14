@@ -138,8 +138,7 @@ func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
 		SequencerOrderNo:            header.SequencerOrderNo.Uint64(),
 		ReceiptHash:                 header.ReceiptHash.Bytes(),
 		Extra:                       header.Extra,
-		R:                           header.R.Bytes(),
-		S:                           header.S.Bytes(),
+		Signature:                   header.Signature,
 		GasLimit:                    header.GasLimit,
 		GasUsed:                     header.GasUsed,
 		Time:                        header.Time,
@@ -182,8 +181,6 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader {
 		return nil
 	}
 
-	r := &big.Int{}
-	s := &big.Int{}
 	return &common.BatchHeader{
 		ParentHash:                    gethcommon.BytesToHash(header.ParentHash),
 		L1Proof:                       gethcommon.BytesToHash(header.Proof),
@@ -193,8 +190,7 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader {
 		SequencerOrderNo:              big.NewInt(int64(header.SequencerOrderNo)),
 		ReceiptHash:                   gethcommon.BytesToHash(header.ReceiptHash),
 		Extra:                         header.Extra,
-		R:                             r.SetBytes(header.R),
-		S:                             s.SetBytes(header.S),
+		Signature:                     header.Signature,
 		GasLimit:                      header.GasLimit,
 		GasUsed:                       header.GasUsed,
 		Time:                          header.Time,
@@ -221,8 +217,7 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 	}
 	headerMsg := generated.RollupHeaderMsg{
 		CompressionL1Head:  header.CompressionL1Head.Bytes(),
-		R:                  header.R.Bytes(),
-		S:                  header.S.Bytes(),
+		Signature:          header.Signature,
 		Coinbase:           header.Coinbase.Bytes(),
 		CrossChainMessages: ToCrossChainMsgs(header.CrossChainMessages),
 		LastBatchSeqNo:     header.LastBatchSeqNo,
@@ -250,12 +245,9 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 		return nil
 	}
 
-	r := &big.Int{}
-	s := &big.Int{}
 	return &common.RollupHeader{
 		CompressionL1Head:  gethcommon.BytesToHash(header.CompressionL1Head),
-		R:                  r.SetBytes(header.R),
-		S:                  s.SetBytes(header.S),
+		Signature:          header.Signature,
 		Coinbase:           gethcommon.BytesToAddress(header.Coinbase),
 		CrossChainMessages: FromCrossChainMsgs(header.CrossChainMessages),
 		LastBatchSeqNo:     header.LastBatchSeqNo,

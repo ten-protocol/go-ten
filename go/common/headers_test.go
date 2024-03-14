@@ -23,8 +23,7 @@ func TestBatchHeader_MarshalJSON(t *testing.T) {
 		Extra:                         []byte("123"),
 		BaseFee:                       gethcommon.Big2,
 		L1Proof:                       randomHash(),
-		R:                             gethcommon.Big3,
-		S:                             gethcommon.Big3,
+		Signature:                     gethcommon.Big3.Bytes(),
 		CrossChainMessages:            nil,
 		LatestInboundCrossChainHash:   gethcommon.Hash{},
 		LatestInboundCrossChainHeight: nil,
@@ -49,8 +48,7 @@ func TestBatchHeader_MarshalJSON(t *testing.T) {
 	require.Equal(t, batchHeader.Extra, batchUnmarshalled.Extra)
 	require.Equal(t, batchHeader.BaseFee, batchUnmarshalled.BaseFee)
 	require.Equal(t, batchHeader.L1Proof, batchUnmarshalled.L1Proof)
-	require.Equal(t, batchHeader.R, batchUnmarshalled.R)
-	require.Equal(t, batchHeader.S, batchUnmarshalled.S)
+	require.Equal(t, batchHeader.Signature, batchUnmarshalled.Signature)
 	require.Equal(t, batchHeader.CrossChainMessages, batchUnmarshalled.CrossChainMessages)
 	require.Equal(t, batchHeader.LatestInboundCrossChainHash, batchUnmarshalled.LatestInboundCrossChainHash)
 	require.Equal(t, batchHeader.LatestInboundCrossChainHeight, batchUnmarshalled.LatestInboundCrossChainHeight)

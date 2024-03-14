@@ -37,9 +37,9 @@ type BatchHeader struct {
 	BaseFee          *big.Int       `json:"baseFee"`
 	Coinbase         common.Address `json:"coinbase"`
 
-	// The custom Obscuro fields.
+	// The custom Ten fields.
 	L1Proof                       L1BlockHash                           `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
-	R, S                          *big.Int                              // signature values
+	Signature                     []byte                                `json:"signature"`
 	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *big.Int                              `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
@@ -63,7 +63,7 @@ type batchHeaderEncoding struct {
 
 	// The custom Obscuro fields.
 	L1Proof                       L1BlockHash                           `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
-	R, S                          *hexutil.Big                          // signature values
+	Signature                     []byte                                `json:"signature"`
 	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *hexutil.Big                          `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
@@ -87,8 +87,7 @@ func (b *BatchHeader) MarshalJSON() ([]byte, error) {
 		(*hexutil.Big)(b.BaseFee),
 		&b.Coinbase,
 		b.L1Proof,
-		(*hexutil.Big)(b.R),
-		(*hexutil.Big)(b.S),
+		b.Signature,
 		b.CrossChainMessages,
 		b.LatestInboundCrossChainHash,
 		(*hexutil.Big)(b.LatestInboundCrossChainHeight),
@@ -116,8 +115,7 @@ func (b *BatchHeader) UnmarshalJSON(data []byte) error {
 	b.BaseFee = (*big.Int)(dec.BaseFee)
 	b.Coinbase = *dec.Coinbase
 	b.L1Proof = dec.L1Proof
-	b.R = (*big.Int)(dec.R)
-	b.S = (*big.Int)(dec.S)
+	b.Signature = dec.Signature
 	b.CrossChainMessages = dec.CrossChainMessages
 	b.LatestInboundCrossChainHash = dec.LatestInboundCrossChainHash
 	b.LatestInboundCrossChainHeight = (*big.Int)(dec.LatestInboundCrossChainHeight)
@@ -134,7 +132,7 @@ type RollupHeader struct {
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 
 	PayloadHash common.Hash // The hash of the compressed batches. TODO
-	R, S        *big.Int    // signature values
+	Signature   []byte      // The signature of the sequencer on the payload hash
 
 	LastBatchSeqNo uint64
 }
@@ -184,8 +182,7 @@ func (r *RollupHeader) MarshalJSON() ([]byte, error) {
 // RLP encoding excluding the signature.
 func (b *BatchHeader) Hash() L2BatchHash {
 	cp := *b
-	cp.R = nil
-	cp.S = nil
+	cp.Signature = nil
 	hash, err := rlpHash(cp)
 	if err != nil {
 		panic("err hashing batch header")
@@ -197,8 +194,7 @@ func (b *BatchHeader) Hash() L2BatchHash {
 // RLP encoding excluding the signature.
 func (r *RollupHeader) Hash() L2RollupHash {
 	cp := *r
-	cp.R = nil
-	cp.S = nil
+	cp.Signature = nil
 	hash, err := rlpHash(cp)
 	if err != nil {
 		panic("err hashing rollup header")
