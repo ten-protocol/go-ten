@@ -69,7 +69,7 @@ func (oc *ObsClient) BatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error)
 // BatchHeaderByNumber returns the header of the rollup with the given number
 func (oc *ObsClient) BatchHeaderByNumber(number *big.Int) (*common.BatchHeader, error) {
 	var batchHeader *common.BatchHeader
-	err := oc.rpcClient.Call(&batchHeader, rpc.GetBatchByHeight, number, false)
+	err := oc.rpcClient.Call(&batchHeader, rpc.GetBatchByNumber, toBlockNumArg(number), false)
 	if err == nil && batchHeader == nil {
 		err = ethereum.NotFound
 	}
