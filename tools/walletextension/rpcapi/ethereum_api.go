@@ -2,6 +2,7 @@ package rpcapi
 
 import (
 	"context"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -19,7 +20,8 @@ func NewEthereumAPI(we *Services,
 }
 
 func (api *EthereumAPI) GasPrice(ctx context.Context) (*hexutil.Big, error) {
-	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, &CacheCfg{TTL: shortCacheTTL}, "eth_gasPrice")
+	return (*hexutil.Big)(big.NewInt(int64(0x3b9aca00))), nil
+	// return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, &CacheCfg{TTL: shortCacheTTL}, "eth_gasPrice")
 }
 
 func (api *EthereumAPI) MaxPriorityFeePerGas(ctx context.Context) (*hexutil.Big, error) {
