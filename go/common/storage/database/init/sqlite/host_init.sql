@@ -35,8 +35,7 @@ create index IDX_BATCH_HEIGHT_HOST on batch_host (height);
 
 create table if not exists transactions_host
 (
-    hash           binary(16) primary key,
-    full_hash      binary(32) NOT NULL,
+    hash           binary(32) primary key,
     b_sequence     int REFERENCES batch_host
 );
 

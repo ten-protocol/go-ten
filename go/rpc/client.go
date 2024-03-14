@@ -37,7 +37,6 @@ const (
 	// GetActiveNodeCount       = "scan_getActiveNodeCount"
 
 	GetBatchForTx            = "scan_getBatchForTx" //TODO this returns ExtBatch
-	GetLatestTxs             = "scan_getLatestTransactions"
 	GetLatestRollupHeader    = "scan_getLatestRollupHeader"
 	GetTotalTransactionCount = "scan_getTotalTransactionCount"
 	GetTotalContractCount    = "scan_getTotalContractCount"
@@ -47,6 +46,8 @@ const (
 	GetRollupListing         = "scan_getRollupListing"
 	GetFullBatchByHash       = "scan_getFullBatchByHash"
 	GetPublicBatchByHash     = "scan_getPublicBatchByHash"
+	GetLatestBatch           = "scan_getLatestBatch"
+	GetBatchByHeight         = "scan_getBatchByHeight"
 )
 
 var ErrNilResponse = errors.New("nil response received from Obscuro node")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/status-im/keycard-go/hexutils"
 	"math/big"
 	"net/http"
 	"strings"
@@ -167,6 +168,8 @@ func TestTenscan(t *testing.T) {
 	batchObj := batchFetch{}
 	err = json.Unmarshal(body, &batchObj)
 	assert.NoError(t, err)
+	println("BATCH OBJ batchlistingObj.Result.BatchesData[0]: ", batchlistingObj.Result.BatchesData[0].SequencerOrderNo.Uint64())
+	println("BATCH OBJ batchlistingObj.Result.BatchesData[0]: ", hexutils.BytesToHex(batchlistingObj.Result.BatchesData[0].Hash))
 	assert.Equal(t, batchlistingObj.Result.BatchesData[0].Hash, batchObj.Item.Hash())
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/obscuro/", serverAddress))

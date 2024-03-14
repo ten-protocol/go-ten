@@ -31,8 +31,8 @@ type BlockListingResponse struct {
 }
 
 type RollupListingResponse struct {
-	Rollups []PublicRollup
-	Total   uint64
+	RollupsData []PublicRollup
+	Total       uint64
 }
 
 type PublicTransaction struct {

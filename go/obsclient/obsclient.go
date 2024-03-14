@@ -69,7 +69,7 @@ func (oc *ObsClient) BatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error)
 // BatchHeaderByNumber returns the header of the rollup with the given number
 func (oc *ObsClient) BatchHeaderByNumber(number *big.Int) (*common.BatchHeader, error) {
 	var batchHeader *common.BatchHeader
-	err := oc.rpcClient.Call(&batchHeader, rpc.GetBatchByNumber, toBlockNumArg(number), false)
+	err := oc.rpcClient.Call(&batchHeader, rpc.GetBatchByHeight, number, false)
 	if err == nil && batchHeader == nil {
 		err = ethereum.NotFound
 	}
@@ -119,10 +119,20 @@ func (oc *ObsClient) GetTotalTransactionCount() (int, error) {
 	return count, nil
 }
 
-// GetLatestRollupHeader returns the header of the rollup at tip
+// GetLatestRollupHeader returns the header of the latest rollup
 func (oc *ObsClient) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	var header *common.RollupHeader
 	err := oc.rpcClient.Call(&header, rpc.GetLatestRollupHeader)
+	if err != nil {
+		return nil, err
+	}
+	return header, nil
+}
+
+// GetLatestBatch returns the header of the latest rollup at tip
+func (oc *ObsClient) GetLatestBatch() (*common.BatchHeader, error) {
+	var header *common.BatchHeader
+	err := oc.rpcClient.Call(&header, rpc.GetLatestBatch)
 	if err != nil {
 		return nil, err
 	}

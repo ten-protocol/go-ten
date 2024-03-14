@@ -27,7 +27,7 @@ func NewBackend(obsClient *obsclient.ObsClient) *Backend {
 }
 
 func (b *Backend) GetLatestBatch() (*common.BatchHeader, error) {
-	return b.obsClient.BatchHeaderByNumber(nil)
+	return b.obsClient.GetLatestBatch()
 }
 
 func (b *Backend) GetTenNodeHealthStatus() (bool, error) {

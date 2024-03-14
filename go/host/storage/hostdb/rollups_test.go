@@ -112,10 +112,10 @@ func TestGetRollupListing(t *testing.T) {
 	}
 
 	// First element should be the second rollup
-	if rollupListing.Rollups[0].LastSeq.Cmp(big.NewInt(rollup2LastSeq)) != 0 {
+	if rollupListing.RollupsData[0].LastSeq.Cmp(big.NewInt(rollup2LastSeq)) != 0 {
 		t.Errorf("rollup listing was not paginated correctly")
 	}
-	if rollupListing.Rollups[0].FirstSeq.Cmp(big.NewInt(rollup2FirstSeq)) != 0 {
+	if rollupListing.RollupsData[0].FirstSeq.Cmp(big.NewInt(rollup2FirstSeq)) != 0 {
 		t.Errorf("rollup listing was not paginated correctly")
 	}
 
@@ -126,10 +126,10 @@ func TestGetRollupListing(t *testing.T) {
 	}
 
 	// First element should be the most recent rollup since they're in descending order
-	if rollupListing1.Rollups[0].LastSeq.Cmp(big.NewInt(rollup3LastSeq)) != 0 {
+	if rollupListing1.RollupsData[0].LastSeq.Cmp(big.NewInt(rollup3LastSeq)) != 0 {
 		t.Errorf("rollup listing was not paginated correctly")
 	}
-	if rollupListing1.Rollups[0].FirstSeq.Cmp(big.NewInt(rollup3FirstSeq)) != 0 {
+	if rollupListing1.RollupsData[0].FirstSeq.Cmp(big.NewInt(rollup3FirstSeq)) != 0 {
 		t.Errorf("rollup listing was not paginated correctly")
 	}
 

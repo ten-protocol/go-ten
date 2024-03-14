@@ -51,18 +51,29 @@ func (s *ScanAPI) GetFullBatchByTxHash(txHash gethcommon.Hash) (*common.ExtBatch
 	return hostdb.GetFullBatchByTx(s.host.DB(), txHash)
 }
 
+func (s *ScanAPI) GetLatestBatch() (*common.BatchHeader, error) {
+	return hostdb.GetLatestBatch(s.host.DB())
+}
+func (s *ScanAPI) GetBatchByHeight(height *big.Int) (*common.BatchHeader, error) {
+	return hostdb.GetBatchByHeight(s.host.DB(), height)
+}
+
 func (s *ScanAPI) GetRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
 	return hostdb.GetRollupListing(s.host.DB(), pagination)
 }
 
 func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {
-	panic("I don't think this is even needed")
+	return hostdb.GetLatestRollup(s.host.DB())
 }
 
 func (s *ScanAPI) GetPublicTransactionData(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
 	return s.host.EnclaveClient().GetPublicTransactionData(pagination)
 }
 
-func (s *ScanAPI) GetLatestTransactionHashes(pagination *common.QueryPagination) ([]gethcommon.Hash, error) {
-	panic("I don't think this is even needed")
+//func (s *ScanAPI) GetLatestTransactionHashes(pagination *common.QueryPagination) ([]gethcommon.Hash, error) {
+//	panic("I don't think this is even needed")
+//}
+
+func (s *ScanAPI) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
+	return hostdb.GetBlockListing(s.host.DB(), pagination)
 }

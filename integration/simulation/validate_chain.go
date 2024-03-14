@@ -762,8 +762,8 @@ func checkForLatestRollups(t *testing.T, client rpc.Client, nodeIdx int) {
 	if err != nil {
 		t.Errorf("node %d: could not retrieve latest transactions. Cause: %s", nodeIdx, err)
 	}
-	if len(latestRollups.Rollups) != 5 {
-		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, 5, len(latestRollups.Rollups))
+	if len(latestRollups.RollupsData) != 5 {
+		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, 5, len(latestRollups.RollupsData))
 	}
 }
 

@@ -21,7 +21,7 @@ export const apiRoutes = {
     "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
 
   // **** ROLLUPS ****
-  getRollups: "/items/rollup/latest/",
+  getLatestRollup: "/items/rollup/latest/",
   decryptEncryptedRollup: "/actions/decryptTxBlob/",
 
   // **** INFO ****

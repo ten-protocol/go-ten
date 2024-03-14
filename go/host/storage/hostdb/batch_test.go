@@ -247,7 +247,37 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 	}
 }
 
+func TestGetLatestBatch(t *testing.T) {
+	db, err := createSQLiteDB(t)
+	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
+	batchOne, err := createBatch(batchNumber, txHashesOne)
+
+	err = AddBatch(db, &batchOne)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+
+	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
+	batchTwo, err := createBatch(batchNumber+1, txHashesTwo)
+
+	err = AddBatch(db, &batchTwo)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+
+	batch, err := GetLatestBatch(db)
+	if err != nil {
+		t.Errorf("was not able to read total number of transactions. Cause: %s", err)
+	}
+
+	if int(batch.SequencerOrderNo.Uint64()) != int(batchTwo.SeqNo().Uint64()) {
+		t.Errorf("latest batch was not retrieved correctly")
+	}
+}
+
+//TODO Get Batch by height
 //TODO Get Batch by TX hash
+//TODO Duplicate TX hash test
 
 func createBatch(batchNum int64, txHashes []common.L2BatchHash) (common.ExtBatch, error) {
 	header := common.BatchHeader{
@@ -261,7 +291,5 @@ func createBatch(batchNum int64, txHashes []common.L2BatchHash) (common.ExtBatch
 
 	return batch, nil
 }
-
-// Duplicate TX hash test
 
 // todo (#718) - add tests of writing and reading extbatches.
