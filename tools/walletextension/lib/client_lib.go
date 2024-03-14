@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts"
 	"io"
 	"net/http"
 	"strings"
@@ -96,8 +97,7 @@ func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
 	personalSignMessage := viewingkey.GeneratePersonalSignMessage(string(o.userID), integration.TenChainID, 1)
-	prefixedMessage := fmt.Sprintf(viewingkey.PersonalSignMessagePrefix, len(personalSignMessage), personalSignMessage)
-	messageHash := crypto.Keccak256([]byte(prefixedMessage))
+	messageHash := accounts.TextHash([]byte(personalSignMessage))
 
 	sig, err := crypto.Sign(messageHash, pk)
 	if err != nil {

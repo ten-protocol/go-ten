@@ -84,7 +84,6 @@ func TestCheckSignature(t *testing.T) {
 
 func TestVerifyViewingKey(t *testing.T) {
 	userPrivKey, vkPrivKey, userID, userAddress := generateRandomUserKeys()
-	fmt.Println("User Address: ", userAddress.Hex())
 	// Generate all message types and create map with the corresponding signature type
 	// Test EIP712 message format
 	EIP712MessageDataOptions, err := viewingkey.GenerateAuthenticationEIP712RawDataOptions(userID, chainID)

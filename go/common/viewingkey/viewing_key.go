@@ -35,7 +35,6 @@ const (
 	EIP712DomainNameValue        = "Ten"
 	EIP712DomainVersionValue     = "1.0"
 	UserIDHexLength              = 40
-	PersonalSignMessagePrefix    = "\x19Ethereum Signed Message:\n%d%s"
 	PersonalSignMessageFormat    = "Token: %s on chain: %d version:%d"
 	EIP712SignatureTypeInt       = 0
 	PersonalSignSignatureTypeInt = 1
@@ -318,8 +317,7 @@ func checkPersonalSignSignature(encryptionToken string, signature []byte, chainI
 	// create all possible hashes (for all the supported versions) of the message (needed for signature verification)
 	for _, version := range PersonalSignMessageSupportedVersions {
 		message := GeneratePersonalSignMessage(encryptionToken, chainID, version)
-		prefixedMessage := fmt.Sprintf(PersonalSignMessagePrefix, len(message), message)
-		messageHash := crypto.Keccak256([]byte(prefixedMessage))
+		messageHash := accounts.TextHash([]byte(message))
 
 		// current signature is valid - return account address
 		address, err := CheckSignatureAndReturnAccountAddress(messageHash, signature)
