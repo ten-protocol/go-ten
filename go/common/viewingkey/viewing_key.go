@@ -92,6 +92,86 @@ type RPCSignedViewingKey struct {
 	SignatureType           SignatureType
 }
 
+// SignatureChecker is an interface for checking if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
+type SignatureChecker interface {
+	CheckSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error)
+}
+
+type (
+	PersonalSignChecker struct{}
+	EIP712Checker       struct{}
+)
+
+// CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
+func (psc PersonalSignChecker) CheckSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error) {
+	if len(signature) != 65 {
+		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
+	}
+	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	if signature[64] == 27 || signature[64] == 28 {
+		signature[64] -= 27
+	}
+
+	// create all possible hashes (for all the supported versions) of the message (needed for signature verification)
+	for _, version := range PersonalSignMessageSupportedVersions {
+		message := GeneratePersonalSignMessage(encryptionToken, chainID, version)
+		messageHash := accounts.TextHash([]byte(message))
+
+		// current signature is valid - return account address
+		address, err := CheckSignatureAndReturnAccountAddress(messageHash, signature)
+		if err == nil {
+			return address, nil
+		}
+	}
+
+	return nil, fmt.Errorf("signature verification failed")
+}
+
+func (e EIP712Checker) CheckSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error) {
+	if len(signature) != 65 {
+		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
+	}
+
+	rawDataOptions, err := GenerateAuthenticationEIP712RawDataOptions(encryptionToken, chainID)
+	if err != nil {
+		return nil, fmt.Errorf("cannot generate eip712 message. Cause %w", err)
+	}
+
+	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	if signature[64] == 27 || signature[64] == 28 {
+		signature[64] -= 27
+	}
+
+	for _, rawData := range rawDataOptions {
+		// create a hash of structured message (needed for signature verification)
+		hashBytes := crypto.Keccak256(rawData)
+
+		// current signature is valid - return account address
+		address, err := CheckSignatureAndReturnAccountAddress(hashBytes, signature)
+		if err == nil {
+			return address, nil
+		}
+	}
+	return nil, errors.New("EIP 712 signature verification failed")
+}
+
+// SignatureChecker is a map of SignatureType to SignatureChecker
+var signatureCheckers = map[SignatureType]SignatureChecker{
+	PersonalSign:    PersonalSignChecker{},
+	EIP712Signature: EIP712Checker{},
+}
+
+// CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
+func CheckSignature(encryptionToken string, signature []byte, chainID int64, signatureType SignatureType) (*gethcommon.Address, error) {
+	checker, exists := signatureCheckers[signatureType]
+	if !exists {
+		return nil, fmt.Errorf("unsupported signature type")
+	}
+	return checker.CheckSignature(encryptionToken, signature, chainID)
+}
+
 // GenerateViewingKeyForWallet takes an account wallet, generates a viewing key and signs the key with the acc's private key
 // uses the same method of signature handling as Metamask/geth
 // TODO @Ziga - update this method to use the new EIP-712 signature format / personal sign after the removal of the legacy format
@@ -271,80 +351,4 @@ func CheckSignatureAndReturnAccountAddress(hashBytes []byte, signature []byte) (
 		return &address, nil
 	}
 	return nil, fmt.Errorf("invalid signature")
-}
-
-// checkEIP712Signature checks if signature is valid for provided userID and chainID and return address or nil if not valid
-func checkEIP712Signature(userID string, signature []byte, chainID int64) (*gethcommon.Address, error) {
-	if len(signature) != 65 {
-		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
-	}
-
-	rawDataOptions, err := GenerateAuthenticationEIP712RawDataOptions(userID, chainID)
-	if err != nil {
-		return nil, fmt.Errorf("cannot generate eip712 message. Cause %w", err)
-	}
-
-	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
-	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-	if signature[64] == 27 || signature[64] == 28 {
-		signature[64] -= 27
-	}
-
-	for _, rawData := range rawDataOptions {
-		// create a hash of structured message (needed for signature verification)
-		hashBytes := crypto.Keccak256(rawData)
-
-		// current signature is valid - return account address
-		address, err := CheckSignatureAndReturnAccountAddress(hashBytes, signature)
-		if err == nil {
-			return address, nil
-		}
-	}
-	return nil, errors.New("EIP 712 signature verification failed")
-}
-
-// checkPersonalSignSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
-func checkPersonalSignSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error) {
-	if len(signature) != 65 {
-		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
-	}
-	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
-	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-	if signature[64] == 27 || signature[64] == 28 {
-		signature[64] -= 27
-	}
-
-	// create all possible hashes (for all the supported versions) of the message (needed for signature verification)
-	for _, version := range PersonalSignMessageSupportedVersions {
-		message := GeneratePersonalSignMessage(encryptionToken, chainID, version)
-		messageHash := accounts.TextHash([]byte(message))
-
-		// current signature is valid - return account address
-		address, err := CheckSignatureAndReturnAccountAddress(messageHash, signature)
-		if err == nil {
-			return address, nil
-		}
-	}
-
-	return nil, fmt.Errorf("signature verification failed")
-}
-
-// CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
-func CheckSignature(encryptionToken string, signature []byte, chainID int64, signatureType SignatureType) (*gethcommon.Address, error) {
-	if signatureType == PersonalSign {
-		return checkPersonalSignSignature(encryptionToken, signature, chainID)
-	} else if signatureType == EIP712Signature {
-		return checkEIP712Signature(encryptionToken, signature, chainID)
-	} else if signatureType == Legacy {
-		// todo - this part is only for the legacy format and will be removed once the legacy format is no longer supported
-		publicKey := []byte(encryptionToken)
-		msgToSignLegacy := GenerateSignMessage(publicKey)
-		recoveredAccountPublicKeyLegacy, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSignLegacy)), signature)
-		if err != nil {
-			return nil, fmt.Errorf("failed to recover account public key from legacy signature: %w", err)
-		}
-		recoveredAccountAddressLegacy := crypto.PubkeyToAddress(*recoveredAccountPublicKeyLegacy)
-		return &recoveredAccountAddressLegacy, nil
-	}
-	return nil, fmt.Errorf("signature verification failed")
 }

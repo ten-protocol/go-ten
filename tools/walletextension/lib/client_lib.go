@@ -5,10 +5,11 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/accounts"
 
 	"github.com/ten-protocol/go-ten/integration"
 
