@@ -169,6 +169,16 @@ func (oc *ObsClient) GetBlockListing(pagination *common.QueryPagination) (*commo
 	return &result, nil
 }
 
+// GetRollupListing returns a list of Rollups
+func (oc *ObsClient) GetRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
+	var result common.RollupListingResponse
+	err := oc.rpcClient.Call(&result, rpc.GetRollupListing, pagination)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 // GetConfig returns the network config for obscuro
 func (oc *ObsClient) GetConfig() (*common.ObscuroNetworkInfo, error) {
 	var result common.ObscuroNetworkInfo

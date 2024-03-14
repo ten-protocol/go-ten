@@ -52,6 +52,12 @@ type PublicBatch struct {
 	EncryptedTxBlob  EncryptedTransactions `json:"encryptedTxBlob"`
 }
 
+// TODO implement old endpoints
+type PublicBatchDeprecated struct {
+	BatchHeader
+	TxHashes []TxHash `json:"txHashes"`
+}
+
 //type PublicBatch struct {
 //	SequencerOrderNo *big.Int              `json:"sequence"`
 //	Hash             []byte                `json:"hash"`

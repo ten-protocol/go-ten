@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/status-im/keycard-go/hexutils"
 	"math/big"
 	"net/http"
 	"strings"
@@ -157,7 +156,7 @@ func TestTenscan(t *testing.T) {
 	// assert.LessOrEqual(t, 9, len(blocklistingObj.Result.BlocksData))
 	// assert.LessOrEqual(t, uint64(9), blocklistingObj.Result.Total)
 
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/%s", serverAddress, batchlistingObj.Result.BatchesData[0].Hash))
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/%s", serverAddress, batchlistingObj.Result.BatchesData[0].Header.Hash()))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
@@ -168,9 +167,7 @@ func TestTenscan(t *testing.T) {
 	batchObj := batchFetch{}
 	err = json.Unmarshal(body, &batchObj)
 	assert.NoError(t, err)
-	println("BATCH OBJ batchlistingObj.Result.BatchesData[0]: ", batchlistingObj.Result.BatchesData[0].SequencerOrderNo.Uint64())
-	println("BATCH OBJ batchlistingObj.Result.BatchesData[0]: ", hexutils.BytesToHex(batchlistingObj.Result.BatchesData[0].Hash))
-	assert.Equal(t, batchlistingObj.Result.BatchesData[0].Hash, batchObj.Item.Hash())
+	assert.Equal(t, batchlistingObj.Result.BatchesData[0].Header.Hash(), batchObj.Item.Header.Hash())
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/obscuro/", serverAddress))
 	assert.NoError(t, err)
@@ -185,7 +182,15 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEqual(t, configFetchObj.Item.SequencerID, gethcommon.Address{})
 
-	// Gracefully shutdown
+	// Timer for running local tests
+	//countdownDuration := 5 * time.Minute
+	//tickDuration := 5 * time.Second
+	//
+	//for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
+	//	fmt.Printf("Shutting down in %s...\n", remaining)
+	//	time.Sleep(tickDuration)
+	//}
+
 	err = tenScanContainer.Stop()
 	assert.NoError(t, err)
 }

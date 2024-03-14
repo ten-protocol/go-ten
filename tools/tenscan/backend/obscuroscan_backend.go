@@ -88,6 +88,13 @@ func (b *Backend) GetBlockListing(offset uint64, size uint64) (*common.BlockList
 	})
 }
 
+func (b *Backend) GetRollupListing(offset uint64, size uint64) (*common.RollupListingResponse, error) {
+	return b.obsClient.GetRollupListing(&common.QueryPagination{
+		Offset: offset,
+		Size:   uint(size),
+	})
+}
+
 func (b *Backend) DecryptTxBlob(payload string) ([]*common.L2Tx, error) {
 	encryptedTxBytes, err := base64.StdEncoding.DecodeString(payload)
 	if err != nil {

@@ -484,7 +484,7 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 				g.logger.Error("Could not store rollup.", log.ErrKey, err)
 			}
 		}
-		//FIXME need to store this data?
+		//TODO (@will) need to store this data? For now we only store the blocks with rollups
 		err = hostdb.AddBlock(g.db, block.Header(), r.Header.Hash())
 	}
 
