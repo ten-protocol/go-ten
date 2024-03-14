@@ -318,6 +318,12 @@ func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet
 	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user0.HTTPClient, signedTx.Hash(), time.Minute)
 	require.NoError(t, err)
 
+	tx, _, err := user0.HTTPClient.TransactionByHash(context.Background(), signedTx.Hash())
+	if err != nil {
+		return
+	}
+	require.Equal(t, signedTx.Hash(), tx.Hash())
+
 	// user0 subscribes to all events from that smart contract, user1 only an event with a topic of his first account
 	var user0logs []types.Log
 	var user1logs []types.Log

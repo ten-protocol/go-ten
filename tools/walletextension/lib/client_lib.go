@@ -98,6 +98,5 @@ func (o *TGLib) HTTP() string {
 }
 
 func (o *TGLib) WS() string {
-	// todo - add /v1
-	return fmt.Sprintf("%s/?token=%s", o.wsURL, o.userID)
+	return fmt.Sprintf("%s/v1/?token=%s", o.wsURL, o.userID)
 }
