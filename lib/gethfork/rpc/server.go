@@ -149,9 +149,6 @@ func (s *Server) serveSingleRequest(ctx context.Context, codec ServerCodec) {
 		if err != io.EOF {
 			resp := errorMessage(&invalidMessageError{"parse error"})
 			fmt.Printf(">> Parse error %s. requests: %v\n", err, reqs)
-			for _, req := range reqs {
-				fmt.Printf(">> request: %s\n", req)
-			}
 			codec.writeJSON(ctx, resp, true)
 		}
 		return
