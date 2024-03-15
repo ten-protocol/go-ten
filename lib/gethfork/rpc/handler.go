@@ -19,6 +19,7 @@ package rpc
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -302,7 +303,10 @@ func (h *handler) handleNonBatchCall(cp *callProc, msg *jsonrpcMessage) {
 	h.addSubscriptions(cp.notifiers)
 	if answer != nil {
 		responded.Do(func() {
-			h.conn.writeJSON(cp.ctx, answer, false) //nolint:errcheck
+			err := h.conn.writeJSON(cp.ctx, answer, false)
+			if err != nil {
+				fmt.Printf("ERROR writing resp to connection %s\n", err)
+			} //nolint:errcheck
 		})
 	}
 	for _, n := range cp.notifiers {
