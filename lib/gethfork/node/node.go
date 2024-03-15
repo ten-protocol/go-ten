@@ -353,7 +353,8 @@ func (n *Node) startRPC() error {
 	)
 
 	rpcConfig := rpcEndpointConfig{
-		batchItemLimit:         n.config.BatchRequestLimit,
+		//batchItemLimit:         n.config.BatchRequestLimit,
+		batchItemLimit:         1,
 		batchResponseSizeLimit: n.config.BatchResponseMaxSize,
 	}
 
@@ -400,8 +401,9 @@ func (n *Node) startRPC() error {
 			return err
 		}
 		sharedConfig := rpcEndpointConfig{
-			jwtSecret:              secret,
-			batchItemLimit:         engineAPIBatchItemLimit,
+			jwtSecret: secret,
+			//batchItemLimit:         engineAPIBatchItemLimit,
+			batchItemLimit:         1,
 			batchResponseSizeLimit: engineAPIBatchResponseSizeLimit,
 		}
 		if err := server.enableRPC(allAPIs, httpConfig{
