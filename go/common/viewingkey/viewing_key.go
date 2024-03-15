@@ -158,9 +158,20 @@ func (e EIP712Checker) CheckSignature(encryptionToken string, signature []byte, 
 	return nil, errors.New("EIP 712 signature verification failed")
 }
 
+// CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
+// todo (@ziga) Remove this method once old WE endpoints are removed
+// encryptionToken is expected to be a public key and not encrypted token as with other signature types
+// (since this is only temporary fix and legacy format will be removed soon)
 func (lsc LegacyChecker) CheckSignature(encryptionToken string, signature []byte, _ int64) (*gethcommon.Address, error) {
-	legacyMessageHash := accounts.TextHash([]byte(encryptionToken))
-	return CheckSignatureAndReturnAccountAddress(legacyMessageHash, signature)
+	publicKey := []byte(encryptionToken)
+	msgToSignLegacy := GenerateSignMessage(publicKey)
+
+	recoveredAccountPublicKeyLegacy, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSignLegacy)), signature)
+	if err != nil {
+		return nil, fmt.Errorf("failed to recover account public key from legacy signature: %w", err)
+	}
+	recoveredAccountAddressLegacy := crypto.PubkeyToAddress(*recoveredAccountPublicKeyLegacy)
+	return &recoveredAccountAddressLegacy, nil
 }
 
 // SignatureChecker is a map of SignatureType to SignatureChecker
