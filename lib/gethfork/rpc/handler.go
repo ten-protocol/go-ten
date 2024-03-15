@@ -297,6 +297,13 @@ func (h *handler) handleNonBatchCall(cp *callProc, msg *jsonrpcMessage) {
 	}
 
 	answer := h.handleCallMsg(cp, msg)
+	if answer != nil {
+		res, err := answer.Result.MarshalJSON()
+		if err != nil {
+			fmt.Printf("Err: %s\n", err)
+		}
+		fmt.Printf("Response: %s\n", string(res))
+	}
 	if timer != nil {
 		timer.Stop()
 	}
