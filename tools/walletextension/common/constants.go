@@ -58,7 +58,7 @@ const (
 
 var ReaderHeadTimeout = 10 * time.Second
 
-var SignatureTypeMap = map[string]int{
-	"EIP712":   viewingkey.EIP712SignatureTypeInt,
-	"Personal": viewingkey.PersonalSignSignatureTypeInt,
+var SignatureTypeMap = map[string]viewingkey.SignatureType{
+	"EIP712":   viewingkey.EIP712Signature,
+	"Personal": viewingkey.PersonalSign,
 }

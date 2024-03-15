@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+
 	"github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/rpc"
@@ -96,7 +98,7 @@ func (m *UserAccountManager) GetUserAccountManager(userID string) (*accountmanag
 		}
 
 		// create a new client
-		encClient, err := wecommon.CreateEncClient(m.hostRPCBinAddrWS, account.AccountAddress, userPrivateKey, account.Signature, account.SignatureType, m.logger)
+		encClient, err := wecommon.CreateEncClient(m.hostRPCBinAddrWS, account.AccountAddress, userPrivateKey, account.Signature, viewingkey.SignatureType(account.SignatureType), m.logger)
 		if err != nil {
 			m.logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
 		}

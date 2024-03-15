@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+
 	"github.com/ethereum/go-ethereum/crypto"
 
 	_ "github.com/go-sql-driver/mysql" // Importing MariaDB driver
@@ -85,14 +87,14 @@ func (m *MariaDB) GetUserPrivateKey(userID []byte) ([]byte, error) {
 	return privateKey, nil
 }
 
-func (m *MariaDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType int) error {
+func (m *MariaDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
 	stmt, err := m.db.Prepare("INSERT INTO accounts(user_id, account_address, signature, signature_type) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(userID, accountAddress, signature, signatureType)
+	_, err = stmt.Exec(userID, accountAddress, signature, int(signatureType))
 	if err != nil {
 		return err
 	}

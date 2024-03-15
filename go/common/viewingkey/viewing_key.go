@@ -26,25 +26,22 @@ import (
 const SignedMsgPrefix = "vk"
 
 const (
-	EIP712Domain                 = "EIP712Domain"
-	EIP712Type                   = "Authentication"
-	EIP712DomainName             = "name"
-	EIP712DomainVersion          = "version"
-	EIP712DomainChainID          = "chainId"
-	EIP712EncryptionToken        = "Encryption Token"
-	EIP712DomainNameValue        = "Ten"
-	EIP712DomainVersionValue     = "1.0"
-	UserIDHexLength              = 40
-	PersonalSignMessageFormat    = "Token: %s on chain: %d version:%d"
-	EIP712SignatureTypeInt       = 0
-	PersonalSignSignatureTypeInt = 1
-	LegacySignatureTypeInt       = 2
+	EIP712Domain              = "EIP712Domain"
+	EIP712Type                = "Authentication"
+	EIP712DomainName          = "name"
+	EIP712DomainVersion       = "version"
+	EIP712DomainChainID       = "chainId"
+	EIP712EncryptionToken     = "Encryption Token"
+	EIP712DomainNameValue     = "Ten"
+	EIP712DomainVersionValue  = "1.0"
+	UserIDHexLength           = 40
+	PersonalSignMessageFormat = "Token: %s on chain: %d version:%d"
 )
 
 const (
-	EIP712Signature SignatureType = "EIP712"
-	PersonalSign    SignatureType = "PersonalSign"
-	Legacy          SignatureType = "Legacy"
+	EIP712Signature SignatureType = 0
+	PersonalSign    SignatureType = 1
+	Legacy          SignatureType = 2
 )
 
 // EIP712EncryptionTokens is a list of all possible options for Encryption token name
@@ -56,24 +53,10 @@ var EIP712EncryptionTokens = [...]string{
 var PersonalSignMessageSupportedVersions = []int{1}
 
 // SignatureType is used to differentiate between different signature types (string is used, because int is not RLP-serializable)
-type SignatureType string
-
-// IntToSignatureType converts an int to a SignatureType
-func IntToSignatureType(signatureType int) SignatureType {
-	switch signatureType {
-	case EIP712SignatureTypeInt:
-		return EIP712Signature
-	case PersonalSignSignatureTypeInt:
-		return PersonalSign
-	case LegacySignatureTypeInt:
-		return Legacy
-	default:
-		return ""
-	}
-}
+type SignatureType uint8
 
 // ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave.
-// It is th client-side perspective of the viewing key used for decrypting incoming traffic.
+// It is the client-side perspective of the viewing key used for decrypting incoming traffic.
 type ViewingKey struct {
 	Account                 *gethcommon.Address // Account address that this Viewing Key is bound to - Users Pubkey address
 	PrivateKey              *ecies.PrivateKey   // ViewingKey private key to encrypt data to the enclave

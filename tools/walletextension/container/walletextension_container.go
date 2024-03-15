@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -85,7 +87,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 				os.Exit(1)
 			}
 			for _, account := range accounts {
-				encClient, err := wecommon.CreateEncClient(hostRPCBindAddrWS, account.AccountAddress, user.PrivateKey, account.Signature, account.SignatureType, logger)
+				encClient, err := wecommon.CreateEncClient(hostRPCBindAddrWS, account.AccountAddress, user.PrivateKey, account.Signature, viewingkey.SignatureType(account.SignatureType), logger)
 				if err != nil {
 					logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
 					os.Exit(1)

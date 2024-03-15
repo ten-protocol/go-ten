@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+
 	"github.com/ethereum/go-ethereum/crypto"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
@@ -122,14 +124,14 @@ func (s *Database) GetUserPrivateKey(userID []byte) ([]byte, error) {
 	return privateKey, nil
 }
 
-func (s *Database) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType int) error {
+func (s *Database) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
 	stmt, err := s.db.Prepare("INSERT INTO accounts(user_id, account_address, signature, signature_type) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(userID, accountAddress, signature, signatureType)
+	_, err = stmt.Exec(userID, accountAddress, signature, int(signatureType))
 	if err != nil {
 		return err
 	}
