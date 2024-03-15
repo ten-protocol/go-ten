@@ -92,7 +92,8 @@ type RPCSignedViewingKey struct {
 	SignatureType           SignatureType
 }
 
-// SignatureChecker is an interface for checking if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
+// SignatureChecker is an interface for checking
+// if signature is valid for provided encryptionToken and chainID and return singing address or nil if not valid
 type SignatureChecker interface {
 	CheckSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error)
 }
