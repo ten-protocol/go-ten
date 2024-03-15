@@ -57,8 +57,6 @@ func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction]
 	signer := types.NewLondonSigner(tx.ChainId())
 	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, rpc.config.BaseFee, signer)
 	builder.ReturnValue = rpcTx
-	//todo
-	rpcTx.Input = []byte{}
 	return nil
 }
 
