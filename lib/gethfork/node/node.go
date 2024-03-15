@@ -93,7 +93,8 @@ func New(conf *Config) (*Node, error) {
 		return nil, errors.New(`Config.Name cannot end in ".ipc"`)
 	}
 	server := rpc.NewServer()
-	server.SetBatchLimits(conf.BatchRequestLimit, conf.BatchResponseMaxSize)
+	//server.SetBatchLimits(conf.BatchRequestLimit, conf.BatchResponseMaxSize)
+	server.SetBatchLimits(1, DefaultConfig.BatchResponseMaxSize)
 	node := &Node{
 		config:        conf,
 		inprocHandler: server,
