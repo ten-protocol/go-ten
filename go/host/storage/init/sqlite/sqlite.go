@@ -10,7 +10,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 
-	"github.com/ten-protocol/go-ten/go/enclave/storage/init/migration"
+	"github.com/ten-protocol/go-ten/go/common/storage/database/migration"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 
@@ -22,19 +22,18 @@ import (
 
 const (
 	tempDirName = "ten-persistence"
-	initFile    = "001_init.sql"
 )
 
 //go:embed *.sql
 var sqlFiles embed.FS
 
-// CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
+// CreateTemporarySQLiteEnclaveDB if dbPath is empty will use a random throwaway temp file,
 // otherwise dbPath is a filepath for the sqldb file, allows for tests that care about persistence between restarts
-func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
+func CreateTemporarySQLiteEnclaveDB(dbPath string, dbOptions string, logger gethlog.Logger, initFile string) (enclavedb.EnclaveDB, error) {
 	initialsed := false
 
 	if dbPath == "" {
-		tempPath, err := CreateTempDBFile()
+		tempPath, err := CreateTempDBFile("enclave.db")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create temp sqlite DB file - %w", err)
 		}
@@ -62,14 +61,14 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Log
 	db.SetMaxOpenConns(1)
 
 	if !initialsed {
-		err = initialiseDB(db)
+		err = initialiseDB(db, initFile)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// perform db migration
-	err = migration.DBMigration(db, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
+	err = migration.CommonDBMigration(db, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +78,33 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Log
 	return enclavedb.NewEnclaveDB(db, logger)
 }
 
-func initialiseDB(db *sql.DB) error {
+// CreateTemporarySQLiteHostDB if dbPath is empty will use a random throwaway temp file,
+// otherwise dbPath is a filepath for the sqldb file, allows for tests that care about persistence between restarts
+func CreateTemporarySQLiteHostDB(dbPath string, dbOptions string, initFile string) (*sql.DB, error) {
+	if dbPath == "" {
+		tempPath, err := CreateTempDBFile("host.db")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create temp sqlite DB file - %w", err)
+		}
+		dbPath = tempPath
+	}
+
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?%s", dbPath, dbOptions))
+	if err != nil {
+		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
+	}
+
+	// Sqlite fails with table locks when there are multiple connections
+	db.SetMaxOpenConns(1)
+
+	err = initialiseDB(db, initFile)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't initialise db - %w", err)
+	}
+	return db, nil
+}
+
+func initialiseDB(db *sql.DB, initFile string) error {
 	sqlInitFile, err := sqlFiles.ReadFile(initFile)
 	if err != nil {
 		return err
@@ -92,12 +117,12 @@ func initialiseDB(db *sql.DB) error {
 	return nil
 }
 
-func CreateTempDBFile() (string, error) {
+func CreateTempDBFile(dbname string) (string, error) {
 	tempDir := filepath.Join("/tmp", tempDirName, common.RandomStr(5))
 	err := os.MkdirAll(tempDir, os.ModePerm)
 	if err != nil {
 		return "", fmt.Errorf("failed to create sqlite temp dir - %w", err)
 	}
-	tempFile := filepath.Join(tempDir, "enclave.db")
+	tempFile := filepath.Join(tempDir, dbname)
 	return tempFile, nil
 }

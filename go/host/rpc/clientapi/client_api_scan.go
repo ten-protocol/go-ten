@@ -58,25 +58,32 @@ func (s *ScanAPI) GetFullBatchByTxHash(txHash gethcommon.Hash) (*common.ExtBatch
 	return hostdb.GetFullBatchByTx(s.host.DB(), txHash)
 }
 
+// GetLatestBatch returns the head `BatchHeader`
 func (s *ScanAPI) GetLatestBatch() (*common.BatchHeader, error) {
 	return hostdb.GetLatestBatch(s.host.DB())
 }
+
+// GetBatchByHeight returns the `BatchHeader` with the given height
 func (s *ScanAPI) GetBatchByHeight(height *big.Int) (*common.BatchHeader, error) {
 	return hostdb.GetBatchByHeight(s.host.DB(), height)
 }
 
+// GetRollupListing returns a paginated list of Rollups
 func (s *ScanAPI) GetRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
 	return hostdb.GetRollupListing(s.host.DB(), pagination)
 }
 
+// GetLatestRollupHeader returns the head `RollupHeader`
 func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	return hostdb.GetLatestRollup(s.host.DB())
 }
 
+// GetPublicTransactionData returns a paginated list of transaction data
 func (s *ScanAPI) GetPublicTransactionData(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
 	return s.host.EnclaveClient().GetPublicTransactionData(pagination)
 }
 
+// GetBlockListing returns a paginated list of blocks that include rollups
 func (s *ScanAPI) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
 	return hostdb.GetBlockListing(s.host.DB(), pagination)
 }

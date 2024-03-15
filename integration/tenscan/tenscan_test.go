@@ -123,14 +123,6 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 6, len(publicTxsObj.Result.TransactionsData))
 	assert.Equal(t, uint64(6), publicTxsObj.Result.Total)
-	//Timer for running local tests
-	countdownDuration := 5 * time.Minute
-	tickDuration := 5 * time.Second
-
-	for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
-		fmt.Printf("Shutting down in %s...\n", remaining)
-		time.Sleep(tickDuration)
-	}
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batches/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)

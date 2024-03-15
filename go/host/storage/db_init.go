@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ten-protocol/go-ten/go/common/storage/database/init/sqlite"
-
 	"github.com/ten-protocol/go-ten/go/config"
+	"github.com/ten-protocol/go-ten/go/host/storage/init/mariadb"
+	"github.com/ten-protocol/go-ten/go/host/storage/init/sqlite"
 )
 
 const HOST = "HOST_"
@@ -18,12 +18,11 @@ func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (*sql.DB,
 	}
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		return sqlite.CreateTemporarySQLiteHostDB(HOST+cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", logger, "host_init.sql")
+		return sqlite.CreateTemporarySQLiteHostDB(HOST+cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", "host_init.sql")
 	}
 
 	logger.Info(fmt.Sprintf("Preparing Maria DB connection to %s...", cfg.MariaDBHost))
-	return nil, nil
-	//return getMariaDBHost(cfg, logger)
+	return mariadb.CreateMariaDBHostDB(cfg, "host_mariadb_init.sql")
 }
 
 // validateDBConf high-level checks that you have a valid configuration for DB creation
@@ -36,11 +35,3 @@ func validateDBConf(cfg *config.HostConfig) error {
 	}
 	return nil
 }
-
-//func getMariaDBHost(cfg *config.HostConfig, logger gethlog.Logger) (*sql.DB, error) {
-//	if cfg.MariaDBHost == "" {
-//		return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
-//	}
-//	dbConfig := edgelessdb.Config{Host: cfg.MariaDBHost}
-//	return edgelessdb.Connector(&dbConfig, logger)
-//}

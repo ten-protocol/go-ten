@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	tempDirName = "obscuro-persistence"
+	tempDirName = "ten-persistence"
 	initFile    = "001_init.sql"
 )
 
@@ -32,6 +32,7 @@ var sqlFiles embed.FS
 // otherwise dbPath is a filepath for the sqldb file, allows for tests that care about persistence between restarts
 func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	initialsed := false
+
 	if dbPath == "" {
 		tempPath, err := CreateTempDBFile()
 		if err != nil {
@@ -74,6 +75,7 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Log
 	}
 
 	logger.Info(fmt.Sprintf("Opened %s sqlite db file at %s", description, dbPath))
+
 	return enclavedb.NewEnclaveDB(db, logger)
 }
 
