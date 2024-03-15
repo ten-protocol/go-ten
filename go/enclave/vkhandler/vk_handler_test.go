@@ -45,18 +45,6 @@ type MessageWithSignatureType struct {
 	SignatureType viewingkey.SignatureType
 }
 
-func TestAttack(t *testing.T) {
-	userPrivKey, _, userID, userAddress := generateRandomUserKeys()
-	fmt.Println("userAddress: ", userAddress.Hex())
-
-	PersonalSignMessageHash := accounts.TextHash([]byte(viewingkey.GeneratePersonalSignMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0])))
-	signature, _ := crypto.Sign(PersonalSignMessageHash, userPrivKey)
-	addr1, err := viewingkey.CheckSignature(userID, signature, chainID, viewingkey.PersonalSign)
-	fmt.Println("addr1: ", addr1.Hex(), "err: ", err)
-	addr2, err := viewingkey.CheckSignature(userID, signature, chainID, viewingkey.EIP712Signature)
-	fmt.Println("addr2: ", addr2.Hex(), "err: ", err)
-}
-
 func TestCheckSignature(t *testing.T) {
 	userPrivKey, _, userID, userAddress := generateRandomUserKeys()
 
