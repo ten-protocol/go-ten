@@ -51,7 +51,7 @@ func (p *parallelFundsTransferTraffic) Run(ctx context.Context, network networkt
 		}
 		allUsersActionSeries = append(allUsersActionSeries, NamedSeries(fmt.Sprintf("native transfers - user %d", i), userActionSeries...))
 	}
-	// create a parallel action for the user serieses and then delegate running to that action
+	// create a parallel action for the user series and then delegate running to that action
 	p.parallelAction = NamedParallel(p.String(), allUsersActionSeries...)
 	return p.parallelAction.Run(ctx, network)
 }

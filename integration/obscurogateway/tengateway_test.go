@@ -583,7 +583,7 @@ func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w
 	// Close the websocket connection and make sure nothing breaks, but user does not receive events
 	user.WSClient.Close()
 
-	// make an action that will emmit events
+	// make an action that will emit events
 	_, err = integrationCommon.InteractWithSmartContract(user.HTTPClient, user.Wallets[0], eventsContractABI, "setMessage2", "foo", contractReceipt.ContractAddress)
 	require.NoError(t, err)
 	// but with closed connection we don't receive any logs
@@ -594,7 +594,7 @@ func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w
 	require.NoError(t, err)
 	user.WSClient = wsClient
 
-	// make an action that will emmit events again
+	// make an action that will emit events again
 	_, err = integrationCommon.InteractWithSmartContract(user.HTTPClient, user.Wallets[0], eventsContractABI, "setMessage2", "foo", contractReceipt.ContractAddress)
 	require.NoError(t, err)
 

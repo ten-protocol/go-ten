@@ -44,12 +44,12 @@ This hash is the root hash of the Patricia Merkle State of that asset.
 
 When the escape mode is triggered, the bridge contract will load up the roots from the latest rollup, and will start accepting user requests.
 
-Each user request must be a Merkle proof where the leafs are ``(account,balance)`` with a valid chain to the root of tha asset.
+Each user request must be a Merkle proof where the leaves are ``(account,balance)`` with a valid chain to the root of tha asset.
 The bridge will be happy to release that amount to the same account after verifying the merkle proof.
 
 *Note that this means that the request doesn't have to be signed because the balance is credited to the same account as in the L2*
 
-Any user who knows the acount and the balance for a certain asset, should be able to just create a transaction (maybe with the help of some tooling), and 
+Any user who knows the account and the balance for a certain asset, should be able to just create a transaction (maybe with the help of some tooling), and 
 retrieve their funds.
 
 *Note that the state root hashes should reflect the state after the withdrawal instructions from the rollup header.*
