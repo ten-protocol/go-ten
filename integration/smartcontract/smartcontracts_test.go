@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/constants"
+	"github.com/ten-protocol/go-ten/go/common/signature"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -218,13 +219,19 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 		t.Error(err)
 	}
 
+	pk := datagenerator.RandomPrivateKey()
+	enclaveID := crypto.PubkeyToAddress(pk.PublicKey)
+
 	rollup := datagenerator.RandomRollup(block)
-	requesterID := &rollup.Header.EnclaveID
+	rollup.Header.Signature, err = signature.Sign(rollup.Hash().Bytes(), pk)
+	if err != nil {
+		t.Error(err)
+	}
 
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
 		&ethadapter.L1InitializeSecretTx{
-			EnclaveID: requesterID,
+			EnclaveID: &enclaveID,
 		},
 	)
 

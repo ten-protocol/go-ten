@@ -65,7 +65,7 @@ func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, clien
 		return fmt.Errorf("rollup not stored in tree")
 	}
 
-	if !bytes.Equal(rollupElement.EnclaveID[:], rollup.Header.EnclaveID.Bytes()) {
+	if !bytes.Equal(rollupElement.Signature, rollup.Header.Signature) {
 		return fmt.Errorf("stored rollup does not match the generated rollup")
 	}
 

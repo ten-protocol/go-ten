@@ -1,8 +1,10 @@
 package datagenerator
 
 import (
+	"crypto/ecdsa"
 	"encoding/hex"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -15,6 +17,14 @@ func RandomWallet(chainID int64) wallet.Wallet {
 		chainID,
 		testlog.Logger(),
 	)
+}
+
+func RandomPrivateKey() *ecdsa.PrivateKey {
+	privKey, err := crypto.HexToECDSA(randomHex(32))
+	if err != nil {
+		panic(err)
+	}
+	return privKey
 }
 
 func randomHex(n int) string {
