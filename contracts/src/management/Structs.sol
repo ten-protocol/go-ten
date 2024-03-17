@@ -6,7 +6,7 @@ import * as MessageBusStructs from "../messaging/Structs.sol";
 interface Structs {
     struct MetaRollup{
         bytes32 Hash;
-        address EnclaveID;
+        bytes Signature;
         uint256 LastSequenceNumber;
     }
 

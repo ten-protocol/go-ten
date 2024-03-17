@@ -249,7 +249,6 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 	return &common.RollupHeader{
 		CompressionL1Head:  gethcommon.BytesToHash(header.CompressionL1Head),
 		Signature:          header.Signature,
-		Coinbase:           gethcommon.BytesToAddress(header.Coinbase),
 		CrossChainMessages: FromCrossChainMsgs(header.CrossChainMessages),
 		LastBatchSeqNo:     header.LastBatchSeqNo,
 	}

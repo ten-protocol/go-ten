@@ -77,16 +77,27 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     // solc-ignore-next-line unused-param
     function AddRollup(Structs.MetaRollup calldata r, string calldata  _rollupData, Structs.HeaderCrossChainData calldata crossChainData) public {
-        // TODO How to ensure the sender without hashing the calldata ?
-        // bytes32 derp = keccak256(abi.encodePacked(ParentHash, EnclaveID, L1Block, Number, rollupData));
-
         // TODO: Add a check that ensures the cross messages are coming from the correct fork using block hashes.
 
+        // todo: verify this enclaveID is a permissioned Sequencer enclaveID
+        address enclaveID = ECDSA.recover(r.Hash, r.Signature);
         // revert if the EnclaveID is not attested
-        require(attested[r.EnclaveID], "enclave not attested");
+        require(attested[enclaveID], string(abi.encodePacked("enclaveID not attested: ", addressToString(enclaveID))));
 
         AppendRollup(r);
         pushCrossChainMessages(crossChainData);
+    }
+    function addressToString(address _addr) private pure returns (string memory) {
+        bytes32 value = bytes32(uint256(uint160(_addr)));
+        bytes memory alphabet = "0123456789abcdef";
+        bytes memory str = new bytes(42);
+        str[0] = '0';
+        str[1] = 'x';
+        for (uint256 i = 0; i < 20; i++) {
+            str[2+i*2] = alphabet[uint8(value[i + 12] >> 4)];
+            str[3+i*2] = alphabet[uint8(value[i + 12] & 0x0f)];
+        }
+        return string(str);
     }
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once
