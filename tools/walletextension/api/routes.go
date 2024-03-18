@@ -546,7 +546,7 @@ func getMessageRequestHandler(walletExt *walletextension.WalletExtension, conn u
 	}
 
 	// create the response structure
-	type JsonResponse struct {
+	type JSONResponse struct {
 		Message string `json:"message"`
 		Type    string `json:"type"`
 	}
@@ -559,7 +559,7 @@ func getMessageRequestHandler(walletExt *walletextension.WalletExtension, conn u
 		return
 	}
 
-	response := JsonResponse{
+	response := JSONResponse{
 		Message: message,
 		Type:    messageFormatString,
 	}
