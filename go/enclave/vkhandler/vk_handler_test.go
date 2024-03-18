@@ -87,11 +87,10 @@ func TestVerifyViewingKey(t *testing.T) {
 	// Generate all message types and create map with the corresponding signature type
 	// Test EIP712 message format
 
-	message, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0], viewingkey.EIP712Signature, true)
+	EIP712MessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0], viewingkey.EIP712Signature, true)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	EIP712MessageHash := crypto.Keccak256(message)
 	PersonalSignMessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0], viewingkey.PersonalSign, true)
 	if err != nil {
 		t.Fatalf(err.Error())
