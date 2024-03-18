@@ -39,6 +39,7 @@ const (
 	// needs of all CLs.
 	engineAPIBatchItemLimit         = 2000
 	engineAPIBatchResponseSizeLimit = 250 * 1000 * 1000
+	engineAPIBodyLimit              = 128 * 1024 * 1024
 )
 
 var (
@@ -61,7 +62,7 @@ var DefaultConfig = Config{
 	HTTPTimeouts:         rpc.DefaultHTTPTimeouts,
 	WSPort:               DefaultWSPort,
 	WSModules:            []string{"net", "web3"},
-	BatchRequestLimit:    1,
+	BatchRequestLimit:    1000,
 	BatchResponseMaxSize: 25 * 1000 * 1000,
 	GraphQLVirtualHosts:  []string{"localhost"},
 }

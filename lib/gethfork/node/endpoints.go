@@ -17,12 +17,12 @@
 package node
 
 import (
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 // StartHTTPEndpoint starts the HTTP RPC endpoint.
@@ -45,7 +45,7 @@ func StartHTTPEndpoint(endpoint string, timeouts rpc.HTTPTimeouts, handler http.
 		WriteTimeout:      timeouts.WriteTimeout,
 		IdleTimeout:       timeouts.IdleTimeout,
 	}
-	go httpSrv.Serve(listener) //nolint:errcheck
+	go httpSrv.Serve(listener)
 	return httpSrv, listener.Addr(), err
 }
 

@@ -332,6 +332,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", contentType)
 	codec := s.newHTTPServerConn(r, w)
 	defer codec.close()
+	rc := http.NewResponseController(w)
+	_ = rc.EnableFullDuplex()
 	s.serveSingleRequest(ctx, codec)
 }
 

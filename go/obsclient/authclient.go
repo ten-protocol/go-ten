@@ -167,13 +167,12 @@ func (ac *AuthObsClient) NonceAt(ctx context.Context, blockNumber *big.Int) (uin
 }
 
 func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
-	var result responses.CallType
-	err := ac.rpcClient.CallContext(ctx, &result, rpc.Call, ToCallArg(msg), toBlockNumArg(blockNumber))
+	var hex hexutil.Bytes
+	err := ac.rpcClient.CallContext(ctx, &hex, "eth_call", ToCallArg(msg), toBlockNumArg(blockNumber))
 	if err != nil {
 		return nil, err
 	}
-
-	return []byte(result), nil
+	return hex, nil
 }
 
 func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Transaction) error {

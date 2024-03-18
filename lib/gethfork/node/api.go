@@ -70,9 +70,9 @@ func (api *adminAPI) StartHTTP(host *string, port *int, cors *string, apis *stri
 		Vhosts:             api.node.config.HTTPVirtualHosts,
 		Modules:            api.node.config.HTTPModules,
 		rpcEndpointConfig: rpcEndpointConfig{
-			//batchItemLimit:         api.node.config.BatchRequestLimit,
-			batchItemLimit:         1,
+			batchItemLimit:         api.node.config.BatchRequestLimit,
 			batchResponseSizeLimit: api.node.config.BatchResponseMaxSize,
+			httpBodyLimit:          engineAPIBodyLimit,
 		},
 		ExposedParam: "token",
 	}
@@ -150,9 +150,9 @@ func (api *adminAPI) StartWS(host *string, port *int, allowedOrigins *string, ap
 		Origins: api.node.config.WSOrigins,
 		// ExposeAll: api.node.config.WSExposeAll,
 		rpcEndpointConfig: rpcEndpointConfig{
-			//batchItemLimit:         api.node.config.BatchRequestLimit,
-			batchItemLimit:         1,
+			batchItemLimit:         api.node.config.BatchRequestLimit,
 			batchResponseSizeLimit: api.node.config.BatchResponseMaxSize,
+			httpBodyLimit:          engineAPIBodyLimit,
 		},
 		ExposedParam: "token",
 	}

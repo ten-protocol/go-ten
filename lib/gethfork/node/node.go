@@ -93,8 +93,7 @@ func New(conf *Config) (*Node, error) {
 		return nil, errors.New(`Config.Name cannot end in ".ipc"`)
 	}
 	server := rpc.NewServer()
-	//server.SetBatchLimits(conf.BatchRequestLimit, conf.BatchResponseMaxSize)
-	server.SetBatchLimits(1, DefaultConfig.BatchResponseMaxSize)
+	server.SetBatchLimits(conf.BatchRequestLimit, conf.BatchResponseMaxSize)
 	node := &Node{
 		config:        conf,
 		inprocHandler: server,
@@ -354,9 +353,9 @@ func (n *Node) startRPC() error {
 	)
 
 	rpcConfig := rpcEndpointConfig{
-		//batchItemLimit:         n.config.BatchRequestLimit,
-		batchItemLimit:         1,
+		batchItemLimit:         n.config.BatchRequestLimit,
 		batchResponseSizeLimit: n.config.BatchResponseMaxSize,
+		httpBodyLimit:          engineAPIBodyLimit,
 	}
 
 	initHTTP := func(server *httpServer, port int) error {
@@ -402,10 +401,10 @@ func (n *Node) startRPC() error {
 			return err
 		}
 		sharedConfig := rpcEndpointConfig{
-			jwtSecret: secret,
-			//batchItemLimit:         engineAPIBatchItemLimit,
-			batchItemLimit:         1,
+			jwtSecret:              secret,
+			batchItemLimit:         engineAPIBatchItemLimit,
 			batchResponseSizeLimit: engineAPIBatchResponseSizeLimit,
+			httpBodyLimit:          engineAPIBodyLimit,
 		}
 		if err := server.enableRPC(allAPIs, httpConfig{
 			CorsAllowedOrigins: DefaultAuthCors,

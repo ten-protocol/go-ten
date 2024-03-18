@@ -46,6 +46,17 @@ type subscriptionResult struct {
 	Result json.RawMessage `json:"result,omitempty"`
 }
 
+type subscriptionResultEnc struct {
+	ID     string `json:"subscription"`
+	Result any    `json:"result"`
+}
+
+type jsonrpcSubscriptionNotification struct {
+	Version string                `json:"jsonrpc"`
+	Method  string                `json:"method"`
+	Params  subscriptionResultEnc `json:"params"`
+}
+
 // A value of this type can a JSON-RPC request, notification, successful response or
 // error response. Which one it is depends on the fields.
 type jsonrpcMessage struct {
@@ -86,8 +97,8 @@ func (msg *jsonrpcMessage) isUnsubscribe() bool {
 }
 
 func (msg *jsonrpcMessage) namespace() string {
-	elem := strings.SplitN(msg.Method, serviceMethodSeparator, 2)
-	return elem[0]
+	before, _, _ := strings.Cut(msg.Method, serviceMethodSeparator)
+	return before
 }
 
 func (msg *jsonrpcMessage) String() string {
@@ -245,7 +256,7 @@ func (c *jsonCodec) writeJSON(ctx context.Context, v interface{}, isErrorRespons
 	if !ok {
 		deadline = time.Now().Add(defaultWriteTimeout)
 	}
-	c.conn.SetWriteDeadline(deadline) //nolint:errcheck
+	c.conn.SetWriteDeadline(deadline)
 	return c.encode(v, isErrorResponse)
 }
 
@@ -268,15 +279,15 @@ func (c *jsonCodec) closed() <-chan interface{} {
 func parseMessage(raw json.RawMessage) ([]*jsonrpcMessage, bool) {
 	if !isBatch(raw) {
 		msgs := []*jsonrpcMessage{{}}
-		json.Unmarshal(raw, &msgs[0]) //nolint:errcheck
+		json.Unmarshal(raw, &msgs[0])
 		return msgs, false
 	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.Token() // skip '['//nolint:errcheck
+	dec.Token() // skip '['
 	var msgs []*jsonrpcMessage
 	for dec.More() {
 		msgs = append(msgs, new(jsonrpcMessage))
-		dec.Decode(&msgs[len(msgs)-1]) //nolint:errcheck
+		dec.Decode(&msgs[len(msgs)-1])
 	}
 	return msgs, true
 }
@@ -301,7 +312,7 @@ func parsePositionalArguments(rawArgs json.RawMessage, types []reflect.Type) ([]
 	var args []reflect.Value
 	tok, err := dec.Token()
 	switch {
-	case errors.Is(err, io.EOF) || tok == nil && err == nil:
+	case err == io.EOF || tok == nil && err == nil:
 		// "params" is optional and may be empty. Also allow "params":null even though it's
 		// not in the spec because our own client used to send it.
 	case err != nil:
@@ -332,7 +343,7 @@ func parseArgumentArray(dec *json.Decoder, types []reflect.Type) ([]reflect.Valu
 		}
 		argval := reflect.New(types[i])
 		if err := dec.Decode(argval.Interface()); err != nil {
-			return args, fmt.Errorf("invalid argument %d: %w", i, err)
+			return args, fmt.Errorf("invalid argument %d: %v", i, err)
 		}
 		if argval.IsNil() && types[i].Kind() != reflect.Ptr {
 			return args, fmt.Errorf("missing value for required argument %d", i)

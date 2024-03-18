@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	"io"
 	"net"
 	"net/http"
@@ -30,8 +31,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/rs/cors"
@@ -60,6 +59,7 @@ type rpcEndpointConfig struct {
 	jwtSecret              []byte // optional JWT secret
 	batchItemLimit         int
 	batchResponseSizeLimit int
+	httpBodyLimit          int
 }
 
 type rpcHandler struct {
@@ -141,7 +141,7 @@ func (h *httpServer) start() error {
 	}
 
 	// Initialize the server.
-	h.server = &http.Server{Handler: h} //nolint:gosec
+	h.server = &http.Server{Handler: h}
 	if h.timeouts != (rpc.HTTPTimeouts{}) {
 		CheckTimeouts(&h.timeouts)
 		h.server.ReadTimeout = h.timeouts.ReadTimeout
@@ -160,7 +160,7 @@ func (h *httpServer) start() error {
 		return err
 	}
 	h.listener = listener
-	go h.server.Serve(listener) //nolint:errcheck
+	go h.server.Serve(listener)
 
 	if h.wsAllowed() {
 		url := fmt.Sprintf("ws://%v", listener.Addr())
@@ -182,7 +182,7 @@ func (h *httpServer) start() error {
 	)
 
 	// Log all handlers mounted on server.
-	var paths []string //nolint:prealloc
+	var paths []string
 	for path := range h.handlerNames {
 		paths = append(paths, path)
 	}
@@ -283,7 +283,7 @@ func (h *httpServer) doStop() {
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	err := h.server.Shutdown(ctx)
-	if err != nil && errors.Is(err, ctx.Err()) {
+	if err != nil && err == ctx.Err() {
 		h.log.Warn("HTTP server graceful shutdown timed out")
 		h.server.Close()
 	}
@@ -302,12 +302,15 @@ func (h *httpServer) enableRPC(apis []rpc.API, config httpConfig) error {
 	defer h.mu.Unlock()
 
 	if h.rpcAllowed() {
-		return fmt.Errorf("JSON-RPC over HTTP is already enabled")
+		return errors.New("JSON-RPC over HTTP is already enabled")
 	}
 
 	// Create RPC server and handler.
 	srv := rpc.NewServer()
 	srv.SetBatchLimits(config.batchItemLimit, config.batchResponseSizeLimit)
+	if config.httpBodyLimit > 0 {
+		srv.SetHTTPBodyLimit(config.httpBodyLimit)
+	}
 	if err := RegisterApis(apis, config.Modules, srv); err != nil {
 		return err
 	}
@@ -335,11 +338,14 @@ func (h *httpServer) enableWS(apis []rpc.API, config wsConfig) error {
 	defer h.mu.Unlock()
 
 	if h.wsAllowed() {
-		return fmt.Errorf("JSON-RPC over WebSocket is already enabled")
+		return errors.New("JSON-RPC over WebSocket is already enabled")
 	}
 	// Create RPC server and handler.
 	srv := rpc.NewServer()
 	srv.SetBatchLimits(config.batchItemLimit, config.batchResponseSizeLimit)
+	if config.httpBodyLimit > 0 {
+		srv.SetHTTPBodyLimit(config.httpBodyLimit)
+	}
 	if err := RegisterApis(apis, config.Modules, srv); err != nil {
 		return err
 	}
