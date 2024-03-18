@@ -119,7 +119,7 @@ func (d *DockerNode) startHost() error {
 		fmt.Sprintf("-l1ChainID=%d", d.cfg.l1ChainID),
 	}
 	if !d.cfg.hostInMemDB {
-		cmd = append(cmd, "-levelDBPath", _hostDataDir)
+		cmd = append(cmd, "-maraiDBHost", _hostDataDir)
 	}
 
 	exposedPorts := []int{

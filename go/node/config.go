@@ -44,6 +44,7 @@ type Config struct {
 	enclaveDebug              bool
 	nodeName                  string
 	hostInMemDB               bool
+	mariaDB                   string
 	debugNamespaceEnabled     bool
 	profilerEnabled           bool
 	coinbaseAddress           string
@@ -126,6 +127,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.IsInboundP2PDisabled = c.isInboundP2PDisabled
 	cfg.L1BlockTime = c.l1BlockTime
 	cfg.L1ChainID = int64(c.l1ChainID)
+	cfg.MariaDBHost = c.mariaDB
 
 	return cfg
 }
@@ -279,6 +281,12 @@ func WithPCCSAddr(s string) Option {
 func WithInMemoryHostDB(b bool) Option {
 	return func(c *Config) {
 		c.hostInMemDB = b
+	}
+}
+
+func WithMariaDBHostDB(s string) Option {
+	return func(c *Config) {
+		c.mariaDB = s
 	}
 }
 

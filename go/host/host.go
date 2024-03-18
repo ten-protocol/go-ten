@@ -39,7 +39,7 @@ type host struct {
 	// ignore incoming requests
 	stopControl *stopcontrol.StopControl
 
-	db *sql.DB // Stores the host's publicly-available data
+	db *storage.HostDB // Stores the host's publicly-available data
 
 	logger gethlog.Logger
 
@@ -72,7 +72,7 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		stopControl: stopcontrol.New(),
 	}
 
-	enclGuardian := enclave.NewGuardian(config, hostIdentity, hostServices, enclaveClient, database, host.stopControl, logger)
+	enclGuardian := enclave.NewGuardian(config, hostIdentity, hostServices, enclaveClient, database.DB, host.stopControl, logger)
 	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardian, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, database, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
@@ -132,7 +132,7 @@ func (h *host) Config() *config.HostConfig {
 }
 
 func (h *host) DB() *sql.DB {
-	return h.db
+	return h.db.DB
 }
 
 func (h *host) EnclaveClient() common.Enclave {
@@ -173,7 +173,7 @@ func (h *host) Stop() error {
 		}
 	}
 
-	if err := h.db.Close(); err != nil {
+	if err := h.DB().Close(); err != nil {
 		h.logger.Error("Failed to stop DB", log.ErrKey, err)
 	}
 

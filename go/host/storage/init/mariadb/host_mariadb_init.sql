@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS block_host
     rollup_hash BINARY(32)      NOT NULL
     );
 
-CREATE INDEX IDX_BLOCK_HASH_HOST ON block_host (hash);
+CREATE INDEX IF NOT EXISTS IDX_BLOCK_HASH_HOST ON block_host (hash);
 
 CREATE TABLE IF NOT EXISTS rollup_host
 (
@@ -19,9 +19,9 @@ CREATE TABLE IF NOT EXISTS rollup_host
     compression_block BINARY(32) NOT NULL
     );
 
-CREATE INDEX IDX_ROLLUP_HASH_HOST ON rollup_host (hash);
-CREATE INDEX IDX_ROLLUP_PROOF_HOST ON rollup_host (compression_block);
-CREATE INDEX IDX_ROLLUP_SEQ_HOST ON rollup_host (start_seq, end_seq);
+CREATE INDEX IF NOT EXISTS IDX_ROLLUP_HASH_HOST ON rollup_host (hash);
+CREATE INDEX IF NOT EXISTS IDX_ROLLUP_PROOF_HOST ON rollup_host (compression_block);
+CREATE INDEX IF NOT EXISTS IDX_ROLLUP_SEQ_HOST ON rollup_host (start_seq, end_seq);
 
 CREATE TABLE IF NOT EXISTS batch_host
 (
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS batch_host
     ext_batch      MEDIUMBLOB NOT NULL
     );
 
-CREATE INDEX IDX_BATCH_HEIGHT_HOST ON batch_host (height);
+CREATE INDEX IF NOT EXISTS IDX_BATCH_HEIGHT_HOST ON batch_host (height);
 
 CREATE TABLE IF NOT EXISTS transactions_host
 (

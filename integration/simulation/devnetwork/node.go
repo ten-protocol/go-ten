@@ -128,7 +128,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		L1StartHash:               n.l1Data.ObscuroStartBlock,
 		SequencerID:               n.config.SequencerID,
 		UseInMemoryDB:             false,
-		LevelDBPath:               n.hostDBFilepath,
+		MariaDBHost:               n.hostDBFilepath,
 		DebugNamespaceEnabled:     true,
 		BatchInterval:             n.config.BatchInterval,
 		RollupInterval:            n.config.RollupInterval,
@@ -232,9 +232,9 @@ func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common
 	if err != nil {
 		panic("failed to create temp sqlite db path")
 	}
-	levelDBPath, err := os.MkdirTemp("", "levelDB_*")
+	mariaDBHost, err := os.MkdirTemp("", "mariaDB_*")
 	if err != nil {
-		panic("failed to create temp levelDBPath")
+		panic("failed to create temp mariaDBHost")
 	}
 
 	l1Nonce, err := l1Client.Nonce(l1Wallet.Address())
@@ -252,6 +252,6 @@ func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common
 		l1Wallet:          l1Wallet,
 		logger:            logger,
 		enclaveDBFilepath: sqliteDBPath,
-		hostDBFilepath:    levelDBPath,
+		hostDBFilepath:    mariaDBHost,
 	}
 }

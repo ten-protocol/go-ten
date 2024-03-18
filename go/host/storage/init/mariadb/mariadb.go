@@ -5,34 +5,51 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/ten-protocol/go-ten/go/config"
+	"log"
+	"net/url"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 )
 
-func CreateMariaDBHostDB(cfg *config.HostConfig, initFile string) (*sql.DB, error) {
+func CreateMariaDBHostDB(cfg *config.HostConfig, dbName string, initFile string) (*sql.DB, error) {
 	mariaDbHost := cfg.MariaDBHost
 	if mariaDbHost == "" {
+		println("MaraiDBHost not set")
 		return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
 	}
-	db, err := sql.Open("mysql", mariaDbHost+"?multiStatements=true")
+
+	// Form the DSN without specifying a database
+	dsn := fmt.Sprintf("root:%s@tcp(localhost:3306)/?multiStatements=true", url.QueryEscape("1866"))
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		log.Fatalf("Failed to connect to MariaDB server: %v", err)
 	}
 
+	// Check if the database exists and create it if not
+	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", dbName))
+	if err != nil {
+		log.Fatalf("Failed to create database %s: %v", dbName, err)
+	}
+
+	// Now, you can either reconnect using the new database name in the DSN
+	// or just select the database for subsequent operations
+	_, err = db.Exec(fmt.Sprintf("USE `%s`", dbName))
+	if err != nil {
+		log.Fatalf("Failed to select database %s: %v", dbName, err)
+	}
+
+	_, filename, _, _ := runtime.Caller(0)
+	baseDir := filepath.Dir(filename)
+	sqlFile := filepath.Join(baseDir, "host_mariadb_init.sql")
+
 	if initFile != "" {
-		if err := initialiseDBFromSQLFile(db, initFile); err != nil {
+		if err := initialiseDBFromSQLFile(db, sqlFile); err != nil {
+			println("Error initialisting DB from file")
 			return nil, fmt.Errorf("failed to initialise db from file %s: %w", initFile, err)
 		}
 	}
-
-	//_, filename, _, ok := runtime.Caller(0)
-	//if !ok {
-	//	return nil, fmt.Errorf("failed to get current directory")
-	//}
-	//migrationsDir := filepath.Dir(filename)
-	//if err = database.ApplyMigrations(db, migrationsDir); err != nil {
-	//	return nil, err
-	//}
 
 	return db, nil
 }

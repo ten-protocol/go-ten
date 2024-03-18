@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/host/storage"
 	"math/big"
 )
 
@@ -26,20 +27,21 @@ const (
 	selectTxByHash                    = "SELECT b_sequence FROM transactions_host WHERE hash = ?"
 	selectTxBySeq                     = "SELECT hash FROM transactions_host WHERE b_sequence = ?"
 
-	insertBatch        = "INSERT INTO batch_host (sequence, full_hash, hash, height, ext_batch) VALUES (?, ?, ?, ?, ?)"
-	insertTransactions = "INSERT INTO transactions_host (hash, b_sequence) VALUES (?, ?)"
-	insertTxCount      = "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET total = excluded.total;"
+	insertBatch           = "INSERT INTO batch_host (sequence, full_hash, hash, height, ext_batch) VALUES (?, ?, ?, ?, ?)"
+	insertTransactions    = "INSERT INTO transactions_host (hash, b_sequence) VALUES (?, ?)"
+	insertTxCountMariaDB  = "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON DUPLICATE KEY UPDATE total = VALUES(total)"
+	insertTxCountSqliteDB = "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET total = excluded.total;"
 )
 
 // AddBatch adds a batch and its header to the DB
-func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
+func AddBatch(hostDB *storage.HostDB, batch *common.ExtBatch) error {
+	db := hostDB.DB
 	// Check if the Batch is already stored
 	_, err := GetBatchHeader(db, batch.Hash())
 	if err == nil {
 		return errutil.ErrAlreadyExists
 	}
 
-	// Start a transaction
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -62,21 +64,22 @@ func AddBatch(db *sql.DB, batch *common.ExtBatch) error {
 	}
 	if len(batch.TxHashes) > 0 {
 		for _, transaction := range batch.TxHashes {
-			txBytes, err := rlp.EncodeToBytes(transaction)
 			if err != nil {
 				return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 			}
-			_, err = tx.Exec(insertTransactions, txBytes, batch.SeqNo().Uint64())
+			_, err = tx.Exec(insertTransactions, transaction.Bytes(), batch.SeqNo().Uint64())
 			if err != nil {
 				return fmt.Errorf("failed to insert transaction with hash: %d", err)
 			}
 		}
-		//Increment total count
 		var currentTotal int
 		err := tx.QueryRow(selectTxCount).Scan(&currentTotal)
 		newTotal := currentTotal + len(batch.TxHashes)
-		// Increase the TX count
-		_, err = tx.Exec(insertTxCount, 1, newTotal, newTotal)
+		if hostDB.InMem {
+			_, err = tx.Exec(insertTxCountSqliteDB, 1, newTotal)
+		} else {
+			_, err = tx.Exec(insertTxCountMariaDB, 1, newTotal)
+		}
 		if err != nil {
 			return fmt.Errorf("failed to update transaction count: %w", err)
 		}
@@ -307,7 +310,6 @@ func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.Batch
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			// make sure the error is converted to obscuro-wide not found error
 			return nil, errutil.ErrNotFound
 		}
 		return nil, err

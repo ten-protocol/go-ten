@@ -11,18 +11,32 @@ import (
 
 const HOST = "HOST_"
 
+type HostDB struct {
+	DB    *sql.DB
+	InMem bool
+}
+
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
-func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (*sql.DB, error) {
+func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (*HostDB, error) {
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}
 	if cfg.UseInMemoryDB {
+		println("CREATING IN MEM DB")
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		return sqlite.CreateTemporarySQLiteHostDB(HOST+cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", "host_sqlite_init.sql")
+		sqliteDb, err := sqlite.CreateTemporarySQLiteHostDB(HOST+cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", "host_sqlite_init.sql")
+		if err != nil {
+			return nil, fmt.Errorf("could not create in memory sqlite DB: %w", err)
+		}
+		return &HostDB{DB: sqliteDb, InMem: true}, nil
 	}
-
 	logger.Info(fmt.Sprintf("Preparing Maria DB connection to %s...", cfg.MariaDBHost))
-	return mariadb.CreateMariaDBHostDB(cfg, "host_mariadb_init.sql")
+	println("CREATING MARIA DB")
+	mariaDb, err := mariadb.CreateMariaDBHostDB(cfg, HOST+cfg.ID.String(), "host_mariadb_init.sql")
+	if err != nil {
+		return nil, fmt.Errorf("could not create mariadb connection: %w", err)
+	}
+	return &HostDB{DB: mariaDb, InMem: false}, nil
 }
 
 // validateDBConf high-level checks that you have a valid configuration for DB creation

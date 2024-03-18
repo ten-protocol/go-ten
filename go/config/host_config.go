@@ -75,8 +75,8 @@ type HostInputConfig struct {
 	// UseInMemoryDB sets whether the host should use in-memory or persistent storage
 	UseInMemoryDB bool
 
-	// LevelDBPath path for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable, or if using InMemory DB)
-	LevelDBPath string
+	// MariaDBHost path for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable, or if using InMemory DB)
+	MariaDBHost string
 
 	// DebugNamespaceEnabled enables the debug namespace handler in the host rpc server
 	DebugNamespaceEnabled bool
@@ -132,7 +132,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		MetricsEnabled:            p.MetricsEnabled,
 		MetricsHTTPPort:           p.MetricsHTTPPort,
 		UseInMemoryDB:             p.UseInMemoryDB,
-		LevelDBPath:               p.LevelDBPath,
+		MariaDBHost:               p.MariaDBHost,
 		DebugNamespaceEnabled:     p.DebugNamespaceEnabled,
 		BatchInterval:             p.BatchInterval,
 		MaxBatchInterval:          p.MaxBatchInterval,
@@ -191,8 +191,6 @@ type HostConfig struct {
 	LogPath string
 	// Whether the host should use in-memory or persistent storage
 	UseInMemoryDB bool
-	// filepath for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable, or if using InMemory DB)
-	LevelDBPath string
 	// Host address for Maria DB instance (can be empty if using InMemory DB or if attestation is disabled)
 	MariaDBHost string
 	// filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or
