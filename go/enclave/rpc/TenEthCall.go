@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -72,8 +72,10 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 	var encodedResult string
 	if len(execResult.ReturnData) != 0 {
 		encodedResult = hexutil.Encode(execResult.ReturnData)
+		builder.ReturnValue = &encodedResult
+	} else {
+		builder.ReturnValue = nil
 	}
-	builder.ReturnValue = &encodedResult
 	return nil
 }
 
