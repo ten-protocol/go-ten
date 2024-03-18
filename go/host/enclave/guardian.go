@@ -286,8 +286,8 @@ func (g *Guardian) provideSecret() error {
 	if err != nil {
 		return fmt.Errorf("could not retrieve attestation from enclave. Cause: %w", err)
 	}
-	if att.Owner != g.hostData.ID {
-		return fmt.Errorf("host has ID %s, but its enclave produced an attestation using ID %s", g.hostData.ID.Hex(), att.Owner.Hex())
+	if att.EnclaveID != *g.enclaveID {
+		return fmt.Errorf("enclave has ID %s, but it has produced an attestation using ID %s", g.enclaveID.Hex(), att.EnclaveID.Hex())
 	}
 
 	g.logger.Info("Requesting secret.")
@@ -305,7 +305,7 @@ func (g *Guardian) provideSecret() error {
 		}
 		secretRespTxs, _, _ := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(nextBlock)
 		for _, scrt := range secretRespTxs {
-			if scrt.RequesterID.Hex() == g.hostData.ID.Hex() {
+			if scrt.RequesterID.Hex() == g.enclaveID.Hex() {
 				err = g.enclaveClient.InitEnclave(scrt.Secret)
 				if err != nil {
 					g.logger.Error("Could not initialize enclave with received secret response", log.ErrKey, err)
@@ -337,8 +337,8 @@ func (g *Guardian) generateAndBroadcastSecret() error {
 	if err != nil {
 		return fmt.Errorf("could not retrieve attestation from enclave. Cause: %w", err)
 	}
-	if attestation.Owner != g.hostData.ID {
-		return fmt.Errorf("genesis node has ID %s, but its enclave produced an attestation using ID %s", g.hostData.ID.Hex(), attestation.Owner.Hex())
+	if attestation.EnclaveID != *g.enclaveID {
+		return fmt.Errorf("genesis enclave has ID %s, but its enclave produced an attestation using ID %s", g.enclaveID.Hex(), attestation.EnclaveID.Hex())
 	}
 
 	secret, err := g.enclaveClient.GenerateSecret()

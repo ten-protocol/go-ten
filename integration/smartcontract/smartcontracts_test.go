@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/constants"
+	"github.com/ten-protocol/go-ten/go/common/signature"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -175,7 +176,7 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 	aggregatorID := datagenerator.RandomAddress()
 	txData := mgmtContractLib.CreateInitializeSecret(
 		&ethadapter.L1InitializeSecretTx{
-			AggregatorID: &aggregatorID,
+			EnclaveID: &aggregatorID,
 		},
 	)
 
@@ -201,7 +202,7 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 	aggregatorID = datagenerator.RandomAddress()
 	txData = mgmtContractLib.CreateInitializeSecret(
 		&ethadapter.L1InitializeSecretTx{
-			AggregatorID: &aggregatorID,
+			EnclaveID: &aggregatorID,
 		},
 	)
 
@@ -218,13 +219,19 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 		t.Error(err)
 	}
 
+	pk := datagenerator.RandomPrivateKey()
+	enclaveID := crypto.PubkeyToAddress(pk.PublicKey)
+
 	rollup := datagenerator.RandomRollup(block)
-	requesterID := &rollup.Header.Coinbase
+	rollup.Header.Signature, err = signature.Sign(rollup.Hash().Bytes(), pk)
+	if err != nil {
+		t.Error(err)
+	}
 
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
 		&ethadapter.L1InitializeSecretTx{
-			AggregatorID: requesterID,
+			EnclaveID: &enclaveID,
 		},
 	)
 
@@ -255,7 +262,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 	// aggregator A starts the network secret
 	txData := mgmtContractLib.CreateInitializeSecret(
 		&ethadapter.L1InitializeSecretTx{
-			AggregatorID: &aggAID,
+			EnclaveID: &aggAID,
 		},
 	)
 
@@ -340,7 +347,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
 		&ethadapter.L1InitializeSecretTx{
-			AggregatorID:  &aggAID,
+			EnclaveID:     &aggAID,
 			InitialSecret: secretBytes,
 		},
 	)
@@ -471,7 +478,7 @@ func attestedNodeHostAddressesAreStored(t *testing.T, mgmtContractLib *debugMgmt
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
 		&ethadapter.L1InitializeSecretTx{
-			AggregatorID:  &aggAID,
+			EnclaveID:     &aggAID,
 			InitialSecret: secretBytes,
 			HostAddress:   aggAHostAddr,
 		},

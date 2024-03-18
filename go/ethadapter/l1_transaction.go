@@ -69,7 +69,7 @@ type L1RequestSecretTx struct {
 }
 
 type L1InitializeSecretTx struct {
-	AggregatorID  *gethcommon.Address
+	EnclaveID     *gethcommon.Address
 	InitialSecret []byte
 	HostAddress   string
 	Attestation   common.EncodedAttestationReport

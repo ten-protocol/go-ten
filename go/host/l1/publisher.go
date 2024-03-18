@@ -99,7 +99,7 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 		return errors.Wrap(err, "could not encode attestation")
 	}
 	l1tx := &ethadapter.L1InitializeSecretTx{
-		AggregatorID:  &p.hostData.ID,
+		EnclaveID:     &attestation.EnclaveID,
 		Attestation:   encodedAttestation,
 		InitialSecret: encSecret,
 		HostAddress:   p.hostData.P2PPublicAddress,
@@ -143,7 +143,7 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 	l1tx := &ethadapter.L1RespondSecretTx{
 		Secret:      secretResponse.Secret,
 		RequesterID: secretResponse.RequesterID,
-		AttesterID:  p.hostData.ID,
+		AttesterID:  secretResponse.AttesterID,
 		HostAddress: secretResponse.HostAddress,
 	}
 	// todo (#1624) - l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted

@@ -10,9 +10,7 @@ import (
 // when submitting cross chain messages.
 func RandomRollup(_ *types.Block) common.ExtRollup {
 	extRollup := common.ExtRollup{
-		Header: &common.RollupHeader{
-			Coinbase: RandomAddress(),
-		},
+		Header: &common.RollupHeader{},
 	}
 
 	return extRollup
