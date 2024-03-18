@@ -110,3 +110,12 @@ func GetBestFormat(formatsSlice []string) viewingkey.SignatureType {
 	// otherwise, choose EIP712
 	return viewingkey.EIP712Signature
 }
+
+func GetSignatureTypeString(expectedSignatureType viewingkey.SignatureType) (string, error) {
+	for key, value := range SignatureTypeMap {
+		if value == expectedSignatureType {
+			return key, nil
+		}
+	}
+	return "", fmt.Errorf("unable to find signature type")
+}

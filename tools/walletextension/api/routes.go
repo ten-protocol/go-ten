@@ -545,7 +545,32 @@ func getMessageRequestHandler(walletExt *walletextension.WalletExtension, conn u
 		return
 	}
 
-	err = conn.WriteResponse([]byte(message))
+	// create the response structure
+	type JsonResponse struct {
+		Message string `json:"message"`
+		Type    string `json:"type"`
+	}
+
+	// get string representation of the message format
+	messageFormat := common.GetBestFormat(formatsSlice)
+	messageFormatString, err := common.GetSignatureTypeString(messageFormat)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
+		return
+	}
+
+	response := JsonResponse{
+		Message: message,
+		Type:    messageFormatString,
+	}
+
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		walletExt.Logger().Error("error marshaling JSON response", log.ErrKey, err)
+		return
+	}
+
+	err = conn.WriteResponse(responseBytes)
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
