@@ -18,7 +18,7 @@ func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (*sql.DB,
 	}
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		return sqlite.CreateTemporarySQLiteHostDB(HOST+cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", "host_init.sql")
+		return sqlite.CreateTemporarySQLiteHostDB(HOST+cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", "host_sqlite_init.sql")
 	}
 
 	logger.Info(fmt.Sprintf("Preparing Maria DB connection to %s...", cfg.MariaDBHost))
