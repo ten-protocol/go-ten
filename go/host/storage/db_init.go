@@ -6,14 +6,14 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/host/storage/init/mariadb"
-	"github.com/ten-protocol/go-ten/go/host/storage/init/sqlite"
 )
 
 const HOST = "HOST_"
 
 type HostDB struct {
-	DB    *sql.DB
-	InMem bool
+	DB     *sql.DB
+	InMem  bool
+	DBName string
 }
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
@@ -21,22 +21,21 @@ func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (*HostDB,
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}
-	if cfg.UseInMemoryDB {
-		println("CREATING IN MEM DB")
-		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		sqliteDb, err := sqlite.CreateTemporarySQLiteHostDB(HOST+cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", "host_sqlite_init.sql")
-		if err != nil {
-			return nil, fmt.Errorf("could not create in memory sqlite DB: %w", err)
-		}
-		return &HostDB{DB: sqliteDb, InMem: true}, nil
-	}
+	dbName := HOST + cfg.ID.String()
+	//if cfg.UseInMemoryDB {
+	//	logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
+	//	sqliteDb, err := sqlite.CreateTemporarySQLiteHostDB(HOST+cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", "host_sqlite_init.sql")
+	//	if err != nil {
+	//		return nil, fmt.Errorf("could not create in memory sqlite DB: %w", err)
+	//	}
+	//	return &HostDB{DB: sqliteDb, InMem: true}, nil
+	//}
 	logger.Info(fmt.Sprintf("Preparing Maria DB connection to %s...", cfg.MariaDBHost))
-	println("CREATING MARIA DB")
-	mariaDb, err := mariadb.CreateMariaDBHostDB(cfg, HOST+cfg.ID.String(), "host_mariadb_init.sql")
+	mariaDb, err := mariadb.CreateMariaDBHostDB(cfg, dbName, "host_mariadb_init.sql")
 	if err != nil {
 		return nil, fmt.Errorf("could not create mariadb connection: %w", err)
 	}
-	return &HostDB{DB: mariaDb, InMem: false}, nil
+	return &HostDB{DB: mariaDb, InMem: false, DBName: dbName}, nil
 }
 
 // validateDBConf high-level checks that you have a valid configuration for DB creation

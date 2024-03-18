@@ -13,12 +13,16 @@ import (
 	"strings"
 )
 
+const (
+	maxDBPoolSize = 100
+)
+
 func CreateMariaDBHostDB(cfg *config.HostConfig, dbName string, initFile string) (*sql.DB, error) {
-	mariaDbHost := cfg.MariaDBHost
-	if mariaDbHost == "" {
-		println("MaraiDBHost not set")
-		return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
-	}
+	//mariaDbHost := cfg.MariaDBHost
+	//if mariaDbHost == "" {
+	//	println("MaraiDBHost not set")
+	//	return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
+	//}
 
 	// Form the DSN without specifying a database
 	dsn := fmt.Sprintf("root:%s@tcp(localhost:3306)/?multiStatements=true", url.QueryEscape("1866"))
@@ -26,15 +30,15 @@ func CreateMariaDBHostDB(cfg *config.HostConfig, dbName string, initFile string)
 	if err != nil {
 		log.Fatalf("Failed to connect to MariaDB server: %v", err)
 	}
-
+	db.SetMaxOpenConns(maxDBPoolSize)
 	// Check if the database exists and create it if not
 	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", dbName))
+
 	if err != nil {
 		log.Fatalf("Failed to create database %s: %v", dbName, err)
 	}
+	println("SUCCESS CREATE DB: ", dbName)
 
-	// Now, you can either reconnect using the new database name in the DSN
-	// or just select the database for subsequent operations
 	_, err = db.Exec(fmt.Sprintf("USE `%s`", dbName))
 	if err != nil {
 		log.Fatalf("Failed to select database %s: %v", dbName, err)

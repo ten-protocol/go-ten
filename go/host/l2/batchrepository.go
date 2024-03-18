@@ -184,10 +184,8 @@ func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	r.logger.Debug("Saving batch", log.BatchSeqNoKey, batch.Header.SequencerOrderNo, log.BatchHashKey, batch.Hash())
 	err := hostdb.AddBatch(r.db, batch)
 	if err != nil {
-		println("Batch failed to add: ", batch.Header.SequencerOrderNo.Uint64(), err.Error())
 		return fmt.Errorf("could not add batch: %w", err)
 	}
-	println("Batch successfully added: ", batch.Header.SequencerOrderNo.Uint64())
 	// atomically compare and swap latest batch sequence number if successfully added batch is newer
 	r.latestSeqNoMutex.Lock()
 	defer r.latestSeqNoMutex.Unlock()

@@ -36,8 +36,14 @@ const (
 // AddBatch adds a batch and its header to the DB
 func AddBatch(hostDB *storage.HostDB, batch *common.ExtBatch) error {
 	db := hostDB.DB
+	useDbCmd := fmt.Sprintf("USE %s", hostDB.DBName)
+	_, err := db.Exec(useDbCmd)
+	if err != nil {
+		return fmt.Errorf("failed to select database %s: %w", hostDB.DBName, err)
+	}
+
 	// Check if the Batch is already stored
-	_, err := GetBatchHeader(db, batch.Hash())
+	_, err = GetBatchHeader(db, batch.Hash())
 	if err == nil {
 		return errutil.ErrAlreadyExists
 	}
@@ -46,6 +52,7 @@ func AddBatch(hostDB *storage.HostDB, batch *common.ExtBatch) error {
 	if err != nil {
 		return err
 	}
+
 	extBatch, err := rlp.EncodeToBytes(batch)
 	if err != nil {
 		return fmt.Errorf("could not encode L2 transactions: %w", err)
@@ -62,28 +69,35 @@ func AddBatch(hostDB *storage.HostDB, batch *common.ExtBatch) error {
 	if err != nil {
 		return fmt.Errorf("host failed to insert batch: %w", err)
 	}
+
 	if len(batch.TxHashes) > 0 {
 		for _, transaction := range batch.TxHashes {
-			if err != nil {
-				return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
-			}
 			_, err = tx.Exec(insertTransactions, transaction.Bytes(), batch.SeqNo().Uint64())
 			if err != nil {
 				return fmt.Errorf("failed to insert transaction with hash: %d", err)
 			}
 		}
-		var currentTotal int
-		err := tx.QueryRow(selectTxCount).Scan(&currentTotal)
-		newTotal := currentTotal + len(batch.TxHashes)
-		if hostDB.InMem {
-			_, err = tx.Exec(insertTxCountSqliteDB, 1, newTotal)
-		} else {
-			_, err = tx.Exec(insertTxCountMariaDB, 1, newTotal)
-		}
-		if err != nil {
-			return fmt.Errorf("failed to update transaction count: %w", err)
-		}
 	}
+
+	var currentTotal int
+	err = tx.QueryRow(selectTxCount).Scan(&currentTotal)
+	if err != nil {
+		return fmt.Errorf("failed to query transaction count: %w", err)
+	}
+
+	var insertTxCount string
+
+	if hostDB.InMem {
+		insertTxCount = insertTxCountSqliteDB
+	} else {
+		insertTxCount = insertTxCountMariaDB
+	}
+	newTotal := currentTotal + len(batch.TxHashes)
+	_, err = tx.Exec(insertTxCount, 1, newTotal)
+	if err != nil {
+		return fmt.Errorf("failed to update transaction count: %w", err)
+	}
+
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("could not commit batch tx: %w", err)
 	}
@@ -320,7 +334,6 @@ func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.Batch
 	if err != nil {
 		return nil, fmt.Errorf("could not decode batch header. Cause: %w", err)
 	}
-
 	return b.Header, nil
 }
 
