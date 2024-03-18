@@ -38,7 +38,6 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 			Name: common.PathGenerateViewingKey,
 			Func: httpHandler(walletExt, generateViewingKeyRequestHandler),
 		},
-
 		{
 			Name: common.PathSubmitViewingKey,
 			Func: httpHandler(walletExt, submitViewingKeyRequestHandler),
@@ -318,6 +317,18 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, conn
 		return
 	}
 
+	// get optional type of the message that was signed
+	messageTypeValue := common.DefaultGatewayAuthMessageType
+	if typeFromRequest, ok := reqJSONMap[common.JSONKeyType]; ok && typeFromRequest != "" {
+		messageTypeValue = typeFromRequest
+	}
+
+	// check if message type is valid
+	messageType, ok := common.SignatureTypeMap[messageTypeValue]
+	if !ok {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid message type: %s", messageTypeValue))
+	}
+
 	// read userID from query params
 	hexUserID, err := getUserID(conn, 2)
 	if err != nil {
@@ -326,7 +337,7 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, conn
 	}
 
 	// check signature and add address and signature for that user
-	err = walletExt.AddAddressToUser(hexUserID, address, signature)
+	err = walletExt.AddAddressToUser(hexUserID, address, signature, messageType)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
 		walletExt.Logger().Error(fmt.Sprintf("error adding address: %s to user: %s with signature: %s", address, hexUserID, signature))

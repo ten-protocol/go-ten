@@ -175,9 +175,9 @@ func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (*responses.Enclave
 	}
 
 	encryptor, err := vkhandler.VerifyViewingKey(&viewingkey.RPCSignedViewingKey{
-		Account:                 api.address,
 		PublicKey:               api.viewingKey,
 		SignatureWithAccountKey: api.signature,
+		SignatureType:           viewingkey.Legacy, // todo - is this correct
 	}, l2ChainIDDecimal)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create vk encryption for request - %w", err)

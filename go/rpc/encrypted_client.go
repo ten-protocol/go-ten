@@ -172,7 +172,7 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 		ViewingKey: &viewingkey.RPCSignedViewingKey{
 			PublicKey:               c.viewingKey.PublicKey,
 			SignatureWithAccountKey: c.viewingKey.SignatureWithAccountKey,
-			Account:                 c.Account(),
+			SignatureType:           c.viewingKey.SignatureType,
 		},
 	}
 
@@ -305,9 +305,9 @@ func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
 		return nil, nil
 	}
 	vk := viewingkey.RPCSignedViewingKey{
-		Account:                 c.Account(),
 		PublicKey:               c.viewingKey.PublicKey,
 		SignatureWithAccountKey: c.viewingKey.SignatureWithAccountKey,
+		SignatureType:           c.viewingKey.SignatureType,
 	}
 	argsWithVK := &rpc.RequestWithVk{VK: &vk, Params: args}
 

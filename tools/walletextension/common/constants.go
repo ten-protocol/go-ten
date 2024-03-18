@@ -2,6 +2,8 @@ package common
 
 import (
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 )
 
 const (
@@ -21,6 +23,7 @@ const (
 	JSONKeySubscription = "subscription"
 	JSONKeyCode         = "code"
 	JSONKeyMessage      = "message"
+	JSONKeyType         = "type"
 )
 
 const (
@@ -50,6 +53,12 @@ const (
 	MethodEthSubscription               = "eth_subscription"
 	PathVersion                         = "/version/"
 	DeduplicationBufferSize             = 20
+	DefaultGatewayAuthMessageType       = "EIP712"
 )
 
 var ReaderHeadTimeout = 10 * time.Second
+
+var SignatureTypeMap = map[string]viewingkey.SignatureType{
+	"EIP712":   viewingkey.EIP712Signature,
+	"Personal": viewingkey.PersonalSign,
+}

@@ -209,6 +209,7 @@ func (w *WalletExtension) GenerateViewingKey(addr gethcommon.Address) (string, e
 		PrivateKey:              viewingPrivateKeyEcies,
 		PublicKey:               viewingPublicKeyBytes,
 		SignatureWithAccountKey: nil, // we await a signature from the user before we can set up the EncRPCClient
+		SignatureType:           viewingkey.Legacy,
 	}
 
 	// compress the viewing key and convert it to hex string ( this is what Metamask signs)
@@ -247,7 +248,7 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 
 	defaultAccountManager.AddClient(address, client)
 
-	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.SignatureWithAccountKey)
+	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.SignatureWithAccountKey, viewingkey.Legacy)
 	if err != nil {
 		return fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser)
 	}
@@ -291,17 +292,13 @@ func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
 }
 
 // AddAddressToUser checks if a message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
-func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, signature []byte) error {
+func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, signature []byte, signatureType viewingkey.SignatureType) error {
 	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
 	// check if a message was signed by the correct address and if the signature is valid
-	sigAddrs, err := viewingkey.CheckEIP712Signature(hexUserID, signature, int64(w.config.TenChainID))
+	_, err := viewingkey.CheckSignature(hexUserID, signature, int64(w.config.TenChainID), signatureType)
 	if err != nil {
 		return fmt.Errorf("signature is not valid: %w", err)
-	}
-
-	if sigAddrs.Hex() != address {
-		return fmt.Errorf("signature is not valid. Signature address %s!=%s ", sigAddrs, address)
 	}
 
 	// register the account for that viewing key
@@ -310,7 +307,7 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, sig
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID[2:], err).Error())
 		return errors.New("error decoding userID. It should be in hex format")
 	}
-	err = w.storage.AddAccount(userIDBytes, addressFromMessage.Bytes(), signature)
+	err = w.storage.AddAccount(userIDBytes, addressFromMessage.Bytes(), signature, signatureType)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error while storing account (%s) for user (%s): %w", addressFromMessage.Hex(), hexUserID, err).Error())
 		return err
@@ -324,7 +321,7 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, address string, sig
 
 	accManager := w.userAccountManager.AddAndReturnAccountManager(hexUserID)
 
-	encClient, err := common.CreateEncClient(w.hostAddrHTTP, addressFromMessage.Bytes(), privateKeyBytes, signature, w.Logger())
+	encClient, err := common.CreateEncClient(w.hostAddrHTTP, addressFromMessage.Bytes(), privateKeyBytes, signature, signatureType, w.Logger())
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error creating encrypted client for user: (%s), %w", hexUserID, err).Error())
 		return fmt.Errorf("error creating encrypted client for user: (%s), %w", hexUserID, err)
