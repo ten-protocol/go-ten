@@ -48,11 +48,10 @@ func TestCheckSignature(t *testing.T) {
 	userPrivKey, _, userID, userAddress := generateRandomUserKeys()
 
 	// Generate all message types and create map with the corresponding signature type
-	message, err := viewingkey.GenerateMessage(userID, chainID, 0, viewingkey.EIP712Signature, true)
+	EIP712MessageHash, err := viewingkey.GenerateMessage(userID, chainID, 0, viewingkey.EIP712Signature, true)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	EIP712MessageHash := crypto.Keccak256(message)
 	PersonalSignMessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0], viewingkey.PersonalSign, true)
 	if err != nil {
 		t.Fatalf(err.Error())
