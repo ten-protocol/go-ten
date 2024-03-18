@@ -40,7 +40,7 @@ func DefaultDevNetwork(tenGateway bool) *InMemDevNetwork {
 	numNodes := 4 // Default sim currently uses 4 L1 nodes. Obscuro nodes: 1 seq, 3 validators
 	networkWallets := params.NewSimWallets(0, numNodes, integration.EthereumChainID, integration.TenChainID)
 	l1Config := &L1Config{
-		PortStart:        integration.StartPortSimulationFullNetwork,
+		PortStart:        integration.StartPortNetworkTests,
 		NumNodes:         4,
 		AvgBlockDuration: 1 * time.Second,
 	}
@@ -50,7 +50,7 @@ func DefaultDevNetwork(tenGateway bool) *InMemDevNetwork {
 		networkWallets: networkWallets,
 		l1Network:      l1Network,
 		obscuroConfig: ObscuroConfig{
-			PortStart:         integration.StartPortSimulationFullNetwork,
+			PortStart:         integration.StartPortNetworkTests,
 			InitNumValidators: 3,
 			BatchInterval:     1 * time.Second,
 			RollupInterval:    10 * time.Second,
@@ -92,7 +92,7 @@ func LiveL1DevNetwork(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet,
 		networkWallets: networkWallets,
 		l1Network:      l1Network,
 		obscuroConfig: ObscuroConfig{
-			PortStart:         integration.StartPortSimulationFullNetwork,
+			PortStart:         integration.StartPortNetworkTests,
 			InitNumValidators: len(validatorWallets),
 			BatchInterval:     5 * time.Second,
 			RollupInterval:    3 * time.Minute,
