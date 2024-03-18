@@ -11,7 +11,7 @@ require (
 	github.com/dgraph-io/ristretto v0.1.1
 	github.com/docker/docker v24.0.5+incompatible
 	github.com/docker/go-connections v0.4.0
-	github.com/edgelesssys/ego v1.1.0
+	github.com/edgelesssys/ego v1.5.0
 	github.com/eko/gocache/lib/v4 v4.1.5
 	github.com/eko/gocache/store/ristretto/v4 v4.2.1
 	github.com/ethereum/go-ethereum v1.13.1
@@ -32,12 +32,12 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/sanity-io/litter v1.5.5
 	github.com/status-im/keycard-go v0.2.0
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.9.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tidwall/gjson v1.11.0
 	github.com/valyala/fasthttp v1.48.0
 	gitlab.com/NebulousLabs/fastrand v0.0.0-20181126182046-603482d69e40
-	golang.org/x/crypto v0.12.0
+	golang.org/x/crypto v0.21.0
 	golang.org/x/exp v0.0.0-20230810033253-352e893a4cad
 	golang.org/x/sync v0.3.0
 	google.golang.org/grpc v1.53.0
@@ -126,7 +126,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/supranational/blst v0.3.11 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
@@ -140,9 +140,9 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/mod v0.11.0 // indirect
-	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sys v0.11.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.9.1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect

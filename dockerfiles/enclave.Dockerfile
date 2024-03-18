@@ -48,7 +48,7 @@ RUN ego sign enclave-test.json
 FROM build-enclave-testmode-${TESTMODE} as build-enclave
 
 # Trigger a new build stage and use the smaller ego version:
-FROM ghcr.io/edgelesssys/ego-deploy:v1.3.0
+FROM ghcr.io/edgelesssys/ego-deploy:v1.5.0
 
 # Copy just the binary for the enclave into this build stage
 COPY --from=build-enclave \
