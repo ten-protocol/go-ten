@@ -92,6 +92,7 @@ func GetRollupListing(db *sql.DB, pagination *common.QueryPagination) (*common.R
 		return nil, err
 	}
 
+	println("ROLLUPS: ", rollups)
 	return &common.RollupListingResponse{
 		RollupsData: rollups,
 		Total:       uint64(len(rollups)),

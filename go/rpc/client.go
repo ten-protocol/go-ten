@@ -33,10 +33,7 @@ const (
 	SubscribeNamespace   = "eth"
 	SubscriptionTypeLogs = "logs"
 
-	// GetL1RollupHeaderByHash  = "scan_getL1RollupHeaderByHash"
-	// GetActiveNodeCount       = "scan_getActiveNodeCount"
-
-	GetBatchForTx             = "scan_getBatchForTx" //TODO this returns ExtBatch
+	GetBatchForTx             = "scan_getBatchForTx"
 	GetLatestRollupHeader     = "scan_getLatestRollupHeader"
 	GetTotalTransactionCount  = "scan_getTotalTransactionCount"
 	GetTotalContractCount     = "scan_getTotalContractCount"
@@ -46,8 +43,8 @@ const (
 	GetBlockListing           = "scan_getBlockListing"
 	GetRollupListing          = "scan_getRollupListing"
 	GetFullBatchByHash        = "scan_getFullBatchByHash"
-	GetPublicBatchByHash      = "scan_getPublicBatchByHash"
 	GetLatestBatch            = "scan_getLatestBatch"
+	GetPublicBatchByHash      = "scan_getPublicBatchByHash"
 	GetBatchByHeight          = "scan_getBatchByHeight"
 )
 

@@ -6,6 +6,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/host/storage/init/mariadb"
+	"github.com/ten-protocol/go-ten/go/host/storage/init/sqlite"
 )
 
 const HOST = "HOST_"
@@ -18,18 +19,21 @@ type HostDB struct {
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
 func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (*HostDB, error) {
+	//dsn := fmt.Sprintf("root:%s@tcp(localhost:3306)/?multiStatements=true", url.QueryEscape("1866"))
+	//cfg.MariaDBHost = dsn
+
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}
 	dbName := HOST + cfg.ID.String()
-	//if cfg.UseInMemoryDB {
-	//	logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-	//	sqliteDb, err := sqlite.CreateTemporarySQLiteHostDB(HOST+cfg.ID.String(), "mode=memory&cache=shared&_foreign_keys=on", "host_sqlite_init.sql")
-	//	if err != nil {
-	//		return nil, fmt.Errorf("could not create in memory sqlite DB: %w", err)
-	//	}
-	//	return &HostDB{DB: sqliteDb, InMem: true}, nil
-	//}
+	if cfg.UseInMemoryDB {
+		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
+		sqliteDb, err := sqlite.CreateTemporarySQLiteHostDB(dbName, "mode=memory&cache=shared&_foreign_keys=on", "host_sqlite_init.sql")
+		if err != nil {
+			return nil, fmt.Errorf("could not create in memory sqlite DB: %w", err)
+		}
+		return &HostDB{DB: sqliteDb, InMem: true}, nil
+	}
 	logger.Info(fmt.Sprintf("Preparing Maria DB connection to %s...", cfg.MariaDBHost))
 	mariaDb, err := mariadb.CreateMariaDBHostDB(cfg, dbName, "host_mariadb_init.sql")
 	if err != nil {

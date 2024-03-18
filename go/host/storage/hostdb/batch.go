@@ -28,7 +28,7 @@ const (
 	selectTxBySeq                     = "SELECT hash FROM transactions_host WHERE b_sequence = ?"
 
 	insertBatch           = "INSERT INTO batch_host (sequence, full_hash, hash, height, ext_batch) VALUES (?, ?, ?, ?, ?)"
-	insertTransactions    = "INSERT INTO transactions_host (hash, b_sequence) VALUES (?, ?)"
+	insertTransactions    = "REPLACE INTO transactions_host (hash, b_sequence) VALUES (?, ?)"
 	insertTxCountMariaDB  = "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON DUPLICATE KEY UPDATE total = VALUES(total)"
 	insertTxCountSqliteDB = "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET total = excluded.total;"
 )
@@ -36,14 +36,17 @@ const (
 // AddBatch adds a batch and its header to the DB
 func AddBatch(hostDB *storage.HostDB, batch *common.ExtBatch) error {
 	db := hostDB.DB
-	useDbCmd := fmt.Sprintf("USE %s", hostDB.DBName)
-	_, err := db.Exec(useDbCmd)
-	if err != nil {
-		return fmt.Errorf("failed to select database %s: %w", hostDB.DBName, err)
+	// mariadb tx context gets lost without this
+	if !hostDB.InMem {
+		useDbCmd := fmt.Sprintf("USE %s", hostDB.DBName)
+		_, err := db.Exec(useDbCmd)
+		if err != nil {
+			return fmt.Errorf("failed to select database %s: %w", hostDB.DBName, err)
+		}
 	}
 
 	// Check if the Batch is already stored
-	_, err = GetBatchHeader(db, batch.Hash())
+	_, err := GetBatchHeader(db, batch.Hash())
 	if err == nil {
 		return errutil.ErrAlreadyExists
 	}

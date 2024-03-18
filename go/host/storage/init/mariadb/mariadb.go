@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/ten-protocol/go-ten/go/config"
 	"log"
-	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -18,26 +17,21 @@ const (
 )
 
 func CreateMariaDBHostDB(cfg *config.HostConfig, dbName string, initFile string) (*sql.DB, error) {
-	//mariaDbHost := cfg.MariaDBHost
-	//if mariaDbHost == "" {
-	//	println("MaraiDBHost not set")
-	//	return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
-	//}
+	mariaDbHost := cfg.MariaDBHost
+	if mariaDbHost == "" {
+		return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
+	}
 
-	// Form the DSN without specifying a database
-	dsn := fmt.Sprintf("root:%s@tcp(localhost:3306)/?multiStatements=true", url.QueryEscape("1866"))
-	db, err := sql.Open("mysql", dsn)
+	db, err := sql.Open("mysql", mariaDbHost)
 	if err != nil {
 		log.Fatalf("Failed to connect to MariaDB server: %v", err)
 	}
 	db.SetMaxOpenConns(maxDBPoolSize)
-	// Check if the database exists and create it if not
 	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", dbName))
 
 	if err != nil {
 		log.Fatalf("Failed to create database %s: %v", dbName, err)
 	}
-	println("SUCCESS CREATE DB: ", dbName)
 
 	_, err = db.Exec(fmt.Sprintf("USE `%s`", dbName))
 	if err != nil {
