@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -28,7 +27,7 @@ func (handler *httpParamsHandler) ServeHTTP(out http.ResponseWriter, r *http.Req
 	if len(val) > 0 {
 		ctx := context.WithValue(r.Context(), rpc.GWTokenKey{}, val)
 		handler.next.ServeHTTP(out, r.WithContext(ctx))
-		fmt.Printf("Header: %v\n", r.Header)
+		//fmt.Printf("Header: %v\n", r.Header)
 	}
 	handler.next.ServeHTTP(out, r)
 }

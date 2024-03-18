@@ -225,7 +225,7 @@ func (c *jsonCodec) readBatch() (messages []*jsonrpcMessage, batch bool, err err
 	if err := c.decode(&rawmsg); err != nil {
 		return nil, false, err
 	}
-	fmt.Printf("MSG: %s\n", rawmsg)
+	//fmt.Printf("MSG: %s\n", rawmsg)
 	messages, batch = parseMessage(rawmsg)
 	for i, msg := range messages {
 		if msg == nil {

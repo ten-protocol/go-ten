@@ -70,7 +70,7 @@ type BatchElem struct {
 	// discarded.
 	Result interface{}
 	// Error is set if the server returns an error for this request, or if
-	// unmarshaling into Result fails. It is not set for I/O errors.
+	// unmarshalling into Result fails. It is not set for I/O errors.
 	Error error
 }
 
@@ -235,7 +235,7 @@ func newClient(initctx context.Context, cfg *clientConfig, connect reconnectFunc
 	if err != nil {
 		return nil, err
 	}
-	c := initClient(conn, new(serviceRegistry), cfg) //nolint:contextcheck
+	c := initClient(conn, new(serviceRegistry), cfg)
 	c.reconnectFunc = connect
 	return c, nil
 }

@@ -38,7 +38,7 @@ const (
 	wsPingInterval     = 30 * time.Second
 	wsPingWriteTimeout = 5 * time.Second
 	wsPongTimeout      = 30 * time.Second
-	wsMessageSizeLimit = 32 * 1024 * 1024
+	wsDefaultReadLimit = 32 * 1024 * 1024
 )
 
 var wsBufferPool = new(sync.Pool)
@@ -48,7 +48,7 @@ var wsBufferPool = new(sync.Pool)
 // allowedOrigins should be a comma-separated list of allowed origin URLs.
 // To allow connections with any origin, pass "*".
 func (s *Server) WebsocketHandler(allowedOrigins []string) http.Handler {
-	upgrader := websocket.Upgrader{
+	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  wsReadBuffer,
 		WriteBufferSize: wsWriteBuffer,
 		WriteBufferPool: wsBufferPool,
@@ -60,8 +60,7 @@ func (s *Server) WebsocketHandler(allowedOrigins []string) http.Handler {
 			log.Debug("WebSocket upgrade failed", "err", err)
 			return
 		}
-		codec := newWebsocketCodec(conn, r.Host, r.Header)
-
+		codec := newWebsocketCodec(conn, r.Host, r.Header, wsDefaultReadLimit)
 		s.ServeCodec(codec, 0, extractUserID(r.Context()))
 	})
 }
@@ -252,7 +251,7 @@ func newClientTransportWS(endpoint string, cfg *clientConfig) (reconnectFunc, er
 				return nil, err
 			}
 		}
-		conn, resp, err := dialer.DialContext(ctx, dialURL, header) //nolint:bodyclose
+		conn, resp, err := dialer.DialContext(ctx, dialURL, header)
 		if err != nil {
 			hErr := wsHandshakeError{err: err}
 			if resp != nil {
@@ -260,7 +259,11 @@ func newClientTransportWS(endpoint string, cfg *clientConfig) (reconnectFunc, er
 			}
 			return nil, hErr
 		}
-		return newWebsocketCodec(conn, dialURL, header), nil
+		messageSizeLimit := int64(wsDefaultReadLimit)
+		if cfg.wsMessageSizeLimit != nil && *cfg.wsMessageSizeLimit >= 0 {
+			messageSizeLimit = *cfg.wsMessageSizeLimit
+		}
+		return newWebsocketCodec(conn, dialURL, header, messageSizeLimit), nil
 	}
 	return connect, nil
 }
@@ -292,8 +295,8 @@ type websocketCodec struct {
 	pongReceived chan struct{}
 }
 
-func newWebsocketCodec(conn *websocket.Conn, host string, req http.Header) ServerCodec {
-	conn.SetReadLimit(wsMessageSizeLimit)
+func newWebsocketCodec(conn *websocket.Conn, host string, req http.Header, readLimit int64) ServerCodec {
+	conn.SetReadLimit(readLimit)
 	encode := func(v interface{}, isErrorResponse bool) error {
 		return conn.WriteJSON(v)
 	}
@@ -312,7 +315,7 @@ func newWebsocketCodec(conn *websocket.Conn, host string, req http.Header) Serve
 	wc.info.HTTP.Origin = req.Get("Origin")
 	wc.info.HTTP.UserAgent = req.Get("User-Agent")
 	// Start pinger.
-	conn.SetPongHandler(func(_ string) error {
+	conn.SetPongHandler(func(appData string) error {
 		select {
 		case wc.pongReceived <- struct{}{}:
 		case <-wc.closed():
@@ -347,7 +350,7 @@ func (wc *websocketCodec) writeJSON(ctx context.Context, v interface{}, isError 
 
 // pingLoop sends periodic ping frames when the connection is idle.
 func (wc *websocketCodec) pingLoop() {
-	pingTimer := time.NewTimer(wsPingInterval)
+	var pingTimer = time.NewTimer(wsPingInterval)
 	defer wc.wg.Done()
 	defer pingTimer.Stop()
 
@@ -364,14 +367,14 @@ func (wc *websocketCodec) pingLoop() {
 
 		case <-pingTimer.C:
 			wc.jsonCodec.encMu.Lock()
-			wc.conn.SetWriteDeadline(time.Now().Add(wsPingWriteTimeout)) //nolint:errcheck
-			wc.conn.WriteMessage(websocket.PingMessage, nil)             //nolint:errcheck
-			wc.conn.SetReadDeadline(time.Now().Add(wsPongTimeout))       //nolint:errcheck
+			wc.conn.SetWriteDeadline(time.Now().Add(wsPingWriteTimeout))
+			wc.conn.WriteMessage(websocket.PingMessage, nil)
+			wc.conn.SetReadDeadline(time.Now().Add(wsPongTimeout))
 			wc.jsonCodec.encMu.Unlock()
 			pingTimer.Reset(wsPingInterval)
 
 		case <-wc.pongReceived:
-			wc.conn.SetReadDeadline(time.Time{}) //nolint:errcheck
+			wc.conn.SetReadDeadline(time.Time{})
 		}
 	}
 }
