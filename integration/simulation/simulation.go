@@ -276,7 +276,7 @@ func (s *Simulation) prefundL1Accounts() {
 			Sender:        &ownerAddr,
 		}
 		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData)
-		estimatedTx, err := ethClient.PrepareTransactionToSend(tx, tokenOwner.Address(), tokenOwner.GetNonceAndIncrement())
+		estimatedTx, err := ethClient.PrepareTransactionToSend(s.ctx, tx, tokenOwner.Address())
 		if err != nil {
 			// ignore txs that are not able to be estimated/execute
 			testlog.Logger().Error("unable to estimate tx", log.ErrKey, err)

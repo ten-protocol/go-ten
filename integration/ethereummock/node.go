@@ -2,6 +2,7 @@ package ethereummock
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -86,10 +87,10 @@ type Node struct {
 	logger gethlog.Logger
 }
 
-func (m *Node) PrepareTransactionToSend(txData types.TxData, _ gethcommon.Address, nonce uint64) (types.TxData, error) {
+func (m *Node) PrepareTransactionToSend(_ context.Context, txData types.TxData, _ gethcommon.Address) (types.TxData, error) {
 	tx := types.NewTx(txData)
 	return &types.LegacyTx{
-		Nonce:    nonce,
+		Nonce:    123,
 		GasPrice: tx.GasPrice(),
 		Gas:      tx.Gas(),
 		To:       tx.To(),
@@ -98,8 +99,8 @@ func (m *Node) PrepareTransactionToSend(txData types.TxData, _ gethcommon.Addres
 	}, nil
 }
 
-func (m *Node) PrepareTransactionToRetry(txData types.TxData, from gethcommon.Address, nonce uint64, _ int) (types.TxData, error) {
-	return m.PrepareTransactionToSend(txData, from, nonce)
+func (m *Node) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, _ int) (types.TxData, error) {
+	return m.PrepareTransactionToSend(ctx, txData, from)
 }
 
 func (m *Node) SendTransaction(tx *types.Transaction) error {
