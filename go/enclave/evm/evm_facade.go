@@ -164,7 +164,7 @@ func executeTransaction(
 
 		// Create a new context to be used in the EVM environment
 		blockContext := gethcore.NewEVMBlockContext(header, bc, author)
-		vmenv := vm.NewEVM(blockContext, vm.TxContext{BlobHashes: tx.Tx.BlobHashes()}, statedb, config, cfg)
+		vmenv := vm.NewEVM(blockContext, vm.TxContext{BlobHashes: tx.Tx.BlobHashes(), GasPrice: header.BaseFee}, statedb, config, cfg)
 		var receipt *types.Receipt
 		receipt, err = applyTransaction(msg, config, gp, statedb, header.Number, header.Hash(), tx.Tx, usedGas, vmenv)
 		if err != nil {
