@@ -14,20 +14,13 @@ import (
 )
 
 const (
-	selectTxCount     = "SELECT total FROM transaction_count WHERE id = 1"
-	selectBatch       = "SELECT sequence, full_hash, hash, height, ext_batch FROM batch_host"
-	selectExtBatch    = "SELECT ext_batch FROM batch_host"
-	selectLatestBatch = `
-		SELECT sequence, full_hash, hash, height, ext_batch
-		FROM batch_host
-		ORDER BY sequence DESC
-		LIMIT 1
-	`
-	selectTxsAndBatch                 = "SELECT t.hash FROM transactions_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.full_hash = ?"
-	selectBatchNumberFromTransactions = "SELECT b_sequence FROM transactions_host WHERE hash = ?"
-	selectTxByHash                    = "SELECT b_sequence FROM transactions_host WHERE hash = ?"
-	selectTxBySeq                     = "SELECT hash FROM transactions_host WHERE b_sequence = ?"
-
+	selectTxCount         = "SELECT total FROM transaction_count WHERE id = 1"
+	selectBatch           = "SELECT sequence, full_hash, hash, height, ext_batch FROM batch_host"
+	selectExtBatch        = "SELECT ext_batch FROM batch_host"
+	selectLatestBatch     = "SELECT sequence, full_hash, hash, height, ext_batch FROM batch_host ORDER BY sequence DESC LIMIT 1"
+	selectTxsAndBatch     = "SELECT t.hash FROM transactions_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.full_hash = ?"
+	selectBatchSeqByTx    = "SELECT b_sequence FROM transactions_host WHERE hash = ?"
+	selectTxBySeq         = "SELECT hash FROM transactions_host WHERE b_sequence = ?"
 	insertBatch           = "INSERT INTO batch_host (sequence, full_hash, hash, height, ext_batch) VALUES (?, ?, ?, ?, ?)"
 	insertTransactions    = "REPLACE INTO transactions_host (hash, b_sequence) VALUES (?, ?)"
 	insertTxCountMariaDB  = "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON DUPLICATE KEY UPDATE total = VALUES(total)"
@@ -228,11 +221,11 @@ func GetHeadBatchHeader(db *sql.DB) (*common.BatchHeader, error) {
 // GetBatchNumber returns the number of the batch containing the given transaction hash.
 func GetBatchNumber(db *sql.DB, txHash gethcommon.Hash) (*big.Int, error) {
 	txBytes := txHash.Bytes()
-	batchNumber, err := fetchBatchNumber(db, txBytes)
+	batchHeight, err := fetchBatchNumber(db, txBytes)
 	if err != nil {
 		return nil, err
 	}
-	return batchNumber, nil
+	return batchHeight, nil
 }
 
 // GetBatchTxs returns the transaction hashes of the batch with the given hash.
@@ -278,7 +271,7 @@ func GetPublicBatch(db *sql.DB, hash common.L2BatchHash) (*common.PublicBatch, e
 // GetFullBatchByTx returns the batch with the given hash.
 func GetFullBatchByTx(db *sql.DB, txHash gethcommon.Hash) (*common.ExtBatch, error) {
 	var seqNo uint64
-	err := db.QueryRow(selectTxByHash, txHash).Scan(&seqNo)
+	err := db.QueryRow(selectBatchSeqByTx, txHash).Scan(&seqNo)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -336,13 +329,13 @@ func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.Batch
 }
 
 func fetchBatchNumber(db *sql.DB, args ...any) (*big.Int, error) {
-	var batchNumber uint64
-	query := selectBatchNumberFromTransactions
+	var seqNo uint64
+	query := selectBatchSeqByTx
 	var err error
 	if len(args) > 0 {
-		err = db.QueryRow(query, args...).Scan(&batchNumber)
+		err = db.QueryRow(query, args...).Scan(&seqNo)
 	} else {
-		err = db.QueryRow(query).Scan(&batchNumber)
+		err = db.QueryRow(query).Scan(&seqNo)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -350,8 +343,11 @@ func fetchBatchNumber(db *sql.DB, args ...any) (*big.Int, error) {
 		}
 		return nil, err
 	}
-	bigIntBatchNumber := new(big.Int).SetInt64(int64(batchNumber))
-	return bigIntBatchNumber, nil
+	batch, err := GetBatchBySequenceNumber(db, seqNo)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch batch by seq no. Cause: %w", err)
+	}
+	return batch.Height, nil
 }
 
 func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.PublicBatch, error) {
