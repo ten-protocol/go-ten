@@ -487,6 +487,9 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 		}
 		// TODO (@will) need to store this data? For now we only store the blocks with rollups
 		err = hostdb.AddBlock(g.db, block.Header(), r.Header.Hash())
+		if err != nil {
+			g.logger.Error("Could not add block to host db.", log.ErrKey, err)
+		}
 	}
 
 	if len(contractAddressTxs) > 0 {
