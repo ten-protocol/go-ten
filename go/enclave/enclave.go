@@ -51,7 +51,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 var _noHeadBatch = big.NewInt(0)

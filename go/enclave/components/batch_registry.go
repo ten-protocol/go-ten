@@ -12,13 +12,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/state"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common/async"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/limiters"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 type batchRegistry struct {

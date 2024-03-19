@@ -10,10 +10,10 @@ import (
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/rpc"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/userconn"
 )

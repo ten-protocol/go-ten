@@ -15,7 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
@@ -24,6 +23,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/evm"
 	"github.com/ten-protocol/go-ten/go/enclave/genesis"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 type obscuroChain struct {
