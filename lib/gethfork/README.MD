@@ -8,3 +8,4 @@ The RPC URL to the Ten Gateway contains a "token" URL parameter kept secret by e
 2. From the Context, it can be read by the http rpc handler
 3. For WS, we need to add it to a couple of more objects to make it available during processing.
 4. Removed unnecessary elements from the "node", such as p2p, database, etc
+5. Enable full duplex to enable keep-alive connections
