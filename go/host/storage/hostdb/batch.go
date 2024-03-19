@@ -68,7 +68,6 @@ func AddBatch(hostDB *storage.HostDB, batch *common.ExtBatch) error {
 		batch.Header.Number.Uint64(), // height
 		extBatch,                     // ext_batch
 	)
-
 	if err != nil {
 		return fmt.Errorf("host failed to insert batch: %w", err)
 	}

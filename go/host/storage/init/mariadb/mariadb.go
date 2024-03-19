@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -17,12 +16,10 @@ const (
 )
 
 func CreateMariaDBHostDB(dbURL string, dbName string, initFile string) (*sql.DB, error) {
-	dsn := fmt.Sprintf("root:%s@tcp(localhost:3306)/", url.QueryEscape("1866"))
-	//if dbURL == "" {
-	//	return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
-	//}
-	println("CREATING MARIA DB AT ", dsn)
-	db, err := sql.Open("mysql", dsn+"?multiStatements=true")
+	if dbURL == "" {
+		return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
+	}
+	db, err := sql.Open("mysql", dbURL+"?multiStatements=true")
 	if err != nil {
 		log.Fatalf("Failed to connect to MariaDB server: %v", err)
 	}
