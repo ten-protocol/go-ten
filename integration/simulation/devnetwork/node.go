@@ -128,12 +128,13 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		L1StartHash:               n.l1Data.ObscuroStartBlock,
 		SequencerID:               n.config.SequencerID,
 		UseInMemoryDB:             false,
-		MariaDBHost:               n.hostDBFilepath,
-		DebugNamespaceEnabled:     true,
-		BatchInterval:             n.config.BatchInterval,
-		RollupInterval:            n.config.RollupInterval,
-		L1BlockTime:               n.config.L1BlockTime,
-		MaxRollupSize:             1024 * 64,
+		// FIXME
+		MariaDBHost:           n.hostDBFilepath,
+		DebugNamespaceEnabled: true,
+		BatchInterval:         n.config.BatchInterval,
+		RollupInterval:        n.config.RollupInterval,
+		L1BlockTime:           n.config.L1BlockTime,
+		MaxRollupSize:         1024 * 64,
 	}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, n.l1Wallet.Address(), log.CmpKey, log.HostCmp)

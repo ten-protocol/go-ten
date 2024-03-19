@@ -229,10 +229,7 @@ func GetHeadBatchHeader(db *sql.DB) (*common.BatchHeader, error) {
 
 // GetBatchNumber returns the number of the batch containing the given transaction hash.
 func GetBatchNumber(db *sql.DB, txHash gethcommon.Hash) (*big.Int, error) {
-	txBytes, err := rlp.EncodeToBytes(txHash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode block receipts. Cause: %w", err)
-	}
+	txBytes := txHash.Bytes()
 	batchNumber, err := fetchBatchNumber(db, txBytes)
 	if err != nil {
 		return nil, err

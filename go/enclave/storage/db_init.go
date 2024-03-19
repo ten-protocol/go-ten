@@ -13,8 +13,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/config"
 )
 
-const ENCLAVE = "ENCLAVE_"
-
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
 func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	if err := validateDBConf(cfg); err != nil {
@@ -23,7 +21,7 @@ func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (encla
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
 		// this creates a temporary sqlite sqldb
-		return sqlite.CreateTemporarySQLiteDB(ENCLAVE+cfg.HostID.String(), "mode=memory&cache=shared&_foreign_keys=on", logger)
+		return sqlite.CreateTemporarySQLiteDB(cfg.HostID.String(), "mode=memory&cache=shared&_foreign_keys=on", logger)
 	}
 
 	if !cfg.WillAttest {
@@ -31,7 +29,7 @@ func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (encla
 		logger.Warn("Attestation is disabled, using a basic sqlite DB for persistence")
 		// when we want to test persistence after node restart the SqliteDBPath should be set
 		// (if empty string then a temp sqldb file will be created for the lifetime of the enclave)
-		return sqlite.CreateTemporarySQLiteDB(ENCLAVE+cfg.SqliteDBPath, "_foreign_keys=on", logger)
+		return sqlite.CreateTemporarySQLiteDB(cfg.SqliteDBPath, "_foreign_keys=on", logger)
 	}
 
 	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave

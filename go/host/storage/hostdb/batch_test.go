@@ -165,9 +165,16 @@ func TestCanRetrieveBatchNumberByTxHash(t *testing.T) {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
+	extBatch, err := GetFullBatchByTx(db.DB, txHash)
+	if err != nil {
+		t.Errorf("stored batch but could not retrieve batch by transaction hash. Cause: %s", err)
+	}
+	if extBatch.Header.Number.Cmp(batch.Header.Number) != 0 {
+		t.Errorf("batch number was not stored correctly against transaction hash")
+	}
 	batchNumber, err := GetBatchNumber(db.DB, txHash)
 	if err != nil {
-		t.Errorf("stored batch but could not retrieve headers number by transaction hash. Cause: %s", err)
+		t.Errorf("stored batch but could not retrieve number by transaction hash. Cause: %s", err)
 	}
 	if batchNumber.Cmp(batch.Header.Number) != 0 {
 		t.Errorf("batch number was not stored correctly against transaction hash")
