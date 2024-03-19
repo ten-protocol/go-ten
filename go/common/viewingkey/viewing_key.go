@@ -26,48 +26,157 @@ import (
 const SignedMsgPrefix = "vk"
 
 const (
-	EIP712Domain          = "EIP712Domain"
-	EIP712Type            = "Authentication"
-	EIP712DomainName      = "name"
-	EIP712DomainVersion   = "version"
-	EIP712DomainChainID   = "chainId"
-	EIP712EncryptionToken = "Encryption Token"
-	// EIP712EncryptionTokenV2 is used to support older versions of third party libraries
-	// that don't have the support for spaces in type names
-	EIP712EncryptionTokenV2  = "EncryptionToken"
-	EIP712DomainNameValue    = "Ten"
-	EIP712DomainVersionValue = "1.0"
-	UserIDHexLength          = 40
+	EIP712Domain              = "EIP712Domain"
+	EIP712Type                = "Authentication"
+	EIP712DomainName          = "name"
+	EIP712DomainVersion       = "version"
+	EIP712DomainChainID       = "chainId"
+	EIP712EncryptionToken     = "Encryption Token"
+	EIP712DomainNameValue     = "Ten"
+	EIP712DomainVersionValue  = "1.0"
+	UserIDHexLength           = 40
+	PersonalSignMessageFormat = "Token: %s on chain: %d version:%d"
+)
+
+const (
+	EIP712Signature SignatureType = 0
+	PersonalSign    SignatureType = 1
+	Legacy          SignatureType = 2
 )
 
 // EIP712EncryptionTokens is a list of all possible options for Encryption token name
 var EIP712EncryptionTokens = [...]string{
 	EIP712EncryptionToken,
-	EIP712EncryptionTokenV2,
 }
 
+// PersonalSignMessageSupportedVersions is a list of supported versions for the personal sign message
+var PersonalSignMessageSupportedVersions = []int{1}
+
+// SignatureType is used to differentiate between different signature types (string is used, because int is not RLP-serializable)
+type SignatureType uint8
+
 // ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave.
-// It is th client-side perspective of the viewing key used for decrypting incoming traffic.
+// It is the client-side perspective of the viewing key used for decrypting incoming traffic.
 type ViewingKey struct {
 	Account                 *gethcommon.Address // Account address that this Viewing Key is bound to - Users Pubkey address
 	PrivateKey              *ecies.PrivateKey   // ViewingKey private key to encrypt data to the enclave
 	PublicKey               []byte              // ViewingKey public key in decrypt data from the enclave
 	SignatureWithAccountKey []byte              // ViewingKey public key signed by the Accounts Private key - Allows to retrieve the Account address
+	SignatureType           SignatureType       // Type of signature used to sign the public key
 }
 
 // RPCSignedViewingKey - used for transporting a minimalist viewing key via
 // every RPC request to a sensitive method, including Log subscriptions.
 // only the public key and the signature are required
 // the account address is sent as well to aid validation
-// todo - send the type of Message that was signed instead of the Account
 type RPCSignedViewingKey struct {
-	Account                 *gethcommon.Address
 	PublicKey               []byte
 	SignatureWithAccountKey []byte
+	SignatureType           SignatureType
+}
+
+// SignatureChecker is an interface for checking
+// if signature is valid for provided encryptionToken and chainID and return singing address or nil if not valid
+type SignatureChecker interface {
+	CheckSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error)
+}
+
+type (
+	PersonalSignChecker struct{}
+	EIP712Checker       struct{}
+	LegacyChecker       struct{}
+)
+
+// CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
+func (psc PersonalSignChecker) CheckSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error) {
+	if len(signature) != 65 {
+		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
+	}
+	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	if signature[64] == 27 || signature[64] == 28 {
+		signature[64] -= 27
+	}
+
+	// create all possible hashes (for all the supported versions) of the message (needed for signature verification)
+	for _, version := range PersonalSignMessageSupportedVersions {
+		message := GeneratePersonalSignMessage(encryptionToken, chainID, version)
+		messageHash := accounts.TextHash([]byte(message))
+
+		// current signature is valid - return account address
+		address, err := CheckSignatureAndReturnAccountAddress(messageHash, signature)
+		if err == nil {
+			return address, nil
+		}
+	}
+
+	return nil, fmt.Errorf("signature verification failed")
+}
+
+func (e EIP712Checker) CheckSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error) {
+	if len(signature) != 65 {
+		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
+	}
+
+	rawDataOptions, err := GenerateAuthenticationEIP712RawDataOptions(encryptionToken, chainID)
+	if err != nil {
+		return nil, fmt.Errorf("cannot generate eip712 message. Cause %w", err)
+	}
+
+	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	if signature[64] == 27 || signature[64] == 28 {
+		signature[64] -= 27
+	}
+
+	for _, rawData := range rawDataOptions {
+		// create a hash of structured message (needed for signature verification)
+		hashBytes := crypto.Keccak256(rawData)
+
+		// current signature is valid - return account address
+		address, err := CheckSignatureAndReturnAccountAddress(hashBytes, signature)
+		if err == nil {
+			return address, nil
+		}
+	}
+	return nil, errors.New("EIP 712 signature verification failed")
+}
+
+// CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
+// todo (@ziga) Remove this method once old WE endpoints are removed
+// encryptionToken is expected to be a public key and not encrypted token as with other signature types
+// (since this is only temporary fix and legacy format will be removed soon)
+func (lsc LegacyChecker) CheckSignature(encryptionToken string, signature []byte, _ int64) (*gethcommon.Address, error) {
+	publicKey := []byte(encryptionToken)
+	msgToSignLegacy := GenerateSignMessage(publicKey)
+
+	recoveredAccountPublicKeyLegacy, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSignLegacy)), signature)
+	if err != nil {
+		return nil, fmt.Errorf("failed to recover account public key from legacy signature: %w", err)
+	}
+	recoveredAccountAddressLegacy := crypto.PubkeyToAddress(*recoveredAccountPublicKeyLegacy)
+	return &recoveredAccountAddressLegacy, nil
+}
+
+// SignatureChecker is a map of SignatureType to SignatureChecker
+var signatureCheckers = map[SignatureType]SignatureChecker{
+	PersonalSign:    PersonalSignChecker{},
+	EIP712Signature: EIP712Checker{},
+	Legacy:          LegacyChecker{},
+}
+
+// CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
+func CheckSignature(encryptionToken string, signature []byte, chainID int64, signatureType SignatureType) (*gethcommon.Address, error) {
+	checker, exists := signatureCheckers[signatureType]
+	if !exists {
+		return nil, fmt.Errorf("unsupported signature type")
+	}
+	return checker.CheckSignature(encryptionToken, signature, chainID)
 }
 
 // GenerateViewingKeyForWallet takes an account wallet, generates a viewing key and signs the key with the acc's private key
 // uses the same method of signature handling as Metamask/geth
+// TODO @Ziga - update this method to use the new EIP-712 signature format / personal sign after the removal of the legacy format
 func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
 	// generate an ECDSA key pair to encrypt sensitive communications with the obscuro enclave
 	vk, err := crypto.GenerateKey()
@@ -93,6 +202,7 @@ func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
 		PrivateKey:              viewingPrivateKeyECIES,
 		PublicKey:               viewingPubKeyBytes,
 		SignatureWithAccountKey: signature,
+		SignatureType:           Legacy,
 	}, nil
 }
 
@@ -139,6 +249,10 @@ func GenerateSignMessage(vkPubKey []byte) string {
 	return SignedMsgPrefix + hex.EncodeToString(vkPubKey)
 }
 
+func GeneratePersonalSignMessage(encryptionToken string, chainID int64, version int) string {
+	return fmt.Sprintf(PersonalSignMessageFormat, encryptionToken, chainID, version)
+}
+
 // getBytesFromTypedData creates EIP-712 compliant hash from typedData.
 // It involves hashing the message with its structure, hashing domain separator,
 // and then encoding both hashes with specific EIP-712 bytes to construct the final message format.
@@ -159,6 +273,7 @@ func getBytesFromTypedData(typedData apitypes.TypedData) ([]byte, error) {
 
 // GenerateAuthenticationEIP712RawDataOptions generates all the options or raw data messages (bytes)
 // for an EIP-712 message used to authenticate an address with user
+// (currently only one option is supported, but function leaves room for future expansion of options)
 func GenerateAuthenticationEIP712RawDataOptions(userID string, chainID int64) ([][]byte, error) {
 	if len(userID) != UserIDHexLength {
 		return nil, fmt.Errorf("userID hex length must be %d, received %d", UserIDHexLength, len(userID))
@@ -171,40 +286,35 @@ func GenerateAuthenticationEIP712RawDataOptions(userID string, chainID int64) ([
 		ChainId: (*math.HexOrDecimal256)(big.NewInt(chainID)),
 	}
 
-	typedDataList := make([]apitypes.TypedData, 0, len(EIP712EncryptionTokens))
-	for _, encTokenName := range EIP712EncryptionTokens {
-		message := map[string]interface{}{
-			encTokenName: encryptionToken,
-		}
-
-		types := apitypes.Types{
-			EIP712Domain: {
-				{Name: EIP712DomainName, Type: "string"},
-				{Name: EIP712DomainVersion, Type: "string"},
-				{Name: EIP712DomainChainID, Type: "uint256"},
-			},
-			EIP712Type: {
-				{Name: encTokenName, Type: "address"},
-			},
-		}
-
-		newTypeElement := apitypes.TypedData{
-			Types:       types,
-			PrimaryType: EIP712Type,
-			Domain:      domain,
-			Message:     message,
-		}
-		typedDataList = append(typedDataList, newTypeElement)
+	message := map[string]interface{}{
+		EIP712EncryptionToken: encryptionToken,
 	}
 
-	rawDataOptions := make([][]byte, 0, len(typedDataList))
-	for _, typedDataItem := range typedDataList {
-		rawData, err := getBytesFromTypedData(typedDataItem)
-		if err != nil {
-			return nil, err
-		}
-		rawDataOptions = append(rawDataOptions, rawData)
+	types := apitypes.Types{
+		EIP712Domain: {
+			{Name: EIP712DomainName, Type: "string"},
+			{Name: EIP712DomainVersion, Type: "string"},
+			{Name: EIP712DomainChainID, Type: "uint256"},
+		},
+		EIP712Type: {
+			{Name: EIP712EncryptionToken, Type: "address"},
+		},
 	}
+
+	newTypeElement := apitypes.TypedData{
+		Types:       types,
+		PrimaryType: EIP712Type,
+		Domain:      domain,
+		Message:     message,
+	}
+
+	rawDataOptions := make([][]byte, 0)
+	rawData, err := getBytesFromTypedData(newTypeElement)
+	if err != nil {
+		return nil, err
+	}
+	rawDataOptions = append(rawDataOptions, rawData)
+
 	return rawDataOptions, nil
 }
 
@@ -243,34 +353,4 @@ func CheckSignatureAndReturnAccountAddress(hashBytes []byte, signature []byte) (
 		return &address, nil
 	}
 	return nil, fmt.Errorf("invalid signature")
-}
-
-// CheckEIP712Signature checks if signature is valid for provided userID and chainID and return address or nil if not valid
-func CheckEIP712Signature(userID string, signature []byte, chainID int64) (*gethcommon.Address, error) {
-	if len(signature) != 65 {
-		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
-	}
-
-	rawDataOptions, err := GenerateAuthenticationEIP712RawDataOptions(userID, chainID)
-	if err != nil {
-		return nil, fmt.Errorf("cannot generate eip712 message. Cause %w", err)
-	}
-
-	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
-	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-	if signature[64] == 27 || signature[64] == 28 {
-		signature[64] -= 27
-	}
-
-	for _, rawData := range rawDataOptions {
-		// create a hash of structured message (needed for signature verification)
-		hashBytes := crypto.Keccak256(rawData)
-
-		// current signature is valid - return account address
-		address, err := CheckSignatureAndReturnAccountAddress(hashBytes, signature)
-		if err == nil {
-			return address, nil
-		}
-	}
-	return nil, errors.New("EIP 712 signature verification failed")
 }

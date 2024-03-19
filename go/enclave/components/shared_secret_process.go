@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -16,14 +17,16 @@ import (
 type SharedSecretProcessor struct {
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
 	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
+	enclaveID           gethcommon.Address
 	storage             storage.Storage
 	logger              gethlog.Logger
 }
 
-func NewSharedSecretProcessor(mgmtcontractlib mgmtcontractlib.MgmtContractLib, attestationProvider AttestationProvider, storage storage.Storage, logger gethlog.Logger) *SharedSecretProcessor {
+func NewSharedSecretProcessor(mgmtcontractlib mgmtcontractlib.MgmtContractLib, attestationProvider AttestationProvider, enclaveID gethcommon.Address, storage storage.Storage, logger gethlog.Logger) *SharedSecretProcessor {
 	return &SharedSecretProcessor{
 		mgmtContractLib:     mgmtcontractlib,
 		attestationProvider: attestationProvider,
+		enclaveID:           enclaveID,
 		storage:             storage,
 		logger:              logger,
 	}
@@ -85,10 +88,12 @@ func (ssp *SharedSecretProcessor) processSecretRequest(req *ethadapter.L1Request
 		return nil, fmt.Errorf("could not store attestation, no response will be published. Cause: %w", err)
 	}
 
-	ssp.logger.Trace("Processed secret request.", "owner", att.Owner)
+	ssp.logger.Trace("Processed secret request.", "owner", att.EnclaveID)
+	// todo (@matt) - we need to make sure that the attestation report is signed by the enclave's private key
 	return &common.ProducedSecretResponse{
 		Secret:      secret,
-		RequesterID: att.Owner,
+		RequesterID: att.EnclaveID,
+		AttesterID:  ssp.enclaveID,
 		HostAddress: att.HostAddress,
 	}, nil
 }
@@ -104,7 +109,7 @@ func (ssp *SharedSecretProcessor) verifyAttestationAndEncryptSecret(att *common.
 	if err = VerifyIdentity(data, att); err != nil {
 		return nil, fmt.Errorf("unable to verify identity - %w", err)
 	}
-	ssp.logger.Info(fmt.Sprintf("Successfully verified attestation and identity. Owner: %s", att.Owner))
+	ssp.logger.Info(fmt.Sprintf("Successfully verified attestation and identity. Owner: %s", att.EnclaveID))
 
 	secret, err := ssp.storage.FetchSecret()
 	if err != nil {
@@ -115,13 +120,13 @@ func (ssp *SharedSecretProcessor) verifyAttestationAndEncryptSecret(att *common.
 
 // storeAttestation stores the attested keys of other nodes so we can decrypt their rollups
 func (ssp *SharedSecretProcessor) storeAttestation(att *common.AttestationReport) error {
-	ssp.logger.Info(fmt.Sprintf("Store attestation. Owner: %s", att.Owner))
+	ssp.logger.Info(fmt.Sprintf("Store attestation. Owner: %s", att.EnclaveID))
 	// Store the attestation
 	key, err := gethcrypto.DecompressPubkey(att.PubKey)
 	if err != nil {
 		return fmt.Errorf("failed to parse public key %w", err)
 	}
-	err = ssp.storage.StoreAttestedKey(att.Owner, key)
+	err = ssp.storage.StoreAttestedKey(att.EnclaveID, key)
 	if err != nil {
 		return fmt.Errorf("could not store attested key. Cause: %w", err)
 	}

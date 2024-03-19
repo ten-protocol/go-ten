@@ -3,7 +3,7 @@ package common
 import (
 	"errors"
 
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 func CraftErrorResponse(err error) map[string]interface{} {

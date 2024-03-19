@@ -61,6 +61,18 @@ func (u GatewayUser) RegisterAccounts() error {
 	return nil
 }
 
+func (u GatewayUser) RegisterAccountsPersonalSign() error {
+	for _, w := range u.Wallets {
+		err := u.tgClient.RegisterAccountPersonalSign(w.PrivateKey(), w.Address())
+		if err != nil {
+			return err
+		}
+		testlog.Logger().Info(fmt.Sprintf("Successfully registered address %s for user: %s. With personal sign message", w.Address().Hex(), u.tgClient.UserID()))
+	}
+
+	return nil
+}
+
 func (u GatewayUser) GetUserAccountsBalances() ([]*big.Int, error) {
 	balances := []*big.Int{}
 	for _, w := range u.Wallets {

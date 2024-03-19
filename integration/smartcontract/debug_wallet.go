@@ -28,7 +28,7 @@ func newDebugWallet(w wallet.Wallet) *debugWallet {
 func (w *debugWallet) AwaitedSignAndSendTransaction(client ethadapter.EthClient, txData types.TxData) (*types.Transaction, *types.Receipt, error) {
 	var err error
 
-	txData, err = client.PrepareTransactionToSend(txData, w.Address(), w.GetNonceAndIncrement())
+	txData, err = client.PrepareTransactionToSend(context.Background(), txData, w.Address())
 	if err != nil {
 		w.SetNonce(w.GetNonce() - 1)
 		return nil, nil, err

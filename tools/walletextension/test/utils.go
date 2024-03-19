@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
@@ -25,7 +27,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethnode "github.com/ethereum/go-ethereum/node"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
 )
 
@@ -69,7 +70,7 @@ func createDummyHost(t *testing.T, wsRPCPort int) (*DummyAPI, func() error) { //
 		WSOrigins: []string{"*"},
 	}
 	rpcServerNode, err := gethnode.New(&cfg)
-	rpcServerNode.RegisterAPIs([]gethrpc.API{
+	rpcServerNode.RegisterAPIs([]rpc.API{
 		{
 			Namespace: hostcontainer.APINamespaceObscuro,
 			Version:   hostcontainer.APIVersion1,
