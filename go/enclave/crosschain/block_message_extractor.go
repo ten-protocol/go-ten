@@ -33,7 +33,7 @@ func NewBlockMessageExtractor(
 }
 
 func (m *blockMessageExtractor) Enabled() bool {
-	return m.GetBusAddress().Hash().Big().Cmp(gethcommon.Big0) != 0
+	return m.GetBusAddress().Big().Cmp(gethcommon.Big0) != 0
 }
 
 func (m *blockMessageExtractor) StoreCrossChainValueTransfers(block *common.L1Block, receipts common.L1Receipts) error {
