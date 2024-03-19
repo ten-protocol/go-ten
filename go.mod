@@ -1,6 +1,6 @@
 module github.com/ten-protocol/go-ten
 
-go 1.22
+go 1.21
 
 replace github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220224222438-c78f6963a1c0+incompatible
 
