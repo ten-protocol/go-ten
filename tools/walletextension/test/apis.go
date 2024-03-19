@@ -1,4 +1,4 @@
-package test //nolint:typecheck
+package test
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 	"time"
+
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
@@ -18,7 +20,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
 	"github.com/ten-protocol/go-ten/go/responses"
-	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

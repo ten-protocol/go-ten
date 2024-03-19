@@ -9,19 +9,19 @@ import (
 )
 
 const (
-	numCounters  = 1e7     // number of keys to track frequency of (10M).
-	maxCost      = 1 << 30 // maximum cost of cache (1GB).
-	bufferItems  = 64      // number of keys per Get buffer.
-	defaultConst = 1       // default cost of cache.
+	numCounters = 1e7       // number of keys to track frequency of (10M).
+	maxCost     = 1_000_000 // 1 million entries
+	bufferItems = 64        // number of keys per Get buffer.
+	defaultCost = 1         // default cost of cache.
 )
 
-type RistrettoCache struct {
+type ristrettoCache struct {
 	cache *ristretto.Cache
 	quit  chan struct{}
 }
 
-// NewRistrettoCache returns a new RistrettoCache.
-func NewRistrettoCache(logger log.Logger) (*RistrettoCache, error) {
+// NewRistrettoCache returns a new ristrettoCache.
+func NewRistrettoCache(logger log.Logger) (Cache, error) {
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: numCounters,
 		MaxCost:     maxCost,
@@ -32,7 +32,7 @@ func NewRistrettoCache(logger log.Logger) (*RistrettoCache, error) {
 		return nil, err
 	}
 
-	c := &RistrettoCache{
+	c := &ristrettoCache{
 		cache: cache,
 		quit:  make(chan struct{}),
 	}
@@ -44,29 +44,17 @@ func NewRistrettoCache(logger log.Logger) (*RistrettoCache, error) {
 }
 
 // Set adds the key and value to the cache.
-func (c *RistrettoCache) Set(key string, value map[string]interface{}, ttl time.Duration) bool {
-	return c.cache.SetWithTTL(key, value, defaultConst, ttl)
+func (c *ristrettoCache) Set(key []byte, value any, ttl time.Duration) bool {
+	return c.cache.SetWithTTL(key, value, defaultCost, ttl)
 }
 
 // Get returns the value for the given key if it exists.
-func (c *RistrettoCache) Get(key string) (value map[string]interface{}, ok bool) {
-	item, found := c.cache.Get(key)
-	if !found {
-		return nil, false
-	}
-
-	// Assuming the item is stored as a map[string]interface{}, otherwise you need to type assert to the correct type.
-	value, ok = item.(map[string]interface{})
-	if !ok {
-		// The item isn't of type map[string]interface{}
-		return nil, false
-	}
-
-	return value, true
+func (c *ristrettoCache) Get(key []byte) (value any, ok bool) {
+	return c.cache.Get(key)
 }
 
 // startMetricsLogging starts logging cache metrics every hour.
-func (c *RistrettoCache) startMetricsLogging(logger log.Logger) {
+func (c *ristrettoCache) startMetricsLogging(logger log.Logger) {
 	ticker := time.NewTicker(1 * time.Hour)
 	for {
 		select {

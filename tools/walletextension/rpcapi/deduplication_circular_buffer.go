@@ -1,4 +1,4 @@
-package subscriptions
+package rpcapi
 
 import "github.com/ethereum/go-ethereum/common"
 

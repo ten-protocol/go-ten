@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension"
+
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum/go-ethereum/accounts"
@@ -21,8 +23,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/config"
-	"github.com/ten-protocol/go-ten/tools/walletextension/container"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -32,12 +32,13 @@ import (
 
 const jsonID = "1"
 
-func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *config.Config { //nolint: unparam
+func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *common.Config { //nolint: unparam
 	testDBPath, err := os.CreateTemp("", "")
 	if err != nil {
 		panic("could not create persistence file for wallet extension tests")
 	}
-	return &config.Config{
+	return &common.Config{
+		WalletExtensionHost:     "127.0.0.1",
 		NodeRPCWebsocketAddress: fmt.Sprintf("localhost:%d", connectPort),
 		DBPathOverride:          testDBPath.Name(),
 		WalletExtensionPortHTTP: wallHTTPPort,
@@ -46,11 +47,11 @@ func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *config.Config {
 	}
 }
 
-func createWalExt(t *testing.T, walExtCfg *config.Config) func() error {
+func createWalExt(t *testing.T, walExtCfg *common.Config) func() error {
 	// todo (@ziga) - log somewhere else?
 	logger := log.New(log.WalletExtCmp, int(gethlog.LvlInfo), log.SysOut)
 
-	wallExtContainer := container.NewWalletExtensionContainerFromConfig(*walExtCfg, logger)
+	wallExtContainer := walletextension.NewContainerFromConfig(*walExtCfg, logger)
 	go wallExtContainer.Start() //nolint: errcheck
 
 	err := waitForEndpoint(fmt.Sprintf("http://%s:%d%s", walExtCfg.WalletExtensionHost, walExtCfg.WalletExtensionPortHTTP, common.PathReady))
@@ -73,15 +74,11 @@ func createDummyHost(t *testing.T, wsRPCPort int) (*DummyAPI, func() error) { //
 	rpcServerNode.RegisterAPIs([]rpc.API{
 		{
 			Namespace: hostcontainer.APINamespaceObscuro,
-			Version:   hostcontainer.APIVersion1,
 			Service:   dummyAPI,
-			Public:    true,
 		},
 		{
 			Namespace: hostcontainer.APINamespaceEth,
-			Version:   hostcontainer.APIVersion1,
 			Service:   dummyAPI,
-			Public:    true,
 		},
 	})
 	if err != nil {
