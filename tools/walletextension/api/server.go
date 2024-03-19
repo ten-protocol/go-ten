@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ten-protocol/go-ten/lib/gethfork/node"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
@@ -39,20 +41,20 @@ func (s *Server) Stop() error {
 }
 
 // NewHTTPServer returns the HTTP server for the WE
-func NewHTTPServer(address string, routes []Route) *Server {
+func NewHTTPServer(address string, routes []node.Route) *Server {
 	return &Server{
 		server: createHTTPServer(address, routes),
 	}
 }
 
 // NewWSServer returns the WS server for the WE
-func NewWSServer(address string, routes []Route) *Server {
+func NewWSServer(address string, routes []node.Route) *Server {
 	return &Server{
 		server: createWSServer(address, routes),
 	}
 }
 
-func createHTTPServer(address string, routes []Route) *http.Server {
+func createHTTPServer(address string, routes []node.Route) *http.Server {
 	serveMux := http.NewServeMux()
 
 	// Handles Ethereum JSON-RPC requests received over HTTP.
@@ -72,7 +74,7 @@ func createHTTPServer(address string, routes []Route) *http.Server {
 	return server
 }
 
-func createWSServer(address string, routes []Route) *http.Server {
+func createWSServer(address string, routes []node.Route) *http.Server {
 	serveMux := http.NewServeMux()
 
 	// Handles Ethereum JSON-RPC requests received over HTTP.
