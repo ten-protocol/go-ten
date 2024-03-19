@@ -161,6 +161,10 @@ func GetBatchListingDeprecated(db *sql.DB, pagination *common.QueryPagination) (
 		if err != nil {
 			return nil, fmt.Errorf("failed to get tx hashes by seq no: %w", err)
 		}
+		if batch == nil || batch.Header == nil {
+			return nil, fmt.Errorf("batch or batch header is nil")
+		}
+
 		publicBatchDeprecated := common.PublicBatchDeprecated{
 			BatchHeader: *batch.Header,
 			TxHashes:    txHashes,
@@ -186,6 +190,7 @@ func GetTxsBySequenceNumber(db *sql.DB, seqNo uint64) ([]common.TxHash, error) {
 	return fetchTx(db, seqNo)
 }
 
+// GetFullBatchBySequenceNumber returns the ext batch for a given sequence number.
 func GetFullBatchBySequenceNumber(db *sql.DB, seqNo uint64) (*common.ExtBatch, error) {
 	return fetchFullBatch(db, " WHERE sequence=?", seqNo)
 }
@@ -210,6 +215,7 @@ func GetBatchHashByNumber(db *sql.DB, number *big.Int) (*gethcommon.Hash, error)
 	return &l2BatchHash, nil
 }
 
+// GetHeadBatchHeader returns the latest batch header.
 func GetHeadBatchHeader(db *sql.DB) (*common.BatchHeader, error) {
 	batch, err := fetchHeadBatch(db)
 	if err != nil {
@@ -218,7 +224,7 @@ func GetHeadBatchHeader(db *sql.DB) (*common.BatchHeader, error) {
 	return batch.Header, nil
 }
 
-// GetBatchNumber returns the number of the batch containing the given transaction hash.
+// GetBatchNumber returns the height of the batch containing the given transaction hash.
 func GetBatchNumber(db *sql.DB, txHash gethcommon.Hash) (*big.Int, error) {
 	txBytes := txHash.Bytes()
 	batchHeight, err := fetchBatchNumber(db, txBytes)
@@ -274,7 +280,6 @@ func GetFullBatchByTx(db *sql.DB, txHash gethcommon.Hash) (*common.ExtBatch, err
 	err := db.QueryRow(selectBatchSeqByTx, txHash).Scan(&seqNo)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			// make sure the error is converted to obscuro-wide not found error
 			return nil, errutil.ErrNotFound
 		}
 		return nil, err
@@ -296,6 +301,7 @@ func GetLatestBatch(db *sql.DB) (*common.BatchHeader, error) {
 	return headBatch.Header, nil
 }
 
+// GetBatchByHeight returns the batch header given the height
 func GetBatchByHeight(db *sql.DB, height *big.Int) (*common.BatchHeader, error) {
 	headBatch, err := fetchBatchHeader(db, "where height=?", height.Uint64())
 	if err != nil {
@@ -371,11 +377,12 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 		}
 		return nil, err
 	}
-	// Decode batch
 	var b common.ExtBatch
 	err = rlp.DecodeBytes(extBatch, &b)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode ext batch. Cause: %w", err)
+	}
 
-	// Construct the batch
 	batch := &common.PublicBatch{
 		SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
 		Hash:             hash,
@@ -410,9 +417,11 @@ func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatc
 		}
 		return nil, err
 	}
-	// Decode batch
 	var b common.ExtBatch
 	err = rlp.DecodeBytes(extBatch, &b)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode ext batch. Cause: %w", err)
+	}
 
 	return &b, nil
 }
@@ -434,6 +443,9 @@ func fetchHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 
 	var b common.ExtBatch
 	err = rlp.DecodeBytes(extBatch, &b)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode ext batch. Cause: %w", err)
+	}
 
 	batch := &common.PublicBatch{
 		SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
