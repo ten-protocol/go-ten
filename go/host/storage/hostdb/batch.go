@@ -163,13 +163,11 @@ func GetBatchListingDeprecated(db *sql.DB, pagination *common.QueryPagination) (
 		}
 		if batch == nil || batch.Header == nil {
 			return nil, fmt.Errorf("batch or batch header is nil")
-		}
-
-		publicBatchDeprecated := common.PublicBatchDeprecated{
-			BatchHeader: *batch.Header,
-			TxHashes:    txHashes,
-		}
-		if batch != nil {
+		} else {
+			publicBatchDeprecated := common.PublicBatchDeprecated{
+				BatchHeader: *batch.Header,
+				TxHashes:    txHashes,
+			}
 			batches = append(batches, publicBatchDeprecated)
 		}
 	}

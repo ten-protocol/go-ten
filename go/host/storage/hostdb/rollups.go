@@ -46,6 +46,9 @@ func AddRollupHeader(db *sql.DB, rollup *common.ExtRollup, metadata *common.Publ
 		extRollup,                            // rollup blob
 		block.Hash(),                         // l1 block hash
 	)
+	if err != nil {
+		return fmt.Errorf("could not insert rollup. Cause: %w", err)
+	}
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("could not store rollup in db: %w", err)
 	}

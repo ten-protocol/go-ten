@@ -31,6 +31,9 @@ func AddBlock(db *sql.DB, b *types.Header, rollupHash common.L2RollupHash) error
 		header,              // l1 block header
 		rollupHash,          // rollup hash
 	)
+	if err != nil {
+		return fmt.Errorf("could not insert block. Cause: %w", err)
+	}
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("could not store block in db: %w", err)
 	}

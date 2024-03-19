@@ -41,10 +41,10 @@ func TestCanStoreAndRetrieveBatchHeader(t *testing.T) {
 }
 
 func TestUnknownBatchHeaderReturnsNotFound(t *testing.T) {
-	db, err := createSQLiteDB(t)
+	db, _ := createSQLiteDB(t)
 	header := types.Header{}
 
-	_, err = GetBatchHeader(db.DB, header.Hash())
+	_, err := GetBatchHeader(db.DB, header.Hash())
 	if !errors.Is(err, errutil.ErrNotFound) {
 		t.Errorf("did not store batch header but was able to retrieve it")
 	}
