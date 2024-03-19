@@ -67,9 +67,9 @@ export const WalletConnectionProvider = ({
       setVersion(await fetchVersion());
     } catch (error) {
       showToast(
-        ToastType.DESTRUCTIVE,
-        "Error initializing wallet connection. Please refresh the page."
-      );
+          ToastType.DESTRUCTIVE,
+      error instanceof Error ? error.message : "Error initializing wallet connection. Please refresh the page."
+    );
     } finally {
       setLoading(false);
     }

@@ -16,8 +16,10 @@ const ethService = {
       if (ethereum) {
         if (ethereum.isExodus) {
           showToast(ToastType.DESTRUCTIVE, "Exodus Wallet is connected and is conflicting with MetaMask. Please disable Exodus Wallet and try again.");
+          throw new Error("Exodus Wallet is connected and is conflicting with MetaMask. Please disable Exodus Wallet and try again.");
         } else if (ethereum.isNestWallet) {
           showToast(ToastType.DESTRUCTIVE, "Nest Wallet is connected and is conflicting with MetaMask. Please disable Nest Wallet and try again.");
+          throw new Error("Nest Wallet is connected and is conflicting with MetaMask. Please disable Nest Wallet and try again.");
         }
 
         return await ethService.handleEthereum(provider);
