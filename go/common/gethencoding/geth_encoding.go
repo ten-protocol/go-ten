@@ -26,7 +26,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 const (

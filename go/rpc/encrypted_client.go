@@ -14,12 +14,12 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rlp"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/go/responses"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
