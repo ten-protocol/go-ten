@@ -37,7 +37,6 @@ type WalletExtension struct {
 	hostAddrHTTP       string // The HTTP address on which the Ten host can be reached
 	hostAddrWS         string // The WS address on which the Ten host can be reached
 	userAccountManager *useraccountmanager.UserAccountManager
-	unsignedVKs        map[gethcommon.Address]*viewingkey.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
 	storage            storage.Storage
 	logger             gethlog.Logger
 	fileLogger         gethlog.Logger
@@ -75,7 +74,6 @@ func New(
 		hostAddrHTTP:       hostAddrHTTP,
 		hostAddrWS:         hostAddrWS,
 		userAccountManager: userAccountManager,
-		unsignedVKs:        map[gethcommon.Address]*viewingkey.ViewingKey{},
 		storage:            storage,
 		logger:             logger,
 		fileLogger:         newFileLogger,
@@ -186,76 +184,6 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 	}
 
 	return response, nil
-}
-
-// GenerateViewingKey generates the user viewing key and waits for signature
-func (w *WalletExtension) GenerateViewingKey(addr gethcommon.Address) (string, error) {
-	w.fileLogger.Info(fmt.Sprintf("Requested to generate viewing key for address(old way): %s", addr.Hex()))
-	viewingKeyPrivate, err := crypto.GenerateKey()
-	if err != nil {
-		return "", fmt.Errorf("unable to generate a new keypair - %w", err)
-	}
-
-	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
-	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
-
-	w.unsignedVKs[addr] = &viewingkey.ViewingKey{
-		Account:                 &addr,
-		PrivateKey:              viewingPrivateKeyEcies,
-		PublicKey:               viewingPublicKeyBytes,
-		SignatureWithAccountKey: nil, // we await a signature from the user before we can set up the EncRPCClient
-		SignatureType:           viewingkey.Legacy,
-	}
-
-	// compress the viewing key and convert it to hex string ( this is what Metamask signs)
-	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
-	return hex.EncodeToString(viewingKeyBytes), nil
-}
-
-// SubmitViewingKey checks the signed viewing key and stores it
-func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature []byte) error {
-	w.fileLogger.Info(fmt.Sprintf("Requested to submit a viewing key (old way): %s", address.Hex()))
-	vk, found := w.unsignedVKs[address]
-	if !found {
-		return fmt.Errorf(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", address, common.PathGenerateViewingKey))
-	}
-
-	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
-	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-	signature[64] -= 27
-
-	vk.SignatureWithAccountKey = signature
-
-	err := w.storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
-	if err != nil {
-		return fmt.Errorf("error saving user: %s", common.DefaultUser)
-	}
-	// create an encrypted RPC client with the signed VK and register it with the enclave
-	// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
-	client, err := rpc.NewEncNetworkClient(w.hostAddrHTTP, vk, w.logger)
-	if err != nil {
-		return fmt.Errorf("failed to create encrypted RPC client for account %s - %w", address, err)
-	}
-	defaultAccountManager, err := w.userAccountManager.GetUserAccountManager(hex.EncodeToString([]byte(common.DefaultUser)))
-	if err != nil {
-		return fmt.Errorf(fmt.Sprintf("error getting default user account manager: %s", err))
-	}
-
-	defaultAccountManager.AddClient(address, client)
-
-	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.SignatureWithAccountKey, viewingkey.Legacy)
-	if err != nil {
-		return fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser)
-	}
-
-	if err != nil {
-		return fmt.Errorf("error saving viewing key to the database: %w", err)
-	}
-
-	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
-	delete(w.unsignedVKs, address)
-
-	return nil
 }
 
 // GenerateAndStoreNewUser generates new key-pair and userID, stores it in the database and returns hex encoded userID and error
