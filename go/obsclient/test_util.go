@@ -3,7 +3,7 @@ package obsclient
 import (
 	"context"
 
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/stretchr/testify/mock"
 )

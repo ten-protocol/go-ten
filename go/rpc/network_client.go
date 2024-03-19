@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )

@@ -25,8 +25,8 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethnode "github.com/ethereum/go-ethereum/node"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 const jsonID = "1"
