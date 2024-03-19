@@ -148,10 +148,10 @@ func txsAreMinted(t *testing.T, wallets []wallet.Wallet) {
 		w := wallets[i]
 
 		toAddr := datagenerator.RandomAddress()
-		estimatedTx, err := ethClient.PrepareTransactionToSend(&types.LegacyTx{
+		estimatedTx, err := ethClient.PrepareTransactionToSend(context.Background(), &types.LegacyTx{
 			To:    &toAddr,
 			Value: big.NewInt(100),
-		}, w.Address(), w.GetNonceAndIncrement())
+		}, w.Address())
 		assert.Nil(t, err)
 
 		signedTx, err := w.SignTransaction(estimatedTx)
