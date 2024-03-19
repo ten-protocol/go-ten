@@ -6,8 +6,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 type (
@@ -107,7 +107,7 @@ type SystemError interface {
 type AttestationReport struct {
 	Report      []byte         // the signed bytes of the report which includes some encrypted identifying data
 	PubKey      []byte         // a public key that can be used to send encrypted data back to the TEE securely (should only be used once Report has been verified)
-	Owner       common.Address // address identifying the owner of the TEE which signed this report, can also be verified from the encrypted Report data
+	EnclaveID   common.Address // address identifying the owner of the TEE which signed this report, can also be verified from the encrypted Report data
 	HostAddress string         // the IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
 }
 

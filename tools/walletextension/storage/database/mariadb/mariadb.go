@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+
 	"github.com/ethereum/go-ethereum/crypto"
 
 	_ "github.com/go-sql-driver/mysql" // Importing MariaDB driver
@@ -85,14 +87,14 @@ func (m *MariaDB) GetUserPrivateKey(userID []byte) ([]byte, error) {
 	return privateKey, nil
 }
 
-func (m *MariaDB) AddAccount(userID []byte, accountAddress []byte, signature []byte) error {
-	stmt, err := m.db.Prepare("INSERT INTO accounts(user_id, account_address, signature) VALUES (?, ?, ?)")
+func (m *MariaDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
+	stmt, err := m.db.Prepare("INSERT INTO accounts(user_id, account_address, signature, signature_type) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(userID, accountAddress, signature)
+	_, err = stmt.Exec(userID, accountAddress, signature, int(signatureType))
 	if err != nil {
 		return err
 	}
@@ -101,7 +103,7 @@ func (m *MariaDB) AddAccount(userID []byte, accountAddress []byte, signature []b
 }
 
 func (m *MariaDB) GetAccounts(userID []byte) ([]common.AccountDB, error) {
-	rows, err := m.db.Query("SELECT account_address, signature FROM accounts WHERE user_id = ?", userID)
+	rows, err := m.db.Query("SELECT account_address, signature, signature_type FROM accounts WHERE user_id = ?", userID)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +112,7 @@ func (m *MariaDB) GetAccounts(userID []byte) ([]common.AccountDB, error) {
 	var accounts []common.AccountDB
 	for rows.Next() {
 		var account common.AccountDB
-		if err := rows.Scan(&account.AccountAddress, &account.Signature); err != nil {
+		if err := rows.Scan(&account.AccountAddress, &account.Signature, &account.SignatureType); err != nil {
 			return nil, err
 		}
 		accounts = append(accounts, account)

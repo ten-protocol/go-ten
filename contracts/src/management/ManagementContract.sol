@@ -23,10 +23,10 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     // Event to log changes to important contract addresses
     event ImportantContractAddressUpdated(string key, address newAddress);
 
-    mapping(address => string) private attestationRequests;
+    // mapping of enclaveID to whether it is attested
     mapping(address => bool) private attested;
     // TODO - Revisit the decision to store the host addresses in the smart contract.
-    string[] private hostAddresses; // The addresses of all the Obscuro hosts on the network.
+    string[] private hostAddresses; // The addresses of all the Ten hosts on the network.
 
     // In the near-term it is convenient to have an accessible source of truth for important contract addresses
     // TODO - this is probably not appropriate long term but currently useful for testnets. Look to remove.
@@ -77,13 +77,12 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     // solc-ignore-next-line unused-param
     function AddRollup(Structs.MetaRollup calldata r, string calldata  _rollupData, Structs.HeaderCrossChainData calldata crossChainData) public {
-        // TODO How to ensure the sender without hashing the calldata ?
-        // bytes32 derp = keccak256(abi.encodePacked(ParentHash, AggregatorID, L1Block, Number, rollupData));
-
         // TODO: Add a check that ensures the cross messages are coming from the correct fork using block hashes.
 
-        // revert if the AggregatorID is not attested
-        require(attested[r.AggregatorID], "aggregator not attested");
+        // todo: verify this enclaveID is a permissioned Sequencer enclaveID
+        address enclaveID = ECDSA.recover(r.Hash, r.Signature);
+        // revert if the EnclaveID is not attested
+        require(attested[enclaveID], "enclaveID not attested");
 
         AppendRollup(r);
         pushCrossChainMessages(crossChainData);
@@ -91,31 +90,30 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once
     // solc-ignore-next-line unused-param
-    function InitializeNetworkSecret(address _aggregatorID, bytes calldata  _initSecret, string memory _hostAddress, string calldata _genesisAttestation) public {
-        require(!networkSecretInitialized);
+    function InitializeNetworkSecret(address _enclaveID, bytes calldata  _initSecret, string memory _hostAddress, string calldata _genesisAttestation) public {
+        require(!networkSecretInitialized, "network secret already initialized");
 
         // network can no longer be initialized
         networkSecretInitialized = true;
 
-        // aggregator is now on the list of attested aggregators and its host address is available
-        attested[_aggregatorID] = true;
+        // enclave is now on the list of attested enclaves (and its host address is published for p2p)
+        attested[_enclaveID] = true;
         hostAddresses.push(_hostAddress);
     }
 
-    // Aggregators can request the Network Secret given an attestation request report
+    // Enclaves can request the Network Secret given an attestation request report
     function RequestNetworkSecret(string calldata requestReport) public {
-        // Attestations should only be allowed to produce once ?
-        attestationRequests[msg.sender] = requestReport;
+        // currently this is a no-op, nodes will monitor for these transactions and respond to them
     }
 
-    // Attested node will pickup on Network Secret Request
-    // and if valid will respond with the Network Secret
+    // An attested enclave will pickup the Network Secret Request
+    // and, if valid, will respond with the Network Secret
     // and mark the requesterID as attested
     // @param verifyAttester Whether to ask the attester to complete a challenge (signing a hash) to prove their identity.
     function RespondNetworkSecret(address attesterID, address requesterID, bytes memory attesterSig, bytes memory responseSecret, string memory hostAddress, bool verifyAttester) public {
-        // only attested aggregators can respond to Network Secret Requests
-        bool isAggAttested = attested[attesterID];
-        require(isAggAttested);
+        // only attested enclaves can respond to Network Secret Requests
+        bool isEnclAttested = attested[attesterID];
+        require(isEnclAttested, "responding attester is not attested");
 
         if (verifyAttester) {
             
@@ -127,9 +125,9 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
             address recoveredAddrSignedCalculated = ECDSA.recover(calculatedHashSigned, attesterSig);
 
             require(recoveredAddrSignedCalculated == attesterID, "calculated address and attesterID dont match");
-        } 
+        }
 
-        // mark the requesterID aggregator as an attested aggregator and store its host address
+        // mark the requesterID enclave as an attested enclave and store its host address
         attested[requesterID] = true;
         // TODO - Consider whether to remove duplicates.
         hostAddresses.push(hostAddress);

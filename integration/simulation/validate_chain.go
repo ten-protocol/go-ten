@@ -221,7 +221,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 // this function only performs a very brief check.
 // the ultimate check that everything works fine is that each node is able to respond to queries
 // and has processed all batches correctly.
-func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.ExtRollup) {
+func checkRollups(t *testing.T, _ *Simulation, nodeIdx int, rollups []*common.ExtRollup) {
 	if len(rollups) < 2 {
 		t.Errorf("Node %d: Found less than two submitted rollups! Successful simulation should always produce more than 2", nodeIdx)
 	}
@@ -232,11 +232,7 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 	})
 
 	for _, rollup := range rollups {
-		// todo - use the signature
-		if rollup.Header.Coinbase.Hex() != s.Params.Wallets.NodeWallets[0].Address().Hex() {
-			t.Errorf("Node %d: Found rollup produced by non-sequencer %s", nodeIdx, s.Params.Wallets.NodeWallets[0].Address().Hex())
-			continue
-		}
+		// todo (@matt) verify the rollup was produced by a sequencer enclave from the whitelisted ID set
 
 		if len(rollup.BatchPayloads) == 0 {
 			t.Errorf("Node %d: No batches in rollup!", nodeIdx)

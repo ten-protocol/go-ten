@@ -126,13 +126,12 @@ func (b *BatchHeader) UnmarshalJSON(data []byte) error {
 // RollupHeader is a public / plaintext struct that holds common properties of rollups.
 // All these fields are processed by the Management contract
 type RollupHeader struct {
-	Coinbase          common.Address
 	CompressionL1Head L1BlockHash // the l1 block that the sequencer considers canonical at the time when this rollup is created
 
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 
 	PayloadHash common.Hash // The hash of the compressed batches. TODO
-	Signature   []byte      // The signature of the sequencer on the payload hash
+	Signature   []byte      // The signature of the sequencer enclave on the payload hash
 
 	LastBatchSeqNo uint64
 }

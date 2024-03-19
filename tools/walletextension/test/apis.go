@@ -1,4 +1,4 @@
-package test
+package test //nolint:typecheck
 
 import (
 	"context"
@@ -15,10 +15,10 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
 	"github.com/ten-protocol/go-ten/go/responses"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -175,9 +175,9 @@ func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (*responses.Enclave
 	}
 
 	encryptor, err := vkhandler.VerifyViewingKey(&viewingkey.RPCSignedViewingKey{
-		Account:                 api.address,
 		PublicKey:               api.viewingKey,
 		SignatureWithAccountKey: api.signature,
+		SignatureType:           viewingkey.Legacy, // todo - is this correct
 	}, l2ChainIDDecimal)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create vk encryption for request - %w", err)

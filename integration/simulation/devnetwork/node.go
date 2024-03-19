@@ -3,6 +3,8 @@ package devnetwork
 import (
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/lib/gethfork/node"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/go/host/l1"
@@ -22,7 +24,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
 	"github.com/ten-protocol/go-ten/go/host/p2p"
-	"github.com/ten-protocol/go-ten/go/host/rpc/clientrpc"
 	"github.com/ten-protocol/go-ten/go/host/rpc/enclaverpc"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration"
@@ -145,7 +146,15 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	// create an enclave client
 
 	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, n.l1Wallet.Address()))
-	rpcServer := clientrpc.NewServer(hostConfig, n.logger)
+	rpcConfig := node.RPCConfig{
+		Host:                 hostConfig.ClientRPCHost,
+		EnableHTTP:           hostConfig.HasClientRPCHTTP,
+		HTTPPort:             int(hostConfig.ClientRPCPortHTTP),
+		EnableWs:             hostConfig.HasClientRPCWebsockets,
+		WsPort:               int(hostConfig.ClientRPCPortWS),
+		ExposedURLParamNames: nil,
+	}
+	rpcServer := node.NewServer(&rpcConfig, n.logger)
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&hostConfig.ManagementContractAddress, n.logger)
 	l1Repo := l1.NewL1Repository(n.l1Client, []gethcommon.Address{hostConfig.ManagementContractAddress, hostConfig.MessageBusAddress}, n.logger)
 	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, l1Repo, enclaveClient, mgmtContractLib, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger))

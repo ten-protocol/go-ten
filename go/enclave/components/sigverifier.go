@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/go/common/signature"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -26,18 +25,23 @@ func NewSignatureValidator(seqID gethcommon.Address, storage storage.Storage) (*
 }
 
 // CheckSequencerSignature - verifies the signature against the registered sequencer
-func (sigChecker *SignatureValidator) CheckSequencerSignature(headerHash gethcommon.Hash, sig []byte) error {
+func (sigChecker *SignatureValidator) CheckSequencerSignature(_ gethcommon.Hash, sig []byte) error {
 	if sig == nil {
 		return fmt.Errorf("missing signature on batch")
 	}
 
-	if sigChecker.attestedKey == nil {
-		attestedKey, err := sigChecker.storage.FetchAttestedKey(sigChecker.SequencerID)
-		if err != nil {
-			return fmt.Errorf("could not retrieve attested key for aggregator %s. Cause: %w", sigChecker.SequencerID, err)
-		}
-		sigChecker.attestedKey = attestedKey
-	}
+	// todo (@matt) disabling sequencer signature verification for now while we transition to EnclaveIDs
+	// This must be re-enabled once sequencer enclaveIDs are available from the management contract
 
-	return signature.VerifySignature(sigChecker.attestedKey, headerHash.Bytes(), sig)
+	//if sigChecker.attestedKey == nil {
+	//	attestedKey, err := sigChecker.storage.FetchAttestedKey(sigChecker.SequencerID)
+	//	if err != nil {
+	//		return fmt.Errorf("could not retrieve attested key for aggregator %s. Cause: %w", sigChecker.SequencerID, err)
+	//	}
+	//	sigChecker.attestedKey = attestedKey
+	//}
+	//
+	// return signature.VerifySignature(sigChecker.attestedKey, headerHash.Bytes(), sig)
+
+	return nil
 }

@@ -6,9 +6,9 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common/tracers"
 	"github.com/ten-protocol/go-ten/go/responses"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -157,7 +157,8 @@ type BlockSubmissionResponse struct {
 // ProducedSecretResponse contains the data to publish to L1 in response to a secret request discovered while processing an L1 block
 type ProducedSecretResponse struct {
 	Secret      []byte
-	RequesterID gethcommon.Address
+	RequesterID gethcommon.Address // enclaveID of the enclave that requested the secret
+	AttesterID  gethcommon.Address // enclaveID of the enclave that produced the secret
 	HostAddress string
 }
 

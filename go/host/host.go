@@ -13,7 +13,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/host/l1"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/naoina/toml"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -25,6 +24,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/host/events"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethmetrics "github.com/ethereum/go-ethereum/metrics"

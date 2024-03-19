@@ -6,8 +6,8 @@ import (
 	"math/big"
 	"sync"
 
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 

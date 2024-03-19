@@ -1,6 +1,7 @@
 package l1
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -40,6 +41,12 @@ type Publisher struct {
 
 	maxWaitForL1Receipt       time.Duration
 	retryIntervalForL1Receipt time.Duration
+
+	// we only allow one transaction in-flight at a time to avoid nonce conflicts
+	// We also have a context to cancel the tx if host stops
+	sendingLock      sync.Mutex
+	sendingContext   context.Context
+	sendingCtxCancel context.CancelFunc
 }
 
 func NewL1Publisher(
@@ -53,6 +60,7 @@ func NewL1Publisher(
 	maxWaitForL1Receipt time.Duration,
 	retryIntervalForL1Receipt time.Duration,
 ) *Publisher {
+	sendingCtx, cancelSendingCtx := context.WithCancel(context.Background())
 	return &Publisher{
 		hostData:                  hostData,
 		hostWallet:                hostWallet,
@@ -66,6 +74,10 @@ func NewL1Publisher(
 
 		importantContractAddresses: map[string]gethcommon.Address{},
 		importantAddressesMutex:    sync.RWMutex{},
+
+		sendingLock:      sync.Mutex{},
+		sendingContext:   sendingCtx,
+		sendingCtxCancel: cancelSendingCtx,
 	}
 }
 
@@ -81,6 +93,7 @@ func (p *Publisher) Start() error {
 }
 
 func (p *Publisher) Stop() error {
+	p.sendingCtxCancel()
 	return nil
 }
 
@@ -99,7 +112,7 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 		return errors.Wrap(err, "could not encode attestation")
 	}
 	l1tx := &ethadapter.L1InitializeSecretTx{
-		AggregatorID:  &p.hostData.ID,
+		EnclaveID:     &attestation.EnclaveID,
 		Attestation:   encodedAttestation,
 		InitialSecret: encSecret,
 		HostAddress:   p.hostData.P2PPublicAddress,
@@ -143,7 +156,7 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 	l1tx := &ethadapter.L1RespondSecretTx{
 		Secret:      secretResponse.Secret,
 		RequesterID: secretResponse.RequesterID,
-		AttesterID:  p.hostData.ID,
+		AttesterID:  secretResponse.AttesterID,
 		HostAddress: secretResponse.HostAddress,
 	}
 	// todo (#1624) - l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
@@ -304,42 +317,36 @@ func (p *Publisher) ResyncImportantContracts() error {
 }
 
 // publishTransaction will keep trying unless the L1 seems to be unavailable or the tx is otherwise rejected
-// It is responsible for keeping the nonce accurate, according to the following rules:
-// - Caller should not increment the wallet nonce before this method is called
-// - This method will increment the wallet nonce only if the transaction is successfully broadcast
-// - This method will continue to resend the tx using latest gas price until it is successfully broadcast or the L1 is unavailable/this service is shutdown
-// - **ONLY** the L1 publisher service is publishing transactions for this wallet (to avoid nonce conflicts)
+// this method is guarded by a lock to ensure that only one transaction is attempted at a time to avoid nonce conflicts
 // todo (@matt) this method should take a context so we can try to cancel if the tx is no longer required
 func (p *Publisher) publishTransaction(tx types.TxData) error {
-	// the nonce to be used for this tx attempt
-	nonce := p.hostWallet.GetNonceAndIncrement()
+	// this log message seems superfluous but is useful to debug deadlock issues, we expect 'Host issuing l1 tx' soon
+	// after unless we're stuck blocking.
+	p.logger.Info("Host preparing to issue L1 tx")
+
+	p.sendingLock.Lock()
+	defer p.sendingLock.Unlock()
+
 	retries := -1
 
 	// while the publisher service is still alive we keep trying to get the transaction into the L1
 	for !p.hostStopper.IsStopping() {
 		retries++ // count each attempt so we can increase gas price
 
-		// make sure an earlier tx hasn't been abandoned
-		if nonce > p.hostWallet.GetNonce() {
-			return errors.New("earlier transaction has failed to complete, we need to abort this transaction")
-		}
 		// update the tx gas price before each attempt
-		tx, err := p.ethClient.PrepareTransactionToRetry(tx, p.hostWallet.Address(), nonce, retries)
+		tx, err := p.ethClient.PrepareTransactionToRetry(p.sendingContext, tx, p.hostWallet.Address(), retries)
 		if err != nil {
-			p.hostWallet.SetNonce(nonce) // revert the wallet nonce because we failed to complete the transaction
 			return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 		}
 
 		signedTx, err := p.hostWallet.SignTransaction(tx)
 		if err != nil {
-			p.hostWallet.SetNonce(nonce) // revert the wallet nonce because we failed to complete the transaction
 			return errors.Wrap(err, "could not sign L1 tx")
 		}
 
 		p.logger.Info("Host issuing l1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
 		err = p.ethClient.SendTransaction(signedTx)
 		if err != nil {
-			p.hostWallet.SetNonce(nonce) // revert the wallet nonce because we failed to complete the transaction
 			return errors.Wrap(err, "could not broadcast L1 tx")
 		}
 		p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
@@ -348,6 +355,9 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		// retry until receipt is found
 		err = retry.Do(
 			func() error {
+				if p.hostStopper.IsStopping() {
+					return retry.FailFast(errors.New("host is stopping"))
+				}
 				receipt, err = p.ethClient.TransactionReceipt(signedTx.Hash())
 				if err != nil {
 					return fmt.Errorf("could not get receipt for L1 tx=%s: %w", signedTx.Hash(), err)
@@ -358,7 +368,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		)
 		if err != nil {
 			p.logger.Info("Receipt not found for transaction, we will re-attempt", log.ErrKey, err)
-			continue // try again on the same nonce, with updated gas price
+			continue // try again with updated gas price
 		}
 
 		if err == nil && receipt.Status != types.ReceiptStatusSuccessful {

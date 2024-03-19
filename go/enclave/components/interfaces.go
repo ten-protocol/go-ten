@@ -8,10 +8,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/limiters"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 var ErrDuplicateRollup = errors.New("duplicate rollup received")

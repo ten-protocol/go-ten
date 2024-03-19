@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common"
 )
@@ -19,7 +18,7 @@ func GenerateEnclaveKey() (*EnclaveKey, error) {
 
 func NewEnclaveKey(privKey *ecdsa.PrivateKey) *EnclaveKey {
 	pubKey := gethcrypto.CompressPubkey(&privKey.PublicKey)
-	enclaveID := common.EnclaveID(pubKey[gethcommon.HashLength-gethcommon.AddressLength:])
+	enclaveID := gethcrypto.PubkeyToAddress(privKey.PublicKey)
 	return &EnclaveKey{
 		privateKey:     privKey,
 		publicKeyBytes: pubKey,

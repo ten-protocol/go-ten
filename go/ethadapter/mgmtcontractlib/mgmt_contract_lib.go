@@ -126,7 +126,7 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx) types.TxData {
 
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),
-		AggregatorID:       decodedRollup.Header.Coinbase,
+		Signature:          decodedRollup.Header.Signature,
 		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
 	}
 
@@ -184,7 +184,7 @@ func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, 
 func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData {
 	data, err := c.contractABI.Pack(
 		InitializeSecretMethod,
-		tx.AggregatorID,
+		tx.EnclaveID,
 		tx.InitialSecret,
 		tx.HostAddress,
 		base64EncodeToString(tx.Attestation),

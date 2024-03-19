@@ -51,7 +51,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 var _noHeadBatch = big.NewInt(0)
@@ -171,13 +171,13 @@ func NewEnclave(
 	batchExecutor := components.NewBatchExecutor(storage, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	registry := components.NewBatchRegistry(storage, logger)
-	rProducer := components.NewRollupProducer(config.SequencerID, storage, registry, logger)
+	rProducer := components.NewRollupProducer(enclaveKey.EnclaveID(), storage, registry, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
 	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
-	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, storage, logger)
+	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKey.EnclaveID(), storage, logger)
 
 	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, gethEncodingService, logger)
 	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice, logger)
@@ -196,7 +196,6 @@ func NewEnclave(
 			rollupCompression,
 			gethEncodingService,
 			logger,
-			config.HostID,
 			chainConfig,
 			enclaveKey,
 			mempool,
@@ -237,7 +236,7 @@ func NewEnclave(
 	// TODO ensure debug is allowed/disallowed
 	debug := debugger.New(chain, storage, chainConfig)
 
-	logger.Info("Enclave service created with following config", log.CfgKey, config.HostID)
+	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKey.EnclaveID())
 	return &enclaveImpl{
 		config:                 config,
 		storage:                storage,
@@ -609,7 +608,7 @@ func (e *enclaveImpl) Attestation() (*common.AttestationReport, common.SystemErr
 	if e.enclaveKey == nil {
 		return nil, responses.ToInternalError(fmt.Errorf("public key not initialized, we can't produce the attestation report"))
 	}
-	report, err := e.attestationProvider.GetReport(e.enclaveKey.PublicKeyBytes(), e.config.HostID, e.config.HostAddress)
+	report, err := e.attestationProvider.GetReport(e.enclaveKey.PublicKeyBytes(), e.enclaveKey.EnclaveID(), e.config.HostAddress)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not produce remote report. Cause %w", err))
 	}
