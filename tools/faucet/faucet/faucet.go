@@ -3,7 +3,6 @@ package faucet
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -15,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	tenlog "github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/obsclient"
-	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
@@ -85,7 +83,7 @@ func (f *Faucet) validateTx(tx *types.Transaction) error {
 	for now := time.Now(); time.Since(now) < _timeout; time.Sleep(time.Second) {
 		receipt, err := f.client.TransactionReceipt(context.Background(), tx.Hash())
 		if err != nil {
-			if errors.Is(err, rpc.ErrNilResponse) {
+			if receipt == nil {
 				// tx receipt is not available yet
 				continue
 			}

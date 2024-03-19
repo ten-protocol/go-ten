@@ -3,7 +3,6 @@ package accountmanager
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -226,7 +225,7 @@ func (m *AccountManager) executeCall(rpcReq *wecommon.RPCRequest, rpcResp *inter
 		var err error
 		for _, client := range m.accountClientsHTTP {
 			err = submitCall(client, rpcReq, rpcResp)
-			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
+			if err == nil {
 				// request didn't fail, we don't need to continue trying the other clients
 				return nil
 			}

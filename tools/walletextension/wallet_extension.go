@@ -165,7 +165,7 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 
 	err = selectedAccountManager.ProxyRequest(request, &rpcResp, conn)
 	if err != nil {
-		if errors.Is(err, rpc.ErrNilResponse) {
+		if rpcResp == nil {
 			// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 			response[common.JSONKeyResult] = nil
 			requestEndTime := time.Now()
