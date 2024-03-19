@@ -14,6 +14,23 @@ const ethService = {
   checkIfMetamaskIsLoaded: async (provider: ethers.providers.Web3Provider) => {
     try {
       if (ethereum) {
+
+        // There are some wallets that are conflicting with MetaMask - we want to check that and throw an error if they are connected
+        const conflictingWalletMap = {
+          'Exodus Wallet': ethereum.isExodus,
+          'Nest Wallet': ethereum.isNestWallet,
+          // Add other wallets here as needed
+        };
+
+        // Iterate over the wallet map and handle conflicts
+        for (const [walletName, isWalletConnected] of Object.entries(conflictingWalletMap)) {
+          if (isWalletConnected) {
+            const message = `${walletName} is connected and is conflicting with MetaMask. Please disable ${walletName} and try again.`;
+            showToast(ToastType.DESTRUCTIVE, message);
+            throw new Error(message);
+          }
+        }
+
         return await ethService.handleEthereum(provider);
       } else {
         showToast(ToastType.INFO, "Connecting to MetaMask...");
