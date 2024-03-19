@@ -1,9 +1,10 @@
-package userwallet
+package userwallet //nolint:typecheck
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
 	"math/big"
 	"time"
 
