@@ -339,7 +339,11 @@ func (c *inMemObscuroClient) getBatchListingDeprecated(result interface{}, args 
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchListingDeprecated, err)
 	}
 
-	*result.(**common.BatchListingResponseDeprecated) = batches
+	res, ok := result.(*common.BatchListingResponseDeprecated)
+	if !ok {
+		return fmt.Errorf("result is of type %T, expected *common.BatchListingResponseDeprecated", result)
+	}
+	*res = *batches
 	return nil
 }
 
@@ -357,7 +361,11 @@ func (c *inMemObscuroClient) getRollupListing(result interface{}, args []interfa
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetRollupListing, err)
 	}
 
-	*result.(**common.RollupListingResponse) = rollups
+	res, ok := result.(*common.RollupListingResponse)
+	if !ok {
+		return fmt.Errorf("result is of type %T, expected *common.BatchListingResponseDeprecated", result)
+	}
+	*res = *rollups
 	return nil
 }
 

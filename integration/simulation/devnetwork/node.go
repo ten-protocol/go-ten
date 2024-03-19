@@ -2,8 +2,6 @@ package devnetwork
 
 import (
 	"fmt"
-	"os"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/go/host/l1"
@@ -228,15 +226,14 @@ func (n *InMemNodeOperator) StopEnclave() error {
 func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common.NodeType, l1Data *params.L1SetupData,
 	l1Client ethadapter.EthClient, l1Wallet wallet.Wallet, logger gethlog.Logger,
 ) *InMemNodeOperator {
-	// todo (@matt) - put sqlite and levelDB storage in the same temp dir
 	sqliteDBPath, err := sqlite.CreateTempDBFile()
 	if err != nil {
 		panic("failed to create temp sqlite db path")
 	}
-	mariaDBHost, err := os.MkdirTemp("", "mariaDB_*")
-	if err != nil {
-		panic("failed to create temp mariaDBHost")
-	}
+	//mariaDBHost, err := os.MkdirTemp("", "mariaDB_*")
+	//if err != nil {
+	//	panic("failed to create temp mariaDBHost")
+	//}
 
 	l1Nonce, err := l1Client.Nonce(l1Wallet.Address())
 	if err != nil {
@@ -253,6 +250,6 @@ func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common
 		l1Wallet:          l1Wallet,
 		logger:            logger,
 		enclaveDBFilepath: sqliteDBPath,
-		hostDBFilepath:    mariaDBHost,
+		hostDBFilepath:    sqliteDBPath,
 	}
 }

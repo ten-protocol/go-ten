@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/config"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -16,19 +16,19 @@ const (
 	maxDBPoolSize = 100
 )
 
-func CreateMariaDBHostDB(cfg *config.HostConfig, dbName string, initFile string) (*sql.DB, error) {
-	mariaDbHost := cfg.MariaDBHost
-	if mariaDbHost == "" {
-		return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
-	}
-
-	db, err := sql.Open("mysql", mariaDbHost)
+func CreateMariaDBHostDB(dbURL string, dbName string, initFile string) (*sql.DB, error) {
+	dsn := fmt.Sprintf("root:%s@tcp(localhost:3306)/", url.QueryEscape("1866"))
+	//if dbURL == "" {
+	//	return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
+	//}
+	println("CREATING MARIA DB AT ", dsn)
+	db, err := sql.Open("mysql", dsn+"?multiStatements=true")
 	if err != nil {
 		log.Fatalf("Failed to connect to MariaDB server: %v", err)
 	}
 	db.SetMaxOpenConns(maxDBPoolSize)
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", dbName))
 
+	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", dbName))
 	if err != nil {
 		log.Fatalf("Failed to create database %s: %v", dbName, err)
 	}
