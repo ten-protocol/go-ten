@@ -303,7 +303,6 @@ func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (*
 	response, err := c.protoClient.GetBalance(timeoutCtx, &generated.GetBalanceRequest{
 		EncryptedParams: encryptedParams,
 	})
-	response.String()
 	if err != nil {
 		return nil, syserr.NewRPCError(err)
 	}
