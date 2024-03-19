@@ -1,4 +1,4 @@
-package test
+package test //nolint:typecheck
 
 import (
 	"context"
