@@ -89,16 +89,22 @@ func (m *AccountManager) ProxyRequest(rpcReq *wecommon.RPCRequest, rpcResp *inte
 		if err != nil {
 			return err
 		}
-		critBytes, err := json.Marshal(rpcReq.Params[1])
-		if err != nil {
-			return err
+		criteria := filters.FilterCriteria{}
+
+		// this stuff will be removed when the rpc is added
+		crit, ok := rpcReq.Params[1].(map[string]any)
+		if ok {
+			critBytes, err := json.Marshal(crit)
+			if err != nil {
+				return err
+			}
+			err = criteria.UnmarshalJSON(critBytes)
+			if err != nil {
+				return err
+			}
 		}
-		criteria := new(filters.FilterCriteria)
-		err = criteria.UnmarshalJSON(critBytes)
-		if err != nil {
-			return err
-		}
-		err = m.subscriptionsManager.HandleNewSubscriptions(clients, *criteria, rpcResp, userConn)
+
+		err = m.subscriptionsManager.HandleNewSubscriptions(clients, criteria, rpcResp, userConn)
 		if err != nil {
 			m.logger.Error("Error subscribing to multiple clients")
 			return err
