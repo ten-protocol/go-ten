@@ -4,9 +4,10 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/common"
 	"os"
 	"path/filepath"
+
+	"github.com/ten-protocol/go-ten/go/common"
 
 	_ "github.com/mattn/go-sqlite3" // this imports the sqlite driver to make the sql.Open() connection work
 )

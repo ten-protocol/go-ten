@@ -4,12 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math/big"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/host/storage"
-	"math/big"
 )
 
 const (
@@ -113,7 +114,6 @@ func GetBatchListing(db *sql.DB, pagination *common.QueryPagination) (*common.Ba
 	headBatch, err := GetCurrentHeadBatch(db)
 	if err != nil {
 		return nil, err
-
 	}
 	batchesFrom := headBatch.SequencerOrderNo.Uint64() - pagination.Offset
 	batchesTo := int(batchesFrom) - int(pagination.Size) + 1
@@ -145,7 +145,6 @@ func GetBatchListingDeprecated(db *sql.DB, pagination *common.QueryPagination) (
 	headBatch, err := GetCurrentHeadBatch(db)
 	if err != nil {
 		return nil, err
-
 	}
 	batchesFrom := headBatch.SequencerOrderNo.Uint64() - pagination.Offset
 	batchesTo := int(batchesFrom) - int(pagination.Size) + 1
@@ -351,7 +350,7 @@ func fetchBatchNumber(db *sql.DB, args ...any) (*big.Int, error) {
 		}
 		return nil, err
 	}
-	var bigIntBatchNumber = new(big.Int).SetInt64(int64(batchNumber))
+	bigIntBatchNumber := new(big.Int).SetInt64(int64(batchNumber))
 	return bigIntBatchNumber, nil
 }
 
@@ -424,7 +423,7 @@ func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatc
 
 func fetchHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 	var sequenceInt64 int
-	var fullHash gethcommon.Hash //common.Hash
+	var fullHash gethcommon.Hash // common.Hash
 	var hash []byte
 	var heightInt64 int
 	var extBatch []byte

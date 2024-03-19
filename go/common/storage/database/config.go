@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"errors"
+
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 

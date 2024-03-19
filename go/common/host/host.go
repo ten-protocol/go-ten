@@ -2,6 +2,7 @@ package host
 
 import (
 	"database/sql"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"

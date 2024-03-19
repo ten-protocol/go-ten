@@ -1,10 +1,11 @@
 package hostdb
 
 import (
-	"github.com/ten-protocol/go-ten/go/common"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 func TestCanStoreAndRetrieveRollup(t *testing.T) {
@@ -61,7 +62,6 @@ func TestGetRollupByBlockHash(t *testing.T) {
 	if big.NewInt(int64(rollupHeader.LastBatchSeqNo)).Cmp(big.NewInt(batchNumber)) != 0 {
 		t.Errorf("rollup header was not stored correctly")
 	}
-
 }
 
 func TestGetRollupListing(t *testing.T) {

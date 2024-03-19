@@ -3,11 +3,12 @@ package enclave
 import (
 	"database/sql"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 
@@ -484,7 +485,7 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 				g.logger.Error("Could not store rollup.", log.ErrKey, err)
 			}
 		}
-		//TODO (@will) need to store this data? For now we only store the blocks with rollups
+		// TODO (@will) need to store this data? For now we only store the blocks with rollups
 		err = hostdb.AddBlock(g.db, block.Header(), r.Header.Hash())
 	}
 
@@ -523,7 +524,6 @@ func (g *Guardian) submitL2Batch(batch *common.ExtBatch) error {
 	if err != nil {
 		// something went wrong, return error and let the main loop check status and try again when appropriate
 		return errors.Wrap(err, "could not submit L2 batch to enclave")
-
 	}
 	// successfully processed batch, update the state
 	g.state.OnProcessedBatch(batch.Header.SequencerOrderNo)

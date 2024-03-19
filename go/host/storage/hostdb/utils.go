@@ -1,10 +1,11 @@
 package hostdb
 
 import (
+	"testing"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 	"github.com/ten-protocol/go-ten/go/host/storage/init/sqlite"
-	"testing"
 )
 
 const truncHash = 16

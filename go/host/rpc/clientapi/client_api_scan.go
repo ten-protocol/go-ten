@@ -1,8 +1,9 @@
 package clientapi
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"math/big"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"

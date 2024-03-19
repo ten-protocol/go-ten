@@ -65,7 +65,6 @@ func waitTxResult(client ethadapter.EthClient, tx *types.Transaction) (*types.Re
 	var err error
 	for start := time.Now(); time.Since(start) < _timeout; time.Sleep(time.Second) {
 		receipt, err = client.TransactionReceipt(tx.Hash())
-
 		if err != nil {
 			if errors.Is(err, ethereum.NotFound) {
 				continue

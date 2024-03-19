@@ -5,9 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/status-im/keycard-go/hexutils"
 	"math/big"
 	"strings"
+
+	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"

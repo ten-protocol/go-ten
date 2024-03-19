@@ -4,12 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/host/storage"
-	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/host/storage"
+	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"

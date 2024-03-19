@@ -452,10 +452,9 @@ func TestGetBatchListingDeprecated(t *testing.T) {
 	}
 }
 
-//TODO Get Batch by height
-//TODO Get Batch by TX hash
-//TODO Duplicate TX hash test
-
+// TODO Get Batch by height
+// TODO Get Batch by TX hash
+// TODO Duplicate TX hash test
 func createBatch(batchNum int64, txHashes []common.L2BatchHash) (common.ExtBatch, error) {
 	header := common.BatchHeader{
 		SequencerOrderNo: big.NewInt(batchNum),

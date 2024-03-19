@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/host/storage/init/mariadb"
