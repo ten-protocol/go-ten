@@ -3,8 +3,6 @@ package node
 import (
 	"net/http"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/api"
-
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -27,12 +25,18 @@ type RPCConfig struct {
 	ExposedURLParamNames []string
 }
 
+// Route defines the path plus handler for a given path
+type Route struct {
+	Name string
+	Func func(resp http.ResponseWriter, req *http.Request)
+}
+
 // Server manages the lifeycle of an RPC Server
 type Server interface {
 	Start() error
 	Stop()
 	RegisterAPIs(apis []rpc.API)
-	RegisterRoutes(routes []api.Route)
+	RegisterRoutes(routes []Route)
 }
 
 // An implementation of `host.Server` that reuses the Geth `node` package for client communication.
@@ -73,7 +77,7 @@ func (s *serverImpl) RegisterAPIs(apis []rpc.API) {
 	s.node.RegisterAPIs(apis)
 }
 
-func (s *serverImpl) RegisterRoutes(routes []api.Route) {
+func (s *serverImpl) RegisterRoutes(routes []Route) {
 	for _, route := range routes {
 		s.node.RegisterHandler(route.Name, route.Name, http.HandlerFunc(route.Func))
 	}
