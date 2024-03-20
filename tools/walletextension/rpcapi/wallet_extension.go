@@ -222,7 +222,7 @@ func (w *Services) AddAddressToUser(hexUserID string, address string, signature 
 
 // UserHasAccount checks if provided account exist in the database for given userID
 func (w *Services) UserHasAccount(hexUserID string, address string) (bool, error) {
-	audit(w, "Checkinf if user has account: %s, address: %s", hexUserID, address)
+	audit(w, "Checking if user has account: %s, address: %s", hexUserID, address)
 	userIDBytes, err := common.GetUserIDbyte(hexUserID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID[2:], err).Error())
