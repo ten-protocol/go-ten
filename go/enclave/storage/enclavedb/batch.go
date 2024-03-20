@@ -395,7 +395,8 @@ func ReadReceipt(db *sql.DB, hash common.L2TxHash, config *params.ChainConfig) (
 
 	batchhash := common.L2BatchHash{}
 	batchhash.SetBytes(batchHash)
-	if err = receipts.DeriveFields(config, batchhash, height, 0, big.NewInt(0), big.NewInt(0), transactions); err != nil {
+	// todo base fee
+	if err = receipts.DeriveFields(config, batchhash, height, 0, big.NewInt(1), big.NewInt(0), transactions); err != nil {
 		return nil, fmt.Errorf("failed to derive block receipts fields. hash = %s; number = %d; err = %w", hash, height, err)
 	}
 	return receipts[0], nil

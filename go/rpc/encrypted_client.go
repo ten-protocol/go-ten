@@ -28,7 +28,6 @@ import (
 const (
 	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
-	emptyFilterCriteria = "[]" // This is the value that gets passed for an empty filter criteria.
 )
 
 // SensitiveMethods for which the RPC requests and responses should be encrypted
@@ -81,7 +80,11 @@ func (c *EncRPCClient) Call(result interface{}, method string, args ...interface
 // - result must be a pointer so that package json can unmarshal into it. You can also pass nil, in which case the result is ignored.
 // - callExec handles the delegated call, allows EncClient to use the same code for calling with or without a context
 func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
-	assertResultIsPointer(result)
+	// borrowed from geth
+	if result != nil && reflect.TypeOf(result).Kind() != reflect.Ptr {
+		return fmt.Errorf("call result parameter must be pointer or nil interface: %v", result)
+	}
+
 	if !IsSensitiveMethod(method) {
 		// for non-sensitive methods or when viewing keys are disabled we just delegate directly to the geth RPC client
 		return c.executeRPCCall(ctx, result, method, args...)
@@ -182,23 +185,10 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 		return logSubscription, nil
 	}
 
-	// TODO - Consider switching to using the common.FilterCriteriaJSON type. Should allow us to avoid RLP serialisation.
-	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
-	// because the filter criteria arrives as a map, and there is no way to convert it from a map directly into a
-	// FilterCriteria.
-	filterCriteriaJSON, err := json.Marshal(args[1])
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
+	filterCriteria, ok := args[1].(filters.FilterCriteria)
+	if !ok {
+		return nil, fmt.Errorf("invalid subscription")
 	}
-
-	filterCriteria := filters.FilterCriteria{}
-	if string(filterCriteriaJSON) != emptyFilterCriteria {
-		err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
-		if err != nil {
-			return nil, fmt.Errorf("could not unmarshal filter criteria from the following JSON: `%s`. Cause: %w", string(filterCriteriaJSON), err)
-		}
-	}
-
 	// If we do not override a nil block hash to an empty one, RLP decoding will fail on the enclave side.
 	if filterCriteria.BlockHash == nil {
 		filterCriteria.BlockHash = &gethcommon.Hash{}
@@ -235,7 +225,7 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 
 	// If there is no encrypted response then this is equivalent to nil response
 	if rawResult.EncUserResponse == nil || len(rawResult.EncUserResponse) == 0 {
-		return ErrNilResponse
+		return nil
 	}
 
 	// We decrypt the user response from the enclave response.
@@ -343,20 +333,4 @@ func IsSensitiveMethod(method string) bool {
 		}
 	}
 	return false
-}
-
-func assertResultIsPointer(result interface{}) {
-	// result MUST be an initialized pointer else call won't be able to return it
-	if result != nil {
-		// todo: replace these panics with an error for invalid usage (same behaviour as json.Unmarshal())
-		if reflect.ValueOf(result).Kind() != reflect.Ptr {
-			// we panic if result is not a pointer, this is a coding mistake and we want to fail fast during development
-			panic("result MUST be a pointer else Call cannot populate it")
-		}
-		if reflect.ValueOf(result).IsNil() {
-			// we panic if result is a nil pointer, cannot unmarshal json to it. Pointer must be initialized.
-			// if you see this then the calling code probably used: `var resObj *ResType` instead of: `var resObj ResType`
-			panic("result pointer must be initialized else Call cannot populate it")
-		}
-	}
 }

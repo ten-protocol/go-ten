@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -23,7 +25,6 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ten-protocol/go-ten/go/rpc"
 )
 
 var _awaitReceiptPollingInterval = 200 * time.Millisecond
@@ -49,8 +50,7 @@ func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash g
 	var err error
 	err = retry.Do(func() error {
 		receipt, err = client.TransactionReceipt(ctx, txHash)
-		if err != nil && !errors.Is(err, rpc.ErrNilResponse) {
-			// we only retry for a nil "not found" response. This is a different error, so we bail out of the retry loop
+		if err != nil && !errors.Is(err, ethereum.NotFound) {
 			return retry.FailFast(err)
 		}
 		return err
