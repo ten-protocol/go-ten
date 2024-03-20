@@ -80,11 +80,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		},
 	})
 
-	// rpcServer.
 	return NewWalletExtensionContainer(
-		// hostRPCBindAddrWS,
-		// walletExt,
-		// databaseStorage,
 		stopControl,
 		rpcServer,
 		logger,
