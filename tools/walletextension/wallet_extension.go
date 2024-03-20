@@ -165,22 +165,17 @@ func (w *WalletExtension) ProxyEthRequest(request *common.RPCRequest, conn userc
 
 	err = selectedAccountManager.ProxyRequest(request, &rpcResp, conn)
 	if err != nil {
-		if errors.Is(err, rpc.ErrNilResponse) {
-			// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
-			response[common.JSONKeyResult] = nil
-			requestEndTime := time.Now()
-			duration := requestEndTime.Sub(requestStartTime)
-			w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, response, duration.Milliseconds()))
-			return response, nil
-		}
 		return nil, err
 	}
 
 	response[common.JSONKeyResult] = rpcResp
 
-	// todo (@ziga) - fix this upstream on the decode
-	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
-	adjustStateRoot(rpcResp, response)
+	if rpcResp != nil {
+		// todo (@ziga) - fix this upstream on the decode
+		// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
+		adjustStateRoot(rpcResp, response)
+	}
+
 	requestEndTime := time.Now()
 	duration := requestEndTime.Sub(requestStartTime)
 	w.fileLogger.Info(fmt.Sprintf("Request method: %s, request params: %s, encryptionToken of sender: %s, response: %s, duration: %d ", request.Method, request.Params, hexUserID, response, duration.Milliseconds()))

@@ -47,7 +47,8 @@ func EstimateGasValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlo
 	}
 
 	builder.From = callMsg.From
-	builder.Param = &CallParamsWithBlock{callMsg, blockNumber}
+	// todo
+	builder.Param = &CallParamsWithBlock{callMsg, blockNumber.BlockNumber}
 	return nil
 }
 
