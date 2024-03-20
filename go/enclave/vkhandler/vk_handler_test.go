@@ -52,7 +52,7 @@ func TestCheckSignature(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	PersonalSignMessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0], viewingkey.PersonalSign, true)
+	PersonalSignMessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign, true)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -87,11 +87,11 @@ func TestVerifyViewingKey(t *testing.T) {
 	// Generate all message types and create map with the corresponding signature type
 	// Test EIP712 message format
 
-	EIP712MessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0], viewingkey.EIP712Signature, true)
+	EIP712MessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.EIP712Signature, true)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	PersonalSignMessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignMessageSupportedVersions[0], viewingkey.PersonalSign, true)
+	PersonalSignMessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign, true)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

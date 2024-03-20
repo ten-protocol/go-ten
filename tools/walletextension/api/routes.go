@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+
 	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ten-protocol/go-ten/go/common/httputil"
@@ -303,7 +305,7 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, conn
 	var reqJSONMap map[string]string
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not unmarshal address request - %w", err))
+		handleError(conn, walletExt.Logger(), fmt.Errorf("could not unmarshal request body - %w", err))
 		return
 	}
 
@@ -321,14 +323,14 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, conn
 		return
 	}
 
-	// get optional type of the message that was signed
+	// get an optional type of the message that was signed
 	messageTypeValue := common.DefaultGatewayAuthMessageType
 	if typeFromRequest, ok := reqJSONMap[common.JSONKeyType]; ok && typeFromRequest != "" {
 		messageTypeValue = typeFromRequest
 	}
 
-	// check if message type is valid
-	messageType, ok := common.SignatureTypeMap[messageTypeValue]
+	// check if a message type is valid
+	messageType, ok := viewingkey.SignatureTypeMap[messageTypeValue]
 	if !ok {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid message type: %s", messageTypeValue))
 	}
@@ -495,7 +497,7 @@ func versionRequestHandler(walletExt *walletextension.WalletExtension, userConn 
 	}
 }
 
-// ethRequestHandler parses the user eth request, passes it on to the WE to proxy it and processes the response
+// getMessageRequestHandler handles request to /get-message endpoint.
 func getMessageRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
 	// read the request
 	body, err := conn.ReadRequest()
@@ -538,7 +540,7 @@ func getMessageRequestHandler(walletExt *walletextension.WalletExtension, conn u
 		}
 	}
 
-	message, err := walletExt.GetMessage(encryptionToken.(string), formatsSlice)
+	message, err := walletExt.GenerateUserMessageToSign(encryptionToken.(string), formatsSlice)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
 		walletExt.Logger().Error("error getting message", log.ErrKey, err)
@@ -552,12 +554,8 @@ func getMessageRequestHandler(walletExt *walletextension.WalletExtension, conn u
 	}
 
 	// get string representation of the message format
-	messageFormat := common.GetBestFormat(formatsSlice)
-	messageFormatString, err := common.GetSignatureTypeString(messageFormat)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
-		return
-	}
+	messageFormat := viewingkey.GetBestFormat(formatsSlice)
+	messageFormatString := viewingkey.GetSignatureTypeString(messageFormat)
 
 	response := JSONResponse{
 		Message: message,

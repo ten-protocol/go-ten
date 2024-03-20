@@ -99,23 +99,3 @@ func NewFileLogger() gethlog.Logger {
 
 	return logger
 }
-
-// GetBestFormat returns the best format for a message based on available formats that are supported by the user
-func GetBestFormat(formatsSlice []string) viewingkey.SignatureType {
-	// If "Personal" is the only format available, choose it
-	if len(formatsSlice) == 1 && formatsSlice[0] == "Personal" {
-		return viewingkey.PersonalSign
-	}
-
-	// otherwise, choose EIP712
-	return viewingkey.EIP712Signature
-}
-
-func GetSignatureTypeString(expectedSignatureType viewingkey.SignatureType) (string, error) {
-	for key, value := range SignatureTypeMap {
-		if value == expectedSignatureType {
-			return key, nil
-		}
-	}
-	return "", fmt.Errorf("unable to find signature type")
-}

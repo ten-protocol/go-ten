@@ -91,7 +91,7 @@ func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 
 func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	messageHash, err := viewingkey.GenerateMessage(string(o.userID), integration.TenChainID, viewingkey.PersonalSignMessageSupportedVersions[0], viewingkey.PersonalSign, true)
+	messageHash, err := viewingkey.GenerateMessage(string(o.userID), integration.TenChainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign, true)
 	if err != nil {
 		return err
 	}

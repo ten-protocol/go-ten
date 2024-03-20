@@ -2,8 +2,6 @@ package common
 
 import (
 	"time"
-
-	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 )
 
 const (
@@ -60,8 +58,3 @@ const (
 )
 
 var ReaderHeadTimeout = 10 * time.Second
-
-var SignatureTypeMap = map[string]viewingkey.SignatureType{
-	"EIP712":   viewingkey.EIP712Signature,
-	"Personal": viewingkey.PersonalSign,
-}
