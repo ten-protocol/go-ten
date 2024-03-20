@@ -53,7 +53,6 @@ type InMemNodeOperator struct {
 	enclave           *enclavecontainer.EnclaveContainer
 	l1Wallet          wallet.Wallet
 	enclaveDBFilepath string
-	hostDBFilepath    string
 }
 
 func (n *InMemNodeOperator) StopHost() error {
