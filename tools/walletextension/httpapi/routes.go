@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 	"github.com/ten-protocol/go-ten/tools/walletextension/rpcapi"
 
@@ -36,6 +37,10 @@ func NewHTTPRoutes(walletExt *rpcapi.Services) []node.Route {
 		{
 			Name: common.APIVersion1 + common.PathJoin,
 			Func: httpHandler(walletExt, joinRequestHandler),
+		},
+		{
+			Name: common.APIVersion1 + common.PathGetMessage,
+			Func: httpHandler(walletExt, getMessageRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathAuthenticate,
@@ -191,7 +196,7 @@ func authenticateRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 	var reqJSONMap map[string]string
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not unmarshal address request - %w", err))
+		handleError(conn, walletExt.Logger(), fmt.Errorf("could not unmarshal request body - %w", err))
 		return
 	}
 
@@ -209,14 +214,14 @@ func authenticateRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 		return
 	}
 
-	// get optional type of the message that was signed
+	// get an optional type of the message that was signed
 	messageTypeValue := common.DefaultGatewayAuthMessageType
 	if typeFromRequest, ok := reqJSONMap[common.JSONKeyType]; ok && typeFromRequest != "" {
 		messageTypeValue = typeFromRequest
 	}
 
-	// check if message type is valid
-	messageType, ok := common.SignatureTypeMap[messageTypeValue]
+	// check if a message type is valid
+	messageType, ok := viewingkey.SignatureTypeMap[messageTypeValue]
 	if !ok {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid message type: %s", messageTypeValue))
 	}
@@ -377,6 +382,83 @@ func versionRequestHandler(walletExt *rpcapi.Services, userConn UserConn) {
 	}
 
 	err = userConn.WriteResponse([]byte(walletExt.Version()))
+	if err != nil {
+		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+	}
+}
+
+// getMessageRequestHandler handles request to /get-message endpoint.
+func getMessageRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
+	// read the request
+	body, err := conn.ReadRequest()
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		return
+	}
+
+	// read body of the request
+	var reqJSONMap map[string]interface{}
+	err = json.Unmarshal(body, &reqJSONMap)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("could not unmarshal address request - %w", err))
+		return
+	}
+
+	// get address from the request
+	encryptionToken, ok := reqJSONMap[common.JSONKeyEncryptionToken]
+	if !ok || len(encryptionToken.(string)) != common.MessageUserIDLen {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("unable to read encryptionToken field from the request or it is not of correct length"))
+		return
+	}
+
+	// get formats from the request, if present
+	var formatsSlice []string
+	if formatsInterface, ok := reqJSONMap[common.JSONKeyFormats]; ok {
+		formats, ok := formatsInterface.([]interface{})
+		if !ok {
+			handleError(conn, walletExt.Logger(), fmt.Errorf("formats field is not an array"))
+			return
+		}
+
+		for _, f := range formats {
+			formatStr, ok := f.(string)
+			if !ok {
+				handleError(conn, walletExt.Logger(), fmt.Errorf("format value is not a string"))
+				return
+			}
+			formatsSlice = append(formatsSlice, formatStr)
+		}
+	}
+
+	message, err := walletExt.GenerateUserMessageToSign(encryptionToken.(string), formatsSlice)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
+		walletExt.Logger().Error("error getting message", log.ErrKey, err)
+		return
+	}
+
+	// create the response structure
+	type JSONResponse struct {
+		Message string `json:"message"`
+		Type    string `json:"type"`
+	}
+
+	// get string representation of the message format
+	messageFormat := viewingkey.GetBestFormat(formatsSlice)
+	messageFormatString := viewingkey.GetSignatureTypeString(messageFormat)
+
+	response := JSONResponse{
+		Message: message,
+		Type:    messageFormatString,
+	}
+
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		walletExt.Logger().Error("error marshaling JSON response", log.ErrKey, err)
+		return
+	}
+
+	err = conn.WriteResponse(responseBytes)
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}

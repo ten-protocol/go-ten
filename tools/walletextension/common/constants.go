@@ -2,8 +2,6 @@ package common
 
 import (
 	"time"
-
-	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 )
 
 const (
@@ -25,6 +23,7 @@ const (
 	PathGenerateViewingKey              = "/generateviewingkey/"
 	PathSubmitViewingKey                = "/submitviewingkey/"
 	PathJoin                            = "/join/"
+	PathGetMessage                      = "/getmessage/"
 	PathAuthenticate                    = "/authenticate/"
 	PathQuery                           = "/query/"
 	PathRevoke                          = "/revoke/"
@@ -46,8 +45,3 @@ const (
 )
 
 var ReaderHeadTimeout = 10 * time.Second
-
-var SignatureTypeMap = map[string]viewingkey.SignatureType{
-	"EIP712":   viewingkey.EIP712Signature,
-	"Personal": viewingkey.PersonalSign,
-}
