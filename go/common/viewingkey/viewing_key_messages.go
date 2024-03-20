@@ -1,7 +1,6 @@
 package viewingkey
 
 import (
-	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -10,9 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
-	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
 const (
@@ -71,43 +68,15 @@ func (e EIP712MessageGenerator) generateMessage(encryptionToken string, chainID 
 	if len(encryptionToken) != UserIDHexLength {
 		return nil, fmt.Errorf("userID hex length must be %d, received %d", UserIDHexLength, len(encryptionToken))
 	}
-	encryptionToken = "0x" + encryptionToken
+	EIP712TypedData := createTypedDataForEIP712Message(encryptionToken, chainID)
 
-	domain := apitypes.TypedDataDomain{
-		Name:    EIP712DomainNameValue,
-		Version: EIP712DomainVersionValue,
-		ChainId: (*math.HexOrDecimal256)(big.NewInt(chainID)),
-	}
-
-	message := map[string]interface{}{
-		EIP712EncryptionToken: encryptionToken,
-	}
-
-	types := apitypes.Types{
-		EIP712Domain: {
-			{Name: EIP712DomainName, Type: "string"},
-			{Name: EIP712DomainVersion, Type: "string"},
-			{Name: EIP712DomainChainID, Type: "uint256"},
-		},
-		EIP712Type: {
-			{Name: EIP712EncryptionToken, Type: "address"},
-		},
-	}
-
-	newTypeElement := apitypes.TypedData{
-		Types:       types,
-		PrimaryType: EIP712Type,
-		Domain:      domain,
-		Message:     message,
-	}
-
-	rawData, err := getBytesFromTypedData(newTypeElement)
+	rawData, err := getBytesFromTypedData(EIP712TypedData)
 	if err != nil {
 		return nil, err
 	}
 
 	// add the JSON message to the list of messages
-	jsonData, err := json.Marshal(newTypeElement)
+	jsonData, err := json.Marshal(EIP712TypedData)
 	if err != nil {
 		return nil, err
 	}
@@ -119,13 +88,56 @@ func (e EIP712MessageGenerator) generateMessage(encryptionToken string, chainID 
 }
 
 // GenerateMessage generates a message for the given encryptionToken, chainID, version and signatureType
-// hashed parameter is used to determine if the returned message should be hashed or returned in plain text
 func GenerateMessage(encryptionToken string, chainID int64, version int, signatureType SignatureType, hashed bool) ([]byte, error) {
 	generator, exists := messageGenerators[signatureType]
 	if !exists {
 		return nil, fmt.Errorf("unsupported signature type")
 	}
 	return generator.generateMessage(encryptionToken, chainID, version, hashed)
+}
+
+// MessageHash is an interface for getting the hash of the message
+type MessageHash interface {
+	getMessageHash(message []byte) []byte
+}
+
+type (
+	PersonalMessageHash struct{}
+	EIP712MessageHash   struct{}
+)
+
+var messageHash = map[SignatureType]MessageHash{
+	PersonalSign:    PersonalMessageHash{},
+	EIP712Signature: EIP712MessageHash{},
+}
+
+// getMessageHash returns the hash for the personal message
+func (p PersonalMessageHash) getMessageHash(message []byte) []byte {
+	return accounts.TextHash(message)
+}
+
+// getMessageHash returns the hash for the EIP712 message
+func (E EIP712MessageHash) getMessageHash(message []byte) []byte {
+	var EIP712TypedData apitypes.TypedData
+	err := json.Unmarshal(message, &EIP712TypedData)
+	if err != nil {
+		return nil
+	}
+
+	rawData, err := getBytesFromTypedData(EIP712TypedData)
+	if err != nil {
+		return nil
+	}
+	return crypto.Keccak256(rawData)
+}
+
+// GetMessageHash returns the hash of the message based on the signature type
+func GetMessageHash(message []byte, signatureType SignatureType) ([]byte, error) {
+	hashFunction, exists := messageHash[signatureType]
+	if !exists {
+		return nil, fmt.Errorf("unsupported signature type")
+	}
+	return hashFunction.getMessageHash(message), nil
 }
 
 // GenerateSignMessage creates the message to be signed
@@ -153,72 +165,38 @@ func getBytesFromTypedData(typedData apitypes.TypedData) ([]byte, error) {
 	return rawData, nil
 }
 
-// GenerateViewingKeyForWallet takes an account wallet, generates a viewing key and signs the key with the acc's private key
-// uses the same method of signature handling as Metamask/geth
-// TODO @Ziga - update this method to use the new EIP-712 signature format / personal sign after the removal of the legacy format
-func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
-	// generate an ECDSA key pair to encrypt sensitive communications with the obscuro enclave
-	vk, err := crypto.GenerateKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate viewing key for RPC client: %w", err)
+// createTypedDataForEIP712Message creates typed data for EIP712 message
+func createTypedDataForEIP712Message(encryptionToken string, chainID int64) apitypes.TypedData {
+	encryptionToken = "0x" + encryptionToken
+
+	domain := apitypes.TypedDataDomain{
+		Name:    EIP712DomainNameValue,
+		Version: EIP712DomainVersionValue,
+		ChainId: (*math.HexOrDecimal256)(big.NewInt(chainID)),
 	}
 
-	// get key in ECIES format
-	viewingPrivateKeyECIES := ecies.ImportECDSA(vk)
-
-	// encode public key as bytes
-	viewingPubKeyBytes := crypto.CompressPubkey(&vk.PublicKey)
-
-	// sign public key bytes with the wallet's private key
-	signature, err := mmSignViewingKey(viewingPubKeyBytes, wal.PrivateKey())
-	if err != nil {
-		return nil, err
+	message := map[string]interface{}{
+		EIP712EncryptionToken: encryptionToken,
 	}
 
-	accAddress := wal.Address()
-	return &ViewingKey{
-		Account:                 &accAddress,
-		PrivateKey:              viewingPrivateKeyECIES,
-		PublicKey:               viewingPubKeyBytes,
-		SignatureWithAccountKey: signature,
-		SignatureType:           Legacy,
-	}, nil
-}
-
-// mmSignViewingKey takes a public key bytes as hex and the private key for a wallet, it simulates the back-and-forth to
-// MetaMask and returns the signature bytes to register with the enclave
-func mmSignViewingKey(viewingPubKeyBytes []byte, signerKey *ecdsa.PrivateKey) ([]byte, error) {
-	signature, err := Sign(signerKey, viewingPubKeyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign viewing key: %w", err)
+	types := apitypes.Types{
+		EIP712Domain: {
+			{Name: EIP712DomainName, Type: "string"},
+			{Name: EIP712DomainVersion, Type: "string"},
+			{Name: EIP712DomainChainID, Type: "uint256"},
+		},
+		EIP712Type: {
+			{Name: EIP712EncryptionToken, Type: "address"},
+		},
 	}
 
-	// We have to transform the V from 0/1 to 27/28, and add the leading "0".
-	signature[64] += 27
-	signatureWithLeadBytes := append([]byte("0"), signature...)
-
-	// this string encoded signature is what the wallet extension would receive after it is signed by metamask
-	sigStr := hex.EncodeToString(signatureWithLeadBytes)
-	// and then we extract the signature bytes in the same way as the wallet extension
-	outputSig, err := hex.DecodeString(sigStr[2:])
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode signature string: %w", err)
+	typedData := apitypes.TypedData{
+		Types:       types,
+		PrimaryType: EIP712Type,
+		Domain:      domain,
+		Message:     message,
 	}
-	// This same change is made in geth internals, for legacy reasons to be able to recover the address:
-	//	https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-	outputSig[64] -= 27
-
-	return outputSig, nil
-}
-
-// Sign takes a users Private key and signs the public viewingKey hex
-func Sign(userPrivKey *ecdsa.PrivateKey, vkPubKey []byte) ([]byte, error) {
-	msgToSign := GenerateSignMessage(vkPubKey)
-	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), userPrivKey)
-	if err != nil {
-		return nil, fmt.Errorf("unable to sign messages - %w", err)
-	}
-	return signature, nil
+	return typedData
 }
 
 // CalculateUserIDHex CalculateUserID calculates userID from a public key
