@@ -2,7 +2,6 @@ package devnetwork
 
 import (
 	"fmt"
-
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -127,9 +126,8 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		ObscuroChainID:            integration.TenChainID,
 		L1StartHash:               n.l1Data.ObscuroStartBlock,
 		SequencerID:               n.config.SequencerID,
-		UseInMemoryDB:             false,
+		UseInMemoryDB:             true,
 		// FIXME
-		MariaDBHost:           n.hostDBFilepath,
 		DebugNamespaceEnabled: true,
 		BatchInterval:         n.config.BatchInterval,
 		RollupInterval:        n.config.RollupInterval,
@@ -240,11 +238,6 @@ func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common
 	if err != nil {
 		panic("failed to create temp sqlite db path")
 	}
-	//mariaDBHost, err := os.MkdirTemp("", "mariaDB_*")
-	//if err != nil {
-	//	panic("failed to create temp mariaDBHost")
-	//}
-
 	l1Nonce, err := l1Client.Nonce(l1Wallet.Address())
 	if err != nil {
 		panic("failed to get l1 nonce")
@@ -260,6 +253,5 @@ func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common
 		l1Wallet:          l1Wallet,
 		logger:            logger,
 		enclaveDBFilepath: sqliteDBPath,
-		hostDBFilepath:    sqliteDBPath,
 	}
 }

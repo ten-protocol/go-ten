@@ -110,8 +110,6 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithDebugNamespaceEnabled(true),
 				node.WithL1BlockTime(simParams.AvgBlockDuration),
 				node.WithObscuroGenesis(genesis),
-				// For local testing only
-				// node.WithMariaDBHostDB("root:yourpassword@tcp(localhost:3306)/host_mariadb"),
 			),
 		)
 

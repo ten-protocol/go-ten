@@ -132,10 +132,7 @@ func createInMemoryNode(t *testing.T) (node.Node, gethcommon.Address) {
 		node.WithGenesis(true),
 		node.WithProfiler(true),
 		node.WithL1BlockTime(1*time.Second),
-		node.WithMariaDBHostDB("root:1866@tcp(localhost:3306)/host_mariadb"),
 	)
-
-	println("NODE CONFIG createInMemoryNode: ", nodeCfg.ToHostConfig().MariaDBHost)
 
 	return NewInMemNode(nodeCfg), hostAddress
 }

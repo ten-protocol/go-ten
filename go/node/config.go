@@ -284,12 +284,6 @@ func WithInMemoryHostDB(b bool) Option {
 	}
 }
 
-func WithMariaDBHostDB(s string) Option {
-	return func(c *Config) {
-		c.mariaDB = s
-	}
-}
-
 func WithDebugNamespaceEnabled(b bool) Option {
 	return func(c *Config) {
 		c.debugNamespaceEnabled = b
