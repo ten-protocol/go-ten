@@ -6,7 +6,6 @@ const (
 	StartPortEth2NetworkTests        = 10000
 	StartPortTenscanUnitTest         = 11000
 	StartPortNodeRunnerTest          = 12000
-	StartPortTenGatewayUnitTest      = 13000
 	StartPortSimulationGethInMem     = 14000
 	StartPortSimulationInMem         = 15000
 	StartPortSimulationFullNetwork   = 16000
@@ -17,6 +16,7 @@ const (
 	StartPortWalletExtensionUnitTest = 21000
 	StartPortFaucetUnitTest          = 22000
 	StartPortFaucetHTTPUnitTest      = 23000
+	StartPortTenGatewayUnitTest      = 24000
 
 	DefaultGethWSPortOffset         = 100
 	DefaultGethAUTHPortOffset       = 200
