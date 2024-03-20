@@ -170,14 +170,14 @@ func joinRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 	}
 
 	// generate new key-pair and store it in the database
-	hexUserID, err := walletExt.GenerateAndStoreNewUser()
+	userID, err := walletExt.GenerateAndStoreNewUser()
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal Error"))
 		walletExt.Logger().Error("error creating new user", log.ErrKey, err)
 	}
 
 	// write hex encoded userID in the response
-	err = conn.WriteResponse([]byte(hexUserID))
+	err = conn.WriteResponse([]byte(hexutils.BytesToHex(userID)))
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}

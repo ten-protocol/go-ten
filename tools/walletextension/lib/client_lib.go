@@ -42,7 +42,7 @@ func (o *TGLib) Join() error {
 	if err != nil || statusCode != 200 {
 		return fmt.Errorf(fmt.Sprintf("Failed to get userID. Status code: %d, err: %s", statusCode, err))
 	}
-	o.userID = userID
+	o.userID = hexutils.HexToBytes(string(userID))
 	return nil
 }
 
