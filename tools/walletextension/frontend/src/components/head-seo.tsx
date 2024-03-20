@@ -19,10 +19,10 @@ const HeadSeo = ({
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <meta name={siteMetadata.metaTitle} content={siteMetadata.companyName} />
       {/* Beagle Security */}
-      <meta
-        name="_vgeujvlkxz15hyr8vbuvqxnfmzlkm059"
-        signature="_vd3udx2g2hfn9zclob5cat43b94q7fyk"
-      ></meta>
+      {/*<meta*/}
+      {/*  name="_vgeujvlkxz15hyr8vbuvqxnfmzlkm059"*/}
+      {/*  signature="_vd3udx2g2hfn9zclob5cat43b94q7fyk"*/}
+      {/*></meta>*/}
       {/* twitter metadata */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:site" content={siteMetadata.twitterHandle} />
