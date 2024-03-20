@@ -10,7 +10,7 @@ The TG will be a [Confidential Web Service](https://medium.com/p/983a2a67fc08), 
 
 The current WE is designed to be used by a single user holding multiple addresses across potentially multiple wallets. 
 
-The TG must support mutiple users, each with multiple addresses. It can be seen as offering a WE per user.
+The TG must support multiple users, each with multiple addresses. It can be seen as offering a WE per user.
 
 The Ten node has no concept of "User". It only authenticates based on the "blockchain address". 
 It expects to be supplied with a signed viewing key per address, so that it can respond encrypted with that VK. 
@@ -190,14 +190,14 @@ After signing it will submit to the server
 
 ## Multitenancy
 
-The curent WE is single-tenant. It assumes that all registered blockchain addresses belong to the same user.
+The current WE is single-tenant. It assumes that all registered blockchain addresses belong to the same user.
 
 The TG will keep a many-to-one relationship between addresses and users. It will have multiple users, each with multiple addresses.
 
 Each request to the TG (except "/join") must have the "u" query parameter. 
 The first thing, the WE will lookup the encryption token and then operate in "Wallet Extension" mode, after loading all addresses.
 
-Note that the system considers the realm of an encryption token as completely independent. Multiple users could register the same addrss,
+Note that the system considers the realm of an encryption token as completely independent. Multiple users could register the same address,
 if they somehow control the spending key.
 It shouldn't matter since they have different encryption tokens
 

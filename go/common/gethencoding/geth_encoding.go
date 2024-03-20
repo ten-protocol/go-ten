@@ -133,7 +133,7 @@ func ExtractAddress(param interface{}) (*gethcommon.Address, error) {
 
 	paramStr, ok := param.(string)
 	if !ok {
-		return nil, fmt.Errorf("unexpectd address value")
+		return nil, fmt.Errorf("unexpected address value")
 	}
 
 	if len(strings.TrimSpace(paramStr)) == 0 {

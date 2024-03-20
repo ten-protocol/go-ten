@@ -102,7 +102,7 @@ This wrapper will then be gossiped to the other nodes accompanied by the signed 
 
 ##### Outstanding problems to solve
 
-Problem 1: a malicious or malfunctioning wallet extension could submit the same transction wrapped for multiple nodes.
+Problem 1: a malicious or malfunctioning wallet extension could submit the same transaction wrapped for multiple nodes.
 This is not a major problem because the incentives to do this are not large
 
 Problem 2: how to include the transactions in the rollup. 

@@ -214,7 +214,7 @@ When publishing a message on the Ten L2, storing the message will have a direct 
 
 **Assumption: Ten DAO** will vote and set the following properties:
 * `fixedMessageStoringCost` - this is the gas cost for storing the fixed-size properties of the message
-* `dynamicCostPerByte` - this is the gas cost per byte for storing the dinamically sized data - `bytes payload`, `bytes topic` 
+* `dynamicCostPerByte` - this is the gas cost per byte for storing the dynamically sized data - `bytes payload`, `bytes topic` 
 
 > **_NOTE:_** This whole section might change based on the outcome of the Ten fees & rewards design. It only outlines a potential solution.
 
