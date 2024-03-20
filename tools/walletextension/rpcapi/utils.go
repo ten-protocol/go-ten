@@ -123,7 +123,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 	return res, err
 }
 
-func getCandidateAccounts(user *GWUser, w *Services, cfg *ExecCfg) ([]*GWAccount, error) {
+func getCandidateAccounts(user *GWUser, _ *Services, cfg *ExecCfg) ([]*GWAccount, error) {
 	candidateAccts := make([]*GWAccount, 0)
 	// for users with multiple accounts determine a candidate account
 	switch {
@@ -131,29 +131,24 @@ func getCandidateAccounts(user *GWUser, w *Services, cfg *ExecCfg) ([]*GWAccount
 		acc := user.accounts[*cfg.account]
 		if acc != nil {
 			candidateAccts = append(candidateAccts, acc)
+			return candidateAccts, nil
 		}
 
 	case cfg.computeFromCallback != nil:
-		addr := cfg.computeFromCallback(user)
-		if addr == nil {
-			return nil, fmt.Errorf("invalid request")
-		}
-		acc := user.accounts[*addr]
-		if acc != nil {
-			candidateAccts = append(candidateAccts, acc)
-		} else if cfg.tryAll {
-			for _, acc := range user.accounts {
+		suggestedAddress := cfg.computeFromCallback(user)
+		if suggestedAddress != nil {
+			acc := user.accounts[*suggestedAddress]
+			if acc != nil {
 				candidateAccts = append(candidateAccts, acc)
 			}
+			return candidateAccts, nil
 		}
+	}
 
-	case cfg.tryAll, cfg.tryUntilAuthorised:
+	if cfg.tryAll || cfg.tryUntilAuthorised {
 		for _, acc := range user.accounts {
 			candidateAccts = append(candidateAccts, acc)
 		}
-
-	default:
-		return nil, fmt.Errorf("programming error. invalid owner detection strategy")
 	}
 
 	// when there is no matching address, some calls, like submitting a transactions are allowed to go through

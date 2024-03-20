@@ -3,6 +3,8 @@ package rpc
 import (
 	"fmt"
 
+	"github.com/status-im/keycard-go/hexutils"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -48,7 +50,7 @@ func GetBalanceExecute(builder *CallBuilder[BalanceReq, hexutil.Big], rpc *Encry
 
 	// authorise the call
 	if acctOwner.Hex() != builder.VK.AccountAddress.Hex() {
-		rpc.logger.Debug("Unauthorised call", "address", acctOwner, "vk", builder.VK.AccountAddress, "userId", builder.VK.UserID)
+		rpc.logger.Debug("Unauthorised call", "address", acctOwner, "vk", builder.VK.AccountAddress, "userId", hexutils.BytesToHex(builder.VK.UserID))
 		builder.Status = NotAuthorised
 		return nil
 	}
