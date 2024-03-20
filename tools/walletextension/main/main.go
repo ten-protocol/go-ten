@@ -45,6 +45,9 @@ func main() {
 		time.Sleep(time.Second)
 	}
 
+	// todo - temporary
+	config.LogPath = log.SysOut
+
 	// Sets up the log file.
 	if config.LogPath != log.SysOut {
 		_, err := os.Create(config.LogPath)

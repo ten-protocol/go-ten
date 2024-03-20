@@ -208,9 +208,7 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 		return err
 	}
 
-	requestEndTime := time.Now()
-	duration := requestEndTime.Sub(requestStartTime)
-	audit(w, "Storing new address for user: %s, address: %s, duration: %d ", hexutils.BytesToHex(userID), address, duration.Milliseconds())
+	audit(w, "Storing new address for user: %s, address: %s, duration: %d ", hexutils.BytesToHex(userID), address, time.Now().Sub(requestStartTime).Milliseconds())
 	return nil
 }
 
