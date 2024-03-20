@@ -23,11 +23,8 @@ import (
 )
 
 const (
-	gethDir             = "geth"
-	chainDataDir        = "chaindata"
-	chainDataAncientDir = "chaindata/ancient"
-	trieCacheDir        = "triecache"
-	ethashDir           = "ethash"
+	gethDir      = "geth"
+	chainDataDir = "chaindata"
 	// todo (#1471) - use a constant that makes sense outside of the simulation.
 	dataDirRoot = "../.build/simulations/gethDataDir"
 )

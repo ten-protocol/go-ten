@@ -1,6 +1,7 @@
 package ethadapter
 
 import (
+	"context"
 	"errors"
 	"math/big"
 
@@ -37,8 +38,8 @@ type EthClient interface {
 	CallContract(msg ethereum.CallMsg) ([]byte, error) // Runs the provided call message on the latest block.
 
 	// PrepareTransactionToSend updates the tx with from address, current nonce and current estimates for the gas and the gas price
-	PrepareTransactionToSend(txData types.TxData, from gethcommon.Address, nonce uint64) (types.TxData, error)
-	PrepareTransactionToRetry(txData types.TxData, from gethcommon.Address, nonce uint64, retries int) (types.TxData, error)
+	PrepareTransactionToSend(ctx context.Context, txData types.TxData, from gethcommon.Address) (types.TxData, error)
+	PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, retries int) (types.TxData, error)
 
 	FetchLastBatchSeqNo(address gethcommon.Address) (*big.Int, error)
 

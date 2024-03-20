@@ -63,7 +63,7 @@ func (s *setImportantContract) Run(ctx context.Context, network networktest.Netw
 	// !! Important note !!
 	// The ownerOnly check in the contract doesn't like the gas estimate in here, to test you may need to hardcode a
 	// the gas value when the estimate errors
-	tx, err := l1Client.PrepareTransactionToSend(txData, networkCfg.ManagementContractAddress, mcOwner.GetNonceAndIncrement())
+	tx, err := l1Client.PrepareTransactionToSend(ctx, txData, networkCfg.ManagementContractAddress)
 	if err != nil {
 		return ctx, errors.Wrap(err, "failed to prepare tx")
 	}

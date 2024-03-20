@@ -6,9 +6,9 @@ import (
 	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/vm"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 // ObscuroChain - the interface that provides the data access layer to the obscuro l2.
@@ -18,6 +18,7 @@ type ObscuroChain interface {
 	// For EOA - the actual address.
 	// For Contracts - the address of the deployer.
 	// Note - this might be subject to change if we implement a more flexible mechanism
+	// todo - support BlockNumberOrHash
 	AccountOwner(address gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, error)
 
 	// GetBalanceAtBlock - will return the balance of a specific address at the specific given block number (batch number).

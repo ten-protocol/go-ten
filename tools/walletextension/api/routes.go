@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
+  
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 
@@ -19,15 +20,9 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
-// Route defines the path plus handler for a given path
-type Route struct {
-	Name string
-	Func func(resp http.ResponseWriter, req *http.Request)
-}
-
 // NewHTTPRoutes returns the http specific routes
-func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
-	return []Route{
+func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []node.Route {
+	return []node.Route{
 		{
 			Name: common.APIVersion1 + common.PathRoot,
 			Func: httpHandler(walletExt, ethRequestHandler),
@@ -101,8 +96,8 @@ func httpRequestHandler(walletExt *walletextension.WalletExtension, resp http.Re
 }
 
 // NewWSRoutes returns the WS specific routes
-func NewWSRoutes(walletExt *walletextension.WalletExtension) []Route {
-	return []Route{
+func NewWSRoutes(walletExt *walletextension.WalletExtension) []node.Route {
+	return []node.Route{
 		{
 			Name: common.PathRoot,
 			Func: wsHandler(walletExt, ethRequestHandler),
@@ -476,7 +471,6 @@ func networkHealthRequestHandler(walletExt *walletextension.WalletExtension, use
 	}
 
 	err = userConn.WriteResponse(data)
-
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}

@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ten-protocol/go-ten/lib/gethfork/node"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/metrics"
@@ -17,9 +18,9 @@ import (
 	"github.com/ten-protocol/go-ten/go/host"
 	"github.com/ten-protocol/go-ten/go/host/p2p"
 	"github.com/ten-protocol/go-ten/go/host/rpc/clientapi"
-	"github.com/ten-protocol/go-ten/go/host/rpc/clientrpc"
 	"github.com/ten-protocol/go-ten/go/host/rpc/enclaverpc"
 	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	hostcommon "github.com/ten-protocol/go-ten/go/common/host"
@@ -40,7 +41,7 @@ type HostContainer struct {
 	host           hostcommon.Host
 	logger         gethlog.Logger
 	metricsService *metrics.Service
-	rpcServer      clientrpc.Server
+	rpcServer      node.Server
 }
 
 func (h *HostContainer) Start() error {
@@ -137,7 +138,13 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 
 	aggP2P := p2p.NewSocketP2PLayer(cfg, services, p2pLogger, metricsService.Registry())
 
-	rpcServer := clientrpc.NewServer(cfg, logger)
+	rpcServer := node.NewServer(&node.RPCConfig{
+		EnableHTTP: cfg.HasClientRPCHTTP,
+		HTTPPort:   int(cfg.ClientRPCPortHTTP),
+		EnableWs:   cfg.HasClientRPCWebsockets,
+		WsPort:     int(cfg.ClientRPCPortWS),
+		Host:       cfg.ClientRPCHost,
+	}, logger)
 
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.ManagementContractAddress, logger)
 	obscuroRelevantContracts := []gethcommon.Address{cfg.ManagementContractAddress, cfg.MessageBusAddress}
@@ -148,7 +155,7 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
-func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer clientrpc.Server, logger gethlog.Logger, metricsService *metrics.Service) *HostContainer {
+func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service) *HostContainer {
 	h := host.NewHost(cfg, services, p2p, l1Client, l1Repo, enclaveClient, hostWallet, contractLib, logger, metricsService.Registry())
 
 	hostContainer := &HostContainer{
@@ -162,45 +169,31 @@ func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p
 		rpcServer.RegisterAPIs([]rpc.API{
 			{
 				Namespace: APINamespaceObscuro,
-				Version:   APIVersion1,
 				Service:   clientapi.NewObscuroAPI(h),
-				Public:    true,
 			},
 			{
 				Namespace: APINamespaceEth,
-				Version:   APIVersion1,
 				Service:   clientapi.NewEthereumAPI(h, logger),
-				Public:    true,
 			},
 			{
 				Namespace: APINamespaceTenScan,
-				Version:   APIVersion1,
 				Service:   clientapi.NewTenScanAPI(h),
-				Public:    true,
 			},
 			{
 				Namespace: APINamespaceNetwork,
-				Version:   APIVersion1,
 				Service:   clientapi.NewNetworkAPI(h),
-				Public:    true,
 			},
 			{
 				Namespace: APINamespaceTest,
-				Version:   APIVersion1,
 				Service:   clientapi.NewTestAPI(hostContainer),
-				Public:    true,
 			},
 			{
 				Namespace: APINamespaceEth,
-				Version:   APIVersion1,
 				Service:   clientapi.NewFilterAPI(h, logger),
-				Public:    true,
 			},
 			{
 				Namespace: APINamespaceScan,
-				Version:   APIVersion1,
 				Service:   clientapi.NewScanAPI(h, logger),
-				Public:    true,
 			},
 		})
 
@@ -208,9 +201,7 @@ func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p
 			rpcServer.RegisterAPIs([]rpc.API{
 				{
 					Namespace: APINamespaceDebug,
-					Version:   APIVersion1,
 					Service:   clientapi.NewNetworkDebug(h),
-					Public:    true,
 				},
 			})
 		}

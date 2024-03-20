@@ -5,7 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
@@ -13,7 +13,7 @@ import (
 
 type BalanceReq struct {
 	Addr  *common.Address
-	Block *rpc.BlockNumber
+	Block *rpc.BlockNumberOrHash
 }
 
 func GetBalanceValidate(reqParams []any, builder *CallBuilder[BalanceReq, hexutil.Big], _ *EncryptionManager) error {
@@ -41,7 +41,7 @@ func GetBalanceValidate(reqParams []any, builder *CallBuilder[BalanceReq, hexuti
 }
 
 func GetBalanceExecute(builder *CallBuilder[BalanceReq, hexutil.Big], rpc *EncryptionManager) error {
-	acctOwner, err := rpc.chain.AccountOwner(*builder.Param.Addr, builder.Param.Block)
+	acctOwner, err := rpc.chain.AccountOwner(*builder.Param.Addr, builder.Param.Block.BlockNumber)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func GetBalanceExecute(builder *CallBuilder[BalanceReq, hexutil.Big], rpc *Encry
 		return nil
 	}
 
-	balance, err := rpc.chain.GetBalanceAtBlock(*builder.Param.Addr, builder.Param.Block)
+	balance, err := rpc.chain.GetBalanceAtBlock(*builder.Param.Addr, builder.Param.Block.BlockNumber)
 	if err != nil {
 		return fmt.Errorf("unable to get balance - %w", err)
 	}

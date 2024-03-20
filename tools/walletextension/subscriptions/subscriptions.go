@@ -7,13 +7,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/eth/filters"
+
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/rpc"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/userconn"
 )
@@ -33,12 +35,8 @@ func New(logger gethlog.Logger) *SubscriptionManager {
 
 // HandleNewSubscriptions subscribes to an event with all the clients provided.
 // Doing this is necessary because we have relevancy rule, and we want to subscribe sometimes with all clients to get all the events
-func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req *wecommon.RPCRequest, resp *interface{}, userConn userconn.UserConn) error {
-	if len(req.Params) == 0 {
-		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
-	}
-
-	sm.logger.Info(fmt.Sprintf("Subscribing to event %s with %d clients", req.Params, len(clients)))
+func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, criteria filters.FilterCriteria, resp *interface{}, userConn userconn.UserConn) error {
+	sm.logger.Info(fmt.Sprintf("Subscribing to event %s with %d clients", criteria, len(clients)))
 
 	// create subscriptionID which will enable user to unsubscribe from all subscriptions
 	userSubscriptionID := gethrpc.NewID()
@@ -51,9 +49,9 @@ func (sm *SubscriptionManager) HandleNewSubscriptions(clients []rpc.Client, req 
 
 	// iterate over all clients and subscribe for each of them
 	for _, client := range clients {
-		subscription, err := client.Subscribe(context.Background(), resp, rpc.SubscribeNamespace, funnelMultipleAccountsChan, req.Params...)
+		subscription, err := client.Subscribe(context.Background(), resp, rpc.SubscribeNamespace, funnelMultipleAccountsChan, rpc.SubscriptionTypeLogs, criteria)
 		if err != nil {
-			return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
+			return fmt.Errorf("could not subscrbie for logs with params %v. Cause: %w", criteria, err)
 		}
 		sm.UpdateSubscriptionMapping(string(userSubscriptionID), subscription)
 

@@ -14,7 +14,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common"
 
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 // FilterAPI exposes a subset of Geth's PublicFilterAPI operations.
