@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/status-im/keycard-go/hexutils"
+
 	"github.com/ten-protocol/go-ten/integration"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -31,7 +33,7 @@ func NewTenGatewayLibrary(httpURL, wsURL string) *TGLib {
 }
 
 func (o *TGLib) UserID() string {
-	return string(o.userID)
+	return hexutils.BytesToHex(o.userID)
 }
 
 func (o *TGLib) Join() error {
@@ -46,7 +48,7 @@ func (o *TGLib) Join() error {
 
 func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	message, err := viewingkey.GenerateMessage(string(o.userID), integration.TenChainID, 1, viewingkey.EIP712Signature)
+	message, err := viewingkey.GenerateMessage(o.userID, integration.TenChainID, 1, viewingkey.EIP712Signature)
 	if err != nil {
 		return err
 	}
@@ -68,7 +70,7 @@ func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		http.MethodPost,
-		o.httpURL+"/v1/authenticate/?token="+string(o.userID),
+		o.httpURL+"/v1/authenticate/?token="+hexutils.BytesToHex(o.userID),
 		strings.NewReader(payload),
 	)
 	if err != nil {
@@ -96,7 +98,7 @@ func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 
 func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	message, err := viewingkey.GenerateMessage(string(o.userID), integration.TenChainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign)
+	message, err := viewingkey.GenerateMessage(o.userID, integration.TenChainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign)
 	if err != nil {
 		return err
 	}
@@ -118,7 +120,7 @@ func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommo
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		http.MethodPost,
-		o.httpURL+"/v1/authenticate/?token="+string(o.userID),
+		o.httpURL+"/v1/authenticate/?token="+hexutils.BytesToHex(o.userID),
 		strings.NewReader(payload),
 	)
 	if err != nil {
@@ -145,9 +147,9 @@ func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommo
 }
 
 func (o *TGLib) HTTP() string {
-	return fmt.Sprintf("%s/v1/?token=%s", o.httpURL, o.userID)
+	return fmt.Sprintf("%s/v1/?token=%s", o.httpURL, hexutils.BytesToHex(o.userID))
 }
 
 func (o *TGLib) WS() string {
-	return fmt.Sprintf("%s/v1/?token=%s", o.wsURL, o.userID)
+	return fmt.Sprintf("%s/v1/?token=%s", o.wsURL, hexutils.BytesToHex(o.userID))
 }

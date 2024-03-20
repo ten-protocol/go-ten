@@ -76,7 +76,7 @@ type BatchElem struct {
 
 // Client represents a connection to an RPC server.
 type Client struct {
-	UserID   string
+	UserID   []byte
 	idgen    func() ID // for subscriptions
 	isHTTP   bool      // connection type: http, ws or ipc
 	services *serviceRegistry

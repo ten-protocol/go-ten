@@ -244,6 +244,7 @@ func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.Transact
 		},
 		// is this a security risk?
 		useDefaultUser: true,
+		tryAll:         true,
 	}, "eth_estimateGas", args, blockNrOrHash, overrides)
 	if resp == nil {
 		return 0, err

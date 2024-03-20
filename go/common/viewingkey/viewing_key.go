@@ -92,8 +92,8 @@ func mmSignViewingKey(viewingPubKeyBytes []byte, signerKey *ecdsa.PrivateKey) ([
 
 // Sign takes a users Private key and signs the public viewingKey hex
 func Sign(userPrivKey *ecdsa.PrivateKey, vkPubKey []byte) ([]byte, error) {
-	msgToSign := GenerateSignMessage(vkPubKey)
-	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), userPrivKey)
+	msgToSign := GenerateLegacySignMessage(vkPubKey)
+	signature, err := crypto.Sign(accounts.TextHash(msgToSign), userPrivKey)
 	if err != nil {
 		return nil, fmt.Errorf("unable to sign messages - %w", err)
 	}

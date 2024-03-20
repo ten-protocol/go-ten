@@ -1,7 +1,6 @@
 package common
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -32,11 +31,6 @@ func BytesToPrivateKey(keyBytes []byte) (*ecies.PrivateKey, error) {
 
 	eciesPrivateKey := ecies.ImportECDSA(ecdsaPrivateKey)
 	return eciesPrivateKey, nil
-}
-
-// GetUserIDbyte converts userID from string to correct byte format
-func GetUserIDbyte(userID string) ([]byte, error) {
-	return hex.DecodeString(userID)
 }
 
 func CreateEncClient(

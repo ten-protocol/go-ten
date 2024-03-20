@@ -1,20 +1,13 @@
 package common
 
-import (
-	"time"
-)
-
 const (
 	Localhost = "127.0.0.1"
 
-	JSONKeyAddress    = "address"
-	JSONKeyID         = "id"
-	JSONKeyMethod     = "method"
-	JSONKeyParams     = "params"
-	JSONKeyResult     = "result"
-	JSONKeyRPCVersion = "jsonrpc"
-	JSONKeySignature  = "signature"
-	JSONKeyType       = "type"
+	JSONKeyAddress         = "address"
+	JSONKeySignature       = "signature"
+	JSONKeyType            = "type"
+	JSONKeyEncryptionToken = "encryptionToken"
+	JSONKeyFormats         = "formats"
 )
 
 const (
@@ -43,5 +36,3 @@ const (
 	DeduplicationBufferSize             = 20
 	DefaultGatewayAuthMessageType       = "EIP712"
 )
-
-var ReaderHeadTimeout = 10 * time.Second

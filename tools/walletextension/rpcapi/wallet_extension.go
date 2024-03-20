@@ -3,10 +3,11 @@ package rpcapi
 import (
 	"bytes"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"math/big"
 	"time"
+
+	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ten-protocol/go-ten/go/wallet"
 
@@ -166,14 +167,14 @@ func (w *Services) SubmitViewingKey(address gethcommon.Address, signature []byte
 }
 
 // GenerateAndStoreNewUser generates new key-pair and userID, stores it in the database and returns hex encoded userID and error
-func (w *Services) GenerateAndStoreNewUser() (string, error) {
+func (w *Services) GenerateAndStoreNewUser() ([]byte, error) {
 	requestStartTime := time.Now()
 	// generate new key-pair
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
 	if err != nil {
 		w.Logger().Error(fmt.Sprintf("could not generate new keypair: %s", err))
-		return "", err
+		return nil, err
 	}
 
 	// create UserID and store it in the database with the private key
@@ -181,54 +182,41 @@ func (w *Services) GenerateAndStoreNewUser() (string, error) {
 	err = w.Storage.AddUser(userID, crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
 	if err != nil {
 		w.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))
-		return "", err
+		return nil, err
 	}
-
-	hexUserID := hex.EncodeToString(userID)
 
 	requestEndTime := time.Now()
 	duration := requestEndTime.Sub(requestStartTime)
-	audit(w, "Storing new userID: %s, duration: %d ", hexUserID, duration.Milliseconds())
-	return hexUserID, nil
+	audit(w, "Storing new userID: %s, duration: %d ", hexutils.BytesToHex(userID), duration.Milliseconds())
+	return userID, nil
 }
 
 // AddAddressToUser checks if a message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
-func (w *Services) AddAddressToUser(hexUserID string, address string, signature []byte, signatureType viewingkey.SignatureType) error {
+func (w *Services) AddAddressToUser(userID []byte, address string, signature []byte, signatureType viewingkey.SignatureType) error {
 	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
 	// check if a message was signed by the correct address and if the signature is valid
-	_, err := viewingkey.CheckSignature(hexUserID, signature, int64(w.Config.TenChainID), signatureType)
+	_, err := viewingkey.CheckSignature(userID, signature, int64(w.Config.TenChainID), signatureType)
 	if err != nil {
 		return fmt.Errorf("signature is not valid: %w", err)
 	}
 
 	// register the account for that viewing key
-	userIDBytes, err := common.GetUserIDbyte(hexUserID)
+	err = w.Storage.AddAccount(userID, addressFromMessage.Bytes(), signature, signatureType)
 	if err != nil {
-		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID[2:], err).Error())
-		return errors.New("error decoding userID. It should be in hex format")
-	}
-	err = w.Storage.AddAccount(userIDBytes, addressFromMessage.Bytes(), signature, signatureType)
-	if err != nil {
-		w.Logger().Error(fmt.Errorf("error while storing account (%s) for user (%s): %w", addressFromMessage.Hex(), hexUserID, err).Error())
+		w.Logger().Error(fmt.Errorf("error while storing account (%s) for user (%s): %w", addressFromMessage.Hex(), userID, err).Error())
 		return err
 	}
 
 	requestEndTime := time.Now()
 	duration := requestEndTime.Sub(requestStartTime)
-	audit(w, "Storing new address for user: %s, address: %s, duration: %d ", hexUserID, address, duration.Milliseconds())
+	audit(w, "Storing new address for user: %s, address: %s, duration: %d ", hexutils.BytesToHex(userID), address, duration.Milliseconds())
 	return nil
 }
 
 // UserHasAccount checks if provided account exist in the database for given userID
-func (w *Services) UserHasAccount(hexUserID string, address string) (bool, error) {
-	audit(w, "Checking if user has account: %s, address: %s", hexUserID, address)
-	userIDBytes, err := common.GetUserIDbyte(hexUserID)
-	if err != nil {
-		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID[2:], err).Error())
-		return false, err
-	}
-
+func (w *Services) UserHasAccount(userID []byte, address string) (bool, error) {
+	audit(w, "Checking if user has account: %s, address: %s", hexutils.BytesToHex(userID), address)
 	addressBytes, err := hex.DecodeString(address[2:]) // remove 0x prefix from address
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", address[2:], err).Error())
@@ -237,9 +225,9 @@ func (w *Services) UserHasAccount(hexUserID string, address string) (bool, error
 
 	// todo - this can be optimised and done in the database if we will have users with large number of accounts
 	// get all the accounts for the selected user
-	accounts, err := w.Storage.GetAccounts(userIDBytes)
+	accounts, err := w.Storage.GetAccounts(userID)
 	if err != nil {
-		w.Logger().Error(fmt.Errorf("error getting accounts for user (%s), %w", hexUserID, err).Error())
+		w.Logger().Error(fmt.Errorf("error getting accounts for user (%s), %w", userID, err).Error())
 		return false, err
 	}
 
@@ -254,35 +242,24 @@ func (w *Services) UserHasAccount(hexUserID string, address string) (bool, error
 }
 
 // DeleteUser deletes user and accounts associated with user from the database for given userID
-func (w *Services) DeleteUser(hexUserID string) error {
-	audit(w, "Deleting user: %s", hexUserID)
-	userIDBytes, err := common.GetUserIDbyte(hexUserID)
-	if err != nil {
-		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID, err).Error())
-		return err
-	}
+func (w *Services) DeleteUser(userID []byte) error {
+	audit(w, "Deleting user: %s", hexutils.BytesToHex(userID))
 
-	err = w.Storage.DeleteUser(userIDBytes)
+	err := w.Storage.DeleteUser(userID)
 	if err != nil {
-		w.Logger().Error(fmt.Errorf("error deleting user (%s), %w", hexUserID, err).Error())
+		w.Logger().Error(fmt.Errorf("error deleting user (%s), %w", userID, err).Error())
 		return err
 	}
 
 	return nil
 }
 
-func (w *Services) UserExists(hexUserID string) bool {
-	audit(w, "Checking if user exists: %s", hexUserID)
-	userIDBytes, err := common.GetUserIDbyte(hexUserID)
-	if err != nil {
-		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID, err).Error())
-		return false
-	}
-
+func (w *Services) UserExists(userID []byte) bool {
+	audit(w, "Checking if user exists: %s", userID)
 	// Check if user exists and don't log error if user doesn't exist, because we expect this to happen in case of
 	// user revoking encryption token or using different testnet.
 	// todo add a counter here in the future
-	key, err := w.Storage.GetUserPrivateKey(userIDBytes)
+	key, err := w.Storage.GetUserPrivateKey(userID)
 	if err != nil {
 		return false
 	}
@@ -300,4 +277,20 @@ func (w *Services) GetTenNodeHealthStatus() (bool, error) {
 
 func (w *Services) UnauthenticatedClient() (rpc.Client, error) {
 	return rpc.NewNetworkClient(w.HostAddrHTTP)
+}
+
+func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlice []string) (string, error) {
+	// Check if the formats are valid
+	for _, format := range formatsSlice {
+		if _, exists := viewingkey.SignatureTypeMap[format]; !exists {
+			return "", fmt.Errorf("invalid format: %s", format)
+		}
+	}
+
+	messageFormat := viewingkey.GetBestFormat(formatsSlice)
+	message, err := viewingkey.GenerateMessage(encryptionToken, int64(w.Config.TenChainID), viewingkey.PersonalSignVersion, messageFormat)
+	if err != nil {
+		return "", fmt.Errorf("error generating message: %w", err)
+	}
+	return string(message), nil
 }

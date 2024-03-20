@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/status-im/keycard-go/hexutils"
+
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 	"github.com/ten-protocol/go-ten/tools/walletextension/rpcapi"
@@ -227,17 +229,17 @@ func authenticateRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 	}
 
 	// read userID from query params
-	hexUserID, err := getUserID(conn, 2)
+	userID, err := getUserID(conn)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("malformed query: 'u' required - representing encryption token - %w", err))
 		return
 	}
 
 	// check signature and add address and signature for that user
-	err = walletExt.AddAddressToUser(hexUserID, address, signature, messageType)
+	err = walletExt.AddAddressToUser(userID, address, signature, messageType)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
-		walletExt.Logger().Error(fmt.Sprintf("error adding address: %s to user: %s with signature: %s", address, hexUserID, signature))
+		walletExt.Logger().Error(fmt.Sprintf("error adding address: %s to user: %s with signature: %s", address, userID, signature))
 		return
 	}
 	err = conn.WriteResponse([]byte(common.SuccessMsg))
@@ -257,7 +259,7 @@ func queryRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 		return
 	}
 
-	hexUserID, err := getUserID(conn, 2)
+	userID, err := getUserID(conn)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
 		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
@@ -276,10 +278,10 @@ func queryRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 	}
 
 	// check if this account is registered with given user
-	found, err := walletExt.UserHasAccount(hexUserID, address)
+	found, err := walletExt.UserHasAccount(userID, address)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
-		walletExt.Logger().Error("error during checking if account exists for user", "hexUserID", hexUserID, log.ErrKey, err)
+		walletExt.Logger().Error("error during checking if account exists for user", "userID", userID, log.ErrKey, err)
 	}
 
 	// create and write the response
@@ -309,7 +311,7 @@ func revokeRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 		return
 	}
 
-	hexUserID, err := getUserID(conn, 2)
+	userID, err := getUserID(conn)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
 		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
@@ -317,10 +319,10 @@ func revokeRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 	}
 
 	// delete user and accounts associated with it from the database
-	err = walletExt.DeleteUser(hexUserID)
+	err = walletExt.DeleteUser(userID)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
-		walletExt.Logger().Error("unable to delete user", "hexUserID", hexUserID, log.ErrKey, err)
+		walletExt.Logger().Error("unable to delete user", "userID", userID, log.ErrKey, err)
 		return
 	}
 
@@ -388,7 +390,7 @@ func versionRequestHandler(walletExt *rpcapi.Services, userConn UserConn) {
 }
 
 // getMessageRequestHandler handles request to /get-message endpoint.
-func getMessageRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
+func getMessageRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 	// read the request
 	body, err := conn.ReadRequest()
 	if err != nil {
@@ -430,7 +432,12 @@ func getMessageRequestHandler(walletExt *walletextension.WalletExtension, conn u
 		}
 	}
 
-	message, err := walletExt.GenerateUserMessageToSign(encryptionToken.(string), formatsSlice)
+	userID := hexutils.HexToBytes(encryptionToken.(string))
+	if len(userID) != viewingkey.UserIDLength {
+		return
+	}
+
+	message, err := walletExt.GenerateUserMessageToSign(userID, formatsSlice)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
 		walletExt.Logger().Error("error getting message", log.ErrKey, err)

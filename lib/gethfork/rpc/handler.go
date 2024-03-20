@@ -66,7 +66,7 @@ type handler struct {
 
 	subLock    sync.Mutex
 	serverSubs map[ID]*Subscription
-	UserID     string
+	UserID     []byte
 }
 
 type callProc struct {
@@ -74,7 +74,7 @@ type callProc struct {
 	notifiers []*Notifier
 }
 
-func newHandler(connCtx context.Context, conn jsonWriter, idgen func() ID, reg *serviceRegistry, batchRequestLimit, batchResponseMaxSize int, userID string) *handler {
+func newHandler(connCtx context.Context, conn jsonWriter, idgen func() ID, reg *serviceRegistry, batchRequestLimit, batchResponseMaxSize int, userID []byte) *handler {
 	rootCtx, cancelRoot := context.WithCancel(connCtx)
 	h := &handler{
 		reg:                  reg,

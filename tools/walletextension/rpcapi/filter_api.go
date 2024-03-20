@@ -114,12 +114,7 @@ func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *GW
 		return nil, nil, fmt.Errorf("illegal access")
 	}
 
-	uid, err := wecommon.GetUserIDbyte(subNotifier.UserID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("invald token: %s, %w", subNotifier.UserID, err)
-	}
-
-	user, err := getUser(uid, api.we.Storage)
+	user, err := getUser(subNotifier.UserID, api.we.Storage)
 	if err != nil {
 		return nil, nil, fmt.Errorf("illegal access: %s, %w", subNotifier.UserID, err)
 	}

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/status-im/keycard-go/hexutils"
@@ -14,7 +16,6 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
 	"github.com/ethereum/go-ethereum/common"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 const (
@@ -140,6 +141,10 @@ func getCandidateAccounts(user *GWUser, w *Services, cfg *ExecCfg) ([]*GWAccount
 		acc := user.accounts[*addr]
 		if acc != nil {
 			candidateAccts = append(candidateAccts, acc)
+		} else if cfg.tryAll {
+			for _, acc := range user.accounts {
+				candidateAccts = append(candidateAccts, acc)
+			}
 		}
 
 	case cfg.tryAll, cfg.tryUntilAuthorised:
@@ -165,12 +170,15 @@ func getCandidateAccounts(user *GWUser, w *Services, cfg *ExecCfg) ([]*GWAccount
 }
 
 func extractUserID(ctx context.Context, w *Services) ([]byte, error) {
-	userID, ok := ctx.Value(rpc.GWTokenKey{}).(string)
+	token, ok := ctx.Value(rpc.GWTokenKey{}).(string)
 	if !ok {
-		return w.DefaultUser, nil
-		// return nil, fmt.Errorf("invalid encryption token %s", userID)
+		return nil, fmt.Errorf("invalid userid")
 	}
-	return wecommon.GetUserIDbyte(userID)
+	userID := hexutils.HexToBytes(token)
+	if len(userID) != viewingkey.UserIDLength {
+		return nil, fmt.Errorf("invalid userid")
+	}
+	return userID, nil
 }
 
 // generateCacheKey generates a cache key for the given method, encryptionToken and parameters

@@ -28,7 +28,7 @@ type ClientOption interface {
 }
 
 type clientConfig struct {
-	UserID string
+	UserID []byte
 	// HTTP settings
 	httpClient  *http.Client
 	httpHeaders http.Header

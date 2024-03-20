@@ -101,7 +101,7 @@ func NotifierFromContext(ctx context.Context) (*Notifier, bool) {
 // Server callbacks use the notifier to send notifications.
 type Notifier struct {
 	h         *handler
-	UserID    string // added by TEN
+	UserID    []byte // added by TEN
 	namespace string
 
 	mu           sync.Mutex

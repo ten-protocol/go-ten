@@ -27,6 +27,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/status-im/keycard-go/hexutils"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/gorilla/websocket"
@@ -65,12 +68,16 @@ func (s *Server) WebsocketHandler(allowedOrigins []string) http.Handler {
 	})
 }
 
-func extractUserID(ctx context.Context) string {
+func extractUserID(ctx context.Context) []byte {
 	token, ok := ctx.Value(GWTokenKey{}).(string)
 	if !ok {
-		return ""
+		return nil
 	}
-	return token
+	userID := hexutils.HexToBytes(token)
+	if len(userID) != viewingkey.UserIDLength {
+		return nil
+	}
+	return userID
 }
 
 // wsHandshakeValidator returns a handler that verifies the origin during the
