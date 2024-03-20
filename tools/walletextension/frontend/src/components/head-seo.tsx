@@ -21,6 +21,7 @@ const HeadSeo = ({
       {/* Beagle Security */}
       <meta
         name="_vgeujvlkxz15hyr8vbuvqxnfmzlkm059"
+        // @ts-ignore
         signature="_vd3udx2g2hfn9zclob5cat43b94q7fyk"
       ></meta>
       {/* twitter metadata */}
