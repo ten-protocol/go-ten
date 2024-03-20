@@ -29,7 +29,7 @@ func (api *BlockChainAPI) ChainId() *hexutil.Big { //nolint:stylecheck
 }
 
 func (api *BlockChainAPI) BlockNumber() hexutil.Uint64 {
-	nr, err := UnauthenticatedTenRPCCall[hexutil.Uint64](nil, api.we, &CacheCfg{TTL: shortCacheTTL}, "eth_blockNumber")
+	nr, err := UnauthenticatedTenRPCCall[hexutil.Uint64](context.Background(), api.we, &CacheCfg{TTL: shortCacheTTL}, "eth_blockNumber")
 	if err != nil {
 		return hexutil.Uint64(0)
 	}
