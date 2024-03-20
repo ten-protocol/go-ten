@@ -28,7 +28,6 @@ const HeadSeo = ({
       <meta http-equiv="X-Frame-Options" content="deny"></meta>
       {/* to indicate the browser shouldn't interpret the response as something other than the specified content type */}
       <meta http-equiv="X-Content-Type-Options" content="nosniff"></meta>
-      {/* The Content-Security-Policy header is used to prevent a wide range of attacks, including Cross-Site Scripting (XSS) and other cross-site injections. */}
       {/* twitter metadata */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:site" content={siteMetadata.twitterHandle} />
