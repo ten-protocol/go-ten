@@ -50,7 +50,7 @@ func (n *Eth2Network) Start() error {
 }
 
 func (n *Eth2Network) IsReady() error {
-	timeout := 10 * time.Minute
+	timeout := 20 * time.Minute
 	interval := 2 * time.Second
 	var dial *ethclient.Client
 	var err error

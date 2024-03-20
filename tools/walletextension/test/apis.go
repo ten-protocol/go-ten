@@ -37,7 +37,6 @@ type DummyAPI struct {
 	enclavePrivateKey *ecies.PrivateKey
 	viewingKey        []byte
 	signature         []byte
-	address           *gethcommon.Address
 }
 
 func NewDummyAPI() *DummyAPI {
@@ -49,13 +48,6 @@ func NewDummyAPI() *DummyAPI {
 	return &DummyAPI{
 		enclavePrivateKey: ecies.ImportECDSA(enclavePrivateKey),
 	}
-}
-
-// Determines which key the API will encrypt responses with.
-func (api *DummyAPI) setViewingKey(address *gethcommon.Address, compressedVKKeyHexBytes, signature []byte) {
-	api.viewingKey = compressedVKKeyHexBytes
-	api.address = address
-	api.signature = signature
 }
 
 func (api *DummyAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,revive
