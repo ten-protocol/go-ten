@@ -48,11 +48,21 @@ func TestCheckSignature(t *testing.T) {
 	userPrivKey, _, userID, userAddress := generateRandomUserKeys()
 
 	// Generate all message types and create map with the corresponding signature type
-	EIP712MessageHash, err := viewingkey.GenerateMessage(userID, chainID, 0, viewingkey.EIP712Signature, true)
+	EIP712Message, err := viewingkey.GenerateMessage(userID, chainID, 0, viewingkey.EIP712Signature)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	PersonalSignMessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign, true)
+	EIP712MessageHash, err := viewingkey.GetMessageHash(EIP712Message, viewingkey.EIP712Signature)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	PersonalSignMessage, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	PersonalSignMessageHash, err := viewingkey.GetMessageHash(PersonalSignMessage, viewingkey.PersonalSign)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -87,11 +97,20 @@ func TestVerifyViewingKey(t *testing.T) {
 	// Generate all message types and create map with the corresponding signature type
 	// Test EIP712 message format
 
-	EIP712MessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.EIP712Signature, true)
+	EIP712Message, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.EIP712Signature)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	PersonalSignMessageHash, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign, true)
+	EIP712MessageHash, err := viewingkey.GetMessageHash(EIP712Message, viewingkey.EIP712Signature)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	PersonalSignMessage, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	PersonalSignMessageHash, err := viewingkey.GetMessageHash(PersonalSignMessage, viewingkey.PersonalSign)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

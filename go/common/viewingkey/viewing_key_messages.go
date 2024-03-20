@@ -42,7 +42,7 @@ var EIP712EncryptionTokens = [...]string{
 }
 
 type MessageGenerator interface {
-	generateMessage(encryptionToken string, chainID int64, version int, hash bool) ([]byte, error)
+	generateMessage(encryptionToken string, chainID int64, version int) ([]byte, error)
 }
 
 type (
@@ -56,44 +56,31 @@ var messageGenerators = map[SignatureType]MessageGenerator{
 }
 
 // GenerateMessage generates a message for the given encryptionToken, chainID, version and signatureType
-func (p PersonalMessageGenerator) generateMessage(encryptionToken string, chainID int64, version int, hash bool) ([]byte, error) {
-	textMessage := fmt.Sprintf(PersonalSignMessageFormat, encryptionToken, chainID, version)
-	if hash {
-		return accounts.TextHash([]byte(textMessage)), nil
-	}
-	return []byte(textMessage), nil
+func (p PersonalMessageGenerator) generateMessage(encryptionToken string, chainID int64, version int) ([]byte, error) {
+	return []byte(fmt.Sprintf(PersonalSignMessageFormat, encryptionToken, chainID, version)), nil
 }
 
-func (e EIP712MessageGenerator) generateMessage(encryptionToken string, chainID int64, _ int, hash bool) ([]byte, error) {
+func (e EIP712MessageGenerator) generateMessage(encryptionToken string, chainID int64, _ int) ([]byte, error) {
 	if len(encryptionToken) != UserIDHexLength {
 		return nil, fmt.Errorf("userID hex length must be %d, received %d", UserIDHexLength, len(encryptionToken))
 	}
 	EIP712TypedData := createTypedDataForEIP712Message(encryptionToken, chainID)
-
-	rawData, err := getBytesFromTypedData(EIP712TypedData)
-	if err != nil {
-		return nil, err
-	}
 
 	// add the JSON message to the list of messages
 	jsonData, err := json.Marshal(EIP712TypedData)
 	if err != nil {
 		return nil, err
 	}
-
-	if hash {
-		return crypto.Keccak256(rawData), nil
-	}
 	return jsonData, nil
 }
 
 // GenerateMessage generates a message for the given encryptionToken, chainID, version and signatureType
-func GenerateMessage(encryptionToken string, chainID int64, version int, signatureType SignatureType, hashed bool) ([]byte, error) {
+func GenerateMessage(encryptionToken string, chainID int64, version int, signatureType SignatureType) ([]byte, error) {
 	generator, exists := messageGenerators[signatureType]
 	if !exists {
 		return nil, fmt.Errorf("unsupported signature type")
 	}
-	return generator.generateMessage(encryptionToken, chainID, version, hashed)
+	return generator.generateMessage(encryptionToken, chainID, version)
 }
 
 // MessageHash is an interface for getting the hash of the message

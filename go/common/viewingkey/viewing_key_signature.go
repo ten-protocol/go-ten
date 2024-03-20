@@ -34,13 +34,18 @@ func (psc PersonalSignChecker) CheckSignature(encryptionToken string, signature 
 		signature[64] -= 27
 	}
 
-	messageHash, err := GenerateMessage(encryptionToken, chainID, PersonalSignVersion, PersonalSign, true)
+	msg, err := GenerateMessage(encryptionToken, chainID, PersonalSignVersion, PersonalSign)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate message. Cause %w", err)
 	}
 
+	msgHash, err := GetMessageHash(msg, PersonalSign)
+	if err != nil {
+		return nil, fmt.Errorf("cannot generate message hash. Cause %w", err)
+	}
+
 	// signature is valid - return account address
-	address, err := CheckSignatureAndReturnAccountAddress(messageHash, signature)
+	address, err := CheckSignatureAndReturnAccountAddress(msgHash, signature)
 	if err == nil {
 		return address, nil
 	}
@@ -53,9 +58,14 @@ func (e EIP712Checker) CheckSignature(encryptionToken string, signature []byte, 
 		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
 	}
 
-	messageHash, err := GenerateMessage(encryptionToken, chainID, 1, EIP712Signature, true)
+	msg, err := GenerateMessage(encryptionToken, chainID, 1, EIP712Signature)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate message. Cause %w", err)
+	}
+
+	msgHash, err := GetMessageHash(msg, EIP712Signature)
+	if err != nil {
+		return nil, fmt.Errorf("cannot generate message hash. Cause %w", err)
 	}
 
 	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
@@ -65,7 +75,7 @@ func (e EIP712Checker) CheckSignature(encryptionToken string, signature []byte, 
 	}
 
 	// current signature is valid - return account address
-	address, err := CheckSignatureAndReturnAccountAddress(messageHash, signature)
+	address, err := CheckSignatureAndReturnAccountAddress(msgHash, signature)
 	if err == nil {
 		return address, nil
 	}

@@ -46,9 +46,14 @@ func (o *TGLib) Join() error {
 
 func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	messageHash, err := viewingkey.GenerateMessage(string(o.userID), integration.TenChainID, 1, viewingkey.EIP712Signature, true)
+	message, err := viewingkey.GenerateMessage(string(o.userID), integration.TenChainID, 1, viewingkey.EIP712Signature)
 	if err != nil {
 		return err
+	}
+
+	messageHash, err := viewingkey.GetMessageHash(message, viewingkey.EIP712Signature)
+	if err != nil {
+		return fmt.Errorf("failed to get message hash: %w", err)
 	}
 
 	sig, err := crypto.Sign(messageHash, pk)
@@ -91,9 +96,14 @@ func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 
 func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	messageHash, err := viewingkey.GenerateMessage(string(o.userID), integration.TenChainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign, true)
+	message, err := viewingkey.GenerateMessage(string(o.userID), integration.TenChainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign)
 	if err != nil {
 		return err
+	}
+
+	messageHash, err := viewingkey.GetMessageHash(message, viewingkey.PersonalSign)
+	if err != nil {
+		return fmt.Errorf("failed to get message hash: %w", err)
 	}
 
 	sig, err := crypto.Sign(messageHash, pk)

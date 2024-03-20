@@ -488,7 +488,7 @@ func (w *WalletExtension) GenerateUserMessageToSign(encryptionToken string, form
 	}
 
 	messageFormat := viewingkey.GetBestFormat(formatsSlice)
-	message, err := viewingkey.GenerateMessage(encryptionToken, int64(w.config.TenChainID), viewingkey.PersonalSignVersion, messageFormat, false)
+	message, err := viewingkey.GenerateMessage(encryptionToken, int64(w.config.TenChainID), viewingkey.PersonalSignVersion, messageFormat)
 	if err != nil {
 		return "", fmt.Errorf("error generating message: %w", err)
 	}
