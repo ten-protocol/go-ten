@@ -3,6 +3,7 @@ package rpc
 import (
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/common/log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -107,10 +108,12 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 			err = fmt.Errorf(string(evmErr))
 		}
 		builder.Err = err
+		rpc.logger.Info("Estimate gas error", log.ErrKey, err)
 		return nil
 	}
 
 	totalGasEstimate := hexutil.Uint64(publishingGas.Uint64() + uint64(executionGasEstimate))
+	rpc.logger.Info("Estimate gas:", "value", totalGasEstimate)
 	builder.ReturnValue = &totalGasEstimate
 	return nil
 }
