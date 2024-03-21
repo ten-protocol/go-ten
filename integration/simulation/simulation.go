@@ -127,7 +127,7 @@ func (s *Simulation) bridgeFundingToObscuro() {
 		return
 	}
 
-	destAddr := s.Params.L1SetupData.MessageBusAddr
+	destAddr := s.Params.L1TenData.MessageBusAddr
 	value, _ := big.NewInt(0).SetString("7400000000000000000000000000000", 10)
 
 	wallets := []wallet.Wallet{

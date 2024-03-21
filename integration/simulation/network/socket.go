@@ -45,18 +45,18 @@ func NewNetworkOfSocketNodes(wallets *params.SimWallets) Network {
 
 func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stats) (*RPCHandles, error) {
 	// kickoff the network with the prefunded wallet addresses
-	simParams.L1SetupData, n.gethClients, n.eth2Network = SetUpGethNetwork(
+	simParams.L1TenData, n.gethClients, n.eth2Network = SetUpGethNetwork(
 		n.wallets,
 		simParams.StartPort,
 		simParams.NumberOfNodes,
 		int(simParams.AvgBlockDuration.Seconds()),
 	)
 
-	simParams.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&simParams.L1SetupData.MgmtContractAddress, testlog.Logger())
+	simParams.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&simParams.L1TenData.MgmtContractAddress, testlog.Logger())
 	simParams.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(
-		&simParams.L1SetupData.MgmtContractAddress,
-		&simParams.L1SetupData.ObxErc20Address,
-		&simParams.L1SetupData.EthErc20Address,
+		&simParams.L1TenData.MgmtContractAddress,
+		&simParams.L1TenData.ObxErc20Address,
+		&simParams.L1TenData.EthErc20Address,
 	)
 
 	// get the sequencer Address
@@ -100,8 +100,8 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithHostHTTPPort(simParams.StartPort+integration.DefaultHostRPCHTTPOffset+i),
 				node.WithHostP2PPort(simParams.StartPort+integration.DefaultHostP2pOffset+i),
 				node.WithHostPublicP2PAddr(fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset+i)),
-				node.WithManagementContractAddress(simParams.L1SetupData.MgmtContractAddress.String()),
-				node.WithMessageBusContractAddress(simParams.L1SetupData.MessageBusAddr.String()),
+				node.WithManagementContractAddress(simParams.L1TenData.MgmtContractAddress.String()),
+				node.WithMessageBusContractAddress(simParams.L1TenData.MessageBusAddr.String()),
 				node.WithNodeType(nodeTypeStr),
 				node.WithCoinbase(simParams.Wallets.L2FeesWallet.Address().Hex()),
 				node.WithL1WebsocketURL(fmt.Sprintf("ws://%s:%d", "127.0.0.1", simParams.StartPort+100)),
