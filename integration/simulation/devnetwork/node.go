@@ -124,7 +124,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		MessageBusAddress:         n.l1Data.MessageBusAddr,
 		L1ChainID:                 integration.EthereumChainID,
 		ObscuroChainID:            integration.TenChainID,
-		L1StartHash:               n.l1Data.ObscuroStartBlock,
+		L1StartHash:               n.l1Data.TenStartBlock,
 		SequencerID:               n.config.SequencerID,
 		// Can provide the maria db host if testing against a local DB instance
 		UseInMemoryDB:         true,
