@@ -728,7 +728,7 @@ func checkTenscan(t *testing.T, s *Simulation) {
 // Checks that the node has stored sufficient transactions.
 func checkTotalTransactions(t *testing.T, client rpc.Client, nodeIdx int) {
 	var totalTxs *big.Int
-	err := client.Call(&totalTxs, rpc.GetTotalTransactionCount)
+	err := client.Call(&totalTxs, rpc.GetTotalTxCount)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve total transactions. Cause: %s", nodeIdx, err)
 	}

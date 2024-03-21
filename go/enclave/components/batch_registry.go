@@ -45,7 +45,6 @@ func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegis
 	} else {
 		headBatchSeq = headBatch.SeqNo()
 	}
-
 	return &batchRegistry{
 		storage:           storage,
 		headBatchSeq:      headBatchSeq,
@@ -77,10 +76,12 @@ func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Recei
 	defer br.callbackMutex.RUnlock()
 
 	defer core.LogMethodDuration(br.logger, measure.NewStopwatch(), "Sending batch and events", log.BatchHashKey, batch.Hash())
+
 	br.headBatchSeq = batch.SeqNo()
 	if br.batchesCallback != nil {
 		br.batchesCallback(batch, receipts)
 	}
+
 	br.lastExecutedBatch.Mark()
 }
 

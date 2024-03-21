@@ -57,7 +57,7 @@ type PublicBatch struct {
 	EncryptedTxBlob  EncryptedTransactions `json:"encryptedTxBlob"`
 }
 
-// TODO implement old endpoints
+// TODO (@will) remove when tenscan UI has been updated
 type PublicBatchDeprecated struct {
 	BatchHeader
 	TxHashes []TxHash `json:"txHashes"`

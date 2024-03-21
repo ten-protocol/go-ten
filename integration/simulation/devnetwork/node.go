@@ -126,8 +126,8 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		ObscuroChainID:            integration.TenChainID,
 		L1StartHash:               n.l1Data.ObscuroStartBlock,
 		SequencerID:               n.config.SequencerID,
-		UseInMemoryDB:             true,
-		// FIXME
+		// Can provide the maria db host if testing against a local DB instance
+		UseInMemoryDB:         true,
 		DebugNamespaceEnabled: true,
 		BatchInterval:         n.config.BatchInterval,
 		RollupInterval:        n.config.RollupInterval,

@@ -21,8 +21,8 @@ const (
 	insertRollup = "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) values (?,?,?,?,?,?)"
 )
 
-// AddRollupHeader adds a rollup to the DB
-func AddRollupHeader(db *sql.DB, rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
+// AddRollup adds a rollup to the DB
+func AddRollup(db *sql.DB, rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
 	// Check if the Header is already stored
 	_, err := GetRollupHeader(db, rollup.Header.Hash())
 	if err == nil {

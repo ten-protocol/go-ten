@@ -75,7 +75,7 @@ type HostInputConfig struct {
 	// UseInMemoryDB sets whether the host should use in-memory or persistent storage
 	UseInMemoryDB bool
 
-	// MariaDBHost path for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable, or if using InMemory DB)
+	// MariaDBHost db url for connecting to MariaDB host database
 	MariaDBHost string
 
 	// DebugNamespaceEnabled enables the debug namespace handler in the host rpc server

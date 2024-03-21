@@ -18,7 +18,7 @@ func TestCanStoreAndRetrieveRollup(t *testing.T) {
 	rollup := createRollup(batchNumber)
 	block := common.L1Block{}
 
-	err = AddRollupHeader(db.DB, &rollup, &metadata, &block)
+	err = AddRollup(db.DB, &rollup, &metadata, &block)
 	if err != nil {
 		t.Errorf("could not store rollup. Cause: %s", err)
 	}
@@ -50,7 +50,7 @@ func TestGetRollupByBlockHash(t *testing.T) {
 	rollup := createRollup(batchNumber)
 	block := common.L1Block{}
 
-	err = AddRollupHeader(db.DB, &rollup, &metadata, &block)
+	err = AddRollup(db.DB, &rollup, &metadata, &block)
 	if err != nil {
 		t.Errorf("could not store rollup. Cause: %s", err)
 	}
@@ -76,7 +76,7 @@ func TestGetRollupListing(t *testing.T) {
 	rollup1 := createRollup(rollup1LastSeq)
 	block := common.L1Block{}
 
-	err = AddRollupHeader(db.DB, &rollup1, &metadata1, &block)
+	err = AddRollup(db.DB, &rollup1, &metadata1, &block)
 	if err != nil {
 		t.Errorf("could not store rollup. Cause: %s", err)
 	}
@@ -86,7 +86,7 @@ func TestGetRollupListing(t *testing.T) {
 	metadata2 := createRollupMetadata(rollup2FirstSeq)
 	rollup2 := createRollup(rollup2LastSeq)
 
-	err = AddRollupHeader(db.DB, &rollup2, &metadata2, &block)
+	err = AddRollup(db.DB, &rollup2, &metadata2, &block)
 	if err != nil {
 		t.Errorf("could not store rollup 2. Cause: %s", err)
 	}
@@ -95,7 +95,7 @@ func TestGetRollupListing(t *testing.T) {
 	rollup3LastSeq := int64(batchNumber + 20)
 	metadata3 := createRollupMetadata(rollup3FirstSeq)
 	rollup3 := createRollup(rollup3LastSeq)
-	err = AddRollupHeader(db.DB, &rollup3, &metadata3, &block)
+	err = AddRollup(db.DB, &rollup3, &metadata3, &block)
 	if err != nil {
 		t.Errorf("could not store rollup 3. Cause: %s", err)
 	}

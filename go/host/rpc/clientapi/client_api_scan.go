@@ -29,9 +29,9 @@ func (s *ScanAPI) GetTotalContractCount() (*big.Int, error) {
 	return s.host.EnclaveClient().GetTotalContractCount()
 }
 
-// GetTotalTransactionCount returns the number of recorded transactions on the network.
-func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
-	return hostdb.GetTotalTransactions(s.host.DB())
+// GetTotalTxCount returns the number of recorded transactions on the network.
+func (s *ScanAPI) GetTotalTxCount() (*big.Int, error) {
+	return hostdb.GetTotalTxCount(s.host.DB())
 }
 
 // GetBatchListing returns a paginated list of batches
@@ -49,14 +49,14 @@ func (s *ScanAPI) GetPublicBatchByHash(hash common.L2BatchHash) (*common.PublicB
 	return hostdb.GetPublicBatch(s.host.DB(), hash)
 }
 
-// GetFullBatchByHash returns the full `ExtBatch` with the given hash.
-func (s *ScanAPI) GetFullBatchByHash(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
-	return hostdb.GetFullBatch(s.host.DB(), batchHash)
+// GetBatch returns the `ExtBatch` with the given hash.
+func (s *ScanAPI) GetBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
+	return hostdb.GetBatchByHash(s.host.DB(), batchHash)
 }
 
-// GetFullBatchByTxHash returns the full `ExtBatch` with the given hash.
-func (s *ScanAPI) GetFullBatchByTxHash(txHash gethcommon.Hash) (*common.ExtBatch, error) {
-	return hostdb.GetFullBatchByTx(s.host.DB(), txHash)
+// GetBatchByTx returns the `ExtBatch` with the given hash.
+func (s *ScanAPI) GetBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
+	return hostdb.GetBatchByTx(s.host.DB(), txHash)
 }
 
 // GetLatestBatch returns the head `BatchHeader`

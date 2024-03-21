@@ -11,10 +11,11 @@ import (
 )
 
 const (
-	blockInsert  = "insert into block_host values (?,?,?,?)"
+	blockInsert  = "insert into block_host values (?,?,?)"
 	selectBlocks = "SELECT id, hash, header, rollup_hash FROM block_host ORDER BY id DESC LIMIT ? OFFSET ?"
 )
 
+// AddBlock stores a block header with the given rollupHash it contains in the host DB
 func AddBlock(db *sql.DB, b *types.Header, rollupHash common.L2RollupHash) error {
 	header, err := rlp.EncodeToBytes(b)
 	if err != nil {
@@ -40,6 +41,7 @@ func AddBlock(db *sql.DB, b *types.Header, rollupHash common.L2RollupHash) error
 	return nil
 }
 
+// GetBlockListing returns a paginated list of blocks in descending order against the order they were added
 func GetBlockListing(db *sql.DB, pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
 	rows, err := db.Query(selectBlocks, pagination.Size, pagination.Offset)
 	if err != nil {

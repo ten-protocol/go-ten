@@ -200,8 +200,6 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	}
 	err := g.submitL2Batch(batch)
 	if err != nil {
-		g.logger.Error("IS SEQUENCER", log.ErrKey, g.hostData.IsSequencer)
-		g.logger.Error("IS SEQUENCER", log.ErrKey, g.hostData.ID.String())
 		g.logger.Error("Error submitting batch to enclave", log.ErrKey, err)
 	}
 }
@@ -477,7 +475,7 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 		if err != nil {
 			g.logger.Error("Could not fetch rollup metadata from enclave.", log.ErrKey, err)
 		}
-		err = hostdb.AddRollupHeader(g.db, r, metaData, block)
+		err = hostdb.AddRollup(g.db, r, metaData, block)
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())

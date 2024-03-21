@@ -140,7 +140,7 @@ func TestCanRetrieveBatchNumberByTxHash(t *testing.T) {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
-	extBatch, err := GetFullBatchByTx(db.DB, txHash)
+	extBatch, err := GetBatchByTx(db.DB, txHash)
 	if err != nil {
 		t.Errorf("stored batch but could not retrieve batch by transaction hash. Cause: %s", err)
 	}
@@ -215,7 +215,7 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
-	totalTxs, err := GetTotalTransactions(db.DB)
+	totalTxs, err := GetTotalTxCount(db.DB)
 	if err != nil {
 		t.Errorf("was not able to read total number of transactions. Cause: %s", err)
 	}
