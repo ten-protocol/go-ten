@@ -3,8 +3,9 @@ package rpc
 import (
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/common/log"
 	"math/big"
+
+	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/vm"
