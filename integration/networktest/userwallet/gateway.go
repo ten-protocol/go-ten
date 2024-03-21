@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
-	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
 )
@@ -95,7 +94,7 @@ func (g *GatewayUser) AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash)
 	var err error
 	err = retry.Do(func() error {
 		receipt, err = g.client.TransactionReceipt(ctx, *txHash)
-		if !errors.Is(err, rpc.ErrNilResponse) {
+		if err != nil && !errors.Is(err, ethereum.NotFound) {
 			return retry.FailFast(err)
 		}
 		return err

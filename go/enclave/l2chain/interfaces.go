@@ -18,6 +18,7 @@ type ObscuroChain interface {
 	// For EOA - the actual address.
 	// For Contracts - the address of the deployer.
 	// Note - this might be subject to change if we implement a more flexible mechanism
+	// todo - support BlockNumberOrHash
 	AccountOwner(address gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, error)
 
 	// GetBalanceAtBlock - will return the balance of a specific address at the specific given block number (batch number).

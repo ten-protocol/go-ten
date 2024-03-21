@@ -56,7 +56,7 @@ func (s *Simulation) Start() {
 
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	// and for all l2 nodes to receive the genesis l2 batch
-	time.Sleep(5 * time.Second)
+	time.Sleep(6 * time.Second)
 
 	s.bridgeFundingToObscuro()
 	s.trackLogs()              // Create log subscriptions, to validate that they're working correctly later.
@@ -127,7 +127,7 @@ func (s *Simulation) bridgeFundingToObscuro() {
 		return
 	}
 
-	destAddr := s.Params.L1SetupData.MessageBusAddr
+	destAddr := s.Params.L1TenData.MessageBusAddr
 	value, _ := big.NewInt(0).SetString("7400000000000000000000000000000", 10)
 
 	wallets := []wallet.Wallet{

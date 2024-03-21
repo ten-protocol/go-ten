@@ -3,7 +3,6 @@ package accountmanager
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -90,7 +89,22 @@ func (m *AccountManager) ProxyRequest(rpcReq *wecommon.RPCRequest, rpcResp *inte
 		if err != nil {
 			return err
 		}
-		err = m.subscriptionsManager.HandleNewSubscriptions(clients, rpcReq, rpcResp, userConn)
+		criteria := filters.FilterCriteria{}
+
+		// this stuff will be removed when the rpc is added
+		crit, ok := rpcReq.Params[1].(map[string]any)
+		if ok {
+			critBytes, err := json.Marshal(crit)
+			if err != nil {
+				return err
+			}
+			err = criteria.UnmarshalJSON(critBytes)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = m.subscriptionsManager.HandleNewSubscriptions(clients, criteria, rpcResp, userConn)
 		if err != nil {
 			m.logger.Error("Error subscribing to multiple clients")
 			return err
@@ -226,7 +240,7 @@ func (m *AccountManager) executeCall(rpcReq *wecommon.RPCRequest, rpcResp *inter
 		var err error
 		for _, client := range m.accountClientsHTTP {
 			err = submitCall(client, rpcReq, rpcResp)
-			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
+			if err == nil {
 				// request didn't fail, we don't need to continue trying the other clients
 				return nil
 			}
