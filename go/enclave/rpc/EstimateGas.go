@@ -36,10 +36,10 @@ func EstimateGasValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlo
 		return nil
 	}
 
-	if callMsg.From == nil {
-		builder.Err = fmt.Errorf("no from Addr provided")
-		return nil
-	}
+	//if callMsg.From == nil {
+	//	builder.Err = fmt.Errorf("no from Addr provided")
+	//	return nil
+	//}
 
 	// extract optional Block number - defaults to the latest Block if not avail
 	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(reqParams, 1)
@@ -153,44 +153,45 @@ func (rpc *EncryptionManager) doEstimateGas(args *gethapi.TransactionArgs, blkNu
 		*/
 		hi = rpc.config.GasLocalExecutionCapFlag
 	}
-	// Normalize the max fee per gas the call is willing to spend.
-	var feeCap *big.Int
-	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
-		return 0, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
-	} else if args.GasPrice != nil {
-		feeCap = args.GasPrice.ToInt()
-	} else if args.MaxFeePerGas != nil {
-		feeCap = args.MaxFeePerGas.ToInt()
-	} else {
-		feeCap = gethcommon.Big0
-	}
-	// Recap the highest gas limit with account's available balance.
-	if feeCap.BitLen() != 0 { //nolint:nestif
-		balance, err := rpc.chain.GetBalanceAtBlock(*args.From, blkNumber)
-		if err != nil {
-			return 0, fmt.Errorf("unable to fetch account balance - %w", err)
+	/*
+		// Normalize the max fee per gas the call is willing to spend.
+		var feeCap *big.Int
+		if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
+			return 0, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
+		} else if args.GasPrice != nil {
+			feeCap = args.GasPrice.ToInt()
+		} else if args.MaxFeePerGas != nil {
+			feeCap = args.MaxFeePerGas.ToInt()
+		} else {
+			feeCap = gethcommon.Big0
 		}
-
-		available := new(big.Int).Set(balance.ToInt())
-		if args.Value != nil {
-			if args.Value.ToInt().Cmp(available) >= 0 {
-				return 0, errors.New("insufficient funds for transfer")
+		// Recap the highest gas limit with account's available balance.
+		if feeCap.BitLen() != 0 { //nolint:nestif
+			balance, err := rpc.chain.GetBalanceAtBlock(*args.From, blkNumber)
+			if err != nil {
+				return 0, fmt.Errorf("unable to fetch account balance - %w", err)
 			}
-			available.Sub(available, args.Value.ToInt())
-		}
-		allowance := new(big.Int).Div(available, feeCap)
 
-		// If the allowance is larger than maximum uint64, skip checking
-		if allowance.IsUint64() && hi > allowance.Uint64() {
-			transfer := args.Value
-			if transfer == nil {
-				transfer = new(hexutil.Big)
+			available := new(big.Int).Set(balance.ToInt())
+			if args.Value != nil {
+				if args.Value.ToInt().Cmp(available) >= 0 {
+					return 0, errors.New("insufficient funds for transfer")
+				}
+				available.Sub(available, args.Value.ToInt())
 			}
-			rpc.logger.Debug("Gas estimation capped by limited funds", "original", hi, "balance", balance,
-				"sent", transfer.ToInt(), "maxFeePerGas", feeCap, "fundable", allowance)
-			hi = allowance.Uint64()
-		}
-	}
+			allowance := new(big.Int).Div(available, feeCap)
+
+			// If the allowance is larger than maximum uint64, skip checking
+			if allowance.IsUint64() && hi > allowance.Uint64() {
+				transfer := args.Value
+				if transfer == nil {
+					transfer = new(hexutil.Big)
+				}
+				rpc.logger.Debug("Gas estimation capped by limited funds", "original", hi, "balance", balance,
+					"sent", transfer.ToInt(), "maxFeePerGas", feeCap, "fundable", allowance)
+				hi = allowance.Uint64()
+			}
+		}*/
 	// Recap the highest gas allowance with specified gascap.
 	if gasCap != 0 && hi > gasCap {
 		rpc.logger.Debug("Caller gas above allowance, capping", "requested", hi, "cap", gasCap)
