@@ -2,28 +2,28 @@ package common
 
 import (
 	"time"
-
-	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 )
 
 const (
 	Localhost = "127.0.0.1"
 
-	JSONKeyAddress      = "address"
-	JSONKeyData         = "data"
-	JSONKeyErr          = "error"
-	JSONKeyFrom         = "from"
-	JSONKeyID           = "id"
-	JSONKeyMethod       = "method"
-	JSONKeyParams       = "params"
-	JSONKeyResult       = "result"
-	JSONKeyRoot         = "root"
-	JSONKeyRPCVersion   = "jsonrpc"
-	JSONKeySignature    = "signature"
-	JSONKeySubscription = "subscription"
-	JSONKeyCode         = "code"
-	JSONKeyMessage      = "message"
-	JSONKeyType         = "type"
+	JSONKeyAddress         = "address"
+	JSONKeyData            = "data"
+	JSONKeyErr             = "error"
+	JSONKeyFrom            = "from"
+	JSONKeyID              = "id"
+	JSONKeyMethod          = "method"
+	JSONKeyParams          = "params"
+	JSONKeyResult          = "result"
+	JSONKeyRoot            = "root"
+	JSONKeyRPCVersion      = "jsonrpc"
+	JSONKeySignature       = "signature"
+	JSONKeySubscription    = "subscription"
+	JSONKeyCode            = "code"
+	JSONKeyMessage         = "message"
+	JSONKeyType            = "type"
+	JSONKeyEncryptionToken = "encryptionToken"
+	JSONKeyFormats         = "formats"
 )
 
 const (
@@ -33,6 +33,7 @@ const (
 	PathGenerateViewingKey              = "/generateviewingkey/"
 	PathSubmitViewingKey                = "/submitviewingkey/"
 	PathJoin                            = "/join/"
+	PathGetMessage                      = "/getmessage/"
 	PathAuthenticate                    = "/authenticate/"
 	PathQuery                           = "/query/"
 	PathRevoke                          = "/revoke/"
@@ -57,8 +58,3 @@ const (
 )
 
 var ReaderHeadTimeout = 10 * time.Second
-
-var SignatureTypeMap = map[string]viewingkey.SignatureType{
-	"EIP712":   viewingkey.EIP712Signature,
-	"Personal": viewingkey.PersonalSign,
-}

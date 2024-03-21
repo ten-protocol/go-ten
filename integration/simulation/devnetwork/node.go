@@ -44,9 +44,9 @@ import (
 // Note: InMemNodeOperator will panic when things go wrong, we want to fail fast in sims and avoid verbose error handling in usage
 type InMemNodeOperator struct {
 	operatorIdx int
-	config      ObscuroConfig
+	config      *TenConfig
 	nodeType    common.NodeType
-	l1Data      *params.L1SetupData
+	l1Data      *params.L1TenData
 	l1Client    ethadapter.EthClient
 	logger      gethlog.Logger
 
@@ -231,7 +231,7 @@ func (n *InMemNodeOperator) StopEnclave() error {
 	return nil
 }
 
-func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common.NodeType, l1Data *params.L1SetupData,
+func NewInMemNodeOperator(operatorIdx int, config *TenConfig, nodeType common.NodeType, l1Data *params.L1TenData,
 	l1Client ethadapter.EthClient, l1Wallet wallet.Wallet, logger gethlog.Logger,
 ) *InMemNodeOperator {
 	sqliteDBPath, err := sqlite.CreateTempDBFile()

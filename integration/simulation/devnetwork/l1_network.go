@@ -1,6 +1,8 @@
 package devnetwork
 
 import (
+	"time"
+
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
@@ -12,4 +14,5 @@ type L1Network interface {
 	CleanUp() // shut down  nodes if required, clean up connections
 	NumNodes() int
 	GetClient(i int) ethadapter.EthClient
+	GetBlockTime() time.Duration // expected interval between blocks
 }
