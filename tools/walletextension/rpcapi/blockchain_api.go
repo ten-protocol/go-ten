@@ -242,6 +242,13 @@ func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.Transact
 		computeFromCallback: func(user *GWUser) *common.Address {
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
+		adjustArgs: func(acct *GWAccount) []any {
+			// set the from
+			if args.From == nil {
+				args.From = acct.address
+			}
+			return []any{args, blockNrOrHash, overrides}
+		},
 		// is this a security risk?
 		useDefaultUser: true,
 		tryAll:         true,
