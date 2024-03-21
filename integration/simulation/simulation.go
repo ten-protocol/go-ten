@@ -56,7 +56,7 @@ func (s *Simulation) Start() {
 
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	// and for all l2 nodes to receive the genesis l2 batch
-	time.Sleep(5 * time.Second)
+	time.Sleep(6 * time.Second)
 
 	s.bridgeFundingToObscuro()
 	s.trackLogs()              // Create log subscriptions, to validate that they're working correctly later.
