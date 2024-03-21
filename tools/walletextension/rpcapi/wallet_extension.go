@@ -196,9 +196,13 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
 	// check if a message was signed by the correct address and if the signature is valid
-	_, err := viewingkey.CheckSignature(userID, signature, int64(w.Config.TenChainID), signatureType)
+	recoveredAddress, err := viewingkey.CheckSignature(userID, signature, int64(w.Config.TenChainID), signatureType)
 	if err != nil {
 		return fmt.Errorf("signature is not valid: %w", err)
+	}
+
+	if recoveredAddress.Hex() != addressFromMessage.Hex() {
+		return fmt.Errorf("invalid request. Signature doesn't match address")
 	}
 
 	// register the account for that viewing key

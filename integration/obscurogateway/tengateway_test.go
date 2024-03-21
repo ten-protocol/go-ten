@@ -1,4 +1,4 @@
-package faucet
+package obscurogateway
 
 import (
 	"bytes"
@@ -116,18 +116,18 @@ func TestTenGateway(t *testing.T) {
 }
 
 func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
-	user0, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
+	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
 
 	_, err = user0.HTTPClient.ChainID(context.Background())
 	require.NoError(t, err)
 
-	user1, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	user1, err := NewGatewayUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user1.tgClient.UserID())
 
-	user2, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	user2, err := NewGatewayUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user2.tgClient.UserID())
 
@@ -151,12 +151,7 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	require.NoError(t, err)
 
 	// Print balances of all registered accounts to check if all accounts have funds
-	balances, err := user0.GetUserAccountsBalances()
-	require.NoError(t, err)
-	for _, balance := range balances {
-		require.NotZero(t, balance.Uint64())
-	}
-	balances, err = user1.GetUserAccountsBalances()
+	balances, err := user1.GetUserAccountsBalances()
 	require.NoError(t, err)
 	for _, balance := range balances {
 		require.NotZero(t, balance.Uint64())
@@ -268,10 +263,10 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 }
 
 func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
-	user0, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
+	user0, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
 
-	user1, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	user1, err := NewGatewayUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 
 	// register all the accounts for that user
@@ -514,7 +509,7 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.W
 
 func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// create a user with multiple accounts
-	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	user, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user.tgClient.UserID())
 
@@ -570,7 +565,7 @@ func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 
 func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// create a user with multiple accounts
-	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	user, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user.tgClient.UserID())
 
@@ -633,7 +628,7 @@ func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w
 }
 
 func testDifferentMessagesOnRegister(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
-	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	user, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token: %s\n", user.tgClient.UserID())
 
@@ -727,7 +722,7 @@ func getFeeAndGas(client *ethclient.Client, wallet wallet.Wallet, legacyTx *type
 	}
 
 	estimate, err := client.EstimateGas(context.Background(), ethereum.CallMsg{
-		From:  wallet.Address(),
+		// From:  wallet.Address(),
 		To:    tx.To(),
 		Value: tx.Value(),
 		Data:  tx.Data(),

@@ -3,6 +3,7 @@ package rpcapi
 //goland:noinspection ALL
 import (
 	"context"
+	"encoding/json"
 	"math/big"
 	"time"
 
@@ -215,11 +216,14 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
 		adjustArgs: func(acct *GWAccount) []any {
+			serialised, _ := json.Marshal(args)
+			var argsClone gethapi.TransactionArgs
+			json.Unmarshal(serialised, &argsClone)
 			// set the from
-			if args.From == nil {
-				args.From = acct.address
+			if args.From == nil || args.From.Hex() == (common.Address{}).Hex() {
+				argsClone.From = acct.address
 			}
-			return []any{args, blockNrOrHash, overrides, blockOverrides}
+			return []any{argsClone, blockNrOrHash, overrides}
 		},
 		useDefaultUser: true,
 		tryAll:         true,
@@ -244,11 +248,14 @@ func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.Transact
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
 		adjustArgs: func(acct *GWAccount) []any {
+			serialised, _ := json.Marshal(args)
+			var argsClone gethapi.TransactionArgs
+			json.Unmarshal(serialised, &argsClone)
 			// set the from
-			if args.From == nil {
-				args.From = acct.address
+			if args.From == nil || args.From.Hex() == (common.Address{}).Hex() {
+				argsClone.From = acct.address
 			}
-			return []any{args, blockNrOrHash, overrides}
+			return []any{argsClone, blockNrOrHash, overrides}
 		},
 		// is this a security risk?
 		useDefaultUser: true,

@@ -36,10 +36,10 @@ func EstimateGasValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlo
 		return nil
 	}
 
-	//if callMsg.From == nil {
-	//	builder.Err = fmt.Errorf("no from Addr provided")
-	//	return nil
-	//}
+	if callMsg.From == nil {
+		builder.Err = fmt.Errorf("no from Addr provided")
+		return nil
+	}
 
 	// extract optional Block number - defaults to the latest Block if not avail
 	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(reqParams, 1)
