@@ -19,7 +19,6 @@ package rpc
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -488,7 +487,6 @@ func (h *handler) handleCallMsg(ctx *callProc, msg *jsonrpcMessage) *jsonrpcMess
 		return msg.errorResponse(&invalidRequestError{"invalid request"})
 
 	default:
-		fmt.Printf("Invalid request %v\n", jsonrpcMessage{})
 		return errorMessage(&invalidRequestError{"invalid request"})
 	}
 }
