@@ -5,11 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/big"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-kit/kit/transport/http/jsonrpc"
+	"github.com/ten-protocol/go-ten/go/rpc"
 
 	log2 "github.com/ten-protocol/go-ten/go/common/log"
 
@@ -102,6 +106,8 @@ func TestTenGateway(t *testing.T) {
 		"testClosingConnectionWhileSubscribed": testClosingConnectionWhileSubscribed,
 		"testSubscriptionTopics":               testSubscriptionTopics,
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
+		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
+		"testGetStorageAtForReturningUserID":   testGetStorageAtForReturningUserID,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, httpURL, wsURL, w)
@@ -618,6 +624,83 @@ func testDifferentMessagesOnRegister(t *testing.T, httpURL, wsURL string, w wall
 	// register all the accounts for the user with personal sign message format
 	err = user.RegisterAccountsPersonalSign()
 	require.NoError(t, err)
+}
+
+func testInvokeNonSensitiveMethod(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+	user, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
+	require.NoError(t, err)
+
+	// call one of the non-sensitive methods with unauthenticated user
+	// and make sure gateway is not complaining about not having viewing keys
+	respBody := makeHTTPEthJSONReq(httpURL, rpc.ChainID, user.tgClient.UserID(), nil)
+	if strings.Contains(string(respBody), fmt.Sprintf("method %s cannot be called with an unauthorised client - no signed viewing keys found", rpc.ChainID)) {
+		t.Errorf("sensitive method called without authenticating viewingkeys and did fail because of it:  %s", rpc.ChainID)
+	}
+}
+
+func testGetStorageAtForReturningUserID(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+	user, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
+	require.NoError(t, err)
+
+	type JSONResponse struct {
+		Result string `json:"result"`
+	}
+	var response JSONResponse
+
+	// make a request to GetStorageAt with correct parameters to get userID that exists in the database
+	respBody := makeHTTPEthJSONReq(httpURL, rpc.GetStorageAt, user.tgClient.UserID(), []interface{}{"getUserID", "0", nil})
+	if err = json.Unmarshal(respBody, &response); err != nil {
+		t.Error("Unable to unmarshal response")
+	}
+	if response.Result != user.tgClient.UserID() {
+		t.Errorf("Wrong UserID returned. Expected: %s, received: %s", user.tgClient.UserID(), response.Result)
+	}
+
+	// make a request to GetStorageAt with correct parameters to get userID, but with wrong userID
+	respBody2 := makeHTTPEthJSONReq(httpURL, rpc.GetStorageAt, "invalid_user_id", []interface{}{"getUserID", "0", nil})
+	if !strings.Contains(string(respBody2), "method eth_getStorageAt cannot be called with an unauthorised client - no signed viewing keys found") {
+		t.Error("eth_getStorageAt did not respond with error: method eth_getStorageAt cannot be called with an unauthorised client - no signed viewing keys found")
+	}
+
+	// make a request to GetStorageAt with wrong parameters to get userID, but correct userID
+	respBody3 := makeHTTPEthJSONReq(httpURL, rpc.GetStorageAt, user.tgClient.UserID(), []interface{}{"abc", "0", nil})
+	if !strings.Contains(string(respBody3), "method eth_getStorageAt cannot be called with an unauthorised client - no signed viewing keys found") {
+		t.Error("eth_getStorageAt did not respond with error: no signed viewing keys found")
+	}
+}
+
+func makeRequestHTTP(url string, body []byte) []byte {
+	generateViewingKeyBody := bytes.NewBuffer(body)
+	resp, err := http.Post(url, "application/json", generateViewingKeyBody) //nolint:noctx,gosec
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		panic(err)
+	}
+	viewingKey, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	return viewingKey
+}
+
+func makeHTTPEthJSONReq(url string, method string, userID string, params interface{}) []byte {
+	reqBody := prepareRequestBody(method, params)
+	return makeRequestHTTP(fmt.Sprintf("%s/v1/?token=%s", url, userID), reqBody)
+}
+
+func prepareRequestBody(method string, params interface{}) []byte {
+	reqBodyBytes, err := json.Marshal(map[string]interface{}{
+		wecommon.JSONKeyRPCVersion: jsonrpc.Version,
+		wecommon.JSONKeyMethod:     method,
+		wecommon.JSONKeyParams:     params,
+		wecommon.JSONKeyID:         "1",
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to prepare request body. Cause: %w", err))
+	}
+	return reqBodyBytes
 }
 
 func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet) common.TxHash { //nolint: unused
