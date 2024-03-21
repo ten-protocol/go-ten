@@ -108,7 +108,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 			}
 			err = rpcClient.CallContext(ctx, &result, method, adjustedArgs...)
 			if err != nil {
-				// todo - is this correct?
+				// for calls where we know the expected error we can return early
 				if cfg.tryUntilAuthorised && err.Error() != notAuthorised {
 					return nil, err
 				}
@@ -125,7 +125,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 
 func getCandidateAccounts(user *GWUser, _ *Services, cfg *ExecCfg) ([]*GWAccount, error) {
 	candidateAccts := make([]*GWAccount, 0)
-	// for users with multiple accounts determine a candidate account
+	// for users with multiple accounts try to determine a candidate account based on the available information
 	switch {
 	case cfg.account != nil:
 		acc := user.accounts[*cfg.account]
@@ -140,8 +140,8 @@ func getCandidateAccounts(user *GWUser, _ *Services, cfg *ExecCfg) ([]*GWAccount
 			acc := user.accounts[*suggestedAddress]
 			if acc != nil {
 				candidateAccts = append(candidateAccts, acc)
+				return candidateAccts, nil
 			}
-			return candidateAccts, nil
 		}
 	}
 

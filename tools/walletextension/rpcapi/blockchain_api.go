@@ -214,14 +214,15 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 		computeFromCallback: func(user *GWUser) *common.Address {
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
-		//adjustArgs: func(acct *GWAccount) []any {
-		//	// set the from
-		//	if args.From == nil {
-		//		args.From = acct.address
-		//	}
-		//	return []any{args, blockNrOrHash, overrides, blockOverrides}
-		//},
+		adjustArgs: func(acct *GWAccount) []any {
+			// set the from
+			if args.From == nil {
+				args.From = acct.address
+			}
+			return []any{args, blockNrOrHash, overrides, blockOverrides}
+		},
 		useDefaultUser: true,
+		tryAll:         true,
 	}, "eth_call", args, blockNrOrHash, overrides, blockOverrides)
 	if resp == nil {
 		return nil, err
