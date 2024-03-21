@@ -4,14 +4,13 @@ import (
 	"database/sql"
 	"fmt"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
 const (
-	blockInsert  = "insert into block_host values (?,?,?)"
+	blockInsert  = "insert into block_host (hash, header, rollup_hash) values (?,?,?)"
 	selectBlocks = "SELECT id, hash, header, rollup_hash FROM block_host ORDER BY id DESC LIMIT ? OFFSET ?"
 )
 
@@ -22,6 +21,11 @@ func AddBlock(db *sql.DB, b *types.Header, rollupHash common.L2RollupHash) error
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
 	}
 
+	r, err := rlp.EncodeToBytes(rollupHash)
+	if err != nil {
+		return fmt.Errorf("could not encode rollup hash transactions: %w", err)
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -30,7 +34,7 @@ func AddBlock(db *sql.DB, b *types.Header, rollupHash common.L2RollupHash) error
 	_, err = tx.Exec(blockInsert,
 		truncTo16(b.Hash()), // hash
 		header,              // l1 block header
-		rollupHash,          // rollup hash
+		r,                   // rollup hash
 	)
 	if err != nil {
 		return fmt.Errorf("could not insert block. Cause: %w", err)
@@ -63,7 +67,7 @@ func GetBlockListing(db *sql.DB, pagination *common.QueryPagination) (*common.Bl
 		if err := rlp.DecodeBytes(header, blockHeader); err != nil {
 			return nil, fmt.Errorf("could not decode block header. Cause: %w", err)
 		}
-		r := new(gethcommon.Hash)
+		r := new(common.L2RollupHash)
 		if err := rlp.DecodeBytes(rollupHash, r); err != nil {
 			return nil, fmt.Errorf("could not decode rollup hash. Cause: %w", err)
 		}
