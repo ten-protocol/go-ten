@@ -32,9 +32,9 @@ func AddBlock(db *sql.DB, b *types.Header, rollupHash common.L2RollupHash) error
 	}
 
 	_, err = tx.Exec(blockInsert,
-		truncTo16(b.Hash()), // hash
-		header,              // l1 block header
-		r,                   // rollup hash
+		b.Hash(), // hash
+		header,   // l1 block header
+		r,        // rollup hash
 	)
 	if err != nil {
 		return fmt.Errorf("could not insert block. Cause: %w", err)

@@ -1,7 +1,7 @@
 create table if not exists block_host
 (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    hash        binary(16)      NOT NULL UNIQUE,
+    hash        binary(32)      NOT NULL UNIQUE,
     header      blob            NOT NULL,
     rollup_hash binary(32)      NOT NULL
 );
