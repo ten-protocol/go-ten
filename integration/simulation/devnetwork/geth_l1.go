@@ -2,6 +2,7 @@ package devnetwork
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ten-protocol/go-ten/integration"
 
@@ -50,4 +51,8 @@ func (g *gethDockerNetwork) NumNodes() int {
 
 func (g *gethDockerNetwork) GetClient(_ int) ethadapter.EthClient {
 	return g.l1Clients[0]
+}
+
+func (g *gethDockerNetwork) GetBlockTime() time.Duration {
+	return g.l1Config.AvgBlockDuration
 }
