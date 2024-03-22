@@ -25,6 +25,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/status-im/keycard-go/hexutils"
+
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -386,6 +388,9 @@ func (h *handler) startCallProc(fn func(*callProc)) {
 		ctx, cancel := context.WithCancel(h.rootCtx)
 		defer h.callWG.Done()
 		defer cancel()
+		if ctx.Value(GWTokenKey{}) == nil {
+			ctx = context.WithValue(ctx, GWTokenKey{}, hexutils.BytesToHex(h.UserID))
+		}
 		fn(&callProc{ctx: ctx})
 	}()
 }
