@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/ten-protocol/go-ten/integration/networktest/actions"
+	"github.com/ten-protocol/go-ten/integration/simulation/devnetwork"
 
 	"github.com/ten-protocol/go-ten/integration/networktest"
 	"github.com/ten-protocol/go-ten/integration/networktest/env"
@@ -19,7 +20,7 @@ func TestExecuteNativeFundsTransfer(t *testing.T) {
 	networktest.Run(
 		"native-funds-smoketest",
 		t,
-		env.LocalDevNetwork(),
+		env.LocalDevNetwork(devnetwork.WithGateway()),
 		actions.Series(
 			&actions.CreateTestUser{UserID: 0},
 			&actions.CreateTestUser{UserID: 1},
