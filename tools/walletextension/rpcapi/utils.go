@@ -28,6 +28,8 @@ const (
 	shortCacheTTL = 1 * time.Second
 )
 
+var rpcNotImplemented = fmt.Errorf("rpc endpoint not implemented")
+
 type ExecCfg struct {
 	account             *common.Address
 	computeFromCallback func(user *GWUser) *common.Address

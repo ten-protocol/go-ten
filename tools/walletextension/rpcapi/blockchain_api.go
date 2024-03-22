@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
@@ -69,12 +71,10 @@ type StorageResult struct {
 	Proof []string     `json:"proof"`
 }
 
-/*
-	func (s *BlockChainAPI) GetProof(ctx context.Context, address common.Address, storageKeys []string, blockNrOrHash rpc.BlockNumberOrHash) (*AccountResult, error) {
-		// not implemented
-		return nil, nil
-	}
-*/
+func (s *BlockChainAPI) GetProof(ctx context.Context, address common.Address, storageKeys []string, blockNrOrHash rpc.BlockNumberOrHash) (*AccountResult, error) {
+	return nil, rpcNotImplemented
+}
+
 func (api *BlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (map[string]interface{}, error) {
 	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &CacheCfg{TTLCallback: func() time.Duration {
 		return cacheTTLBlockNumber(number)
@@ -158,12 +158,10 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address common.Addre
 	return *resp, err
 }
 
-/*
-	func (s *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]map[string]interface{}, error) {
-		// not implemented
-		return nil, nil
-	}
-*/
+func (s *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]map[string]interface{}, error) {
+	return nil, rpcNotImplemented
+}
+
 type OverrideAccount struct {
 	Nonce     *hexutil.Uint64              `json:"nonce"`
 	Code      *hexutil.Bytes               `json:"code"`
@@ -252,7 +250,6 @@ func cloneArgs(args gethapi.TransactionArgs) gethapi.TransactionArgs {
 	return argsClone
 }
 
-/*
 type accessListResult struct {
 	Accesslist *types.AccessList `json:"accessList"`
 	Error      string            `json:"error,omitempty"`
@@ -260,7 +257,5 @@ type accessListResult struct {
 }
 
 func (s *BlockChainAPI) CreateAccessList(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash *rpc.BlockNumberOrHash) (*accessListResult, error) {
-	// not implemented
-	return nil, nil
+	return nil, rpcNotImplemented
 }
-*/

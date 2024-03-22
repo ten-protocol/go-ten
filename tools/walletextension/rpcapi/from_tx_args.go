@@ -9,12 +9,6 @@ import (
 )
 
 func searchFromAndData(possibleAddresses []*common.Address, args gethapi.TransactionArgs) *common.Address {
-	addressesMap := toMap(possibleAddresses)
-
-	// todo - is this correct
-	//if args.From != nil && addressesMap[*args.From] != nil {
-	//	return args.From
-	//}
 	if args.From != nil {
 		return args.From
 	}
@@ -23,12 +17,9 @@ func searchFromAndData(possibleAddresses []*common.Address, args gethapi.Transac
 		return nil
 	}
 
-	// the "from" field is not mandatory, so we try to find the address in the data field
-	if args.From == nil {
-		return searchDataFieldForAccount(addressesMap, *args.Data)
-	}
-
-	return nil
+	// since the "from" field is not mandatory, we try to find a matching address in the data field
+	addressesMap := toMap(possibleAddresses)
+	return searchDataFieldForAccount(addressesMap, *args.Data)
 }
 
 func searchDataFieldForAccount(addressesMap map[common.Address]*common.Address, data []byte) *common.Address {

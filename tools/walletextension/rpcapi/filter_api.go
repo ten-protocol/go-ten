@@ -29,23 +29,19 @@ func (api *FilterAPI) NewPendingTransactionFilter(_ *bool) rpc.ID {
 	return "not supported"
 }
 
-/*func (api *FilterAPI) NewPendingTransactions(ctx context.Context, fullTx *bool) (*rpc.Subscription, error) {
-	// not supported
-	return nil, nil
+func (api *FilterAPI) NewPendingTransactions(ctx context.Context, fullTx *bool) (*rpc.Subscription, error) {
+	return nil, fmt.Errorf("not supported")
 }
-*/
 
 func (api *FilterAPI) NewBlockFilter() rpc.ID {
 	// not implemented
 	return ""
 }
 
-/*
-	func (api *FilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
-		// not implemented
-		return nil, nil
-	}
-*/
+func (api *FilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
+	return nil, rpcNotImplemented
+}
+
 func (api *FilterAPI) Logs(ctx context.Context, crit filters.FilterCriteria) (*rpc.Subscription, error) {
 	subNotifier, user, err := getUserAndNotifier(ctx, api)
 	if err != nil {
@@ -189,12 +185,10 @@ func handleUnsubscribe(connectionSub *rpc.Subscription, backendSubscriptions []*
 	}
 }
 
-/*
-	func (api *FilterAPI) NewFilter(crit filters.FilterCriteria) (rpc.ID, error) {
-		// not implemented
-		return "", nil
-	}
-*/
+func (api *FilterAPI) NewFilter(crit filters.FilterCriteria) (rpc.ID, error) {
+	return rpc.NewID(), rpcNotImplemented
+}
+
 func (api *FilterAPI) GetLogs(ctx context.Context, crit filters.FilterCriteria) ([]*types.Log, error) {
 	logs, err := ExecAuthRPC[[]*types.Log](
 		ctx,
@@ -224,7 +218,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit filters.FilterCriteria) 
 	return nil, err
 }
 
-/*func (api *FilterAPI) UninstallFilter(id rpc.ID) bool {
+func (api *FilterAPI) UninstallFilter(id rpc.ID) bool {
 	// not implemented
 	return false
 }
@@ -241,7 +235,5 @@ func (api *FilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*types.Lo
 }
 
 func (api *FilterAPI) GetFilterChanges(id rpc.ID) (interface{}, error) {
-	// not implemented
-	return nil, nil
+	return nil, rpcNotImplemented
 }
-*/

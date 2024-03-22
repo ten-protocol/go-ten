@@ -23,8 +23,7 @@ func (api *EthereumAPI) GasPrice(ctx context.Context) (*hexutil.Big, error) {
 }
 
 func (api *EthereumAPI) MaxPriorityFeePerGas(ctx context.Context) (*hexutil.Big, error) {
-	// todo
-	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, nil, "eth_maxPriorityFeePerGas")
+	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, &CacheCfg{TTL: shortCacheTTL}, "eth_maxPriorityFeePerGas")
 }
 
 type FeeHistoryResult struct {
@@ -48,8 +47,6 @@ func (api *EthereumAPI) FeeHistory(ctx context.Context, blockCount math.HexOrDec
 	)
 }
 
-/*func (api *EthereumAPI) Syncing() (interface{}, error) {
-	// todo
-	return nil, nil
+func (api *EthereumAPI) Syncing() (interface{}, error) {
+	return nil, rpcNotImplemented
 }
-*/

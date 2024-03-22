@@ -57,7 +57,6 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	rpcServer.RegisterRoutes(httpapi.NewHTTPRoutes(walletExt))
 
 	// register all RPC endpoints exposed by a typical Geth node
-	// todo - discover what else we need to register here
 	rpcServer.RegisterAPIs([]gethrpc.API{
 		{
 			Namespace: "eth",
