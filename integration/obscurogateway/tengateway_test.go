@@ -414,7 +414,9 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 
 	for _, req := range []string{
 		`{"jsonrpc":"2.0","method":"eth_blockNumber","params": [],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_blockNumber","params": [],"id":1}`, // test caching
 		`{"jsonrpc":"2.0","method":"eth_gasPrice","params": [],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_gasPrice","params": [],"id":1}`, // test caching
 		`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params": ["latest", false],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_feeHistory","params":[1, "latest", [50]],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getBalance","params":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "latest"],"id":1}`,

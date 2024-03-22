@@ -50,7 +50,11 @@ type CacheCfg struct {
 func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg, method string, args ...any) (*R, error) {
 	audit(w, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
-	res, err := withCache(w.Cache, cfg, args, func() (*R, error) {
+	cacheKey := make([]any, 0)
+	cacheKey = append(cacheKey, method)
+	cacheKey = append(cacheKey, args...)
+
+	res, err := withCache(w.Cache, cfg, cacheKey, func() (*R, error) {
 		var resp *R
 		unauthedRPC, err := w.UnauthenticatedClient()
 		if err != nil {
@@ -58,9 +62,9 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *Cac
 		}
 		if ctx == nil {
 			err = unauthedRPC.Call(&resp, method, args...)
-			return resp, err
+		} else {
+			err = unauthedRPC.CallContext(ctx, &resp, method, args...)
 		}
-		err = unauthedRPC.CallContext(ctx, &resp, method, args...)
 		return resp, err
 	})
 	audit(w, "RPC call. method=%s args=%v result=%s error=%s time=%d", method, args, res, err, time.Since(requestStartTime).Milliseconds())
@@ -183,7 +187,7 @@ func generateCacheKey(params []any) []byte {
 	return hasher.Sum(nil)
 }
 
-func withCache[R any](cache cache.Cache, cfg *CacheCfg, args []any, onCacheMiss func() (*R, error)) (*R, error) {
+func withCache[R any](cache cache.Cache, cfg *CacheCfg, cacheArgs []any, onCacheMiss func() (*R, error)) (*R, error) {
 	if cfg == nil {
 		return onCacheMiss()
 	}
@@ -196,10 +200,13 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, args []any, onCacheMiss 
 
 	var cacheKey []byte
 	if isCacheable {
-		cacheKey = generateCacheKey(args)
+		cacheKey = generateCacheKey(cacheArgs)
 		if cachedValue, ok := cache.Get(cacheKey); ok {
 			// cloning?
-			returnValue := cachedValue.(*R)
+			returnValue, ok := cachedValue.(*R)
+			if !ok {
+				return nil, fmt.Errorf("unexpected error. Invalid format cached. %v", cachedValue)
+			}
 			return returnValue, nil
 		}
 	}
