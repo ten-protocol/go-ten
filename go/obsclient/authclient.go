@@ -196,9 +196,9 @@ func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria
 	return ac.rpcClient.Subscribe(ctx, nil, rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeLogs, filterCriteria)
 }
 
-func (ac *AuthObsClient) GetLogs(ctx context.Context, filterCriteria common.FilterCriteriaJSON) ([]*types.Log, error) {
+func (ac *AuthObsClient) GetLogs(ctx context.Context, filterCriteria filters.FilterCriteria) ([]*types.Log, error) {
 	var result responses.LogsType
-	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetLogs, filterCriteria, ac.account)
+	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetLogs, filterCriteria)
 	if err != nil {
 		return nil, err
 	}

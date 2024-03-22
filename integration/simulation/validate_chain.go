@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/eth/filters"
+
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
@@ -627,7 +629,7 @@ func checkSubscribedLogs(t *testing.T, owner string, channel chan common.IDAndLo
 
 func checkSnapshotLogs(t *testing.T, client *obsclient.AuthObsClient) int {
 	// To exercise the filtering mechanism, we get a snapshot for HOC events only, ignoring POC events.
-	hocFilter := common.FilterCriteriaJSON{
+	hocFilter := filters.FilterCriteria{
 		Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + testcommon.HOCAddr)},
 	}
 	logs, err := client.GetLogs(context.Background(), hocFilter)
