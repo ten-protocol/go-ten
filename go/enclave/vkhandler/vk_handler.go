@@ -1,4 +1,4 @@
-package vkhandler
+package vkhandler //nolint:typecheck
 
 import (
 	"crypto/rand"

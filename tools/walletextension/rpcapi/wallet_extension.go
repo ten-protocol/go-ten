@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/status-im/keycard-go/hexutils"
-
-	"github.com/ten-protocol/go-ten/go/wallet"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
@@ -39,7 +36,6 @@ type Services struct {
 	tenClient    *obsclient.ObsClient
 	Cache        cache.Cache
 	Config       *common.Config
-	DefaultUser  []byte
 }
 
 func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, config *common.Config) *Services {
@@ -56,8 +52,6 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		panic(err)
 	}
 
-	userID := addDefaultUser(config, logger, storage)
-
 	return &Services{
 		HostAddrHTTP: hostAddrHTTP,
 		HostAddrWS:   hostAddrWS,
@@ -70,35 +64,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		tenClient:    newTenClient,
 		Cache:        newGatewayCache,
 		Config:       config,
-		DefaultUser:  userID,
 	}
-}
-
-func addDefaultUser(config *common.Config, logger gethlog.Logger, storage storage.Storage) []byte {
-	userAccountKey, err := crypto.GenerateKey()
-	if err != nil {
-		panic(fmt.Errorf("error generating default user key"))
-	}
-
-	wallet := wallet.NewInMemoryWalletFromPK(big.NewInt(int64(config.TenChainID)), userAccountKey, logger)
-	vk, err := viewingkey.GenerateViewingKeyForWallet(wallet)
-	if err != nil {
-		panic(err)
-	}
-
-	// create UserID and store it in the database with the private key
-	userID := viewingkey.CalculateUserID(common.PrivateKeyToCompressedPubKey(vk.PrivateKey))
-
-	err = storage.AddUser(userID, crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
-	if err != nil {
-		panic(fmt.Errorf("error saving default user"))
-	}
-
-	err = storage.AddAccount(userID, vk.Account.Bytes(), vk.SignatureWithAccountKey, viewingkey.Legacy)
-	if err != nil {
-		panic(fmt.Errorf("error saving account %s for default user %s", vk.Account.Hex(), userID))
-	}
-	return userID
 }
 
 // IsStopping returns whether the WE is stopping
@@ -212,7 +178,7 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 		return err
 	}
 
-	audit(w, "Storing new address for user: %s, address: %s, duration: %d ", hexutils.BytesToHex(userID), address, time.Now().Sub(requestStartTime).Milliseconds())
+	audit(w, "Storing new address for user: %s, address: %s, duration: %d ", hexutils.BytesToHex(userID), address, time.Since(requestStartTime).Milliseconds())
 	return nil
 }
 

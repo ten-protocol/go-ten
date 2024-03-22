@@ -112,19 +112,19 @@ func (bn *BlockNumber) UnmarshalJSON(data []byte) error {
 }
 
 // Int64 returns the block number as int64.
-func (bn BlockNumber) Int64() int64 {
-	return (int64)(bn)
+func (bn *BlockNumber) Int64() int64 {
+	return (int64)(*bn)
 }
 
 // MarshalText implements encoding.TextMarshaler. It marshals:
 // - "safe", "finalized", "latest", "earliest" or "pending" as strings
 // - other numbers as hex
-func (bn BlockNumber) MarshalText() ([]byte, error) {
+func (bn *BlockNumber) MarshalText() ([]byte, error) {
 	return []byte(bn.String()), nil
 }
 
-func (bn BlockNumber) String() string {
-	switch bn {
+func (bn *BlockNumber) String() string {
+	switch *bn {
 	case EarliestBlockNumber:
 		return "earliest"
 	case LatestBlockNumber:
@@ -136,10 +136,10 @@ func (bn BlockNumber) String() string {
 	case SafeBlockNumber:
 		return "safe"
 	default:
-		if bn < 0 {
+		if *bn < 0 {
 			return fmt.Sprintf("<invalid %d>", bn)
 		}
-		return hexutil.Uint64(bn).String()
+		return hexutil.Uint64(*bn).String()
 	}
 }
 

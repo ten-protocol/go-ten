@@ -88,7 +88,7 @@ func (e EIP712Checker) CheckSignature(encryptionToken []byte, signature []byte, 
 // encryptionToken is expected to be a public key and not encrypted token as with other signature types
 // (since this is only temporary fix and legacy format will be removed soon)
 func (lsc LegacyChecker) CheckSignature(encryptionToken []byte, signature []byte, _ int64) (*gethcommon.Address, error) {
-	publicKey := []byte(encryptionToken)
+	publicKey := encryptionToken
 	msgToSignLegacy := GenerateLegacySignMessage(publicKey)
 
 	recoveredAccountPublicKeyLegacy, err := crypto.SigToPub(accounts.TextHash(msgToSignLegacy), signature)
