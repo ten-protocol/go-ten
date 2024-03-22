@@ -196,7 +196,6 @@ func handleUnsubscribe(connectionSub *rpc.Subscription, backendSubscriptions []*
 	}
 */
 func (api *FilterAPI) GetLogs(ctx context.Context, crit filters.FilterCriteria) ([]*types.Log, error) {
-	// todo
 	logs, err := ExecAuthRPC[[]*types.Log](
 		ctx,
 		api.we,
@@ -211,6 +210,10 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit filters.FilterCriteria) 
 				},
 			},
 			tryUntilAuthorised: true,
+			adjustArgs: func(acct *GWAccount) []any {
+				// convert to something serializable
+				return []any{common.FromCriteria(crit)}
+			},
 		},
 		"eth_getLogs",
 		crit,

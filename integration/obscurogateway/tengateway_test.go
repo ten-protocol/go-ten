@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension"
 
 	log2 "github.com/ten-protocol/go-ten/go/common/log"
@@ -182,6 +184,9 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user0.HTTPClient, signedTx.Hash(), time.Minute)
 	require.NoError(t, err)
 
+	_, err = user0.HTTPClient.CodeAt(context.Background(), contractReceipt.ContractAddress, big.NewInt(int64(rpc.LatestBlockNumber)))
+	require.NoError(t, err)
+
 	// check if value was changed in the smart contract with the interactions above
 	pack, _ := eventsContractABI.Pack("message2")
 	result, err := user1.HTTPClient.CallContract(context.Background(), ethereum.CallMsg{
@@ -260,6 +265,14 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	assert.Equal(t, 3, len(user1logs))
 	// user2 should see three events (two lifecycle events - same as user0) and event with his interaction with setMessage
 	assert.Equal(t, 3, len(user2logs))
+
+	_, err = user0.HTTPClient.FilterLogs(context.TODO(), ethereum.FilterQuery{
+		Addresses: []gethcommon.Address{contractReceipt.ContractAddress},
+		FromBlock: big.NewInt(0),
+		ToBlock:   big.NewInt(10000),
+		Topics:    nil,
+	})
+	require.NoError(t, err)
 }
 
 func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {

@@ -151,27 +151,17 @@ func getCandidateAccounts(user *GWUser, _ *Services, cfg *ExecCfg) ([]*GWAccount
 		}
 	}
 
-	// when there is no matching address, some calls, like submitting a transactions are allowed to go through
-	// todo - remove
-	//if len(candidateAccts) == 0 && cfg.useDefaultUser {
-	//	defaultUser, err := getUser(w.DefaultUser, w.Storage)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	defaultAcct := defaultUser.GetAllAddresses()[0]
-	//	candidateAccts = append(candidateAccts, defaultUser.accounts[*defaultAcct])
-	//}
 	return candidateAccts, nil
 }
 
-func extractUserID(ctx context.Context, w *Services) ([]byte, error) {
+func extractUserID(ctx context.Context, _ *Services) ([]byte, error) {
 	token, ok := ctx.Value(rpc.GWTokenKey{}).(string)
 	if !ok {
-		return nil, fmt.Errorf("invalid userid")
+		return nil, fmt.Errorf("invalid userid: %s", ctx.Value(rpc.GWTokenKey{}))
 	}
 	userID := hexutils.HexToBytes(token)
 	if len(userID) != viewingkey.UserIDLength {
-		return nil, fmt.Errorf("invalid userid")
+		return nil, fmt.Errorf("invalid userid: %s", token)
 	}
 	return userID, nil
 }

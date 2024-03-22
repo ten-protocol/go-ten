@@ -130,19 +130,17 @@ func (api *BlockChainAPI) GetBlockByHash(ctx context.Context, hash common.Hash, 
 }
 
 func (api *BlockChainAPI) GetCode(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
-	resp, err := ExecAuthRPC[hexutil.Bytes](
+	// todo - must be authenticated
+	resp, err := UnauthenticatedTenRPCCall[hexutil.Bytes](
 		ctx,
 		api.we,
-		&ExecCfg{
-			cacheCfg: &CacheCfg{
-				TTLCallback: func() time.Duration {
-					if blockNrOrHash.BlockNumber != nil && blockNrOrHash.BlockNumber.Int64() <= 0 {
-						return shortCacheTTL
-					}
-					return longCacheTTL
-				},
+		&CacheCfg{
+			TTLCallback: func() time.Duration {
+				if blockNrOrHash.BlockNumber != nil && blockNrOrHash.BlockNumber.Int64() <= 0 {
+					return shortCacheTTL
+				}
+				return longCacheTTL
 			},
-			account: &address,
 		},
 		"eth_getCode",
 		address,
