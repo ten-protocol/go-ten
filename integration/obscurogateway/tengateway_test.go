@@ -413,6 +413,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// make requests to geth for comparison
 
 	for _, req := range []string{
+		`{"jsonrpc":"2.0","method":"eth_blockNumber","params": [],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_gasPrice","params": [],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params": ["latest", false],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_feeHistory","params":[1, "latest", [50]],"id":1}`,
