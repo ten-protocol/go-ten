@@ -1,6 +1,5 @@
 package rpcapi
 
-//goland:noinspection ALL
 import (
 	"context"
 	"encoding/json"

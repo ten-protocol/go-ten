@@ -732,7 +732,7 @@ func waitServerIsReady(serverAddr string) error {
 func getFeeAndGas(client *ethclient.Client, wallet wallet.Wallet, legacyTx *types.LegacyTx) error {
 	tx := types.NewTx(legacyTx)
 
-	history, err := client.FeeHistory(context.Background(), 1, nil, []float64{})
+	history, err := client.FeeHistory(context.Background(), 1, nil, nil)
 	if err != nil || len(history.BaseFee) == 0 {
 		return err
 	}

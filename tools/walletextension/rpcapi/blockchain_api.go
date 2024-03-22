@@ -1,10 +1,8 @@
 package rpcapi
 
-//goland:noinspection ALL
 import (
 	"context"
 	"encoding/json"
-	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -23,10 +21,8 @@ func NewBlockChainAPI(we *Services) *BlockChainAPI {
 }
 
 func (api *BlockChainAPI) ChainId() *hexutil.Big { //nolint:stylecheck
-	// chainid, _ := UnauthenticatedTenRPCCall[hexutil.Big](nil, api.we, &CacheCfg{TTL: longCacheTTL}, "eth_chainId")
-	// return chainid
-	chainID := big.NewInt(int64(api.we.Config.TenChainID))
-	return (*hexutil.Big)(chainID)
+	chainID, _ := UnauthenticatedTenRPCCall[hexutil.Big](context.Background(), api.we, &CacheCfg{TTL: longCacheTTL}, "eth_chainId")
+	return chainID
 }
 
 func (api *BlockChainAPI) BlockNumber() hexutil.Uint64 {
@@ -38,7 +34,6 @@ func (api *BlockChainAPI) BlockNumber() hexutil.Uint64 {
 }
 
 func (api *BlockChainAPI) GetBalance(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Big, error) {
-	// todo - how do you handle getBalance for contracts
 	return ExecAuthRPC[hexutil.Big](
 		ctx,
 		api.we,
