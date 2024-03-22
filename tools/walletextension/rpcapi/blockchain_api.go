@@ -45,12 +45,10 @@ func (api *BlockChainAPI) GetBalance(ctx context.Context, address common.Address
 		&ExecCfg{
 			cacheCfg: &CacheCfg{
 				TTLCallback: func() time.Duration {
-					if blockNrOrHash.BlockNumber != nil && blockNrOrHash.BlockNumber.Int64() <= 0 {
-						return shortCacheTTL
-					}
-					return longCacheTTL
+					return cacheTTLBlockNumberOrHash(blockNrOrHash)
 				},
 			},
+			account:            &address,
 			tryUntilAuthorised: true, // the user can request the balance of a contract account
 		},
 		"eth_getBalance",
@@ -84,10 +82,7 @@ type StorageResult struct {
 */
 func (api *BlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (map[string]interface{}, error) {
 	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &CacheCfg{TTLCallback: func() time.Duration {
-		if number > 0 {
-			return longCacheTTL
-		}
-		return shortCacheTTL
+		return cacheTTLBlockNumber(number)
 	}}, "eth_getHeaderByNumber", number)
 	if resp == nil {
 		return nil, err
@@ -109,10 +104,7 @@ func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.Block
 		api.we,
 		&CacheCfg{
 			TTLCallback: func() time.Duration {
-				if number > 0 {
-					return longCacheTTL
-				}
-				return shortCacheTTL
+				return cacheTTLBlockNumber(number)
 			},
 		}, "eth_getBlockByNumber", number, fullTx)
 	if resp == nil {
@@ -136,10 +128,7 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address common.Address, b
 		api.we,
 		&CacheCfg{
 			TTLCallback: func() time.Duration {
-				if blockNrOrHash.BlockNumber != nil && blockNrOrHash.BlockNumber.Int64() <= 0 {
-					return shortCacheTTL
-				}
-				return longCacheTTL
+				return cacheTTLBlockNumberOrHash(blockNrOrHash)
 			},
 		},
 		"eth_getCode",
@@ -204,27 +193,17 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, api.we, &ExecCfg{
 		cacheCfg: &CacheCfg{
 			TTLCallback: func() time.Duration {
-				if blockNrOrHash.BlockNumber != nil && blockNrOrHash.BlockNumber.Int64() <= 0 {
-					return shortCacheTTL
-				}
-				return longCacheTTL
+				return cacheTTLBlockNumberOrHash(blockNrOrHash)
 			},
 		},
 		computeFromCallback: func(user *GWUser) *common.Address {
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
 		adjustArgs: func(acct *GWAccount) []any {
-			serialised, _ := json.Marshal(args)
-			var argsClone gethapi.TransactionArgs
-			json.Unmarshal(serialised, &argsClone)
-			// set the from
-			if args.From == nil || args.From.Hex() == (common.Address{}).Hex() {
-				argsClone.From = acct.address
-			}
-			return []any{argsClone, blockNrOrHash, overrides}
+			argsClone := populateFrom(acct, args)
+			return []any{argsClone, blockNrOrHash, overrides, blockOverrides}
 		},
-		useDefaultUser: true,
-		tryAll:         true,
+		tryAll: true,
 	}, "eth_call", args, blockNrOrHash, overrides, blockOverrides)
 	if resp == nil {
 		return nil, err
@@ -236,33 +215,46 @@ func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.Transact
 	resp, err := ExecAuthRPC[hexutil.Uint64](ctx, api.we, &ExecCfg{
 		cacheCfg: &CacheCfg{
 			TTLCallback: func() time.Duration {
-				if blockNrOrHash != nil && blockNrOrHash.BlockNumber != nil && blockNrOrHash.BlockNumber.Int64() <= 0 {
-					return shortCacheTTL
+				if blockNrOrHash != nil {
+					return cacheTTLBlockNumberOrHash(*blockNrOrHash)
 				}
-				return longCacheTTL
+				return shortCacheTTL
 			},
 		},
 		computeFromCallback: func(user *GWUser) *common.Address {
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
 		adjustArgs: func(acct *GWAccount) []any {
-			serialised, _ := json.Marshal(args)
-			var argsClone gethapi.TransactionArgs
-			json.Unmarshal(serialised, &argsClone)
-			// set the from
-			if args.From == nil || args.From.Hex() == (common.Address{}).Hex() {
-				argsClone.From = acct.address
-			}
+			argsClone := populateFrom(acct, args)
 			return []any{argsClone, blockNrOrHash, overrides}
 		},
 		// is this a security risk?
-		useDefaultUser: true,
-		tryAll:         true,
+		tryAll: true,
 	}, "eth_estimateGas", args, blockNrOrHash, overrides)
 	if resp == nil {
 		return 0, err
 	}
 	return *resp, err
+}
+
+func populateFrom(acct *GWAccount, args gethapi.TransactionArgs) gethapi.TransactionArgs {
+	// clone the args
+	argsClone := cloneArgs(args)
+	// set the from
+	if args.From == nil || args.From.Hex() == (common.Address{}).Hex() {
+		argsClone.From = acct.address
+	}
+	return argsClone
+}
+
+func cloneArgs(args gethapi.TransactionArgs) gethapi.TransactionArgs {
+	serialised, _ := json.Marshal(args)
+	var argsClone gethapi.TransactionArgs
+	err := json.Unmarshal(serialised, &argsClone)
+	if err != nil {
+		return gethapi.TransactionArgs{}
+	}
+	return argsClone
 }
 
 /*

@@ -35,7 +35,6 @@ type ExecCfg struct {
 	tryUntilAuthorised  bool
 	adjustArgs          func(acct *GWAccount) []any
 	cacheCfg            *CacheCfg
-	useDefaultUser      bool
 }
 
 type CacheCfg struct {
@@ -218,4 +217,18 @@ func audit(services *Services, msg string, params ...any) {
 	if services.Config.VerboseFlag {
 		services.FileLogger.Info(fmt.Sprintf(msg, params...))
 	}
+}
+
+func cacheTTLBlockNumberOrHash(blockNrOrHash rpc.BlockNumberOrHash) time.Duration {
+	if blockNrOrHash.BlockNumber != nil && blockNrOrHash.BlockNumber.Int64() <= 0 {
+		return shortCacheTTL
+	}
+	return longCacheTTL
+}
+
+func cacheTTLBlockNumber(lastBlock rpc.BlockNumber) time.Duration {
+	if lastBlock > 0 {
+		return longCacheTTL
+	}
+	return shortCacheTTL
 }

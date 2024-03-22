@@ -25,10 +25,7 @@ func NewTransactionAPI(we *Services) *TransactionAPI {
 
 func (s *TransactionAPI) GetBlockTransactionCountByNumber(ctx context.Context, blockNr gethrpc.BlockNumber) *hexutil.Uint {
 	count, err := UnauthenticatedTenRPCCall[hexutil.Uint](ctx, s.we, &CacheCfg{TTLCallback: func() time.Duration {
-		if blockNr > 0 {
-			return longCacheTTL
-		}
-		return shortCacheTTL
+		return cacheTTLBlockNumber(blockNr)
 	}}, "eth_getBlockTransactionCountByNumber", blockNr)
 	if err != nil {
 		return nil
@@ -65,11 +62,11 @@ func (s *TransactionAPI) GetRawTransactionByBlockHashAndIndex(ctx context.Contex
 }*/
 
 func (s *TransactionAPI) GetTransactionCount(ctx context.Context, address common.Address, blockNrOrHash gethrpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
-	return ExecAuthRPC[hexutil.Uint64](ctx, s.we, &ExecCfg{account: &address, useDefaultUser: true}, "eth_getTransactionCount", address, blockNrOrHash)
+	return ExecAuthRPC[hexutil.Uint64](ctx, s.we, &ExecCfg{account: &address}, "eth_getTransactionCount", address, blockNrOrHash)
 }
 
 func (s *TransactionAPI) GetTransactionByHash(ctx context.Context, hash common.Hash) (*rpc.RpcTransaction, error) {
-	return ExecAuthRPC[rpc.RpcTransaction](ctx, s.we, &ExecCfg{tryAll: true, useDefaultUser: true}, "eth_getTransactionByHash", hash)
+	return ExecAuthRPC[rpc.RpcTransaction](ctx, s.we, &ExecCfg{tryAll: true}, "eth_getTransactionByHash", hash)
 }
 
 func (s *TransactionAPI) GetRawTransactionByHash(ctx context.Context, hash common.Hash) (hexutil.Bytes, error) {
@@ -81,7 +78,7 @@ func (s *TransactionAPI) GetRawTransactionByHash(ctx context.Context, hash commo
 }
 
 func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error) {
-	txRec, err := ExecAuthRPC[map[string]interface{}](ctx, s.we, &ExecCfg{tryUntilAuthorised: true, useDefaultUser: true}, "eth_getTransactionReceipt", hash)
+	txRec, err := ExecAuthRPC[map[string]interface{}](ctx, s.we, &ExecCfg{tryUntilAuthorised: true}, "eth_getTransactionReceipt", hash)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +89,7 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 }
 
 func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.TransactionArgs) (common.Hash, error) {
-	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{account: args.From, useDefaultUser: true}, "eth_sendTransaction", args)
+	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{account: args.From}, "eth_sendTransaction", args)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -123,7 +120,7 @@ type SignTransactionResult struct {
 }*/
 
 func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.Bytes) (common.Hash, error) {
-	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{tryAll: true, useDefaultUser: true}, "eth_sendRawTransaction", input)
+	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{tryAll: true}, "eth_sendRawTransaction", input)
 	if err != nil {
 		return common.Hash{}, err
 	}

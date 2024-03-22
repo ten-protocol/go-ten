@@ -41,10 +41,7 @@ func (api *EthereumAPI) FeeHistory(ctx context.Context, blockCount math.HexOrDec
 		ctx,
 		api.we,
 		&CacheCfg{TTLCallback: func() time.Duration {
-			if lastBlock > 0 {
-				return longCacheTTL
-			}
-			return shortCacheTTL
+			return cacheTTLBlockNumber(lastBlock)
 		}},
 		"eth_feeHistory",
 		blockCount,
