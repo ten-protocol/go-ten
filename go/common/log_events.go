@@ -16,7 +16,7 @@ type LogSubscription struct {
 	ViewingKey *viewingkey.RPCSignedViewingKey
 
 	// A subscriber-defined filter to apply to the stream of logs.
-	Filter *filters.FilterCriteria
+	Filter *FilterCriteriaJSON
 }
 
 // IDAndEncLog pairs an encrypted log with the ID of the subscription that generated it.

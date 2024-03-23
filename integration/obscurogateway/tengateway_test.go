@@ -786,9 +786,9 @@ func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Has
 	// Make a subscription
 	filterQuery := ethereum.FilterQuery{
 		Addresses: addresses,
-		FromBlock: big.NewInt(0), // todo (@ziga) - without those we get errors - fix that and make them configurable
-		ToBlock:   big.NewInt(10000),
-		Topics:    topics,
+		// FromBlock: big.NewInt(0), // todo (@ziga) - without those we get errors - fix that and make them configurable
+		// ToBlock:   big.NewInt(10000),
+		Topics: topics,
 	}
 	logsCh := make(chan types.Log)
 

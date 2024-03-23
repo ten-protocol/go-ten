@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/eth/filters"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -108,8 +107,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, _ interface{}, namespace s
 		return nil, err
 	}
 
-	// We use RLP instead of JSON marshaling here, as for some reason the filter criteria doesn't unmarshal correctly from JSON.
-	encodedLogSubscription, err := rlp.EncodeToBytes(logSubscription)
+	encodedLogSubscription, err := json.Marshal(logSubscription)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +179,7 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 
 	// If there are less than two arguments, it means no filter criteria was passed.
 	if len(args) < 2 {
-		logSubscription.Filter = &filters.FilterCriteria{}
+		logSubscription.Filter = &common.FilterCriteriaJSON{}
 		return logSubscription, nil
 	}
 
@@ -189,12 +187,8 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 	if !ok {
 		return nil, fmt.Errorf("invalid subscription")
 	}
-	// If we do not override a nil block hash to an empty one, RLP decoding will fail on the enclave side.
-	if filterCriteria.BlockHash == nil {
-		filterCriteria.BlockHash = &gethcommon.Hash{}
-	}
-
-	logSubscription.Filter = &filterCriteria
+	fc := common.FromCriteria(filterCriteria)
+	logSubscription.Filter = &fc
 	return logSubscription, nil
 }
 
