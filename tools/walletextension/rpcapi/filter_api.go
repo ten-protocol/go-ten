@@ -43,6 +43,7 @@ func (api *FilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
 }
 
 func (api *FilterAPI) Logs(ctx context.Context, crit filters.FilterCriteria) (*rpc.Subscription, error) {
+	audit(api.we, "start Logs subscription %v", crit)
 	subNotifier, user, err := getUserAndNotifier(ctx, api)
 	if err != nil {
 		return nil, err
@@ -69,6 +70,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit filters.FilterCriteria) (*r
 		inCh := make(chan common.IDAndLog)
 		backendSubscription, err := rpcWSClient.Subscribe(ctx, nil, "eth", inCh, "logs", crit)
 		if err != nil {
+			fmt.Printf("could not connect to backend %s", err)
 			return nil, err
 		}
 
