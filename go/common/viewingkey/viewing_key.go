@@ -42,7 +42,7 @@ func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	encryptionToken := CalculateUserIDHex(crypto.CompressPubkey(viewingPrivateKeyECIES.PublicKey.ExportECDSA()))
+	encryptionToken := CalculateUserID(crypto.CompressPubkey(viewingPrivateKeyECIES.PublicKey.ExportECDSA()))
 	messageToSign, err := GenerateMessage(encryptionToken, chainID, PersonalSignVersion, messageType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate message for viewing key: %w", err)
