@@ -11,7 +11,7 @@ ssh obscurouser@IPADDRESS
 
 sudo apt-get update \
  && sudo apt-get install -y gcc \
- && sudo snap refresh && sudo snap install --channel=1.20 go --classic \
+ && sudo snap refresh && sudo snap install go --channel=1.21/stable --classic \
  && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh
 
 exit
