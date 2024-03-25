@@ -17,7 +17,7 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension"
 
 	"github.com/go-kit/kit/transport/http/jsonrpc"
-	"github.com/ten-protocol/go-ten/go/rpc"
+	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 
 	log2 "github.com/ten-protocol/go-ten/go/common/log"
 
@@ -419,7 +419,11 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// make requests to geth for comparison
 
 	for _, req := range []string{
-		`{"jsonrpc":"2.0","method":"eth_blockNumber","params": [],"id":1}`,
+		//`{"jsonrpc":"2.0","method":"eth_getLogs","params":[],"id":1}`,
+		//`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"topics":[]}],"id":1}`,
+		//`{"jsonrpc":"2.0","method":"eth_subscribe","params":["logs"],"id":1}`,
+		//`{"jsonrpc":"2.0","method":"eth_subscribe","params":["logs",{"topics":[]}],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_blockNumber","params": [],"id":1}`, // test caching
 		`{"jsonrpc":"2.0","method":"eth_gasPrice","params": [],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_gasPrice","params": [],"id":1}`, // test caching
@@ -667,19 +671,19 @@ func testDifferentMessagesOnRegister(t *testing.T, httpURL, wsURL string, w wall
 }
 
 func testInvokeNonSensitiveMethod(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
-	user, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
+	user, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
 
 	// call one of the non-sensitive methods with unauthenticated user
 	// and make sure gateway is not complaining about not having viewing keys
-	respBody := makeHTTPEthJSONReq(httpURL, rpc.ChainID, user.tgClient.UserID(), nil)
-	if strings.Contains(string(respBody), fmt.Sprintf("method %s cannot be called with an unauthorised client - no signed viewing keys found", rpc.ChainID)) {
-		t.Errorf("sensitive method called without authenticating viewingkeys and did fail because of it:  %s", rpc.ChainID)
+	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.ChainID, user.tgClient.UserID(), nil)
+	if strings.Contains(string(respBody), fmt.Sprintf("method %s cannot be called with an unauthorised client - no signed viewing keys found", tenrpc.ChainID)) {
+		t.Errorf("sensitive method called without authenticating viewingkeys and did fail because of it:  %s", tenrpc.ChainID)
 	}
 }
 
 func testGetStorageAtForReturningUserID(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
-	user, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
+	user, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
 
 	type JSONResponse struct {
@@ -688,24 +692,24 @@ func testGetStorageAtForReturningUserID(t *testing.T, httpURL, wsURL string, w w
 	var response JSONResponse
 
 	// make a request to GetStorageAt with correct parameters to get userID that exists in the database
-	respBody := makeHTTPEthJSONReq(httpURL, rpc.GetStorageAt, user.tgClient.UserID(), []interface{}{"getUserID", "0", nil})
+	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{wecommon.GetStorageAtUserIDRequestMethodName, "0", nil})
 	if err = json.Unmarshal(respBody, &response); err != nil {
 		t.Error("Unable to unmarshal response")
 	}
-	if response.Result != user.tgClient.UserID() {
+	if !bytes.Equal(gethcommon.FromHex(response.Result), user.tgClient.UserIDBytes()) {
 		t.Errorf("Wrong UserID returned. Expected: %s, received: %s", user.tgClient.UserID(), response.Result)
 	}
 
 	// make a request to GetStorageAt with correct parameters to get userID, but with wrong userID
-	respBody2 := makeHTTPEthJSONReq(httpURL, rpc.GetStorageAt, "invalid_user_id", []interface{}{"getUserID", "0", nil})
-	if !strings.Contains(string(respBody2), "method eth_getStorageAt cannot be called with an unauthorised client - no signed viewing keys found") {
-		t.Error("eth_getStorageAt did not respond with error: method eth_getStorageAt cannot be called with an unauthorised client - no signed viewing keys found")
+	respBody2 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, "0x0000000000000000000000000000000000000001", []interface{}{wecommon.GetStorageAtUserIDRequestMethodName, "0", nil})
+	if !strings.Contains(string(respBody2), "not found") {
+		t.Error("eth_getStorageAt did not respond with not found error")
 	}
 
 	// make a request to GetStorageAt with wrong parameters to get userID, but correct userID
-	respBody3 := makeHTTPEthJSONReq(httpURL, rpc.GetStorageAt, user.tgClient.UserID(), []interface{}{"abc", "0", nil})
-	if !strings.Contains(string(respBody3), "method eth_getStorageAt cannot be called with an unauthorised client - no signed viewing keys found") {
-		t.Error("eth_getStorageAt did not respond with error: no signed viewing keys found")
+	respBody3 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{"0x0000000000000000000000000000000000000001", "0", nil})
+	if !strings.Contains(string(respBody3), "illegal access") {
+		t.Error("eth_getStorageAt did not respond with error: illegal access")
 	}
 }
 
@@ -869,7 +873,7 @@ func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Has
 	// Make a subscription
 	filterQuery := ethereum.FilterQuery{
 		Addresses: addresses,
-		// FromBlock: big.NewInt(0), // todo (@ziga) - without those we get errors - fix that and make them configurable
+		FromBlock: big.NewInt(2), // todo (@ziga) - without those we get errors - fix that and make them configurable
 		// ToBlock:   big.NewInt(10000),
 		Topics: topics,
 	}

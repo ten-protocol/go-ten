@@ -4,6 +4,10 @@ const (
 	Localhost = "127.0.0.1"
 
 	JSONKeyAddress         = "address"
+	JSONKeyID              = "id"
+	JSONKeyMethod          = "method"
+	JSONKeyParams          = "params"
+	JSONKeyRPCVersion      = "jsonrpc"
 	JSONKeySignature       = "signature"
 	JSONKeyType            = "type"
 	JSONKeyEncryptionToken = "encryptionToken"
@@ -12,9 +16,6 @@ const (
 
 const (
 	PathReady                           = "/ready/"
-	PathViewingKeys                     = "/viewingkeys/"
-	PathGenerateViewingKey              = "/generateviewingkey/"
-	PathSubmitViewingKey                = "/submitviewingkey/"
 	PathJoin                            = "/join/"
 	PathGetMessage                      = "/getmessage/"
 	PathAuthenticate                    = "/authenticate/"
@@ -24,7 +25,6 @@ const (
 	PathNetworkHealth                   = "/network-health/"
 	WSProtocol                          = "ws://"
 	HTTPProtocol                        = "http://"
-	UserQueryParameter                  = "u"
 	EncryptedTokenQueryParameter        = "token"
 	AddressQueryParameter               = "a"
 	MessageUserIDLen                    = 40

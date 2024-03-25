@@ -16,9 +16,6 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/httputil"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/userconn"
 )
 
 // NewHTTPRoutes returns the http specific routes
@@ -87,70 +84,6 @@ func httpRequestHandler(walletExt *rpcapi.Services, resp http.ResponseWriter, re
 
 // readyRequestHandler is used to check whether the server is ready
 func readyRequestHandler(_ *rpcapi.Services, _ UserConn) {}
-
-// generateViewingKeyRequestHandler parses the gen vk request
-func generateViewingKeyRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
-	body, err := conn.ReadRequest()
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
-		return
-	}
-
-	var reqJSONMap map[string]string
-	err = json.Unmarshal(body, &reqJSONMap)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not unmarshal address request - %w", err))
-		return
-	}
-
-	address := gethcommon.HexToAddress(reqJSONMap[common.JSONKeyAddress])
-
-	pubViewingKey, err := walletExt.GenerateViewingKey(address)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("unable to generate vieweing key - %w", err))
-		return
-	}
-
-	err = conn.WriteResponse([]byte(pubViewingKey))
-	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
-	}
-}
-
-// submitViewingKeyRequestHandler submits the viewing key and signed bytes to the WE
-func submitViewingKeyRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
-	body, err := conn.ReadRequest()
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
-		return
-	}
-
-	var reqJSONMap map[string]string
-	err = json.Unmarshal(body, &reqJSONMap)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not unmarshal address request - %w", err))
-		return
-	}
-	accAddress := gethcommon.HexToAddress(reqJSONMap[common.JSONKeyAddress])
-
-	signature, err := hex.DecodeString(reqJSONMap[common.JSONKeySignature][2:])
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not decode signature from client to hex - %w", err))
-		return
-	}
-
-	err = walletExt.SubmitViewingKey(accAddress, signature)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not submit viewing key - %w", err))
-		return
-	}
-
-	err = conn.WriteResponse([]byte(common.SuccessMsg))
-	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
-		return
-	}
-}
 
 // This function handles request to /join endpoint. It is responsible to create new user (new key-pair) and store it to the db
 func joinRequestHandler(walletExt *rpcapi.Services, conn UserConn) {

@@ -25,9 +25,8 @@ import (
 
 // Services handles the various business logic for the api endpoints
 type Services struct {
-	HostAddrHTTP string                                        // The HTTP address on which the Ten host can be reached
-	HostAddrWS   string                                        // The WS address on which the Ten host can be reached
-	unsignedVKs  map[gethcommon.Address]*viewingkey.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
+	HostAddrHTTP string // The HTTP address on which the Ten host can be reached
+	HostAddrWS   string // The WS address on which the Ten host can be reached
 	Storage      storage.Storage
 	logger       gethlog.Logger
 	FileLogger   gethlog.Logger
@@ -55,7 +54,6 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 	return &Services{
 		HostAddrHTTP: hostAddrHTTP,
 		HostAddrWS:   hostAddrWS,
-		unsignedVKs:  map[gethcommon.Address]*viewingkey.ViewingKey{},
 		Storage:      storage,
 		logger:       logger,
 		FileLogger:   newFileLogger,
@@ -75,61 +73,6 @@ func (w *Services) IsStopping() bool {
 // Logger returns the WE set logger
 func (w *Services) Logger() gethlog.Logger {
 	return w.logger
-}
-
-// todo - once the logic in routes has been moved to RPC functions, these methods can be moved there
-
-// GenerateViewingKey generates the user viewing key and waits for signature
-func (w *Services) GenerateViewingKey(addr gethcommon.Address) (string, error) {
-	// Requested to generate viewing key for address(old way): %s", addr.Hex()))
-	viewingKeyPrivate, err := crypto.GenerateKey()
-	if err != nil {
-		return "", fmt.Errorf("unable to generate a new keypair - %w", err)
-	}
-
-	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
-	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
-
-	w.unsignedVKs[addr] = &viewingkey.ViewingKey{
-		Account:                 &addr,
-		PrivateKey:              viewingPrivateKeyEcies,
-		PublicKey:               viewingPublicKeyBytes,
-		SignatureWithAccountKey: nil, // we await a signature from the user before we can set up the EncRPCClient
-	}
-
-	// compress the viewing key and convert it to hex string ( this is what Metamask signs)
-	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
-	return hex.EncodeToString(viewingKeyBytes), nil
-}
-
-// SubmitViewingKey checks the signed viewing key and stores it
-func (w *Services) SubmitViewingKey(address gethcommon.Address, signature []byte) error {
-	audit(w, "Requested to submit a viewing key (old way): %s", address.Hex())
-	vk, found := w.unsignedVKs[address]
-	if !found {
-		return fmt.Errorf(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", address, common.PathGenerateViewingKey))
-	}
-
-	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
-	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-	signature[64] -= 27
-
-	vk.SignatureWithAccountKey = signature
-
-	//err := w.Storage.AddUser(defaultUserId, crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
-	//if err != nil {
-	//	return fmt.Errorf("error saving user: %s", common.DefaultUser)
-	//}
-	//
-	//err = w.Storage.AddAccount(defaultUserId, vk.Account.Bytes(), vk.SignatureWithAccountKey)
-	//if err != nil {
-	//	return fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser)
-	//}
-
-	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
-	delete(w.unsignedVKs, address)
-
-	return nil
 }
 
 // GenerateAndStoreNewUser generates new key-pair and userID, stores it in the database and returns hex encoded userID and error

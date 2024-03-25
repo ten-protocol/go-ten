@@ -27,7 +27,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/status-im/keycard-go/hexutils"
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -73,7 +74,7 @@ func extractUserID(ctx context.Context) []byte {
 	if !ok {
 		return nil
 	}
-	userID := hexutils.HexToBytes(token)
+	userID := common.FromHex(token)
 	if len(userID) != viewingkey.UserIDLength {
 		return nil
 	}

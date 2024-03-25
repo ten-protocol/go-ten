@@ -164,7 +164,7 @@ func extractUserID(ctx context.Context, _ *Services) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid userid: %s", ctx.Value(rpc.GWTokenKey{}))
 	}
-	userID := hexutils.HexToBytes(token)
+	userID := common.FromHex(token)
 	if len(userID) != viewingkey.UserIDLength {
 		return nil, fmt.Errorf("invalid userid: %s", token)
 	}

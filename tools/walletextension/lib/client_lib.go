@@ -36,6 +36,10 @@ func (o *TGLib) UserID() string {
 	return hexutils.BytesToHex(o.userID)
 }
 
+func (o *TGLib) UserIDBytes() []byte {
+	return o.userID
+}
+
 func (o *TGLib) Join() error {
 	// todo move this to stdlib
 	statusCode, userID, err := fasthttp.Get(nil, fmt.Sprintf("%s/v1/join/", o.httpURL))
