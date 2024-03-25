@@ -33,7 +33,7 @@ type RPCSignedViewingKey struct {
 
 // GenerateViewingKeyForWallet takes an account wallet, generates a viewing key and signs the key with the acc's private key
 func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
-	chainID := int64(443)
+	chainID := wal.ChainID().Int64()
 	messageType := PersonalSign
 
 	// simulate what the gateway would do to generate the viewing key
