@@ -13,7 +13,6 @@ import (
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
@@ -42,7 +41,7 @@ func (api *FilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
 	return nil, rpcNotImplemented
 }
 
-func (api *FilterAPI) Logs(ctx context.Context, crit filters.FilterCriteria) (*rpc.Subscription, error) {
+func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rpc.Subscription, error) {
 	audit(api.we, "start Logs subscription %v", crit)
 	subNotifier, user, err := getUserAndNotifier(ctx, api)
 	if err != nil {
@@ -119,7 +118,7 @@ func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *GW
 	return subNotifier, user, nil
 }
 
-func searchForAddressInFilterCriteria(filterCriteria filters.FilterCriteria, possibleAddresses []*gethcommon.Address) []*gethcommon.Address {
+func searchForAddressInFilterCriteria(filterCriteria common.FilterCriteria, possibleAddresses []*gethcommon.Address) []*gethcommon.Address {
 	result := make([]*gethcommon.Address, 0)
 	addrMap := toMap(possibleAddresses)
 	for _, topicCondition := range filterCriteria.Topics {
@@ -187,11 +186,11 @@ func handleUnsubscribe(connectionSub *rpc.Subscription, backendSubscriptions []*
 	}
 }
 
-func (api *FilterAPI) NewFilter(crit filters.FilterCriteria) (rpc.ID, error) {
+func (api *FilterAPI) NewFilter(crit common.FilterCriteria) (rpc.ID, error) {
 	return rpc.NewID(), rpcNotImplemented
 }
 
-func (api *FilterAPI) GetLogs(ctx context.Context, crit filters.FilterCriteria) ([]*types.Log, error) {
+func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) ([]*types.Log, error) {
 	logs, err := ExecAuthRPC[[]*types.Log](
 		ctx,
 		api.we,

@@ -12,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -183,7 +182,7 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 		return logSubscription, nil
 	}
 
-	filterCriteria, ok := args[1].(filters.FilterCriteria)
+	filterCriteria, ok := args[1].(common.FilterCriteria)
 	if !ok {
 		return nil, fmt.Errorf("invalid subscription")
 	}
