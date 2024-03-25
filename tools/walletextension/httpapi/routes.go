@@ -18,6 +18,7 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/userconn"
 )
 
 // NewHTTPRoutes returns the http specific routes
@@ -27,14 +28,6 @@ func NewHTTPRoutes(walletExt *rpcapi.Services) []node.Route {
 		{
 			Name: common.PathReady,
 			Func: httpHandler(walletExt, readyRequestHandler),
-		},
-		{
-			Name: common.PathGenerateViewingKey,
-			Func: httpHandler(walletExt, generateViewingKeyRequestHandler),
-		},
-		{
-			Name: common.PathSubmitViewingKey,
-			Func: httpHandler(walletExt, submitViewingKeyRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathJoin,
