@@ -15,7 +15,6 @@ import (
 const (
 	EIP712Signature SignatureType = 0
 	PersonalSign    SignatureType = 1
-	Legacy          SignatureType = 2
 )
 
 // SignatureType is used to differentiate between different signature types (string is used, because int is not RLP-serializable)
@@ -32,7 +31,6 @@ const (
 	EIP712DomainVersionValue  = "1.0"
 	UserIDHexLength           = 40
 	PersonalSignMessageFormat = "Token: %s on chain: %d version: %d"
-	SignedMsgPrefix           = "vk" // prefix for legacy signed messages (remove when legacy signature type is removed)
 	PersonalSignVersion       = 1
 )
 
@@ -125,13 +123,6 @@ func GetMessageHash(message []byte, signatureType SignatureType) ([]byte, error)
 		return nil, fmt.Errorf("unsupported signature type")
 	}
 	return hashFunction.getMessageHash(message), nil
-}
-
-// GenerateSignMessage creates the message to be signed
-// vkPubKey is expected to be a []byte("0x....") to create the signing message
-// todo (@ziga) Remove this method once old WE endpoints are removed
-func GenerateSignMessage(vkPubKey []byte) string {
-	return SignedMsgPrefix + hex.EncodeToString(vkPubKey)
 }
 
 // getBytesFromTypedData creates EIP-712 compliant hash from typedData.

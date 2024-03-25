@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -33,41 +32,45 @@ type RPCSignedViewingKey struct {
 }
 
 // GenerateViewingKeyForWallet takes an account wallet, generates a viewing key and signs the key with the acc's private key
-// uses the same method of signature handling as Metamask/geth
-// TODO @Ziga - update this method to use the new EIP-712 signature format / personal sign after the removal of the legacy format
 func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
-	// generate an ECDSA key pair to encrypt sensitive communications with the obscuro enclave
-	vk, err := crypto.GenerateKey()
+	chainID := int64(443)
+	messageType := PersonalSign
+
+	// simulate what the gateway would do to generate the viewing key
+	viewingKeyPrivate, err := crypto.GenerateKey()
+	viewingPrivateKeyECIES := ecies.ImportECDSA(viewingKeyPrivate)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate viewing key for RPC client: %w", err)
+		return nil, err
 	}
-
-	// get key in ECIES format
-	viewingPrivateKeyECIES := ecies.ImportECDSA(vk)
-
-	// encode public key as bytes
-	viewingPubKeyBytes := crypto.CompressPubkey(&vk.PublicKey)
-
-	// sign public key bytes with the wallet's private key
-	signature, err := mmSignViewingKey(viewingPubKeyBytes, wal.PrivateKey())
+	encryptionToken := CalculateUserIDHex(crypto.CompressPubkey(viewingPrivateKeyECIES.PublicKey.ExportECDSA()))
+	messageToSign, err := GenerateMessage(encryptionToken, chainID, PersonalSignVersion, messageType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate message for viewing key: %w", err)
+	}
+	msgHash, err := GetMessageHash(messageToSign, messageType)
 	if err != nil {
 		return nil, err
 	}
 
+	signature, err := mmSignViewingKey(msgHash, wal.PrivateKey())
+	if err != nil {
+		return nil, err
+	}
+	vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&viewingKeyPrivate.PublicKey).ExportECDSA())
 	accAddress := wal.Address()
 	return &ViewingKey{
 		Account:                 &accAddress,
 		PrivateKey:              viewingPrivateKeyECIES,
-		PublicKey:               viewingPubKeyBytes,
+		PublicKey:               vkPubKeyBytes,
 		SignatureWithAccountKey: signature,
-		SignatureType:           Legacy,
+		SignatureType:           PersonalSign,
 	}, nil
 }
 
 // mmSignViewingKey takes a public key bytes as hex and the private key for a wallet, it simulates the back-and-forth to
 // MetaMask and returns the signature bytes to register with the enclave
-func mmSignViewingKey(viewingPubKeyBytes []byte, signerKey *ecdsa.PrivateKey) ([]byte, error) {
-	signature, err := Sign(signerKey, viewingPubKeyBytes)
+func mmSignViewingKey(messageHash []byte, signerKey *ecdsa.PrivateKey) ([]byte, error) {
+	signature, err := crypto.Sign(messageHash, signerKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign viewing key: %w", err)
 	}
@@ -88,14 +91,4 @@ func mmSignViewingKey(viewingPubKeyBytes []byte, signerKey *ecdsa.PrivateKey) ([
 	outputSig[64] -= 27
 
 	return outputSig, nil
-}
-
-// Sign takes a users Private key and signs the public viewingKey hex
-func Sign(userPrivKey *ecdsa.PrivateKey, vkPubKey []byte) ([]byte, error) {
-	msgToSign := GenerateSignMessage(vkPubKey)
-	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), userPrivKey)
-	if err != nil {
-		return nil, fmt.Errorf("unable to sign messages - %w", err)
-	}
-	return signature, nil
 }

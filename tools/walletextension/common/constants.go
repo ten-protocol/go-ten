@@ -30,8 +30,6 @@ const (
 	PathRoot                            = "/"
 	PathReady                           = "/ready/"
 	PathViewingKeys                     = "/viewingkeys/"
-	PathGenerateViewingKey              = "/generateviewingkey/"
-	PathSubmitViewingKey                = "/submitviewingkey/"
 	PathJoin                            = "/join/"
 	PathGetMessage                      = "/getmessage/"
 	PathAuthenticate                    = "/authenticate/"
