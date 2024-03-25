@@ -16,6 +16,7 @@ const (
 
 const (
 	PathReady                           = "/ready/"
+	PathViewingKeys                     = "/viewingkeys/"
 	PathJoin                            = "/join/"
 	PathGetMessage                      = "/getmessage/"
 	PathAuthenticate                    = "/authenticate/"

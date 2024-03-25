@@ -51,12 +51,6 @@ func checkViewingKeyAndRecoverAddress(vk *AuthenticatedViewingKey, chainID int64
 	userID := viewingkey.CalculateUserID(vk.rpcVK.PublicKey)
 	vk.UserID = userID
 
-	// todo - remove this when the legacy format is no longer supported
-	// this is a temporary fix to support the legacy format which will be removed soon
-	if vk.rpcVK.SignatureType == viewingkey.Legacy {
-		userID = vk.rpcVK.PublicKey // for legacy format, the userID is the public key
-	}
-
 	// check the signature and recover the address assuming the message was signed with EIP712
 	recoveredSignerAddress, err := viewingkey.CheckSignature(userID, vk.rpcVK.SignatureWithAccountKey, chainID, vk.rpcVK.SignatureType)
 	if err != nil {
