@@ -200,7 +200,8 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, cacheKey []byte, onCache
 	if cfg.TTLCallback != nil {
 		cacheTTL = cfg.TTLCallback()
 	}
-	isCacheable := cacheTTL > 0
+	// isCacheable := cacheTTL > 0
+	isCacheable := false
 
 	if isCacheable {
 		if cachedValue, ok := cache.Get(cacheKey); ok {

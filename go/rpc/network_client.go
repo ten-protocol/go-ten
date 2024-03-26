@@ -69,7 +69,7 @@ func (c *NetworkClient) CallContext(ctx context.Context, result interface{}, met
 	return c.RpcClient.CallContext(ctx, result, method, args...)
 }
 
-func (c *NetworkClient) Subscribe(ctx context.Context, _ interface{}, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
+func (c *NetworkClient) Subscribe(ctx context.Context, _ interface{}, namespace string, channel interface{}, args ...interface{}) (*gethrpc.ClientSubscription, error) {
 	return c.RpcClient.Subscribe(ctx, namespace, channel, args...)
 }
 

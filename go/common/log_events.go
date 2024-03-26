@@ -89,12 +89,12 @@ func ToCriteria(jsonCriteria FilterCriteriaJSON) filters.FilterCriteria {
 	}
 }
 
-// duplicated from geth
+var errInvalidTopic = errors.New("invalid topic(s)")
+
 // FilterCriteria represents a request to create a new filter.
 // Same as ethereum.FilterQuery but with UnmarshalJSON() method.
+// duplicated from geth to tweak the unmarshalling
 type FilterCriteria ethereum.FilterQuery
-
-var errInvalidTopic = errors.New("invalid topic(s)")
 
 // UnmarshalJSON sets *args fields with given data.
 func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
@@ -110,6 +110,7 @@ func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 
 	var raw input
 	if err := json.Unmarshal(data, &raw); err != nil {
+		// tweak to handle the case when an empty array is passed in by javascript libraries
 		if strings.Contains(err.Error(), "cannot unmarshal array") {
 			return nil
 		}
