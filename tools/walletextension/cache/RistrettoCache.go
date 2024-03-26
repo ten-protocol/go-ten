@@ -53,6 +53,10 @@ func (c *ristrettoCache) Get(key []byte) (value any, ok bool) {
 	return c.cache.Get(key)
 }
 
+func (c *ristrettoCache) Remove(key []byte) {
+	c.cache.Del(key)
+}
+
 // startMetricsLogging starts logging cache metrics every hour.
 func (c *ristrettoCache) startMetricsLogging(logger log.Logger) {
 	ticker := time.NewTicker(1 * time.Hour)

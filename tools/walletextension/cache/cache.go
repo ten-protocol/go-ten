@@ -9,6 +9,7 @@ import (
 type Cache interface {
 	Set(key []byte, value any, ttl time.Duration) bool
 	Get(key []byte) (value any, ok bool)
+	Remove(key []byte)
 }
 
 func NewCache(logger log.Logger) (Cache, error) {

@@ -106,7 +106,7 @@ func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 		Topics    []interface{}    `json:"topics"`
 	}
 
-	fmt.Printf("FilterCriteria UnmarshalJSON %s", data)
+	fmt.Printf("FilterCriteria UnmarshalJSON %s\n", data)
 
 	var raw input
 	if err := json.Unmarshal(data, &raw); err != nil {

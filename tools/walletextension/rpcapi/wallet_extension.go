@@ -121,6 +121,7 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 		return err
 	}
 
+	w.Cache.Remove(userCacheKey(userID))
 	audit(w, "Storing new address for user: %s, address: %s, duration: %d ", hexutils.BytesToHex(userID), address, time.Since(requestStartTime).Milliseconds())
 	return nil
 }
@@ -161,7 +162,7 @@ func (w *Services) DeleteUser(userID []byte) error {
 		w.Logger().Error(fmt.Errorf("error deleting user (%s), %w", userID, err).Error())
 		return err
 	}
-
+	w.Cache.Remove(userCacheKey(userID))
 	return nil
 }
 

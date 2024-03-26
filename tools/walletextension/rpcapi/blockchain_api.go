@@ -144,7 +144,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address common.Addre
 			return nil, err
 		}
 
-		_, err = getUser(userID, api.we.Storage)
+		_, err = getUser(userID, api.we)
 		if err != nil {
 			return nil, err
 		}

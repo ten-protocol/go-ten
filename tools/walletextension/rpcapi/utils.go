@@ -50,11 +50,10 @@ type CacheCfg struct {
 func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg, method string, args ...any) (*R, error) {
 	audit(w, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
-	cacheKey := make([]any, 0)
-	cacheKey = append(cacheKey, method)
-	cacheKey = append(cacheKey, args...)
+	cacheArgs := []any{method}
+	cacheArgs = append(cacheArgs, args...)
 
-	res, err := withCache(w.Cache, cfg, cacheKey, func() (*R, error) {
+	res, err := withCache(w.Cache, cfg, generateCacheKey(cacheArgs), func() (*R, error) {
 		var resp *R
 		unauthedRPC, err := w.UnauthenticatedClient()
 		if err != nil {
@@ -79,17 +78,15 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		return nil, err
 	}
 
-	user, err := getUser(userID, w.Storage)
+	user, err := getUser(userID, w)
 	if err != nil {
 		return nil, err
 	}
 
-	cacheKey := make([]any, 0)
-	cacheKey = append(cacheKey, userID)
-	cacheKey = append(cacheKey, method)
-	cacheKey = append(cacheKey, args...)
+	cacheArgs := []any{userID, method}
+	cacheArgs = append(cacheArgs, args...)
 
-	res, err := withCache(w.Cache, cfg.cacheCfg, cacheKey, func() (*R, error) {
+	res, err := withCache(w.Cache, cfg.cacheCfg, generateCacheKey(cacheArgs), func() (*R, error) {
 		// determine candidate "from"
 		candidateAccts, err := getCandidateAccounts(user, w, cfg)
 		if err != nil {
@@ -187,7 +184,7 @@ func generateCacheKey(params []any) []byte {
 	return hasher.Sum(nil)
 }
 
-func withCache[R any](cache cache.Cache, cfg *CacheCfg, cacheArgs []any, onCacheMiss func() (*R, error)) (*R, error) {
+func withCache[R any](cache cache.Cache, cfg *CacheCfg, cacheKey []byte, onCacheMiss func() (*R, error)) (*R, error) {
 	if cfg == nil {
 		return onCacheMiss()
 	}
@@ -198,9 +195,7 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, cacheArgs []any, onCache
 	}
 	isCacheable := cacheTTL > 0
 
-	var cacheKey []byte
 	if isCacheable {
-		cacheKey = generateCacheKey(cacheArgs)
 		if cachedValue, ok := cache.Get(cacheKey); ok {
 			// cloning?
 			returnValue, ok := cachedValue.(*R)

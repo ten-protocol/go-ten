@@ -11,8 +11,9 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/rpc"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
+
+var userCacheKeyPrefix = []byte{0x0, 0x1, 0x2, 0x3}
 
 type GWAccount struct {
 	user          *GWUser
@@ -35,23 +36,32 @@ func (u GWUser) GetAllAddresses() []*common.Address {
 	return accts
 }
 
-func getUser(userID []byte, s storage.Storage) (*GWUser, error) {
-	result := GWUser{userID: userID, accounts: map[common.Address]*GWAccount{}}
-	userPrivateKey, err := s.GetUserPrivateKey(userID)
-	if err != nil {
-		return nil, fmt.Errorf("user %s not found. %w", hexutils.BytesToHex(userID), err)
-	}
-	result.userKey = userPrivateKey
-	allAccounts, err := s.GetAccounts(userID)
-	if err != nil {
-		return nil, err
-	}
+func userCacheKey(userID []byte) []byte {
+	var key []byte
+	key = append(key, userCacheKeyPrefix...)
+	key = append(key, userID...)
+	return key
+}
 
-	for _, account := range allAccounts {
-		address := common.BytesToAddress(account.AccountAddress)
-		result.accounts[address] = &GWAccount{user: &result, address: &address, signature: account.Signature, signatureType: viewingkey.SignatureType(uint8(account.SignatureType))}
-	}
-	return &result, nil
+func getUser(userID []byte, s *Services) (*GWUser, error) {
+	return withCache(s.Cache, &CacheCfg{TTL: longCacheTTL}, userCacheKey(userID), func() (*GWUser, error) {
+		result := GWUser{userID: userID, accounts: map[common.Address]*GWAccount{}}
+		userPrivateKey, err := s.Storage.GetUserPrivateKey(userID)
+		if err != nil {
+			return nil, fmt.Errorf("user %s not found. %w", hexutils.BytesToHex(userID), err)
+		}
+		result.userKey = userPrivateKey
+		allAccounts, err := s.Storage.GetAccounts(userID)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, account := range allAccounts {
+			address := common.BytesToAddress(account.AccountAddress)
+			result.accounts[address] = &GWAccount{user: &result, address: &address, signature: account.Signature, signatureType: viewingkey.SignatureType(uint8(account.SignatureType))}
+		}
+		return &result, nil
+	})
 }
 
 func (account *GWAccount) connect(url string, logger gethlog.Logger) (*rpc.EncRPCClient, error) {
