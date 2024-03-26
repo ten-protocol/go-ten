@@ -49,7 +49,7 @@ type host struct {
 	l2MessageBusAddress *gethcommon.Address
 }
 
-func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
+func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
 	database, err := db.CreateDBFromConfig(config, regMetrics, logger)
 	if err != nil {
 		logger.Crit("unable to create database for host", log.ErrKey, err)
@@ -72,8 +72,17 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		stopControl: stopcontrol.New(),
 	}
 
-	enclGuardian := enclave.NewGuardian(config, hostIdentity, hostServices, enclaveClient, database, host.stopControl, logger)
-	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardian, logger)
+	enclGuardians := make([]*enclave.Guardian, 0, len(enclaveClients))
+	for i, enclClient := range enclaveClients {
+		if i > 0 {
+			// only the first enclave can be the sequencer for now, others behave as read-only validators
+			hostIdentity.IsSequencer = false
+		}
+		enclGuardian := enclave.NewGuardian(config, hostIdentity, hostServices, enclClient, database, host.stopControl, logger)
+		enclGuardians = append(enclGuardians, enclGuardian)
+	}
+
+	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardians, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, database, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
 
