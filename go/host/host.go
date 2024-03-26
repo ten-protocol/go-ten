@@ -74,11 +74,14 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 
 	enclGuardians := make([]*enclave.Guardian, 0, len(enclaveClients))
 	for i, enclClient := range enclaveClients {
+		// clone the hostIdentity data for each enclave
+		enclHostID := hostIdentity
 		if i > 0 {
 			// only the first enclave can be the sequencer for now, others behave as read-only validators
-			hostIdentity.IsSequencer = false
+			enclHostID.IsSequencer = false
+			enclHostID.IsGenesis = false
 		}
-		enclGuardian := enclave.NewGuardian(config, hostIdentity, hostServices, enclClient, database, host.stopControl, logger)
+		enclGuardian := enclave.NewGuardian(config, enclHostID, hostServices, enclClient, database, host.stopControl, logger)
 		enclGuardians = append(enclGuardians, enclGuardian)
 	}
 
