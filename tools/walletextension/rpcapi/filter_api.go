@@ -206,7 +206,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 			cacheCfg: &CacheCfg{
 				TTLCallback: func() time.Duration {
 					// when the toBlock is not specified, the request is open-ended
-					if crit.ToBlock != nil {
+					if crit.ToBlock != nil && crit.ToBlock.Int64() > 0 {
 						return longCacheTTL
 					}
 					return shortCacheTTL
