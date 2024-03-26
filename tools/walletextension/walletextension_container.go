@@ -1,8 +1,11 @@
 package walletextension
 
 import (
+	"net/http"
 	"os"
 	"time"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/api"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/httpapi"
 
@@ -55,6 +58,15 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	rpcServer := node.NewServer(cfg, logger)
 
 	rpcServer.RegisterRoutes(httpapi.NewHTTPRoutes(walletExt))
+
+	// register the static files
+	staticHandler := api.StaticFilesHandler()
+	rpcServer.RegisterRoutes([]node.Route{{
+		Name: "/",
+		Func: func(resp http.ResponseWriter, req *http.Request) {
+			staticHandler.ServeHTTP(resp, req)
+		},
+	}})
 
 	// register all RPC endpoints exposed by a typical Geth node
 	rpcServer.RegisterAPIs([]gethrpc.API{

@@ -137,7 +137,7 @@ func searchForAddressInFilterCriteria(filterCriteria common.FilterCriteria, poss
 	return result
 }
 
-// forwardAndDedupe - reads messages from the input channel, and forwards them to the notifier only if they are new
+// forwardAndDedupe - reads messages from the input channels, and forwards them to the notifier only if they are new
 func forwardAndDedupe[R any, T any](inputChannels []chan R, _ []*rpc.ClientSubscription, outSub *rpc.Subscription, notifier *rpc.Notifier, unsubscribed *atomic.Bool, toForward func(elem R) *T) {
 	inputCases := make([]reflect.SelectCase, len(inputChannels)+1)
 
@@ -164,7 +164,7 @@ func forwardAndDedupe[R any, T any](inputChannels []chan R, _ []*rpc.ClientSubsc
 
 		switch v := value.Interface().(type) {
 		case time.Time:
-			// exit the loop
+			// exit the loop to avoid a goroutine loop
 			if unsubscribed.Load() {
 				return
 			}
@@ -185,9 +185,9 @@ func forwardAndDedupe[R any, T any](inputChannels []chan R, _ []*rpc.ClientSubsc
 
 func handleUnsubscribe(connectionSub *rpc.Subscription, backendSubscriptions []*rpc.ClientSubscription, connections []*tenrpc.EncRPCClient, p *pool.ObjectPool, unsubscribed *atomic.Bool) {
 	<-connectionSub.Err()
+	unsubscribed.Store(true)
 	for _, backendSub := range backendSubscriptions {
 		backendSub.Unsubscribe()
-		unsubscribed.Store(true)
 	}
 	for _, connection := range connections {
 		_ = returnConn(p, connection)
