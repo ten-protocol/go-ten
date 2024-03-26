@@ -3,14 +3,10 @@ package rpcapi
 import (
 	"fmt"
 
+	"github.com/status-im/keycard-go/hexutils"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
-	"github.com/status-im/keycard-go/hexutils"
-
 	"github.com/ethereum/go-ethereum/common"
-	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ten-protocol/go-ten/go/rpc"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 var userCacheKeyPrefix = []byte{0x0, 0x1, 0x2, 0x3}
@@ -24,6 +20,7 @@ type GWAccount struct {
 
 type GWUser struct {
 	userID   []byte
+	services *Services
 	accounts map[common.Address]*GWAccount
 	userKey  []byte
 }
@@ -45,7 +42,7 @@ func userCacheKey(userID []byte) []byte {
 
 func getUser(userID []byte, s *Services) (*GWUser, error) {
 	return withCache(s.Cache, &CacheCfg{TTL: longCacheTTL}, userCacheKey(userID), func() (*GWUser, error) {
-		result := GWUser{userID: userID, accounts: map[common.Address]*GWAccount{}}
+		result := GWUser{userID: userID, services: s, accounts: map[common.Address]*GWAccount{}}
 		userPrivateKey, err := s.Storage.GetUserPrivateKey(userID)
 		if err != nil {
 			return nil, fmt.Errorf("user %s not found. %w", hexutils.BytesToHex(userID), err)
@@ -62,14 +59,4 @@ func getUser(userID []byte, s *Services) (*GWUser, error) {
 		}
 		return &result, nil
 	})
-}
-
-func (account *GWAccount) connect(url string, logger gethlog.Logger) (*rpc.EncRPCClient, error) {
-	// create a new client
-	// todo - close and cache
-	encClient, err := wecommon.CreateEncClient(url, account.address.Bytes(), account.user.userKey, account.signature, account.signatureType, logger)
-	if err != nil {
-		return nil, fmt.Errorf("error creating new client, %w", err)
-	}
-	return encClient, nil
 }

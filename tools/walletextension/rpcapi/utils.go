@@ -7,6 +7,11 @@ import (
 	"fmt"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	pool "github.com/jolestar/go-commons-pool/v2"
+	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -99,7 +104,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		var rpcErr error
 		for _, acct := range candidateAccts {
 			var result *R
-			rpcClient, err := acct.connect(w.HostAddrHTTP, w.Logger())
+			rpcClient, err := connectHTTP(acct, w.Logger())
 			if err != nil {
 				rpcErr = err
 				continue
@@ -115,8 +120,10 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 					return nil, err
 				}
 				rpcErr = err
+				_ = returnConn(w.rpcHTTPConnPool, rpcClient)
 				continue
 			}
+			_ = returnConn(w.rpcHTTPConnPool, rpcClient)
 			return result, nil
 		}
 		return nil, rpcErr
@@ -235,4 +242,30 @@ func cacheTTLBlockNumber(lastBlock rpc.BlockNumber) time.Duration {
 		return longCacheTTL
 	}
 	return shortCacheTTL
+}
+
+func connectHTTP(account *GWAccount, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
+	return conn(account.user.services.rpcHTTPConnPool, account, logger)
+}
+
+func connectWS(account *GWAccount, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
+	return conn(account.user.services.rpcWSConnPool, account, logger)
+}
+
+func conn(p *pool.ObjectPool, account *GWAccount, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
+	connectionObj, err := p.BorrowObject(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
+	}
+	conn := connectionObj.(*rpc.Client)
+	encClient, err := wecommon.CreateEncClient(conn, account.address.Bytes(), account.user.userKey, account.signature, account.signatureType, logger)
+	if err != nil {
+		return nil, fmt.Errorf("error creating new client, %w", err)
+	}
+	return encClient, nil
+}
+
+func returnConn(p *pool.ObjectPool, conn *tenrpc.EncRPCClient) error {
+	c := conn.Client().(*tenrpc.NetworkClient).RpcClient
+	return p.ReturnObject(context.Background(), c)
 }

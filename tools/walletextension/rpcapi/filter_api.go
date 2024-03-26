@@ -7,6 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	pool "github.com/jolestar/go-commons-pool/v2"
+	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -60,11 +63,13 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 
 	inputChannels := make([]chan common.IDAndLog, 0)
 	backendSubscriptions := make([]*rpc.ClientSubscription, 0)
+	connections := make([]*tenrpc.EncRPCClient, 0)
 	for _, address := range candidateAddresses {
-		rpcWSClient, err := user.accounts[*address].connect(api.we.HostAddrWS, api.we.Logger())
+		rpcWSClient, err := connectWS(user.accounts[*address], api.we.Logger())
 		if err != nil {
 			return nil, err
 		}
+		connections = append(connections, rpcWSClient)
 
 		inCh := make(chan common.IDAndLog)
 		backendSubscription, err := rpcWSClient.Subscribe(ctx, nil, "eth", inCh, "logs", crit)
@@ -95,7 +100,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 		return nil
 	})
 
-	go handleUnsubscribe(subscription, backendSubscriptions, &unsubscribed)
+	go handleUnsubscribe(subscription, backendSubscriptions, connections, api.we.rpcWSConnPool, &unsubscribed)
 
 	return subscription, err
 }
@@ -178,11 +183,14 @@ func forwardAndDedupe[R any, T any](inputChannels []chan R, _ []*rpc.ClientSubsc
 	}
 }
 
-func handleUnsubscribe(connectionSub *rpc.Subscription, backendSubscriptions []*rpc.ClientSubscription, unsubscribed *atomic.Bool) {
+func handleUnsubscribe(connectionSub *rpc.Subscription, backendSubscriptions []*rpc.ClientSubscription, connections []*tenrpc.EncRPCClient, p *pool.ObjectPool, unsubscribed *atomic.Bool) {
 	<-connectionSub.Err()
 	for _, backendSub := range backendSubscriptions {
 		backendSub.Unsubscribe()
 		unsubscribed.Store(true)
+	}
+	for _, connection := range connections {
+		_ = returnConn(p, connection)
 	}
 }
 

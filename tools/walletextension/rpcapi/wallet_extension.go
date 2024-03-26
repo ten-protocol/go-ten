@@ -2,9 +2,13 @@ package rpcapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"fmt"
 	"time"
+
+	pool "github.com/jolestar/go-commons-pool/v2"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/status-im/keycard-go/hexutils"
 
@@ -34,7 +38,10 @@ type Services struct {
 	version      string
 	tenClient    *obsclient.ObsClient
 	Cache        cache.Cache
-	Config       *common.Config
+	// the OG maintains a connection pool of rpc connections to underlying nodes
+	rpcHTTPConnPool *pool.ObjectPool
+	rpcWSConnPool   *pool.ObjectPool
+	Config          *common.Config
 }
 
 func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, config *common.Config) *Services {
@@ -51,17 +58,48 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		panic(err)
 	}
 
+	factoryHTTP := pool.NewPooledObjectFactory(
+		func(context.Context) (interface{}, error) {
+			rpcClient, err := gethrpc.Dial(hostAddrHTTP)
+			if err != nil {
+				return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", hostAddrHTTP, err)
+			}
+			return rpcClient, nil
+		}, func(ctx context.Context, object *pool.PooledObject) error {
+			client := object.Object.(*gethrpc.Client)
+			client.Close()
+			return nil
+		}, nil, nil, nil)
+
+	factoryWS := pool.NewPooledObjectFactory(
+		func(context.Context) (interface{}, error) {
+			rpcClient, err := gethrpc.Dial(hostAddrWS)
+			if err != nil {
+				return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", hostAddrWS, err)
+			}
+			return rpcClient, nil
+		}, func(ctx context.Context, object *pool.PooledObject) error {
+			client := object.Object.(*gethrpc.Client)
+			client.Close()
+			return nil
+		}, nil, nil, nil)
+
+	cfg := pool.NewDefaultPoolConfig()
+	cfg.MaxTotal = 50
+
 	return &Services{
-		HostAddrHTTP: hostAddrHTTP,
-		HostAddrWS:   hostAddrWS,
-		Storage:      storage,
-		logger:       logger,
-		FileLogger:   newFileLogger,
-		stopControl:  stopControl,
-		version:      version,
-		tenClient:    newTenClient,
-		Cache:        newGatewayCache,
-		Config:       config,
+		HostAddrHTTP:    hostAddrHTTP,
+		HostAddrWS:      hostAddrWS,
+		Storage:         storage,
+		logger:          logger,
+		FileLogger:      newFileLogger,
+		stopControl:     stopControl,
+		version:         version,
+		tenClient:       newTenClient,
+		Cache:           newGatewayCache,
+		rpcHTTPConnPool: pool.NewObjectPool(context.Background(), factoryHTTP, cfg),
+		rpcWSConnPool:   pool.NewObjectPool(context.Background(), factoryWS, cfg),
+		Config:          config,
 	}
 }
 

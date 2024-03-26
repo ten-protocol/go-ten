@@ -68,6 +68,10 @@ func NewEncRPCClient(client Client, viewingKey *viewingkey.ViewingKey, logger ge
 	return encClient, nil
 }
 
+func (c *EncRPCClient) Client() Client {
+	return c.obscuroClient
+}
+
 // Call handles JSON rpc requests without a context - see CallContext for details
 func (c *EncRPCClient) Call(result interface{}, method string, args ...interface{}) error {
 	return c.CallContext(nil, result, method, args...) //nolint:staticcheck

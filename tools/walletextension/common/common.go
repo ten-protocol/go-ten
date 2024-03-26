@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -34,7 +36,7 @@ func BytesToPrivateKey(keyBytes []byte) (*ecies.PrivateKey, error) {
 }
 
 func CreateEncClient(
-	hostRPCBindAddr string,
+	conn *gethrpc.Client,
 	addressBytes []byte,
 	privateKeyBytes []byte,
 	signature []byte,
@@ -55,7 +57,7 @@ func CreateEncClient(
 		SignatureWithAccountKey: signature,
 		SignatureType:           signatureType,
 	}
-	encClient, err := rpc.NewEncNetworkClient(hostRPCBindAddr, vk, logger)
+	encClient, err := rpc.NewEncNetworkClientFromConn(conn, vk, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create EncRPCClient: %w", err)
 	}
