@@ -85,6 +85,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		}, nil, nil, nil)
 
 	cfg := pool.NewDefaultPoolConfig()
+	cfg.MaxTotal = 100
 	cfg.MaxTotal = 50
 
 	return &Services{
