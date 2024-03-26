@@ -224,7 +224,6 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, cacheKey []byte, onCache
 }
 
 func audit(services *Services, msg string, params ...any) {
-	println(fmt.Sprintf(msg, params...))
 	if services.Config.VerboseFlag {
 		services.FileLogger.Info(fmt.Sprintf(msg, params...))
 	}

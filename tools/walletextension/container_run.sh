@@ -14,7 +14,7 @@ host="0.0.0.0"
 nodeHost="erpc.sepolia-testnet.ten.xyz"
 nodePortHTTP=80
 nodePortWS=81
-logPath="sys_out"
+logPath="wallet_extension_logs.txt"
 databasePath=".obscuro/gateway_database.db"
 image="obscuronet/obscuro_gateway_sepolia_testnet:latest"
 

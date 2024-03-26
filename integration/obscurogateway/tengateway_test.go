@@ -131,9 +131,6 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	_, err = user0.HTTPClient.ChainID(context.Background())
 	require.NoError(t, err)
 
-	//_, err = user0.WSClient.BalanceAt(context.TODO(), user0.Wallets[0].Address(), nil)
-	//require.NoError(t, err)
-
 	user1, err := NewGatewayUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user1.tgClient.UserID())
@@ -875,7 +872,7 @@ func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Has
 	// Make a subscription
 	filterQuery := ethereum.FilterQuery{
 		Addresses: addresses,
-		FromBlock: big.NewInt(2), // todo (@ziga) - without those we get errors - fix that and make them configurable
+		FromBlock: big.NewInt(2),
 		// ToBlock:   big.NewInt(10000),
 		Topics: topics,
 	}

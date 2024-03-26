@@ -19,7 +19,6 @@ package rpc
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -389,6 +388,7 @@ func (h *handler) startCallProc(fn func(*callProc)) {
 		ctx, cancel := context.WithCancel(h.rootCtx)
 		defer h.callWG.Done()
 		defer cancel()
+		// handle the case when normal rpc calls are made over a ws connection
 		if ctx.Value(GWTokenKey{}) == nil {
 			ctx = context.WithValue(ctx, GWTokenKey{}, hexutils.BytesToHex(h.UserID))
 		}
@@ -555,7 +555,6 @@ func (h *handler) handleSubscribe(cp *callProc, msg *jsonrpcMessage) *jsonrpcMes
 	// Parse subscription name arg too, but remove it before calling the callback.
 	argTypes := append([]reflect.Type{stringType}, callb.argTypes...)
 	args, err := parsePositionalArguments(msg.Params, argTypes)
-	fmt.Printf("Subscribe %s\n", string(msg.Params))
 	if err != nil {
 		return msg.errorResponse(&invalidParamsError{err.Error()})
 	}

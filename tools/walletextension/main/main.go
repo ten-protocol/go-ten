@@ -53,7 +53,7 @@ func main() {
 		}
 	}
 
-	logLvl := gethlog.LvlDebug
+	logLvl := gethlog.LvlError
 	if config.VerboseFlag {
 		logLvl = gethlog.LvlDebug
 	}
