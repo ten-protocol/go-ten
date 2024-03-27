@@ -8,7 +8,7 @@ export const fetchRollups = async (
 ): Promise<ResponseDataInterface<any>> => {
   return await httpRequest<ResponseDataInterface<any>>({
     method: "get",
-    url: pathToUrl(apiRoutes.getRollups),
+    url: pathToUrl(apiRoutes.getLatestRollup),
     searchParams: payload,
   });
 };

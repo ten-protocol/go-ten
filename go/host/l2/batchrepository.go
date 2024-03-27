@@ -1,11 +1,16 @@
 package l2
 
 import (
+	"database/sql"
 	"errors"
+	"fmt"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/host/storage"
+	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -13,7 +18,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/config"
-	"github.com/ten-protocol/go-ten/go/host/db"
 )
 
 const (
@@ -36,7 +40,7 @@ type Repository struct {
 	subscribers []host.L2BatchHandler
 
 	sl          batchRepoServiceLocator
-	db          *db.DB
+	db          *storage.HostDB
 	isSequencer bool
 
 	// high watermark for batch sequence numbers seen so far. If we can't find batch for seq no < this, then we should ask peers for missing batches
@@ -54,7 +58,7 @@ type Repository struct {
 	logger  gethlog.Logger
 }
 
-func NewBatchRepository(cfg *config.HostConfig, hostService batchRepoServiceLocator, database *db.DB, logger gethlog.Logger) *Repository {
+func NewBatchRepository(cfg *config.HostConfig, hostService batchRepoServiceLocator, database *storage.HostDB, logger gethlog.Logger) *Repository {
 	return &Repository{
 		sl:               hostService,
 		db:               database,
@@ -87,6 +91,10 @@ func (r *Repository) HealthStatus() host.HealthStatus {
 		errMsg = "not running"
 	}
 	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
+}
+
+func (r *Repository) DB() *sql.DB {
+	return r.db.DB
 }
 
 // HandleBatches receives new batches from the p2p network, it also handles batches that are requested from peers
@@ -126,7 +134,7 @@ func (r *Repository) HandleBatchRequest(requesterID string, fromSeqNo *big.Int) 
 	batches := make([]*common.ExtBatch, 0)
 	nextSeqNum := fromSeqNo
 	for len(batches) <= _maxBatchesInP2PResponse {
-		batch, err := r.db.GetBatchBySequenceNumber(nextSeqNum)
+		batch, err := hostdb.GetBatchBySequenceNumber(r.DB(), nextSeqNum.Uint64())
 		if err != nil {
 			if !errors.Is(err, errutil.ErrNotFound) {
 				r.logger.Warn("unexpected error fetching batches for peer req", log.BatchSeqNoKey, nextSeqNum, log.ErrKey, err)
@@ -152,7 +160,7 @@ func (r *Repository) Subscribe(subscriber host.L2BatchHandler) {
 }
 
 func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error) {
-	b, err := r.db.GetBatchBySequenceNumber(seqNo)
+	b, err := hostdb.GetBatchBySequenceNumber(r.DB(), seqNo.Uint64())
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) && seqNo.Cmp(r.latestBatchSeqNo) < 0 {
 			if r.isSequencer {
@@ -175,9 +183,9 @@ func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
 // If the repository already has the batch it returns an AlreadyExists error which is typically ignored.
 func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	r.logger.Debug("Saving batch", log.BatchSeqNoKey, batch.Header.SequencerOrderNo, log.BatchHashKey, batch.Hash())
-	err := r.db.AddBatch(batch)
+	err := hostdb.AddBatch(r.db, batch)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not add batch: %w", err)
 	}
 	// atomically compare and swap latest batch sequence number if successfully added batch is newer
 	r.latestSeqNoMutex.Lock()

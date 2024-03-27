@@ -25,9 +25,19 @@ type BatchListingResponse struct {
 	Total       uint64
 }
 
+type BatchListingResponseDeprecated struct {
+	BatchesData []PublicBatchDeprecated
+	Total       uint64
+}
+
 type BlockListingResponse struct {
 	BlocksData []PublicBlock
 	Total      uint64
+}
+
+type RollupListingResponse struct {
+	RollupsData []PublicRollup
+	Total       uint64
 }
 
 type PublicTransaction struct {
@@ -38,8 +48,29 @@ type PublicTransaction struct {
 }
 
 type PublicBatch struct {
+	SequencerOrderNo *big.Int              `json:"sequence"`
+	Hash             []byte                `json:"hash"`
+	FullHash         common.Hash           `json:"fullHash"`
+	Height           *big.Int              `json:"height"`
+	TxCount          *big.Int              `json:"txCount"`
+	Header           *BatchHeader          `json:"header"`
+	EncryptedTxBlob  EncryptedTransactions `json:"encryptedTxBlob"`
+}
+
+// TODO (@will) remove when tenscan UI has been updated
+type PublicBatchDeprecated struct {
 	BatchHeader
 	TxHashes []TxHash `json:"txHashes"`
+}
+
+type PublicRollup struct {
+	ID        *big.Int
+	Hash      []byte
+	FirstSeq  *big.Int
+	LastSeq   *big.Int
+	Timestamp uint64
+	Header    *RollupHeader
+	L1Hash    []byte
 }
 
 type PublicBlock struct {

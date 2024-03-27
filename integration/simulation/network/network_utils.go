@@ -76,6 +76,7 @@ func createInMemObscuroNode(
 		BatchInterval:             batchInterval,
 		IsInboundP2PDisabled:      incomingP2PDisabled,
 		L1BlockTime:               l1BlockTime,
+		UseInMemoryDB:             true,
 	}
 
 	enclaveConfig := &config.EnclaveConfig{

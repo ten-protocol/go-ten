@@ -59,7 +59,7 @@ func (oc *ObsClient) BatchNumber() (uint64, error) {
 // BatchByHash returns the batch with the given hash.
 func (oc *ObsClient) BatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
 	var batch *common.ExtBatch
-	err := oc.rpcClient.Call(&batch, rpc.GetFullBatchByHash, hash)
+	err := oc.rpcClient.Call(&batch, rpc.GetBatch, hash)
 	if err == nil && batch == nil {
 		err = ethereum.NotFound
 	}
@@ -112,17 +112,27 @@ func (oc *ObsClient) GetTotalContractCount() (int, error) {
 // GetTotalTransactionCount returns the total count of executed transactions
 func (oc *ObsClient) GetTotalTransactionCount() (int, error) {
 	var count int
-	err := oc.rpcClient.Call(&count, rpc.GetTotalTransactionCount)
+	err := oc.rpcClient.Call(&count, rpc.GetTotalTxCount)
 	if err != nil {
 		return 0, err
 	}
 	return count, nil
 }
 
-// GetLatestRollupHeader returns the header of the rollup at tip
+// GetLatestRollupHeader returns the header of the latest rollup
 func (oc *ObsClient) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	var header *common.RollupHeader
 	err := oc.rpcClient.Call(&header, rpc.GetLatestRollupHeader)
+	if err != nil {
+		return nil, err
+	}
+	return header, nil
+}
+
+// GetLatestBatch returns the header of the latest rollup at tip
+func (oc *ObsClient) GetLatestBatch() (*common.BatchHeader, error) {
+	var header *common.BatchHeader
+	err := oc.rpcClient.Call(&header, rpc.GetLatestBatch)
 	if err != nil {
 		return nil, err
 	}
@@ -149,10 +159,30 @@ func (oc *ObsClient) GetBatchesListing(pagination *common.QueryPagination) (*com
 	return &result, nil
 }
 
+// GetBatchesListingDeprecated returns a list of batches
+func (oc *ObsClient) GetBatchesListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
+	var result common.BatchListingResponseDeprecated
+	err := oc.rpcClient.Call(&result, rpc.GetBatchListingDeprecated, pagination)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 // GetBlockListing returns a list of block headers
 func (oc *ObsClient) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
 	var result common.BlockListingResponse
 	err := oc.rpcClient.Call(&result, rpc.GetBlockListing, pagination)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// GetRollupListing returns a list of Rollups
+func (oc *ObsClient) GetRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
+	var result common.RollupListingResponse
+	err := oc.rpcClient.Call(&result, rpc.GetRollupListing, pagination)
 	if err != nil {
 		return nil, err
 	}

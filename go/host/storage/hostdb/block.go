@@ -1,0 +1,92 @@
+package hostdb
+
+import (
+	"database/sql"
+	"fmt"
+	"github.com/status-im/keycard-go/hexutils"
+
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ten-protocol/go-ten/go/common"
+)
+
+const (
+	blockInsert  = "INSERT INTO block_host (hash, header, rollup_hash) values (?,?,?)"
+	selectBlocks = "SELECT id, hash, header, rollup_hash FROM block_host ORDER BY id DESC LIMIT ? OFFSET ?"
+)
+
+// AddBlock stores a block header with the given rollupHash it contains in the host DB
+func AddBlock(db *sql.DB, b *types.Header, rollupHash common.L2RollupHash) error {
+	header, err := rlp.EncodeToBytes(b)
+	if err != nil {
+		return fmt.Errorf("could not encode block header. Cause: %w", err)
+	}
+
+	r, err := rlp.EncodeToBytes(rollupHash)
+	if err != nil {
+		return fmt.Errorf("could not encode rollup hash transactions: %w", err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(blockInsert,
+		b.Hash(), // hash
+		header,   // l1 block header
+		r,        // rollup hash
+	)
+	if err != nil {
+		println("FAILED to insert into block with hash: ", hexutils.BytesToHex(b.Hash().Bytes()))
+		return fmt.Errorf("could not insert block. Cause: %w", err)
+	}
+
+	println("SUCCESSFULLY inserted into block with hash: ", hexutils.BytesToHex(b.Hash().Bytes()))
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("could not store block in db: %w", err)
+	}
+	return nil
+}
+
+// GetBlockListing returns a paginated list of blocks in descending order against the order they were added
+func GetBlockListing(db *sql.DB, pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
+	rows, err := db.Query(selectBlocks, pagination.Size, pagination.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var blocks []common.PublicBlock
+
+	for rows.Next() {
+		var id int
+		var hash, header, rollupHash []byte
+
+		err = rows.Scan(&id, &hash, &header, &rollupHash)
+		if err != nil {
+			return nil, err
+		}
+
+		blockHeader := new(types.Header)
+		if err := rlp.DecodeBytes(header, blockHeader); err != nil {
+			return nil, fmt.Errorf("could not decode block header. Cause: %w", err)
+		}
+		r := new(common.L2RollupHash)
+		if err := rlp.DecodeBytes(rollupHash, r); err != nil {
+			return nil, fmt.Errorf("could not decode rollup hash. Cause: %w", err)
+		}
+		block := common.PublicBlock{
+			BlockHeader: *blockHeader,
+			RollupHash:  *r,
+		}
+		blocks = append(blocks, block)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &common.BlockListingResponse{
+		BlocksData: blocks,
+		Total:      uint64(len(blocks)),
+	}, nil
+}

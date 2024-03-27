@@ -2,7 +2,6 @@ package devnetwork
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 
@@ -55,7 +54,6 @@ type InMemNodeOperator struct {
 	enclave           *enclavecontainer.EnclaveContainer
 	l1Wallet          wallet.Wallet
 	enclaveDBFilepath string
-	hostDBFilepath    string
 }
 
 func (n *InMemNodeOperator) StopHost() error {
@@ -127,13 +125,14 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		L1ChainID:                 integration.EthereumChainID,
 		ObscuroChainID:            integration.TenChainID,
 		L1StartHash:               n.l1Data.TenStartBlock,
-		UseInMemoryDB:             false,
-		LevelDBPath:               n.hostDBFilepath,
-		DebugNamespaceEnabled:     true,
-		BatchInterval:             n.config.BatchInterval,
-		RollupInterval:            n.config.RollupInterval,
-		L1BlockTime:               n.config.L1BlockTime,
-		MaxRollupSize:             1024 * 64,
+		SequencerID:               n.config.SequencerID,
+		// Can provide the maria db host if testing against a local DB instance
+		UseInMemoryDB:         true,
+		DebugNamespaceEnabled: true,
+		BatchInterval:         n.config.BatchInterval,
+		RollupInterval:        n.config.RollupInterval,
+		L1BlockTime:           n.config.L1BlockTime,
+		MaxRollupSize:         1024 * 64,
 	}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, n.l1Wallet.Address(), log.CmpKey, log.HostCmp)
@@ -235,16 +234,10 @@ func (n *InMemNodeOperator) StopEnclave() error {
 func NewInMemNodeOperator(operatorIdx int, config *TenConfig, nodeType common.NodeType, l1Data *params.L1TenData,
 	l1Client ethadapter.EthClient, l1Wallet wallet.Wallet, logger gethlog.Logger,
 ) *InMemNodeOperator {
-	// todo (@matt) - put sqlite and levelDB storage in the same temp dir
 	sqliteDBPath, err := sqlite.CreateTempDBFile()
 	if err != nil {
 		panic("failed to create temp sqlite db path")
 	}
-	levelDBPath, err := os.MkdirTemp("", "levelDB_*")
-	if err != nil {
-		panic("failed to create temp levelDBPath")
-	}
-
 	l1Nonce, err := l1Client.Nonce(l1Wallet.Address())
 	if err != nil {
 		panic("failed to get l1 nonce")
@@ -260,6 +253,5 @@ func NewInMemNodeOperator(operatorIdx int, config *TenConfig, nodeType common.No
 		l1Wallet:          l1Wallet,
 		logger:            logger,
 		enclaveDBFilepath: sqliteDBPath,
-		hostDBFilepath:    levelDBPath,
 	}
 }

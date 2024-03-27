@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/sanity-io/litter"
-
 	"github.com/ten-protocol/go-ten/go/common/docker"
 )
 
@@ -25,9 +23,6 @@ func NewDockerNode(cfg *Config) *DockerNode {
 }
 
 func (d *DockerNode) Start() error {
-	// todo (@pedro) - this should probably be removed in the future
-	fmt.Printf("Starting Node %s with config: \n%s\n\n", d.cfg.nodeName, litter.Sdump(*d.cfg))
-
 	err := d.startEdgelessDB()
 	if err != nil {
 		return err
@@ -124,7 +119,7 @@ func (d *DockerNode) startHost() error {
 		fmt.Sprintf("-l1ChainID=%d", d.cfg.l1ChainID),
 	}
 	if !d.cfg.hostInMemDB {
-		cmd = append(cmd, "-levelDBPath", _hostDataDir)
+		cmd = append(cmd, "-maraiDBHost", _hostDataDir)
 	}
 
 	exposedPorts := []int{
