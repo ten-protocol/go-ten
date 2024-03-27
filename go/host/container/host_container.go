@@ -130,13 +130,12 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	// set the Host ID as the Public Key Address
 	cfg.ID = ethWallet.Address()
 
-	if len(cfg.EnclaveRPCAddresses) != 1 {
-		logger.Crit("expected exactly one enclave address", "enclave_addresses", cfg.EnclaveRPCAddresses)
-	}
-
 	fmt.Println("Connecting to the enclave...")
 	services := host.NewServicesRegistry(logger)
-	enclaveClients := []common.Enclave{enclaverpc.NewClient(cfg.EnclaveRPCAddresses[0], cfg.EnclaveRPCTimeout, logger)}
+	enclaveClients := make([]common.Enclave, len(cfg.EnclaveRPCAddresses))
+	for i, addr := range cfg.EnclaveRPCAddresses {
+		enclaveClients[i] = enclaverpc.NewClient(addr, cfg.EnclaveRPCTimeout, logger)
+	}
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
 	metricsService := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
 
