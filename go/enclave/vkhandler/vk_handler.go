@@ -1,4 +1,4 @@
-package vkhandler
+package vkhandler //nolint:typecheck
 
 import (
 	"crypto/rand"
@@ -21,7 +21,7 @@ type AuthenticatedViewingKey struct {
 	rpcVK          *viewingkey.RPCSignedViewingKey
 	AccountAddress *gethcommon.Address
 	ecdsaKey       *ecies.PublicKey
-	UserID         string
+	UserID         []byte
 }
 
 func VerifyViewingKey(rpcVK *viewingkey.RPCSignedViewingKey, chainID int64) (*AuthenticatedViewingKey, error) {
@@ -48,7 +48,7 @@ func VerifyViewingKey(rpcVK *viewingkey.RPCSignedViewingKey, chainID int64) (*Au
 // checkViewingKeyAndRecoverAddress checks the signature and recovers the address from the viewing key
 func checkViewingKeyAndRecoverAddress(vk *AuthenticatedViewingKey, chainID int64) (*gethcommon.Address, error) {
 	// get userID from viewingKey public key
-	userID := viewingkey.CalculateUserIDHex(vk.rpcVK.PublicKey)
+	userID := viewingkey.CalculateUserID(vk.rpcVK.PublicKey)
 	vk.UserID = userID
 
 	// check the signature and recover the address assuming the message was signed with EIP712

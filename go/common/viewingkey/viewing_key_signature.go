@@ -13,7 +13,7 @@ import (
 // SignatureChecker is an interface for checking
 // if signature is valid for provided encryptionToken and chainID and return singing address or nil if not valid
 type SignatureChecker interface {
-	CheckSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error)
+	CheckSignature(encryptionToken []byte, signature []byte, chainID int64) (*gethcommon.Address, error)
 }
 
 type (
@@ -22,7 +22,7 @@ type (
 )
 
 // CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
-func (psc PersonalSignChecker) CheckSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error) {
+func (psc PersonalSignChecker) CheckSignature(encryptionToken []byte, signature []byte, chainID int64) (*gethcommon.Address, error) {
 	if len(signature) != 65 {
 		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
 	}
@@ -51,7 +51,7 @@ func (psc PersonalSignChecker) CheckSignature(encryptionToken string, signature 
 	return nil, fmt.Errorf("signature verification failed")
 }
 
-func (e EIP712Checker) CheckSignature(encryptionToken string, signature []byte, chainID int64) (*gethcommon.Address, error) {
+func (e EIP712Checker) CheckSignature(encryptionToken []byte, signature []byte, chainID int64) (*gethcommon.Address, error) {
 	if len(signature) != 65 {
 		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
 	}
@@ -88,7 +88,7 @@ var signatureCheckers = map[SignatureType]SignatureChecker{
 }
 
 // CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
-func CheckSignature(encryptionToken string, signature []byte, chainID int64, signatureType SignatureType) (*gethcommon.Address, error) {
+func CheckSignature(encryptionToken []byte, signature []byte, chainID int64, signatureType SignatureType) (*gethcommon.Address, error) {
 	checker, exists := signatureCheckers[signatureType]
 	if !exists {
 		return nil, fmt.Errorf("unsupported signature type")

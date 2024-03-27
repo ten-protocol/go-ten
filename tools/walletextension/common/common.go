@@ -1,10 +1,11 @@
 package common
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
+
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -34,13 +35,8 @@ func BytesToPrivateKey(keyBytes []byte) (*ecies.PrivateKey, error) {
 	return eciesPrivateKey, nil
 }
 
-// GetUserIDbyte converts userID from string to correct byte format
-func GetUserIDbyte(userID string) ([]byte, error) {
-	return hex.DecodeString(userID)
-}
-
 func CreateEncClient(
-	hostRPCBindAddr string,
+	conn *gethrpc.Client,
 	addressBytes []byte,
 	privateKeyBytes []byte,
 	signature []byte,
@@ -61,7 +57,7 @@ func CreateEncClient(
 		SignatureWithAccountKey: signature,
 		SignatureType:           signatureType,
 	}
-	encClient, err := rpc.NewEncNetworkClient(hostRPCBindAddr, vk, logger)
+	encClient, err := rpc.NewEncNetworkClientFromConn(conn, vk, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create EncRPCClient: %w", err)
 	}

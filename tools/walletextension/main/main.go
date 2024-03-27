@@ -7,9 +7,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension"
+
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/container"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
@@ -58,7 +59,7 @@ func main() {
 	}
 	logger := log.New(log.WalletExtCmp, int(logLvl), config.LogPath)
 
-	walletExtContainer := container.NewWalletExtensionContainerFromConfig(config, logger)
+	walletExtContainer := walletextension.NewContainerFromConfig(config, logger)
 
 	// Start the wallet extension.
 	err := walletExtContainer.Start()

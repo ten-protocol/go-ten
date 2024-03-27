@@ -33,8 +33,6 @@ const (
 	GetTotalTxs          = "tenscan_getTotalTransactions"
 	Attestation          = "tenscan_attestation"
 	StopHost             = "test_stopHost"
-	Subscribe            = "eth_subscribe"
-	Unsubscribe          = "eth_unsubscribe"
 	SubscribeNamespace   = "eth"
 	SubscriptionTypeLogs = "logs"
 

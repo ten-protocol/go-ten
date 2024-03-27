@@ -18,7 +18,6 @@ package rpc
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -103,7 +102,7 @@ func (s *Server) RegisterName(name string, receiver interface{}) error {
 // server is stopped. In either case the codec is closed.
 //
 // Note that codec options are no longer supported.
-func (s *Server) ServeCodec(codec ServerCodec, _ CodecOption, userID string) {
+func (s *Server) ServeCodec(codec ServerCodec, _ CodecOption, userID []byte) {
 	defer codec.close()
 
 	if !s.trackCodec(codec) {
@@ -149,7 +148,7 @@ func (s *Server) serveSingleRequest(ctx context.Context, codec ServerCodec) {
 		return
 	}
 
-	h := newHandler(ctx, codec, s.idgen, &s.services, s.batchItemLimit, s.batchResponseLimit, "")
+	h := newHandler(ctx, codec, s.idgen, &s.services, s.batchItemLimit, s.batchResponseLimit, nil)
 	h.allowSubscribe = false
 	defer h.close(io.EOF, nil)
 
@@ -157,7 +156,6 @@ func (s *Server) serveSingleRequest(ctx context.Context, codec ServerCodec) {
 	if err != nil {
 		if err != io.EOF {
 			resp := errorMessage(&invalidMessageError{"parse error"})
-			fmt.Printf(">> Parse error %s. requests: %v\n", err, reqs)
 			codec.writeJSON(ctx, resp, true)
 		}
 		return

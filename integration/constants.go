@@ -12,11 +12,11 @@ const (
 	StartPortNetworkTests            = 17000
 	StartPortSmartContractTests      = 18000
 	StartPortContractDeployerTest1   = 19000
-	StartPortContractDeployerTest2   = 20000
-	StartPortWalletExtensionUnitTest = 21000
+	StartPortContractDeployerTest2   = 21000
 	StartPortFaucetUnitTest          = 22000
 	StartPortFaucetHTTPUnitTest      = 23000
 	StartPortTenGatewayUnitTest      = 24000
+	StartPortWalletExtensionUnitTest = 25000
 
 	DefaultGethWSPortOffset         = 100
 	DefaultGethAUTHPortOffset       = 200

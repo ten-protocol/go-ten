@@ -627,7 +627,7 @@ func checkSubscribedLogs(t *testing.T, owner string, channel chan common.IDAndLo
 
 func checkSnapshotLogs(t *testing.T, client *obsclient.AuthObsClient) int {
 	// To exercise the filtering mechanism, we get a snapshot for HOC events only, ignoring POC events.
-	hocFilter := common.FilterCriteriaJSON{
+	hocFilter := common.FilterCriteria{
 		Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + testcommon.HOCAddr)},
 	}
 	logs, err := client.GetLogs(context.Background(), hocFilter)
