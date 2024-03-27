@@ -7,6 +7,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // base path for static files should be "" in development but "/static" in production
+  basePath: process.env.NODE_ENV === "development" ? "" : "/static",
 };
 
 module.exports = nextConfig;
