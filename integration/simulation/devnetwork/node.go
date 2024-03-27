@@ -35,6 +35,8 @@ import (
 	integrationCommon "github.com/ten-protocol/go-ten/integration/common"
 )
 
+const _multiEnclaveOffset = 10
+
 // InMemNodeOperator represents an Obscuro node playing a role in a DevSimulation
 //
 // Anything a node operator could do, that we need to simulate belongs here, for example:
@@ -51,11 +53,11 @@ type InMemNodeOperator struct {
 	l1Client    ethadapter.EthClient
 	logger      gethlog.Logger
 
-	host              *hostcontainer.HostContainer
-	enclave           *enclavecontainer.EnclaveContainer
-	l1Wallet          wallet.Wallet
-	enclaveDBFilepath string
-	hostDBFilepath    string
+	host               *hostcontainer.HostContainer
+	enclaves           []*enclavecontainer.EnclaveContainer
+	l1Wallet           wallet.Wallet
+	enclaveDBFilepaths []string // 1 per enclave
+	hostDBFilepath     string
 }
 
 func (n *InMemNodeOperator) StopHost() error {
@@ -67,9 +69,17 @@ func (n *InMemNodeOperator) StopHost() error {
 }
 
 func (n *InMemNodeOperator) Start() error {
-	err := n.StartEnclave()
-	if err != nil {
-		return fmt.Errorf("failed to start enclave - %w", err)
+	var err error
+	numEnclaves := n.config.NumSeqEnclaves
+	if n.nodeType != common.Sequencer {
+		numEnclaves = 1
+	}
+	n.enclaves = make([]*enclavecontainer.EnclaveContainer, numEnclaves)
+	for i := 0; i < numEnclaves; i++ {
+		err = n.StartEnclave(i)
+		if err != nil {
+			return fmt.Errorf("failed to start enclave[%d] - %w", i, err)
+		}
 	}
 	err = n.StartHost()
 	if err != nil {
@@ -94,16 +104,23 @@ func (n *InMemNodeOperator) StartHost() error {
 }
 
 // StartEnclave starts the enclave process in
-func (n *InMemNodeOperator) StartEnclave() error {
+func (n *InMemNodeOperator) StartEnclave(idx int) error {
 	// even if enclave was running previously we recreate the container to ensure state is like a new process
 	// todo (@matt) - check if enclave is still running?
-	n.enclave = n.createEnclaveContainer()
-	return n.enclave.Start()
+	n.enclaves[idx] = n.createEnclaveContainer(idx)
+	return n.enclaves[idx].Start()
 }
 
 func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	enclavePort := n.config.PortStart + integration.DefaultEnclaveOffset + n.operatorIdx
-	enclaveAddr := fmt.Sprintf("%s:%d", network.Localhost, enclavePort)
+	var enclaveAddresses []string
+	if n.nodeType == common.Sequencer {
+		for i := 0; i < n.config.NumSeqEnclaves; i++ {
+			enclaveAddresses = append(enclaveAddresses, fmt.Sprintf("%s:%d", network.Localhost, enclavePort+(i*_multiEnclaveOffset)))
+		}
+	} else {
+		enclaveAddresses = append(enclaveAddresses, fmt.Sprintf("%s:%d", network.Localhost, enclavePort))
+	}
 
 	p2pPort := n.config.PortStart + integration.DefaultHostP2pOffset + n.operatorIdx
 	p2pAddr := fmt.Sprintf("%s:%d", network.Localhost, p2pPort)
@@ -117,7 +134,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		HasClientRPCWebsockets:    true,
 		ClientRPCPortWS:           uint64(n.config.PortStart + integration.DefaultHostRPCWSOffset + n.operatorIdx),
 		ClientRPCHost:             network.Localhost,
-		EnclaveRPCAddress:         enclaveAddr,
+		EnclaveRPCAddresses:       enclaveAddresses,
 		P2PBindAddress:            p2pAddr,
 		P2PPublicAddress:          p2pAddr,
 		EnclaveRPCTimeout:         network.EnclaveClientRPCTimeout,
@@ -142,9 +159,12 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)
 	svcLocator := host.NewServicesRegistry(n.logger)
 	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, svcLocator, p2pLogger, nil)
-	// create an enclave client
 
-	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, n.l1Wallet.Address()))
+	var enclaveClients []common.Enclave
+	for i, enclaveAddr := range hostConfig.EnclaveRPCAddresses {
+		fmt.Println("Connecting to the enclave...", i, enclaveAddr)
+		enclaveClients = append(enclaveClients, enclaverpc.NewClient(enclaveAddr, hostConfig.EnclaveRPCTimeout, hostLogger.New(log.NodeIDKey, n.l1Wallet.Address(), "enclIdx", i)))
+	}
 	rpcConfig := node.RPCConfig{
 		Host:                 hostConfig.ClientRPCHost,
 		EnableHTTP:           hostConfig.HasClientRPCHTTP,
@@ -156,25 +176,29 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	rpcServer := node.NewServer(&rpcConfig, n.logger)
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&hostConfig.ManagementContractAddress, n.logger)
 	l1Repo := l1.NewL1Repository(n.l1Client, []gethcommon.Address{hostConfig.ManagementContractAddress, hostConfig.MessageBusAddress}, n.logger)
-	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, l1Repo, enclaveClient, mgmtContractLib, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger))
+	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, l1Repo, enclaveClients, mgmtContractLib, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger))
 }
 
-func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveContainer {
+func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.EnclaveContainer {
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, n.l1Wallet.Address(), log.CmpKey, log.EnclaveCmp)
-	enclavePort := n.config.PortStart + integration.DefaultEnclaveOffset + n.operatorIdx
+	enclavePort := n.config.PortStart + integration.DefaultEnclaveOffset + n.operatorIdx + (idx * _multiEnclaveOffset)
 	enclaveAddr := fmt.Sprintf("%s:%d", network.Localhost, enclavePort)
 
 	hostPort := n.config.PortStart + integration.DefaultHostP2pOffset + n.operatorIdx
 	hostAddr := fmt.Sprintf("%s:%d", network.Localhost, hostPort)
 
 	defaultCfg := integrationCommon.DefaultEnclaveConfig()
-
+	enclaveType := n.nodeType
+	if n.nodeType == common.Sequencer && idx > 0 {
+		// we only want one sequencer enclave for now
+		enclaveType = common.Validator
+	}
 	enclaveConfig := &config.EnclaveConfig{
 		HostID:                    n.l1Wallet.Address(),
 		SequencerID:               n.config.SequencerID,
 		HostAddress:               hostAddr,
 		Address:                   enclaveAddr,
-		NodeType:                  n.nodeType,
+		NodeType:                  enclaveType,
 		L1ChainID:                 integration.EthereumChainID,
 		ObscuroChainID:            integration.TenChainID,
 		ValidateL1Blocks:          false,
@@ -184,7 +208,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 		ManagementContractAddress: n.l1Data.MgmtContractAddress,
 		MinGasPrice:               gethcommon.Big1,
 		MessageBusAddress:         n.l1Data.MessageBusAddr,
-		SqliteDBPath:              n.enclaveDBFilepath,
+		SqliteDBPath:              n.enclaveDBFilepaths[idx],
 		DebugNamespaceEnabled:     true,
 		MaxBatchSize:              1024 * 55,
 		MaxRollupSize:             1024 * 64,
@@ -197,13 +221,19 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 }
 
 func (n *InMemNodeOperator) Stop() error {
+	errs := make([]error, 0) // collect errors to return after attempting all stops
 	err := n.host.Stop()
 	if err != nil {
-		return fmt.Errorf("failed to stop host - %w", err)
+		errs = append(errs, fmt.Errorf("failed to stop host - %w", err))
 	}
-	err = n.enclave.Stop()
-	if err != nil {
-		return fmt.Errorf("failed to stop enclave - %w", err)
+	for i := 0; i < len(n.enclaves); i++ {
+		err = n.enclaves[i].Stop()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to stop enclave[%d] - %w", i, err))
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("node operator failed to stop - %v", errs)
 	}
 	return nil
 }
@@ -218,13 +248,13 @@ func (n *InMemNodeOperator) HostRPCHTTPAddress() string {
 	return fmt.Sprintf("http://%s:%d", network.Localhost, hostPort)
 }
 
-func (n *InMemNodeOperator) StopEnclave() error {
-	err := n.enclave.Stop()
+func (n *InMemNodeOperator) StopEnclave(idx int) error {
+	err := n.enclaves[idx].Stop()
 	if err != nil {
 		n.logger.Error("failed to stop enclave - %w", err)
 
 		// try again
-		err := n.enclave.Stop()
+		err := n.enclaves[idx].Stop()
 		if err != nil {
 			return fmt.Errorf("failed to stop enclave after second attempt - %w", err)
 		}
@@ -236,9 +266,17 @@ func NewInMemNodeOperator(operatorIdx int, config *TenConfig, nodeType common.No
 	l1Client ethadapter.EthClient, l1Wallet wallet.Wallet, logger gethlog.Logger,
 ) *InMemNodeOperator {
 	// todo (@matt) - put sqlite and levelDB storage in the same temp dir
-	sqliteDBPath, err := sqlite.CreateTempDBFile()
-	if err != nil {
-		panic("failed to create temp sqlite db path")
+	numEnclaves := config.NumSeqEnclaves
+	if nodeType != common.Sequencer {
+		numEnclaves = 1
+	}
+	sqliteDBPaths := make([]string, numEnclaves)
+	for i := 0; i < numEnclaves; i++ {
+		sqliteDBPath, err := sqlite.CreateTempDBFile()
+		if err != nil {
+			panic("failed to create temp sqlite db path")
+		}
+		sqliteDBPaths[i] = sqliteDBPath
 	}
 	levelDBPath, err := os.MkdirTemp("", "levelDB_*")
 	if err != nil {
@@ -252,14 +290,14 @@ func NewInMemNodeOperator(operatorIdx int, config *TenConfig, nodeType common.No
 	l1Wallet.SetNonce(l1Nonce)
 
 	return &InMemNodeOperator{
-		operatorIdx:       operatorIdx,
-		config:            config,
-		nodeType:          nodeType,
-		l1Data:            l1Data,
-		l1Client:          l1Client,
-		l1Wallet:          l1Wallet,
-		logger:            logger,
-		enclaveDBFilepath: sqliteDBPath,
-		hostDBFilepath:    levelDBPath,
+		operatorIdx:        operatorIdx,
+		config:             config,
+		nodeType:           nodeType,
+		l1Data:             l1Data,
+		l1Client:           l1Client,
+		l1Wallet:           l1Wallet,
+		logger:             logger,
+		enclaveDBFilepaths: sqliteDBPaths,
+		hostDBFilepath:     levelDBPath,
 	}
 }

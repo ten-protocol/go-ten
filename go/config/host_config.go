@@ -32,7 +32,7 @@ type HostInputConfig struct {
 	// Host on which to handle client RPC requests
 	ClientRPCHost string
 	// Address on which to connect to the enclave
-	EnclaveRPCAddress string
+	EnclaveRPCAddresses []string
 	// P2PBindAddress is the address where the P2P server is bound to
 	P2PBindAddress string
 	// P2PPublicAddress is the advertised P2P server address
@@ -111,7 +111,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		HasClientRPCWebsockets:    p.HasClientRPCWebsockets,
 		ClientRPCPortWS:           p.ClientRPCPortWS,
 		ClientRPCHost:             p.ClientRPCHost,
-		EnclaveRPCAddress:         p.EnclaveRPCAddress,
+		EnclaveRPCAddresses:       p.EnclaveRPCAddresses,
 		P2PBindAddress:            p.P2PBindAddress,
 		P2PPublicAddress:          p.P2PPublicAddress,
 		L1WebsocketURL:            p.L1WebsocketURL,
@@ -208,8 +208,8 @@ type HostConfig struct {
 	ClientRPCPortWS uint64
 	// Host on which to handle client RPC requests
 	ClientRPCHost string
-	// Address on which to connect to the enclave
-	EnclaveRPCAddress string
+	// Addresses on which to connect to the node's enclaves (HA setups may have multiple)
+	EnclaveRPCAddresses []string
 	// P2PBindAddress is the address where the P2P server is bound to
 	P2PBindAddress string
 	// P2PPublicAddress is the advertised P2P server address
@@ -244,7 +244,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		HasClientRPCWebsockets:    true,
 		ClientRPCPortWS:           81,
 		ClientRPCHost:             "127.0.0.1",
-		EnclaveRPCAddress:         "127.0.0.1:11000",
+		EnclaveRPCAddresses:       []string{"127.0.0.1:11000"},
 		P2PBindAddress:            "0.0.0.0:10000",
 		P2PPublicAddress:          "127.0.0.1:10000",
 		L1WebsocketURL:            "ws://127.0.0.1:8546",

@@ -132,7 +132,10 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 
 	fmt.Println("Connecting to the enclave...")
 	services := host.NewServicesRegistry(logger)
-	enclaveClient := enclaverpc.NewClient(cfg, logger)
+	enclaveClients := make([]common.Enclave, len(cfg.EnclaveRPCAddresses))
+	for i, addr := range cfg.EnclaveRPCAddresses {
+		enclaveClients[i] = enclaverpc.NewClient(addr, cfg.EnclaveRPCTimeout, logger)
+	}
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
 	metricsService := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
 
@@ -150,13 +153,13 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	obscuroRelevantContracts := []gethcommon.Address{cfg.ManagementContractAddress, cfg.MessageBusAddress}
 	l1Repo := l1.NewL1Repository(l1Client, obscuroRelevantContracts, logger)
 
-	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Repo, enclaveClient, mgmtContractLib, ethWallet, rpcServer, logger, metricsService)
+	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Repo, enclaveClients, mgmtContractLib, ethWallet, rpcServer, logger, metricsService)
 }
 
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
-func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service) *HostContainer {
-	h := host.NewHost(cfg, services, p2p, l1Client, l1Repo, enclaveClient, hostWallet, contractLib, logger, metricsService.Registry())
+func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service) *HostContainer {
+	h := host.NewHost(cfg, services, p2p, l1Client, l1Repo, enclaveClients, hostWallet, contractLib, logger, metricsService.Registry())
 
 	hostContainer := &HostContainer{
 		host:           h,

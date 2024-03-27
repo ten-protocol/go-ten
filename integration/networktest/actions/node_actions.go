@@ -20,7 +20,8 @@ type startValidatorEnclaveAction struct {
 func (s *startValidatorEnclaveAction) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 	fmt.Printf("Validator %d: starting enclave\n", s.validatorIdx)
 	validator := network.GetValidatorNode(s.validatorIdx)
-	err := validator.StartEnclave()
+	// note: these actions are assuming single-enclave setups
+	err := validator.StartEnclave(0)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +43,7 @@ type stopValidatorEnclaveAction struct {
 func (s *stopValidatorEnclaveAction) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 	fmt.Printf("Validator %d: stopping enclave\n", s.validatorIdx)
 	validator := network.GetValidatorNode(s.validatorIdx)
-	err := validator.StopEnclave()
+	err := validator.StopEnclave(0)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +106,7 @@ func StopSequencerEnclave() networktest.Action {
 	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 		fmt.Println("Sequencer: stopping enclave")
 		sequencer := network.GetSequencerNode()
-		err := sequencer.StopEnclave()
+		err := sequencer.StopEnclave(0)
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +118,7 @@ func StartSequencerEnclave() networktest.Action {
 	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 		fmt.Println("Sequencer: starting enclave")
 		sequencer := network.GetSequencerNode()
-		err := sequencer.StartEnclave()
+		err := sequencer.StartEnclave(0)
 		if err != nil {
 			return nil, err
 		}

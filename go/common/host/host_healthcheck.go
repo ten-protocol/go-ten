@@ -24,3 +24,22 @@ func (l *BasicErrHealthStatus) OK() bool {
 func (l *BasicErrHealthStatus) Message() string {
 	return l.ErrMsg
 }
+
+type GroupErrsHealthStatus struct {
+	Errors []error
+}
+
+func (g *GroupErrsHealthStatus) OK() bool {
+	return len(g.Errors) == 0
+}
+
+func (g *GroupErrsHealthStatus) Message() string {
+	msg := ""
+	for i, err := range g.Errors {
+		if i > 0 {
+			msg += ", "
+		}
+		msg += err.Error()
+	}
+	return msg
+}

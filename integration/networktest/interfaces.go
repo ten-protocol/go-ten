@@ -58,8 +58,8 @@ type NodeOperator interface {
 	Start() error
 	Stop() error
 
-	StartEnclave() error
-	StopEnclave() error
+	StartEnclave(idx int) error
+	StopEnclave(idx int) error
 	StartHost() error
 	StopHost() error
 
