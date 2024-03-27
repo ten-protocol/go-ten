@@ -1,8 +1,11 @@
 package walletextension
 
 import (
+	"net/http"
 	"os"
 	"time"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/api"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/httpapi"
 
@@ -48,22 +51,13 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		HTTPPort:   config.WalletExtensionPortHTTP,
 		EnableWs:   true,
 		WsPort:     config.WalletExtensionPortWS,
-		WsPath:     "/v1/",
-		HTTPPath:   "/v1/",
+		WsPath:     wecommon.APIVersion1 + "/",
+		HTTPPath:   wecommon.APIVersion1 + "/",
 		Host:       config.WalletExtensionHost,
 	}
 	rpcServer := node.NewServer(cfg, logger)
 
 	rpcServer.RegisterRoutes(httpapi.NewHTTPRoutes(walletExt))
-
-	// register the static files
-	//staticHandler := api.StaticFilesHandler()
-	//rpcServer.RegisterRoutes([]node.Route{{
-	//	Name: "/",
-	//	Func: func(resp http.ResponseWriter, req *http.Request) {
-	//		staticHandler.ServeHTTP(resp, req)
-	//	},
-	//}})
 
 	// register all RPC endpoints exposed by a typical Geth node
 	rpcServer.RegisterAPIs([]gethrpc.API{
@@ -87,6 +81,16 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 			Service:   rpcapi.NewFilterAPI(walletExt),
 		},
 	})
+
+	// register the static files
+	// todo - remove this when the frontend is no longer served from the enclave
+	staticHandler := api.StaticFilesHandler(wecommon.PathStatic)
+	rpcServer.RegisterRoutes([]node.Route{{
+		Name: wecommon.PathStatic,
+		Func: func(resp http.ResponseWriter, req *http.Request) {
+			staticHandler.ServeHTTP(resp, req)
+		},
+	}})
 
 	return NewWalletExtensionContainer(
 		stopControl,

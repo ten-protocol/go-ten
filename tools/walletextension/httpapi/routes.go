@@ -23,7 +23,7 @@ import (
 func NewHTTPRoutes(walletExt *rpcapi.Services) []node.Route {
 	return []node.Route{
 		{
-			Name: common.PathReady,
+			Name: common.APIVersion1 + common.PathReady,
 			Func: httpHandler(walletExt, readyRequestHandler),
 		},
 		{
@@ -47,15 +47,15 @@ func NewHTTPRoutes(walletExt *rpcapi.Services) []node.Route {
 			Func: httpHandler(walletExt, revokeRequestHandler),
 		},
 		{
-			Name: common.PathHealth,
+			Name: common.APIVersion1 + common.PathHealth,
 			Func: httpHandler(walletExt, healthRequestHandler),
 		},
 		{
-			Name: common.PathNetworkHealth,
+			Name: common.APIVersion1 + common.PathNetworkHealth,
 			Func: httpHandler(walletExt, networkHealthRequestHandler),
 		},
 		{
-			Name: common.PathVersion,
+			Name: common.APIVersion1 + common.PathVersion,
 			Func: httpHandler(walletExt, versionRequestHandler),
 		},
 	}

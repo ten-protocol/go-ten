@@ -15,8 +15,8 @@ const (
 )
 
 const (
+	PathStatic                          = "/static/"
 	PathReady                           = "/ready/"
-	PathViewingKeys                     = "/viewingkeys/"
 	PathJoin                            = "/join/"
 	PathGetMessage                      = "/getmessage/"
 	PathAuthenticate                    = "/authenticate/"

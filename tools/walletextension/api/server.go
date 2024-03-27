@@ -14,11 +14,11 @@ const (
 	staticDir = "static"
 )
 
-func StaticFilesHandler() http.Handler {
+func StaticFilesHandler(prefix string) http.Handler {
 	// Serves the web assets for the management of viewing keys.
-	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
+	fileSystem, err := fs.Sub(staticFiles, staticDir)
 	if err != nil {
 		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
 	}
-	return http.FileServer(http.FS(noPrefixStaticFiles))
+	return http.StripPrefix(prefix, http.FileServer(http.FS(fileSystem)))
 }
