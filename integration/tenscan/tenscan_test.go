@@ -189,7 +189,7 @@ func TestTenscan(t *testing.T) {
 
 func waitServerIsReady(serverAddr string) error {
 	for now := time.Now(); time.Since(now) < 30*time.Second; time.Sleep(500 * time.Millisecond) {
-		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("%s/v1/health/", serverAddr))
+		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("%s/health/", serverAddr))
 		if err != nil {
 			// give it time to boot up
 			if strings.Contains(err.Error(), "connection") {
