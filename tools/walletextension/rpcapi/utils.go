@@ -102,32 +102,30 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		}
 
 		var rpcErr error
-		for _, acct := range candidateAccts {
-			var result *R
-			rpcClient, err := connectHTTP(acct, w.Logger())
-			if err != nil {
-				rpcErr = err
-				continue
-			}
-			adjustedArgs := args
-			if cfg.adjustArgs != nil {
-				adjustedArgs = cfg.adjustArgs(acct)
-			}
-			err = rpcClient.CallContext(ctx, &result, method, adjustedArgs...)
+		for i := range candidateAccts {
+			acct := candidateAccts[i]
+			result, err := withHTTPRPCConnection(w, acct, func(rpcClient *tenrpc.EncRPCClient) (*R, error) {
+				var result *R
+				adjustedArgs := args
+				if cfg.adjustArgs != nil {
+					adjustedArgs = cfg.adjustArgs(acct)
+				}
+				err := rpcClient.CallContext(ctx, &result, method, adjustedArgs...)
+				return result, err
+			})
 			if err != nil {
 				// for calls where we know the expected error we can return early
 				if cfg.tryUntilAuthorised && err.Error() != notAuthorised {
 					return nil, err
 				}
 				rpcErr = err
-				_ = returnConn(w.rpcHTTPConnPool, rpcClient)
 				continue
 			}
-			_ = returnConn(w.rpcHTTPConnPool, rpcClient)
 			return result, nil
 		}
 		return nil, rpcErr
 	})
+
 	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(userID), method, args, res, err, time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
@@ -243,10 +241,6 @@ func cacheTTLBlockNumber(lastBlock rpc.BlockNumber) time.Duration {
 	return shortCacheTTL
 }
 
-func connectHTTP(account *GWAccount, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
-	return conn(account.user.services.rpcHTTPConnPool, account, logger)
-}
-
 func connectWS(account *GWAccount, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
 	return conn(account.user.services.rpcWSConnPool, account, logger)
 }
@@ -267,4 +261,13 @@ func conn(p *pool.ObjectPool, account *GWAccount, logger gethlog.Logger) (*tenrp
 func returnConn(p *pool.ObjectPool, conn *tenrpc.EncRPCClient) error {
 	c := conn.Client().(*tenrpc.NetworkClient).RpcClient
 	return p.ReturnObject(context.Background(), c)
+}
+
+func withHTTPRPCConnection[R any](w *Services, acct *GWAccount, execute func(*tenrpc.EncRPCClient) (*R, error)) (*R, error) {
+	rpcClient, err := conn(acct.user.services.rpcHTTPConnPool, acct, w.logger)
+	if err != nil {
+		return nil, fmt.Errorf("could not connect to backed. Cause: %w", err)
+	}
+	defer returnConn(w.rpcHTTPConnPool, rpcClient)
+	return execute(rpcClient)
 }
