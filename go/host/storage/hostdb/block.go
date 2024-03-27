@@ -3,6 +3,7 @@ package hostdb
 import (
 	"database/sql"
 	"fmt"
+	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -10,7 +11,7 @@ import (
 )
 
 const (
-	blockInsert  = "insert into block_host (hash, header, rollup_hash) values (?,?,?)"
+	blockInsert  = "INSERT INTO block_host (hash, header, rollup_hash) values (?,?,?)"
 	selectBlocks = "SELECT id, hash, header, rollup_hash FROM block_host ORDER BY id DESC LIMIT ? OFFSET ?"
 )
 
@@ -37,8 +38,11 @@ func AddBlock(db *sql.DB, b *types.Header, rollupHash common.L2RollupHash) error
 		r,        // rollup hash
 	)
 	if err != nil {
+		println("FAILED to insert into block with hash: ", hexutils.BytesToHex(b.Hash().Bytes()))
 		return fmt.Errorf("could not insert block. Cause: %w", err)
 	}
+
+	println("SUCCESSFULLY inserted into block with hash: ", hexutils.BytesToHex(b.Hash().Bytes()))
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("could not store block in db: %w", err)
 	}
