@@ -117,7 +117,9 @@ type clientConn struct {
 }
 
 // Stop closes the client.
-func (c *Client) Stop() {}
+func (c *Client) Stop() {
+	c.Close()
+}
 
 func (c *Client) newClientConn(conn ServerCodec) *clientConn {
 	ctx := context.Background()
