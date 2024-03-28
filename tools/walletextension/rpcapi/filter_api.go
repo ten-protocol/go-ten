@@ -190,7 +190,7 @@ func handleUnsubscribe(connectionSub *rpc.Subscription, backendSubscriptions []*
 		backendSub.Unsubscribe()
 	}
 	for _, connection := range connections {
-		_ = returnConn(p, connection)
+		_ = returnConn(p, connection.Client())
 	}
 }
 
