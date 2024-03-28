@@ -257,7 +257,7 @@ func conn(p *pool.ObjectPool, account *GWAccount, logger gethlog.Logger) (*tenrp
 	return encClient, nil
 }
 
-func returnConn(p *pool.ObjectPool, conn *rpc.Client) error {
+func returnConn(p *pool.ObjectPool, conn tenrpc.Client) error {
 	return p.ReturnObject(context.Background(), conn)
 }
 
@@ -266,7 +266,7 @@ func withEncRPCConnection[R any](w *Services, acct *GWAccount, execute func(*ten
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to backed. Cause: %w", err)
 	}
-	defer returnConn(w.rpcHTTPConnPool, rpcClient.Client())
+	defer returnConn(w.rpcHTTPConnPool, rpcClient.BackingClient())
 	return execute(rpcClient)
 }
 

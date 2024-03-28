@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/obsclient"
+
 	pool "github.com/jolestar/go-commons-pool/v2"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
@@ -14,15 +16,12 @@ import (
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
-	"github.com/ten-protocol/go-ten/go/obsclient"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
@@ -36,7 +35,6 @@ type Services struct {
 	FileLogger   gethlog.Logger
 	stopControl  *stopcontrol.StopControl
 	version      string
-	tenClient    *obsclient.ObsClient
 	Cache        cache.Cache
 	// the OG maintains a connection pool of rpc connections to underlying nodes
 	rpcHTTPConnPool *pool.ObjectPool
@@ -45,12 +43,6 @@ type Services struct {
 }
 
 func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, config *common.Config) *Services {
-	rpcClient, err := rpc.NewNetworkClient(hostAddrHTTP)
-	if err != nil {
-		logger.Error(fmt.Errorf("could not create RPC client on %s. Cause: %w", hostAddrHTTP, err).Error())
-		panic(err)
-	}
-	newTenClient := obsclient.NewObsClient(rpcClient)
 	newFileLogger := common.NewFileLogger()
 	newGatewayCache, err := cache.NewCache(logger)
 	if err != nil {
@@ -85,8 +77,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		}, nil, nil, nil)
 
 	cfg := pool.NewDefaultPoolConfig()
-	cfg.MaxTotal = 100
-	cfg.MaxTotal = 50
+	cfg.MaxTotal = 100 // todo - what is the right number
 
 	return &Services{
 		HostAddrHTTP:    hostAddrHTTP,
@@ -96,7 +87,6 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		FileLogger:      newFileLogger,
 		stopControl:     stopControl,
 		version:         version,
-		tenClient:       newTenClient,
 		Cache:           newGatewayCache,
 		rpcHTTPConnPool: pool.NewObjectPool(context.Background(), factoryHTTP, cfg),
 		rpcWSConnPool:   pool.NewObjectPool(context.Background(), factoryWS, cfg),
@@ -223,7 +213,11 @@ func (w *Services) Version() string {
 }
 
 func (w *Services) GetTenNodeHealthStatus() (bool, error) {
-	return w.tenClient.Health()
+	res, err := withPlainRPCConnection[bool](w, func(client *gethrpc.Client) (*bool, error) {
+		res, err := obsclient.NewObsClient(client).Health()
+		return &res, err
+	})
+	return *res, err
 }
 
 func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlice []string) (string, error) {
