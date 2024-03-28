@@ -226,10 +226,6 @@ func (w *Services) GetTenNodeHealthStatus() (bool, error) {
 	return w.tenClient.Health()
 }
 
-func (w *Services) UnauthenticatedClient() (rpc.Client, error) {
-	return rpc.NewNetworkClient(w.HostAddrHTTP)
-}
-
 func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlice []string) (string, error) {
 	// Check if the formats are valid
 	for _, format := range formatsSlice {

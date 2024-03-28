@@ -68,8 +68,14 @@ func NewEncRPCClient(client Client, viewingKey *viewingkey.ViewingKey, logger ge
 	return encClient, nil
 }
 
-func (c *EncRPCClient) Client() Client {
-	return c.obscuroClient
+func (c *EncRPCClient) Client() *gethrpc.Client {
+	switch backingClient := c.obscuroClient.(type) {
+	case *NetworkClient:
+		return backingClient.RpcClient
+	default:
+		// not supported
+		return nil
+	}
 }
 
 // Call handles JSON rpc requests without a context - see CallContext for details
