@@ -68,14 +68,8 @@ func NewEncRPCClient(client Client, viewingKey *viewingkey.ViewingKey, logger ge
 	return encClient, nil
 }
 
-func (c *EncRPCClient) Client() *gethrpc.Client {
-	switch backingClient := c.obscuroClient.(type) {
-	case *NetworkClient:
-		return backingClient.RpcClient
-	default:
-		// not supported
-		return nil
-	}
+func (c *EncRPCClient) BackingClient() Client {
+	return c.obscuroClient
 }
 
 // Call handles JSON rpc requests without a context - see CallContext for details
@@ -101,7 +95,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	return c.executeSensitiveCall(ctx, result, method, args...)
 }
 
-func (c *EncRPCClient) Subscribe(ctx context.Context, _ interface{}, namespace string, ch interface{}, args ...interface{}) (*gethrpc.ClientSubscription, error) {
+func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch interface{}, args ...interface{}) (*gethrpc.ClientSubscription, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("subscription did not specify its type")
 	}
@@ -131,7 +125,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, _ interface{}, namespace s
 		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
 	}
 	clientChannel := make(chan common.IDAndEncLog)
-	subscriptionToObscuro, err := c.obscuroClient.Subscribe(ctx, nil, namespace, clientChannel, subscriptionType, encryptedParams)
+	subscriptionToObscuro, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, subscriptionType, encryptedParams)
 	if err != nil {
 		return nil, err
 	}

@@ -116,7 +116,7 @@ func (c *inMemObscuroClient) CallContext(_ context.Context, result interface{}, 
 	return c.Call(result, method, args...) //nolint: contextcheck
 }
 
-func (c *inMemObscuroClient) Subscribe(context.Context, interface{}, string, interface{}, ...interface{}) (*gethrpc.ClientSubscription, error) {
+func (c *inMemObscuroClient) Subscribe(context.Context, string, interface{}, ...interface{}) (*gethrpc.ClientSubscription, error) {
 	panic("not implemented")
 }
 

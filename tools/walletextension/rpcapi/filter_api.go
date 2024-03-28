@@ -72,7 +72,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 		connections = append(connections, rpcWSClient)
 
 		inCh := make(chan common.IDAndLog)
-		backendSubscription, err := rpcWSClient.Subscribe(ctx, nil, "eth", inCh, "logs", crit)
+		backendSubscription, err := rpcWSClient.Subscribe(ctx, "eth", inCh, "logs", crit)
 		if err != nil {
 			fmt.Printf("could not connect to backend %s", err)
 			return nil, err
@@ -190,7 +190,7 @@ func handleUnsubscribe(connectionSub *rpc.Subscription, backendSubscriptions []*
 		backendSub.Unsubscribe()
 	}
 	for _, connection := range connections {
-		_ = returnConn(p, connection.Client())
+		_ = returnConn(p, connection.BackingClient())
 	}
 }
 
