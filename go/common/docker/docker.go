@@ -89,6 +89,12 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 		exposedPorts[nat.Port(fmt.Sprintf("%d/tcp", port))] = struct{}{}
 	}
 
+	// set log rotations
+	logOptions := map[string]string{
+		"max-size": "10m",
+		"max-file": "3",
+	}
+
 	// create the container
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image:        image,
@@ -101,6 +107,7 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 			PortBindings: portBindings,
 			Mounts:       mountVolumes,
 			Resources:    container.Resources{Devices: deviceMapping},
+			LogConfig:    container.LogConfig{Type: "json-file", Config: logOptions},
 		},
 		&network.NetworkingConfig{
 			EndpointsConfig: map[string]*network.EndpointSettings{
