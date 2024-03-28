@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
-	"github.com/ten-protocol/go-ten/go/host/storage"
 )
 
 const (
@@ -28,34 +27,23 @@ const (
 )
 
 // AddBatch adds a batch and its header to the DB
-func AddBatch(hostDB *storage.HostDB, batch *common.ExtBatch) error {
-	db := hostDB.DB
-	// mariadb tx context gets lost without this
-	if !hostDB.InMem {
-		useDbCmd := fmt.Sprintf("USE %s", hostDB.DBName)
-		_, err := db.Exec(useDbCmd)
-		if err != nil {
-			return fmt.Errorf("failed to select database %s: %w", hostDB.DBName, err)
-		}
-	}
-
-	// Check if the Batch is already stored
-	_, err := GetBatchHeader(db, batch.Hash())
-	if err == nil {
-		return errutil.ErrAlreadyExists
-	}
-
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
+func AddBatch(dbtx *dbTransaction, batch *common.ExtBatch) error {
+	//db := hostDB.DB
+	//// mariadb tx context gets lost without this
+	//if !hostDB.InMem {
+	//	useDbCmd := fmt.Sprintf("USE %s", hostDB.DBName)
+	//	_, err := db.Exec(useDbCmd)
+	//	if err != nil {
+	//		return fmt.Errorf("failed to select database %s: %w", hostDB.DBName, err)
+	//	}
+	//}
 
 	extBatch, err := rlp.EncodeToBytes(batch)
 	if err != nil {
 		return fmt.Errorf("could not encode L2 transactions: %w", err)
 	}
 
-	_, err = tx.Exec(insertBatch,
+	_, err = dbtx.GetDB().Exec(insertBatch,
 		batch.SeqNo().Uint64(),       // sequence
 		batch.Hash(),                 // full hash
 		truncTo16(batch.Hash()),      // shortened hash
@@ -68,7 +56,7 @@ func AddBatch(hostDB *storage.HostDB, batch *common.ExtBatch) error {
 
 	if len(batch.TxHashes) > 0 {
 		for _, transaction := range batch.TxHashes {
-			_, err = tx.Exec(insertTransactions, transaction.Bytes(), batch.SeqNo().Uint64())
+			_, err = dbtx.GetDB().Exec(insertTransactions, transaction.Bytes(), batch.SeqNo().Uint64())
 			if err != nil {
 				return fmt.Errorf("failed to insert transaction with hash: %d", err)
 			}
@@ -76,26 +64,22 @@ func AddBatch(hostDB *storage.HostDB, batch *common.ExtBatch) error {
 	}
 
 	var currentTotal int
-	err = tx.QueryRow(selectTxCount).Scan(&currentTotal)
+	err = dbtx.GetDB().QueryRow(selectTxCount).Scan(&currentTotal)
 	if err != nil {
 		return fmt.Errorf("failed to query transaction count: %w", err)
 	}
 
 	var insertTxCount string
 
-	if hostDB.InMem {
-		insertTxCount = insertTxCountSqliteDB
-	} else {
-		insertTxCount = insertTxCountMariaDB
-	}
+	//if hostDB.InMem {
+	insertTxCount = insertTxCountSqliteDB
+	//} else {
+	//	insertTxCount = insertTxCountMariaDB
+	//}
 	newTotal := currentTotal + len(batch.TxHashes)
-	_, err = tx.Exec(insertTxCount, 1, newTotal)
+	_, err = dbtx.GetDB().Exec(insertTxCount, 1, newTotal)
 	if err != nil {
 		return fmt.Errorf("failed to update transaction count: %w", err)
-	}
-
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("could not commit batch tx: %w", err)
 	}
 
 	return nil

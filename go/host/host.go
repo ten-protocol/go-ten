@@ -4,9 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
-
 	"github.com/ten-protocol/go-ten/go/host/l2"
 
 	"github.com/ten-protocol/go-ten/go/host/enclave"
@@ -40,7 +38,7 @@ type host struct {
 	// ignore incoming requests
 	stopControl *stopcontrol.StopControl
 
-	db *storage.HostDB // Stores the host's publicly-available data
+	storage storage.Storage // Stores the host's publicly-available data
 
 	logger gethlog.Logger
 
@@ -51,10 +49,7 @@ type host struct {
 }
 
 func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
-	database, err := storage.CreateDBFromConfig(config, logger)
-	if err != nil {
-		logger.Crit("unable to create database for host", log.ErrKey, err)
-	}
+	hostStorage := storage.NewHostStorageFromConfig(config, logger)
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
 		// config
@@ -65,7 +60,7 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		services: hostServices,
 
 		// Initialize the host DB
-		db: database,
+		storage: hostStorage,
 
 		logger:         logger,
 		metricRegistry: regMetrics,
@@ -73,9 +68,9 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		stopControl: stopcontrol.New(),
 	}
 
-	enclGuardian := enclave.NewGuardian(config, hostIdentity, hostServices, enclaveClient, database.DB, host.stopControl, logger)
+	enclGuardian := enclave.NewGuardian(config, hostIdentity, hostServices, enclaveClient, hostStorage, host.stopControl, logger)
 	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardian, logger)
-	l2Repo := l2.NewBatchRepository(config, hostServices, database, logger)
+	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
 
 	hostServices.RegisterService(hostcommon.P2PName, p2p)
@@ -132,10 +127,6 @@ func (h *host) Config() *config.HostConfig {
 	return h.config
 }
 
-func (h *host) DB() *sql.DB {
-	return h.db.DB
-}
-
 func (h *host) EnclaveClient() common.Enclave {
 	return h.services.Enclaves().GetEnclaveClient()
 }
@@ -174,7 +165,7 @@ func (h *host) Stop() error {
 		}
 	}
 
-	if err := h.DB().Close(); err != nil {
+	if err := h.storage.Close(); err != nil {
 		h.logger.Error("Failed to stop DB", log.ErrKey, err)
 	}
 
@@ -222,6 +213,10 @@ func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
 		L2MessageBusAddress: *h.l2MessageBusAddress,
 		ImportantContracts:  h.services.L1Publisher().GetImportantContracts(),
 	}, nil
+}
+
+func (h *host) DB() *sql.DB {
+	return h.storage.GetDB()
 }
 
 // Checks the host config is valid.

@@ -1,14 +1,12 @@
 package enclave
 
 import (
-	"database/sql"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/host/storage"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 
@@ -57,8 +55,8 @@ type Guardian struct {
 	state         *StateTracker // state machine that tracks our view of the enclave's state
 	enclaveClient common.Enclave
 
-	sl guardianServiceLocator
-	db *sql.DB
+	sl      guardianServiceLocator
+	storage storage.Storage
 
 	submitDataLock sync.Mutex // we only submit one block, batch or transaction to enclave at a time
 
@@ -76,7 +74,7 @@ type Guardian struct {
 	enclaveID        *common.EnclaveID
 }
 
-func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *sql.DB, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
+func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, storage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
 	return &Guardian{
 		hostData:         hostData,
 		state:            NewStateTracker(logger),
@@ -88,7 +86,7 @@ func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator 
 		l1StartHash:      cfg.L1StartHash,
 		maxRollupSize:    cfg.MaxRollupSize,
 		blockTime:        cfg.L1BlockTime,
-		db:               db,
+		storage:          storage,
 		hostInterrupter:  interrupter,
 		logger:           logger,
 	}
@@ -475,7 +473,7 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 		if err != nil {
 			g.logger.Error("Could not fetch rollup metadata from enclave.", log.ErrKey, err)
 		}
-		err = hostdb.AddRollup(g.db, r, metaData, block)
+		err = g.storage.AddRollup(r, metaData, block)
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())
@@ -483,8 +481,8 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 				g.logger.Error("Could not store rollup.", log.ErrKey, err)
 			}
 		}
-		// TODO (@will) need to store this data? For now we only store the blocks with rollups
-		err = hostdb.AddBlock(g.db, block.Header(), r.Header.Hash())
+		// TODO (@will) this should be removed and pulled from the L1
+		err = g.storage.AddBlock(block.Header(), r.Header.Hash())
 		if err != nil {
 			g.logger.Error("Could not add block to host db.", log.ErrKey, err)
 		}

@@ -22,23 +22,12 @@ const (
 )
 
 // AddRollup adds a rollup to the DB
-func AddRollup(db *sql.DB, rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
-	// Check if the Header is already stored
-	_, err := GetRollupHeader(db, rollup.Header.Hash())
-	if err == nil {
-		// The rollup is already stored, so we return early.
-		return errutil.ErrAlreadyExists
-	}
-
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
+func AddRollup(dbtx *dbTransaction, rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
 	extRollup, err := rlp.EncodeToBytes(rollup)
 	if err != nil {
 		return fmt.Errorf("could not encode rollup: %w", err)
 	}
-	_, err = tx.Exec(insertRollup,
+	_, err = dbtx.GetDB().Exec(insertRollup,
 		truncTo16(rollup.Header.Hash()),      // short hash
 		metadata.FirstBatchSequence.Uint64(), // first batch sequence
 		rollup.Header.LastBatchSeqNo,         // last batch sequence
@@ -48,9 +37,6 @@ func AddRollup(db *sql.DB, rollup *common.ExtRollup, metadata *common.PublicRoll
 	)
 	if err != nil {
 		return fmt.Errorf("could not insert rollup. Cause: %w", err)
-	}
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("could not store rollup in db: %w", err)
 	}
 
 	return nil

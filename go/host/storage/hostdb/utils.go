@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/go/host/storage"
 	"github.com/ten-protocol/go-ten/go/host/storage/init/sqlite"
 )
 
@@ -60,10 +59,10 @@ func truncFirstTo16(bytes []byte) []byte {
 	return c
 }
 
-func createSQLiteDB(t *testing.T) (*storage.HostDB, error) {
-	hostDb, err := sqlite.CreateTemporarySQLiteHostDB("", "mode=memory", "host_sqlite_init.sql")
+func createSQLiteDB(t *testing.T) (HostDB, error) {
+	hostDB, err := sqlite.CreateTemporarySQLiteHostDB("", "mode=memory", "host_sqlite_init.sql")
 	if err != nil {
 		t.Fatalf("unable to create temp sql db: %s", err)
 	}
-	return &storage.HostDB{DB: hostDb, InMem: true}, nil
+	return NewHostDB(hostDB)
 }
