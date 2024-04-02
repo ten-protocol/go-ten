@@ -37,10 +37,6 @@ const (
 )
 
 func (vk RPCSignedViewingKey) Validate() error {
-	// todo - remove this when merging to main
-	if vk.Account == nil {
-		return fmt.Errorf("invalid account in viewing key")
-	}
 	if len(vk.PublicKey) != pubKeyLen {
 		return fmt.Errorf("invalid viewing key")
 	}
