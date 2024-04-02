@@ -31,6 +31,21 @@ type RPCSignedViewingKey struct {
 	SignatureType           SignatureType
 }
 
+const (
+	pubKeyLen = 33
+	sigLen    = 65
+)
+
+func (vk RPCSignedViewingKey) Validate() error {
+	if len(vk.PublicKey) != pubKeyLen {
+		return fmt.Errorf("invalid viewing key")
+	}
+	if len(vk.SignatureWithAccountKey) != sigLen {
+		return fmt.Errorf("invalid viewing key signature")
+	}
+	return nil
+}
+
 // GenerateViewingKeyForWallet takes an account wallet, generates a viewing key and signs the key with the acc's private key
 func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
 	chainID := wal.ChainID().Int64()
