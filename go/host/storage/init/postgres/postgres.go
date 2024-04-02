@@ -21,6 +21,7 @@ func CreatePostgresDBConnection(dbURL string, dbName string, initFile string) (*
 	//if dbURL == "" {
 	//	return nil, fmt.Errorf("failed to prepare PostgreSQL connection - DB URL was not set on host config")
 	//}
+
 	dbURL = "postgres://WillHester:1866@localhost:5432/postgres?sslmode=disable"
 
 	db, err := sql.Open("postgres", dbURL)

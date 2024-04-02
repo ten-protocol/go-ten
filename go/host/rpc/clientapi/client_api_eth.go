@@ -11,7 +11,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
@@ -40,7 +39,7 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 
 // BlockNumber returns the height of the current head batch.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	header, err := hostdb.GetHeadBatchHeader(api.host.DB())
+	header, err := api.host.Storage().FetchHeadBatchHeader()
 	if err != nil {
 		// This error may be nefarious, but unfortunately the Eth API doesn't allow us to return an error.
 		api.logger.Error("could not retrieve head batch header", log.ErrKey, err)
@@ -60,7 +59,7 @@ func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNu
 
 // GetBlockByHash returns the header of the batch with the given hash.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (*common.BatchHeader, error) {
-	batchHeader, err := hostdb.GetBatchHeader(api.host.DB(), hash)
+	batchHeader, err := api.host.Storage().FetchBatchHeaderByHash(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +68,7 @@ func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, 
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
 func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
-	header, err := hostdb.GetHeadBatchHeader(api.host.DB())
+	header, err := api.host.Storage().FetchHeadBatchHeader()
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +187,7 @@ func (api *EthereumAPI) GetStorageAt(_ context.Context, encryptedParams common.E
 // rpc.DecimalOrHex -> []byte
 func (api *EthereumAPI) FeeHistory(context.Context, string, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
 	// todo (#1621) - return a non-dummy fee history
-	header, err := hostdb.GetHeadBatchHeader(api.host.DB())
+	header, err := api.host.Storage().FetchHeadBatchHeader()
 	if err != nil {
 		api.logger.Error("Unable to retrieve header for fee history.", log.ErrKey, err)
 		return nil, fmt.Errorf("unable to retrieve fee history")
@@ -227,7 +226,7 @@ func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*ge
 	// note: our API currently treats all these block statuses the same for obscuro batches
 	if batchNumber == rpc.LatestBlockNumber || batchNumber == rpc.PendingBlockNumber ||
 		batchNumber == rpc.FinalizedBlockNumber || batchNumber == rpc.SafeBlockNumber {
-		batchHeader, err := hostdb.GetHeadBatchHeader(api.host.DB())
+		batchHeader, err := api.host.Storage().FetchHeadBatchHeader()
 		if err != nil {
 			return nil, err
 		}
@@ -235,7 +234,7 @@ func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*ge
 		return &batchHash, nil
 	}
 	batchNumberBig := big.NewInt(batchNumber.Int64())
-	batchHash, err := hostdb.GetBatchHashByNumber(api.host.DB(), batchNumberBig)
+	batchHash, err := api.host.Storage().FetchBatchHashByNumber(batchNumberBig)
 	if err != nil {
 		return nil, err
 	}

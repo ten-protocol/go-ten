@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"database/sql"
 	"fmt"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -11,6 +11,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"io"
+	"math/big"
 )
 
 type storageImpl struct {
@@ -21,8 +22,7 @@ type storageImpl struct {
 
 func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 	// Check if the Batch is already stored
-	//_, err := hostdb.GetBatchHeader(s.db.GetDB(), batch.Hash())
-	_, err := hostdb.GetBatchBySequenceNumber(s.db.GetDB(), batch.SeqNo().Uint64())
+	_, err := hostdb.GetBatchHeader(s.db.NewDBTransaction(), batch.Hash())
 	if err == nil {
 		return errutil.ErrAlreadyExists
 	}
@@ -39,7 +39,7 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 
 func (s *storageImpl) AddRollup(rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
 	// Check if the Header is already stored
-	_, err := hostdb.GetRollupHeader(s.db.GetDB(), rollup.Header.Hash())
+	_, err := hostdb.GetRollupHeader(s.db.GetSQLDB(), rollup.Header.Hash())
 	if err == nil {
 		return errutil.ErrAlreadyExists
 	}
@@ -65,15 +65,27 @@ func (s *storageImpl) AddBlock(b *types.Header, rollupHash common.L2RollupHash) 
 }
 
 func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*common.ExtBatch, error) {
-	return hostdb.GetBatchBySequenceNumber(s.db.GetDB(), seqNum)
+	return hostdb.GetBatchBySequenceNumber(s.db.GetSQLDB(), seqNum)
 }
 
-func (s *storageImpl) GetDB() *sql.DB {
+func (s *storageImpl) FetchBatchHashByNumber(number *big.Int) (*gethcommon.Hash, error) {
+	return hostdb.GetBatchHashByNumber(s.db.GetSQLDB(), number)
+}
+
+func (s *storageImpl) FetchBatchHeaderByHash(hash gethcommon.Hash) (*common.BatchHeader, error) {
+	return hostdb.GetBatchHeader(s.db.NewDBTransaction(), hash)
+}
+
+func (s *storageImpl) FetchHeadBatchHeader() (*common.BatchHeader, error) {
+	return hostdb.GetHeadBatchHeader(s.db.GetSQLDB())
+}
+
+func (s *storageImpl) GetDB() *hostdb.HostDB {
 	return s.db.GetDB()
 }
 
 func (s *storageImpl) Close() error {
-	return s.db.GetDB().Close()
+	return s.db.GetSQLDB().Close()
 }
 
 func NewHostStorageFromConfig(config *config.HostConfig, logger gethlog.Logger) Storage {

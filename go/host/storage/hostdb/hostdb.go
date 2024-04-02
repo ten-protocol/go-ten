@@ -6,7 +6,8 @@ import (
 )
 
 type HostDB interface {
-	GetDB() *sql.DB
+	GetDB() *HostDB
+	GetSQLDB() *sql.DB
 	NewDBTransaction() *dbTransaction
 	BeginTx() (*sql.Tx, error)
 	GetSQLStatement() *SQLStatements
@@ -28,7 +29,11 @@ func NewHostDB(db *sql.DB, statements *SQLStatements) (HostDB, error) {
 	}, nil
 }
 
-func (db *hostDB) GetDB() *sql.DB {
+func (db *hostDB) GetDB() *HostDB {
+	return db.GetDB()
+}
+
+func (db *hostDB) GetSQLDB() *sql.DB {
 	return db.sqldb
 }
 
@@ -54,7 +59,7 @@ type dbTransaction struct {
 }
 
 func (b *dbTransaction) GetDB() *sql.DB {
-	return b.db.GetDB()
+	return b.db.GetSQLDB()
 }
 
 func (b *dbTransaction) GetSQLStatements() *SQLStatements {

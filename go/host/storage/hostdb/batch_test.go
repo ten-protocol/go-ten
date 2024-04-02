@@ -23,7 +23,7 @@ func TestCanStoreAndRetrieveBatchHeader(t *testing.T) {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
-	batchHeader, err := GetBatchHeader(db.GetDB(), batch.Header.Hash())
+	batchHeader, err := GetBatchHeader(db.NewDBTransaction(), batch.Header.Hash())
 	if err != nil {
 		t.Errorf("stored batch but could not retrieve header. Cause: %s", err)
 	}

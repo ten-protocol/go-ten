@@ -1,11 +1,11 @@
 package host
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/host/l2"
+	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 
 	"github.com/ten-protocol/go-ten/go/host/enclave"
 	"github.com/ten-protocol/go-ten/go/host/l1"
@@ -215,8 +215,12 @@ func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
 	}, nil
 }
 
-func (h *host) DB() *sql.DB {
+func (h *host) DB() *hostdb.HostDB {
 	return h.storage.GetDB()
+}
+
+func (h *host) Storage() storage.Storage {
+	return h.storage
 }
 
 // Checks the host config is valid.
