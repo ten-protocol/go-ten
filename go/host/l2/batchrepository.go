@@ -111,12 +111,6 @@ func (r *Repository) HandleBatches(batches []*common.ExtBatch, isLive bool) {
 			// we've already seen this batch or failed to store it for another reason - do not notify subscribers
 			return
 		}
-		if isLive {
-			// notify subscribers if the batch is new
-			for _, subscriber := range r.subscribers {
-				go subscriber.HandleBatch(batch)
-			}
-		}
 	}
 }
 
@@ -175,6 +169,7 @@ func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
 // If the repository already has the batch it returns an AlreadyExists error which is typically ignored.
 func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	r.logger.Debug("Saving batch", log.BatchSeqNoKey, batch.Header.SequencerOrderNo, log.BatchHashKey, batch.Hash())
+	// this returns an error if the batch already exists in the db
 	err := r.db.AddBatch(batch)
 	if err != nil {
 		return err
@@ -184,6 +179,10 @@ func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	defer r.latestSeqNoMutex.Unlock()
 	if batch.Header.SequencerOrderNo.Cmp(r.latestBatchSeqNo) > 0 {
 		r.latestBatchSeqNo = batch.Header.SequencerOrderNo
+		// notify subscribers, a new batch has been successfully added to the db
+		for _, subscriber := range r.subscribers {
+			go subscriber.HandleBatch(batch)
+		}
 	}
 	return nil
 }
