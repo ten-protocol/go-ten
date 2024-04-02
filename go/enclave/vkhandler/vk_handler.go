@@ -26,6 +26,11 @@ type AuthenticatedViewingKey struct {
 }
 
 func VerifyViewingKey(rpcVK *viewingkey.RPCSignedViewingKey, chainID int64) (*AuthenticatedViewingKey, error) {
+	err := rpcVK.Validate()
+	if err != nil {
+		return nil, err
+	}
+
 	vkPubKey, err := crypto.DecompressPubkey(rpcVK.PublicKey)
 	if err != nil {
 		return nil, fmt.Errorf("could not decompress viewing key bytes - %w", err)
