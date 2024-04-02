@@ -13,37 +13,24 @@ import (
 )
 
 const (
-	selectTxCount         = "SELECT total FROM transaction_count WHERE id = 1"
-	selectBatch           = "SELECT sequence, full_hash, hash, height, ext_batch FROM batch_host"
-	selectExtBatch        = "SELECT ext_batch FROM batch_host"
-	selectLatestBatch     = "SELECT sequence, full_hash, hash, height, ext_batch FROM batch_host ORDER BY sequence DESC LIMIT 1"
-	selectTxsAndBatch     = "SELECT t.hash FROM transactions_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.full_hash = ?"
-	selectBatchSeqByTx    = "SELECT b_sequence FROM transactions_host WHERE hash = ?"
-	selectTxBySeq         = "SELECT hash FROM transactions_host WHERE b_sequence = ?"
-	insertBatch           = "INSERT INTO batch_host (sequence, full_hash, hash, height, ext_batch) VALUES (?, ?, ?, ?, ?)"
-	insertTransactions    = "REPLACE INTO transactions_host (hash, b_sequence) VALUES (?, ?)"
-	insertTxCountMariaDB  = "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON DUPLICATE KEY UPDATE total = VALUES(total)"
-	insertTxCountSqliteDB = "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET total = excluded.total;"
+	selectTxCount      = "SELECT total FROM transaction_count WHERE id = 1"
+	selectBatch        = "SELECT sequence, full_hash, hash, height, ext_batch FROM batch_host"
+	selectExtBatch     = "SELECT ext_batch FROM batch_host"
+	selectLatestBatch  = "SELECT sequence, full_hash, hash, height, ext_batch FROM batch_host ORDER BY sequence DESC LIMIT 1"
+	selectTxsAndBatch  = "SELECT t.hash FROM transactions_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.full_hash = ?"
+	selectBatchSeqByTx = "SELECT b_sequence FROM transactions_host WHERE hash = ?"
+	selectTxBySeq      = "SELECT hash FROM transactions_host WHERE b_sequence = ?"
 )
 
 // AddBatch adds a batch and its header to the DB
 func AddBatch(dbtx *dbTransaction, batch *common.ExtBatch) error {
-	//db := hostDB.DB
-	//// mariadb tx context gets lost without this
-	//if !hostDB.InMem {
-	//	useDbCmd := fmt.Sprintf("USE %s", hostDB.DBName)
-	//	_, err := db.Exec(useDbCmd)
-	//	if err != nil {
-	//		return fmt.Errorf("failed to select database %s: %w", hostDB.DBName, err)
-	//	}
-	//}
 
 	extBatch, err := rlp.EncodeToBytes(batch)
 	if err != nil {
 		return fmt.Errorf("could not encode L2 transactions: %w", err)
 	}
 
-	_, err = dbtx.GetDB().Exec(insertBatch,
+	_, err = dbtx.GetDB().Exec(dbtx.GetSQLStatements().InsertBatch,
 		batch.SeqNo().Uint64(),       // sequence
 		batch.Hash(),                 // full hash
 		truncTo16(batch.Hash()),      // shortened hash
@@ -56,7 +43,7 @@ func AddBatch(dbtx *dbTransaction, batch *common.ExtBatch) error {
 
 	if len(batch.TxHashes) > 0 {
 		for _, transaction := range batch.TxHashes {
-			_, err = dbtx.GetDB().Exec(insertTransactions, transaction.Bytes(), batch.SeqNo().Uint64())
+			_, err = dbtx.GetDB().Exec(dbtx.GetSQLStatements().InsertTransactions, transaction.Bytes(), batch.SeqNo().Uint64())
 			if err != nil {
 				return fmt.Errorf("failed to insert transaction with hash: %d", err)
 			}
@@ -69,15 +56,8 @@ func AddBatch(dbtx *dbTransaction, batch *common.ExtBatch) error {
 		return fmt.Errorf("failed to query transaction count: %w", err)
 	}
 
-	var insertTxCount string
-
-	//if hostDB.InMem {
-	insertTxCount = insertTxCountSqliteDB
-	//} else {
-	//	insertTxCount = insertTxCountMariaDB
-	//}
 	newTotal := currentTotal + len(batch.TxHashes)
-	_, err = dbtx.GetDB().Exec(insertTxCount, 1, newTotal)
+	_, err = dbtx.GetDB().Exec(dbtx.GetSQLStatements().InsertTxCount, 1, newTotal)
 	if err != nil {
 		return fmt.Errorf("failed to update transaction count: %w", err)
 	}

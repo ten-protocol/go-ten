@@ -64,5 +64,5 @@ func createSQLiteDB(t *testing.T) (HostDB, error) {
 	if err != nil {
 		t.Fatalf("unable to create temp sql db: %s", err)
 	}
-	return NewHostDB(hostDB)
+	return NewHostDB(hostDB, SQLiteSQLStatements())
 }

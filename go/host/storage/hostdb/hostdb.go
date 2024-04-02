@@ -9,14 +9,23 @@ type HostDB interface {
 	GetDB() *sql.DB
 	NewDBTransaction() *dbTransaction
 	BeginTx() (*sql.Tx, error)
+	GetSQLStatement() *SQLStatements
 }
 
 type hostDB struct {
-	sqldb *sql.DB
+	sqldb      *sql.DB
+	statements *SQLStatements
 }
 
-func NewHostDB(db *sql.DB) (HostDB, error) {
-	return &hostDB{sqldb: db}, nil
+func (db *hostDB) GetSQLStatement() *SQLStatements {
+	return db.statements
+}
+
+func NewHostDB(db *sql.DB, statements *SQLStatements) (HostDB, error) {
+	return &hostDB{
+		sqldb:      db,
+		statements: statements,
+	}, nil
 }
 
 func (db *hostDB) GetDB() *sql.DB {
@@ -46,6 +55,10 @@ type dbTransaction struct {
 
 func (b *dbTransaction) GetDB() *sql.DB {
 	return b.db.GetDB()
+}
+
+func (b *dbTransaction) GetSQLStatements() *SQLStatements {
+	return b.db.GetSQLStatement()
 }
 
 func (b *dbTransaction) Write() error {

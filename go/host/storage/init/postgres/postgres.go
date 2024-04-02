@@ -1,4 +1,4 @@
-package mariadb
+package postgres
 
 import (
 	"bufio"
@@ -9,40 +9,53 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	_ "github.com/lib/pq"
 )
 
 const (
 	maxDBPoolSize = 100
 )
 
-func CreateMariaDBHostDB(dbURL string, dbName string, initFile string) (*sql.DB, error) {
-	if dbURL == "" {
-		return nil, fmt.Errorf("failed to prepare MariaDB connection - MariaDBHost was not set on host config")
-	}
-	db, err := sql.Open("mysql", dbURL+"?multiStatements=true")
+func CreatePostgresDBConnection(dbURL string, dbName string, initFile string) (*sql.DB, error) {
+	//if dbURL == "" {
+	//	return nil, fmt.Errorf("failed to prepare PostgreSQL connection - DB URL was not set on host config")
+	//}
+	dbURL = "postgres://WillHester:1866@localhost:5432/postgres?sslmode=disable"
+
+	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		log.Fatalf("Failed to connect to MariaDB server: %v", err)
+		log.Fatalf("failed to connect to PostgreSQL server: %v", err)
 	}
 	db.SetMaxOpenConns(maxDBPoolSize)
-
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", dbName))
+	// Check if the database exists
+	rows, err := db.Query("SELECT 1 FROM pg_database WHERE datname = $1", dbName)
 	if err != nil {
-		log.Fatalf("Failed to create database %s: %v", dbName, err)
+		log.Fatalf("Failed to query database existence: %v", err)
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		// Database doesn't exist, create it
+		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName))
+		if err != nil {
+			log.Fatalf("Failed to create database %s: %v", dbName, err)
+		}
 	}
 
-	_, err = db.Exec(fmt.Sprintf("USE `%s`", dbName))
-	if err != nil {
-		log.Fatalf("Failed to select database %s: %v", dbName, err)
-	}
+	//_, err = db.Exec(fmt.Sprintf("SET DATABASE %s", dbName))
+	//if err != nil {
+	//	log.Fatalf("Failed to select database %s: %v", dbName, err)
+	//}
 
 	_, filename, _, _ := runtime.Caller(0)
 	baseDir := filepath.Dir(filename)
-	sqlFile := filepath.Join(baseDir, "host_mariadb_init.sql")
+	sqlFile := filepath.Join(baseDir, "host_postgres_init.sql")
 
 	if initFile != "" {
 		if err := initialiseDBFromSQLFile(db, sqlFile); err != nil {
-			println("Error initialisting DB from file")
-			return nil, fmt.Errorf("failed to initialise db from file %s: %w", initFile, err)
+			println("Error initializing DB from file")
+			return nil, fmt.Errorf("failed to initialize db from file %s: %w", initFile, err)
 		}
 	}
 
