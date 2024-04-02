@@ -74,7 +74,7 @@ func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		http.MethodPost,
-		o.httpURL+"/v1/authenticate/?token="+hexutils.BytesToHex(o.userID),
+		o.httpURL+"/v1/authenticate/?token=0x"+hexutils.BytesToHex(o.userID),
 		strings.NewReader(payload),
 	)
 	if err != nil {
@@ -124,7 +124,7 @@ func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommo
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		http.MethodPost,
-		o.httpURL+"/v1/authenticate/?token="+hexutils.BytesToHex(o.userID),
+		o.httpURL+"/v1/authenticate/?token=0x"+hexutils.BytesToHex(o.userID),
 		strings.NewReader(payload),
 	)
 	if err != nil {

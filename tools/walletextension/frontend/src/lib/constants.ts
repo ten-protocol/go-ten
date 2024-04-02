@@ -35,7 +35,7 @@ export const testnetUrls = {
 };
 
 export const SWITCHED_CODE = 4902;
-export const tokenHexLength = 40;
+export const tokenHexLength = 42;
 
 export const tenGatewayVersion = "v1";
 export const tenChainIDDecimal = 443;

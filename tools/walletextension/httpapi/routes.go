@@ -283,11 +283,28 @@ func networkHealthRequestHandler(walletExt *rpcapi.Services, userConn UserConn) 
 		return
 	}
 
+	// call `obscuro-health` rpc method to get the health status of the node
 	healthStatus, err := walletExt.GetTenNodeHealthStatus()
 
+	// create the response in the required format
+	type HealthStatus struct {
+		Errors        []string `json:"Errors"`
+		OverallHealth bool     `json:"OverallHealth"`
+	}
+
+	errorStrings := make([]string, 0)
+	if err != nil {
+		errorStrings = append(errorStrings, err.Error())
+	}
+	healthStatusResponse := HealthStatus{
+		Errors:        errorStrings,
+		OverallHealth: healthStatus,
+	}
+
 	data, err := json.Marshal(map[string]interface{}{
-		"result": healthStatus,
-		"error":  err,
+		"id":      "1",
+		"jsonrpc": "2.0",
+		"result":  healthStatusResponse,
 	})
 	if err != nil {
 		walletExt.Logger().Error("error marshaling response", log.ErrKey, err)

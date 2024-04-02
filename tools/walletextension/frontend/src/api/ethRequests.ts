@@ -151,7 +151,7 @@ export async function authenticateAccountWithTenGatewayEIP712(
       ...typedData,
       message: {
         ...typedData.message,
-        "Encryption Token": "0x" + token,
+        "Encryption Token":  token,
       },
     };
     const signature = await getSignature(account, data);
