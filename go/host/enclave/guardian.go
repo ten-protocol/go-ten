@@ -186,14 +186,11 @@ func (g *Guardian) HandleBlock(block *types.Block) {
 // HandleBatch is called by the L2 repository when a new batch arrives
 // Note: this should only be called for validators, sequencers produce their own batches
 func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
-	if g.hostData.IsSequencer {
-		g.logger.Error("Repo received batch but we are a sequencer, ignoring")
-		return
-	}
-	g.logger.Debug("Received L2 block", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
+	g.logger.Debug("Host received L2 batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
 	// record the newest batch we've seen
 	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
-	if !g.state.IsUpToDate() {
+	// Sequencer enclaves produce batches, they cannot receive them. Also, enclave will reject new batches if it is not up-to-date
+	if g.hostData.IsSequencer || !g.state.IsUpToDate() {
 		return // ignore batches until we're up-to-date
 	}
 	err := g.submitL2Batch(batch)

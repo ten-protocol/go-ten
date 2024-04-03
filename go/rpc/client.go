@@ -26,11 +26,10 @@ const (
 	Health = "obscuro_health"
 	Config = "obscuro_config"
 
-	StopHost             = "test_stopHost"
-	Subscribe            = "eth_subscribe"
-	Unsubscribe          = "eth_unsubscribe"
-	SubscribeNamespace   = "eth"
-	SubscriptionTypeLogs = "logs"
+	StopHost                 = "test_stopHost"
+	SubscribeNamespace       = "eth"
+	SubscriptionTypeLogs     = "logs"
+	SubscriptionTypeNewHeads = "newHeads"
 
 	GetBatchByTx              = "scan_getBatchByTx"
 	GetLatestRollupHeader     = "scan_getLatestRollupHeader"
@@ -54,7 +53,7 @@ type Client interface {
 	// CallContext If the context is canceled before the call has successfully returned, CallContext returns immediately.
 	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
 	// Subscribe creates a subscription to the Obscuro host.
-	Subscribe(ctx context.Context, result interface{}, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error)
+	Subscribe(ctx context.Context, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error)
 	// Stop closes the client.
 	Stop()
 }

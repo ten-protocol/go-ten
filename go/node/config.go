@@ -108,7 +108,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 
 	cfg.IsGenesis = c.isGenesis
 	cfg.PrivateKeyString = c.privateKey
-	cfg.EnclaveRPCAddress = fmt.Sprintf("127.0.0.1:%d", c.enclaveWSPort)
+	cfg.EnclaveRPCAddresses = []string{fmt.Sprintf("127.0.0.1:%d", c.enclaveWSPort)}
 	cfg.ClientRPCPortWS = uint64(c.hostWSPort)
 	cfg.ClientRPCPortHTTP = uint64(c.hostHTTPPort)
 

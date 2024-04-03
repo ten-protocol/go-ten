@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -24,7 +25,7 @@ type HostConfigToml struct {
 	HasClientRPCWebsockets    bool
 	ClientRPCPortWS           uint
 	ClientRPCHost             string
-	EnclaveRPCAddress         string
+	EnclaveRPCAddresses       string // comma-separated
 	P2PBindAddress            string
 	P2PPublicAddress          string
 	L1WebsocketURL            string
@@ -66,7 +67,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	clientRPCPortHTTP := flag.Uint64(clientRPCPortHTTPName, cfg.ClientRPCPortHTTP, flagUsageMap[clientRPCPortHTTPName])
 	clientRPCPortWS := flag.Uint64(clientRPCPortWSName, cfg.ClientRPCPortWS, flagUsageMap[clientRPCPortWSName])
 	clientRPCHost := flag.String(clientRPCHostName, cfg.ClientRPCHost, flagUsageMap[clientRPCHostName])
-	enclaveRPCAddress := flag.String(enclaveRPCAddressName, cfg.EnclaveRPCAddress, flagUsageMap[enclaveRPCAddressName])
+	enclaveRPCAddressesStr := flag.String(enclaveRPCAddressesName, strings.Join(cfg.EnclaveRPCAddresses, ","), flagUsageMap[enclaveRPCAddressesName])
 	p2pBindAddress := flag.String(p2pBindAddressName, cfg.P2PBindAddress, flagUsageMap[p2pBindAddressName])
 	p2pPublicAddress := flag.String(p2pPublicAddressName, cfg.P2PPublicAddress, flagUsageMap[p2pPublicAddressName])
 	l1WSURL := flag.String(l1WebsocketURLName, cfg.L1WebsocketURL, flagUsageMap[l1WebsocketURLName])
@@ -112,7 +113,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.HasClientRPCWebsockets = true
 	cfg.ClientRPCPortWS = *clientRPCPortWS
 	cfg.ClientRPCHost = *clientRPCHost
-	cfg.EnclaveRPCAddress = *enclaveRPCAddress
+	cfg.EnclaveRPCAddresses = strings.Split(*enclaveRPCAddressesStr, ",")
 	cfg.P2PBindAddress = *p2pBindAddress
 	cfg.P2PPublicAddress = *p2pPublicAddress
 	cfg.L1WebsocketURL = *l1WSURL
@@ -189,7 +190,7 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		HasClientRPCWebsockets:    tomlConfig.HasClientRPCWebsockets,
 		ClientRPCPortWS:           uint64(tomlConfig.ClientRPCPortWS),
 		ClientRPCHost:             tomlConfig.ClientRPCHost,
-		EnclaveRPCAddress:         tomlConfig.EnclaveRPCAddress,
+		EnclaveRPCAddresses:       strings.Split(tomlConfig.EnclaveRPCAddresses, ","),
 		P2PBindAddress:            tomlConfig.P2PBindAddress,
 		P2PPublicAddress:          tomlConfig.P2PPublicAddress,
 		L1WebsocketURL:            tomlConfig.L1WebsocketURL,

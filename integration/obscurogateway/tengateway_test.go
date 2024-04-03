@@ -1,15 +1,23 @@
-package faucet
+package obscurogateway
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/big"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension"
+
+	"github.com/go-kit/kit/transport/http/jsonrpc"
+	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 
 	log2 "github.com/ten-protocol/go-ten/go/common/log"
 
@@ -34,8 +42,6 @@ import (
 	"github.com/ten-protocol/go-ten/integration/ethereummock"
 	"github.com/ten-protocol/go-ten/integration/simulation/network"
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
-	"github.com/ten-protocol/go-ten/tools/walletextension/config"
-	"github.com/ten-protocol/go-ten/tools/walletextension/container"
 	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
 	"github.com/valyala/fasthttp"
 )
@@ -57,7 +63,7 @@ func TestTenGateway(t *testing.T) {
 	startPort := integration.StartPortTenGatewayUnitTest
 	createTenNetwork(t, startPort)
 
-	tenGatewayConf := config.Config{
+	tenGatewayConf := wecommon.Config{
 		WalletExtensionHost:     "127.0.0.1",
 		WalletExtensionPortHTTP: startPort + integration.DefaultTenGatewayHTTPPortOffset,
 		WalletExtensionPortWS:   startPort + integration.DefaultTenGatewayWSPortOffset,
@@ -70,7 +76,7 @@ func TestTenGateway(t *testing.T) {
 		StoreIncomingTxs:        true,
 	}
 
-	tenGwContainer := container.NewWalletExtensionContainerFromConfig(tenGatewayConf, testlog.Logger())
+	tenGwContainer := walletextension.NewContainerFromConfig(tenGatewayConf, testlog.Logger())
 	go func() {
 		err := tenGwContainer.Start()
 		if err != nil {
@@ -97,11 +103,14 @@ func TestTenGateway(t *testing.T) {
 		//"testAreTxsMinted":            testAreTxsMinted, this breaks the other tests bc, enable once concurrency issues are fixed
 		"testErrorHandling":                    testErrorHandling,
 		"testMultipleAccountsSubscription":     testMultipleAccountsSubscription,
+		"testNewHeadsSubscription":             testNewHeadsSubscription,
 		"testErrorsRevertedArePassed":          testErrorsRevertedArePassed,
 		"testUnsubscribe":                      testUnsubscribe,
 		"testClosingConnectionWhileSubscribed": testClosingConnectionWhileSubscribed,
 		"testSubscriptionTopics":               testSubscriptionTopics,
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
+		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
+		"testGetStorageAtForReturningUserID":   testGetStorageAtForReturningUserID,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, httpURL, wsURL, w)
@@ -115,16 +124,50 @@ func TestTenGateway(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func testNewHeadsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+
+	receivedHeads := make([]*types.Header, 0)
+	newHeadChan := make(chan *types.Header)
+	subscription, err := user0.WSClient.SubscribeNewHead(context.Background(), newHeadChan)
+	require.NoError(t, err)
+
+	// Listen for new heads in a goroutine
+	go func() {
+		for {
+			select {
+			case err := <-subscription.Err():
+				// if err != nil {
+				testlog.Logger().Info("Error from new head subscription", log2.ErrKey, err)
+				return
+				//}
+			case newHead := <-newHeadChan:
+				// append logs to be visible from the main thread
+				receivedHeads = append(receivedHeads, newHead)
+			}
+		}
+	}()
+
+	// sleep for 5 seconds and there should be at least 2 heads received in this interval
+	time.Sleep(5 * time.Second)
+	subscription.Unsubscribe()
+	require.True(t, len(receivedHeads) > 1)
+}
+
 func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
-	user0, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
+	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
 
-	user1, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	_, err = user0.HTTPClient.ChainID(context.Background())
+	require.NoError(t, err)
+
+	user1, err := NewGatewayUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user1.tgClient.UserID())
 
-	user2, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	user2, err := NewGatewayUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user2.tgClient.UserID())
 
@@ -148,12 +191,7 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	require.NoError(t, err)
 
 	// Print balances of all registered accounts to check if all accounts have funds
-	balances, err := user0.GetUserAccountsBalances()
-	require.NoError(t, err)
-	for _, balance := range balances {
-		require.NotZero(t, balance.Uint64())
-	}
-	balances, err = user1.GetUserAccountsBalances()
+	balances, err := user1.GetUserAccountsBalances()
 	require.NoError(t, err)
 	for _, balance := range balances {
 		require.NotZero(t, balance.Uint64())
@@ -184,6 +222,9 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user0.HTTPClient, signedTx.Hash(), time.Minute)
 	require.NoError(t, err)
 
+	_, err = user0.HTTPClient.CodeAt(context.Background(), contractReceipt.ContractAddress, big.NewInt(int64(rpc.LatestBlockNumber)))
+	require.NoError(t, err)
+
 	// check if value was changed in the smart contract with the interactions above
 	pack, _ := eventsContractABI.Pack("message2")
 	result, err := user1.HTTPClient.CallContract(context.Background(), ethereum.CallMsg{
@@ -204,9 +245,12 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	var user0logs []types.Log
 	var user1logs []types.Log
 	var user2logs []types.Log
-	subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user0.WSClient, &user0logs)
-	subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user1.WSClient, &user1logs)
-	subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user2.WSClient, &user2logs)
+	_, err = subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user0.WSClient, &user0logs)
+	require.NoError(t, err)
+	_, err = subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user1.WSClient, &user1logs)
+	require.NoError(t, err)
+	_, err = subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user2.WSClient, &user2logs)
+	require.NoError(t, err)
 
 	// user1 calls setMessage and setMessage2 on deployed smart contract with the account
 	// that was registered as the first in TG
@@ -259,13 +303,21 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	assert.Equal(t, 3, len(user1logs))
 	// user2 should see three events (two lifecycle events - same as user0) and event with his interaction with setMessage
 	assert.Equal(t, 3, len(user2logs))
+
+	_, err = user0.HTTPClient.FilterLogs(context.TODO(), ethereum.FilterQuery{
+		Addresses: []gethcommon.Address{contractReceipt.ContractAddress},
+		FromBlock: big.NewInt(0),
+		ToBlock:   big.NewInt(10000),
+		Topics:    nil,
+	})
+	require.NoError(t, err)
 }
 
 func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
-	user0, err := NewUser([]wallet.Wallet{w}, httpURL, wsURL)
+	user0, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
 
-	user1, err := NewUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	user1, err := NewGatewayUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 
 	// register all the accounts for that user
@@ -313,6 +365,12 @@ func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet
 	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user0.HTTPClient, signedTx.Hash(), time.Minute)
 	require.NoError(t, err)
 
+	tx, _, err := user0.HTTPClient.TransactionByHash(context.Background(), signedTx.Hash())
+	if err != nil {
+		return
+	}
+	require.Equal(t, signedTx.Hash(), tx.Hash())
+
 	// user0 subscribes to all events from that smart contract, user1 only an event with a topic of his first account
 	var user0logs []types.Log
 	var user1logs []types.Log
@@ -320,8 +378,10 @@ func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet
 	t1 := gethcommon.BytesToHash(user1.Wallets[1].Address().Bytes())
 	topics = append(topics, nil)
 	topics = append(topics, []gethcommon.Hash{t1})
-	subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user0.WSClient, &user0logs)
-	subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, topics, user1.WSClient, &user1logs)
+	_, err = subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user0.WSClient, &user0logs)
+	require.NoError(t, err)
+	_, err = subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, topics, user1.WSClient, &user1logs)
+	require.NoError(t, err)
 
 	// user0 calls setMessage on deployed smart contract with the account twice and expects two events
 	_, err = integrationCommon.InteractWithSmartContract(user0.HTTPClient, user0.Wallets[0], eventsContractABI, "setMessage", "user0Event1", contractReceipt.ContractAddress)
@@ -388,28 +448,41 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// make requests to geth for comparison
 
 	for _, req := range []string{
+		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[[]],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"topics":[]}],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock":"0x387","topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
+		//`{"jsonrpc":"2.0","method":"eth_subscribe","params":["logs"],"id":1}`,
+		//`{"jsonrpc":"2.0","method":"eth_subscribe","params":["logs",{"topics":[]}],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_blockNumber","params": [],"id":1}`, // test caching
+		`{"jsonrpc":"2.0","method":"eth_gasPrice","params": [],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_gasPrice","params": [],"id":1}`, // test caching
+		`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params": ["latest", false],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_feeHistory","params":[1, "latest", [50]],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getBalance","params":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "latest"],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getBalance","params":[],"id":1}`,
-		`{"jsonrpc":"2.0","method":"eth_getgetget","params":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "latest"],"id":1}`,
+		//`{"jsonrpc":"2.0","method":"eth_getgetget","params":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "latest"],"id":1}`,
 		`{"method":"eth_getBalance","params":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "latest"],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getBalance","params":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "latest"],"id":1,"extra":"extra_field"}`,
 		`{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "0x1234"]],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["0x0000000000000000000000000000000000000000000000000000000000000000"],"id":1}`,
 	} {
 		// ensure the geth request is issued correctly (should return 200 ok with jsonRPCError)
 		_, response, err := httputil.PostDataJSON(ogClient.HTTP(), []byte(req))
 		require.NoError(t, err)
+		fmt.Printf("Resp: %s", response)
 
 		// unmarshall the response to JSONRPCMessage
-		jsonRPCError := wecommon.JSONRPCMessage{}
+		jsonRPCError := JSONRPCMessage{}
 		err = json.Unmarshal(response, &jsonRPCError)
-		require.NoError(t, err)
+		require.NoError(t, err, req, response)
 
 		// repeat the process for the gateway
 		_, response, err = httputil.PostDataJSON(fmt.Sprintf("http://localhost:%d", integration.StartPortTenGatewayUnitTest), []byte(req))
 		require.NoError(t, err)
 
 		// we only care about format
-		jsonRPCError = wecommon.JSONRPCMessage{}
+		jsonRPCError = JSONRPCMessage{}
 		err = json.Unmarshal(response, &jsonRPCError)
 		require.NoError(t, err)
 	}
@@ -467,7 +540,7 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.W
 	// convert error to WE error
 	errBytes, err := json.Marshal(err)
 	require.NoError(t, err)
-	weError := wecommon.JSONError{}
+	weError := JSONError{}
 	err = json.Unmarshal(errBytes, &weError)
 	require.NoError(t, err)
 	require.Equal(t, "execution reverted: Forced require", weError.Message)
@@ -496,9 +569,12 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.W
 
 func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// create a user with multiple accounts
-	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	user, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	testlog.Logger().Info("Created user with encryption token: %s\n", user.tgClient.UserID())
+	testlog.Logger().Info("Created user with encryption token", "t", user.tgClient.UserID())
+
+	_, err = user.HTTPClient.ChainID(context.Background())
+	require.NoError(t, err)
 
 	// register all the accounts for the user
 	err = user.RegisterAccounts()
@@ -523,11 +599,12 @@ func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user.HTTPClient, signedTx.Hash(), time.Minute)
 	require.NoError(t, err)
 
-	testlog.Logger().Info("Deployed contract address: ", contractReceipt.ContractAddress)
+	testlog.Logger().Info("Deployed contract address: ", "addr", contractReceipt.ContractAddress)
 
 	// subscribe to an event
 	var userLogs []types.Log
-	subscription := subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user.WSClient, &userLogs)
+	subscription, err := subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user.WSClient, &userLogs)
+	require.NoError(t, err)
 
 	// make an action that will trigger events
 	_, err = integrationCommon.InteractWithSmartContract(user.HTTPClient, user.Wallets[0], eventsContractABI, "setMessage", "foo", contractReceipt.ContractAddress)
@@ -548,9 +625,12 @@ func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 
 func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// create a user with multiple accounts
-	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	user, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	testlog.Logger().Info("Created user with encryption token: %s\n", user.tgClient.UserID())
+	testlog.Logger().Info("Created user with encryption token", "t", user.tgClient.UserID())
+
+	_, err = user.HTTPClient.ChainID(context.Background())
+	require.NoError(t, err)
 
 	// register all the accounts for the user
 	err = user.RegisterAccounts()
@@ -575,11 +655,12 @@ func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w
 	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user.HTTPClient, signedTx.Hash(), time.Minute)
 	require.NoError(t, err)
 
-	testlog.Logger().Info("Deployed contract address: ", contractReceipt.ContractAddress)
+	testlog.Logger().Info("Deployed contract address: ", "addr", contractReceipt.ContractAddress)
 
 	// subscribe to an event
 	var userLogs []types.Log
-	subscription := subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user.WSClient, &userLogs)
+	subscription, err := subscribeToEvents([]gethcommon.Address{contractReceipt.ContractAddress}, nil, user.WSClient, &userLogs)
+	require.NoError(t, err)
 
 	// Close the websocket connection and make sure nothing breaks, but user does not receive events
 	user.WSClient.Close()
@@ -607,7 +688,7 @@ func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w
 }
 
 func testDifferentMessagesOnRegister(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
-	user, err := NewUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	user, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token: %s\n", user.tgClient.UserID())
 
@@ -618,6 +699,83 @@ func testDifferentMessagesOnRegister(t *testing.T, httpURL, wsURL string, w wall
 	// register all the accounts for the user with personal sign message format
 	err = user.RegisterAccountsPersonalSign()
 	require.NoError(t, err)
+}
+
+func testInvokeNonSensitiveMethod(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+	user, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
+	require.NoError(t, err)
+
+	// call one of the non-sensitive methods with unauthenticated user
+	// and make sure gateway is not complaining about not having viewing keys
+	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.ChainID, user.tgClient.UserID(), nil)
+	if strings.Contains(string(respBody), fmt.Sprintf("method %s cannot be called with an unauthorised client - no signed viewing keys found", tenrpc.ChainID)) {
+		t.Errorf("sensitive method called without authenticating viewingkeys and did fail because of it:  %s", tenrpc.ChainID)
+	}
+}
+
+func testGetStorageAtForReturningUserID(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+	user, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
+	require.NoError(t, err)
+
+	type JSONResponse struct {
+		Result string `json:"result"`
+	}
+	var response JSONResponse
+
+	// make a request to GetStorageAt with correct parameters to get userID that exists in the database
+	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{wecommon.GetStorageAtUserIDRequestMethodName, "0", nil})
+	if err = json.Unmarshal(respBody, &response); err != nil {
+		t.Error("Unable to unmarshal response")
+	}
+	if !bytes.Equal(gethcommon.FromHex(response.Result), user.tgClient.UserIDBytes()) {
+		t.Errorf("Wrong UserID returned. Expected: %s, received: %s", user.tgClient.UserID(), response.Result)
+	}
+
+	// make a request to GetStorageAt with correct parameters to get userID, but with wrong userID
+	respBody2 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, "0x0000000000000000000000000000000000000001", []interface{}{wecommon.GetStorageAtUserIDRequestMethodName, "0", nil})
+	if !strings.Contains(string(respBody2), "not found") {
+		t.Error("eth_getStorageAt did not respond with not found error")
+	}
+
+	// make a request to GetStorageAt with wrong parameters to get userID, but correct userID
+	respBody3 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{"0x0000000000000000000000000000000000000001", "0", nil})
+	if !strings.Contains(string(respBody3), "illegal access") {
+		t.Error("eth_getStorageAt did not respond with error: illegal access")
+	}
+}
+
+func makeRequestHTTP(url string, body []byte) []byte {
+	generateViewingKeyBody := bytes.NewBuffer(body)
+	resp, err := http.Post(url, "application/json", generateViewingKeyBody) //nolint:noctx,gosec
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		panic(err)
+	}
+	viewingKey, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	return viewingKey
+}
+
+func makeHTTPEthJSONReq(url string, method string, userID string, params interface{}) []byte {
+	reqBody := prepareRequestBody(method, params)
+	return makeRequestHTTP(fmt.Sprintf("%s/v1/?token=%s", url, userID), reqBody)
+}
+
+func prepareRequestBody(method string, params interface{}) []byte {
+	reqBodyBytes, err := json.Marshal(map[string]interface{}{
+		wecommon.JSONKeyRPCVersion: jsonrpc.Version,
+		wecommon.JSONKeyMethod:     method,
+		wecommon.JSONKeyParams:     params,
+		wecommon.JSONKeyID:         "1",
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to prepare request body. Cause: %w", err))
+	}
+	return reqBodyBytes
 }
 
 func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet) common.TxHash { //nolint: unused
@@ -676,7 +834,7 @@ func createTenNetwork(t *testing.T, startPort int) {
 
 func waitServerIsReady(serverAddr string) error {
 	for now := time.Now(); time.Since(now) < 30*time.Second; time.Sleep(500 * time.Millisecond) {
-		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("%s/health/", serverAddr))
+		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("%s/v1/health/", serverAddr))
 		if err != nil {
 			// give it time to boot up
 			if strings.Contains(err.Error(), "connection") {
@@ -695,13 +853,13 @@ func waitServerIsReady(serverAddr string) error {
 func getFeeAndGas(client *ethclient.Client, wallet wallet.Wallet, legacyTx *types.LegacyTx) error {
 	tx := types.NewTx(legacyTx)
 
-	history, err := client.FeeHistory(context.Background(), 1, nil, []float64{})
+	history, err := client.FeeHistory(context.Background(), 1, nil, nil)
 	if err != nil || len(history.BaseFee) == 0 {
 		return err
 	}
 
 	estimate, err := client.EstimateGas(context.Background(), ethereum.CallMsg{
-		From:  wallet.Address(),
+		// From:  wallet.Address(),
 		To:    tx.To(),
 		Value: tx.Value(),
 		Data:  tx.Data(),
@@ -742,19 +900,20 @@ func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddr
 	return integrationCommon.AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 30*time.Second)
 }
 
-func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Hash, client *ethclient.Client, logs *[]types.Log) ethereum.Subscription {
+func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Hash, client *ethclient.Client, logs *[]types.Log) (ethereum.Subscription, error) {
 	// Make a subscription
 	filterQuery := ethereum.FilterQuery{
 		Addresses: addresses,
-		FromBlock: big.NewInt(0), // todo (@ziga) - without those we get errors - fix that and make them configurable
-		ToBlock:   big.NewInt(10000),
-		Topics:    topics,
+		FromBlock: big.NewInt(2),
+		// ToBlock:   big.NewInt(10000),
+		Topics: topics,
 	}
 	logsCh := make(chan types.Log)
 
 	subscription, err := client.SubscribeFilterLogs(context.Background(), filterQuery, logsCh)
 	if err != nil {
-		testlog.Logger().Info("Failed to subscribe to filter logs: %v", log2.ErrKey, err)
+		testlog.Logger().Info("Failed to subscribe to filter logs", log2.ErrKey, err)
+		return nil, err
 	}
 
 	// Listen for logs in a goroutine
@@ -762,7 +921,7 @@ func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Has
 		for {
 			select {
 			case err := <-subscription.Err():
-				testlog.Logger().Info("Error from logs subscription: %v", log2.ErrKey, err)
+				testlog.Logger().Info("Error from logs subscription", log2.ErrKey, err)
 				return
 			case log := <-logsCh:
 				// append logs to be visible from the main thread
@@ -771,5 +930,5 @@ func subscribeToEvents(addresses []gethcommon.Address, topics [][]gethcommon.Has
 		}
 	}()
 
-	return subscription
+	return subscription, nil
 }

@@ -12,8 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/ethereum/go-ethereum/eth/filters"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -70,6 +68,10 @@ func NewEncRPCClient(client Client, viewingKey *viewingkey.ViewingKey, logger ge
 	return encClient, nil
 }
 
+func (c *EncRPCClient) BackingClient() Client {
+	return c.obscuroClient
+}
+
 // Call handles JSON rpc requests without a context - see CallContext for details
 func (c *EncRPCClient) Call(result interface{}, method string, args ...interface{}) error {
 	return c.CallContext(nil, result, method, args...) //nolint:staticcheck
@@ -93,7 +95,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	return c.executeSensitiveCall(ctx, result, method, args...)
 }
 
-func (c *EncRPCClient) Subscribe(ctx context.Context, _ interface{}, namespace string, ch interface{}, args ...interface{}) (*gethrpc.ClientSubscription, error) {
+func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch interface{}, args ...interface{}) (*gethrpc.ClientSubscription, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("subscription did not specify its type")
 	}
@@ -108,8 +110,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, _ interface{}, namespace s
 		return nil, err
 	}
 
-	// We use RLP instead of JSON marshaling here, as for some reason the filter criteria doesn't unmarshal correctly from JSON.
-	encodedLogSubscription, err := rlp.EncodeToBytes(logSubscription)
+	encodedLogSubscription, err := json.Marshal(logSubscription)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +125,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, _ interface{}, namespace s
 		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
 	}
 	clientChannel := make(chan common.IDAndEncLog)
-	subscriptionToObscuro, err := c.obscuroClient.Subscribe(ctx, nil, namespace, clientChannel, subscriptionType, encryptedParams)
+	subscriptionToObscuro, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, subscriptionType, encryptedParams)
 	if err != nil {
 		return nil, err
 	}
@@ -181,20 +182,16 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 
 	// If there are less than two arguments, it means no filter criteria was passed.
 	if len(args) < 2 {
-		logSubscription.Filter = &filters.FilterCriteria{}
+		logSubscription.Filter = &common.FilterCriteriaJSON{}
 		return logSubscription, nil
 	}
 
-	filterCriteria, ok := args[1].(filters.FilterCriteria)
+	filterCriteria, ok := args[1].(common.FilterCriteria)
 	if !ok {
 		return nil, fmt.Errorf("invalid subscription")
 	}
-	// If we do not override a nil block hash to an empty one, RLP decoding will fail on the enclave side.
-	if filterCriteria.BlockHash == nil {
-		filterCriteria.BlockHash = &gethcommon.Hash{}
-	}
-
-	logSubscription.Filter = &filterCriteria
+	fc := common.FromCriteria(filterCriteria)
+	logSubscription.Filter = &fc
 	return logSubscription, nil
 }
 
@@ -243,13 +240,13 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 		// EstimateGas and Call methods return EVM Errors that are json objects
 		// and contain multiple keys that normally do not get serialized
 		if method == EstimateGas || method == Call {
-			var result errutil.EVMSerialisableError
-			err = json.Unmarshal([]byte(decodedError.Error()), &result)
+			var evmErr errutil.EVMSerialisableError
+			err = json.Unmarshal([]byte(decodedError.Error()), &evmErr)
 			if err != nil {
-				return err
+				return decodedError
 			}
 			// Return the evm user error.
-			return result
+			return evmErr
 		}
 
 		// Return the user error.

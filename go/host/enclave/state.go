@@ -97,12 +97,6 @@ func (s *StateTracker) OnReceivedBlock(l1Head gethcommon.Hash) {
 func (s *StateTracker) OnProcessedBatch(enclL2HeadSeqNo *big.Int) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	if s.hostL2Head == nil || s.hostL2Head.Cmp(enclL2HeadSeqNo) < 0 {
-		// we've successfully processed this batch, so the host's head should be at least as high as the enclave's (this shouldn't happen, we want it to be visible if it happens)
-		s.logger.Trace("host head behind enclave head - updating to match", "hostHead", s.hostL2Head, "enclaveHead", enclL2HeadSeqNo)
-		s.hostL2Head = enclL2HeadSeqNo
-	}
-
 	s.enclaveL2Head = enclL2HeadSeqNo
 	s.setStatus(s.calculateStatus())
 }

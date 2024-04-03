@@ -2,6 +2,42 @@
 ---
 # Ten Testnet Change Log
 
+# Next release (v0.24.0) (work in progress, still under development)
+* A list of the PRs merged due to be included in the release is currently as below;
+  * `7190f55c` Host: notify batch subscribers of new batches from any src (#1860)
+  * `d3bf8ecb` Validate vk (#1859)
+  * `a4a9e3cd` Fix gateway frontend issues after geth rpc (#1857)
+  * `55ef73e6` Align rpc interfaces (#1856)
+  * `2ab73cfd` Use conn pool for unauthenticated connections (#1855)
+  * `5a8cde2e` Update missed enclave flag usage (#1854)
+  * `f4445911` Wip add geth rpc to the gateway (#1845)
+  * `ce6b1564` Ha: support multiple enclaves on a single host (#1852)
+  * `fe8b2488` Remove legacy signature type (#1851)
+  * `2288c3e0` Remove wallet extension endpoints (#1641)
+  * `88bd866d` Network tests: refactor config to allow for ha (#1849)
+  * `2b17a1e1` Add new endpoint for generating messages and refactor message generation (#1836)
+  * `abcfc38b` Update ports (#1848)
+  * `c6664e05` Fix build error (#1846)
+  * `fdde1b7d` Align rpc with geth (#1841)
+  * `172fae28` Add beagle security meta tag (#1842)
+  * `85097d6a` Add geth rpc fork and wire it with the host (#1840)
+  * `67b94d0f` Host l1 txs: one-at-a-time to remove nonce risk (#1839)
+  * `a3457085` Display errors if other wallets are also installed alongside metamask (#1837)
+  * `46e0c321` Upgrade dependencies & misc (#1838)
+  * `a38b4ab2` Add personal sign authentication message and refactor signature verification (#1811)
+  * `74cfe0e5` Protocol: attest against enclaveid rather than hostid (#1831)
+  * `75f610d4` Headers: use 65-byte signatures instead of r,s values (#1834)
+  * `1e781f77` Network tests: basic sim to run in ci builds (#1833)
+  * `99315295` Use ten hardhat plugin instead of baked in registration (#1812)
+  * `b52a7a49` Updated batch size limit (#1830)
+  * `6083d1e1` Store incoming transactions in a database (#1828)
+  * `057276df` Networktests: run local gateway against testnets (#1824)
+  * `05eebc9e` Estimage gas perf fixes (#1827)
+  * `8fa689ce` Disabled caching (#1823)
+  * `b0628746` Adjusts gateway vm deployment to use static ip address (#1781)
+  * `a2316674` Add new getrollupdata api to enclave client (#1815)
+  * `b17c3325` Create database migration for the gateway (#1768)
+
 # Feb 2024-02-27 (v0.23.0)
 * An upgrade release to fix issues in the batch limit size which can stop deployment of some large contracts, and to
   over-estimate the L1 gas cost to ensure it is possible to submit a transaction for rollup.

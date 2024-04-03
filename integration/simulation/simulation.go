@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth/filters"
 	gethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -192,7 +191,7 @@ func (s *Simulation) trackLogs() {
 			channel := make(chan common.IDAndLog, 1000)
 
 			// To exercise the filtering mechanism, we subscribe for HOC events only, ignoring POC events.
-			hocFilter := filters.FilterCriteria{
+			hocFilter := common.FilterCriteria{
 				Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + testcommon.HOCAddr)},
 			}
 			sub, err := client.SubscribeFilterLogs(context.Background(), hocFilter, channel)

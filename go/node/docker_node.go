@@ -90,7 +90,7 @@ func (d *DockerNode) startHost() error {
 	cmd := []string{
 		"/home/obscuro/go-obscuro/go/host/main/main",
 		"-l1WSURL", d.cfg.l1WSURL,
-		"-enclaveRPCAddress", fmt.Sprintf("%s:%d", d.cfg.nodeName+"-enclave", d.cfg.enclaveWSPort),
+		"-enclaveRPCAddresses", fmt.Sprintf("%s:%d", d.cfg.nodeName+"-enclave", d.cfg.enclaveWSPort),
 		"-managementContractAddress", d.cfg.managementContractAddr,
 		"-messageBusContractAddress", d.cfg.messageBusContractAddress,
 		"-l1Start", d.cfg.l1Start,

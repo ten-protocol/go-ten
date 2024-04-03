@@ -25,6 +25,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/status-im/keycard-go/hexutils"
+
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -65,7 +67,7 @@ type handler struct {
 
 	subLock    sync.Mutex
 	serverSubs map[ID]*Subscription
-	UserID     string
+	UserID     []byte
 }
 
 type callProc struct {
@@ -73,7 +75,7 @@ type callProc struct {
 	notifiers []*Notifier
 }
 
-func newHandler(connCtx context.Context, conn jsonWriter, idgen func() ID, reg *serviceRegistry, batchRequestLimit, batchResponseMaxSize int, userID string) *handler {
+func newHandler(connCtx context.Context, conn jsonWriter, idgen func() ID, reg *serviceRegistry, batchRequestLimit, batchResponseMaxSize int, userID []byte) *handler {
 	rootCtx, cancelRoot := context.WithCancel(connCtx)
 	h := &handler{
 		reg:                  reg,
@@ -386,6 +388,10 @@ func (h *handler) startCallProc(fn func(*callProc)) {
 		ctx, cancel := context.WithCancel(h.rootCtx)
 		defer h.callWG.Done()
 		defer cancel()
+		// handle the case when normal rpc calls are made over a ws connection
+		if ctx.Value(GWTokenKey{}) == nil {
+			ctx = context.WithValue(ctx, GWTokenKey{}, hexutils.BytesToHex(h.UserID))
+		}
 		fn(&callProc{ctx: ctx})
 	}()
 }

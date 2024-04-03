@@ -18,14 +18,14 @@ const chainID = 443
 // generateRandomUserKeys -
 // generates a random user private key and a random viewing key private key and returns the user private key,
 // the viewing key private key, the userID and the user address
-func generateRandomUserKeys() (*ecdsa.PrivateKey, *ecdsa.PrivateKey, string, gethcommon.Address) {
+func generateRandomUserKeys() (*ecdsa.PrivateKey, *ecdsa.PrivateKey, []byte, gethcommon.Address) {
 	userPrivKey, err := crypto.GenerateKey() // user private key
 	if err != nil {
-		return nil, nil, "", gethcommon.Address{}
+		return nil, nil, nil, gethcommon.Address{}
 	}
 	vkPrivKey, _ := crypto.GenerateKey() // viewingkey generated in the gateway
 	if err != nil {
-		return nil, nil, "", gethcommon.Address{}
+		return nil, nil, nil, gethcommon.Address{}
 	}
 
 	// get the address from userPrivKey
@@ -33,7 +33,7 @@ func generateRandomUserKeys() (*ecdsa.PrivateKey, *ecdsa.PrivateKey, string, get
 
 	// get userID from viewingKey public key
 	vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
-	userID := viewingkey.CalculateUserIDHex(vkPubKeyBytes)
+	userID := viewingkey.CalculateUserID(vkPubKeyBytes)
 
 	return userPrivKey, vkPrivKey, userID, userAddress
 }

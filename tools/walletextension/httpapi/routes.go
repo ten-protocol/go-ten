@@ -1,4 +1,4 @@
-package api
+package httpapi
 
 import (
 	"encoding/hex"
@@ -6,38 +6,25 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/status-im/keycard-go/hexutils"
+
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
+	"github.com/ten-protocol/go-ten/tools/walletextension/rpcapi"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ten-protocol/go-ten/go/common/httputil"
-	"github.com/ten-protocol/go-ten/go/rpc"
-	"github.com/ten-protocol/go-ten/tools/walletextension"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/userconn"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // NewHTTPRoutes returns the http specific routes
-func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []node.Route {
+// todo - move these to the rpc framework.
+func NewHTTPRoutes(walletExt *rpcapi.Services) []node.Route {
 	return []node.Route{
 		{
-			Name: common.APIVersion1 + common.PathRoot,
-			Func: httpHandler(walletExt, ethRequestHandler),
-		},
-		{
-			Name: common.PathReady,
+			Name: common.APIVersion1 + common.PathReady,
 			Func: httpHandler(walletExt, readyRequestHandler),
-		},
-		{
-			Name: common.PathGenerateViewingKey,
-			Func: httpHandler(walletExt, generateViewingKeyRequestHandler),
-		},
-		{
-			Name: common.PathSubmitViewingKey,
-			Func: httpHandler(walletExt, submitViewingKeyRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathJoin,
@@ -60,23 +47,23 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []node.Route {
 			Func: httpHandler(walletExt, revokeRequestHandler),
 		},
 		{
-			Name: common.PathHealth,
+			Name: common.APIVersion1 + common.PathHealth,
 			Func: httpHandler(walletExt, healthRequestHandler),
 		},
 		{
-			Name: common.PathNetworkHealth,
+			Name: common.APIVersion1 + common.PathNetworkHealth,
 			Func: httpHandler(walletExt, networkHealthRequestHandler),
 		},
 		{
-			Name: common.PathVersion,
+			Name: common.APIVersion1 + common.PathVersion,
 			Func: httpHandler(walletExt, versionRequestHandler),
 		},
 	}
 }
 
 func httpHandler(
-	walletExt *walletextension.WalletExtension,
-	fun func(walletExt *walletextension.WalletExtension, conn userconn.UserConn),
+	walletExt *rpcapi.Services,
+	fun func(walletExt *rpcapi.Services, conn UserConn),
 ) func(resp http.ResponseWriter, req *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
 		httpRequestHandler(walletExt, resp, req, fun)
@@ -84,186 +71,23 @@ func httpHandler(
 }
 
 // Overall request handler for http requests
-func httpRequestHandler(walletExt *walletextension.WalletExtension, resp http.ResponseWriter, req *http.Request, fun func(walletExt *walletextension.WalletExtension, conn userconn.UserConn)) {
+func httpRequestHandler(walletExt *rpcapi.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *rpcapi.Services, conn UserConn)) {
 	if walletExt.IsStopping() {
 		return
 	}
 	if httputil.EnableCORS(resp, req) {
 		return
 	}
-	userConn := userconn.NewUserConnHTTP(resp, req, walletExt.Logger())
+	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
 	fun(walletExt, userConn)
 }
 
-// NewWSRoutes returns the WS specific routes
-func NewWSRoutes(walletExt *walletextension.WalletExtension) []node.Route {
-	return []node.Route{
-		{
-			Name: common.PathRoot,
-			Func: wsHandler(walletExt, ethRequestHandler),
-		},
-		{
-			Name: common.PathReady,
-			Func: wsHandler(walletExt, readyRequestHandler),
-		},
-		{
-			Name: common.PathGenerateViewingKey,
-			Func: wsHandler(walletExt, generateViewingKeyRequestHandler),
-		},
-
-		{
-			Name: common.PathSubmitViewingKey,
-			Func: wsHandler(walletExt, submitViewingKeyRequestHandler),
-		},
-	}
-}
-
-func wsHandler(
-	walletExt *walletextension.WalletExtension,
-	fun func(walletExt *walletextension.WalletExtension, conn userconn.UserConn),
-) func(resp http.ResponseWriter, req *http.Request) {
-	return func(resp http.ResponseWriter, req *http.Request) {
-		wsRequestHandler(walletExt, resp, req, fun)
-	}
-}
-
-// Overall request handler for WS requests
-func wsRequestHandler(walletExt *walletextension.WalletExtension, resp http.ResponseWriter, req *http.Request, fun func(walletExt *walletextension.WalletExtension, conn userconn.UserConn)) {
-	if walletExt.IsStopping() {
-		return
-	}
-
-	userConn, err := userconn.NewUserConnWS(resp, req, walletExt.Logger())
-	if err != nil {
-		return
-	}
-	// We handle requests in a loop until the connection is closed on the client side.
-	for !userConn.IsClosed() {
-		fun(walletExt, userConn)
-	}
-}
-
-// ethRequestHandler parses the user eth request, passes it on to the WE to proxy it and processes the response
-func ethRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
-	body, err := conn.ReadRequest()
-	if err != nil {
-		handleEthError(nil, conn, walletExt.Logger(), fmt.Errorf("error reading request - %w", err))
-		return
-	}
-
-	request, err := parseRequest(body)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), err)
-		return
-	}
-	walletExt.Logger().Debug("REQUEST", "method", request.Method, "body", string(body))
-
-	if request.Method == rpc.Subscribe && !conn.SupportsSubscriptions() {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("received an %s request but the connection does not support subscriptions", rpc.Subscribe))
-		return
-	}
-
-	// Get userID
-	// TODO: @ziga - after removing old wallet extension endpoints we should prevent users doing anything without valid encryption token
-	hexUserID, err := getUserID(conn, 1)
-	if err != nil || !walletExt.UserExists(hexUserID) {
-		walletExt.Logger().Info("user not found in the query params: %w. Using the default user", log.ErrKey, err)
-		hexUserID = hex.EncodeToString([]byte(common.DefaultUser)) // todo (@ziga) - this can be removed once old WE endpoints are removed
-	}
-
-	if len(hexUserID) < 3 {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("encryption token length is incorrect"))
-		return
-	}
-
-	// todo (@pedro) remove this conn dependency
-	response, err := walletExt.ProxyEthRequest(request, conn, hexUserID)
-	if err != nil {
-		handleEthError(request, conn, walletExt.Logger(), err)
-		return
-	}
-
-	rpcResponse, err := json.Marshal(response)
-	if err != nil {
-		handleEthError(request, conn, walletExt.Logger(), err)
-		return
-	}
-
-	walletExt.Logger().Info(fmt.Sprintf("Forwarding %s response from Obscuro node: %s", request.Method, rpcResponse))
-	if err = conn.WriteResponse(rpcResponse); err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
-	}
-}
-
 // readyRequestHandler is used to check whether the server is ready
-func readyRequestHandler(_ *walletextension.WalletExtension, _ userconn.UserConn) {}
-
-// generateViewingKeyRequestHandler parses the gen vk request
-func generateViewingKeyRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
-	body, err := conn.ReadRequest()
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
-		return
-	}
-
-	var reqJSONMap map[string]string
-	err = json.Unmarshal(body, &reqJSONMap)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not unmarshal address request - %w", err))
-		return
-	}
-
-	address := gethcommon.HexToAddress(reqJSONMap[common.JSONKeyAddress])
-
-	pubViewingKey, err := walletExt.GenerateViewingKey(address)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("unable to generate vieweing key - %w", err))
-		return
-	}
-
-	err = conn.WriteResponse([]byte(pubViewingKey))
-	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
-	}
-}
-
-// submitViewingKeyRequestHandler submits the viewing key and signed bytes to the WE
-func submitViewingKeyRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
-	body, err := conn.ReadRequest()
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
-		return
-	}
-
-	var reqJSONMap map[string]string
-	err = json.Unmarshal(body, &reqJSONMap)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not unmarshal address request - %w", err))
-		return
-	}
-	accAddress := gethcommon.HexToAddress(reqJSONMap[common.JSONKeyAddress])
-
-	signature, err := hex.DecodeString(reqJSONMap[common.JSONKeySignature][2:])
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not decode signature from client to hex - %w", err))
-		return
-	}
-
-	err = walletExt.SubmitViewingKey(accAddress, signature)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not submit viewing key - %w", err))
-		return
-	}
-
-	err = conn.WriteResponse([]byte(common.SuccessMsg))
-	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
-		return
-	}
-}
+func readyRequestHandler(_ *rpcapi.Services, _ UserConn) {}
 
 // This function handles request to /join endpoint. It is responsible to create new user (new key-pair) and store it to the db
-func joinRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
+func joinRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
+	// audit()
 	// todo (@ziga) add protection against DDOS attacks
 	_, err := conn.ReadRequest()
 	if err != nil {
@@ -272,14 +96,14 @@ func joinRequestHandler(walletExt *walletextension.WalletExtension, conn usercon
 	}
 
 	// generate new key-pair and store it in the database
-	hexUserID, err := walletExt.GenerateAndStoreNewUser()
+	userID, err := walletExt.GenerateAndStoreNewUser()
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal Error"))
 		walletExt.Logger().Error("error creating new user", log.ErrKey, err)
 	}
 
 	// write hex encoded userID in the response
-	err = conn.WriteResponse([]byte(hexUserID))
+	err = conn.WriteResponse([]byte(hexutils.BytesToHex(userID)))
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
@@ -288,7 +112,7 @@ func joinRequestHandler(walletExt *walletextension.WalletExtension, conn usercon
 // This function handles request to /authenticate endpoint.
 // In the request we receive message, signature and address in JSON as request body and userID and address as query parameters
 // We then check if message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
-func authenticateRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
+func authenticateRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 	// read the request
 	body, err := conn.ReadRequest()
 	if err != nil {
@@ -331,17 +155,17 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, conn
 	}
 
 	// read userID from query params
-	hexUserID, err := getUserID(conn, 2)
+	userID, err := getUserID(conn)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("malformed query: 'u' required - representing encryption token - %w", err))
 		return
 	}
 
 	// check signature and add address and signature for that user
-	err = walletExt.AddAddressToUser(hexUserID, address, signature, messageType)
+	err = walletExt.AddAddressToUser(userID, address, signature, messageType)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
-		walletExt.Logger().Error(fmt.Sprintf("error adding address: %s to user: %s with signature: %s", address, hexUserID, signature))
+		walletExt.Logger().Error(fmt.Sprintf("error adding address: %s to user: %s with signature: %s", address, userID, signature))
 		return
 	}
 	err = conn.WriteResponse([]byte(common.SuccessMsg))
@@ -353,7 +177,7 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, conn
 // This function handles request to /query endpoint.
 // In the query parameters address and userID are required. We check if provided address is registered for given userID
 // and return true/false in json response
-func queryRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
+func queryRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 	// read the request
 	_, err := conn.ReadRequest()
 	if err != nil {
@@ -361,7 +185,7 @@ func queryRequestHandler(walletExt *walletextension.WalletExtension, conn userco
 		return
 	}
 
-	hexUserID, err := getUserID(conn, 2)
+	userID, err := getUserID(conn)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
 		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
@@ -380,10 +204,10 @@ func queryRequestHandler(walletExt *walletextension.WalletExtension, conn userco
 	}
 
 	// check if this account is registered with given user
-	found, err := walletExt.UserHasAccount(hexUserID, address)
+	found, err := walletExt.UserHasAccount(userID, address)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
-		walletExt.Logger().Error("error during checking if account exists for user", "hexUserID", hexUserID, log.ErrKey, err)
+		walletExt.Logger().Error("error during checking if account exists for user", "userID", userID, log.ErrKey, err)
 	}
 
 	// create and write the response
@@ -405,7 +229,7 @@ func queryRequestHandler(walletExt *walletextension.WalletExtension, conn userco
 
 // This function handles request to /revoke endpoint.
 // It requires userID as query parameter and deletes given user and all associated viewing keys
-func revokeRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
+func revokeRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 	// read the request
 	_, err := conn.ReadRequest()
 	if err != nil {
@@ -413,7 +237,7 @@ func revokeRequestHandler(walletExt *walletextension.WalletExtension, conn userc
 		return
 	}
 
-	hexUserID, err := getUserID(conn, 2)
+	userID, err := getUserID(conn)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
 		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
@@ -421,10 +245,10 @@ func revokeRequestHandler(walletExt *walletextension.WalletExtension, conn userc
 	}
 
 	// delete user and accounts associated with it from the database
-	err = walletExt.DeleteUser(hexUserID)
+	err = walletExt.DeleteUser(userID)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
-		walletExt.Logger().Error("unable to delete user", "hexUserID", hexUserID, log.ErrKey, err)
+		walletExt.Logger().Error("unable to delete user", "userID", userID, log.ErrKey, err)
 		return
 	}
 
@@ -435,7 +259,7 @@ func revokeRequestHandler(walletExt *walletextension.WalletExtension, conn userc
 }
 
 // Handles request to /health endpoint.
-func healthRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
+func healthRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 	// read the request
 	_, err := conn.ReadRequest()
 	if err != nil {
@@ -451,7 +275,7 @@ func healthRequestHandler(walletExt *walletextension.WalletExtension, conn userc
 }
 
 // Handles request to /network-health endpoint.
-func networkHealthRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
+func networkHealthRequestHandler(walletExt *rpcapi.Services, userConn UserConn) {
 	// read the request
 	_, err := userConn.ReadRequest()
 	if err != nil {
@@ -459,11 +283,28 @@ func networkHealthRequestHandler(walletExt *walletextension.WalletExtension, use
 		return
 	}
 
+	// call `obscuro-health` rpc method to get the health status of the node
 	healthStatus, err := walletExt.GetTenNodeHealthStatus()
 
+	// create the response in the required format
+	type HealthStatus struct {
+		Errors        []string `json:"Errors"`
+		OverallHealth bool     `json:"OverallHealth"`
+	}
+
+	errorStrings := make([]string, 0)
+	if err != nil {
+		errorStrings = append(errorStrings, err.Error())
+	}
+	healthStatusResponse := HealthStatus{
+		Errors:        errorStrings,
+		OverallHealth: healthStatus,
+	}
+
 	data, err := json.Marshal(map[string]interface{}{
-		"result": healthStatus,
-		"error":  err,
+		"id":      "1",
+		"jsonrpc": "2.0",
+		"result":  healthStatusResponse,
 	})
 	if err != nil {
 		walletExt.Logger().Error("error marshaling response", log.ErrKey, err)
@@ -477,7 +318,7 @@ func networkHealthRequestHandler(walletExt *walletextension.WalletExtension, use
 }
 
 // Handles request to /version endpoint.
-func versionRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
+func versionRequestHandler(walletExt *rpcapi.Services, userConn UserConn) {
 	// read the request
 	_, err := userConn.ReadRequest()
 	if err != nil {
@@ -492,7 +333,7 @@ func versionRequestHandler(walletExt *walletextension.WalletExtension, userConn 
 }
 
 // getMessageRequestHandler handles request to /get-message endpoint.
-func getMessageRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
+func getMessageRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 	// read the request
 	body, err := conn.ReadRequest()
 	if err != nil {
@@ -534,7 +375,12 @@ func getMessageRequestHandler(walletExt *walletextension.WalletExtension, conn u
 		}
 	}
 
-	message, err := walletExt.GenerateUserMessageToSign(encryptionToken.(string), formatsSlice)
+	userID := hexutils.HexToBytes(encryptionToken.(string))
+	if len(userID) != viewingkey.UserIDLength {
+		return
+	}
+
+	message, err := walletExt.GenerateUserMessageToSign(userID, formatsSlice)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
 		walletExt.Logger().Error("error getting message", log.ErrKey, err)

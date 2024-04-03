@@ -20,6 +20,7 @@ const (
 	L2BatchRepositoryName      = "l2-batch-repo"
 	EnclaveServiceName         = "enclaves"
 	LogSubscriptionServiceName = "log-subs"
+	FilterAPIServiceName       = "filter-api"
 )
 
 // The host has a number of services that encapsulate the various responsibilities of the host.

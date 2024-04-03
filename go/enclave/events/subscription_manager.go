@@ -3,7 +3,6 @@ package events
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"sync"
 
 	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
@@ -19,7 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
@@ -61,7 +59,7 @@ func NewSubscriptionManager(storage storage.Storage, chainID int64, logger gethl
 // correctly. If there is an existing subscription with the given ID, it is overwritten.
 func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encodedSubscription []byte) error {
 	subscription := &common.LogSubscription{}
-	if err := rlp.DecodeBytes(encodedSubscription, subscription); err != nil {
+	if err := json.Unmarshal(encodedSubscription, subscription); err != nil {
 		return fmt.Errorf("could not decocde log subscription from RLP. Cause: %w", err)
 	}
 
@@ -238,15 +236,15 @@ func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []*gethcommon.
 
 // Lifted from eth/filters/filter.go in the go-ethereum repository.
 // filterLogs creates a slice of logs matching the given criteria.
-func filterLogs(logs []*types.Log, fromBlock, toBlock *big.Int, addresses []gethcommon.Address, topics [][]gethcommon.Hash, logger gethlog.Logger) []*types.Log { //nolint:gocognit
+func filterLogs(logs []*types.Log, fromBlock, toBlock *gethrpc.BlockNumber, addresses []gethcommon.Address, topics [][]gethcommon.Hash, logger gethlog.Logger) []*types.Log { //nolint:gocognit
 	var ret []*types.Log
 Logs:
 	for _, logItem := range logs {
-		if fromBlock != nil && fromBlock.Int64() >= 0 && fromBlock.Uint64() > logItem.BlockNumber {
+		if fromBlock != nil && fromBlock.Int64() >= 0 && fromBlock.Int64() > int64(logItem.BlockNumber) {
 			logger.Debug("Skipping log ", "log", logItem, "reason", "In the past. The starting block num for filter is bigger than log")
 			continue
 		}
-		if toBlock != nil && toBlock.Int64() > 0 && toBlock.Uint64() < logItem.BlockNumber {
+		if toBlock != nil && toBlock.Int64() > 0 && toBlock.Int64() < int64(logItem.BlockNumber) {
 			logger.Debug("Skipping log ", "log", logItem, "reason", "In the future. The ending block num for filter is smaller than log")
 			continue
 		}

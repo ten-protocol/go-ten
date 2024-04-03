@@ -3,13 +3,13 @@ package host
 import (
 	"encoding/json"
 	"fmt"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/ten-protocol/go-ten/go/host/l2"
-	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 
 	"github.com/ten-protocol/go-ten/go/host/enclave"
 	"github.com/ten-protocol/go-ten/go/host/l1"
-	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/naoina/toml"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -19,6 +19,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/host/db"
 	"github.com/ten-protocol/go-ten/go/host/events"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -46,6 +47,15 @@ type host struct {
 
 	// l2MessageBusAddress is fetched from the enclave but cache it here because it never changes
 	l2MessageBusAddress *gethcommon.Address
+	newHeads            chan *common.BatchHeader
+}
+
+type batchListener struct {
+	newHeads chan *common.BatchHeader
+}
+
+func (bl batchListener) HandleBatch(batch *common.ExtBatch) {
+	bl.newHeads <- batch.Header
 }
 
 func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
@@ -66,13 +76,30 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		metricRegistry: regMetrics,
 
 		stopControl: stopcontrol.New(),
+		newHeads:    make(chan *common.BatchHeader),
 	}
 
 	enclGuardian := enclave.NewGuardian(config, hostIdentity, hostServices, enclaveClient, hostStorage, host.stopControl, logger)
 	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardian, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
+	enclGuardians := make([]*enclave.Guardian, 0, len(enclaveClients))
+	for i, enclClient := range enclaveClients {
+		// clone the hostIdentity data for each enclave
+		enclHostID := hostIdentity
+		if i > 0 {
+			// only the first enclave can be the sequencer for now, others behave as read-only validators
+			enclHostID.IsSequencer = false
+			enclHostID.IsGenesis = false
+		}
+		enclGuardian := enclave.NewGuardian(config, enclHostID, hostServices, enclClient, database, host.stopControl, logger)
+		enclGuardians = append(enclGuardians, enclGuardian)
+	}
+
+	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardians, logger)
+	l2Repo := l2.NewBatchRepository(config, hostServices, database, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
 
+	l2Repo.Subscribe(batchListener{newHeads: host.newHeads})
 	hostServices.RegisterService(hostcommon.P2PName, p2p)
 	hostServices.RegisterService(hostcommon.L1BlockRepositoryName, l1Repo)
 	maxWaitForL1Receipt := 6 * config.L1BlockTime   // wait ~10 blocks to see if tx gets published before retrying
@@ -138,14 +165,14 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	return h.services.Enclaves().SubmitAndBroadcastTx(encryptedParams)
 }
 
-func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
+func (h *host) SubscribeLogs(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
 	if h.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested Subscribe with the host stopping"))
 	}
 	return h.services.LogSubs().Subscribe(id, encryptedLogSubscription, matchedLogsCh)
 }
 
-func (h *host) Unsubscribe(id rpc.ID) {
+func (h *host) UnsubscribeLogs(id rpc.ID) {
 	if h.stopControl.IsStopping() {
 		h.logger.Debug("requested Subscribe with the host stopping")
 	}
@@ -165,7 +192,7 @@ func (h *host) Stop() error {
 		}
 	}
 
-	if err := h.storage.Close(); err != nil {
+	if err := h.db.Stop(); err != nil {
 		h.logger.Error("Failed to stop DB", log.ErrKey, err)
 	}
 
@@ -221,6 +248,10 @@ func (h *host) DB() hostdb.HostDB {
 
 func (h *host) Storage() storage.Storage {
 	return h.storage
+}
+
+func (h *host) NewHeadsChan() chan *common.BatchHeader {
+	return h.newHeads
 }
 
 // Checks the host config is valid.

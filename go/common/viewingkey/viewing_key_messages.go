@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/status-im/keycard-go/hexutils"
+
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -15,7 +17,6 @@ import (
 const (
 	EIP712Signature SignatureType = 0
 	PersonalSign    SignatureType = 1
-	Legacy          SignatureType = 2
 )
 
 // SignatureType is used to differentiate between different signature types (string is used, because int is not RLP-serializable)
@@ -30,19 +31,13 @@ const (
 	EIP712EncryptionToken     = "Encryption Token"
 	EIP712DomainNameValue     = "Ten"
 	EIP712DomainVersionValue  = "1.0"
-	UserIDHexLength           = 40
+	UserIDLength              = 20
 	PersonalSignMessageFormat = "Token: %s on chain: %d version: %d"
-	SignedMsgPrefix           = "vk" // prefix for legacy signed messages (remove when legacy signature type is removed)
 	PersonalSignVersion       = 1
 )
 
-// EIP712EncryptionTokens is a list of all possible options for Encryption token name
-var EIP712EncryptionTokens = [...]string{
-	EIP712EncryptionToken,
-}
-
 type MessageGenerator interface {
-	generateMessage(encryptionToken string, chainID int64, version int) ([]byte, error)
+	generateMessage(encryptionToken []byte, chainID int64, version int) ([]byte, error)
 }
 
 type (
@@ -56,13 +51,13 @@ var messageGenerators = map[SignatureType]MessageGenerator{
 }
 
 // GenerateMessage generates a message for the given encryptionToken, chainID, version and signatureType
-func (p PersonalMessageGenerator) generateMessage(encryptionToken string, chainID int64, version int) ([]byte, error) {
-	return []byte(fmt.Sprintf(PersonalSignMessageFormat, encryptionToken, chainID, version)), nil
+func (p PersonalMessageGenerator) generateMessage(encryptionToken []byte, chainID int64, version int) ([]byte, error) {
+	return []byte(fmt.Sprintf(PersonalSignMessageFormat, hexutils.BytesToHex(encryptionToken), chainID, version)), nil
 }
 
-func (e EIP712MessageGenerator) generateMessage(encryptionToken string, chainID int64, _ int) ([]byte, error) {
-	if len(encryptionToken) != UserIDHexLength {
-		return nil, fmt.Errorf("userID hex length must be %d, received %d", UserIDHexLength, len(encryptionToken))
+func (e EIP712MessageGenerator) generateMessage(encryptionToken []byte, chainID int64, _ int) ([]byte, error) {
+	if len(encryptionToken) != UserIDLength {
+		return nil, fmt.Errorf("userID must be %d bytes, received %d", UserIDLength, len(encryptionToken))
 	}
 	EIP712TypedData := createTypedDataForEIP712Message(encryptionToken, chainID)
 
@@ -75,7 +70,7 @@ func (e EIP712MessageGenerator) generateMessage(encryptionToken string, chainID 
 }
 
 // GenerateMessage generates a message for the given encryptionToken, chainID, version and signatureType
-func GenerateMessage(encryptionToken string, chainID int64, version int, signatureType SignatureType) ([]byte, error) {
+func GenerateMessage(encryptionToken []byte, chainID int64, version int, signatureType SignatureType) ([]byte, error) {
 	generator, exists := messageGenerators[signatureType]
 	if !exists {
 		return nil, fmt.Errorf("unsupported signature type")
@@ -127,13 +122,6 @@ func GetMessageHash(message []byte, signatureType SignatureType) ([]byte, error)
 	return hashFunction.getMessageHash(message), nil
 }
 
-// GenerateSignMessage creates the message to be signed
-// vkPubKey is expected to be a []byte("0x....") to create the signing message
-// todo (@ziga) Remove this method once old WE endpoints are removed
-func GenerateSignMessage(vkPubKey []byte) string {
-	return SignedMsgPrefix + hex.EncodeToString(vkPubKey)
-}
-
 // getBytesFromTypedData creates EIP-712 compliant hash from typedData.
 // It involves hashing the message with its structure, hashing domain separator,
 // and then encoding both hashes with specific EIP-712 bytes to construct the final message format.
@@ -153,8 +141,8 @@ func getBytesFromTypedData(typedData apitypes.TypedData) ([]byte, error) {
 }
 
 // createTypedDataForEIP712Message creates typed data for EIP712 message
-func createTypedDataForEIP712Message(encryptionToken string, chainID int64) apitypes.TypedData {
-	encryptionToken = "0x" + encryptionToken
+func createTypedDataForEIP712Message(encryptionToken []byte, chainID int64) apitypes.TypedData {
+	hexToken := hexutils.BytesToHex(encryptionToken)
 
 	domain := apitypes.TypedDataDomain{
 		Name:    EIP712DomainNameValue,
@@ -163,7 +151,7 @@ func createTypedDataForEIP712Message(encryptionToken string, chainID int64) apit
 	}
 
 	message := map[string]interface{}{
-		EIP712EncryptionToken: encryptionToken,
+		EIP712EncryptionToken: hexToken,
 	}
 
 	types := apitypes.Types{
