@@ -25,7 +25,7 @@ if [ -n "${PCCS_URL}" ]; then
 	echo "PCCS_URL=${PCCS_URL}\nUSE_SECURE_CERT=FALSE" > /etc/sgx_default_qcnl.conf
 else
 # Otherwise use the Azure library
-  RUN apt-get update && apt-get install -y -qq az-dcap-client
+  apt-get update && apt-get install -y -qq az-dcap-client
 fi
 
 "$@"
