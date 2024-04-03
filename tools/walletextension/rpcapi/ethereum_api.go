@@ -2,7 +2,6 @@ package rpcapi
 
 import (
 	"context"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -19,11 +18,11 @@ func NewEthereumAPI(we *Services,
 }
 
 func (api *EthereumAPI) GasPrice(ctx context.Context) (*hexutil.Big, error) {
-	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, &CacheCfg{TTL: shortCacheTTL}, "eth_gasPrice")
+	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, &CacheCfg{CacheType: LatestBatch}, "eth_gasPrice")
 }
 
 func (api *EthereumAPI) MaxPriorityFeePerGas(ctx context.Context) (*hexutil.Big, error) {
-	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, &CacheCfg{TTL: shortCacheTTL}, "eth_maxPriorityFeePerGas")
+	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, &CacheCfg{CacheType: LatestBatch}, "eth_maxPriorityFeePerGas")
 }
 
 type FeeHistoryResult struct {
@@ -37,7 +36,7 @@ func (api *EthereumAPI) FeeHistory(ctx context.Context, blockCount math.HexOrDec
 	return UnauthenticatedTenRPCCall[FeeHistoryResult](
 		ctx,
 		api.we,
-		&CacheCfg{TTLCallback: func() time.Duration {
+		&CacheCfg{CacheTypeDynamic: func() CacheStrategy {
 			return cacheTTLBlockNumber(lastBlock)
 		}},
 		"eth_feeHistory",

@@ -118,7 +118,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 
 	services.backendNewHeadsSubscription = clientSubscription
 	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(ch, true, logger, func(newHead *common2.BatchHeader) error {
-		// todo - in a followup PR, invalidate cache entries marked as "latest"
+		services.Cache.EvictShortLiving()
 		return nil
 	})
 
