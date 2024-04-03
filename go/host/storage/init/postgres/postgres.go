@@ -37,6 +37,7 @@ func CreatePostgresDBConnection(dbURL string, dbName string, initFile string) (*
 	defer rows.Close()
 
 	if !rows.Next() {
+		// Database doesn't exist, create it
 		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create database %s: %v", dbName, err)

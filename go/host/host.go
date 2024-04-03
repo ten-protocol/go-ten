@@ -3,6 +3,7 @@ package host
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -19,8 +20,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
-	"github.com/ten-protocol/go-ten/go/host/db"
 	"github.com/ten-protocol/go-ten/go/host/events"
+	"github.com/ten-protocol/go-ten/go/host/storage"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -58,7 +59,7 @@ func (bl batchListener) HandleBatch(batch *common.ExtBatch) {
 	bl.newHeads <- batch.Header
 }
 
-func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
+func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
 	hostStorage := storage.NewHostStorageFromConfig(config, logger)
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
@@ -79,9 +80,6 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		newHeads:    make(chan *common.BatchHeader),
 	}
 
-	enclGuardian := enclave.NewGuardian(config, hostIdentity, hostServices, enclaveClient, hostStorage, host.stopControl, logger)
-	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardian, logger)
-	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	enclGuardians := make([]*enclave.Guardian, 0, len(enclaveClients))
 	for i, enclClient := range enclaveClients {
 		// clone the hostIdentity data for each enclave
@@ -91,12 +89,12 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 			enclHostID.IsSequencer = false
 			enclHostID.IsGenesis = false
 		}
-		enclGuardian := enclave.NewGuardian(config, enclHostID, hostServices, enclClient, database, host.stopControl, logger)
+		enclGuardian := enclave.NewGuardian(config, enclHostID, hostServices, enclClient, hostStorage, host.stopControl, logger)
 		enclGuardians = append(enclGuardians, enclGuardian)
 	}
 
 	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardians, logger)
-	l2Repo := l2.NewBatchRepository(config, hostServices, database, logger)
+	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
 
 	l2Repo.Subscribe(batchListener{newHeads: host.newHeads})
@@ -192,7 +190,7 @@ func (h *host) Stop() error {
 		}
 	}
 
-	if err := h.db.Stop(); err != nil {
+	if err := h.storage.Close(); err != nil {
 		h.logger.Error("Failed to stop DB", log.ErrKey, err)
 	}
 
