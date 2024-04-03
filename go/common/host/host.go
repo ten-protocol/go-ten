@@ -33,6 +33,7 @@ type Host interface {
 	ObscuroConfig() (*common.ObscuroNetworkInfo, error)
 
 	// NewHeadsChan returns live batch headers
+	// Note - do not use directly. This is meant only for the NewHeadsManager, which multiplexes the headers
 	NewHeadsChan() chan *common.BatchHeader
 }
 
