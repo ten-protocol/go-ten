@@ -20,7 +20,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -36,8 +36,8 @@ const (
 var rpcNotImplemented = fmt.Errorf("rpc endpoint not implemented")
 
 type ExecCfg struct {
-	account             *common.Address
-	computeFromCallback func(user *GWUser) *common.Address
+	account             *gethcommon.Address
+	computeFromCallback func(user *GWUser) *gethcommon.Address
 	tryAll              bool
 	tryUntilAuthorised  bool
 	adjustArgs          func(acct *GWAccount) []any
@@ -165,7 +165,7 @@ func extractUserID(ctx context.Context, _ *Services) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid userid: %s", ctx.Value(rpc.GWTokenKey{}))
 	}
-	userID := common.FromHex(token)
+	userID := gethcommon.FromHex(token)
 	if len(userID) != viewingkey.UserIDLength {
 		return nil, fmt.Errorf("invalid userid: %s", token)
 	}

@@ -7,6 +7,11 @@ import (
 	"fmt"
 	"time"
 
+	subscriptioncommon "github.com/ten-protocol/go-ten/go/common/subscription"
+
+	common2 "github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/rpc"
+
 	"github.com/ten-protocol/go-ten/go/obsclient"
 
 	pool "github.com/jolestar/go-commons-pool/v2"
@@ -37,9 +42,15 @@ type Services struct {
 	version      string
 	Cache        cache.Cache
 	// the OG maintains a connection pool of rpc connections to underlying nodes
-	rpcHTTPConnPool *pool.ObjectPool
-	rpcWSConnPool   *pool.ObjectPool
-	Config          *common.Config
+	rpcHTTPConnPool             *pool.ObjectPool
+	rpcWSConnPool               *pool.ObjectPool
+	Config                      *common.Config
+	backendNewHeadsSubscription *gethrpc.ClientSubscription
+	NewHeadsService             *subscriptioncommon.NewHeadsService
+}
+
+type NewHeadNotifier interface {
+	onNewHead(header *common2.BatchHeader)
 }
 
 func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, config *common.Config) *Services {
@@ -79,7 +90,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 	cfg := pool.NewDefaultPoolConfig()
 	cfg.MaxTotal = 100 // todo - what is the right number
 
-	return &Services{
+	services := Services{
 		HostAddrHTTP:    hostAddrHTTP,
 		HostAddrWS:      hostAddrWS,
 		Storage:         storage,
@@ -92,6 +103,26 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		rpcWSConnPool:   pool.NewObjectPool(context.Background(), factoryWS, cfg),
 		Config:          config,
 	}
+
+	connectionObj, err := services.rpcWSConnPool.BorrowObject(context.Background())
+	if err != nil {
+		panic(fmt.Errorf("cannot fetch rpc connection to backend node %w", err))
+	}
+
+	rpcClient := connectionObj.(rpc.Client)
+	ch := make(chan *common2.BatchHeader)
+	clientSubscription, err := rpcClient.Subscribe(context.Background(), rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeNewHeads)
+	if err != nil {
+		panic(fmt.Errorf("cannot subscribe to new heads to the backend %w", err))
+	}
+
+	services.backendNewHeadsSubscription = clientSubscription
+	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(ch, true, logger, func(newHead *common2.BatchHeader) error {
+		// todo - in a followup PR, invalidate cache entries marked as "latest"
+		return nil
+	})
+
+	return &services
 }
 
 // IsStopping returns whether the WE is stopping
@@ -234,4 +265,10 @@ func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlic
 		return "", fmt.Errorf("error generating message: %w", err)
 	}
 	return string(message), nil
+}
+
+func (w *Services) Stop() {
+	w.backendNewHeadsSubscription.Unsubscribe()
+	w.rpcHTTPConnPool.Close(context.Background())
+	w.rpcWSConnPool.Close(context.Background())
 }

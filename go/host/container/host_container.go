@@ -169,6 +169,7 @@ func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p
 	}
 
 	if cfg.HasClientRPCHTTP || cfg.HasClientRPCWebsockets {
+		filterAPI := clientapi.NewFilterAPI(h, logger)
 		rpcServer.RegisterAPIs([]rpc.API{
 			{
 				Namespace: APINamespaceObscuro,
@@ -192,7 +193,7 @@ func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p
 			},
 			{
 				Namespace: APINamespaceEth,
-				Service:   clientapi.NewFilterAPI(h, logger),
+				Service:   filterAPI,
 			},
 			{
 				Namespace: APINamespaceScan,
@@ -208,7 +209,7 @@ func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p
 				},
 			})
 		}
+		services.RegisterService(hostcommon.FilterAPIServiceName, filterAPI.NewHeadsService)
 	}
-
 	return hostContainer
 }

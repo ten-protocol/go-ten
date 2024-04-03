@@ -3,11 +3,11 @@ package rpcapi
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sync/atomic"
 	"time"
 
-	pool "github.com/jolestar/go-commons-pool/v2"
+	subscriptioncommon "github.com/ten-protocol/go-ten/go/common/subscription"
+
 	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -24,7 +24,9 @@ type FilterAPI struct {
 }
 
 func NewFilterAPI(we *Services) *FilterAPI {
-	return &FilterAPI{we: we}
+	return &FilterAPI{
+		we: we,
+	}
 }
 
 func (api *FilterAPI) NewPendingTransactionFilter(_ *bool) rpc.ID {
@@ -41,7 +43,13 @@ func (api *FilterAPI) NewBlockFilter() rpc.ID {
 }
 
 func (api *FilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
-	return nil, rpcNotImplemented
+	notifier, supported := rpc.NotifierFromContext(ctx)
+	if !supported {
+		return nil, fmt.Errorf("creation of subscriptions is not supported")
+	}
+	subscription := notifier.CreateSubscription()
+	api.we.NewHeadsService.RegisterNotifier(notifier, subscription)
+	return subscription, nil
 }
 
 func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rpc.Subscription, error) {
@@ -61,15 +69,15 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 		}
 	}
 
+	backendWSConnections := make([]*tenrpc.EncRPCClient, 0)
 	inputChannels := make([]chan common.IDAndLog, 0)
 	backendSubscriptions := make([]*rpc.ClientSubscription, 0)
-	connections := make([]*tenrpc.EncRPCClient, 0)
 	for _, address := range candidateAddresses {
 		rpcWSClient, err := connectWS(user.accounts[*address], api.we.Logger())
 		if err != nil {
 			return nil, err
 		}
-		connections = append(connections, rpcWSClient)
+		backendWSConnections = append(backendWSConnections, rpcWSClient)
 
 		inCh := make(chan common.IDAndLog)
 		backendSubscription, err := rpcWSClient.Subscribe(ctx, "eth", inCh, "logs", crit)
@@ -86,7 +94,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 	subscription := subNotifier.CreateSubscription()
 
 	unsubscribed := atomic.Bool{}
-	go forwardAndDedupe(inputChannels, backendSubscriptions, subscription, subNotifier, &unsubscribed, func(data common.IDAndLog) *types.Log {
+	go subscriptioncommon.ForwardFromChannels(inputChannels, &unsubscribed, func(data common.IDAndLog) error {
 		uniqueLogKey := LogKey{
 			BlockHash: data.Log.BlockHash,
 			TxHash:    data.Log.TxHash,
@@ -95,12 +103,19 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 
 		if !dedupeBuffer.Contains(uniqueLogKey) {
 			dedupeBuffer.Push(uniqueLogKey)
-			return data.Log
+			return subNotifier.Notify(subscription.ID, data.Log)
 		}
 		return nil
 	})
 
-	go handleUnsubscribe(subscription, backendSubscriptions, connections, api.we.rpcWSConnPool, &unsubscribed)
+	go subscriptioncommon.HandleUnsubscribe(subscription, &unsubscribed, func() {
+		for _, backendSub := range backendSubscriptions {
+			backendSub.Unsubscribe()
+		}
+		for _, connection := range backendWSConnections {
+			_ = returnConn(api.we.rpcWSConnPool, connection.BackingClient())
+		}
+	})
 
 	return subscription, err
 }
@@ -135,63 +150,6 @@ func searchForAddressInFilterCriteria(filterCriteria common.FilterCriteria, poss
 		}
 	}
 	return result
-}
-
-// forwardAndDedupe - reads messages from the input channels, and forwards them to the notifier only if they are new
-func forwardAndDedupe[R any, T any](inputChannels []chan R, _ []*rpc.ClientSubscription, outSub *rpc.Subscription, notifier *rpc.Notifier, unsubscribed *atomic.Bool, toForward func(elem R) *T) {
-	inputCases := make([]reflect.SelectCase, len(inputChannels)+1)
-
-	// create a ticker to handle cleanup
-	inputCases[0] = reflect.SelectCase{
-		Dir:  reflect.SelectRecv,
-		Chan: reflect.ValueOf(time.NewTicker(10 * time.Second).C),
-	}
-
-	// create a select "case" for each input channel
-	for i, ch := range inputChannels {
-		inputCases[i+1] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ch)}
-	}
-
-	unclosedInputChannels := len(inputCases)
-	for unclosedInputChannels > 0 {
-		chosen, value, ok := reflect.Select(inputCases)
-		if !ok {
-			// The chosen channel has been closed, so zero out the channel to disable the case
-			inputCases[chosen].Chan = reflect.ValueOf(nil)
-			unclosedInputChannels--
-			continue
-		}
-
-		switch v := value.Interface().(type) {
-		case time.Time:
-			// exit the loop to avoid a goroutine loop
-			if unsubscribed.Load() {
-				return
-			}
-		case R:
-			valueToSubmit := toForward(v)
-			if valueToSubmit != nil {
-				err := notifier.Notify(outSub.ID, *valueToSubmit)
-				if err != nil {
-					return
-				}
-			}
-		default:
-			// unexpected element received
-			continue
-		}
-	}
-}
-
-func handleUnsubscribe(connectionSub *rpc.Subscription, backendSubscriptions []*rpc.ClientSubscription, connections []*tenrpc.EncRPCClient, p *pool.ObjectPool, unsubscribed *atomic.Bool) {
-	<-connectionSub.Err()
-	unsubscribed.Store(true)
-	for _, backendSub := range backendSubscriptions {
-		backendSub.Unsubscribe()
-	}
-	for _, connection := range connections {
-		_ = returnConn(p, connection.BackingClient())
-	}
 }
 
 func (api *FilterAPI) NewFilter(crit common.FilterCriteria) (rpc.ID, error) {
