@@ -96,7 +96,3 @@ func (api *FilterAPI) handleSysError(function string, sysError common.SystemErro
 		Err: &responses.InternalErrMsg,
 	}, nil
 }
-
-func (api *FilterAPI) HealthStatus() host.HealthStatus {
-	return &host.BasicErrHealthStatus{}
-}
