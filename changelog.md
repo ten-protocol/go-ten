@@ -2,7 +2,7 @@
 ---
 # Ten Testnet Change Log
 
-# April 2024-04-xx (v0.24.0) - work in progress (not yet released)
+# Next release (v0.24.0) (work in progress, still under development)
 * A list of the PRs merged due to be included in the release is currently as below;
   * `7190f55c` Host: notify batch subscribers of new batches from any src (#1860)
   * `d3bf8ecb` Validate vk (#1859)
