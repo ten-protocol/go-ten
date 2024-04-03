@@ -88,18 +88,21 @@ func GetRollupListing(db *sql.DB, pagination *common.QueryPagination) (*common.R
 	}, nil
 }
 
-func GetExtRollup(db *sql.DB, hash gethcommon.Hash) (*common.ExtRollup, error) {
-	return fetchExtRollup(db, " where r.hash=?", truncTo16(hash))
+func GetExtRollup(dbtx *dbTransaction, hash gethcommon.Hash) (*common.ExtRollup, error) {
+	whereQuery := " WHERE r.hash=" + dbtx.GetSQLStatements().Placeholder
+	return fetchExtRollup(dbtx.GetDB(), whereQuery, truncTo16(hash))
 }
 
 // GetRollupHeader returns the rollup with the given hash.
-func GetRollupHeader(db *sql.DB, hash gethcommon.Hash) (*common.RollupHeader, error) {
-	return fetchRollupHeader(db, " where r.hash=?", truncTo16(hash))
+func GetRollupHeader(dbtx *dbTransaction, hash gethcommon.Hash) (*common.RollupHeader, error) {
+	whereQuery := " WHERE r.hash=" + dbtx.GetSQLStatements().Placeholder
+	return fetchRollupHeader(dbtx.GetDB(), whereQuery, truncTo16(hash))
 }
 
 // GetRollupHeaderByBlock returns the rollup for the given block
-func GetRollupHeaderByBlock(db *sql.DB, blockHash gethcommon.Hash) (*common.RollupHeader, error) {
-	return fetchRollupHeader(db, " where r.compression_block=?", blockHash)
+func GetRollupHeaderByBlock(dbtx *dbTransaction, blockHash gethcommon.Hash) (*common.RollupHeader, error) {
+	whereQuery := " WHERE r.compression_block=" + dbtx.GetSQLStatements().Placeholder
+	return fetchRollupHeader(dbtx.GetDB(), whereQuery, blockHash)
 }
 
 // GetLatestRollup returns the latest rollup ordered by timestamp
