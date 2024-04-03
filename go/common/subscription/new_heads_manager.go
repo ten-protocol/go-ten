@@ -23,14 +23,16 @@ type NewHeadsService struct {
 	convertToEthHeader bool
 	notifiersMutex     *sync.RWMutex
 	newHeadNotifiers   map[rpc.ID]*rpc.Notifier
+	onMessage          func(*common.BatchHeader) error
 	stopped            *atomic.Bool
 	logger             gethlog.Logger
 }
 
-func NewNewHeadsService(inputCh chan *common.BatchHeader, convertToEthHeader bool, logger gethlog.Logger) *NewHeadsService {
+func NewNewHeadsService(inputCh chan *common.BatchHeader, convertToEthHeader bool, logger gethlog.Logger, onMessage func(*common.BatchHeader) error) *NewHeadsService {
 	return &NewHeadsService{
 		inputCh:            inputCh,
 		convertToEthHeader: convertToEthHeader,
+		onMessage:          onMessage,
 		logger:             logger,
 		stopped:            &atomic.Bool{},
 		newHeadNotifiers:   make(map[rpc.ID]*rpc.Notifier),
@@ -42,6 +44,13 @@ func (nhs *NewHeadsService) Start() error {
 	go ForwardFromChannels([]chan *common.BatchHeader{nhs.inputCh}, nhs.stopped, func(head *common.BatchHeader) error {
 		nhs.notifiersMutex.RLock()
 		defer nhs.notifiersMutex.RUnlock()
+
+		if nhs.onMessage != nil {
+			err := nhs.onMessage(head)
+			if err != nil {
+				nhs.logger.Info("failed invoking onMessage callback.", log.ErrKey, err)
+			}
+		}
 
 		var msg any = head
 		if nhs.convertToEthHeader {

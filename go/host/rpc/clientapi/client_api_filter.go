@@ -28,7 +28,7 @@ func NewFilterAPI(host host.Host, logger gethlog.Logger) *FilterAPI {
 	return &FilterAPI{
 		host:            host,
 		logger:          logger,
-		NewHeadsService: subscriptioncommon.NewNewHeadsService(host.NewHeadsChan(), false, logger),
+		NewHeadsService: subscriptioncommon.NewNewHeadsService(host.NewHeadsChan(), false, logger, nil),
 	}
 }
 
