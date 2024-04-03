@@ -14,7 +14,7 @@ const Copy = ({ value }: { value: string | number }) => {
       onClick={() => copyToClipboard(value.toString())}
     >
       <span className="sr-only">Copy</span>
-      {copied ? <CheckIcon /> : <CopyIcon />}
+      {copied ? <CheckIcon className="text-primary" /> : <CopyIcon />}
     </Button>
   );
 };
