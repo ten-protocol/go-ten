@@ -25,7 +25,7 @@ func AddBlock(dbtx *dbTransaction, b *types.Header, rollupHash common.L2RollupHa
 		return fmt.Errorf("could not encode rollup hash transactions: %w", err)
 	}
 
-	_, err = dbtx.GetDB().Exec(blockInsert,
+	_, err = dbtx.GetDB().Exec(dbtx.GetSQLStatements().InsertBlock,
 		b.Hash(), // hash
 		header,   // l1 block header
 		r,        // rollup hash

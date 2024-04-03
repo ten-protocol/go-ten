@@ -39,7 +39,7 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 
 func (s *storageImpl) AddRollup(rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
 	// Check if the Header is already stored
-	_, err := hostdb.GetRollupHeader(s.db.GetSQLDB(), rollup.Header.Hash())
+	_, err := hostdb.GetRollupHeader(s.db.NewDBTransaction(), rollup.Header.Hash())
 	if err == nil {
 		return errutil.ErrAlreadyExists
 	}
@@ -81,7 +81,7 @@ func (s *storageImpl) FetchHeadBatchHeader() (*common.BatchHeader, error) {
 }
 
 func (s *storageImpl) GetDB() hostdb.HostDB {
-	return s.db.GetHostDB()
+	return s.db
 }
 
 func (s *storageImpl) Close() error {

@@ -4,8 +4,10 @@ package hostdb
 type SQLStatements struct {
 	InsertBatch        string
 	InsertTransactions string
-	SelectTxCount      string
 	InsertTxCount      string
+	InsertRollup       string
+	InsertBlock        string
+	SelectRollups      string
 	Placeholder        string
 }
 
@@ -13,8 +15,10 @@ func SQLiteSQLStatements() *SQLStatements {
 	return &SQLStatements{
 		InsertBatch:        "INSERT INTO batch_host (sequence, full_hash, hash, height, ext_batch) VALUES (?, ?, ?, ?, ?)",
 		InsertTransactions: "REPLACE INTO transactions_host (hash, b_sequence) VALUES (?, ?)",
-		SelectTxCount:      "SELECT total FROM transaction_count WHERE id = 1",
 		InsertTxCount:      "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET total = EXCLUDED.total",
+		InsertRollup:       "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) values (?,?,?,?,?,?)",
+		InsertBlock:        "REPLACE INTO block_host (hash, header, rollup_hash) values (?,?,?)",
+		SelectRollups:      "SELECT id, hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block FROM rollup_host ORDER BY id DESC LIMIT ? OFFSET ?",
 		Placeholder:        "?",
 	}
 }
@@ -23,8 +27,10 @@ func PostgresSQLStatements() *SQLStatements {
 	return &SQLStatements{
 		InsertBatch:        "INSERT INTO batch_host (sequence, full_hash, hash, height, ext_batch) VALUES ($1, $2, $3, $4, $5)",
 		InsertTransactions: "INSERT INTO transactions_host (hash, b_sequence) VALUES ($1, $2) ON CONFLICT (hash) DO NOTHING",
-		SelectTxCount:      "SELECT total FROM transaction_count WHERE id = 1",
 		InsertTxCount:      "INSERT INTO transaction_count (id, total) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET total = EXCLUDED.total",
+		InsertRollup:       "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) values ($1, $2, $3, $4, $5, $6)",
+		InsertBlock:        "REPLACE INTO block_host (hash, header, rollup_hash) values ($1,$2,$3)",
+		SelectRollups:      "SELECT id, hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block FROM rollup_host ORDER BY id DESC LIMIT $1 OFFSET $2",
 		Placeholder:        "$1",
 	}
 }

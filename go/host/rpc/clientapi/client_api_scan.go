@@ -71,7 +71,7 @@ func (s *ScanAPI) GetBatchByHeight(height *big.Int) (*common.BatchHeader, error)
 
 // GetRollupListing returns a paginated list of Rollups
 func (s *ScanAPI) GetRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
-	return hostdb.GetRollupListing(s.host.DB().GetSQLDB(), pagination)
+	return hostdb.GetRollupListing(s.host.DB().NewDBTransaction(), pagination)
 }
 
 // GetLatestRollupHeader returns the head `RollupHeader`

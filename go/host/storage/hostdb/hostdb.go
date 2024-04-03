@@ -6,7 +6,6 @@ import (
 )
 
 type HostDB interface {
-	GetHostDB() HostDB
 	GetSQLDB() *sql.DB
 	NewDBTransaction() *dbTransaction
 	BeginTx() (*sql.Tx, error)
@@ -27,10 +26,6 @@ func NewHostDB(db *sql.DB, statements *SQLStatements) (HostDB, error) {
 		sqldb:      db,
 		statements: statements,
 	}, nil
-}
-
-func (db *hostDB) GetHostDB() HostDB {
-	return db.GetHostDB()
 }
 
 func (db *hostDB) GetSQLDB() *sql.DB {

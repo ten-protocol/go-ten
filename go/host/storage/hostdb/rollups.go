@@ -15,10 +15,7 @@ import (
 
 const (
 	selectExtRollup    = "SELECT ext_rollup from rollup_host r"
-	selectRollups      = "SELECT id, hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block FROM rollup_host ORDER BY id DESC LIMIT ? OFFSET ?"
 	selectLatestRollup = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
-
-	insertRollup = "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) values (?,?,?,?,?,?)"
 )
 
 // AddRollup adds a rollup to the DB
@@ -27,7 +24,7 @@ func AddRollup(dbtx *dbTransaction, rollup *common.ExtRollup, metadata *common.P
 	if err != nil {
 		return fmt.Errorf("could not encode rollup: %w", err)
 	}
-	_, err = dbtx.GetDB().Exec(insertRollup,
+	_, err = dbtx.GetDB().Exec(dbtx.GetSQLStatements().InsertRollup,
 		truncTo16(rollup.Header.Hash()),      // short hash
 		metadata.FirstBatchSequence.Uint64(), // first batch sequence
 		rollup.Header.LastBatchSeqNo,         // last batch sequence
@@ -44,8 +41,8 @@ func AddRollup(dbtx *dbTransaction, rollup *common.ExtRollup, metadata *common.P
 
 // GetRollupListing returns latest rollups given a pagination.
 // For example, offset 1, size 10 will return the latest 11-20 rollups.
-func GetRollupListing(db *sql.DB, pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
-	rows, err := db.Query(selectRollups, pagination.Size, pagination.Offset)
+func GetRollupListing(dbtx *dbTransaction, pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
+	rows, err := dbtx.GetDB().Query(dbtx.GetSQLStatements().SelectRollups, pagination.Size, pagination.Offset)
 	if err != nil {
 		return nil, err
 	}
