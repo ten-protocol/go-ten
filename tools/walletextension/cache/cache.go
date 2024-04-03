@@ -8,7 +8,7 @@ import (
 
 type Cache interface {
 	EvictShortLiving()
-	IsEvicted(key any, ttl time.Duration) bool
+	IsEvicted(key any, originalTTL time.Duration) bool
 	Set(key []byte, value any, ttl time.Duration) bool
 	Get(key []byte) (value any, ok bool)
 	Remove(key []byte)
