@@ -209,7 +209,7 @@ func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p
 				},
 			})
 		}
-		h.RegisterService(hostcommon.FilterAPIServiceName, filterAPI.NewHeadsService)
+		services.RegisterService(hostcommon.FilterAPIServiceName, filterAPI.NewHeadsService)
 	}
 	return hostContainer
 }

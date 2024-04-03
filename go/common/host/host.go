@@ -34,9 +34,6 @@ type Host interface {
 
 	// NewHeadsChan returns live batch headers
 	NewHeadsChan() chan *common.BatchHeader
-
-	// RegisterService exposes the service registry
-	RegisterService(name string, service Service)
 }
 
 type BlockStream struct {

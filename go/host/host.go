@@ -250,10 +250,6 @@ func (h *host) NewHeadsChan() chan *common.BatchHeader {
 	return h.newHeads
 }
 
-func (h *host) RegisterService(name string, service hostcommon.Service) {
-	h.services.RegisterService(name, service)
-}
-
 // Checks the host config is valid.
 func (h *host) validateConfig() {
 	if h.config.IsGenesis && h.config.NodeType != common.Sequencer {
