@@ -103,6 +103,7 @@ func TestTenGateway(t *testing.T) {
 		//"testAreTxsMinted":            testAreTxsMinted, this breaks the other tests bc, enable once concurrency issues are fixed
 		"testErrorHandling":                    testErrorHandling,
 		"testMultipleAccountsSubscription":     testMultipleAccountsSubscription,
+		"testNewHeadsSubscription":             testNewHeadsSubscription,
 		"testErrorsRevertedArePassed":          testErrorsRevertedArePassed,
 		"testUnsubscribe":                      testUnsubscribe,
 		"testClosingConnectionWhileSubscribed": testClosingConnectionWhileSubscribed,
@@ -121,6 +122,37 @@ func TestTenGateway(t *testing.T) {
 	time.Sleep(20 * time.Second)
 	err = tenGwContainer.Stop()
 	assert.NoError(t, err)
+}
+
+func testNewHeadsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+
+	receivedHeads := make([]*types.Header, 0)
+	newHeadChan := make(chan *types.Header)
+	subscription, err := user0.WSClient.SubscribeNewHead(context.Background(), newHeadChan)
+	require.NoError(t, err)
+
+	// Listen for new heads in a goroutine
+	go func() {
+		for {
+			select {
+			case err := <-subscription.Err():
+				// if err != nil {
+				testlog.Logger().Info("Error from new head subscription", log2.ErrKey, err)
+				return
+				//}
+			case newHead := <-newHeadChan:
+				// append logs to be visible from the main thread
+				receivedHeads = append(receivedHeads, newHead)
+			}
+		}
+	}()
+
+	// sleep for 5 seconds and there should be at least 2 heads received in this interval
+	time.Sleep(5 * time.Second)
+	subscription.Unsubscribe()
+	require.True(t, len(receivedHeads) > 1)
 }
 
 func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {

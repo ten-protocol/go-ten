@@ -47,6 +47,15 @@ type host struct {
 
 	// l2MessageBusAddress is fetched from the enclave but cache it here because it never changes
 	l2MessageBusAddress *gethcommon.Address
+	newHeads            chan *common.BatchHeader
+}
+
+type batchListener struct {
+	newHeads chan *common.BatchHeader
+}
+
+func (bl batchListener) HandleBatch(batch *common.ExtBatch) {
+	bl.newHeads <- batch.Header
 }
 
 func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
@@ -70,6 +79,7 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		metricRegistry: regMetrics,
 
 		stopControl: stopcontrol.New(),
+		newHeads:    make(chan *common.BatchHeader),
 	}
 
 	enclGuardians := make([]*enclave.Guardian, 0, len(enclaveClients))
@@ -89,6 +99,7 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 	l2Repo := l2.NewBatchRepository(config, hostServices, database, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
 
+	l2Repo.Subscribe(batchListener{newHeads: host.newHeads})
 	hostServices.RegisterService(hostcommon.P2PName, p2p)
 	hostServices.RegisterService(hostcommon.L1BlockRepositoryName, l1Repo)
 	maxWaitForL1Receipt := 6 * config.L1BlockTime   // wait ~10 blocks to see if tx gets published before retrying
@@ -158,14 +169,14 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	return h.services.Enclaves().SubmitAndBroadcastTx(encryptedParams)
 }
 
-func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
+func (h *host) SubscribeLogs(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
 	if h.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested Subscribe with the host stopping"))
 	}
 	return h.services.LogSubs().Subscribe(id, encryptedLogSubscription, matchedLogsCh)
 }
 
-func (h *host) Unsubscribe(id rpc.ID) {
+func (h *host) UnsubscribeLogs(id rpc.ID) {
 	if h.stopControl.IsStopping() {
 		h.logger.Debug("requested Subscribe with the host stopping")
 	}
@@ -233,6 +244,14 @@ func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
 		L2MessageBusAddress: *h.l2MessageBusAddress,
 		ImportantContracts:  h.services.L1Publisher().GetImportantContracts(),
 	}, nil
+}
+
+func (h *host) NewHeadsChan() chan *common.BatchHeader {
+	return h.newHeads
+}
+
+func (h *host) RegisterService(name string, service hostcommon.Service) {
+	h.services.RegisterService(name, service)
 }
 
 // Checks the host config is valid.

@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/subscription"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/api"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/httpapi"
@@ -22,9 +24,11 @@ import (
 )
 
 type Container struct {
-	stopControl *stopcontrol.StopControl
-	logger      gethlog.Logger
-	rpcServer   node.Server
+	stopControl     *stopcontrol.StopControl
+	logger          gethlog.Logger
+	rpcServer       node.Server
+	services        *rpcapi.Services
+	newHeadsService *subscription.NewHeadsService
 }
 
 func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Container {
@@ -92,28 +96,23 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		},
 	}})
 
-	return NewWalletExtensionContainer(
-		stopControl,
-		rpcServer,
-		logger,
-	)
-}
-
-func NewWalletExtensionContainer(
-	stopControl *stopcontrol.StopControl,
-	rpcServer node.Server,
-	logger gethlog.Logger,
-) *Container {
 	return &Container{
-		stopControl: stopControl,
-		rpcServer:   rpcServer,
-		logger:      logger,
+		stopControl:     stopControl,
+		rpcServer:       rpcServer,
+		newHeadsService: walletExt.NewHeadsService,
+		services:        walletExt,
+		logger:          logger,
 	}
 }
 
 // Start starts the wallet extension container
 func (w *Container) Start() error {
-	err := w.rpcServer.Start()
+	err := w.newHeadsService.Start()
+	if err != nil {
+		return err
+	}
+
+	err = w.rpcServer.Start()
 	if err != nil {
 		return err
 	}
@@ -122,6 +121,7 @@ func (w *Container) Start() error {
 
 func (w *Container) Stop() error {
 	w.stopControl.Stop()
+	_ = w.newHeadsService.Stop()
 
 	if w.rpcServer != nil {
 		// rpc server cannot be stopped synchronously as it will kill current request
@@ -132,5 +132,6 @@ func (w *Container) Stop() error {
 		}()
 	}
 
+	w.services.Stop()
 	return nil
 }
