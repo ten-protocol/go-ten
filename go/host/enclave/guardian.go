@@ -123,6 +123,8 @@ func (g *Guardian) Start() error {
 
 	// subscribe for L1 and P2P data
 	g.sl.P2P().SubscribeForTx(g)
+
+	// note: not keeping the unsubscribe functions because the lifespan of the guardian is the same as the host
 	g.sl.L1Repo().Subscribe(g)
 	g.sl.L2Repo().Subscribe(g)
 
