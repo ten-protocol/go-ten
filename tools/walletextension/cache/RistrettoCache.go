@@ -49,12 +49,12 @@ func (c *ristrettoCache) EvictShortLiving() {
 	c.lastEviction = time.Now()
 }
 
-func (c *ristrettoCache) IsEvicted(key any) bool {
+func (c *ristrettoCache) IsEvicted(key any, ttl time.Duration) bool {
 	remainingTTL, notExpired := c.cache.GetTTL(key)
 	if !notExpired {
 		return true
 	}
-	cachedTime := time.Now().Add(-remainingTTL)
+	cachedTime := time.Now().Add(remainingTTL).Add(-ttl)
 	// ... LE...Cached...Now - Valid
 	// ... Cached...LE...Now - Evicted
 	return c.lastEviction.After(cachedTime)

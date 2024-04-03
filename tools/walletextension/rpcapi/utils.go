@@ -213,7 +213,7 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, cacheKey []byte, onCache
 	}
 
 	cachedValue, foundInCache := cache.Get(cacheKey)
-	if foundInCache && !cache.IsEvicted(cacheKey) {
+	if foundInCache && !cache.IsEvicted(cacheKey, ttl) {
 		returnValue, ok := cachedValue.(*R)
 		if !ok {
 			return nil, fmt.Errorf("unexpected error. Invalid format cached. %v", cachedValue)
