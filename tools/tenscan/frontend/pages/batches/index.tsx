@@ -4,6 +4,7 @@ import { DataTable } from "@/src/components/modules/common/data-table/data-table
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBatchesService } from "@/src/services/useBatchesService";
+import { formatNumber } from "@/src/lib/utils";
 
 export const metadata: Metadata = {
   title: "Batches",
@@ -29,7 +30,7 @@ export default function Batches() {
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
             <p className="text-sm text-muted-foreground">
-              {Total} Batches found.
+              {formatNumber(Total)} Batches found.
             </p>
           </div>
         </div>

@@ -9,6 +9,7 @@ import {
   CardDescription,
 } from "@/src/components/ui/card";
 import { Skeleton } from "@/src/components/ui/skeleton";
+import { formatNumber } from "@/src/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 
@@ -30,9 +31,12 @@ export default function Batch() {
       ) : batchDetails ? (
         <Card className="col-span-3">
           <CardHeader>
-            <CardTitle>Batch #{Number(batchDetails?.Header?.number)}</CardTitle>
+            <CardTitle>
+              Batch #{formatNumber(batchDetails?.Header?.number)}
+            </CardTitle>
             <CardDescription>
-              Overview of the batch #{Number(batchDetails?.Header?.number)}
+              Overview of the batch #
+              {formatNumber(batchDetails?.Header?.number)}
             </CardDescription>
           </CardHeader>
           <CardContent>

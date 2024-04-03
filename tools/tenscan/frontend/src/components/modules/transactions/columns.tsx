@@ -7,7 +7,7 @@ import { statuses } from "./constants";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
 import TruncatedAddress from "../common/truncated-address";
-import { formatTimeAgo } from "@/src/lib/utils";
+import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 
 export const columns: ColumnDef<Transaction>[] = [
   {
@@ -19,7 +19,7 @@ export const columns: ColumnDef<Transaction>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {row.getValue("BatchHeight")}
+            #{formatNumber(row.getValue("BatchHeight"))}
           </span>
         </div>
       );

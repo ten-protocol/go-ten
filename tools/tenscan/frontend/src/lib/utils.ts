@@ -20,3 +20,8 @@ export const { ethereum } =
 export const downloadMetaMask = () => {
   window ? window.open("https://metamask.io/download", "_blank") : null;
 };
+
+export const formatNumber = (number: string | number) => {
+  const num = Number(number);
+  return num.toLocaleString();
+};
