@@ -24,6 +24,10 @@ const HeadSeo = ({
         // @ts-ignore
         signature="_vd3udx2g2hfn9zclob5cat43b94q7fyk"
       ></meta>
+      {/* SECURITY: to prevent the page from being loaded in an iFrame */}
+      <meta http-equiv="X-Frame-Options" content="deny"></meta>
+      {/* to indicate the browser shouldn't interpret the response as something other than the specified content type */}
+      <meta http-equiv="X-Content-Type-Options" content="nosniff"></meta>
       {/* twitter metadata */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:site" content={siteMetadata.twitterHandle} />
