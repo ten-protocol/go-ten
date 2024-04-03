@@ -53,10 +53,7 @@ const (
 )
 
 type CacheCfg struct {
-	// ResetWhenNewBlock bool todo
-	CacheType CacheStrategy
-	// logic based on block
-	// todo - handle block in the future
+	CacheType        CacheStrategy
 	CacheTypeDynamic func() CacheStrategy
 }
 
