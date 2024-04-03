@@ -215,7 +215,7 @@ func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
 	}, nil
 }
 
-func (h *host) DB() *hostdb.HostDB {
+func (h *host) DB() hostdb.HostDB {
 	return h.storage.GetDB()
 }
 

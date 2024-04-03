@@ -648,10 +648,8 @@ func (g *Guardian) streamEnclaveData() {
 				lastBatch = resp.Batch
 				g.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
 				err := g.sl.L2Repo().AddBatch(resp.Batch)
-				println("Added batch with seq: ", resp.Batch.SeqNo().Uint64())
 				if err != nil && !errors.Is(err, errutil.ErrAlreadyExists) {
 					// todo (@matt) this is a catastrophic scenario, the host may never get that batch - handle this
-					println("FAILURE to add batch with seq: ", resp.Batch.SeqNo().Uint64())
 					g.logger.Crit("failed to add batch to L2 repo", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
 				}
 

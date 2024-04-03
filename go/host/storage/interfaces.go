@@ -35,5 +35,5 @@ type BlockResolver interface {
 }
 
 type DatabaseResolver interface {
-	GetDB() *hostdb.HostDB
+	GetDB() hostdb.HostDB
 }

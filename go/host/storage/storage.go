@@ -65,11 +65,11 @@ func (s *storageImpl) AddBlock(b *types.Header, rollupHash common.L2RollupHash) 
 }
 
 func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*common.ExtBatch, error) {
-	return hostdb.GetBatchBySequenceNumber(s.db.GetSQLDB(), seqNum)
+	return hostdb.GetBatchBySequenceNumber(s.db.NewDBTransaction(), seqNum)
 }
 
 func (s *storageImpl) FetchBatchHashByNumber(number *big.Int) (*gethcommon.Hash, error) {
-	return hostdb.GetBatchHashByNumber(s.db.GetSQLDB(), number)
+	return hostdb.GetBatchHashByNumber(s.db.NewDBTransaction(), number)
 }
 
 func (s *storageImpl) FetchBatchHeaderByHash(hash gethcommon.Hash) (*common.BatchHeader, error) {
@@ -80,8 +80,8 @@ func (s *storageImpl) FetchHeadBatchHeader() (*common.BatchHeader, error) {
 	return hostdb.GetHeadBatchHeader(s.db.GetSQLDB())
 }
 
-func (s *storageImpl) GetDB() *hostdb.HostDB {
-	return s.db.GetDB()
+func (s *storageImpl) GetDB() hostdb.HostDB {
+	return s.db.GetHostDB()
 }
 
 func (s *storageImpl) Close() error {

@@ -13,7 +13,7 @@ import (
 // Host is the half of the Obscuro node that lives outside the enclave.
 type Host interface {
 	Config() *config.HostConfig
-	DB() *hostdb.HostDB
+	DB() hostdb.HostDB
 	EnclaveClient() common.Enclave
 	Storage() storage.Storage
 	// Start initializes the main loop of the host.

@@ -255,8 +255,9 @@ func GetBatchByTx(dbtx *dbTransaction, txHash gethcommon.Hash) (*common.ExtBatch
 }
 
 // GetBatchByHash returns the batch with the given hash.
-func GetBatchByHash(db *sql.DB, hash common.L2BatchHash) (*common.ExtBatch, error) {
-	return fetchFullBatch(db, " where hash=?", truncTo16(hash))
+func GetBatchByHash(dbtx *dbTransaction, hash common.L2BatchHash) (*common.ExtBatch, error) {
+	whereQuery := " WHERE hash=" + dbtx.GetSQLStatements().Placeholder
+	return fetchFullBatch(dbtx.GetDB(), whereQuery, truncTo16(hash))
 }
 
 // GetLatestBatch returns the head batch header
@@ -269,8 +270,9 @@ func GetLatestBatch(db *sql.DB) (*common.BatchHeader, error) {
 }
 
 // GetBatchByHeight returns the batch header given the height
-func GetBatchByHeight(db *sql.DB, height *big.Int) (*common.BatchHeader, error) {
-	headBatch, err := fetchBatchHeader(db, "where height=?", height.Uint64())
+func GetBatchByHeight(dbtx *dbTransaction, height *big.Int) (*common.BatchHeader, error) {
+	whereQuery := " WHERE height=" + dbtx.GetSQLStatements().Placeholder
+	headBatch, err := fetchBatchHeader(dbtx.GetDB(), whereQuery, height.Uint64())
 	if err != nil {
 		return nil, fmt.Errorf("failed to batch header: %w", err)
 	}

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -22,40 +21,42 @@ func CreatePostgresDBConnection(dbURL string, dbName string, initFile string) (*
 	//	return nil, fmt.Errorf("failed to prepare PostgreSQL connection - DB URL was not set on host config")
 	//}
 
-	dbURL = "postgres://WillHester:1866@localhost:5432/postgres?sslmode=disable"
+	dbURL = fmt.Sprintf("postgres://WillHester:1866@localhost:5432/postgres?sslmode=disable")
+	dbName = strings.ToLower(dbName)
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		log.Fatalf("failed to connect to PostgreSQL server: %v", err)
+		return nil, fmt.Errorf("failed to connect to PostgreSQL server: %v", err)
 	}
-	db.SetMaxOpenConns(maxDBPoolSize)
-	// Check if the database exists
+	defer db.Close() // Close the connection when done
+
 	rows, err := db.Query("SELECT 1 FROM pg_database WHERE datname = $1", dbName)
 	if err != nil {
-		log.Fatalf("Failed to query database existence: %v", err)
+		return nil, fmt.Errorf("failed to query database existence: %v", err)
 	}
 	defer rows.Close()
 
 	if !rows.Next() {
-		// Database doesn't exist, create it
 		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName))
 		if err != nil {
-			log.Fatalf("Failed to create database %s: %v", dbName, err)
+			return nil, fmt.Errorf("failed to create database %s: %v", dbName, err)
 		}
 	}
 
-	//_, err = db.Exec(fmt.Sprintf("SET DATABASE %s", dbName))
-	//if err != nil {
-	//	log.Fatalf("Failed to select database %s: %v", dbName, err)
-	//}
+	// Now, connect to the newly created database
+	dbURL = fmt.Sprintf("postgres://WillHester:1866@localhost:5432/%s?sslmode=disable", dbName)
+	db, err = sql.Open("postgres", dbURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
+	}
 
 	_, filename, _, _ := runtime.Caller(0)
 	baseDir := filepath.Dir(filename)
 	sqlFile := filepath.Join(baseDir, "host_postgres_init.sql")
 
+	// Execute initialization SQL file if provided
 	if initFile != "" {
 		if err := initialiseDBFromSQLFile(db, sqlFile); err != nil {
-			println("Error initializing DB from file")
 			return nil, fmt.Errorf("failed to initialize db from file %s: %w", initFile, err)
 		}
 	}
