@@ -18,7 +18,7 @@ PCCS_URL=https://global.acccache.azure.net/sgx/certification/v3/
 apt-get install -qq libsgx-dcap-default-qpl
 echo "PCCS_URL: ${PCCS_URL}"
 
-echo "{
+echo '{
   "pccs_url": "https://global.acccache.azure.net/sgx/certification/v3/",
   "use_secure_cert": false,
   "collateral_service": "https://global.acccache.azure.net/sgx/certification/v3/",
@@ -38,6 +38,6 @@ echo "{
           }
       }
   }
-}"  > /etc/sgx_default_qcnl.conf
+}'  > /etc/sgx_default_qcnl.conf
 
 "$@"
