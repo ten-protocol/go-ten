@@ -174,7 +174,7 @@ func TestCanRetrieveBatchTransactions(t *testing.T) {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
-	batchTxs, err := GetBatchTxs(db.GetSQLDB(), batch.Header.Hash())
+	batchTxs, err := GetBatchTxs(db.NewDBTransaction(), batch.Header.Hash())
 	if err != nil {
 		t.Errorf("stored batch but could not retrieve headers transactions. Cause: %s", err)
 	}
