@@ -45,7 +45,7 @@ type HostConfigToml struct {
 	MetricsEnabled            bool
 	MetricsHTTPPort           uint
 	UseInMemoryDB             bool
-	MariaDBHost               string
+	PostgresDBHost            string
 	DebugNamespaceEnabled     bool
 	BatchInterval             string
 	MaxBatchInterval          string
@@ -87,7 +87,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	metricsEnabled := flag.Bool(metricsEnabledName, cfg.MetricsEnabled, flagUsageMap[metricsEnabledName])
 	metricsHTPPPort := flag.Uint(metricsHTTPPortName, cfg.MetricsHTTPPort, flagUsageMap[metricsHTTPPortName])
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, flagUsageMap[useInMemoryDBName])
-	mariaDBHost := flag.String(mariaDBHostName, cfg.MariaDBHost, flagUsageMap[mariaDBHostName])
+	postgresDBHost := flag.String(postgresDBHostName, cfg.PostgresDBHost, flagUsageMap[postgresDBHostName])
 	debugNamespaceEnabled := flag.Bool(debugNamespaceEnabledName, cfg.DebugNamespaceEnabled, flagUsageMap[debugNamespaceEnabledName])
 	batchInterval := flag.String(batchIntervalName, cfg.BatchInterval.String(), flagUsageMap[batchIntervalName])
 	maxBatchInterval := flag.String(maxBatchIntervalName, cfg.MaxBatchInterval.String(), flagUsageMap[maxBatchIntervalName])
@@ -133,7 +133,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.MetricsEnabled = *metricsEnabled
 	cfg.MetricsHTTPPort = *metricsHTPPPort
 	cfg.UseInMemoryDB = *useInMemoryDB
-	cfg.MariaDBHost = *mariaDBHost
+	cfg.PostgresDBHost = *postgresDBHost
 	cfg.DebugNamespaceEnabled = *debugNamespaceEnabled
 	cfg.BatchInterval, err = time.ParseDuration(*batchInterval)
 	if err != nil {
@@ -210,7 +210,7 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		MetricsEnabled:            tomlConfig.MetricsEnabled,
 		MetricsHTTPPort:           tomlConfig.MetricsHTTPPort,
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,
-		MariaDBHost:               tomlConfig.MariaDBHost,
+		PostgresDBHost:            tomlConfig.PostgresDBHost,
 		BatchInterval:             batchInterval,
 		MaxBatchInterval:          maxBatchInterval,
 		RollupInterval:            rollupInterval,

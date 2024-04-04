@@ -3,6 +3,7 @@ package hostdb
 import (
 	"database/sql"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"

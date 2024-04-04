@@ -2,7 +2,6 @@ package devnetwork
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 

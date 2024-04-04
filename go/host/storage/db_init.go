@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+
 	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"github.com/ten-protocol/go-ten/go/host/storage/init/sqlite"
 
@@ -26,8 +27,8 @@ func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (hostdb.H
 		}
 		return hostdb.NewHostDB(sqliteDB, hostdb.SQLiteSQLStatements())
 	}
-	logger.Info(fmt.Sprintf("Preparing Postgres DB connection to %s...", cfg.MariaDBHost))
-	mariaDB, err := postgres.CreatePostgresDBConnection(cfg.MariaDBHost, dbName, "host_postgres_init.sql")
+	logger.Info(fmt.Sprintf("Preparing Postgres DB connection to %s...", cfg.PostgresDBHost))
+	mariaDB, err := postgres.CreatePostgresDBConnection(cfg.PostgresDBHost, dbName, "host_postgres_init.sql")
 	if err != nil {
 		return nil, fmt.Errorf("could not create postresql connection: %w", err)
 	}
@@ -36,8 +37,8 @@ func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (hostdb.H
 
 // validateDBConf high-level checks that you have a valid configuration for DB creation
 func validateDBConf(cfg *config.HostConfig) error {
-	if cfg.UseInMemoryDB && cfg.MariaDBHost != "" {
-		return fmt.Errorf("invalid db config, useInMemoryDB=true so MariaDB host not expected, but MariaDBHost=%s", cfg.MariaDBHost)
+	if cfg.UseInMemoryDB && cfg.PostgresDBHost != "" {
+		return fmt.Errorf("invalid db config, useInMemoryDB=true so MariaDB host not expected, but PostgresDBHost=%s", cfg.PostgresDBHost)
 	}
 	if cfg.SqliteDBPath != "" && cfg.UseInMemoryDB {
 		return fmt.Errorf("useInMemoryDB=true so sqlite database will not be used and no path is needed, but sqliteDBPath=%s", cfg.SqliteDBPath)

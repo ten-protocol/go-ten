@@ -2,6 +2,9 @@ package storage
 
 import (
 	"fmt"
+	"io"
+	"math/big"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -10,8 +13,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
-	"io"
-	"math/big"
 )
 
 type storageImpl struct {

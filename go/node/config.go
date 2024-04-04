@@ -44,7 +44,7 @@ type Config struct {
 	enclaveDebug              bool
 	nodeName                  string
 	hostInMemDB               bool
-	mariaDB                   string
+	postgresDB                string
 	debugNamespaceEnabled     bool
 	profilerEnabled           bool
 	coinbaseAddress           string
@@ -127,7 +127,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.IsInboundP2PDisabled = c.isInboundP2PDisabled
 	cfg.L1BlockTime = c.l1BlockTime
 	cfg.L1ChainID = int64(c.l1ChainID)
-	cfg.MariaDBHost = c.mariaDB
+	cfg.PostgresDBHost = c.postgresDB
 
 	return cfg
 }

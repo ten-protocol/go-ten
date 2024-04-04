@@ -1,12 +1,13 @@
 package storage
 
 import (
+	"io"
+	"math/big"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
-	"io"
-	"math/big"
 )
 
 type Storage interface {

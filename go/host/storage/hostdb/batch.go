@@ -24,7 +24,6 @@ const (
 
 // AddBatch adds a batch and its header to the DB
 func AddBatch(dbtx *dbTransaction, batch *common.ExtBatch) error {
-
 	extBatch, err := rlp.EncodeToBytes(batch)
 	if err != nil {
 		return fmt.Errorf("could not encode L2 transactions: %w", err)

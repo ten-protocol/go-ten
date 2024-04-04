@@ -2,11 +2,12 @@ package enclave
 
 import (
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/host/storage"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 
@@ -469,8 +470,9 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 		metaData, err := g.enclaveClient.GetRollupData(r.Header.Hash())
 		if err != nil {
 			g.logger.Error("Could not fetch rollup metadata from enclave.", log.ErrKey, err)
+		} else {
+			err = g.storage.AddRollup(r, metaData, block)
 		}
-		err = g.storage.AddRollup(r, metaData, block)
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())
