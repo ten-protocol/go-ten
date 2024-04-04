@@ -123,7 +123,7 @@ type L1Publisher interface {
 // L2BatchRepository provides an interface for the host to request L2 batch data (live-streaming and historical)
 type L2BatchRepository interface {
 	// Subscribe will register a batch handler to receive new batches as they arrive
-	Subscribe(handler L2BatchHandler)
+	Subscribe(handler L2BatchHandler) func()
 
 	FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
 

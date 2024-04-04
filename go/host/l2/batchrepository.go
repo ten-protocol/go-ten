@@ -13,6 +13,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/subscription"
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 )
@@ -34,7 +35,7 @@ type batchRepoServiceLocator interface {
 // Repository is responsible for storing and retrieving batches from the database
 // If it can't find a batch it will request it from peers. It also subscribes for batch requests from peers and responds to them.
 type Repository struct {
-	subscribers []host.L2BatchHandler
+	batchSubscribers *subscription.Manager[host.L2BatchHandler]
 
 	sl          batchRepoServiceLocator
 	storage     storage.Storage
@@ -57,6 +58,7 @@ type Repository struct {
 
 func NewBatchRepository(cfg *config.HostConfig, hostService batchRepoServiceLocator, storage storage.Storage, logger gethlog.Logger) *Repository {
 	return &Repository{
+		batchSubscribers: subscription.NewManager[host.L2BatchHandler](),
 		sl:               hostService,
 		storage:          storage,
 		isSequencer:      cfg.NodeType == common.Sequencer,
@@ -147,9 +149,9 @@ func (r *Repository) HandleBatchRequest(requesterID string, fromSeqNo *big.Int) 
 	}
 }
 
-// Subscribe registers a handler to be notified of new head batches as they arrive
-func (r *Repository) Subscribe(subscriber host.L2BatchHandler) {
-	r.subscribers = append(r.subscribers, subscriber)
+// Subscribe registers a handler to be notified of new head batches as they arrive, returns unsubscribe func
+func (r *Repository) Subscribe(handler host.L2BatchHandler) func() {
+	return r.batchSubscribers.Subscribe(handler)
 }
 
 func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error) {
@@ -185,6 +187,10 @@ func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	defer r.latestSeqNoMutex.Unlock()
 	if batch.Header.SequencerOrderNo.Cmp(r.latestBatchSeqNo) > 0 {
 		r.latestBatchSeqNo = batch.Header.SequencerOrderNo
+		// notify subscribers, a new batch has been successfully added to the db
+		for _, subscriber := range r.batchSubscribers.Subscribers() {
+			go subscriber.HandleBatch(batch)
+		}
 	}
 	return nil
 }
