@@ -88,7 +88,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         // revert if the EnclaveID is not attested
         require(attested[enclaveID], "enclaveID not attested");
         // revert if the EnclaveID is not permissioned as a sequencer
-        require(sequencerEnclave[enclaveID], "enclaveID not sequencer");
+        require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
 
         AppendRollup(r);
         pushCrossChainMessages(crossChainData);
@@ -169,10 +169,10 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         sequencerEnclave[_addr] = true;
     }
     // Function to revoke sequencer status for an enclave - contract owner only
-    function GrantSequencerEnclave(address _addr) public onlyOwner {
-        // require the enclave to be attested already
-        require(attested[_addr], "enclaveID not attested");
-        sequencerEnclave[_addr] = true;
+    function RevokeSequencerEnclave(address _addr) public onlyOwner {
+        // require the enclave to be a sequencer already
+        require(sequencerEnclave[_addr], "enclaveID not a sequencer");
+        delete sequencerEnclave[_addr];
     }
 
     // Testnet function to allow the contract owner to retrieve **all** funds from the network bridge.
