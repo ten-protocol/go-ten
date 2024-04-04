@@ -12,11 +12,32 @@ if [ ! -L /dev/sgx/enclave ]; then
 fi
 
 # Todo - pass this in as a parameter
-PCCS_URL=https://global.acccache.azure.net/sgx/certification/v3
+PCCS_URL=https://global.acccache.azure.net/sgx/certification/v3/
 
 # Install the libsgx-dcap-default-qpl and redefine /etc/sgx_default_qcnl.conf (Alibaba)
 apt-get install -qq libsgx-dcap-default-qpl
 echo "PCCS_URL: ${PCCS_URL}"
-echo "PCCS_URL=${PCCS_URL}\nUSE_SECURE_CERT=FALSE" > /etc/sgx_default_qcnl.conf
+
+echo "{
+  "pccs_url": "https://global.acccache.azure.net/sgx/certification/v3/",
+  "use_secure_cert": true,
+  "collateral_service": "https://global.acccache.azure.net/sgx/certification/v3/",
+  "pccs_api_version": "3.1",
+  "retry_times": 6,
+  "retry_delay": 5,
+  "local_pck_url": "http://169.254.169.254/metadata/THIM/sgx/certification/v3/",
+  "pck_cache_expire_hours": 24,
+  "verify_collateral_cache_expire_hours": 24,
+  "custom_request_options": {
+      "get_cert": {
+          "headers": {
+              "metadata": "true"
+          },
+          "params": {
+              "api-version": "2021-07-22-preview"
+          }
+      }
+  }
+}"  > /etc/sgx_default_qcnl.conf
 
 "$@"
