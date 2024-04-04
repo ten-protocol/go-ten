@@ -114,12 +114,6 @@ func (r *Repository) HandleBatches(batches []*common.ExtBatch, isLive bool) {
 			// we've already seen this batch or failed to store it for another reason - do not notify subscribers
 			return
 		}
-		if isLive {
-			// notify subscribers if the batch is new
-			for _, subscriber := range r.subscribers {
-				go subscriber.HandleBatch(batch)
-			}
-		}
 	}
 }
 
