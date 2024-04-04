@@ -12,10 +12,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const (
-	maxDBPoolSize = 100
-)
-
 func CreatePostgresDBConnection(dbURL string, dbName string, initFile string) (*sql.DB, error) {
 	if dbURL == "" {
 		return nil, fmt.Errorf("failed to prepare PostgreSQL connection - DB URL was not set on host config")
@@ -49,7 +45,6 @@ func CreatePostgresDBConnection(dbURL string, dbName string, initFile string) (*
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
 	}
-
 	_, filename, _, _ := runtime.Caller(0)
 	baseDir := filepath.Dir(filename)
 	sqlFile := filepath.Join(baseDir, "host_postgres_init.sql")

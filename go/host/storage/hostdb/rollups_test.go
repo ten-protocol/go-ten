@@ -101,7 +101,7 @@ func TestGetRollupListing(t *testing.T) {
 	}
 
 	// page 1, size 2
-	rollupListing, err := GetRollupListing(db.GetSQLDB(), &common.QueryPagination{Offset: 1, Size: 2})
+	rollupListing, err := GetRollupListing(db.NewDBTransaction(), &common.QueryPagination{Offset: 1, Size: 2})
 	if err != nil {
 		t.Errorf("could not get rollup listing. Cause: %s", err)
 	}
@@ -120,7 +120,7 @@ func TestGetRollupListing(t *testing.T) {
 	}
 
 	// page 0, size 3
-	rollupListing1, err := GetRollupListing(db.GetSQLDB(), &common.QueryPagination{Offset: 0, Size: 3})
+	rollupListing1, err := GetRollupListing(db.NewDBTransaction(), &common.QueryPagination{Offset: 0, Size: 3})
 	if err != nil {
 		t.Errorf("could not get rollup listing. Cause: %s", err)
 	}
@@ -139,7 +139,7 @@ func TestGetRollupListing(t *testing.T) {
 	}
 
 	// page 0, size 4
-	rollupListing2, err := GetRollupListing(db.GetSQLDB(), &common.QueryPagination{Offset: 0, Size: 4})
+	rollupListing2, err := GetRollupListing(db.NewDBTransaction(), &common.QueryPagination{Offset: 0, Size: 4})
 	if err != nil {
 		t.Errorf("could not get rollup listing. Cause: %s", err)
 	}
@@ -150,7 +150,7 @@ func TestGetRollupListing(t *testing.T) {
 	}
 
 	// page 5, size 1
-	rollupListing3, err := GetRollupListing(db.GetSQLDB(), &common.QueryPagination{Offset: 5, Size: 1})
+	rollupListing3, err := GetRollupListing(db.NewDBTransaction(), &common.QueryPagination{Offset: 5, Size: 1})
 	if err != nil {
 		t.Errorf("could not get rollup listing. Cause: %s", err)
 	}
