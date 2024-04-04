@@ -9,7 +9,7 @@ import (
 
 	subscriptioncommon "github.com/ten-protocol/go-ten/go/common/subscription"
 
-	common2 "github.com/ten-protocol/go-ten/go/common"
+	tencommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/rpc"
 
 	"github.com/ten-protocol/go-ten/go/obsclient"
@@ -50,7 +50,7 @@ type Services struct {
 }
 
 type NewHeadNotifier interface {
-	onNewHead(header *common2.BatchHeader)
+	onNewHead(header *tencommon.BatchHeader)
 }
 
 func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, config *common.Config) *Services {
@@ -110,15 +110,15 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 	}
 
 	rpcClient := connectionObj.(rpc.Client)
-	ch := make(chan *common2.BatchHeader)
+	ch := make(chan *tencommon.BatchHeader)
 	clientSubscription, err := rpcClient.Subscribe(context.Background(), rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeNewHeads)
 	if err != nil {
 		panic(fmt.Errorf("cannot subscribe to new heads to the backend %w", err))
 	}
 
 	services.backendNewHeadsSubscription = clientSubscription
-	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(ch, true, logger, func(newHead *common2.BatchHeader) error {
-		// todo - in a followup PR, invalidate cache entries marked as "latest"
+	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(ch, true, logger, func(newHead *tencommon.BatchHeader) error {
+		services.Cache.EvictShortLiving()
 		return nil
 	})
 
