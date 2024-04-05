@@ -68,10 +68,13 @@ func (s *RPCServer) Status(context.Context, *generated.StatusRequest) (*generate
 	if sysError != nil {
 		s.logger.Error("Enclave error on Status", log.ErrKey, sysError)
 	}
+	s.logger.Debug("rpc status after", "status", status)
 	var l2Head []byte
 	if status.L2Head != nil {
 		l2Head = status.L2Head.Bytes()
 	}
+	s.logger.Debug("rpc status after 1")
+	s.logger.Debug("rpc status after 1", "l1head", status.L1Head)
 	return &generated.StatusResponse{
 		StatusCode:  int32(status.StatusCode),
 		L1Head:      status.L1Head.Bytes(),
