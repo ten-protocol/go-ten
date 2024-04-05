@@ -249,12 +249,9 @@ jobs:
                -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
                -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
                -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
-               -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{  github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/postrgres?sslmode=disable
-#               logPath=sys_out -dbType=mariaDB -dbConnectionURL="obscurouser:${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }}@tcp(obscurogateway-mariadb-${{  github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:3306)/ogdb"'
-#               postgres://WillHester:1866@localhost:5432/postgres?sslmode=disable"
+               -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{  github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/postrgres?sslmode=disable \
                start'
 
-  "postgres://WillHester:1866@localhost:5432/postgres"
   check-obscuro-is-healthy:
     needs:
       - build
