@@ -73,14 +73,20 @@ func (s *RPCServer) Status(context.Context, *generated.StatusRequest) (*generate
 	if status.L2Head != nil {
 		l2Head = status.L2Head.Bytes()
 	}
-	s.logger.Debug("rpc status after 1")
 	s.logger.Debug("rpc status after 1", "l1head", status.L1Head)
-	return &generated.StatusResponse{
+	s.logger.Debug("rpc status after 2", "StatusCode", status.StatusCode)
+	s.logger.Debug("rpc status after 3", "l2Head", l2Head)
+	s.logger.Debug("rpc status after 4", "sysError", sysError)
+	sr := &generated.StatusResponse{
 		StatusCode:  int32(status.StatusCode),
 		L1Head:      status.L1Head.Bytes(),
 		L2Head:      l2Head,
 		SystemError: toRPCError(sysError),
-	}, nil
+	}
+
+	s.logger.Debug(fmt.Sprintf("rpc statusresponse: %v", sr))
+
+	return sr, nil
 }
 
 func (s *RPCServer) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {
