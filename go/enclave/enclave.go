@@ -312,11 +312,14 @@ func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 		return common.Status{StatusCode: common.Unavailable}, responses.ToInternalError(fmt.Errorf("requested Status with the enclave stopping"))
 	}
 
+	e.logger.Debug("Status before")
 	_, err := e.storage.FetchSecret()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
+			e.logger.Debug("Status not found")
 			return common.Status{StatusCode: common.AwaitingSecret, L2Head: _noHeadBatch}, nil
 		}
+		e.logger.Debug("Status ?", log.ErrKey, err)
 		return common.Status{StatusCode: common.Unavailable}, responses.ToInternalError(err)
 	}
 	var l1HeadHash gethcommon.Hash

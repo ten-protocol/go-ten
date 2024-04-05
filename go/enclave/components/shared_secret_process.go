@@ -110,11 +110,12 @@ func (ssp *SharedSecretProcessor) verifyAttestationAndEncryptSecret(att *common.
 		return nil, fmt.Errorf("unable to verify identity - %w", err)
 	}
 	ssp.logger.Info(fmt.Sprintf("Successfully verified attestation and identity. Owner: %s", att.EnclaveID))
-
+	ssp.logger.Debug("verifyAttestationAndEncryptSecret before")
 	secret, err := ssp.storage.FetchSecret()
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve secret; this should not happen. Cause: %w", err)
 	}
+	ssp.logger.Debug("verifyAttestationAndEncryptSecret after")
 	return crypto.EncryptSecret(att.PubKey, *secret, ssp.logger)
 }
 

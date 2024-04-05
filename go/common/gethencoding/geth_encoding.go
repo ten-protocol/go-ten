@@ -311,10 +311,13 @@ func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(h *common.BatchHeade
 	// wrap in a caching layer
 	return common.GetCachedValue(enc.gethHeaderCache, enc.logger, h.Hash(), func(a any) (*types.Header, error) {
 		// deterministically calculate the private randomness that will be exposed to the EVM
+		enc.logger.Debug("CreateEthHeaderForBatch before")
 		secret, err := enc.storage.FetchSecret()
 		if err != nil {
+			enc.logger.Debug("CreateEthHeaderForBatch error")
 			enc.logger.Crit("Could not fetch shared secret. Exiting.", log.ErrKey, err)
 		}
+		enc.logger.Debug("CreateEthHeaderForBatch after")
 		perBatchRandomness := crypto.CalculateRootBatchEntropy(secret[:], h.Number)
 
 		// calculate the converted hash of the parent, for a correct converted chain
