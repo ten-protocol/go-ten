@@ -35,7 +35,6 @@ func AddRollup(dbtx *dbTransaction, rollup *common.ExtRollup, metadata *common.P
 	if err != nil {
 		return fmt.Errorf("could not insert rollup. Cause: %w", err)
 	}
-
 	return nil
 }
 

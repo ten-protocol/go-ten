@@ -415,8 +415,6 @@ func TestGetBatchListingDeprecated(t *testing.T) {
 	}
 }
 
-// TODO Duplicate TX hash test
-
 func createBatch(batchNum int64, txHashes []common.L2BatchHash) common.ExtBatch {
 	header := common.BatchHeader{
 		SequencerOrderNo: big.NewInt(batchNum),
