@@ -31,6 +31,7 @@ const (
 	maxBatchIntervalFlag        = "max_batch_interval"
 	rollupIntervalFlag          = "rollup_interval"
 	l1ChainIDFlag               = "l1_chain_id"
+	postgresDBHostFlag          = "postgres_db_host"
 )
 
 // Returns a map of the flag usages.
@@ -66,5 +67,6 @@ func getFlagUsageMap() map[string]string {
 		maxBatchIntervalFlag:        "Max interval between batches, if greater than batchInterval then some empty batches will be skipped. Can be formatted like 500ms or 1s",
 		rollupIntervalFlag:          "Duration between each rollup. Can be formatted like 500ms or 1s",
 		l1ChainIDFlag:               "Chain ID of the L1 network",
+		postgresDBHostFlag:          "Host connection details for Postgres DB",
 	}
 }

@@ -227,22 +227,6 @@ jobs:
                -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
                datadog/agent:latest \
-            # FIXME 
-            # FIXME 
-            # FIXME 
-            # FIXME 
-             && docker run -d --name ${{ github.event.inputs.testnet_type }}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }} \
-                -p 3306:3306 \
-                -e MARIADB_ROOT_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_ROOT_PWD }} \
-                -e MARIADB_USER=obscurouser \
-                -e MARIADB_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }} \
-                -v /home/obscuro/go-obscuro/tools/walletextension/storage/database/001_init.sql:/docker-entrypoint-initdb.d/schema.sql \
-                mariadb:11.1.2-jammy \
-                --max_password_errors=2'
-            # FIXME 
-            # FIXME 
-            # FIXME 
-            # FIXME 
             && cd /home/obscuro/go-obscuro/ \
             && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
                -is_genesis=${{ matrix.is_genesis }} \
@@ -265,8 +249,12 @@ jobs:
                -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
                -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
                -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
+               -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{  github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/postrgres?sslmode=disable
+#               logPath=sys_out -dbType=mariaDB -dbConnectionURL="obscurouser:${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }}@tcp(obscurogateway-mariadb-${{  github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:3306)/ogdb"'
+#               postgres://WillHester:1866@localhost:5432/postgres?sslmode=disable"
                start'
 
+  "postgres://WillHester:1866@localhost:5432/postgres"
   check-obscuro-is-healthy:
     needs:
       - build
