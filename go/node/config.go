@@ -2,6 +2,8 @@ package node
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v3"
+	"io/ioutil"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -18,80 +20,95 @@ const (
 // Option is a function that applies configs to a Config Object
 type Option = func(c *Config)
 
-// Config holds the properties that configure the package
+// Config represents the configurations default loaded from a YAML file overridable by CLI
 type Config struct {
-	isGenesis                 bool
-	sgxEnabled                bool
-	enclaveImage              string
-	hostImage                 string
-	nodeType                  string
-	l1WSURL                   string
-	sequencerID               string
-	privateKey                string
-	hostP2PPort               int
-	hostID                    string
-	hostHTTPPort              int
-	hostWSPort                int
-	enclaveWSPort             int
-	messageBusContractAddress string
-	managementContractAddr    string
-	l1Start                   string
-	hostP2PHost               string
-	hostPublicP2PAddr         string
-	pccsAddr                  string
-	edgelessDBImage           string
-	enclaveDebug              bool
-	nodeName                  string
-	hostInMemDB               bool
-	debugNamespaceEnabled     bool
-	profilerEnabled           bool
-	coinbaseAddress           string
-	logLevel                  int
-	isInboundP2PDisabled      bool
-	l1BlockTime               time.Duration
-	batchInterval             string
-	maxBatchInterval          string
-	rollupInterval            string
-	l1ChainID                 int
-	obscuroGenesis            string
+	NodeAction              string `yaml:"nodeAction"`
+	NodeType                string `yaml:"nodeType"`
+	IsGenesis               bool   `yaml:"isGenesis"`
+	IsSGXEnabled            bool   `yaml:"isSGXEnabled"`
+	EnclaveDockerImage      string `yaml:"enclaveDockerImage"`
+	HostDockerImage         string `yaml:"hostDockerImage"`
+	L1WebsocketURL          string `yaml:"l1WebsocketURL"`
+	HostP2PPort             int    `yaml:"hostP2PPort"`
+	HostP2PPublicAddr       string `yaml:"hostP2PPublicAddr"`
+	EnclaveWSPort           int    `yaml:"enclaveWSPort"`
+	PrivateKey              string `yaml:"privateKey"`
+	HostID                  string `yaml:"hostID"`
+	SequencerID             string `yaml:"sequencerID"`
+	ManagementContractAddr  string `yaml:"managementContractAddr"`
+	MessageBusContractAddr  string `yaml:"messageBusContractAddr"`
+	L1Start                 string `yaml:"l1Start"`
+	PccsAddr                string `yaml:"pccsAddr"`
+	EdgelessDBImage         string `yaml:"edgelessDBImage"`
+	HostHTTPPort            int    `yaml:"hostHTTPPort"`
+	HostWSPort              int    `yaml:"hostWSPort"`
+	NodeName                string `yaml:"nodeName"`
+	IsDebugNamespaceEnabled bool   `yaml:"isDebugNamespaceEnabled"`
+	LogLevel                int    `yaml:"logLevel"`
+	IsInboundP2PDisabled    bool   `yaml:"isInboundP2PDisabled"`
+	BatchInterval           string `yaml:"batchInterval"`
+	MaxBatchInterval        string `yaml:"maxBatchInterval"`
+	RollupInterval          string `yaml:"rollupInterval"`
+	L1ChainID               int    `yaml:"l1ChainID"`
+	ProfilerEnabled         bool   `yaml:"profilerEnabled"`
+	MetricsEnabled          bool   `yaml:"metricsEnabled"`
+	CoinbaseAddress         string `yaml:"coinbaseAddress"`
+	L1BlockTime             int    `yaml:"l1BlockTime"`
+	TenGenesis              string `yaml:"tenGenesis"`
+	EnclaveDebug            bool   `yaml:"enclaveDebug"`
+	HostInMemDB             bool   `yaml:"hostInMemDB"`
+	HostExternalDBHost      string `yaml:"hostExternalDBHost"`
+	HostExternalDBUser      string `yaml:"hostExternalDBUser"`
+	HostExternalDBPass      string `yaml:"hostExternalDBPass"`
 }
 
-func NewNodeConfig(opts ...Option) *Config {
-	defaultConfig := &Config{
-		batchInterval:    "1s",
-		maxBatchInterval: "1s",
-		rollupInterval:   "3s",
-		l1ChainID:        1337,
-		obscuroGenesis:   "{}",
+// LoadConfig reads configuration from a file and environment variables
+func LoadConfig(configPath string) (*Config, error) {
+	defaultConfig := &Config{}
+
+	// Read YAML configuration
+	data, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		return nil, err
+	}
+	err = yaml.Unmarshal(data, defaultConfig)
+	if err != nil {
+		return nil, err
 	}
 
+	return defaultConfig, nil
+}
+
+// NewNodeConfig takes and initial default config and sets options on
+func NewNodeConfig(config Config, opts ...Option) *Config {
+	initialConfig := &config
 	for _, opt := range opts {
-		opt(defaultConfig)
+		opt(initialConfig)
 	}
 
-	return defaultConfig
+	return initialConfig
 }
 
 func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 	cfg := config.DefaultEnclaveConfig()
 
-	if c.nodeType == "validator" {
+	if c.NodeType == "validator" {
 		cfg.NodeType = common.Validator
 	}
 
-	cfg.MessageBusAddress = gethcommon.HexToAddress(c.messageBusContractAddress)
-	cfg.ManagementContractAddress = gethcommon.HexToAddress(c.managementContractAddr)
-	cfg.SequencerID = gethcommon.HexToAddress(c.sequencerID)
-	cfg.HostID = gethcommon.HexToAddress(c.hostID)
-	cfg.HostAddress = fmt.Sprintf("127.0.0.1:%d", c.hostP2PPort)
+	cfg.MessageBusAddress = gethcommon.HexToAddress(c.MessageBusContractAddr)
+	cfg.ManagementContractAddress = gethcommon.HexToAddress(c.ManagementContractAddr)
+	cfg.SequencerID = gethcommon.HexToAddress(c.SequencerID)
+	cfg.HostID = gethcommon.HexToAddress(c.HostID)
+	cfg.HostAddress = fmt.Sprintf("127.0.0.1:%d", c.HostP2PPort)
 	cfg.LogPath = testlog.LogFile()
-	cfg.LogLevel = c.logLevel
-	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
-	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
-	cfg.ObscuroGenesis = c.obscuroGenesis
+	cfg.LogLevel = c.LogLevel
+	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.EnclaveWSPort)
+	cfg.DebugNamespaceEnabled = c.IsDebugNamespaceEnabled
+	cfg.TenGenesis = c.TenGenesis
 
-	if c.nodeType == "sequencer" && c.coinbaseAddress != "" {
-		cfg.GasPaymentAddress = gethcommon.HexToAddress(c.coinbaseAddress)
+	if c.NodeType == "sequencer" && c.CoinbaseAddress != "" {
+		cfg.GasPaymentAddress = gethcommon.HexToAddress(c.CoinbaseAddress)
 	}
 
 	return cfg
@@ -100,31 +117,31 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 func (c *Config) ToHostConfig() *config.HostConfig {
 	cfg := config.DefaultHostConfig()
 
-	if c.nodeType == "validator" {
+	if c.NodeType == "validator" {
 		cfg.NodeType = common.Validator
 	}
 
-	cfg.IsGenesis = c.isGenesis
-	cfg.PrivateKeyString = c.privateKey
-	cfg.EnclaveRPCAddress = fmt.Sprintf("127.0.0.1:%d", c.enclaveWSPort)
-	cfg.ClientRPCPortWS = uint64(c.hostWSPort)
-	cfg.ClientRPCPortHTTP = uint64(c.hostHTTPPort)
+	cfg.IsGenesis = c.IsGenesis
+	cfg.PrivateKeyString = c.PrivateKey
+	cfg.EnclaveRPCAddress = fmt.Sprintf("127.0.0.1:%d", c.EnclaveWSPort)
+	cfg.ClientRPCPortWS = uint64(c.HostWSPort)
+	cfg.ClientRPCPortHTTP = uint64(c.HostHTTPPort)
 
-	cfg.P2PPublicAddress = fmt.Sprintf("127.0.0.1:%d", c.hostP2PPort)
-	cfg.P2PBindAddress = c.hostPublicP2PAddr
+	cfg.P2PPublicAddress = fmt.Sprintf("127.0.0.1:%d", c.HostP2PPort)
+	cfg.P2PBindAddress = c.HostP2PPublicAddr
 
-	cfg.L1WebsocketURL = c.l1WSURL
-	cfg.ManagementContractAddress = gethcommon.HexToAddress(c.managementContractAddr)
-	cfg.MessageBusAddress = gethcommon.HexToAddress(c.messageBusContractAddress)
+	cfg.L1WebsocketURL = c.L1WebsocketURL
+	cfg.ManagementContractAddress = gethcommon.HexToAddress(c.ManagementContractAddr)
+	cfg.MessageBusAddress = gethcommon.HexToAddress(c.MessageBusContractAddr)
 	cfg.LogPath = testlog.LogFile()
-	cfg.ProfilerEnabled = c.profilerEnabled
-	cfg.MetricsEnabled = false
-	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
-	cfg.LogLevel = c.logLevel
-	cfg.SequencerID = gethcommon.HexToAddress(c.sequencerID)
-	cfg.IsInboundP2PDisabled = c.isInboundP2PDisabled
-	cfg.L1BlockTime = c.l1BlockTime
-	cfg.L1ChainID = int64(c.l1ChainID)
+	cfg.ProfilerEnabled = c.ProfilerEnabled
+	cfg.MetricsEnabled = c.MetricsEnabled
+	cfg.DebugNamespaceEnabled = c.IsDebugNamespaceEnabled
+	cfg.LogLevel = c.LogLevel
+	cfg.SequencerID = gethcommon.HexToAddress(c.SequencerID)
+	cfg.IsInboundP2PDisabled = c.IsInboundP2PDisabled
+	cfg.L1BlockTime = time.Second * time.Duration(c.L1BlockTime)
+	cfg.L1ChainID = int64(c.L1ChainID)
 
 	return cfg
 }
@@ -137,206 +154,224 @@ func (c *Config) UpdateNodeConfig(opts ...Option) *Config {
 	return c
 }
 
-func WithCoinbase(s string) Option {
-	return func(c *Config) {
-		c.coinbaseAddress = s
-	}
-}
-
-func WithNodeName(s string) Option {
-	return func(c *Config) {
-		c.nodeName = s
-	}
-}
-
 func WithNodeType(nodeType string) Option {
 	return func(c *Config) {
-		c.nodeType = nodeType
+		c.NodeType = nodeType
 	}
 }
 
 func WithGenesis(b bool) Option {
 	return func(c *Config) {
-		c.isGenesis = b
+		c.IsGenesis = b
 	}
 }
 
 func WithSGXEnabled(b bool) Option {
 	return func(c *Config) {
-		c.sgxEnabled = b
+		c.IsSGXEnabled = b
 	}
 }
 
 func WithEnclaveImage(s string) Option {
 	return func(c *Config) {
-		c.enclaveImage = s
-	}
-}
-
-func WithEnclaveDebug(b bool) Option {
-	return func(c *Config) {
-		c.enclaveDebug = b
+		c.EnclaveDockerImage = s
 	}
 }
 
 func WithHostImage(s string) Option {
 	return func(c *Config) {
-		c.hostImage = s
-	}
-}
-
-func WithMessageBusContractAddress(s string) Option {
-	return func(c *Config) {
-		c.messageBusContractAddress = s
-	}
-}
-
-func WithManagementContractAddress(s string) Option {
-	return func(c *Config) {
-		c.managementContractAddr = s
-	}
-}
-
-func WithSequencerID(s string) Option {
-	return func(c *Config) {
-		c.sequencerID = s
-	}
-}
-
-func WithHostID(s string) Option {
-	return func(c *Config) {
-		c.hostID = s
-	}
-}
-
-func WithPrivateKey(s string) Option {
-	return func(c *Config) {
-		c.privateKey = s
-	}
-}
-
-func WithEnclaveWSPort(i int) Option {
-	return func(c *Config) {
-		c.enclaveWSPort = i
-	}
-}
-
-func WithL1Start(blockHash string) Option {
-	return func(c *Config) {
-		c.l1Start = blockHash
+		c.HostDockerImage = s
 	}
 }
 
 func WithL1WebsocketURL(addr string) Option {
 	return func(c *Config) {
-		c.l1WSURL = addr
+		c.L1WebsocketURL = addr
 	}
 }
 
 func WithHostP2PPort(i int) Option {
 	return func(c *Config) {
-		c.hostP2PPort = i
-	}
-}
-
-func WithHostP2PHost(s string) Option {
-	return func(c *Config) {
-		c.hostP2PHost = s
+		c.HostP2PPort = i
 	}
 }
 
 func WithHostPublicP2PAddr(s string) Option {
 	return func(c *Config) {
-		c.hostPublicP2PAddr = s
+		c.HostP2PPublicAddr = s
 	}
 }
 
-func WithHostHTTPPort(i int) Option {
+func WithEnclaveWSPort(i int) Option {
 	return func(c *Config) {
-		c.hostHTTPPort = i
+		c.EnclaveWSPort = i
 	}
 }
 
-func WithHostWSPort(i int) Option {
+func WithPrivateKey(s string) Option {
 	return func(c *Config) {
-		c.hostWSPort = i
+		c.PrivateKey = s
 	}
 }
 
-func WithEdgelessDBImage(s string) Option {
+func WithHostID(s string) Option {
 	return func(c *Config) {
-		c.edgelessDBImage = s
+		c.HostID = s
+	}
+}
+
+func WithSequencerID(s string) Option {
+	return func(c *Config) {
+		c.SequencerID = s
+	}
+}
+
+func WithManagementContractAddress(s string) Option {
+	return func(c *Config) {
+		c.ManagementContractAddr = s
+	}
+}
+
+func WithMessageBusContractAddress(s string) Option {
+	return func(c *Config) {
+		c.MessageBusContractAddr = s
+	}
+}
+
+func WithL1Start(blockHash string) Option {
+	return func(c *Config) {
+		c.L1Start = blockHash
 	}
 }
 
 func WithPCCSAddr(s string) Option {
 	return func(c *Config) {
-		c.pccsAddr = s
+		c.PccsAddr = s
 	}
 }
 
-func WithInMemoryHostDB(b bool) Option {
+func WithEdgelessDBImage(s string) Option {
 	return func(c *Config) {
-		c.hostInMemDB = b
+		c.EdgelessDBImage = s
+	}
+}
+
+func WithHostHTTPPort(i int) Option {
+	return func(c *Config) {
+		c.HostHTTPPort = i
+	}
+}
+
+func WithHostWSPort(i int) Option {
+	return func(c *Config) {
+		c.HostWSPort = i
+	}
+}
+
+func WithNodeName(s string) Option {
+	return func(c *Config) {
+		c.NodeName = s
 	}
 }
 
 func WithDebugNamespaceEnabled(b bool) Option {
 	return func(c *Config) {
-		c.debugNamespaceEnabled = b
-	}
-}
-
-func WithProfiler(b bool) Option {
-	return func(c *Config) {
-		c.profilerEnabled = b
+		c.IsDebugNamespaceEnabled = b
 	}
 }
 
 func WithLogLevel(i int) Option {
 	return func(c *Config) {
-		c.logLevel = i
+		c.LogLevel = i
 	}
 }
 
 func WithInboundP2PDisabled(b bool) Option {
 	return func(c *Config) {
-		c.isInboundP2PDisabled = b
-	}
-}
-
-func WithL1BlockTime(d time.Duration) Option {
-	return func(c *Config) {
-		c.l1BlockTime = d
+		c.IsInboundP2PDisabled = b
 	}
 }
 
 func WithBatchInterval(d string) Option {
 	return func(c *Config) {
-		c.batchInterval = d
+		c.BatchInterval = d
 	}
 }
 
 func WithMaxBatchInterval(d string) Option {
 	return func(c *Config) {
-		c.maxBatchInterval = d
+		c.MaxBatchInterval = d
 	}
 }
 
 func WithRollupInterval(d string) Option {
 	return func(c *Config) {
-		c.rollupInterval = d
+		c.RollupInterval = d
 	}
 }
 
 func WithL1ChainID(i int) Option {
 	return func(c *Config) {
-		c.l1ChainID = i
+		c.L1ChainID = i
 	}
 }
 
-func WithObscuroGenesis(g string) Option {
+func WithProfiler(b bool) Option {
 	return func(c *Config) {
-		c.obscuroGenesis = g
+		c.ProfilerEnabled = b
+	}
+}
+
+func WithMetricsEnabled(b bool) Option {
+	return func(c *Config) {
+		c.MetricsEnabled = b
+	}
+}
+
+func WithCoinbase(s string) Option {
+	return func(c *Config) {
+		c.CoinbaseAddress = s
+	}
+}
+
+func WithL1BlockTime(d int) Option {
+	return func(c *Config) {
+		c.L1BlockTime = d
+	}
+}
+
+func WithTenGenesis(s string) Option {
+	return func(c *Config) {
+		c.TenGenesis = s
+	}
+}
+
+func WithEnclaveDebug(b bool) Option {
+	return func(c *Config) {
+		c.EnclaveDebug = b
+	}
+}
+
+func WithInMemoryHostDB(b bool) Option {
+	return func(c *Config) {
+		c.HostInMemDB = b
+	}
+}
+
+func WithHostExternalDBHost(s string) Option {
+	return func(c *Config) {
+		c.HostExternalDBHost = s
+	}
+}
+
+func WithHostExternalDBUser(s string) Option {
+	return func(c *Config) {
+		c.HostExternalDBUser = s
+	}
+}
+
+func WithHostExternalDBPass(s string) Option {
+	return func(c *Config) {
+		c.HostExternalDBPass = s
 	}
 }

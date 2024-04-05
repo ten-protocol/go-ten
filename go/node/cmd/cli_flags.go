@@ -2,6 +2,7 @@ package main
 
 // Flag names.
 const (
+	nodeActionFlag              = "node_action"
 	nodeNameFlag                = "node_name"
 	nodeTypeFlag                = "node_type"
 	isGenesisFlag               = "is_genesis"
@@ -13,9 +14,7 @@ const (
 	hostHTTPPortFlag            = "host_http_port"
 	hostWSPortFlag              = "host_ws_port"
 	hostP2PPortFlag             = "host_p2p_port"
-	hostP2PHostFlag             = "host_p2p_host"
 	hostP2PPublicAddrFlag       = "host_public_p2p_addr"
-	enclaveHTTPPortFlag         = "enclave_http_port"
 	enclaveWSPortFlag           = "enclave_WS_port"
 	privateKeyFlag              = "private_key"
 	sequencerIDFlag             = "sequencer_id"
@@ -31,12 +30,23 @@ const (
 	maxBatchIntervalFlag        = "max_batch_interval"
 	rollupIntervalFlag          = "rollup_interval"
 	l1ChainIDFlag               = "l1_chain_id"
+	profilerEnabledFlag         = "profiler_enabled"
+	metricsEnabledFlag          = "metrics_enabled"
+	coinbaseAddressFlag         = "coinbase_address"
+	l1BlockTimeFlag             = "l1_block_time"
+	tenGenesisFlag              = "ten_genesis"
+	enclaveDebugFlag            = "enclave_debug"
+	hostInMemDBFlag             = "host_in_mem_db"
+	hostExternalDBHostFlag      = "host_external_db_host"
+	hostExternalDBHostUserFlag  = "host_external_db_user"
+	hostExternalDBHostPassFlag  = "host_external_db_pass"
 )
 
 // Returns a map of the flag usages.
 // While we could just use constants instead of a map, this approach allows us to test that all the expected flags are defined.
 func getFlagUsageMap() map[string]string {
 	return map[string]string{
+		nodeActionFlag:              "Whether to perform a start or upgrade",
 		nodeNameFlag:                "Specifies the node base name",
 		nodeTypeFlag:                "The node's type (e.g. sequencer, validator)",
 		isGenesisFlag:               "Wether the node is the genesis node of the network",
@@ -47,8 +57,6 @@ func getFlagUsageMap() map[string]string {
 		l1WebsocketURLFlag:          "Layer 1 websocket RPC address",
 		hostP2PPortFlag:             "Hosts p2p bound port",
 		hostP2PPublicAddrFlag:       "Hosts public p2p host.",
-		hostP2PHostFlag:             "Hosts p2p bound addr",
-		enclaveHTTPPortFlag:         "Enclave's http bound port",
 		enclaveWSPortFlag:           "Enclave's WS bound port",
 		privateKeyFlag:              "L1 and L2 private key used in the node",
 		sequencerIDFlag:             "The 20 bytes of the address of the sequencer for this network",
@@ -66,5 +74,15 @@ func getFlagUsageMap() map[string]string {
 		maxBatchIntervalFlag:        "Max interval between batches, if greater than batchInterval then some empty batches will be skipped. Can be formatted like 500ms or 1s",
 		rollupIntervalFlag:          "Duration between each rollup. Can be formatted like 500ms or 1s",
 		l1ChainIDFlag:               "Chain ID of the L1 network",
+		profilerEnabledFlag:         "Go profiler",
+		metricsEnabledFlag:          "Metrics enabled",
+		coinbaseAddressFlag:         "Address for gas payments of sequencer",
+		l1BlockTimeFlag:             "Time in seconds for each L1 block",
+		tenGenesisFlag:              "Genesis block for TEN L2",
+		enclaveDebugFlag:            "Debug on for Enclave",
+		hostInMemDBFlag:             "Whether to use InMemDB for node host - if false you must provide endpoint and credentials",
+		hostExternalDBHostFlag:      "External DB host",
+		hostExternalDBHostUserFlag:  "External DB User",
+		hostExternalDBHostPassFlag:  "External DB Pass",
 	}
 }
