@@ -104,24 +104,24 @@ func (d *DockerNode) startHost() error {
 		"-clientRPCHost", "0.0.0.0",
 		"-logPath", "sys_out",
 		"-logLevel", fmt.Sprintf("%d", log.LvlInfo),
-		fmt.Sprintf("-isGenesis=%t", d.cfg.isGenesis), // boolean are a special case where the = is required
+		fmt.Sprintf("-isGenesis %t", d.cfg.isGenesis), // boolean are a special case where the = is required
 		"-nodeType", d.cfg.nodeType,
-		"-profilerEnabled=false",
+		"-profilerEnabled false",
 		"-p2pPublicAddress", d.cfg.hostPublicP2PAddr,
 		"-p2pBindAddress", fmt.Sprintf("0.0.0.0:%d", d.cfg.hostP2PPort),
 		"-clientRPCPortHttp", fmt.Sprintf("%d", d.cfg.hostHTTPPort),
 		"-clientRPCPortWs", fmt.Sprintf("%d", d.cfg.hostWSPort),
-		"-maxRollupSize=65536",
+		"-maxRollupSize 65536",
 		// host persistence hardcoded to use /data dir within the container, this needs to be mounted
-		fmt.Sprintf("-useInMemoryDB=%t", d.cfg.hostInMemDB),
-		fmt.Sprintf("-debugNamespaceEnabled=%t", d.cfg.debugNamespaceEnabled),
+		fmt.Sprintf("-useInMemoryDB %t", d.cfg.hostInMemDB),
+		fmt.Sprintf("-debugNamespaceEnabled %t", d.cfg.debugNamespaceEnabled),
 		// todo (@stefan): once the limiter is in, increase it back to 5 or 10s
-		fmt.Sprintf("-batchInterval=%s", d.cfg.batchInterval),
-		fmt.Sprintf("-maxBatchInterval=%s", d.cfg.maxBatchInterval),
-		fmt.Sprintf("-rollupInterval=%s", d.cfg.rollupInterval),
-		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
-		fmt.Sprintf("-isInboundP2PDisabled=%t", d.cfg.isInboundP2PDisabled),
-		fmt.Sprintf("-l1ChainID=%d", d.cfg.l1ChainID),
+		fmt.Sprintf("-batchInterval %s", d.cfg.batchInterval),
+		fmt.Sprintf("-maxBatchInterval %s", d.cfg.maxBatchInterval),
+		fmt.Sprintf("-rollupInterval %s", d.cfg.rollupInterval),
+		fmt.Sprintf("-logLevel %d", d.cfg.logLevel),
+		fmt.Sprintf("-isInboundP2PDisabled %t", d.cfg.isInboundP2PDisabled),
+		fmt.Sprintf("-l1ChainID %d", d.cfg.l1ChainID),
 	}
 	if !d.cfg.hostInMemDB {
 		cmd = append(cmd, "-levelDBPath", _hostDataDir)
@@ -155,10 +155,10 @@ func (d *DockerNode) startEnclave() error {
 	if d.cfg.enclaveDebug {
 		cmd = []string{
 			"dlv",
-			"--listen=:2345",
-			"--headless=true",
-			"--log=true",
-			"--api-version=2",
+			"--listen :2345",
+			"--headless true",
+			"--log true",
+			"--api-version 2",
 			"debug",
 			"/home/obscuro/go-obscuro/go/enclave/main",
 			"--",
@@ -174,13 +174,13 @@ func (d *DockerNode) startEnclave() error {
 		"-hostAddress", d.cfg.hostPublicP2PAddr,
 		"-sequencerID", d.cfg.sequencerID,
 		"-messageBusAddress", d.cfg.messageBusContractAddress,
-		"-profilerEnabled=false",
-		"-useInMemoryDB=false",
+		"-profilerEnabled false",
+		"-useInMemoryDB false",
 		"-logPath", "sys_out",
-		fmt.Sprintf("-debugNamespaceEnabled=%t", d.cfg.debugNamespaceEnabled),
-		"-maxBatchSize=36864",
-		"-maxRollupSize=65536",
-		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
+		fmt.Sprintf("-debugNamespaceEnabled %t", d.cfg.debugNamespaceEnabled),
+		"-maxBatchSize 36864",
+		"-maxRollupSize 65536",
+		fmt.Sprintf("-logLevel %d", d.cfg.logLevel),
 		"-obscuroGenesis", "{}",
 	)
 
