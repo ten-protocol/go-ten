@@ -18,23 +18,24 @@ func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (encla
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}
-	if cfg.UseInMemoryDB {
-		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		// this creates a temporary sqlite sqldb
-		return sqlite.CreateTemporarySQLiteDB(cfg.HostID.String(), "mode=memory&cache=shared&_foreign_keys=on", logger)
-	}
+	//if cfg.UseInMemoryDB {
+	logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
+	// this creates a temporary sqlite sqldb
+	return sqlite.CreateTemporarySQLiteDB(cfg.HostID.String(), "mode=memory&cache=shared&_foreign_keys=on", logger)
+	//}
+	/*
+		if !cfg.WillAttest {
+			// persistent but not secure in an enclave, we'll connect to a throwaway sqlite DB and test out persistence/sql implementations
+			logger.Warn("Attestation is disabled, using a basic sqlite DB for persistence")
+			// when we want to test persistence after node restart the SqliteDBPath should be set
+			// (if empty string then a temp sqldb file will be created for the lifetime of the enclave)
+			return sqlite.CreateTemporarySQLiteDB(cfg.SqliteDBPath, "_foreign_keys=on", logger)
+		}
 
-	if !cfg.WillAttest {
-		// persistent but not secure in an enclave, we'll connect to a throwaway sqlite DB and test out persistence/sql implementations
-		logger.Warn("Attestation is disabled, using a basic sqlite DB for persistence")
-		// when we want to test persistence after node restart the SqliteDBPath should be set
-		// (if empty string then a temp sqldb file will be created for the lifetime of the enclave)
-		return sqlite.CreateTemporarySQLiteDB(cfg.SqliteDBPath, "_foreign_keys=on", logger)
-	}
-
-	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
-	logger.Info(fmt.Sprintf("Preparing Edgeless DB connection to %s...", cfg.EdgelessDBHost))
-	return getEdgelessDB(cfg, logger)
+		// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
+		logger.Info(fmt.Sprintf("Preparing Edgeless DB connection to %s...", cfg.EdgelessDBHost))
+		return getEdgelessDB(cfg, logger)
+	*/
 }
 
 // validateDBConf high-level checks that you have a valid configuration for DB creation
