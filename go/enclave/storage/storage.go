@@ -252,19 +252,26 @@ func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {
 func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
 	defer s.logDuration("FetchSecret", measure.NewStopwatch())
 
+	s.logger.Debug("1")
 	if s.cachedSharedSecret != nil {
 		return s.cachedSharedSecret, nil
 	}
+	s.logger.Debug("2")
 
 	var ss crypto.SharedEnclaveSecret
 
 	cfg, err := enclavedb.FetchConfig(s.db.GetSQLDB(), masterSeedCfg)
+	s.logger.Debug("3")
 	if err != nil {
+		s.logger.Debug("4", log.ErrKey, err)
 		return nil, err
 	}
+	s.logger.Debug("5")
 	if err := rlp.DecodeBytes(cfg, &ss); err != nil {
+		s.logger.Debug("6", log.ErrKey, err)
 		return nil, fmt.Errorf("could not decode shared secret")
 	}
+	s.logger.Debug("7", "ss", ss)
 
 	s.cachedSharedSecret = &ss
 	return s.cachedSharedSecret, nil
