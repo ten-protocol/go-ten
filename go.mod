@@ -41,7 +41,7 @@ require (
 	golang.org/x/crypto v0.21.0
 	golang.org/x/exp v0.0.0-20240318143956-a85f2c67cd81
 	golang.org/x/sync v0.6.0
-	google.golang.org/grpc v1.63.0
+	google.golang.org/grpc v1.58.3
 	google.golang.org/protobuf v1.33.0
 )
 
@@ -93,6 +93,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.2.0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/hashicorp/go-bexpr v0.1.14 // indirect
