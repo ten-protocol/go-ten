@@ -12,7 +12,7 @@
 # Defaults to restricted flag mode
 ARG TESTMODE=false
 
-FROM ghcr.io/edgelesssys/ego-dev:v1.4.4 AS build-base
+FROM ghcr.io/edgelesssys/ego-dev:v1.5.0 AS build-base
 
 # setup container data structure
 RUN mkdir -p /home/obscuro/go-obscuro
@@ -48,7 +48,7 @@ RUN ego sign enclave-test.json
 FROM build-enclave-testmode-${TESTMODE} as build-enclave
 
 # Trigger a new build stage and use the smaller ego version:
-FROM ghcr.io/edgelesssys/ego-deploy:v1.4.4
+FROM ghcr.io/edgelesssys/ego-deploy:v1.5.0
 
 # Copy just the binary for the enclave into this build stage
 COPY --from=build-enclave \

@@ -334,8 +334,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer codec.close()
 
 	// added by TEN to support keep-alive
-	//rc := http.NewResponseController(w)
-	//_ = rc.EnableFullDuplex()
+	rc := http.NewResponseController(w)
+	_ = rc.EnableFullDuplex()
 
 	s.serveSingleRequest(ctx, codec)
 }
