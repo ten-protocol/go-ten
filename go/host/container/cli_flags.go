@@ -69,7 +69,7 @@ func getFlagUsageMap() map[string]string {
 		metricsEnabledName:           "Whether the metrics are enabled (Defaults to true)",
 		metricsHTTPPortName:          "The port on which the metrics are served (Defaults to 0.0.0.0:14000)",
 		useInMemoryDBName:            "Whether the host will use an in-memory DB rather than persist data",
-		postgresDBHostName:           "The host for the mariaDB instance",
+		postgresDBHostName:           "The host for the Postgres DB instance",
 		debugNamespaceEnabledName:    "Whether the debug names is enabled",
 		batchIntervalName:            "Duration between each batch. Can be put down as 1.0s",
 		maxBatchIntervalName:         "Max interval between each batch, if greater than batchInterval then some empty batches will be skipped. Can be put down as 1.0s",
