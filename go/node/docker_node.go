@@ -26,7 +26,7 @@ func NewDockerNode(cfg *Config) *DockerNode {
 
 func (d *DockerNode) Start() error {
 	// todo (@pedro) - this should probably be removed in the future
-	fmt.Printf("Starting Node %s with config: \n%s\n\n", d.cfg.nodeName, litter.Sdump(*d.cfg))
+	fmt.Printf("Starting Node %s with config: \n%s\n\n", d.cfg.NodeName, litter.Sdump(*d.cfg))
 
 	err := d.startEdgelessDB()
 	if err != nil {
@@ -48,12 +48,12 @@ func (d *DockerNode) Start() error {
 
 func (d *DockerNode) Stop() error {
 	fmt.Println("Stopping existing host and enclave")
-	err := docker.StopAndRemove(d.cfg.nodeName + "-host")
+	err := docker.StopAndRemove(d.cfg.NodeName + "-host")
 	if err != nil {
 		return err
 	}
 
-	err = docker.StopAndRemove(d.cfg.nodeName + "-enclave")
+	err = docker.StopAndRemove(d.cfg.NodeName + "-enclave")
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func (d *DockerNode) Stop() error {
 
 func (d *DockerNode) Upgrade(networkCfg *NetworkConfig) error {
 	// TODO this should probably be removed in the future
-	fmt.Printf("Upgrading node %s with config: %+v\n", d.cfg.nodeName, d.cfg)
+	fmt.Printf("Upgrading node %s with config: %+v\n", d.cfg.NodeName, d.cfg)
 
 	err := d.Stop()
 	if err != nil {
@@ -94,48 +94,48 @@ func (d *DockerNode) Upgrade(networkCfg *NetworkConfig) error {
 func (d *DockerNode) startHost() error {
 	cmd := []string{
 		"/home/obscuro/go-obscuro/go/host/main/main",
-		"-l1WSURL", d.cfg.l1WSURL,
-		"-enclaveRPCAddress", fmt.Sprintf("%s:%d", d.cfg.nodeName+"-enclave", d.cfg.enclaveWSPort),
-		"-managementContractAddress", d.cfg.managementContractAddr,
-		"-messageBusContractAddress", d.cfg.messageBusContractAddress,
-		"-l1Start", d.cfg.l1Start,
-		"-sequencerID", d.cfg.sequencerID,
-		"-privateKey", d.cfg.privateKey,
+		"-l1WSURL", d.cfg.L1WebsocketURL,
+		"-enclaveRPCAddress", fmt.Sprintf("%s:%d", d.cfg.NodeName+"-enclave", d.cfg.EnclaveWSPort),
+		"-managementContractAddress", d.cfg.ManagementContractAddr,
+		"-messageBusContractAddress", d.cfg.MessageBusContractAddr,
+		"-l1Start", d.cfg.L1Start,
+		"-sequencerID", d.cfg.SequencerID,
+		"-privateKey", d.cfg.PrivateKey,
 		"-clientRPCHost", "0.0.0.0",
 		"-logPath", "sys_out",
 		"-logLevel", fmt.Sprintf("%d", log.LvlInfo),
-		fmt.Sprintf("-isGenesis %t", d.cfg.isGenesis), // boolean are a special case where the = is required
-		"-nodeType", d.cfg.nodeType,
+		fmt.Sprintf("-isGenesis %t", d.cfg.IsGenesis), // boolean are a special case where the = is required
+		"-nodeType", d.cfg.NodeType,
 		"-profilerEnabled false",
-		"-p2pPublicAddress", d.cfg.hostPublicP2PAddr,
-		"-p2pBindAddress", fmt.Sprintf("0.0.0.0:%d", d.cfg.hostP2PPort),
-		"-clientRPCPortHttp", fmt.Sprintf("%d", d.cfg.hostHTTPPort),
-		"-clientRPCPortWs", fmt.Sprintf("%d", d.cfg.hostWSPort),
+		"-p2pPublicAddress", d.cfg.HostP2PPublicAddr,
+		"-p2pBindAddress", fmt.Sprintf("0.0.0.0:%d", d.cfg.HostP2PPort),
+		"-clientRPCPortHttp", fmt.Sprintf("%d", d.cfg.HostHTTPPort),
+		"-clientRPCPortWs", fmt.Sprintf("%d", d.cfg.HostWSPort),
 		"-maxRollupSize 65536",
 		// host persistence hardcoded to use /data dir within the container, this needs to be mounted
-		fmt.Sprintf("-useInMemoryDB %t", d.cfg.hostInMemDB),
-		fmt.Sprintf("-debugNamespaceEnabled %t", d.cfg.debugNamespaceEnabled),
+		fmt.Sprintf("-useInMemoryDB %t", d.cfg.HostInMemDB),
+		fmt.Sprintf("-debugNamespaceEnabled %t", d.cfg.IsDebugNamespaceEnabled),
 		// todo (@stefan): once the limiter is in, increase it back to 5 or 10s
-		fmt.Sprintf("-batchInterval %s", d.cfg.batchInterval),
-		fmt.Sprintf("-maxBatchInterval %s", d.cfg.maxBatchInterval),
-		fmt.Sprintf("-rollupInterval %s", d.cfg.rollupInterval),
-		fmt.Sprintf("-logLevel %d", d.cfg.logLevel),
-		fmt.Sprintf("-isInboundP2PDisabled %t", d.cfg.isInboundP2PDisabled),
-		fmt.Sprintf("-l1ChainID %d", d.cfg.l1ChainID),
+		fmt.Sprintf("-batchInterval %s", d.cfg.BatchInterval),
+		fmt.Sprintf("-maxBatchInterval %s", d.cfg.MaxBatchInterval),
+		fmt.Sprintf("-rollupInterval %s", d.cfg.RollupInterval),
+		fmt.Sprintf("-logLevel %d", d.cfg.LogLevel),
+		fmt.Sprintf("-isInboundP2PDisabled %t", d.cfg.IsInboundP2PDisabled),
+		fmt.Sprintf("-l1ChainID %d", d.cfg.L1ChainID),
 	}
-	if !d.cfg.hostInMemDB {
+	if !d.cfg.HostInMemDB {
 		cmd = append(cmd, "-levelDBPath", _hostDataDir)
 	}
 
 	exposedPorts := []int{
-		d.cfg.hostHTTPPort,
-		d.cfg.hostWSPort,
-		d.cfg.hostP2PPort,
+		d.cfg.HostHTTPPort,
+		d.cfg.HostWSPort,
+		d.cfg.HostP2PPort,
 	}
 
-	hostVolume := map[string]string{d.cfg.nodeName + "-host-volume": _hostDataDir}
+	hostVolume := map[string]string{d.cfg.NodeName + "-host-volume": _hostDataDir}
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-host", d.cfg.hostImage, cmd, exposedPorts, nil, nil, hostVolume)
+	_, err := docker.StartNewContainer(d.cfg.NodeName+"-host", d.cfg.HostDockerImage, cmd, exposedPorts, nil, nil, hostVolume)
 
 	return err
 }
@@ -152,7 +152,7 @@ func (d *DockerNode) startEnclave() error {
 		"ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
 	}
 
-	if d.cfg.enclaveDebug {
+	if d.cfg.EnclaveDebug {
 		cmd = []string{
 			"dlv",
 			"--listen :2345",
@@ -167,24 +167,24 @@ func (d *DockerNode) startEnclave() error {
 	}
 
 	cmd = append(cmd,
-		"-hostID", d.cfg.hostID,
-		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.enclaveWSPort), // todo (@pedro) - review this 0.0.0.0 host bind
-		"-nodeType", d.cfg.nodeType,
-		"-managementContractAddress", d.cfg.managementContractAddr,
-		"-hostAddress", d.cfg.hostPublicP2PAddr,
-		"-sequencerID", d.cfg.sequencerID,
-		"-messageBusAddress", d.cfg.messageBusContractAddress,
+		"-hostID", d.cfg.HostID,
+		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.EnclaveWSPort), // todo (@pedro) - review this 0.0.0.0 host bind
+		"-nodeType", d.cfg.NodeType,
+		"-managementContractAddress", d.cfg.ManagementContractAddr,
+		"-hostAddress", d.cfg.HostP2PPublicAddr,
+		"-sequencerID", d.cfg.SequencerID,
+		"-messageBusAddress", d.cfg.MessageBusContractAddr,
 		"-profilerEnabled false",
 		"-useInMemoryDB false",
 		"-logPath", "sys_out",
-		fmt.Sprintf("-debugNamespaceEnabled %t", d.cfg.debugNamespaceEnabled),
+		fmt.Sprintf("-debugNamespaceEnabled %t", d.cfg.IsDebugNamespaceEnabled),
 		"-maxBatchSize 36864",
 		"-maxRollupSize 65536",
-		fmt.Sprintf("-logLevel %d", d.cfg.logLevel),
+		fmt.Sprintf("-logLevel %d", d.cfg.LogLevel),
 		"-obscuroGenesis", "{}",
 	)
 
-	if d.cfg.sgxEnabled {
+	if d.cfg.IsSGXEnabled {
 		devices["/dev/sgx_enclave"] = "/dev/sgx_enclave"
 		devices["/dev/sgx_provision"] = "/dev/sgx_provision"
 
@@ -193,7 +193,7 @@ func (d *DockerNode) startEnclave() error {
 		// prepend the entry.sh execution
 		cmd = append([]string{"/home/obscuro/go-obscuro/go/enclave/main/entry.sh"}, cmd...)
 		cmd = append(cmd,
-			"-edgelessDBHost", d.cfg.nodeName+"-edgelessdb",
+			"-edgelessDBHost", d.cfg.NodeName+"-edgelessdb",
 			"-willAttest=true",
 		)
 	} else {
@@ -202,20 +202,20 @@ func (d *DockerNode) startEnclave() error {
 		)
 	}
 
-	enclaveVolume := map[string]string{d.cfg.nodeName + "-enclave-volume": _enclaveDataDir}
+	enclaveVolume := map[string]string{d.cfg.NodeName + "-enclave-volume": _enclaveDataDir}
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, enclaveVolume)
+	_, err := docker.StartNewContainer(d.cfg.NodeName+"-enclave", d.cfg.EnclaveDockerImage, cmd, exposedPorts, envs, devices, enclaveVolume)
 	return err
 }
 
 func (d *DockerNode) startEdgelessDB() error {
-	if !d.cfg.sgxEnabled {
+	if !d.cfg.IsSGXEnabled {
 		// Non-SGX hardware use sqlite database so EdgelessDB is not required.
 		return nil
 	}
 
 	envs := map[string]string{
-		"EDG_EDB_CERT_DNS": d.cfg.nodeName + "-edgelessdb",
+		"EDG_EDB_CERT_DNS": d.cfg.NodeName + "-edgelessdb",
 	}
 
 	devices := map[string]string{
@@ -224,11 +224,11 @@ func (d *DockerNode) startEdgelessDB() error {
 	}
 
 	// only set the pccsAddr env var if it's defined
-	if d.cfg.pccsAddr != "" {
-		envs["PCCS_ADDR"] = d.cfg.pccsAddr
+	if d.cfg.PccsAddr != "" {
+		envs["PCCS_ADDR"] = d.cfg.PccsAddr
 	}
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, nil)
+	_, err := docker.StartNewContainer(d.cfg.NodeName+"-edgelessdb", d.cfg.EdgelessDBImage, nil, nil, envs, devices, nil)
 
 	return err
 }
