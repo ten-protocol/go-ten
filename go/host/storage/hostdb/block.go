@@ -26,7 +26,6 @@ func AddBlock(dbtx *dbTransaction, b *types.Header, rollupHash common.L2RollupHa
 		r,        // rollup hash
 	)
 	if err != nil {
-		println("ERROR ADDING BLOCK: ", err.Error())
 		return fmt.Errorf("could not insert block. Cause: %w", err)
 	}
 
