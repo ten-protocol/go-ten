@@ -1,6 +1,6 @@
-# Deploys an Obscuro network on Azure for Testnet and Dev Testnet
+# Deploys a TEN network on Azure for Testnet and Dev Testnet
 #
-# The Obscuro network is composed of 2 obscuro nodes running on individual vms with SGX. At the moment the workflow
+# The TEN network is composed of 2 TEN nodes running on individual vms with SGX. At the moment the workflow
 # can only be triggered manually as a workflow dispatch.
 #
 # This script uses GitHub Environments for variables (vars) and secrets - these are configured on GitHub and
@@ -65,7 +65,7 @@ jobs:
           username: testnetobscuronet
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: 'Build and push obscuro node images'
+      - name: 'Build and push TEN node images'
         run: |
           DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }} --build-arg TESTMODE=true -f dockerfiles/enclave.Dockerfile  .
           docker push ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }}
@@ -182,7 +182,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
+      - name: 'Create VM for TEN node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -194,7 +194,7 @@ jobs:
             --size Standard_DC8_v2 --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
             --public-ip-sku Standard --authentication-type password
 
-      - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
+      - name: 'Open TEN node-${{ matrix.host_id }} ports on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -205,14 +205,14 @@ jobs:
         shell: bash
         run: sleep 60
 
-      - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
+      - name: 'Start TEN node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
             az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
-            --scripts 'mkdir -p /home/obscuro \
-            && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
+            --scripts 'mkdir -p /home/ten \
+            && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/ten/go-ten \
             && docker network create --driver bridge node_network || true \
             && docker run -d --name datadog-agent \
                --network node_network \

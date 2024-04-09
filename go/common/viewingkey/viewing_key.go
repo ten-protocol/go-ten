@@ -69,7 +69,7 @@ type RPCSignedViewingKey struct {
 // GenerateViewingKeyForWallet takes an account wallet, generates a viewing key and signs the key with the acc's private key
 // uses the same method of signature handling as Metamask/geth
 func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
-	// generate an ECDSA key pair to encrypt sensitive communications with the obscuro enclave
+	// generate an ECDSA key pair to encrypt sensitive communications with the TEN enclave
 	vk, err := crypto.GenerateKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate viewing key for RPC client: %w", err)

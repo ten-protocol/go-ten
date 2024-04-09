@@ -23,11 +23,11 @@ type HostConfig struct {
 
 	// The ID of the L1 chain
 	L1ChainID int64
-	// The ID of the Obscuro chain
-	ObscuroChainID int64
+	// The ID of the TEN chain
+	TenChainID int64
 	// L1StartHash is the hash of the L1 block we can start streaming from for all Ten state (e.g. management contract deployment block)
 	L1StartHash gethcommon.Hash
-	// The ID of the obscuro sequencer node
+	// The ID of the TEN sequencer node
 	SequencerID gethcommon.Address
 	// The rollup contract address on the L1 network
 	ManagementContractAddress gethcommon.Address
@@ -53,7 +53,7 @@ type HostConfig struct {
 	ID gethcommon.Address
 	// The stringified private key for the host's L1 wallet
 	PrivateKeyString string
-	// Whether the host is the genesis Obscuro node
+	// Whether the host is the genesis TEN node
 	IsGenesis bool
 	// The type of the node.
 	NodeType common.NodeType
@@ -129,7 +129,7 @@ func DefaultHostConfig() *HostConfig {
 		LogPath:                   "",
 		PrivateKeyString:          "0000000000000000000000000000000000000000000000000000000000000001",
 		L1ChainID:                 1337,
-		ObscuroChainID:            443,
+		TenChainID:                443,
 		ProfilerEnabled:           false,
 		L1StartHash:               common.L1BlockHash{}, // this hash will not be found, host will log a warning and then stream from L1 genesis
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),

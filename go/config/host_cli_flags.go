@@ -24,7 +24,7 @@ const (
 	logPathFlag                  = "logPath"
 	privateKeyFlag               = "privateKey"
 	l1ChainIDFlag                = "l1ChainID"
-	obscuroChainIDFlag           = "obscuroChainID"
+	tenChainIDFlag               = "tenChainID"
 	profilerEnabledFlag          = "profilerEnabled"
 	l1StartHashFlag              = "l1Start"
 	sequencerIDFlag              = "sequencerID"
@@ -67,7 +67,7 @@ func init() {
 		logPathFlag:                  flag.NewStringFlag(logPathFlag, hostFlagDefaults.LogPath, flagUsageMap[logPathFlag]),
 		privateKeyFlag:               flag.NewStringFlag(privateKeyFlag, hostFlagDefaults.PrivateKeyString, flagUsageMap[privateKeyFlag]),
 		l1ChainIDFlag:                flag.NewInt64Flag(l1ChainIDFlag, hostFlagDefaults.L1ChainID, flagUsageMap[l1ChainIDFlag]),
-		obscuroChainIDFlag:           flag.NewInt64Flag(obscuroChainIDFlag, hostFlagDefaults.ObscuroChainID, flagUsageMap[obscuroChainIDFlag]),
+		tenChainIDFlag:               flag.NewInt64Flag(tenChainIDFlag, hostFlagDefaults.TenChainID, flagUsageMap[tenChainIDFlag]),
 		profilerEnabledFlag:          flag.NewBoolFlag(profilerEnabledFlag, hostFlagDefaults.ProfilerEnabled, flagUsageMap[profilerEnabledFlag]),
 		l1StartHashFlag:              flag.NewStringFlag(l1StartHashFlag, hostFlagDefaults.L1StartHash.Hex(), flagUsageMap[l1StartHashFlag]),
 		sequencerIDFlag:              flag.NewStringFlag(sequencerIDFlag, hostFlagDefaults.SequencerID.String(), flagUsageMap[sequencerIDFlag]),
@@ -95,7 +95,7 @@ func getFlagUsageMap() map[string]string {
 		clientRPCPortHTTPFlag:        "The port on which to listen for client application RPC requests over HTTP",
 		clientRPCPortWSFlag:          "The port on which to listen for client application RPC requests over websockets",
 		clientRPCHostFlag:            "The host on which to handle client application RPC requests",
-		enclaveRPCAddressFlag:        "The address to use to connect to the Obscuro enclave service",
+		enclaveRPCAddressFlag:        "The address to use to connect to the TEN enclave service",
 		p2pBindAddressFlag:           "The address where the p2p server is bound to. Defaults to 0.0.0.0:10000",
 		p2pPublicAddressFlag:         "The P2P address where the other servers should connect to. Defaults to 127.0.0.1:10000",
 		l1WebsocketURLFlag:           "The websocket RPC address the host can use for L1 requests",
@@ -108,7 +108,7 @@ func getFlagUsageMap() map[string]string {
 		logPathFlag:                  "The path to use for the host's log file",
 		privateKeyFlag:               "The private key for the L1 host account",
 		l1ChainIDFlag:                "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)",
-		obscuroChainIDFlag:           "An integer representing the unique chain id of the Obscuro chain (default 443)",
+		tenChainIDFlag:               "An integer representing the unique chain id of the TEN chain (default 443)",
 		profilerEnabledFlag:          "Runs a profiler instance (Defaults to false)",
 		l1StartHashFlag:              "The L1 block hash where the management contract was deployed",
 		sequencerIDFlag:              "The ID of the sequencer",

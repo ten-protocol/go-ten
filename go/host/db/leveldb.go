@@ -10,7 +10,7 @@ import (
 )
 
 // ObscuroLevelDB is a very thin wrapper around a level DB database for compatibility with our internal interfaces
-// In particular, it overrides the Get method to return the obscuro ErrNotFound
+// In particular, it overrides the Get method to return the TEN ErrNotFound
 type ObscuroLevelDB struct {
 	db *ethldb.Database
 }

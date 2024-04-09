@@ -25,7 +25,7 @@ import (
 	"github.com/ten-protocol/go-ten/integration/simulation/stats"
 )
 
-// creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
+// creates TEN nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkOfSocketNodes struct {
 	l2Clients         []rpc.Client
 	hostWebsocketURLs []string
@@ -109,7 +109,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithLogLevel(4),
 				node.WithDebugNamespaceEnabled(true),
 				node.WithL1BlockTime(simParams.AvgBlockDuration),
-				node.WithObscuroGenesis(genesis),
+				node.WithTenGenesis(genesis),
 			),
 		)
 
@@ -120,8 +120,8 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 			if errCheck != nil {
 				testlog.Logger().Warn("no port found on error", log.ErrKey, err)
 			}
-			fmt.Printf("unable to start obscuro node: %s", err)
-			testlog.Logger().Error("unable to start obscuro node ", log.ErrKey, err)
+			fmt.Printf("unable to start TEN node: %s", err)
+			testlog.Logger().Error("unable to start TEN node ", log.ErrKey, err)
 		}
 	}
 
@@ -141,7 +141,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 }
 
 func (n *networkOfSocketNodes) TearDown() {
-	// Stop the Obscuro nodes first (each host will attempt to shut down its enclave as part of shutdown).
+	// Stop the TEN nodes first (each host will attempt to shut down its enclave as part of shutdown).
 	StopObscuroNodes(n.l2Clients)
 	StopEth2Network(n.gethClients, n.eth2Network)
 	CheckHostRPCServersStopped(n.hostWebsocketURLs)

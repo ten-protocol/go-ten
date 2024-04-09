@@ -9,7 +9,7 @@ import (
 	enclavecontainer "github.com/ten-protocol/go-ten/go/enclave/container"
 )
 
-// Runs an Obscuro enclave as a standalone process.
+// Runs an TEN enclave as a standalone process.
 func main() {
 	// fetch and parse flags
 	flags := config.EnclaveFlags                       // fetch the flags that enclave requires

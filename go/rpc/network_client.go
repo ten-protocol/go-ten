@@ -16,7 +16,7 @@ const (
 	http = "http://"
 )
 
-// networkClient is a Client implementation that wraps Geth's rpc.Client to make calls to the obscuro node
+// networkClient is a Client implementation that wraps Geth's rpc.Client to make calls to the TEN node
 type networkClient struct {
 	rpcClient *rpc.Client
 }
@@ -34,10 +34,10 @@ func NewEncNetworkClient(rpcAddress string, viewingKey *viewingkey.ViewingKey, l
 	return encClient, nil
 }
 
-// NewNetworkClient returns a client that can make RPC calls to an Obscuro node
+// NewNetworkClient returns a client that can make RPC calls to an TEN node
 func NewNetworkClient(address string) (Client, error) {
 	if !strings.HasPrefix(address, http) && !strings.HasPrefix(address, ws) {
-		return nil, fmt.Errorf("clients for Obscuro only support the %s and %s protocols", http, ws)
+		return nil, fmt.Errorf("clients for TEN only support the %s and %s protocols", http, ws)
 	}
 
 	rpcClient, err := rpc.Dial(address)
