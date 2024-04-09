@@ -28,7 +28,7 @@ type EnclaveConfig struct {
 	// The ID of the L1 chain
 	L1ChainID int64
 	// The ID of the Obscuro chain
-	ObscuroChainID int64
+	TenChainID int64
 	// Whether to produce a verified attestation report
 	WillAttest bool
 	// Whether to validate incoming L1 blocks
@@ -57,7 +57,7 @@ type EnclaveConfig struct {
 	// The identity of the sequencer for the network
 	SequencerID gethcommon.Address
 	// A json string that specifies the prefunded addresses at the genesis of the Obscuro network
-	ObscuroGenesis string
+	TenGenesis string
 	// Whether debug calls are available
 	DebugNamespaceEnabled bool
 	// Maximum bytes a batch can be uncompressed.
@@ -82,7 +82,7 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 		Address:                   "127.0.0.1:11000",
 		NodeType:                  common.Sequencer,
 		L1ChainID:                 1337,
-		ObscuroChainID:            443,
+		TenChainID:                443,
 		WillAttest:                false, // todo (config) - attestation should be on by default before production release
 		ValidateL1Blocks:          false,
 		GenesisJSON:               nil,
@@ -95,7 +95,7 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 		ProfilerEnabled:           false,
 		MinGasPrice:               big.NewInt(params.InitialBaseFee),
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
-		ObscuroGenesis:            "",
+		TenGenesis:                "",
 		DebugNamespaceEnabled:     false,
 		MaxBatchSize:              1024 * 36,
 		MaxRollupSize:             1024 * 64,
@@ -205,7 +205,7 @@ func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 	cfg.Address = flags[AddressFlag].String()
 	cfg.NodeType = nodeType
 	cfg.L1ChainID = flags[L1ChainIDFlag].Int64()
-	cfg.ObscuroChainID = flags[ObscuroChainIDFlag].Int64()
+	cfg.TenChainID = flags[ObscuroChainIDFlag].Int64()
 	cfg.WillAttest = flags[WillAttestFlag].Bool()
 	cfg.ValidateL1Blocks = flags[ValidateL1BlocksFlag].Bool()
 	cfg.ManagementContractAddress = gethcommon.HexToAddress(flags[ManagementContractAddressFlag].String())
@@ -218,7 +218,7 @@ func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 	cfg.MinGasPrice = big.NewInt(flags[MinGasPriceFlag].Int64())
 	cfg.MessageBusAddress = gethcommon.HexToAddress(flags[MessageBusAddressFlag].String())
 	cfg.SequencerID = gethcommon.HexToAddress(flags[SequencerIDFlag].String())
-	cfg.ObscuroGenesis = flags[ObscuroGenesisFlag].String()
+	cfg.TenGenesis = flags[ObscuroGenesisFlag].String()
 	cfg.DebugNamespaceEnabled = flags[DebugNamespaceEnabledFlag].Bool()
 	cfg.MaxBatchSize = flags[MaxBatchSizeFlag].Uint64()
 	cfg.MaxRollupSize = flags[MaxRollupSizeFlag].Uint64()
