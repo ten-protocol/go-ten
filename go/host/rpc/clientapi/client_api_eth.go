@@ -234,7 +234,7 @@ func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*ge
 		return &batchHash, nil
 	}
 	batchNumberBig := big.NewInt(batchNumber.Int64())
-	batchHash, err := api.host.Storage().FetchBatchHashByNumber(batchNumberBig)
+	batchHash, err := api.host.Storage().FetchBatchHashByHeight(batchNumberBig)
 	if err != nil {
 		return nil, err
 	}

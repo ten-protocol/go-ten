@@ -36,66 +36,55 @@ func (s *ScanAPI) GetTotalTxCount() (*big.Int, error) {
 
 // GetBatchListing returns a paginated list of batches
 func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
-	// TODO Replace with storage interface
-	return hostdb.GetBatchListing(s.host.DB().NewDBTransaction(), pagination)
+	return s.host.Storage().FetchBatchListing(pagination)
 }
 
 // GetBatchListingDeprecated returns the deprecated version of batch listing
 func (s *ScanAPI) GetBatchListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
-	// TODO Replace with storage interface
-	return hostdb.GetBatchListingDeprecated(s.host.DB().NewDBTransaction(), pagination)
+	return s.host.Storage().FetchBatchListingDeprecated(pagination)
 }
 
 // GetPublicBatchByHash returns the public batch
 func (s *ScanAPI) GetPublicBatchByHash(hash common.L2BatchHash) (*common.PublicBatch, error) {
-	// TODO Replace with storage interface
-	return hostdb.GetPublicBatch(s.host.DB().NewDBTransaction(), hash)
+	return s.host.Storage().FetchPublicBatchByHash(hash)
 }
 
-// GetBatch returns the `ExtBatch` with the given hash.
+// GetBatch returns the `ExtBatch` with the given hash
 func (s *ScanAPI) GetBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
-	// TODO Replace with storage interface
-	return hostdb.GetBatchByHash(s.host.DB().NewDBTransaction(), batchHash)
+	return s.host.Storage().FetchBatch(batchHash)
 }
 
-// GetBatchByTx returns the `ExtBatch` with the given hash.
+// GetBatchByTx returns the `ExtBatch` with the given tx hash
 func (s *ScanAPI) GetBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
-	// TODO Replace with storage interface
-	return hostdb.GetBatchByTx(s.host.DB().NewDBTransaction(), txHash)
+	return s.host.Storage().FetchBatchByTx(txHash)
 }
 
 // GetLatestBatch returns the head `BatchHeader`
 func (s *ScanAPI) GetLatestBatch() (*common.BatchHeader, error) {
-	// TODO Replace with storage interface
-	return hostdb.GetLatestBatch(s.host.DB().GetSQLDB())
+	return s.host.Storage().FetchLatestBatch()
 }
 
 // GetBatchByHeight returns the `BatchHeader` with the given height
 func (s *ScanAPI) GetBatchByHeight(height *big.Int) (*common.BatchHeader, error) {
-	// TODO Replace with storage interface
-	return hostdb.GetBatchByHeight(s.host.DB().NewDBTransaction(), height)
+	return s.host.Storage().FetchBatchHeaderByHeight(height)
 }
 
 // GetRollupListing returns a paginated list of Rollups
 func (s *ScanAPI) GetRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
-	// TODO Replace with storage interface
-	return hostdb.GetRollupListing(s.host.DB().NewDBTransaction(), pagination)
+	return s.host.Storage().FetchRollupListing(pagination)
 }
 
 // GetLatestRollupHeader returns the head `RollupHeader`
 func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {
-	// TODO Replace with storage interface
-	return hostdb.GetLatestRollup(s.host.DB().GetSQLDB())
+	return s.host.Storage().FetchLatestRollupHeader()
 }
 
 // GetPublicTransactionData returns a paginated list of transaction data
 func (s *ScanAPI) GetPublicTransactionData(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
-	// TODO Replace with storage interface
 	return s.host.EnclaveClient().GetPublicTransactionData(pagination)
 }
 
 // GetBlockListing returns a paginated list of blocks that include rollups
 func (s *ScanAPI) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
-	// TODO Replace with storage interface
-	return hostdb.GetBlockListing(s.host.DB().NewDBTransaction(), pagination)
+	return s.host.Storage().FetchBlockListing(pagination)
 }

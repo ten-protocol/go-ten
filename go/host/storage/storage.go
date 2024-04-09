@@ -69,7 +69,7 @@ func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*common.ExtBatch, error)
 	return hostdb.GetBatchBySequenceNumber(s.db.NewDBTransaction(), seqNum)
 }
 
-func (s *storageImpl) FetchBatchHashByNumber(number *big.Int) (*gethcommon.Hash, error) {
+func (s *storageImpl) FetchBatchHashByHeight(number *big.Int) (*gethcommon.Hash, error) {
 	return hostdb.GetBatchHashByNumber(s.db.NewDBTransaction(), number)
 }
 
@@ -79,6 +79,46 @@ func (s *storageImpl) FetchBatchHeaderByHash(hash gethcommon.Hash) (*common.Batc
 
 func (s *storageImpl) FetchHeadBatchHeader() (*common.BatchHeader, error) {
 	return hostdb.GetHeadBatchHeader(s.db.GetSQLDB())
+}
+
+func (s *storageImpl) FetchPublicBatchByHash(batchHash common.L2BatchHash) (*common.PublicBatch, error) {
+	return hostdb.GetPublicBatch(s.db.NewDBTransaction(), batchHash)
+}
+
+func (s *storageImpl) FetchBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
+	return hostdb.GetBatchByHash(s.db.NewDBTransaction(), batchHash)
+}
+
+func (s *storageImpl) FetchBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
+	return hostdb.GetBatchByTx(s.db.NewDBTransaction(), txHash)
+}
+
+func (s *storageImpl) FetchLatestBatch() (*common.BatchHeader, error) {
+	return hostdb.GetLatestBatch(s.db.GetSQLDB())
+}
+
+func (s *storageImpl) FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHeader, error) {
+	return hostdb.GetBatchByHeight(s.db.NewDBTransaction(), height)
+}
+
+func (s *storageImpl) FetchBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+	return hostdb.GetBatchListing(s.db.NewDBTransaction(), pagination)
+}
+
+func (s *storageImpl) FetchBatchListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
+	return hostdb.GetBatchListingDeprecated(s.db.NewDBTransaction(), pagination)
+}
+
+func (s *storageImpl) FetchLatestRollupHeader() (*common.RollupHeader, error) {
+	return hostdb.GetLatestRollup(s.db.GetSQLDB())
+}
+
+func (s *storageImpl) FetchRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
+	return hostdb.GetRollupListing(s.db.NewDBTransaction(), pagination)
+}
+
+func (s *storageImpl) FetchBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
+	return hostdb.GetBlockListing(s.db.NewDBTransaction(), pagination)
 }
 
 func (s *storageImpl) GetDB() hostdb.HostDB {
