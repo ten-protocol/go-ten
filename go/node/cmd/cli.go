@@ -45,7 +45,7 @@ type NodeConfigCLI struct {
 	maxBatchInterval        string // format like 500ms or 2s (any time parsable by time.ParseDuration())
 	rollupInterval          string // format like 500ms or 2s (any time parsable by time.ParseDuration())
 	l1ChainID               int
-	postgresDB              string
+	postgresDBHost          string
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
@@ -82,7 +82,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	maxBatchInterval := flag.String(maxBatchIntervalFlag, "1s", flagUsageMap[maxBatchIntervalFlag])
 	rollupInterval := flag.String(rollupIntervalFlag, "3s", flagUsageMap[rollupIntervalFlag])
 	l1ChainID := flag.Int(l1ChainIDFlag, 1337, flagUsageMap[l1ChainIDFlag])
-	postgresDB := flag.String(postgresDBHostFlag, "dd", flagUsageMap[postgresDBHostFlag])
+	postgresDBHost := flag.String(postgresDBHostFlag, "dd", flagUsageMap[postgresDBHostFlag])
 
 	flag.Parse()
 	cfg.nodeName = *nodeName
@@ -114,7 +114,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.maxBatchInterval = *maxBatchInterval
 	cfg.rollupInterval = *rollupInterval
 	cfg.l1ChainID = *l1ChainID
-	cfg.postgresDB = *postgresDB
+	cfg.postgresDBHost = *postgresDBHost
 
 	cfg.nodeAction = flag.Arg(0)
 	if !validateNodeAction(cfg.nodeAction) {

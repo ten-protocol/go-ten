@@ -1,17 +1,11 @@
 package hostdb
 
 import (
-	"database/sql"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
-)
-
-const (
-	blockInsert  = "REPLACE INTO block_host (hash, header, rollup_hash) values (?,?,?)"
-	selectBlocks = "SELECT id, hash, header, rollup_hash FROM block_host ORDER BY id DESC LIMIT ? OFFSET ?"
 )
 
 // AddBlock stores a block header with the given rollupHash it contains in the host DB
@@ -32,6 +26,7 @@ func AddBlock(dbtx *dbTransaction, b *types.Header, rollupHash common.L2RollupHa
 		r,        // rollup hash
 	)
 	if err != nil {
+		println("ERROR ADDING BLOCK: ", err.Error())
 		return fmt.Errorf("could not insert block. Cause: %w", err)
 	}
 
@@ -39,8 +34,8 @@ func AddBlock(dbtx *dbTransaction, b *types.Header, rollupHash common.L2RollupHa
 }
 
 // GetBlockListing returns a paginated list of blocks in descending order against the order they were added
-func GetBlockListing(db *sql.DB, pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
-	rows, err := db.Query(selectBlocks, pagination.Size, pagination.Offset)
+func GetBlockListing(dbtx *dbTransaction, pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
+	rows, err := dbtx.GetDB().Query(dbtx.GetSQLStatements().SelectBlocks, pagination.Size, pagination.Offset)
 	if err != nil {
 		return nil, err
 	}

@@ -12,10 +12,15 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func CreatePostgresDBConnection(dbURL string, dbName string, initFile string) (*sql.DB, error) {
-	if dbURL == "" {
+const (
+	defaultDatabase = "postgres"
+)
+
+func CreatePostgresDBConnection(baseURL string, dbName string, initFile string) (*sql.DB, error) {
+	if baseURL == "" {
 		return nil, fmt.Errorf("failed to prepare PostgreSQL connection - DB URL was not set on host config")
 	}
+	dbURL := baseURL + defaultDatabase
 
 	dbName = strings.ToLower(dbName)
 
@@ -32,15 +37,14 @@ func CreatePostgresDBConnection(dbURL string, dbName string, initFile string) (*
 	defer rows.Close()
 
 	if !rows.Next() {
-		// Database doesn't exist, create it
 		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create database %s: %v", dbName, err)
 		}
 	}
 
-	// Now, connect to the newly created database
-	dbURL = fmt.Sprintf("postgres://WillHester:1866@localhost:5432/%s?sslmode=disable", dbName)
+	dbURL = fmt.Sprintf("%s%s", baseURL, dbName)
+
 	db, err = sql.Open("postgres", dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
@@ -49,7 +53,6 @@ func CreatePostgresDBConnection(dbURL string, dbName string, initFile string) (*
 	baseDir := filepath.Dir(filename)
 	sqlFile := filepath.Join(baseDir, "host_postgres_init.sql")
 
-	// Execute initialization SQL file if provided
 	if initFile != "" {
 		if err := initialiseDBFromSQLFile(db, sqlFile); err != nil {
 			return nil, fmt.Errorf("failed to initialize db from file %s: %w", initFile, err)

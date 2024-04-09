@@ -343,3 +343,9 @@ func WithObscuroGenesis(g string) Option {
 		c.obscuroGenesis = g
 	}
 }
+
+func WithPostgresDBHost(g string) Option {
+	return func(c *Config) {
+		c.postgresDB = g
+	}
+}

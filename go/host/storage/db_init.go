@@ -28,11 +28,11 @@ func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (hostdb.H
 		return hostdb.NewHostDB(sqliteDB, hostdb.SQLiteSQLStatements())
 	}
 	logger.Info(fmt.Sprintf("Preparing Postgres DB connection to %s...", cfg.PostgresDBHost))
-	mariaDB, err := postgres.CreatePostgresDBConnection(cfg.PostgresDBHost, dbName, "host_postgres_init.sql")
+	postgresDB, err := postgres.CreatePostgresDBConnection(cfg.PostgresDBHost, dbName, "host_postgres_init.sql")
 	if err != nil {
 		return nil, fmt.Errorf("could not create postresql connection: %w", err)
 	}
-	return hostdb.NewHostDB(mariaDB, hostdb.PostgresSQLStatements())
+	return hostdb.NewHostDB(postgresDB, hostdb.PostgresSQLStatements())
 }
 
 // validateDBConf high-level checks that you have a valid configuration for DB creation
