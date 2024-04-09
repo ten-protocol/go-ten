@@ -13,7 +13,7 @@ const (
 	AddressFlag                   = "address"
 	NodeTypeFlag                  = "nodeType"
 	L1ChainIDFlag                 = "l1ChainID"
-	ObscuroChainIDFlag            = "obscuroChainID"
+	TenChainIDFlag                = "tenChainID"
 	WillAttestFlag                = "willAttest"
 	ValidateL1BlocksFlag          = "validateL1Blocks"
 	ManagementContractAddressFlag = "managementContractAddress"
@@ -26,7 +26,7 @@ const (
 	MinGasPriceFlag               = "minGasPrice"
 	MessageBusAddressFlag         = "messageBusAddress"
 	SequencerIDFlag               = "sequencerID"
-	ObscuroGenesisFlag            = "obscuroGenesis"
+	TenGenesisFlag                = "tenGenesis"
 	DebugNamespaceEnabledFlag     = "debugNamespaceEnabled"
 	MaxBatchSizeFlag              = "maxBatchSize"
 	MaxRollupSizeFlag             = "maxRollupSize"
@@ -38,9 +38,9 @@ const (
 
 // EnclaveFlags are the flags that the enclave can receive
 var EnclaveFlags = map[string]*flag.TenFlag{
-	HostIDFlag:                    flag.NewStringFlag(HostIDFlag, "", "The 20 bytes of the address of the Obscuro host this enclave serves"),
-	HostAddressFlag:               flag.NewStringFlag(HostAddressFlag, "127.0.0.1:10000", "The peer-to-peer IP address of the Obscuro host this enclave serves"),
-	AddressFlag:                   flag.NewStringFlag(AddressFlag, "127.0.0.1:11000", "The address on which to serve the Obscuro enclave service"),
+	HostIDFlag:                    flag.NewStringFlag(HostIDFlag, "", "The 20 bytes of the address of the TEN host this enclave serves"),
+	HostAddressFlag:               flag.NewStringFlag(HostAddressFlag, "127.0.0.1:10000", "The peer-to-peer IP address of the TEN host this enclave serves"),
+	AddressFlag:                   flag.NewStringFlag(AddressFlag, "127.0.0.1:11000", "The address on which to serve the TEN enclave service"),
 	NodeTypeFlag:                  flag.NewStringFlag(NodeTypeFlag, common.Sequencer.String(), "The node's type (e.g. sequencer, validator)"),
 	WillAttestFlag:                flag.NewBoolFlag(WillAttestFlag, false, "Whether the enclave will produce a verified attestation report"),
 	ValidateL1BlocksFlag:          flag.NewBoolFlag(ValidateL1BlocksFlag, false, "Whether to validate incoming blocks using the hardcoded L1 genesis.json config"),
@@ -57,9 +57,9 @@ var EnclaveFlags = map[string]*flag.TenFlag{
 	L2BaseFeeFlag:                 flag.NewUint64Flag(L2BaseFeeFlag, params.InitialBaseFee, ""),
 	L2CoinbaseFlag:                flag.NewStringFlag(L2CoinbaseFlag, "0xd6C9230053f45F873Cb66D8A02439380a37A4fbF", ""),
 	GasBatchExecutionLimit:        flag.NewUint64Flag(GasBatchExecutionLimit, 3_000_000_000, "Max gas that can be executed in a single batch"),
-	ObscuroGenesisFlag:            flag.NewStringFlag(ObscuroGenesisFlag, "", "The json string with the obscuro genesis"),
+	TenGenesisFlag:                flag.NewStringFlag(TenGenesisFlag, "", "The json string with the TEN genesis"),
 	L1ChainIDFlag:                 flag.NewInt64Flag(L1ChainIDFlag, 1337, "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)"),
-	ObscuroChainIDFlag:            flag.NewInt64Flag(ObscuroChainIDFlag, 443, "An integer representing the unique chain id of the Obscuro chain (default 443)"),
+	TenChainIDFlag:                flag.NewInt64Flag(TenChainIDFlag, 443, "An integer representing the unique chain id of the TEN chain (default 443)"),
 	UseInMemoryDBFlag:             flag.NewBoolFlag(UseInMemoryDBFlag, true, "Whether the enclave will use an in-memory DB rather than persist data"),
 	ProfilerEnabledFlag:           flag.NewBoolFlag(ProfilerEnabledFlag, false, "Runs a profiler instance (Defaults to false)"),
 	DebugNamespaceEnabledFlag:     flag.NewBoolFlag(DebugNamespaceEnabledFlag, false, "Whether the debug namespace is enabled"),
@@ -69,8 +69,8 @@ var EnclaveFlags = map[string]*flag.TenFlag{
 // enclaveRestrictedFlags are the flags that the enclave can receive ONLY over the Ego signed enclave.json
 var enclaveRestrictedFlags = []string{
 	L1ChainIDFlag,
-	ObscuroChainIDFlag,
-	ObscuroGenesisFlag,
+	TenChainIDFlag,
+	TenGenesisFlag,
 	UseInMemoryDBFlag,
 	ProfilerEnabledFlag,
 	DebugNamespaceEnabledFlag,

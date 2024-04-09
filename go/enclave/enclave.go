@@ -114,7 +114,7 @@ func NewEnclave(
 	}
 
 	// Initialise the database
-	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.ObscuroChainID))
+	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.TenChainID))
 	storage := storage.NewStorageFromConfig(config, chainConfig, logger)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
@@ -164,7 +164,7 @@ func NewEnclave(
 	dataEncryptionService := crypto.NewDataEncryptionService(logger)
 	dataCompressionService := compression.NewBrotliDataCompressionService()
 
-	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
+	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.TenChainID), logger)
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
@@ -179,7 +179,7 @@ func NewEnclave(
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, storage, logger)
 
-	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, gethEncodingService, logger)
+	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.TenChainID), registry, storage, gethEncodingService, logger)
 	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
@@ -226,7 +226,7 @@ func NewEnclave(
 		config.GasLocalExecutionCapFlag,
 	)
 	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, registry, crossChainProcessors, service, config, gasOracle, storage, chain, logger)
-	subscriptionManager := events.NewSubscriptionManager(storage, config.ObscuroChainID, logger)
+	subscriptionManager := events.NewSubscriptionManager(storage, config.TenChainID, logger)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
 	err = restoreStateDBCache(storage, registry, batchExecutor, genesis, logger)

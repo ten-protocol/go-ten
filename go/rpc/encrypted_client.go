@@ -158,9 +158,9 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 
 		case err := <-subscription.Err():
 			if err != nil {
-				c.logger.Info("subscription to obscuro node closed with error", log.ErrKey, err)
+				c.logger.Info("subscription to TEN node closed with error", log.ErrKey, err)
 			} else {
-				c.logger.Info("subscription to obscuro node closed")
+				c.logger.Info("subscription to TEN node closed")
 			}
 			return
 		}

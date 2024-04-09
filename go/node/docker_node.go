@@ -93,7 +93,7 @@ func (d *DockerNode) Upgrade(networkCfg *NetworkConfig) error {
 
 func (d *DockerNode) startHost() error {
 	cmd := []string{
-		"/home/obscuro/go-obscuro/go/host/main/main",
+		"/home/ten/go-ten/go/host/main/main",
 		"-l1WSURL", d.cfg.L1WebsocketURL,
 		"-enclaveRPCAddress", fmt.Sprintf("%s:%d", d.cfg.NodeName+"-enclave", d.cfg.EnclaveWSPort),
 		"-managementContractAddress", d.cfg.ManagementContractAddr,
@@ -149,7 +149,7 @@ func (d *DockerNode) startEnclave() error {
 
 	// default start of the enclave
 	cmd := []string{
-		"ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
+		"ego", "run", "/home/ten/go-ten/go/enclave/main/main",
 	}
 
 	if d.cfg.EnclaveDebug {
@@ -160,7 +160,7 @@ func (d *DockerNode) startEnclave() error {
 			"--log true",
 			"--api-version 2",
 			"debug",
-			"/home/obscuro/go-obscuro/go/enclave/main",
+			"/home/ten/go-ten/go/enclave/main",
 			"--",
 		}
 		exposedPorts = append(exposedPorts, 2345)
@@ -191,7 +191,7 @@ func (d *DockerNode) startEnclave() error {
 		envs["OE_SIMULATION"] = "0"
 
 		// prepend the entry.sh execution
-		cmd = append([]string{"/home/obscuro/go-obscuro/go/enclave/main/entry.sh"}, cmd...)
+		cmd = append([]string{"/home/ten/go-ten/go/enclave/main/entry.sh"}, cmd...)
 		cmd = append(cmd,
 			"-edgelessDBHost", d.cfg.NodeName+"-edgelessdb",
 			"-willAttest=true",

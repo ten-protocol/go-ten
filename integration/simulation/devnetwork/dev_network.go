@@ -35,7 +35,7 @@ const (
 
 var _defaultFaucetAmount = big.NewInt(750_000_000_000_000)
 
-// InMemDevNetwork is a local dev network (L1 and L2) - the obscuro nodes are in-memory in a single go process, the L1 nodes are a docker geth network
+// InMemDevNetwork is a local dev network (L1 and L2) - the TEN nodes are in-memory in a single go process, the L1 nodes are a docker geth network
 //
 // It can play the role of node operators and network admins to reproduce complex scenarios around nodes joining/leaving/failing.
 //
@@ -49,9 +49,9 @@ type InMemDevNetwork struct {
 
 	l1Network L1Network
 
-	// When Obscuro network has been initialised on the L1 network, this will be populated
+	// When TEN network has been initialised on the L1 network, this will be populated
 	// - if reconnecting to an existing network it needs to be populated when initialising this object
-	// - if it is nil when `Start()` is called then Obscuro contracts will be deployed on the L1
+	// - if it is nil when `Start()` is called then TEN contracts will be deployed on the L1
 	l1SetupData *params.L1SetupData
 
 	obscuroConfig       ObscuroConfig
@@ -142,10 +142,10 @@ func (s *InMemDevNetwork) Start() {
 	s.l1Network.Prepare()
 	if s.l1SetupData == nil {
 		// this is a new network, deploy the contracts to the L1
-		fmt.Println("Deploying obscuro contracts to L1")
+		fmt.Println("Deploying TEN contracts to L1")
 		s.deployObscuroNetworkContracts()
 	}
-	fmt.Println("Starting obscuro nodes")
+	fmt.Println("Starting TEN nodes")
 	s.startNodes()
 
 	if s.tenGatewayEnabled {

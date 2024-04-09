@@ -51,15 +51,15 @@ const (
 	GetFullBatchByHash       = "scan_getBatchByHash"
 )
 
-var ErrNilResponse = errors.New("nil response received from Obscuro node")
+var ErrNilResponse = errors.New("nil response received from TEN node")
 
-// Client is used by client applications to interact with the Obscuro node
+// Client is used by client applications to interact with the TEN node
 type Client interface {
 	// Call executes the named method via RPC. (Returns `ErrNilResponse` on nil response from Node, this is used as "not found" for some method calls)
 	Call(result interface{}, method string, args ...interface{}) error
 	// CallContext If the context is canceled before the call has successfully returned, CallContext returns immediately.
 	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
-	// Subscribe creates a subscription to the Obscuro host.
+	// Subscribe creates a subscription to the TEN host.
 	Subscribe(ctx context.Context, result interface{}, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error)
 	// Stop closes the client.
 	Stop()

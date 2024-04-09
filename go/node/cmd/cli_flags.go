@@ -50,7 +50,7 @@ func getFlagUsageMap() map[string]string {
 		nodeNameFlag:                "Specifies the node base name",
 		nodeTypeFlag:                "The node's type (e.g. sequencer, validator)",
 		isGenesisFlag:               "Wether the node is the genesis node of the network",
-		hostIDFlag:                  "The 20 bytes of the address of the Obscuro host this enclave serves",
+		hostIDFlag:                  "The 20 bytes of the address of the TEN host this enclave serves",
 		isSGXEnabledFlag:            "Whether the it should run on an SGX is enabled CPU",
 		enclaveDockerImageFlag:      "Docker image for the enclave",
 		hostDockerImageFlag:         "Docker image for the host",

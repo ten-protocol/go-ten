@@ -5,8 +5,8 @@
 #          in a lightweight base image specialized for deployment and prepares the /data/ folder.
 
 # Final container folder structure:
-#   /home/obscuro/data                          contains working files for the enclave
-#   /home/obscuro/go-obscuro/go/enclave/main    contains the executable for the enclave
+#   /home/ten/data                          contains working files for the enclave
+#   /home/ten/go-ten/go/enclave/main    contains the executable for the enclave
 #
 
 # Defaults to restricted flag mode
@@ -15,10 +15,10 @@ ARG TESTMODE=false
 FROM ghcr.io/edgelesssys/ego-dev:v1.3.0 AS build-base
 
 # setup container data structure
-RUN mkdir -p /home/obscuro/go-obscuro
+RUN mkdir -p /home/ten/go-ten
 
 # Ensures container layer caching when dependencies are not changed
-WORKDIR /home/obscuro/go-obscuro
+WORKDIR /home/ten/go-ten
 COPY go.mod .
 COPY go.sum .
 RUN ego-go mod download
@@ -28,7 +28,7 @@ RUN ego-go mod download
 FROM build-base as build-enclave
 COPY . .
 
-WORKDIR /home/obscuro/go-obscuro/go/enclave/main
+WORKDIR /home/ten/go-ten/go/enclave/main
 
 # Build the enclave using the cross image build cache.
 RUN --mount=type=cache,target=/root/.cache/go-build \
@@ -52,9 +52,9 @@ FROM ghcr.io/edgelesssys/ego-deploy:v1.3.0
 
 # Copy just the binary for the enclave into this build stage
 COPY --from=build-enclave \
-    /home/obscuro/go-obscuro/go/enclave/main /home/obscuro/go-obscuro/go/enclave/main
+    /home/ten/go-ten/go/enclave/main /home/ten/go-ten/go/enclave/main
     
-WORKDIR /home/obscuro/go-obscuro/go/enclave/main
+WORKDIR /home/ten/go-ten/go/enclave/main
 
 # simulation mode is ACTIVE by default
 ENV OE_SIMULATION=1

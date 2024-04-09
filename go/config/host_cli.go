@@ -37,7 +37,7 @@ type HostFileConfig struct {
 	ID                        string
 	PrivateKeyString          string
 	L1ChainID                 int64
-	ObscuroChainID            int64
+	TenChainID                int64
 	ProfilerEnabled           bool
 	L1StartHash               string
 	SequencerID               string

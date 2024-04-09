@@ -75,8 +75,8 @@ func TestRestrictedMode(t *testing.T) {
 
 	t.Setenv("EDG_TESTMODE", "false")
 	t.Setenv("EDG_"+strings.ToUpper(L1ChainIDFlag), "4444")
-	t.Setenv("EDG_"+strings.ToUpper(ObscuroChainIDFlag), "1243")
-	t.Setenv("EDG_"+strings.ToUpper(ObscuroGenesisFlag), "{}")
+	t.Setenv("EDG_"+strings.ToUpper(TenChainIDFlag), "1243")
+	t.Setenv("EDG_"+strings.ToUpper(TenGenesisFlag), "{}")
 	t.Setenv("EDG_"+strings.ToUpper(UseInMemoryDBFlag), "true")
 	t.Setenv("EDG_"+strings.ToUpper(ProfilerEnabledFlag), "true")
 	t.Setenv("EDG_"+strings.ToUpper(DebugNamespaceEnabledFlag), "true")
@@ -94,7 +94,7 @@ func TestRestrictedMode(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, int64(4444), enclaveConfig.L1ChainID)
-	require.Equal(t, int64(1243), enclaveConfig.ObscuroChainID)
+	require.Equal(t, int64(1243), enclaveConfig.TenChainID)
 	require.Equal(t, []byte(nil), enclaveConfig.GenesisJSON)
 	require.Equal(t, true, enclaveConfig.UseInMemoryDB)
 	require.Equal(t, true, enclaveConfig.ProfilerEnabled)
@@ -114,8 +114,8 @@ func TestRestrictedModeNoCLIDuplication(t *testing.T) {
 
 	t.Setenv("EDG_TESTMODE", "false")
 	t.Setenv("EDG_"+strings.ToUpper(L1ChainIDFlag), "4444")
-	t.Setenv("EDG_"+strings.ToUpper(ObscuroChainIDFlag), "1243")
-	t.Setenv("EDG_"+strings.ToUpper(ObscuroGenesisFlag), "{}")
+	t.Setenv("EDG_"+strings.ToUpper(TenChainIDFlag), "1243")
+	t.Setenv("EDG_"+strings.ToUpper(TenGenesisFlag), "{}")
 	t.Setenv("EDG_"+strings.ToUpper(UseInMemoryDBFlag), "true")
 	t.Setenv("EDG_"+strings.ToUpper(ProfilerEnabledFlag), "true")
 	t.Setenv("EDG_"+strings.ToUpper(DebugNamespaceEnabledFlag), "true")

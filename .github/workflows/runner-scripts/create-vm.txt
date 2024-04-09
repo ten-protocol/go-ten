@@ -1,5 +1,5 @@
 
-# Steps to create a new image for obscuro nodes
+# Steps to create a new image for TEN nodes
 
 az vm create \
   --resource-group Testnet \

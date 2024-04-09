@@ -13,10 +13,10 @@ RUN go install github.com/go-delve/delve/cmd/dlv@v1.20.2
 
 FROM system as get-dependencies
 # setup container data structure
-RUN mkdir -p /enclavedata && mkdir -p /home/obscuro/go-obscuro
+RUN mkdir -p /enclavedata && mkdir -p /home/ten/go-ten
 
 # Ensures container layer caching when dependencies are not changed
-WORKDIR /home/obscuro/go-obscuro
+WORKDIR /home/ten/go-ten
 COPY go.mod .
 COPY go.sum .
 RUN go mod download

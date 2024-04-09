@@ -27,7 +27,7 @@ type EnclaveConfig struct {
 	NodeType common.NodeType
 	// The ID of the L1 chain
 	L1ChainID int64
-	// The ID of the Obscuro chain
+	// The ID of the TEN chain
 	TenChainID int64
 	// Whether to produce a verified attestation report
 	WillAttest bool
@@ -56,7 +56,7 @@ type EnclaveConfig struct {
 	MessageBusAddress gethcommon.Address
 	// The identity of the sequencer for the network
 	SequencerID gethcommon.Address
-	// A json string that specifies the prefunded addresses at the genesis of the Obscuro network
+	// A json string that specifies the prefunded addresses at the genesis of the TEN network
 	TenGenesis string
 	// Whether debug calls are available
 	DebugNamespaceEnabled bool
@@ -205,7 +205,7 @@ func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 	cfg.Address = flags[AddressFlag].String()
 	cfg.NodeType = nodeType
 	cfg.L1ChainID = flags[L1ChainIDFlag].Int64()
-	cfg.TenChainID = flags[ObscuroChainIDFlag].Int64()
+	cfg.TenChainID = flags[TenChainIDFlag].Int64()
 	cfg.WillAttest = flags[WillAttestFlag].Bool()
 	cfg.ValidateL1Blocks = flags[ValidateL1BlocksFlag].Bool()
 	cfg.ManagementContractAddress = gethcommon.HexToAddress(flags[ManagementContractAddressFlag].String())
@@ -218,7 +218,7 @@ func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 	cfg.MinGasPrice = big.NewInt(flags[MinGasPriceFlag].Int64())
 	cfg.MessageBusAddress = gethcommon.HexToAddress(flags[MessageBusAddressFlag].String())
 	cfg.SequencerID = gethcommon.HexToAddress(flags[SequencerIDFlag].String())
-	cfg.TenGenesis = flags[ObscuroGenesisFlag].String()
+	cfg.TenGenesis = flags[TenGenesisFlag].String()
 	cfg.DebugNamespaceEnabled = flags[DebugNamespaceEnabledFlag].Bool()
 	cfg.MaxBatchSize = flags[MaxBatchSizeFlag].Uint64()
 	cfg.MaxRollupSize = flags[MaxRollupSizeFlag].Uint64()

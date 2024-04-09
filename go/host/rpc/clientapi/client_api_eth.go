@@ -32,9 +32,9 @@ func NewEthereumAPI(host host.Host, logger gethlog.Logger) *EthereumAPI {
 	}
 }
 
-// ChainId returns the Obscuro chain ID.
+// ChainId returns the TEN chain ID.
 func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,revive
-	return (*hexutil.Big)(big.NewInt(api.host.Config().ObscuroChainID)), nil
+	return (*hexutil.Big)(big.NewInt(api.host.Config().TenChainID)), nil
 }
 
 // BlockNumber returns the height of the current head batch.
@@ -80,7 +80,7 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 	return (*hexutil.Big)(big.NewInt(0).Set(header.BaseFee)), nil
 }
 
-// GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to the
+// GetBalance returns the address's balance on the TEN network, encrypted with the viewing key corresponding to the
 // `address` field and encoded as hex.
 func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().GetBalance(encryptedParams)
@@ -223,7 +223,7 @@ type FeeHistoryResult struct {
 // Given a batch number, returns the hash of the batch with that number.
 func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	// Handling the special cases first. No special handling is required for rpc.EarliestBlockNumber.
-	// note: our API currently treats all these block statuses the same for obscuro batches
+	// note: our API currently treats all these block statuses the same for TEN batches
 	if batchNumber == rpc.LatestBlockNumber || batchNumber == rpc.PendingBlockNumber ||
 		batchNumber == rpc.FinalizedBlockNumber || batchNumber == rpc.SafeBlockNumber {
 		batchHeader, err := api.host.DB().GetHeadBatchHeader()

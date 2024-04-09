@@ -12,10 +12,10 @@ ENV CGO_ENABLED=1
 FROM system as get-dependencies
 # create the base directory
 # setup container data structure
-RUN mkdir -p /home/obscuro/go-obscuro
+RUN mkdir -p /home/ten/go-ten
 
 # Ensures container layer caching when dependencies are not changed
-WORKDIR /home/obscuro/go-obscuro
+WORKDIR /home/ten/go-ten
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
@@ -24,7 +24,7 @@ FROM get-dependencies as build-host
 # make sure the all code is available
 COPY . .
 
-WORKDIR /home/obscuro/go-obscuro/go/host/main
+WORKDIR /home/ten/go-ten/go/host/main
 
 # Build the host executable. Mount cross image build cache to speed up for incremental changes.
 RUN --mount=type=cache,target=/root/.cache/go-build \
@@ -35,9 +35,9 @@ FROM alpine:3.18
 
 # Copy over just the binary from the previous build stage into this one.
 COPY --from=build-host \
-    /home/obscuro/go-obscuro/go/host/main /home/obscuro/go-obscuro/go/host/main
+    /home/ten/go-ten/go/host/main /home/ten/go-ten/go/host/main
     
-WORKDIR /home/obscuro/go-obscuro/go/host/main
+WORKDIR /home/ten/go-ten/go/host/main
 
 # expose the http and the ws ports to the host
 EXPOSE 8025 9000
