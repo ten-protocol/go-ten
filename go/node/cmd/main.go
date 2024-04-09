@@ -7,13 +7,9 @@ import (
 func main() {
 	// load default config
 	var err error
-	defaults, err := node.LoadConfig("path")
-	if err != nil {
-		panic(err)
-	}
 
 	// set cli flag config overrides
-	cliConfig := ParseConfigCLI(defaults)
+	cliConfig := ParseConfigCLI(LoadDefaultConfig())
 	// todo (#1618) - allow for multiple operation (start, stop, status)
 
 	dockerNode := node.NewDockerNode(cliConfig)

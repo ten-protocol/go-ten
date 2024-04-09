@@ -2,6 +2,7 @@ package main
 
 // Flag names.
 const (
+	configFlag                  = "config"
 	nodeActionFlag              = "node_action"
 	nodeNameFlag                = "node_name"
 	nodeTypeFlag                = "node_type"
@@ -46,6 +47,7 @@ const (
 // While we could just use constants instead of a map, this approach allows us to test that all the expected flags are defined.
 func getFlagUsageMap() map[string]string {
 	return map[string]string{
+		configFlag:                  "Full path to config file to load",
 		nodeActionFlag:              "Whether to perform a start or upgrade",
 		nodeNameFlag:                "Specifies the node base name",
 		nodeTypeFlag:                "The node's type (e.g. sequencer, validator)",

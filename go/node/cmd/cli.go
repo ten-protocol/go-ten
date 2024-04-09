@@ -14,6 +14,18 @@ var (
 	validNodeActions = []string{startAction, upgradeAction}
 )
 
+// LoadDefaultConfig parses optional or default configuration file and returns struct.
+func LoadDefaultConfig() *node.Config {
+	flagUsageMap := getFlagUsageMap()
+	config := flag.String(configFlag, "./go/config/default_node_config.yaml", flagUsageMap[configFlag])
+	flag.Parse()
+	defaults, err := node.LoadConfig(*config)
+	if err != nil {
+		panic(err)
+	}
+	return defaults
+}
+
 // ParseConfigCLI returns a NodeConfig based on the CLI params and defaults from YAML.
 func ParseConfigCLI(defaults *node.Config) *node.Config {
 	flagUsageMap := getFlagUsageMap()
