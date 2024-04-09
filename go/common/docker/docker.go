@@ -21,7 +21,7 @@ import (
 
 const _networkName = "node_network"
 
-// volumes is a map from volume name to dir name it will have within the container. If a volume doesn't exist this will create it.
+// StartNewContainer volumes is a map from volume name to dir name it will have within the container. If a volume doesn't exist this will create it.
 func StartNewContainer(containerName, image string, cmds []string, ports []int, envs, devices, volumes map[string]string) (string, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv)
