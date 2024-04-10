@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	_ "github.com/lib/pq"
@@ -19,7 +21,7 @@ var (
 
 const (
 	defaultDatabase = "postgres"
-	initFile        = "host_postgres_init.sql"
+	initFile        = "001_init.sql"
 )
 
 func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) {
@@ -55,11 +57,11 @@ func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
 	}
-	//_, filename, _, _ := runtime.Caller(0)
-	//baseDir := filepath.Dir(filename)
-	//sqlFile := filepath.Join(baseDir, initFile)
+	_, filename, _, _ := runtime.Caller(0)
+	baseDir := filepath.Dir(filename)
+	sqlFilePath := filepath.Join(baseDir, initFile)
+	sqlFile, err := sqlFiles.ReadFile(sqlFilePath)
 
-	sqlFile, err := sqlFiles.ReadFile(initFile)
 	if err != nil {
 		return nil, fmt.Errorf("Could not read the initialisation sql file", log.ErrKey, err)
 	}
