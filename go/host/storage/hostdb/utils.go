@@ -60,7 +60,7 @@ func truncFirstTo16(bytes []byte) []byte {
 }
 
 func createSQLiteDB(t *testing.T) (HostDB, error) {
-	hostDB, err := sqlite.CreateTemporarySQLiteHostDB("", "mode=memory", "host_sqlite_init.sql")
+	hostDB, err := sqlite.CreateTemporarySQLiteHostDB("", "mode=memory")
 	if err != nil {
 		t.Fatalf("unable to create temp sql db: %s", err)
 	}
