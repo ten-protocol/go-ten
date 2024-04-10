@@ -415,7 +415,6 @@ func getMessageRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 			return
 		}
 	} else if messageFormat == viewingkey.EIP712Signature {
-
 		var messageMap map[string]interface{}
 		err = json.Unmarshal([]byte(message), &messageMap)
 		if err != nil {
