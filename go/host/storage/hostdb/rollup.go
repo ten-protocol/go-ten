@@ -19,12 +19,12 @@ const (
 )
 
 // AddRollup adds a rollup to the DB
-func AddRollup(db HostDB, rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
+func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
 	extRollup, err := rlp.EncodeToBytes(rollup)
 	if err != nil {
 		return fmt.Errorf("could not encode rollup: %w", err)
 	}
-	_, err = db.GetSQLDB().Exec(db.GetSQLStatement().InsertRollup,
+	_, err = dbtx.tx.Exec(statements.InsertRollup,
 		truncTo16(rollup.Header.Hash()),      // short hash
 		metadata.FirstBatchSequence.Uint64(), // first batch sequence
 		rollup.Header.LastBatchSeqNo,         // last batch sequence

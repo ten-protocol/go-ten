@@ -33,7 +33,7 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 		return err
 	}
 
-	if err := hostdb.AddBatch(s.db, batch); err != nil {
+	if err := hostdb.AddBatch(dbtx, s.db.GetSQLStatement(), batch); err != nil {
 		return fmt.Errorf("could not add batch to host. Cause: %w", err)
 	}
 
@@ -55,7 +55,7 @@ func (s *storageImpl) AddRollup(rollup *common.ExtRollup, metadata *common.Publi
 		return err
 	}
 
-	if err := hostdb.AddRollup(s.db, rollup, metadata, block); err != nil {
+	if err := hostdb.AddRollup(dbtx, s.db.GetSQLStatement(), rollup, metadata, block); err != nil {
 		return fmt.Errorf("could not add rollup to host. Cause: %w", err)
 	}
 
@@ -71,7 +71,7 @@ func (s *storageImpl) AddBlock(b *types.Header, rollupHash common.L2RollupHash) 
 		return err
 	}
 
-	if err := hostdb.AddBlock(s.db, b, rollupHash); err != nil {
+	if err := hostdb.AddBlock(dbtx, s.db.GetSQLStatement(), b, rollupHash); err != nil {
 		return fmt.Errorf("could not add block to host. Cause: %w", err)
 	}
 

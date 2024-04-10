@@ -18,11 +18,12 @@ import (
 func TestCanStoreAndRetrieveBatchHeader(t *testing.T) {
 	db, _ := createSQLiteDB(t)
 	batch := createBatch(batchNumber, []common.L2TxHash{})
-	err := AddBatch(db, &batch)
+	dbtx, _ := db.NewDBTransaction()
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batch)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
-
+	dbtx.Write()
 	batchHeader, err := GetBatchHeader(db, batch.Header.Hash())
 	if err != nil {
 		t.Errorf("stored batch but could not retrieve header. Cause: %s", err)
@@ -45,7 +46,8 @@ func TestUnknownBatchHeaderReturnsNotFound(t *testing.T) {
 func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) { //nolint:dupl
 	db, _ := createSQLiteDB(t)
 	batchOne := createBatch(batchNumber, []common.L2TxHash{})
-	err := AddBatch(db, &batchOne)
+	dbtx, _ := db.NewDBTransaction()
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
@@ -55,10 +57,12 @@ func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) { //nolint:dupl
 		t.Errorf("could not create batch. Cause: %s", err)
 	}
 
-	err = AddBatch(db, &batchTwo)
+	err = AddBatch(dbtx, db.GetSQLStatement(), &batchTwo)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
+
+	dbtx.Write()
 
 	batchHeader, err := GetHeadBatchHeader(db.GetSQLDB())
 	if err != nil {
@@ -71,8 +75,9 @@ func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) { //nolint:dupl
 
 func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) { //nolint:dupl
 	db, _ := createSQLiteDB(t)
+	dbtx, _ := db.NewDBTransaction()
 	batchOne := createBatch(batchNumber, []common.L2TxHash{})
-	err := AddBatch(db, &batchOne)
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
@@ -82,10 +87,11 @@ func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) { //nolint:dupl
 		t.Errorf("could not create batch. Cause: %s", err)
 	}
 
-	err = AddBatch(db, &batchTwo)
+	err = AddBatch(dbtx, db.GetSQLStatement(), &batchTwo)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
+	dbtx.Write()
 
 	batchHeader, err := GetHeadBatchHeader(db.GetSQLDB())
 	if err != nil {
@@ -107,10 +113,12 @@ func TestHeadBatchHeaderIsNotSetInitially(t *testing.T) {
 func TestCanRetrieveBatchHashByNumber(t *testing.T) {
 	db, _ := createSQLiteDB(t)
 	batch := createBatch(batchNumber, []common.L2TxHash{})
-	err := AddBatch(db, &batch)
+	dbtx, _ := db.NewDBTransaction()
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batch)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
+	dbtx.Write()
 
 	batchHash, err := GetBatchHashByNumber(db, batch.Header.Number)
 	if err != nil {
@@ -135,10 +143,12 @@ func TestCanRetrieveBatchNumberByTxHash(t *testing.T) {
 	db, _ := createSQLiteDB(t)
 	txHash := gethcommon.BytesToHash([]byte("magicString"))
 	batch := createBatch(batchNumber, []common.L2TxHash{txHash})
-	err := AddBatch(db, &batch)
+	dbtx, _ := db.NewDBTransaction()
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batch)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
+	dbtx.Write()
 
 	extBatch, err := GetBatchByTx(db, txHash)
 	if err != nil {
@@ -169,10 +179,12 @@ func TestCanRetrieveBatchTransactions(t *testing.T) {
 	db, _ := createSQLiteDB(t)
 	txHashes := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
 	batch := createBatch(batchNumber, txHashes)
-	err := AddBatch(db, &batch)
+	dbtx, _ := db.NewDBTransaction()
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batch)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
+	dbtx.Write()
 
 	batchTxs, err := GetBatchTxs(db, batch.Header.Hash())
 	if err != nil {
@@ -201,8 +213,8 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 	db, _ := createSQLiteDB(t)
 	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
 	batchOne := createBatch(batchNumber, txHashesOne)
-
-	err := AddBatch(db, &batchOne)
+	dbtx, _ := db.NewDBTransaction()
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
@@ -210,10 +222,11 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
 	batchTwo := createBatch(batchNumber+1, txHashesTwo)
 
-	err = AddBatch(db, &batchTwo)
+	err = AddBatch(dbtx, db.GetSQLStatement(), &batchTwo)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
+	dbtx.Write()
 
 	totalTxs, err := GetTotalTxCount(db.GetSQLDB())
 	if err != nil {
@@ -229,8 +242,8 @@ func TestGetLatestBatch(t *testing.T) {
 	db, _ := createSQLiteDB(t)
 	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
 	batchOne := createBatch(batchNumber, txHashesOne)
-
-	err := AddBatch(db, &batchOne)
+	dbtx, _ := db.NewDBTransaction()
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
@@ -238,10 +251,11 @@ func TestGetLatestBatch(t *testing.T) {
 	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
 	batchTwo := createBatch(batchNumber+1, txHashesTwo)
 
-	err = AddBatch(db, &batchTwo)
+	err = AddBatch(dbtx, db.GetSQLStatement(), &batchTwo)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
+	dbtx.Write()
 
 	batch, err := GetLatestBatch(db.GetSQLDB())
 	if err != nil {
@@ -257,8 +271,8 @@ func TestGetBatchListing(t *testing.T) {
 	db, _ := createSQLiteDB(t)
 	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
 	batchOne := createBatch(batchNumber, txHashesOne)
-
-	err := AddBatch(db, &batchOne)
+	dbtx, _ := db.NewDBTransaction()
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
@@ -266,7 +280,7 @@ func TestGetBatchListing(t *testing.T) {
 	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
 	batchTwo := createBatch(batchNumber+1, txHashesTwo)
 
-	err = AddBatch(db, &batchTwo)
+	err = AddBatch(dbtx, db.GetSQLStatement(), &batchTwo)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
@@ -274,10 +288,11 @@ func TestGetBatchListing(t *testing.T) {
 	txHashesThree := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringFive")), gethcommon.BytesToHash([]byte("magicStringSix"))}
 	batchThree := createBatch(batchNumber+2, txHashesThree)
 
-	err = AddBatch(db, &batchThree)
+	err = AddBatch(dbtx, db.GetSQLStatement(), &batchThree)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
+	dbtx.Write()
 
 	// page 1, size 2
 	batchListing, err := GetBatchListing(db, &common.QueryPagination{Offset: 1, Size: 2})
@@ -338,8 +353,8 @@ func TestGetBatchListingDeprecated(t *testing.T) {
 	db, _ := createSQLiteDB(t)
 	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
 	batchOne := createBatch(batchNumber, txHashesOne)
-
-	err := AddBatch(db, &batchOne)
+	dbtx, _ := db.NewDBTransaction()
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
@@ -347,7 +362,7 @@ func TestGetBatchListingDeprecated(t *testing.T) {
 	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
 	batchTwo := createBatch(batchNumber+1, txHashesTwo)
 
-	err = AddBatch(db, &batchTwo)
+	err = AddBatch(dbtx, db.GetSQLStatement(), &batchTwo)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
@@ -355,10 +370,11 @@ func TestGetBatchListingDeprecated(t *testing.T) {
 	txHashesThree := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringFive")), gethcommon.BytesToHash([]byte("magicStringSix"))}
 	batchThree := createBatch(batchNumber+2, txHashesThree)
 
-	err = AddBatch(db, &batchThree)
+	err = AddBatch(dbtx, db.GetSQLStatement(), &batchThree)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
+	dbtx.Write()
 
 	// page 1, size 2
 	batchListing, err := GetBatchListingDeprecated(db, &common.QueryPagination{Offset: 1, Size: 2})

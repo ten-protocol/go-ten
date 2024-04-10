@@ -23,13 +23,13 @@ const (
 )
 
 // AddBatch adds a batch and its header to the DB
-func AddBatch(db HostDB, batch *common.ExtBatch) error {
+func AddBatch(dbtx *dbTransaction, statements *SQLStatements, batch *common.ExtBatch) error {
 	extBatch, err := rlp.EncodeToBytes(batch)
 	if err != nil {
 		return fmt.Errorf("could not encode L2 transactions: %w", err)
 	}
 
-	_, err = db.GetSQLDB().Exec(db.GetSQLStatement().InsertBatch,
+	_, err = dbtx.tx.Exec(statements.InsertBatch,
 		batch.SeqNo().Uint64(),       // sequence
 		batch.Hash(),                 // full hash
 		truncTo16(batch.Hash()),      // shortened hash
@@ -42,7 +42,7 @@ func AddBatch(db HostDB, batch *common.ExtBatch) error {
 
 	if len(batch.TxHashes) > 0 {
 		for _, transaction := range batch.TxHashes {
-			_, err = db.GetSQLDB().Exec(db.GetSQLStatement().InsertTransactions, transaction.Bytes(), batch.SeqNo().Uint64())
+			_, err = dbtx.tx.Exec(statements.InsertTransactions, transaction.Bytes(), batch.SeqNo().Uint64())
 			if err != nil {
 				return fmt.Errorf("failed to insert transaction with hash: %d", err)
 			}
@@ -50,13 +50,13 @@ func AddBatch(db HostDB, batch *common.ExtBatch) error {
 	}
 
 	var currentTotal int
-	err = db.GetSQLDB().QueryRow(selectTxCount).Scan(&currentTotal)
+	err = dbtx.tx.QueryRow(selectTxCount).Scan(&currentTotal)
 	if err != nil {
 		return fmt.Errorf("failed to query transaction count: %w", err)
 	}
 
 	newTotal := currentTotal + len(batch.TxHashes)
-	_, err = db.GetSQLDB().Exec(db.GetSQLStatement().InsertTxCount, 1, newTotal)
+	_, err = dbtx.tx.Exec(statements.InsertTxCount, 1, newTotal)
 	if err != nil {
 		return fmt.Errorf("failed to update transaction count: %w", err)
 	}

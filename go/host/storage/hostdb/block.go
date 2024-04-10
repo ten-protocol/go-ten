@@ -9,7 +9,7 @@ import (
 )
 
 // AddBlock stores a block header with the given rollupHash it contains in the host DB
-func AddBlock(db HostDB, b *types.Header, rollupHash common.L2RollupHash) error {
+func AddBlock(dbtx *dbTransaction, statements *SQLStatements, b *types.Header, rollupHash common.L2RollupHash) error {
 	header, err := rlp.EncodeToBytes(b)
 	if err != nil {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
@@ -20,7 +20,7 @@ func AddBlock(db HostDB, b *types.Header, rollupHash common.L2RollupHash) error 
 		return fmt.Errorf("could not encode rollup hash transactions: %w", err)
 	}
 
-	_, err = db.GetSQLDB().Exec(db.GetSQLStatement().InsertBlock,
+	_, err = dbtx.tx.Exec(statements.InsertBlock,
 		b.Hash(), // hash
 		header,   // l1 block header
 		r,        // rollup hash

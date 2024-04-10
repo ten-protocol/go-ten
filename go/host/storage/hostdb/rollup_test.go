@@ -17,11 +17,12 @@ func TestCanStoreAndRetrieveRollup(t *testing.T) {
 	metadata := createRollupMetadata(batchNumber - 10)
 	rollup := createRollup(batchNumber)
 	block := common.L1Block{}
-
-	err = AddRollup(db, &rollup, &metadata, &block)
+	dbtx, _ := db.NewDBTransaction()
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup, &metadata, &block)
 	if err != nil {
 		t.Errorf("could not store rollup. Cause: %s", err)
 	}
+	dbtx.Write()
 
 	extRollup, err := GetExtRollup(db, rollup.Header.Hash())
 	if err != nil {
@@ -50,12 +51,12 @@ func TestGetRollupByBlockHash(t *testing.T) {
 	metadata := createRollupMetadata(batchNumber - 10)
 	rollup := createRollup(batchNumber)
 	block := common.L1Block{}
-
-	err = AddRollup(db, &rollup, &metadata, &block)
+	dbtx, _ := db.NewDBTransaction()
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup, &metadata, &block)
 	if err != nil {
 		t.Errorf("could not store rollup. Cause: %s", err)
 	}
-
+	dbtx.Write()
 	rollupHeader, err := GetRollupHeaderByBlock(db, block.Hash())
 	if err != nil {
 		t.Errorf("stored rollup but could not retrieve header. Cause: %s", err)
@@ -76,12 +77,11 @@ func TestGetLatestRollup(t *testing.T) {
 	metadata1 := createRollupMetadata(rollup1FirstSeq)
 	rollup1 := createRollup(rollup1LastSeq)
 	block := common.L1Block{}
-
-	err = AddRollup(db, &rollup1, &metadata1, &block)
+	dbtx, _ := db.NewDBTransaction()
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup1, &metadata1, &block)
 	if err != nil {
 		t.Errorf("could not store rollup. Cause: %s", err)
 	}
-
 	// Needed to increment the timestamp
 	time.Sleep(1 * time.Second)
 
@@ -89,11 +89,11 @@ func TestGetLatestRollup(t *testing.T) {
 	rollup2LastSeq := int64(batchNumber + 10)
 	metadata2 := createRollupMetadata(rollup2FirstSeq)
 	rollup2 := createRollup(rollup2LastSeq)
-
-	err = AddRollup(db, &rollup2, &metadata2, &block)
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup2, &metadata2, &block)
 	if err != nil {
 		t.Errorf("could not store rollup 2. Cause: %s", err)
 	}
+	dbtx.Write()
 
 	latestHeader, err := GetLatestRollup(db.GetSQLDB())
 	if err != nil {
@@ -116,8 +116,8 @@ func TestGetRollupListing(t *testing.T) {
 	metadata1 := createRollupMetadata(rollup1FirstSeq)
 	rollup1 := createRollup(rollup1LastSeq)
 	block := common.L1Block{}
-
-	err = AddRollup(db, &rollup1, &metadata1, &block)
+	dbtx, _ := db.NewDBTransaction()
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup1, &metadata1, &block)
 	if err != nil {
 		t.Errorf("could not store rollup. Cause: %s", err)
 	}
@@ -126,8 +126,7 @@ func TestGetRollupListing(t *testing.T) {
 	rollup2LastSeq := int64(batchNumber + 10)
 	metadata2 := createRollupMetadata(rollup2FirstSeq)
 	rollup2 := createRollup(rollup2LastSeq)
-
-	err = AddRollup(db, &rollup2, &metadata2, &block)
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup2, &metadata2, &block)
 	if err != nil {
 		t.Errorf("could not store rollup 2. Cause: %s", err)
 	}
@@ -136,7 +135,8 @@ func TestGetRollupListing(t *testing.T) {
 	rollup3LastSeq := int64(batchNumber + 20)
 	metadata3 := createRollupMetadata(rollup3FirstSeq)
 	rollup3 := createRollup(rollup3LastSeq)
-	err = AddRollup(db, &rollup3, &metadata3, &block)
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup3, &metadata3, &block)
+	dbtx.Write()
 	if err != nil {
 		t.Errorf("could not store rollup 3. Cause: %s", err)
 	}
