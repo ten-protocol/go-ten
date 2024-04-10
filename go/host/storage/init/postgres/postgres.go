@@ -1,12 +1,10 @@
 package postgres
 
 import (
-	"bufio"
 	"database/sql"
 	"embed"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/common/log"
-	"os"
+	"github.com/ten-protocol/go-ten/go/common/storage"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -16,7 +14,6 @@ import (
 
 const (
 	defaultDatabase = "postgres"
-	initFile        = "001_init.sql"
 )
 
 //go:embed *.sql
@@ -55,50 +52,17 @@ func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
 	}
-	_, filename, _, _ := runtime.Caller(0)
-	baseDir := filepath.Dir(filename)
-	sqlFilePath := filepath.Join(baseDir, initFile)
-	sqlFile, err := sqlFiles.ReadFile(sqlFilePath)
 
-	if err != nil {
-		return nil, fmt.Errorf("Could not read the initialisation sql file", log.ErrKey, err)
+	// get the path to the migrations (they are always in the same directory as file containing connection function)
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		return nil, fmt.Errorf("failed to get current directory")
 	}
-	if err := initialiseDBFromSQLFile(db, string(sqlFile)); err != nil {
-		return nil, fmt.Errorf("failed to initialize db from file %s: %w", sqlFile, err)
+	migrationsDir := filepath.Dir(filename)
+
+	if err = storage.ApplyMigrations(db, migrationsDir); err != nil {
+		return nil, err
 	}
 
 	return db, nil
-}
-
-// initialiseDBFromSQLFile reads SQL commands from a file and executes them on the given DB connection.
-func initialiseDBFromSQLFile(db *sql.DB, sqlFile string) error {
-	file, err := os.Open(sqlFile)
-	if err != nil {
-		return fmt.Errorf("failed to open SQL file: %w", err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	var sqlStatement string
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "--") || strings.TrimSpace(line) == "" {
-			continue
-		}
-		sqlStatement += line
-		if strings.HasSuffix(line, ";") {
-			_, err := db.Exec(sqlStatement)
-			if err != nil {
-				return fmt.Errorf("failed to execute SQL statement: %s, error: %w", sqlStatement, err)
-			}
-			sqlStatement = "" // Reset statement
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("error reading SQL file: %w", err)
-	}
-
-	return nil
 }
