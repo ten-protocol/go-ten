@@ -387,8 +387,14 @@ func getMessageRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 		return
 	}
 
-	// create the response structure
-	type JSONResponse struct {
+	// create the response structure for EIP712 message where the message is a JSON object
+	type JSONResponseEIP712 struct {
+		Message json.RawMessage `json:"message"`
+		Type    string          `json:"type"`
+	}
+
+	// create the response structure for personal sign message where the message is a string
+	type JSONResponsePersonal struct {
 		Message string `json:"message"`
 		Type    string `json:"type"`
 	}
@@ -396,16 +402,53 @@ func getMessageRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 	// get string representation of the message format
 	messageFormat := viewingkey.GetBestFormat(formatsSlice)
 	messageFormatString := viewingkey.GetSignatureTypeString(messageFormat)
+	responseBytes := []byte{}
+	if messageFormat == viewingkey.PersonalSign {
+		response := JSONResponsePersonal{
+			Message: message,
+			Type:    messageFormatString,
+		}
 
-	response := JSONResponse{
-		Message: message,
-		Type:    messageFormatString,
-	}
+		responseBytes, err = json.Marshal(response)
+		if err != nil {
+			handleError(conn, walletExt.Logger(), fmt.Errorf("error marshaling JSON response: %w", err))
+			return
+		}
+	} else if messageFormat == viewingkey.EIP712Signature {
 
-	responseBytes, err := json.Marshal(response)
-	if err != nil {
-		walletExt.Logger().Error("error marshaling JSON response", log.ErrKey, err)
-		return
+		var messageMap map[string]interface{}
+		err = json.Unmarshal([]byte(message), &messageMap)
+		if err != nil {
+			handleError(conn, walletExt.Logger(), fmt.Errorf("error unmarshaling JSON: %w", err))
+			return
+		}
+
+		if domainMap, ok := messageMap["domain"].(map[string]interface{}); ok {
+			delete(domainMap, "salt")
+			delete(domainMap, "verifyingContract")
+		}
+
+		if typesMap, ok := messageMap["types"].(map[string]interface{}); ok {
+			delete(typesMap, "EIP712Domain")
+		}
+
+		// Marshal the modified map back to JSON
+		modifiedMessage, err := json.Marshal(messageMap)
+		if err != nil {
+			handleError(conn, walletExt.Logger(), fmt.Errorf("error marshaling modified JSON: %w", err))
+			return
+		}
+
+		response := JSONResponseEIP712{
+			Message: modifiedMessage,
+			Type:    messageFormatString,
+		}
+
+		responseBytes, err = json.Marshal(response)
+		if err != nil {
+			handleError(conn, walletExt.Logger(), fmt.Errorf("error marshaling JSON response: %w", err))
+			return
+		}
 	}
 
 	err = conn.WriteResponse(responseBytes)
