@@ -207,13 +207,19 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, cacheKey []byte, onCache
 		return onCacheMiss()
 	}
 
+	isEvictable := false
 	ttl := longCacheTTL
 	if cacheType == LatestBatch {
 		ttl = shortCacheTTL
+		isEvictable = true
 	}
 
 	cachedValue, foundInCache := cache.Get(cacheKey)
-	if foundInCache && !cache.IsEvicted(cacheKey, ttl) {
+
+	// only entries cached with `LatestBatch` are evicted
+	isEvicted := isEvictable && cache.IsEvicted(cacheKey, ttl)
+
+	if foundInCache && !isEvicted {
 		returnValue, ok := cachedValue.(*R)
 		if !ok {
 			return nil, fmt.Errorf("unexpected error. Invalid format cached. %v", cachedValue)
@@ -237,14 +243,14 @@ func audit(services *Services, msg string, params ...any) {
 	}
 }
 
-func cacheTTLBlockNumberOrHash(blockNrOrHash rpc.BlockNumberOrHash) CacheStrategy {
+func cacheBlockNumberOrHash(blockNrOrHash rpc.BlockNumberOrHash) CacheStrategy {
 	if blockNrOrHash.BlockNumber != nil && blockNrOrHash.BlockNumber.Int64() <= 0 {
 		return LatestBatch
 	}
 	return LongLiving
 }
 
-func cacheTTLBlockNumber(lastBlock rpc.BlockNumber) CacheStrategy {
+func cacheBlockNumber(lastBlock rpc.BlockNumber) CacheStrategy {
 	if lastBlock > 0 {
 		return LongLiving
 	}

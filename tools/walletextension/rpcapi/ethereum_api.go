@@ -37,7 +37,7 @@ func (api *EthereumAPI) FeeHistory(ctx context.Context, blockCount math.HexOrDec
 		ctx,
 		api.we,
 		&CacheCfg{CacheTypeDynamic: func() CacheStrategy {
-			return cacheTTLBlockNumber(lastBlock)
+			return cacheBlockNumber(lastBlock)
 		}},
 		"eth_feeHistory",
 		blockCount,
