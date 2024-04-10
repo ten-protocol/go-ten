@@ -59,10 +59,3 @@ func (b *dbTransaction) Write() error {
 	}
 	return nil
 }
-
-func (b *dbTransaction) Rollback() error {
-	if err := b.tx.Rollback(); err != nil {
-		return fmt.Errorf("failed to rollback host transaction. Cause: %w", err)
-	}
-	return nil
-}
