@@ -55,8 +55,7 @@ type dbTransaction struct {
 }
 
 func (b *dbTransaction) Write() error {
-	tx := b.tx
-	err := tx.Commit()
+	err := b.tx.Commit()
 	if err != nil {
 		return fmt.Errorf("failed to commit host db transaction. Cause: %w", err)
 	}

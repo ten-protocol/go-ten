@@ -4,9 +4,10 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/common/storage"
 	"path/filepath"
 	"runtime"
+
+	"github.com/ten-protocol/go-ten/go/common/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 

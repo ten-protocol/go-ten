@@ -3,10 +3,11 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/common/storage"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/ten-protocol/go-ten/go/common/storage"
 
 	_ "github.com/lib/pq"
 )
