@@ -28,17 +28,20 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 		return errutil.ErrAlreadyExists
 	}
 
-	if err := hostdb.AddBatch(s.db, batch); err != nil {
-		return fmt.Errorf("could not write batch. Cause: %w", err)
-	}
-
 	dbtx, err := s.db.NewDBTransaction()
 	if err != nil {
 		return err
 	}
 
+	if err := hostdb.AddBatch(s.db, batch); err != nil {
+		if err := dbtx.Rollback(); err != nil {
+			return err
+		}
+		return fmt.Errorf("could not add batch to host. Cause: %w", err)
+	}
+
 	if err := dbtx.Write(); err != nil {
-		return fmt.Errorf("could not commit batch %w", err)
+		return fmt.Errorf("could not commit batch tx. Cause: %w", err)
 	}
 	return nil
 }
@@ -49,31 +52,40 @@ func (s *storageImpl) AddRollup(rollup *common.ExtRollup, metadata *common.Publi
 	if err == nil {
 		return errutil.ErrAlreadyExists
 	}
-	if err := hostdb.AddRollup(s.db, rollup, metadata, block); err != nil {
-		return fmt.Errorf("could not write batch. Cause: %w", err)
-	}
+
 	dbtx, err := s.db.NewDBTransaction()
 	if err != nil {
 		return err
 	}
 
+	if err := hostdb.AddRollup(s.db, rollup, metadata, block); err != nil {
+		if err := dbtx.Rollback(); err != nil {
+			return err
+		}
+		return fmt.Errorf("could not add rollup to host. Cause: %w", err)
+	}
+
 	if err := dbtx.Write(); err != nil {
-		return fmt.Errorf("could not commit batch %w", err)
+		return fmt.Errorf("could not commit rollup tx. Cause %w", err)
 	}
 	return nil
 }
 
 func (s *storageImpl) AddBlock(b *types.Header, rollupHash common.L2RollupHash) error {
-	if err := hostdb.AddBlock(s.db, b, rollupHash); err != nil {
-		return fmt.Errorf("could not write batch. Cause: %w", err)
-	}
 	dbtx, err := s.db.NewDBTransaction()
 	if err != nil {
 		return err
 	}
 
+	if err := hostdb.AddBlock(s.db, b, rollupHash); err != nil {
+		if err := dbtx.Rollback(); err != nil {
+			return err
+		}
+		return fmt.Errorf("could not add block to host. Cause: %w", err)
+	}
+
 	if err := dbtx.Write(); err != nil {
-		return fmt.Errorf("could not commit batch %w", err)
+		return fmt.Errorf("could not commit block tx. Cause %w", err)
 	}
 	return nil
 }

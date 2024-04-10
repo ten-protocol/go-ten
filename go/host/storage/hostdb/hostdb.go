@@ -54,9 +54,15 @@ type dbTransaction struct {
 }
 
 func (b *dbTransaction) Write() error {
-	err := b.tx.Commit()
-	if err != nil {
+	if err := b.tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit host db transaction. Cause: %w", err)
+	}
+	return nil
+}
+
+func (b *dbTransaction) Rollback() error {
+	if err := b.tx.Rollback(); err != nil {
+		return fmt.Errorf("failed to rollback host transaction. Cause: %w", err)
 	}
 	return nil
 }
