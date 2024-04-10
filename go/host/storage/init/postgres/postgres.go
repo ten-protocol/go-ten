@@ -16,7 +16,7 @@ const (
 	defaultDatabase = "postgres"
 )
 
-func CreatePostgresDBConnection(baseURL string, dbName string, initFile string) (*sql.DB, error) {
+func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) {
 	if baseURL == "" {
 		return nil, fmt.Errorf("failed to prepare PostgreSQL connection - DB URL was not set on host config")
 	}
@@ -53,9 +53,9 @@ func CreatePostgresDBConnection(baseURL string, dbName string, initFile string) 
 	baseDir := filepath.Dir(filename)
 	sqlFile := filepath.Join(baseDir, "host_postgres_init.sql")
 
-	if initFile != "" {
+	if sqlFile != "" {
 		if err := initialiseDBFromSQLFile(db, sqlFile); err != nil {
-			return nil, fmt.Errorf("failed to initialize db from file %s: %w", initFile, err)
+			return nil, fmt.Errorf("failed to initialize db from file %s: %w", sqlFile, err)
 		}
 	}
 

@@ -28,7 +28,7 @@ func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (hostdb.H
 		return hostdb.NewHostDB(sqliteDB, hostdb.SQLiteSQLStatements())
 	}
 	logger.Info(fmt.Sprintf("Preparing Postgres DB connection to %s...", cfg.PostgresDBHost))
-	postgresDB, err := postgres.CreatePostgresDBConnection(cfg.PostgresDBHost, dbName, "host_postgres_init.sql")
+	postgresDB, err := postgres.CreatePostgresDBConnection(cfg.PostgresDBHost, dbName)
 	if err != nil {
 		return nil, fmt.Errorf("could not create postresql connection: %w", err)
 	}
