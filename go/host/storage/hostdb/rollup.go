@@ -19,12 +19,12 @@ const (
 )
 
 // AddRollup adds a rollup to the DB
-func AddRollup(dbtx *dbTransaction, rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
+func AddRollup(db HostDB, rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
 	extRollup, err := rlp.EncodeToBytes(rollup)
 	if err != nil {
 		return fmt.Errorf("could not encode rollup: %w", err)
 	}
-	_, err = dbtx.GetDB().Exec(dbtx.GetSQLStatements().InsertRollup,
+	_, err = db.GetSQLDB().Exec(db.GetSQLStatement().InsertRollup,
 		truncTo16(rollup.Header.Hash()),      // short hash
 		metadata.FirstBatchSequence.Uint64(), // first batch sequence
 		rollup.Header.LastBatchSeqNo,         // last batch sequence
@@ -40,8 +40,8 @@ func AddRollup(dbtx *dbTransaction, rollup *common.ExtRollup, metadata *common.P
 
 // GetRollupListing returns latest rollups given a pagination.
 // For example, offset 1, size 10 will return the latest 11-20 rollups.
-func GetRollupListing(dbtx *dbTransaction, pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
-	rows, err := dbtx.GetDB().Query(dbtx.GetSQLStatements().SelectRollups, pagination.Size, pagination.Offset)
+func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
+	rows, err := db.GetSQLDB().Query(db.GetSQLStatement().SelectRollups, pagination.Size, pagination.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -84,21 +84,21 @@ func GetRollupListing(dbtx *dbTransaction, pagination *common.QueryPagination) (
 	}, nil
 }
 
-func GetExtRollup(dbtx *dbTransaction, hash gethcommon.Hash) (*common.ExtRollup, error) {
-	whereQuery := " WHERE r.hash=" + dbtx.GetSQLStatements().Placeholder
-	return fetchExtRollup(dbtx.GetDB(), whereQuery, truncTo16(hash))
+func GetExtRollup(db HostDB, hash gethcommon.Hash) (*common.ExtRollup, error) {
+	whereQuery := " WHERE r.hash=" + db.GetSQLStatement().Placeholder
+	return fetchExtRollup(db.GetSQLDB(), whereQuery, truncTo16(hash))
 }
 
 // GetRollupHeader returns the rollup with the given hash.
-func GetRollupHeader(dbtx *dbTransaction, hash gethcommon.Hash) (*common.RollupHeader, error) {
-	whereQuery := " WHERE r.hash=" + dbtx.GetSQLStatements().Placeholder
-	return fetchRollupHeader(dbtx.GetDB(), whereQuery, truncTo16(hash))
+func GetRollupHeader(db HostDB, hash gethcommon.Hash) (*common.RollupHeader, error) {
+	whereQuery := " WHERE r.hash=" + db.GetSQLStatement().Placeholder
+	return fetchRollupHeader(db.GetSQLDB(), whereQuery, truncTo16(hash))
 }
 
 // GetRollupHeaderByBlock returns the rollup for the given block
-func GetRollupHeaderByBlock(dbtx *dbTransaction, blockHash gethcommon.Hash) (*common.RollupHeader, error) {
-	whereQuery := " WHERE r.compression_block=" + dbtx.GetSQLStatements().Placeholder
-	return fetchRollupHeader(dbtx.GetDB(), whereQuery, blockHash)
+func GetRollupHeaderByBlock(db HostDB, blockHash gethcommon.Hash) (*common.RollupHeader, error) {
+	whereQuery := " WHERE r.compression_block=" + db.GetSQLStatement().Placeholder
+	return fetchRollupHeader(db.GetSQLDB(), whereQuery, blockHash)
 }
 
 // GetLatestRollup returns the latest rollup ordered by timestamp
