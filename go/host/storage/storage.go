@@ -31,7 +31,13 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 	if err := hostdb.AddBatch(s.db, batch); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
-	if err := s.db.NewDBTransaction().Write(); err != nil {
+
+	dbtx, err := s.db.NewDBTransaction()
+	if err != nil {
+		return err
+	}
+
+	if err := dbtx.Write(); err != nil {
 		return fmt.Errorf("could not commit batch %w", err)
 	}
 	return nil
@@ -46,7 +52,12 @@ func (s *storageImpl) AddRollup(rollup *common.ExtRollup, metadata *common.Publi
 	if err := hostdb.AddRollup(s.db, rollup, metadata, block); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
-	if err := s.db.NewDBTransaction().Write(); err != nil {
+	dbtx, err := s.db.NewDBTransaction()
+	if err != nil {
+		return err
+	}
+
+	if err := dbtx.Write(); err != nil {
 		return fmt.Errorf("could not commit batch %w", err)
 	}
 	return nil
@@ -56,7 +67,12 @@ func (s *storageImpl) AddBlock(b *types.Header, rollupHash common.L2RollupHash) 
 	if err := hostdb.AddBlock(s.db, b, rollupHash); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
-	if err := s.db.NewDBTransaction().Write(); err != nil {
+	dbtx, err := s.db.NewDBTransaction()
+	if err != nil {
+		return err
+	}
+
+	if err := dbtx.Write(); err != nil {
 		return fmt.Errorf("could not commit batch %w", err)
 	}
 	return nil

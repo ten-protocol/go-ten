@@ -34,7 +34,7 @@ func (db *hostDB) GetSQLDB() *sql.DB {
 func (db *hostDB) NewDBTransaction() (*dbTransaction, error) {
 	tx, err := db.sqldb.Begin()
 	if err != nil {
-		return nil, fmt.Errorf("failed to commit host db transaction. Cause: %w", err)
+		return nil, fmt.Errorf("failed to begin host db transaction. Cause: %w", err)
 	}
 
 	return &dbTransaction{
