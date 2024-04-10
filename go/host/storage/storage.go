@@ -125,10 +125,6 @@ func (s *storageImpl) FetchTotalTxCount() (*big.Int, error) {
 	return hostdb.GetTotalTxCount(s.db.GetSQLDB())
 }
 
-func (s *storageImpl) GetDB() hostdb.HostDB {
-	return s.db
-}
-
 func (s *storageImpl) Close() error {
 	return s.db.GetSQLDB().Close()
 }

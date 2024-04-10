@@ -7,13 +7,11 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 )
 
 type Storage interface {
 	BatchResolver
 	BlockResolver
-	DatabaseResolver
 	io.Closer
 }
 
@@ -42,21 +40,19 @@ type BatchResolver interface {
 	FetchBatchListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error)
 	// FetchBatchHeaderByHeight returns the `BatchHeader` with the given height
 	FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHeader, error)
+	// FetchTotalTxCount returns the number of transactions in the DB
+	FetchTotalTxCount() (*big.Int, error)
+}
+
+type BlockResolver interface {
+	// AddBlock stores block data containing rollups in the host DB
+	AddBlock(b *types.Header, rollupHash common.L2RollupHash) error
+	// AddRollup stores a rollup in the host DB
+	AddRollup(rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error
 	// FetchLatestRollupHeader returns the head `RollupHeader`
 	FetchLatestRollupHeader() (*common.RollupHeader, error)
 	// FetchRollupListing returns a paginated list of rollups
 	FetchRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error)
 	// FetchBlockListing returns a paginated list of blocks that include rollups
 	FetchBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error)
-	// FetchTotalTxCount returns the number of transactions in the DB
-	FetchTotalTxCount() (*big.Int, error)
-}
-
-type BlockResolver interface {
-	AddBlock(b *types.Header, rollupHash common.L2RollupHash) error
-	AddRollup(rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error
-}
-
-type DatabaseResolver interface {
-	GetDB() hostdb.HostDB
 }
