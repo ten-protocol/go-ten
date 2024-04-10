@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/common/storage"
 	"path/filepath"
 	"runtime"
 
@@ -14,7 +15,6 @@ import (
 	_ "github.com/go-sql-driver/mysql" // Importing MariaDB driver
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database"
 )
 
 type MariaDB struct {
@@ -35,8 +35,7 @@ func NewMariaDB(dbURL string) (*MariaDB, error) {
 	}
 	migrationsDir := filepath.Dir(filename)
 
-	// apply migrations
-	if err = database.ApplyMigrations(db, migrationsDir); err != nil {
+	if err = storage.ApplyMigrations(db, migrationsDir); err != nil {
 		return nil, err
 	}
 

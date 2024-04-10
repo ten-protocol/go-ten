@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"database/sql"
-	"embed"
 	"fmt"
 	"github.com/ten-protocol/go-ten/go/common/storage"
 	"path/filepath"
@@ -15,9 +14,6 @@ import (
 const (
 	defaultDatabase = "postgres"
 )
-
-//go:embed *.sql
-var sqlFiles embed.FS
 
 func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) {
 	if baseURL == "" {
@@ -53,7 +49,6 @@ func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) 
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
 	}
 
-	// get the path to the migrations (they are always in the same directory as file containing connection function)
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
 		return nil, fmt.Errorf("failed to get current directory")
