@@ -3,17 +3,23 @@ package postgres
 import (
 	"bufio"
 	"database/sql"
+	"embed"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/common/log"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 
 	_ "github.com/lib/pq"
 )
 
+var (
+	//go:embed *.sql
+	sqlFiles embed.FS
+)
+
 const (
 	defaultDatabase = "postgres"
+	initFile        = "host_postgres_init.sql"
 )
 
 func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) {
@@ -49,22 +55,24 @@ func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
 	}
-	_, filename, _, _ := runtime.Caller(0)
-	baseDir := filepath.Dir(filename)
-	sqlFile := filepath.Join(baseDir, "host_postgres_init.sql")
+	//_, filename, _, _ := runtime.Caller(0)
+	//baseDir := filepath.Dir(filename)
+	//sqlFile := filepath.Join(baseDir, initFile)
 
-	if sqlFile != "" {
-		if err := initialiseDBFromSQLFile(db, sqlFile); err != nil {
-			return nil, fmt.Errorf("failed to initialize db from file %s: %w", sqlFile, err)
-		}
+	sqlFile, err := sqlFiles.ReadFile(initFile)
+	if err != nil {
+		return nil, fmt.Errorf("Could not read the initialisation sql file", log.ErrKey, err)
+	}
+	if err := initialiseDBFromSQLFile(db, string(sqlFile)); err != nil {
+		return nil, fmt.Errorf("failed to initialize db from file %s: %w", sqlFile, err)
 	}
 
 	return db, nil
 }
 
 // initialiseDBFromSQLFile reads SQL commands from a file and executes them on the given DB connection.
-func initialiseDBFromSQLFile(db *sql.DB, filePath string) error {
-	file, err := os.Open(filePath)
+func initialiseDBFromSQLFile(db *sql.DB, sqlFile string) error {
+	file, err := os.Open(sqlFile)
 	if err != nil {
 		return fmt.Errorf("failed to open SQL file: %w", err)
 	}

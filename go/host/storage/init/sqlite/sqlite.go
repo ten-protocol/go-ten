@@ -14,6 +14,7 @@ import (
 
 const (
 	tempDirName = "ten-persistence"
+	initFile    = "host_sqlite_init.sql"
 )
 
 //go:embed *.sql
@@ -21,7 +22,7 @@ var sqlFiles embed.FS
 
 // CreateTemporarySQLiteHostDB if dbPath is empty will use a random throwaway temp file,
 // otherwise dbPath is a filepath for the sqldb file, allows for tests that care about persistence between restarts
-func CreateTemporarySQLiteHostDB(dbPath string, dbOptions string, initFile string) (*sql.DB, error) {
+func CreateTemporarySQLiteHostDB(dbPath string, dbOptions string) (*sql.DB, error) {
 	if dbPath == "" {
 		tempPath, err := CreateTempDBFile("host.db")
 		if err != nil {
