@@ -14,15 +14,13 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var (
-	//go:embed *.sql
-	sqlFiles embed.FS
-)
-
 const (
 	defaultDatabase = "postgres"
 	initFile        = "001_init.sql"
 )
+
+//go:embed *.sql
+var sqlFiles embed.FS
 
 func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) {
 	if baseURL == "" {
