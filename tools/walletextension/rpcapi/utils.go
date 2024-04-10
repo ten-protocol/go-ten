@@ -207,24 +207,25 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, cacheKey []byte, onCache
 		return onCacheMiss()
 	}
 
-	isEvictable := false
+	// we implement a custom cache eviction logic for the cache strategy of type LatestBatch.
+	// when a new batch is created, all entries with "LatestBatch" are considered evicted.
+	// elements not cached for a specific batch are not evicted
+	isEvicted := false
 	ttl := longCacheTTL
 	if cacheType == LatestBatch {
 		ttl = shortCacheTTL
-		isEvictable = true
+		isEvicted = cache.IsEvicted(cacheKey, ttl)
 	}
 
-	cachedValue, foundInCache := cache.Get(cacheKey)
-
-	// only entries cached with `LatestBatch` are evicted
-	isEvicted := isEvictable && cache.IsEvicted(cacheKey, ttl)
-
-	if foundInCache && !isEvicted {
-		returnValue, ok := cachedValue.(*R)
-		if !ok {
-			return nil, fmt.Errorf("unexpected error. Invalid format cached. %v", cachedValue)
+	if !isEvicted {
+		cachedValue, foundInCache := cache.Get(cacheKey)
+		if foundInCache {
+			returnValue, ok := cachedValue.(*R)
+			if !ok {
+				return nil, fmt.Errorf("unexpected error. Invalid format cached. %v", cachedValue)
+			}
+			return returnValue, nil
 		}
-		return returnValue, nil
 	}
 
 	result, err := onCacheMiss()
