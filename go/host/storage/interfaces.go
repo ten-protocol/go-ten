@@ -48,6 +48,8 @@ type BatchResolver interface {
 	FetchRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error)
 	// FetchBlockListing returns a paginated list of blocks that include rollups
 	FetchBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error)
+	// FetchTotalTxCount returns the number of transactions in the DB
+	FetchTotalTxCount() (*big.Int, error)
 }
 
 type BlockResolver interface {

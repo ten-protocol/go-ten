@@ -121,6 +121,10 @@ func (s *storageImpl) FetchBlockListing(pagination *common.QueryPagination) (*co
 	return hostdb.GetBlockListing(s.db.NewDBTransaction(), pagination)
 }
 
+func (s *storageImpl) FetchTotalTxCount() (*big.Int, error) {
+	return hostdb.GetTotalTxCount(s.db.GetSQLDB())
+}
+
 func (s *storageImpl) GetDB() hostdb.HostDB {
 	return s.db
 }

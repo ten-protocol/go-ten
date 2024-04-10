@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/go/host/l2"
@@ -239,10 +237,6 @@ func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
 		L2MessageBusAddress: *h.l2MessageBusAddress,
 		ImportantContracts:  h.services.L1Publisher().GetImportantContracts(),
 	}, nil
-}
-
-func (h *host) DB() hostdb.HostDB {
-	return h.storage.GetDB()
 }
 
 func (h *host) Storage() storage.Storage {

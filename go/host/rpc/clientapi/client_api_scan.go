@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/host"
-	hostdb "github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 )
 
 // ScanAPI implements metric specific RPC endpoints
@@ -31,7 +30,7 @@ func (s *ScanAPI) GetTotalContractCount() (*big.Int, error) {
 
 // GetTotalTxCount returns the number of recorded transactions on the network.
 func (s *ScanAPI) GetTotalTxCount() (*big.Int, error) {
-	return hostdb.GetTotalTxCount(s.host.DB().GetSQLDB())
+	return s.host.Storage().FetchTotalTxCount()
 }
 
 // GetBatchListing returns a paginated list of batches
