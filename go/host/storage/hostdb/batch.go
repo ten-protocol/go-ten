@@ -23,13 +23,13 @@ const (
 )
 
 // AddBatch adds a batch and its header to the DB
-func AddBatch(dbtx *dbTransaction, batch *common.ExtBatch) error {
+func AddBatch(db HostDB, batch *common.ExtBatch) error {
 	extBatch, err := rlp.EncodeToBytes(batch)
 	if err != nil {
 		return fmt.Errorf("could not encode L2 transactions: %w", err)
 	}
 
-	_, err = dbtx.GetDB().Exec(dbtx.GetSQLStatements().InsertBatch,
+	_, err = db.GetSQLDB().Exec(db.GetSQLStatement().InsertBatch,
 		batch.SeqNo().Uint64(),       // sequence
 		batch.Hash(),                 // full hash
 		truncTo16(batch.Hash()),      // shortened hash
@@ -42,7 +42,7 @@ func AddBatch(dbtx *dbTransaction, batch *common.ExtBatch) error {
 
 	if len(batch.TxHashes) > 0 {
 		for _, transaction := range batch.TxHashes {
-			_, err = dbtx.GetDB().Exec(dbtx.GetSQLStatements().InsertTransactions, transaction.Bytes(), batch.SeqNo().Uint64())
+			_, err = db.GetSQLDB().Exec(db.GetSQLStatement().InsertTransactions, transaction.Bytes(), batch.SeqNo().Uint64())
 			if err != nil {
 				return fmt.Errorf("failed to insert transaction with hash: %d", err)
 			}
@@ -50,13 +50,13 @@ func AddBatch(dbtx *dbTransaction, batch *common.ExtBatch) error {
 	}
 
 	var currentTotal int
-	err = dbtx.GetDB().QueryRow(selectTxCount).Scan(&currentTotal)
+	err = db.GetSQLDB().QueryRow(selectTxCount).Scan(&currentTotal)
 	if err != nil {
 		return fmt.Errorf("failed to query transaction count: %w", err)
 	}
 
 	newTotal := currentTotal + len(batch.TxHashes)
-	_, err = dbtx.GetDB().Exec(dbtx.GetSQLStatements().InsertTxCount, 1, newTotal)
+	_, err = db.GetSQLDB().Exec(db.GetSQLStatement().InsertTxCount, 1, newTotal)
 	if err != nil {
 		return fmt.Errorf("failed to update transaction count: %w", err)
 	}
@@ -66,8 +66,8 @@ func AddBatch(dbtx *dbTransaction, batch *common.ExtBatch) error {
 
 // GetBatchListing returns latest batches given a pagination.
 // For example, page 0, size 10 will return the latest 10 batches.
-func GetBatchListing(dbtx *dbTransaction, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
-	headBatch, err := GetCurrentHeadBatch(dbtx.GetDB())
+func GetBatchListing(db HostDB, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+	headBatch, err := GetCurrentHeadBatch(db.GetSQLDB())
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func GetBatchListing(dbtx *dbTransaction, pagination *common.QueryPagination) (*
 
 	var batches []common.PublicBatch
 	for i := batchesFrom; i >= uint64(batchesTo); i-- {
-		batch, err := GetPublicBatchBySequenceNumber(dbtx, i)
+		batch, err := GetPublicBatchBySequenceNumber(db, i)
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return nil, err
 		}
@@ -97,8 +97,8 @@ func GetBatchListing(dbtx *dbTransaction, pagination *common.QueryPagination) (*
 
 // GetBatchListingDeprecated returns latest batches given a pagination.
 // For example, page 0, size 10 will return the latest 10 batches.
-func GetBatchListingDeprecated(dbtx *dbTransaction, pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
-	headBatch, err := GetCurrentHeadBatch(dbtx.GetDB())
+func GetBatchListingDeprecated(db HostDB, pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
+	headBatch, err := GetCurrentHeadBatch(db.GetSQLDB())
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func GetBatchListingDeprecated(dbtx *dbTransaction, pagination *common.QueryPagi
 	var batches []common.PublicBatchDeprecated
 	var txHashes []common.TxHash
 	for i := batchesFrom; i >= uint64(batchesTo); i-- {
-		batch, err := GetPublicBatchBySequenceNumber(dbtx, i)
+		batch, err := GetPublicBatchBySequenceNumber(db, i)
 		if batch == nil {
 			continue
 		}
@@ -120,7 +120,7 @@ func GetBatchListingDeprecated(dbtx *dbTransaction, pagination *common.QueryPagi
 			return nil, fmt.Errorf("failed to get batch by seq no: %w", err)
 		}
 
-		txHashes, err = GetTxsBySequenceNumber(dbtx, batch.Header.SequencerOrderNo.Uint64())
+		txHashes, err = GetTxsBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get tx hashes by seq no: %w", err)
 		}
@@ -142,20 +142,20 @@ func GetBatchListingDeprecated(dbtx *dbTransaction, pagination *common.QueryPagi
 }
 
 // GetPublicBatchBySequenceNumber returns the batch with the given sequence number.
-func GetPublicBatchBySequenceNumber(dbtx *dbTransaction, seqNo uint64) (*common.PublicBatch, error) {
-	whereQuery := " WHERE sequence=" + dbtx.GetSQLStatements().Placeholder
-	return fetchPublicBatch(dbtx.GetDB(), whereQuery, seqNo)
+func GetPublicBatchBySequenceNumber(db HostDB, seqNo uint64) (*common.PublicBatch, error) {
+	whereQuery := " WHERE sequence=" + db.GetSQLStatement().Placeholder
+	return fetchPublicBatch(db.GetSQLDB(), whereQuery, seqNo)
 }
 
 // GetTxsBySequenceNumber returns the transaction hashes with sequence number.
-func GetTxsBySequenceNumber(dbtx *dbTransaction, seqNo uint64) ([]common.TxHash, error) {
-	return fetchTx(dbtx, seqNo)
+func GetTxsBySequenceNumber(db HostDB, seqNo uint64) ([]common.TxHash, error) {
+	return fetchTx(db, seqNo)
 }
 
 // GetBatchBySequenceNumber returns the ext batch for a given sequence number.
-func GetBatchBySequenceNumber(dbtx *dbTransaction, seqNo uint64) (*common.ExtBatch, error) {
-	whereQuery := " WHERE sequence=" + dbtx.GetSQLStatements().Placeholder
-	return fetchFullBatch(dbtx.GetDB(), whereQuery, seqNo)
+func GetBatchBySequenceNumber(db HostDB, seqNo uint64) (*common.ExtBatch, error) {
+	whereQuery := " WHERE sequence=" + db.GetSQLStatement().Placeholder
+	return fetchFullBatch(db.GetSQLDB(), whereQuery, seqNo)
 }
 
 // GetCurrentHeadBatch retrieves the current head batch with the largest sequence number (or height).
@@ -164,15 +164,15 @@ func GetCurrentHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 }
 
 // GetBatchHeader returns the batch header given the hash.
-func GetBatchHeader(dbtx *dbTransaction, hash gethcommon.Hash) (*common.BatchHeader, error) {
-	whereQuery := " WHERE hash=" + dbtx.GetSQLStatements().Placeholder
-	return fetchBatchHeader(dbtx.GetDB(), whereQuery, truncTo16(hash))
+func GetBatchHeader(db HostDB, hash gethcommon.Hash) (*common.BatchHeader, error) {
+	whereQuery := " WHERE hash=" + db.GetSQLStatement().Placeholder
+	return fetchBatchHeader(db.GetSQLDB(), whereQuery, truncTo16(hash))
 }
 
 // GetBatchHashByNumber returns the hash of a batch given its number.
-func GetBatchHashByNumber(dbtx *dbTransaction, number *big.Int) (*gethcommon.Hash, error) {
-	whereQuery := " WHERE height=" + dbtx.GetSQLStatements().Placeholder
-	batch, err := fetchBatchHeader(dbtx.GetDB(), whereQuery, number.Uint64())
+func GetBatchHashByNumber(db HostDB, number *big.Int) (*gethcommon.Hash, error) {
+	whereQuery := " WHERE height=" + db.GetSQLStatement().Placeholder
+	batch, err := fetchBatchHeader(db.GetSQLDB(), whereQuery, number.Uint64())
 	if err != nil {
 		return nil, err
 	}
@@ -190,9 +190,9 @@ func GetHeadBatchHeader(db *sql.DB) (*common.BatchHeader, error) {
 }
 
 // GetBatchNumber returns the height of the batch containing the given transaction hash.
-func GetBatchNumber(dbtx *dbTransaction, txHash gethcommon.Hash) (*big.Int, error) {
+func GetBatchNumber(db HostDB, txHash gethcommon.Hash) (*big.Int, error) {
 	txBytes := txHash.Bytes()
-	batchHeight, err := fetchBatchNumber(dbtx, txBytes)
+	batchHeight, err := fetchBatchNumber(db, txBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -200,9 +200,9 @@ func GetBatchNumber(dbtx *dbTransaction, txHash gethcommon.Hash) (*big.Int, erro
 }
 
 // GetBatchTxs returns the transaction hashes of the batch with the given hash.
-func GetBatchTxs(dbtx *dbTransaction, batchHash gethcommon.Hash) ([]gethcommon.Hash, error) {
-	query := selectTxsAndBatch + dbtx.GetSQLStatements().Placeholder
-	rows, err := dbtx.GetDB().Query(query, batchHash)
+func GetBatchTxs(db HostDB, batchHash gethcommon.Hash) ([]gethcommon.Hash, error) {
+	query := selectTxsAndBatch + db.GetSQLStatement().Placeholder
+	rows, err := db.GetSQLDB().Query(query, batchHash)
 	if err != nil {
 		return nil, fmt.Errorf("query execution failed: %w", err)
 	}
@@ -236,29 +236,29 @@ func GetTotalTxCount(db *sql.DB) (*big.Int, error) {
 }
 
 // GetPublicBatch returns the batch with the given hash.
-func GetPublicBatch(dbtx *dbTransaction, hash common.L2BatchHash) (*common.PublicBatch, error) {
-	whereQuery := " WHERE b.hash=" + dbtx.GetSQLStatements().Placeholder
-	return fetchPublicBatch(dbtx.GetDB(), whereQuery, truncTo16(hash))
+func GetPublicBatch(db HostDB, hash common.L2BatchHash) (*common.PublicBatch, error) {
+	whereQuery := " WHERE b.hash=" + db.GetSQLStatement().Placeholder
+	return fetchPublicBatch(db.GetSQLDB(), whereQuery, truncTo16(hash))
 }
 
 // GetBatchByTx returns the batch with the given hash.
-func GetBatchByTx(dbtx *dbTransaction, txHash gethcommon.Hash) (*common.ExtBatch, error) {
+func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.ExtBatch, error) {
 	var seqNo uint64
-	query := selectBatchSeqByTx + dbtx.GetSQLStatements().Placeholder
-	err := dbtx.GetDB().QueryRow(query, txHash).Scan(&seqNo)
+	query := selectBatchSeqByTx + db.GetSQLStatement().Placeholder
+	err := db.GetSQLDB().QueryRow(query, txHash).Scan(&seqNo)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
 		}
 		return nil, err
 	}
-	return GetBatchBySequenceNumber(dbtx, seqNo)
+	return GetBatchBySequenceNumber(db, seqNo)
 }
 
 // GetBatchByHash returns the batch with the given hash.
-func GetBatchByHash(dbtx *dbTransaction, hash common.L2BatchHash) (*common.ExtBatch, error) {
-	whereQuery := " WHERE hash=" + dbtx.GetSQLStatements().Placeholder
-	return fetchFullBatch(dbtx.GetDB(), whereQuery, truncTo16(hash))
+func GetBatchByHash(db HostDB, hash common.L2BatchHash) (*common.ExtBatch, error) {
+	whereQuery := " WHERE hash=" + db.GetSQLStatement().Placeholder
+	return fetchFullBatch(db.GetSQLDB(), whereQuery, truncTo16(hash))
 }
 
 // GetLatestBatch returns the head batch header
@@ -271,9 +271,9 @@ func GetLatestBatch(db *sql.DB) (*common.BatchHeader, error) {
 }
 
 // GetBatchByHeight returns the batch header given the height
-func GetBatchByHeight(dbtx *dbTransaction, height *big.Int) (*common.BatchHeader, error) {
-	whereQuery := " WHERE height=" + dbtx.GetSQLStatements().Placeholder
-	headBatch, err := fetchBatchHeader(dbtx.GetDB(), whereQuery, height.Uint64())
+func GetBatchByHeight(db HostDB, height *big.Int) (*common.BatchHeader, error) {
+	whereQuery := " WHERE height=" + db.GetSQLStatement().Placeholder
+	headBatch, err := fetchBatchHeader(db.GetSQLDB(), whereQuery, height.Uint64())
 	if err != nil {
 		return nil, fmt.Errorf("failed to batch header: %w", err)
 	}
@@ -304,14 +304,14 @@ func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.Batch
 	return b.Header, nil
 }
 
-func fetchBatchNumber(dbtx *dbTransaction, args ...any) (*big.Int, error) {
+func fetchBatchNumber(db HostDB, args ...any) (*big.Int, error) {
 	var seqNo uint64
-	query := selectBatchSeqByTx + dbtx.GetSQLStatements().Placeholder
+	query := selectBatchSeqByTx + db.GetSQLStatement().Placeholder
 	var err error
 	if len(args) > 0 {
-		err = dbtx.GetDB().QueryRow(query, args...).Scan(&seqNo)
+		err = db.GetSQLDB().QueryRow(query, args...).Scan(&seqNo)
 	} else {
-		err = dbtx.GetDB().QueryRow(query).Scan(&seqNo)
+		err = db.GetSQLDB().QueryRow(query).Scan(&seqNo)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -319,7 +319,7 @@ func fetchBatchNumber(dbtx *dbTransaction, args ...any) (*big.Int, error) {
 		}
 		return nil, err
 	}
-	batch, err := GetPublicBatchBySequenceNumber(dbtx, seqNo)
+	batch, err := GetPublicBatchBySequenceNumber(db, seqNo)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch batch by seq no. Cause: %w", err)
 	}
@@ -430,9 +430,9 @@ func fetchHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 	return batch, nil
 }
 
-func fetchTx(dbtx *dbTransaction, seqNo uint64) ([]common.TxHash, error) {
-	query := selectTxBySeq + dbtx.GetSQLStatements().Placeholder
-	rows, err := dbtx.GetDB().Query(query, seqNo)
+func fetchTx(db HostDB, seqNo uint64) ([]common.TxHash, error) {
+	query := selectTxBySeq + db.GetSQLStatement().Placeholder
+	rows, err := db.GetSQLDB().Query(query, seqNo)
 	if err != nil {
 		return nil, fmt.Errorf("query execution for select txs failed: %w", err)
 	}

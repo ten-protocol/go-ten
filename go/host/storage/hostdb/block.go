@@ -9,7 +9,7 @@ import (
 )
 
 // AddBlock stores a block header with the given rollupHash it contains in the host DB
-func AddBlock(dbtx *dbTransaction, b *types.Header, rollupHash common.L2RollupHash) error {
+func AddBlock(db HostDB, b *types.Header, rollupHash common.L2RollupHash) error {
 	header, err := rlp.EncodeToBytes(b)
 	if err != nil {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
@@ -20,7 +20,7 @@ func AddBlock(dbtx *dbTransaction, b *types.Header, rollupHash common.L2RollupHa
 		return fmt.Errorf("could not encode rollup hash transactions: %w", err)
 	}
 
-	_, err = dbtx.GetDB().Exec(dbtx.GetSQLStatements().InsertBlock,
+	_, err = db.GetSQLDB().Exec(db.GetSQLStatement().InsertBlock,
 		b.Hash(), // hash
 		header,   // l1 block header
 		r,        // rollup hash
@@ -33,8 +33,8 @@ func AddBlock(dbtx *dbTransaction, b *types.Header, rollupHash common.L2RollupHa
 }
 
 // GetBlockListing returns a paginated list of blocks in descending order against the order they were added
-func GetBlockListing(dbtx *dbTransaction, pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
-	rows, err := dbtx.GetDB().Query(dbtx.GetSQLStatements().SelectBlocks, pagination.Size, pagination.Offset)
+func GetBlockListing(db HostDB, pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
+	rows, err := db.GetSQLDB().Query(db.GetSQLStatement().SelectBlocks, pagination.Size, pagination.Offset)
 	if err != nil {
 		return nil, err
 	}

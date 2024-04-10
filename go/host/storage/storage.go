@@ -23,16 +23,15 @@ type storageImpl struct {
 
 func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 	// Check if the Batch is already stored
-	_, err := hostdb.GetBatchHeader(s.db.NewDBTransaction(), batch.Hash())
+	_, err := hostdb.GetBatchHeader(s.db, batch.Hash())
 	if err == nil {
 		return errutil.ErrAlreadyExists
 	}
 
-	dbTx := s.db.NewDBTransaction()
-	if err := hostdb.AddBatch(dbTx, batch); err != nil {
+	if err := hostdb.AddBatch(s.db, batch); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
-	if err := dbTx.Write(); err != nil {
+	if err := s.db.NewDBTransaction().Write(); err != nil {
 		return fmt.Errorf("could not commit batch %w", err)
 	}
 	return nil
@@ -40,41 +39,39 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 
 func (s *storageImpl) AddRollup(rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
 	// Check if the Header is already stored
-	_, err := hostdb.GetRollupHeader(s.db.NewDBTransaction(), rollup.Header.Hash())
+	_, err := hostdb.GetRollupHeader(s.db, rollup.Header.Hash())
 	if err == nil {
 		return errutil.ErrAlreadyExists
 	}
-	dbTx := s.db.NewDBTransaction()
-	if err := hostdb.AddRollup(dbTx, rollup, metadata, block); err != nil {
+	if err := hostdb.AddRollup(s.db, rollup, metadata, block); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
-	if err := dbTx.Write(); err != nil {
+	if err := s.db.NewDBTransaction().Write(); err != nil {
 		return fmt.Errorf("could not commit batch %w", err)
 	}
 	return nil
 }
 
 func (s *storageImpl) AddBlock(b *types.Header, rollupHash common.L2RollupHash) error {
-	dbTx := s.db.NewDBTransaction()
-	if err := hostdb.AddBlock(dbTx, b, rollupHash); err != nil {
+	if err := hostdb.AddBlock(s.db, b, rollupHash); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
-	if err := dbTx.Write(); err != nil {
+	if err := s.db.NewDBTransaction().Write(); err != nil {
 		return fmt.Errorf("could not commit batch %w", err)
 	}
 	return nil
 }
 
 func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*common.ExtBatch, error) {
-	return hostdb.GetBatchBySequenceNumber(s.db.NewDBTransaction(), seqNum)
+	return hostdb.GetBatchBySequenceNumber(s.db, seqNum)
 }
 
 func (s *storageImpl) FetchBatchHashByHeight(number *big.Int) (*gethcommon.Hash, error) {
-	return hostdb.GetBatchHashByNumber(s.db.NewDBTransaction(), number)
+	return hostdb.GetBatchHashByNumber(s.db, number)
 }
 
 func (s *storageImpl) FetchBatchHeaderByHash(hash gethcommon.Hash) (*common.BatchHeader, error) {
-	return hostdb.GetBatchHeader(s.db.NewDBTransaction(), hash)
+	return hostdb.GetBatchHeader(s.db, hash)
 }
 
 func (s *storageImpl) FetchHeadBatchHeader() (*common.BatchHeader, error) {
@@ -82,15 +79,15 @@ func (s *storageImpl) FetchHeadBatchHeader() (*common.BatchHeader, error) {
 }
 
 func (s *storageImpl) FetchPublicBatchByHash(batchHash common.L2BatchHash) (*common.PublicBatch, error) {
-	return hostdb.GetPublicBatch(s.db.NewDBTransaction(), batchHash)
+	return hostdb.GetPublicBatch(s.db, batchHash)
 }
 
 func (s *storageImpl) FetchBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
-	return hostdb.GetBatchByHash(s.db.NewDBTransaction(), batchHash)
+	return hostdb.GetBatchByHash(s.db, batchHash)
 }
 
 func (s *storageImpl) FetchBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
-	return hostdb.GetBatchByTx(s.db.NewDBTransaction(), txHash)
+	return hostdb.GetBatchByTx(s.db, txHash)
 }
 
 func (s *storageImpl) FetchLatestBatch() (*common.BatchHeader, error) {
@@ -98,15 +95,15 @@ func (s *storageImpl) FetchLatestBatch() (*common.BatchHeader, error) {
 }
 
 func (s *storageImpl) FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHeader, error) {
-	return hostdb.GetBatchByHeight(s.db.NewDBTransaction(), height)
+	return hostdb.GetBatchByHeight(s.db, height)
 }
 
 func (s *storageImpl) FetchBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
-	return hostdb.GetBatchListing(s.db.NewDBTransaction(), pagination)
+	return hostdb.GetBatchListing(s.db, pagination)
 }
 
 func (s *storageImpl) FetchBatchListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
-	return hostdb.GetBatchListingDeprecated(s.db.NewDBTransaction(), pagination)
+	return hostdb.GetBatchListingDeprecated(s.db, pagination)
 }
 
 func (s *storageImpl) FetchLatestRollupHeader() (*common.RollupHeader, error) {
@@ -114,11 +111,11 @@ func (s *storageImpl) FetchLatestRollupHeader() (*common.RollupHeader, error) {
 }
 
 func (s *storageImpl) FetchRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
-	return hostdb.GetRollupListing(s.db.NewDBTransaction(), pagination)
+	return hostdb.GetRollupListing(s.db, pagination)
 }
 
 func (s *storageImpl) FetchBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
-	return hostdb.GetBlockListing(s.db.NewDBTransaction(), pagination)
+	return hostdb.GetBlockListing(s.db, pagination)
 }
 
 func (s *storageImpl) FetchTotalTxCount() (*big.Int, error) {
