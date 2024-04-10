@@ -8,8 +8,10 @@ func main() {
 	// load default config
 	var err error
 
-	// set cli flag config overrides
-	cliConfig := ParseConfigCLI(LoadDefaultConfig())
+	// set default, load overrides and cli flag config if applicable
+	defaultConfig := LoadDefaultConfig()
+	//overrideConfig := LoadOverrideConfig(defaultConfig)
+	cliConfig := ParseConfigCLI(defaultConfig)
 	// todo (#1618) - allow for multiple operation (start, stop, status)
 
 	dockerNode := node.NewDockerNode(cliConfig)

@@ -1,19 +1,25 @@
+# node op overrides (must be changed)
+l1WebsocketURL: "ws://change-me:9000" # your sepolia (ITN) or mainnet L1 node
+hostID: "defaultHostID" # public account key (match with privateKey)
+privateKey: "defaultKey" # private key associated with `hostID` public key, identity and rewards wallet for node
+hostP2PPublicAddr: "change-me.com:1000" # host ip or dns including port i.e. host.com:1000 (for external access whereas hostP2PPort may differ on VNET)
+
+# network overrides (ITN SHOWN)
+sequencerID: "0x2fe9B92E12a8d94bfb2f19c19024B9554890C0CC" # sequencer to send transactions
+managementContractAddr: "0x8A63285Fa81eE2DDb42190480d01726816611a6C" # TEN provided
+messageBusContractAddr: "0x250AA6244f03e5F38FdeC1806797a6a506822eec" # TEN provided
+l1Start: "0xcb313b39ab33b15586f70662265c57455b6037530bfd5a006d4ca044da3f25a6" # First L1 block for TEN state
+l1ChainID: 443 # TEN provided
+
+# optional or provided defaults
 nodeAction: "start" # start | upgrade
 nodeType: "validator" # sequencer | validator
 isGenesis: false # must only be a single genesis node
 isSGXEnabled: false # false for test (sgx simulation) not valid for live
-enclaveDockerImage: "defaultEnclaveImage" # TEN provided
-hostDockerImage: "defaultHostImage" # TEN provided
-l1WebsocketURL: "ws://defaultnetwork:9000" # sepolia or mainnet node
+enclaveDockerImage: "testnetobscuronet.azurecr.io/obscuronet/enclave:latest" # TEN provided
+hostDockerImage: "testnetobscuronet.azurecr.io/obscuronet/host:latest" # TEN provided
 hostP2PPort: 10000
-hostP2PPublicAddr: "host.com:1000" # host ip or dns including port i.e. host.com:1000 (for external access whereas hostP2PPort may differ on VNET)
 enclaveWSPort: 11001 # private internal ws port (sidecar/container or private VNET)
-privateKey: "defaultKey" # private key associated with `hostID` public key, identity and rewards wallet for node
-hostID: "defaultHostID" # public account key (match with privateKey)
-sequencerID: "defaultSequencerID" # sequencer to send transactions
-managementContractAddr: "defaultManagementAddr" # TEN provided
-messageBusContractAddr: "defaultMessageBusAddr" # TEN provided
-l1Start: "" # initial
 pccsAddr: "" # SGX - Provisioning Certification Caching Service address
 edgelessDBImage: "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
 hostHTTPPort: 80 # http port for external JSON-RPC requests from Gateway or custom proxy.
@@ -25,7 +31,6 @@ isInboundP2PDisabled: false # disable inboundP2P
 batchInterval: "1s" # TEN provided - do not change should match sequencer
 maxBatchInterval: "1s" # TEN provided - do not change should match sequencer
 rollupInterval: "3s" # TEN provided - do not change should match sequencer
-l1ChainID: 443 # TEN provided
 profilerEnabled: false # go profiler
 metricsEnabled: false # metrics
 coinbaseAddress: "" # sequencer only

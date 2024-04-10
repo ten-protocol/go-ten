@@ -17,12 +17,26 @@ var (
 // LoadDefaultConfig parses optional or default configuration file and returns struct.
 func LoadDefaultConfig() *node.Config {
 	flagUsageMap := getFlagUsageMap()
-	config := flag.String(configFlag, "./go/config/default_node_config.yaml", flagUsageMap[configFlag])
+	configPath := flag.String("config", "./go/config/default_node_config.yaml", flagUsageMap[configFlag])
+	overridePath := flag.String("override", "", flagUsageMap[overrideFlag])
+
+	// Parse only once capturing all necessary flags
 	flag.Parse()
-	defaults, err := node.LoadConfig(*config)
+
+	defaults, err := node.LoadConfig(*configPath)
 	if err != nil {
 		panic(err)
 	}
+
+	// Apply overrides if the override path is provided
+	if *overridePath != "" {
+		overrides, err := node.LoadConfig(*overridePath)
+		if err != nil {
+			panic(err)
+		}
+		defaults.ApplyOverrides(overrides)
+	}
+
 	return defaults
 }
 

@@ -2,6 +2,7 @@ package main
 
 // Flag names.
 const (
+	overrideFlag                = "override"
 	configFlag                  = "config"
 	nodeActionFlag              = "node_action"
 	nodeNameFlag                = "node_name"
@@ -47,6 +48,7 @@ const (
 // While we could just use constants instead of a map, this approach allows us to test that all the expected flags are defined.
 func getFlagUsageMap() map[string]string {
 	return map[string]string{
+		overrideFlag:                "Additive config file to apply on top of default or -config",
 		configFlag:                  "Full path to config file to load",
 		nodeActionFlag:              "Whether to perform a start or upgrade",
 		nodeNameFlag:                "Specifies the node base name",
