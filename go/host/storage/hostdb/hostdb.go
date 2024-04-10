@@ -7,8 +7,7 @@ import (
 
 type HostDB interface {
 	GetSQLDB() *sql.DB
-	NewDBTransaction() *dbTransaction
-	BeginTx() *sql.Tx
+	NewDBTransaction() (*dbTransaction, error)
 	GetSQLStatement() *SQLStatements
 }
 
@@ -32,15 +31,15 @@ func (db *hostDB) GetSQLDB() *sql.DB {
 	return db.sqldb
 }
 
-func (db *hostDB) BeginTx() *sql.Tx {
-	tx, _ := db.sqldb.Begin()
-	return tx
-}
-
-func (db *hostDB) NewDBTransaction() *dbTransaction {
-	return &dbTransaction{
-		tx: db.BeginTx(),
+func (db *hostDB) NewDBTransaction() (*dbTransaction, error) {
+	tx, err := db.sqldb.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to commit host db transaction. Cause: %w", err)
 	}
+
+	return &dbTransaction{
+		tx: tx,
+	}, nil
 }
 
 func (db *hostDB) Close() error {
