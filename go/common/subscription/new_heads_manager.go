@@ -42,9 +42,6 @@ func NewNewHeadsService(inputCh chan *common.BatchHeader, convertToEthHeader boo
 
 func (nhs *NewHeadsService) Start() error {
 	go ForwardFromChannels([]chan *common.BatchHeader{nhs.inputCh}, nhs.stopped, func(head *common.BatchHeader) error {
-		nhs.notifiersMutex.RLock()
-		defer nhs.notifiersMutex.RUnlock()
-
 		if nhs.onMessage != nil {
 			err := nhs.onMessage(head)
 			if err != nil {
@@ -56,6 +53,9 @@ func (nhs *NewHeadsService) Start() error {
 		if nhs.convertToEthHeader {
 			msg = convertBatchHeader(head)
 		}
+
+		nhs.notifiersMutex.RLock()
+		defer nhs.notifiersMutex.RUnlock()
 
 		// for each new head, notify all registered subscriptions
 		for id, notifier := range nhs.newHeadNotifiers {

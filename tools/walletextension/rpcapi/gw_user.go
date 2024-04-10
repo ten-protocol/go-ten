@@ -41,7 +41,7 @@ func userCacheKey(userID []byte) []byte {
 }
 
 func getUser(userID []byte, s *Services) (*GWUser, error) {
-	return withCache(s.Cache, &CacheCfg{TTL: longCacheTTL}, userCacheKey(userID), func() (*GWUser, error) {
+	return withCache(s.Cache, &CacheCfg{CacheType: LongLiving}, userCacheKey(userID), func() (*GWUser, error) {
 		result := GWUser{userID: userID, services: s, accounts: map[common.Address]*GWAccount{}}
 		userPrivateKey, err := s.Storage.GetUserPrivateKey(userID)
 		if err != nil {

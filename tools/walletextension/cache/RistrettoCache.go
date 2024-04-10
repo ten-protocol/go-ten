@@ -16,12 +16,13 @@ const (
 )
 
 type ristrettoCache struct {
-	cache *ristretto.Cache
-	quit  chan struct{}
+	cache        *ristretto.Cache
+	quit         chan struct{}
+	lastEviction time.Time
 }
 
-// NewRistrettoCache returns a new ristrettoCache.
-func NewRistrettoCache(logger log.Logger) (Cache, error) {
+// NewRistrettoCacheWithEviction returns a new ristrettoCache.
+func NewRistrettoCacheWithEviction(logger log.Logger) (Cache, error) {
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: numCounters,
 		MaxCost:     maxCost,
@@ -33,14 +34,30 @@ func NewRistrettoCache(logger log.Logger) (Cache, error) {
 	}
 
 	c := &ristrettoCache{
-		cache: cache,
-		quit:  make(chan struct{}),
+		cache:        cache,
+		quit:         make(chan struct{}),
+		lastEviction: time.Now(),
 	}
 
 	// Start the metrics logging
 	go c.startMetricsLogging(logger)
 
 	return c, nil
+}
+
+func (c *ristrettoCache) EvictShortLiving() {
+	c.lastEviction = time.Now()
+}
+
+func (c *ristrettoCache) IsEvicted(key any, originalTTL time.Duration) bool {
+	remainingTTL, notExpired := c.cache.GetTTL(key)
+	if !notExpired {
+		return true
+	}
+	cachedTime := time.Now().Add(remainingTTL).Add(-originalTTL)
+	// ... LE...Cached...Now - Valid
+	// ... Cached...LE...Now - Evicted
+	return c.lastEviction.After(cachedTime)
 }
 
 // Set adds the key and value to the cache.

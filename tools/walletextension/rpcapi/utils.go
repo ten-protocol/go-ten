@@ -30,7 +30,7 @@ const (
 	notAuthorised = "not authorised"
 
 	longCacheTTL  = 5 * time.Hour
-	shortCacheTTL = 100 * time.Millisecond
+	shortCacheTTL = 1 * time.Minute
 )
 
 var rpcNotImplemented = fmt.Errorf("rpc endpoint not implemented")
@@ -44,12 +44,17 @@ type ExecCfg struct {
 	cacheCfg            *CacheCfg
 }
 
+type CacheStrategy uint8
+
+const (
+	NoCache     CacheStrategy = iota
+	LatestBatch CacheStrategy = iota
+	LongLiving  CacheStrategy = iota
+)
+
 type CacheCfg struct {
-	// ResetWhenNewBlock bool todo
-	TTL time.Duration
-	// logic based on block
-	// todo - handle block in the future
-	TTLCallback func() time.Duration
+	CacheType        CacheStrategy
+	CacheTypeDynamic func() CacheStrategy
 }
 
 func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg, method string, args ...any) (*R, error) {
@@ -193,28 +198,34 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, cacheKey []byte, onCache
 		return onCacheMiss()
 	}
 
-	cacheTTL := cfg.TTL
-	if cfg.TTLCallback != nil {
-		cacheTTL = cfg.TTLCallback()
+	cacheType := cfg.CacheType
+	if cfg.CacheTypeDynamic != nil {
+		cacheType = cfg.CacheTypeDynamic()
 	}
-	isCacheable := cacheTTL > 0
 
-	if isCacheable {
-		if cachedValue, ok := cache.Get(cacheKey); ok {
-			// cloning?
-			returnValue, ok := cachedValue.(*R)
-			if !ok {
-				return nil, fmt.Errorf("unexpected error. Invalid format cached. %v", cachedValue)
-			}
-			return returnValue, nil
+	if cacheType == NoCache {
+		return onCacheMiss()
+	}
+
+	ttl := longCacheTTL
+	if cacheType == LatestBatch {
+		ttl = shortCacheTTL
+	}
+
+	cachedValue, foundInCache := cache.Get(cacheKey)
+	if foundInCache && !cache.IsEvicted(cacheKey, ttl) {
+		returnValue, ok := cachedValue.(*R)
+		if !ok {
+			return nil, fmt.Errorf("unexpected error. Invalid format cached. %v", cachedValue)
 		}
+		return returnValue, nil
 	}
 
 	result, err := onCacheMiss()
 
 	// cache only non-nil values
-	if isCacheable && err == nil && result != nil {
-		cache.Set(cacheKey, result, cacheTTL)
+	if err == nil && result != nil {
+		cache.Set(cacheKey, result, ttl)
 	}
 
 	return result, err
@@ -226,18 +237,18 @@ func audit(services *Services, msg string, params ...any) {
 	}
 }
 
-func cacheTTLBlockNumberOrHash(blockNrOrHash rpc.BlockNumberOrHash) time.Duration {
+func cacheTTLBlockNumberOrHash(blockNrOrHash rpc.BlockNumberOrHash) CacheStrategy {
 	if blockNrOrHash.BlockNumber != nil && blockNrOrHash.BlockNumber.Int64() <= 0 {
-		return shortCacheTTL
+		return LatestBatch
 	}
-	return longCacheTTL
+	return LongLiving
 }
 
-func cacheTTLBlockNumber(lastBlock rpc.BlockNumber) time.Duration {
+func cacheTTLBlockNumber(lastBlock rpc.BlockNumber) CacheStrategy {
 	if lastBlock > 0 {
-		return longCacheTTL
+		return LongLiving
 	}
-	return shortCacheTTL
+	return LatestBatch
 }
 
 func connectWS(account *GWAccount, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {

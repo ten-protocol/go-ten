@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -23,7 +22,7 @@ func NewTransactionAPI(we *Services) *TransactionAPI {
 }
 
 func (s *TransactionAPI) GetBlockTransactionCountByNumber(ctx context.Context, blockNr gethrpc.BlockNumber) *hexutil.Uint {
-	count, err := UnauthenticatedTenRPCCall[hexutil.Uint](ctx, s.we, &CacheCfg{TTLCallback: func() time.Duration {
+	count, err := UnauthenticatedTenRPCCall[hexutil.Uint](ctx, s.we, &CacheCfg{CacheTypeDynamic: func() CacheStrategy {
 		return cacheTTLBlockNumber(blockNr)
 	}}, "eth_getBlockTransactionCountByNumber", blockNr)
 	if err != nil {
@@ -33,7 +32,7 @@ func (s *TransactionAPI) GetBlockTransactionCountByNumber(ctx context.Context, b
 }
 
 func (s *TransactionAPI) GetBlockTransactionCountByHash(ctx context.Context, blockHash common.Hash) *hexutil.Uint {
-	count, err := UnauthenticatedTenRPCCall[hexutil.Uint](ctx, s.we, &CacheCfg{TTL: longCacheTTL}, "eth_getBlockTransactionCountByHash", blockHash)
+	count, err := UnauthenticatedTenRPCCall[hexutil.Uint](ctx, s.we, &CacheCfg{CacheType: LongLiving}, "eth_getBlockTransactionCountByHash", blockHash)
 	if err != nil {
 		return nil
 	}

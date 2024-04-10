@@ -25,6 +25,11 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     // mapping of enclaveID to whether it is attested
     mapping(address => bool) private attested;
+    // mapping of enclaveID to whether it is permissioned as a sequencer enclave
+    // note: the enclaveID which initialises the network secret is automatically permissioned as a sequencer.
+    //       Beyond that, the contract owner can grant and revoke sequencer status.
+    mapping(address => bool) private sequencerEnclave;
+
     // TODO - Revisit the decision to store the host addresses in the smart contract.
     string[] private hostAddresses; // The addresses of all the Ten hosts on the network.
 
@@ -79,10 +84,11 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     function AddRollup(Structs.MetaRollup calldata r, string calldata  _rollupData, Structs.HeaderCrossChainData calldata crossChainData) public {
         // TODO: Add a check that ensures the cross messages are coming from the correct fork using block hashes.
 
-        // todo: verify this enclaveID is a permissioned Sequencer enclaveID
         address enclaveID = ECDSA.recover(r.Hash, r.Signature);
         // revert if the EnclaveID is not attested
         require(attested[enclaveID], "enclaveID not attested");
+        // revert if the EnclaveID is not permissioned as a sequencer
+        require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
 
         AppendRollup(r);
         pushCrossChainMessages(crossChainData);
@@ -99,6 +105,9 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         // enclave is now on the list of attested enclaves (and its host address is published for p2p)
         attested[_enclaveID] = true;
         hostAddresses.push(_hostAddress);
+
+        // the enclave that starts the network with this call is implicitly a sequencer so doesn't need adding
+        sequencerEnclave[_enclaveID] = true;
     }
 
     // Enclaves can request the Network Secret given an attestation request report
@@ -146,6 +155,24 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     // Accessor that checks if an address is attested or not
     function Attested(address _addr) view public returns (bool) {
         return attested[_addr];
+    }
+
+    // Accessor that checks if an address is permissioned as a sequencer
+    function IsSequencerEnclave(address _addr) view public returns (bool) {
+        return sequencerEnclave[_addr];
+    }
+
+    // Function to grant sequencer status for an enclave - contract owner only
+    function GrantSequencerEnclave(address _addr) public onlyOwner {
+        // require the enclave to be attested already
+        require(attested[_addr], "enclaveID not attested");
+        sequencerEnclave[_addr] = true;
+    }
+    // Function to revoke sequencer status for an enclave - contract owner only
+    function RevokeSequencerEnclave(address _addr) public onlyOwner {
+        // require the enclave to be a sequencer already
+        require(sequencerEnclave[_addr], "enclaveID not a sequencer");
+        delete sequencerEnclave[_addr];
     }
 
     // Testnet function to allow the contract owner to retrieve **all** funds from the network bridge.

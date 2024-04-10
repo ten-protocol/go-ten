@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
-	"time"
 
 	subscriptioncommon "github.com/ten-protocol/go-ten/go/common/subscription"
 
@@ -162,12 +161,12 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 		api.we,
 		&ExecCfg{
 			cacheCfg: &CacheCfg{
-				TTLCallback: func() time.Duration {
+				CacheTypeDynamic: func() CacheStrategy {
 					// when the toBlock is not specified, the request is open-ended
 					if crit.ToBlock != nil && crit.ToBlock.Int64() > 0 {
-						return longCacheTTL
+						return LongLiving
 					}
-					return shortCacheTTL
+					return LatestBatch
 				},
 			},
 			tryUntilAuthorised: true,
