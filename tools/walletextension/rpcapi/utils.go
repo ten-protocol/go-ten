@@ -207,18 +207,25 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, cacheKey []byte, onCache
 		return onCacheMiss()
 	}
 
+	// we implement a custom cache eviction logic for the cache strategy of type LatestBatch.
+	// when a new batch is created, all entries with "LatestBatch" are considered evicted.
+	// elements not cached for a specific batch are not evicted
+	isEvicted := false
 	ttl := longCacheTTL
 	if cacheType == LatestBatch {
 		ttl = shortCacheTTL
+		isEvicted = cache.IsEvicted(cacheKey, ttl)
 	}
 
-	cachedValue, foundInCache := cache.Get(cacheKey)
-	if foundInCache && !cache.IsEvicted(cacheKey, ttl) {
-		returnValue, ok := cachedValue.(*R)
-		if !ok {
-			return nil, fmt.Errorf("unexpected error. Invalid format cached. %v", cachedValue)
+	if !isEvicted {
+		cachedValue, foundInCache := cache.Get(cacheKey)
+		if foundInCache {
+			returnValue, ok := cachedValue.(*R)
+			if !ok {
+				return nil, fmt.Errorf("unexpected error. Invalid format cached. %v", cachedValue)
+			}
+			return returnValue, nil
 		}
-		return returnValue, nil
 	}
 
 	result, err := onCacheMiss()
@@ -237,14 +244,14 @@ func audit(services *Services, msg string, params ...any) {
 	}
 }
 
-func cacheTTLBlockNumberOrHash(blockNrOrHash rpc.BlockNumberOrHash) CacheStrategy {
+func cacheBlockNumberOrHash(blockNrOrHash rpc.BlockNumberOrHash) CacheStrategy {
 	if blockNrOrHash.BlockNumber != nil && blockNrOrHash.BlockNumber.Int64() <= 0 {
 		return LatestBatch
 	}
 	return LongLiving
 }
 
-func cacheTTLBlockNumber(lastBlock rpc.BlockNumber) CacheStrategy {
+func cacheBlockNumber(lastBlock rpc.BlockNumber) CacheStrategy {
 	if lastBlock > 0 {
 		return LongLiving
 	}

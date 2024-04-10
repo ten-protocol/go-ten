@@ -41,7 +41,7 @@ func (api *BlockChainAPI) GetBalance(ctx context.Context, address common.Address
 		&ExecCfg{
 			cacheCfg: &CacheCfg{
 				CacheTypeDynamic: func() CacheStrategy {
-					return cacheTTLBlockNumberOrHash(blockNrOrHash)
+					return cacheBlockNumberOrHash(blockNrOrHash)
 				},
 			},
 			account:            &address,
@@ -76,7 +76,7 @@ func (s *BlockChainAPI) GetProof(ctx context.Context, address common.Address, st
 
 func (api *BlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (map[string]interface{}, error) {
 	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &CacheCfg{CacheTypeDynamic: func() CacheStrategy {
-		return cacheTTLBlockNumber(number)
+		return cacheBlockNumber(number)
 	}}, "eth_getHeaderByNumber", number)
 	if resp == nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.Block
 		api.we,
 		&CacheCfg{
 			CacheTypeDynamic: func() CacheStrategy {
-				return cacheTTLBlockNumber(number)
+				return cacheBlockNumber(number)
 			},
 		}, "eth_getBlockByNumber", number, fullTx)
 	if resp == nil {
@@ -122,7 +122,7 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address common.Address, b
 		api.we,
 		&CacheCfg{
 			CacheTypeDynamic: func() CacheStrategy {
-				return cacheTTLBlockNumberOrHash(blockNrOrHash)
+				return cacheBlockNumberOrHash(blockNrOrHash)
 			},
 		},
 		"eth_getCode",
@@ -185,7 +185,7 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, api.we, &ExecCfg{
 		cacheCfg: &CacheCfg{
 			CacheTypeDynamic: func() CacheStrategy {
-				return cacheTTLBlockNumberOrHash(blockNrOrHash)
+				return cacheBlockNumberOrHash(blockNrOrHash)
 			},
 		},
 		computeFromCallback: func(user *GWUser) *common.Address {
@@ -208,7 +208,7 @@ func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.Transact
 		cacheCfg: &CacheCfg{
 			CacheTypeDynamic: func() CacheStrategy {
 				if blockNrOrHash != nil {
-					return cacheTTLBlockNumberOrHash(*blockNrOrHash)
+					return cacheBlockNumberOrHash(*blockNrOrHash)
 				}
 				return LatestBatch
 			},
