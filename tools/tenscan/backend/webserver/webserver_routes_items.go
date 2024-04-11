@@ -15,6 +15,7 @@ func routeItems(r *gin.Engine, server *WebServer) {
 	r.GET("/items/rollup/latest/", server.getLatestRollupHeader)
 	r.GET("/items/rollups/", server.getRollupListing) // New
 	r.GET("/items/batches/", server.getBatchListingDeprecated)
+	r.GET("/items/new/batches/", server.getBatchListingNew)
 	r.GET("/items/blocks/", server.getBlockListing) // Deprecated
 	r.GET("/items/transactions/", server.getPublicTransactions)
 	r.GET("/info/obscuro/", server.getConfig)
@@ -109,7 +110,7 @@ func (w *WebServer) getPublicTransactions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"result": publicTxs})
 }
 
-func (w *WebServer) getBatchListing(c *gin.Context) {
+func (w *WebServer) getBatchListingNew(c *gin.Context) {
 	offsetStr := c.DefaultQuery("offset", "0")
 	sizeStr := c.DefaultQuery("size", "10")
 
