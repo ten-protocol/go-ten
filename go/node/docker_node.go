@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+
 	"github.com/sanity-io/litter"
 
 	"github.com/ethereum/go-ethereum/log"
