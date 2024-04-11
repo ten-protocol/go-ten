@@ -14,7 +14,6 @@ func routeItems(r *gin.Engine, server *WebServer) {
 	r.GET("/items/batch/:hash", server.getBatch)
 	r.GET("/items/rollup/latest/", server.getLatestRollupHeader)
 	r.GET("/items/rollups/", server.getRollupListing) // New
-	r.GET("/items/batchs/", server.getBatchListing)
 	r.GET("/items/batches/", server.getBatchListingDeprecated)
 	r.GET("/items/blocks/", server.getBlockListing) // Deprecated
 	r.GET("/items/transactions/", server.getPublicTransactions)

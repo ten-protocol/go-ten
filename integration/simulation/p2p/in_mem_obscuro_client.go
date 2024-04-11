@@ -103,7 +103,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.GetBatch:
 		return c.getBatch(result, args)
 
-	case rpc.GetBatchListingDeprecated:
+	case rpc.GetBatchListingNew:
 		return c.getBatchListingDeprecated(result, args)
 
 	case rpc.GetRollupListing:
@@ -327,16 +327,16 @@ func (c *inMemObscuroClient) getBatch(result interface{}, args []interface{}) er
 
 func (c *inMemObscuroClient) getBatchListingDeprecated(result interface{}, args []interface{}) error {
 	if len(args) != 1 {
-		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetBatchListingDeprecated, len(args))
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetBatchListingNew, len(args))
 	}
 	pagination, ok := args[0].(*common.QueryPagination)
 	if !ok {
-		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetBatchListingDeprecated, args[0])
+		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetBatchListingNew, args[0])
 	}
 
 	batches, err := c.tenScanAPI.GetBatchListingDeprecated(pagination)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchListingDeprecated, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchListingNew, err)
 	}
 
 	res, ok := result.(*common.BatchListingResponseDeprecated)

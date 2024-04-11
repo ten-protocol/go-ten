@@ -29,17 +29,17 @@ func (s *ScanAPI) GetTotalContractCount() (*big.Int, error) {
 }
 
 // GetTotalTxCount returns the number of recorded transactions on the network.
-func (s *ScanAPI) GetTotalTxCount() (*big.Int, error) {
+func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
 	return s.host.Storage().FetchTotalTxCount()
 }
 
-// GetBatchListing returns a paginated list of batches
-func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+// GetBatchListingNew returns a paginated list of batches
+func (s *ScanAPI) GetBatchListingNew(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	return s.host.Storage().FetchBatchListing(pagination)
 }
 
-// GetBatchListingDeprecated returns the deprecated version of batch listing
-func (s *ScanAPI) GetBatchListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
+// GetBatchListing returns the deprecated version of batch listing
+func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
 	return s.host.Storage().FetchBatchListingDeprecated(pagination)
 }
 
