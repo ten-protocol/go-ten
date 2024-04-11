@@ -120,7 +120,7 @@ jobs:
             databases=$(az postgres flexible-server db list --resource-group Testnet --server-name postgres-ten-${{ github.event.inputs.testnet_type }} --query "[?starts_with(name, 'host_')].[name]" -o tsv)
 
             for db in $databases; do
-              az postgres db delete --name "$db" --resource-group Testnet --server-name postgres-ten-${{ github.event.inputs.testnet_type }}.postgres.database.azure.com --yes
+              az postgres flexible-server db delete --name "$db" --resource-group Testnet --server-name postgres-ten-${{ github.event.inputs.testnet_type }} --yes
             done
 
       - name: 'Upload L1 deployer container logs'
