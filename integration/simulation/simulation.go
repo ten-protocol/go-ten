@@ -62,7 +62,7 @@ func (s *Simulation) Start() {
 	s.prefundObscuroAccounts() // Prefund every L2 wallet
 
 	// wait for the validator to become up to date
-	time.Sleep(10 * time.Second)
+	time.Sleep(1 * time.Second)
 	s.deployObscuroERC20s() // Deploy the Obscuro HOC and POC ERC20 contracts
 	s.prefundL1Accounts()   // Prefund every L1 wallet
 	s.checkHealthStatus()   // Checks the nodes health status

@@ -143,7 +143,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		ObscuroChainID:            integration.TenChainID,
 		L1StartHash:               n.l1Data.TenStartBlock,
 		SequencerID:               n.config.SequencerID,
-		// Can provide the maria db host if testing against a local DB instance
+		// Can provide the postgres db host if testing against a local DB instance
 		UseInMemoryDB:         true,
 		DebugNamespaceEnabled: true,
 		BatchInterval:         n.config.BatchInterval,

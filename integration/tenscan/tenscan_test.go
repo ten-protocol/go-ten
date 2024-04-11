@@ -200,15 +200,6 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEqual(t, configFetchObj.Item.SequencerID, gethcommon.Address{})
 
-	//Timer for running local tests
-	//countdownDuration := 5 * time.Minute
-	//tickDuration := 5 * time.Second
-	//
-	//for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
-	//	fmt.Printf("Shutting down in %s...\n", remaining)
-	//	time.Sleep(tickDuration)
-	//}
-
 	err = tenScanContainer.Stop()
 	assert.NoError(t, err)
 }
