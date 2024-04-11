@@ -44,7 +44,6 @@ const (
 	GetLatestBatch           = "scan_getLatestBatch"
 	GetPublicBatchByHash     = "scan_getPublicBatchByHash"
 	GetBatchByHeight         = "scan_getBatchByHeight"
-	GetLatestTransactions    = "scan_getLatestTransactions"
 )
 
 // Client is used by client applications to interact with the Ten node
