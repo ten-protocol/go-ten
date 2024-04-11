@@ -19,8 +19,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
-	"github.com/ten-protocol/go-ten/go/host/db"
 	"github.com/ten-protocol/go-ten/go/host/events"
+	"github.com/ten-protocol/go-ten/go/host/storage"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -39,7 +39,7 @@ type host struct {
 	// ignore incoming requests
 	stopControl *stopcontrol.StopControl
 
-	db *db.DB // Stores the host's publicly-available data
+	storage storage.Storage // Stores the host's publicly-available data
 
 	logger gethlog.Logger
 
@@ -59,10 +59,7 @@ func (bl batchListener) HandleBatch(batch *common.ExtBatch) {
 }
 
 func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
-	database, err := db.CreateDBFromConfig(config, regMetrics, logger)
-	if err != nil {
-		logger.Crit("unable to create database for host", log.ErrKey, err)
-	}
+	hostStorage := storage.NewHostStorageFromConfig(config, logger)
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
 		// config
@@ -73,7 +70,7 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		services: hostServices,
 
 		// Initialize the host DB
-		db: database,
+		storage: hostStorage,
 
 		logger:         logger,
 		metricRegistry: regMetrics,
@@ -91,12 +88,12 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 			enclHostID.IsSequencer = false
 			enclHostID.IsGenesis = false
 		}
-		enclGuardian := enclave.NewGuardian(config, enclHostID, hostServices, enclClient, database, host.stopControl, logger)
+		enclGuardian := enclave.NewGuardian(config, enclHostID, hostServices, enclClient, hostStorage, host.stopControl, logger)
 		enclGuardians = append(enclGuardians, enclGuardian)
 	}
 
 	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardians, logger)
-	l2Repo := l2.NewBatchRepository(config, hostServices, database, logger)
+	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
 
 	l2Repo.Subscribe(batchListener{newHeads: host.newHeads})
@@ -154,10 +151,6 @@ func (h *host) Config() *config.HostConfig {
 	return h.config
 }
 
-func (h *host) DB() *db.DB {
-	return h.db
-}
-
 func (h *host) EnclaveClient() common.Enclave {
 	return h.services.Enclaves().GetEnclaveClient()
 }
@@ -196,7 +189,7 @@ func (h *host) Stop() error {
 		}
 	}
 
-	if err := h.db.Stop(); err != nil {
+	if err := h.storage.Close(); err != nil {
 		h.logger.Error("Failed to stop DB", log.ErrKey, err)
 	}
 
@@ -244,6 +237,10 @@ func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
 		L2MessageBusAddress: *h.l2MessageBusAddress,
 		ImportantContracts:  h.services.L1Publisher().GetImportantContracts(),
 	}, nil
+}
+
+func (h *host) Storage() storage.Storage {
+	return h.storage
 }
 
 func (h *host) NewHeadsChan() chan *common.BatchHeader {

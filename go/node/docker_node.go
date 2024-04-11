@@ -3,9 +3,9 @@ package node
 import (
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/sanity-io/litter"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/docker"
 )
 
@@ -124,7 +124,7 @@ func (d *DockerNode) startHost() error {
 		fmt.Sprintf("-l1ChainID=%d", d.cfg.l1ChainID),
 	}
 	if !d.cfg.hostInMemDB {
-		cmd = append(cmd, "-levelDBPath", _hostDataDir)
+		cmd = append(cmd, "-postgresDBHost", d.cfg.postgresDB)
 	}
 
 	exposedPorts := []int{

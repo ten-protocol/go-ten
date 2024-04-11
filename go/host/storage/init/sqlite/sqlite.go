@@ -6,15 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/ten-protocol/go-ten/go/common/log"
-
-	"github.com/ten-protocol/go-ten/go/enclave/storage/init/migration"
-
-	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 
 	_ "github.com/mattn/go-sqlite3" // this imports the sqlite driver to make the sql.Open() connection work
@@ -22,35 +14,21 @@ import (
 
 const (
 	tempDirName = "ten-persistence"
-	initFile    = "001_init.sql"
+	initFile    = "host_sqlite_init.sql"
 )
 
 //go:embed *.sql
 var sqlFiles embed.FS
 
-// CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
+// CreateTemporarySQLiteHostDB if dbPath is empty will use a random throwaway temp file,
 // otherwise dbPath is a filepath for the sqldb file, allows for tests that care about persistence between restarts
-func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
-	initialsed := false
-
+func CreateTemporarySQLiteHostDB(dbPath string, dbOptions string) (*sql.DB, error) {
 	if dbPath == "" {
-		tempPath, err := CreateTempDBFile()
+		tempPath, err := CreateTempDBFile("host.db")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create temp sqlite DB file - %w", err)
 		}
 		dbPath = tempPath
-	}
-
-	inMem := strings.Contains(dbOptions, "mode=memory")
-	description := "in memory"
-	if !inMem {
-		_, err := os.Stat(dbPath)
-		if err == nil {
-			description = "existing"
-			initialsed = true
-		} else {
-			description = "new"
-		}
 	}
 
 	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?%s", dbPath, dbOptions))
@@ -61,25 +39,14 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Log
 	// Sqlite fails with table locks when there are multiple connections
 	db.SetMaxOpenConns(1)
 
-	if !initialsed {
-		err = initialiseDB(db)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// perform db migration
-	err = migration.DBMigration(db, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
+	err = initialiseDB(db, initFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't initialise db - %w", err)
 	}
-
-	logger.Info(fmt.Sprintf("Opened %s sqlite db file at %s", description, dbPath))
-
-	return enclavedb.NewEnclaveDB(db, logger)
+	return db, nil
 }
 
-func initialiseDB(db *sql.DB) error {
+func initialiseDB(db *sql.DB, initFile string) error {
 	sqlInitFile, err := sqlFiles.ReadFile(initFile)
 	if err != nil {
 		return err
@@ -92,12 +59,12 @@ func initialiseDB(db *sql.DB) error {
 	return nil
 }
 
-func CreateTempDBFile() (string, error) {
+func CreateTempDBFile(dbname string) (string, error) {
 	tempDir := filepath.Join("/tmp", tempDirName, common.RandomStr(5))
 	err := os.MkdirAll(tempDir, os.ModePerm)
 	if err != nil {
 		return "", fmt.Errorf("failed to create sqlite temp dir - %w", err)
 	}
-	tempFile := filepath.Join(tempDir, "enclave.db")
+	tempFile := filepath.Join(tempDir, dbname)
 	return tempFile, nil
 }

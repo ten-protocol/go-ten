@@ -3,11 +3,11 @@ package clientapi
 import (
 	"math/big"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/host"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // ScanAPI implements metric specific RPC endpoints
@@ -28,27 +28,62 @@ func (s *ScanAPI) GetTotalContractCount() (*big.Int, error) {
 	return s.host.EnclaveClient().GetTotalContractCount()
 }
 
-// GetTotalTransactionCount returns the number of recorded transactions on the network.
+// GetTotalTxCount returns the number of recorded transactions on the network.
 func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
-	return s.host.DB().GetTotalTransactions()
+	return s.host.Storage().FetchTotalTxCount()
 }
 
+// GetBatchListingNew returns a paginated list of batches
+func (s *ScanAPI) GetBatchListingNew(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+	return s.host.Storage().FetchBatchListing(pagination)
+}
+
+// GetBatchListing returns the deprecated version of batch listing
+func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
+	return s.host.Storage().FetchBatchListingDeprecated(pagination)
+}
+
+// GetPublicBatchByHash returns the public batch
+func (s *ScanAPI) GetPublicBatchByHash(hash common.L2BatchHash) (*common.PublicBatch, error) {
+	return s.host.Storage().FetchPublicBatchByHash(hash)
+}
+
+// GetBatch returns the `ExtBatch` with the given hash
+func (s *ScanAPI) GetBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
+	return s.host.Storage().FetchBatch(batchHash)
+}
+
+// GetBatchByTx returns the `ExtBatch` with the given tx hash
+func (s *ScanAPI) GetBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
+	return s.host.Storage().FetchBatchByTx(txHash)
+}
+
+// GetLatestBatch returns the head `BatchHeader`
+func (s *ScanAPI) GetLatestBatch() (*common.BatchHeader, error) {
+	return s.host.Storage().FetchLatestBatch()
+}
+
+// GetBatchByHeight returns the `BatchHeader` with the given height
+func (s *ScanAPI) GetBatchByHeight(height *big.Int) (*common.BatchHeader, error) {
+	return s.host.Storage().FetchBatchHeaderByHeight(height)
+}
+
+// GetRollupListing returns a paginated list of Rollups
+func (s *ScanAPI) GetRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
+	return s.host.Storage().FetchRollupListing(pagination)
+}
+
+// GetLatestRollupHeader returns the head `RollupHeader`
 func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {
-	return s.host.DB().GetTipRollupHeader()
+	return s.host.Storage().FetchLatestRollupHeader()
 }
 
+// GetPublicTransactionData returns a paginated list of transaction data
 func (s *ScanAPI) GetPublicTransactionData(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
 	return s.host.EnclaveClient().GetPublicTransactionData(pagination)
 }
 
-func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
-	return s.host.DB().GetBatchListing(pagination)
-}
-
-func (s *ScanAPI) GetBatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
-	return s.host.DB().GetBatch(hash)
-}
-
+// GetBlockListing returns a paginated list of blocks that include rollups
 func (s *ScanAPI) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
-	return s.host.DB().GetBlockListing(pagination)
+	return s.host.Storage().FetchBlockListing(pagination)
 }

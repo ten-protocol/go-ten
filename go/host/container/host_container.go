@@ -30,7 +30,6 @@ const (
 	APIVersion1         = "1.0"
 	APINamespaceObscuro = "obscuro"
 	APINamespaceEth     = "eth"
-	APINamespaceTenScan = "tenscan"
 	APINamespaceScan    = "scan"
 	APINamespaceNetwork = "net"
 	APINamespaceTest    = "test"
@@ -180,8 +179,10 @@ func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p
 				Service:   clientapi.NewEthereumAPI(h, logger),
 			},
 			{
-				Namespace: APINamespaceTenScan,
-				Service:   clientapi.NewTenScanAPI(h),
+				Namespace: APINamespaceScan,
+				Version:   APIVersion1,
+				Service:   clientapi.NewScanAPI(h, logger),
+				Public:    true,
 			},
 			{
 				Namespace: APINamespaceNetwork,
@@ -194,10 +195,6 @@ func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p
 			{
 				Namespace: APINamespaceEth,
 				Service:   filterAPI,
-			},
-			{
-				Namespace: APINamespaceScan,
-				Service:   clientapi.NewScanAPI(h, logger),
 			},
 		})
 
