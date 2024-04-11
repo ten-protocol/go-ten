@@ -55,10 +55,22 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # Lightweight final build stage. Includes bare minimum to start wallet extension
 FROM alpine:3.18
 
+# Install NGINX
+RUN apk update && apk add nginx
+
 # copy over the gateway executable
 COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/bin /home/obscuro/go-obscuro/tools/walletextension/bin
 
 # copy over the .sql migration files
 COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/storage/database /home/obscuro/go-obscuro/tools/walletextension/storage/database
 
-WORKDIR /home/obscuro/go-obscuro/tools/walletextension/bin
+# copy over the NGINX configuration file
+COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/nginx.conf /etc/nginx/nginx.conf
+
+
+# copy over the entrypoint script
+COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+
