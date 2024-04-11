@@ -6,7 +6,7 @@
 CREATE DATABASE IF NOT EXISTS ogdb;
 
 -- Grant the necessary permissions
-GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP ON ogdb.* TO 'obscurouser';
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP ON ogdb.* TO 'obscurouser';
 
 -- Reload the privileges from the grant tables in the mysql database
 FLUSH PRIVILEGES;

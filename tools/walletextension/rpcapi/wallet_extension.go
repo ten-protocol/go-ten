@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/retry"
+
 	subscriptioncommon "github.com/ten-protocol/go-ten/go/common/subscription"
 
 	tencommon "github.com/ten-protocol/go-ten/go/common"
@@ -111,11 +114,10 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 
 	rpcClient := connectionObj.(rpc.Client)
 	ch := make(chan *tencommon.BatchHeader)
-	clientSubscription, err := rpcClient.Subscribe(context.Background(), rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeNewHeads)
+	clientSubscription, err := subscribeToNewHeadsWithRetry(rpcClient, ch, retry.NewTimeoutStrategy(10*time.Minute, 1*time.Second), logger)
 	if err != nil {
 		panic(fmt.Errorf("cannot subscribe to new heads to the backend %w", err))
 	}
-
 	services.backendNewHeadsSubscription = clientSubscription
 	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(ch, true, logger, func(newHead *tencommon.BatchHeader) error {
 		services.Cache.EvictShortLiving()
@@ -123,6 +125,24 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 	})
 
 	return &services
+}
+
+func subscribeToNewHeadsWithRetry(rpcClient rpc.Client, ch chan *tencommon.BatchHeader, retryStrategy retry.Strategy, logger gethlog.Logger) (*gethrpc.ClientSubscription, error) {
+	var sub *gethrpc.ClientSubscription
+
+	err := retry.Do(func() error {
+		var err error
+		sub, err = rpcClient.Subscribe(context.Background(), rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeNewHeads)
+		if err != nil {
+			logger.Info("could not subscribe for new head blocks", log.ErrKey, err)
+		}
+		return err
+	}, retryStrategy)
+	if err != nil {
+		logger.Error("could not subscribe for new head blocks.", log.ErrKey, err)
+	}
+
+	return sub, err
 }
 
 // IsStopping returns whether the WE is stopping
