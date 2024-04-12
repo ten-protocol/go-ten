@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -61,11 +60,7 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 		}
 
 		// extract the EVM error
-		evmErr, err := serializeEVMError(err)
-		if err == nil {
-			err = fmt.Errorf(string(evmErr))
-		}
-		builder.Err = err
+		builder.Err = convertError(err)
 		return nil
 	}
 
@@ -79,22 +74,11 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 	return nil
 }
 
-func serializeEVMError(err error) ([]byte, error) {
-	var errReturn interface{}
-
+func convertError(err error) *errutil.EVMSerialisableError {
 	// check if it's a serialized error and handle any error wrapping that might have occurred
 	var e *errutil.EVMSerialisableError
 	if ok := errors.As(err, &e); ok {
-		errReturn = e
-	} else {
-		// it's a generic error, serialise it
-		errReturn = &errutil.EVMSerialisableError{Err: err.Error()}
+		return e
 	}
-
-	// serialise the error object returned by the evm into a json
-	errSerializedBytes, marshallErr := json.Marshal(errReturn)
-	if marshallErr != nil {
-		return nil, marshallErr
-	}
-	return errSerializedBytes, nil
+	return &errutil.EVMSerialisableError{Err: err.Error()}
 }

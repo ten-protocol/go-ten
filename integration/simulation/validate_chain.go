@@ -610,15 +610,15 @@ func checkReceivedLogs(t *testing.T, s *Simulation) {
 }
 
 // Checks that a subscription has received the expected logs.
-func checkSubscribedLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
+func checkSubscribedLogs(t *testing.T, owner string, channel chan types.Log) int {
 	var logs []*types.Log
 
 	for {
 		if len(channel) == 0 {
 			break
 		}
-		idAndLog := <-channel
-		logs = append(logs, idAndLog.Log)
+		log := <-channel
+		logs = append(logs, &log)
 	}
 
 	assertLogsValid(t, owner, logs)

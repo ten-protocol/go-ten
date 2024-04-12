@@ -41,8 +41,8 @@ type Simulation struct {
 	SimulationTime   time.Duration
 	Stats            *stats.Stats
 	Params           *params.SimParams
-	LogChannels      map[string][]chan common.IDAndLog // Maps an owner to the channels on which they receive logs for each client.
-	Subscriptions    []ethereum.Subscription           // A slice of all created event subscriptions.
+	LogChannels      map[string][]chan types.Log // Maps an owner to the channels on which they receive logs for each client.
+	Subscriptions    []ethereum.Subscription     // A slice of all created event subscriptions.
 	ctx              context.Context
 }
 
@@ -185,10 +185,10 @@ func (s *Simulation) trackLogs() {
 
 	for owner, clients := range s.RPCHandles.AuthObsClients {
 		// There is a subscription, and corresponding log channel, per owner per client.
-		s.LogChannels[owner] = []chan common.IDAndLog{}
+		s.LogChannels[owner] = []chan types.Log{}
 
 		for _, client := range clients {
-			channel := make(chan common.IDAndLog, 1000)
+			channel := make(chan types.Log, 1000)
 
 			// To exercise the filtering mechanism, we subscribe for HOC events only, ignoring POC events.
 			hocFilter := common.FilterCriteria{
