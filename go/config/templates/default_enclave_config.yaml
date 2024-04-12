@@ -1,0 +1,28 @@
+# A default configuration for TEN enclave
+hostID:                    ""
+hostAddress:               "127.0.0.1:10000"
+address:                   "127.0.0.1:11000"
+nodeType:                  "sequencer"
+willAttest:                false
+validateL1Blocks:          false
+managementContractAddress: ""
+logLevel:                  3
+logPath:                   "stdout"
+edgelessDBHost:            ""
+sqliteDBPath:              ""
+minGasPrice:               1 # 0 will use params.initialBaseFee
+messageBusAddress:         ""
+sequencerID:               ""
+maxBatchSize:              36864 # 1024 * 36,
+maxRollupSize:             65536 # 1024 * 64,
+l2BaseFee:                 0 # 0 will use params.initialBaseFee
+gasBatchExecutionLimit:    300_000_000_000
+tenGenesis:                ""
+l1ChainID:                 1337
+tenChainID:                443
+useInMemoryDB:             true
+profilerEnabled:           false
+genesisJSON:               ""
+debugNamespaceEnabled:     false
+gasLocalExecutionCapFlag:  300_000_000_000
+l2Coinbase:                "0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"

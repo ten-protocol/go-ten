@@ -114,8 +114,8 @@ func NewEnclave(
 	}
 
 	// Initialise the database
-	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.ObscuroChainID))
-	storage := storage.NewStorageFromConfig(config, chainConfig, logger)
+	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.TenChainID))
+	storage_ := storage.NewStorageFromConfig(config, chainConfig, logger)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
 	// todo (#1056) - valid block
@@ -139,7 +139,7 @@ func NewEnclave(
 	}
 
 	// attempt to fetch the enclave key from the database
-	enclaveKey, err := storage.GetEnclaveKey()
+	enclaveKey, err := storage_.GetEnclaveKey()
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			logger.Crit("Failed to fetch enclave key", log.ErrKey, err)
@@ -151,7 +151,7 @@ func NewEnclave(
 		if err != nil {
 			logger.Crit("Failed to generate enclave key.", log.ErrKey, err)
 		}
-		err = storage.StoreEnclaveKey(enclaveKey)
+		err = storage_.StoreEnclaveKey(enclaveKey)
 		if err != nil {
 			logger.Crit("Failed to store enclave key.", log.ErrKey, err)
 		}
@@ -160,26 +160,26 @@ func NewEnclave(
 
 	obscuroKey := crypto.GetObscuroKey(logger)
 
-	gethEncodingService := gethencoding.NewGethEncodingService(storage, logger)
+	gethEncodingService := gethencoding.NewGethEncodingService(storage_, logger)
 	dataEncryptionService := crypto.NewDataEncryptionService(logger)
 	dataCompressionService := compression.NewBrotliDataCompressionService()
 
-	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
+	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage_, big.NewInt(config.TenChainID), logger)
 
 	gasOracle := gas.NewGasOracle()
-	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	batchExecutor := components.NewBatchExecutor(storage, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
-	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
-	registry := components.NewBatchRegistry(storage, logger)
-	rProducer := components.NewRollupProducer(enclaveKey.EnclaveID(), storage, registry, logger)
+	blockProcessor := components.NewBlockProcessor(storage_, crossChainProcessors, gasOracle, logger)
+	batchExecutor := components.NewBatchExecutor(storage_, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
+	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage_)
+	registry := components.NewBatchRegistry(storage_, logger)
+	rProducer := components.NewRollupProducer(enclaveKey.EnclaveID(), storage_, registry, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
-	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
-	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
-	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKey.EnclaveID(), storage, logger)
+	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage_, gethEncodingService, chainConfig, logger)
+	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage_, logger, sigVerifier)
+	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKey.EnclaveID(), storage_, logger)
 
-	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, gethEncodingService, logger)
+	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.TenChainID), registry, storage_, gethEncodingService, logger)
 	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
@@ -199,7 +199,7 @@ func NewEnclave(
 			chainConfig,
 			enclaveKey,
 			mempool,
-			storage,
+			storage_,
 			dataEncryptionService,
 			dataCompressionService,
 			nodetype.SequencerSettings{
@@ -212,11 +212,11 @@ func NewEnclave(
 			blockchain,
 		)
 	} else {
-		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, config.SequencerID, storage, sigVerifier, mempool, logger)
+		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, config.SequencerID, storage_, sigVerifier, mempool, logger)
 	}
 
 	chain := l2chain.NewChain(
-		storage,
+		storage_,
 		gethEncodingService,
 		chainConfig,
 		genesis,
@@ -224,23 +224,23 @@ func NewEnclave(
 		registry,
 		config.GasLocalExecutionCapFlag,
 	)
-	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, registry, crossChainProcessors, service, config, gasOracle, storage, blockProcessor, chain, logger)
-	subscriptionManager := events.NewSubscriptionManager(storage, config.ObscuroChainID, logger)
+	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage_, registry, crossChainProcessors, service, config, gasOracle, storage_, blockProcessor, chain, logger)
+	subscriptionManager := events.NewSubscriptionManager(storage_, config.TenChainID, logger)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
-	err = restoreStateDBCache(storage, registry, batchExecutor, genesis, logger)
+	err = restoreStateDBCache(storage_, registry, batchExecutor, genesis, logger)
 	if err != nil {
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
 
 	// TODO ensure debug is allowed/disallowed
-	debug := debugger.New(chain, storage, chainConfig)
+	debug := debugger.New(chain, storage_, chainConfig)
 
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKey.EnclaveID())
 	return &enclaveImpl{
 		config:                 config,
-		storage:                storage,
-		blockResolver:          storage,
+		storage:                storage_,
+		blockResolver:          storage_,
 		l1BlockProcessor:       blockProcessor,
 		rollupConsumer:         rConsumer,
 		l1Blockchain:           l1Blockchain,

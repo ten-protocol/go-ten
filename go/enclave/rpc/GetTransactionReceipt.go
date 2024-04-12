@@ -82,7 +82,7 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	}
 
 	rpc.logger.Trace("Successfully retrieved receipt for ", log.TxKey, txHash, "rec", txReceipt)
-	signer := types.MakeSigner(ethchainadapter.ChainParams(big.NewInt(rpc.config.ObscuroChainID)), big.NewInt(int64(number)), 0)
+	signer := types.MakeSigner(ethchainadapter.ChainParams(big.NewInt(rpc.config.TenChainID)), big.NewInt(int64(number)), 0)
 	r := marshalReceipt(txReceipt, blockHash, number, signer, tx, int(txIndex))
 	builder.ReturnValue = &r
 	return nil

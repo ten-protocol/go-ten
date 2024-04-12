@@ -17,7 +17,7 @@ func NewNetworkAPI(host host.Host) *NetworkAPI {
 	}
 }
 
-// Version returns the protocol version of the Obscuro network.
+// Version returns the protocol version of the TEN network.
 func (api *NetworkAPI) Version() string {
-	return fmt.Sprintf("%d", api.host.Config().ObscuroChainID)
+	return fmt.Sprintf("%d", api.host.Config().TenChainID)
 }
