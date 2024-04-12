@@ -102,7 +102,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 		}
 
 		// return EVM error
-		builder.Err = convertError(err)
+		builder.Err = err
 		return nil
 	}
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/syserr"
@@ -59,8 +58,7 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 			return err
 		}
 
-		// extract the EVM error
-		builder.Err = convertError(err)
+		builder.Err = err
 		return nil
 	}
 
@@ -72,13 +70,4 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 		builder.ReturnValue = nil
 	}
 	return nil
-}
-
-func convertError(err error) *errutil.EVMSerialisableError {
-	// check if it's a serialized error and handle any error wrapping that might have occurred
-	var e *errutil.EVMSerialisableError
-	if ok := errors.As(err, &e); ok {
-		return e
-	}
-	return &errutil.EVMSerialisableError{Err: err.Error()}
 }

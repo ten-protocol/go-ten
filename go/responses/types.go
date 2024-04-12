@@ -1,11 +1,10 @@
 package responses
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
 type ViewingKeyEncryptor func([]byte) ([]byte, error)
@@ -14,15 +13,12 @@ type ViewingKeyEncryptor func([]byte) ([]byte, error)
 // which will be decoded only on the client side.
 type UserResponse[T any] struct {
 	Result *T
-	ErrStr *string
+	Err    *errutil.DataError
 }
 
 // Error - converts the encoded string in the response into a normal error and returns it.
 func (ur *UserResponse[T]) Error() error {
-	if ur.ErrStr != nil {
-		return fmt.Errorf(*ur.ErrStr)
-	}
-	return nil
+	return ur.Err
 }
 
 // Responses
