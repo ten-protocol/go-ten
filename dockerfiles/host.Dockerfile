@@ -36,7 +36,11 @@ FROM alpine:3.18
 # Copy over just the binary from the previous build stage into this one.
 COPY --from=build-host \
     /home/obscuro/go-obscuro/go/host/main /home/obscuro/go-obscuro/go/host/main
-    
+
+# Workaround to fix postges filepath issue
+COPY --from=build-host \
+    /home/obscuro/go-obscuro/go/host/storage/init/postgres /home/obscuro/go-obscuro/go/host/storage/init/postgres
+
 WORKDIR /home/obscuro/go-obscuro/go/host/main
 
 # expose the http and the ws ports to the host

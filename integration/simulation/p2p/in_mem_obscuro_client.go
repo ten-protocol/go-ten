@@ -33,7 +33,7 @@ type inMemObscuroClient struct {
 	obscuroAPI       *clientapi.ObscuroAPI
 	ethAPI           *clientapi.EthereumAPI
 	filterAPI        *clientapi.FilterAPI
-	tenScanAPI       *clientapi.TenScanAPI
+	tenScanAPI       *clientapi.ScanAPI
 	testAPI          *clientapi.TestAPI
 	enclavePublicKey *ecies.PublicKey
 }
@@ -51,7 +51,7 @@ func NewInMemObscuroClient(hostContainer *container.HostContainer) rpc.Client {
 		obscuroAPI:       clientapi.NewObscuroAPI(hostContainer.Host()),
 		ethAPI:           clientapi.NewEthereumAPI(hostContainer.Host(), logger),
 		filterAPI:        clientapi.NewFilterAPI(hostContainer.Host(), logger),
-		tenScanAPI:       clientapi.NewTenScanAPI(hostContainer.Host()),
+		tenScanAPI:       clientapi.NewScanAPI(hostContainer.Host(), logger),
 		testAPI:          clientapi.NewTestAPI(hostContainer),
 		enclavePublicKey: enclPubKey,
 	}
@@ -94,17 +94,23 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.Health:
 		return c.health(result)
 
-	case rpc.GetTotalTxs:
+	case rpc.GetTotalTxCount:
 		return c.getTotalTransactions(result)
 
-	case rpc.GetLatestTxs:
-		return c.getLatestTransactions(result, args)
-
-	case rpc.GetBatchForTx:
-		return c.getBatchForTx(result, args)
+	case rpc.GetBatchByTx:
+		return c.getBatchByTx(result, args)
 
 	case rpc.GetBatch:
 		return c.getBatch(result, args)
+
+	case rpc.GetBatchListing:
+		return c.getBatchListingDeprecated(result, args)
+
+	case rpc.GetRollupListing:
+		return c.getRollupListing(result, args)
+
+	case rpc.GetPublicTransactionData:
+		return c.getPublicTransactionData(result, args)
 
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
@@ -277,45 +283,27 @@ func (c *inMemObscuroClient) health(result interface{}) error {
 }
 
 func (c *inMemObscuroClient) getTotalTransactions(result interface{}) error {
-	totalTxs, err := c.tenScanAPI.GetTotalTransactions()
+	totalTxs, err := c.tenScanAPI.GetTotalTransactionCount()
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTotalTxs, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTotalTxCount, err)
 	}
 
 	*result.(**big.Int) = totalTxs
 	return nil
 }
 
-func (c *inMemObscuroClient) getLatestTransactions(result interface{}, args []interface{}) error {
+func (c *inMemObscuroClient) getBatchByTx(result interface{}, args []interface{}) error {
 	if len(args) != 1 {
-		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetLatestTxs, len(args))
-	}
-	numTxs, ok := args[0].(int)
-	if !ok {
-		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetLatestTxs, args[0])
-	}
-
-	latestTxs, err := c.tenScanAPI.GetLatestTransactions(numTxs)
-	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetLatestTxs, err)
-	}
-
-	*result.(*[]gethcommon.Hash) = latestTxs
-	return nil
-}
-
-func (c *inMemObscuroClient) getBatchForTx(result interface{}, args []interface{}) error {
-	if len(args) != 1 {
-		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetBatchForTx, len(args))
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetBatchByTx, len(args))
 	}
 	txHash, ok := args[0].(gethcommon.Hash)
 	if !ok {
-		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetBatchForTx, args[0])
+		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetBatchByTx, args[0])
 	}
 
-	batch, err := c.tenScanAPI.GetBatchForTx(txHash)
+	batch, err := c.tenScanAPI.GetBatchByTx(txHash)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchForTx, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchByTx, err)
 	}
 
 	*result.(**common.ExtBatch) = batch
@@ -337,6 +325,72 @@ func (c *inMemObscuroClient) getBatch(result interface{}, args []interface{}) er
 	}
 
 	*result.(**common.ExtBatch) = batch
+	return nil
+}
+
+func (c *inMemObscuroClient) getBatchListingDeprecated(result interface{}, args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetBatchListing, len(args))
+	}
+	pagination, ok := args[0].(*common.QueryPagination)
+	if !ok {
+		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetBatchListing, args[0])
+	}
+
+	batches, err := c.tenScanAPI.GetBatchListing(pagination)
+	if err != nil {
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchListing, err)
+	}
+
+	res, ok := result.(*common.BatchListingResponseDeprecated)
+	if !ok {
+		return fmt.Errorf("result is of type %T, expected *common.BatchListingResponseDeprecated", result)
+	}
+	*res = *batches
+	return nil
+}
+
+func (c *inMemObscuroClient) getRollupListing(result interface{}, args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetRollupListing, len(args))
+	}
+	pagination, ok := args[0].(*common.QueryPagination)
+	if !ok {
+		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetRollupListing, args[0])
+	}
+
+	rollups, err := c.tenScanAPI.GetRollupListing(pagination)
+	if err != nil {
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetRollupListing, err)
+	}
+
+	res, ok := result.(*common.RollupListingResponse)
+	if !ok {
+		return fmt.Errorf("result is of type %T, expected *common.BatchListingResponseDeprecated", result)
+	}
+	*res = *rollups
+	return nil
+}
+
+func (c *inMemObscuroClient) getPublicTransactionData(result interface{}, args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetPublicTransactionData, len(args))
+	}
+	pagination, ok := args[0].(*common.QueryPagination)
+	if !ok {
+		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetPublicTransactionData, args[0])
+	}
+
+	txs, err := c.tenScanAPI.GetPublicTransactionData(pagination)
+	if err != nil {
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetPublicTransactionData, err)
+	}
+
+	res, ok := result.(*common.TransactionListingResponse)
+	if !ok {
+		return fmt.Errorf("result is of type %T, expected *common.BatchListingResponseDeprecated", result)
+	}
+	*res = *txs
 	return nil
 }
 

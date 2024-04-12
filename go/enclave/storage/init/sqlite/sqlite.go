@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	tempDirName = "obscuro-persistence"
+	tempDirName = "ten-persistence"
 	initFile    = "001_init.sql"
 )
 

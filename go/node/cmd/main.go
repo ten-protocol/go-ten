@@ -37,6 +37,7 @@ func main() {
 		node.WithMaxBatchInterval(cliConfig.maxBatchInterval),
 		node.WithRollupInterval(cliConfig.rollupInterval),
 		node.WithL1ChainID(cliConfig.l1ChainID),
+		node.WithPostgresDBHost(cliConfig.postgresDBHost),
 	)
 
 	dockerNode := node.NewDockerNode(nodeCfg)

@@ -2,13 +2,13 @@ create table if not exists keyvalue
 (
     ky  varbinary(64) primary key,
     val mediumblob NOT NULL
-);
+    );
 
 create table if not exists config
 (
     ky  varchar(64) primary key,
     val mediumblob NOT NULL
-);
+    );
 
 insert into config
 values ('CURRENT_SEQ', -1);
@@ -18,7 +18,7 @@ create table if not exists attestation_key
 --     party  binary(20) primary key, // todo -pk
     party binary(20),
     ky    binary(33) NOT NULL
-);
+    );
 
 create table if not exists block
 (
@@ -27,9 +27,9 @@ create table if not exists block
     is_canonical boolean NOT NULL,
     header       blob    NOT NULL,
     height       int     NOT NULL
---   the unique constraint is commented for now because there might be multiple non-canonical blocks for the same height
+    --   the unique constraint is commented for now because there might be multiple non-canonical blocks for the same height
 --     unique (height, is_canonical)
-);
+    );
 create index IDX_BLOCK_HEIGHT on block (height);
 
 create table if not exists l1_msg
@@ -38,7 +38,7 @@ create table if not exists l1_msg
     message     varbinary(1024) NOT NULL,
     block       binary(16)      NOT NULL REFERENCES block,
     is_transfer boolean
-);
+    );
 
 create table if not exists rollup
 (
@@ -48,7 +48,7 @@ create table if not exists rollup
     time_stamp        int        NOT NULL,
     header            blob       NOT NULL,
     compression_block binary(16) NOT NULL REFERENCES block
-);
+    );
 
 create table if not exists batch_body
 (
@@ -69,9 +69,9 @@ create table if not exists batch
     body           int        NOT NULL REFERENCES batch_body,
     l1_proof       binary(16) NOT NULL, -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
     is_executed    boolean    NOT NULL
---   the unique constraint is commented for now because there might be multiple non-canonical batches for the same height
+    --   the unique constraint is commented for now because there might be multiple non-canonical batches for the same height
 --   unique (height, is_canonical, is_executed)
-);
+    );
 create index IDX_BATCH_HASH on batch (hash);
 create index IDX_BATCH_HEIGHT on batch (height, is_canonical);
 create index IDX_BATCH_Block on batch (l1_proof);
@@ -85,18 +85,18 @@ create table if not exists tx
     nonce          int        NOT NULL,
     idx            int        NOT NULL,
     body           int REFERENCES batch_body
-);
+    );
 
 create table if not exists exec_tx
 (
     id                       binary(16) PRIMARY KEY, -- batch_hash||tx_hash
     created_contract_address binary(20),
     receipt                  mediumblob,
---     commenting out the fk until synthetic transactions are also stored
+    --     commenting out the fk until synthetic transactions are also stored
 --     tx                       binary(16) REFERENCES tx,
     tx                       binary(16) NOT NULL,
     batch                    int        NOT NULL REFERENCES batch
-);
+    );
 create index IX_EX_TX1 on exec_tx (tx);
 
 -- todo denormalize. Extract contract and user table and point topic0 and rel_addreses to it
@@ -116,7 +116,7 @@ create table if not exists events
     rel_address3    binary(20),
     rel_address4    binary(20),
     exec_tx_id      binary(16) REFERENCES exec_tx
-);
+    );
 create index IDX_AD on events (address);
 create index IDX_RAD1 on events (rel_address1);
 create index IDX_RAD2 on events (rel_address2);

@@ -27,7 +27,7 @@ func NewBackend(obsClient *obsclient.ObsClient) *Backend {
 }
 
 func (b *Backend) GetLatestBatch() (*common.BatchHeader, error) {
-	return b.obsClient.BatchHeaderByNumber(nil)
+	return b.obsClient.GetLatestBatch()
 }
 
 func (b *Backend) GetTenNodeHealthStatus() (bool, error) {
@@ -81,8 +81,22 @@ func (b *Backend) GetBatchesListing(offset uint64, size uint64) (*common.BatchLi
 	})
 }
 
+func (b *Backend) GetBatchesListingDeprecated(offset uint64, size uint64) (*common.BatchListingResponseDeprecated, error) {
+	return b.obsClient.GetBatchesListingDeprecated(&common.QueryPagination{
+		Offset: offset,
+		Size:   uint(size),
+	})
+}
+
 func (b *Backend) GetBlockListing(offset uint64, size uint64) (*common.BlockListingResponse, error) {
 	return b.obsClient.GetBlockListing(&common.QueryPagination{
+		Offset: offset,
+		Size:   uint(size),
+	})
+}
+
+func (b *Backend) GetRollupListing(offset uint64, size uint64) (*common.RollupListingResponse, error) {
+	return b.obsClient.GetRollupListing(&common.QueryPagination{
 		Offset: offset,
 		Size:   uint(size),
 	})

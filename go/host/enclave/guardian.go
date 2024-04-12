@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/host/storage"
+
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -22,7 +24,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
 	"github.com/ten-protocol/go-ten/go/config"
-	"github.com/ten-protocol/go-ten/go/host/db"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 )
 
@@ -55,8 +56,8 @@ type Guardian struct {
 	state         *StateTracker // state machine that tracks our view of the enclave's state
 	enclaveClient common.Enclave
 
-	sl guardianServiceLocator
-	db *db.DB
+	sl      guardianServiceLocator
+	storage storage.Storage
 
 	submitDataLock sync.Mutex // we only submit one block, batch or transaction to enclave at a time
 
@@ -74,7 +75,7 @@ type Guardian struct {
 	enclaveID        *common.EnclaveID
 }
 
-func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
+func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, storage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
 	return &Guardian{
 		hostData:         hostData,
 		state:            NewStateTracker(logger),
@@ -86,7 +87,7 @@ func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator 
 		l1StartHash:      cfg.L1StartHash,
 		maxRollupSize:    cfg.MaxRollupSize,
 		blockTime:        cfg.L1BlockTime,
-		db:               db,
+		storage:          storage,
 		hostInterrupter:  interrupter,
 		logger:           logger,
 	}
@@ -442,8 +443,6 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	g.state.OnProcessedBlock(block.Hash())
 	g.processL1BlockTransactions(block)
 
-	// todo (@matt) this should not be here, it is only used by the RPC API server for batch data which will eventually just use L1 repo
-	err = g.db.AddBlock(block.Header())
 	if err != nil {
 		return false, fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}
@@ -469,13 +468,24 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 		if err != nil {
 			g.logger.Error("Could not decode rollup.", log.ErrKey, err)
 		}
-		err = g.db.AddRollupHeader(r, block)
+
+		metaData, err := g.enclaveClient.GetRollupData(r.Header.Hash())
+		if err != nil {
+			g.logger.Error("Could not fetch rollup metadata from enclave.", log.ErrKey, err)
+		} else {
+			err = g.storage.AddRollup(r, metaData, block)
+		}
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())
 			} else {
 				g.logger.Error("Could not store rollup.", log.ErrKey, err)
 			}
+		}
+		// TODO (@will) this should be removed and pulled from the L1
+		err = g.storage.AddBlock(block.Header(), r.Header.Hash())
+		if err != nil {
+			g.logger.Error("Could not add block to host db.", log.ErrKey, err)
 		}
 	}
 

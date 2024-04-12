@@ -112,6 +112,17 @@ jobs:
           inlineScript: |
             $(az resource list --tag ${{ vars.AZURE_DEPLOY_GROUP_L2 }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
+      # Delete old database tables from previous deployment
+      - name: 'Delete host databases'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            databases=$(az postgres flexible-server db list --resource-group Testnet --server-name postgres-ten-${{ github.event.inputs.testnet_type }} --query "[?starts_with(name, 'host_')].[name]" -o tsv)
+
+            for db in $databases; do
+              az postgres flexible-server db delete --database-name "$db" --resource-group Testnet --server-name postgres-ten-${{ github.event.inputs.testnet_type }} --yes
+            done
+
       - name: 'Upload L1 deployer container logs'
         uses: actions/upload-artifact@v3
         with:
@@ -249,6 +260,7 @@ jobs:
                -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
                -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
                -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
+               -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{  github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/ \
                start'
 
   check-obscuro-is-healthy:

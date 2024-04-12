@@ -2,7 +2,6 @@ package devnetwork
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 
@@ -57,7 +56,6 @@ type InMemNodeOperator struct {
 	enclaves           []*enclavecontainer.EnclaveContainer
 	l1Wallet           wallet.Wallet
 	enclaveDBFilepaths []string // 1 per enclave
-	hostDBFilepath     string
 }
 
 func (n *InMemNodeOperator) StopHost() error {
@@ -144,13 +142,14 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		L1ChainID:                 integration.EthereumChainID,
 		ObscuroChainID:            integration.TenChainID,
 		L1StartHash:               n.l1Data.TenStartBlock,
-		UseInMemoryDB:             false,
-		LevelDBPath:               n.hostDBFilepath,
-		DebugNamespaceEnabled:     true,
-		BatchInterval:             n.config.BatchInterval,
-		RollupInterval:            n.config.RollupInterval,
-		L1BlockTime:               n.config.L1BlockTime,
-		MaxRollupSize:             1024 * 64,
+		SequencerID:               n.config.SequencerID,
+		// Can provide the postgres db host if testing against a local DB instance
+		UseInMemoryDB:         true,
+		DebugNamespaceEnabled: true,
+		BatchInterval:         n.config.BatchInterval,
+		RollupInterval:        n.config.RollupInterval,
+		L1BlockTime:           n.config.L1BlockTime,
+		MaxRollupSize:         1024 * 64,
 	}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, n.l1Wallet.Address(), log.CmpKey, log.HostCmp)
@@ -278,10 +277,6 @@ func NewInMemNodeOperator(operatorIdx int, config *TenConfig, nodeType common.No
 		}
 		sqliteDBPaths[i] = sqliteDBPath
 	}
-	levelDBPath, err := os.MkdirTemp("", "levelDB_*")
-	if err != nil {
-		panic("failed to create temp levelDBPath")
-	}
 
 	l1Nonce, err := l1Client.Nonce(l1Wallet.Address())
 	if err != nil {
@@ -298,6 +293,5 @@ func NewInMemNodeOperator(operatorIdx int, config *TenConfig, nodeType common.No
 		l1Wallet:           l1Wallet,
 		logger:             logger,
 		enclaveDBFilepaths: sqliteDBPaths,
-		hostDBFilepath:     levelDBPath,
 	}
 }

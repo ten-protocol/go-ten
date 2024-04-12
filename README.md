@@ -209,7 +209,7 @@ root
 │   │   ├── <a href="./go/ethadapter/erc20contractlib">erc20contractlib</a>: Understand ERC20 transactions.
 │   │   └── <a href="./go/ethadapter/mgmtcontractlib">mgmtcontractlib</a>: Understand Ten Management contrract transactions. 
 │   ├── <a href="./go/host">host</a>: The standalone host process.
-│   │   ├── <a href="./go/host/db">db</a>: The host's database.
+│   │   ├── <a href="go/host/storage/db">db</a>: The host's database.
 │   │   ├── <a href="./go/host/hostrunner">hostrunner</a>: The entry point.
 │   │   ├── <a href="./go/host/main">main</a>: Main
 │   │   ├── <a href="./go/host/node">node</a>: The host implementation.

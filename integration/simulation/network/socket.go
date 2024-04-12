@@ -160,7 +160,8 @@ func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) er
 		// create a connection to the newly created nodes - panic if no connection is made after some time
 		startTime := time.Now()
 		for connected := false; !connected; time.Sleep(500 * time.Millisecond) {
-			client, err = rpc.NewNetworkClient(fmt.Sprintf("ws://127.0.0.1:%d", simParams.StartPort+integration.DefaultHostRPCWSOffset+i))
+			port := simParams.StartPort + integration.DefaultHostRPCWSOffset + i
+			client, err = rpc.NewNetworkClient(fmt.Sprintf("ws://127.0.0.1:%d", port))
 			connected = err == nil // The client cannot be created until the node has started.
 			if time.Now().After(startTime.Add(2 * time.Minute)) {
 				return fmt.Errorf("failed to create a connect to node after 2 minute - %w", err)

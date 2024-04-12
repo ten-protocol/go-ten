@@ -26,27 +26,24 @@ const (
 	Health = "obscuro_health"
 	Config = "obscuro_config"
 
-	GetBlockHeaderByHash     = "tenscan_getBlockHeaderByHash"
-	GetBatch                 = "tenscan_getBatch"
-	GetBatchForTx            = "tenscan_getBatchForTx"
-	GetLatestTxs             = "tenscan_getLatestTransactions"
-	GetTotalTxs              = "tenscan_getTotalTransactions"
-	Attestation              = "tenscan_attestation"
 	StopHost                 = "test_stopHost"
 	SubscribeNamespace       = "eth"
 	SubscriptionTypeLogs     = "logs"
 	SubscriptionTypeNewHeads = "newHeads"
 
-	// GetL1RollupHeaderByHash  = "scan_getL1RollupHeaderByHash"
-	// GetActiveNodeCount       = "scan_getActiveNodeCount"
-
+	GetBatchByTx             = "scan_getBatchByTx"
 	GetLatestRollupHeader    = "scan_getLatestRollupHeader"
-	GetTotalTransactionCount = "scan_getTotalTransactionCount"
+	GetTotalTxCount          = "scan_getTotalTransactionCount"
 	GetTotalContractCount    = "scan_getTotalContractCount"
 	GetPublicTransactionData = "scan_getPublicTransactionData"
 	GetBatchListing          = "scan_getBatchListing"
+	GetBatchListingNew       = "scan_getBatchListingNew"
 	GetBlockListing          = "scan_getBlockListing"
-	GetFullBatchByHash       = "scan_getBatchByHash"
+	GetRollupListing         = "scan_getRollupListing"
+	GetBatch                 = "scan_getBatch"
+	GetLatestBatch           = "scan_getLatestBatch"
+	GetPublicBatchByHash     = "scan_getPublicBatchByHash"
+	GetBatchByHeight         = "scan_getBatchByHeight"
 )
 
 // Client is used by client applications to interact with the Ten node

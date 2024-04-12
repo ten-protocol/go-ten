@@ -720,8 +720,11 @@ func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
 func checkTenscan(t *testing.T, s *Simulation) {
 	for idx, client := range s.RPCHandles.RPCClients {
 		checkTotalTransactions(t, client, idx)
-		latestTxHashes := checkLatestTxs(t, client, idx)
-		for _, txHash := range latestTxHashes {
+		checkForLatestBatches(t, client, idx)
+		checkForLatestRollups(t, client, idx)
+
+		txHashes := getLatestTransactions(t, client, idx)
+		for _, txHash := range txHashes {
 			checkBatchFromTxs(t, client, txHash, idx)
 		}
 	}
@@ -730,7 +733,7 @@ func checkTenscan(t *testing.T, s *Simulation) {
 // Checks that the node has stored sufficient transactions.
 func checkTotalTransactions(t *testing.T, client rpc.Client, nodeIdx int) {
 	var totalTxs *big.Int
-	err := client.Call(&totalTxs, rpc.GetTotalTxs)
+	err := client.Call(&totalTxs, rpc.GetTotalTxCount)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve total transactions. Cause: %s", nodeIdx, err)
 	}
@@ -739,23 +742,52 @@ func checkTotalTransactions(t *testing.T, client rpc.Client, nodeIdx int) {
 	}
 }
 
-// Checks that we can retrieve the latest transactions for the node.
-func checkLatestTxs(t *testing.T, client rpc.Client, nodeIdx int) []gethcommon.Hash {
-	var latestTxHashes []gethcommon.Hash
-	err := client.Call(&latestTxHashes, rpc.GetLatestTxs, txThreshold)
+// Checks that we can retrieve the latest batches
+func checkForLatestBatches(t *testing.T, client rpc.Client, nodeIdx int) {
+	var latestBatches common.BatchListingResponseDeprecated
+	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(5)}
+	err := client.Call(&latestBatches, rpc.GetBatchListing, &pagination)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve latest batches. Cause: %s", nodeIdx, err)
+	}
+	if len(latestBatches.BatchesData) != 5 {
+		t.Errorf("node %d: expected at least %d batches, but only received %d", nodeIdx, 5, len(latestBatches.BatchesData))
+	}
+}
+
+// Checks that we can retrieve the latest rollups
+func checkForLatestRollups(t *testing.T, client rpc.Client, nodeIdx int) {
+	var latestRollups common.RollupListingResponse
+	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(5)}
+	err := client.Call(&latestRollups, rpc.GetRollupListing, &pagination)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve latest transactions. Cause: %s", nodeIdx, err)
 	}
-	if len(latestTxHashes) != txThreshold {
-		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, txThreshold, len(latestTxHashes))
+	if len(latestRollups.RollupsData) != 5 {
+		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, 5, len(latestRollups.RollupsData))
 	}
-	return latestTxHashes
+}
+
+func getLatestTransactions(t *testing.T, client rpc.Client, nodeIdx int) []gethcommon.Hash {
+	var transactionResponse common.TransactionListingResponse
+	var txHashes []gethcommon.Hash
+	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(5)}
+	err := client.Call(&transactionResponse, rpc.GetPublicTransactionData, &pagination)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve latest transactions. Cause: %s", nodeIdx, err)
+	}
+
+	for _, transaction := range transactionResponse.TransactionsData {
+		txHashes = append(txHashes, transaction.TransactionHash)
+	}
+
+	return txHashes
 }
 
 // Retrieves the batch using the transaction hash, and validates it.
 func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, nodeIdx int) {
 	var batchByTx *common.ExtBatch
-	err := client.Call(&batchByTx, rpc.GetBatchForTx, txHash)
+	err := client.Call(&batchByTx, rpc.GetBatchByTx, txHash)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve batch for transaction. Cause: %s", nodeIdx, err)
 		return
