@@ -36,7 +36,7 @@ const (
 // or (b) if passed via EDG_<flag> as environment variable (see https://docs.edgeless.systems/ego/reference/config#environment-variables).
 // In the case of running enclave as standalone process (./go/enclave/main/main w/o ego sign enclave.json stage) these flags will be checked
 // to be set via EDG_<flag> env vars.
-var EnclaveRestrictedFlags = map[string]string{
+var enclaveRestrictedFlags = map[string]string{
 	L1ChainIDFlag:             "int64",
 	TenChainIDFlag:            "int64",
 	TenGenesisFlag:            "string",

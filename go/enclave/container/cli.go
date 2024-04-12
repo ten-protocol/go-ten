@@ -6,6 +6,11 @@ import (
 	"github.com/ten-protocol/go-ten/go/config"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
+	"os"
+	"reflect"
+	"strconv"
+	"strings"
+	"unicode"
 )
 
 func ParseConfig() (*config.EnclaveConfig, error) {
@@ -71,11 +76,68 @@ func ParseConfig() (*config.EnclaveConfig, error) {
 	cfg.GasBatchExecutionLimit = *gasBatchExecutionLimit
 	cfg.GasLocalExecutionCapFlag = *gasLocalExecutionCap
 
+	cfg, err = retrieveOrSetEnclaveRestrictedFlags(cfg)
+
 	enclaveConfig, err := cfg.ToEnclaveConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert EnclaveInputConfig to EnclaveConfig")
 	}
 	return enclaveConfig, nil
+}
+
+// retrieveOrSetEnclaveRestrictedFlags, ensures relevant flags are able to pass into the enclave in scenarios where
+// an `ego sign` procedure isn't enabled - and no env[] array used. In this case, it will take the EDG_ env vars as
+// first or the default config values as fall-back.
+func retrieveOrSetEnclaveRestrictedFlags(cfg *config.EnclaveInputConfig) (*config.EnclaveInputConfig, error) {
+	val := os.Getenv("EDG_TESTMODE")
+	if val == "true" {
+		fmt.Println("Using test mode flags")
+		return cfg, nil
+	} else {
+		fmt.Println("Using mandatory signed configurations.")
+	}
+
+	v := reflect.ValueOf(cfg).Elem() // Get the reflect.Value of the struct
+
+	for eFlag, flagType := range enclaveRestrictedFlags {
+		eFlag = capitalizeFirst(eFlag)
+		targetEnvVar := "EDG_" + strings.ToUpper(eFlag)
+		val := os.Getenv(targetEnvVar)
+		if val == "" {
+			fieldVal := v.FieldByName(eFlag) // Access the struct field by name
+			if !fieldVal.IsValid() {
+				panic("No valid field found for flag " + eFlag)
+			}
+
+			var strVal string
+			switch flagType {
+			case "int64":
+				strVal = strconv.FormatInt(fieldVal.Int(), 10)
+			case "string":
+				strVal = fieldVal.String()
+			case "bool":
+				strVal = strconv.FormatBool(fieldVal.Bool())
+			default:
+				panic("Unsupported type for field " + eFlag)
+			}
+
+			if err := os.Setenv(targetEnvVar, strVal); err != nil {
+				panic("Failed to set environment variable " + targetEnvVar)
+			}
+			fmt.Printf("Set %s to %s from default configuration.\n", targetEnvVar, strVal)
+		}
+	}
+	return cfg, nil
+}
+
+// capitalizeFirst capitalizes the first letter of the given string. handles mismatch between flag and config struct
+func capitalizeFirst(s string) string {
+	if s == "" {
+		return ""
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	return string(r)
 }
 
 // loadDefaultEnclaveInputConfig parses optional or default configuration file and returns struct.
