@@ -722,6 +722,11 @@ func checkTenscan(t *testing.T, s *Simulation) {
 		checkTotalTransactions(t, client, idx)
 		checkForLatestBatches(t, client, idx)
 		checkForLatestRollups(t, client, idx)
+
+		txHashes := getLatestTransactions(t, client, idx)
+		for _, txHash := range txHashes {
+			checkBatchFromTxs(t, client, txHash, idx)
+		}
 	}
 }
 
@@ -760,5 +765,51 @@ func checkForLatestRollups(t *testing.T, client rpc.Client, nodeIdx int) {
 	}
 	if len(latestRollups.RollupsData) != 5 {
 		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, 5, len(latestRollups.RollupsData))
+	}
+}
+
+func getLatestTransactions(t *testing.T, client rpc.Client, nodeIdx int) []gethcommon.Hash {
+	var transactionResponse common.TransactionListingResponse
+	var txHashes []gethcommon.Hash
+	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(5)}
+	err := client.Call(&transactionResponse, rpc.GetPublicTransactionData, &pagination)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve latest transactions. Cause: %s", nodeIdx, err)
+	}
+
+	for _, transaction := range transactionResponse.TransactionsData {
+		txHashes = append(txHashes, transaction.TransactionHash)
+	}
+
+	return txHashes
+}
+
+// Retrieves the batch using the transaction hash, and validates it.
+func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, nodeIdx int) {
+	var batchByTx *common.ExtBatch
+	err := client.Call(&batchByTx, rpc.GetBatchByTx, txHash)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve batch for transaction. Cause: %s", nodeIdx, err)
+		return
+	}
+
+	var containsTx bool
+	for _, txHashFromBatch := range batchByTx.TxHashes {
+		if txHashFromBatch == txHash {
+			containsTx = true
+		}
+	}
+	if !containsTx {
+		t.Errorf("node %d: retrieved batch by transaction, but transaction was missing from batch", nodeIdx)
+	}
+
+	var batchByHash *common.ExtBatch
+	err = client.Call(&batchByHash, rpc.GetBatch, batchByTx.Header.Hash())
+	if err != nil {
+		t.Errorf("node %d: could not retrieve batch by hash. Cause: %s", nodeIdx, err)
+		return
+	}
+	if batchByHash.Header.Hash() != batchByTx.Header.Hash() {
+		t.Errorf("node %d: retrieved batch by hash, but hash was incorrect", nodeIdx)
 	}
 }
