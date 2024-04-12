@@ -121,6 +121,10 @@ func retrieveOrSetEnclaveRestrictedFlags(cfg *config.EnclaveInputConfig) (*confi
 				panic("Unsupported type for field " + eFlag)
 			}
 
+			if strVal == "" {
+				panic("Invalid default or EDG_ for " + eFlag)
+			}
+
 			if err := os.Setenv(targetEnvVar, strVal); err != nil {
 				panic("Failed to set environment variable " + targetEnvVar)
 			}
