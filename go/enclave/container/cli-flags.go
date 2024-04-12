@@ -32,7 +32,10 @@ const (
 	GasLocalExecutionCapFlag      = "gasLocalExecutionCap"
 )
 
-// EnclaveRestrictedFlags are the flags that the enclave can receive ONLY over the Ego signed enclave.json
+// EnclaveRestrictedFlags are the flags that the enclave can receive ONLY over (a) the Ego signed enclave.json (./go/enclave/main/enclave.json)
+// or (b) if passed via EDG_<flag> as environment variable (see https://docs.edgeless.systems/ego/reference/config#environment-variables).
+// In the case of running enclave as standalone process (./go/enclave/main/main w/o ego sign enclave.json stage) these flags will be checked
+// to be set via EDG_<flag> env vars.
 var EnclaveRestrictedFlags = map[string]string{
 	L1ChainIDFlag:             "int64",
 	TenChainIDFlag:            "int64",
@@ -62,8 +65,8 @@ func getFlagUsageMap() map[string]string {
 		SequencerIDFlag:               "The 20 bytes of the address of the sequencer for this network",
 		MaxBatchSizeFlag:              "The maximum size a batch is allowed to reach uncompressed",
 		MaxRollupSizeFlag:             "The maximum size a rollup is allowed to reach",
-		L2BaseFeeFlag:                 "",
-		L2CoinbaseFlag:                "",
+		L2BaseFeeFlag:                 "Base gas fee",
+		L2CoinbaseFlag:                "Account used for gas payments of L1 transactions",
 		GasBatchExecutionLimit:        "Max gas that can be executed in a single batch",
 		TenGenesisFlag:                "The json string with the TEN genesis",
 		L1ChainIDFlag:                 "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)",
