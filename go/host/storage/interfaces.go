@@ -42,6 +42,8 @@ type BatchResolver interface {
 	FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHeader, error)
 	// FetchTotalTxCount returns the number of transactions in the DB
 	FetchTotalTxCount() (*big.Int, error)
+	// FetchBatchTransactions TODO
+	FetchBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error)
 }
 
 type BlockResolver interface {
@@ -55,4 +57,8 @@ type BlockResolver interface {
 	FetchRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error)
 	// FetchBlockListing returns a paginated list of blocks that include rollups
 	FetchBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error)
+	// FetchRollupByHash TODO
+	FetchRollupByHash(rollupHash gethcommon.Hash) (*common.PublicRollup, error)
+	// FetchRollupBatches TODO
+	FetchRollupBatches(rollupHash gethcommon.Hash) (*common.BatchListingResponse, error)
 }

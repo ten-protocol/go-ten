@@ -13,13 +13,17 @@ func routeItems(r *gin.Engine, server *WebServer) {
 	r.GET("/items/batch/latest/", server.getLatestBatch)
 	r.GET("/items/batch/:hash", server.getBatch)
 	r.GET("/items/rollup/latest/", server.getLatestRollupHeader)
-	r.GET("/items/rollups/", server.getRollupListing) // New
 	r.GET("/items/batches/", server.getBatchListingDeprecated)
-	r.GET("/items/new/batches/", server.getBatchListingNew)
 	r.GET("/items/blocks/", server.getBlockListing) // Deprecated
 	r.GET("/items/transactions/", server.getPublicTransactions)
 	r.GET("/info/obscuro/", server.getConfig)
 	r.POST("/info/health/", server.getHealthStatus)
+
+	r.GET("/items/rollups/", server.getRollupListing) // New
+	r.GET("/items/v2/batches/", server.getBatchListingNew)
+	r.GET("/items/rollup/:hash", server.getRollup)
+	r.GET("/items/rollup/:hash/batches", server.getRollupBatches)
+	r.GET("/items/batch/:hash/transactions", server.getBatchTransactions)
 }
 
 func (w *WebServer) getHealthStatus(c *gin.Context) {
@@ -208,6 +212,42 @@ func (w *WebServer) getBlockListing(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"result": batchesListing})
+}
+
+func (w *WebServer) getRollup(c *gin.Context) {
+	hash := c.Param("hash")
+	parsedHash := gethcommon.HexToHash(hash)
+	rollup, err := w.backend.GetRollupByHash(parsedHash)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"item": rollup})
+}
+
+func (w *WebServer) getRollupBatches(c *gin.Context) {
+	hash := c.Param("hash")
+	parsedHash := gethcommon.HexToHash(hash)
+	batchListing, err := w.backend.GetRollupBatches(parsedHash)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": batchListing})
+}
+
+func (w *WebServer) getBatchTransactions(c *gin.Context) {
+	hash := c.Param("hash")
+	parsedHash := gethcommon.HexToHash(hash)
+	txListing, err := w.backend.GetBatchTransactions(parsedHash)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": txListing})
 }
 
 func (w *WebServer) getConfig(c *gin.Context) {

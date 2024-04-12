@@ -87,3 +87,18 @@ func (s *ScanAPI) GetPublicTransactionData(pagination *common.QueryPagination) (
 func (s *ScanAPI) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
 	return s.host.Storage().FetchBlockListing(pagination)
 }
+
+// GetRollupByHash TODO
+func (s *ScanAPI) GetRollupByHash(rollupHash gethcommon.Hash) (*common.PublicRollup, error) {
+	return s.host.Storage().FetchRollupByHash(rollupHash)
+}
+
+// GetRollupBatches TODO
+func (s *ScanAPI) GetRollupBatches(rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {
+	return s.host.Storage().FetchRollupBatches(rollupHash)
+}
+
+// GetBatchTransactions TODO
+func (s *ScanAPI) GetBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
+	return s.host.Storage().FetchBatchTransactions(batchHash)
+}

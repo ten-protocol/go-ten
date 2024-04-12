@@ -141,6 +141,15 @@ func (s *storageImpl) FetchTotalTxCount() (*big.Int, error) {
 	return hostdb.GetTotalTxCount(s.db.GetSQLDB())
 }
 
+func (s *storageImpl) FetchRollupByHash(rollupHash gethcommon.Hash) (*common.PublicRollup, error) {
+	return hostdb.GetRollupByHash(s.db, rollupHash)
+}
+func (s *storageImpl) FetchRollupBatches(rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {
+	return hostdb.GetRollupBatches(s.db, rollupHash)
+}
+func (s *storageImpl) FetchBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
+	return hostdb.GetBatchTransactions(s.db, batchHash)
+}
 func (s *storageImpl) Close() error {
 	return s.db.GetSQLDB().Close()
 }

@@ -110,6 +110,10 @@ func GetLatestRollup(db *sql.DB) (*common.RollupHeader, error) {
 	return extRollup.Header, nil
 }
 
+func GetRollupByHash(db HostDB, rollupHash gethcommon.Hash) (*common.PublicRollup, error) {
+	panic("Implement me")
+}
+
 func fetchRollupHeader(db *sql.DB, whereQuery string, args ...any) (*common.RollupHeader, error) {
 	rollup, err := fetchExtRollup(db, whereQuery, args...)
 	if err != nil {

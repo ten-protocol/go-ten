@@ -189,6 +189,36 @@ func (oc *ObsClient) GetRollupListing(pagination *common.QueryPagination) (*comm
 	return &result, nil
 }
 
+// GetRollupByHash TODO
+func (oc *ObsClient) GetRollupByHash(hash gethcommon.Hash) (*common.PublicRollup, error) {
+	var rollup *common.PublicRollup
+	err := oc.rpcClient.Call(&rollup, rpc.GetRollupByHash, hash, false)
+	if err == nil && rollup == nil {
+		err = ethereum.NotFound
+	}
+	return rollup, err
+}
+
+// GetRollupBatches TODO
+func (oc *ObsClient) GetRollupBatches(hash gethcommon.Hash) (*common.BatchListingResponse, error) {
+	var batchListing *common.BatchListingResponse
+	err := oc.rpcClient.Call(&batchListing, rpc.GetRollupBatches, hash, false)
+	if err == nil && batchListing == nil {
+		err = ethereum.NotFound
+	}
+	return batchListing, err
+}
+
+// GetBatchTransactions TODO
+func (oc *ObsClient) GetBatchTransactions(hash gethcommon.Hash) (*common.TransactionListingResponse, error) {
+	var txListing *common.TransactionListingResponse
+	err := oc.rpcClient.Call(&txListing, rpc.GetBatchTransactions, hash, false)
+	if err == nil && txListing == nil {
+		err = ethereum.NotFound
+	}
+	return txListing, err
+}
+
 // GetConfig returns the network config for obscuro
 func (oc *ObsClient) GetConfig() (*common.ObscuroNetworkInfo, error) {
 	var result common.ObscuroNetworkInfo
