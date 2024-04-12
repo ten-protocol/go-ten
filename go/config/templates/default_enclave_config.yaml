@@ -17,7 +17,7 @@ maxBatchSize:              36864 # 1024 * 36,
 maxRollupSize:             65536 # 1024 * 64,
 l2BaseFee:                 0 # 0 will use params.initialBaseFee
 gasBatchExecutionLimit:    300_000_000_000
-tenGenesis:                ""
+tenGenesis:                "{}"
 l1ChainID:                 1337
 tenChainID:                443
 useInMemoryDB:             true
