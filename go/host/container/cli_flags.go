@@ -2,8 +2,6 @@ package container
 
 // Flag names.
 const (
-	overrideFlag                 = "override"
-	configFlag                   = "config"
 	isGenesisFlag                = "isGenesis"
 	nodeTypeFlag                 = "nodeType"
 	clientRPCPortHTTPFlag        = "clientRPCPortHttp"
@@ -44,8 +42,6 @@ const (
 // While we could just use constants instead of a map, this approach allows us to test that all the expected flags are defined.
 func getFlagUsageMap() map[string]string {
 	return map[string]string{
-		overrideFlag:                 "Additive config file to apply on top of default or -config",
-		configFlag:                   "The path to the host's config file. Overrides all other flags",
 		isGenesisFlag:                "Whether the host is the first host to join the network",
 		nodeTypeFlag:                 "The node's type (e.g. aggregator, validator)",
 		clientRPCPortHTTPFlag:        "The port on which to listen for client application RPC requests over HTTP",

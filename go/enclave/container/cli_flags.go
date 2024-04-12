@@ -2,8 +2,6 @@ package container
 
 // Flag names.
 const (
-	overrideFlag                  = "override"
-	configFlag                    = "config"
 	HostIDFlag                    = "hostID"
 	HostAddressFlag               = "hostAddress"
 	AddressFlag                   = "address"
@@ -47,8 +45,6 @@ var enclaveRestrictedFlags = map[string]string{
 
 func getFlagUsageMap() map[string]string {
 	return map[string]string{
-		overrideFlag:                  "Additive config file to apply on top of default or -config",
-		configFlag:                    "The path to the host's config file. Overrides all other flags",
 		HostIDFlag:                    "The 20 bytes of the address of the TEN host this enclave serves",
 		HostAddressFlag:               "The peer-to-peer IP address of the TEN host this enclave serves",
 		AddressFlag:                   "The address on which to serve the TEN enclave service",

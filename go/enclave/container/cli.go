@@ -4,8 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/ten-protocol/go-ten/go/config"
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"strconv"
@@ -14,10 +12,12 @@ import (
 )
 
 func ParseConfig() (*config.EnclaveConfig, error) {
-	cfg, err := loadDefaultEnclaveInputConfig()
+	inputCfg, err := config.LoadDefaultInputConfig(config.Enclave)
 	if err != nil {
 		panic(fmt.Errorf("issues loading default and override config from file. Cause: %w", err))
 	}
+	cfg := inputCfg.(*config.EnclaveInputConfig) // assert
+
 	flagUsageMap := getFlagUsageMap()
 
 	hostID := flag.String(HostIDFlag, cfg.HostID, flagUsageMap[HostIDFlag])
@@ -142,48 +142,4 @@ func capitalizeFirst(s string) string {
 	r := []rune(s)
 	r[0] = unicode.ToUpper(r[0])
 	return string(r)
-}
-
-// loadDefaultEnclaveInputConfig parses optional or default configuration file and returns struct.
-func loadDefaultEnclaveInputConfig() (*config.EnclaveInputConfig, error) {
-	flagUsageMap := getFlagUsageMap()
-	configPath := flag.String("config", "./go/config/templates/default_enclave_config.yaml", flagUsageMap["configFlag"])
-	overridePath := flag.String("override", "", flagUsageMap["overrideFlag"])
-
-	// Parse only once capturing all necessary flags
-	flag.Parse()
-
-	var err error
-	conf, err := loadEnclaveConfigFromFile(*configPath)
-	if err != nil {
-		panic(err)
-	}
-
-	// Apply overrides if the override path is provided
-	if *overridePath != "" {
-		overridesConf, err := loadEnclaveConfigFromFile(*overridePath)
-		if err != nil {
-			panic(err)
-		}
-
-		config.ApplyOverrides(conf, overridesConf)
-	}
-
-	return conf, nil
-}
-
-// loadEnclaveConfigFromFile reads configuration from a file and environment variables
-func loadEnclaveConfigFromFile(configPath string) (*config.EnclaveInputConfig, error) {
-	defaultConfig := &config.EnclaveInputConfig{}
-	// Read YAML configuration
-	data, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		return nil, err
-	}
-	err = yaml.Unmarshal(data, defaultConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return defaultConfig, nil
 }

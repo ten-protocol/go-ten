@@ -4,18 +4,17 @@ import (
 	"flag"
 	"fmt"
 	"github.com/ten-protocol/go-ten/go/config"
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"strings"
 )
 
 // ParseConfig returns a config.HostInputConfig based on either the file identified by the `config` flag, or the flags with
 // specific defaults (if the `config` flag isn't specified).
 func ParseConfig() (*config.HostConfig, error) {
-	cfg, err := loadDefaultHostInputConfig()
+	inputCfg, err := config.LoadDefaultInputConfig(config.Host)
 	if err != nil {
 		panic(fmt.Errorf("issues loading default and override config from file. Cause: %w", err))
 	}
+	cfg := inputCfg.(*config.HostInputConfig) // assert
 	flagUsageMap := getFlagUsageMap()
 
 	isGenesis := flag.Bool(isGenesisFlag, cfg.IsGenesis, flagUsageMap[isGenesisFlag])
@@ -91,48 +90,4 @@ func ParseConfig() (*config.HostConfig, error) {
 		return nil, fmt.Errorf("failed to convert HostInputConfig to HostConfig")
 	}
 	return hostConfig, nil
-}
-
-// loadDefaultHostInputConfig parses optional or default configuration file and returns struct.
-func loadDefaultHostInputConfig() (*config.HostInputConfig, error) {
-	flagUsageMap := getFlagUsageMap()
-	configPath := flag.String("config", "./go/config/templates/default_host_config.yaml", flagUsageMap["configFlag"])
-	overridePath := flag.String("override", "", flagUsageMap["overrideFlag"])
-
-	// Parse only once capturing all necessary flags
-	flag.Parse()
-
-	var err error
-	conf, err := loadHostConfigFromFile(*configPath)
-	if err != nil {
-		panic(err)
-	}
-
-	// Apply overrides if the override path is provided
-	if *overridePath != "" {
-		overridesConf, err := loadHostConfigFromFile(*overridePath)
-		if err != nil {
-			panic(err)
-		}
-
-		config.ApplyOverrides(conf, overridesConf)
-	}
-
-	return conf, nil
-}
-
-// loadHostConfigFromFile reads configuration from a file and environment variables
-func loadHostConfigFromFile(configPath string) (*config.HostInputConfig, error) {
-	defaultConfig := &config.HostInputConfig{}
-	// Read YAML configuration
-	data, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		return nil, err
-	}
-	err = yaml.Unmarshal(data, defaultConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return defaultConfig, nil
 }
