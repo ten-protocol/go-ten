@@ -1,2 +1,1 @@
-ALTER TABLE ogdb.accounts
-ADD COLUMN signature_type INT DEFAULT 0;
+ALTER TABLE ogdb.accounts ADD COLUMN IF NOT EXISTS signature_type INT DEFAULT 0;
