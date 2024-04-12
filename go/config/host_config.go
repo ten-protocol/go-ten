@@ -68,7 +68,7 @@ func (p *HostInputConfig) ToHostConfig() (*HostConfig, error) {
 		L1WebsocketURL:        p.L1WebsocketURL,
 		LogLevel:              p.LogLevel,
 		LogPath:               p.LogPath,
-		PrivateKeyString:      p.PrivateKey,
+		PrivateKey:            p.PrivateKey,
 		L1ChainID:             p.L1ChainID,
 		TenChainID:            p.TenChainID,
 		ProfilerEnabled:       p.ProfilerEnabled,
@@ -140,8 +140,8 @@ type HostConfig struct {
 
 	// ID, the host's identity derived from the L1 Private Key
 	ID gethcommon.Address
-	// PrivateKeyString, the stringified private key for the host's L1 wallet
-	PrivateKeyString string
+	// PrivateKey, the stringified private key for the host's L1 wallet
+	PrivateKey string
 	// IsGenesis, whether the host is the genesis Obscuro node
 	IsGenesis bool
 	// NodeType, the type of the node.

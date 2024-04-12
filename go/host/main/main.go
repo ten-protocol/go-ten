@@ -7,7 +7,7 @@ import (
 	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
 )
 
-// Runs an Obscuro host as a standalone process.
+// Runs an TEN host as a standalone process.
 func main() {
 	parsedConfig, err := hostcontainer.ParseConfig()
 	if err != nil {
