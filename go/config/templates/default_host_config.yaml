@@ -1,6 +1,6 @@
 # A default configuration for TEN Host
 #hostID:                   calculated
-isGenesis:                 true
+isGenesis:                 false
 nodeType:                  "validator"
 #hasClientRPCHTTP:         calculated
 clientRPCPortHTTP:         80
