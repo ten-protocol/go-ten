@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
+	"os"
 	"reflect"
+	"strconv"
+	"strings"
 )
 
 type TypeConfig int
@@ -16,12 +19,14 @@ const (
 	enclave = "Enclave"
 	host    = "Host"
 	network = "Network"
+	node    = "Node"
 )
 
 const (
 	Enclave TypeConfig = iota
 	Host
 	Network
+	Node
 )
 
 func (t TypeConfig) String() string {
@@ -36,6 +41,8 @@ func ToTypeConfig(s string) (TypeConfig, error) {
 		return Host, nil
 	case network:
 		return Network, nil
+	case node:
+		return Node, nil
 	default:
 		panic("string " + s + " cannot be converted to TypeConfig.")
 	}
@@ -45,7 +52,8 @@ func getFileMap() map[TypeConfig]string {
 	return map[TypeConfig]string{
 		Enclave: "./go/config/templates/default_enclave_config.yaml",
 		Host:    "./go/config/templates/default_host_config.yaml",
-		Network: "./go/config/templates/ITN_node_network.yaml",
+		Network: "./go/config/templates/ITN_network.yaml",
+		Node:    "./go/config/templates/default_node.yaml",
 	}
 }
 
@@ -55,21 +63,21 @@ func LoadDefaultInputConfig(t TypeConfig) (Config, error) {
 	flagUsageMap := getFlagUsageMap()
 
 	// set the default config from file-map
-	configPath := flag.String("config", fileMap[t], flagUsageMap["configFlag"])
-	overridePath := flag.String("override", "", flagUsageMap["overrideFlag"])
+	configPath := flag.String(configFlag, fileMap[t], flagUsageMap[configFlag])
+	overridePath := flag.String(overrideFlag, "", flagUsageMap[overrideFlag])
 
 	// Parse only once capturing all necessary flags
 	flag.Parse()
 
 	var err error
-	conf, err := loadConfigFromFile(t, *configPath)
+	conf, err := LoadConfigFromFile(t, *configPath)
 	if err != nil {
 		panic(err)
 	}
 
 	// Apply overrides if the override path is provided
 	if *overridePath != "" {
-		overridesConf, err := loadConfigFromFile(t, *overridePath)
+		overridesConf, err := LoadConfigFromFile(t, *overridePath)
 		if err != nil {
 			panic(err)
 		}
@@ -80,8 +88,8 @@ func LoadDefaultInputConfig(t TypeConfig) (Config, error) {
 	return conf, nil
 }
 
-// loadConfigFromFile reads configuration from a file and environment variables
-func loadConfigFromFile(t TypeConfig, configPath string) (Config, error) {
+// LoadConfigFromFile reads configuration from a file and environment variables
+func LoadConfigFromFile(t TypeConfig, configPath string) (Config, error) {
 	var defaultConfig Config
 	switch t {
 	case Enclave:
@@ -105,6 +113,23 @@ func loadConfigFromFile(t TypeConfig, configPath string) (Config, error) {
 	}
 
 	return defaultConfig, nil
+}
+
+// WriteConfigToFile for serializing a `_InputConfig` structs. Note, using the yaml
+// marshall for structs without `yaml:"key"` definitions will lose the casing, however,
+// the persistence will successfully unmarshall again.
+func WriteConfigToFile(c Config, filePath string) error {
+	yamlStr, err := yaml.Marshal(c)
+	if err != nil {
+		return err
+	}
+
+	// create read-only file
+	err = os.WriteFile(filePath, yamlStr, 0o644) //nolint:gosec
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // ApplyOverrides is a generic function that applies non-zero value fields from the override struct 'o' to 'c'.
@@ -144,4 +169,61 @@ func isFieldSet(field reflect.Value) bool {
 
 	// For struct or other complex types, you might need a more sophisticated approach.
 	return false
+}
+
+func GetEnvString(key, fallback string) string {
+	if value, exists := os.LookupEnv(strings.ToUpper(key)); exists {
+		return value
+	}
+	return fallback
+}
+
+func GetEnvBool(key string, fallback bool) bool {
+	if value, exists := os.LookupEnv(strings.ToUpper(key)); exists {
+		parsed, err := strconv.ParseBool(value)
+		if err == nil {
+			return parsed
+		}
+	}
+	return fallback
+}
+
+func GetEnvInt(key string, fallback int) int {
+	if value, exists := os.LookupEnv(strings.ToUpper(key)); exists {
+		parsed, err := strconv.Atoi(value)
+		if err == nil {
+			return parsed
+		}
+	}
+	return fallback
+}
+
+func GetEnvInt64(key string, fallback int64) int64 {
+	if value, exists := os.LookupEnv(strings.ToUpper(key)); exists {
+		parsed, err := strconv.ParseInt(value, 10, 64)
+		if err == nil {
+			return parsed
+		}
+	}
+	return fallback
+}
+
+func GetEnvUint64(key string, fallback uint64) uint64 {
+	if value, exists := os.LookupEnv(strings.ToUpper(key)); exists {
+		parsed, err := strconv.ParseUint(value, 10, 64)
+		if err == nil {
+			return parsed
+		}
+	}
+	return fallback
+}
+
+func GetEnvUint(key string, fallback uint) uint {
+	if value, exists := os.LookupEnv(strings.ToUpper(key)); exists {
+		parsed, err := strconv.ParseUint(value, 10, 32)
+		if err == nil {
+			return uint(parsed)
+		}
+	}
+	return fallback
 }

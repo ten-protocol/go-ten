@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/ten-protocol/go-ten/go/common/container"
 	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
 )
