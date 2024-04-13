@@ -27,6 +27,7 @@ sequencerID:               ""
 metricsEnabled:            true
 metricsHTTPPort:           14000
 useInMemoryDB:             true
+levelDBPath:               ""
 postgresDBHost:            ""
 sqliteDBPath:              ""
 debugNamespaceEnabled:     false

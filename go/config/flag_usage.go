@@ -74,8 +74,8 @@ var EnclaveRestrictedFlags = map[string]string{
 	DebugNamespaceEnabledFlag: "bool",
 }
 
-// UsageMap is a full indexing of available flags across all service configurations
-func UsageMap() map[string]string {
+// FlagUsageMap is a full indexing of available flags across all service configurations
+func FlagUsageMap() map[string]string {
 	return map[string]string{
 		HostIDFlag:                    "The 20 bytes of the address of the TEN host this enclave serves",
 		HostAddressFlag:               "The peer-to-peer IP address of the TEN host this enclave serves",

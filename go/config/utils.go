@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// Config represents structs for Input with associated flag UsageMap
+// Config represents structs for Input with associated flag FlagUsageMap
 type Config interface{}
 
 // getTemplateFilePaths returns a map of the default static config per TypeConfig

@@ -19,7 +19,7 @@ func ParseConfig() (*config.EnclaveConfig, error) {
 	cfg := inputCfg.(*config.EnclaveInputConfig) // assert
 
 	fs := flag.NewFlagSet("enclave", flag.ExitOnError)
-	usageMap := config.UsageMap()
+	usageMap := config.FlagUsageMap()
 	config.SetupFlags(cfg, fs, usageMap)
 
 	// Parse command-line flags
