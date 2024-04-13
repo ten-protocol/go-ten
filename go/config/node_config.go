@@ -71,18 +71,3 @@ func (n *NodeConfig) SetNetwork(config *NetworkInputConfig) {
 		n.NetworkConfig = *config
 	}
 }
-
-// CHECK SYNC - keys that same should be same
-//nodeType
-//managementContractAddress
-//messageBusAddress
-//logLevel
-//logPath
-//l1ChainID
-//tenChainID
-//useInMemoryDB
-//profilerEnabled
-//debugNamespaceEnabled
-//maxRollupSize
-//sequencerID
-//sqliteDBPath
