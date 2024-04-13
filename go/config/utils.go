@@ -66,6 +66,8 @@ func LoadConfigFromFile(t TypeConfig, configPath string) (Config, error) {
 		defaultConfig = &HostInputConfig{}
 	case Network:
 		defaultConfig = &NetworkInputConfig{}
+	case Node:
+		defaultConfig = &NodeConfig{}
 	default:
 		return nil, fmt.Errorf("invalid TypeConfig %s", t)
 	}

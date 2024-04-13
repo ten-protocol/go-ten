@@ -20,8 +20,8 @@ nodeSettings:
   debugNamespaceEnabled:  true
   logLevel:               3
   profilerEnabled:        false
-  hostUseInMemoryDB:      true
-  hostPostgresDBHost:     "" # only if `useInMemoryDB` set to false
+  useInMemoryDB:          true # useInMemoryDB for host
+  postgresDBHost:         "" # only if `useInMemoryDB` set to false
   hostImage:              "testnetobscuronet.azurecr.io/obscuronet/sepolia_host:latest" # provided
   enclaveImage:           "testnetobscuronet.azurecr.io/obscuronet/sepolia_enclave:latest" # provided
   edgelessDBImage:        "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"

@@ -88,7 +88,7 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		// Due to hiding L1 costs in the gas quantity, the gas limit needs to be huge
 		// Arbitrum with the same approach has gas limit of 1,125,899,906,842,624,
 		// whilst the usage is small. Should be ok since execution is paid for anyway.
-		GasLocalExecutionCapFlag: 300_000_000_000,
-		GasBatchExecutionLimit:   300_000_000_000,
+		GasLocalExecutionCap:   300_000_000_000,
+		GasBatchExecutionLimit: 300_000_000_000,
 	}
 }

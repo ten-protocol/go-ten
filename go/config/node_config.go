@@ -7,15 +7,15 @@ type NetworkConfig interface {
 }
 
 type NodeConfig struct {
-	NetworkConfig NetworkInputConfig
-	NodeDetails   NodeInputDetails
-	NodeSettings  NodeInputSettings
+	NetworkConfig NetworkInputConfig `yaml:"networkConfig"`
+	NodeDetails   NodeInputDetails   `yaml:"nodeDetails"`
+	NodeSettings  NodeInputSettings  `yaml:"nodeSettings"`
 }
 
 type NodeInputDetails struct {
 	NodeName          string `yaml:"nodeName"`
 	HostID            string `yaml:"hostID"`
-	PrivateKey        string `yaml:"PrivateKey"`
+	PrivateKey        string `yaml:"privateKey"`
 	L1WebsocketURL    string `yaml:"l1WebsocketURL"`
 	P2pPublicAddress  string `yaml:"p2pPublicAddress"`
 	ClientRPCPortHTTP int    `yaml:"clientRPCPortHTTP"`
@@ -27,13 +27,13 @@ type NodeInputSettings struct {
 	IsSGXEnabled          bool   `yaml:"isSGXEnabled"`
 	PccsAddr              string `yaml:"pccsAddr"`
 	DebugNamespaceEnabled bool   `yaml:"debugNamespaceEnabled"`
-	LogLevel              int    `yaml:"logLeve"`
+	LogLevel              int    `yaml:"logLevel"`
 	ProfilerEnabled       bool   `yaml:"profilerEnabled"`
-	HostUseInMemoryDB     bool   `yaml:"hostUseInMemoryDB"`
+	HostUseInMemoryDB     bool   `yaml:"useInMemoryDB"`
 	HostPostgresDBHost    string `yaml:"hostPostgresDBHost"`
 	HostImage             string `yaml:"hostImage"`
-	enclaveImage          string `yaml:"enclaveImage"`
-	edgelessDBImage       string `yaml:"edgelessDBImage"`
+	EnclaveImage          string `yaml:"enclaveImage"`
+	EdgelessDBImage       string `yaml:"edgelessDBImage"`
 }
 
 // NetworkInputConfig handles higher level configuration, note there is no need

@@ -2,34 +2,23 @@ package node
 
 import (
 	"encoding/json"
+	"github.com/ten-protocol/go-ten/go/config"
 	"os"
 	"path"
 )
 
 // This is the location where the metadata will be stored
-const _networkCfgFile = ".obscuro-network.json"
+const _networkCfgFile = ".ten-network.json"
 
-// NetworkConfig is key network information required to start a node connecting to that network.
-// We persist it as a json file on our testnet hosts so that they can read it off when restart/upgrading
-type NetworkConfig struct {
-	ManagementContractAddress string
-	MessageBusAddress         string
-	L1StartHash               string // L1 block hash from which to process for L2 data (mgmt contract deploy block)
-}
-
-func WriteNetworkConfigToDisk(cfg *Config) error {
-	n := NetworkConfig{
-		ManagementContractAddress: cfg.managementContractAddr,
-		MessageBusAddress:         cfg.messageBusContractAddress,
-		L1StartHash:               cfg.l1Start,
-	}
+func WriteNetworkConfigToDisk(cfg config.NetworkConfig) error {
+	n := cfg.GetNetwork()
 	jsonStr, err := json.Marshal(n)
 	if err != nil {
 		return err
 	}
 
 	// store in the user home dir
-	filePath, err := obscuroFilePath()
+	filePath, err := tenFilePath()
 	if err != nil {
 		return err
 	}
@@ -42,9 +31,9 @@ func WriteNetworkConfigToDisk(cfg *Config) error {
 	return nil
 }
 
-func ReadNetworkConfigFromDisk() (*NetworkConfig, error) {
+func ReadNetworkConfigFromDisk() (*config.NetworkInputConfig, error) {
 	// store in the user home dir
-	filePath, err := obscuroFilePath()
+	filePath, err := tenFilePath()
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +42,7 @@ func ReadNetworkConfigFromDisk() (*NetworkConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	var cfg NetworkConfig
+	var cfg config.NetworkInputConfig
 	err = json.Unmarshal(bytes, &cfg)
 	if err != nil {
 		return nil, err
@@ -61,7 +50,7 @@ func ReadNetworkConfigFromDisk() (*NetworkConfig, error) {
 	return &cfg, nil
 }
 
-func obscuroFilePath() (string, error) {
+func tenFilePath() (string, error) {
 	// store in the user home dir
 	dirname, err := os.UserHomeDir()
 	if err != nil {
