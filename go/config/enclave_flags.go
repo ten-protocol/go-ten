@@ -1,4 +1,4 @@
-package container
+package config
 
 // Flag names.
 const (
@@ -20,12 +20,13 @@ const (
 	MinGasPriceFlag               = "minGasPrice"
 	MessageBusAddressFlag         = "messageBusAddress"
 	SequencerIDFlag               = "sequencerID"
+	GenesisJSONFlag               = "genesisJSON"
 	TenGenesisFlag                = "tenGenesis"
 	DebugNamespaceEnabledFlag     = "debugNamespaceEnabled"
 	MaxBatchSizeFlag              = "maxBatchSize"
 	MaxRollupSizeFlag             = "maxRollupSize"
 	L2BaseFeeFlag                 = "l2BaseFee"
-	L2CoinbaseFlag                = "l2Coinbase"
+	GasPaymentAddress             = "gasPaymentAddress"
 	GasBatchExecutionLimit        = "gasBatchExecutionLimit"
 	GasLocalExecutionCapFlag      = "gasLocalExecutionCap"
 )
@@ -34,7 +35,7 @@ const (
 // or (b) if passed via EDG_<flag> as environment variable (see https://docs.edgeless.systems/ego/reference/config#environment-variables).
 // In the case of running enclave as standalone process (./go/enclave/main/main w/o ego sign enclave.json stage) these flags will be checked
 // to be set via EDG_<flag> env vars.
-var enclaveRestrictedFlags = map[string]string{
+var EnclaveRestrictedFlags = map[string]string{
 	L1ChainIDFlag:             "int64",
 	TenChainIDFlag:            "int64",
 	TenGenesisFlag:            "string",
@@ -43,7 +44,7 @@ var enclaveRestrictedFlags = map[string]string{
 	DebugNamespaceEnabledFlag: "bool",
 }
 
-func getFlagUsageMap() map[string]string {
+func (*EnclaveInputConfig) UsageMap() map[string]string {
 	return map[string]string{
 		HostIDFlag:                    "The 20 bytes of the address of the TEN host this enclave serves",
 		HostAddressFlag:               "The peer-to-peer IP address of the TEN host this enclave serves",
@@ -62,8 +63,9 @@ func getFlagUsageMap() map[string]string {
 		MaxBatchSizeFlag:              "The maximum size a batch is allowed to reach uncompressed",
 		MaxRollupSizeFlag:             "The maximum size a rollup is allowed to reach",
 		L2BaseFeeFlag:                 "Base gas fee",
-		L2CoinbaseFlag:                "Account used for gas payments of L1 transactions",
+		GasPaymentAddress:             "Account used for gas payments of L1 transactions",
 		GasBatchExecutionLimit:        "Max gas that can be executed in a single batch",
+		GenesisJSONFlag:               "// When validating incoming blocks, the genesis config for the L1 chain",
 		TenGenesisFlag:                "The json string with the TEN genesis",
 		L1ChainIDFlag:                 "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)",
 		TenChainIDFlag:                "An integer representing the unique chain id of the TEN chain (default 443)",

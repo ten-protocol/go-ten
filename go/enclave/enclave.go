@@ -222,7 +222,7 @@ func NewEnclave(
 		genesis,
 		logger,
 		registry,
-		config.GasLocalExecutionCapFlag,
+		config.GasLocalExecutionCap,
 	)
 	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage_, registry, crossChainProcessors, service, config, gasOracle, storage_, blockProcessor, chain, logger)
 	subscriptionManager := events.NewSubscriptionManager(storage_, config.TenChainID, logger)

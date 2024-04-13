@@ -93,7 +93,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	// TODO: Change to fixed time period quotes, rather than this.
 	publishingGas = publishingGas.Mul(publishingGas, gethcommon.Big2)
 
-	executionGasEstimate, err := rpc.doEstimateGas(txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
+	executionGasEstimate, err := rpc.doEstimateGas(txArgs, blockNumber, rpc.config.GasLocalExecutionCap)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
@@ -146,7 +146,7 @@ func (rpc *EncryptionManager) doEstimateGas(args *gethapi.TransactionArgs, blkNu
 			}
 			hi = block.GasLimit()
 		*/
-		hi = rpc.config.GasLocalExecutionCapFlag
+		hi = rpc.config.GasLocalExecutionCap
 	}
 	// Normalize the max fee per gas the call is willing to spend.
 	var feeCap *big.Int

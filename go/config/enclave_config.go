@@ -9,7 +9,7 @@ import (
 	"math/big"
 )
 
-// EnclaveInputConfig used for parsing default config or partial override from yaml
+// EnclaveInputConfig used for parsing a default config or partial override from yaml file
 type EnclaveInputConfig struct {
 	HostID                    string `yaml:"hostID"`
 	HostAddress               string `yaml:"hostAddress"`
@@ -37,7 +37,7 @@ type EnclaveInputConfig struct {
 	GasPaymentAddress         string `yaml:"gasPaymentAddress"`
 	BaseFee                   uint64 `yaml:"l2BaseFee"`
 	GasBatchExecutionLimit    uint64 `yaml:"gasBatchExecutionLimit"`
-	GasLocalExecutionCapFlag  uint64 `yaml:"gasLocalExecutionCapFlag"`
+	GasLocalExecutionCap      uint64 `yaml:"gasLocalExecutionCap"`
 }
 
 // ToEnclaveConfig Generates an EnclaveConfig from flags or yaml to one with proper typing
@@ -49,25 +49,25 @@ func (p *EnclaveInputConfig) ToEnclaveConfig() (*EnclaveConfig, error) {
 	}
 
 	enclaveConfig := &EnclaveConfig{
-		HostAddress:              p.HostAddress,
-		Address:                  p.Address,
-		NodeType:                 nodeType,
-		L1ChainID:                p.L1ChainID,
-		TenChainID:               p.TenChainID,
-		WillAttest:               p.WillAttest,
-		ValidateL1Blocks:         p.ValidateL1Blocks,
-		LogLevel:                 p.LogLevel,
-		LogPath:                  p.LogPath,
-		UseInMemoryDB:            p.UseInMemoryDB,
-		EdgelessDBHost:           p.EdgelessDBHost,
-		SqliteDBPath:             p.SqliteDBPath,
-		ProfilerEnabled:          p.ProfilerEnabled,
-		TenGenesis:               p.TenGenesis,
-		DebugNamespaceEnabled:    p.DebugNamespaceEnabled,
-		MaxBatchSize:             p.MaxBatchSize,
-		MaxRollupSize:            p.MaxRollupSize,
-		GasBatchExecutionLimit:   p.GasBatchExecutionLimit,
-		GasLocalExecutionCapFlag: p.GasLocalExecutionCapFlag,
+		HostAddress:            p.HostAddress,
+		Address:                p.Address,
+		NodeType:               nodeType,
+		L1ChainID:              p.L1ChainID,
+		TenChainID:             p.TenChainID,
+		WillAttest:             p.WillAttest,
+		ValidateL1Blocks:       p.ValidateL1Blocks,
+		LogLevel:               p.LogLevel,
+		LogPath:                p.LogPath,
+		UseInMemoryDB:          p.UseInMemoryDB,
+		EdgelessDBHost:         p.EdgelessDBHost,
+		SqliteDBPath:           p.SqliteDBPath,
+		ProfilerEnabled:        p.ProfilerEnabled,
+		TenGenesis:             p.TenGenesis,
+		DebugNamespaceEnabled:  p.DebugNamespaceEnabled,
+		MaxBatchSize:           p.MaxBatchSize,
+		MaxRollupSize:          p.MaxRollupSize,
+		GasBatchExecutionLimit: p.GasBatchExecutionLimit,
+		GasLocalExecutionCap:   p.GasLocalExecutionCap,
 	}
 
 	// byte unmarshall
@@ -160,5 +160,5 @@ type EnclaveConfig struct {
 	// GasBatchExecutionLimit maximum amount of gas that can be consumed by a single batch of transactions
 	GasBatchExecutionLimit uint64
 	// GasLocalExecutionCapFlag default is same value as `GasBatchExecutionLimit`
-	GasLocalExecutionCapFlag uint64
+	GasLocalExecutionCap uint64
 }

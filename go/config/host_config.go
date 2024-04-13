@@ -9,7 +9,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
-// HostInputConfig used for parsing default config or partial override from yaml
+// HostInputConfig used for parsing default config or partial override from yaml file.
 type HostInputConfig struct {
 	IsGenesis                 bool     `yaml:"isGenesis"`
 	NodeType                  string   `yaml:"nodeType"`

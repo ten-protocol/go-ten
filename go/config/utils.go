@@ -11,44 +11,13 @@ import (
 	"strings"
 )
 
-type TypeConfig int
-
-type Config interface{}
-
-const (
-	enclave = "Enclave"
-	host    = "Host"
-	network = "Network"
-	node    = "Node"
-)
-
-const (
-	Enclave TypeConfig = iota
-	Host
-	Network
-	Node
-)
-
-func (t TypeConfig) String() string {
-	return [...]string{"Enclave", "Host", "Network"}[t]
+// Config represents structs for Input with associated flag UsageMap
+type Config interface {
+	UsageMap() map[string]string
 }
 
-func ToTypeConfig(s string) (TypeConfig, error) {
-	switch s {
-	case enclave:
-		return Enclave, nil
-	case host:
-		return Host, nil
-	case network:
-		return Network, nil
-	case node:
-		return Node, nil
-	default:
-		panic("string " + s + " cannot be converted to TypeConfig.")
-	}
-}
-
-func getFileMap() map[TypeConfig]string {
+// getTemplateFilePaths returns a map of the default static config per TypeConfig
+func getTemplateFilePaths() map[TypeConfig]string {
 	return map[TypeConfig]string{
 		Enclave: "./go/config/templates/default_enclave_config.yaml",
 		Host:    "./go/config/templates/default_host_config.yaml",
@@ -57,14 +26,14 @@ func getFileMap() map[TypeConfig]string {
 	}
 }
 
-// LoadDefaultInputConfig parses optional or default configuration file and returns struct.
+// LoadDefaultInputConfig parses optional or default configuration file and returns interface.
 func LoadDefaultInputConfig(t TypeConfig) (Config, error) {
-	fileMap := getFileMap()
-	flagUsageMap := getFlagUsageMap()
+	fileMap := getTemplateFilePaths()
+	flagUsageMap := GetConfigFlagUsageMap()
 
 	// set the default config from file-map
-	configPath := flag.String(configFlag, fileMap[t], flagUsageMap[configFlag])
-	overridePath := flag.String(overrideFlag, "", flagUsageMap[overrideFlag])
+	configPath := flag.String(ConfigFlag, fileMap[t], flagUsageMap[ConfigFlag])
+	overridePath := flag.String(OverrideFlag, "", flagUsageMap[OverrideFlag])
 
 	// Parse only once capturing all necessary flags
 	flag.Parse()
@@ -88,7 +57,7 @@ func LoadDefaultInputConfig(t TypeConfig) (Config, error) {
 	return conf, nil
 }
 
-// LoadConfigFromFile reads configuration from a file and environment variables
+// LoadConfigFromFile reads configuration from a file and returns as interface
 func LoadConfigFromFile(t TypeConfig, configPath string) (Config, error) {
 	var defaultConfig Config
 	switch t {
@@ -171,6 +140,7 @@ func isFieldSet(field reflect.Value) bool {
 	return false
 }
 
+// GetEnvString returns key as string or fallback
 func GetEnvString(key, fallback string) string {
 	if value, exists := os.LookupEnv(strings.ToUpper(key)); exists {
 		return value
@@ -178,6 +148,7 @@ func GetEnvString(key, fallback string) string {
 	return fallback
 }
 
+// GetEnvBool returns key as bool or fallback
 func GetEnvBool(key string, fallback bool) bool {
 	if value, exists := os.LookupEnv(strings.ToUpper(key)); exists {
 		parsed, err := strconv.ParseBool(value)
@@ -188,6 +159,7 @@ func GetEnvBool(key string, fallback bool) bool {
 	return fallback
 }
 
+// GetEnvInt returns key as int or fallback
 func GetEnvInt(key string, fallback int) int {
 	if value, exists := os.LookupEnv(strings.ToUpper(key)); exists {
 		parsed, err := strconv.Atoi(value)
@@ -198,6 +170,7 @@ func GetEnvInt(key string, fallback int) int {
 	return fallback
 }
 
+// GetEnvInt64 returns key as int64 or fallback
 func GetEnvInt64(key string, fallback int64) int64 {
 	if value, exists := os.LookupEnv(strings.ToUpper(key)); exists {
 		parsed, err := strconv.ParseInt(value, 10, 64)
@@ -208,6 +181,7 @@ func GetEnvInt64(key string, fallback int64) int64 {
 	return fallback
 }
 
+// GetEnvUint64 returns key as uint64 or fallback
 func GetEnvUint64(key string, fallback uint64) uint64 {
 	if value, exists := os.LookupEnv(strings.ToUpper(key)); exists {
 		parsed, err := strconv.ParseUint(value, 10, 64)
@@ -218,6 +192,7 @@ func GetEnvUint64(key string, fallback uint64) uint64 {
 	return fallback
 }
 
+// GetEnvUint returns key as uint or fallback
 func GetEnvUint(key string, fallback uint) uint {
 	if value, exists := os.LookupEnv(strings.ToUpper(key)); exists {
 		parsed, err := strconv.ParseUint(value, 10, 32)
