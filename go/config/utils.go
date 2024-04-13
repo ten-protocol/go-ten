@@ -12,9 +12,7 @@ import (
 )
 
 // Config represents structs for Input with associated flag UsageMap
-type Config interface {
-	UsageMap() map[string]string
-}
+type Config interface{}
 
 // getTemplateFilePaths returns a map of the default static config per TypeConfig
 func getTemplateFilePaths() map[TypeConfig]string {
@@ -36,6 +34,7 @@ func LoadDefaultInputConfig(t TypeConfig) (Config, error) {
 	overridePath := flag.String(OverrideFlag, "", flagUsageMap[OverrideFlag])
 
 	// Parse only once capturing all necessary flags
+	// todo @(anthony) fix flag help as initial parse exits -h
 	flag.Parse()
 
 	var err error
