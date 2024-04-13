@@ -7,7 +7,7 @@ willAttest:                false
 validateL1Blocks:          false
 managementContractAddress: ""
 logLevel:                  3
-logPath:                   "stdout"
+logPath:                   "sys_out"
 edgelessDBHost:            ""
 sqliteDBPath:              ""
 minGasPrice:               1 # 0 will use params.initialBaseFee

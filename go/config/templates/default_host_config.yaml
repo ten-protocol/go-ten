@@ -17,7 +17,7 @@ p2pConnectionTimeout:      10
 managementContractAddress: ""
 messageBusAddress:         ""
 logLevel:                  3
-logPath:                   "stdout"
+logPath:                   "sys_out"
 privateKey:                "0000000000000000000000000000000000000000000000000000000000000001"
 l1ChainID:                 1337
 tenChainID:                443

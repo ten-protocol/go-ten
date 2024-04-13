@@ -65,7 +65,7 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		Address:                   "127.0.0.1:11000",
 		NodeType:                  common.Sequencer,
 		L1ChainID:                 1337,
-		ObscuroChainID:            443,
+		TenChainID:                443,
 		WillAttest:                false, // todo (config) - attestation should be on by default before production release
 		ValidateL1Blocks:          false,
 		GenesisJSON:               nil,
@@ -78,7 +78,7 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		ProfilerEnabled:           false,
 		MinGasPrice:               big.NewInt(params.InitialBaseFee),
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
-		ObscuroGenesis:            "",
+		TenGenesis:                "",
 		DebugNamespaceEnabled:     false,
 		MaxBatchSize:              1024 * 55,
 		MaxRollupSize:             1024 * 64,
