@@ -22,6 +22,8 @@ nodeSettings:
   profilerEnabled:        false
   useInMemoryDB:          true # useInMemoryDB for host
   postgresDBHost:         "" # only if `useInMemoryDB` set to false
+
+nodeImages:
   hostImage:              "testnetobscuronet.azurecr.io/obscuronet/sepolia_host:latest" # provided
   enclaveImage:           "testnetobscuronet.azurecr.io/obscuronet/sepolia_enclave:latest" # provided
   edgelessDBImage:        "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"

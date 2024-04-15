@@ -1,12 +1,8 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"github.com/ten-protocol/go-ten/go/config"
-	"github.com/ten-protocol/go-ten/go/node"
-	"os"
-	"strings"
 )
 
 var (
@@ -17,27 +13,12 @@ var (
 
 // ParseConfig returns a node.DockerNode based on either the file identified by the `config` flag, or the flags with
 // specific defaults (if the `config` flag isn't specified).
-func ParseConfig() (*node.DockerNode, error) {
-	inputCfg, err := config.LoadDefaultInputConfig(config.Node)
+func ParseConfig(paths config.ConfPaths) (*config.NodeConfig, error) {
+	inputCfg, err := config.LoadDefaultInputConfig(config.Node, paths)
 	if err != nil {
 		panic(fmt.Errorf("issues loading default and override config from file. Cause: %w", err))
 	}
-	cfg := inputCfg.(*config.NodeConfig) // assert
-
-	action := flag.Arg(0)
-
-	if !validateNodeAction(action) {
-		if action == "" {
-			fmt.Printf("expected a node action string (%s) as the only argument after the flags but no argument provided\n",
-				strings.Join(validNodeActions, ", "))
-		} else {
-			fmt.Printf("expected a node action string (%s) as the only argument after the flags but got %s\n",
-				strings.Join(validNodeActions, ", "), action)
-		}
-		os.Exit(1)
-	}
-
-	return node.NewDockerNode(action, cfg), nil
+	return inputCfg.(*config.NodeConfig), nil // assert
 }
 
 func validateNodeAction(action string) bool {

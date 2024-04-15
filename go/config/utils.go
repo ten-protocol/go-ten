@@ -11,8 +11,19 @@ import (
 	"strings"
 )
 
+// HostEnvs alias
+type HostEnvs = map[string]string
+
+// EncEnvs alias
+type EncEnvs = map[string]string
+
 // Config represents structs for Input with associated flag FlagUsageMap
 type Config interface{}
+
+// IsItemInSet helper Function to check if an item is in the set
+func IsItemInSet(set map[string]bool, item string) bool {
+	return set[item]
+}
 
 // getTemplateFilePaths returns a map of the default static config per TypeConfig
 func getTemplateFilePaths() map[TypeConfig]string {
@@ -25,27 +36,18 @@ func getTemplateFilePaths() map[TypeConfig]string {
 }
 
 // LoadDefaultInputConfig parses optional or default configuration file and returns interface.
-func LoadDefaultInputConfig(t TypeConfig) (Config, error) {
-	fileMap := getTemplateFilePaths()
-	flagUsageMap := GetConfigFlagUsageMap()
-
-	// set the default config from file-map
-	configPath := flag.String(ConfigFlag, fileMap[t], flagUsageMap[ConfigFlag])
-	overridePath := flag.String(OverrideFlag, "", flagUsageMap[OverrideFlag])
-
-	// Parse only once capturing all necessary flags
-	// todo @(anthony) fix flag help as initial parse exits -h
-	flag.Parse()
-
+func LoadDefaultInputConfig(t TypeConfig, paths ConfPaths) (Config, error) {
+	configPath := paths[ConfigFlag]
+	overridePath := paths[OverrideFlag]
 	var err error
-	conf, err := LoadConfigFromFile(t, *configPath)
+	conf, err := LoadConfigFromFile(t, configPath)
 	if err != nil {
 		panic(err)
 	}
 
 	// Apply overrides if the override path is provided
-	if *overridePath != "" {
-		overridesConf, err := LoadConfigFromFile(t, *overridePath)
+	if overridePath != "" {
+		overridesConf, err := LoadConfigFromFile(t, overridePath)
 		if err != nil {
 			panic(err)
 		}
@@ -202,4 +204,46 @@ func GetEnvUint(key string, fallback uint) uint {
 		}
 	}
 	return fallback
+}
+
+// MergeEnvMaps takes in two maps and returns one, map2 is canonical
+func MergeEnvMaps(map1, map2 map[string]string) map[string]string {
+	mergedMap := make(map[string]string)
+	for key, value := range map1 {
+		mergedMap[strings.ToUpper(key)] = value
+	}
+	for key, value := range map2 {
+		mergedMap[strings.ToUpper(key)] = value
+	}
+	return mergedMap
+}
+
+// MergeFlagSets takes any number of FlagSets and merges them into a new FlagSet.
+// Later FlagSets override earlier ones.
+func MergeFlagSets(flagSets ...*flag.FlagSet) *flag.FlagSet {
+	result := flag.NewFlagSet("merged", flag.ExitOnError)
+
+	tempMap := make(map[string]*flag.Flag)
+
+	for _, fs := range flagSets {
+		fs.VisitAll(func(f *flag.Flag) {
+			tempMap[f.Name] = f
+		})
+	}
+
+	// Register flags in the new FlagSet based on the final values in tempMap
+	for _, f := range tempMap {
+		if getter, ok := f.Value.(flag.Getter); ok {
+			switch v := getter.Get().(type) {
+			case int:
+				result.Int(f.Name, v, f.Usage)
+			case string:
+				result.String(f.Name, v, f.Usage)
+			case bool:
+				result.Bool(f.Name, v, f.Usage)
+			}
+		}
+	}
+
+	return result
 }

@@ -2,6 +2,14 @@ package config
 
 // SHARED Enclave and Host flags
 const (
+	OverrideFlag                  = "override"
+	ConfigFlag                    = "config"
+	NodeNameFlag                  = "nodeName"
+	IsSGXEnabledFlag              = "isSGXEnabled"
+	PccsAddrFlag                  = "pccsAddr"
+	HostImage                     = "hostImage"
+	EnclaveImage                  = "enclaveImage"
+	EdgelessDBImage               = "edgelessDBImage"
 	NodeTypeFlag                  = "nodeType"
 	ManagementContractAddressFlag = "managementContractAddress"
 	MessageBusAddressFlag         = "messageBusAddress"
@@ -15,51 +23,145 @@ const (
 	DebugNamespaceEnabledFlag     = "debugNamespaceEnabled"
 	UseInMemoryDBFlag             = "useInMemoryDB"
 	SequencerIDFlag               = "sequencerID"
+	IsGenesisFlag                 = "isGenesis"
+	ClientRPCPortHTTPFlag         = "clientRPCPortHTTP"
+	ClientRPCPortWSFlag           = "clientRPCPortWS"
+	ClientRPCHostFlag             = "clientRPCHost"
+	EnclaveRPCAddressesFlag       = "enclaveRPCAddresses"
+	P2pBindAddressFlag            = "p2pBindAddress"
+	P2pPublicAddressFlag          = "p2pPublicAddress"
+	L1WebsocketURLFlag            = "l1WebsocketURL"
+	EnclaveRPCTimeoutFlag         = "enclaveRPCTimeout"
+	L1RPCTimeoutFlag              = "l1RPCTimeout"
+	P2pConnectionTimeoutFlag      = "p2pConnectionTimeout"
+	PrivateKeyFlag                = "privateKey"
+	L1StartHashFlag               = "l1StartHash"
+	MetricsEnabledFlag            = "metricsEnabled"
+	MetricsHTTPPortFlag           = "metricsHTTPPort"
+	PostgresDBHostFlag            = "postgresDBHost"
+	BatchIntervalFlag             = "batchInterval"
+	MaxBatchIntervalFlag          = "maxBatchInterval"
+	RollupIntervalFlag            = "rollupInterval"
+	L1BlockTimeFlag               = "l1BlockTime"
+	IsInboundP2PDisabledFlag      = "isInboundP2PDisabled"
+	LevelDBPathFlag               = "levelDBPath"
+	HostIDFlag                    = "hostID"
+	HostAddressFlag               = "hostAddress"
+	AddressFlag                   = "address"
+	WillAttestFlag                = "willAttest"
+	ValidateL1BlocksFlag          = "validateL1Blocks"
+	EdgelessDBHostFlag            = "edgelessDBHost"
+	MinGasPriceFlag               = "minGasPrice"
+	GenesisJSONFlag               = "genesisJSON"
+	TenGenesisFlag                = "tenGenesis"
+	MaxBatchSizeFlag              = "maxBatchSize"
+	L2BaseFeeFlag                 = "l2BaseFee"
+	GasPaymentAddress             = "gasPaymentAddress"
+	GasBatchExecutionLimit        = "gasBatchExecutionLimit"
+	GasLocalExecutionCapFlag      = "gasLocalExecutionCap"
 )
 
-// Host Flag names.
-const (
-	isGenesisFlag            = "isGenesis"
-	clientRPCPortHTTPFlag    = "clientRPCPortHTTP"
-	clientRPCPortWSFlag      = "clientRPCPortWS"
-	clientRPCHostFlag        = "clientRPCHost"
-	enclaveRPCAddressesFlag  = "enclaveRPCAddresses"
-	p2pBindAddressFlag       = "p2pBindAddress"
-	p2pPublicAddressFlag     = "p2pPublicAddress"
-	l1WebsocketURLFlag       = "l1WebsocketURL"
-	enclaveRPCTimeoutFlag    = "enclaveRPCTimeout"
-	l1RPCTimeoutFlag         = "l1RPCTimeout"
-	p2pConnectionTimeoutFlag = "p2pConnectionTimeout"
-	privateKeyFlag           = "privateKey"
-	l1StartHashFlag          = "l1StartHash"
-	metricsEnabledFlag       = "metricsEnabled"
-	metricsHTTPPortFlag      = "metricsHTTPPort"
-	postgresDBHostFlag       = "postgresDBHost"
-	batchIntervalFlag        = "batchInterval"
-	maxBatchIntervalFlag     = "maxBatchInterval"
-	rollupIntervalFlag       = "rollupInterval"
-	l1BlockTimeFlag          = "l1BlockTime"
-	isInboundP2PDisabledFlag = "isInboundP2PDisabled"
-	LevelDBPathFlag          = "levelDBPath"
-)
-
-// Enclave Flag names.
-const (
-	HostIDFlag               = "hostID"
-	HostAddressFlag          = "hostAddress"
-	AddressFlag              = "address"
-	WillAttestFlag           = "willAttest"
-	ValidateL1BlocksFlag     = "validateL1Blocks"
-	EdgelessDBHostFlag       = "edgelessDBHost"
-	MinGasPriceFlag          = "minGasPrice"
-	GenesisJSONFlag          = "genesisJSON"
-	TenGenesisFlag           = "tenGenesis"
-	MaxBatchSizeFlag         = "maxBatchSize"
-	L2BaseFeeFlag            = "l2BaseFee"
-	GasPaymentAddress        = "gasPaymentAddress"
-	GasBatchExecutionLimit   = "gasBatchExecutionLimit"
-	GasLocalExecutionCapFlag = "gasLocalExecutionCap"
-)
+var FlagsByService = map[TypeConfig]map[string]bool{
+	Enclave: {
+		OverrideFlag: true,
+		ConfigFlag:   true,
+		//
+		NodeTypeFlag:                  true,
+		ManagementContractAddressFlag: true,
+		MessageBusAddressFlag:         true,
+		LogLevelFlag:                  true,
+		LogPathFlag:                   true,
+		L1ChainIDFlag:                 true,
+		TenChainIDFlag:                true,
+		ProfilerEnabledFlag:           true,
+		MaxRollupSizeFlag:             true,
+		SQLiteDBPathFlag:              true,
+		DebugNamespaceEnabledFlag:     true,
+		UseInMemoryDBFlag:             true,
+		SequencerIDFlag:               true,
+		//
+		HostIDFlag:               true,
+		HostAddressFlag:          true,
+		AddressFlag:              true,
+		WillAttestFlag:           true,
+		ValidateL1BlocksFlag:     true,
+		EdgelessDBHostFlag:       true,
+		MinGasPriceFlag:          true,
+		GenesisJSONFlag:          true,
+		TenGenesisFlag:           true,
+		MaxBatchSizeFlag:         true,
+		L2BaseFeeFlag:            true,
+		GasPaymentAddress:        true,
+		GasBatchExecutionLimit:   true,
+		GasLocalExecutionCapFlag: true,
+	},
+	Host: {
+		OverrideFlag: true,
+		ConfigFlag:   true,
+		//
+		NodeTypeFlag:                  true,
+		ManagementContractAddressFlag: true,
+		MessageBusAddressFlag:         true,
+		LogLevelFlag:                  true,
+		LogPathFlag:                   true,
+		L1ChainIDFlag:                 true,
+		TenChainIDFlag:                true,
+		ProfilerEnabledFlag:           true,
+		MaxRollupSizeFlag:             true,
+		SQLiteDBPathFlag:              true,
+		DebugNamespaceEnabledFlag:     true,
+		UseInMemoryDBFlag:             true,
+		SequencerIDFlag:               true,
+		//
+		IsGenesisFlag:            true,
+		ClientRPCPortHTTPFlag:    true,
+		ClientRPCPortWSFlag:      true,
+		ClientRPCHostFlag:        true,
+		EnclaveRPCAddressesFlag:  true,
+		P2pBindAddressFlag:       true,
+		P2pPublicAddressFlag:     true,
+		L1WebsocketURLFlag:       true,
+		EnclaveRPCTimeoutFlag:    true,
+		L1RPCTimeoutFlag:         true,
+		P2pConnectionTimeoutFlag: true,
+		PrivateKeyFlag:           true,
+		L1StartHashFlag:          true,
+		MetricsEnabledFlag:       true,
+		MetricsHTTPPortFlag:      true,
+		PostgresDBHostFlag:       true,
+		BatchIntervalFlag:        true,
+		MaxBatchIntervalFlag:     true,
+		RollupIntervalFlag:       true,
+		L1BlockTimeFlag:          true,
+		IsInboundP2PDisabledFlag: true,
+		LevelDBPathFlag:          true,
+	},
+	Node: {
+		OverrideFlag: true,
+		ConfigFlag:   true,
+		// NodeInputDetails
+		NodeNameFlag:          true,
+		HostIDFlag:            true,
+		PrivateKeyFlag:        true,
+		L1WebsocketURLFlag:    true,
+		P2pPublicAddressFlag:  true,
+		ClientRPCPortHTTPFlag: true,
+		ClientRPCPortWSFlag:   true,
+		// NodeInputSettings
+		NodeTypeFlag:              true,
+		IsSGXEnabledFlag:          true,
+		PccsAddrFlag:              true,
+		DebugNamespaceEnabledFlag: true,
+		LogLevelFlag:              true,
+		ProfilerEnabledFlag:       true,
+		UseInMemoryDBFlag:         true,
+		PostgresDBHostFlag:        true,
+		// NodeInputImages
+		HostImage:       true,
+		EnclaveImage:    true,
+		EdgelessDBImage: true,
+	},
+}
 
 // EnclaveRestrictedFlags are the flags that the enclave can receive ONLY over (a) the Ego signed enclave.json (./go/enclave/main/enclave.json)
 // or (b) if passed via EDG_<flag> as environment variable (see https://docs.edgeless.systems/ego/reference/config#environment-variables).
@@ -77,6 +179,14 @@ var EnclaveRestrictedFlags = map[string]string{
 // FlagUsageMap is a full indexing of available flags across all service configurations
 func FlagUsageMap() map[string]string {
 	return map[string]string{
+		OverrideFlag:                  "Additive config file to apply on top of default or -config",
+		ConfigFlag:                    "The path to the host's config file. Overrides all other flags",
+		NodeNameFlag:                  "Common name for containers and reference",
+		IsSGXEnabledFlag:              "Use SGX or simulation",
+		PccsAddrFlag:                  "SGX attestation address",
+		HostImage:                     "Docker image for host service",
+		EnclaveImage:                  "Docker image for enclave service",
+		EdgelessDBImage:               "Docker image for edgeless DB (enclave persistence)",
 		HostIDFlag:                    "The 20 bytes of the address of the TEN host this enclave serves",
 		HostAddressFlag:               "The peer-to-peer IP address of the TEN host this enclave serves",
 		AddressFlag:                   "The address on which to serve the TEN enclave service",
@@ -104,27 +214,27 @@ func FlagUsageMap() map[string]string {
 		ProfilerEnabledFlag:           "Runs a profiler instance (Defaults to false)",
 		DebugNamespaceEnabledFlag:     "Whether the debug namespace is enabled",
 		GasLocalExecutionCapFlag:      "Max gas usage when executing local transactions",
-		isGenesisFlag:                 "Whether the host is the first host to join the network",
-		clientRPCPortHTTPFlag:         "The port on which to listen for client application RPC requests over HTTP",
-		clientRPCPortWSFlag:           "The port on which to listen for client application RPC requests over websockets",
-		clientRPCHostFlag:             "The host on which to handle client application RPC requests",
-		enclaveRPCAddressesFlag:       "The comma-separated addresses to use to connect to the Ten enclaves",
-		p2pBindAddressFlag:            "The address where the p2p server is bound to. Defaults to 0.0.0.0:10000",
-		p2pPublicAddressFlag:          "The P2P address where the other servers should connect to. Defaults to 127.0.0.1:10000",
-		l1WebsocketURLFlag:            "The websocket RPC address the host can use for L1 requests",
-		enclaveRPCTimeoutFlag:         "The timeout for host <-> enclave RPC communication",
-		l1RPCTimeoutFlag:              "The timeout for connecting to, and communicating with, the Ethereum client",
-		p2pConnectionTimeoutFlag:      "The timeout for host <-> host P2P messaging",
-		privateKeyFlag:                "The private key for the L1 host account",
-		l1StartHashFlag:               "The L1 block hash where the management contract was deployed",
-		metricsEnabledFlag:            "Whether the metrics are enabled (Defaults to true)",
-		metricsHTTPPortFlag:           "The port on which the metrics are served (Defaults to 0.0.0.0:14000)",
-		postgresDBHostFlag:            "The host for the Postgres DB instance",
-		batchIntervalFlag:             "Duration between each batch. Can be put down as 1.0s",
-		maxBatchIntervalFlag:          "Max interval between each batch, if greater than batchInterval then some empty batches will be skipped. Can be put down as 1.0s",
-		rollupIntervalFlag:            "Duration between each rollup. Can be put down as 1.0s",
-		l1BlockTimeFlag:               "Time of 1l Blocks",
-		isInboundP2PDisabledFlag:      "Whether inbound p2p is enabled",
+		IsGenesisFlag:                 "Whether the host is the first host to join the network",
+		ClientRPCPortHTTPFlag:         "The port on which to listen for client application RPC requests over HTTP",
+		ClientRPCPortWSFlag:           "The port on which to listen for client application RPC requests over websockets",
+		ClientRPCHostFlag:             "The host on which to handle client application RPC requests",
+		EnclaveRPCAddressesFlag:       "The comma-separated addresses to use to connect to the Ten enclaves",
+		P2pBindAddressFlag:            "The address where the p2p server is bound to. Defaults to 0.0.0.0:10000",
+		P2pPublicAddressFlag:          "The P2P address where the other servers should connect to. Defaults to 127.0.0.1:10000",
+		L1WebsocketURLFlag:            "The websocket RPC address the host can use for L1 requests",
+		EnclaveRPCTimeoutFlag:         "The timeout for host <-> enclave RPC communication",
+		L1RPCTimeoutFlag:              "The timeout for connecting to, and communicating with, the Ethereum client",
+		P2pConnectionTimeoutFlag:      "The timeout for host <-> host P2P messaging",
+		PrivateKeyFlag:                "The private key for the L1 host account",
+		L1StartHashFlag:               "The L1 block hash where the management contract was deployed",
+		MetricsEnabledFlag:            "Whether the metrics are enabled (Defaults to true)",
+		MetricsHTTPPortFlag:           "The port on which the metrics are served (Defaults to 0.0.0.0:14000)",
+		PostgresDBHostFlag:            "The host for the Postgres DB instance",
+		BatchIntervalFlag:             "Duration between each batch. Can be put down as 1.0s",
+		MaxBatchIntervalFlag:          "Max interval between each batch, if greater than batchInterval then some empty batches will be skipped. Can be put down as 1.0s",
+		RollupIntervalFlag:            "Duration between each rollup. Can be put down as 1.0s",
+		L1BlockTimeFlag:               "Time of 1l Blocks",
+		IsInboundP2PDisabledFlag:      "Whether inbound p2p is enabled",
 		LevelDBPathFlag:               "LevelDBPath",
 	}
 }
