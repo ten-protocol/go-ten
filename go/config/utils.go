@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"strconv"
@@ -69,7 +68,7 @@ func LoadConfigFromFile(t TypeConfig, configPath string) (Config, error) {
 	}
 
 	// Read YAML configuration
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, err
 	}
