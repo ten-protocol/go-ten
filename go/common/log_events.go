@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -25,16 +24,28 @@ type LogSubscription struct {
 	Filter *FilterCriteriaJSON
 }
 
-// IDAndEncLog pairs an encrypted log with the ID of the subscription that generated it.
-type IDAndEncLog struct {
-	SubID  rpc.ID
-	EncLog []byte
-}
+func CreateAuthenticatedLogSubscriptionPayload(args []interface{}, vk *viewingkey.ViewingKey) (*LogSubscription, error) {
+	logSubscription := &LogSubscription{
+		ViewingKey: &viewingkey.RPCSignedViewingKey{
+			PublicKey:               vk.PublicKey,
+			SignatureWithAccountKey: vk.SignatureWithAccountKey,
+			SignatureType:           vk.SignatureType,
+		},
+	}
 
-// IDAndLog pairs a log with the ID of the subscription that generated it.
-type IDAndLog struct {
-	SubID rpc.ID
-	Log   *types.Log
+	// If there are less than two arguments, it means no filter criteria was passed.
+	if len(args) < 2 {
+		logSubscription.Filter = &FilterCriteriaJSON{}
+		return logSubscription, nil
+	}
+
+	filterCriteria, ok := args[1].(FilterCriteria)
+	if !ok {
+		return nil, fmt.Errorf("invalid subscription")
+	}
+	fc := FromCriteria(filterCriteria)
+	logSubscription.Filter = &fc
+	return logSubscription, nil
 }
 
 // FilterCriteriaJSON is a structure that JSON-serialises to a format that can be successfully deserialised into a

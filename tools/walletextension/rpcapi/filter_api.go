@@ -69,7 +69,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 	}
 
 	backendWSConnections := make([]*tenrpc.EncRPCClient, 0)
-	inputChannels := make([]chan common.IDAndLog, 0)
+	inputChannels := make([]chan types.Log, 0)
 	backendSubscriptions := make([]*rpc.ClientSubscription, 0)
 	for _, address := range candidateAddresses {
 		rpcWSClient, err := connectWS(user.accounts[*address], api.we.Logger())
@@ -78,7 +78,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 		}
 		backendWSConnections = append(backendWSConnections, rpcWSClient)
 
-		inCh := make(chan common.IDAndLog)
+		inCh := make(chan types.Log)
 		backendSubscription, err := rpcWSClient.Subscribe(ctx, "eth", inCh, "logs", crit)
 		if err != nil {
 			fmt.Printf("could not connect to backend %s", err)
@@ -93,16 +93,16 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 	subscription := subNotifier.CreateSubscription()
 
 	unsubscribed := atomic.Bool{}
-	go subscriptioncommon.ForwardFromChannels(inputChannels, &unsubscribed, func(data common.IDAndLog) error {
+	go subscriptioncommon.ForwardFromChannels(inputChannels, &unsubscribed, func(log types.Log) error {
 		uniqueLogKey := LogKey{
-			BlockHash: data.Log.BlockHash,
-			TxHash:    data.Log.TxHash,
-			Index:     data.Log.Index,
+			BlockHash: log.BlockHash,
+			TxHash:    log.TxHash,
+			Index:     log.Index,
 		}
 
 		if !dedupeBuffer.Contains(uniqueLogKey) {
 			dedupeBuffer.Push(uniqueLogKey)
-			return subNotifier.Notify(subscription.ID, data.Log)
+			return subNotifier.Notify(subscription.ID, log)
 		}
 		return nil
 	})

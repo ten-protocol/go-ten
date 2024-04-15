@@ -293,7 +293,7 @@ func initParams(storage storage.Storage, gethEncodingService gethencoding.Encodi
 }
 
 func newErrorWithReasonAndCode(err error) error {
-	result := &errutil.EVMSerialisableError{
+	result := &errutil.DataError{
 		Err: err.Error(),
 	}
 
@@ -316,7 +316,7 @@ func newRevertError(result *gethcore.ExecutionResult) error {
 	if errUnpack == nil {
 		err = fmt.Errorf("execution reverted: %v", reason)
 	}
-	return &errutil.EVMSerialisableError{
+	return &errutil.DataError{
 		Err:    err.Error(),
 		Reason: hexutil.Encode(result.Revert()),
 		Code:   3, // todo - magic number, really needs thought around the value and made a constant
