@@ -32,15 +32,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	//
-	//// Change anything that was statically defined in the nodeConf to a set of envs for
-	//envs := nodeConfig.GetConfigAsEnvVars(config.Host)
-	//envs = config.MergeEnvMaps(envs, nodeConfig.GetConfigAsEnvVars(config.Enclave))
-
-	// override with flags
-	//print(envs)
-
-	// inside runs then split to service
 
 	dockerNode := node.NewDockerNode(action, nodeConfig, nodeFlags)
 
