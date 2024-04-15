@@ -5,20 +5,21 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 )
 
 type Action = string
 type ConfPaths = map[string]string
 type CliFlagSet = map[string]interface{}
-type NodeFlagStringSet = map[string]string
+type CliFlagStringSet = map[string]string
 
-func LoadFlagStrings(t TypeConfig) (Action, ConfPaths, NodeFlagStringSet, error) {
+func LoadFlagStrings(t TypeConfig) (Action, ConfPaths, CliFlagStringSet, error) {
 	action, cPaths, nodeFlags, err := LoadFlags(t, false)
 	if err != nil {
 		return "", nil, nil, err
 	}
 
-	flagStrings := convertToNodeFlagStringSet(nodeFlags)
+	flagStrings := convertToFlagStringSet(nodeFlags)
 	return action, cPaths, flagStrings, nil
 }
 
@@ -35,14 +36,59 @@ func LoadFlags(t TypeConfig, withDefaults bool) (Action, ConfPaths, CliFlagSet, 
 
 	flagValues := captureFlagValues(fs, withDefaults)
 	cPaths := getConfPaths(fs)
+	os.Args = removeFlagsFromArgs(os.Args, cPaths) // remove flags from os.Args
+
 	action := fs.Arg(0)
 
 	return action, cPaths, flagValues, nil
 }
 
-// convertToNodeFlagStringSet helper for LoadFlagStrings
-func convertToNodeFlagStringSet(nodeFlags CliFlagSet) NodeFlagStringSet {
-	flagStrings := make(NodeFlagStringSet)
+// EnvOrFlag iterates across the program args, if any args in form `-<arg> val` or `-<arg>=val` are found the
+// key <ARG> to upper is checked against existing environment variable keys. If there is a match, the
+// arg and its associated value are removed from the args, the environment variable is left unmodified,
+// however if the environment variable is not set, it will throw error.
+func EnvOrFlag(args []string) ([]string, error) {
+	for i := 0; i < len(args); i++ {
+		eqDelimiter := false
+		if strings.HasPrefix(args[i], "-") {
+			arg := strings.TrimLeft(args[i], "-")
+			if strings.Contains(arg, "=") {
+				eqDelimiter = true
+				arg = strings.Split(arg, "=")[0]
+			}
+
+			if val, ok := os.LookupEnv(strings.ToUpper(arg)); ok {
+				if val == "" {
+					return nil, fmt.Errorf("env var set with no value: %s", arg)
+				}
+				if eqDelimiter {
+					args = append(args[:i], args[i+1:]...)
+					i--
+					continue
+				}
+				args = append(args[:i], args[i+2:]...)
+				i--
+			}
+		}
+	}
+	return args, nil
+}
+
+// removeFlagsFromArgs removes specific flags and their values from the arguments
+func removeFlagsFromArgs(args []string, flagsToRemove map[string]string) []string {
+	for key := range flagsToRemove {
+		for i := 0; i < len(args); i++ {
+			if strings.Contains(args[i], key) && i+1 < len(args) {
+				args = append(args[:i], args[i+2:]...)
+			}
+		}
+	}
+	return args
+}
+
+// convertToFlagStringSet helper for LoadFlagStrings
+func convertToFlagStringSet(nodeFlags CliFlagSet) CliFlagStringSet {
+	flagStrings := make(CliFlagStringSet)
 	for key, value := range nodeFlags {
 		flagStrings[key] = fmt.Sprintf("%v", value)
 	}
@@ -152,6 +198,12 @@ func setupStructFlags(val reflect.Value, fs *flag.FlagSet, usageMap map[string]s
 // setupFlag assigns a flag to a field based on its type prefers environment variable over default
 func setupFlag(field reflect.Value, fs *flag.FlagSet, flagName, flagUsage string) {
 	switch field.Type().Kind() {
+	case reflect.Slice:
+		if field.Type().Elem().Kind() == reflect.String {
+			fs.Var(newStringSliceValue(GetEnvStringSlice(flagName, field.Interface().([]string)), field.Addr().Interface().(*[]string)), flagName, flagUsage)
+		} else {
+			fmt.Printf("Unsupported slice type %s for field %s\n", field.Type(), flagName)
+		}
 	case reflect.String:
 		fs.StringVar(field.Addr().Interface().(*string), flagName, GetEnvString(flagName, field.Interface().(string)), flagUsage)
 	case reflect.Int:
@@ -167,6 +219,22 @@ func setupFlag(field reflect.Value, fs *flag.FlagSet, flagName, flagUsage string
 	default:
 		fmt.Printf("Unsupported field type %s for field %s\n", field.Type(), flagName)
 	}
+}
+
+type stringSliceValue []string
+
+func newStringSliceValue(val []string, p *[]string) *stringSliceValue {
+	*p = val
+	return (*stringSliceValue)(p)
+}
+
+func (s *stringSliceValue) Set(val string) error {
+	*s = stringSliceValue(strings.Split(val, ","))
+	return nil
+}
+
+func (s *stringSliceValue) String() string {
+	return strings.Join(*s, ",")
 }
 
 // isFlagSet is used to check if a flag has been defined (incl. before parse)

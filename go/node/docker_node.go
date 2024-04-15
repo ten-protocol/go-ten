@@ -18,10 +18,10 @@ var (
 type DockerNode struct {
 	Action   string
 	Cfg      *config.NodeConfig
-	CliFlags config.NodeFlagStringSet
+	CliFlags config.CliFlagStringSet
 }
 
-func NewDockerNode(action string, cfg *config.NodeConfig, flags config.NodeFlagStringSet) *DockerNode {
+func NewDockerNode(action string, cfg *config.NodeConfig, flags config.CliFlagStringSet) *DockerNode {
 	return &DockerNode{
 		Action:   action,
 		Cfg:      cfg,

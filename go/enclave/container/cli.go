@@ -24,6 +24,12 @@ func ParseConfig(paths config.ConfPaths) (*config.EnclaveConfig, error) {
 	usageMap := config.FlagUsageMap()
 	config.SetupFlagsFromStruct(cfg, fs, usageMap)
 
+	// Remove command-line flags in the case both flags and env vars are set
+	os.Args, err = config.EnvOrFlag(os.Args)
+	if err != nil {
+		return nil, fmt.Errorf("error resolving property collision between flags and env vars: %w", err)
+	}
+
 	// Parse command-line flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, fmt.Errorf("error parsing flags: %w", err)

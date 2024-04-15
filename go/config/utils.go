@@ -1,7 +1,6 @@
 package config
 
 import (
-	"flag"
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
@@ -19,11 +18,6 @@ type EncEnvs = map[string]string
 
 // Config represents structs for Input with associated flag FlagUsageMap
 type Config interface{}
-
-// IsItemInSet helper Function to check if an item is in the set
-func IsItemInSet(set map[string]bool, item string) bool {
-	return set[item]
-}
 
 // getTemplateFilePaths returns a map of the default static config per TypeConfig
 func getTemplateFilePaths() map[TypeConfig]string {
@@ -206,6 +200,14 @@ func GetEnvUint(key string, fallback uint) uint {
 	return fallback
 }
 
+// GetEnvStringSlice returns key as string slice or fallback
+func GetEnvStringSlice(key string, fallback []string) []string {
+	if value, exists := os.LookupEnv(strings.ToUpper(key)); exists {
+		return strings.Split(value, ",")
+	}
+	return fallback
+}
+
 // MergeEnvMaps takes in two maps and returns one, map2 is canonical
 func MergeEnvMaps(map1, map2 map[string]string) map[string]string {
 	mergedMap := make(map[string]string)
@@ -216,34 +218,4 @@ func MergeEnvMaps(map1, map2 map[string]string) map[string]string {
 		mergedMap[strings.ToUpper(key)] = value
 	}
 	return mergedMap
-}
-
-// MergeFlagSets takes any number of FlagSets and merges them into a new FlagSet.
-// Later FlagSets override earlier ones.
-func MergeFlagSets(flagSets ...*flag.FlagSet) *flag.FlagSet {
-	result := flag.NewFlagSet("merged", flag.ExitOnError)
-
-	tempMap := make(map[string]*flag.Flag)
-
-	for _, fs := range flagSets {
-		fs.VisitAll(func(f *flag.Flag) {
-			tempMap[f.Name] = f
-		})
-	}
-
-	// Register flags in the new FlagSet based on the final values in tempMap
-	for _, f := range tempMap {
-		if getter, ok := f.Value.(flag.Getter); ok {
-			switch v := getter.Get().(type) {
-			case int:
-				result.Int(f.Name, v, f.Usage)
-			case string:
-				result.String(f.Name, v, f.Usage)
-			case bool:
-				result.Bool(f.Name, v, f.Usage)
-			}
-		}
-	}
-
-	return result
 }
