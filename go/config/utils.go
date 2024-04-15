@@ -25,6 +25,7 @@ func getTemplateFilePaths() map[TypeConfig]string {
 		Host:    "./go/config/templates/default_host_config.yaml",
 		Network: "./go/config/templates/ITN_network.yaml",
 		Node:    "./go/config/templates/default_node.yaml",
+		Testnet: "./go/config/templates/default_testnet.yaml",
 	}
 }
 

@@ -22,18 +22,21 @@ type NodeConfig struct {
 }
 
 type NodeInputDetails struct {
-	NodeName          string `yaml:"nodeName"`
-	HostID            string `yaml:"hostID"`
-	PrivateKey        string `yaml:"privateKey"`
-	L1WebsocketURL    string `yaml:"l1WebsocketURL"`
-	P2pPublicAddress  string `yaml:"p2pPublicAddress"`
-	ClientRPCPortHTTP int    `yaml:"clientRPCPortHTTP"`
-	ClientRPCPortWS   int    `yaml:"clientRPCPortWS"`
+	NodeName            string   `yaml:"nodeName"`
+	HostID              string   `yaml:"hostID"`
+	PrivateKey          string   `yaml:"privateKey"`
+	L1WebsocketURL      string   `yaml:"l1WebsocketURL"`
+	P2pPublicAddress    string   `yaml:"p2pPublicAddress"`
+	P2pBindAddress      string   `yaml:"p2pBindAddress"`
+	ClientRPCPortHTTP   int      `yaml:"clientRPCPortHTTP"`
+	ClientRPCPortWS     int      `yaml:"clientRPCPortWS"`
+	EnclaveRPCAddresses []string `yaml:"enclaveRPCAddresses"`
 }
 
 type NodeInputSettings struct {
 	NodeType              string `yaml:"nodeType"`
 	IsSGXEnabled          bool   `yaml:"isSGXEnabled"`
+	IsGenesis             bool   `yaml:"isGenesis"`
 	PccsAddr              string `yaml:"pccsAddr"`
 	DebugNamespaceEnabled bool   `yaml:"debugNamespaceEnabled"`
 	LogLevel              int    `yaml:"logLevel"`

@@ -1,0 +1,35 @@
+networkConfig:            # NETWORK - There are fixed by your network you should not change
+#  Dynamic
+#  l1StartHash:               "0xcb313b39ab33b15586f70662265c57455b6037530bfd5a006d4ca044da3f25a6"
+#  managementContractAddress: "0x8A63285Fa81eE2DDb42190480d01726816611a6C"
+#  messageBusAddress:         "0x250AA6244f03e5F38FdeC1806797a6a506822eec"
+  sequencerID:               "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
+
+nodeDetails:              # Individual
+  nodeName:               "sequencer" # optional (custom short name - internal ref only)
+  hostID:                 "0x0654D8B60033144D567f25bF41baC1FB0D60F23B" # must override with public key
+  privateKey:             "8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99" # must override with private key matching hostID/public key
+  l1WebsocketURL:         "ws://eth2network:9000" # must override with L1 node WS (geth/infura etc.)
+  p2pPublicAddress:       "sequencer-host:15000" # must override be sure this address:port is public accessible
+  p2pBindAddress:         "0.0.0.0:15000"
+  clientRPCPortHTTP:      80
+  clientRPCPortWS:        81
+  enclaveRPCAddresses:    ["sequencer-enclave:11000"]
+
+nodeSettings:
+  nodeType:               "sequencer"
+  isSGXEnabled:           false
+  isGenesis:              true
+  pccsAddr:               "" # optional for attestation
+  debugNamespaceEnabled:  true
+  logLevel:               4
+  profilerEnabled:        false
+  useInMemoryDB:          true # useInMemoryDB for host
+  postgresDBHost:         "" # only if `useInMemoryDB` set to false
+
+nodeImages:
+  hostImage:              "testnetobscuronet.azurecr.io/obscuronet/host:latest" # provided
+  enclaveImage:           "testnetobscuronet.azurecr.io/obscuronet/enclave:latest" # provided
+  edgelessDBImage:        "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
+
+

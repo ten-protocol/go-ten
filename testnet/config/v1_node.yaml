@@ -1,0 +1,33 @@
+networkConfig:            # NETWORK - There are fixed by your network you should not change
+  #  Dynamic
+  #  l1StartHash:               "0xcb313b39ab33b15586f70662265c57455b6037530bfd5a006d4ca044da3f25a6"
+  #  managementContractAddress: "0x8A63285Fa81eE2DDb42190480d01726816611a6C"
+  #  messageBusAddress:         "0x250AA6244f03e5F38FdeC1806797a6a506822eec"
+  sequencerID:               "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
+
+nodeDetails:              # Individual
+  nodeName:               "validator" # optional (custom short name - internal ref only)
+  hostID:                 "0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A" # must override with public key
+  privateKey:             "ebca545772d6438bbbe1a16afbed455733eccf96157b52384f1722ea65ccfa89" # must override with private key matching hostID/public key
+  l1WebsocketURL:         "ws://eth2network:9000" # must override with L1 node WS (geth/infura etc.)
+  p2pPublicAddress:       "validator-host:15010" # must override be sure this address:port is public accessible
+  p2pBindAddress:         "0.0.0.0:15010"
+  clientRPCPortHTTP:      13010
+  clientRPCPortWS:        13011
+  enclaveRPCAddresses:    ["validator-enclave:11010"]
+
+nodeSettings:
+  nodeType:               "validator"
+  isSGXEnabled:           false
+  isGenesis:              false
+  pccsAddr:               "" # optional for attestation
+  debugNamespaceEnabled:  true
+  logLevel:               4
+  profilerEnabled:        false
+  useInMemoryDB:          true # useInMemoryDB for host
+  postgresDBHost:         "" # only if `useInMemoryDB` set to false
+
+nodeImages:
+  hostImage:              "testnetobscuronet.azurecr.io/obscuronet/host:latest" # provided
+  enclaveImage:           "testnetobscuronet.azurecr.io/obscuronet/enclave:latest" # provided
+  edgelessDBImage:        "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"

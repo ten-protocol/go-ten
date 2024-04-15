@@ -11,7 +11,7 @@ var (
 	validNodeActions = []string{startAction, upgradeAction}
 )
 
-// ParseConfig returns a node.DockerNode based on either the file identified by the `config` flag, or the flags with
+// ParseConfig returns a node.NodeConfig based on either the file identified by the `config` flag, or the flags with
 // specific defaults (if the `config` flag isn't specified).
 func ParseConfig(paths config.RunParams) (*config.NodeConfig, error) {
 	inputCfg, err := config.LoadDefaultInputConfig(config.Node, paths)

@@ -9,6 +9,7 @@ const (
 	network = "Network"
 	node    = "Node"
 	shared  = "Shared"
+	testnet = "Testnet"
 )
 
 const (
@@ -17,10 +18,11 @@ const (
 	Network
 	Node
 	Shared
+	Testnet
 )
 
 func (t TypeConfig) String() string {
-	return [...]string{enclave, host, network, node, shared}[t]
+	return [...]string{enclave, host, network, node, shared, testnet}[t]
 }
 
 func ToTypeConfig(s string) (TypeConfig, error) {
@@ -35,6 +37,8 @@ func ToTypeConfig(s string) (TypeConfig, error) {
 		return Node, nil
 	case shared:
 		return Shared, nil
+	case testnet:
+		return Testnet, nil
 	default:
 		panic("string " + s + " cannot be converted to TypeConfig.")
 	}
