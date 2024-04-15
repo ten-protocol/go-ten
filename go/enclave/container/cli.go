@@ -13,7 +13,7 @@ import (
 
 // ParseConfig returns a config.HostConfig based on either the file identified by the `config` flag, or the flags with
 // specific defaults (if the `config` flag isn't specified).
-func ParseConfig(paths config.ConfPaths) (*config.EnclaveConfig, error) {
+func ParseConfig(paths config.RunParams) (*config.EnclaveConfig, error) {
 	inputCfg, err := config.LoadDefaultInputConfig(config.Enclave, paths)
 	if err != nil {
 		return nil, fmt.Errorf("issues loading default and override config from file: %w", err)

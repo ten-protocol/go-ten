@@ -9,38 +9,40 @@ import (
 )
 
 type Action = string
-type ConfPaths = map[string]string
+type RunParams = map[string]string
 type CliFlagSet = map[string]interface{}
 type CliFlagStringSet = map[string]string
 
-func LoadFlagStrings(t TypeConfig) (Action, ConfPaths, CliFlagStringSet, error) {
-	action, cPaths, nodeFlags, err := LoadFlags(t, false)
+func LoadFlagStrings(t TypeConfig) (RunParams, CliFlagStringSet, error) {
+	rParams, nodeFlags, err := LoadFlags(t, false)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, nil, err
 	}
 
 	flagStrings := convertToFlagStringSet(nodeFlags)
-	return action, cPaths, flagStrings, nil
+	return rParams, flagStrings, nil
 }
 
-func LoadFlags(t TypeConfig, withDefaults bool) (Action, ConfPaths, CliFlagSet, error) {
+func LoadFlags(t TypeConfig, withDefaults bool) (RunParams, CliFlagSet, error) {
 	fs := SetupConfigFlags(t)
 	err := setupFlagsByType(fs, t)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, nil, err
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
-		return "", nil, nil, err
+		return nil, nil, err
 	}
 
 	flagValues := captureFlagValues(fs, withDefaults)
-	cPaths := getConfPaths(fs)
-	os.Args = removeFlagsFromArgs(os.Args, cPaths) // remove flags from os.Args
+	rParams := getRunParams(fs)
+
+	os.Args = removeFlagsFromArgs(os.Args, rParams) // remove flags from os.Args
 
 	action := fs.Arg(0)
+	rParams[action] = action
 
-	return action, cPaths, flagValues, nil
+	return rParams, flagValues, nil
 }
 
 // EnvOrFlag iterates across the program args, if any args in form `-<arg> val` or `-<arg>=val` are found the
@@ -95,9 +97,10 @@ func convertToFlagStringSet(nodeFlags CliFlagSet) CliFlagStringSet {
 	return flagStrings
 }
 
-// getConfPaths helper for LoadFlags
-func getConfPaths(fs *flag.FlagSet) ConfPaths {
-	return ConfPaths{
+// getRunParams adds the config and override paths to a map
+func getRunParams(fs *flag.FlagSet) RunParams {
+	return RunParams{
+		DryRunFlag:   fs.Lookup(DryRunFlag).Value.String(),
 		ConfigFlag:   fs.Lookup(ConfigFlag).Value.String(),
 		OverrideFlag: fs.Lookup(OverrideFlag).Value.String(),
 	}
@@ -138,6 +141,7 @@ func SetupConfigFlags(t TypeConfig) *flag.FlagSet {
 
 	// set the default config from file-map; ContinueOnError allows two stage parsing
 	fs := flag.NewFlagSet("Config", flag.ContinueOnError)
+	fs.String(DryRunFlag, "", flagUsageMap[DryRunFlag])
 	fs.String(ConfigFlag, fileMap[t], flagUsageMap[ConfigFlag])
 	fs.String(OverrideFlag, "", flagUsageMap[OverrideFlag])
 	return fs

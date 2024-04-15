@@ -10,12 +10,12 @@ import (
 func main() {
 	var err error
 	// load flags with defaults from config / sub-configs
-	_, cPaths, _, err := config.LoadFlagStrings(config.Host)
+	rParams, _, err := config.LoadFlagStrings(config.Host)
 	if err != nil {
 		panic(err)
 	}
 
-	parsedConfig, err := hostcontainer.ParseConfig(cPaths)
+	parsedConfig, err := hostcontainer.ParseConfig(rParams)
 	if err != nil {
 		panic("error loading default configurations: %s" + err.Error())
 	}

@@ -9,12 +9,12 @@ import (
 
 // Runs an TEN enclave as a standalone process.
 func main() {
-	_, cPaths, _, err := config.LoadFlagStrings(config.Enclave)
+	rParams, _, err := config.LoadFlagStrings(config.Enclave)
 	if err != nil {
 		panic(fmt.Errorf("could not parse config. Cause: %w", err))
 	}
 
-	parsedConfig, err := enclavecontainer.ParseConfig(cPaths)
+	parsedConfig, err := enclavecontainer.ParseConfig(rParams)
 	if err != nil {
 		panic("error loading default configurations: %s" + err.Error())
 	}

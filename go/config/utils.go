@@ -29,7 +29,7 @@ func getTemplateFilePaths() map[TypeConfig]string {
 }
 
 // LoadDefaultInputConfig parses optional or default configuration file and returns interface.
-func LoadDefaultInputConfig(t TypeConfig, paths ConfPaths) (Config, error) {
+func LoadDefaultInputConfig(t TypeConfig, paths RunParams) (Config, error) {
 	configPath := paths[ConfigFlag]
 	overridePath := paths[OverrideFlag]
 	var err error

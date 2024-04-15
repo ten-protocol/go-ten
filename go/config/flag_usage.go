@@ -2,6 +2,7 @@ package config
 
 // SHARED Enclave and Host flags
 const (
+	DryRunFlag                    = "dryRun"
 	OverrideFlag                  = "override"
 	ConfigFlag                    = "config"
 	NodeNameFlag                  = "nodeName"
@@ -137,6 +138,7 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		LevelDBPathFlag:          true,
 	},
 	Node: {
+		DryRunFlag:   true,
 		OverrideFlag: true,
 		ConfigFlag:   true,
 		// NodeInputDetails
@@ -179,6 +181,7 @@ var EnclaveRestrictedFlags = map[string]string{
 // FlagUsageMap is a full indexing of available flags across all service configurations
 func FlagUsageMap() map[string]string {
 	return map[string]string{
+		DryRunFlag:                    "Dry run mode, simply prints out expected configuration and actions to perform without deploying",
 		OverrideFlag:                  "Additive config file to apply on top of default or -config",
 		ConfigFlag:                    "The path to the host's config file. Overrides all other flags",
 		NodeNameFlag:                  "Common name for containers and reference",

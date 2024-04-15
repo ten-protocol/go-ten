@@ -11,24 +11,24 @@ import (
 func main() {
 	var err error
 	// load flags with defaults from config / sub-configs
-	action, cPaths, nodeFlags, err := config.LoadFlagStrings(config.Node)
+	rParams, nodeFlags, err := config.LoadFlagStrings(config.Node)
 	if err != nil {
 		panic(err)
 	}
 
-	if !validateNodeAction(action) {
-		if action == "" {
+	if !validateNodeAction(rParams[action]) {
+		if rParams[action] == "" {
 			fmt.Printf("expected a node action string (%s) as the only argument after the flags but no argument provided\n",
 				strings.Join(validNodeActions, ", "))
 		} else {
 			fmt.Printf("expected a node action string (%s) as the only argument after the flags but got %s\n",
-				strings.Join(validNodeActions, ", "), action)
+				strings.Join(validNodeActions, ", "), rParams[action])
 		}
 		os.Exit(1)
 	}
 
 	// retrieve node-config
-	nodeConfig, err := ParseConfig(cPaths)
+	nodeConfig, err := ParseConfig(rParams)
 	if err != nil {
 		panic(err)
 	}

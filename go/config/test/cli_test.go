@@ -33,8 +33,8 @@ func TestHostConfigIsParsedFromYamlFileIfConfigFlagIsPresent(t *testing.T) {
 	// Mock os.Args
 	os.Args = []string{"your-program", "-config", wd + defaultHost}
 
-	_, cPaths, _, err := config.LoadFlagStrings(config.Host)
-	cfg, err := hostcontainer.ParseConfig(cPaths)
+	rParams, _, err := config.LoadFlagStrings(config.Host)
+	cfg, err := hostcontainer.ParseConfig(rParams)
 	if err != nil {
 		t.Fatalf("could not parse config. Cause: %s", err)
 	}
@@ -67,8 +67,8 @@ func TestEnclaveOverrideAdditiveReplacementOfDefaultConfig(t *testing.T) {
 		"-override", wd + overrideConfig,
 	}
 
-	_, cPaths, _, err := config.LoadFlagStrings(config.Enclave)
-	cfg, err := enclavecontainer.ParseConfig(cPaths)
+	rParams, _, err := config.LoadFlagStrings(config.Enclave)
+	cfg, err := enclavecontainer.ParseConfig(rParams)
 	if err != nil {
 		t.Fatalf("could not parse config. Cause: %s", err)
 	}
@@ -97,8 +97,8 @@ func TestHostFlagOverridesDefaultProperty(t *testing.T) {
 		"-nodeType", "sequencer",
 	}
 
-	_, cPaths, _, err := config.LoadFlagStrings(config.Host)
-	cfg, err := hostcontainer.ParseConfig(cPaths)
+	rParams, _, err := config.LoadFlagStrings(config.Host)
+	cfg, err := hostcontainer.ParseConfig(rParams)
 	if err != nil {
 		t.Fatalf("could not parse config. Cause: %s", err)
 	}
@@ -138,8 +138,8 @@ func TestEnclaveEnvVarOverridesDefaultConfigAndFlag(t *testing.T) {
 		"-logPath", "/tmp/logs", // keep override config because no envVar
 	}
 
-	_, cPaths, _, err := config.LoadFlagStrings(config.Enclave)
-	cfg, err := enclavecontainer.ParseConfig(cPaths)
+	rParams, _, err := config.LoadFlagStrings(config.Enclave)
+	cfg, err := enclavecontainer.ParseConfig(rParams)
 	if err != nil {
 		t.Fatalf("could not parse config. Cause: %s", err)
 	}
