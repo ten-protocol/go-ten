@@ -85,7 +85,7 @@ func LoadFlags(t TypeConfig, withDefaults bool) (Action, ConfPaths, CliFlagSet, 
 	})
 
 	// add config paths even though not explicitly added
-	cPaths := map[string]string{
+	cPaths := ConfPaths{
 		ConfigFlag:   fs.Lookup(ConfigFlag).Value.String(),
 		OverrideFlag: fs.Lookup(OverrideFlag).Value.String(),
 	}

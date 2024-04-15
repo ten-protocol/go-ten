@@ -1,16 +1,23 @@
 package main
 
 import (
-	"fmt"
 	"github.com/ten-protocol/go-ten/go/common/container"
+	"github.com/ten-protocol/go-ten/go/config"
 	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
 )
 
 // Runs an TEN host as a standalone process.
 func main() {
-	parsedConfig, err := hostcontainer.ParseConfig()
+	var err error
+	// load flags with defaults from config / sub-configs
+	_, cPaths, _, err := config.LoadFlagStrings(config.Host)
 	if err != nil {
-		panic(fmt.Errorf("could not parse config. Cause: %w", err))
+		panic(err)
+	}
+
+	parsedConfig, err := hostcontainer.ParseConfig(cPaths)
+	if err != nil {
+		panic("error loading default configurations: %s" + err.Error())
 	}
 
 	hostContainer := hostcontainer.NewHostContainerFromConfig(parsedConfig, nil)
