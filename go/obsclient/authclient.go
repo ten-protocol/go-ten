@@ -191,7 +191,7 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 	return (*big.Int)(&result), err
 }
 
-func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria common.FilterCriteria, ch chan common.IDAndLog) (ethereum.Subscription, error) {
+func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria common.FilterCriteria, ch chan types.Log) (ethereum.Subscription, error) {
 	return ac.rpcClient.Subscribe(ctx, rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeLogs, filterCriteria)
 }
 

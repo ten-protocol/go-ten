@@ -35,14 +35,14 @@ func ForwardFromChannels[R any](inputChannels []chan R, unsubscribed *atomic.Boo
 			continue
 		}
 
-		if unsubscribed.Load() {
+		if unsubscribed != nil && unsubscribed.Load() {
 			return
 		}
 
 		switch v := value.Interface().(type) {
 		case time.Time:
 			// exit the loop to avoid a goroutine leak
-			if unsubscribed.Load() {
+			if unsubscribed != nil && unsubscribed.Load() {
 				return
 			}
 		case R:

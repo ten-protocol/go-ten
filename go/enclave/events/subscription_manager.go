@@ -60,7 +60,7 @@ func NewSubscriptionManager(storage storage.Storage, chainID int64, logger gethl
 func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encodedSubscription []byte) error {
 	subscription := &common.LogSubscription{}
 	if err := json.Unmarshal(encodedSubscription, subscription); err != nil {
-		return fmt.Errorf("could not decocde log subscription from RLP. Cause: %w", err)
+		return fmt.Errorf("could not decode log subscription. Cause: %w", err)
 	}
 
 	// verify the viewing key
