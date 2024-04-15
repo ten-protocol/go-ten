@@ -36,7 +36,13 @@ func LoadFlags(t TypeConfig, withDefaults bool) (RunParams, CliFlagSet, error) {
 	flagValues := captureFlagValues(fs, withDefaults)
 	rParams := getRunParams(fs)
 
-	os.Args = removeFlagsFromArgs(os.Args, rParams) // remove flags from os.Args
+	for key, _ := range rParams { // no need to keep the config and override paths in the flagValues
+		if flagValues[key] != nil {
+			delete(flagValues, key)
+		}
+	}
+
+	os.Args = removeFlagsFromArgs(os.Args, rParams) // remove flags related to config from args
 
 	action := os.Args[len(os.Args)-1] // last element is args
 	rParams["action"] = action
@@ -192,7 +198,10 @@ func setupStructFlags(val reflect.Value, fs *flag.FlagSet, usageMap map[string]s
 		}
 
 		if _, exists := usageMap[yamlTag]; !exists {
-			println(fmt.Sprintf("Missing flag usage for yaml tag '%s'", yamlTag))
+			// exclude the following tags from the check
+			if yamlTag != "networkConfig" && yamlTag != "nodeDetails" && yamlTag != "nodeSettings" && yamlTag != "nodeImages" {
+				println(fmt.Sprintf("Missing flag usage for yaml tag '%s'", yamlTag))
+			}
 		}
 
 		if field.Type().Kind() == reflect.Struct {
