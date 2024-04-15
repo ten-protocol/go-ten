@@ -149,7 +149,7 @@ func setupStructFlags(val reflect.Value, fs *flag.FlagSet, usageMap map[string]s
 	}
 }
 
-// setupFlag assigns a flag to a field based on its type
+// setupFlag assigns a flag to a field based on its type prefers environment variable over default
 func setupFlag(field reflect.Value, fs *flag.FlagSet, flagName, flagUsage string) {
 	switch field.Type().Kind() {
 	case reflect.String:
