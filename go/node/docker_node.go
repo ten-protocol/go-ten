@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/ten-protocol/go-ten/go/config"
 	"os"
+	"strings"
 
 	"github.com/sanity-io/litter"
 
@@ -11,6 +12,7 @@ import (
 )
 
 var (
+	Action          = "action"
 	_hostDataDir    = "/data"        // this is how the directory is referenced within the host container
 	_enclaveDataDir = "/enclavedata" // this is how the directory is references within the enclave container
 )
@@ -19,19 +21,48 @@ type DockerNode struct {
 	Action   string
 	Cfg      *config.NodeConfig
 	CliFlags config.CliFlagStringSet
+	DryRun   bool
 }
 
-func NewDockerNode(action string, cfg *config.NodeConfig, flags config.CliFlagStringSet) *DockerNode {
+type DockerStartBundle struct {
+	Service                string
+	DryRun                 bool
+	ContainerName, Image   string
+	Cmds                   []string
+	Ports                  []int
+	Envs, Devices, Volumes map[string]string
+}
+
+func (d *DockerStartBundle) Print() {
+	fmt.Println("Configuration Settings for ", d.Service, ":")
+	fmt.Println(litter.Sdump(*d))
+}
+
+// mapToString is a helper function to convert map values to a string for better readability
+func mapToString(m map[string]string) string {
+	var result []string
+	for k, v := range m {
+		result = append(result, fmt.Sprintf("%s: %s", k, v))
+	}
+	return strings.Join(result, ", ")
+}
+
+func NewDockerNode(runParams config.RunParams, cfg *config.NodeConfig, flags config.CliFlagStringSet) *DockerNode {
 	return &DockerNode{
-		Action:   action,
+		Action:   runParams[Action],
 		Cfg:      cfg,
 		CliFlags: flags,
+		DryRun:   runParams[config.DryRunFlag] == "true",
 	}
 }
 
 func (d *DockerNode) Start() error {
 	// todo (@pedro) - this should probably be removed in the future
-	fmt.Printf("Starting Node %s with config: \n%s\n\n", d.Cfg.NodeDetails.NodeName, litter.Sdump(*d))
+	if d.DryRun {
+		fmt.Printf("Dry run mode enabled, processing configuration without starting container: \n%s\n\n", litter.Sdump(*d))
+	} else {
+		fmt.Printf("Starting Node %s with config: \n%s\n\n", d.Cfg.NodeDetails.NodeName, litter.Sdump(*d))
+	}
 
 	err := d.startEdgelessDB()
 	if err != nil {
@@ -114,9 +145,19 @@ func (d *DockerNode) startHost() error {
 
 	envs = d.appendConfigStaticFlagEnvOverrides(config.Host, envs)
 
-	_, err := docker.StartNewContainer(d.Cfg.NodeDetails.NodeName+"-host", d.Cfg.NodeImages.HostImage, cmd, exposedPorts, envs, nil, hostVolume)
+	dsb := &DockerStartBundle{
+		config.Host.String(),
+		d.DryRun,
+		d.Cfg.NodeDetails.NodeName + "-host",
+		d.Cfg.NodeImages.HostImage,
+		cmd,
+		exposedPorts,
+		envs,
+		nil,
+		hostVolume,
+	}
 
-	return err
+	return dsb.startOrReportDryRun()
 }
 
 func (d *DockerNode) startEnclave() error {
@@ -167,8 +208,19 @@ func (d *DockerNode) startEnclave() error {
 
 	enclaveVolume := map[string]string{d.Cfg.NodeDetails.NodeName + "-enclave-volume": _enclaveDataDir}
 
-	_, err := docker.StartNewContainer(d.Cfg.NodeDetails.NodeName+"-enclave", d.Cfg.NodeImages.EnclaveImage, cmd, exposedPorts, envs, devices, enclaveVolume)
-	return err
+	dsb := &DockerStartBundle{
+		config.Enclave.String(),
+		d.DryRun,
+		d.Cfg.NodeDetails.NodeName + "-enclave",
+		d.Cfg.NodeImages.EnclaveImage,
+		cmd,
+		exposedPorts,
+		envs,
+		devices,
+		enclaveVolume,
+	}
+
+	return dsb.startOrReportDryRun()
 }
 
 func (d *DockerNode) startEdgelessDB() error {
@@ -191,8 +243,27 @@ func (d *DockerNode) startEdgelessDB() error {
 		envs["PCCS_ADDR"] = d.Cfg.NodeSettings.PccsAddr
 	}
 
-	_, err := docker.StartNewContainer(d.Cfg.NodeDetails.NodeName+"-edgelessdb", d.Cfg.NodeImages.EdgelessDBImage, nil, nil, envs, devices, nil)
+	dsb := &DockerStartBundle{
+		"edgelessdb",
+		d.DryRun,
+		d.Cfg.NodeDetails.NodeName + "-edgelessdb",
+		d.Cfg.NodeImages.EdgelessDBImage,
+		nil,
+		nil,
+		envs,
+		devices,
+		nil,
+	}
 
+	return dsb.startOrReportDryRun()
+}
+
+func (d *DockerStartBundle) startOrReportDryRun() error {
+	if d.DryRun {
+		d.Print()
+		return nil
+	}
+	_, err := docker.StartNewContainer(d.ContainerName, d.Image, d.Cmds, d.Ports, d.Envs, d.Devices, d.Volumes)
 	return err
 }
 

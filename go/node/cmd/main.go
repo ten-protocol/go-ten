@@ -16,13 +16,13 @@ func main() {
 		panic(err)
 	}
 
-	if !validateNodeAction(rParams[action]) {
-		if rParams[action] == "" {
+	if !validateNodeAction(rParams[node.Action]) {
+		if rParams[node.Action] == "" {
 			fmt.Printf("expected a node action string (%s) as the only argument after the flags but no argument provided\n",
 				strings.Join(validNodeActions, ", "))
 		} else {
 			fmt.Printf("expected a node action string (%s) as the only argument after the flags but got %s\n",
-				strings.Join(validNodeActions, ", "), rParams[action])
+				strings.Join(validNodeActions, ", "), rParams[node.Action])
 		}
 		os.Exit(1)
 	}
@@ -33,7 +33,7 @@ func main() {
 		panic(err)
 	}
 
-	dockerNode := node.NewDockerNode(action, nodeConfig, nodeFlags)
+	dockerNode := node.NewDockerNode(rParams, nodeConfig, nodeFlags)
 
 	//// NETWORK CONFIGS INCLUDING NETWORK + NODE LEVEL details
 	switch dockerNode.Action {

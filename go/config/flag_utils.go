@@ -8,7 +8,6 @@ import (
 	"strings"
 )
 
-type Action = string
 type RunParams = map[string]string
 type CliFlagSet = map[string]interface{}
 type CliFlagStringSet = map[string]string
@@ -39,8 +38,8 @@ func LoadFlags(t TypeConfig, withDefaults bool) (RunParams, CliFlagSet, error) {
 
 	os.Args = removeFlagsFromArgs(os.Args, rParams) // remove flags from os.Args
 
-	action := fs.Arg(0)
-	rParams[action] = action
+	action := os.Args[len(os.Args)-1] // last element is args
+	rParams["action"] = action
 
 	return rParams, flagValues, nil
 }
@@ -76,12 +75,17 @@ func EnvOrFlag(args []string) ([]string, error) {
 	return args, nil
 }
 
-// removeFlagsFromArgs removes specific flags and their values from the arguments
 func removeFlagsFromArgs(args []string, flagsToRemove map[string]string) []string {
 	for key := range flagsToRemove {
 		for i := 0; i < len(args); i++ {
-			if strings.Contains(args[i], key) && i+1 < len(args) {
+			// Check if the argument is a flag with a value in the form `-<flag>=something`
+			if strings.HasPrefix(args[i], "-"+key+"=") {
+				args = append(args[:i], args[i+1:]...)
+				i--
+			} else if args[i] == "-"+key && i+1 < len(args) {
+				// Check if the argument is a flag with a value in the form `-<flag> something`
 				args = append(args[:i], args[i+2:]...)
+				i--
 			}
 		}
 	}
@@ -141,7 +145,7 @@ func SetupConfigFlags(t TypeConfig) *flag.FlagSet {
 
 	// set the default config from file-map; ContinueOnError allows two stage parsing
 	fs := flag.NewFlagSet("Config", flag.ContinueOnError)
-	fs.String(DryRunFlag, "", flagUsageMap[DryRunFlag])
+	fs.Bool(DryRunFlag, false, flagUsageMap[DryRunFlag])
 	fs.String(ConfigFlag, fileMap[t], flagUsageMap[ConfigFlag])
 	fs.String(OverrideFlag, "", flagUsageMap[OverrideFlag])
 	return fs

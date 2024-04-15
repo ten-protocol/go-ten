@@ -6,7 +6,6 @@ import (
 )
 
 var (
-	action           = "action"
 	startAction      = "start"
 	upgradeAction    = "upgrade"
 	validNodeActions = []string{startAction, upgradeAction}
