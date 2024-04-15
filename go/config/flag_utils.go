@@ -10,90 +10,78 @@ import (
 type Action = string
 type ConfPaths = map[string]string
 type CliFlagSet = map[string]interface{}
-
 type NodeFlagStringSet = map[string]string
 
-// LoadFlagStrings calls LoadFlags and converts all flag values to strings.
 func LoadFlagStrings(t TypeConfig) (Action, ConfPaths, NodeFlagStringSet, error) {
 	action, cPaths, nodeFlags, err := LoadFlags(t, false)
 	if err != nil {
 		return "", nil, nil, err
 	}
 
-	// Convert CliFlagSet to NodeFlagStringSet
-	flagStrings := make(NodeFlagStringSet)
-	for key, value := range nodeFlags {
-		// Convert each value to a string, assuming CliFlagSet is map[string]interface{}
-		switch v := value.(type) {
-		case string:
-			flagStrings[key] = v
-		case int, int64, uint, uint64, float32, float64, bool:
-			flagStrings[key] = fmt.Sprintf("%v", v)
-		default:
-			// Handle complex types that may not be directly representable as a string
-			// This could be adjusted based on what types are expected in your flags
-			flagStrings[key] = fmt.Sprintf("%#v", v)
-		}
-	}
-
+	flagStrings := convertToNodeFlagStringSet(nodeFlags)
 	return action, cPaths, flagStrings, nil
 }
 
-// LoadFlags parses flags and returns a map of flag values.
 func LoadFlags(t TypeConfig, withDefaults bool) (Action, ConfPaths, CliFlagSet, error) {
 	fs := SetupConfigFlags(t)
-
 	err := setupFlagsByType(fs, t)
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("could not setup flags: %s", err)
+		return "", nil, nil, err
 	}
 
-	// Parse the Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
-		return "", nil, nil, fmt.Errorf("error parsing flags: %w", err)
+		return "", nil, nil, err
 	}
 
-	// Only capture flags that were explicitly set
-	flagValues := make(map[string]interface{})
-	if withDefaults {
-		fs.VisitAll(func(f *flag.Flag) {
-			var value interface{}
-			// Use reflection to get the actual data type of the flag
-			switch f.Value.(type) {
-			case flag.Getter:
-				// If the value implements flag.Getter, we can safely retrieve the underlying value
-				value = f.Value.(flag.Getter).Get()
-			default:
-				// Fallback to storing as a string if type is unknown or complex
-				value = f.Value.String()
-			}
-			flagValues[f.Name] = value
-		})
-	}
-	fs.Visit(func(f *flag.Flag) {
-		var value interface{}
-		// Use reflection to get the actual data type of the flag
-		switch f.Value.(type) {
-		case flag.Getter:
-			// If the value implements flag.Getter, we can safely retrieve the underlying value
-			value = f.Value.(flag.Getter).Get()
-		default:
-			// Fallback to storing as a string if type is unknown or complex
-			value = f.Value.String()
-		}
-		flagValues[f.Name] = value
-	})
-
-	// add config paths even though not explicitly added
-	cPaths := ConfPaths{
-		ConfigFlag:   fs.Lookup(ConfigFlag).Value.String(),
-		OverrideFlag: fs.Lookup(OverrideFlag).Value.String(),
-	}
-
-	// capture action
+	flagValues := captureFlagValues(fs, withDefaults)
+	cPaths := getConfPaths(fs)
 	action := fs.Arg(0)
 
 	return action, cPaths, flagValues, nil
+}
+
+// convertToNodeFlagStringSet helper for LoadFlagStrings
+func convertToNodeFlagStringSet(nodeFlags CliFlagSet) NodeFlagStringSet {
+	flagStrings := make(NodeFlagStringSet)
+	for key, value := range nodeFlags {
+		flagStrings[key] = fmt.Sprintf("%v", value)
+	}
+	return flagStrings
+}
+
+// getConfPaths helper for LoadFlags
+func getConfPaths(fs *flag.FlagSet) ConfPaths {
+	return ConfPaths{
+		ConfigFlag:   fs.Lookup(ConfigFlag).Value.String(),
+		OverrideFlag: fs.Lookup(OverrideFlag).Value.String(),
+	}
+}
+
+// captureFlagValues helper for LoadFlags
+func captureFlagValues(fs *flag.FlagSet, withDefaults bool) CliFlagSet {
+	flagValues := make(map[string]interface{})
+	visitor := func(f *flag.Flag) {
+		value := getFlagValue(f)
+		flagValues[f.Name] = value
+	}
+
+	if withDefaults {
+		fs.VisitAll(visitor)
+	} else {
+		fs.Visit(visitor)
+	}
+
+	return flagValues
+}
+
+// getFlagValue helper for captureFlagValues
+func getFlagValue(f *flag.Flag) interface{} {
+	switch v := f.Value.(type) {
+	case flag.Getter:
+		return v.Get()
+	default:
+		return f.Value.String()
+	}
 }
 
 // SetupConfigFlags creates a FlagSet with the default config file path
@@ -142,50 +130,42 @@ func SetupFlagsFromStruct[T Config](p *T, fs *flag.FlagSet, usageMap map[string]
 }
 
 func setupStructFlags(val reflect.Value, fs *flag.FlagSet, usageMap map[string]string) {
-	typ := val.Type()
-
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
-		fieldType := field.Type()
-		yamlTag := typ.Field(i).Tag.Get("yaml")
-		if yamlTag == "" {
-			continue // Skip fields without YAML tags
+		yamlTag := val.Type().Field(i).Tag.Get("yaml")
+		if yamlTag == "" || isFlagSet(fs, yamlTag) {
+			continue
 		}
 
 		if _, exists := usageMap[yamlTag]; !exists {
 			println(fmt.Sprintf("Missing flag usage for yaml tag '%s'", yamlTag))
 		}
 
-		if fieldType.Kind() == reflect.Struct {
-			// Recurse into nested struct
+		if field.Type().Kind() == reflect.Struct {
 			setupStructFlags(field, fs, usageMap)
 		} else {
-			// Set up flag for field
-			flagName := yamlTag
-
-			if isFlagSet(fs, flagName) {
-				continue
-			}
-
-			flagUsage := usageMap[yamlTag]
-			switch fieldType.Kind() {
-			case reflect.Slice:
-			case reflect.String:
-				fs.StringVar(field.Addr().Interface().(*string), flagName, GetEnvString(flagName, field.Interface().(string)), flagUsage)
-			case reflect.Int:
-				fs.IntVar(field.Addr().Interface().(*int), flagName, GetEnvInt(flagName, field.Interface().(int)), flagUsage)
-			case reflect.Int64:
-				fs.Int64Var(field.Addr().Interface().(*int64), flagName, GetEnvInt64(flagName, field.Interface().(int64)), flagUsage)
-			case reflect.Uint:
-				fs.UintVar(field.Addr().Interface().(*uint), flagName, GetEnvUint(flagName, field.Interface().(uint)), flagUsage)
-			case reflect.Uint64:
-				fs.Uint64Var(field.Addr().Interface().(*uint64), flagName, GetEnvUint64(flagName, field.Interface().(uint64)), flagUsage)
-			case reflect.Bool:
-				fs.BoolVar(field.Addr().Interface().(*bool), flagName, GetEnvBool(flagName, field.Interface().(bool)), flagUsage)
-			default:
-				fmt.Printf("Unsupported field type %s for field %s\n", fieldType, flagName)
-			}
+			setupFlag(field, fs, yamlTag, usageMap[yamlTag])
 		}
+	}
+}
+
+// setupFlag assigns a flag to a field based on its type
+func setupFlag(field reflect.Value, fs *flag.FlagSet, flagName, flagUsage string) {
+	switch field.Type().Kind() {
+	case reflect.String:
+		fs.StringVar(field.Addr().Interface().(*string), flagName, GetEnvString(flagName, field.Interface().(string)), flagUsage)
+	case reflect.Int:
+		fs.IntVar(field.Addr().Interface().(*int), flagName, GetEnvInt(flagName, field.Interface().(int)), flagUsage)
+	case reflect.Int64:
+		fs.Int64Var(field.Addr().Interface().(*int64), flagName, GetEnvInt64(flagName, field.Interface().(int64)), flagUsage)
+	case reflect.Uint:
+		fs.UintVar(field.Addr().Interface().(*uint), flagName, GetEnvUint(flagName, field.Interface().(uint)), flagUsage)
+	case reflect.Uint64:
+		fs.Uint64Var(field.Addr().Interface().(*uint64), flagName, GetEnvUint64(flagName, field.Interface().(uint64)), flagUsage)
+	case reflect.Bool:
+		fs.BoolVar(field.Addr().Interface().(*bool), flagName, GetEnvBool(flagName, field.Interface().(bool)), flagUsage)
+	default:
+		fmt.Printf("Unsupported field type %s for field %s\n", field.Type(), flagName)
 	}
 }
 
