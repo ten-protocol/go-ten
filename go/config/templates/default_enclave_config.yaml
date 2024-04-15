@@ -25,4 +25,4 @@ profilerEnabled:           false
 genesisJSON:               ""
 debugNamespaceEnabled:     false
 gasLocalExecutionCapFlag:  300_000_000_000
-gasPaymentAddress:                "0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"
+gasPaymentAddress:         "0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"
