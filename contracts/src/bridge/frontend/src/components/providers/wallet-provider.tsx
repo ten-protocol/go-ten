@@ -11,7 +11,7 @@ import {
   fetchVersion,
   revokeAccountsApi,
 } from "../../api/gateway";
-import { ToastType } from "@/types";
+import { ToastType } from "@/src/types";
 import {
   authenticateAccountWithTenGatewayEIP712,
   getToken,

@@ -1,5 +1,5 @@
 import { tenGatewayVersion } from "../lib/constants";
-import { NavLink } from "../../types";
+import { NavLink } from "../types";
 
 export const NavLinks: NavLink[] = [];
 

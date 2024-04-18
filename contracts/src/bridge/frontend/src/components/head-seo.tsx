@@ -1,6 +1,6 @@
 import Head from "next/head";
 import { siteMetadata } from "../lib/siteMetadata";
-import { SeoProps } from "@/types";
+import { SeoProps } from "@/src/types";
 
 const HeadSeo = ({
   title,

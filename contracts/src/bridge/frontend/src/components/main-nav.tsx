@@ -13,7 +13,7 @@ import {
 } from "./ui/dropdown-menu";
 
 import { ChevronDownIcon } from "@radix-ui/react-icons";
-import { NavLink } from "../../types";
+import { NavLink } from "../types";
 import { NavLinks } from "../routes";
 
 const NavItem = ({ navLink }: { navLink: NavLink }) => {

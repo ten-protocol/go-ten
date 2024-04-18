@@ -1,5 +1,5 @@
 import { showToast } from "@/src/components/ui/use-toast";
-import { ToastType } from "@/types";
+import { ToastType } from "@/src/types";
 import React from "react";
 
 export const useCopy = () => {
