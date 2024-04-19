@@ -60,6 +60,20 @@ const (
 	GasPaymentAddress             = "gasPaymentAddress"
 	GasBatchExecutionLimit        = "gasBatchExecutionLimit"
 	GasLocalExecutionCapFlag      = "gasLocalExecutionCap"
+	GethHTTPPortFlag              = "gethHTTPPort"
+	GethWebsocketPortFlag         = "gethWebsocketPort"
+	GethPrefundedAddressesFlag    = "gethPrefundedAddresses"
+	GethNumNodesFlag              = "gethNumNodes"
+	L1HTTPURLFlag                 = "l1HttpUrl"
+	L1DeployerImageFlag           = "l1DeployerImage"
+	ContractEnvsFileFlag          = "contractEnvsFile"
+	L1PrivateKey                  = "l1PrivateKey"
+	L2DeployerImageFlag           = "l2DeployerImage"
+	L2WebsocketURLFlag            = "l2WebsocketUrl"
+	L2PrivateKeyFlag              = "l2PrivateKey"
+	L2HOCPrivateKeyFlag           = "l2HOCPrivateKey"
+	L2POCPrivateKeyFlag           = "l2POCPrivateKey"
+	FaucetFundingFlag             = "faucetFunding"
 )
 
 var FlagsByService = map[TypeConfig]map[string]bool{
@@ -163,6 +177,38 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		EnclaveImage:    true,
 		EdgelessDBImage: true,
 	},
+	Eth2Network: {
+		DryRunFlag:   true,
+		OverrideFlag: true,
+		ConfigFlag:   true,
+		//
+
+	},
+	L1Deployer: {
+		DryRunFlag:                true,
+		OverrideFlag:              true,
+		ConfigFlag:                true,
+		PrivateKeyFlag:            true,
+		DebugNamespaceEnabledFlag: true,
+		//
+		L1HTTPURLFlag:        true,
+		L1DeployerImageFlag:  true,
+		ContractEnvsFileFlag: true,
+	},
+	L2Deployer: {
+		DryRunFlag:                true,
+		OverrideFlag:              true,
+		ConfigFlag:                true,
+		DebugNamespaceEnabledFlag: true,
+		//
+		L1PrivateKey:        true,
+		L2DeployerImageFlag: true,
+		L2WebsocketURLFlag:  true,
+		L2PrivateKeyFlag:    true,
+		L2HOCPrivateKeyFlag: true,
+		L2POCPrivateKeyFlag: true,
+		FaucetFundingFlag:   true,
+	},
 }
 
 // EnclaveRestrictedFlags are the flags that the enclave can receive ONLY over (a) the Ego signed enclave.json (./go/enclave/main/enclave.json)
@@ -228,7 +274,7 @@ func FlagUsageMap() map[string]string {
 		EnclaveRPCTimeoutFlag:         "The timeout for host <-> enclave RPC communication",
 		L1RPCTimeoutFlag:              "The timeout for connecting to, and communicating with, the Ethereum client",
 		P2pConnectionTimeoutFlag:      "The timeout for host <-> host P2P messaging",
-		PrivateKeyFlag:                "The private key for the L1 host account",
+		PrivateKeyFlag:                "The private key for this node or deployer",
 		L1StartHashFlag:               "The L1 block hash where the management contract was deployed",
 		MetricsEnabledFlag:            "Whether the metrics are enabled (Defaults to true)",
 		MetricsHTTPPortFlag:           "The port on which the metrics are served (Defaults to 0.0.0.0:14000)",
@@ -239,5 +285,19 @@ func FlagUsageMap() map[string]string {
 		L1BlockTimeFlag:               "Time of 1l Blocks",
 		IsInboundP2PDisabledFlag:      "Whether inbound p2p is enabled",
 		LevelDBPathFlag:               "LevelDBPath",
+		GethHTTPPortFlag:              "The port on which the Geth HTTP server is listening",
+		GethWebsocketPortFlag:         "The port on which the Geth Websocket server is listening",
+		GethPrefundedAddressesFlag:    "The prefunded addresses for the Geth nodes",
+		GethNumNodesFlag:              "The number of Geth nodes to run",
+		L1HTTPURLFlag:                 "Layer 1 network http RPC addr",
+		L1DeployerImageFlag:           "Docker image to run L1 deployer",
+		ContractEnvsFileFlag:          "If set, it will write the contract addresses to the file",
+		L1PrivateKey:                  "L1 private key that was used for the L1 Deployer",
+		L2DeployerImageFlag:           "Layer 2 Docker image to run L2 deployer",
+		L2WebsocketURLFlag:            "Layer 2 network host and WebSocket port",
+		L2PrivateKeyFlag:              "Layer 2 private key for contract deployer",
+		L2HOCPrivateKeyFlag:           "Layer 2 HOC contract private key",
+		L2POCPrivateKeyFlag:           "Layer 2 POC contract private key",
+		FaucetFundingFlag:             "How much funds should the faucet account receive",
 	}
 }
