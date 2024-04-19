@@ -290,7 +290,7 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash) (*common.Transac
 
 func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.BatchHeader, error) {
 	var extBatch []byte
-	query := selectExtBatch + " " + whereQuery
+	query := selectExtBatch + whereQuery
 	var err error
 	if len(args) > 0 {
 		err = db.QueryRow(query, args...).Scan(&extBatch)
@@ -341,7 +341,7 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 	var heightInt64 int
 	var extBatch []byte
 
-	query := selectBatch + " " + whereQuery
+	query := selectBatch + whereQuery
 
 	var err error
 	if len(args) > 0 {

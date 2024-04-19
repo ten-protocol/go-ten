@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	defaultDatabase = "postgres"
-	maxDBPoolSize   = 100
+	defaultDatabase  = "postgres"
+	maxDBConnections = 100
 )
 
 func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) {
@@ -47,7 +47,7 @@ func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) 
 	dbURL = fmt.Sprintf("%s%s", baseURL, dbName)
 
 	db, err = sql.Open("postgres", dbURL)
-	db.SetMaxOpenConns(maxDBPoolSize)
+	db.SetMaxOpenConns(maxDBConnections)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
 	}
