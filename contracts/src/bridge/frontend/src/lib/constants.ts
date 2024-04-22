@@ -32,6 +32,8 @@ export const getOptions = (query: {
   return options;
 };
 
+export const apiHost = process.env.NEXT_PUBLIC_API_HOST;
+
 export const l1Bridge = process.env.NEXT_PUBLIC_L1_BRIDGE;
 export const l2Bridge = process.env.NEXT_PUBLIC_L2_BRIDGE;
 

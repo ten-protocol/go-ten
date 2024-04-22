@@ -16,7 +16,7 @@ import { siteMetadata } from "@/src/lib/siteMetadata";
 import Script from "next/script";
 import { GOOGLE_ANALYTICS_ID } from "@/src/lib/constants";
 import { showToast } from "@/src/components/ui/use-toast";
-import { ToastType } from "@/src/types/interfaces";
+import { ToastType } from "@/src/types";
 
 export default function App({ Component, pageProps }: AppProps) {
   const mutationCache = new MutationCache({

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Badge, badgeVariants } from "./ui/badge";
-import useGatewayService from "@/services/useGatewayService";
+import useGatewayService from "../services/useGatewayService";
 import { Skeleton } from "./ui/skeleton";
 
 const HealthIndicator = () => {
