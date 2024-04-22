@@ -280,10 +280,6 @@ func GetBatchByHeight(db HostDB, height *big.Int) (*common.BatchHeader, error) {
 	return headBatch, nil
 }
 
-func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {
-	panic("Implement me")
-}
-
 func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
 	panic("Implement me")
 }

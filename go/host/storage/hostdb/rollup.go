@@ -114,6 +114,58 @@ func GetRollupByHash(db HostDB, rollupHash gethcommon.Hash) (*common.PublicRollu
 	panic("Implement me")
 }
 
+func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {
+	query := db.GetSQLStatement().SelectRollupBatches
+	rows, err := db.GetSQLDB().Query(query, truncTo16(rollupHash))
+	if err != nil {
+		return nil, fmt.Errorf("query execution for select txs failed: %w", err)
+	}
+	defer rows.Close()
+
+	var batches []common.PublicBatch
+	for rows.Next() {
+		var (
+			sequenceInt64 int
+			hash          []byte
+			fullHash      gethcommon.Hash
+			heightInt64   int
+			extBatch      []byte
+		)
+		err := rows.Scan(&sequenceInt64, &hash, &fullHash, &heightInt64, &extBatch)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, errutil.ErrNotFound
+			}
+			return nil, fmt.Errorf("failed to fetch rollup batches: %w", err)
+		}
+		var b common.ExtBatch
+		err = rlp.DecodeBytes(extBatch, &b)
+		if err != nil {
+			return nil, fmt.Errorf("could not decode ext batch. Cause: %w", err)
+		}
+
+		batch := common.PublicBatch{
+			SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
+			Hash:             hash,
+			FullHash:         fullHash,
+			Height:           new(big.Int).SetInt64(int64(heightInt64)),
+			TxCount:          new(big.Int).SetInt64(int64(len(b.TxHashes))),
+			Header:           b.Header,
+			EncryptedTxBlob:  b.EncryptedTxBlob,
+		}
+		batches = append(batches, batch)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &common.BatchListingResponse{
+		BatchesData: batches,
+		Total:       uint64(len(batches)),
+	}, nil
+}
+
 func fetchRollupHeader(db *sql.DB, whereQuery string, args ...any) (*common.RollupHeader, error) {
 	rollup, err := fetchExtRollup(db, whereQuery, args...)
 	if err != nil {

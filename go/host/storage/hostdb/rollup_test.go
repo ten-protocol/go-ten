@@ -1,6 +1,7 @@
 package hostdb
 
 import (
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"testing"
 	"time"
@@ -199,6 +200,96 @@ func TestGetRollupListing(t *testing.T) {
 	// should be 0 elements
 	if big.NewInt(int64(rollupListing3.Total)).Cmp(big.NewInt(0)) != 0 {
 		t.Errorf("rollup listing was not paginated correctly")
+	}
+}
+
+func TestGetRollupByHash(t *testing.T) {
+	//TODO
+}
+
+func TestGetRollupBatches(t *testing.T) {
+	db, _ := createSQLiteDB(t)
+	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
+	batchOne := createBatch(batchNumber, txHashesOne)
+	dbtx, _ := db.NewDBTransaction()
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+
+	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
+	batchTwo := createBatch(batchNumber+1, txHashesTwo)
+
+	err = AddBatch(dbtx, db.GetSQLStatement(), &batchTwo)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+
+	txHashesThree := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringFive")), gethcommon.BytesToHash([]byte("magicStringSix"))}
+	batchThree := createBatch(batchNumber+2, txHashesThree)
+
+	err = AddBatch(dbtx, db.GetSQLStatement(), &batchThree)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+
+	txHashesFour := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringSeven")), gethcommon.BytesToHash([]byte("magicStringEight"))}
+	batchFour := createBatch(batchNumber+3, txHashesFour)
+
+	err = AddBatch(dbtx, db.GetSQLStatement(), &batchFour)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+
+	rollup1FirstSeq := int64(batchNumber)
+	rollup1LastSeq := int64(batchNumber + 1)
+	metadata1 := createRollupMetadata(rollup1FirstSeq)
+	rollup1 := createRollup(rollup1LastSeq)
+	block := common.L1Block{}
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup1, &metadata1, &block)
+	if err != nil {
+		t.Errorf("could not store rollup. Cause: %s", err)
+	}
+
+	rollup2FirstSeq := int64(batchNumber + 2)
+	rollup2LastSeq := int64(batchNumber + 3)
+	metadata2 := createRollupMetadata(rollup2FirstSeq)
+	rollup2 := createRollup(rollup2LastSeq)
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup2, &metadata2, &block)
+	if err != nil {
+		t.Errorf("could not store rollup 2. Cause: %s", err)
+	}
+	dbtx.Write()
+
+	// rollup one contains batches 1 & 2
+	batchListing, err := GetRollupBatches(db, rollup1.Hash())
+	if err != nil {
+		t.Errorf("could not get rollup batches. Cause: %s", err)
+	}
+
+	// should be two elements
+	if big.NewInt(int64(batchListing.Total)).Cmp(big.NewInt(2)) != 0 {
+		t.Errorf("batch listing was not calculated correctly")
+	}
+
+	// second element should be batch 2
+	if batchListing.BatchesData[1].Header.SequencerOrderNo.Cmp(batchTwo.SeqNo()) != 0 {
+		t.Errorf("batch listing was not returned correctly")
+	}
+
+	// rollup one contains batches 3 & 4
+	batchListing1, err := GetRollupBatches(db, rollup2.Hash())
+	if err != nil {
+		t.Errorf("could not get rollup batches. Cause: %s", err)
+	}
+
+	// should be two elements
+	if big.NewInt(int64(batchListing1.Total)).Cmp(big.NewInt(2)) != 0 {
+		t.Errorf("batch listing was not calculated correctly")
+	}
+	// second element should be batch 4
+	if batchListing1.BatchesData[1].Header.SequencerOrderNo.Cmp(batchFour.SeqNo()) != 0 {
+		t.Errorf("batch listing was not paginated correctly")
 	}
 }
 

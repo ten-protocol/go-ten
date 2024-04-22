@@ -431,6 +431,10 @@ func TestGetBatchListingDeprecated(t *testing.T) {
 	}
 }
 
+func TestGetBatchTransactions(t *testing.T) {
+	//TODO
+}
+
 func createBatch(batchNum int64, txHashes []common.L2BatchHash) common.ExtBatch {
 	header := common.BatchHeader{
 		SequencerOrderNo: big.NewInt(batchNum),
