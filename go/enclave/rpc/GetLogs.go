@@ -51,7 +51,7 @@ func GetLogsExecute(builder *CallBuilder[filters.FilterCriteria, []*types.Log], 
 
 	from := filter.FromBlock
 	if from != nil && from.Int64() < 0 {
-		batch, err := rpc.storage.FetchBatchBySeqNo(rpc.registry.HeadBatchSeq().Uint64())
+		batch, err := rpc.storage.FetchBatchBySeqNo(builder.ctx, rpc.registry.HeadBatchSeq().Uint64())
 		if err != nil {
 			// system error
 			return fmt.Errorf("could not retrieve head batch. Cause: %w", err)
@@ -61,7 +61,7 @@ func GetLogsExecute(builder *CallBuilder[filters.FilterCriteria, []*types.Log], 
 
 	// Set from to the height of the block hash
 	if from == nil && filter.BlockHash != nil {
-		batch, err := rpc.storage.FetchBatchHeader(*filter.BlockHash)
+		batch, err := rpc.storage.FetchBatchHeader(builder.ctx, *filter.BlockHash)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
 				builder.Status = NotFound
@@ -84,7 +84,7 @@ func GetLogsExecute(builder *CallBuilder[filters.FilterCriteria, []*types.Log], 
 	}
 
 	// We retrieve the relevant logs that match the filter.
-	filteredLogs, err := rpc.storage.FilterLogs(builder.VK.AccountAddress, from, to, nil, filter.Addresses, filter.Topics)
+	filteredLogs, err := rpc.storage.FilterLogs(builder.ctx, builder.VK.AccountAddress, from, to, nil, filter.Addresses, filter.Topics)
 	if err != nil {
 		if errors.Is(err, syserr.InternalError{}) {
 			return err

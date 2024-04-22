@@ -1,6 +1,8 @@
 package crosschain
 
 import (
+	"context"
+
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -14,9 +16,9 @@ type (
 
 type BlockMessageExtractor interface {
 	// StoreCrossChainMessages - Verifies receipts belong to block and saves the relevant cross chain messages from the receipts
-	StoreCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error
+	StoreCrossChainMessages(ctx context.Context, block *common.L1Block, receipts common.L1Receipts) error
 
-	StoreCrossChainValueTransfers(block *common.L1Block, receipts common.L1Receipts) error
+	StoreCrossChainValueTransfers(ctx context.Context, block *common.L1Block, receipts common.L1Receipts) error
 
 	// GetBusAddress - Returns the L1 message bus address.
 	GetBusAddress() *common.L1Address
@@ -43,13 +45,13 @@ type Manager interface {
 	GenerateMessageBusDeployTx() (*common.L2Tx, error)
 
 	// ExtractOutboundMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
-	ExtractOutboundMessages(receipts common.L2Receipts) (common.CrossChainMessages, error)
+	ExtractOutboundMessages(ctx context.Context, receipts common.L2Receipts) (common.CrossChainMessages, error)
 
-	ExtractOutboundTransfers(receipts common.L2Receipts) (common.ValueTransferEvents, error)
+	ExtractOutboundTransfers(ctx context.Context, receipts common.L2Receipts) (common.ValueTransferEvents, error)
 
-	CreateSyntheticTransactions(messages common.CrossChainMessages, rollupState *state.StateDB) common.L2Transactions
+	CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, rollupState *state.StateDB) common.L2Transactions
 
-	ExecuteValueTransfers(transfers common.ValueTransferEvents, rollupState *state.StateDB)
+	ExecuteValueTransfers(ctx context.Context, transfers common.ValueTransferEvents, rollupState *state.StateDB)
 
-	RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents)
+	RetrieveInboundMessages(ctx context.Context, fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents)
 }

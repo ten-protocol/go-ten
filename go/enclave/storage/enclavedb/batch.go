@@ -2,6 +2,7 @@ package enclavedb
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"database/sql"
 	"errors"
@@ -49,7 +50,7 @@ const (
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
-func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch, convertedHash gethcommon.Hash) error {
+func WriteBatchAndTransactions(ctx context.Context, dbtx DBTransaction, batch *core.Batch, convertedHash gethcommon.Hash) error {
 	// todo - optimize for reorgs
 	batchBodyID := batch.SeqNo().Uint64()
 
@@ -70,7 +71,7 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch, convertedH
 	}
 
 	var isCanon bool
-	err = dbtx.GetDB().QueryRow(isCanonQuery, truncTo16(batch.Header.L1Proof)).Scan(&isCanon)
+	err = dbtx.GetDB().QueryRowContext(ctx, isCanonQuery, truncTo16(batch.Header.L1Proof)).Scan(&isCanon)
 	if err != nil {
 		// if the block is not found, we assume it is non-canonical
 		// fmt.Printf("IsCanon %s err: %s\n", batch.Header.L1Proof, err)
@@ -123,7 +124,7 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch, convertedH
 }
 
 // WriteBatchExecution - insert all receipts to the db
-func WriteBatchExecution(dbtx DBTransaction, seqNo *big.Int, receipts []*types.Receipt) error {
+func WriteBatchExecution(ctx context.Context, dbtx DBTransaction, seqNo *big.Int, receipts []*types.Receipt) error {
 	dbtx.ExecuteSQL(updateBatchExecuted, seqNo.Uint64())
 
 	args := make([]any, 0)
@@ -157,39 +158,39 @@ func executedTransactionID(batchHash *common.L2BatchHash, txHash *common.L2TxHas
 	return truncTo16(sha256.Sum256(execTxID))
 }
 
-func ReadBatchBySeqNo(db *sql.DB, seqNo uint64) (*core.Batch, error) {
-	return fetchBatch(db, " where sequence=?", seqNo)
+func ReadBatchBySeqNo(ctx context.Context, db *sql.DB, seqNo uint64) (*core.Batch, error) {
+	return fetchBatch(ctx, db, " where sequence=?", seqNo)
 }
 
-func ReadBatchByHash(db *sql.DB, hash common.L2BatchHash) (*core.Batch, error) {
-	return fetchBatch(db, " where b.hash=?", truncTo16(hash))
+func ReadBatchByHash(ctx context.Context, db *sql.DB, hash common.L2BatchHash) (*core.Batch, error) {
+	return fetchBatch(ctx, db, " where b.hash=?", truncTo16(hash))
 }
 
-func ReadCanonicalBatchByHeight(db *sql.DB, height uint64) (*core.Batch, error) {
-	return fetchBatch(db, " where b.height=? and is_canonical=true", height)
+func ReadCanonicalBatchByHeight(ctx context.Context, db *sql.DB, height uint64) (*core.Batch, error) {
+	return fetchBatch(ctx, db, " where b.height=? and is_canonical=true", height)
 }
 
-func ReadNonCanonicalBatches(db *sql.DB, startAtSeq uint64, endSeq uint64) ([]*core.Batch, error) {
-	return fetchBatches(db, " where b.sequence>=? and b.sequence <=? and b.is_canonical=false order by b.sequence", startAtSeq, endSeq)
+func ReadNonCanonicalBatches(ctx context.Context, db *sql.DB, startAtSeq uint64, endSeq uint64) ([]*core.Batch, error) {
+	return fetchBatches(ctx, db, " where b.sequence>=? and b.sequence <=? and b.is_canonical=false order by b.sequence", startAtSeq, endSeq)
 }
 
-func ReadBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, error) {
-	return fetchBatchHeader(db, " where hash=?", truncTo16(hash))
+func ReadBatchHeader(ctx context.Context, db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, error) {
+	return fetchBatchHeader(ctx, db, " where hash=?", truncTo16(hash))
 }
 
 // todo - is there a better way to write this query?
-func ReadCurrentHeadBatch(db *sql.DB) (*core.Batch, error) {
-	return fetchBatch(db, " where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true)")
+func ReadCurrentHeadBatch(ctx context.Context, db *sql.DB) (*core.Batch, error) {
+	return fetchBatch(ctx, db, " where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true)")
 }
 
-func ReadBatchesByBlock(db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {
-	return fetchBatches(db, " where b.l1_proof=? order by b.sequence", truncTo16(hash))
+func ReadBatchesByBlock(ctx context.Context, db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {
+	return fetchBatches(ctx, db, " where b.l1_proof=? order by b.sequence", truncTo16(hash))
 }
 
-func ReadCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
+func ReadCurrentSequencerNo(ctx context.Context, db *sql.DB) (*big.Int, error) {
 	var seq sql.NullInt64
 	query := "select max(sequence) from batch"
-	err := db.QueryRow(query).Scan(&seq)
+	err := db.QueryRowContext(ctx, query).Scan(&seq)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -203,20 +204,20 @@ func ReadCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
 	return big.NewInt(seq.Int64), nil
 }
 
-func ReadHeadBatchForBlock(db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, error) {
+func ReadHeadBatchForBlock(ctx context.Context, db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, error) {
 	query := " where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true and b1.l1_proof=?)"
-	return fetchBatch(db, query, truncTo16(l1Hash))
+	return fetchBatch(ctx, db, query, truncTo16(l1Hash))
 }
 
-func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*core.Batch, error) {
+func fetchBatch(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*core.Batch, error) {
 	var header string
 	var body []byte
 	query := selectBatch + " " + whereQuery
 	var err error
 	if len(args) > 0 {
-		err = db.QueryRow(query, args...).Scan(&header, &body)
+		err = db.QueryRowContext(ctx, query, args...).Scan(&header, &body)
 	} else {
-		err = db.QueryRow(query).Scan(&header, &body)
+		err = db.QueryRowContext(ctx, query).Scan(&header, &body)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -242,10 +243,10 @@ func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*core.Batch, error)
 	return &b, nil
 }
 
-func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, error) {
+func fetchBatches(ctx context.Context, db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, error) {
 	result := make([]*core.Batch, 0)
 
-	rows, err := db.Query(selectBatch+" "+whereQuery, args...)
+	rows, err := db.QueryContext(ctx, selectBatch+" "+whereQuery, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -282,14 +283,14 @@ func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, er
 	return result, nil
 }
 
-func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.BatchHeader, error) {
+func fetchBatchHeader(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*common.BatchHeader, error) {
 	var header string
 	query := selectHeader + " " + whereQuery
 	var err error
 	if len(args) > 0 {
-		err = db.QueryRow(query, args...).Scan(&header)
+		err = db.QueryRowContext(ctx, query, args...).Scan(&header)
 	} else {
-		err = db.QueryRow(query).Scan(&header)
+		err = db.QueryRowContext(ctx, query).Scan(&header)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -306,11 +307,11 @@ func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.Batch
 	return h, nil
 }
 
-func selectReceipts(db *sql.DB, config *params.ChainConfig, query string, args ...any) (types.Receipts, error) {
+func selectReceipts(ctx context.Context, db *sql.DB, config *params.ChainConfig, query string, args ...any) (types.Receipts, error) {
 	var allReceipts types.Receipts
 
 	// where batch=?
-	rows, err := db.Query(queryReceipts+" "+query, args...)
+	rows, err := db.QueryContext(ctx, queryReceipts+" "+query, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -362,12 +363,12 @@ func selectReceipts(db *sql.DB, config *params.ChainConfig, query string, args .
 // The current implementation populates these metadata fields by reading the receipts'
 // corresponding block body, so if the block body is not found it will return nil even
 // if the receipt itself is stored.
-func ReadReceiptsByBatchHash(db *sql.DB, hash common.L2BatchHash, config *params.ChainConfig) (types.Receipts, error) {
-	return selectReceipts(db, config, "where batch.hash = ?", truncTo16(hash))
+func ReadReceiptsByBatchHash(ctx context.Context, db *sql.DB, hash common.L2BatchHash, config *params.ChainConfig) (types.Receipts, error) {
+	return selectReceipts(ctx, db, config, "where batch.hash = ?", truncTo16(hash))
 }
 
-func ReadReceipt(db *sql.DB, hash common.L2TxHash, config *params.ChainConfig) (*types.Receipt, error) {
-	row := db.QueryRow(queryReceipts+" where tx=?", truncTo16(hash))
+func ReadReceipt(ctx context.Context, db *sql.DB, hash common.L2TxHash, config *params.ChainConfig) (*types.Receipt, error) {
+	row := db.QueryRowContext(ctx, queryReceipts+" where tx=?", truncTo16(hash))
 	// receipt, tx, batch, height
 	var receiptData []byte
 	var txData []byte
@@ -402,8 +403,8 @@ func ReadReceipt(db *sql.DB, hash common.L2TxHash, config *params.ChainConfig) (
 	return receipts[0], nil
 }
 
-func ReadTransaction(db *sql.DB, txHash gethcommon.Hash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error) {
-	row := db.QueryRow(selectTxQuery, truncTo16(txHash))
+func ReadTransaction(ctx context.Context, db *sql.DB, txHash gethcommon.Hash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error) {
+	row := db.QueryRowContext(ctx, selectTxQuery, truncTo16(txHash))
 
 	// tx, batch, height, idx
 	var txData []byte
@@ -427,8 +428,8 @@ func ReadTransaction(db *sql.DB, txHash gethcommon.Hash) (*types.Transaction, co
 	return tx, batch, height, idx, nil
 }
 
-func GetContractCreationTx(db *sql.DB, address gethcommon.Address) (*gethcommon.Hash, error) {
-	row := db.QueryRow(selectContractCreationTx, address.Bytes())
+func GetContractCreationTx(ctx context.Context, db *sql.DB, address gethcommon.Address) (*gethcommon.Hash, error) {
+	row := db.QueryRowContext(ctx, selectContractCreationTx, address.Bytes())
 
 	var txHashBytes []byte
 	err := row.Scan(&txHashBytes)
@@ -444,8 +445,8 @@ func GetContractCreationTx(db *sql.DB, address gethcommon.Address) (*gethcommon.
 	return &txHash, nil
 }
 
-func ReadContractCreationCount(db *sql.DB) (*big.Int, error) {
-	row := db.QueryRow(selectTotalCreatedContracts)
+func ReadContractCreationCount(ctx context.Context, db *sql.DB) (*big.Int, error) {
+	row := db.QueryRowContext(ctx, selectTotalCreatedContracts)
 
 	var count int64
 	err := row.Scan(&count)
@@ -456,12 +457,12 @@ func ReadContractCreationCount(db *sql.DB) (*big.Int, error) {
 	return big.NewInt(count), nil
 }
 
-func ReadUnexecutedBatches(db *sql.DB, from *big.Int) ([]*core.Batch, error) {
-	return fetchBatches(db, "where is_executed=false and is_canonical=true and sequence >= ? order by b.sequence", from.Uint64())
+func ReadUnexecutedBatches(ctx context.Context, db *sql.DB, from *big.Int) ([]*core.Batch, error) {
+	return fetchBatches(ctx, db, "where is_executed=false and is_canonical=true and sequence >= ? order by b.sequence", from.Uint64())
 }
 
-func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {
-	row := db.QueryRow(queryBatchWasExecuted, truncTo16(hash))
+func BatchWasExecuted(ctx context.Context, db *sql.DB, hash common.L2BatchHash) (bool, error) {
+	row := db.QueryRowContext(ctx, queryBatchWasExecuted, truncTo16(hash))
 
 	var result bool
 	err := row.Scan(&result)
@@ -476,12 +477,12 @@ func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {
 	return result, nil
 }
 
-func GetReceiptsPerAddress(db *sql.DB, config *params.ChainConfig, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
-	return selectReceipts(db, config, "where tx.sender_address = ? ORDER BY height DESC LIMIT ? OFFSET ? ", address.Bytes(), pagination.Size, pagination.Offset)
+func GetReceiptsPerAddress(ctx context.Context, db *sql.DB, config *params.ChainConfig, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
+	return selectReceipts(ctx, db, config, "where tx.sender_address = ? ORDER BY height DESC LIMIT ? OFFSET ? ", address.Bytes(), pagination.Size, pagination.Offset)
 }
 
-func GetReceiptsPerAddressCount(db *sql.DB, address *gethcommon.Address) (uint64, error) {
-	row := db.QueryRow(queryReceiptsCount+" where tx.sender_address = ?", address.Bytes())
+func GetReceiptsPerAddressCount(ctx context.Context, db *sql.DB, address *gethcommon.Address) (uint64, error) {
+	row := db.QueryRowContext(ctx, queryReceiptsCount+" where tx.sender_address = ?", address.Bytes())
 
 	var count uint64
 	err := row.Scan(&count)
@@ -492,14 +493,14 @@ func GetReceiptsPerAddressCount(db *sql.DB, address *gethcommon.Address) (uint64
 	return count, nil
 }
 
-func GetPublicTransactionData(db *sql.DB, pagination *common.QueryPagination) ([]common.PublicTransaction, error) {
-	return selectPublicTxsBySender(db, " ORDER BY height DESC LIMIT ? OFFSET ? ", pagination.Size, pagination.Offset)
+func GetPublicTransactionData(ctx context.Context, db *sql.DB, pagination *common.QueryPagination) ([]common.PublicTransaction, error) {
+	return selectPublicTxsBySender(ctx, db, " ORDER BY height DESC LIMIT ? OFFSET ? ", pagination.Size, pagination.Offset)
 }
 
-func selectPublicTxsBySender(db *sql.DB, query string, args ...any) ([]common.PublicTransaction, error) {
+func selectPublicTxsBySender(ctx context.Context, db *sql.DB, query string, args ...any) ([]common.PublicTransaction, error) {
 	var publicTxs []common.PublicTransaction
 
-	rows, err := db.Query(queryTxList+" "+query, args...)
+	rows, err := db.QueryContext(ctx, queryTxList+" "+query, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -536,8 +537,8 @@ func selectPublicTxsBySender(db *sql.DB, query string, args ...any) ([]common.Pu
 	return publicTxs, nil
 }
 
-func GetPublicTransactionCount(db *sql.DB) (uint64, error) {
-	row := db.QueryRow(queryTxCountList)
+func GetPublicTransactionCount(ctx context.Context, db *sql.DB) (uint64, error) {
+	row := db.QueryRowContext(ctx, queryTxCountList)
 
 	var count uint64
 	err := row.Scan(&count)
@@ -548,11 +549,11 @@ func GetPublicTransactionCount(db *sql.DB) (uint64, error) {
 	return count, nil
 }
 
-func FetchConvertedBatchHash(db *sql.DB, seqNo uint64) (gethcommon.Hash, error) {
+func FetchConvertedBatchHash(ctx context.Context, db *sql.DB, seqNo uint64) (gethcommon.Hash, error) {
 	var hash []byte
 
 	query := "select converted_hash from batch where sequence=?"
-	err := db.QueryRow(query, seqNo).Scan(&hash)
+	err := db.QueryRowContext(ctx, query, seqNo).Scan(&hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error

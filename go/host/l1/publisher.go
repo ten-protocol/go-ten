@@ -97,7 +97,7 @@ func (p *Publisher) Stop() error {
 	return nil
 }
 
-func (p *Publisher) HealthStatus() host.HealthStatus {
+func (p *Publisher) HealthStatus(context.Context) host.HealthStatus {
 	// todo (@matt) do proper health status based on failed transactions or something
 	errMsg := ""
 	if p.hostStopper.IsStopping() {

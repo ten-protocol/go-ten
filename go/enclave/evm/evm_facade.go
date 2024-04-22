@@ -1,6 +1,7 @@
 package evm
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -34,6 +35,7 @@ import (
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
 func ExecuteTransactions(
+	ctx context.Context,
 	txs common.L2PricedTransactions,
 	s *state.StateDB,
 	header *common.BatchHeader,
@@ -51,7 +53,7 @@ func ExecuteTransactions(
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
 
-	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(header)
+	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
 		logger.Crit("Could not convert to eth header", log.ErrKey, err)
 		return nil
@@ -230,6 +232,7 @@ func logReceipt(r *types.Receipt, logger gethlog.Logger) {
 
 // ExecuteObsCall - executes the eth_call call
 func ExecuteObsCall(
+	ctx context.Context,
 	msg *gethcore.Message,
 	s *state.StateDB,
 	header *common.BatchHeader,
@@ -250,7 +253,7 @@ func ExecuteObsCall(
 	gp.SetGas(gasEstimationCap)
 	chain, vmCfg := initParams(storage, gethEncodingService, noBaseFee, nil)
 
-	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(header)
+	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
 		return nil, err
 	}

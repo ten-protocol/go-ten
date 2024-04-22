@@ -1,6 +1,7 @@
 package gethencoding
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -45,8 +46,8 @@ const (
 
 // EncodingService handles conversion to Geth data structures
 type EncodingService interface {
-	CreateEthHeaderForBatch(h *common.BatchHeader) (*types.Header, error)
-	CreateEthBlockFromBatch(b *core.Batch) (*types.Block, error)
+	CreateEthHeaderForBatch(ctx context.Context, h *common.BatchHeader) (*types.Header, error)
+	CreateEthBlockFromBatch(ctx context.Context, b *core.Batch) (*types.Block, error)
 }
 
 type gethEncodingServiceImpl struct {
@@ -307,11 +308,11 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 // CreateEthHeaderForBatch - the EVM requires an Ethereum header.
 // We convert the Batch headers to Ethereum headers to be able to use the Geth EVM.
 // Special care must be taken to maintain a valid chain of these converted headers.
-func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(h *common.BatchHeader) (*types.Header, error) {
+func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(ctx context.Context, h *common.BatchHeader) (*types.Header, error) {
 	// wrap in a caching layer
 	return common.GetCachedValue(enc.gethHeaderCache, enc.logger, h.Hash(), func(a any) (*types.Header, error) {
 		// deterministically calculate the private randomness that will be exposed to the EVM
-		secret, err := enc.storage.FetchSecret()
+		secret, err := enc.storage.FetchSecret(ctx)
 		if err != nil {
 			enc.logger.Crit("Could not fetch shared secret. Exiting.", log.ErrKey, err)
 		}
@@ -322,7 +323,7 @@ func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(h *common.BatchHeade
 		convertedParentHash := common.GethGenesisParentHash
 
 		if h.SequencerOrderNo.Uint64() > common.L2GenesisSeqNo {
-			convertedParentHash, err = enc.storage.FetchConvertedHash(h.ParentHash)
+			convertedParentHash, err = enc.storage.FetchConvertedHash(ctx, h.ParentHash)
 			if err != nil {
 				enc.logger.Error("Cannot find the converted value for the parent of", log.BatchSeqNoKey, h.SequencerOrderNo)
 				return nil, err
@@ -377,8 +378,8 @@ type localBlock struct {
 	ReceivedFrom interface{}
 }
 
-func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(b *core.Batch) (*types.Block, error) {
-	blockHeader, err := enc.CreateEthHeaderForBatch(b.Header)
+func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(ctx context.Context, b *core.Batch) (*types.Block, error) {
+	blockHeader, err := enc.CreateEthHeaderForBatch(ctx, b.Header)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create eth block from batch - %w", err)
 	}

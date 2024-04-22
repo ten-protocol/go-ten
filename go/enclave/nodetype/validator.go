@@ -1,6 +1,7 @@
 package nodetype
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -66,7 +67,7 @@ func (val *obsValidator) SubmitTransaction(tx *common.L2Tx) error {
 	return err
 }
 
-func (val *obsValidator) OnL1Fork(_ *common.ChainFork) error {
+func (val *obsValidator) OnL1Fork(ctx context.Context, fork *common.ChainFork) error {
 	// nothing to do
 	return nil
 }
@@ -75,12 +76,12 @@ func (val *obsValidator) VerifySequencerSignature(b *core.Batch) error {
 	return val.sigValidator.CheckSequencerSignature(b.Hash(), b.Header.Signature)
 }
 
-func (val *obsValidator) ExecuteStoredBatches() error {
+func (val *obsValidator) ExecuteStoredBatches(ctx context.Context) error {
 	headBatchSeq := val.batchRegistry.HeadBatchSeq()
 	if headBatchSeq == nil {
 		headBatchSeq = big.NewInt(int64(common.L2GenesisSeqNo))
 	}
-	batches, err := val.storage.FetchCanonicalUnexecutedBatches(headBatchSeq)
+	batches, err := val.storage.FetchCanonicalUnexecutedBatches(ctx, headBatchSeq)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil
@@ -92,23 +93,23 @@ func (val *obsValidator) ExecuteStoredBatches() error {
 
 	for _, batch := range batches {
 		if batch.IsGenesis() {
-			if err = val.handleGenesis(batch); err != nil {
+			if err = val.handleGenesis(ctx, batch); err != nil {
 				return err
 			}
 		}
 
 		// check batch execution prerequisites
-		canExecute, err := val.executionPrerequisites(batch)
+		canExecute, err := val.executionPrerequisites(ctx, batch)
 		if err != nil {
 			return fmt.Errorf("could not determine the execution prerequisites for batch %s. Cause: %w", batch.Hash(), err)
 		}
 
 		if canExecute {
-			receipts, err := val.batchExecutor.ExecuteBatch(batch)
+			receipts, err := val.batchExecutor.ExecuteBatch(ctx, batch)
 			if err != nil {
 				return fmt.Errorf("could not execute batch %s. Cause: %w", batch.Hash(), err)
 			}
-			err = val.storage.StoreExecutedBatch(batch, receipts)
+			err = val.storage.StoreExecutedBatch(ctx, batch, receipts)
 			if err != nil {
 				return fmt.Errorf("could not store executed batch %s. Cause: %w", batch.Hash(), err)
 			}
@@ -122,16 +123,16 @@ func (val *obsValidator) ExecuteStoredBatches() error {
 	return nil
 }
 
-func (val *obsValidator) executionPrerequisites(batch *core.Batch) (bool, error) {
+func (val *obsValidator) executionPrerequisites(ctx context.Context, batch *core.Batch) (bool, error) {
 	// 1.l1 block exists
-	block, err := val.storage.FetchBlock(batch.Header.L1Proof)
+	block, err := val.storage.FetchBlock(ctx, batch.Header.L1Proof)
 	if err != nil && errors.Is(err, errutil.ErrNotFound) {
 		val.logger.Info("Error fetching block", log.BlockHashKey, batch.Header.L1Proof, log.ErrKey, err)
 		return false, err
 	}
 
 	// 2. parent was executed
-	parentExecuted, err := val.storage.BatchWasExecuted(batch.Header.ParentHash)
+	parentExecuted, err := val.storage.BatchWasExecuted(ctx, batch.Header.ParentHash)
 	if err != nil {
 		val.logger.Info("Error reading execution status of batch", log.BatchHashKey, batch.Header.ParentHash, log.ErrKey, err)
 		return false, err
@@ -140,8 +141,8 @@ func (val *obsValidator) executionPrerequisites(batch *core.Batch) (bool, error)
 	return block != nil && parentExecuted, nil
 }
 
-func (val *obsValidator) handleGenesis(batch *core.Batch) error {
-	genBatch, _, err := val.batchExecutor.CreateGenesisState(batch.Header.L1Proof, batch.Header.Time, batch.Header.Coinbase, batch.Header.BaseFee)
+func (val *obsValidator) handleGenesis(ctx context.Context, batch *core.Batch) error {
+	genBatch, _, err := val.batchExecutor.CreateGenesisState(ctx, batch.Header.L1Proof, batch.Header.Time, batch.Header.Coinbase, batch.Header.BaseFee)
 	if err != nil {
 		return err
 	}
@@ -150,7 +151,7 @@ func (val *obsValidator) handleGenesis(batch *core.Batch) error {
 		return fmt.Errorf("received invalid genesis batch")
 	}
 
-	err = val.storage.StoreExecutedBatch(genBatch, nil)
+	err = val.storage.StoreExecutedBatch(ctx, genBatch, nil)
 	if err != nil {
 		return err
 	}
@@ -158,8 +159,8 @@ func (val *obsValidator) handleGenesis(batch *core.Batch) error {
 	return nil
 }
 
-func (val *obsValidator) OnL1Block(_ types.Block, _ *components.BlockIngestionType) error {
-	return val.ExecuteStoredBatches()
+func (val *obsValidator) OnL1Block(ctx context.Context, block types.Block, result *components.BlockIngestionType) error {
+	return val.ExecuteStoredBatches(ctx)
 }
 
 func (val *obsValidator) Close() error {

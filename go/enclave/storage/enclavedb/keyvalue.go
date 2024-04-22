@@ -1,6 +1,7 @@
 package enclavedb
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -20,8 +21,8 @@ const (
 	searchQry    = `select * from keyvalue where substring(keyvalue.ky, 1, ?) = ? and keyvalue.ky >= ? order by keyvalue.ky asc`
 )
 
-func Has(db *sql.DB, key []byte) (bool, error) {
-	err := db.QueryRow(getQry, key).Scan()
+func Has(ctx context.Context, db *sql.DB, key []byte) (bool, error) {
+	err := db.QueryRowContext(ctx, getQry, key).Scan()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
@@ -31,10 +32,10 @@ func Has(db *sql.DB, key []byte) (bool, error) {
 	return true, nil
 }
 
-func Get(db *sql.DB, key []byte) ([]byte, error) {
+func Get(ctx context.Context, db *sql.DB, key []byte) ([]byte, error) {
 	var res []byte
 
-	err := db.QueryRow(getQry, key).Scan(&res)
+	err := db.QueryRowContext(ctx, getQry, key).Scan(&res)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -45,12 +46,12 @@ func Get(db *sql.DB, key []byte) ([]byte, error) {
 	return res, nil
 }
 
-func Put(db *sql.DB, key []byte, value []byte) error {
-	_, err := db.Exec(putQry, key, value)
+func Put(ctx context.Context, db *sql.DB, key []byte, value []byte) error {
+	_, err := db.ExecContext(ctx, putQry, key, value)
 	return err
 }
 
-func PutKeyValues(tx *sql.Tx, keys [][]byte, vals [][]byte) error {
+func PutKeyValues(ctx context.Context, tx *sql.Tx, keys [][]byte, vals [][]byte) error {
 	if len(keys) != len(vals) {
 		return fmt.Errorf("invalid command. should not happen")
 	}
@@ -73,14 +74,14 @@ func PutKeyValues(tx *sql.Tx, keys [][]byte, vals [][]byte) error {
 	return nil
 }
 
-func Delete(db *sql.DB, key []byte) error {
-	_, err := db.Exec(delQry, key)
+func Delete(ctx context.Context, db *sql.DB, key []byte) error {
+	_, err := db.ExecContext(ctx, delQry, key)
 	return err
 }
 
-func DeleteKeys(db *sql.Tx, keys [][]byte) error {
+func DeleteKeys(ctx context.Context, db *sql.Tx, keys [][]byte) error {
 	for _, del := range keys {
-		_, err := db.Exec(delQry, del)
+		_, err := db.ExecContext(ctx, delQry, del)
 		if err != nil {
 			return err
 		}
@@ -88,11 +89,11 @@ func DeleteKeys(db *sql.Tx, keys [][]byte) error {
 	return nil
 }
 
-func NewIterator(db *sql.DB, prefix []byte, start []byte) ethdb.Iterator {
+func NewIterator(ctx context.Context, db *sql.DB, prefix []byte, start []byte) ethdb.Iterator {
 	pr := prefix
 	st := append(prefix, start...)
 	// iterator clean-up handles closing this rows iterator
-	rows, err := db.Query(searchQry, len(pr), pr, st)
+	rows, err := db.QueryContext(ctx, searchQry, len(pr), pr, st)
 	if err != nil {
 		return &iterator{
 			err: fmt.Errorf("failed to get rows, iter will be empty, %w", err),

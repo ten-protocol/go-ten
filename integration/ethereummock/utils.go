@@ -1,6 +1,7 @@
 package ethereummock
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -26,7 +27,7 @@ func allIncludedTransactions(b *types.Block, r storage.BlockResolver, db TxDB) m
 		return makeMap(b.Transactions())
 	}
 	newMap := make(map[common.TxHash]*types.Transaction)
-	p, err := r.FetchBlock(b.ParentHash())
+	p, err := r.FetchBlock(context.Background(), b.ParentHash())
 	if err != nil {
 		panic(fmt.Errorf("should not happen. Could not retrieve parent. Cause: %w", err))
 	}

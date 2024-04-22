@@ -2,6 +2,7 @@ package components
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -75,10 +76,10 @@ func NewBatchExecutor(
 // filterTransactionsWithSufficientFunds - this function estimates hte l1 fees for the transaction in a given batch execution context. It does so by taking the price of the
 // pinned L1 block and using it as the cost per gas for the estimated gas of the calldata encoding of a transaction. It filters out any transactions that cannot afford to pay for their L1
 // publishing cost.
-func (executor *batchExecutor) filterTransactionsWithSufficientFunds(stateDB *state.StateDB, context *BatchExecutionContext) (common.L2PricedTransactions, common.L2PricedTransactions) {
+func (executor *batchExecutor) filterTransactionsWithSufficientFunds(ctx context.Context, stateDB *state.StateDB, context *BatchExecutionContext) (common.L2PricedTransactions, common.L2PricedTransactions) {
 	transactions := make(common.L2PricedTransactions, 0)
 	freeTransactions := make(common.L2PricedTransactions, 0)
-	block, _ := executor.storage.FetchBlock(context.BlockPtr)
+	block, _ := executor.storage.FetchBlock(ctx, context.BlockPtr)
 
 	for _, tx := range context.Transactions {
 		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
@@ -121,11 +122,11 @@ func (executor *batchExecutor) filterTransactionsWithSufficientFunds(stateDB *st
 	return transactions, freeTransactions
 }
 
-func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) { //nolint:gocognit
+func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) { //nolint:gocognit
 	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
 
 	// sanity check that the l1 block exists. We don't have to execute batches of forks.
-	block, err := executor.storage.FetchBlock(context.BlockPtr)
+	block, err := executor.storage.FetchBlock(ctx, context.BlockPtr)
 	if errors.Is(err, errutil.ErrNotFound) {
 		return nil, errutil.ErrBlockForBatchNotFound
 	} else if err != nil {
@@ -133,7 +134,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	}
 
 	// These variables will be used to create the new batch
-	parent, err := executor.storage.FetchBatch(context.ParentPtr)
+	parent, err := executor.storage.FetchBatch(ctx, context.ParentPtr)
 	if errors.Is(err, errutil.ErrNotFound) {
 		executor.logger.Error(fmt.Sprintf("can't find parent batch %s. Seq %d", context.ParentPtr, context.SequencerNo))
 		return nil, errutil.ErrAncestorBatchNotFound
@@ -145,7 +146,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	parentBlock := block
 	if parent.Header.L1Proof != block.Hash() {
 		var err error
-		parentBlock, err = executor.storage.FetchBlock(parent.Header.L1Proof)
+		parentBlock, err = executor.storage.FetchBlock(ctx, parent.Header.L1Proof)
 		if err != nil {
 			executor.logger.Error(fmt.Sprintf("Could not retrieve a proof for batch %s", parent.Hash()), log.ErrKey, err)
 			return nil, err
@@ -155,7 +156,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
 	batch := core.DeterministicEmptyBatch(parent.Header, block, context.AtTime, context.SequencerNo, context.BaseFee, context.Creator)
 
-	stateDB, err := executor.storage.CreateStateDB(batch.Header.ParentHash)
+	stateDB, err := executor.storage.CreateStateDB(ctx, batch.Header.ParentHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
@@ -164,13 +165,13 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	var messages common.CrossChainMessages
 	var transfers common.ValueTransferEvents
 	if context.SequencerNo.Int64() > int64(common.L2GenesisSeqNo+1) {
-		messages, transfers = executor.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
+		messages, transfers = executor.crossChainProcessors.Local.RetrieveInboundMessages(ctx, parentBlock, block, stateDB)
 	}
 
-	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
-	executor.crossChainProcessors.Local.ExecuteValueTransfers(transfers, stateDB)
+	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(ctx, messages, stateDB)
+	executor.crossChainProcessors.Local.ExecuteValueTransfers(ctx, transfers, stateDB)
 
-	transactionsToProcess, freeTransactions := executor.filterTransactionsWithSufficientFunds(stateDB, context)
+	transactionsToProcess, freeTransactions := executor.filterTransactionsWithSufficientFunds(ctx, stateDB, context)
 
 	xchainTxs := make(common.L2PricedTransactions, 0)
 	for _, xTx := range crossChainTransactions {
@@ -183,14 +184,14 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	syntheticTransactions := append(xchainTxs, freeTransactions...)
 
 	// fromTxIndex - Here we start from the 0 index. This will be the same for a validator.
-	successfulTxs, excludedTxs, txReceipts, err := executor.processTransactions(batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
+	successfulTxs, excludedTxs, txReceipts, err := executor.processTransactions(ctx, batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
 
 	// fromTxIndex - Here we start from the len of the successful transactions; As long as we have the exact same successful transactions in a batch,
 	// we will start from the same place.
-	ccSuccessfulTxs, _, ccReceipts, err := executor.processTransactions(batch, len(successfulTxs), syntheticTransactions, stateDB, context.ChainConfig, true)
+	ccSuccessfulTxs, _, ccReceipts, err := executor.processTransactions(ctx, batch, len(successfulTxs), syntheticTransactions, stateDB, context.ChainConfig, true)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +220,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	copyBatch.Transactions = append(successfulTxs, freeTransactions.ToTransactions()...)
 	copyBatch.ResetHash()
 
-	if err = executor.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {
+	if err = executor.populateOutboundCrossChainData(ctx, &copyBatch, block, txReceipts); err != nil {
 		return nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
 	}
 
@@ -251,7 +252,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext, fail
 	}, nil
 }
 
-func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, error) {
+func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Batch) (types.Receipts, error) {
 	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Executed batch", log.BatchHashKey, batch.Hash())
 
 	// Validators recompute the entire batch using the same batch context
@@ -259,7 +260,7 @@ func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, 
 	// and the parent hash. This recomputed batch is then checked against the incoming batch.
 	// If the sequencer has tampered with something the hash will not add up and validation will
 	// produce an error.
-	cb, err := executor.ComputeBatch(&BatchExecutionContext{
+	cb, err := executor.ComputeBatch(ctx, &BatchExecutionContext{
 		BlockPtr:     batch.Header.L1Proof,
 		ParentPtr:    batch.Header.ParentHash,
 		Transactions: batch.Transactions,
@@ -300,6 +301,7 @@ func (vt ValueTransfers) EncodeIndex(index int, w *bytes.Buffer) {
 }
 
 func (executor *batchExecutor) CreateGenesisState(
+	ctx context.Context,
 	blkHash common.L1BlockHash,
 	timeNow uint64,
 	coinbase gethcommon.Address,
@@ -342,14 +344,14 @@ func (executor *batchExecutor) CreateGenesisState(
 	return genesisBatch, deployTx, nil
 }
 
-func (executor *batchExecutor) populateOutboundCrossChainData(batch *core.Batch, block *types.Block, receipts types.Receipts) error {
-	crossChainMessages, err := executor.crossChainProcessors.Local.ExtractOutboundMessages(receipts)
+func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Context, batch *core.Batch, block *types.Block, receipts types.Receipts) error {
+	crossChainMessages, err := executor.crossChainProcessors.Local.ExtractOutboundMessages(ctx, receipts)
 	if err != nil {
 		executor.logger.Error("Failed extracting L2->L1 messages", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
 		return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
 	}
 
-	valueTransferMessages, err := executor.crossChainProcessors.Local.ExtractOutboundTransfers(receipts)
+	valueTransferMessages, err := executor.crossChainProcessors.Local.ExtractOutboundTransfers(ctx, receipts)
 	if err != nil {
 		executor.logger.Error("Failed extracting L2->L1 messages value transfers", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
 		return fmt.Errorf("could not extract cross chain value transfers. Cause: %w", err)
@@ -398,6 +400,7 @@ func (executor *batchExecutor) verifyInboundCrossChainTransactions(transactions 
 }
 
 func (executor *batchExecutor) processTransactions(
+	ctx context.Context,
 	batch *core.Batch,
 	tCount int,
 	txs common.L2PricedTransactions,
@@ -409,6 +412,7 @@ func (executor *batchExecutor) processTransactions(
 	var excludedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 	txResults := evm.ExecuteTransactions(
+		ctx,
 		txs,
 		stateDB,
 		batch.Header,

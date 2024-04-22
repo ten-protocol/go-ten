@@ -1,7 +1,9 @@
 package evm
 
 import (
+	"context"
 	"errors"
+	"time"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -34,8 +36,13 @@ func (occ *ObscuroChainContext) Engine() consensus.Engine {
 	return &ObscuroNoOpConsensusEngine{logger: occ.logger}
 }
 
+var deadline = 5 * time.Second
+
 func (occ *ObscuroChainContext) GetHeader(hash common.Hash, _ uint64) *types.Header {
-	batch, err := occ.storage.FetchBatch(hash)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	defer cancelCtx()
+
+	batch, err := occ.storage.FetchBatch(ctx, hash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil
@@ -43,7 +50,7 @@ func (occ *ObscuroChainContext) GetHeader(hash common.Hash, _ uint64) *types.Hea
 		occ.logger.Crit("Could not retrieve rollup", log.ErrKey, err)
 	}
 
-	h, err := occ.gethEncodingService.CreateEthHeaderForBatch(batch.Header)
+	h, err := occ.gethEncodingService.CreateEthHeaderForBatch(ctx, batch.Header)
 	if err != nil {
 		occ.logger.Crit("Could not convert to eth header", log.ErrKey, err)
 		return nil

@@ -139,7 +139,7 @@ func NewEnclave(
 	}
 
 	// attempt to fetch the enclave key from the database
-	enclaveKey, err := storage.GetEnclaveKey()
+	enclaveKey, err := storage.GetEnclaveKey(context.Background())
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			logger.Crit("Failed to fetch enclave key", log.ErrKey, err)
@@ -151,7 +151,7 @@ func NewEnclave(
 		if err != nil {
 			logger.Crit("Failed to generate enclave key.", log.ErrKey, err)
 		}
-		err = storage.StoreEnclaveKey(enclaveKey)
+		err = storage.StoreEnclaveKey(context.Background(), enclaveKey)
 		if err != nil {
 			logger.Crit("Failed to store enclave key.", log.ErrKey, err)
 		}
@@ -228,7 +228,7 @@ func NewEnclave(
 	subscriptionManager := events.NewSubscriptionManager(storage, config.ObscuroChainID, logger)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
-	err = restoreStateDBCache(storage, registry, batchExecutor, genesis, logger)
+	err = restoreStateDBCache(context.Background(), storage, registry, batchExecutor, genesis, logger)
 	if err != nil {
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
@@ -268,8 +268,8 @@ func NewEnclave(
 	}
 }
 
-func (e *enclaveImpl) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {
-	batch, err := e.storage.FetchBatch(hash)
+func (e *enclaveImpl) GetBatch(ctx context.Context, hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {
+	batch, err := e.storage.FetchBatch(ctx, hash)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("failed getting batch. Cause: %w", err))
 	}
@@ -281,8 +281,8 @@ func (e *enclaveImpl) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, commo
 	return b, nil
 }
 
-func (e *enclaveImpl) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, common.SystemError) {
-	batch, err := e.storage.FetchBatchBySeqNo(seqNo)
+func (e *enclaveImpl) GetBatchBySeqNo(ctx context.Context, seqNo uint64) (*common.ExtBatch, common.SystemError) {
+	batch, err := e.storage.FetchBatchBySeqNo(ctx, seqNo)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("failed getting batch. Cause: %w", err))
 	}
@@ -294,8 +294,8 @@ func (e *enclaveImpl) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, common.Sy
 	return b, nil
 }
 
-func (e *enclaveImpl) GetRollupData(hash common.L2RollupHash) (*common.PublicRollupMetadata, common.SystemError) {
-	rollupMetadata, err := e.storage.FetchRollupMetadata(hash)
+func (e *enclaveImpl) GetRollupData(ctx context.Context, hash common.L2RollupHash) (*common.PublicRollupMetadata, common.SystemError) {
+	rollupMetadata, err := e.storage.FetchRollupMetadata(ctx, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -307,12 +307,12 @@ func (e *enclaveImpl) GetRollupData(hash common.L2RollupHash) (*common.PublicRol
 }
 
 // Status is only implemented by the RPC wrapper
-func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
+func (e *enclaveImpl) Status(ctx context.Context) (common.Status, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return common.Status{StatusCode: common.Unavailable}, responses.ToInternalError(fmt.Errorf("requested Status with the enclave stopping"))
 	}
 
-	_, err := e.storage.FetchSecret()
+	_, err := e.storage.FetchSecret(ctx)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return common.Status{StatusCode: common.AwaitingSecret, L2Head: _noHeadBatch}, nil
@@ -320,7 +320,7 @@ func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 		return common.Status{StatusCode: common.Unavailable}, responses.ToInternalError(err)
 	}
 	var l1HeadHash gethcommon.Hash
-	l1Head, err := e.l1BlockProcessor.GetHead()
+	l1Head, err := e.l1BlockProcessor.GetHead(ctx)
 	if err != nil {
 		// this might be normal while enclave is starting up, just send empty hash
 		e.logger.Debug("failed to fetch L1 head block for status response", log.ErrKey, err)
@@ -330,7 +330,7 @@ func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 	// we use zero when there's no head batch yet, the first seq number is 1
 	l2HeadSeqNo := _noHeadBatch
 	// this is the highest seq number that has been received and stored on the enclave (it may not have been executed)
-	currSeqNo, err := e.storage.FetchCurrentSequencerNo()
+	currSeqNo, err := e.storage.FetchCurrentSequencerNo(ctx)
 	if err != nil {
 		// this might be normal while enclave is starting up, just send empty hash
 		e.logger.Debug("failed to fetch L2 head batch for status response", log.ErrKey, err)
@@ -359,8 +359,8 @@ func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.Stream
 }
 
 // this function is only called when the executed batch is the new head
-func (e *enclaveImpl) streamEventsForNewHeadBatch(batch *core.Batch, receipts types.Receipts, outChannel chan common.StreamL2UpdatesResponse) {
-	logs, err := e.subscriptionManager.GetSubscribedLogsForBatch(batch, receipts)
+func (e *enclaveImpl) streamEventsForNewHeadBatch(ctx context.Context, batch *core.Batch, receipts types.Receipts, outChannel chan common.StreamL2UpdatesResponse) {
+	logs, err := e.subscriptionManager.GetSubscribedLogsForBatch(ctx, batch, receipts)
 	e.logger.Debug("Stream Events for", log.BatchHashKey, batch.Hash(), "nr_events", len(logs))
 	if err != nil {
 		e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
@@ -373,6 +373,8 @@ func (e *enclaveImpl) streamEventsForNewHeadBatch(batch *core.Batch, receipts ty
 	}
 }
 
+var deadline = 2 * time.Second
+
 func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func()) {
 	l2UpdatesChannel := make(chan common.StreamL2UpdatesResponse, 100)
 
@@ -384,7 +386,10 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 	e.registry.SubscribeForExecutedBatches(func(batch *core.Batch, receipts types.Receipts) {
 		e.sendBatch(batch, l2UpdatesChannel)
 		if receipts != nil {
-			e.streamEventsForNewHeadBatch(batch, receipts, l2UpdatesChannel)
+			ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+			defer cancelCtx()
+
+			e.streamEventsForNewHeadBatch(ctx, batch, receipts, l2UpdatesChannel)
 		}
 	})
 
@@ -394,7 +399,7 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, _ bool) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveImpl) SubmitL1Block(ctx context.Context, block common.L1Block, receipts common.L1Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitL1Block with the enclave stopping"))
 	}
@@ -407,30 +412,30 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	// If the block and receipts do not match, reject the block.
 	br, err := common.ParseBlockAndReceipts(&block, &receipts)
 	if err != nil {
-		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	result, err := e.ingestL1Block(br)
+	result, err := e.ingestL1Block(ctx, br)
 	if err != nil {
-		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
 	if result.IsFork() {
 		e.logger.Info(fmt.Sprintf("Detected fork at block %s with height %d", block.Hash(), block.Number()))
 	}
 
-	err = e.service.OnL1Block(block, result)
+	err = e.service.OnL1Block(ctx, block, result)
 	if err != nil {
-		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(br)}
+	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, br)}
 	return bsr, nil
 }
 
-func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts) (*components.BlockIngestionType, error) {
+func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndReceipts) (*components.BlockIngestionType, error) {
 	e.logger.Info("Start ingesting block", log.BlockHashKey, br.Block.Hash())
-	ingestion, err := e.l1BlockProcessor.Process(br)
+	ingestion, err := e.l1BlockProcessor.Process(ctx, br)
 	if err != nil {
 		// only warn for unexpected errors
 		if errors.Is(err, errutil.ErrBlockAncestorNotFound) || errors.Is(err, errutil.ErrBlockAlreadyProcessed) {
@@ -441,14 +446,14 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts) (*components.Bl
 		return nil, err
 	}
 
-	err = e.rollupConsumer.ProcessRollupsInBlock(br)
+	err = e.rollupConsumer.ProcessRollupsInBlock(ctx, br)
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
 	}
 
 	if ingestion.IsFork() {
-		err := e.service.OnL1Fork(ingestion.ChainFork)
+		err := e.service.OnL1Fork(ctx, ingestion.ChainFork)
 		if err != nil {
 			return nil, err
 		}
@@ -456,11 +461,11 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts) (*components.Bl
 	return ingestion, nil
 }
 
-func (e *enclaveImpl) SubmitTx(encryptedTxParams common.EncryptedTx) (*responses.RawTx, common.SystemError) {
+func (e *enclaveImpl) SubmitTx(ctx context.Context, encryptedTxParams common.EncryptedTx) (*responses.RawTx, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitTx with the enclave stopping"))
 	}
-	return rpc.WithVKEncryption(e.rpcEncryptionManager, encryptedTxParams, rpc.SubmitTxValidate, rpc.SubmitTxExecute)
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedTxParams, rpc.SubmitTxValidate, rpc.SubmitTxExecute)
 }
 
 func (e *enclaveImpl) Validator() nodetype.ObsValidator {
@@ -479,7 +484,7 @@ func (e *enclaveImpl) Sequencer() nodetype.Sequencer {
 	return sequencer
 }
 
-func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError {
+func (e *enclaveImpl) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch) common.SystemError {
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested SubmitBatch with the enclave stopping"))
 	}
@@ -489,7 +494,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 	e.logger.Info("Received new p2p batch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	seqNo := extBatch.Header.SequencerOrderNo.Uint64()
 	if seqNo > common.L2GenesisSeqNo+1 {
-		_, err := e.storage.FetchBatchBySeqNo(seqNo - 1)
+		_, err := e.storage.FetchBatchBySeqNo(ctx, seqNo-1)
 		if err != nil {
 			return responses.ToInternalError(fmt.Errorf("could not find previous batch with seq: %d", seqNo-1))
 		}
@@ -506,7 +511,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 	}
 
 	// calculate the converted hash, and store it in the db for chaining of the converted chain
-	convertedHeader, err := e.gethEncodingService.CreateEthHeaderForBatch(extBatch.Header)
+	convertedHeader, err := e.gethEncodingService.CreateEthHeaderForBatch(ctx, extBatch.Header)
 	if err != nil {
 		return err
 	}
@@ -515,12 +520,12 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 	defer e.mainMutex.Unlock()
 
 	// if the signature is valid, then store the batch together with the converted hash
-	err = e.storage.StoreBatch(batch, convertedHeader.Hash())
+	err = e.storage.StoreBatch(ctx, batch, convertedHeader.Hash())
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not store batch. Cause: %w", err))
 	}
 
-	err = e.Validator().ExecuteStoredBatches()
+	err = e.Validator().ExecuteStoredBatches(ctx)
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not execute batches. Cause: %w", err))
 	}
@@ -528,7 +533,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 	return nil
 }
 
-func (e *enclaveImpl) CreateBatch(skipBatchIfEmpty bool) common.SystemError {
+func (e *enclaveImpl) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) common.SystemError {
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateBatch call ended")
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested CreateBatch with the enclave stopping"))
@@ -537,7 +542,7 @@ func (e *enclaveImpl) CreateBatch(skipBatchIfEmpty bool) common.SystemError {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	err := e.Sequencer().CreateBatch(skipBatchIfEmpty)
+	err := e.Sequencer().CreateBatch(ctx, skipBatchIfEmpty)
 	if err != nil {
 		return responses.ToInternalError(err)
 	}
@@ -545,7 +550,7 @@ func (e *enclaveImpl) CreateBatch(skipBatchIfEmpty bool) common.SystemError {
 	return nil
 }
 
-func (e *enclaveImpl) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
+func (e *enclaveImpl) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateRollup call ended")
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GenerateRollup with the enclave stopping"))
@@ -559,7 +564,7 @@ func (e *enclaveImpl) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.
 		return nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))
 	}
 
-	rollup, err := e.Sequencer().CreateRollup(fromSeqNo)
+	rollup, err := e.Sequencer().CreateRollup(ctx, fromSeqNo)
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
@@ -568,39 +573,39 @@ func (e *enclaveImpl) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.
 
 // ObsCall handles param decryption, validation and encryption
 // and requests the Rollup chain to execute the payload (eth_call)
-func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*responses.Call, common.SystemError) {
+func (e *enclaveImpl) ObsCall(ctx context.Context, encryptedParams common.EncryptedParamsCall) (*responses.Call, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested ObsCall with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption(e.rpcEncryptionManager, encryptedParams, rpc.TenCallValidate, rpc.TenCallExecute)
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.TenCallValidate, rpc.TenCallExecute)
 }
 
-func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (*responses.TxCount, common.SystemError) {
+func (e *enclaveImpl) GetTransactionCount(ctx context.Context, encryptedParams common.EncryptedParamsGetTxCount) (*responses.TxCount, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionCount with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption(e.rpcEncryptionManager, encryptedParams, rpc.GetTransactionCountValidate, rpc.GetTransactionCountExecute)
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetTransactionCountValidate, rpc.GetTransactionCountExecute)
 }
 
-func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (*responses.TxByHash, common.SystemError) {
+func (e *enclaveImpl) GetTransaction(ctx context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (*responses.TxByHash, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransaction with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption(e.rpcEncryptionManager, encryptedParams, rpc.GetTransactionValidate, rpc.GetTransactionExecute)
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetTransactionValidate, rpc.GetTransactionExecute)
 }
 
-func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (*responses.TxReceipt, common.SystemError) {
+func (e *enclaveImpl) GetTransactionReceipt(ctx context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*responses.TxReceipt, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionReceipt with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption(e.rpcEncryptionManager, encryptedParams, rpc.GetTransactionReceiptValidate, rpc.GetTransactionReceiptExecute)
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetTransactionReceiptValidate, rpc.GetTransactionReceiptExecute)
 }
 
-func (e *enclaveImpl) Attestation() (*common.AttestationReport, common.SystemError) {
+func (e *enclaveImpl) Attestation(ctx context.Context) (*common.AttestationReport, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested ObsCall with the enclave stopping"))
 	}
@@ -608,7 +613,7 @@ func (e *enclaveImpl) Attestation() (*common.AttestationReport, common.SystemErr
 	if e.enclaveKey == nil {
 		return nil, responses.ToInternalError(fmt.Errorf("public key not initialized, we can't produce the attestation report"))
 	}
-	report, err := e.attestationProvider.GetReport(e.enclaveKey.PublicKeyBytes(), e.enclaveKey.EnclaveID(), e.config.HostAddress)
+	report, err := e.attestationProvider.GetReport(ctx, e.enclaveKey.PublicKeyBytes(), e.enclaveKey.EnclaveID(), e.config.HostAddress)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not produce remote report. Cause %w", err))
 	}
@@ -616,13 +621,13 @@ func (e *enclaveImpl) Attestation() (*common.AttestationReport, common.SystemErr
 }
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, common.SystemError) {
+func (e *enclaveImpl) GenerateSecret(ctx context.Context) (common.EncryptedSharedEnclaveSecret, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GenerateSecret with the enclave stopping"))
 	}
 
 	secret := crypto.GenerateEntropy(e.logger)
-	err := e.storage.StoreSecret(secret)
+	err := e.storage.StoreSecret(ctx, secret)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not store secret. Cause: %w", err))
 	}
@@ -634,7 +639,7 @@ func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, com
 }
 
 // InitEnclave - initialise an enclave with a seed received by another enclave
-func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) common.SystemError {
+func (e *enclaveImpl) InitEnclave(ctx context.Context, s common.EncryptedSharedEnclaveSecret) common.SystemError {
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested InitEnclave with the enclave stopping"))
 	}
@@ -643,7 +648,7 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) common.
 	if err != nil {
 		return responses.ToInternalError(err)
 	}
-	err = e.storage.StoreSecret(*secret)
+	err = e.storage.StoreSecret(ctx, *secret)
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not store secret. Cause: %w", err))
 	}
@@ -651,34 +656,34 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) common.
 	return nil
 }
 
-func (e *enclaveImpl) EnclaveID() (common.EnclaveID, common.SystemError) {
+func (e *enclaveImpl) EnclaveID(context.Context) (common.EnclaveID, common.SystemError) {
 	return e.enclaveKey.EnclaveID(), nil
 }
 
 // GetBalance handles param decryption, validation and encryption
 // and requests the Rollup chain to execute the payload (eth_getBalance)
-func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (*responses.Balance, common.SystemError) {
+func (e *enclaveImpl) GetBalance(ctx context.Context, encryptedParams common.EncryptedParamsGetBalance) (*responses.Balance, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetBalance with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption(e.rpcEncryptionManager, encryptedParams, rpc.GetBalanceValidate, rpc.GetBalanceExecute)
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetBalanceValidate, rpc.GetBalanceExecute)
 }
 
 // todo - needs to be encrypted
-func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2BatchHash) ([]byte, common.SystemError) {
+func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetCode with the enclave stopping"))
 	}
 
-	stateDB, err := e.storage.CreateStateDB(*batchHash)
+	stateDB, err := e.storage.CreateStateDB(ctx, *batchHash)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not create stateDB. Cause: %w", err))
 	}
 	return stateDB.GetCode(address), nil
 }
 
-func (e *enclaveImpl) Subscribe(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) common.SystemError {
+func (e *enclaveImpl) Subscribe(ctx context.Context, id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) common.SystemError {
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested SubscribeForExecutedBatches with the enclave stopping"))
 	}
@@ -732,30 +737,30 @@ func (e *enclaveImpl) Stop() common.SystemError {
 
 // EstimateGas decrypts CallMsg data, runs the gas estimation for the data.
 // Using the callMsg.From Viewing Key, returns the encrypted gas estimation
-func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (*responses.Gas, common.SystemError) {
+func (e *enclaveImpl) EstimateGas(ctx context.Context, encryptedParams common.EncryptedParamsEstimateGas) (*responses.Gas, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested EstimateGas with the enclave stopping"))
 	}
 
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "enclave.go:EstimateGas()")
-	return rpc.WithVKEncryption(e.rpcEncryptionManager, encryptedParams, rpc.EstimateGasValidate, rpc.EstimateGasExecute)
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.EstimateGasValidate, rpc.EstimateGasExecute)
 }
 
-func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) {
+func (e *enclaveImpl) GetLogs(ctx context.Context, encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetLogs with the enclave stopping"))
 	}
-	return rpc.WithVKEncryption(e.rpcEncryptionManager, encryptedParams, rpc.GetLogsValidate, rpc.GetLogsExecute)
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetLogsValidate, rpc.GetLogsExecute)
 }
 
 // HealthCheck returns whether the enclave is deemed healthy
-func (e *enclaveImpl) HealthCheck() (bool, common.SystemError) {
+func (e *enclaveImpl) HealthCheck(ctx context.Context) (bool, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return false, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the enclave stopping"))
 	}
 
 	// check the storage health
-	storageHealthy, err := e.storage.HealthCheck()
+	storageHealthy, err := e.storage.HealthCheck(ctx)
 	if err != nil {
 		// simplest iteration, log the error and just return that it's not healthy
 		e.logger.Info("HealthCheck failed for the enclave storage", log.ErrKey, err)
@@ -780,7 +785,7 @@ func (e *enclaveImpl) HealthCheck() (bool, common.SystemError) {
 	return storageHealthy && l1blockHealthy && l2batchHealthy, nil
 }
 
-func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {
+func (e *enclaveImpl) DebugTraceTransaction(ctx context.Context, txHash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested DebugTraceTransaction with the enclave stopping"))
@@ -791,7 +796,7 @@ func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *trac
 		return nil, responses.ToInternalError(fmt.Errorf("debug namespace not enabled"))
 	}
 
-	jsonMsg, err := e.debugger.DebugTraceTransaction(context.Background(), txHash, config)
+	jsonMsg, err := e.debugger.DebugTraceTransaction(ctx, txHash, config)
 	if err != nil {
 		if errors.Is(err, syserr.InternalError{}) {
 			return nil, responses.ToInternalError(err)
@@ -803,7 +808,7 @@ func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *trac
 	return jsonMsg, nil
 }
 
-func (e *enclaveImpl) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMessage, common.SystemError) {
+func (e *enclaveImpl) DebugEventLogRelevancy(ctx context.Context, txHash gethcommon.Hash) (json.RawMessage, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested DebugEventLogRelevancy with the enclave stopping"))
@@ -814,7 +819,7 @@ func (e *enclaveImpl) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMe
 		return nil, responses.ToInternalError(fmt.Errorf("debug namespace not enabled"))
 	}
 
-	jsonMsg, err := e.debugger.DebugEventLogRelevancy(txHash)
+	jsonMsg, err := e.debugger.DebugEventLogRelevancy(ctx, txHash)
 	if err != nil {
 		if errors.Is(err, syserr.InternalError{}) {
 			return nil, responses.ToInternalError(err)
@@ -826,37 +831,37 @@ func (e *enclaveImpl) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMe
 	return jsonMsg, nil
 }
 
-func (e *enclaveImpl) GetTotalContractCount() (*big.Int, common.SystemError) {
+func (e *enclaveImpl) GetTotalContractCount(ctx context.Context) (*big.Int, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTotalContractCount with the enclave stopping"))
 	}
 
-	return e.storage.GetContractCount()
+	return e.storage.GetContractCount(ctx)
 }
 
-func (e *enclaveImpl) GetCustomQuery(encryptedParams common.EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, common.SystemError) {
+func (e *enclaveImpl) GetCustomQuery(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetReceiptsByAddress with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption(e.rpcEncryptionManager, encryptedParams, rpc.GetCustomQueryValidate, rpc.GetCustomQueryExecute)
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetCustomQueryValidate, rpc.GetCustomQueryExecute)
 }
 
-func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPagination) (*common.TransactionListingResponse, common.SystemError) {
+func (e *enclaveImpl) GetPublicTransactionData(ctx context.Context, pagination *common.QueryPagination) (*common.TransactionListingResponse, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetPublicTransactionData with the enclave stopping"))
 	}
 
-	paginatedData, err := e.storage.GetPublicTransactionData(pagination)
+	paginatedData, err := e.storage.GetPublicTransactionData(ctx, pagination)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("unable to fetch data - %w", err))
 	}
 
 	// Todo eventually make this a cacheable method
-	totalData, err := e.storage.GetPublicTransactionCount()
+	totalData, err := e.storage.GetPublicTransactionCount(ctx)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("unable to fetch data - %w", err))
 	}
@@ -867,7 +872,7 @@ func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPaginatio
 	}, nil
 }
 
-func (e *enclaveImpl) EnclavePublicConfig() (*common.EnclavePublicConfig, common.SystemError) {
+func (e *enclaveImpl) EnclavePublicConfig(context.Context) (*common.EnclavePublicConfig, common.SystemError) {
 	address, systemError := e.crossChainProcessors.GetL2MessageBusAddress()
 	if systemError != nil {
 		return nil, systemError
@@ -875,9 +880,9 @@ func (e *enclaveImpl) EnclavePublicConfig() (*common.EnclavePublicConfig, common
 	return &common.EnclavePublicConfig{L2MessageBusAddress: address}, nil
 }
 
-func (e *enclaveImpl) rejectBlockErr(cause error) *errutil.BlockRejectError {
+func (e *enclaveImpl) rejectBlockErr(ctx context.Context, cause error) *errutil.BlockRejectError {
 	var hash common.L1BlockHash
-	l1Head, err := e.l1BlockProcessor.GetHead()
+	l1Head, err := e.l1BlockProcessor.GetHead(ctx)
 	// todo - handle error
 	if err == nil {
 		hash = l1Head.Hash()
@@ -890,12 +895,12 @@ func (e *enclaveImpl) rejectBlockErr(cause error) *errutil.BlockRejectError {
 
 // this function looks at the batch chain and makes sure the resulting stateDB snapshots are available, replaying them if needed
 // (if there had been a clean shutdown and all stateDB data was persisted this should do nothing)
-func restoreStateDBCache(storage storage.Storage, registry components.BatchRegistry, producer components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
+func restoreStateDBCache(ctx context.Context, storage storage.Storage, registry components.BatchRegistry, producer components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
 	if registry.HeadBatchSeq() == nil {
 		// not initialised yet
 		return nil
 	}
-	batch, err := storage.FetchBatchBySeqNo(registry.HeadBatchSeq().Uint64())
+	batch, err := storage.FetchBatchBySeqNo(ctx, registry.HeadBatchSeq().Uint64())
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			// there is no head batch, this is probably a new node - there is no state to rebuild
@@ -904,9 +909,9 @@ func restoreStateDBCache(storage storage.Storage, registry components.BatchRegis
 		}
 		return fmt.Errorf("unexpected error fetching head batch to resync- %w", err)
 	}
-	if !stateDBAvailableForBatch(storage, batch.Hash()) {
+	if !stateDBAvailableForBatch(ctx, storage, batch.Hash()) {
 		logger.Info("state not available for latest batch after restart - rebuilding stateDB cache from batches")
-		err = replayBatchesToValidState(storage, registry, producer, gen, logger)
+		err = replayBatchesToValidState(ctx, storage, registry, producer, gen, logger)
 		if err != nil {
 			return fmt.Errorf("unable to replay batches to restore valid state - %w", err)
 		}
@@ -918,8 +923,8 @@ func restoreStateDBCache(storage storage.Storage, registry components.BatchRegis
 // batch in the chain and is used to query state at a certain height.
 //
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
-func stateDBAvailableForBatch(storage storage.Storage, hash common.L2BatchHash) bool {
-	_, err := storage.CreateStateDB(hash)
+func stateDBAvailableForBatch(ctx context.Context, storage storage.Storage, hash common.L2BatchHash) bool {
+	_, err := storage.CreateStateDB(ctx, hash)
 	return err == nil
 }
 
@@ -927,24 +932,24 @@ func stateDBAvailableForBatch(storage storage.Storage, hash common.L2BatchHash) 
 // 1. step backwards from head batch until we find a batch that is already in stateDB cache, builds list of batches to replay
 // 2. iterate that list of batches from the earliest, process the transactions to calculate and cache the stateDB
 // todo (#1416) - get unit test coverage around this (and L2 Chain code more widely, see ticket #1416 )
-func replayBatchesToValidState(storage storage.Storage, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
+func replayBatchesToValidState(ctx context.Context, storage storage.Storage, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
 	// this slice will be a stack of batches to replay as we walk backwards in search of latest valid state
 	// todo - consider capping the size of this batch list using FIFO to avoid memory issues, and then repeating as necessary
 	var batchesToReplay []*core.Batch
 	// `batchToReplayFrom` variable will eventually be the latest batch for which we are able to produce a StateDB
 	// - we will then set that as the head of the L2 so that this node can rebuild its missing state
-	batchToReplayFrom, err := storage.FetchBatchBySeqNo(registry.HeadBatchSeq().Uint64())
+	batchToReplayFrom, err := storage.FetchBatchBySeqNo(ctx, registry.HeadBatchSeq().Uint64())
 	if err != nil {
 		return fmt.Errorf("no head batch found in DB but expected to replay batches - %w", err)
 	}
 	// loop backwards building a slice of all batches that don't have cached stateDB data available
-	for !stateDBAvailableForBatch(storage, batchToReplayFrom.Hash()) {
+	for !stateDBAvailableForBatch(ctx, storage, batchToReplayFrom.Hash()) {
 		batchesToReplay = append(batchesToReplay, batchToReplayFrom)
 		if batchToReplayFrom.NumberU64() == 0 {
 			// no more parents to check, replaying from genesis
 			break
 		}
-		batchToReplayFrom, err = storage.FetchBatch(batchToReplayFrom.Header.ParentHash)
+		batchToReplayFrom, err = storage.FetchBatch(ctx, batchToReplayFrom.Header.ParentHash)
 		if err != nil {
 			return fmt.Errorf("unable to fetch previous batch while rolling back to stable state - %w", err)
 		}
@@ -965,7 +970,7 @@ func replayBatchesToValidState(storage storage.Storage, registry components.Batc
 		}
 
 		// calculate the stateDB after this batch and store it in the cache
-		_, err := batchExecutor.ExecuteBatch(batch)
+		_, err := batchExecutor.ExecuteBatch(ctx, batch)
 		if err != nil {
 			return err
 		}

@@ -1,6 +1,7 @@
 package enclavedb
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -59,24 +60,32 @@ func (sqlDB *enclaveDB) GetSQLDB() *sql.DB {
 	return sqlDB.sqldb
 }
 
-func (sqlDB *enclaveDB) BeginTx() (*sql.Tx, error) {
-	return sqlDB.sqldb.Begin()
+func (sqlDB *enclaveDB) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	return sqlDB.sqldb.BeginTx(ctx, nil)
 }
 
 func (sqlDB *enclaveDB) Has(key []byte) (bool, error) {
-	return Has(sqlDB.sqldb, key)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	defer cancelCtx()
+	return Has(ctx, sqlDB.sqldb, key)
 }
 
 func (sqlDB *enclaveDB) Get(key []byte) ([]byte, error) {
-	return Get(sqlDB.sqldb, key)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	defer cancelCtx()
+	return Get(ctx, sqlDB.sqldb, key)
 }
 
 func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
-	return Put(sqlDB.sqldb, key, value)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	defer cancelCtx()
+	return Put(ctx, sqlDB.sqldb, key, value)
 }
 
 func (sqlDB *enclaveDB) Delete(key []byte) error {
-	return Delete(sqlDB.sqldb, key)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	defer cancelCtx()
+	return Delete(ctx, sqlDB.sqldb, key)
 }
 
 func (sqlDB *enclaveDB) Close() error {
@@ -99,7 +108,9 @@ func (sqlDB *enclaveDB) NewBatch() ethdb.Batch {
 }
 
 func (sqlDB *enclaveDB) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
-	return NewIterator(sqlDB.sqldb, prefix, start)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	defer cancelCtx()
+	return NewIterator(ctx, sqlDB.sqldb, prefix, start)
 }
 
 func (sqlDB *enclaveDB) Stat(_ string) (string, error) {
