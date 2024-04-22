@@ -13,6 +13,9 @@ func main() {
 	// load flags with defaults from config / sub-configs
 	rParams, nodeFlags, err := config.LoadFlagStrings(config.Node)
 	if err != nil {
+		if strings.Contains(err.Error(), "help requested") {
+			return
+		}
 		panic(err)
 	}
 
