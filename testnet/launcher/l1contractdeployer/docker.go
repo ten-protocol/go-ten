@@ -4,27 +4,28 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/config"
 	"io"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/sanity-io/litter"
-	"github.com/ten-protocol/go-ten/go/node"
-
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/common/docker"
 )
 
 type ContractDeployer struct {
-	cfg         *Config
+	cfg         *config.L1ContractDeployerConfig
+	netCfg      *config.NetworkInputConfig
 	containerID string
 }
 
-func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
+func NewDockerContractDeployer(cfg *config.TestnetConfig) (*ContractDeployer, error) {
 	return &ContractDeployer{
-		cfg: cfg,
+		cfg:    &cfg.L1ContractDeployer,
+		netCfg: &cfg.Network,
 	}, nil // todo (@pedro) - add validation
 }
 
@@ -35,7 +36,7 @@ func (n *ContractDeployer) Start() error {
 	var ports []int
 
 	// inspect stops operation until debugger is hooked on port 9229 if debug is enabled
-	if n.cfg.debugEnabled {
+	if n.cfg.DebugNamespaceEnabled {
 		cmds = append(cmds, "--node-options=\"--inspect-brk=0.0.0.0:9229\"")
 		ports = append(ports, 9229)
 	}
@@ -44,7 +45,7 @@ func (n *ContractDeployer) Start() error {
 
 	envs := map[string]string{
 		"NETWORK_JSON": fmt.Sprintf(`
-{ 
+	{ 
         "layer1" : {
             "url" : "%s",
             "live" : false,
@@ -55,10 +56,10 @@ func (n *ContractDeployer) Start() error {
             "accounts": [ "%s" ]
         }
     }
-`, n.cfg.l1HTTPURL, n.cfg.privateKey),
+`, n.cfg.L1HTTPURL, n.cfg.PrivateKey),
 	}
 
-	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.dockerImage, cmds, ports, envs, nil, nil)
+	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.L1DeployerImage, cmds, ports, envs, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -66,12 +67,17 @@ func (n *ContractDeployer) Start() error {
 	return nil
 }
 
-func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, error) {
+func (n *ContractDeployer) RetrieveL1ContractAddresses() (*config.NetworkInputConfig, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return nil, err
 	}
-	defer cli.Close()
+	defer func(cli *client.Client) {
+		err := cli.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(cli)
 
 	// make sure the container has finished execution (3 minutes allows time for L1 transactions to be mined)
 	err = docker.WaitForContainerToFinish(n.containerID, 3*time.Minute)
@@ -80,7 +86,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	}
 
 	tailSize := "3"
-	if n.cfg.debugEnabled {
+	if n.cfg.DebugNamespaceEnabled {
 		tailSize = "4"
 	}
 
@@ -110,7 +116,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 
 	lines := strings.Split(output, "\n")
 
-	if n.cfg.debugEnabled {
+	if n.cfg.DebugNamespaceEnabled {
 		// remove debugger lines
 		lines = lines[:len(lines)-2]
 	}
@@ -125,7 +131,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	}
 	l1BlockHash := readValue("L1Start", lines[2])
 
-	return &node.NetworkConfig{
+	return &config.NetworkInputConfig{
 		ManagementContractAddress: managementAddr,
 		MessageBusAddress:         messageBusAddr,
 		L1StartHash:               l1BlockHash,

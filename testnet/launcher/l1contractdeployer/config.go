@@ -1,10 +1,7 @@
 package l1contractdeployer
 
-// Option is a function that applies configs to a Config Object
-type Option = func(c *Config)
-
 // Config holds the properties that configure the package
-type Config struct {
+type L struct {
 	l1HTTPURL    string
 	privateKey   string
 	dockerImage  string

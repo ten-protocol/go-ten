@@ -64,6 +64,7 @@ const (
 	GethWebsocketPortFlag         = "gethWebsocketPort"
 	GethPrefundedAddressesFlag    = "gethPrefundedAddresses"
 	GethNumNodesFlag              = "gethNumNodes"
+	GethImageFlag                 = "gethImage"
 	L1HTTPURLFlag                 = "l1HttpUrl"
 	L1DeployerImageFlag           = "l1DeployerImage"
 	ContractEnvsFileFlag          = "contractEnvsFile"
@@ -74,6 +75,10 @@ const (
 	L2HOCPrivateKeyFlag           = "l2HOCPrivateKey"
 	L2POCPrivateKeyFlag           = "l2POCPrivateKey"
 	FaucetFundingFlag             = "faucetFunding"
+	TenNodeHostFlag               = "tenNodeHost"
+	TenNodePortFlag               = "tenNodePort"
+	FaucetPortFlag                = "faucetPort"
+	FaucetImageFlag               = "faucetImage"
 )
 
 var FlagsByService = map[TypeConfig]map[string]bool{
@@ -182,7 +187,11 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		OverrideFlag: true,
 		ConfigFlag:   true,
 		//
-
+		GethHTTPPortFlag:           true,
+		GethWebsocketPortFlag:      true,
+		GethPrefundedAddressesFlag: true,
+		GethNumNodesFlag:           true,
+		GethImageFlag:              true,
 	},
 	L1Deployer: {
 		DryRunFlag:                true,
@@ -208,6 +217,17 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		L2HOCPrivateKeyFlag: true,
 		L2POCPrivateKeyFlag: true,
 		FaucetFundingFlag:   true,
+	},
+	Faucet: {
+		DryRunFlag:     true,
+		OverrideFlag:   true,
+		ConfigFlag:     true,
+		PrivateKeyFlag: true,
+		//
+		TenNodeHostFlag: true,
+		TenNodePortFlag: true,
+		FaucetPortFlag:  true,
+		FaucetImageFlag: true,
 	},
 }
 
@@ -274,7 +294,7 @@ func FlagUsageMap() map[string]string {
 		EnclaveRPCTimeoutFlag:         "The timeout for host <-> enclave RPC communication",
 		L1RPCTimeoutFlag:              "The timeout for connecting to, and communicating with, the Ethereum client",
 		P2pConnectionTimeoutFlag:      "The timeout for host <-> host P2P messaging",
-		PrivateKeyFlag:                "The private key for this node or deployer",
+		PrivateKeyFlag:                "The private key for this node, deployer or service",
 		L1StartHashFlag:               "The L1 block hash where the management contract was deployed",
 		MetricsEnabledFlag:            "Whether the metrics are enabled (Defaults to true)",
 		MetricsHTTPPortFlag:           "The port on which the metrics are served (Defaults to 0.0.0.0:14000)",
@@ -289,6 +309,7 @@ func FlagUsageMap() map[string]string {
 		GethWebsocketPortFlag:         "The port on which the Geth Websocket server is listening",
 		GethPrefundedAddressesFlag:    "The prefunded addresses for the Geth nodes",
 		GethNumNodesFlag:              "The number of Geth nodes to run",
+		GethImageFlag:                 "The docker image for the Geth node",
 		L1HTTPURLFlag:                 "Layer 1 network http RPC addr",
 		L1DeployerImageFlag:           "Docker image to run L1 deployer",
 		ContractEnvsFileFlag:          "If set, it will write the contract addresses to the file",
@@ -299,5 +320,9 @@ func FlagUsageMap() map[string]string {
 		L2HOCPrivateKeyFlag:           "Layer 2 HOC contract private key",
 		L2POCPrivateKeyFlag:           "Layer 2 POC contract private key",
 		FaucetFundingFlag:             "How much funds should the faucet account receive",
+		TenNodeHostFlag:               "The host of the TEN node for the faucet",
+		TenNodePortFlag:               "The port of the TEN node for the faucet",
+		FaucetPortFlag:                "The port on which the faucet service is listening",
+		FaucetImageFlag:               "The docker image for the faucet service",
 	}
 }

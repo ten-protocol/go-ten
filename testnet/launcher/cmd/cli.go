@@ -6,15 +6,10 @@ import (
 )
 
 // ParseConfig returns a NodeConfig based the cli params and defaults.
-func ParseConfig(confFiles map[string]string) (map[string]*config.NodeConfig, error) {
-	var configs = make(map[string]*config.NodeConfig)
-	for k, v := range confFiles {
-		inputCfg, err := config.LoadConfigFromFile(config.Node, v)
-		configs[k] = inputCfg.(*config.NodeConfig) // assert
-		if err != nil {
-			panic(fmt.Errorf("issues loading default and override config from file. Cause: %w", err))
-		}
+func ParseConfig(paths config.RunParams) (*config.TestnetConfig, error) {
+	inputCfg, err := config.LoadDefaultInputConfig(config.Node, paths)
+	if err != nil {
+		panic(fmt.Errorf("issues loading default and override config from file. Cause: %w", err))
 	}
-
-	return configs, nil
+	return inputCfg.(*config.TestnetConfig), nil // assert
 }

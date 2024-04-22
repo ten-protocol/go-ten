@@ -87,6 +87,16 @@ func (n *NodeConfig) SetNetwork(config *NetworkInputConfig) {
 	}
 }
 
+func (n *TestnetConfig) GetNetwork() *NetworkInputConfig {
+	return &n.Network
+}
+
+func (n *TestnetConfig) SetNetwork(config *NetworkInputConfig) {
+	if config != nil {
+		n.Network = *config
+	}
+}
+
 // GetConfigAsEnvVars returns a set of environment variables from overrides/flags in a NodeConfig that is valid for
 // a TypConfig (Host | Enclave)
 // This makes it easier to pass custom configurations to docker containers.

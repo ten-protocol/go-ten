@@ -3,6 +3,8 @@ package eth2network
 import (
 	"context"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/config"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,12 +15,12 @@ import (
 )
 
 type Eth2Network struct {
-	cfg *Config
+	cfg *config.Eth2NetworkConfig
 }
 
-func NewDockerEth2Network(cfg *Config) (*Eth2Network, error) {
+func NewDockerEth2Network(cfg *config.TestnetConfig) (*Eth2Network, error) {
 	return &Eth2Network{
-		cfg: cfg,
+		cfg: &cfg.Eth2Network,
 	}, nil // todo (@pedro) - add validation
 }
 
@@ -27,25 +29,25 @@ func (n *Eth2Network) Start() error {
 
 	cmds := []string{
 		"/home/obscuro/go-obscuro/integration/eth2network/main/main",
-		"--numNodes", "1",
+		"--numNodes", strconv.Itoa(n.cfg.GethNumNodes),
 	}
 
-	if len(n.cfg.prefundedAddrs) > 1 {
-		cmds = append(cmds, "-prefundedAddrs", strings.Join(n.cfg.prefundedAddrs, ","))
+	if len(n.cfg.GethPrefundedAddresses) > 1 {
+		cmds = append(cmds, "-prefundedAddrs", strings.Join(n.cfg.GethPrefundedAddresses, ","))
 	}
 
 	var exposedPorts []int
-	if n.cfg.gethHTTPPort != 0 {
-		cmds = append(cmds, "-gethHTTPStartPort", fmt.Sprintf("%d", n.cfg.gethHTTPPort))
-		exposedPorts = append(exposedPorts, n.cfg.gethHTTPPort)
+	if n.cfg.GethHTTPPort != 0 {
+		cmds = append(cmds, "-gethHTTPStartPort", fmt.Sprintf("%d", n.cfg.GethHTTPPort))
+		exposedPorts = append(exposedPorts, n.cfg.GethHTTPPort)
 	}
 
-	if n.cfg.gethWSPort != 0 {
-		cmds = append(cmds, "-gethWSStartPort", fmt.Sprintf("%d", n.cfg.gethWSPort))
-		exposedPorts = append(exposedPorts, n.cfg.gethWSPort)
+	if n.cfg.GethWebsocketPort != 0 {
+		cmds = append(cmds, "-gethWSStartPort", fmt.Sprintf("%d", n.cfg.GethWebsocketPort))
+		exposedPorts = append(exposedPorts, n.cfg.GethWebsocketPort)
 	}
 
-	_, err := docker.StartNewContainer("eth2network", "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest", cmds, exposedPorts, nil, nil, nil)
+	_, err := docker.StartNewContainer("eth2network", n.cfg.GethImage, cmds, exposedPorts, nil, nil, nil)
 	return err
 }
 
@@ -57,7 +59,7 @@ func (n *Eth2Network) IsReady() error {
 
 	// retry the connection
 	err = retry.Do(func() error {
-		dial, err = ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.cfg.gethHTTPPort))
+		dial, err = ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.cfg.GethHTTPPort))
 		if err != nil {
 			return err
 		}

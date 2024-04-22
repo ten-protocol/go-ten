@@ -171,6 +171,16 @@ func setupFlagsByType(fs *flag.FlagSet, t TypeConfig) error {
 			SetupFlagsFromStruct(&EnclaveInputConfig{}, fs, flagUsageMap)
 			SetupFlagsFromStruct(&NodeConfig{}, fs, flagUsageMap)
 		}
+	case Testnet:
+		{
+			SetupFlagsFromStruct(&HostInputConfig{}, fs, flagUsageMap)
+			SetupFlagsFromStruct(&EnclaveInputConfig{}, fs, flagUsageMap)
+			SetupFlagsFromStruct(&NodeConfig{}, fs, flagUsageMap)
+			SetupFlagsFromStruct(&Eth2NetworkConfig{}, fs, flagUsageMap)
+			SetupFlagsFromStruct(&L1ContractDeployerConfig{}, fs, flagUsageMap)
+			SetupFlagsFromStruct(&L2ContractDeployerConfig{}, fs, flagUsageMap)
+
+		}
 	default:
 		return fmt.Errorf("unknown TypeConfig %s", t.String())
 	}

@@ -1,6 +1,6 @@
 eth2Network:
-  gethHTTPPort:        8025
-  gethWebsocketPort:          9000
+  gethHTTPPort:            8025
+  gethWebsocketPort:       9000
   # List of prefunded addresses (can dynamic to)
   # contract deployment pk, sequencer pk, validator pk, bridge admin pk
   gethPrefundedAddresses:
@@ -9,89 +9,83 @@ eth2Network:
     - "0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A"
     - "0xE09a37ABc1A63441404007019E5BC7517bE2c43f"
   gethNumNodes:            1
+  gethImage:               "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest"
 
 l1ContractDeployer:
-  l1HTTPUrl:           "http://eth2network:8025" # URL of the L1 HTTP API
-  privateKey:          "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb" # Private key of the L1 deployer
-  l1DeployerImage:     "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
-  contractEnvsFile:    ""
+  l1HTTPUrl:                 "http://eth2network:8025" # URL of the L1 HTTP API
+  privateKey:                "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb" # Private key of the L1 deployer
+  l1DeployerImage:           "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
+  contractEnvsFile:          ""
   debugNamespaceEnabledFlag: false
 
+networkConfig:
+  l1StartHash: # Calculated by L1 Contract Deployer
+  managementContractAddress: "0x51D43a3Ca257584E770B6188232b199E76B022A2"
+  messageBusAddress:         "0xDaBD89EEA0f08B602Ec509c3C608Cb8ED095249C"
+  sequencerID:               "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
+
 nodes:
-  sequencer:
-    networkConfig: # NETWORK - There are fixed by your network you should not change
-      l1StartHash: # Calculated by L1 Contract Deployer
-      managementContractAddress: "0x51D43a3Ca257584E770B6188232b199E76B022A2"
-      messageBusAddress: "0xDaBD89EEA0f08B602Ec509c3C608Cb8ED095249C"
-      sequencerID: "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
+  - sequencer:
+      nodeDetails:
+        nodeName:            "sequencer" # optional (custom short name - internal ref only)
+        hostID:              "0x0654D8B60033144D567f25bF41baC1FB0D60F23B" # must override with public key
+        privateKey:          "8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99" # must override with private key matching hostID/public key
+        l1WebsocketURL:      "ws://eth2network:9000" # must override with L1 node WS (geth/infura etc.)
+        p2pPublicAddress:    "sequencer-host:15000" # must override be sure this address:port is public accessible
+        p2pBindAddress:      "0.0.0.0:15000"
+        clientRPCPortHTTP:   80
+        clientRPCPortWS:     81
+        enclaveRPCAddresses: [ "127.0.0.1:11000" ]
 
-    nodeDetails: # Individual
-      nodeName: "sequencer" # optional (custom short name - internal ref only)
-      hostID: "0x0654D8B60033144D567f25bF41baC1FB0D60F23B" # must override with public key
-      privateKey: "8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99" # must override with private key matching hostID/public key
-      l1WebsocketURL: "ws://eth2network:9000" # must override with L1 node WS (geth/infura etc.)
-      p2pPublicAddress: "sequencer-host:15000" # must override be sure this address:port is public accessible
-      p2pBindAddress: "0.0.0.0:15000"
-      clientRPCPortHTTP: 80
-      clientRPCPortWS: 81
-      enclaveRPCAddresses: [ "127.0.0.1:11000" ]
+      nodeSettings:
+        nodeType:              "sequencer"
+        isSGXEnabled:          false # should be true for ITN
+        isGenesis:             true
+        pccsAddr:              "" # optional for attestation
+        debugNamespaceEnabled: true
+        logLevel:              4
+        profilerEnabled:       false
+        useInMemoryDB:         true # useInMemoryDB for host
+        postgresDBHost:        "" # only if `useInMemoryDB` set to false
 
-    nodeSettings:
-      nodeType: "sequencer"
-      isSGXEnabled: false # should be true for ITN
-      isGenesis: true
-      pccsAddr: "" # optional for attestation
-      debugNamespaceEnabled: true
-      logLevel: 4
-      profilerEnabled: false
-      useInMemoryDB: true # useInMemoryDB for host
-      postgresDBHost: "" # only if `useInMemoryDB` set to false
+      nodeImages:
+        hostImage:            "testnetobscuronet.azurecr.io/obscuronet/host:latest" # provided
+        enclaveImage:         "testnetobscuronet.azurecr.io/obscuronet/enclave:latest" # provided
+        edgelessDBImage:      "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
 
-    nodeImages:
-      hostImage: "testnetobscuronet.azurecr.io/obscuronet/host:latest" # provided
-      enclaveImage: "testnetobscuronet.azurecr.io/obscuronet/enclave:latest" # provided
-      edgelessDBImage: "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
-  validator:
-    networkConfig: # NETWORK - There are fixed by your network you should not change
-      l1StartHash: # Calculated by L1 Contract Deployer
-      managementContractAddress: "0x51D43a3Ca257584E770B6188232b199E76B022A2"
-      messageBusAddress: "0xDaBD89EEA0f08B602Ec509c3C608Cb8ED095249C"
-      sequencerID: "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
+  - validator:
+      nodeDetails:
+        nodeName:             "validator" # optional (custom short name - internal ref only)
+        hostID:               "0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A" # must override with public key
+        privateKey:           "ebca545772d6438bbbe1a16afbed455733eccf96157b52384f1722ea65ccfa89" # must override with private key matching hostID/public key
+        l1WebsocketURL:       "ws://eth2network:9000" # must override with L1 node WS (geth/infura etc.)
+        p2pPublicAddress:     "validator-host:15010" # must override be sure this address:port is public accessible
+        p2pBindAddress:       "0.0.0.0:15010"
+        clientRPCPortHTTP:    13010
+        clientRPCPortWS:      13011
+        enclaveRPCAddresses:  [ "127.0.0.1:11010" ]
 
-    nodeDetails: # Individual
-      nodeName: "validator" # optional (custom short name - internal ref only)
-      hostID: "0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A" # must override with public key
-      privateKey: "ebca545772d6438bbbe1a16afbed455733eccf96157b52384f1722ea65ccfa89" # must override with private key matching hostID/public key
-      l1WebsocketURL: "ws://eth2network:9000" # must override with L1 node WS (geth/infura etc.)
-      p2pPublicAddress: "validator-host:15010" # must override be sure this address:port is public accessible
-      p2pBindAddress: "0.0.0.0:15010"
-      clientRPCPortHTTP: 13010
-      clientRPCPortWS: 13011
-      enclaveRPCAddresses: [ "127.0.0.1:11010" ]
+      nodeSettings:
+        nodeType:              "validator"
+        isSGXEnabled:          false # should be true for ITN
+        isGenesis:             false
+        pccsAddr:              "" # optional for attestation
+        debugNamespaceEnabled: true
+        logLevel:              4
+        profilerEnabled:       false
+        useInMemoryDB:         true # useInMemoryDB for host
+        postgresDBHost:        "" # only if `useInMemoryDB` set to false
 
-    nodeSettings:
-      nodeType: "validator"
-      isSGXEnabled: false # should be true for ITN
-      isGenesis: false
-      pccsAddr: "" # optional for attestation
-      debugNamespaceEnabled: true
-      logLevel: 4
-      profilerEnabled: false
-      useInMemoryDB: true # useInMemoryDB for host
-      postgresDBHost: "" # only if `useInMemoryDB` set to false
-
-    nodeImages:
-      hostImage: "testnetobscuronet.azurecr.io/obscuronet/host:latest" # provided
-      enclaveImage: "testnetobscuronet.azurecr.io/obscuronet/enclave:latest" # provided
-      edgelessDBImage: "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
+      nodeImages:
+        hostImage:             "testnetobscuronet.azurecr.io/obscuronet/host:latest" # provided
+        enclaveImage:          "testnetobscuronet.azurecr.io/obscuronet/enclave:latest" # provided
+        edgelessDBImage:       "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
 
 l2ContractDeployer:
   l1HTTPURL:                  "http://eth2network:8025" # URL of the L1 HTTP API
   l1PrivateKey:               "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
   l2DeployerImage:            "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
   l2WebsocketURL:             "sequencer-host:81"
-  managementContractAddress:  "0x51D43a3Ca257584E770B6188232b199E76B022A2"
-  messageBusAddress:          "0xDaBD89EEA0f08B602Ec509c3C608Cb8ED095249C"
   l2PrivateKey:               "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"
   l2HOCPrivateKey:            "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
   l2POCPrivateKey:            "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
