@@ -20,7 +20,7 @@ export const columns: ColumnDef<Batch>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            #{formatNumber(row.getValue("number"))}
+            #{Number(row.getValue("number"))}
           </span>
         </div>
       );

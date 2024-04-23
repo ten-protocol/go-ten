@@ -1,5 +1,5 @@
 import TruncatedAddress from "../common/truncated-address";
-import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
+import { formatTimeAgo } from "@/src/lib/utils";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
 
@@ -13,7 +13,7 @@ export function RecentBatches({ batches }: { batches: any }) {
           </Avatar>
           <div className="ml-4 space-y-1">
             <p className="text-sm font-medium leading-none">
-              #{formatNumber(batch?.number)}
+              #{Number(batch?.number)}
             </p>
             <p className="text-sm text-muted-foreground word-break-all">
               {formatTimeAgo(batch?.timestamp)}

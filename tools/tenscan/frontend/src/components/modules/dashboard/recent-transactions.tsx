@@ -2,7 +2,7 @@ import TruncatedAddress from "../common/truncated-address";
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
 import { Badge } from "../../ui/badge";
-import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
+import { formatTimeAgo } from "@/src/lib/utils";
 
 export function RecentTransactions({ transactions }: { transactions: any }) {
   return (
@@ -15,7 +15,7 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
             </Avatar>
             <div className="ml-4 space-y-1">
               <p className="text-sm font-medium leading-none">
-                #{formatNumber(transaction?.BatchHeight)}
+                #{Number(transaction?.BatchHeight)}
               </p>
               <p className="text-sm text-muted-foreground word-break-all">
                 {formatTimeAgo(transaction?.BatchTimestamp)}

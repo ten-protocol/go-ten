@@ -22,7 +22,7 @@ export const columns: ColumnDef<Block>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {formatNumber(blockHeader?.number)}
+            {Number(blockHeader?.number)}
           </span>
         </div>
       );

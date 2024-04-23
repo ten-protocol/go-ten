@@ -15,7 +15,7 @@ export function BatchDetailsComponent({
       <KeyValueList>
         <KeyValueItem
           label="Batch Number"
-          value={"#" + formatNumber(batchDetails?.Header?.number)}
+          value={"#" + Number(batchDetails?.Header?.number)}
         />
         <KeyValueItem
           label="Hash"
@@ -79,7 +79,7 @@ export function BatchDetailsComponent({
         />
         <KeyValueItem
           label="Inbound Cross Chain Height"
-          value={formatNumber(batchDetails?.Header?.inboundCrossChainHeight)}
+          value={Number(batchDetails?.Header?.inboundCrossChainHeight)}
         />
         <KeyValueItem
           label="Transfers Tree"
