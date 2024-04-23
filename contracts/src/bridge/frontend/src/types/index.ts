@@ -121,3 +121,17 @@ export interface ResponseDataInterface<T> {
   pagination?: PaginationInterface;
   success: boolean;
 }
+
+export interface WalletConnectionContextType {}
+
+export interface Props {
+  children: React.ReactNode;
+}
+
+export interface State {
+  hasError: boolean;
+}
+
+export interface WalletConnectionProviderProps {
+  children: React.ReactNode;
+}
