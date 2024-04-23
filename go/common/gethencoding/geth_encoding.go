@@ -310,7 +310,7 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 // Special care must be taken to maintain a valid chain of these converted headers.
 func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(ctx context.Context, h *common.BatchHeader) (*types.Header, error) {
 	// wrap in a caching layer
-	return common.GetCachedValue(enc.gethHeaderCache, enc.logger, h.Hash(), func(a any) (*types.Header, error) {
+	return common.GetCachedValue(ctx, enc.gethHeaderCache, enc.logger, h.Hash(), func(a any) (*types.Header, error) {
 		// deterministically calculate the private randomness that will be exposed to the EVM
 		secret, err := enc.storage.FetchSecret(ctx)
 		if err != nil {

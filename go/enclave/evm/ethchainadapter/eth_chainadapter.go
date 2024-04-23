@@ -3,7 +3,6 @@ package ethchainadapter
 import (
 	"context"
 	"math/big"
-	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -12,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/enclave/components"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -21,25 +21,25 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-var deadline = 5 * time.Second
-
 // EthChainAdapter is an obscuro wrapper around the ethereum core.Blockchain object
 type EthChainAdapter struct {
 	newHeadChan   chan gethcore.ChainHeadEvent
 	batchRegistry components.BatchRegistry
 	gethEncoding  gethencoding.EncodingService
 	storage       storage.Storage
+	config        config.EnclaveConfig
 	chainID       *big.Int
 	logger        gethlog.Logger
 }
 
 // NewEthChainAdapter returns a new instance
-func NewEthChainAdapter(chainID *big.Int, batchRegistry components.BatchRegistry, storage storage.Storage, gethEncoding gethencoding.EncodingService, logger gethlog.Logger) *EthChainAdapter {
+func NewEthChainAdapter(chainID *big.Int, batchRegistry components.BatchRegistry, storage storage.Storage, gethEncoding gethencoding.EncodingService, config config.EnclaveConfig, logger gethlog.Logger) *EthChainAdapter {
 	return &EthChainAdapter{
 		newHeadChan:   make(chan gethcore.ChainHeadEvent),
 		batchRegistry: batchRegistry,
 		storage:       storage,
 		gethEncoding:  gethEncoding,
+		config:        config,
 		chainID:       chainID,
 		logger:        logger,
 	}
@@ -56,7 +56,7 @@ func (e *EthChainAdapter) CurrentBlock() *gethtypes.Header {
 	if currentBatchSeqNo == nil {
 		return nil
 	}
-	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), e.config.RPCTimeout)
 	defer cancelCtx()
 
 	currentBatch, err := e.storage.FetchBatchBySeqNo(ctx, currentBatchSeqNo.Uint64())
@@ -92,7 +92,7 @@ func (e *EthChainAdapter) SubscribeChainHeadEvent(ch chan<- gethcore.ChainHeadEv
 // GetBlock retrieves a specific block, used during pool resets.
 func (e *EthChainAdapter) GetBlock(_ gethcommon.Hash, number uint64) *gethtypes.Block {
 	var batch *core.Batch
-	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), e.config.RPCTimeout)
 	defer cancelCtx()
 
 	// to avoid a costly select to the db, check whether the batches requested are the last ones which are cached
@@ -136,7 +136,7 @@ func (e *EthChainAdapter) StateAt(root gethcommon.Hash) (*state.StateDB, error) 
 }
 
 func (e *EthChainAdapter) IngestNewBlock(batch *core.Batch) error {
-	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), e.config.RPCTimeout)
 	defer cancelCtx()
 	convertedBlock, err := e.gethEncoding.CreateEthBlockFromBatch(ctx, batch)
 	if err != nil {

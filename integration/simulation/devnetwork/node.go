@@ -2,6 +2,7 @@ package devnetwork
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 
@@ -215,6 +216,7 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		GasBatchExecutionLimit:    defaultCfg.GasBatchExecutionLimit,
 		GasLocalExecutionCapFlag:  defaultCfg.GasLocalExecutionCapFlag,
 		GasPaymentAddress:         defaultCfg.GasPaymentAddress,
+		RPCTimeout:                5 * time.Second,
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }

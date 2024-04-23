@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/config"
+
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -28,8 +30,8 @@ import (
 )
 
 type obscuroChain struct {
-	chainConfig *params.ChainConfig
-
+	chainConfig         *params.ChainConfig
+	config              config.EnclaveConfig
 	storage             storage.Storage
 	gethEncodingService gethencoding.EncodingService
 	genesis             *genesis.Genesis
@@ -42,6 +44,7 @@ type obscuroChain struct {
 
 func NewChain(
 	storage storage.Storage,
+	config config.EnclaveConfig,
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
 	genesis *genesis.Genesis,
@@ -51,6 +54,7 @@ func NewChain(
 ) ObscuroChain {
 	return &obscuroChain{
 		storage:             storage,
+		config:              config,
 		gethEncodingService: gethEncodingService,
 		chainConfig:         chainConfig,
 		logger:              logger,
@@ -142,7 +146,7 @@ func (oc *obscuroChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Tra
 			batch.Header.Root.Hex())
 	}})
 
-	result, err := evm.ExecuteObsCall(ctx, callMsg, blockState, batch.Header, oc.storage, oc.gethEncodingService, oc.chainConfig, oc.gasEstimationCap, oc.logger)
+	result, err := evm.ExecuteObsCall(ctx, callMsg, blockState, batch.Header, oc.storage, oc.gethEncodingService, oc.chainConfig, oc.gasEstimationCap, oc.config, oc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		return result, err
@@ -186,7 +190,7 @@ func (oc *obscuroChain) GetChainStateAtTransaction(ctx context.Context, batch *c
 		}
 		txContext := gethcore.NewEVMTxContext(msg)
 
-		chain := evm.NewObscuroChainContext(oc.storage, oc.gethEncodingService, oc.logger)
+		chain := evm.NewObscuroChainContext(oc.storage, oc.gethEncodingService, oc.config, oc.logger)
 
 		blockHeader, err := oc.gethEncodingService.CreateEthHeaderForBatch(ctx, batch.Header)
 		if err != nil {

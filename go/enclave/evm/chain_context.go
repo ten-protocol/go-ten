@@ -3,8 +3,8 @@ package evm
 import (
 	"context"
 	"errors"
-	"time"
 
+	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -19,14 +19,16 @@ import (
 // ObscuroChainContext - basic implementation of the ChainContext needed for the EVM integration
 type ObscuroChainContext struct {
 	storage             storage.Storage
+	config              config.EnclaveConfig
 	gethEncodingService gethencoding.EncodingService
 	logger              gethlog.Logger
 }
 
 // NewObscuroChainContext returns a new instance of the ObscuroChainContext given a storage ( and logger )
-func NewObscuroChainContext(storage storage.Storage, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger) *ObscuroChainContext {
+func NewObscuroChainContext(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config config.EnclaveConfig, logger gethlog.Logger) *ObscuroChainContext {
 	return &ObscuroChainContext{
 		storage:             storage,
+		config:              config,
 		gethEncodingService: gethEncodingService,
 		logger:              logger,
 	}
@@ -36,10 +38,8 @@ func (occ *ObscuroChainContext) Engine() consensus.Engine {
 	return &ObscuroNoOpConsensusEngine{logger: occ.logger}
 }
 
-var deadline = 5 * time.Second
-
 func (occ *ObscuroChainContext) GetHeader(hash common.Hash, _ uint64) *types.Header {
-	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), occ.config.RPCTimeout)
 	defer cancelCtx()
 
 	batch, err := occ.storage.FetchBatch(ctx, hash)

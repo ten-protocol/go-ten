@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	_ "unsafe"
+
+	"github.com/ten-protocol/go-ten/go/config"
 
 	// unsafe package imported in order to link to a private function in go-ethereum.
 	// This allows us to customize the message generated from a signed transaction and inject custom gas logic.
-	_ "unsafe"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -42,12 +44,13 @@ func ExecuteTransactions(
 	storage storage.Storage,
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
+	config config.EnclaveConfig,
 	fromTxIndex int,
 	noBaseFee bool,
 	batchGasLimit uint64,
 	logger gethlog.Logger,
 ) map[common.TxHash]interface{} { // todo - return error
-	chain, vmCfg := initParams(storage, gethEncodingService, noBaseFee, logger)
+	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, logger)
 	gp := gethcore.GasPool(batchGasLimit)
 	zero := uint64(0)
 	usedGas := &zero
@@ -240,6 +243,7 @@ func ExecuteObsCall(
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
 	gasEstimationCap uint64,
+	config config.EnclaveConfig,
 	logger gethlog.Logger,
 ) (*gethcore.ExecutionResult, error) {
 	noBaseFee := true
@@ -251,7 +255,7 @@ func ExecuteObsCall(
 
 	gp := gethcore.GasPool(gasEstimationCap)
 	gp.SetGas(gasEstimationCap)
-	chain, vmCfg := initParams(storage, gethEncodingService, noBaseFee, nil)
+	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, nil)
 
 	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
@@ -288,11 +292,11 @@ func ExecuteObsCall(
 	return result, nil
 }
 
-func initParams(storage storage.Storage, gethEncodingService gethencoding.EncodingService, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {
+func initParams(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config config.EnclaveConfig, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {
 	vmCfg := vm.Config{
 		NoBaseFee: noBaseFee,
 	}
-	return NewObscuroChainContext(storage, gethEncodingService, l), vmCfg
+	return NewObscuroChainContext(storage, gethEncodingService, config, l), vmCfg
 }
 
 func newErrorWithReasonAndCode(err error) error {

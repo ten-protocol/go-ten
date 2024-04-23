@@ -10,9 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 )
 
-// todo - adjust this value
-var deadline = 5 * time.Second
-
 // ---- Implement the geth Batch interface, re-using ideas and types from geth's memorydb.go ----
 
 // keyvalue is a key-value tuple that can be flagged with a deletion field to allow creating database write batches.
@@ -28,6 +25,7 @@ type statement struct {
 }
 
 type dbTransaction struct {
+	timeout    time.Duration
 	db         EnclaveDB
 	writes     []keyvalue
 	statements []statement
@@ -67,7 +65,7 @@ func (b *dbTransaction) ValueSize() int {
 
 // Write executes a batch statement with all the updates
 func (b *dbTransaction) Write() error {
-	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), b.timeout)
 	defer cancelCtx()
 	return b.WriteCtx(ctx)
 }

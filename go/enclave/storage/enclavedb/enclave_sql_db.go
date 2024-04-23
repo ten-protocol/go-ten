@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/go/config"
+
 	"github.com/ethereum/go-ethereum/ethdb"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
@@ -14,6 +16,7 @@ import (
 // should not be used directly outside the db package
 type enclaveDB struct {
 	sqldb  *sql.DB
+	config config.EnclaveConfig
 	logger gethlog.Logger
 }
 
@@ -52,8 +55,8 @@ func (sqlDB *enclaveDB) NewSnapshot() (ethdb.Snapshot, error) {
 	panic("implement me")
 }
 
-func NewEnclaveDB(db *sql.DB, logger gethlog.Logger) (EnclaveDB, error) {
-	return &enclaveDB{sqldb: db, logger: logger}, nil
+func NewEnclaveDB(db *sql.DB, config config.EnclaveConfig, logger gethlog.Logger) (EnclaveDB, error) {
+	return &enclaveDB{sqldb: db, config: config, logger: logger}, nil
 }
 
 func (sqlDB *enclaveDB) GetSQLDB() *sql.DB {
@@ -65,25 +68,25 @@ func (sqlDB *enclaveDB) BeginTx(ctx context.Context) (*sql.Tx, error) {
 }
 
 func (sqlDB *enclaveDB) Has(key []byte) (bool, error) {
-	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
 	return Has(ctx, sqlDB.sqldb, key)
 }
 
 func (sqlDB *enclaveDB) Get(key []byte) ([]byte, error) {
-	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
 	return Get(ctx, sqlDB.sqldb, key)
 }
 
 func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
-	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
 	return Put(ctx, sqlDB.sqldb, key, value)
 }
 
 func (sqlDB *enclaveDB) Delete(key []byte) error {
-	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
 	return Delete(ctx, sqlDB.sqldb, key)
 }
@@ -97,20 +100,21 @@ func (sqlDB *enclaveDB) Close() error {
 
 func (sqlDB *enclaveDB) NewDBTransaction() *dbTransaction {
 	return &dbTransaction{
-		db: sqlDB,
+		timeout: sqlDB.config.RPCTimeout,
+		db:      sqlDB,
 	}
 }
 
 func (sqlDB *enclaveDB) NewBatch() ethdb.Batch {
 	return &dbTransaction{
-		db: sqlDB,
+		timeout: sqlDB.config.RPCTimeout,
+		db:      sqlDB,
 	}
 }
 
 func (sqlDB *enclaveDB) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
-	ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
-	defer cancelCtx()
-	return NewIterator(ctx, sqlDB.sqldb, prefix, start)
+	// we can't use a timeout context here, because the cleanup function must be called
+	return NewIterator(context.Background(), sqlDB.sqldb, prefix, start)
 }
 
 func (sqlDB *enclaveDB) Stat(_ string) (string, error) {

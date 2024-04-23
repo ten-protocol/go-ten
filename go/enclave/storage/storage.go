@@ -140,7 +140,7 @@ func (s *storageImpl) FetchCurrentSequencerNo(ctx context.Context) (*big.Int, er
 
 func (s *storageImpl) FetchBatch(ctx context.Context, hash common.L2BatchHash) (*core.Batch, error) {
 	defer s.logDuration("FetchBatch", measure.NewStopwatch())
-	seqNo, err := common.GetCachedValue(s.seqCacheByHash, s.logger, hash, func(v any) (*big.Int, error) {
+	seqNo, err := common.GetCachedValue(ctx, s.seqCacheByHash, s.logger, hash, func(v any) (*big.Int, error) {
 		batch, err := enclavedb.ReadBatchByHash(ctx, s.db.GetSQLDB(), v.(common.L2BatchHash))
 		if err != nil {
 			return nil, err
@@ -174,7 +174,7 @@ func (s *storageImpl) FetchBatchHeader(ctx context.Context, hash common.L2BatchH
 func (s *storageImpl) FetchBatchByHeight(ctx context.Context, height uint64) (*core.Batch, error) {
 	defer s.logDuration("FetchBatchByHeight", measure.NewStopwatch())
 	// the key is (height+1), because for some reason it doesn't like a key of 0
-	seqNo, err := common.GetCachedValue(s.seqCacheByHeight, s.logger, height+1, func(h any) (*big.Int, error) {
+	seqNo, err := common.GetCachedValue(ctx, s.seqCacheByHeight, s.logger, height+1, func(h any) (*big.Int, error) {
 		batch, err := enclavedb.ReadCanonicalBatchByHeight(ctx, s.db.GetSQLDB(), height)
 		if err != nil {
 			return nil, err
@@ -211,14 +211,14 @@ func (s *storageImpl) StoreBlock(ctx context.Context, b *types.Block, chainFork 
 		return fmt.Errorf("3. could not store block %s. Cause: %w", b.Hash(), err)
 	}
 
-	common.CacheValue(s.blockCache, s.logger, b.Hash(), b)
+	common.CacheValue(ctx, s.blockCache, s.logger, b.Hash(), b)
 
 	return nil
 }
 
 func (s *storageImpl) FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Block, error) {
 	defer s.logDuration("FetchBlock", measure.NewStopwatch())
-	return common.GetCachedValue(s.blockCache, s.logger, blockHash, func(hash any) (*types.Block, error) {
+	return common.GetCachedValue(ctx, s.blockCache, s.logger, blockHash, func(hash any) (*types.Block, error) {
 		return enclavedb.FetchBlock(ctx, s.db.GetSQLDB(), hash.(common.L1BlockHash))
 	})
 }
@@ -385,7 +385,7 @@ func (s *storageImpl) StoreAttestedKey(ctx context.Context, aggregator gethcommo
 
 func (s *storageImpl) FetchBatchBySeqNo(ctx context.Context, seqNum uint64) (*core.Batch, error) {
 	defer s.logDuration("FetchBatchBySeqNo", measure.NewStopwatch())
-	b, err := common.GetCachedValue(s.batchCacheBySeqNo, s.logger, seqNum, func(seq any) (*core.Batch, error) {
+	b, err := common.GetCachedValue(ctx, s.batchCacheBySeqNo, s.logger, seqNum, func(seq any) (*core.Batch, error) {
 		return enclavedb.ReadBatchBySeqNo(ctx, s.db.GetSQLDB(), seqNum)
 	})
 	if err == nil && b == nil {
@@ -425,11 +425,11 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 		return fmt.Errorf("could not commit batch %w", err)
 	}
 
-	common.CacheValue(s.batchCacheBySeqNo, s.logger, batch.SeqNo().Uint64(), batch)
-	common.CacheValue(s.seqCacheByHash, s.logger, batch.Hash(), batch.SeqNo())
+	common.CacheValue(ctx, s.batchCacheBySeqNo, s.logger, batch.SeqNo().Uint64(), batch)
+	common.CacheValue(ctx, s.seqCacheByHash, s.logger, batch.Hash(), batch.SeqNo())
 	// note: the key is (height+1), because for some reason it doesn't like a key of 0
 	// should always contain the canonical batch because the cache is overwritten by each new batch after a reorg
-	common.CacheValue(s.seqCacheByHeight, s.logger, batch.NumberU64()+1, batch.SeqNo())
+	common.CacheValue(ctx, s.seqCacheByHeight, s.logger, batch.NumberU64()+1, batch.SeqNo())
 	return nil
 }
 

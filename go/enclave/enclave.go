@@ -168,7 +168,7 @@ func NewEnclave(
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	batchExecutor := components.NewBatchExecutor(storage, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
+	batchExecutor := components.NewBatchExecutor(storage, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	registry := components.NewBatchRegistry(storage, logger)
 	rProducer := components.NewRollupProducer(enclaveKey.EnclaveID(), storage, registry, logger)
@@ -179,7 +179,7 @@ func NewEnclave(
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKey.EnclaveID(), storage, logger)
 
-	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, gethEncodingService, logger)
+	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, gethEncodingService, *config, logger)
 	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
@@ -217,6 +217,7 @@ func NewEnclave(
 
 	chain := l2chain.NewChain(
 		storage,
+		*config,
 		gethEncodingService,
 		chainConfig,
 		genesis,
@@ -373,8 +374,6 @@ func (e *enclaveImpl) streamEventsForNewHeadBatch(ctx context.Context, batch *co
 	}
 }
 
-var deadline = 2 * time.Second
-
 func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func()) {
 	l2UpdatesChannel := make(chan common.StreamL2UpdatesResponse, 100)
 
@@ -386,10 +385,7 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 	e.registry.SubscribeForExecutedBatches(func(batch *core.Batch, receipts types.Receipts) {
 		e.sendBatch(batch, l2UpdatesChannel)
 		if receipts != nil {
-			ctx, cancelCtx := context.WithTimeout(context.Background(), deadline)
-			defer cancelCtx()
-
-			e.streamEventsForNewHeadBatch(ctx, batch, receipts, l2UpdatesChannel)
+			e.streamEventsForNewHeadBatch(context.Background(), batch, receipts, l2UpdatesChannel)
 		}
 	})
 

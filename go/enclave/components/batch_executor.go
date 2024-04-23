@@ -9,6 +9,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/ten-protocol/go-ten/go/config"
+
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
@@ -37,6 +39,7 @@ var ErrNoTransactionsToProcess = fmt.Errorf("no transactions to process")
 // batchExecutor - the component responsible for executing batches
 type batchExecutor struct {
 	storage              storage.Storage
+	config               config.EnclaveConfig
 	gethEncodingService  gethencoding.EncodingService
 	crossChainProcessors *crosschain.Processors
 	genesis              *genesis.Genesis
@@ -52,6 +55,7 @@ type batchExecutor struct {
 
 func NewBatchExecutor(
 	storage storage.Storage,
+	config config.EnclaveConfig,
 	gethEncodingService gethencoding.EncodingService,
 	cc *crosschain.Processors,
 	genesis *genesis.Genesis,
@@ -62,6 +66,7 @@ func NewBatchExecutor(
 ) BatchExecutor {
 	return &batchExecutor{
 		storage:              storage,
+		config:               config,
 		gethEncodingService:  gethEncodingService,
 		crossChainProcessors: cc,
 		genesis:              genesis,
@@ -419,6 +424,7 @@ func (executor *batchExecutor) processTransactions(
 		executor.storage,
 		executor.gethEncodingService,
 		cc,
+		executor.config,
 		tCount,
 		noBaseFee,
 		executor.batchGasLimit,

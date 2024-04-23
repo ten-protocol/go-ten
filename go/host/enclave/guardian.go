@@ -197,7 +197,8 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	if g.hostData.IsSequencer || !g.state.IsUpToDate() {
 		return // ignore batches until we're up-to-date
 	}
-	err := g.submitL2Batch(context.TODO(), batch)
+	// todo - @matt - does it make sense to use a timeout context?
+	err := g.submitL2Batch(context.Background(), batch)
 	if err != nil {
 		g.logger.Error("Error submitting batch to enclave", log.ErrKey, err)
 	}
