@@ -1,6 +1,7 @@
 package components
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -35,7 +36,7 @@ type l1BlockProcessor struct {
 
 func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, gasOracle gas.Oracle, logger gethlog.Logger) L1BlockProcessor {
 	var l1BlockHash *common.L1BlockHash
-	head, err := storage.FetchHeadBlock()
+	head, err := storage.FetchHeadBlock(context.Background())
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			logger.Crit("Cannot fetch head block", log.ErrKey, err)
@@ -56,22 +57,22 @@ func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, gasOr
 	}
 }
 
-func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts) (*BlockIngestionType, error) {
+func (bp *l1BlockProcessor) Process(ctx context.Context, br *common.BlockAndReceipts) (*BlockIngestionType, error) {
 	defer core.LogMethodDuration(bp.logger, measure.NewStopwatch(), "L1 block processed", log.BlockHashKey, br.Block.Hash())
 
-	ingestion, err := bp.tryAndInsertBlock(br)
+	ingestion, err := bp.tryAndInsertBlock(ctx, br)
 	if err != nil {
 		return nil, err
 	}
 
 	if !ingestion.PreGenesis {
 		// This requires block to be stored first ... but can permanently fail a block
-		err = bp.crossChainProcessors.Remote.StoreCrossChainMessages(br.Block, *br.Receipts)
+		err = bp.crossChainProcessors.Remote.StoreCrossChainMessages(ctx, br.Block, *br.Receipts)
 		if err != nil {
 			return nil, errors.New("failed to process cross chain messages")
 		}
 
-		err = bp.crossChainProcessors.Remote.StoreCrossChainValueTransfers(br.Block, *br.Receipts)
+		err = bp.crossChainProcessors.Remote.StoreCrossChainValueTransfers(ctx, br.Block, *br.Receipts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process cross chain transfers. Cause: %w", err)
 		}
@@ -96,10 +97,10 @@ func (bp *l1BlockProcessor) HealthCheck() (bool, error) {
 	return true, nil
 }
 
-func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts) (*BlockIngestionType, error) {
+func (bp *l1BlockProcessor) tryAndInsertBlock(ctx context.Context, br *common.BlockAndReceipts) (*BlockIngestionType, error) {
 	block := br.Block
 
-	_, err := bp.storage.FetchBlock(block.Hash())
+	_, err := bp.storage.FetchBlock(ctx, block.Hash())
 	if err == nil {
 		return nil, errutil.ErrBlockAlreadyProcessed
 	}
@@ -109,7 +110,7 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts) (*Blo
 	}
 
 	// We insert the block into the L1 chain and store it.
-	ingestionType, err := bp.ingestBlock(block)
+	ingestionType, err := bp.ingestBlock(ctx, block)
 	if err != nil {
 		// Do not store the block if the L1 chain insertion failed
 		return nil, err
@@ -117,7 +118,7 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts) (*Blo
 	bp.logger.Trace("Block inserted successfully",
 		log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash(), "ingestionType", ingestionType)
 
-	err = bp.storage.StoreBlock(block, ingestionType.ChainFork)
+	err = bp.storage.StoreBlock(ctx, block, ingestionType.ChainFork)
 	if err != nil {
 		return nil, fmt.Errorf("1. could not store block. Cause: %w", err)
 	}
@@ -125,9 +126,9 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts) (*Blo
 	return ingestionType, nil
 }
 
-func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block) (*BlockIngestionType, error) {
+func (bp *l1BlockProcessor) ingestBlock(ctx context.Context, block *common.L1Block) (*BlockIngestionType, error) {
 	// todo (#1056) - this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
-	prevL1Head, err := bp.GetHead()
+	prevL1Head, err := bp.GetHead(ctx)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			// todo (@matt) - we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
@@ -137,7 +138,7 @@ func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block) (*BlockIngestionT
 	}
 	// we do a basic sanity check, comparing the received block to the head block on the chain
 	if block.ParentHash() != prevL1Head.Hash() {
-		chainFork, err := gethutil.LCA(block, prevL1Head, bp.storage)
+		chainFork, err := gethutil.LCA(ctx, block, prevL1Head, bp.storage)
 		if err != nil {
 			bp.logger.Trace("parent not found",
 				"blkHeight", block.NumberU64(), log.BlockHashKey, block.Hash(),
@@ -156,11 +157,11 @@ func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block) (*BlockIngestionT
 	return &BlockIngestionType{ChainFork: nil, PreGenesis: false}, nil
 }
 
-func (bp *l1BlockProcessor) GetHead() (*common.L1Block, error) {
+func (bp *l1BlockProcessor) GetHead(ctx context.Context) (*common.L1Block, error) {
 	if bp.currentL1Head == nil {
 		return nil, errutil.ErrNotFound
 	}
-	return bp.storage.FetchBlock(*bp.currentL1Head)
+	return bp.storage.FetchBlock(ctx, *bp.currentL1Head)
 }
 
 func (bp *l1BlockProcessor) GetCrossChainContractAddress() *gethcommon.Address {

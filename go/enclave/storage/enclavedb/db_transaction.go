@@ -1,8 +1,10 @@
 package enclavedb
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -23,6 +25,7 @@ type statement struct {
 }
 
 type dbTransaction struct {
+	timeout    time.Duration
 	db         EnclaveDB
 	writes     []keyvalue
 	statements []statement
@@ -62,7 +65,13 @@ func (b *dbTransaction) ValueSize() int {
 
 // Write executes a batch statement with all the updates
 func (b *dbTransaction) Write() error {
-	tx, err := b.db.BeginTx()
+	ctx, cancelCtx := context.WithTimeout(context.Background(), b.timeout)
+	defer cancelCtx()
+	return b.WriteCtx(ctx)
+}
+
+func (b *dbTransaction) WriteCtx(ctx context.Context) error {
+	tx, err := b.db.BeginTx(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create batch transaction - %w", err)
 	}
@@ -80,12 +89,12 @@ func (b *dbTransaction) Write() error {
 		}
 	}
 
-	err = PutKeyValues(tx, updateKeys, updateValues)
+	err = PutKeyValues(ctx, tx, updateKeys, updateValues)
 	if err != nil {
 		return fmt.Errorf("failed to put key/value. Cause %w", err)
 	}
 
-	err = DeleteKeys(tx, deletes)
+	err = DeleteKeys(ctx, tx, deletes)
 	if err != nil {
 		return fmt.Errorf("failed to delete keys. Cause %w", err)
 	}

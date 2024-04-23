@@ -38,8 +38,8 @@ func New(chain l2chain.ObscuroChain, storage storage.Storage, config *params.Cha
 	}
 }
 
-func (d *Debugger) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMessage, error) {
-	logs, err := d.storage.DebugGetLogs(txHash)
+func (d *Debugger) DebugEventLogRelevancy(ctx context.Context, txHash gethcommon.Hash) (json.RawMessage, error) {
+	logs, err := d.storage.DebugGetLogs(ctx, txHash)
 	if err != nil {
 		return nil, err
 	}

@@ -97,6 +97,7 @@ func createInMemObscuroNode(
 		BaseFee:                   big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
 		GasLocalExecutionCapFlag:  params.MaxGasLimit / 2,
 		GasBatchExecutionLimit:    params.MaxGasLimit / 2,
+		RPCTimeout:                5 * time.Second,
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)

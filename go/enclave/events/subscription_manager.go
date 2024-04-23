@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -88,9 +89,9 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 }
 
 // FilterLogsForReceipt removes the logs that the sender of a transaction is not allowed to view
-func FilterLogsForReceipt(receipt *types.Receipt, account *gethcommon.Address, storage storage.Storage) ([]*types.Log, error) {
+func FilterLogsForReceipt(ctx context.Context, receipt *types.Receipt, account *gethcommon.Address, storage storage.Storage) ([]*types.Log, error) {
 	filteredLogs := []*types.Log{}
-	stateDB, err := storage.CreateStateDB(receipt.BlockHash)
+	stateDB, err := storage.CreateStateDB(ctx, receipt.BlockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 	}
@@ -107,7 +108,7 @@ func FilterLogsForReceipt(receipt *types.Receipt, account *gethcommon.Address, s
 
 // GetSubscribedLogsForBatch - Retrieves and encrypts the logs for the batch in live mode.
 // The assumption is that this function is called synchronously after the batch is produced
-func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, receipts types.Receipts) (common.EncryptedSubscriptionLogs, error) {
+func (s *SubscriptionManager) GetSubscribedLogsForBatch(ctx context.Context, batch *core.Batch, receipts types.Receipts) (common.EncryptedSubscriptionLogs, error) {
 	s.subscriptionMutex.RLock()
 	defer s.subscriptionMutex.RUnlock()
 
@@ -129,7 +130,7 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, recei
 	}
 
 	// the stateDb is needed to extract the user addresses from the topics
-	stateDB, err := s.storage.CreateStateDB(batch.Hash())
+	stateDB, err := s.storage.CreateStateDB(ctx, batch.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 	}

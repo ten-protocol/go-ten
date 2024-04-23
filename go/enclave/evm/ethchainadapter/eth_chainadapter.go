@@ -1,6 +1,7 @@
 package ethchainadapter
 
 import (
+	"context"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -10,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/enclave/components"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -25,17 +27,19 @@ type EthChainAdapter struct {
 	batchRegistry components.BatchRegistry
 	gethEncoding  gethencoding.EncodingService
 	storage       storage.Storage
+	config        config.EnclaveConfig
 	chainID       *big.Int
 	logger        gethlog.Logger
 }
 
 // NewEthChainAdapter returns a new instance
-func NewEthChainAdapter(chainID *big.Int, batchRegistry components.BatchRegistry, storage storage.Storage, gethEncoding gethencoding.EncodingService, logger gethlog.Logger) *EthChainAdapter {
+func NewEthChainAdapter(chainID *big.Int, batchRegistry components.BatchRegistry, storage storage.Storage, gethEncoding gethencoding.EncodingService, config config.EnclaveConfig, logger gethlog.Logger) *EthChainAdapter {
 	return &EthChainAdapter{
 		newHeadChan:   make(chan gethcore.ChainHeadEvent),
 		batchRegistry: batchRegistry,
 		storage:       storage,
 		gethEncoding:  gethEncoding,
+		config:        config,
 		chainID:       chainID,
 		logger:        logger,
 	}
@@ -52,12 +56,15 @@ func (e *EthChainAdapter) CurrentBlock() *gethtypes.Header {
 	if currentBatchSeqNo == nil {
 		return nil
 	}
-	currentBatch, err := e.storage.FetchBatchBySeqNo(currentBatchSeqNo.Uint64())
+	ctx, cancelCtx := context.WithTimeout(context.Background(), e.config.RPCTimeout)
+	defer cancelCtx()
+
+	currentBatch, err := e.storage.FetchBatchBySeqNo(ctx, currentBatchSeqNo.Uint64())
 	if err != nil {
 		e.logger.Warn("unable to retrieve batch seq no", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
 		return nil
 	}
-	batch, err := e.gethEncoding.CreateEthHeaderForBatch(currentBatch.Header)
+	batch, err := e.gethEncoding.CreateEthHeaderForBatch(ctx, currentBatch.Header)
 	if err != nil {
 		e.logger.Warn("unable to convert batch to eth header ", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
 		return nil
@@ -85,9 +92,11 @@ func (e *EthChainAdapter) SubscribeChainHeadEvent(ch chan<- gethcore.ChainHeadEv
 // GetBlock retrieves a specific block, used during pool resets.
 func (e *EthChainAdapter) GetBlock(_ gethcommon.Hash, number uint64) *gethtypes.Block {
 	var batch *core.Batch
+	ctx, cancelCtx := context.WithTimeout(context.Background(), e.config.RPCTimeout)
+	defer cancelCtx()
 
 	// to avoid a costly select to the db, check whether the batches requested are the last ones which are cached
-	headBatch, err := e.storage.FetchBatchBySeqNo(e.batchRegistry.HeadBatchSeq().Uint64())
+	headBatch, err := e.storage.FetchBatchBySeqNo(ctx, e.batchRegistry.HeadBatchSeq().Uint64())
 	if err != nil {
 		e.logger.Error("unable to get head batch", log.ErrKey, err)
 		return nil
@@ -95,20 +104,20 @@ func (e *EthChainAdapter) GetBlock(_ gethcommon.Hash, number uint64) *gethtypes.
 	if headBatch.Number().Uint64() == number {
 		batch = headBatch
 	} else if headBatch.Number().Uint64()-1 == number {
-		batch, err = e.storage.FetchBatch(headBatch.Header.ParentHash)
+		batch, err = e.storage.FetchBatch(ctx, headBatch.Header.ParentHash)
 		if err != nil {
 			e.logger.Error("unable to get parent of head batch", log.ErrKey, err, log.BatchHashKey, headBatch.Header.ParentHash)
 			return nil
 		}
 	} else {
-		batch, err = e.storage.FetchBatchByHeight(number)
+		batch, err = e.storage.FetchBatchByHeight(ctx, number)
 		if err != nil {
 			e.logger.Error("unable to get batch by height", log.BatchHeightKey, number, log.ErrKey, err)
 			return nil
 		}
 	}
 
-	nfromBatch, err := e.gethEncoding.CreateEthBlockFromBatch(batch)
+	nfromBatch, err := e.gethEncoding.CreateEthBlockFromBatch(ctx, batch)
 	if err != nil {
 		e.logger.Error("unable to convert batch to eth block", log.ErrKey, err)
 		return nil
@@ -127,7 +136,9 @@ func (e *EthChainAdapter) StateAt(root gethcommon.Hash) (*state.StateDB, error) 
 }
 
 func (e *EthChainAdapter) IngestNewBlock(batch *core.Batch) error {
-	convertedBlock, err := e.gethEncoding.CreateEthBlockFromBatch(batch)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), e.config.RPCTimeout)
+	defer cancelCtx()
+	convertedBlock, err := e.gethEncoding.CreateEthBlockFromBatch(ctx, batch)
 	if err != nil {
 		return err
 	}

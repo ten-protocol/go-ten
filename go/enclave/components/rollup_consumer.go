@@ -1,6 +1,7 @@
 package components
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -46,7 +47,7 @@ func NewRollupConsumer(
 	}
 }
 
-func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) error {
+func (rc *rollupConsumerImpl) ProcessRollupsInBlock(ctx context.Context, b *common.BlockAndReceipts) error {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed block", log.BlockHashKey, b.Block.Hash())
 
 	rollups := rc.extractRollups(b)
@@ -60,12 +61,12 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) 
 	}
 
 	for _, rollup := range rollups {
-		l1CompressionBlock, err := rc.storage.FetchBlock(rollup.Header.CompressionL1Head)
+		l1CompressionBlock, err := rc.storage.FetchBlock(ctx, rollup.Header.CompressionL1Head)
 		if err != nil {
 			rc.logger.Warn("Can't process rollup because the l1 block used for compression is not available", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			continue
 		}
-		canonicalBlockByHeight, err := rc.storage.FetchCanonicaBlockByHeight(l1CompressionBlock.Number())
+		canonicalBlockByHeight, err := rc.storage.FetchCanonicaBlockByHeight(ctx, l1CompressionBlock.Number())
 		if err != nil {
 			return err
 		}
@@ -74,13 +75,13 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) 
 			continue
 		}
 		// read batch data from rollup, verify and store it
-		internalHeader, err := rc.rollupCompression.ProcessExtRollup(rollup)
+		internalHeader, err := rc.rollupCompression.ProcessExtRollup(ctx, rollup)
 		if err != nil {
 			rc.logger.Error("Failed processing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			// todo - issue challenge as a validator
 			return err
 		}
-		if err := rc.storage.StoreRollup(rollup, internalHeader); err != nil {
+		if err := rc.storage.StoreRollup(ctx, rollup, internalHeader); err != nil {
 			rc.logger.Error("Failed storing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			return err
 		}

@@ -1,6 +1,7 @@
 package enclavedb
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -14,7 +15,7 @@ type EnclaveDB interface {
 	ethdb.Database
 	GetSQLDB() *sql.DB
 	NewDBTransaction() *dbTransaction
-	BeginTx() (*sql.Tx, error)
+	BeginTx(context.Context) (*sql.Tx, error)
 }
 
 // DBTransaction - represents a database transaction implemented unusually.

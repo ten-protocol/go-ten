@@ -32,7 +32,7 @@ func GetTransactionValidate(reqParams []any, builder *CallBuilder[gethcommon.Has
 
 func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
-	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(*builder.Param)
+	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(builder.ctx, *builder.Param)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			builder.Status = NotFound

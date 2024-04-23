@@ -2,6 +2,7 @@ package common
 
 import (
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
@@ -90,5 +91,6 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		// whilst the usage is small. Should be ok since execution is paid for anyway.
 		GasLocalExecutionCapFlag: 300_000_000_000,
 		GasBatchExecutionLimit:   300_000_000_000,
+		RPCTimeout:               5 * time.Second,
 	}
 }

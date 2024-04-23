@@ -1,6 +1,7 @@
 package components
 
 import (
+	"context"
 	"errors"
 	"math/big"
 
@@ -34,8 +35,8 @@ func (bit *BlockIngestionType) IsFork() bool {
 }
 
 type L1BlockProcessor interface {
-	Process(br *common.BlockAndReceipts) (*BlockIngestionType, error)
-	GetHead() (*common.L1Block, error)
+	Process(ctx context.Context, br *common.BlockAndReceipts) (*BlockIngestionType, error)
+	GetHead(context.Context) (*common.L1Block, error)
 	GetCrossChainContractAddress() *gethcommon.Address
 	HealthCheck() (bool, error)
 }
@@ -69,28 +70,28 @@ type BatchExecutor interface {
 	// Call with same BatchContext should always produce identical extBatch - idempotent
 	// Should be safe to call in parallel
 	// failForEmptyBatch bool is used to skip batch production
-	ComputeBatch(batchContext *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error)
+	ComputeBatch(ctx context.Context, batchContext *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error)
 
 	// ExecuteBatch - executes the transactions and xchain messages, returns the receipts, and updates the stateDB
-	ExecuteBatch(*core.Batch) (types.Receipts, error)
+	ExecuteBatch(context.Context, *core.Batch) (types.Receipts, error)
 
 	// CreateGenesisState - will create and commit the genesis state in the stateDB for the given block hash,
 	// and uint64 timestamp representing the time now. In this genesis state is where one can
 	// find preallocated funds for faucet. TODO - make this an option
-	CreateGenesisState(common.L1BlockHash, uint64, gethcommon.Address, *big.Int) (*core.Batch, *types.Transaction, error)
+	CreateGenesisState(context.Context, common.L1BlockHash, uint64, gethcommon.Address, *big.Int) (*core.Batch, *types.Transaction, error)
 }
 
 type BatchRegistry interface {
 	// BatchesAfter - Given a hash, will return batches following it until the head batch and the l1 blocks referenced by those batches
-	BatchesAfter(batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error)
+	BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error)
 
 	// GetBatchStateAtHeight - creates a stateDB that represents the state committed when
 	// the batch with height matching the blockNumber was created and stored.
-	GetBatchStateAtHeight(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error)
+	GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error)
 
 	// GetBatchAtHeight - same as `GetBatchStateAtHeight`, but instead returns the full batch
 	// rather than its stateDB only.
-	GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Batch, error)
+	GetBatchAtHeight(ctx context.Context, height gethrpc.BlockNumber) (*core.Batch, error)
 
 	// SubscribeForExecutedBatches - register a callback for new batches
 	SubscribeForExecutedBatches(func(*core.Batch, types.Receipts))
@@ -109,12 +110,12 @@ type BatchRegistry interface {
 
 type RollupProducer interface {
 	// CreateInternalRollup - creates a rollup starting from the end of the last rollup that has been stored on the L1
-	CreateInternalRollup(fromBatchNo uint64, upToL1Height uint64, limiter limiters.RollupLimiter) (*core.Rollup, error)
+	CreateInternalRollup(ctx context.Context, fromBatchNo uint64, upToL1Height uint64, limiter limiters.RollupLimiter) (*core.Rollup, error)
 }
 
 type RollupConsumer interface {
 	// ProcessRollupsInBlock - extracts the rollup from the block's transactions
 	// and verifies its integrity, saving and processing any batches that have
 	// not been seen previously.
-	ProcessRollupsInBlock(b *common.BlockAndReceipts) error
+	ProcessRollupsInBlock(ctx context.Context, b *common.BlockAndReceipts) error
 }

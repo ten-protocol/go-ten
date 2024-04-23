@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ten-protocol/go-ten/go/config"
+
 	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage/init/migration"
@@ -30,7 +32,7 @@ var sqlFiles embed.FS
 
 // CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
 // otherwise dbPath is a filepath for the sqldb file, allows for tests that care about persistence between restarts
-func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
+func CreateTemporarySQLiteDB(dbPath string, dbOptions string, config config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	initialsed := false
 
 	if dbPath == "" {
@@ -76,7 +78,7 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Log
 
 	logger.Info(fmt.Sprintf("Opened %s sqlite db file at %s", description, dbPath))
 
-	return enclavedb.NewEnclaveDB(db, logger)
+	return enclavedb.NewEnclaveDB(db, config, logger)
 }
 
 func initialiseDB(db *sql.DB) error {

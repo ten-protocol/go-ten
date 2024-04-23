@@ -2,6 +2,7 @@ package crosschain
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/big"
 
@@ -105,7 +106,7 @@ func (m *MessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, error) {
 }
 
 // ExtractLocalMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
-func (m *MessageBusManager) ExtractOutboundMessages(receipts common.L2Receipts) (common.CrossChainMessages, error) {
+func (m *MessageBusManager) ExtractOutboundMessages(ctx context.Context, receipts common.L2Receipts) (common.CrossChainMessages, error) {
 	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &CrossChainEventID)
 	if err != nil {
 		m.logger.Error("Error extracting logs from L2 message bus!", log.ErrKey, err)
@@ -121,8 +122,8 @@ func (m *MessageBusManager) ExtractOutboundMessages(receipts common.L2Receipts) 
 	return messages, nil
 }
 
-// ExtractLocalMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
-func (m *MessageBusManager) ExtractOutboundTransfers(receipts common.L2Receipts) (common.ValueTransferEvents, error) {
+// ExtractOutboundTransfers - Finds relevant logs in the receipts and converts them to cross chain messages.
+func (m *MessageBusManager) ExtractOutboundTransfers(_ context.Context, receipts common.L2Receipts) (common.ValueTransferEvents, error) {
 	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &ValueTransferEventID)
 	if err != nil {
 		m.logger.Error("Error extracting logs from L2 message bus!", log.ErrKey, err)
@@ -142,13 +143,13 @@ func (m *MessageBusManager) ExtractOutboundTransfers(receipts common.L2Receipts)
 // todo (@stefan) - fix ordering of messages, currently it is irrelevant.
 // todo (@stefan) - do not extract messages below their consistency level. Irrelevant security wise.
 // todo (@stefan) - surface errors
-func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, _ *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents) {
+func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlock *common.L1Block, toBlock *common.L1Block, _ *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents) {
 	messages := make(common.CrossChainMessages, 0)
 	transfers := make(common.ValueTransferEvents, 0)
 
 	from := fromBlock.Hash()
 	height := fromBlock.NumberU64()
-	if !m.storage.IsAncestor(toBlock, fromBlock) {
+	if !m.storage.IsAncestor(ctx, toBlock, fromBlock) {
 		m.logger.Crit("Synthetic transactions can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
 	}
 	// Iterate through the blocks.
@@ -160,12 +161,12 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 
 		m.logger.Trace(fmt.Sprintf("Looking for cross chain messages at block %s", b.Hash().Hex()))
 
-		messagesForBlock, err := m.storage.GetL1Messages(b.Hash())
+		messagesForBlock, err := m.storage.GetL1Messages(ctx, b.Hash())
 		if err != nil {
 			m.logger.Crit("Reading the key for the block failed with uncommon reason.", log.ErrKey, err)
 		}
 
-		transfersForBlock, err := m.storage.GetL1Transfers(b.Hash())
+		transfersForBlock, err := m.storage.GetL1Transfers(ctx, b.Hash())
 		if err != nil {
 			m.logger.Crit("Unable to get L1 transfers for block that should be there.", log.ErrKey, err)
 		}
@@ -177,7 +178,7 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 		if b.NumberU64() < height {
 			m.logger.Crit("block height is less than genesis height")
 		}
-		p, err := m.storage.FetchBlock(b.ParentHash())
+		p, err := m.storage.FetchBlock(ctx, b.ParentHash())
 		if err != nil {
 			m.logger.Crit("Synthetic transactions can't be processed because the rollups are not on the same Ethereum fork")
 		}
@@ -193,14 +194,14 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 	return messages, transfers
 }
 
-func (m *MessageBusManager) ExecuteValueTransfers(transfers common.ValueTransferEvents, rollupState *state.StateDB) {
+func (m *MessageBusManager) ExecuteValueTransfers(ctx context.Context, transfers common.ValueTransferEvents, rollupState *state.StateDB) {
 	for _, transfer := range transfers {
 		rollupState.AddBalance(transfer.Receiver, transfer.Amount)
 	}
 }
 
 // CreateSyntheticTransactions - generates transactions that the enclave should execute internally for the messages.
-func (m *MessageBusManager) CreateSyntheticTransactions(messages common.CrossChainMessages, rollupState *state.StateDB) common.L2Transactions {
+func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, rollupState *state.StateDB) common.L2Transactions {
 	// Get current nonce for this stateDB.
 	// There can be forks thus we cannot trust the wallet.
 	startingNonce := rollupState.GetNonce(m.GetOwner())
