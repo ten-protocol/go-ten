@@ -4,6 +4,7 @@ import { DataTable } from "@/src/components/modules/common/data-table/data-table
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBlocksService } from "@/src/services/useBlocksService";
+import { formatNumber } from "@/src/lib/utils";
 
 export const metadata: Metadata = {
   title: "Blocks",
@@ -30,7 +31,7 @@ export default function Blocks() {
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Blocks</h2>
             <p className="text-sm text-muted-foreground">
-              {Total} Blocks found.
+              {formatNumber(Total)} Blocks found.
             </p>
           </div>
         </div>

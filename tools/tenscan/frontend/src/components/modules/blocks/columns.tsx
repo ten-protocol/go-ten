@@ -5,7 +5,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
 import { Block, BlockHeader } from "@/src/types/interfaces/BlockInterfaces";
 import TruncatedAddress from "../common/truncated-address";
-import { formatTimeAgo } from "@/src/lib/utils";
+import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import { Badge } from "../../ui/badge";
 import ExternalLink from "../../ui/external-link";
 import { externalLinks } from "@/src/routes";
@@ -76,7 +76,9 @@ export const columns: ColumnDef<Block>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            <Badge variant={"outline"}>{Number(blockHeader?.gasUsed)}</Badge>
+            <Badge variant={"outline"}>
+              {formatNumber(blockHeader?.gasUsed)}
+            </Badge>
           </span>
         </div>
       );
@@ -94,7 +96,7 @@ export const columns: ColumnDef<Block>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {Number(blockHeader?.gasLimit)}
+            {formatNumber(blockHeader?.gasLimit)}
           </span>
         </div>
       );

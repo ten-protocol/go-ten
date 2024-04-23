@@ -7,8 +7,7 @@ import { statuses, types } from "./data";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
 import { PersonalTransactions } from "@/src/types/interfaces/TransactionInterfaces";
 import TruncatedAddress from "../common/truncated-address";
-import Link from "next/link";
-import { EyeOpenIcon } from "@radix-ui/react-icons";
+import { formatNumber } from "@/src/lib/utils";
 
 export const columns: ColumnDef<PersonalTransactions>[] = [
   {
@@ -20,7 +19,7 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {Number(row.getValue("blockNumber"))}
+            #{Number(row.getValue("blockNumber"))}
           </span>
         </div>
       );
@@ -59,7 +58,9 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {Number(row.getValue("gasUsed"))}
+            <Badge variant={"secondary"}>
+              {formatNumber(row.getValue("gasUsed"))}
+            </Badge>
           </span>
         </div>
       );
