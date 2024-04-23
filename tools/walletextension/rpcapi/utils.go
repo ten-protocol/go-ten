@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -62,6 +63,9 @@ type CacheCfg struct {
 }
 
 func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg, method string, args ...any) (*R, error) {
+	if ctx == nil {
+		return nil, errors.New("invalid call. nil Context")
+	}
 	audit(w, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
 	cacheArgs := []any{method}
@@ -72,12 +76,8 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *Cac
 			var resp *R
 			var err error
 
-			basectx := ctx
-			if ctx == nil {
-				basectx = context.Background()
-			}
 			// wrap the context with a timeout to prevent long executions
-			timeoutContext, cancelCtx := context.WithTimeout(basectx, maximumRPCCallDuration)
+			timeoutContext, cancelCtx := context.WithTimeout(ctx, maximumRPCCallDuration)
 			defer cancelCtx()
 
 			err = client.CallContext(timeoutContext, &resp, method, args...)
