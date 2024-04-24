@@ -65,5 +65,6 @@ func New(component string, level int, out string, ctx ...interface{}) gethlog.Lo
 
 	context := append(ctx, CmpKey, component)
 	l := gethlog.New(context...)
+
 	return l
 }

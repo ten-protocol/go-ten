@@ -26,6 +26,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	gethforklog "github.com/ten-protocol/go-ten/lib/gethfork/log"
+
 	"github.com/ten-protocol/go-ten/lib/gethfork/flags"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -241,7 +243,7 @@ func Setup(logFmtFlag string, logFile string, rotation bool, maxSize int, maxBac
 				output = terminalOutput
 			}
 		}
-		handler = log.NewTerminalHandler(output, useColor)
+		handler = gethforklog.NewTerminalHandler(output, useColor)
 	default:
 		// Unknown log format specified
 		return fmt.Errorf("unknown log format: %v", logFmtFlag)
