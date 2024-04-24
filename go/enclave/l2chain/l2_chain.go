@@ -98,7 +98,7 @@ func (oc *obscuroChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethc
 		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
 	}
 
-	return (*hexutil.Big)(chainState.GetBalance(accountAddr)), nil
+	return (*hexutil.Big)(chainState.GetBalance(accountAddr).ToBig()), nil
 }
 
 func (oc *obscuroChain) ObsCall(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
@@ -114,9 +114,9 @@ func (oc *obscuroChain) ObsCall(ctx context.Context, apiArgs *gethapi.Transactio
 		return nil, result.Err
 	}
 
-	oc.logger.Trace("Obs_Call successful", "result", gethlog.Lazy{Fn: func() string {
-		return hexutils.BytesToHex(result.ReturnData)
-	}})
+	if oc.logger.Enabled(context.Background(), gethlog.LevelTrace) {
+		oc.logger.Trace("Obs_Call successful", "result", hexutils.BytesToHex(result.ReturnData))
+	}
 	return result, nil
 }
 
@@ -137,14 +137,14 @@ func (oc *obscuroChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Tra
 		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
 	}
 
-	oc.logger.Trace("Obs_Call: Successful result", "result", gethlog.Lazy{Fn: func() string {
-		return fmt.Sprintf("contractAddress=%s, from=%s, data=%s, batch=%s, state=%s",
+	if oc.logger.Enabled(context.Background(), gethlog.LevelTrace) {
+		oc.logger.Trace("Obs_Call: Successful result", "result", fmt.Sprintf("contractAddress=%s, from=%s, data=%s, batch=%s, state=%s",
 			callMsg.To,
 			callMsg.From,
 			hexutils.BytesToHex(callMsg.Data),
 			batch.Hash(),
-			batch.Header.Root.Hex())
-	}})
+			batch.Header.Root.Hex()))
+	}
 
 	result, err := evm.ExecuteObsCall(ctx, callMsg, blockState, batch.Header, oc.storage, oc.gethEncodingService, oc.chainConfig, oc.gasEstimationCap, oc.config, oc.logger)
 	if err != nil {

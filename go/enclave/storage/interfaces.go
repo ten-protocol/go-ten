@@ -6,9 +6,9 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/triedb"
 
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/ethereum/go-ethereum/core/state"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -145,7 +145,7 @@ type Storage interface {
 	DebugGetLogs(ctx context.Context, txHash common.TxHash) ([]*tracers.DebugLogs, error)
 
 	// TrieDB - return the underlying trie database
-	TrieDB() *trie.Database
+	TrieDB() *triedb.Database
 
 	// StateDB - return the underlying state database
 	StateDB() state.Database

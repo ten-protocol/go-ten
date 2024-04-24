@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/core/tracing"
+	"github.com/holiman/uint256"
+
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -194,9 +197,11 @@ func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlo
 	return messages, transfers
 }
 
+const BalanceIncreaseXChainValueTransfer tracing.BalanceChangeReason = 110
+
 func (m *MessageBusManager) ExecuteValueTransfers(ctx context.Context, transfers common.ValueTransferEvents, rollupState *state.StateDB) {
 	for _, transfer := range transfers {
-		rollupState.AddBalance(transfer.Receiver, transfer.Amount)
+		rollupState.AddBalance(transfer.Receiver, uint256.MustFromBig(transfer.Amount), BalanceIncreaseXChainValueTransfer)
 	}
 }
 

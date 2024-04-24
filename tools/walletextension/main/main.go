@@ -53,9 +53,9 @@ func main() {
 		}
 	}
 
-	logLvl := gethlog.LvlError
+	logLvl := gethlog.LevelError
 	if config.VerboseFlag {
-		logLvl = gethlog.LvlDebug
+		logLvl = gethlog.LevelDebug
 	}
 	logger := log.New(log.WalletExtCmp, int(logLvl), config.LogPath)
 

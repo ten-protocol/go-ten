@@ -9,6 +9,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/holiman/uint256"
+
 	"github.com/ten-protocol/go-ten/go/config"
 
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
@@ -114,7 +116,7 @@ func (executor *batchExecutor) filterTransactionsWithSufficientFunds(ctx context
 			})
 			continue
 		}
-		if accBalance.Cmp(cost) == -1 {
+		if accBalance.Cmp(uint256.MustFromBig(cost)) == -1 {
 			executor.logger.Info(fmt.Sprintf("insufficient account balance for tx - want: %d have: %d", cost, accBalance), log.TxKey, tx.Hash(), "addr", sender.Hex())
 			continue
 		}

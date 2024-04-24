@@ -1,19 +1,8 @@
 package log
 
 import (
-	"bytes"
-	"fmt"
-	"math/big"
-	"reflect"
-	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
-	"unicode/utf8"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/holiman/uint256"
 )
 
 // IMPORTANT - the utilities and constants in this format class are copied from the geth log package
@@ -51,6 +40,7 @@ var fieldPadding = make(map[string]int)
 // fieldPaddingLock is a global mutex protecting the field padding map.
 var fieldPaddingLock sync.RWMutex
 
+/*
 // TenLogFormat - returns a log format that is used by the Ten logger for both console and file logging.
 // Note: this is mostly a copy of gethlog.TerminalFormat but putting it here gives us control and
 // means we aren't forced to use the shortened hash format
@@ -322,3 +312,4 @@ func escapeMessage(s string) string {
 	}
 	return strconv.Quote(s)
 }
+*/

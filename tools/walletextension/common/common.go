@@ -3,13 +3,15 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
+
+	"github.com/ten-protocol/go-ten/lib/gethfork/debug"
 
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/go/rpc"
 
@@ -87,11 +89,13 @@ func NewFileLogger() gethlog.Logger {
 		panic(err)
 	}
 
+	err = debug.Setup("terminal", file.Name(), false, 10000000, 0, 0, false, false, slog.LevelDebug, "")
+	if err != nil {
+		panic(err)
+	}
+
 	// Create a new logger instance
 	logger := gethlog.New()
-
-	// Set the handler to the file
-	logger.SetHandler(gethlog.StreamHandler(file, log.TenLogFormat()))
 
 	return logger
 }
