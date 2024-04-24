@@ -14,8 +14,10 @@ import (
 )
 
 const (
-	selectExtRollup    = "SELECT ext_rollup from rollup_host r"
-	selectLatestRollup = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
+	selectExtRollup     = "SELECT ext_rollup from rollup_host r"
+	selectLatestRollup  = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
+	selectRollupBatches = "SELECT b.sequence, b.hash, b.full_hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON r.start_seq <= b.sequence AND r.end_seq >= b.sequence"
+	selectPublicRollup  = "SELECT id, hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block FROM rollup_host"
 )
 
 // AddRollup adds a rollup to the DB
@@ -111,11 +113,13 @@ func GetLatestRollup(db *sql.DB) (*common.RollupHeader, error) {
 }
 
 func GetRollupByHash(db HostDB, rollupHash gethcommon.Hash) (*common.PublicRollup, error) {
-	panic("Implement me")
+	whereQuery := " WHERE hash=" + db.GetSQLStatement().Placeholder
+	return fetchPublicRollup(db.GetSQLDB(), whereQuery, truncTo16(rollupHash))
 }
 
 func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {
-	query := db.GetSQLStatement().SelectRollupBatches
+	whereQuery := " WHERE r.hash=" + db.GetSQLStatement().Placeholder
+	query := selectRollupBatches + whereQuery
 	rows, err := db.GetSQLDB().Query(query, truncTo16(rollupHash))
 	if err != nil {
 		return nil, fmt.Errorf("query execution for select txs failed: %w", err)
@@ -213,5 +217,40 @@ func fetchHeadRollup(db *sql.DB) (*common.ExtRollup, error) {
 		return nil, fmt.Errorf("failed to decode rollup: %w", err)
 	}
 
+	return &rollup, nil
+}
+
+func fetchPublicRollup(db *sql.DB, whereQuery string, args ...any) (*common.PublicRollup, error) {
+	query := selectPublicRollup + whereQuery
+	var rollup common.PublicRollup
+	var extRollup []byte
+	var id, firstSeq, lastSeq, timestamp int
+
+	err := db.QueryRow(query, args...).Scan(
+		&id,
+		&rollup.Hash,
+		&firstSeq,
+		&lastSeq,
+		&timestamp,
+		&extRollup,
+		&rollup.L1Hash,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to fetch rollup by hash: %w", err)
+	}
+	rollup.ID = big.NewInt(int64(id))
+	rollup.FirstSeq = big.NewInt(int64(firstSeq))
+	rollup.LastSeq = big.NewInt(int64(lastSeq))
+	rollup.Timestamp = uint64(timestamp)
+
+	extRollupDecoded := new(common.ExtRollup)
+	if err := rlp.DecodeBytes(extRollup, extRollupDecoded); err != nil {
+		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
+	}
+
+	rollup.Header = extRollupDecoded.Header
 	return &rollup, nil
 }

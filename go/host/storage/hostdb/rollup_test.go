@@ -204,7 +204,45 @@ func TestGetRollupListing(t *testing.T) {
 }
 
 func TestGetRollupByHash(t *testing.T) {
-	//TODO
+	db, err := createSQLiteDB(t)
+	if err != nil {
+		t.Fatalf("unable to initialise test db: %s", err)
+	}
+
+	rollup1FirstSeq := int64(batchNumber - 10)
+	rollup1LastSeq := int64(batchNumber)
+	metadata1 := createRollupMetadata(rollup1FirstSeq)
+	rollup1 := createRollup(rollup1LastSeq)
+	block := common.L1Block{}
+	dbtx, _ := db.NewDBTransaction()
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup1, &metadata1, &block)
+	if err != nil {
+		t.Errorf("could not store rollup. Cause: %s", err)
+	}
+
+	rollup2FirstSeq := int64(batchNumber + 1)
+	rollup2LastSeq := int64(batchNumber + 10)
+	metadata2 := createRollupMetadata(rollup2FirstSeq)
+	rollup2 := createRollup(rollup2LastSeq)
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup2, &metadata2, &block)
+	if err != nil {
+		t.Errorf("could not store rollup 2. Cause: %s", err)
+	}
+	dbtx.Write()
+
+	publicRollup, err := GetRollupByHash(db, rollup2.Header.Hash())
+	if err != nil {
+		t.Errorf("stored rollup but could not retrieve public rollup. Cause: %s", err)
+	}
+
+	if publicRollup.FirstSeq.Cmp(big.NewInt(batchNumber+1)) != 0 {
+		t.Errorf("rollup was not stored correctly")
+	}
+
+	if publicRollup.LastSeq.Cmp(big.NewInt(batchNumber+10)) != 0 {
+		t.Errorf("rollup was not stored correctly")
+	}
+
 }
 
 func TestGetRollupBatches(t *testing.T) {
@@ -289,7 +327,7 @@ func TestGetRollupBatches(t *testing.T) {
 	}
 	// second element should be batch 4
 	if batchListing1.BatchesData[1].Header.SequencerOrderNo.Cmp(batchFour.SeqNo()) != 0 {
-		t.Errorf("batch listing was not paginated correctly")
+		t.Errorf("batch listing was not returned correctly")
 	}
 }
 
