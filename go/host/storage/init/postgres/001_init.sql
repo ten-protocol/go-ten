@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS transactions_host
     hash           BYTEA PRIMARY KEY,
     b_sequence     INT,
     FOREIGN KEY (b_sequence) REFERENCES batch_host(sequence)
-    );
+);
 
 CREATE TABLE IF NOT EXISTS transaction_count
 (
