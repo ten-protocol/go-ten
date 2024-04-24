@@ -88,17 +88,17 @@ func (s *ScanAPI) GetBlockListing(pagination *common.QueryPagination) (*common.B
 	return s.host.Storage().FetchBlockListing(pagination)
 }
 
-// GetRollupByHash TODO
+// GetRollupByHash returns the public rollup data given its hash
 func (s *ScanAPI) GetRollupByHash(rollupHash gethcommon.Hash) (*common.PublicRollup, error) {
 	return s.host.Storage().FetchRollupByHash(rollupHash)
 }
 
-// GetRollupBatches TODO
+// GetRollupBatches returns the list of batches included in a rollup given its hash
 func (s *ScanAPI) GetRollupBatches(rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {
 	return s.host.Storage().FetchRollupBatches(rollupHash)
 }
 
-// GetBatchTransactions TODO
+// GetBatchTransactions returns the public tx data of all txs present in a rollup given its hash
 func (s *ScanAPI) GetBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
 	return s.host.Storage().FetchBatchTransactions(batchHash)
 }
