@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/config"
+
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/storage/init/migration"
 
@@ -128,7 +130,7 @@ type Credentials struct {
 	UserKeyPEM   string // db user private key, generated in our enclave
 }
 
-func Connector(edbCfg *Config, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
+func Connector(edbCfg *Config, config config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	// rather than fail immediately if EdgelessDB is not available yet we wait up for `edgelessDBStartTimeout` for it to be available
 	err := waitForEdgelessDBToStart(edbCfg.Host, logger)
 	if err != nil {
@@ -158,7 +160,7 @@ func Connector(edbCfg *Config, logger gethlog.Logger) (enclavedb.EnclaveDB, erro
 	}
 
 	// wrap it in our eth-compatible key-value store layer
-	return enclavedb.NewEnclaveDB(sqlDB, logger)
+	return enclavedb.NewEnclaveDB(sqlDB, config, logger)
 }
 
 func waitForEdgelessDBToStart(edbHost string, logger gethlog.Logger) error {

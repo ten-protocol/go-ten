@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -69,6 +70,10 @@ type EnclaveConfig struct {
 	BaseFee                  *big.Int
 	GasBatchExecutionLimit   uint64
 	GasLocalExecutionCapFlag uint64
+
+	// RPCTimeout - calls that are longer than this will be cancelled, to prevent resource starvation
+	// normally, the context is propagated from the host, but in some cases ( like the evm, we have to create a context)
+	RPCTimeout time.Duration
 }
 
 func NewConfigFromFlags(cliFlags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
@@ -154,7 +159,10 @@ func retrieveEnvFlags() (map[string]*flag.TenFlag, error) {
 }
 
 func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
-	cfg := &EnclaveConfig{}
+	cfg := &EnclaveConfig{
+		// hardcoding for now
+		RPCTimeout: 5 * time.Second,
+	}
 
 	nodeType, err := common.ToNodeType(flags[NodeTypeFlag].String())
 	if err != nil {

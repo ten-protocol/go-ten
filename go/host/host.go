@@ -1,6 +1,7 @@
 package host
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -155,11 +156,11 @@ func (h *host) EnclaveClient() common.Enclave {
 	return h.services.Enclaves().GetEnclaveClient()
 }
 
-func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
+func (h *host) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
 	if h.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitAndBroadcastTx with the host stopping"))
 	}
-	return h.services.Enclaves().SubmitAndBroadcastTx(encryptedParams)
+	return h.services.Enclaves().SubmitAndBroadcastTx(ctx, encryptedParams)
 }
 
 func (h *host) SubscribeLogs(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
@@ -198,7 +199,7 @@ func (h *host) Stop() error {
 }
 
 // HealthCheck returns whether the host, enclave and DB are healthy
-func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
+func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error) {
 	if h.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the host stopping"))
 	}
@@ -207,7 +208,7 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 
 	// loop through all registered services and collect their health statuses
 	for name, service := range h.services.All() {
-		status := service.HealthStatus()
+		status := service.HealthStatus(ctx)
 		if !status.OK() {
 			healthErrors = append(healthErrors, fmt.Sprintf("[%s] not healthy - %s", name, status.Message()))
 		}
@@ -222,7 +223,7 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 // ObscuroConfig returns info on the Obscuro network
 func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
 	if h.l2MessageBusAddress == nil {
-		publicCfg, err := h.EnclaveClient().EnclavePublicConfig()
+		publicCfg, err := h.EnclaveClient().EnclavePublicConfig(context.Background())
 		if err != nil {
 			return nil, responses.ToInternalError(fmt.Errorf("unable to get L2 message bus address - %w", err))
 		}

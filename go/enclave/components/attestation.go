@@ -2,6 +2,7 @@ package components
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -20,14 +21,14 @@ type IDData struct {
 
 type AttestationProvider interface {
 	// GetReport returns the verifiable attestation report
-	GetReport(pubKey []byte, enclaveID gethcommon.Address, hostAddress string) (*common.AttestationReport, error)
+	GetReport(ctx context.Context, pubKey []byte, enclaveID gethcommon.Address, hostAddress string) (*common.AttestationReport, error)
 	// VerifyReport returns the embedded report data
 	VerifyReport(att *common.AttestationReport) ([]byte, error)
 }
 
 type EgoAttestationProvider struct{}
 
-func (e *EgoAttestationProvider) GetReport(pubKey []byte, enclaveID gethcommon.Address, hostAddress string) (*common.AttestationReport, error) {
+func (e *EgoAttestationProvider) GetReport(ctx context.Context, pubKey []byte, enclaveID gethcommon.Address, hostAddress string) (*common.AttestationReport, error) {
 	idHash, err := getIDHash(enclaveID, pubKey, hostAddress)
 	if err != nil {
 		return nil, err
@@ -56,7 +57,7 @@ func (e *EgoAttestationProvider) VerifyReport(att *common.AttestationReport) ([]
 
 type DummyAttestationProvider struct{}
 
-func (e *DummyAttestationProvider) GetReport(pubKey []byte, enclaveID gethcommon.Address, hostAddress string) (*common.AttestationReport, error) {
+func (e *DummyAttestationProvider) GetReport(ctx context.Context, pubKey []byte, enclaveID gethcommon.Address, hostAddress string) (*common.AttestationReport, error) {
 	return &common.AttestationReport{
 		Report:      []byte("MOCK REPORT"),
 		PubKey:      pubKey,

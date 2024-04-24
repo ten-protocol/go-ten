@@ -2,6 +2,7 @@ package ethereummock
 
 import (
 	"bytes"
+	"context"
 	"math/big"
 	"sync"
 
@@ -23,11 +24,11 @@ type blockResolverInMem struct {
 	m          sync.RWMutex
 }
 
-func (n *blockResolverInMem) FetchCanonicaBlockByHeight(_ *big.Int) (*types.Block, error) {
+func (n *blockResolverInMem) FetchCanonicaBlockByHeight(_ context.Context, _ *big.Int) (*types.Block, error) {
 	panic("implement me")
 }
 
-func (n *blockResolverInMem) Proof(_ *core.Rollup) (*types.Block, error) {
+func (n *blockResolverInMem) Proof(_ context.Context, _ *core.Rollup) (*types.Block, error) {
 	panic("implement me")
 }
 
@@ -38,14 +39,14 @@ func NewResolver() storage.BlockResolver {
 	}
 }
 
-func (n *blockResolverInMem) StoreBlock(block *types.Block, _ *common.ChainFork) error {
+func (n *blockResolverInMem) StoreBlock(_ context.Context, block *types.Block, _ *common.ChainFork) error {
 	n.m.Lock()
 	defer n.m.Unlock()
 	n.blockCache[block.Hash()] = block
 	return nil
 }
 
-func (n *blockResolverInMem) FetchBlock(hash common.L1BlockHash) (*types.Block, error) {
+func (n *blockResolverInMem) FetchBlock(_ context.Context, hash common.L1BlockHash) (*types.Block, error) {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	block, f := n.blockCache[hash]
@@ -56,7 +57,7 @@ func (n *blockResolverInMem) FetchBlock(hash common.L1BlockHash) (*types.Block, 
 	return block, nil
 }
 
-func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, error) {
+func (n *blockResolverInMem) FetchHeadBlock(_ context.Context) (*types.Block, error) {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	var max *types.Block
@@ -72,11 +73,11 @@ func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, error) {
 	return max, nil
 }
 
-func (n *blockResolverInMem) ParentBlock(b *types.Block) (*types.Block, error) {
-	return n.FetchBlock(b.Header().ParentHash)
+func (n *blockResolverInMem) ParentBlock(ctx context.Context, b *types.Block) (*types.Block, error) {
+	return n.FetchBlock(ctx, b.Header().ParentHash)
 }
 
-func (n *blockResolverInMem) IsAncestor(block *types.Block, maybeAncestor *types.Block) bool {
+func (n *blockResolverInMem) IsAncestor(ctx context.Context, block *types.Block, maybeAncestor *types.Block) bool {
 	if bytes.Equal(maybeAncestor.Hash().Bytes(), block.Hash().Bytes()) {
 		return true
 	}
@@ -85,15 +86,15 @@ func (n *blockResolverInMem) IsAncestor(block *types.Block, maybeAncestor *types
 		return false
 	}
 
-	p, err := n.ParentBlock(block)
+	p, err := n.ParentBlock(ctx, block)
 	if err != nil {
 		return false
 	}
 
-	return n.IsAncestor(p, maybeAncestor)
+	return n.IsAncestor(ctx, p, maybeAncestor)
 }
 
-func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor common.L1BlockHash) bool {
+func (n *blockResolverInMem) IsBlockAncestor(ctx context.Context, block *types.Block, maybeAncestor common.L1BlockHash) bool {
 	if bytes.Equal(maybeAncestor.Bytes(), block.Hash().Bytes()) {
 		return true
 	}
@@ -106,20 +107,20 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor c
 		return false
 	}
 
-	resolvedBlock, err := n.FetchBlock(maybeAncestor)
+	resolvedBlock, err := n.FetchBlock(ctx, maybeAncestor)
 	if err == nil {
 		if resolvedBlock.NumberU64() >= block.NumberU64() {
 			return false
 		}
 	}
 
-	p, err := n.ParentBlock(block)
+	p, err := n.ParentBlock(ctx, block)
 	if err != nil {
 		// todo (@tudor) - if error is not `errutil.ErrNotFound`, throw
 		return false
 	}
 
-	return n.IsBlockAncestor(p, maybeAncestor)
+	return n.IsBlockAncestor(ctx, p, maybeAncestor)
 }
 
 // The cache of included transactions
@@ -152,6 +153,7 @@ func (n *txDBInMem) AddTxs(b *types.Block, newMap map[common.TxHash]*types.Trans
 // removeCommittedTransactions returns a copy of `mempool` where all transactions that are exactly `committedBlocks`
 // deep have been removed.
 func (m *Node) removeCommittedTransactions(
+	ctx context.Context,
 	cb *types.Block,
 	mempool []*types.Transaction,
 	resolver storage.BlockResolver,
@@ -169,7 +171,7 @@ func (m *Node) removeCommittedTransactions(
 			break
 		}
 
-		p, err := resolver.FetchBlock(b.ParentHash())
+		p, err := resolver.FetchBlock(ctx, b.ParentHash())
 		if err != nil {
 			m.logger.Crit("Could not retrieve parent block.", log.ErrKey, err)
 		}

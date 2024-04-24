@@ -381,7 +381,7 @@ func (c *inMemObscuroClient) getPublicTransactionData(result interface{}, args [
 		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetPublicTransactionData, args[0])
 	}
 
-	txs, err := c.tenScanAPI.GetPublicTransactionData(pagination)
+	txs, err := c.tenScanAPI.GetPublicTransactionData(context.Background(), pagination)
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetPublicTransactionData, err)
 	}

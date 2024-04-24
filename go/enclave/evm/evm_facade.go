@@ -1,13 +1,16 @@
 package evm
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
+	_ "unsafe"
+
+	"github.com/ten-protocol/go-ten/go/config"
 
 	// unsafe package imported in order to link to a private function in go-ethereum.
 	// This allows us to customize the message generated from a signed transaction and inject custom gas logic.
-	_ "unsafe"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -34,24 +37,26 @@ import (
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
 func ExecuteTransactions(
+	ctx context.Context,
 	txs common.L2PricedTransactions,
 	s *state.StateDB,
 	header *common.BatchHeader,
 	storage storage.Storage,
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
+	config config.EnclaveConfig,
 	fromTxIndex int,
 	noBaseFee bool,
 	batchGasLimit uint64,
 	logger gethlog.Logger,
 ) map[common.TxHash]interface{} { // todo - return error
-	chain, vmCfg := initParams(storage, gethEncodingService, noBaseFee, logger)
+	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, logger)
 	gp := gethcore.GasPool(batchGasLimit)
 	zero := uint64(0)
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
 
-	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(header)
+	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
 		logger.Crit("Could not convert to eth header", log.ErrKey, err)
 		return nil
@@ -230,6 +235,7 @@ func logReceipt(r *types.Receipt, logger gethlog.Logger) {
 
 // ExecuteObsCall - executes the eth_call call
 func ExecuteObsCall(
+	ctx context.Context,
 	msg *gethcore.Message,
 	s *state.StateDB,
 	header *common.BatchHeader,
@@ -237,6 +243,7 @@ func ExecuteObsCall(
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
 	gasEstimationCap uint64,
+	config config.EnclaveConfig,
 	logger gethlog.Logger,
 ) (*gethcore.ExecutionResult, error) {
 	noBaseFee := true
@@ -248,9 +255,9 @@ func ExecuteObsCall(
 
 	gp := gethcore.GasPool(gasEstimationCap)
 	gp.SetGas(gasEstimationCap)
-	chain, vmCfg := initParams(storage, gethEncodingService, noBaseFee, nil)
+	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, nil)
 
-	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(header)
+	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
 		return nil, err
 	}
@@ -285,11 +292,11 @@ func ExecuteObsCall(
 	return result, nil
 }
 
-func initParams(storage storage.Storage, gethEncodingService gethencoding.EncodingService, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {
+func initParams(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config config.EnclaveConfig, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {
 	vmCfg := vm.Config{
 		NoBaseFee: noBaseFee,
 	}
-	return NewObscuroChainContext(storage, gethEncodingService, l), vmCfg
+	return NewObscuroChainContext(storage, gethEncodingService, config, l), vmCfg
 }
 
 func newErrorWithReasonAndCode(err error) error {

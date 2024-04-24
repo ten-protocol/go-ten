@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"math/big"
@@ -140,7 +141,7 @@ func (p *Service) Stop() error {
 	return nil
 }
 
-func (p *Service) HealthStatus() host.HealthStatus {
+func (p *Service) HealthStatus(context.Context) host.HealthStatus {
 	msg := ""
 	if err := p.verifyHealth(); err != nil {
 		msg = err.Error()

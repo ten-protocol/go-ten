@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -42,7 +43,7 @@ func (l *LogEventManager) Stop() error {
 	return nil
 }
 
-func (l *LogEventManager) HealthStatus() host.HealthStatus {
+func (l *LogEventManager) HealthStatus(context.Context) host.HealthStatus {
 	// always healthy for now
 	return &host.BasicErrHealthStatus{ErrMsg: ""}
 }

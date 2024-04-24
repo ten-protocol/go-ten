@@ -1,6 +1,7 @@
 package clientapi
 
 import (
+	"context"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -24,8 +25,8 @@ func NewScanAPI(host host.Host, logger log.Logger) *ScanAPI {
 }
 
 // GetTotalContractCount returns the number of recorded contracts on the network.
-func (s *ScanAPI) GetTotalContractCount() (*big.Int, error) {
-	return s.host.EnclaveClient().GetTotalContractCount()
+func (s *ScanAPI) GetTotalContractCount(ctx context.Context) (*big.Int, error) {
+	return s.host.EnclaveClient().GetTotalContractCount(ctx)
 }
 
 // GetTotalTxCount returns the number of recorded transactions on the network.
@@ -79,8 +80,8 @@ func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {
 }
 
 // GetPublicTransactionData returns a paginated list of transaction data
-func (s *ScanAPI) GetPublicTransactionData(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
-	return s.host.EnclaveClient().GetPublicTransactionData(pagination)
+func (s *ScanAPI) GetPublicTransactionData(ctx context.Context, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
+	return s.host.EnclaveClient().GetPublicTransactionData(ctx, pagination)
 }
 
 // GetBlockListing returns a paginated list of blocks that include rollups

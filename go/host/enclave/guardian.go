@@ -1,6 +1,7 @@
 package enclave
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"strings"
@@ -102,7 +103,7 @@ func (g *Guardian) Start() error {
 	// Identify the enclave before starting (the enclave generates its ID immediately at startup)
 	// (retry until we get the enclave ID or the host is stopping)
 	for g.enclaveID == nil && !g.hostInterrupter.IsStopping() {
-		enclID, err := g.enclaveClient.EnclaveID()
+		enclID, err := g.enclaveClient.EnclaveID(context.Background())
 		if err != nil {
 			g.logger.Warn("could not get enclave ID", log.ErrKey, err)
 			time.Sleep(_retryInterval)
@@ -149,7 +150,7 @@ func (g *Guardian) Stop() error {
 	return nil
 }
 
-func (g *Guardian) HealthStatus() host.HealthStatus {
+func (g *Guardian) HealthStatus(context.Context) host.HealthStatus {
 	// todo (@matt) do proper health status based on enclave state
 	errMsg := ""
 	if !g.hostInterrupter.IsStopping() {
@@ -196,7 +197,8 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	if g.hostData.IsSequencer || !g.state.IsUpToDate() {
 		return // ignore batches until we're up-to-date
 	}
-	err := g.submitL2Batch(batch)
+	// todo - @matt - does it make sense to use a timeout context?
+	err := g.submitL2Batch(context.Background(), batch)
 	if err != nil {
 		g.logger.Error("Error submitting batch to enclave", log.ErrKey, err)
 	}
@@ -209,7 +211,7 @@ func (g *Guardian) HandleTransaction(tx common.EncryptedTx) {
 		g.logger.Info("Enclave is not ready yet, dropping transaction.")
 		return // ignore transactions when enclave unavailable
 	}
-	resp, sysError := g.enclaveClient.SubmitTx(tx)
+	resp, sysError := g.enclaveClient.SubmitTx(context.Background(), tx)
 	if sysError != nil {
 		g.logger.Warn("could not submit transaction due to sysError", log.ErrKey, sysError)
 		return
@@ -266,7 +268,7 @@ func (g *Guardian) mainLoop() {
 }
 
 func (g *Guardian) checkEnclaveStatus() {
-	s, err := g.enclaveClient.Status()
+	s, err := g.enclaveClient.Status(context.Background())
 	if err != nil {
 		g.logger.Error("Could not get enclave status", log.ErrKey, err)
 		// we record this as a disconnection, we can't get any more info from the enclave about status currently
@@ -282,7 +284,7 @@ func (g *Guardian) provideSecret() error {
 		// instead of requesting a secret, we generate one and broadcast it
 		return g.generateAndBroadcastSecret()
 	}
-	att, err := g.enclaveClient.Attestation()
+	att, err := g.enclaveClient.Attestation(context.Background())
 	if err != nil {
 		return fmt.Errorf("could not retrieve attestation from enclave. Cause: %w", err)
 	}
@@ -306,7 +308,7 @@ func (g *Guardian) provideSecret() error {
 		secretRespTxs, _, _ := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(nextBlock)
 		for _, scrt := range secretRespTxs {
 			if scrt.RequesterID.Hex() == g.enclaveID.Hex() {
-				err = g.enclaveClient.InitEnclave(scrt.Secret)
+				err = g.enclaveClient.InitEnclave(context.Background(), scrt.Secret)
 				if err != nil {
 					g.logger.Error("Could not initialize enclave with received secret response", log.ErrKey, err)
 					continue // try the next secret response in the block if there are more
@@ -333,7 +335,7 @@ func (g *Guardian) provideSecret() error {
 func (g *Guardian) generateAndBroadcastSecret() error {
 	g.logger.Info("Node is genesis node. Publishing secret to L1 management contract.")
 	// Create the shared secret and submit it to the management contract for storage
-	attestation, err := g.enclaveClient.Attestation()
+	attestation, err := g.enclaveClient.Attestation(context.Background())
 	if err != nil {
 		return fmt.Errorf("could not retrieve attestation from enclave. Cause: %w", err)
 	}
@@ -341,7 +343,7 @@ func (g *Guardian) generateAndBroadcastSecret() error {
 		return fmt.Errorf("genesis enclave has ID %s, but its enclave produced an attestation using ID %s", g.enclaveID.Hex(), attestation.EnclaveID.Hex())
 	}
 
-	secret, err := g.enclaveClient.GenerateSecret()
+	secret, err := g.enclaveClient.GenerateSecret(context.Background())
 	if err != nil {
 		return fmt.Errorf("could not generate secret. Cause: %w", err)
 	}
@@ -394,12 +396,12 @@ func (g *Guardian) catchupWithL2() error {
 		nextHead := prevHead.Add(prevHead, big.NewInt(1))
 
 		g.logger.Trace("fetching next batch", log.BatchSeqNoKey, nextHead)
-		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(nextHead)
+		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(context.Background(), nextHead)
 		if err != nil {
 			return errors.Wrap(err, "could not fetch next L2 batch")
 		}
 
-		err = g.submitL2Batch(batch)
+		err = g.submitL2Batch(context.Background(), batch)
 		if err != nil {
 			return err
 		}
@@ -421,7 +423,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
 	}
-	resp, err := g.enclaveClient.SubmitL1Block(*block, receipts, isLatest)
+	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), *block, receipts, isLatest)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
@@ -469,7 +471,7 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 			g.logger.Error("Could not decode rollup.", log.ErrKey, err)
 		}
 
-		metaData, err := g.enclaveClient.GetRollupData(r.Header.Hash())
+		metaData, err := g.enclaveClient.GetRollupData(context.Background(), r.Header.Hash())
 		if err != nil {
 			g.logger.Error("Could not fetch rollup metadata from enclave.", log.ErrKey, err)
 		} else {
@@ -517,9 +519,9 @@ func (g *Guardian) publishSharedSecretResponses(scrtResponses []*common.Produced
 	return nil
 }
 
-func (g *Guardian) submitL2Batch(batch *common.ExtBatch) error {
+func (g *Guardian) submitL2Batch(ctx context.Context, batch *common.ExtBatch) error {
 	g.submitDataLock.Lock()
-	err := g.enclaveClient.SubmitBatch(batch)
+	err := g.enclaveClient.SubmitBatch(ctx, batch)
 	g.submitDataLock.Unlock()
 	if err != nil {
 		// something went wrong, return error and let the main loop check status and try again when appropriate
@@ -555,7 +557,7 @@ func (g *Guardian) periodicBatchProduction() {
 			// if maxBatchInterval is set higher than batchInterval then we are happy to skip creating batches when there is no data
 			// (up to a maximum time of maxBatchInterval)
 			skipBatchIfEmpty := g.maxBatchInterval > g.batchInterval && time.Since(g.lastBatchCreated) < g.maxBatchInterval
-			err := g.enclaveClient.CreateBatch(skipBatchIfEmpty)
+			err := g.enclaveClient.CreateBatch(context.Background(), skipBatchIfEmpty)
 			if err != nil {
 				g.logger.Error("Unable to produce batch", log.ErrKey, err)
 			}
@@ -609,7 +611,7 @@ func (g *Guardian) periodicRollupProduction() {
 			sizeExceeded := estimatedRunningRollupSize >= g.maxRollupSize
 			if timeExpired || sizeExceeded {
 				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded)
-				producedRollup, err := g.enclaveClient.CreateRollup(fromBatch)
+				producedRollup, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
 				if err != nil {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue
@@ -688,7 +690,7 @@ func (g *Guardian) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error)
 
 	currentNo := seqNo
 	for {
-		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(big.NewInt(int64(currentNo)))
+		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(context.TODO(), big.NewInt(int64(currentNo)))
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
 				break // no more batches

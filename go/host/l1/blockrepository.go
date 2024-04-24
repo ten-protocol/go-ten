@@ -1,6 +1,7 @@
 package l1
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -63,7 +64,7 @@ func (r *Repository) Stop() error {
 	return nil
 }
 
-func (r *Repository) HealthStatus() host.HealthStatus {
+func (r *Repository) HealthStatus(context.Context) host.HealthStatus {
 	// todo (@matt) do proper health status based on last received block or something
 	errMsg := ""
 	if !r.running.Load() {

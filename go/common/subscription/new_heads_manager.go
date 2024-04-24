@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"context"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -93,7 +94,7 @@ func (nhs *NewHeadsService) Stop() error {
 	return nil
 }
 
-func (nhs *NewHeadsService) HealthStatus() host.HealthStatus {
+func (nhs *NewHeadsService) HealthStatus(context.Context) host.HealthStatus {
 	return &host.BasicErrHealthStatus{}
 }
 

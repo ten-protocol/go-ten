@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -31,6 +32,10 @@ const (
 
 	longCacheTTL  = 5 * time.Hour
 	shortCacheTTL = 1 * time.Minute
+
+	// hardcoding the maximum time for an RPC request
+	// this value will be propagated to the node and enclave and all the operations
+	maximumRPCCallDuration = 5 * time.Second
 )
 
 var rpcNotImplemented = fmt.Errorf("rpc endpoint not implemented")
@@ -58,6 +63,9 @@ type CacheCfg struct {
 }
 
 func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg, method string, args ...any) (*R, error) {
+	if ctx == nil {
+		return nil, errors.New("invalid call. nil Context")
+	}
 	audit(w, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
 	cacheArgs := []any{method}
@@ -67,11 +75,12 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *Cac
 		return withPlainRPCConnection(w, func(client *rpc.Client) (*R, error) {
 			var resp *R
 			var err error
-			if ctx == nil {
-				err = client.Call(&resp, method, args...)
-			} else {
-				err = client.CallContext(ctx, &resp, method, args...)
-			}
+
+			// wrap the context with a timeout to prevent long executions
+			timeoutContext, cancelCtx := context.WithTimeout(ctx, maximumRPCCallDuration)
+			defer cancelCtx()
+
+			err = client.CallContext(timeoutContext, &resp, method, args...)
 			return resp, err
 		})
 	})
@@ -114,7 +123,12 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 				if cfg.adjustArgs != nil {
 					adjustedArgs = cfg.adjustArgs(acct)
 				}
-				err := rpcClient.CallContext(ctx, &result, method, adjustedArgs...)
+
+				// wrap the context with a timeout to prevent long executions
+				timeoutContext, cancelCtx := context.WithTimeout(ctx, maximumRPCCallDuration)
+				defer cancelCtx()
+
+				err := rpcClient.CallContext(timeoutContext, &result, method, adjustedArgs...)
 				return result, err
 			})
 			if err != nil {
