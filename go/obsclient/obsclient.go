@@ -189,7 +189,7 @@ func (oc *ObsClient) GetRollupListing(pagination *common.QueryPagination) (*comm
 	return &result, nil
 }
 
-// GetRollupByHash TODO
+// GetRollupByHash returns the public rollup data given its hash
 func (oc *ObsClient) GetRollupByHash(hash gethcommon.Hash) (*common.PublicRollup, error) {
 	var rollup *common.PublicRollup
 	err := oc.rpcClient.Call(&rollup, rpc.GetRollupByHash, hash)
@@ -199,7 +199,7 @@ func (oc *ObsClient) GetRollupByHash(hash gethcommon.Hash) (*common.PublicRollup
 	return rollup, err
 }
 
-// GetRollupBatches TODO
+// GetRollupBatches returns a list of public batch data within a given rollup hash
 func (oc *ObsClient) GetRollupBatches(hash gethcommon.Hash) (*common.BatchListingResponse, error) {
 	var batchListing *common.BatchListingResponse
 	err := oc.rpcClient.Call(&batchListing, rpc.GetRollupBatches, hash)
@@ -209,7 +209,7 @@ func (oc *ObsClient) GetRollupBatches(hash gethcommon.Hash) (*common.BatchListin
 	return batchListing, err
 }
 
-// GetBatchTransactions TODO
+// GetBatchTransactions returns a list of public transaction data within a given batch hash
 func (oc *ObsClient) GetBatchTransactions(hash gethcommon.Hash) (*common.TransactionListingResponse, error) {
 	var txListing *common.TransactionListingResponse
 	err := oc.rpcClient.Call(&txListing, rpc.GetBatchTransactions, hash)
