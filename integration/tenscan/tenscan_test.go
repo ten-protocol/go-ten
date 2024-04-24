@@ -142,7 +142,7 @@ func TestTenscan(t *testing.T) {
 	// check "hash" field is included in json response
 	assert.Contains(t, string(body), "\"hash\"")
 
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/new/batches/?offset=0&size=10", serverAddress))
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/v2/batches/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 

@@ -113,6 +113,7 @@ func (b *Backend) GetRollupBatches(hash gethcommon.Hash) (*common.BatchListingRe
 func (b *Backend) GetBatchTransactions(hash gethcommon.Hash) (*common.TransactionListingResponse, error) {
 	return b.obsClient.GetBatchTransactions(hash)
 }
+
 func (b *Backend) DecryptTxBlob(payload string) ([]*common.L2Tx, error) {
 	encryptedTxBytes, err := base64.StdEncoding.DecodeString(payload)
 	if err != nil {

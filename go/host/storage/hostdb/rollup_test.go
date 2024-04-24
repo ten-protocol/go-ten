@@ -1,10 +1,11 @@
 package hostdb
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"testing"
 	"time"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/go/common"
 )
@@ -242,7 +243,6 @@ func TestGetRollupByHash(t *testing.T) {
 	if publicRollup.LastSeq.Cmp(big.NewInt(batchNumber+10)) != 0 {
 		t.Errorf("rollup was not stored correctly")
 	}
-
 }
 
 func TestGetRollupBatches(t *testing.T) {
