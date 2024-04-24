@@ -3,11 +3,12 @@ package hostdb
 import (
 	"database/sql"
 	"fmt"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/pkg/errors"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
-	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

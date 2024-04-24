@@ -187,6 +187,30 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, batchlistingObj.Result.BatchesData[0].Header.Hash(), batchObj.Item.Header.Hash())
 
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollups/?offset=0&size=10", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type rollupListing struct {
+		Result common.RollupListingResponse `json:"result"`
+	}
+
+	rollupListingObj := rollupListing{}
+	err = json.Unmarshal(body, &rollupListingObj)
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, 4, len(rollupListingObj.Result.RollupsData))
+	assert.LessOrEqual(t, uint64(4), rollupListingObj.Result.Total)
+	assert.Contains(t, string(body), "\"hash\"")
+
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/%s/batches", serverAddress, rollupListingObj.Result.RollupsData[0].Header.Hash()))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	err = json.Unmarshal(body, &batchlistingObj)
+	assert.NoError(t, err)
+	// we should find batches given the rollup hash
+	assert.True(t, batchlistingObj.Result.Total > 0)
+
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/obscuro/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
@@ -194,17 +218,6 @@ func TestTenscan(t *testing.T) {
 	type configFetch struct {
 		Item common.ObscuroNetworkInfo `json:"item"`
 	}
-
-	//TODO DELETE ME
-	//Timer for running local tests
-	countdownDuration := 20 * time.Minute
-	tickDuration := 5 * time.Second
-
-	for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
-		fmt.Printf("Shutting down in %s...\n", remaining)
-		time.Sleep(tickDuration)
-	}
-	//TODO DELETE ME
 
 	configFetchObj := configFetch{}
 	err = json.Unmarshal(body, &configFetchObj)
