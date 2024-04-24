@@ -358,7 +358,7 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 
 	batch := &common.PublicBatch{
 		SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
-		Hash:             hash,
+		Hash:             bytesToHexString(hash),
 		FullHash:         fullHash,
 		Height:           new(big.Int).SetInt64(int64(heightInt64)),
 		TxCount:          new(big.Int).SetInt64(int64(len(b.TxHashes))),
@@ -422,7 +422,7 @@ func fetchHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 
 	batch := &common.PublicBatch{
 		SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
-		Hash:             hash,
+		Hash:             bytesToHexString(hash),
 		FullHash:         fullHash,
 		Height:           new(big.Int).SetInt64(int64(heightInt64)),
 		TxCount:          new(big.Int).SetInt64(int64(len(b.TxHashes))),

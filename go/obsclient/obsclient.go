@@ -192,7 +192,7 @@ func (oc *ObsClient) GetRollupListing(pagination *common.QueryPagination) (*comm
 // GetRollupByHash TODO
 func (oc *ObsClient) GetRollupByHash(hash gethcommon.Hash) (*common.PublicRollup, error) {
 	var rollup *common.PublicRollup
-	err := oc.rpcClient.Call(&rollup, rpc.GetRollupByHash, hash, false)
+	err := oc.rpcClient.Call(&rollup, rpc.GetRollupByHash, hash)
 	if err == nil && rollup == nil {
 		err = ethereum.NotFound
 	}
@@ -202,7 +202,7 @@ func (oc *ObsClient) GetRollupByHash(hash gethcommon.Hash) (*common.PublicRollup
 // GetRollupBatches TODO
 func (oc *ObsClient) GetRollupBatches(hash gethcommon.Hash) (*common.BatchListingResponse, error) {
 	var batchListing *common.BatchListingResponse
-	err := oc.rpcClient.Call(&batchListing, rpc.GetRollupBatches, hash, false)
+	err := oc.rpcClient.Call(&batchListing, rpc.GetRollupBatches, hash)
 	if err == nil && batchListing == nil {
 		err = ethereum.NotFound
 	}
@@ -212,7 +212,7 @@ func (oc *ObsClient) GetRollupBatches(hash gethcommon.Hash) (*common.BatchListin
 // GetBatchTransactions TODO
 func (oc *ObsClient) GetBatchTransactions(hash gethcommon.Hash) (*common.TransactionListingResponse, error) {
 	var txListing *common.TransactionListingResponse
-	err := oc.rpcClient.Call(&txListing, rpc.GetBatchTransactions, hash, false)
+	err := oc.rpcClient.Call(&txListing, rpc.GetBatchTransactions, hash)
 	if err == nil && txListing == nil {
 		err = ethereum.NotFound
 	}

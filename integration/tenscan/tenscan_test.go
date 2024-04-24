@@ -195,6 +195,17 @@ func TestTenscan(t *testing.T) {
 		Item common.ObscuroNetworkInfo `json:"item"`
 	}
 
+	//TODO DELETE ME
+	//Timer for running local tests
+	countdownDuration := 20 * time.Minute
+	tickDuration := 5 * time.Second
+
+	for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
+		fmt.Printf("Shutting down in %s...\n", remaining)
+		time.Sleep(tickDuration)
+	}
+	//TODO DELETE ME
+
 	configFetchObj := configFetch{}
 	err = json.Unmarshal(body, &configFetchObj)
 	assert.NoError(t, err)

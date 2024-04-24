@@ -1,6 +1,8 @@
 package hostdb
 
 import (
+	"encoding/hex"
+	"fmt"
 	"testing"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -65,4 +67,8 @@ func createSQLiteDB(t *testing.T) (HostDB, error) {
 		t.Fatalf("unable to create temp sql db: %s", err)
 	}
 	return NewHostDB(hostDB, SQLiteSQLStatements())
+}
+
+func bytesToHexString(bytes []byte) string {
+	return fmt.Sprintf("0x%s", hex.EncodeToString(bytes))
 }

@@ -3,12 +3,11 @@ package hostdb
 import (
 	"database/sql"
 	"fmt"
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/pkg/errors"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -26,6 +25,7 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 	if err != nil {
 		return fmt.Errorf("could not encode rollup: %w", err)
 	}
+
 	_, err = dbtx.tx.Exec(statements.InsertRollup,
 		truncTo16(rollup.Header.Hash()),      // short hash
 		metadata.FirstBatchSequence.Uint64(), // first batch sequence
@@ -67,12 +67,12 @@ func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.Ro
 
 		rollup = common.PublicRollup{
 			ID:        big.NewInt(int64(id)),
-			Hash:      hash,
+			Hash:      bytesToHexString(hash),
 			FirstSeq:  big.NewInt(int64(startSeq)),
 			LastSeq:   big.NewInt(int64(endSeq)),
 			Timestamp: uint64(timeStamp),
 			Header:    extRollupDecoded.Header,
-			L1Hash:    compressionBlock,
+			L1Hash:    bytesToHexString(compressionBlock),
 		}
 		rollups = append(rollups, rollup)
 	}
@@ -150,7 +150,7 @@ func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash) (*common.BatchListi
 
 		batch := common.PublicBatch{
 			SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
-			Hash:             hash,
+			Hash:             bytesToHexString(hash),
 			FullHash:         fullHash,
 			Height:           new(big.Int).SetInt64(int64(heightInt64)),
 			TxCount:          new(big.Int).SetInt64(int64(len(b.TxHashes))),
@@ -223,17 +223,17 @@ func fetchHeadRollup(db *sql.DB) (*common.ExtRollup, error) {
 func fetchPublicRollup(db *sql.DB, whereQuery string, args ...any) (*common.PublicRollup, error) {
 	query := selectPublicRollup + whereQuery
 	var rollup common.PublicRollup
-	var extRollup []byte
+	var hash, extRollup, compressionblock []byte
 	var id, firstSeq, lastSeq, timestamp int
 
 	err := db.QueryRow(query, args...).Scan(
 		&id,
-		&rollup.Hash,
+		&hash,
 		&firstSeq,
 		&lastSeq,
 		&timestamp,
 		&extRollup,
-		&rollup.L1Hash,
+		&compressionblock,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -242,9 +242,11 @@ func fetchPublicRollup(db *sql.DB, whereQuery string, args ...any) (*common.Publ
 		return nil, fmt.Errorf("failed to fetch rollup by hash: %w", err)
 	}
 	rollup.ID = big.NewInt(int64(id))
+	rollup.Hash = bytesToHexString(hash)
 	rollup.FirstSeq = big.NewInt(int64(firstSeq))
 	rollup.LastSeq = big.NewInt(int64(lastSeq))
 	rollup.Timestamp = uint64(timestamp)
+	rollup.L1Hash = bytesToHexString(compressionblock)
 
 	extRollupDecoded := new(common.ExtRollup)
 	if err := rlp.DecodeBytes(extRollup, extRollupDecoded); err != nil {
