@@ -363,6 +363,22 @@ func (s *RPCServer) GetBatchBySeqNo(_ context.Context, request *generated.GetBat
 	}, err
 }
 
+func (s *RPCServer) ExportCrossChainData(_ context.Context, request *generated.ExportCrossChainDataRequest) (*generated.ExportCrossChainDataResponse, error) {
+	bundle, err := s.enclave.ExportCrossChainData(request.FromSeqNo, request.ToSeqNo)
+	if err != nil {
+		return nil, err
+	}
+
+	encodedBundle, err := rlp.EncodeToBytes(bundle)
+	if err != nil {
+		return nil, err
+	}
+
+	return &generated.ExportCrossChainDataResponse{
+		Msg: encodedBundle,
+	}, nil
+}
+
 func (s *RPCServer) GetRollupData(_ context.Context, request *generated.GetRollupDataRequest) (*generated.GetRollupDataResponse, error) {
 	rollupMetadata, sysError := s.enclave.GetRollupData(gethcommon.BytesToHash(request.Hash))
 	if sysError != nil {

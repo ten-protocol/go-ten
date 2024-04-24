@@ -44,6 +44,7 @@ type BatchHeader struct {
 	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *big.Int                              `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
 	TransfersTree                 common.Hash                           `json:"transfersTree"`           // This is a merkle tree of all of the outbound value transfers for the MainNet
+	CrossChainTree                SerializedCrossChainTree              `json:"crossChainTree"`
 }
 
 type batchHeaderEncoding struct {
@@ -68,6 +69,7 @@ type batchHeaderEncoding struct {
 	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *hexutil.Big                          `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
 	TransfersTree                 common.Hash
+	CrossChainTree                SerializedCrossChainTree `json:"crossChainTree"`
 }
 
 // MarshalJSON custom marshals the BatchHeader into a json
@@ -92,6 +94,7 @@ func (b *BatchHeader) MarshalJSON() ([]byte, error) {
 		b.LatestInboundCrossChainHash,
 		(*hexutil.Big)(b.LatestInboundCrossChainHeight),
 		b.TransfersTree,
+		b.CrossChainTree,
 	})
 }
 

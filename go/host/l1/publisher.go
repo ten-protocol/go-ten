@@ -7,8 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -222,6 +225,43 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	}
 }
 
+func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle) {
+	if len(bundle.CrossChainHashes) == 0 {
+		return
+	}
+
+	managementCtr, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
+	if err != nil {
+		p.logger.Error("Unable to instantiate management contract client")
+		return
+	}
+
+	transactor, err := bind.NewKeyedTransactorWithChainID(p.hostWallet.PrivateKey(), p.hostWallet.ChainID())
+	if err != nil {
+		p.logger.Error("Unable to create transactor for management contract")
+		return
+	}
+
+	//	transactor.GasLimit = 200_000
+	transactor.Nonce = big.NewInt(0).SetUint64(p.hostWallet.GetNonceAndIncrement())
+
+	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.StateRootHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainHashes, bundle.Signature)
+	if err != nil {
+		if !errors.Is(err, errutil.ErrCrossChainBundleRepublished) {
+			p.logger.Error("Error with submitting cross chain bundle transaction.", log.ErrKey, err, log.BundleHashKey, bundle.StateRootHash)
+		}
+		p.hostWallet.SetNonce(p.hostWallet.GetNonce() - 1)
+		return
+	}
+
+	err = p.awaitTransaction(tx)
+	if err != nil {
+		p.logger.Error("Error with receipt of cross chain publish transaction", log.TxKey, tx.Hash(), log.ErrKey, err)
+	}
+
+	p.logger.Info("Successfully submitted bundle", log.BundleHashKey, bundle.StateRootHash)
+}
+
 func (p *Publisher) FetchLatestPeersList() ([]string, error) {
 	msg, err := p.mgmtContractLib.GetHostAddressesMsg()
 	if err != nil {
@@ -367,6 +407,30 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		p.logger.Debug("L1 transaction successful receipt found.", log.TxKey, signedTx.Hash(),
 			log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
 		break
+	}
+	return nil
+}
+
+func (p *Publisher) awaitTransaction(tx *types.Transaction) error {
+	var receipt *types.Receipt
+	var err error
+	err = retry.Do(
+		func() error {
+			receipt, err = p.ethClient.TransactionReceipt(tx.Hash())
+			if err != nil {
+				return fmt.Errorf("could not get receipt for L1 tx=%s: %w", tx.Hash(), err)
+			}
+			return err
+		},
+		retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
+	)
+	if err != nil {
+		p.logger.Info("Receipt not found for transaction, we will re-attempt", log.ErrKey, err)
+		return err
+	}
+
+	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
+		return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
 	}
 	return nil
 }

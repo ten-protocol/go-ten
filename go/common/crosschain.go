@@ -1,0 +1,47 @@
+package common
+
+import (
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+)
+
+type ExtCrossChainBundle struct {
+	StateRootHash    gethcommon.Hash
+	Signature        []byte
+	L1BlockHash      gethcommon.Hash
+	L1BlockNum       *big.Int
+	CrossChainHashes [][]byte
+}
+
+func (bundle ExtCrossChainBundle) HashPacked() common.Hash {
+	uint256type, _ := abi.NewType("uint256", "", nil)
+	bytes32type, _ := abi.NewType("bytes32", "", nil)
+	bytesТype, _ := abi.NewType("bytes[]", "", nil)
+
+	args := abi.Arguments{
+		{
+			Type: bytes32type,
+		},
+		{
+			Type: bytes32type,
+		},
+		{
+			Type: uint256type,
+		},
+		{
+			Type: bytesТype,
+		},
+	}
+
+	bytes, err := args.Pack(bundle.StateRootHash, bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainHashes)
+	if err != nil {
+		panic(err)
+	}
+
+	hash := crypto.Keccak256Hash(bytes)
+	return hash
+}

@@ -13,12 +13,14 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	"github.com/ten-protocol/go-ten/go/common/compression"
 
+	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -61,7 +63,24 @@ type sequencer struct {
 	blockchain             *ethchainadapter.EthChainAdapter
 }
 
-func NewSequencer(blockProcessor components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupProducer components.RollupProducer, rollupConsumer components.RollupConsumer, rollupCompression *components.RollupCompression, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger, chainConfig *params.ChainConfig, enclavePrivateKey *crypto.EnclaveKey, mempool *txpool.TxPool, storage storage.Storage, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, settings SequencerSettings, blockchain *ethchainadapter.EthChainAdapter) Sequencer {
+func NewSequencer(
+	blockProcessor components.L1BlockProcessor,
+	batchExecutor components.BatchExecutor,
+	registry components.BatchRegistry,
+	rollupProducer components.RollupProducer,
+	rollupConsumer components.RollupConsumer,
+	rollupCompression *components.RollupCompression,
+	gethEncodingService gethencoding.EncodingService,
+	logger gethlog.Logger,
+	chainConfig *params.ChainConfig,
+	enclavePrivateKey *crypto.EnclaveKey,
+	mempool *txpool.TxPool,
+	storage storage.Storage,
+	dataEncryptionService crypto.DataEncryptionService,
+	dataCompressionService compression.DataCompressionService,
+	settings SequencerSettings,
+	blockchain *ethchainadapter.EthChainAdapter,
+) Sequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
 		batchProducer:          batchExecutor,
@@ -437,6 +456,16 @@ func (s *sequencer) signRollup(rollup *common.ExtRollup) error {
 	return nil
 }
 
+func (s *sequencer) signCrossChainBundle(bundle *common.ExtCrossChainBundle) error {
+	var err error
+	h := bundle.HashPacked()
+	bundle.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
+	if err != nil {
+		return fmt.Errorf("could not sign batch. Cause: %w", err)
+	}
+	return nil
+}
+
 func (s *sequencer) OnL1Block(_ types.Block, _ *components.BlockIngestionType) error {
 	// nothing to do
 	return nil
@@ -444,4 +473,74 @@ func (s *sequencer) OnL1Block(_ types.Block, _ *components.BlockIngestionType) e
 
 func (s *sequencer) Close() error {
 	return s.mempool.Close()
+}
+
+func (s *sequencer) ExportCrossChainData(fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
+	canonicalBatchesInRollup := make([]*core.Batch, 0)
+	for i := fromSeqNo; i <= toSeqNo; i++ {
+		batch, err := s.storage.FetchBatchBySeqNo(fromSeqNo)
+		if err != nil {
+			return nil, err
+		}
+
+		l1BlockHash := batch.Header.L1Proof
+		block, err := s.storage.FetchBlock(l1BlockHash)
+		if err != nil {
+			return nil, err
+		}
+
+		canonicalBlock, err := s.storage.FetchCanonicaBlockByHeight(block.Header().Number)
+		if err != nil {
+			return nil, err
+		}
+
+		if canonicalBlock.Hash().Cmp(block.Hash()) != 0 {
+			continue
+		}
+
+		// Only add batches that point to canonical blocks.
+		canonicalBatchesInRollup = append(canonicalBatchesInRollup, batch)
+	}
+
+	if len(canonicalBatchesInRollup) == 0 {
+		return nil, fmt.Errorf("no batches found for export of cross chain data")
+	}
+
+	// build a merkle tree of all the batches that are valid for the cannonical L1 chain
+	// The proof is double inclusion - one for the message being in the batch's tree and one for
+
+	smtValues := crosschain.MerkleBatches(canonicalBatchesInRollup).ForMerkleTree()
+
+	tree, err := smt.Of(smtValues, []string{smt.SOL_BYTES32})
+	if err != nil {
+		return nil, err
+	}
+
+	batchesHash := tree.GetRoot()
+
+	block, err := s.blockProcessor.GetHead()
+	if err != nil {
+		return nil, err
+	}
+
+	crossChainHashes := make([][]byte, 0)
+	for _, batch := range canonicalBatchesInRollup {
+		if batch.Header.TransfersTree != gethcommon.BigToHash(gethcommon.Big0) {
+			crossChainHashes = append(crossChainHashes, batch.Header.TransfersTree.Bytes())
+		}
+	}
+
+	bundle := &common.ExtCrossChainBundle{
+		StateRootHash:    gethcommon.BytesToHash(batchesHash),
+		L1BlockHash:      block.Hash(),
+		L1BlockNum:       big.NewInt(0).Set(block.Header().Number),
+		CrossChainHashes: crossChainHashes,
+	}
+
+	err = s.signCrossChainBundle(bundle)
+	if err != nil {
+		return nil, err
+	}
+
+	return bundle, nil
 }

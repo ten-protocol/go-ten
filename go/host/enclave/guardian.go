@@ -608,6 +608,15 @@ func (g *Guardian) periodicRollupProduction() {
 				// this method waits until the receipt is received
 				g.sl.L1Publisher().PublishRollup(producedRollup)
 				lastSuccessfulRollup = time.Now()
+
+				fromBatchNum := fromBatch
+				toBatchNum := producedRollup.Header.LastBatchSeqNo
+				bundle, err := g.enclaveClient.ExportCrossChainData(fromBatchNum, toBatchNum)
+				if err != nil {
+					g.logger.Error("Unable to export cross chain bundle from enclave", log.ErrKey, err)
+					continue
+				}
+				g.sl.L1Publisher().PublishCrossChainBundle(bundle)
 			}
 
 		case <-g.hostInterrupter.Done():

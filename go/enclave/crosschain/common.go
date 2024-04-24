@@ -6,12 +6,15 @@ import (
 	"strings"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 
+	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 	"golang.org/x/crypto/sha3"
@@ -74,7 +77,7 @@ func lazilyLogChecksum(msg string, transactions types.Transactions, logger gethl
 */
 
 // filterLogsFromReceipts - filters the receipts for logs matching address, if provided and topic if provided.
-func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address, topic *gethcommon.Hash) ([]types.Log, error) {
+func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address, topics []*gethcommon.Hash) ([]types.Log, error) {
 	logs := make([]types.Log, 0)
 
 	for _, receipt := range receipts {
@@ -82,7 +85,7 @@ func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address
 			continue
 		}
 
-		logsForReceipt, err := filterLogsFromReceipt(receipt, address, topic)
+		logsForReceipt, err := filterLogsFromReceipt(receipt, address, topics)
 		if err != nil {
 			return logs, err
 		}
@@ -94,7 +97,7 @@ func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address
 }
 
 // filterLogsFromReceipt - filters the receipt for logs matching address, if provided and topic if provided.
-func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, topic *gethcommon.Hash) ([]types.Log, error) {
+func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, topics []*gethcommon.Hash) ([]types.Log, error) {
 	logs := make([]types.Log, 0)
 
 	if receipt == nil {
@@ -108,8 +111,10 @@ func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, 
 			shouldSkip = true
 		}
 
-		if topic != nil && log.Topics[0] != *topic {
-			shouldSkip = true
+		for _, topic := range topics {
+			if topic != nil && log.Topics[0] != *topic {
+				shouldSkip = true
+			}
 		}
 
 		if shouldSkip {
@@ -171,3 +176,147 @@ func convertLogsToValueTransfers(logs []types.Log, eventName string, messageBusA
 
 	return messages, nil
 }
+
+type MerkleBatches []*core.Batch
+
+func (mb MerkleBatches) Len() int {
+	return len(mb)
+}
+
+func (mb MerkleBatches) EncodeIndex(index int, w *bytes.Buffer) {
+	batch := mb[index]
+	if err := rlp.Encode(w, batch.Header.TransfersTree); err != nil {
+		panic(err)
+	}
+}
+
+func (mb MerkleBatches) ForMerkleTree() [][]interface{} {
+	values := make([][]interface{}, 0)
+	for _, batch := range mb {
+		val := []interface{}{
+			batch.Header.TransfersTree,
+		}
+		values = append(values, val)
+	}
+
+	return values
+}
+
+type MessageStructs []MessageBus.StructsCrossChainMessage
+
+func (ms MessageStructs) Len() int {
+	return len(ms)
+}
+
+func (ms MessageStructs) EncodeIndex(index int, w *bytes.Buffer) {
+	message := ms[index]
+	if err := rlp.Encode(w, message); err != nil {
+		panic(err)
+	}
+}
+
+func (ms MessageStructs) ForMerkleTree() [][]interface{} {
+	values := make([][]interface{}, 0)
+	for idx, _ := range ms {
+		hashedVal := ms.HashPacked(idx)
+		val := []interface{}{
+			"message",
+			hashedVal,
+		}
+		values = append(values, val)
+	}
+	return values
+}
+
+func (ms MessageStructs) HashPacked(index int) gethcommon.Hash {
+	messageStruct := ms[index]
+	/*	Sender           common.Address
+		Sequence         uint64
+		Nonce            uint32
+		Topic            uint32
+		Payload          []byte
+		ConsistencyLevel uint8 */
+
+	addrType, _ := abi.NewType("address", "", nil)
+	uint64Type, _ := abi.NewType("uint64", "", nil)
+	uint32Type, _ := abi.NewType("uint32", "", nil)
+	uint8Type, _ := abi.NewType("uint32", "", nil)
+	bytesType, _ := abi.NewType("bytes", "", nil)
+	args := abi.Arguments{
+		{
+			Type: addrType,
+		},
+		{
+			Type: uint64Type,
+		},
+		{
+			Type: uint32Type,
+		},
+		{
+			Type: uint32Type,
+		},
+		{
+			Type: bytesType,
+		},
+		{
+			Type: uint8Type,
+		},
+	}
+
+	//todo @siliev: err
+	packed, _ := args.Pack(messageStruct.Sender, messageStruct.Sequence, messageStruct.Nonce, messageStruct.Topic, messageStruct.Payload, messageStruct.ConsistencyLevel)
+	hash := crypto.Keccak256Hash(packed)
+	return hash
+}
+
+type ValueTransfers []common.ValueTransferEvent
+
+func (vt ValueTransfers) Len() int {
+	return len(vt)
+}
+
+func (vt ValueTransfers) EncodeIndex(index int, w *bytes.Buffer) {
+	transfer := vt[index]
+	if err := rlp.Encode(w, transfer); err != nil {
+		panic(err)
+	}
+}
+
+func (vt ValueTransfers) ForMerkleTree() [][]interface{} {
+	values := make([][]interface{}, 0)
+	for idx, _ := range vt {
+		hashedVal := vt.HashPacked(idx)
+		val := []interface{}{
+			"value",
+			hashedVal,
+		}
+		values = append(values, val)
+	}
+	return values
+}
+
+func (vt ValueTransfers) HashPacked(index int) gethcommon.Hash {
+	valueTransfer := vt[index]
+
+	uint256Type, _ := abi.NewType("uint256", "", nil)
+	addrType, _ := abi.NewType("address", "", nil)
+
+	args := abi.Arguments{
+		{
+			Type: addrType,
+		},
+		{
+			Type: addrType,
+		},
+		{
+			Type: uint256Type,
+		},
+	}
+
+	bytes, _ := args.Pack(valueTransfer.Sender, valueTransfer.Receiver, valueTransfer.Amount)
+
+	hash := crypto.Keccak256Hash(bytes)
+	return hash
+}
+
+var CrossChainEncodings = []string{smt.SOL_STRING, smt.SOL_BYTES32}

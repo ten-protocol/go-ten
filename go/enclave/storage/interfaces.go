@@ -23,6 +23,8 @@ type BlockResolver interface {
 	FetchBlock(blockHash common.L1BlockHash) (*types.Block, error)
 	// FetchCanonicaBlockByHeight - self explanatory
 	FetchCanonicaBlockByHeight(height *big.Int) (*types.Block, error)
+
+	FetchCanonicalBlocksBetween(start *big.Int, end *big.Int) ([]*types.Header, error)
 	// FetchHeadBlock - returns the head of the current chain.
 	FetchHeadBlock() (*types.Block, error)
 	// StoreBlock persists the L1 Block and updates the canonical ancestors if there was a fork

@@ -542,6 +542,39 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 	if nrSuccessful < len(l2Txs)/2 {
 		t.Errorf("node %d: More than half the transactions failed. Successful number: %d", nodeIdx, nrSuccessful)
 	}
+
+	msgBusAddr := gethcommon.HexToAddress("0x526c84529B2b8c11F57D93d3f5537aCA3AeCEf9B")
+
+	for _, tx := range txInjector.TxTracker.WithdrawalL2Transactions {
+		sender := getSender(tx)
+		receipt, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionReceipt(ctx, tx.Hash())
+		if err != nil {
+			continue
+		}
+
+		if receipt.Status == types.ReceiptStatusFailed {
+			testlog.Logger().Error("[CrossChain] failed withdrawal")
+			continue
+		}
+
+		if len(receipt.Logs) == 0 {
+			testlog.Logger().Error("[CrossChain] no logs in withdrawal?!")
+			continue
+		}
+
+		if receipt.Logs[0].Address != msgBusAddr {
+			testlog.Logger().Error("[CrossChain] wtf")
+			continue
+		}
+
+		abi, _ := MessageBus.MessageBusMetaData.GetAbi()
+		if receipt.Logs[0].Topics[0] != abi.Events["ValueTransfer"].ID {
+			testlog.Logger().Error("[CrossChain] wtf")
+			continue
+		}
+
+		testlog.Logger().Info("[CrossChain] successful withdrawal")
+	}
 }
 
 func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeIdx int) (totalSuccessfullyWithdrawn *big.Int) {

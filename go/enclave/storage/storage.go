@@ -231,6 +231,11 @@ func (s *storageImpl) FetchCanonicaBlockByHeight(height *big.Int) (*types.Block,
 	return s.FetchBlock(header.Hash())
 }
 
+func (s *storageImpl) FetchCanonicalBlocksBetween(start *big.Int, end *big.Int) ([]*types.Header, error) {
+	defer s.logDuration("FetchCanonicalBlocksBetween", measure.NewStopwatch())
+	return enclavedb.FetchBlockHeadersBetween(s.db.GetSQLDB(), start, end)
+}
+
 func (s *storageImpl) FetchHeadBlock() (*types.Block, error) {
 	defer s.logDuration("FetchHeadBlock", measure.NewStopwatch())
 	return enclavedb.FetchHeadBlock(s.db.GetSQLDB())

@@ -268,6 +268,11 @@ func NewEnclave(
 	}
 }
 
+// todo - this does not query atomically. If stuff reorgs we might get weird exports.
+func (e *enclaveImpl) ExportCrossChainData(fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, common.SystemError) {
+	return e.Sequencer().ExportCrossChainData(fromSeqNo, toSeqNo)
+}
+
 func (e *enclaveImpl) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {
 	batch, err := e.storage.FetchBatch(hash)
 	if err != nil {

@@ -32,6 +32,8 @@ type Sequencer interface {
 	// and adds as many batches to it as possible.
 	CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error)
 
+	ExportCrossChainData(uint64, uint64) (*common.ExtCrossChainBundle, error)
+
 	NodeType
 }
 

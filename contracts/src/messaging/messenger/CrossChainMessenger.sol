@@ -23,7 +23,6 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
     address public crossChainSender;
     mapping(bytes32 => bool) messageConsumed;
 
-
     //todo - make only once
     function initialize(address messageBusAddr) external initializer {
         messageBusContract = IMessageBus(messageBusAddr);
@@ -48,6 +47,8 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
 
         messageConsumed[msgHash] = true;
     }
+
+
 
     // TODO: Remove this. It does not serve any real purpose on chain, but is currently required for hardhat tests
     // as producing the same result in JS has proven difficult...

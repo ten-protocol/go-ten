@@ -74,6 +74,27 @@ func NewClient(config *config.HostConfig, logger gethlog.Logger) common.Enclave 
 	}
 }
 
+func (c *Client) ExportCrossChainData(from uint64, to uint64) (*common.ExtCrossChainBundle, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.ExportCrossChainData(timeoutCtx, &generated.ExportCrossChainDataRequest{
+		FromSeqNo: from,
+		ToSeqNo:   to,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var bundle common.ExtCrossChainBundle
+	err = rlp.DecodeBytes(response.Msg, &bundle)
+	if err != nil {
+		return nil, err
+	}
+
+	return &bundle, nil
+}
+
 func (c *Client) StopClient() common.SystemError {
 	c.logger.Info("Closing rpc server connection.")
 	return c.connection.Close()

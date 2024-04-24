@@ -113,7 +113,7 @@ func (m *blockMessageExtractor) getCrossChainMessages(block *common.L1Block, rec
 	}
 
 	// Retrieves the relevant logs from the message bus.
-	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &CrossChainEventID)
+	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), []*gethcommon.Hash{&CrossChainEventID})
 	if err != nil {
 		m.logger.Error("Error encountered when filtering receipt logs.", log.ErrKey, err)
 		return make(common.CrossChainMessages, 0), err
@@ -137,7 +137,7 @@ func (m *blockMessageExtractor) getValueTransferMessages(receipts common.L1Recei
 	}
 
 	// Retrieves the relevant logs from the message bus.
-	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &ValueTransferEventID)
+	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), []*gethcommon.Hash{&ValueTransferEventID})
 	if err != nil {
 		m.logger.Error("Error encountered when filtering receipt logs.", log.ErrKey, err)
 		return make(common.ValueTransferEvents, 0), err

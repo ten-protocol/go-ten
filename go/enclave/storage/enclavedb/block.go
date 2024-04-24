@@ -89,6 +89,10 @@ func FetchBlockHeaderByHeight(db *sql.DB, height *big.Int) (*types.Header, error
 	return fetchBlockHeader(db, "where is_canonical=true and height=?", height.Int64())
 }
 
+func FetchBlockHeadersBetween(db *sql.DB, start *big.Int, end *big.Int) ([]*types.Header, error) {
+	return fetchBlockHeaders(db, "where is_canonical=true and height>? and height<?", start.Int64(), end.Int64())
+}
+
 func WriteL1Messages[T any](db *sql.DB, blockHash common.L1BlockHash, messages []T, isValueTransfer bool) error {
 	insert := l1msgInsert + strings.Repeat(l1msgValue+",", len(messages))
 	insert = insert[0 : len(insert)-1] // remove trailing comma
@@ -196,6 +200,38 @@ func FetchRollupMetadata(db *sql.DB, hash common.L2RollupHash) (*common.PublicRo
 	rollup.FirstBatchSequence = big.NewInt(startSeq)
 	rollup.StartTime = startTime
 	return rollup, nil
+}
+
+func fetchBlockHeaders(db *sql.DB, whereQuery string, args ...any) ([]*types.Header, error) {
+	result := make([]*types.Header, 0)
+
+	rows, err := db.Query(selectBlockHeader+" "+whereQuery, args...)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	defer rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var header string
+		var body []byte
+		err := rows.Scan(&header, &body)
+		if err != nil {
+			return nil, err
+		}
+		h := new(types.Header)
+		if err := rlp.Decode(bytes.NewReader([]byte(header)), h); err != nil {
+			return nil, fmt.Errorf("could not decode l1 block header. Cause: %w", err)
+		}
+
+		result = append(result, h)
+	}
+	return result, nil
 }
 
 func fetchBlockHeader(db *sql.DB, whereQuery string, args ...any) (*types.Header, error) {
