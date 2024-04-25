@@ -243,20 +243,6 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, publicBatchObj.Item.Height.Cmp(batchHeight) == 0)
 
-	//TODO DELETE ME
-	//TODO DELETE ME
-	//TODO DELETE ME
-	//Timer for running local tests
-	countdownDuration := 20 * time.Minute
-	tickDuration := 10 * time.Second
-
-	for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
-		fmt.Printf("Shutting down in %s...\n", remaining)
-		time.Sleep(tickDuration)
-	}
-	//TODO DELETE ME
-	//TODO DELETE ME
-	//TODO DELETE ME
 	type configFetch struct {
 		Item common.ObscuroNetworkInfo `json:"item"`
 	}

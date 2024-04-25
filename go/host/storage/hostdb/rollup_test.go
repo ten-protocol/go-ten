@@ -97,13 +97,62 @@ func TestGetLatestRollup(t *testing.T) {
 	}
 	dbtx.Write()
 
-	latestHeader, err := GetLatestRollup(db.GetSQLDB())
+	latestHeader, err := GetLatestRollup(db)
 	if err != nil {
 		t.Errorf("could not get latest rollup. Cause: %s", err)
 	}
 
 	if latestHeader.LastBatchSeqNo != uint64(rollup2LastSeq) {
 		t.Errorf("latest rollup was not updated correctly")
+	}
+}
+
+func TestGetRollupBySeqNo(t *testing.T) {
+	db, err := createSQLiteDB(t)
+	if err != nil {
+		t.Fatalf("unable to initialise test db: %s", err)
+	}
+
+	rollup1FirstSeq := int64(batchNumber - 10)
+	rollup1LastSeq := int64(batchNumber)
+	metadata1 := createRollupMetadata(rollup1FirstSeq)
+	rollup1 := createRollup(rollup1LastSeq)
+	block := common.L1Block{}
+	dbtx, _ := db.NewDBTransaction()
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup1, &metadata1, &block)
+	if err != nil {
+		t.Errorf("could not store rollup. Cause: %s", err)
+	}
+	// Needed to increment the timestamp
+	time.Sleep(1 * time.Second)
+
+	rollup2FirstSeq := int64(batchNumber + 1) // 778
+	rollup2LastSeq := int64(batchNumber + 10) // 787
+	metadata2 := createRollupMetadata(rollup2FirstSeq)
+	rollup2 := createRollup(rollup2LastSeq)
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup2, &metadata2, &block)
+	if err != nil {
+		t.Errorf("could not store rollup 2. Cause: %s", err)
+	}
+	dbtx.Write()
+
+	rollup, err := GetRollupBySeqNo(db, batchNumber+5)
+	if err != nil {
+		t.Errorf("could not get latest rollup. Cause: %s", err)
+	}
+
+	// should fetch the second rollup
+	if rollup.LastSeq.Cmp(big.NewInt(int64(rollup2.Header.LastBatchSeqNo))) != 0 {
+		t.Errorf("rollup was not fetched correctly")
+	}
+
+	rollup, err = GetRollupBySeqNo(db, batchNumber-5)
+	if err != nil {
+		t.Errorf("could not get latest rollup. Cause: %s", err)
+	}
+	// should fetch the first rollup
+	if rollup.LastSeq.Cmp(big.NewInt(int64(rollup1.Header.LastBatchSeqNo))) != 0 {
+		t.Errorf("rollup was not fetched correctly")
 	}
 }
 

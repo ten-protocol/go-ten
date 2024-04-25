@@ -105,8 +105,8 @@ func GetRollupHeaderByBlock(db HostDB, blockHash gethcommon.Hash) (*common.Rollu
 }
 
 // GetLatestRollup returns the latest rollup ordered by timestamp
-func GetLatestRollup(db *sql.DB) (*common.RollupHeader, error) {
-	extRollup, err := fetchHeadRollup(db)
+func GetLatestRollup(db HostDB) (*common.RollupHeader, error) {
+	extRollup, err := fetchHeadRollup(db.GetSQLDB())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch head rollup: %w", err)
 	}
@@ -116,6 +116,11 @@ func GetLatestRollup(db *sql.DB) (*common.RollupHeader, error) {
 func GetRollupByHash(db HostDB, rollupHash gethcommon.Hash) (*common.PublicRollup, error) {
 	whereQuery := " WHERE hash=" + db.GetSQLStatement().Placeholder
 	return fetchPublicRollup(db.GetSQLDB(), whereQuery, truncTo16(rollupHash))
+}
+
+func GetRollupBySeqNo(db HostDB, seqNo uint64) (*common.PublicRollup, error) {
+	whereQuery := " WHERE " + db.GetSQLStatement().Placeholder + " BETWEEN start_seq AND end_seq"
+	return fetchPublicRollup(db.GetSQLDB(), whereQuery, seqNo)
 }
 
 func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {

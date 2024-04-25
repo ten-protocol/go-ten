@@ -61,6 +61,8 @@ type BlockResolver interface {
 	FetchBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error)
 	// FetchRollupByHash returns the public rollup data given its hash
 	FetchRollupByHash(rollupHash gethcommon.Hash) (*common.PublicRollup, error)
+	// FetchRollupBySeqNo returns the public rollup given a seq number
+	FetchRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error)
 	// FetchRollupBatches returns a list of public batch data within a given rollup hash
 	FetchRollupBatches(rollupHash gethcommon.Hash) (*common.BatchListingResponse, error)
 }

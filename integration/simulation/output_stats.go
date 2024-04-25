@@ -73,7 +73,7 @@ func (o *OutputStats) countBlockChain() {
 
 		o.l2RollupCountInHeaders++
 
-		header, err = obscuroClient.BatchHeaderByHash(header.ParentHash)
+		header, err = obscuroClient.GetBatchHeaderByHash(header.ParentHash)
 		if err != nil {
 			testlog.Logger().Crit("could not retrieve rollup by hash.", log.ErrKey, err)
 		}

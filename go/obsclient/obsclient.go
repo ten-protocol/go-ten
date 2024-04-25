@@ -56,8 +56,8 @@ func (oc *ObsClient) BatchNumber() (uint64, error) {
 	return uint64(result), err
 }
 
-// BatchByHash returns the batch with the given hash.
-func (oc *ObsClient) BatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
+// GetBatchByHash returns the batch with the given hash.
+func (oc *ObsClient) GetBatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
 	var batch *common.ExtBatch
 	err := oc.rpcClient.Call(&batch, rpc.GetBatch, hash)
 	if err == nil && batch == nil {
@@ -66,8 +66,8 @@ func (oc *ObsClient) BatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error)
 	return batch, err
 }
 
-// BatchByHeight returns the batch with the given height.
-func (oc *ObsClient) BatchByHeight(height *big.Int) (*common.PublicBatch, error) {
+// GetBatchByHeight returns the batch with the given height.
+func (oc *ObsClient) GetBatchByHeight(height *big.Int) (*common.PublicBatch, error) {
 	var batch *common.PublicBatch
 
 	err := oc.rpcClient.Call(&batch, rpc.GetBatchByHeight, height)
@@ -77,8 +77,19 @@ func (oc *ObsClient) BatchByHeight(height *big.Int) (*common.PublicBatch, error)
 	return batch, err
 }
 
-// BatchHeaderByNumber returns the header of the rollup with the given number
-func (oc *ObsClient) BatchHeaderByNumber(number *big.Int) (*common.BatchHeader, error) {
+// GetRollupBySeqNo returns the batch with the given height.
+func (oc *ObsClient) GetRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error) {
+	var rollup *common.PublicRollup
+
+	err := oc.rpcClient.Call(&rollup, rpc.GetRollupBySeqNo, seqNo)
+	if err == nil && rollup == nil {
+		err = ethereum.NotFound
+	}
+	return rollup, err
+}
+
+// GetBatchHeaderByNumber returns the header of the rollup with the given number
+func (oc *ObsClient) GetBatchHeaderByNumber(number *big.Int) (*common.BatchHeader, error) {
 	var batchHeader *common.BatchHeader
 	err := oc.rpcClient.Call(&batchHeader, rpc.GetBatchByNumber, toBlockNumArg(number), false)
 	if err == nil && batchHeader == nil {
@@ -87,8 +98,8 @@ func (oc *ObsClient) BatchHeaderByNumber(number *big.Int) (*common.BatchHeader, 
 	return batchHeader, err
 }
 
-// BatchHeaderByHash returns the block header with the given hash.
-func (oc *ObsClient) BatchHeaderByHash(hash gethcommon.Hash) (*common.BatchHeader, error) {
+// GetBatchHeaderByHash returns the block header with the given hash.
+func (oc *ObsClient) GetBatchHeaderByHash(hash gethcommon.Hash) (*common.BatchHeader, error) {
 	var batchHeader *common.BatchHeader
 	err := oc.rpcClient.Call(&batchHeader, rpc.GetBatchByHash, hash, false)
 	if err == nil && batchHeader == nil {

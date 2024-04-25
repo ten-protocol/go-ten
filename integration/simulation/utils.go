@@ -55,7 +55,7 @@ func getHeadBatchHeader(client *obsclient.ObsClient) (*common.BatchHeader, error
 		return nil, fmt.Errorf("simulation failed due to failed attempt to retrieve head rollup height. Cause: %w", err)
 	}
 
-	headBatchHeader, err := client.BatchHeaderByNumber(big.NewInt(int64(headBatchHeight)))
+	headBatchHeader, err := client.GetBatchHeaderByNumber(big.NewInt(int64(headBatchHeight)))
 	if err != nil {
 		return nil, fmt.Errorf("simulation failed due to failed attempt to retrieve rollup with height %d. Cause: %w", headBatchHeight, err)
 	}

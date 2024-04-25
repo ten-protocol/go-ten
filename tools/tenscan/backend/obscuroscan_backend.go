@@ -57,15 +57,19 @@ func (b *Backend) GetLatestRollupHeader() (*common.RollupHeader, error) {
 }
 
 func (b *Backend) GetBatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
-	return b.obsClient.BatchByHash(hash)
+	return b.obsClient.GetBatchByHash(hash)
 }
 
 func (b *Backend) GetBatchByHeight(height *big.Int) (*common.PublicBatch, error) {
-	return b.obsClient.BatchByHeight(height)
+	return b.obsClient.GetBatchByHeight(height)
+}
+
+func (b *Backend) GetRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error) {
+	return b.obsClient.GetRollupBySeqNo(seqNo)
 }
 
 func (b *Backend) GetBatchHeader(hash gethcommon.Hash) (*common.BatchHeader, error) {
-	return b.obsClient.BatchHeaderByHash(hash)
+	return b.obsClient.GetBatchHeaderByHash(hash)
 }
 
 func (b *Backend) GetTransaction(_ gethcommon.Hash) (*common.L2Tx, error) {

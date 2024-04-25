@@ -430,7 +430,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		return
 	}
 	// check that the headers are serialised and deserialised correctly, by recomputing a header's hash
-	parentHeader, err := obscuroClient.BatchHeaderByHash(headBatchHeader.ParentHash)
+	parentHeader, err := obscuroClient.GetBatchHeaderByHash(headBatchHeader.ParentHash)
 	if err != nil {
 		t.Errorf("could not retrieve parent of head batch")
 		return
@@ -443,7 +443,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 func getLoggedWithdrawals(minObscuroHeight uint64, obscuroClient *obsclient.ObsClient, currentHeader *common.BatchHeader) *big.Int {
 	totalAmountLogged := big.NewInt(0)
 	for i := minObscuroHeight; i < currentHeader.Number.Uint64(); i++ {
-		header, err := obscuroClient.BatchHeaderByNumber(big.NewInt(int64(i)))
+		header, err := obscuroClient.GetBatchHeaderByNumber(big.NewInt(int64(i)))
 		if err != nil {
 			panic(err)
 		}
@@ -565,7 +565,7 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 		}
 
 		// note this retrieves batches currently.
-		newHeader, err := obscuroClient.BatchHeaderByHash(header.ParentHash)
+		newHeader, err := obscuroClient.GetBatchHeaderByHash(header.ParentHash)
 		if err != nil {
 			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve batch header %s. Cause: %s", nodeIdx, header.ParentHash, err))
 			return

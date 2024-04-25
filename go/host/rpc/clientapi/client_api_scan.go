@@ -69,6 +69,11 @@ func (s *ScanAPI) GetBatchByHeight(height *big.Int) (*common.PublicBatch, error)
 	return s.host.Storage().FetchBatchByHeight(height)
 }
 
+// GetRollupBySeqNo returns the `PublicRollup` that contains the batch with the given sequence number
+func (s *ScanAPI) GetRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error) {
+	return s.host.Storage().FetchRollupBySeqNo(seqNo)
+}
+
 // GetRollupListing returns a paginated list of Rollups
 func (s *ScanAPI) GetRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
 	return s.host.Storage().FetchRollupListing(pagination)
