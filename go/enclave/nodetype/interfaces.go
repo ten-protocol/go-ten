@@ -21,7 +21,7 @@ type NodeType interface {
 	OnL1Fork(ctx context.Context, fork *common.ChainFork) error
 
 	// OnL1Block - performed after the block was processed
-	OnL1Block(ctx context.Context, block types.Block, result *components.BlockIngestionType) error
+	OnL1Block(ctx context.Context, block *types.Block, result *components.BlockIngestionType) error
 
 	Close() error
 }

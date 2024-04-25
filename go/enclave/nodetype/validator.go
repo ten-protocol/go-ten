@@ -159,7 +159,7 @@ func (val *obsValidator) handleGenesis(ctx context.Context, batch *core.Batch) e
 	return nil
 }
 
-func (val *obsValidator) OnL1Block(ctx context.Context, block types.Block, result *components.BlockIngestionType) error {
+func (val *obsValidator) OnL1Block(ctx context.Context, block *types.Block, result *components.BlockIngestionType) error {
 	return val.ExecuteStoredBatches(ctx)
 }
 

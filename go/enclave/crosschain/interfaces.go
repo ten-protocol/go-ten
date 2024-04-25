@@ -29,7 +29,7 @@ type BlockMessageExtractor interface {
 
 type Manager interface {
 	// IsSyntheticTransaction - Determines if a given L2 transaction is coming from the synthetic owner address.
-	IsSyntheticTransaction(transaction common.L2Tx) bool
+	IsSyntheticTransaction(transaction *common.L2Tx) bool
 
 	// GetOwner - Returns the address of the identity owning the message bus.
 	GetOwner() common.L2Address

@@ -442,7 +442,7 @@ func (s *sequencer) signRollup(rollup *common.ExtRollup) error {
 	return nil
 }
 
-func (s *sequencer) OnL1Block(ctx context.Context, block types.Block, result *components.BlockIngestionType) error {
+func (s *sequencer) OnL1Block(ctx context.Context, block *types.Block, result *components.BlockIngestionType) error {
 	// nothing to do
 	return nil
 }
