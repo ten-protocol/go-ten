@@ -271,10 +271,16 @@ func GetLatestBatch(db *sql.DB) (*common.BatchHeader, error) {
 	return headBatch.Header, nil
 }
 
-// GetBatchByHeight returns the batch header given the height
-func GetBatchByHeight(db HostDB, height *big.Int) (*common.BatchHeader, error) {
+// GetBatchHeaderByHeight returns the batch header given the height
+func GetBatchHeaderByHeight(db HostDB, height *big.Int) (*common.BatchHeader, error) {
 	whereQuery := " WHERE height=" + db.GetSQLStatement().Placeholder
 	return fetchBatchHeader(db.GetSQLDB(), whereQuery, height.Uint64())
+}
+
+// GetBatchByHeight returns the batch header given the height
+func GetBatchByHeight(db HostDB, height *big.Int) (*common.PublicBatch, error) {
+	whereQuery := " WHERE height=" + db.GetSQLStatement().Placeholder
+	return fetchPublicBatch(db.GetSQLDB(), whereQuery, height.Uint64())
 }
 
 // GetBatchTransactions returns the TransactionListingResponse for a given batch hash

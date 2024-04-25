@@ -267,6 +267,29 @@ func TestGetLatestBatch(t *testing.T) {
 	}
 }
 
+func TestGetBatchByHeight(t *testing.T) {
+	db, _ := createSQLiteDB(t)
+	batch1 := createBatch(batchNumber, []common.L2TxHash{})
+	batch2 := createBatch(batchNumber+5, []common.L2TxHash{})
+	dbtx, _ := db.NewDBTransaction()
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batch1)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+	err = AddBatch(dbtx, db.GetSQLStatement(), &batch2)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+	dbtx.Write()
+	publicBatch, err := GetBatchByHeight(db, batch2.Header.Number)
+	if err != nil {
+		t.Errorf("stored batch but could not retrieve header. Cause: %s", err)
+	}
+	if batch2.Header.Number.Cmp(publicBatch.Header.Number) != 0 {
+		t.Errorf("batch header was not stored correctly")
+	}
+}
+
 func TestGetBatchListing(t *testing.T) {
 	db, _ := createSQLiteDB(t)
 	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}

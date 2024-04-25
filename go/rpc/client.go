@@ -40,8 +40,8 @@ const (
 	GetBlockListing          = "scan_getBlockListing"
 	GetBatch                 = "scan_getBatch"
 	GetLatestBatch           = "scan_getLatestBatch"
-	GetPublicBatchByHash     = "scan_getPublicBatchByHash"
 	GetBatchByHeight         = "scan_getBatchByHeight"
+	GetPublicBatchByHash     = "scan_getPublicBatchByHash"
 
 	GetRollupListing     = "scan_getRollupListing"
 	GetBatchListingNew   = "scan_getBatchListingNew"

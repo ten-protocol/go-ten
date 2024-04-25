@@ -65,8 +65,8 @@ func (s *ScanAPI) GetLatestBatch() (*common.BatchHeader, error) {
 }
 
 // GetBatchByHeight returns the `BatchHeader` with the given height
-func (s *ScanAPI) GetBatchByHeight(height *big.Int) (*common.BatchHeader, error) {
-	return s.host.Storage().FetchBatchHeaderByHeight(height)
+func (s *ScanAPI) GetBatchByHeight(height *big.Int) (*common.PublicBatch, error) {
+	return s.host.Storage().FetchBatchByHeight(height)
 }
 
 // GetRollupListing returns a paginated list of Rollups

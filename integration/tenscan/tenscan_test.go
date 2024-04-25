@@ -215,6 +215,48 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/transactions/?offset=0&size=10", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type txListing struct {
+		Result common.TransactionListingResponse `json:"result"`
+	}
+
+	txListingObj := txListing{}
+	err = json.Unmarshal(body, &txListingObj)
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, 5, len(txListingObj.Result.TransactionsData))
+	assert.LessOrEqual(t, uint64(5), txListingObj.Result.Total)
+
+	batchHeight := txListingObj.Result.TransactionsData[0].BatchHeight
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/height/%s", serverAddress, batchHeight))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type publicBatchFetch struct {
+		Item *common.PublicBatch `json:"item"`
+	}
+
+	publicBatchObj := publicBatchFetch{}
+	err = json.Unmarshal(body, &publicBatchObj)
+	assert.NoError(t, err)
+	assert.True(t, publicBatchObj.Item.Height.Cmp(batchHeight) == 0)
+
+	//TODO DELETE ME
+	//TODO DELETE ME
+	//TODO DELETE ME
+	//Timer for running local tests
+	countdownDuration := 20 * time.Minute
+	tickDuration := 10 * time.Second
+
+	for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
+		fmt.Printf("Shutting down in %s...\n", remaining)
+		time.Sleep(tickDuration)
+	}
+	//TODO DELETE ME
+	//TODO DELETE ME
+	//TODO DELETE ME
 	type configFetch struct {
 		Item common.ObscuroNetworkInfo `json:"item"`
 	}

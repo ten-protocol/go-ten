@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"encoding/base64"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common/compression"
@@ -57,6 +58,10 @@ func (b *Backend) GetLatestRollupHeader() (*common.RollupHeader, error) {
 
 func (b *Backend) GetBatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
 	return b.obsClient.BatchByHash(hash)
+}
+
+func (b *Backend) GetBatchByHeight(height *big.Int) (*common.PublicBatch, error) {
+	return b.obsClient.BatchByHeight(height)
 }
 
 func (b *Backend) GetBatchHeader(hash gethcommon.Hash) (*common.BatchHeader, error) {

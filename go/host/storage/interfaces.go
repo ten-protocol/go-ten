@@ -40,6 +40,8 @@ type BatchResolver interface {
 	FetchBatchListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error)
 	// FetchBatchHeaderByHeight returns the `BatchHeader` with the given height
 	FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHeader, error)
+	// FetchBatchByHeight returns the `PublicBatch` with the given height
+	FetchBatchByHeight(height *big.Int) (*common.PublicBatch, error)
 	// FetchTotalTxCount returns the number of transactions in the DB
 	FetchTotalTxCount() (*big.Int, error)
 	// FetchBatchTransactions returns a list of public transaction data within a given batch hash

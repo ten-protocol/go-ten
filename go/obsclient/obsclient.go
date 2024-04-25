@@ -66,6 +66,17 @@ func (oc *ObsClient) BatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error)
 	return batch, err
 }
 
+// BatchByHeight returns the batch with the given height.
+func (oc *ObsClient) BatchByHeight(height *big.Int) (*common.PublicBatch, error) {
+	var batch *common.PublicBatch
+
+	err := oc.rpcClient.Call(&batch, rpc.GetBatchByHeight, height)
+	if err == nil && batch == nil {
+		err = ethereum.NotFound
+	}
+	return batch, err
+}
+
 // BatchHeaderByNumber returns the header of the rollup with the given number
 func (oc *ObsClient) BatchHeaderByNumber(number *big.Int) (*common.BatchHeader, error) {
 	var batchHeader *common.BatchHeader
@@ -209,7 +220,7 @@ func (oc *ObsClient) GetRollupBatches(hash gethcommon.Hash) (*common.BatchListin
 	return batchListing, err
 }
 
-// GetBatchTransactions returns a list of public transaction data within a given batch hash
+// GetBatchTransactions returns a list of public transaction data within a given batch has
 func (oc *ObsClient) GetBatchTransactions(hash gethcommon.Hash) (*common.TransactionListingResponse, error) {
 	var txListing *common.TransactionListingResponse
 	err := oc.rpcClient.Call(&txListing, rpc.GetBatchTransactions, hash)

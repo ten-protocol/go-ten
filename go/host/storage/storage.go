@@ -123,6 +123,10 @@ func (s *storageImpl) FetchLatestBatch() (*common.BatchHeader, error) {
 }
 
 func (s *storageImpl) FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHeader, error) {
+	return hostdb.GetBatchHeaderByHeight(s.db, height)
+}
+
+func (s *storageImpl) FetchBatchByHeight(height *big.Int) (*common.PublicBatch, error) {
 	return hostdb.GetBatchByHeight(s.db, height)
 }
 
