@@ -29,6 +29,11 @@ func (s *ScanAPI) GetTotalContractCount(ctx context.Context) (*big.Int, error) {
 	return s.host.EnclaveClient().GetTotalContractCount(ctx)
 }
 
+// GetTransaction returns the transaction given its hash.
+func (s *ScanAPI) GetTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error) {
+	return s.host.Storage().FetchTransaction(hash)
+}
+
 // GetTotalTxCount returns the number of recorded transactions on the network.
 func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
 	return s.host.Storage().FetchTotalTxCount()

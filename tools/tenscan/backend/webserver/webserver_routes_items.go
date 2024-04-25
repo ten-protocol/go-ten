@@ -27,6 +27,7 @@ func routeItems(r *gin.Engine, server *WebServer) {
 	r.GET("/items/batch/:hash/transactions", server.getBatchTransactions)
 	r.GET("/items/batch/height/:height", server.getBatchByHeight)
 	r.GET("/items/rollup/batch/:seq", server.getRollupBySeq)
+	r.GET("/items/transaction/:hash", server.getTransaction)
 }
 
 func (w *WebServer) getHealthStatus(c *gin.Context) {

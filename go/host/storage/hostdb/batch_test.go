@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math/big"
 	"testing"
+	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -64,7 +65,7 @@ func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) { //nolint:dupl
 
 	dbtx.Write()
 
-	batchHeader, err := GetHeadBatchHeader(db.GetSQLDB())
+	batchHeader, err := GetHeadBatchHeader(db)
 	if err != nil {
 		t.Errorf("stored batch but could not retrieve header. Cause: %s", err)
 	}
@@ -93,7 +94,7 @@ func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) { //nolint:dupl
 	}
 	dbtx.Write()
 
-	batchHeader, err := GetHeadBatchHeader(db.GetSQLDB())
+	batchHeader, err := GetHeadBatchHeader(db)
 	if err != nil {
 		t.Errorf("stored batch but could not retrieve header. Cause: %s", err)
 	}
@@ -104,7 +105,7 @@ func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) { //nolint:dupl
 
 func TestHeadBatchHeaderIsNotSetInitially(t *testing.T) {
 	db, _ := createSQLiteDB(t)
-	_, err := GetHeadBatchHeader(db.GetSQLDB())
+	_, err := GetHeadBatchHeader(db)
 	if !errors.Is(err, errutil.ErrNotFound) {
 		t.Errorf("head batch was set, but no batchs had been written")
 	}
@@ -228,7 +229,7 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 	}
 	dbtx.Write()
 
-	totalTxs, err := GetTotalTxCount(db.GetSQLDB())
+	totalTxs, err := GetTotalTxCount(db)
 	if err != nil {
 		t.Errorf("was not able to read total number of transactions. Cause: %s", err)
 	}
@@ -257,13 +258,39 @@ func TestGetLatestBatch(t *testing.T) {
 	}
 	dbtx.Write()
 
-	batch, err := GetLatestBatch(db.GetSQLDB())
+	batch, err := GetLatestBatch(db)
 	if err != nil {
 		t.Errorf("was not able to read total number of transactions. Cause: %s", err)
 	}
 
 	if int(batch.SequencerOrderNo.Uint64()) != int(batchTwo.SeqNo().Uint64()) {
 		t.Errorf("latest batch was not retrieved correctly")
+	}
+}
+
+func TestGetTransaction(t *testing.T) {
+	db, _ := createSQLiteDB(t)
+	txHash1 := gethcommon.BytesToHash([]byte("magicStringOne"))
+	txHash2 := gethcommon.BytesToHash([]byte("magicStringOne"))
+	txHashes := []common.L2TxHash{txHash1, txHash2}
+	batchOne := createBatch(batchNumber, txHashes)
+	dbtx, _ := db.NewDBTransaction()
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+	dbtx.Write()
+
+	tx, err := GetTransaction(db, txHash2)
+	if err != nil {
+		t.Errorf("was not able to get transaction. Cause: %s", err)
+	}
+
+	if tx.BatchHeight.Cmp(big.NewInt(batchNumber)) != 0 {
+		t.Errorf("tx batch height was not retrieved correctly")
+	}
+	if tx.TransactionHash.Cmp(txHash2) != 0 {
+		t.Errorf("tx hash was not retrieved correctly")
 	}
 }
 
@@ -495,6 +522,7 @@ func createBatch(batchNum int64, txHashes []common.L2BatchHash) common.ExtBatch 
 	header := common.BatchHeader{
 		SequencerOrderNo: big.NewInt(batchNum),
 		Number:           big.NewInt(batchNum),
+		Time:             uint64(time.Now().Unix()),
 	}
 	batch := common.ExtBatch{
 		Header:   &header,

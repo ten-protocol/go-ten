@@ -108,6 +108,16 @@ func (oc *ObsClient) GetBatchHeaderByHash(hash gethcommon.Hash) (*common.BatchHe
 	return batchHeader, err
 }
 
+// GetTransaction returns the transaction.
+func (oc *ObsClient) GetTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error) {
+	var tx *common.PublicTransaction
+	err := oc.rpcClient.Call(&tx, rpc.GetTransaction, hash)
+	if err == nil && tx == nil {
+		err = ethereum.NotFound
+	}
+	return tx, err
+}
+
 // Health returns the health of the node.
 func (oc *ObsClient) Health() (bool, error) {
 	var healthy *hostcommon.HealthCheck

@@ -72,8 +72,8 @@ func (b *Backend) GetBatchHeader(hash gethcommon.Hash) (*common.BatchHeader, err
 	return b.obsClient.GetBatchHeaderByHash(hash)
 }
 
-func (b *Backend) GetTransaction(_ gethcommon.Hash) (*common.L2Tx, error) {
-	return nil, fmt.Errorf("unable to get encrypted Tx")
+func (b *Backend) GetTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error) {
+	return b.obsClient.GetTransaction(hash)
 }
 
 func (b *Backend) GetPublicTransactions(offset uint64, size uint64) (*common.TransactionListingResponse, error) {

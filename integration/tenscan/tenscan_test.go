@@ -160,6 +160,7 @@ func TestTenscan(t *testing.T) {
 	// check "hash" field is included in json response
 	assert.Contains(t, string(body), "\"hash\"")
 
+	// fetch block listing
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/blocks/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
@@ -171,9 +172,8 @@ func TestTenscan(t *testing.T) {
 	blocklistingObj := blockListing{}
 	err = json.Unmarshal(body, &blocklistingObj)
 	assert.NoError(t, err)
-	// assert.LessOrEqual(t, 9, len(blocklistingObj.Result.BlocksData))
-	// assert.LessOrEqual(t, uint64(9), blocklistingObj.Result.Total)
 
+	// fetch batch by hash
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/%s", serverAddress, batchlistingObj.Result.BatchesData[0].Header.Hash()))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
@@ -187,6 +187,7 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, batchlistingObj.Result.BatchesData[0].Header.Hash(), batchObj.Item.Header.Hash())
 
+	// fetch rollup listing
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollups/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
@@ -202,19 +203,20 @@ func TestTenscan(t *testing.T) {
 	assert.LessOrEqual(t, uint64(4), rollupListingObj.Result.Total)
 	assert.Contains(t, string(body), "\"hash\"")
 
+	// fetch batches in rollup
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/%s/batches", serverAddress, rollupListingObj.Result.RollupsData[0].Header.Hash()))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
 	err = json.Unmarshal(body, &batchlistingObj)
 	assert.NoError(t, err)
-	// we should find batches given the rollup hash
 	assert.True(t, batchlistingObj.Result.Total > 0)
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/obscuro/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
+	// fetch transaction listing
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/transactions/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
@@ -229,6 +231,7 @@ func TestTenscan(t *testing.T) {
 	assert.LessOrEqual(t, 5, len(txListingObj.Result.TransactionsData))
 	assert.LessOrEqual(t, uint64(5), txListingObj.Result.Total)
 
+	// fetch batch by height from tx
 	batchHeight := txListingObj.Result.TransactionsData[0].BatchHeight
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/height/%s", serverAddress, batchHeight))
 	assert.NoError(t, err)
@@ -242,6 +245,20 @@ func TestTenscan(t *testing.T) {
 	err = json.Unmarshal(body, &publicBatchObj)
 	assert.NoError(t, err)
 	assert.True(t, publicBatchObj.Item.Height.Cmp(batchHeight) == 0)
+
+	// fetch tx by hash
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/transaction/%s", serverAddress, txListingObj.Result.TransactionsData[0].TransactionHash))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type txFetch struct {
+		Item *common.PublicTransaction `json:"item"`
+	}
+
+	txObj := txFetch{}
+	err = json.Unmarshal(body, &txObj)
+	assert.NoError(t, err)
+	assert.True(t, txObj.Item.Finality == common.BatchFinal)
 
 	type configFetch struct {
 		Item common.ObscuroNetworkInfo `json:"item"`

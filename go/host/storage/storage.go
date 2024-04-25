@@ -103,7 +103,7 @@ func (s *storageImpl) FetchBatchHeaderByHash(hash gethcommon.Hash) (*common.Batc
 }
 
 func (s *storageImpl) FetchHeadBatchHeader() (*common.BatchHeader, error) {
-	return hostdb.GetHeadBatchHeader(s.db.GetSQLDB())
+	return hostdb.GetHeadBatchHeader(s.db)
 }
 
 func (s *storageImpl) FetchPublicBatchByHash(batchHash common.L2BatchHash) (*common.PublicBatch, error) {
@@ -119,7 +119,7 @@ func (s *storageImpl) FetchBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, 
 }
 
 func (s *storageImpl) FetchLatestBatch() (*common.BatchHeader, error) {
-	return hostdb.GetLatestBatch(s.db.GetSQLDB())
+	return hostdb.GetLatestBatch(s.db)
 }
 
 func (s *storageImpl) FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHeader, error) {
@@ -151,7 +151,11 @@ func (s *storageImpl) FetchBlockListing(pagination *common.QueryPagination) (*co
 }
 
 func (s *storageImpl) FetchTotalTxCount() (*big.Int, error) {
-	return hostdb.GetTotalTxCount(s.db.GetSQLDB())
+	return hostdb.GetTotalTxCount(s.db)
+}
+
+func (s *storageImpl) FetchTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error) {
+	return hostdb.GetTransaction(s.db, hash)
 }
 
 func (s *storageImpl) FetchRollupByHash(rollupHash gethcommon.Hash) (*common.PublicRollup, error) {
