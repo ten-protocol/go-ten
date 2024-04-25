@@ -475,7 +475,7 @@ func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Block, error) {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)
 	if err != nil {
-		return &types.Block{}, fmt.Errorf("unable to decode block, bytes=%x, err=%w", encodedBlock, err)
+		return nil, fmt.Errorf("unable to decode block, bytes=%x, err=%w", encodedBlock, err)
 	}
 	return &block, nil
 }
