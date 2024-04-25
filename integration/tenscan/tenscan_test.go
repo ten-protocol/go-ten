@@ -212,7 +212,7 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, batchlistingObj.Result.Total > 0)
 
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/obscuro/", serverAddress))
+	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/obscuro/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
