@@ -212,10 +212,6 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, batchlistingObj.Result.Total > 0)
 
-	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/obscuro/", serverAddress))
-	assert.NoError(t, err)
-	assert.Equal(t, 200, statusCode)
-
 	// fetch transaction listing
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/transactions/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)
@@ -259,6 +255,10 @@ func TestTenscan(t *testing.T) {
 	err = json.Unmarshal(body, &txObj)
 	assert.NoError(t, err)
 	assert.True(t, txObj.Item.Finality == common.BatchFinal)
+
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/obscuro/", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
 
 	type configFetch struct {
 		Item common.ObscuroNetworkInfo `json:"item"`

@@ -237,9 +237,8 @@ func GetTotalTxCount(db HostDB) (*big.Int, error) {
 	return big.NewInt(int64(totalCount)), nil
 }
 
-// GetTransaction returns transaction given its hash
+// GetTransaction returns a transaction given its hash
 func GetTransaction(db HostDB, hash gethcommon.Hash) (*common.PublicTransaction, error) {
-	// Query to retrieve the sequence number of the transaction
 	query := selectTx + db.GetSQLStatement().Placeholder
 
 	var seq uint64
@@ -257,7 +256,7 @@ func GetTransaction(db HostDB, hash gethcommon.Hash) (*common.PublicTransaction,
 		TransactionHash: hash,
 		BatchHeight:     batch.Header.Number,
 		BatchTimestamp:  batch.Header.Time,
-		Finality:        common.BatchFinal, // Assuming this value is known or can be determined
+		Finality:        common.BatchFinal,
 	}
 
 	return tx, nil
