@@ -666,7 +666,6 @@ func (e *enclaveImpl) GetBalance(ctx context.Context, encryptedParams common.Enc
 	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetBalanceValidate, rpc.GetBalanceExecute)
 }
 
-// todo - needs to be encrypted
 func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetCode with the enclave stopping"))

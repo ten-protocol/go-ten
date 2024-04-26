@@ -218,7 +218,9 @@ func Setup(logFmtFlag string, logFile string, rotation bool, maxSize int, maxBac
 		if logOutputFile, err = os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644); err != nil {
 			return err
 		}
-		output = io.MultiWriter(logOutputFile, terminalOutput)
+		// output = io.MultiWriter(logOutputFile, terminalOutput)
+		// we only want to print to the file
+		output = logOutputFile
 		context = append(context, "location", logFile)
 	} else {
 		output = terminalOutput
