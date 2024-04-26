@@ -37,7 +37,6 @@ type Faucet struct {
 
 func NewFaucet(rpcURL string, chainID int64, pkString string) (*Faucet, error) {
 	logger := log.New()
-	// logger.SetHandler(log.StreamHandler(os.Stdout, tenlog.TenLogFormat()))
 	w := wallet.NewInMemoryWalletFromConfig(pkString, chainID, logger)
 	obsClient, err := obsclient.DialWithAuth(rpcURL, w, logger)
 	if err != nil {
