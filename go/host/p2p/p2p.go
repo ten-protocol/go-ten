@@ -40,7 +40,6 @@ var (
 	_alertPeriod             = 5 * time.Minute
 	_maxPeerFailures         = 3
 	_maxWaitWithoutBroadcast = 2 * time.Minute
-	errUnknownSequencer      = errors.New("sequencer address not known")
 )
 
 // A P2P message's type.
