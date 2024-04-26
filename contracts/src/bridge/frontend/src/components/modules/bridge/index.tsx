@@ -1,5 +1,4 @@
 import React from "react";
-import { CalendarDateRangePicker } from "@/src/components/date-range-picker";
 import {
   CardHeader,
   CardTitle,
@@ -12,145 +11,138 @@ import {
   ReaderIcon,
   CubeIcon,
   RocketIcon,
+  ArrowRightIcon,
 } from "@radix-ui/react-icons";
 
-import { RecentBatches } from "./recent-batches";
-import { RecentTransactions } from "./recent-transactions";
 import { Button } from "@/src/components/ui/button";
-import { useTransactionsService } from "@/src/services/useTransactionsService";
-import { useBatchesService } from "@/src/services/useBatchesService";
-import TruncatedAddress from "../modules/common/truncated-address";
-import { useContractsService } from "@/src/services/useContractsService";
 import { Skeleton } from "@/src/components/ui/skeleton";
-import { RecentBlocks } from "./recent-blocks";
-import { useBlocksService } from "@/src/services/useBlocksService";
-import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
 import { cn } from "@/src/lib/utils";
 import { Badge } from "../../ui/badge";
 import { BlocksIcon } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../ui/select";
+import { table } from "console";
+import { Separator } from "../../ui/separator";
+
+const L1TOKENS = [
+  {
+    name: "ETH",
+    address: "0x",
+  },
+];
+
+const L2TOKENS = [
+  {
+    name: "ETH",
+    address: "0x",
+  },
+  {
+    name: "USDC",
+    address: "0x",
+  },
+  {
+    name: "USDT",
+    address: "0x",
+  },
+  {
+    name: "DAI",
+    address: "0x",
+  },
+  {
+    name: "WBTC",
+    address: "0x",
+  },
+];
+
+const BRIDGE = [
+  {
+    name: "L1 to L2",
+    address: "0x",
+  },
+  {
+    name: "L2 to L1",
+    address: "0x",
+  },
+];
 
 export default function Dashboard() {
-  const { price, transactions, transactionCount } = useTransactionsService();
-  const { contractCount } = useContractsService();
-  const { batches, latestBatch } = useBatchesService();
-  const { blocks } = useBlocksService();
-
-  const DASHBOARD_DATA = [
-    {
-      title: "Ether Price",
-      value: price?.ethereum?.usd ? `$${price.ethereum.usd}` : "N/A",
-      // TODO: add change
-      // change: "+20.1%",
-      icon: RocketIcon,
-    },
-    {
-      title: "Latest L2 Batch",
-      value: latestBatch?.item?.number
-        ? Number(latestBatch.item.number)
-        : "N/A",
-      // TODO: add change
-      // change: "+20.1%",
-      icon: LayersIcon,
-    },
-    {
-      title: "Latest L1 Rollup",
-      value: latestBatch?.item?.l1Proof ? (
-        <TruncatedAddress
-          address={latestBatch?.item?.l1Proof}
-          prefixLength={6}
-          suffixLength={4}
-        />
-      ) : (
-        "N/A"
-      ),
-      // TODO: add change
-      // change: "+20.1%",
-      icon: CubeIcon,
-    },
-    {
-      title: "Transactions",
-      value: transactionCount?.count,
-      // TODO: add change
-      // change: "+20.1%",
-      icon: ReaderIcon,
-    },
-    {
-      title: "Contracts",
-      value: contractCount?.count,
-      // TODO: add change
-      // change: "+20.1%",
-      icon: FileTextIcon,
-    },
-    {
-      title: "Nodes",
-      value: <Badge>Coming Soon</Badge>,
-      icon: BlocksIcon,
-    },
-  ];
-
-  const RECENT_DATA = [
-    {
-      title: "Recent Blocks",
-      data: blocks,
-      component: <RecentBlocks blocks={blocks} />,
-      goTo: "/blocks",
-      className: "col-span-1 md:col-span-2 lg:col-span-3",
-    },
-    {
-      title: "Recent Batches",
-      data: batches,
-      component: <RecentBatches batches={batches} />,
-      goTo: "/batches",
-      className: "col-span-1 md:col-span-2 lg:col-span-3",
-    },
-    {
-      title: "Recent Transactions",
-      data: transactions,
-      component: <RecentTransactions transactions={transactions} />,
-      goTo: "/transactions",
-      className: "col-span-1 md:col-span-2 lg:col-span-3",
-    },
-  ];
+  const [loading, setLoading] = React.useState(false);
+  const [selectedToken, setSelectedToken] = React.useState(L1TOKENS[0]);
+  const [selectedBridge, setSelectedBridge] = React.useState(BRIDGE[0]);
 
   return (
-    <div className="h-full flex-1 flex-col space-y-8 md:flex">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Tenscan</h2>
-      </div>
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-4">
-        {DASHBOARD_DATA.map((item: any, index) => (
-          <AnalyticsCard key={index} item={item} />
-        ))}
-      </div>
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-6 lg:grid-cols-9">
-        {RECENT_DATA.map((item: any, index) => (
-          <Card
-            key={index}
-            className={cn(item.className, "h-[450px] overflow-y-auto")}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
-              <CardTitle>{item.title}</CardTitle>
-              <Link
-                href={{
-                  pathname: item.goTo,
-                }}
-              >
-                <Button variant="outline" size="sm">
-                  View All
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent className="p-3">
-              {item.data ? (
-                item.component
-              ) : (
-                <Skeleton className="w-full h-[200px] rounded-lg" />
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+    <div className="h-full flex flex-col space-y-4 justify-center items-center">
+      <Card className="w-[650px]">
+        <CardHeader>
+          <CardTitle>Bridge</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div>
+            <small>Transfer from</small>
+
+            <div className="bg-[#15171D] p-2 rounded-lg space-x-2 border">
+              <div className="flex items-center justify-between">
+                <Select
+                  value={selectedToken.name}
+                  onValueChange={(value) => {
+                    setSelectedToken(
+                      L1TOKENS.find((token) => token.name === value)
+                    );
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-[70px] bg-[#292929]">
+                    <SelectValue placeholder={selectedToken.name} />
+                  </SelectTrigger>
+                  <SelectContent side="top">
+                    {L1TOKENS.map((token) => (
+                      <SelectItem key={token.address} value={token.name}>
+                        {token.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div>
+                  <p className="text-sm text-muted-foreground">Balance:</p>
+                  <strong className="text-lg text-white float-right">
+                    100.00
+                  </strong>
+                </div>
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <strong className="text-lg text-white float-right">0</strong>
+                </div>
+                <Select
+                  value={selectedToken.name}
+                  onValueChange={(value) => {
+                    setSelectedToken(
+                      L1TOKENS.find((token) => token.name === value)
+                    );
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-[70px] bg-[#292929]">
+                    <SelectValue placeholder={selectedToken.name} />
+                  </SelectTrigger>
+                  <SelectContent side="top">
+                    {L1TOKENS.map((token) => (
+                      <SelectItem key={token.address} value={token.name}>
+                        {token.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

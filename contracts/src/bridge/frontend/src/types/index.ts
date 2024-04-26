@@ -69,6 +69,7 @@ export type NavLink = {
   isDropdown?: boolean;
   isExternal?: boolean;
   subNavLinks?: NavLink[];
+  icon?: any;
 };
 
 export enum ToastType {

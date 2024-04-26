@@ -7,7 +7,7 @@ const useGatewayService = () => {
     try {
       return await fetchTestnetStatus();
     } catch (error) {
-      showToast(ToastType.DESTRUCTIVE, "Unable to connect to Ten Testnet");
+      showToast(ToastType.DESTRUCTIVE, "Failed to fetch testnet status");
       throw error;
     }
   };

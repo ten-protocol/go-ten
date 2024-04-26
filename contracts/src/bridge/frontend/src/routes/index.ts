@@ -1,17 +1,26 @@
-import { tenGatewayVersion } from "../lib/constants";
 import { NavLink } from "../types";
+import { RouteIcon } from "lucide-react";
+import { ReaderIcon } from "@radix-ui/react-icons";
 
-export const NavLinks: NavLink[] = [];
+export const NavLinks: NavLink[] = [
+  {
+    href: "/",
+    label: "Bridge",
+    isExternal: false,
+    isDropdown: false,
+    icon: RouteIcon,
+  },
+  {
+    href: "/transactions",
+    label: "Transactions",
+    isExternal: false,
+    isDropdown: false,
+    icon: ReaderIcon,
+  },
+];
 
 export const apiRoutes = {
-  join: `/${tenGatewayVersion}/join/`,
-  authenticate: `/${tenGatewayVersion}/authenticate/`,
-  queryAccountToken: `/${tenGatewayVersion}/query/`,
-  revoke: `/${tenGatewayVersion}/revoke/`,
-  version: `/${tenGatewayVersion}/version/`,
-
-  // **** INFO ****
-  getHealthStatus: `/${tenGatewayVersion}/network-health/`,
+  getHealthStatus: `/network-health/`,
 };
 
 export const requestMethods = {

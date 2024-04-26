@@ -28,13 +28,11 @@ export default function Header() {
             className="cursor-pointer hidden dark:block"
           />
         </Link>
+        <MainNav className="hidden md:flex mx-6" />
         <div className="hidden md:flex items-center space-x-4">
-          <MainNav className="mx-6" />
-          <div className="flex items-center space-x-4">
-            <HealthIndicator />
-            <ModeToggle />
-            <ConnectWalletButton />
-          </div>
+          <HealthIndicator />
+          <ModeToggle />
+          <ConnectWalletButton />
         </div>
         <div className="flex items-center space-x-4 md:hidden">
           <MobileMenu />

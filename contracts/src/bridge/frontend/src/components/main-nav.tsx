@@ -89,6 +89,7 @@ export const MainNav = ({
   <nav className={cn("flex items-center lg:space-x-6", className)} {...props}>
     {NavLinks.map((navLink) => (
       <div key={navLink.label} className="w-full flex items-center mr-4 p-2">
+        {navLink.icon && <navLink.icon className="h-5 w-5 mr-2" />}
         <NavItem navLink={navLink} />
       </div>
     ))}
