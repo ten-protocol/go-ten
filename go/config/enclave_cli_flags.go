@@ -25,7 +25,6 @@ const (
 	ProfilerEnabledFlag           = "profilerEnabled"
 	MinGasPriceFlag               = "minGasPrice"
 	MessageBusAddressFlag         = "messageBusAddress"
-	SequencerIDFlag               = "sequencerID"
 	ObscuroGenesisFlag            = "obscuroGenesis"
 	DebugNamespaceEnabledFlag     = "debugNamespaceEnabled"
 	MaxBatchSizeFlag              = "maxBatchSize"
@@ -51,7 +50,6 @@ var EnclaveFlags = map[string]*flag.TenFlag{
 	SQLiteDBPathFlag:              flag.NewStringFlag(SQLiteDBPathFlag, "", "Filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or if using InMemory DB or if using attestation/EdgelessDB)"),
 	MinGasPriceFlag:               flag.NewInt64Flag(MinGasPriceFlag, 1, "The minimum gas price for mining a transaction"),
 	MessageBusAddressFlag:         flag.NewStringFlag(MessageBusAddressFlag, "", "The address of the L1 message bus contract owned by the management contract."),
-	SequencerIDFlag:               flag.NewStringFlag(SequencerIDFlag, "", "The 20 bytes of the address of the sequencer for this network"),
 	MaxBatchSizeFlag:              flag.NewUint64Flag(MaxBatchSizeFlag, 1024*55, "The maximum size a batch is allowed to reach uncompressed"),
 	MaxRollupSizeFlag:             flag.NewUint64Flag(MaxRollupSizeFlag, 1024*64, "The maximum size a rollup is allowed to reach"),
 	L2BaseFeeFlag:                 flag.NewUint64Flag(L2BaseFeeFlag, params.InitialBaseFee, ""),

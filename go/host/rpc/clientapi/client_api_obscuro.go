@@ -37,7 +37,6 @@ func (api *ObscuroAPI) Config() (*ChecksumFormattedObscuroNetworkConfig, error) 
 type ChecksumFormattedObscuroNetworkConfig struct {
 	ManagementContractAddress gethcommon.AddressEIP55
 	L1StartHash               gethcommon.Hash
-	SequencerID               gethcommon.AddressEIP55
 	MessageBusAddress         gethcommon.AddressEIP55
 	L2MessageBusAddress       gethcommon.AddressEIP55
 	ImportantContracts        map[string]gethcommon.AddressEIP55 // map of contract name to address
@@ -51,7 +50,6 @@ func checksumFormatted(info *common.ObscuroNetworkInfo) *ChecksumFormattedObscur
 	return &ChecksumFormattedObscuroNetworkConfig{
 		ManagementContractAddress: gethcommon.AddressEIP55(info.ManagementContractAddress),
 		L1StartHash:               info.L1StartHash,
-		SequencerID:               gethcommon.AddressEIP55(info.SequencerID),
 		MessageBusAddress:         gethcommon.AddressEIP55(info.MessageBusAddress),
 		L2MessageBusAddress:       gethcommon.AddressEIP55(info.L2MessageBusAddress),
 		ImportantContracts:        importantContracts,

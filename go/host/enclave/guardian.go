@@ -327,8 +327,6 @@ func (g *Guardian) provideSecret() error {
 	g.logger.Info("Secret received")
 	g.state.OnSecretProvided()
 
-	// we're now ready to catch up with network, sync peer list
-	go g.sl.P2P().RefreshPeerList()
 	return nil
 }
 
@@ -459,11 +457,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 
 func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 	// if there are any secret responses in the block we should refresh our P2P list to re-sync with the network
-	secretRespTxs, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(block)
-	if len(secretRespTxs) > 0 {
-		// new peers may have been granted access to the network, notify p2p service to refresh its peer list
-		go g.sl.P2P().RefreshPeerList()
-	}
+	_, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(block)
 
 	for _, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
