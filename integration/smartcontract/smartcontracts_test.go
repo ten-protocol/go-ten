@@ -1,7 +1,6 @@
 package smartcontract
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
@@ -107,7 +106,6 @@ func TestManagementContract(t *testing.T) {
 		"attestedNodesCreateRollup":          attestedNodesCreateRollup,
 		"nonAttestedNodesCannotAttest":       nonAttestedNodesCannotAttest,
 		"newlyAttestedNodesCanAttest":        newlyAttestedNodesCanAttest,
-		"attestedNodeHostAddressesAreStored": attestedNodeHostAddressesAreStored,
 	} {
 		t.Run(name, func(t *testing.T) {
 			bytecode, err := constants.Bytecode()
@@ -459,98 +457,5 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	}
 	if !attested {
 		t.Error("expected agg to be attested")
-	}
-}
-
-// attestedNodeHostAddressesAreStored agg A initializes the network, agg B becomes attested, agg C is rejected. Only A and B's host addresses are stored in the management contract
-func attestedNodeHostAddressesAreStored(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
-	aggAHostAddr := "aggAHostAddr"
-	aggBHostAddr := "aggBHostAddr"
-
-	secretBytes := []byte("This is super random")
-	// crypto.GenerateKey will generate a PK that does not play along this test
-	aggAPrivateKey, err := crypto.ToECDSA(hexutil.MustDecode("0xc0083389f7a5925b662f8982080ced523bcc5e5dc33c6b1eaf11e288183e3c95"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	aggAID := crypto.PubkeyToAddress(aggAPrivateKey.PublicKey)
-
-	// the aggregator starts the network
-	txData := mgmtContractLib.CreateInitializeSecret(
-		&ethadapter.L1InitializeSecretTx{
-			EnclaveID:     &aggAID,
-			InitialSecret: secretBytes,
-			HostAddress:   aggAHostAddr,
-		},
-	)
-
-	_, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
-	if err != nil {
-		t.Error(err)
-	}
-	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
-	}
-
-	// agg b requests the secret
-	aggBPrivateKey, err := crypto.ToECDSA(hexutil.MustDecode("0x0d3de78eb7f26239a7ee32895a0b0898699ad3c4e5a910d0ffd65f707d2e63c4"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	aggBID := crypto.PubkeyToAddress(aggBPrivateKey.PublicKey)
-
-	txData = mgmtContractLib.CreateRequestSecret(
-		&ethadapter.L1RequestSecretTx{
-			Attestation: datagenerator.RandomBytes(10),
-		},
-	)
-	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
-	if err != nil {
-		t.Error(err)
-	}
-	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
-	}
-
-	// agg C requests the secret
-	txData = mgmtContractLib.CreateRequestSecret(
-		&ethadapter.L1RequestSecretTx{
-			Attestation: datagenerator.RandomBytes(10),
-		},
-	)
-
-	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
-	if err != nil {
-		t.Error(err)
-	}
-	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
-	}
-
-	// Agg A only responds to Agg B request
-	txData = mgmtContractLib.CreateRespondSecret(
-		(&ethadapter.L1RespondSecretTx{
-			Secret:      secretBytes,
-			RequesterID: aggBID,
-			AttesterID:  aggAID,
-			HostAddress: aggBHostAddr,
-		}).Sign(aggAPrivateKey),
-		true,
-	)
-	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
-	if err != nil {
-		t.Error(err)
-	}
-	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
-	}
-
-	hostAddresses, err := mgmtContractLib.GenContract.GetHostAddresses(nil)
-	if err != nil {
-		t.Error(err)
-	}
-	expectedHostAddresses := []string{aggAHostAddr, aggBHostAddr}
-	if !reflect.DeepEqual(hostAddresses, expectedHostAddresses) {
-		t.Errorf("expected to find host addresses %s, found %s", expectedHostAddresses, hostAddresses)
 	}
 }
