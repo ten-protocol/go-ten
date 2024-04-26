@@ -5,6 +5,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/ethereum/go-ethereum/triedb"
+
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/beacon"
 	"github.com/ethereum/go-ethereum/consensus/clique"
@@ -16,7 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/eth/ethconfig"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ten-protocol/go-ten/go/common/log"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -56,9 +57,9 @@ func NewL1Blockchain(genesisJSON []byte, logger gethlog.Logger) *core.BlockChain
 	return blockchain
 }
 
-func createTrie(db ethdb.Database, cacheConfig *core.CacheConfig) *trie.Database {
+func createTrie(db ethdb.Database, cacheConfig *core.CacheConfig) *triedb.Database {
 	// Open trie database with provided config
-	return trie.NewDatabase(db, &trie.Config{
+	return triedb.NewDatabase(db, &triedb.Config{
 		Preimages: cacheConfig.Preimages,
 	})
 }
@@ -104,7 +105,7 @@ func createCacheConfig() *core.CacheConfig {
 	}
 }
 
-func createChainConfig(db ethdb.Database, triedb *trie.Database, genesis *core.Genesis, logger gethlog.Logger) *params.ChainConfig {
+func createChainConfig(db ethdb.Database, triedb *triedb.Database, genesis *core.Genesis, logger gethlog.Logger) *params.ChainConfig {
 	chainConfig, _, err := core.SetupGenesisBlockWithOverride(
 		db,
 		triedb,

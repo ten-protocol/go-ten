@@ -33,7 +33,7 @@ const (
 	nodeWebsocketPortUsage   = "The port on which to connect to the Obscuro node via RPC over websockets. Default: 81."
 
 	logPathName    = "logPath"
-	logPathDefault = "wallet_extension_logs.txt"
+	logPathDefault = "sys_out"
 	logPathUsage   = "The path to use for the wallet extension's log file"
 
 	databasePathName    = "databasePath"

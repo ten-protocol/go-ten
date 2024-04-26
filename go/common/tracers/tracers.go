@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/ethereum/go-ethereum/core/vm"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlogger "github.com/ethereum/go-ethereum/eth/tracers/logger"
 )
@@ -36,7 +34,7 @@ type Context struct {
 // Tracer interface extends vm.EVMLogger and additionally
 // allows collecting the tracing result.
 type Tracer interface {
-	vm.EVMLogger
+	// vm.EVMLogger
 	GetResult() (json.RawMessage, error)
 	// Stop terminates execution of the tracer at the first opportune moment.
 	Stop(err error)

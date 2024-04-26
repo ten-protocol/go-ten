@@ -215,15 +215,17 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	}
 	p.logger.Info("Publishing rollup", "size", len(encRollup)/1024, log.RollupHashKey, producedRollup.Hash())
 
-	p.logger.Trace("Sending transaction to publish rollup", "rollup_header",
-		gethlog.Lazy{Fn: func() string {
-			header, err := json.MarshalIndent(producedRollup.Header, "", "   ")
-			if err != nil {
-				return err.Error()
-			}
+	if p.logger.Enabled(context.Background(), gethlog.LevelTrace) {
+		var headerLog string
+		header, err := json.MarshalIndent(producedRollup.Header, "", "   ")
+		if err != nil {
+			headerLog = err.Error()
+		} else {
+			headerLog = string(header)
+		}
 
-			return string(header)
-		}}, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
+		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
+	}
 
 	rollupTx := p.mgmtContractLib.CreateRollup(tx)
 

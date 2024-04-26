@@ -9,6 +9,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/triedb"
+
 	"github.com/dgraph-io/ristretto"
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/ten-protocol/go-ten/go/common/measure"
@@ -23,8 +25,6 @@ import (
 
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/trie"
-
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -90,7 +90,7 @@ func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, 
 		SnapshotWait:   true,
 	}
 
-	stateDB := state.NewDatabaseWithConfig(backingDB, &trie.Config{
+	stateDB := state.NewDatabaseWithConfig(backingDB, &triedb.Config{
 		Preimages: cacheConfig.Preimages,
 	})
 
@@ -116,7 +116,7 @@ func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, 
 	}
 }
 
-func (s *storageImpl) TrieDB() *trie.Database {
+func (s *storageImpl) TrieDB() *triedb.Database {
 	return s.stateDB.TrieDB()
 }
 
