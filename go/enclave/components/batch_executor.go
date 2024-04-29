@@ -41,6 +41,7 @@ var ErrNoTransactionsToProcess = fmt.Errorf("no transactions to process")
 // batchExecutor - the component responsible for executing batches
 type batchExecutor struct {
 	storage              storage.Storage
+	batchRegistry        BatchRegistry
 	config               config.EnclaveConfig
 	gethEncodingService  gethencoding.EncodingService
 	crossChainProcessors *crosschain.Processors
@@ -57,6 +58,7 @@ type batchExecutor struct {
 
 func NewBatchExecutor(
 	storage storage.Storage,
+	batchRegistry BatchRegistry,
 	config config.EnclaveConfig,
 	gethEncodingService gethencoding.EncodingService,
 	cc *crosschain.Processors,
@@ -68,6 +70,7 @@ func NewBatchExecutor(
 ) BatchExecutor {
 	return &batchExecutor{
 		storage:              storage,
+		batchRegistry:        batchRegistry,
 		config:               config,
 		gethEncodingService:  gethEncodingService,
 		crossChainProcessors: cc,
@@ -163,7 +166,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
 	batch := core.DeterministicEmptyBatch(parent.Header, block, context.AtTime, context.SequencerNo, context.BaseFee, context.Creator)
 
-	stateDB, err := executor.storage.CreateStateDB(ctx, batch.Header.ParentHash)
+	stateDB, err := executor.batchRegistry.GetBatchState(ctx, &batch.Header.ParentHash, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
@@ -444,7 +447,7 @@ func (executor *batchExecutor) processTransactions(
 		} else {
 			// Exclude all errors
 			excludedTransactions = append(excludedTransactions, tx.Tx)
-			executor.logger.Info("Excluding transaction from batch", log.TxKey, tx.Tx.Hash(), log.BatchHashKey, batch.Hash(), "cause", result)
+			executor.logger.Debug("Excluding transaction from batch", log.TxKey, tx.Tx.Hash(), log.BatchHashKey, batch.Hash(), "cause", result)
 		}
 	}
 	sort.Sort(sortByTxIndex(txReceipts))

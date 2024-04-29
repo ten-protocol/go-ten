@@ -168,9 +168,9 @@ func NewEnclave(
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	batchExecutor := components.NewBatchExecutor(storage, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
-	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	registry := components.NewBatchRegistry(storage, logger)
+	batchExecutor := components.NewBatchExecutor(storage, registry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
+	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	rProducer := components.NewRollupProducer(enclaveKey.EnclaveID(), storage, registry, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
@@ -226,7 +226,7 @@ func NewEnclave(
 		config.GasLocalExecutionCapFlag,
 	)
 	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, registry, crossChainProcessors, service, config, gasOracle, storage, blockProcessor, chain, logger)
-	subscriptionManager := events.NewSubscriptionManager(storage, config.ObscuroChainID, logger)
+	subscriptionManager := events.NewSubscriptionManager(storage, registry, config.ObscuroChainID, logger)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
 	err = restoreStateDBCache(context.Background(), storage, registry, batchExecutor, genesis, logger)
@@ -671,7 +671,7 @@ func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, b
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetCode with the enclave stopping"))
 	}
 
-	stateDB, err := e.storage.CreateStateDB(ctx, *batchHash)
+	stateDB, err := e.registry.GetBatchState(ctx, batchHash, true)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not create stateDB. Cause: %w", err))
 	}
@@ -904,7 +904,7 @@ func restoreStateDBCache(ctx context.Context, storage storage.Storage, registry 
 		}
 		return fmt.Errorf("unexpected error fetching head batch to resync- %w", err)
 	}
-	if !stateDBAvailableForBatch(ctx, storage, batch.Hash()) {
+	if !stateDBAvailableForBatch(ctx, registry, batch.Hash()) {
 		logger.Info("state not available for latest batch after restart - rebuilding stateDB cache from batches")
 		err = replayBatchesToValidState(ctx, storage, registry, producer, gen, logger)
 		if err != nil {
@@ -918,8 +918,8 @@ func restoreStateDBCache(ctx context.Context, storage storage.Storage, registry 
 // batch in the chain and is used to query state at a certain height.
 //
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
-func stateDBAvailableForBatch(ctx context.Context, storage storage.Storage, hash common.L2BatchHash) bool {
-	_, err := storage.CreateStateDB(ctx, hash)
+func stateDBAvailableForBatch(ctx context.Context, registry components.BatchRegistry, hash common.L2BatchHash) bool {
+	_, err := registry.GetBatchState(ctx, &hash, true)
 	return err == nil
 }
 
@@ -938,7 +938,7 @@ func replayBatchesToValidState(ctx context.Context, storage storage.Storage, reg
 		return fmt.Errorf("no head batch found in DB but expected to replay batches - %w", err)
 	}
 	// loop backwards building a slice of all batches that don't have cached stateDB data available
-	for !stateDBAvailableForBatch(ctx, storage, batchToReplayFrom.Hash()) {
+	for !stateDBAvailableForBatch(ctx, registry, batchToReplayFrom.Hash()) {
 		batchesToReplay = append(batchesToReplay, batchToReplayFrom)
 		if batchToReplayFrom.NumberU64() == 0 {
 			// no more parents to check, replaying from genesis

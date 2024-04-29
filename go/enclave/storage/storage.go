@@ -9,6 +9,9 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/triedb/hashdb"
+
 	"github.com/ethereum/go-ethereum/triedb"
 
 	"github.com/dgraph-io/ristretto"
@@ -65,7 +68,7 @@ type storageImpl struct {
 
 	cachedSharedSecret *crypto.SharedEnclaveSecret
 
-	stateDB     state.Database
+	stateCache  state.Database
 	chainConfig *params.ChainConfig
 	logger      gethlog.Logger
 }
@@ -78,21 +81,28 @@ func NewStorageFromConfig(config *config.EnclaveConfig, chainConfig *params.Chai
 	return NewStorage(backingDB, chainConfig, logger)
 }
 
-func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
-	// these are the twice the default configs from geth
-	// todo - consider tweaking these independently on the validator and on the sequencer
-	// the validator probably need higher values on this cache?
-	cacheConfig := &gethcore.CacheConfig{
-		TrieCleanLimit: 256 * 2,
-		TrieDirtyLimit: 256 * 2,
-		TrieTimeLimit:  5 * time.Minute,
-		SnapshotLimit:  256 * 2,
-		SnapshotWait:   true,
-	}
+var defaultCacheConfig = &gethcore.CacheConfig{
+	TrieCleanLimit: 256,
+	TrieDirtyLimit: 256,
+	TrieTimeLimit:  5 * time.Minute,
+	SnapshotLimit:  256,
+	SnapshotWait:   true,
+	StateScheme:    rawdb.HashScheme,
+}
 
-	stateDB := state.NewDatabaseWithConfig(backingDB, &triedb.Config{
-		Preimages: cacheConfig.Preimages,
-	})
+var trieDBConfig = &triedb.Config{
+	Preimages: defaultCacheConfig.Preimages,
+	IsVerkle:  false,
+	HashDB: &hashdb.Config{
+		CleanCacheSize: defaultCacheConfig.TrieCleanLimit * 1024 * 1024,
+	},
+}
+
+func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
+	// Open trie database with provided config
+	triedb := triedb.NewDatabase(backingDB, trieDBConfig)
+
+	stateDB := state.NewDatabaseWithNodeDB(backingDB, triedb)
 
 	// todo (tudor) figure out the config
 	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
@@ -106,7 +116,7 @@ func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, 
 	ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
 	return &storageImpl{
 		db:                backingDB,
-		stateDB:           stateDB,
+		stateCache:        stateDB,
 		chainConfig:       chainConfig,
 		blockCache:        cache.New[*types.Block](ristrettoStore),
 		batchCacheBySeqNo: cache.New[*core.Batch](ristrettoStore),
@@ -117,11 +127,11 @@ func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, 
 }
 
 func (s *storageImpl) TrieDB() *triedb.Database {
-	return s.stateDB.TrieDB()
+	return s.stateCache.TrieDB()
 }
 
 func (s *storageImpl) StateDB() state.Database {
-	return s.stateDB
+	return s.stateCache
 }
 
 func (s *storageImpl) Close() error {
@@ -325,7 +335,7 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2Batc
 		return nil, err
 	}
 
-	statedb, err := state.New(batch.Header.Root, s.stateDB, nil)
+	statedb, err := state.New(batch.Header.Root, s.stateCache, nil)
 	if err != nil {
 		return nil, syserr.NewInternalError(fmt.Errorf("could not create state DB for %s. Cause: %w", batch.Header.Root, err))
 	}
@@ -334,7 +344,7 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2Batc
 
 func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	defer s.logDuration("EmptyStateDB", measure.NewStopwatch())
-	statedb, err := state.New(types.EmptyRootHash, s.stateDB, nil)
+	statedb, err := state.New(types.EmptyRootHash, s.stateCache, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
 	}

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ten-protocol/go-ten/go/enclave/components"
+
 	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
@@ -36,7 +38,8 @@ type logSubscription struct {
 // SubscriptionManager manages the creation/deletion of subscriptions, and the filtering and encryption of logs for
 // active subscriptions.
 type SubscriptionManager struct {
-	storage storage.Storage
+	storage  storage.Storage
+	registry components.BatchRegistry
 
 	subscriptions     map[gethrpc.ID]*logSubscription
 	chainID           int64
@@ -45,9 +48,10 @@ type SubscriptionManager struct {
 	logger gethlog.Logger
 }
 
-func NewSubscriptionManager(storage storage.Storage, chainID int64, logger gethlog.Logger) *SubscriptionManager {
+func NewSubscriptionManager(storage storage.Storage, registry components.BatchRegistry, chainID int64, logger gethlog.Logger) *SubscriptionManager {
 	return &SubscriptionManager{
-		storage: storage,
+		storage:  storage,
+		registry: registry,
 
 		subscriptions:     map[gethrpc.ID]*logSubscription{},
 		chainID:           chainID,
@@ -89,9 +93,9 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 }
 
 // FilterLogsForReceipt removes the logs that the sender of a transaction is not allowed to view
-func FilterLogsForReceipt(ctx context.Context, receipt *types.Receipt, account *gethcommon.Address, storage storage.Storage) ([]*types.Log, error) {
-	filteredLogs := []*types.Log{}
-	stateDB, err := storage.CreateStateDB(ctx, receipt.BlockHash)
+func FilterLogsForReceipt(ctx context.Context, receipt *types.Receipt, account *gethcommon.Address, registry components.BatchRegistry) ([]*types.Log, error) {
+	var filteredLogs []*types.Log
+	stateDB, err := registry.GetBatchState(ctx, &receipt.BlockHash, true)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 	}
@@ -130,7 +134,8 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(ctx context.Context, bat
 	}
 
 	// the stateDb is needed to extract the user addresses from the topics
-	stateDB, err := s.storage.CreateStateDB(ctx, batch.Hash())
+	h := batch.Hash()
+	stateDB, err := s.registry.GetBatchState(ctx, &h, true)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 	}

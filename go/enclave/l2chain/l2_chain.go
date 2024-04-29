@@ -93,7 +93,7 @@ func (oc *obscuroChain) AccountOwner(ctx context.Context, address gethcommon.Add
 }
 
 func (oc *obscuroChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
-	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
+	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber, true)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
 	}
@@ -122,7 +122,7 @@ func (oc *obscuroChain) ObsCall(ctx context.Context, apiArgs *gethapi.Transactio
 
 func (oc *obscuroChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
 	// fetch the chain state at given batch
-	blockState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
+	blockState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber, false)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func (oc *obscuroChain) GetChainStateAtTransaction(ctx context.Context, batch *c
 
 	// Lookup the statedb of parent batch from the live database,
 	// otherwise regenerate it on the flight.
-	statedb, err := oc.Registry.GetBatchStateAtHeight(ctx, &parentBlockNumber)
+	statedb, err := oc.Registry.GetBatchStateAtHeight(ctx, &parentBlockNumber, false)
 	if err != nil {
 		return nil, vm.BlockContext{}, nil, err
 	}
@@ -215,7 +215,7 @@ func (oc *obscuroChain) GetChainStateAtTransaction(ctx context.Context, batch *c
 
 // Returns whether the account is a contract
 func (oc *obscuroChain) isAccountContractAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (bool, error) {
-	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
+	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber, true)
 	if err != nil {
 		return false, fmt.Errorf("unable to get blockchain state - %w", err)
 	}
