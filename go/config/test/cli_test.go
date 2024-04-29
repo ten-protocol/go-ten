@@ -117,7 +117,11 @@ func TestEnclaveEnvVarOverridesDefaultConfigAndFlag(t *testing.T) {
 	defer func() { os.Args = originalArgs }()
 
 	// Set environment variable which will override below flag for nodeType
-	err := os.Setenv("NODETYPE", "validator")
+	err := os.Setenv("EDGELESSDBHOST", "testHost") // default is ""
+	if err != nil {
+		t.Fatalf("could not set environment variable. Cause: %s", err)
+	}
+	err = os.Setenv("NODETYPE", "validator")
 	if err != nil {
 		t.Fatalf("could not set environment variable. Cause: %s", err)
 	}
@@ -133,8 +137,8 @@ func TestEnclaveEnvVarOverridesDefaultConfigAndFlag(t *testing.T) {
 	os.Args = []string{
 		"your-program",
 		"-config", wd + defaultEnclave,
-		"-nodeType", "sequencer", // flag to be overridden by env var in space format
-		"-logLevel=2",           // flag to be overridden by env var in = format
+		"-nodeType", "sequencer", // flag will be overridden by env var (flag in space format)
+		"-logLevel=1",           // flag will be overridden by env var (flag in = format)
 		"-logPath", "/tmp/logs", // keep override config because no envVar
 	}
 
@@ -145,6 +149,9 @@ func TestEnclaveEnvVarOverridesDefaultConfigAndFlag(t *testing.T) {
 	}
 
 	// Assert that the flag value overrides the default configuration
+	if cfg.EdgelessDBHost != "testHost" {
+		t.Fatalf("env override not successful. Expected edgelessDbHost of %s, got %s", "testHost", cfg.EdgelessDBHost)
+	}
 	if cfg.NodeType != common.Validator {
 		t.Fatalf("env override not successful. Expected nodeType of %s, got %s", common.Validator, cfg.NodeType)
 	}
