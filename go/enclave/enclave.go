@@ -169,7 +169,7 @@ func NewEnclave(
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 	batchExecutor := components.NewBatchExecutor(storage, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
-	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
+	sigVerifier, err := components.NewSignatureValidator(storage)
 	registry := components.NewBatchRegistry(storage, logger)
 	rProducer := components.NewRollupProducer(enclaveKey.EnclaveID(), storage, registry, logger)
 	if err != nil {
@@ -212,7 +212,7 @@ func NewEnclave(
 			blockchain,
 		)
 	} else {
-		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, config.SequencerID, storage, sigVerifier, mempool, logger)
+		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, storage, sigVerifier, mempool, logger)
 	}
 
 	chain := l2chain.NewChain(

@@ -94,7 +94,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithGenesis(i == 0),
 				node.WithHostID(hostAddress.String()),
 				node.WithPrivateKey(privateKey),
-				node.WithSequencerID(seqHostAddress.String()),
+				node.WithSequencerP2PAddr(fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset)),
 				node.WithEnclaveWSPort(simParams.StartPort+integration.DefaultEnclaveOffset+i),
 				node.WithHostWSPort(simParams.StartPort+integration.DefaultHostRPCWSOffset+i),
 				node.WithHostHTTPPort(simParams.StartPort+integration.DefaultHostRPCHTTPOffset+i),

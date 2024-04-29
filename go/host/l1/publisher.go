@@ -115,7 +115,6 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 		EnclaveID:     &attestation.EnclaveID,
 		Attestation:   encodedAttestation,
 		InitialSecret: encSecret,
-		HostAddress:   p.hostData.P2PPublicAddress,
 	}
 	initialiseSecretTx := p.mgmtContractLib.CreateInitializeSecret(l1tx)
 	// we block here until we confirm a successful receipt. It is important this is published before the initial rollup.
@@ -157,7 +156,6 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 		Secret:      secretResponse.Secret,
 		RequesterID: secretResponse.RequesterID,
 		AttesterID:  secretResponse.AttesterID,
-		HostAddress: secretResponse.HostAddress,
 	}
 	// todo (#1624) - l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
 	respondSecretTx := p.mgmtContractLib.CreateRespondSecret(l1tx, false)
@@ -235,37 +233,6 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	} else {
 		p.logger.Info("Rollup included in L1", log.RollupHashKey, producedRollup.Hash())
 	}
-}
-
-func (p *Publisher) FetchLatestPeersList() ([]string, error) {
-	msg, err := p.mgmtContractLib.GetHostAddressesMsg()
-	if err != nil {
-		return nil, err
-	}
-	response, err := p.ethClient.CallContract(msg)
-	if err != nil {
-		return nil, err
-	}
-	hostAddresses, err := p.mgmtContractLib.DecodeHostAddressesResponse(response)
-	if err != nil {
-		return nil, err
-	}
-
-	// We remove any duplicate addresses and our own address from the retrieved peer list
-	var filteredHostAddresses []string
-	uniqueHostKeys := make(map[string]bool) // map to track addresses we've seen already
-	for _, hostAddress := range hostAddresses {
-		// We exclude our own address.
-		if hostAddress == p.hostData.P2PPublicAddress {
-			continue
-		}
-		if _, found := uniqueHostKeys[hostAddress]; !found {
-			uniqueHostKeys[hostAddress] = true
-			filteredHostAddresses = append(filteredHostAddresses, hostAddress)
-		}
-	}
-
-	return filteredHostAddresses, nil
 }
 
 func (p *Publisher) GetImportantContracts() map[string]gethcommon.Address {

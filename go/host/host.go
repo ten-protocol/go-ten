@@ -233,7 +233,6 @@ func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
 		ManagementContractAddress: h.config.ManagementContractAddress,
 		L1StartHash:               h.config.L1StartHash,
 
-		SequencerID:         h.config.SequencerID,
 		MessageBusAddress:   h.config.MessageBusAddress,
 		L2MessageBusAddress: *h.l2MessageBusAddress,
 		ImportantContracts:  h.services.L1Publisher().GetImportantContracts(),

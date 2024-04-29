@@ -45,6 +45,8 @@ type HostInputConfig struct {
 	L1RPCTimeout time.Duration
 	// Timeout duration for messaging between hosts.
 	P2PConnectionTimeout time.Duration
+	// P2P address of network sequencer node
+	SequencerP2PAddress string
 	// The rollup contract address on the L1 network
 	ManagementContractAddress gethcommon.Address
 	// The message bus contract address on the L1 network
@@ -63,8 +65,6 @@ type HostInputConfig struct {
 	ProfilerEnabled bool
 	// L1StartHash is the hash of the L1 block we can start streaming from for all Obscuro state (e.g. management contract deployment block)
 	L1StartHash gethcommon.Hash
-	// The ID of the obscuro sequencer node
-	SequencerID gethcommon.Address
 
 	// MetricsEnabled defines whether the metrics are enabled or not
 	MetricsEnabled bool
@@ -127,7 +127,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		ObscuroChainID:            p.ObscuroChainID,
 		ProfilerEnabled:           p.ProfilerEnabled,
 		L1StartHash:               p.L1StartHash,
-		SequencerID:               p.SequencerID,
+		SequencerP2PAddress:       p.SequencerP2PAddress,
 		ID:                        gethcommon.Address{},
 		MetricsEnabled:            p.MetricsEnabled,
 		MetricsHTTPPort:           p.MetricsHTTPPort,
@@ -155,8 +155,8 @@ type HostConfig struct {
 	ObscuroChainID int64
 	// L1StartHash is the hash of the L1 block we can start streaming from for all Obscuro state (e.g. management contract deployment block)
 	L1StartHash gethcommon.Hash
-	// The ID of the obscuro sequencer node
-	SequencerID gethcommon.Address
+	// The address of the sequencer node's P2P server
+	SequencerP2PAddress string
 	// The rollup contract address on the L1 network
 	ManagementContractAddress gethcommon.Address
 	// The message bus contract address on the L1 network
@@ -263,7 +263,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		ObscuroChainID:            443,
 		ProfilerEnabled:           false,
 		L1StartHash:               common.L1BlockHash{}, // this hash will not be found, host will log a warning and then stream from L1 genesis
-		SequencerID:               gethcommon.BytesToAddress([]byte("")),
+		SequencerP2PAddress:       "127.0.0.1:10000",
 		MetricsEnabled:            true,
 		MetricsHTTPPort:           14000,
 		UseInMemoryDB:             true,

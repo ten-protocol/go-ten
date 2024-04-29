@@ -70,7 +70,6 @@ func createInMemObscuroNode(
 		HasClientRPCHTTP:          false,
 		P2PPublicAddress:          fmt.Sprintf("%d", id),
 		L1StartHash:               l1StartBlk,
-		SequencerID:               gethcommon.BigToAddress(big.NewInt(0)),
 		ManagementContractAddress: *mgtContractAddress,
 		MessageBusAddress:         l1BusAddress,
 		BatchInterval:             batchInterval,
@@ -80,7 +79,6 @@ func createInMemObscuroNode(
 	}
 
 	enclaveConfig := &config.EnclaveConfig{
-		SequencerID:               gethcommon.BigToAddress(big.NewInt(0)),
 		HostID:                    hostConfig.ID,
 		NodeType:                  nodeType,
 		L1ChainID:                 integration.EthereumChainID,
