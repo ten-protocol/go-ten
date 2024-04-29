@@ -400,6 +400,11 @@ func (p *Service) broadcast(msg message) error {
 					}
 				}
 				p.peerAddressesMutex.Unlock()
+			} else {
+				// if message was sent successfully, reset failure count
+				p.peerAddressesMutex.Lock()
+				p.peerAddresses[closureAddr] = 0
+				p.peerAddressesMutex.Unlock()
 			}
 		}()
 	}
