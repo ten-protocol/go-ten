@@ -93,7 +93,7 @@ func (oc *obscuroChain) AccountOwner(ctx context.Context, address gethcommon.Add
 }
 
 func (oc *obscuroChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
-	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber, true)
+	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber, false)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
 	}
@@ -215,7 +215,7 @@ func (oc *obscuroChain) GetChainStateAtTransaction(ctx context.Context, batch *c
 
 // Returns whether the account is a contract
 func (oc *obscuroChain) isAccountContractAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (bool, error) {
-	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber, true)
+	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber, false)
 	if err != nil {
 		return false, fmt.Errorf("unable to get blockchain state - %w", err)
 	}

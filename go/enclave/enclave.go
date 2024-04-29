@@ -671,7 +671,7 @@ func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, b
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetCode with the enclave stopping"))
 	}
 
-	stateDB, err := e.registry.GetBatchState(ctx, batchHash, true)
+	stateDB, err := e.registry.GetBatchState(ctx, batchHash, false)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not create stateDB. Cause: %w", err))
 	}
