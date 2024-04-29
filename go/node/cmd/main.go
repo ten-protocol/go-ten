@@ -37,6 +37,7 @@ func main() {
 		node.WithRollupInterval(cliConfig.rollupInterval),
 		node.WithL1ChainID(cliConfig.l1ChainID),
 		node.WithPostgresDBHost(cliConfig.postgresDBHost),
+		node.WithSequencerP2PAddr(cliConfig.sequencerP2PAddr),
 	)
 
 	dockerNode := node.NewDockerNode(nodeCfg)
