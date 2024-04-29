@@ -52,8 +52,8 @@ type EnclaveConfig struct {
 	MinGasPrice *big.Int
 	// MessageBus L1 Address
 	MessageBusAddress gethcommon.Address
-	// The identity of the sequencer for the network
-	SequencerID gethcommon.Address
+	// P2P address for validators to connect to the sequencer for live batch data
+	SequencerP2PAddress string
 	// A json string that specifies the prefunded addresses at the genesis of the Obscuro network
 	ObscuroGenesis string
 	// Whether debug calls are available
@@ -186,7 +186,6 @@ func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 	cfg.ProfilerEnabled = flags[ProfilerEnabledFlag].Bool()
 	cfg.MinGasPrice = big.NewInt(flags[MinGasPriceFlag].Int64())
 	cfg.MessageBusAddress = gethcommon.HexToAddress(flags[MessageBusAddressFlag].String())
-	cfg.SequencerID = gethcommon.HexToAddress(flags[SequencerIDFlag].String())
 	cfg.ObscuroGenesis = flags[ObscuroGenesisFlag].String()
 	cfg.DebugNamespaceEnabled = flags[DebugNamespaceEnabledFlag].Bool()
 	cfg.MaxBatchSize = flags[MaxBatchSizeFlag].Uint64()

@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -36,9 +35,7 @@ type TenConfig struct {
 	TenGatewayEnabled bool
 	NumSeqEnclaves    int
 
-	// these are typically set based on the L1 network and wallet setup provided
 	L1BlockTime time.Duration
-	SequencerID common.Address
 }
 
 func DefaultTenConfig() *TenConfig {
@@ -78,7 +75,6 @@ func LocalDevNetwork(tenConfigOpts ...TenConfigOption) *InMemDevNetwork {
 func NewInMemDevNetwork(tenConfig *TenConfig, l1Network L1Network, nodeOpL1Wallets *params.SimWallets) *InMemDevNetwork {
 	// update tenConfig references to be consistent with the L1 setup
 	tenConfig.L1BlockTime = l1Network.GetBlockTime()
-	tenConfig.SequencerID = nodeOpL1Wallets.NodeWallets[0].Address() // sequencer wallet address is its ID for now
 
 	return &InMemDevNetwork{
 		networkWallets: nodeOpL1Wallets,

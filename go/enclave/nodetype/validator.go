@@ -14,7 +14,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -30,7 +29,6 @@ type obsValidator struct {
 
 	chainConfig *params.ChainConfig
 
-	sequencerID  gethcommon.Address
 	storage      storage.Storage
 	sigValidator *components.SignatureValidator
 	mempool      *txpool.TxPool
@@ -38,7 +36,7 @@ type obsValidator struct {
 	logger gethlog.Logger
 }
 
-func NewValidator(consumer components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupConsumer components.RollupConsumer, chainConfig *params.ChainConfig, sequencerID gethcommon.Address, storage storage.Storage, sigValidator *components.SignatureValidator, mempool *txpool.TxPool, logger gethlog.Logger) ObsValidator {
+func NewValidator(consumer components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupConsumer components.RollupConsumer, chainConfig *params.ChainConfig, storage storage.Storage, sigValidator *components.SignatureValidator, mempool *txpool.TxPool, logger gethlog.Logger) ObsValidator {
 	startMempool(registry, mempool)
 
 	return &obsValidator{
@@ -47,7 +45,6 @@ func NewValidator(consumer components.L1BlockProcessor, batchExecutor components
 		batchRegistry:  registry,
 		rollupConsumer: rollupConsumer,
 		chainConfig:    chainConfig,
-		sequencerID:    sequencerID,
 		storage:        storage,
 		sigValidator:   sigValidator,
 		mempool:        mempool,

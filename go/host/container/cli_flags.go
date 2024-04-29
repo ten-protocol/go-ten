@@ -25,7 +25,7 @@ const (
 	obscuroChainIDName           = "obscuroChainID"
 	profilerEnabledName          = "profilerEnabled"
 	l1StartHashName              = "l1Start"
-	sequencerIDName              = "sequencerID"
+	sequencerP2PAddrName         = "sequencerP2PAddress"
 	metricsEnabledName           = "metricsEnabled"
 	metricsHTTPPortName          = "metricsHTTPPort"
 	useInMemoryDBName            = "useInMemoryDB"
@@ -65,7 +65,7 @@ func getFlagUsageMap() map[string]string {
 		obscuroChainIDName:           "An integer representing the unique chain id of the Obscuro chain (default 443)",
 		profilerEnabledName:          "Runs a profiler instance (Defaults to false)",
 		l1StartHashName:              "The L1 block hash where the management contract was deployed",
-		sequencerIDName:              "The ID of the sequencer",
+		sequencerP2PAddrName:         "The P2P address of the sequencer",
 		metricsEnabledName:           "Whether the metrics are enabled (Defaults to true)",
 		metricsHTTPPortName:          "The port on which the metrics are served (Defaults to 0.0.0.0:14000)",
 		useInMemoryDBName:            "Whether the host will use an in-memory DB rather than persist data",

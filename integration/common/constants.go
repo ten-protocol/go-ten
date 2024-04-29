@@ -78,7 +78,6 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		SqliteDBPath:              "",
 		ProfilerEnabled:           false,
 		MinGasPrice:               big.NewInt(params.InitialBaseFee),
-		SequencerID:               gethcommon.BytesToAddress([]byte("")),
 		ObscuroGenesis:            "",
 		DebugNamespaceEnabled:     false,
 		MaxBatchSize:              1024 * 55,
