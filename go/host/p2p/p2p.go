@@ -38,8 +38,8 @@ const (
 
 var (
 	_alertPeriod             = 5 * time.Minute
-	_maxPeerFailures         = 3
-	_maxWaitWithoutBroadcast = 2 * time.Minute
+	_maxPeerFailures         = 3               // peer removed from broadcast pool after this many failures
+	_maxWaitWithoutBroadcast = 2 * time.Minute // validators will re-register for broadcasts after this period of silence
 )
 
 // A P2P message's type.
@@ -248,7 +248,9 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 	return p.send(msg, requestID)
 }
 
-// RegisterForBroadcasts - request sequencer add us to the list of peers for broadcasts
+// RegisterForBroadcasts - called by validators to register with the sequencer for broadcasts of batch data etc.
+// Validators will call this again if they stop receiving broadcasts for a period of _maxWaitWithoutBroadcast
+// Sequencer will evict validators from the broadcast pool if sending fails _maxPeerFailures times
 func (p *Service) RegisterForBroadcasts() error {
 	if p.isIncomingP2PDisabled {
 		return fmt.Errorf("incoming P2P is disabled, can't register for broadcasts")
