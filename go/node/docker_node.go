@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	_hostDataDir    = "/data"        // this is how the directory is referenced within the host container
 	_enclaveDataDir = "/enclavedata" // this is how the directory is references within the enclave container
 )
 
