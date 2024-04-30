@@ -1,7 +1,7 @@
 # A default configuration for TEN enclave
 hostID:                    ""
-hostAddress:               "127.0.0.1:10000"
-address:                   "127.0.0.1:11000"
+hostAddress:               "0.0.0.0:10000"
+address:                   "0.0.0.0:11000"
 nodeType:                  "validator"
 willAttest:                false
 validateL1Blocks:          false

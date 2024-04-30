@@ -35,7 +35,7 @@ nodes:
         p2pBindAddress:      "0.0.0.0:15000"
         clientRPCPortHTTP:   80
         clientRPCPortWS:     81
-        enclaveRPCAddresses: [ "127.0.0.1:11000" ]
+        enclaveRPCAddresses: [ "0.0.0.0:11000" ]
 
       nodeSettings:
         nodeType:              "sequencer"
@@ -63,7 +63,7 @@ nodes:
         p2pBindAddress:       "0.0.0.0:15010"
         clientRPCPortHTTP:    13010
         clientRPCPortWS:      13011
-        enclaveRPCAddresses:  [ "127.0.0.1:11010" ]
+        enclaveRPCAddresses:  [ "0.0.0.0:11010" ]
 
       nodeSettings:
         nodeType:              "validator"

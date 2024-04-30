@@ -6,11 +6,11 @@ nodeType:                  "validator"
 clientRPCPortHTTP:         80
 #hasClientRPCWebsockets:   calculated
 clientRPCPortWS:           81
-clientRPCHost:             "127.0.0.1"
-enclaveRPCAddresses:       ["127.0.0.1:11000"]
+clientRPCHost:             "0.0.0.0"
+enclaveRPCAddresses:       ["0.0.0.0:11000"]
 p2pBindAddress:            "0.0.0.0:10000"
-p2pPublicAddress:          "127.0.0.1:10000"
-l1WebsocketURL:            "ws://127.0.0.1:8546"
+p2pPublicAddress:          "0.0.0.0:10000"
+l1WebsocketURL:            "ws://0.0.0.0:8546"
 enclaveRPCTimeout:         10
 l1RPCTimeout:              15
 p2pConnectionTimeout:      10
