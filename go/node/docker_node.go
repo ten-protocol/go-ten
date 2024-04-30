@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	_hostDataDir    = "/data"        // this is how the directory is referenced within the host container
 	_enclaveDataDir = "/enclavedata" // this is how the directory is references within the enclave container
 )
 
@@ -133,9 +132,7 @@ func (d *DockerNode) startHost() error {
 		d.cfg.hostP2PPort,
 	}
 
-	hostVolume := map[string]string{d.cfg.nodeName + "-host-volume": _hostDataDir}
-
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-host", d.cfg.hostImage, cmd, exposedPorts, nil, nil, hostVolume)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-host", d.cfg.hostImage, cmd, exposedPorts, nil, nil, nil)
 
 	return err
 }
