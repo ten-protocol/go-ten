@@ -20,7 +20,7 @@ gasBatchExecutionLimit:    300_000_000_000
 tenGenesis:                "{}"
 l1ChainID:                 1337
 tenChainID:                443
-useInMemoryDB:             true
+useInMemoryDB:             false
 profilerEnabled:           false
 genesisJSON:               ""
 debugNamespaceEnabled:     false
