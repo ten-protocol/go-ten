@@ -359,8 +359,8 @@ func TestGetRollupBatches(t *testing.T) {
 		t.Errorf("batch listing was not calculated correctly")
 	}
 
-	// second element should be batch 2
-	if batchListing.BatchesData[1].Header.SequencerOrderNo.Cmp(batchTwo.SeqNo()) != 0 {
+	// second element should be batch 1 as we're ordering by height descending
+	if batchListing.BatchesData[1].Header.SequencerOrderNo.Cmp(batchOne.SeqNo()) != 0 {
 		t.Errorf("batch listing was not returned correctly")
 	}
 
@@ -374,8 +374,8 @@ func TestGetRollupBatches(t *testing.T) {
 	if big.NewInt(int64(batchListing1.Total)).Cmp(big.NewInt(2)) != 0 {
 		t.Errorf("batch listing was not calculated correctly")
 	}
-	// second element should be batch 4
-	if batchListing1.BatchesData[1].Header.SequencerOrderNo.Cmp(batchFour.SeqNo()) != 0 {
+	// second element should be batch 3 as we're ordering by height descending
+	if batchListing1.BatchesData[1].Header.SequencerOrderNo.Cmp(batchThree.SeqNo()) != 0 {
 		t.Errorf("batch listing was not returned correctly")
 	}
 }

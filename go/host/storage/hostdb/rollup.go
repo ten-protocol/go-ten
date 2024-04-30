@@ -16,7 +16,7 @@ import (
 const (
 	selectExtRollup     = "SELECT ext_rollup from rollup_host r"
 	selectLatestRollup  = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
-	selectRollupBatches = "SELECT b.sequence, b.hash, b.full_hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON r.start_seq <= b.sequence AND r.end_seq >= b.sequence ORDER BY b.height DESC"
+	selectRollupBatches = "SELECT b.sequence, b.hash, b.full_hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON r.start_seq <= b.sequence AND r.end_seq >= b.sequence"
 	selectPublicRollup  = "SELECT id, hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block FROM rollup_host"
 )
 
@@ -125,10 +125,11 @@ func GetRollupBySeqNo(db HostDB, seqNo uint64) (*common.PublicRollup, error) {
 
 func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {
 	whereQuery := " WHERE r.hash=" + db.GetSQLStatement().Placeholder
-	query := selectRollupBatches + whereQuery
+	orderQuery := " ORDER BY b.height DESC"
+	query := selectRollupBatches + whereQuery + orderQuery
 	rows, err := db.GetSQLDB().Query(query, truncTo16(rollupHash))
 	if err != nil {
-		return nil, fmt.Errorf("query execution for select txs failed: %w", err)
+		return nil, fmt.Errorf("query execution for select rollup batches failed: %w", err)
 	}
 	defer rows.Close()
 
