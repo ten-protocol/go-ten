@@ -162,7 +162,7 @@ func (br *batchRegistry) GetBatchState(ctx context.Context, hash *common.L2Batch
 	if err != nil {
 		return nil, err
 	}
-	return getBatchStateAtSeq(ctx, br.storage, batch.SeqNo().Uint64())
+	return getBatchState(ctx, br.storage, batch)
 }
 
 func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
@@ -172,17 +172,10 @@ func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber 
 		return nil, err
 	}
 
-	return getBatchStateAtSeq(ctx, br.storage, batch.SeqNo().Uint64())
+	return getBatchState(ctx, br.storage, batch)
 }
 
-func getBatchStateAtSeq(ctx context.Context, storage storage.Storage, seqNo uint64) (*state.StateDB, error) {
-	// We retrieve the batch of interest.
-	batch, err := storage.FetchBatchBySeqNo(ctx, seqNo)
-	if err != nil {
-		return nil, err
-	}
-
-	// We get that of the chain at that height
+func getBatchState(ctx context.Context, storage storage.Storage, batch *core.Batch) (*state.StateDB, error) {
 	blockchainState, err := storage.CreateStateDB(ctx, batch.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
