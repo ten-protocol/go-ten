@@ -85,11 +85,11 @@ type BatchRegistry interface {
 	// BatchesAfter - Given a hash, will return batches following it until the head batch and the l1 blocks referenced by those batches
 	BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error)
 
-	// GetBatchStateAtHeight - creates a stateDB that represents the state committed when
-	// the batch with height matching the blockNumber was created and stored.
-	GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber, cache bool) (*state.StateDB, error)
+	// GetBatchStateAtHeight - creates a stateDB for the block number
+	GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error)
 
-	GetBatchState(ctx context.Context, hash *common.L2BatchHash, cache bool) (*state.StateDB, error)
+	// GetBatchState - creates a stateDB for the block hash
+	GetBatchState(ctx context.Context, hash *common.L2BatchHash) (*state.StateDB, error)
 
 	// GetBatchAtHeight - same as `GetBatchStateAtHeight`, but instead returns the full batch
 	// rather than its stateDB only.

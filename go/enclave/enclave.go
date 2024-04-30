@@ -671,7 +671,7 @@ func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, b
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetCode with the enclave stopping"))
 	}
 
-	stateDB, err := e.registry.GetBatchState(ctx, batchHash, false)
+	stateDB, err := e.registry.GetBatchState(ctx, batchHash)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not create stateDB. Cause: %w", err))
 	}
@@ -919,7 +919,7 @@ func restoreStateDBCache(ctx context.Context, storage storage.Storage, registry 
 //
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
 func stateDBAvailableForBatch(ctx context.Context, registry components.BatchRegistry, hash common.L2BatchHash) bool {
-	_, err := registry.GetBatchState(ctx, &hash, true)
+	_, err := registry.GetBatchState(ctx, &hash)
 	return err == nil
 }
 

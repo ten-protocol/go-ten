@@ -95,7 +95,7 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 // FilterLogsForReceipt removes the logs that the sender of a transaction is not allowed to view
 func FilterLogsForReceipt(ctx context.Context, receipt *types.Receipt, account *gethcommon.Address, registry components.BatchRegistry) ([]*types.Log, error) {
 	var filteredLogs []*types.Log
-	stateDB, err := registry.GetBatchState(ctx, &receipt.BlockHash, false)
+	stateDB, err := registry.GetBatchState(ctx, &receipt.BlockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 	}
@@ -135,7 +135,7 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(ctx context.Context, bat
 
 	// the stateDb is needed to extract the user addresses from the topics
 	h := batch.Hash()
-	stateDB, err := s.registry.GetBatchState(ctx, &h, false)
+	stateDB, err := s.registry.GetBatchState(ctx, &h)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 	}

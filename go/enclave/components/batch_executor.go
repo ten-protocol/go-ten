@@ -166,7 +166,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
 	batch := core.DeterministicEmptyBatch(parent.Header, block, context.AtTime, context.SequencerNo, context.BaseFee, context.Creator)
 
-	stateDB, err := executor.batchRegistry.GetBatchState(ctx, &batch.Header.ParentHash, false)
+	stateDB, err := executor.batchRegistry.GetBatchState(ctx, &batch.Header.ParentHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}

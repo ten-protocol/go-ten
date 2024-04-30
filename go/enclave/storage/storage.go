@@ -27,11 +27,9 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 
 	gethcore "github.com/ethereum/go-ethereum/core"
-	gethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/ten-protocol/go-ten/go/common/syserr"
-
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -337,7 +335,7 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2Batc
 
 	statedb, err := state.New(batch.Header.Root, s.stateCache, nil)
 	if err != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("could not create state DB for %s. Cause: %w", batch.Header.Root, err))
+		return nil, fmt.Errorf("could not create state DB for %s. Cause: %w", batch.Header.Root, err)
 	}
 	return statedb, nil
 }

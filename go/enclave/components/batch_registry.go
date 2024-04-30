@@ -28,7 +28,6 @@ type batchRegistry struct {
 	storage      storage.Storage
 	logger       gethlog.Logger
 	headBatchSeq *big.Int // keep track of the last executed batch to optimise db access
-	currentState *state.StateDB
 
 	batchesCallback   func(*core.Batch, types.Receipts)
 	callbackMutex     sync.RWMutex
@@ -38,7 +37,6 @@ type batchRegistry struct {
 
 func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegistry {
 	var headBatchSeq *big.Int
-	var currentState *state.StateDB
 	headBatch, err := storage.FetchHeadBatch(context.Background())
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -49,16 +47,11 @@ func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegis
 		}
 	} else {
 		headBatchSeq = headBatch.SeqNo()
-		currentState, err = getBatchStateAtSeq(context.Background(), storage, headBatchSeq.Uint64())
-		if err != nil {
-			logger.Crit("Could not create batch registry", log.ErrKey, err)
-		}
 	}
 
 	return &batchRegistry{
 		storage:           storage,
 		headBatchSeq:      headBatchSeq,
-		currentState:      currentState,
 		logger:            logger,
 		healthTimeout:     time.Minute,
 		lastExecutedBatch: async.NewAsyncTimestamp(time.Now().Add(-time.Minute)),
@@ -89,11 +82,6 @@ func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Recei
 	defer core.LogMethodDuration(br.logger, measure.NewStopwatch(), "Sending batch and events", log.BatchHashKey, batch.Hash())
 
 	br.headBatchSeq = batch.SeqNo()
-	var err error
-	br.currentState, err = getBatchStateAtSeq(context.Background(), br.storage, br.headBatchSeq.Uint64())
-	if err != nil {
-		br.logger.Error("Could not create the state. This should not happen", log.ErrKey, err)
-	}
 	if br.batchesCallback != nil {
 		br.batchesCallback(batch, receipts)
 	}
@@ -169,30 +157,19 @@ func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, up
 	return resultBatches, resultBlocks, nil
 }
 
-func (br *batchRegistry) GetBatchState(ctx context.Context, hash *common.L2BatchHash, cache bool) (*state.StateDB, error) {
+func (br *batchRegistry) GetBatchState(ctx context.Context, hash *common.L2BatchHash) (*state.StateDB, error) {
 	batch, err := br.storage.FetchBatch(ctx, *hash)
 	if err != nil {
 		return nil, err
 	}
-	if cache && br.headBatchSeq == batch.SeqNo() {
-		return br.currentState, nil
-	}
 	return getBatchStateAtSeq(ctx, br.storage, batch.SeqNo().Uint64())
 }
 
-func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber, cache bool) (*state.StateDB, error) {
-	if cache && blockNumber.Int64() <= 0 && br.currentState != nil {
-		return br.currentState, nil
-	}
-
+func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
 	// We retrieve the batch of interest.
 	batch, err := br.GetBatchAtHeight(ctx, *blockNumber)
 	if err != nil {
 		return nil, err
-	}
-
-	if cache && br.headBatchSeq == batch.SeqNo() {
-		return br.currentState, nil
 	}
 
 	return getBatchStateAtSeq(ctx, br.storage, batch.SeqNo().Uint64())

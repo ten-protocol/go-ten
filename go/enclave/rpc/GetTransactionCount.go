@@ -57,7 +57,7 @@ func GetTransactionCountExecute(builder *CallBuilder[uint64, string], rpc *Encry
 		// todo - we should return an error when head state is not available, but for current test situations with race
 		//  conditions we allow it to return zero while head state is uninitialized
 		h := l2Head.Hash()
-		s, err := rpc.registry.GetBatchState(builder.ctx, &h, false)
+		s, err := rpc.registry.GetBatchState(builder.ctx, &h)
 		if err != nil {
 			return err
 		}
