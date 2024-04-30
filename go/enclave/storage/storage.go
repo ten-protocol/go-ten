@@ -417,7 +417,12 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 	dbTx := s.db.NewDBTransaction()
 	s.logger.Trace("write batch", log.BatchHashKey, batch.Hash(), "l1Proof", batch.Header.L1Proof, log.BatchSeqNoKey, batch.SeqNo())
 
-	if err := enclavedb.WriteBatchAndTransactions(ctx, dbTx, batch, convertedHash); err != nil {
+	blockId, err := enclavedb.GetBlockId(ctx, s.db.GetSQLDB(), batch.Header.L1Proof)
+	if err != nil {
+		return err
+	}
+
+	if err := enclavedb.WriteBatchAndTransactions(ctx, dbTx, batch, convertedHash, blockId); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
 
@@ -469,12 +474,20 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *core.Batch,
 }
 
 func (s *storageImpl) StoreValueTransfers(ctx context.Context, blockHash common.L1BlockHash, transfers common.ValueTransferEvents) error {
-	return enclavedb.WriteL1Messages(ctx, s.db.GetSQLDB(), blockHash, transfers, true)
+	blockId, err := enclavedb.GetBlockId(ctx, s.db.GetSQLDB(), blockHash)
+	if err != nil {
+		return err
+	}
+	return enclavedb.WriteL1Messages(ctx, s.db.GetSQLDB(), blockId, transfers, true)
 }
 
 func (s *storageImpl) StoreL1Messages(ctx context.Context, blockHash common.L1BlockHash, messages common.CrossChainMessages) error {
 	defer s.logDuration("StoreL1Messages", measure.NewStopwatch())
-	return enclavedb.WriteL1Messages(ctx, s.db.GetSQLDB(), blockHash, messages, false)
+	blockId, err := enclavedb.GetBlockId(ctx, s.db.GetSQLDB(), blockHash)
+	if err != nil {
+		return err
+	}
+	return enclavedb.WriteL1Messages(ctx, s.db.GetSQLDB(), blockId, messages, false)
 }
 
 func (s *storageImpl) GetL1Messages(ctx context.Context, blockHash common.L1BlockHash) (common.CrossChainMessages, error) {
@@ -516,7 +529,12 @@ func (s *storageImpl) StoreRollup(ctx context.Context, rollup *common.ExtRollup,
 	defer s.logDuration("StoreRollup", measure.NewStopwatch())
 	dbBatch := s.db.NewDBTransaction()
 
-	if err := enclavedb.WriteRollup(ctx, dbBatch, rollup.Header, internalHeader); err != nil {
+	blockId, err := enclavedb.GetBlockId(ctx, s.db.GetSQLDB(), rollup.Header.CompressionL1Head)
+	if err != nil {
+		return err
+	}
+
+	if err := enclavedb.WriteRollup(ctx, dbBatch, rollup.Header, blockId, internalHeader); err != nil {
 		return fmt.Errorf("could not write rollup. Cause: %w", err)
 	}
 

@@ -2,18 +2,16 @@ package enclavedb
 
 import gethcommon "github.com/ethereum/go-ethereum/common"
 
-const truncHash = 16
-
-func truncTo16(hash gethcommon.Hash) []byte {
-	return truncBTo16(hash.Bytes())
+func truncTo4(hash gethcommon.Hash) []byte {
+	return truncBTo4(hash.Bytes())
 }
 
-func truncBTo16(bytes []byte) []byte {
+func truncBTo4(bytes []byte) []byte {
 	if len(bytes) == 0 {
 		return bytes
 	}
-	b := bytes[0:truncHash]
-	c := make([]byte, truncHash)
+	b := bytes[0:4]
+	c := make([]byte, 4)
 	copy(c, b)
 	return c
 }
