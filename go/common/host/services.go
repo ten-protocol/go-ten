@@ -56,9 +56,6 @@ type P2P interface {
 	// SubscribeForBatchRequests will register a handler to receive new batch requests from peers, returns unsubscribe func
 	// todo (@matt) feels a bit weird to have this in this interface since it relates to serving data rather than receiving
 	SubscribeForBatchRequests(handler P2PBatchRequestHandler) func()
-
-	// RefreshPeerList notifies the P2P service that its peer list might be out-of-date and it should resync
-	RefreshPeerList()
 }
 
 // P2PBatchHandler is an interface for receiving new batches from the P2P network as they arrive
@@ -110,8 +107,6 @@ type L1Publisher interface {
 	PublishRollup(producedRollup *common.ExtRollup)
 	// PublishSecretResponse will create and publish a secret response tx to the management contract - fire and forget we don't wait for receipt
 	PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error
-
-	FetchLatestPeersList() ([]string, error)
 
 	FetchLatestSeqNo() (*big.Int, error)
 

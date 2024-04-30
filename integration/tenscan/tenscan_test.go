@@ -267,7 +267,6 @@ func TestTenscan(t *testing.T) {
 	configFetchObj := configFetch{}
 	err = json.Unmarshal(body, &configFetchObj)
 	assert.NoError(t, err)
-	assert.NotEqual(t, configFetchObj.Item.SequencerID, gethcommon.Address{})
 
 	err = tenScanContainer.Stop()
 	assert.NoError(t, err)

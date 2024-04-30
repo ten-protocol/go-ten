@@ -27,7 +27,7 @@ type Config struct {
 	hostImage                 string
 	nodeType                  string
 	l1WSURL                   string
-	sequencerID               string
+	sequencerP2PAddr          string
 	privateKey                string
 	hostP2PPort               int
 	hostID                    string
@@ -83,7 +83,7 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 
 	cfg.MessageBusAddress = gethcommon.HexToAddress(c.messageBusContractAddress)
 	cfg.ManagementContractAddress = gethcommon.HexToAddress(c.managementContractAddr)
-	cfg.SequencerID = gethcommon.HexToAddress(c.sequencerID)
+	cfg.SequencerP2PAddress = c.sequencerP2PAddr
 	cfg.HostID = gethcommon.HexToAddress(c.hostID)
 	cfg.HostAddress = fmt.Sprintf("127.0.0.1:%d", c.hostP2PPort)
 	cfg.LogPath = testlog.LogFile()
@@ -123,7 +123,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.MetricsEnabled = false
 	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
 	cfg.LogLevel = c.logLevel
-	cfg.SequencerID = gethcommon.HexToAddress(c.sequencerID)
+	cfg.SequencerP2PAddress = c.sequencerP2PAddr
 	cfg.IsInboundP2PDisabled = c.isInboundP2PDisabled
 	cfg.L1BlockTime = c.l1BlockTime
 	cfg.L1ChainID = int64(c.l1ChainID)
@@ -200,9 +200,9 @@ func WithManagementContractAddress(s string) Option {
 	}
 }
 
-func WithSequencerID(s string) Option {
+func WithSequencerP2PAddr(s string) Option {
 	return func(c *Config) {
-		c.sequencerID = s
+		c.sequencerP2PAddr = s
 	}
 }
 

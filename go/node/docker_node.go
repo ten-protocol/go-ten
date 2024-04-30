@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	_hostDataDir    = "/data"        // this is how the directory is referenced within the host container
 	_enclaveDataDir = "/enclavedata" // this is how the directory is references within the enclave container
 )
 
@@ -99,7 +98,7 @@ func (d *DockerNode) startHost() error {
 		"-managementContractAddress", d.cfg.managementContractAddr,
 		"-messageBusContractAddress", d.cfg.messageBusContractAddress,
 		"-l1Start", d.cfg.l1Start,
-		"-sequencerID", d.cfg.sequencerID,
+		"-sequencerP2PAddress", d.cfg.sequencerP2PAddr,
 		"-privateKey", d.cfg.privateKey,
 		"-clientRPCHost", "0.0.0.0",
 		"-logPath", "sys_out",
@@ -133,9 +132,7 @@ func (d *DockerNode) startHost() error {
 		d.cfg.hostP2PPort,
 	}
 
-	hostVolume := map[string]string{d.cfg.nodeName + "-host-volume": _hostDataDir}
-
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-host", d.cfg.hostImage, cmd, exposedPorts, nil, nil, hostVolume)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-host", d.cfg.hostImage, cmd, exposedPorts, nil, nil, nil)
 
 	return err
 }
@@ -172,7 +169,6 @@ func (d *DockerNode) startEnclave() error {
 		"-nodeType", d.cfg.nodeType,
 		"-managementContractAddress", d.cfg.managementContractAddr,
 		"-hostAddress", d.cfg.hostPublicP2PAddr,
-		"-sequencerID", d.cfg.sequencerID,
 		"-messageBusAddress", d.cfg.messageBusContractAddress,
 		"-profilerEnabled=false",
 		"-useInMemoryDB=false",

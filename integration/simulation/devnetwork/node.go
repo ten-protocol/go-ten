@@ -123,6 +123,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 
 	p2pPort := n.config.PortStart + integration.DefaultHostP2pOffset + n.operatorIdx
 	p2pAddr := fmt.Sprintf("%s:%d", network.Localhost, p2pPort)
+	seqP2PAddr := fmt.Sprintf("%s:%d", network.Localhost, n.config.PortStart+integration.DefaultHostP2pOffset)
 
 	hostConfig := &config.HostConfig{
 		ID:                        n.l1Wallet.Address(),
@@ -143,7 +144,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		L1ChainID:                 integration.EthereumChainID,
 		ObscuroChainID:            integration.TenChainID,
 		L1StartHash:               n.l1Data.TenStartBlock,
-		SequencerID:               n.config.SequencerID,
+		SequencerP2PAddress:       seqP2PAddr,
 		// Can provide the postgres db host if testing against a local DB instance
 		UseInMemoryDB:         true,
 		DebugNamespaceEnabled: true,
@@ -195,7 +196,6 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 	}
 	enclaveConfig := &config.EnclaveConfig{
 		HostID:                    n.l1Wallet.Address(),
-		SequencerID:               n.config.SequencerID,
 		HostAddress:               hostAddr,
 		Address:                   enclaveAddr,
 		NodeType:                  enclaveType,

@@ -74,7 +74,7 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	}
 
 	// We filter out irrelevant logs.
-	txReceipt.Logs, err = events.FilterLogsForReceipt(builder.ctx, txReceipt, &txSigner, rpc.storage)
+	txReceipt.Logs, err = events.FilterLogsForReceipt(builder.ctx, txReceipt, &txSigner, rpc.registry)
 	if err != nil {
 		rpc.logger.Error("error filter logs ", log.TxKey, txHash, log.ErrKey, err)
 		// this is a system error

@@ -25,13 +25,11 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     // mapping of enclaveID to whether it is attested
     mapping(address => bool) private attested;
+
     // mapping of enclaveID to whether it is permissioned as a sequencer enclave
     // note: the enclaveID which initialises the network secret is automatically permissioned as a sequencer.
     //       Beyond that, the contract owner can grant and revoke sequencer status.
     mapping(address => bool) private sequencerEnclave;
-
-    // TODO - Revisit the decision to store the host addresses in the smart contract.
-    string[] private hostAddresses; // The addresses of all the Ten hosts on the network.
 
     // In the near-term it is convenient to have an accessible source of truth for important contract addresses
     // TODO - this is probably not appropriate long term but currently useful for testnets. Look to remove.
@@ -96,7 +94,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once
     // solc-ignore-next-line unused-param
-    function InitializeNetworkSecret(address _enclaveID, bytes calldata  _initSecret, string memory _hostAddress, string calldata _genesisAttestation) public {
+    function InitializeNetworkSecret(address _enclaveID, bytes calldata  _initSecret, string calldata _genesisAttestation) public {
         require(!networkSecretInitialized, "network secret already initialized");
 
         // network can no longer be initialized
@@ -104,7 +102,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
         // enclave is now on the list of attested enclaves (and its host address is published for p2p)
         attested[_enclaveID] = true;
-        hostAddresses.push(_hostAddress);
 
         // the enclave that starts the network with this call is implicitly a sequencer so doesn't need adding
         sequencerEnclave[_enclaveID] = true;
@@ -119,7 +116,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     // and, if valid, will respond with the Network Secret
     // and mark the requesterID as attested
     // @param verifyAttester Whether to ask the attester to complete a challenge (signing a hash) to prove their identity.
-    function RespondNetworkSecret(address attesterID, address requesterID, bytes memory attesterSig, bytes memory responseSecret, string memory hostAddress, bool verifyAttester) public {
+    function RespondNetworkSecret(address attesterID, address requesterID, bytes memory attesterSig, bytes memory responseSecret, bool verifyAttester) public {
         // only attested enclaves can respond to Network Secret Requests
         bool isEnclAttested = attested[attesterID];
         require(isEnclAttested, "responding attester is not attested");
@@ -130,7 +127,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
             // signature = f(PubKey, PrivateKey, message)
             // address = f(signature, message)
             // valid if attesterID = address
-            bytes32 calculatedHashSigned = abi.encodePacked(attesterID, requesterID, hostAddress, responseSecret).toEthSignedMessageHash();
+            bytes32 calculatedHashSigned = abi.encodePacked(attesterID, requesterID, responseSecret).toEthSignedMessageHash();
             address recoveredAddrSignedCalculated = ECDSA.recover(calculatedHashSigned, attesterSig);
 
             require(recoveredAddrSignedCalculated == attesterID, "calculated address and attesterID dont match");
@@ -138,12 +135,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
         // mark the requesterID enclave as an attested enclave and store its host address
         attested[requesterID] = true;
-        // TODO - Consider whether to remove duplicates.
-        hostAddresses.push(hostAddress);
-    }
-
-    function GetHostAddresses() public view returns (string[] memory) {
-        return hostAddresses;
     }
 
 

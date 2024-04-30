@@ -29,7 +29,7 @@ type NodeConfigCLI struct {
 	enclaveWSPort           int
 	privateKey              string
 	hostID                  string
-	sequencerID             string
+	sequencerP2PAddr        string
 	managementContractAddr  string
 	messageBusContractAddr  string
 	l1Start                 string
@@ -69,7 +69,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	enclaveWSPort := flag.Int(enclaveWSPortFlag, 11001, flagUsageMap[enclaveWSPortFlag])
 	privateKey := flag.String(privateKeyFlag, "", flagUsageMap[privateKeyFlag])
 	hostID := flag.String(hostIDFlag, "", flagUsageMap[hostIDFlag])
-	sequencerID := flag.String(sequencerIDFlag, "", flagUsageMap[sequencerIDFlag])
+	sequencerP2PAddr := flag.String(sequencerP2PAddrFlag, "", flagUsageMap[sequencerP2PAddrFlag])
 	managementContractAddr := flag.String(managementContractAddrFlag, "", flagUsageMap[managementContractAddrFlag])
 	messageBusContractAddr := flag.String(messageBusContractAddrFlag, "", flagUsageMap[messageBusContractAddrFlag])
 	l1Start := flag.String(l1StartBlockFlag, "", flagUsageMap[l1StartBlockFlag])
@@ -99,7 +99,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.enclaveWSPort = *enclaveWSPort
 	cfg.privateKey = *privateKey
 	cfg.hostID = *hostID
-	cfg.sequencerID = *sequencerID
+	cfg.sequencerP2PAddr = *sequencerP2PAddr
 	cfg.managementContractAddr = *managementContractAddr
 	cfg.messageBusContractAddr = *messageBusContractAddr
 	cfg.l1Start = *l1Start

@@ -30,7 +30,6 @@ type L1RespondSecretTx struct {
 	RequesterID gethcommon.Address
 	AttesterID  gethcommon.Address
 	AttesterSig []byte
-	HostAddress string
 }
 
 type L1SetImportantContractsTx struct {
@@ -43,7 +42,6 @@ func (l *L1RespondSecretTx) Sign(privateKey *ecdsa.PrivateKey) *L1RespondSecretT
 	var data []byte
 	data = append(data, l.AttesterID.Bytes()...)
 	data = append(data, l.RequesterID.Bytes()...)
-	data = append(data, l.HostAddress...)
 	data = append(data, string(l.Secret)...)
 
 	ethereumMessageHash := func(data []byte) []byte {
@@ -71,6 +69,5 @@ type L1RequestSecretTx struct {
 type L1InitializeSecretTx struct {
 	EnclaveID     *gethcommon.Address
 	InitialSecret []byte
-	HostAddress   string
 	Attestation   common.EncodedAttestationReport
 }

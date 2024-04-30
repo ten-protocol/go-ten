@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/holiman/uint256"
+
 	"github.com/ten-protocol/go-ten/go/config"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -47,7 +49,7 @@ func TestDefaultGenesis(t *testing.T) {
 		t.Fatalf("unable to apply genesis allocations")
 	}
 
-	if TestnetGenesis.Accounts[0].Amount.Cmp(stateDB.GetBalance(TestnetGenesis.Accounts[0].Address)) != 0 {
+	if uint256.MustFromBig(TestnetGenesis.Accounts[0].Amount).Cmp(stateDB.GetBalance(TestnetGenesis.Accounts[0].Address)) != 0 {
 		t.Fatalf("unexpected balance")
 	}
 }
@@ -90,10 +92,10 @@ func TestCustomGenesis(t *testing.T) {
 		t.Fatalf("unable to apply genesis allocations")
 	}
 
-	if big.NewInt(int64(amt1)).Cmp(stateDB.GetBalance(addr1)) != 0 {
+	if uint256.MustFromBig(big.NewInt(int64(amt1))).Cmp(stateDB.GetBalance(addr1)) != 0 {
 		t.Fatalf("unexpected balance")
 	}
-	if big.NewInt(int64(amt2)).Cmp(stateDB.GetBalance(addr2)) != 0 {
+	if uint256.MustFromBig(big.NewInt(int64(amt2))).Cmp(stateDB.GetBalance(addr2)) != 0 {
 		t.Fatalf("unexpected balance")
 	}
 }

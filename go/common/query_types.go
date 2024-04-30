@@ -119,7 +119,6 @@ type PrivateCustomQueryListTransactions struct {
 type ObscuroNetworkInfo struct {
 	ManagementContractAddress common.Address
 	L1StartHash               common.Hash
-	SequencerID               common.Address
 	MessageBusAddress         common.Address
 	L2MessageBusAddress       common.Address
 	ImportantContracts        map[string]common.Address // map of contract name to address
