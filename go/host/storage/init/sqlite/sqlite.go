@@ -14,7 +14,7 @@ import (
 
 const (
 	tempDirName = "ten-persistence"
-	initFile    = "host_sqlite_init.sql"
+	initFile    = "001_init.sql"
 )
 
 //go:embed *.sql

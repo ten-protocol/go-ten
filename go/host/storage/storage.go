@@ -103,7 +103,7 @@ func (s *storageImpl) FetchBatchHeaderByHash(hash gethcommon.Hash) (*common.Batc
 }
 
 func (s *storageImpl) FetchHeadBatchHeader() (*common.BatchHeader, error) {
-	return hostdb.GetHeadBatchHeader(s.db.GetSQLDB())
+	return hostdb.GetHeadBatchHeader(s.db)
 }
 
 func (s *storageImpl) FetchPublicBatchByHash(batchHash common.L2BatchHash) (*common.PublicBatch, error) {
@@ -119,10 +119,14 @@ func (s *storageImpl) FetchBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, 
 }
 
 func (s *storageImpl) FetchLatestBatch() (*common.BatchHeader, error) {
-	return hostdb.GetLatestBatch(s.db.GetSQLDB())
+	return hostdb.GetLatestBatch(s.db)
 }
 
 func (s *storageImpl) FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHeader, error) {
+	return hostdb.GetBatchHeaderByHeight(s.db, height)
+}
+
+func (s *storageImpl) FetchBatchByHeight(height *big.Int) (*common.PublicBatch, error) {
 	return hostdb.GetBatchByHeight(s.db, height)
 }
 
@@ -135,7 +139,7 @@ func (s *storageImpl) FetchBatchListingDeprecated(pagination *common.QueryPagina
 }
 
 func (s *storageImpl) FetchLatestRollupHeader() (*common.RollupHeader, error) {
-	return hostdb.GetLatestRollup(s.db.GetSQLDB())
+	return hostdb.GetLatestRollup(s.db)
 }
 
 func (s *storageImpl) FetchRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
@@ -147,7 +151,27 @@ func (s *storageImpl) FetchBlockListing(pagination *common.QueryPagination) (*co
 }
 
 func (s *storageImpl) FetchTotalTxCount() (*big.Int, error) {
-	return hostdb.GetTotalTxCount(s.db.GetSQLDB())
+	return hostdb.GetTotalTxCount(s.db)
+}
+
+func (s *storageImpl) FetchTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error) {
+	return hostdb.GetTransaction(s.db, hash)
+}
+
+func (s *storageImpl) FetchRollupByHash(rollupHash gethcommon.Hash) (*common.PublicRollup, error) {
+	return hostdb.GetRollupByHash(s.db, rollupHash)
+}
+
+func (s *storageImpl) FetchRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error) {
+	return hostdb.GetRollupBySeqNo(s.db, seqNo)
+}
+
+func (s *storageImpl) FetchRollupBatches(rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {
+	return hostdb.GetRollupBatches(s.db, rollupHash)
+}
+
+func (s *storageImpl) FetchBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
+	return hostdb.GetBatchTransactions(s.db, batchHash)
 }
 
 func (s *storageImpl) Close() error {

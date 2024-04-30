@@ -49,7 +49,7 @@ type PublicTransaction struct {
 
 type PublicBatch struct {
 	SequencerOrderNo *big.Int              `json:"sequence"`
-	Hash             []byte                `json:"hash"`
+	Hash             string                `json:"hash"`
 	FullHash         common.Hash           `json:"fullHash"`
 	Height           *big.Int              `json:"height"`
 	TxCount          *big.Int              `json:"txCount"`
@@ -65,12 +65,12 @@ type PublicBatchDeprecated struct {
 
 type PublicRollup struct {
 	ID        *big.Int
-	Hash      []byte
+	Hash      string
 	FirstSeq  *big.Int
 	LastSeq   *big.Int
 	Timestamp uint64
 	Header    *RollupHeader
-	L1Hash    []byte
+	L1Hash    string
 }
 
 type PublicBlock struct {
