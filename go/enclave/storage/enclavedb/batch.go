@@ -127,10 +127,10 @@ func WriteBatchExecution(ctx context.Context, dbtx DBTransaction, seqNo *big.Int
 			return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 		}
 
-		txId, err := ReadTxId(ctx, dbtx, storageReceipt.TxHash)
-		if err != nil {
-			return err
-		}
+		txId, _ := ReadTxId(ctx, dbtx, storageReceipt.TxHash)
+		//if err != nil {
+		//	return err
+		//}
 		args = append(args, receipt.ContractAddress.Bytes()) // created_contract_address
 		args = append(args, receiptBytes)                    // the serialised receipt
 		args = append(args, txId)                            // tx id

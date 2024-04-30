@@ -28,10 +28,10 @@ func StoreEventLogs(ctx context.Context, dbtx DBTransaction, receipts []*types.R
 	totalLogs := 0
 	for _, receipt := range receipts {
 		for _, l := range receipt.Logs {
-			txId, err := ReadTxId(ctx, dbtx, l.TxHash)
-			if err != nil {
-				return err
-			}
+			txId, _ := ReadTxId(ctx, dbtx, l.TxHash)
+			//if err != nil {
+			//	return err
+			//}
 			batchId, err := ReadBatchId(ctx, dbtx, receipt.BlockHash)
 			if err != nil {
 				return err
@@ -195,7 +195,7 @@ func FilterLogs(
 			// empty rule set == wildcard
 			if len(sub) > 0 {
 				topicColumn := fmt.Sprintf("topic%d", i)
-				token := fmt.Sprintf("(%s=? AND %s_full=?) OR ", topicColumn)
+				token := fmt.Sprintf("(%s=? AND %s_full=?) OR ", topicColumn, topicColumn)
 				query += " AND (" + strings.Repeat(token, len(sub)) + " 1=0)"
 				for _, topic := range sub {
 					queryParams = append(queryParams, truncBTo4(topic.Bytes()))
