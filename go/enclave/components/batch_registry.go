@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -46,6 +48,7 @@ func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegis
 	} else {
 		headBatchSeq = headBatch.SeqNo()
 	}
+
 	return &batchRegistry{
 		storage:           storage,
 		headBatchSeq:      headBatchSeq,
@@ -154,6 +157,14 @@ func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, up
 	return resultBatches, resultBlocks, nil
 }
 
+func (br *batchRegistry) GetBatchState(ctx context.Context, hash *common.L2BatchHash) (*state.StateDB, error) {
+	batch, err := br.storage.FetchBatch(ctx, *hash)
+	if err != nil {
+		return nil, err
+	}
+	return getBatchState(ctx, br.storage, batch)
+}
+
 func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
 	// We retrieve the batch of interest.
 	batch, err := br.GetBatchAtHeight(ctx, *blockNumber)
@@ -161,8 +172,11 @@ func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber 
 		return nil, err
 	}
 
-	// We get that of the chain at that height
-	blockchainState, err := br.storage.CreateStateDB(ctx, batch.Hash())
+	return getBatchState(ctx, br.storage, batch)
+}
+
+func getBatchState(ctx context.Context, storage storage.Storage, batch *core.Batch) (*state.StateDB, error) {
+	blockchainState, err := storage.CreateStateDB(ctx, batch.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
