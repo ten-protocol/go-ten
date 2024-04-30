@@ -21,6 +21,7 @@ nodeSettings:
   isGenesis:              false
   pccsAddr:               "" # optional for attestation
   debugNamespaceEnabled:  true
+  enclaveDebug:           false
   logLevel:               3
   profilerEnabled:        false
   useInMemoryDB:          true # useInMemoryDB for host

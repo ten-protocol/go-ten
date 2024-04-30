@@ -39,6 +39,7 @@ type NodeInputSettings struct {
 	IsGenesis             bool   `yaml:"isGenesis"`
 	PccsAddr              string `yaml:"pccsAddr"`
 	DebugNamespaceEnabled bool   `yaml:"debugNamespaceEnabled"`
+	EnclaveDebug          bool   `yaml:"enclaveDebug"`
 	LogLevel              int    `yaml:"logLevel"`
 	ProfilerEnabled       bool   `yaml:"profilerEnabled"`
 	UseInMemoryDB         bool   `yaml:"useInMemoryDB"`

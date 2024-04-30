@@ -8,9 +8,9 @@ const (
 	NodeNameFlag                  = "nodeName"
 	IsSGXEnabledFlag              = "isSGXEnabled"
 	PccsAddrFlag                  = "pccsAddr"
-	HostImage                     = "hostImage"
-	EnclaveImage                  = "enclaveImage"
-	EdgelessDBImage               = "edgelessDBImage"
+	HostImageFlag                 = "hostImage"
+	EnclaveImageFlag              = "enclaveImage"
+	EdgelessDBImageFlag           = "edgelessDBImage"
 	NodeTypeFlag                  = "nodeType"
 	ManagementContractAddressFlag = "managementContractAddress"
 	MessageBusAddressFlag         = "messageBusAddress"
@@ -22,6 +22,7 @@ const (
 	MaxRollupSizeFlag             = "maxRollupSize"
 	SQLiteDBPathFlag              = "sqliteDBPath"
 	DebugNamespaceEnabledFlag     = "debugNamespaceEnabled"
+	EnclaveDebugFlag              = "enclaveDebug"
 	UseInMemoryDBFlag             = "useInMemoryDB"
 	SequencerIDFlag               = "sequencerID"
 	IsGenesisFlag                 = "isGenesis"
@@ -57,8 +58,8 @@ const (
 	TenGenesisFlag                = "tenGenesis"
 	MaxBatchSizeFlag              = "maxBatchSize"
 	L2BaseFeeFlag                 = "l2BaseFee"
-	GasPaymentAddress             = "gasPaymentAddress"
-	GasBatchExecutionLimit        = "gasBatchExecutionLimit"
+	GasPaymentAddressFlag         = "gasPaymentAddress"
+	GasBatchExecutionLimitFlag    = "gasBatchExecutionLimit"
 	GasLocalExecutionCapFlag      = "gasLocalExecutionCap"
 	GethHTTPPortFlag              = "gethHTTPPort"
 	GethWebsocketPortFlag         = "gethWebsocketPort"
@@ -68,7 +69,7 @@ const (
 	L1HTTPURLFlag                 = "l1HttpUrl"
 	L1DeployerImageFlag           = "l1DeployerImage"
 	ContractEnvsFileFlag          = "contractEnvsFile"
-	L1PrivateKey                  = "l1PrivateKey"
+	L1PrivateKeyFlag              = "l1PrivateKey"
 	L2DeployerImageFlag           = "l2DeployerImage"
 	L2WebsocketURLFlag            = "l2WebsocketUrl"
 	L2PrivateKeyFlag              = "l2PrivateKey"
@@ -100,20 +101,20 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		UseInMemoryDBFlag:             true,
 		SequencerIDFlag:               true,
 		//
-		HostIDFlag:               true,
-		HostAddressFlag:          true,
-		AddressFlag:              true,
-		WillAttestFlag:           true,
-		ValidateL1BlocksFlag:     true,
-		EdgelessDBHostFlag:       true,
-		MinGasPriceFlag:          true,
-		GenesisJSONFlag:          true,
-		TenGenesisFlag:           true,
-		MaxBatchSizeFlag:         true,
-		L2BaseFeeFlag:            true,
-		GasPaymentAddress:        true,
-		GasBatchExecutionLimit:   true,
-		GasLocalExecutionCapFlag: true,
+		HostIDFlag:                 true,
+		HostAddressFlag:            true,
+		AddressFlag:                true,
+		WillAttestFlag:             true,
+		ValidateL1BlocksFlag:       true,
+		EdgelessDBHostFlag:         true,
+		MinGasPriceFlag:            true,
+		GenesisJSONFlag:            true,
+		TenGenesisFlag:             true,
+		MaxBatchSizeFlag:           true,
+		L2BaseFeeFlag:              true,
+		GasPaymentAddressFlag:      true,
+		GasBatchExecutionLimitFlag: true,
+		GasLocalExecutionCapFlag:   true,
 	},
 	Host: {
 		OverrideFlag: true,
@@ -173,14 +174,15 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		IsSGXEnabledFlag:          true,
 		PccsAddrFlag:              true,
 		DebugNamespaceEnabledFlag: true,
+		EnclaveDebugFlag:          true,
 		LogLevelFlag:              true,
 		ProfilerEnabledFlag:       true,
 		UseInMemoryDBFlag:         true,
 		PostgresDBHostFlag:        true,
 		// NodeInputImages
-		HostImage:       true,
-		EnclaveImage:    true,
-		EdgelessDBImage: true,
+		HostImageFlag:       true,
+		EnclaveImageFlag:    true,
+		EdgelessDBImageFlag: true,
 	},
 	Eth2Network: {
 		DryRunFlag:   true,
@@ -210,7 +212,7 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		ConfigFlag:                true,
 		DebugNamespaceEnabledFlag: true,
 		//
-		L1PrivateKey:        true,
+		L1PrivateKeyFlag:    true,
 		L2DeployerImageFlag: true,
 		L2WebsocketURLFlag:  true,
 		L2PrivateKeyFlag:    true,
@@ -253,9 +255,9 @@ func FlagUsageMap() map[string]string {
 		NodeNameFlag:                  "Common name for containers and reference",
 		IsSGXEnabledFlag:              "Use SGX or simulation",
 		PccsAddrFlag:                  "SGX attestation address",
-		HostImage:                     "Docker image for host service",
-		EnclaveImage:                  "Docker image for enclave service",
-		EdgelessDBImage:               "Docker image for edgeless DB (enclave persistence)",
+		HostImageFlag:                 "Docker image for host service",
+		EnclaveImageFlag:              "Docker image for enclave service",
+		EdgelessDBImageFlag:           "Docker image for edgeless DB (enclave persistence)",
 		HostIDFlag:                    "The 20 bytes of the address of the TEN host this enclave serves",
 		HostAddressFlag:               "The peer-to-peer IP address of the TEN host this enclave serves",
 		AddressFlag:                   "The address on which to serve the TEN enclave service",
@@ -273,8 +275,8 @@ func FlagUsageMap() map[string]string {
 		MaxBatchSizeFlag:              "The maximum size a batch is allowed to reach uncompressed",
 		MaxRollupSizeFlag:             "The maximum size a rollup is allowed to reach",
 		L2BaseFeeFlag:                 "Base gas fee",
-		GasPaymentAddress:             "Account used for gas payments of L1 transactions",
-		GasBatchExecutionLimit:        "Max gas that can be executed in a single batch",
+		GasPaymentAddressFlag:         "Account used for gas payments of L1 transactions",
+		GasBatchExecutionLimitFlag:    "Max gas that can be executed in a single batch",
 		GenesisJSONFlag:               "// When validating incoming blocks, the genesis config for the L1 chain",
 		TenGenesisFlag:                "The json string with the TEN genesis",
 		L1ChainIDFlag:                 "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)",
@@ -282,6 +284,7 @@ func FlagUsageMap() map[string]string {
 		UseInMemoryDBFlag:             "Whether the enclave will use an in-memory DB rather than persist data",
 		ProfilerEnabledFlag:           "Runs a profiler instance (Defaults to false)",
 		DebugNamespaceEnabledFlag:     "Whether the debug namespace is enabled",
+		EnclaveDebugFlag:              "Whether the run the enclave.debug image",
 		GasLocalExecutionCapFlag:      "Max gas usage when executing local transactions",
 		IsGenesisFlag:                 "Whether the host is the first host to join the network",
 		ClientRPCPortHTTPFlag:         "The port on which to listen for client application RPC requests over HTTP",
@@ -313,7 +316,7 @@ func FlagUsageMap() map[string]string {
 		L1HTTPURLFlag:                 "Layer 1 network http RPC addr",
 		L1DeployerImageFlag:           "Docker image to run L1 deployer",
 		ContractEnvsFileFlag:          "If set, it will write the contract addresses to the file",
-		L1PrivateKey:                  "L1 private key that was used for the L1 Deployer",
+		L1PrivateKeyFlag:              "L1 private key that was used for the L1 Deployer",
 		L2DeployerImageFlag:           "Layer 2 Docker image to run L2 deployer",
 		L2WebsocketURLFlag:            "Layer 2 network host and WebSocket port",
 		L2PrivateKeyFlag:              "Layer 2 private key for contract deployer",

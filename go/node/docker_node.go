@@ -2,11 +2,9 @@ package node
 
 import (
 	"fmt"
+	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/config"
 	"os"
-	"strings"
-
-	"github.com/sanity-io/litter"
 
 	"github.com/ten-protocol/go-ten/go/common/docker"
 )
@@ -36,15 +34,6 @@ type DockerStartBundle struct {
 func (d *DockerStartBundle) Print() {
 	fmt.Println("Configuration Settings for ", d.Service, ":")
 	fmt.Println(litter.Sdump(*d))
-}
-
-// mapToString is a helper function to convert map values to a string for better readability
-func mapToString(m map[string]string) string {
-	var result []string
-	for k, v := range m {
-		result = append(result, fmt.Sprintf("%s: %s", k, v))
-	}
-	return strings.Join(result, ", ")
 }
 
 func NewDockerNode(runParams config.RunParams, cfg *config.NodeConfig, flags config.CliFlagStringSet) *DockerNode {
@@ -172,7 +161,7 @@ func (d *DockerNode) startEnclave() error {
 		"ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
 	}
 
-	if d.Cfg.NodeSettings.DebugNamespaceEnabled {
+	if d.Cfg.NodeSettings.EnclaveDebug {
 		cmd = []string{
 			"dlv",
 			"--listen=:2345",

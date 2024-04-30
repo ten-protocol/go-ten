@@ -1,6 +1,7 @@
 package config
 
 import (
+	"embed"
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -8,6 +9,11 @@ import (
 	"strconv"
 	"strings"
 )
+
+// Embedding the default YAML files into the binary.
+//
+//go:embed templates/*
+var templateFS embed.FS
 
 // HostEnvs alias
 type HostEnvs = map[string]string
@@ -21,11 +27,11 @@ type Config interface{}
 // getTemplateFilePaths returns a map of the default static config per TypeConfig
 func getTemplateFilePaths() map[TypeConfig]string {
 	return map[TypeConfig]string{
-		Enclave: "./go/config/templates/default_enclave_config.yaml",
-		Host:    "./go/config/templates/default_host_config.yaml",
-		Network: "./go/config/templates/ITN_network.yaml",
-		Node:    "./go/config/templates/default_node.yaml",
-		Testnet: "./go/config/templates/default_testnet.yaml",
+		Enclave: "templates/default_enclave_config.yaml",
+		Host:    "templates/default_host_config.yaml",
+		Network: "templates/ITN_network.yaml",
+		Node:    "templates/default_node.yaml",
+		Testnet: "templates/default_testnet.yaml",
 	}
 }
 
@@ -68,10 +74,13 @@ func LoadConfigFromFile(t TypeConfig, configPath string) (Config, error) {
 		return nil, fmt.Errorf("invalid TypeConfig %s", t)
 	}
 
-	// Read YAML configuration
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, err
+	// Read YAML configuration, Attempt to read from embedded file system first
+	data, err := templateFS.ReadFile(configPath)
+	if err != nil { // If not found in embedded FS, try reading from local file system
+		data, err = os.ReadFile(configPath)
+		if err != nil {
+			return nil, fmt.Errorf("file not found in embedded FS and local FS: %s", err)
+		}
 	}
 	err = yaml.Unmarshal(data, defaultConfig)
 	if err != nil {
