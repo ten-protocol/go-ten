@@ -19,7 +19,7 @@ import { Skeleton } from "@/src/components/ui/skeleton";
 import Link from "next/link";
 import { cn } from "@/src/lib/utils";
 import { Badge } from "../../ui/badge";
-import { BlocksIcon } from "lucide-react";
+import { ArrowDownUpIcon, BlocksIcon, PlusIcon } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -27,36 +27,48 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../ui/select";
-import { table } from "console";
 import { Separator } from "../../ui/separator";
+
+interface Token {
+  name: string;
+  value: string;
+  isNative: boolean;
+  isEnabled: boolean;
+}
 
 const L1TOKENS = [
   {
     name: "ETH",
-    address: "0x",
+    value: "ETH",
+    isNative: true,
+    isEnabled: true,
   },
 ];
 
 const L2TOKENS = [
   {
     name: "ETH",
-    address: "0x",
+    value: "ETH",
+    isNative: true,
+    isEnabled: true,
   },
   {
     name: "USDC",
-    address: "0x",
+    value: "USDC",
+    isNative: false,
+    isEnabled: true,
   },
   {
     name: "USDT",
-    address: "0x",
+    value: "USDT",
+    isNative: false,
+    isEnabled: true,
   },
   {
-    name: "DAI",
-    address: "0x",
-  },
-  {
-    name: "WBTC",
-    address: "0x",
+    name: "TEN",
+    value: "TEN",
+    isNative: false,
+    isEnabled: false,
   },
 ];
 
@@ -71,37 +83,63 @@ const BRIDGE = [
   },
 ];
 
+const PERCENTAGES = [
+  {
+    name: "25%",
+    value: 25,
+  },
+  {
+    name: "50%",
+    value: 50,
+  },
+  {
+    name: "MAX",
+    value: 100,
+  },
+];
+
 export default function Dashboard() {
   const [loading, setLoading] = React.useState(false);
-  const [selectedToken, setSelectedToken] = React.useState(L1TOKENS[0]);
-  const [selectedBridge, setSelectedBridge] = React.useState(BRIDGE[0]);
+  const [selectedFromToken, setSelectedFromToken] = React.useState<string>(
+    L1TOKENS[0].value
+  );
+  const [selectedToToken, setSelectedToToken] = React.useState<string>(
+    L2TOKENS[0].value
+  );
+  const [isL1ToL2, setIsL1ToL2] = React.useState(true);
+
+  const swapTokens = () => {
+    setIsL1ToL2(!isL1ToL2);
+  };
+
+  const setFromToken = (token: string) => {
+    setSelectedFromToken(token);
+  };
+
+  const setToToken = (token: string) => {
+    setSelectedToToken(token);
+  };
 
   return (
     <div className="h-full flex flex-col space-y-4 justify-center items-center">
-      <Card className="w-[650px]">
+      <Card className="w-[600px] p-0">
         <CardHeader>
           <CardTitle>Bridge</CardTitle>
         </CardHeader>
-        <CardContent>
+        <Separator />
+        <CardContent className="p-4">
           <div>
-            <small>Transfer from</small>
+            <strong>Transfer from</strong>
 
-            <div className="bg-[#15171D] p-2 rounded-lg space-x-2 border">
-              <div className="flex items-center justify-between">
-                <Select
-                  value={selectedToken.name}
-                  onValueChange={(value) => {
-                    setSelectedToken(
-                      L1TOKENS.find((token) => token.name === value)
-                    );
-                  }}
-                >
+            <div className="bg-[#15171D] rounded-lg border">
+              <div className="flex items-center justify-between p-2">
+                <Select value={selectedFromToken} onValueChange={setFromToken}>
                   <SelectTrigger className="h-8 w-[70px] bg-[#292929]">
-                    <SelectValue placeholder={selectedToken.name} />
+                    <SelectValue placeholder={selectedFromToken} />
                   </SelectTrigger>
                   <SelectContent side="top">
                     {L1TOKENS.map((token) => (
-                      <SelectItem key={token.address} value={token.name}>
+                      <SelectItem key={token.value} value={token.value}>
                         {token.name}
                       </SelectItem>
                     ))}
@@ -115,31 +153,97 @@ export default function Dashboard() {
                 </div>
               </div>
               <Separator />
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between p-2">
                 <div>
-                  <strong className="text-lg text-white float-right">0</strong>
+                  <strong className="text-2xl text-white float-right">0</strong>
                 </div>
-                <Select
-                  value={selectedToken.name}
-                  onValueChange={(value) => {
-                    setSelectedToken(
-                      L1TOKENS.find((token) => token.name === value)
-                    );
-                  }}
-                >
+                <div className="flex items-center">
+                  <div className="space-x-2">
+                    {PERCENTAGES.map((percentage) => (
+                      <Button
+                        key={percentage.name}
+                        variant="outline"
+                        size={"sm"}
+                        className="bg-[#292929]"
+                        onClick={() => {
+                          console.log(percentage.value);
+                        }}
+                      >
+                        {percentage.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Swap Tokens */}
+          <div className="flex items-center justify-center">
+            <Button
+              className="mt-4"
+              variant="outline"
+              size={"sm"}
+              onClick={swapTokens}
+            >
+              <ArrowDownUpIcon className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between">
+              <strong>Transfer to</strong>
+              <Button
+                className="text-sm font-bold leading-none hover:text-primary hover:bg-transparent"
+                variant="ghost"
+                onClick={() => {
+                  console.log("Switch transfer direction");
+                }}
+              >
+                <PlusIcon className="h-3 w-3 mr-1" />
+                <small>Transfer to a different address</small>
+              </Button>
+            </div>
+
+            <div className="bg-[#15171D]">
+              <div className="flex items-center justify-between p-2">
+                <Select value={selectedToToken} onValueChange={setToToken}>
                   <SelectTrigger className="h-8 w-[70px] bg-[#292929]">
-                    <SelectValue placeholder={selectedToken.name} />
+                    <SelectValue placeholder={selectedToToken} />
                   </SelectTrigger>
                   <SelectContent side="top">
                     {L1TOKENS.map((token) => (
-                      <SelectItem key={token.address} value={token.name}>
+                      <SelectItem key={token.value} value={token.value}>
                         {token.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <div>
+                  <p className="text-sm text-muted-foreground">Balance:</p>
+                  <strong className="text-lg text-white float-right">
+                    100.00
+                  </strong>
+                </div>
               </div>
             </div>
+
+            <div className="bg-[#15171D] rounded-lg border flex items-center justify-between mt-2 p-2 h-14">
+              <strong>Refuel gas</strong>
+              <div className="flex items-center">Not supported</div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center mt-4">
+            <Button
+              className="text-sm font-bold leading-none w-full"
+              size={"lg"}
+              onClick={() => {
+                console.log("Transfer");
+              }}
+            >
+              Initiate Bridge Transaction
+            </Button>
           </div>
         </CardContent>
       </Card>
