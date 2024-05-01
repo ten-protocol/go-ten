@@ -29,6 +29,11 @@ func (s *ScanAPI) GetTotalContractCount(ctx context.Context) (*big.Int, error) {
 	return s.host.EnclaveClient().GetTotalContractCount(ctx)
 }
 
+// GetTransaction returns the transaction given its hash.
+func (s *ScanAPI) GetTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error) {
+	return s.host.Storage().FetchTransaction(hash)
+}
+
 // GetTotalTxCount returns the number of recorded transactions on the network.
 func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
 	return s.host.Storage().FetchTotalTxCount()
@@ -65,8 +70,13 @@ func (s *ScanAPI) GetLatestBatch() (*common.BatchHeader, error) {
 }
 
 // GetBatchByHeight returns the `BatchHeader` with the given height
-func (s *ScanAPI) GetBatchByHeight(height *big.Int) (*common.BatchHeader, error) {
-	return s.host.Storage().FetchBatchHeaderByHeight(height)
+func (s *ScanAPI) GetBatchByHeight(height *big.Int) (*common.PublicBatch, error) {
+	return s.host.Storage().FetchBatchByHeight(height)
+}
+
+// GetRollupBySeqNo returns the `PublicRollup` that contains the batch with the given sequence number
+func (s *ScanAPI) GetRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error) {
+	return s.host.Storage().FetchRollupBySeqNo(seqNo)
 }
 
 // GetRollupListing returns a paginated list of Rollups
@@ -87,4 +97,19 @@ func (s *ScanAPI) GetPublicTransactionData(ctx context.Context, pagination *comm
 // GetBlockListing returns a paginated list of blocks that include rollups
 func (s *ScanAPI) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
 	return s.host.Storage().FetchBlockListing(pagination)
+}
+
+// GetRollupByHash returns the public rollup data given its hash
+func (s *ScanAPI) GetRollupByHash(rollupHash gethcommon.Hash) (*common.PublicRollup, error) {
+	return s.host.Storage().FetchRollupByHash(rollupHash)
+}
+
+// GetRollupBatches returns the list of batches included in a rollup given its hash
+func (s *ScanAPI) GetRollupBatches(rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {
+	return s.host.Storage().FetchRollupBatches(rollupHash)
+}
+
+// GetBatchTransactions returns the public tx data of all txs present in a rollup given its hash
+func (s *ScanAPI) GetBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
+	return s.host.Storage().FetchBatchTransactions(batchHash)
 }

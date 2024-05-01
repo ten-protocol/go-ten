@@ -40,8 +40,14 @@ type BatchResolver interface {
 	FetchBatchListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error)
 	// FetchBatchHeaderByHeight returns the `BatchHeader` with the given height
 	FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHeader, error)
+	// FetchBatchByHeight returns the `PublicBatch` with the given height
+	FetchBatchByHeight(height *big.Int) (*common.PublicBatch, error)
 	// FetchTotalTxCount returns the number of transactions in the DB
 	FetchTotalTxCount() (*big.Int, error)
+	// FetchTransaction returns the transaction given its hash
+	FetchTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error)
+	// FetchBatchTransactions returns a list of public transaction data within a given batch hash
+	FetchBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error)
 }
 
 type BlockResolver interface {
@@ -55,4 +61,10 @@ type BlockResolver interface {
 	FetchRollupListing(pagination *common.QueryPagination) (*common.RollupListingResponse, error)
 	// FetchBlockListing returns a paginated list of blocks that include rollups
 	FetchBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error)
+	// FetchRollupByHash returns the public rollup data given its hash
+	FetchRollupByHash(rollupHash gethcommon.Hash) (*common.PublicRollup, error)
+	// FetchRollupBySeqNo returns the public rollup given a seq number
+	FetchRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error)
+	// FetchRollupBatches returns a list of public batch data within a given rollup hash
+	FetchRollupBatches(rollupHash gethcommon.Hash) (*common.BatchListingResponse, error)
 }

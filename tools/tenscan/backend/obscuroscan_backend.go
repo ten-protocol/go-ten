@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"encoding/base64"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common/compression"
@@ -56,15 +57,23 @@ func (b *Backend) GetLatestRollupHeader() (*common.RollupHeader, error) {
 }
 
 func (b *Backend) GetBatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
-	return b.obsClient.BatchByHash(hash)
+	return b.obsClient.GetBatchByHash(hash)
+}
+
+func (b *Backend) GetBatchByHeight(height *big.Int) (*common.PublicBatch, error) {
+	return b.obsClient.GetBatchByHeight(height)
+}
+
+func (b *Backend) GetRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error) {
+	return b.obsClient.GetRollupBySeqNo(seqNo)
 }
 
 func (b *Backend) GetBatchHeader(hash gethcommon.Hash) (*common.BatchHeader, error) {
-	return b.obsClient.BatchHeaderByHash(hash)
+	return b.obsClient.GetBatchHeaderByHash(hash)
 }
 
-func (b *Backend) GetTransaction(_ gethcommon.Hash) (*common.L2Tx, error) {
-	return nil, fmt.Errorf("unable to get encrypted Tx")
+func (b *Backend) GetTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error) {
+	return b.obsClient.GetTransaction(hash)
 }
 
 func (b *Backend) GetPublicTransactions(offset uint64, size uint64) (*common.TransactionListingResponse, error) {
@@ -100,6 +109,18 @@ func (b *Backend) GetRollupListing(offset uint64, size uint64) (*common.RollupLi
 		Offset: offset,
 		Size:   uint(size),
 	})
+}
+
+func (b *Backend) GetRollupByHash(hash gethcommon.Hash) (*common.PublicRollup, error) {
+	return b.obsClient.GetRollupByHash(hash)
+}
+
+func (b *Backend) GetRollupBatches(hash gethcommon.Hash) (*common.BatchListingResponse, error) {
+	return b.obsClient.GetRollupBatches(hash)
+}
+
+func (b *Backend) GetBatchTransactions(hash gethcommon.Hash) (*common.TransactionListingResponse, error) {
+	return b.obsClient.GetBatchTransactions(hash)
 }
 
 func (b *Backend) DecryptTxBlob(payload string) ([]*common.L2Tx, error) {
