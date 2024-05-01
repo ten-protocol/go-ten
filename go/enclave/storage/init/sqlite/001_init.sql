@@ -73,7 +73,7 @@ create table if not exists batch
     is_canonical   boolean   NOT NULL,
     header         blob      NOT NULL,
     body           int       NOT NULL REFERENCES batch_body,
-    l1_proof       INTEGER   NOT NULL, -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
+    l1_proof       INTEGER, -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
     is_executed    boolean   NOT NULL
     --   the unique constraint is commented for now because there might be multiple non-canonical batches for the same height
 --   unique (height, is_canonical, is_executed)

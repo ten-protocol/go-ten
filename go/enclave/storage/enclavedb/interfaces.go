@@ -26,7 +26,6 @@ type EnclaveDB interface {
 // todo - does it need to be an ethdb.Batch?
 // todo - can we use the typical
 type DBTransaction interface {
-	ethdb.Batch
 	GetDB() *sql.DB
 	ExecuteSQL(query string, args ...any)
 }

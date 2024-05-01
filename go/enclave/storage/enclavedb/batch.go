@@ -25,7 +25,7 @@ const (
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
-func WriteBatchAndTransactions(ctx context.Context, dbtx DBTransaction, batch *core.Batch, convertedHash gethcommon.Hash, blockId uint64) error {
+func WriteBatchAndTransactions(ctx context.Context, dbtx DBTransaction, batch *core.Batch, convertedHash gethcommon.Hash, blockId *uint64) error {
 	// todo - optimize for reorgs
 	batchBodyID := batch.SeqNo().Uint64()
 
@@ -41,7 +41,10 @@ func WriteBatchAndTransactions(ctx context.Context, dbtx DBTransaction, batch *c
 	dbtx.ExecuteSQL("replace into batch_body values (?,?)", batchBodyID, body)
 
 	var isCanon bool
-	err = dbtx.GetDB().QueryRowContext(ctx, "select is_canonical from block where hash=? and full_hash=?", truncTo4(batch.Header.L1Proof), batch.Header.L1Proof.Bytes()).Scan(&isCanon)
+	err = dbtx.GetDB().QueryRowContext(ctx,
+		"select is_canonical from block where hash=? and full_hash=?",
+		truncTo4(batch.Header.L1Proof), batch.Header.L1Proof.Bytes(),
+	).Scan(&isCanon)
 	if err != nil {
 		// if the block is not found, we assume it is non-canonical
 		// fmt.Printf("IsCanon %s err: %s\n", batch.Header.L1Proof, err)
@@ -119,10 +122,13 @@ func WriteBatchExecution(ctx context.Context, dbtx DBTransaction, seqNo *big.Int
 	return nil
 }
 
-func ReadTxId(ctx context.Context, dbtx DBTransaction, txHash gethcommon.Hash) (uint64, error) {
+func ReadTxId(ctx context.Context, dbtx DBTransaction, txHash gethcommon.Hash) (*uint64, error) {
 	var txId uint64
 	err := dbtx.GetDB().QueryRowContext(ctx, "select id from tx where hash=? and full_hash=?", truncTo4(txHash), txHash.Bytes()).Scan(&txId)
-	return txId, err
+	if err != nil {
+		return nil, err
+	}
+	return &txId, err
 }
 
 func ReadBatchBySeqNo(ctx context.Context, db *sql.DB, seqNo uint64) (*core.Batch, error) {

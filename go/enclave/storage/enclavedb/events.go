@@ -200,9 +200,9 @@ func FilterLogs(
 func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
 	var queryParams []any
 
-	query := "select rel_address1_full, rel_address2_full, rel_address3_full, rel_address4_full, lifecycle_event, topic0_full, topic1_full, topic2_full, topic3_full, topic4_full, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address_full" +
+	query := "select rel_address1_full, rel_address2_full, rel_address3_full, rel_address4_full, lifecycle_event, topic0_full, topic1_full, topic2_full, topic3_full, topic4_full, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address_full " +
 		baseEventsJoin +
-		"AND tx.hash = ? AND tx.full_hash = ?"
+		" AND tx.hash = ? AND tx.full_hash = ?"
 
 	queryParams = append(queryParams, truncTo4(txHash), txHash.Bytes())
 

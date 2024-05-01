@@ -40,12 +40,27 @@ func UpdateCanonicalBlocks(ctx context.Context, dbtx DBTransaction, canonical []
 }
 
 func updateCanonicalValue(_ context.Context, dbtx DBTransaction, isCanonical bool, blocks []common.L1BlockHash) {
+	if len(blocks) > 1 {
+		println("!!!FFFFFOOOOORRRR")
+	}
 	canonicalBlocks := repeat("(hash=? and full_hash=?)", "OR", len(blocks))
 
 	args := make([]any, 0)
 	args = append(args, isCanonical)
 	for _, blockHash := range blocks {
 		args = append(args, truncTo4(blockHash), blockHash.Bytes())
+	}
+
+	rows, err := dbtx.GetDB().Query("select id from block where "+canonicalBlocks, args[1:]...)
+	defer rows.Close()
+	if err != nil {
+		panic(err)
+		return
+	}
+	for rows.Next() {
+		var id uint64
+		rows.Scan(&id)
+		fmt.Printf("Update canonical=%t block id: %v, hash: %s\n", isCanonical, id, blocks[0].Hex())
 	}
 
 	updateBlocks := "update block set is_canonical=? where " + canonicalBlocks
@@ -69,13 +84,16 @@ func FetchBlockHeaderByHeight(ctx context.Context, db *sql.DB, height *big.Int) 
 	return fetchBlockHeader(ctx, db, "where is_canonical=true and height=?", height.Int64())
 }
 
-func GetBlockId(ctx context.Context, db *sql.DB, hash common.L1BlockHash) (uint64, error) {
+func GetBlockId(ctx context.Context, db *sql.DB, hash common.L1BlockHash) (*uint64, error) {
 	var id uint64
 	err := db.QueryRowContext(ctx, "select id from block where hash=? and full_hash=?", truncTo4(hash), hash).Scan(&id)
-	return id, err
+	if err != nil {
+		return nil, err
+	}
+	return &id, err
 }
 
-func WriteL1Messages[T any](ctx context.Context, db *sql.DB, blockId uint64, messages []T, isValueTransfer bool) error {
+func WriteL1Messages[T any](ctx context.Context, db *sql.DB, blockId *uint64, messages []T, isValueTransfer bool) error {
 	insert := "insert into l1_msg (message, block, is_transfer) values " + repeat("(?,?,?)", ",", len(messages))
 
 	args := make([]any, 0)
@@ -127,7 +145,7 @@ func FetchL1Messages[T any](ctx context.Context, db *sql.DB, blockHash common.L1
 	return result, nil
 }
 
-func WriteRollup(_ context.Context, dbtx DBTransaction, rollup *common.RollupHeader, blockId uint64, internalHeader *common.CalldataRollupHeader) error {
+func WriteRollup(_ context.Context, dbtx DBTransaction, rollup *common.RollupHeader, blockId *uint64, internalHeader *common.CalldataRollupHeader) error {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(rollup)
 	if err != nil {
