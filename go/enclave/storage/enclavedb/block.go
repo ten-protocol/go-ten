@@ -7,29 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
-)
-
-const (
-	blockInsert       = "insert into block (hash,full_hash,is_canonical,header,height) values (?,?,?,?,?)"
-	selectBlockHeader = "select header from block "
-
-	l1msgInsert = "insert into l1_msg (message, block, is_transfer) values "
-	l1msgValue  = "(?,?,?)"
-	selectL1Msg = "select message from l1_msg m join block b on m.block=b.id "
-
-	rollupInsert         = "replace into rollup (hash, full_hash, start_seq, end_seq, time_stamp, header, compression_block) values (?,?,?,?,?,?,?)"
-	rollupSelect         = "select full_hash from rollup r join block b on r.compression_block=b.id where "
-	rollupSelectMetadata = "select start_seq, time_stamp from rollup where hash = ? and full_hash=?"
-
-	updateCanonicalBlock = "update block set is_canonical=? where "
-	// todo - do we need the is_canonical field?
-	updateCanonicalBatches = "update batch set is_canonical=? where l1_proof in "
 )
 
 func WriteBlock(_ context.Context, dbtx DBTransaction, b *types.Header) error {
@@ -38,7 +20,7 @@ func WriteBlock(_ context.Context, dbtx DBTransaction, b *types.Header) error {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
 	}
 
-	dbtx.ExecuteSQL(blockInsert,
+	dbtx.ExecuteSQL("insert into block (hash,full_hash,is_canonical,header,height) values (?,?,?,?,?)",
 		truncTo4(b.Hash()), // hash
 		b.Hash().Bytes(),   // full_hash
 		true,               // is_canonical
@@ -58,20 +40,18 @@ func UpdateCanonicalBlocks(ctx context.Context, dbtx DBTransaction, canonical []
 }
 
 func updateCanonicalValue(_ context.Context, dbtx DBTransaction, isCanonical bool, blocks []common.L1BlockHash) {
-	token := "(hash=? and full_hash=?) OR "
-	updateBlocksWhere := strings.Repeat(token, len(blocks))
-	updateBlocksWhere = updateBlocksWhere + "1=0"
-
-	updateBlocks := updateCanonicalBlock + updateBlocksWhere
+	canonicalBlocks := repeat("(hash=? and full_hash=?)", "OR", len(blocks))
 
 	args := make([]any, 0)
 	args = append(args, isCanonical)
 	for _, blockHash := range blocks {
 		args = append(args, truncTo4(blockHash), blockHash.Bytes())
 	}
+
+	updateBlocks := "update block set is_canonical=? where " + canonicalBlocks
 	dbtx.ExecuteSQL(updateBlocks, args...)
 
-	updateBatches := updateCanonicalBatches + "(" + "select id from block where " + updateBlocksWhere + ")"
+	updateBatches := "update batch set is_canonical=? where l1_proof in (select id from block where " + canonicalBlocks + ")"
 	dbtx.ExecuteSQL(updateBatches, args...)
 }
 
@@ -81,6 +61,7 @@ func FetchBlock(ctx context.Context, db *sql.DB, hash common.L1BlockHash) (*type
 }
 
 func FetchHeadBlock(ctx context.Context, db *sql.DB) (*types.Block, error) {
+	// todo - just read the one with the max id
 	return fetchBlock(ctx, db, "where is_canonical=true and height=(select max(b.height) from block b where is_canonical=true)")
 }
 
@@ -95,8 +76,7 @@ func GetBlockId(ctx context.Context, db *sql.DB, hash common.L1BlockHash) (uint6
 }
 
 func WriteL1Messages[T any](ctx context.Context, db *sql.DB, blockId uint64, messages []T, isValueTransfer bool) error {
-	insert := l1msgInsert + strings.Repeat(l1msgValue+",", len(messages))
-	insert = insert[0 : len(insert)-1] // remove trailing comma
+	insert := "insert into l1_msg (message, block, is_transfer) values " + repeat("(?,?,?)", ",", len(messages))
 
 	args := make([]any, 0)
 
@@ -118,7 +98,7 @@ func WriteL1Messages[T any](ctx context.Context, db *sql.DB, blockId uint64, mes
 
 func FetchL1Messages[T any](ctx context.Context, db *sql.DB, blockHash common.L1BlockHash, isTransfer bool) ([]T, error) {
 	var result []T
-	query := selectL1Msg + " where b.hash = ? and b.full_hash = ? and is_transfer = ?"
+	query := "select message from l1_msg m join block b on m.block=b.id where b.hash = ? and b.full_hash = ? and is_transfer = ?"
 	rows, err := db.QueryContext(ctx, query, truncTo4(blockHash), blockHash.Bytes(), isTransfer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -153,7 +133,7 @@ func WriteRollup(_ context.Context, dbtx DBTransaction, rollup *common.RollupHea
 	if err != nil {
 		return fmt.Errorf("could not encode batch header. Cause: %w", err)
 	}
-	dbtx.ExecuteSQL(rollupInsert,
+	dbtx.ExecuteSQL("replace into rollup (hash, full_hash, start_seq, end_seq, time_stamp, header, compression_block) values (?,?,?,?,?,?,?)",
 		truncTo4(rollup.Hash()),
 		rollup.Hash().Bytes(),
 		internalHeader.FirstBatchSequence.Uint64(),
@@ -166,11 +146,9 @@ func WriteRollup(_ context.Context, dbtx DBTransaction, rollup *common.RollupHea
 }
 
 func FetchReorgedRollup(ctx context.Context, db *sql.DB, reorgedBlocks []common.L1BlockHash) (*common.L2BatchHash, error) {
-	token := "(b.hash=? and b.full_hash=?) OR "
-	whereClause := strings.Repeat(token, len(reorgedBlocks))
-	whereClause = whereClause + "1=0"
+	whereClause := repeat("(b.hash=? and b.full_hash=?)", "OR", len(reorgedBlocks))
 
-	query := rollupSelect + whereClause
+	query := "select full_hash from rollup r join block b on r.compression_block=b.id where " + whereClause
 
 	args := make([]any, 0)
 	for _, blockHash := range reorgedBlocks {
@@ -193,7 +171,9 @@ func FetchRollupMetadata(ctx context.Context, db *sql.DB, hash common.L2RollupHa
 	var startTime uint64
 
 	rollup := new(common.PublicRollupMetadata)
-	err := db.QueryRowContext(ctx, rollupSelectMetadata, truncTo4(hash), hash.Bytes()).Scan(&startSeq, &startTime)
+	err := db.QueryRowContext(ctx,
+		"select start_seq, time_stamp from rollup where hash = ? and full_hash=?", truncTo4(hash), hash.Bytes(),
+	).Scan(&startSeq, &startTime)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
@@ -207,7 +187,7 @@ func FetchRollupMetadata(ctx context.Context, db *sql.DB, hash common.L2RollupHa
 
 func fetchBlockHeader(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*types.Header, error) {
 	var header string
-	query := selectBlockHeader + " " + whereQuery
+	query := "select header from block " + whereQuery
 	var err error
 	if len(args) > 0 {
 		err = db.QueryRowContext(ctx, query, args...).Scan(&header)

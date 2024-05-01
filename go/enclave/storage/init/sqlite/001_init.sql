@@ -1,8 +1,11 @@
 create table if not exists keyvalue
 (
-    ky  varbinary(64) primary key,
-    val mediumblob NOT NULL
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    ky      binary(4),
+    ky_full varbinary(64),
+    val     mediumblob NOT NULL
 );
+create index IDX_KV on keyvalue (ky);
 
 create table if not exists config
 (
@@ -94,15 +97,17 @@ create index IDX_Tx_HASH on tx (hash);
 
 create table if not exists exec_tx
 (
-    id                       INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_contract_address binary(20),
-    receipt                  mediumblob,
+    id                            INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_contract_address      binary(4),
+    created_contract_address_full binary(20),
+    receipt                       mediumblob,
     --     commenting out the fk until synthetic transactions are also stored
---     tx                       binary(16) REFERENCES tx,
-    tx                       INTEGER NOT NULL,
-    batch                    INTEGER NOT NULL REFERENCES batch
+    tx                            INTEGER NOT NULL,
+    batch                         INTEGER NOT NULL REFERENCES batch
 );
-create index IX_EX_TX1 on exec_tx (tx);
+create index IDX_EX_TX_TX on exec_tx (tx);
+create index IDX_EX_TX_BATCH on exec_tx (batch);
+create index IDX_EX_TX_CCA on exec_tx (created_contract_address);
 
 -- todo denormalize. Extract contract and user table and point topic0 and rel_addreses to it
 create table if not exists events

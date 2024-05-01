@@ -3,9 +3,12 @@ CREATE DATABASE obsdb;
 
 create table if not exists obsdb.keyvalue
 (
-    ky  varbinary(64),
-    val mediumblob NOT NULL,
-    primary key (ky)
+    id      INTEGER AUTO_INCREMENT,
+    ky      binary(4),
+    ky_full varbinary(64),
+    val     mediumblob NOT NULL,
+    primary key (id),
+    INDEX (ky)
 );
 GRANT ALL ON obsdb.keyvalue TO obscuro;
 
@@ -114,13 +117,15 @@ GRANT ALL ON obsdb.tx TO obscuro;
 
 create table if not exists obsdb.exec_tx
 (
-    id                       INTEGER AUTO_INCREMENT,
-    created_contract_address binary(20),
-    receipt                  mediumblob,
-    tx                       int NOT NULL,
-    batch                    int NOT NULL,
+    id                            INTEGER AUTO_INCREMENT,
+    created_contract_address      binary(4),
+    created_contract_address_full binary(20),
+    receipt                       mediumblob,
+    tx                            int NOT NULL,
+    batch                         int NOT NULL,
     INDEX (batch),
     INDEX (tx),
+    INDEX (created_contract_address),
     primary key (id)
 );
 GRANT ALL ON obsdb.exec_tx TO obscuro;

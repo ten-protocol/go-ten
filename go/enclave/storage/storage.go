@@ -417,10 +417,8 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 	dbTx := s.db.NewDBTransaction()
 	s.logger.Trace("write batch", log.BatchHashKey, batch.Hash(), "l1Proof", batch.Header.L1Proof, log.BatchSeqNoKey, batch.SeqNo())
 
-	blockId, err := enclavedb.GetBlockId(ctx, s.db.GetSQLDB(), batch.Header.L1Proof)
-	if err != nil {
-		return err
-	}
+	// it is possible that the block is not available if this is a validator
+	blockId, _ := enclavedb.GetBlockId(ctx, s.db.GetSQLDB(), batch.Header.L1Proof)
 
 	if err := enclavedb.WriteBatchAndTransactions(ctx, dbTx, batch, convertedHash, blockId); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)

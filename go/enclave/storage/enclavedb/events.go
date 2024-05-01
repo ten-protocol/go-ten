@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"math/big"
-	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -15,12 +14,7 @@ import (
 )
 
 const (
-	baseEventsQuerySelect      = "select topic0_full, topic1_full, topic2_full, topic3_full, topic4_full, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address_full"
-	baseDebugEventsQuerySelect = "select rel_address1_full, rel_address2_full, rel_address3_full, rel_address4_full, lifecycle_event, topic0_full, topic1_full, topic2_full, topic3_full, topic4_full, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address_full"
-	baseEventsJoin             = "from events e join exec_tx extx on e.tx=extx.tx and e.batch=extx.batch  join tx on extx.tx=tx.id join batch b on extx.batch=b.sequence where b.is_canonical=true "
-	insertEvent                = "insert into events values "
-	insertEventValues          = "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-	orderBy                    = " order by b.height, tx.idx asc"
+	baseEventsJoin = "from events e join exec_tx extx on e.tx=extx.tx and e.batch=extx.batch  join tx on extx.tx=tx.id join batch b on extx.batch=b.sequence where b.is_canonical=true "
 )
 
 func StoreEventLogs(ctx context.Context, dbtx DBTransaction, receipts []*types.Receipt, stateDB *state.StateDB) error {
@@ -29,9 +23,6 @@ func StoreEventLogs(ctx context.Context, dbtx DBTransaction, receipts []*types.R
 	for _, receipt := range receipts {
 		for _, l := range receipt.Logs {
 			txId, _ := ReadTxId(ctx, dbtx, l.TxHash)
-			//if err != nil {
-			//	return err
-			//}
 			batchId, err := ReadBatchId(ctx, dbtx, receipt.BlockHash)
 			if err != nil {
 				return err
@@ -47,9 +38,7 @@ func StoreEventLogs(ctx context.Context, dbtx DBTransaction, receipts []*types.R
 		}
 	}
 	if totalLogs > 0 {
-		query := insertEvent + " " + strings.Repeat(insertEventValues+",", totalLogs)
-		query = query[0 : len(query)-1] // remove trailing comma
-
+		query := "insert into events values " + repeat("(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ",", totalLogs)
 		dbtx.ExecuteSQL(query, args...)
 	}
 	return nil
@@ -180,8 +169,8 @@ func FilterLogs(
 	}
 
 	if len(addresses) > 0 {
-		token := "(address=? AND address_full=?) OR "
-		query += " AND (" + strings.Repeat(token, len(addresses)) + " 1=0)"
+		cond := repeat("(address=? AND address_full=?)", " OR ", len(addresses))
+		query += " AND (" + cond + ")"
 		for _, address := range addresses {
 			queryParams = append(queryParams, truncBTo4(address.Bytes()))
 			queryParams = append(queryParams, address.Bytes())
@@ -195,8 +184,8 @@ func FilterLogs(
 			// empty rule set == wildcard
 			if len(sub) > 0 {
 				topicColumn := fmt.Sprintf("topic%d", i)
-				token := fmt.Sprintf("(%s=? AND %s_full=?) OR ", topicColumn, topicColumn)
-				query += " AND (" + strings.Repeat(token, len(sub)) + " 1=0)"
+				cond := repeat(fmt.Sprintf("(%s=? AND %s_full=?)", topicColumn, topicColumn), "OR", len(sub))
+				query += " AND (" + cond + ")"
 				for _, topic := range sub {
 					queryParams = append(queryParams, truncBTo4(topic.Bytes()))
 					queryParams = append(queryParams, topic.Bytes())
@@ -211,7 +200,9 @@ func FilterLogs(
 func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
 	var queryParams []any
 
-	query := baseDebugEventsQuerySelect + " " + baseEventsJoin + "AND tx.hash = ? AND tx.full_hash = ?"
+	query := "select rel_address1_full, rel_address2_full, rel_address3_full, rel_address4_full, lifecycle_event, topic0_full, topic1_full, topic2_full, topic3_full, topic4_full, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address_full" +
+		baseEventsJoin +
+		"AND tx.hash = ? AND tx.full_hash = ?"
 
 	queryParams = append(queryParams, truncTo4(txHash), txHash.Bytes())
 
@@ -327,7 +318,7 @@ func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Add
 	}
 
 	result := make([]*types.Log, 0)
-	query := baseEventsQuerySelect + " " + baseEventsJoin
+	query := "select topic0_full, topic1_full, topic2_full, topic3_full, topic4_full, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address_full" + " " + baseEventsJoin
 	var queryParams []any
 
 	// Add relevancy rules
@@ -346,7 +337,7 @@ func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Add
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
 
-	query += orderBy
+	query += " order by b.height, tx.idx asc"
 
 	rows, err := db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
