@@ -18,7 +18,13 @@ import (
 )
 
 var (
-	createKVTable = `create table if not exists keyvalue (ky varbinary(64) primary key, val mediumblob);`
+	createKVTable = `create table if not exists keyvalue
+(
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    ky      binary(4),
+    ky_full varbinary(64),
+    val     mediumblob NOT NULL
+);`
 
 	key1 = hexutils.HexToBytes("0000000000000000000000000000000000000000000000000000000000000001")
 	key2 = hexutils.HexToBytes("0000000000000000000000000000000000000000000000000000000000000002")
