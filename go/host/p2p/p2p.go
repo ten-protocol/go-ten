@@ -34,6 +34,9 @@ const (
 	msgTypeBatches
 	msgTypeBatchRequest
 	msgTypeRegisterForBroadcasts
+	// bounds for msgType validation (must update if adding new type)
+	_minMsgType = msgTypeTx
+	_maxMsgType = msgTypeRegisterForBroadcasts
 )
 
 var (
@@ -258,7 +261,8 @@ func (p *Service) RegisterForBroadcasts() error {
 	if p.isSequencer {
 		return errors.New("sequencer cannot register for broadcasts")
 	}
-	msg := message{Sender: p.ourPublicAddress, Type: msgTypeRegisterForBroadcasts}
+	// note: contents are not read, but p2p server expects message contents to be non-empty
+	msg := message{Sender: p.ourPublicAddress, Type: msgTypeRegisterForBroadcasts, Contents: []byte{1}}
 	return p.send(msg, p.getSequencer())
 }
 
@@ -417,8 +421,8 @@ func (p *Service) broadcast(msg message) error {
 // Sends a message to the provided address.
 func (p *Service) send(msg message, to string) error {
 	// sanity check the message to discover bugs
-	if !(msg.Type >= 1 && msg.Type <= 3) {
-		p.logger.Error(fmt.Sprintf("Sending message with wrong message type: %v", msg))
+	if !(msg.Type >= _minMsgType && msg.Type <= _maxMsgType) {
+		p.logger.Error(fmt.Sprintf("Sending message with invalid message type: %v", msg))
 	}
 	if len(msg.Sender) == 0 {
 		p.logger.Error(fmt.Sprintf("Sending message with wrong sender type: %v", msg))
