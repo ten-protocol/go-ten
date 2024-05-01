@@ -123,6 +123,7 @@ func (b *BatchHeader) UnmarshalJSON(data []byte) error {
 	b.LatestInboundCrossChainHash = dec.LatestInboundCrossChainHash
 	b.LatestInboundCrossChainHeight = (*big.Int)(dec.LatestInboundCrossChainHeight)
 	b.TransfersTree = dec.TransfersTree
+	b.CrossChainTree = dec.CrossChainTree
 	return nil
 }
 

@@ -433,6 +433,7 @@ message BatchHeaderMsg {
   repeated CrossChainMsg CrossChainMessages = 16;
   bytes TransferTree = 17;
   bytes Coinbase = 18;
+  bytes CrossChainTree = 19;
 }
 
 message ExtRollupMsg {
