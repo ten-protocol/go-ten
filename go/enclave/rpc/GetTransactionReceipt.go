@@ -39,7 +39,7 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	// todo - optimise these calls. This can be done with a single sql
 	rpc.logger.Trace("Get receipt for ", log.TxKey, txHash)
 	// We retrieve the transaction.
-	tx, blockHash, number, txIndex, err := rpc.storage.GetTransaction(txHash) //nolint:dogsled
+	tx, blockHash, number, txIndex, err := rpc.storage.GetTransaction(builder.ctx, txHash) //nolint:dogsled
 	if err != nil {
 		rpc.logger.Trace("error getting tx ", log.TxKey, txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -62,7 +62,7 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	}
 
 	// We retrieve the transaction receipt.
-	txReceipt, err := rpc.storage.GetTransactionReceipt(txHash)
+	txReceipt, err := rpc.storage.GetTransactionReceipt(builder.ctx, txHash)
 	if err != nil {
 		rpc.logger.Trace("error getting tx receipt", log.TxKey, txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -74,7 +74,7 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	}
 
 	// We filter out irrelevant logs.
-	txReceipt.Logs, err = events.FilterLogsForReceipt(txReceipt, &txSigner, rpc.storage)
+	txReceipt.Logs, err = events.FilterLogsForReceipt(builder.ctx, txReceipt, &txSigner, rpc.registry)
 	if err != nil {
 		rpc.logger.Error("error filter logs ", log.TxKey, txHash, log.ErrKey, err)
 		// this is a system error

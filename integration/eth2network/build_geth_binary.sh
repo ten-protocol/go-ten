@@ -7,7 +7,7 @@
 
 help_and_exit() {
     echo ""
-    echo "Usage: $(basename "${0}") --version=v1.11.6 "
+    echo "Usage: $(basename "${0}") --version=v1.14.0 "
     echo ""
     echo "  version       *Required* Set the version of geth to build"
     echo ""

@@ -15,7 +15,7 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
             </Avatar>
             <div className="ml-4 space-y-1">
               <p className="text-sm font-medium leading-none">
-                #{transaction?.BatchHeight}
+                #{Number(transaction?.BatchHeight)}
               </p>
               <p className="text-sm text-muted-foreground word-break-all">
                 {formatTimeAgo(transaction?.BatchTimestamp)}

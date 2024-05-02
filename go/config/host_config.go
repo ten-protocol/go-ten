@@ -116,8 +116,8 @@ type HostConfig struct {
 	TenChainID int64
 	// L1StartHash is the hash of the L1 block we can start streaming from for all Obscuro state (e.g. management contract deployment block)
 	L1StartHash gethcommon.Hash
-	// The ID of the obscuro sequencer node
-	SequencerID gethcommon.Address
+	// The address of the sequencer node's P2P server
+	SequencerP2PAddress string
 	// The rollup contract address on the L1 network
 	ManagementContractAddress gethcommon.Address
 	// The message bus contract address on the L1 network

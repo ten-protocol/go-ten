@@ -1,6 +1,8 @@
 package nodetype
 
 import (
+	"context"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/components"
@@ -16,28 +18,28 @@ type NodeType interface {
 	SubmitTransaction(*common.L2Tx) error
 
 	// OnL1Fork - logic to be performed when there is an L1 Fork
-	OnL1Fork(fork *common.ChainFork) error
+	OnL1Fork(ctx context.Context, fork *common.ChainFork) error
 
 	// OnL1Block - performed after the block was processed
-	OnL1Block(block types.Block, result *components.BlockIngestionType) error
+	OnL1Block(ctx context.Context, block *types.Block, result *components.BlockIngestionType) error
 
 	Close() error
 }
 
 type Sequencer interface {
 	// CreateBatch - creates a new head batch for the latest known L1 head block.
-	CreateBatch(skipBatchIfEmpty bool) error
+	CreateBatch(ctx context.Context, skipBatchIfEmpty bool) error
 
 	// CreateRollup - creates a new rollup from the latest recorded rollup in the head l1 chain
 	// and adds as many batches to it as possible.
-	CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error)
+	CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, error)
 
 	NodeType
 }
 
 type ObsValidator interface {
 	// ExecuteStoredBatches - try to execute all stored by unexecuted batches
-	ExecuteStoredBatches() error
+	ExecuteStoredBatches(context.Context) error
 
 	VerifySequencerSignature(*core.Batch) error
 

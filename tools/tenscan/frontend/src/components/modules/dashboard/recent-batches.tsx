@@ -13,7 +13,7 @@ export function RecentBatches({ batches }: { batches: any }) {
           </Avatar>
           <div className="ml-4 space-y-1">
             <p className="text-sm font-medium leading-none">
-              #{+batch?.number}
+              #{Number(batch?.number)}
             </p>
             <p className="text-sm text-muted-foreground word-break-all">
               {formatTimeAgo(batch?.timestamp)}

@@ -2,6 +2,7 @@ package common
 
 import (
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
@@ -77,7 +78,6 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		SqliteDBPath:              "",
 		ProfilerEnabled:           false,
 		MinGasPrice:               big.NewInt(params.InitialBaseFee),
-		SequencerID:               gethcommon.BytesToAddress([]byte("")),
 		TenGenesis:                "",
 		DebugNamespaceEnabled:     false,
 		MaxBatchSize:              1024 * 55,
@@ -90,5 +90,6 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		// whilst the usage is small. Should be ok since execution is paid for anyway.
 		GasLocalExecutionCap:   300_000_000_000,
 		GasBatchExecutionLimit: 300_000_000_000,
+		RPCTimeout:             5 * time.Second,
 	}
 }

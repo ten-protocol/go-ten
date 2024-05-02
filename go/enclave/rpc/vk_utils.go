@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,6 +28,7 @@ const (
 
 // CallBuilder - builder used during processing of an RPC request, which is a multi-step process
 type CallBuilder[P any, R any] struct {
+	ctx         context.Context
 	Param       *P                                 // value calculated during phase 1 to be used during the execution phase
 	VK          *vkhandler.AuthenticatedViewingKey // the vk accompanying the request
 	From        *gethcommon.Address                // extracted from the request
@@ -44,6 +46,7 @@ type CallBuilder[P any, R any] struct {
 // e.g. - "getTransaction" or "getBalance" have to perform authorisation
 // "Ten_call" , "Estimate_Gas" - have to authenticate the "From" - which will be used by the EVM
 func WithVKEncryption[P any, R any](
+	ctx context.Context,
 	encManager *EncryptionManager,
 	encReq []byte, // encrypted request that contains a signed viewing key
 	validate func([]any, *CallBuilder[P, R], *EncryptionManager) error,
@@ -71,7 +74,7 @@ func WithVKEncryption[P any, R any](
 	}
 
 	// 4. Call the function that knows how to validate the request
-	builder := &CallBuilder[P, R]{Status: NotSet, VK: vk}
+	builder := &CallBuilder[P, R]{Status: NotSet, VK: vk, ctx: ctx}
 
 	err = validate(decodedRequest.Params, builder, encManager)
 	if err != nil {

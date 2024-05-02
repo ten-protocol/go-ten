@@ -109,6 +109,9 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.GetRollupListing:
 		return c.getRollupListing(result, args)
 
+	case rpc.GetPublicTransactionData:
+		return c.getPublicTransactionData(result, args)
+
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
@@ -366,6 +369,28 @@ func (c *inMemObscuroClient) getRollupListing(result interface{}, args []interfa
 		return fmt.Errorf("result is of type %T, expected *common.BatchListingResponseDeprecated", result)
 	}
 	*res = *rollups
+	return nil
+}
+
+func (c *inMemObscuroClient) getPublicTransactionData(result interface{}, args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetPublicTransactionData, len(args))
+	}
+	pagination, ok := args[0].(*common.QueryPagination)
+	if !ok {
+		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetPublicTransactionData, args[0])
+	}
+
+	txs, err := c.tenScanAPI.GetPublicTransactionData(context.Background(), pagination)
+	if err != nil {
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetPublicTransactionData, err)
+	}
+
+	res, ok := result.(*common.TransactionListingResponse)
+	if !ok {
+		return fmt.Errorf("result is of type %T, expected *common.BatchListingResponseDeprecated", result)
+	}
+	*res = *txs
 	return nil
 }
 

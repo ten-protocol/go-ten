@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"math/big"
 	"strconv"
 	"sync/atomic"
@@ -119,7 +120,7 @@ func (n *MockP2P) Stop() error {
 	return nil
 }
 
-func (n *MockP2P) HealthStatus() host.HealthStatus {
+func (n *MockP2P) HealthStatus(context.Context) host.HealthStatus {
 	return &host.BasicErrHealthStatus{ErrMsg: ""}
 }
 

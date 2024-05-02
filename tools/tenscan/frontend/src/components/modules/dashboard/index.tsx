@@ -26,7 +26,7 @@ import { RecentBlocks } from "./recent-blocks";
 import { useBlocksService } from "@/src/services/useBlocksService";
 import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
-import { cn } from "@/src/lib/utils";
+import { cn, formatNumber } from "@/src/lib/utils";
 import { Badge } from "../../ui/badge";
 import { BlocksIcon } from "lucide-react";
 
@@ -39,7 +39,9 @@ export default function Dashboard() {
   const DASHBOARD_DATA = [
     {
       title: "Ether Price",
-      value: price?.ethereum?.usd ? `$${price.ethereum.usd}` : "N/A",
+      value: price?.ethereum?.usd
+        ? `$${formatNumber(price.ethereum.usd)}`
+        : "N/A",
       // TODO: add change
       // change: "+20.1%",
       icon: RocketIcon,
@@ -70,14 +72,16 @@ export default function Dashboard() {
     },
     {
       title: "Transactions",
-      value: transactionCount?.count,
+      value: transactionCount?.count
+        ? formatNumber(transactionCount.count)
+        : "N/A",
       // TODO: add change
       // change: "+20.1%",
       icon: ReaderIcon,
     },
     {
       title: "Contracts",
-      value: contractCount?.count,
+      value: contractCount?.count ? formatNumber(contractCount.count) : "N/A",
       // TODO: add change
       // change: "+20.1%",
       icon: FileTextIcon,

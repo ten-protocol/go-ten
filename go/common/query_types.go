@@ -49,7 +49,7 @@ type PublicTransaction struct {
 
 type PublicBatch struct {
 	SequencerOrderNo *big.Int              `json:"sequence"`
-	Hash             []byte                `json:"hash"`
+	Hash             string                `json:"hash"`
 	FullHash         common.Hash           `json:"fullHash"`
 	Height           *big.Int              `json:"height"`
 	TxCount          *big.Int              `json:"txCount"`
@@ -65,12 +65,12 @@ type PublicBatchDeprecated struct {
 
 type PublicRollup struct {
 	ID        *big.Int
-	Hash      []byte
+	Hash      string
 	FirstSeq  *big.Int
 	LastSeq   *big.Int
 	Timestamp uint64
 	Header    *RollupHeader
-	L1Hash    []byte
+	L1Hash    string
 }
 
 type PublicBlock struct {
@@ -119,7 +119,6 @@ type PrivateCustomQueryListTransactions struct {
 type ObscuroNetworkInfo struct {
 	ManagementContractAddress common.Address
 	L1StartHash               common.Hash
-	SequencerID               common.Address
 	MessageBusAddress         common.Address
 	L2MessageBusAddress       common.Address
 	ImportantContracts        map[string]common.Address // map of contract name to address

@@ -56,24 +56,9 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 		return nil, fmt.Errorf("could not subscribe for logs. Cause: %w", err)
 	}
 
-	// We send the ID of the newly-created subscription, before sending any log events. This is because the wallet
-	// extension needs to return the subscription ID to the end client, but this information is not exposed to it
-	// (since the subscription ID is automatically converted to a subscription object).
-	err = notifier.Notify(subscription.ID, common.IDAndEncLog{
-		SubID: subscription.ID,
-	})
-	if err != nil {
-		api.host.UnsubscribeLogs(subscription.ID)
-		return nil, fmt.Errorf("could not send subscription ID to client on subscription %s", subscription.ID)
-	}
-
 	var unsubscribed atomic.Bool
 	go subscriptioncommon.ForwardFromChannels([]chan []byte{logsFromSubscription}, &unsubscribed, func(elem []byte) error {
-		msg := &common.IDAndEncLog{
-			SubID:  subscription.ID,
-			EncLog: elem,
-		}
-		return notifier.Notify(subscription.ID, msg)
+		return notifier.Notify(subscription.ID, elem)
 	})
 	go subscriptioncommon.HandleUnsubscribe(subscription, &unsubscribed, func() {
 		api.host.UnsubscribeLogs(subscription.ID)
@@ -82,8 +67,8 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 }
 
 // GetLogs returns the logs matching the filter.
-func (api *FilterAPI) GetLogs(_ context.Context, encryptedParams common.EncryptedParamsGetLogs) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().GetLogs(encryptedParams)
+func (api *FilterAPI) GetLogs(ctx context.Context, encryptedParams common.EncryptedParamsGetLogs) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.EnclaveClient().GetLogs(ctx, encryptedParams)
 	if sysError != nil {
 		return api.handleSysError("GetLogs", sysError)
 	}

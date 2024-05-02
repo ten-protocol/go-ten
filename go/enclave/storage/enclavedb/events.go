@@ -1,6 +1,7 @@
 package enclavedb
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"math/big"
@@ -22,12 +23,12 @@ const (
 	orderBy                    = " order by b.height, tx.idx asc"
 )
 
-func StoreEventLogs(dbtx DBTransaction, receipts []*types.Receipt, stateDB *state.StateDB) error {
+func StoreEventLogs(ctx context.Context, dbtx DBTransaction, receipts []*types.Receipt, stateDB *state.StateDB) error {
 	var args []any
 	totalLogs := 0
 	for _, receipt := range receipts {
 		for _, l := range receipt.Logs {
-			logArgs, err := logDBValues(dbtx.GetDB(), l, receipt, stateDB)
+			logArgs, err := logDBValues(ctx, dbtx.GetDB(), l, receipt, stateDB)
 			if err != nil {
 				return err
 			}
@@ -49,7 +50,7 @@ func StoreEventLogs(dbtx DBTransaction, receipts []*types.Receipt, stateDB *stat
 // The other 4 topics are set by the programmer
 // According to the data relevancy rules, an event is relevant to accounts referenced directly in topics
 // If the event is not referring any user address, it is considered a "lifecycle event", and is relevant to everyone
-func logDBValues(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *state.StateDB) ([]any, error) {
+func logDBValues(ctx context.Context, db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *state.StateDB) ([]any, error) {
 	// The topics are stored in an array with a maximum of 5 entries, but usually less
 	var t0, t1, t2, t3, t4 []byte
 
@@ -72,7 +73,7 @@ func logDBValues(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *stat
 	// if yes, then mark it as relevant for that account
 	if n > 1 {
 		t1 = l.Topics[1].Bytes()
-		isUserAccount, addr1, err = isEndUserAccount(db, l.Topics[1], stateDB)
+		isUserAccount, addr1, err = isEndUserAccount(ctx, db, l.Topics[1], stateDB)
 		if err != nil {
 			return nil, err
 		}
@@ -83,7 +84,7 @@ func logDBValues(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *stat
 	}
 	if n > 2 {
 		t2 = l.Topics[2].Bytes()
-		isUserAccount, addr2, err = isEndUserAccount(db, l.Topics[2], stateDB)
+		isUserAccount, addr2, err = isEndUserAccount(ctx, db, l.Topics[2], stateDB)
 		if err != nil {
 			return nil, err
 		}
@@ -94,7 +95,7 @@ func logDBValues(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *stat
 	}
 	if n > 3 {
 		t3 = l.Topics[3].Bytes()
-		isUserAccount, addr3, err = isEndUserAccount(db, l.Topics[3], stateDB)
+		isUserAccount, addr3, err = isEndUserAccount(ctx, db, l.Topics[3], stateDB)
 		if err != nil {
 			return nil, err
 		}
@@ -105,7 +106,7 @@ func logDBValues(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *stat
 	}
 	if n > 4 {
 		t4 = l.Topics[4].Bytes()
-		isUserAccount, addr4, err = isEndUserAccount(db, l.Topics[4], stateDB)
+		isUserAccount, addr4, err = isEndUserAccount(ctx, db, l.Topics[4], stateDB)
 		if err != nil {
 			return nil, err
 		}
@@ -130,6 +131,7 @@ func logDBValues(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *stat
 }
 
 func FilterLogs(
+	ctx context.Context,
 	db *sql.DB,
 	requestingAccount *gethcommon.Address,
 	fromBlock, toBlock *big.Int,
@@ -176,10 +178,10 @@ func FilterLogs(
 		}
 	}
 
-	return loadLogs(db, requestingAccount, query, queryParams)
+	return loadLogs(ctx, db, requestingAccount, query, queryParams)
 }
 
-func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
+func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
 	var queryParams []any
 
 	query := baseDebugEventsQuerySelect + " " + baseEventsJoin + "AND tx.hash = ?"
@@ -188,7 +190,7 @@ func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error
 
 	result := make([]*tracers.DebugLogs, 0)
 
-	rows, err := db.Query(query, queryParams...)
+	rows, err := db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +261,7 @@ func bytesToAddress(b []byte) *gethcommon.Address {
 //     forcing its events to become permanently private (this is not implemented for now)
 //
 // todo - find a more efficient way
-func isEndUserAccount(db *sql.DB, topic gethcommon.Hash, stateDB *state.StateDB) (bool, *gethcommon.Address, error) {
+func isEndUserAccount(ctx context.Context, db *sql.DB, topic gethcommon.Hash, stateDB *state.StateDB) (bool, *gethcommon.Address, error) {
 	potentialAddr := common.ExtractPotentialAddress(topic)
 	if potentialAddr == nil {
 		return false, nil, nil
@@ -268,7 +270,7 @@ func isEndUserAccount(db *sql.DB, topic gethcommon.Hash, stateDB *state.StateDB)
 	// Check the database if there are already entries for this address
 	var count int
 	query := "select count(*) from events where rel_address1=? OR rel_address2=? OR rel_address3=? OR rel_address4=?"
-	err := db.QueryRow(query, addrBytes, addrBytes, addrBytes, addrBytes).Scan(&count)
+	err := db.QueryRowContext(ctx, query, addrBytes, addrBytes, addrBytes, addrBytes).Scan(&count)
 	if err != nil {
 		// exit here
 		return false, nil, err
@@ -292,7 +294,7 @@ func isEndUserAccount(db *sql.DB, topic gethcommon.Hash, stateDB *state.StateDB)
 
 // utility function that knows how to load relevant logs from the database
 // todo always pass in the actual batch hashes because of reorgs, or make sure to clean up log entries from discarded batches
-func loadLogs(db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any) ([]*types.Log, error) {
+func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any) ([]*types.Log, error) {
 	if requestingAccount == nil {
 		return nil, fmt.Errorf("logs can only be requested for an account")
 	}
@@ -315,7 +317,7 @@ func loadLogs(db *sql.DB, requestingAccount *gethcommon.Address, whereCondition 
 
 	query += orderBy
 
-	rows, err := db.Query(query, queryParams...)
+	rows, err := db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
 	}

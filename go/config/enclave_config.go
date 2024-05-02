@@ -3,6 +3,12 @@ package config
 import (
 	"encoding/base64"
 	"fmt"
+	"math/big"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -135,11 +141,11 @@ type EnclaveConfig struct {
 	MinGasPrice *big.Int
 	// MessageBusAddress L1 Address
 	MessageBusAddress gethcommon.Address
-	// SequencerID, the identity of the sequencer for the network
-	SequencerID gethcommon.Address
-	// TenGenesis, a json string that specifies the prefunded addresses at the genesis of the TEN network
+	// P2P address for validators to connect to the sequencer for live batch data
+	SequencerP2PAddress string
+	// A json string that specifies the prefunded addresses at the genesis of the Obscuro network
 	TenGenesis string
-	// DebugNamespaceEnabled, whether debug calls are available
+	// Whether debug calls are available
 	DebugNamespaceEnabled bool
 	// MaxBatchSize, maximum bytes a batch can be uncompressed.
 	MaxBatchSize uint64

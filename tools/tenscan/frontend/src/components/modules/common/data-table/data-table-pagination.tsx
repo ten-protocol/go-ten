@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
+import { formatNumber } from "@/src/lib/utils";
 
 interface DataTablePaginationProps<TData> {
   table: Table<TData>;
@@ -50,8 +51,8 @@ export function DataTablePagination<TData>({
           </Select>
         </div>
         <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-          Page {table.getState().pagination.pageIndex + 1} of{" "}
-          {table.getPageCount()}
+          Page {formatNumber(table.getState().pagination.pageIndex + 1)} of{" "}
+          {formatNumber(table.getPageCount())}
         </div>
         <div className="flex items-center space-x-2">
           <Button

@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -61,7 +62,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 
 	txArgs := builder.Param.callParams
 	blockNumber := builder.Param.block
-	block, err := rpc.l1BlockProcessor.GetHead()
+	block, err := rpc.l1BlockProcessor.GetHead(builder.ctx)
 	if err != nil {
 		return err
 	}
@@ -74,7 +75,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	}
 
 	headBatchSeq := rpc.registry.HeadBatchSeq()
-	batch, err := rpc.storage.FetchBatchBySeqNo(headBatchSeq.Uint64())
+	batch, err := rpc.storage.FetchBatchBySeqNo(builder.ctx, headBatchSeq.Uint64())
 	if err != nil {
 		return err
 	}
@@ -93,7 +94,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	// TODO: Change to fixed time period quotes, rather than this.
 	publishingGas = publishingGas.Mul(publishingGas, gethcommon.Big2)
 
-	executionGasEstimate, err := rpc.doEstimateGas(txArgs, blockNumber, rpc.config.GasLocalExecutionCap)
+	executionGasEstimate, err := rpc.doEstimateGas(builder.ctx, txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
@@ -102,10 +103,6 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 		}
 
 		// return EVM error
-		evmErr, err := serializeEVMError(err)
-		if err == nil {
-			err = fmt.Errorf(string(evmErr))
-		}
 		builder.Err = err
 		return nil
 	}
@@ -119,7 +116,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 // This is a copy of https://github.com/ethereum/go-ethereum/blob/master/internal/ethapi/api.go#L1055
 // there's a high complexity to the method due to geth business rules (which is mimic'd here)
 // once the work of obscuro gas mechanics is established this method should be simplified
-func (rpc *EncryptionManager) doEstimateGas(args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, common.SystemError) { //nolint: gocognit
+func (rpc *EncryptionManager) doEstimateGas(ctx context.Context, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, common.SystemError) { //nolint: gocognit
 	// Binary search the gas requirement, as it may be higher than the amount used
 	var ( //nolint: revive
 		lo  = params.TxGas - 1
@@ -161,7 +158,7 @@ func (rpc *EncryptionManager) doEstimateGas(args *gethapi.TransactionArgs, blkNu
 	}
 	// Recap the highest gas limit with account's available balance.
 	if feeCap.BitLen() != 0 { //nolint:nestif
-		balance, err := rpc.chain.GetBalanceAtBlock(*args.From, blkNumber)
+		balance, err := rpc.chain.GetBalanceAtBlock(ctx, *args.From, blkNumber)
 		if err != nil {
 			return 0, fmt.Errorf("unable to fetch account balance - %w", err)
 		}
@@ -202,7 +199,7 @@ func (rpc *EncryptionManager) doEstimateGas(args *gethapi.TransactionArgs, blkNu
 			// range here is skewed to favor the low side.
 			mid = lo * 2
 		}
-		failed, _, err := rpc.isGasEnough(args, mid, blkNumber)
+		failed, _, err := rpc.isGasEnough(ctx, args, mid, blkNumber)
 		// If the error is not nil(consensus error), it means the provided message
 		// call or transaction will never be accepted no matter how much gas it is
 		// assigned. Return the error directly, don't struggle any more.
@@ -217,7 +214,7 @@ func (rpc *EncryptionManager) doEstimateGas(args *gethapi.TransactionArgs, blkNu
 	}
 	// Reject the transaction as invalid if it still fails at the highest allowance
 	if hi == cap { //nolint:nestif
-		failed, result, err := rpc.isGasEnough(args, hi, blkNumber)
+		failed, result, err := rpc.isGasEnough(ctx, args, hi, blkNumber)
 		if err != nil {
 			return 0, err
 		}
@@ -237,10 +234,10 @@ func (rpc *EncryptionManager) doEstimateGas(args *gethapi.TransactionArgs, blkNu
 
 // Create a helper to check if a gas allowance results in an executable transaction
 // isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
-func (rpc *EncryptionManager) isGasEnough(args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error) {
+func (rpc *EncryptionManager) isGasEnough(ctx context.Context, args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error) {
 	defer core.LogMethodDuration(rpc.logger, measure.NewStopwatch(), "enclave.go:IsGasEnough")
 	args.Gas = (*hexutil.Uint64)(&gas)
-	result, err := rpc.chain.ObsCallAtBlock(args, blkNumber)
+	result, err := rpc.chain.ObsCallAtBlock(ctx, args, blkNumber)
 	if err != nil {
 		if errors.Is(err, gethcore.ErrIntrinsicGas) {
 			return true, nil, nil // Special case, raise gas limit

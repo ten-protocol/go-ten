@@ -10,15 +10,13 @@ import (
 )
 
 type SignatureValidator struct {
-	SequencerID gethcommon.Address
 	attestedKey *ecdsa.PublicKey
 	storage     storage.Storage
 }
 
-func NewSignatureValidator(seqID gethcommon.Address, storage storage.Storage) (*SignatureValidator, error) {
+func NewSignatureValidator(storage storage.Storage) (*SignatureValidator, error) {
 	// todo (#718) - sequencer identities should be retrieved from the L1 management contract
 	return &SignatureValidator{
-		SequencerID: seqID,
 		storage:     storage,
 		attestedKey: nil,
 	}, nil

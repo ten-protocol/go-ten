@@ -2,7 +2,10 @@ package responses
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 )
@@ -116,9 +119,8 @@ func AsEncryptedEmptyResponse(encryptHandler Encryptor) *EnclaveResponse {
 
 // AsEncryptedError - Encodes and encrypts an error to be returned for a concrete user.
 func AsEncryptedError(err error, encrypt Encryptor) *EnclaveResponse {
-	errStr := err.Error()
 	userResp := UserResponse[string]{
-		ErrStr: &errStr,
+		Err: convertError(err),
 	}
 
 	encoded, err := json.Marshal(userResp)
@@ -161,9 +163,18 @@ func DecodeResponse[T any](encoded []byte) (*T, error) {
 	if err != nil {
 		return nil, err
 	}
-	if resp.ErrStr != nil {
-		return nil, fmt.Errorf(*resp.ErrStr)
+	if resp.Err != nil {
+		return nil, resp.Err
 	}
 
 	return resp.Result, nil
+}
+
+func convertError(err error) *errutil.DataError {
+	// check if it's a serialized error and handle any error wrapping that might have occurred
+	var e *errutil.DataError
+	if ok := errors.As(err, &e); ok {
+		return e
+	}
+	return &errutil.DataError{Err: err.Error()}
 }

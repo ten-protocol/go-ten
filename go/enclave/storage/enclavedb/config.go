@@ -1,6 +1,7 @@
 package enclavedb
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -19,42 +20,42 @@ const (
 	attSelect = "select ky from attestation_key where party=?"
 )
 
-func WriteConfigToBatch(dbtx DBTransaction, key string, value any) {
+func WriteConfigToBatch(ctx context.Context, dbtx DBTransaction, key string, value any) {
 	dbtx.ExecuteSQL(cfgInsert, key, value)
 }
 
-func WriteConfigToTx(dbtx *sql.Tx, key string, value any) (sql.Result, error) {
+func WriteConfigToTx(ctx context.Context, dbtx *sql.Tx, key string, value any) (sql.Result, error) {
 	return dbtx.Exec(cfgInsert, key, value)
 }
 
-func WriteConfig(db *sql.DB, key string, value []byte) (sql.Result, error) {
-	return db.Exec(cfgInsert, key, value)
+func WriteConfig(ctx context.Context, db *sql.DB, key string, value []byte) (sql.Result, error) {
+	return db.ExecContext(ctx, cfgInsert, key, value)
 }
 
-func UpdateConfigToBatch(dbtx DBTransaction, key string, value []byte) {
+func UpdateConfigToBatch(ctx context.Context, dbtx DBTransaction, key string, value []byte) {
 	dbtx.ExecuteSQL(cfgUpdate, key, value)
 }
 
-func UpdateConfig(db *sql.DB, key string, value []byte) (sql.Result, error) {
-	return db.Exec(cfgUpdate, key, value)
+func UpdateConfig(ctx context.Context, db *sql.DB, key string, value []byte) (sql.Result, error) {
+	return db.ExecContext(ctx, cfgUpdate, key, value)
 }
 
-func FetchConfig(db *sql.DB, key string) ([]byte, error) {
-	return readSingleRow(db, cfgSelect, key)
+func FetchConfig(ctx context.Context, db *sql.DB, key string) ([]byte, error) {
+	return readSingleRow(ctx, db, cfgSelect, key)
 }
 
-func WriteAttKey(db *sql.DB, party common.Address, key []byte) (sql.Result, error) {
-	return db.Exec(attInsert, party.Bytes(), key)
+func WriteAttKey(ctx context.Context, db *sql.DB, party common.Address, key []byte) (sql.Result, error) {
+	return db.ExecContext(ctx, attInsert, party.Bytes(), key)
 }
 
-func FetchAttKey(db *sql.DB, party common.Address) ([]byte, error) {
-	return readSingleRow(db, attSelect, party.Bytes())
+func FetchAttKey(ctx context.Context, db *sql.DB, party common.Address) ([]byte, error) {
+	return readSingleRow(ctx, db, attSelect, party.Bytes())
 }
 
-func readSingleRow(db *sql.DB, query string, v any) ([]byte, error) {
+func readSingleRow(ctx context.Context, db *sql.DB, query string, v any) ([]byte, error) {
 	var res []byte
 
-	err := db.QueryRow(query, v).Scan(&res)
+	err := db.QueryRowContext(ctx, query, v).Scan(&res)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error

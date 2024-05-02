@@ -2,19 +2,20 @@ package crosschain
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
-	"golang.org/x/crypto/sha3"
 )
 
 var (
@@ -26,26 +27,28 @@ var (
 )
 
 func lazilyLogReceiptChecksum(block *common.L1Block, receipts types.Receipts, logger gethlog.Logger) {
-	logger.Trace("Processing block", log.BlockHashKey, block.Hash(), "nr_rec", len(receipts), "Hash",
-		gethlog.Lazy{Fn: func() string {
-			hasher := sha3.NewLegacyKeccak256().(crypto.KeccakState)
-			hasher.Reset()
-			for _, receipt := range receipts {
-				var buffer bytes.Buffer
-				err := receipt.EncodeRLP(&buffer)
-				if err != nil {
-					return err.Error()
-				}
-				hasher.Write(buffer.Bytes())
-			}
-			var hash gethcommon.Hash
-			_, err := hasher.Read(hash[:])
-			if err != nil {
-				return err.Error()
-			}
+	if logger.Enabled(context.Background(), gethlog.LevelTrace) {
+		logger.Trace("Processing block", log.BlockHashKey, block.Hash(), "nr_rec", len(receipts), "Hash", receiptsHash(receipts))
+	}
+}
 
-			return hash.Hex()
-		}})
+func receiptsHash(receipts types.Receipts) string {
+	hasher := sha3.NewLegacyKeccak256().(crypto.KeccakState)
+	hasher.Reset()
+	for _, receipt := range receipts {
+		var buffer bytes.Buffer
+		err := receipt.EncodeRLP(&buffer)
+		if err != nil {
+			return err.Error()
+		}
+		hasher.Write(buffer.Bytes())
+	}
+	var hash gethcommon.Hash
+	_, err := hasher.Read(hash[:])
+	if err != nil {
+		return err.Error()
+	}
+	return hash.Hex()
 }
 
 /*
