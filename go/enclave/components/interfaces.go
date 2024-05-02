@@ -100,6 +100,7 @@ type BatchRegistry interface {
 	UnsubscribeFromBatches()
 
 	OnBatchExecuted(batch *core.Batch, receipts types.Receipts)
+	OnBlockProcessed(*BlockIngestionType)
 
 	// HasGenesisBatch - returns if genesis batch is available yet or not, or error in case
 	// the function is unable to determine.

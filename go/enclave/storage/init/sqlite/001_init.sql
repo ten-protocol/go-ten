@@ -102,7 +102,7 @@ create table if not exists exec_tx
     created_contract_address_full binary(20),
     receipt                       mediumblob,
     --     commenting out the fk until synthetic transactions are also stored
-    tx                            INTEGER NOT NULL,
+    tx                            INTEGER,
     batch                         INTEGER NOT NULL REFERENCES batch
 );
 create index IDX_EX_TX_TX on exec_tx (tx);
@@ -135,7 +135,7 @@ create table if not exists events
     rel_address2_full binary(20),
     rel_address3_full binary(20),
     rel_address4_full binary(20),
-    tx                INTEGER    NOT NULL,
+    tx                INTEGER    ,
     batch             INTEGER    NOT NULL REFERENCES batch
 );
 create index IDX_AD on events (address);

@@ -160,7 +160,7 @@ func Connector(edbCfg *Config, config config.EnclaveConfig, logger gethlog.Logge
 	}
 
 	// wrap it in our eth-compatible key-value store layer
-	return enclavedb.NewEnclaveDB(sqlDB, config, logger)
+	return enclavedb.NewEnclaveDB(sqlDB, sqlDB, config, logger)
 }
 
 func waitForEdgelessDBToStart(edbHost string, logger gethlog.Logger) error {

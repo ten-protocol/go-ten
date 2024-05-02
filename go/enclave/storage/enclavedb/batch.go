@@ -25,7 +25,7 @@ const (
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
-func WriteBatchAndTransactions(ctx context.Context, dbtx DBTransaction, batch *core.Batch, convertedHash gethcommon.Hash, blockId *uint64) error {
+func WriteBatchAndTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, convertedHash gethcommon.Hash, blockId int64) error {
 	// todo - optimize for reorgs
 	batchBodyID := batch.SeqNo().Uint64()
 
@@ -38,10 +38,13 @@ func WriteBatchAndTransactions(ctx context.Context, dbtx DBTransaction, batch *c
 		return fmt.Errorf("could not encode batch header. Cause: %w", err)
 	}
 
-	dbtx.ExecuteSQL("replace into batch_body values (?,?)", batchBodyID, body)
+	_, err = dbtx.ExecContext(ctx, "replace into batch_body values (?,?)", batchBodyID, body)
+	if err != nil {
+		return err
+	}
 
 	var isCanon bool
-	err = dbtx.GetDB().QueryRowContext(ctx,
+	err = dbtx.QueryRowContext(ctx,
 		"select is_canonical from block where hash=? and full_hash=?",
 		truncTo4(batch.Header.L1Proof), batch.Header.L1Proof.Bytes(),
 	).Scan(&isCanon)
@@ -51,7 +54,7 @@ func WriteBatchAndTransactions(ctx context.Context, dbtx DBTransaction, batch *c
 		isCanon = false
 	}
 
-	dbtx.ExecuteSQL("insert into batch values (?,?,?,?,?,?,?,?,?,?)",
+	_, err = dbtx.ExecContext(ctx, "insert into batch values (?,?,?,?,?,?,?,?,?,?)",
 		batch.Header.SequencerOrderNo.Uint64(), // sequence
 		batch.Hash(),                           // full hash
 		convertedHash,                          // converted_hash
@@ -60,9 +63,12 @@ func WriteBatchAndTransactions(ctx context.Context, dbtx DBTransaction, batch *c
 		isCanon,                                // is_canonical
 		header,                                 // header blob
 		batchBodyID,                            // reference to the batch body
-		blockId,                                // indexed l1_proof
+		blockId,                                // l1_proof block id
 		false,                                  // executed
 	)
+	if err != nil {
+		return err
+	}
 
 	// creates a big insert statement for all transactions
 	if len(batch.Transactions) > 0 {
@@ -88,15 +94,21 @@ func WriteBatchAndTransactions(ctx context.Context, dbtx DBTransaction, batch *c
 			args = append(args, i)                            // idx
 			args = append(args, batchBodyID)                  // the batch body which contained it
 		}
-		dbtx.ExecuteSQL(insert, args...)
+		_, err = dbtx.ExecContext(ctx, insert, args...)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-// WriteBatchExecution - insert all receipts to the db
-func WriteBatchExecution(ctx context.Context, dbtx DBTransaction, seqNo *big.Int, receipts []*types.Receipt) error {
-	dbtx.ExecuteSQL("update batch set is_executed=true where sequence=?", seqNo.Uint64())
+// WriteBatchExecution - save receipts
+func WriteBatchExecution(ctx context.Context, dbtx *sql.Tx, seqNo *big.Int, receipts []*types.Receipt) error {
+	_, err := dbtx.ExecContext(ctx, "update batch set is_executed=true where sequence=?", seqNo.Uint64())
+	if err != nil {
+		return err
+	}
 
 	args := make([]any, 0)
 	for _, receipt := range receipts {
@@ -108,27 +120,31 @@ func WriteBatchExecution(ctx context.Context, dbtx DBTransaction, seqNo *big.Int
 		}
 
 		// ignore the error because synthetic transactions will not be inserted
-		txId, _ := ReadTxId(ctx, dbtx, storageReceipt.TxHash)
+		txId, _ := GetTxId(ctx, dbtx, storageReceipt.TxHash)
 		args = append(args, truncBTo4(receipt.ContractAddress.Bytes())) // created_contract_address
 		args = append(args, receipt.ContractAddress.Bytes())            // created_contract_address
 		args = append(args, receiptBytes)                               // the serialised receipt
-		args = append(args, txId)                                       // tx id
-		args = append(args, seqNo.Uint64())                             // batch_seq
+		if txId == 0 {
+			args = append(args, nil) // tx id
+		} else {
+			args = append(args, txId) // tx id
+		}
+		args = append(args, seqNo.Uint64()) // batch_seq
 	}
 	if len(args) > 0 {
 		insert := "insert into exec_tx (created_contract_address,created_contract_address_full, receipt, tx, batch) values " + repeat("(?,?,?,?,?)", ",", len(receipts))
-		dbtx.ExecuteSQL(insert, args...)
+		_, err = dbtx.ExecContext(ctx, insert, args...)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func ReadTxId(ctx context.Context, dbtx DBTransaction, txHash gethcommon.Hash) (*uint64, error) {
-	var txId uint64
-	err := dbtx.GetDB().QueryRowContext(ctx, "select id from tx where hash=? and full_hash=?", truncTo4(txHash), txHash.Bytes()).Scan(&txId)
-	if err != nil {
-		return nil, err
-	}
-	return &txId, err
+func GetTxId(ctx context.Context, dbtx *sql.Tx, txHash gethcommon.Hash) (int64, error) {
+	var txId int64
+	err := dbtx.QueryRowContext(ctx, "select id from tx where hash=? and full_hash=?", truncTo4(txHash), txHash.Bytes()).Scan(&txId)
+	return txId, err
 }
 
 func ReadBatchBySeqNo(ctx context.Context, db *sql.DB, seqNo uint64) (*core.Batch, error) {
@@ -153,7 +169,7 @@ func ReadCurrentHeadBatch(ctx context.Context, db *sql.DB) (*core.Batch, error) 
 }
 
 func ReadBatchesByBlock(ctx context.Context, db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {
-	return fetchBatches(ctx, db, " join block l1b on b.l1_proof=l1b.id where l1b.hash=? and l1b.full_l1_proof=? order by b.sequence", truncTo4(hash), hash.Bytes())
+	return fetchBatches(ctx, db, " join block l1b on b.l1_proof=l1b.id where l1b.hash=? and l1b.full_hash=? order by b.sequence", truncTo4(hash), hash.Bytes())
 }
 
 func ReadCurrentSequencerNo(ctx context.Context, db *sql.DB) (*big.Int, error) {
@@ -171,11 +187,6 @@ func ReadCurrentSequencerNo(ctx context.Context, db *sql.DB) (*big.Int, error) {
 		return nil, errutil.ErrNotFound
 	}
 	return big.NewInt(seq.Int64), nil
-}
-
-func ReadHeadBatchForBlock(ctx context.Context, db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, error) {
-	query := " where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true and b1.l1_proof=? and b1.full_l1_proof=?)"
-	return fetchBatch(ctx, db, query, truncTo4(l1Hash), l1Hash.Bytes())
 }
 
 func fetchBatch(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*core.Batch, error) {

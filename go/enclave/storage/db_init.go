@@ -21,7 +21,9 @@ func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (encla
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
 		// this creates a temporary sqlite sqldb
-		return sqlite.CreateTemporarySQLiteDB(cfg.HostID.String(), "mode=memory&cache=shared&_foreign_keys=on", *cfg, logger)
+		// return sqlite.CreateTemporarySQLiteDB(cfg.HostID.String(), "mode=memory&cache=shared&_foreign_keys=on", *cfg, logger)
+		// return sqlite.CreateTemporarySQLiteDB(cfg.HostID.String(), "mode=memory&_foreign_keys=on&_journal_mode=wal&_txlock=immediate&_locking_mode=EXCLUSIVE", *cfg, logger)
+		return sqlite.CreateTemporarySQLiteDB("", "_foreign_keys=on&_journal_mode=wal&_txlock=immediate&_synchronous=normal", *cfg, logger)
 	}
 
 	if !cfg.WillAttest {
@@ -29,7 +31,8 @@ func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (encla
 		logger.Warn("Attestation is disabled, using a basic sqlite DB for persistence")
 		// when we want to test persistence after node restart the SqliteDBPath should be set
 		// (if empty string then a temp sqldb file will be created for the lifetime of the enclave)
-		return sqlite.CreateTemporarySQLiteDB(cfg.SqliteDBPath, "_foreign_keys=on", *cfg, logger)
+		// return sqlite.CreateTemporarySQLiteDB(cfg.SqliteDBPath, "_foreign_keys=on&_txlock=immediate", *cfg, logger)
+		return sqlite.CreateTemporarySQLiteDB(cfg.SqliteDBPath, "_foreign_keys=on&_journal_mode=wal&_txlock=immediate&_synchronous=normal", *cfg, logger)
 	}
 
 	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave

@@ -9,9 +9,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/docker"
 )
 
-var (
-	_enclaveDataDir = "/enclavedata" // this is how the directory is references within the enclave container
-)
+var _enclaveDataDir = "/enclavedata" // this is how the directory is references within the enclave container
 
 type DockerNode struct {
 	cfg *Config

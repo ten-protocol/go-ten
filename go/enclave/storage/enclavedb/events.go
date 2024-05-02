@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -17,40 +19,34 @@ const (
 	baseEventsJoin = "from events e join exec_tx extx on e.tx=extx.tx and e.batch=extx.batch  join tx on extx.tx=tx.id join batch b on extx.batch=b.sequence where b.is_canonical=true "
 )
 
-func StoreEventLogs(ctx context.Context, dbtx DBTransaction, receipts []*types.Receipt, stateDB *state.StateDB) error {
+func StoreEventLogs(ctx context.Context, dbtx *sql.Tx, receipts []*types.Receipt, batch *core.Batch, stateDB *state.StateDB) error {
 	var args []any
 	totalLogs := 0
 	for _, receipt := range receipts {
 		for _, l := range receipt.Logs {
-			txId, _ := ReadTxId(ctx, dbtx, l.TxHash)
-			batchId, err := ReadBatchId(ctx, dbtx, receipt.BlockHash)
-			if err != nil {
-				return err
-			}
-			logArgs, err := logDBValues(ctx, dbtx.GetDB(), l, stateDB)
+			logArgs, err := logDBValues(ctx, dbtx, l, stateDB)
 			if err != nil {
 				return err
 			}
 			args = append(args, logArgs...)
-			args = append(args, txId)
-			args = append(args, batchId)
+			txId, _ := GetTxId(ctx, dbtx, l.TxHash)
+			if txId == 0 {
+				args = append(args, nil)
+			} else {
+				args = append(args, txId)
+			}
+			args = append(args, batch.SeqNo().Uint64())
 			totalLogs++
 		}
 	}
 	if totalLogs > 0 {
 		query := "insert into events values " + repeat("(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ",", totalLogs)
-		dbtx.ExecuteSQL(query, args...)
+		_, err := dbtx.ExecContext(ctx, query, args...)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
-}
-
-func ReadBatchId(ctx context.Context, dbtx DBTransaction, batchHash gethcommon.Hash) (uint64, error) {
-	var batchId uint64
-	err := dbtx.GetDB().QueryRowContext(ctx,
-		"select sequence from batch where batch.hash=? and batch.full_hash=?",
-		truncTo4(batchHash), batchHash.Bytes(),
-	).Scan(&batchId)
-	return batchId, err
 }
 
 // This method stores a log entry together with relevancy metadata
@@ -58,7 +54,7 @@ func ReadBatchId(ctx context.Context, dbtx DBTransaction, batchHash gethcommon.H
 // The other 4 topics are set by the programmer
 // According to the data relevancy rules, an event is relevant to accounts referenced directly in topics
 // If the event is not referring any user address, it is considered a "lifecycle event", and is relevant to everyone
-func logDBValues(ctx context.Context, db *sql.DB, l *types.Log, stateDB *state.StateDB) ([]any, error) {
+func logDBValues(ctx context.Context, db *sql.Tx, l *types.Log, stateDB *state.StateDB) ([]any, error) {
 	// The topics are stored in an array with a maximum of 5 entries, but usually less
 	var t0, t1, t2, t3, t4 []byte
 
@@ -279,7 +275,7 @@ func bytesToAddress(b []byte) *gethcommon.Address {
 //     forcing its events to become permanently private (this is not implemented for now)
 //
 // todo - find a more efficient way
-func isEndUserAccount(ctx context.Context, db *sql.DB, topic gethcommon.Hash, stateDB *state.StateDB) (bool, *gethcommon.Address, error) {
+func isEndUserAccount(ctx context.Context, db *sql.Tx, topic gethcommon.Hash, stateDB *state.StateDB) (bool, *gethcommon.Address, error) {
 	potentialAddr := common.ExtractPotentialAddress(topic)
 	if potentialAddr == nil {
 		return false, nil, nil

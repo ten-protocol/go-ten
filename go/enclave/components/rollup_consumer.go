@@ -60,6 +60,10 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(ctx context.Context, b *comm
 		return err
 	}
 
+	if len(rollups) > 1 {
+		rc.logger.Warn(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), b.Block.Hash()))
+	}
+
 	for _, rollup := range rollups {
 		l1CompressionBlock, err := rc.storage.FetchBlock(ctx, rollup.Header.CompressionL1Head)
 		if err != nil {
