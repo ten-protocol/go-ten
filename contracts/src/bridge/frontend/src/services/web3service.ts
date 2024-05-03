@@ -1,188 +1,124 @@
-import { ethers } from 'ethers'
-import { useMessageStore } from '@/stores/messageStore'
-import ImageGuessGameJson from '@/assets/contract/artifacts/contracts/ImageGuessGame.sol/ImageGuessGame.json'
-import ContractAddress from '@/assets/contract/address.json'
-import { formatTimeAgo, trackEvent, bigNumberToNumber } from './utils'
-import Common from '@/lib/common'
-import Web3listener from './web3listener'
-import { useGameStore } from '../stores/gameStore'
-import { ElNotification } from 'element-plus'
+import { ethers } from "ethers";
+import { BridgeInterface } from "../../contracts/IBridge.sol";
+import { l1Bridge as l1BridgeAddress } from "../lib/constants";
 
-export default class Web3Service {
-  constructor(signer) {
-    this.contract = new ethers.Contract(ContractAddress.address, ImageGuessGameJson.abi, signer)
-    this.signer = signer
+// // SPDX-License-Identifier: Apache 2
+
+// pragma solidity >=0.7.0 <0.9.0;
+
+// // The ERC20 token bridge interface.
+// // Calling functions on it will result in assets being bridged over to the other layer automatically.
+// interface BridgeInterface {
+//     enum Topics {
+//         TRANSFER,
+//         MANAGEMENT,
+//         VALUE
+//     }
+
+//     // Sends the native currency to the other layer. On Layer 1 the native currency is ETH, while on Layer 2 it is OBX.
+//     // When it arrives on the other side it will be wrapped as a token.
+//     // receiver - the L2 address that will receive the assets on the other network.
+//     function sendNative(address receiver) external payable;
+
+//     // Sends ERC20 assets over to the other network. The user must grant allowance to the bridge
+//     // before calling this function for more or equal to the amount being bridged over.
+//     // This can be done using IERC20(asset).approve(bridge, amount);
+//     // asset - the address of the smart contract of the ERC20 token.
+//     // amount - the number of tokens being transferred.
+//     // receiver - the L2 address receiving the assets.
+//     function sendERC20(
+//         address asset,
+//         uint256 amount,
+//         address receiver
+//     ) external;
+
+//     // This function is called to retrieve assets that have been sent on the other layer.
+//     // In the basic implementation it is only callable from the CrossChainMessenger when a message is
+//     // being relayed.
+//     function receiveAssets(
+//         address asset,
+//         uint256 amount,
+//         address receiver
+//     ) external;
+
+//     struct ValueTransfer {
+//         uint256 amount;
+//         address recipient;
+//     }
+// }
+
+interface IWeb3Service {
+  contract: ethers.Contract;
+  signer: any;
+}
+
+export default class Web3Service implements IWeb3Service {
+  contract: ethers.Contract;
+  signer: any;
+
+  constructor(signer: any) {
+    this.contract = new ethers.Contract(
+      l1BridgeAddress as string,
+      BridgeInterface,
+      signer
+    );
+    this.signer = signer;
   }
 
-  async getGuessHistory() {
-    try {
-      const challengeId = await this.getChallengeId()
-      const historyTx = await this.contract.viewMyGuesses(challengeId)
-      // above is the response from the contract, we need to convert it to a more readable format
-      // the first array is the x and y coordinates of the guesses
-      // the second array is the timestamp of the guesses
-      // to get a readable timestamp, we need to fetch the block timestamp from the blockchain using ethers.js and subtract the block timestamp from the timestamp in the response
-
-      const guessCoordinates = historyTx[0]
-      const guessTimestamps = historyTx[1]
-      const guessHistory = guessCoordinates.map((coordinates, index) => {
-        const x = bigNumberToNumber(coordinates[0])
-        const y = bigNumberToNumber(coordinates[1])
-        const guessTimestamp = bigNumberToNumber(guessTimestamps[index])
-
-        return {
-          x,
-          y,
-          timestamp: formatTimeAgo(bigNumberToNumber(guessTimestamp)),
-          win: 'N/A', // this is not available from the contract
-          reward: 0 // this is not available from the contract
-        }
-      })
-      return guessHistory
-    } catch (error) {
-      console.error('Failed to preload guess history - ', error)
-    }
+  // Send native currency to the other network.
+  async sendNative(receiver: string, value: string) {
+    return this.contract.sendNative(receiver, {
+      value: ethers.utils.parseEther(value),
+    });
   }
 
-  async submitGuess(challengeId, [coordinateX, coordinateY]) {
-    // ensuring that coordinatex and coordinatey are not fractional components but whole numbers
-    const updatedCoordinates = [Math.round(coordinateX), Math.round(coordinateY)]
-
-    const entryCost = ethers.utils.parseEther(Common.ENTRY_COST)
-
-    // ElNotification({
-    //   message: 'Issuing Guess...',
-    //   type: 'info'
-    // })
-
-    try {
-      const submitTx = await this.contract.submitGuess(challengeId, updatedCoordinates, {
-        value: entryCost,
-        gasLimit: ethers.utils.hexlify(3000000)
-      })
-      const receipt = await submitTx.wait()
-      // ElNotification({
-      //   title: 'Issued Guess tx:'
-      //   message: receipt.transactionHash,
-      //   type: 'success'
-      // })
-
-      const web3listener = new Web3listener(this.signer)
-      web3listener.startCheckingGuesses(receipt)
-
-      const message = `Your guess has been submitted successfully! The winners will be announced in ${formatTimeAgo(bigNumberToNumber(receipt.events[0].args[4] || 0), false)}...`
-      // ElNotification({
-      //   message,
-      //   type: 'success'
-      //   duration: 0,
-      // })
-
-      return message
-    } catch (e) {
-      if (e.reason) {
-        // ElNotification({
-        //   message: 'Failed to issue Guess - ' + e.reason,
-        //   type: 'error'
-        // })
-        console.error('Failed to issue Guess - ', e.reason)
-        return
-      }
-
-      // ElNotification({
-      //   message:
-      //   'Failed to issue Guess - ' + e,
-      //   type: 'error'
-      // })
-      console.error('Failed to issue Guess - ', e)
-    }
+  // Send ERC20 assets to the other network.
+  async sendERC20(asset: string, amount: string, receiver: string) {
+    return this.contract.sendERC20(asset, amount, receiver);
   }
 
-  async getChallengeId() {
-    const messageStore = useMessageStore()
-    try {
-      const challengeId = await this.contract.currentChallengeIndex()
-      const formattedChallengeId = bigNumberToNumber(challengeId)
-      return formattedChallengeId
-    } catch (error) {
-      console.error('Failed to get challenge id - ', error)
-    }
+  // Receive assets that have been sent on the other network.
+  async receiveAssets(asset: string, amount: string, receiver: string) {
+    return this.contract.receiveAssets(asset, amount, receiver);
   }
 
-  async createChallenge(payload) {
-    const messageStore = useMessageStore()
-
-    try {
-      // create each challenge with each object in the array
-      const createChallengeRes = await Promise.all(
-        payload.map(async (challenge) => {
-          // Estimate gas for the createChallenge transaction
-          const estimatedGas = await this.contract.estimateGas.createChallenge(challenge)
-
-          // Adding 10% buffer Gas
-          const gasLimit = estimatedGas.add(estimatedGas.mul(10).div(100))
-
-          const createChallengeTx = await this.contract.createChallenge(challenge, {
-            gasLimit: gasLimit.toString()
-          })
-
-          const receipt = await createChallengeTx.wait()
-          trackEvent('Challenge Created', {
-            transactionHash: receipt.transactionHash,
-            challengeId: await this.getChallengeId()
-          })
-
-          return receipt
-        })
-      )
-      return createChallengeRes
-    } catch (error) {
-      console.error('Failed to create challenge - ', error)
-      messageStore.addMessage('Failed to create challenge - ' + error.reason + ' ...')
-    }
+  // Get the balance of the signer.
+  async getBalance() {
+    return this.signer.getBalance();
   }
 
-  async getChallengePublicInfo() {
-    try {
-      const challengeId = await this.getChallengeId()
-      const challenge = await this.contract.getChallengePublicInfo(challengeId)
-      return challenge
-    } catch (error) {
-      console.error('Failed to get challenge properties - ', error)
-    }
+  // Get the balance of an ERC20 asset.
+  async getERC20Balance(asset: string) {
+    const erc20 = new ethers.Contract(
+      asset,
+      ["function balanceOf(address)"],
+      this.signer
+    );
+    return erc20.balanceOf(this.signer.getAddress());
   }
 
-  async addAdmin(address) {
-    const messageStore = useMessageStore()
-    try {
-      const addAdminTx = await this.contract.addAdmin(address)
-      const receipt = await addAdminTx.wait()
-      messageStore.addMessage('Added admin - ' + receipt.transactionHash)
-      return receipt
-    } catch (error) {
-      console.error('Failed to add admin - ', error)
-      messageStore.addMessage('Failed to add admin - ' + error.reason + ' ...')
-      throw error
-    }
+  // Get the allowance of an ERC20 asset.
+  async getERC20Allowance(asset: string) {
+    const erc20 = new ethers.Contract(
+      asset,
+      ["function allowance(address,address)"],
+      this.signer
+    );
+    return erc20.allowance(this.signer.getAddress(), l1BridgeAddress);
   }
 
-  async getPreviousWins() {
-    try {
-      const gameStore = useGameStore()
-      const challengeId = await this.getChallengeId()
-      let previousChallenges = []
-      for (let id = gameStore.isGameActive ? challengeId - 1 : challengeId; id >= 0; id--) {
-        const historyTx = await this.contract.getRevealedChallengeDetails(id)
+  // Approve an ERC20 asset.
+  async approveERC20(asset: string, amount: string) {
+    const erc20 = new ethers.Contract(
+      asset,
+      ["function approve(address,uint256)"],
+      this.signer
+    );
+    return erc20.approve(l1BridgeAddress, amount);
+  }
 
-        previousChallenges.push({
-          name: 'Challenge ' + id,
-          topGuessesArray: historyTx[0],
-          privateImageURL: historyTx[1]
-        })
-      }
-
-      return previousChallenges
-    } catch (error) {
-      console.error('Failed to preload guess history - ', error)
-    }
+  // Get the transaction count of the signer.
+  async getTransactionCount() {
+    return this.signer.getTransactionCount();
   }
 }

@@ -1,4 +1,5 @@
 import React from "react";
+import { ethers } from "ethers";
 
 export interface SeoProps {
   title: string;
@@ -123,7 +124,13 @@ export interface ResponseDataInterface<T> {
   success: boolean;
 }
 
-export interface WalletConnectionContextType {}
+export interface WalletConnectionContextType {
+  provider: any;
+  signer: any;
+  address: string | null;
+  setProvider: (newProvider: any) => void;
+  setAddress: (newAddress: string) => void;
+}
 
 export interface Props {
   children: React.ReactNode;

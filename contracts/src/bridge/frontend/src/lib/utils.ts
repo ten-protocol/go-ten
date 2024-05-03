@@ -20,3 +20,12 @@ export const { ethereum } =
 export const downloadMetaMask = () => {
   window ? window.open("https://metamask.io/download", "_blank") : null;
 };
+
+export function trackEvent(eventName: string, eventData: object) {
+  // @ts-ignore
+  if (!window.gtag) {
+    return;
+  }
+  // @ts-ignore
+  window.gtag("event", eventName, eventData);
+}

@@ -1,31 +1,51 @@
-import { createContext, useContext } from "react";
+import React, { createContext, useState, useContext, useEffect } from "react";
+import { ethers } from "ethers";
 import {
   WalletConnectionContextType,
   WalletConnectionProviderProps,
-} from "../../types";
+} from "@/src/types";
 
-const WalletConnectionContext =
-  createContext<WalletConnectionContextType | null>(null);
+const WalletContext = createContext<WalletConnectionContextType | null>(null);
 
-export const useWalletConnection = (): WalletConnectionContextType => {
-  const context = useContext(WalletConnectionContext);
+const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
+  const [provider, setProvider] = useState<any>(null);
+  const [signer, setSigner] = useState<any>(null);
+  const [address, setAddress] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (provider) {
+      const newSigner = new ethers.providers.Web3Provider(provider).getSigner();
+      setSigner(newSigner);
+    }
+  }, [provider]);
+
+  const handleSetProvider = (newProvider: any) => {
+    setProvider(newProvider);
+  };
+
+  const handleSetAddress = (newAddress: string) => {
+    setAddress(newAddress);
+  };
+
+  const value = {
+    provider,
+    signer,
+    address,
+    setProvider: handleSetProvider,
+    setAddress: handleSetAddress,
+  };
+
+  return (
+    <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
+  );
+};
+
+const useWalletStore = () => {
+  const context = useContext(WalletContext);
   if (!context) {
-    throw new Error(
-      "useWalletConnection must be used within a WalletConnectionProvider"
-    );
+    throw new Error("useWalletStore must be used within a WalletProvider");
   }
   return context;
 };
 
-export const WalletConnectionProvider = ({
-  children,
-}: WalletConnectionProviderProps) => {
-  const walletConnectionContextValue: WalletConnectionContextType = {};
-
-  return (
-    <WalletConnectionContext.Provider value={walletConnectionContextValue}>
-      {children}
-    </WalletConnectionContext.Provider>
-  );
-};
+export { WalletProvider, useWalletStore };
