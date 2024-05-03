@@ -3,10 +3,11 @@ package node
 import (
 	"fmt"
 	"github.com/sanity-io/litter"
-	"github.com/ten-protocol/go-ten/go/config"
-	"os"
-
 	"github.com/ten-protocol/go-ten/go/common/docker"
+	"github.com/ten-protocol/go-ten/go/config"
+	"net"
+	"os"
+	"strconv"
 )
 
 var (
@@ -118,16 +119,16 @@ func (d *DockerNode) startHost() error {
 		"/home/obscuro/go-obscuro/go/host/main/main",
 	}
 
-	if !d.Cfg.NodeSettings.UseInMemoryDB {
-		if d.Cfg.NodeSettings.PostgresDBHost == "" {
+	if !d.Cfg.HostConfig.UseInMemoryDB {
+		if d.Cfg.HostConfig.PostgresDBHost == "" {
 			panic("postgresDBHost required when useInMemoryDB is false")
 		}
 	}
 
 	exposedPorts := []int{
-		d.Cfg.NodeDetails.ClientRPCPortHTTP,
-		d.Cfg.NodeDetails.ClientRPCPortWS,
-		10000, // p2pBindAddress / hostP2PPort,
+		int(d.Cfg.HostConfig.ClientRPCPortHTTP),
+		int(d.Cfg.HostConfig.ClientRPCPortWS),
+		getPort(d.Cfg.HostConfig.P2PPublicAddress), // p2pBindAddress / hostP2PPort,
 	}
 
 	hostVolume := map[string]string{d.Cfg.NodeDetails.NodeName + "-host-volume": _hostDataDir}
@@ -270,4 +271,17 @@ func (d *DockerNode) appendConfigStaticFlagEnvOverrides(t config.TypeConfig, env
 		}
 	}
 	return envs
+}
+
+// getPort extracts the port from a host:port string
+func getPort(hostPort string) int {
+	_, _port, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		return 0
+	}
+	port, err := strconv.Atoi(_port)
+	if err != nil {
+		return 0
+	}
+	return port
 }
