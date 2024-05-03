@@ -1,29 +1,47 @@
 # A default configuration for TEN Host
-#hostID:                   calculated
+
+# Identity
 isGenesis:                 false
 nodeType:                  "validator"
-#hasClientRPCHTTP:         calculated
-clientRPCPortHTTP:         80
-#hasClientRPCWebsockets:   calculated
-clientRPCPortWS:           81
-clientRPCHost:             "0.0.0.0"
-enclaveRPCAddresses:       ["0.0.0.0:11000"]
-p2pBindAddress:            "0.0.0.0:10000"
-p2pPublicAddress:          "0.0.0.0:10000"
-l1WebsocketURL:            "ws://0.0.0.0:8546"
-enclaveRPCTimeout:         10
-l1RPCTimeout:              15
-p2pConnectionTimeout:      10
+privateKey:                "0000000000000000000000000000000000000000000000000000000000000001"
+#hostID:                   calculated
+
+# Network configuration
+l1StartHash:               ""
 managementContractAddress: ""
 messageBusAddress:         ""
+sequencerP2PAddress:       ""
+
+# L1 Details
+l1WebsocketURL:            "ws://0.0.0.0:8546"
+l1RPCTimeout:              15
+l1ChainID:                 1337
+l1BlockTime:               15
+
+# L2 Details
+tenChainID:                443
+batchInterval:             1
+maxBatchInterval:          1
+rollupInterval:            5
+maxRollupSize:             65536 # 1024 * 64,
+
+# Service Settings
+clientRPCPortHTTP:         80
+clientRPCPortWS:           81
+clientRPCHost:             "0.0.0.0"
+enclaveRPCAddresses:       ["0.0.0.0:11001"]
+p2pBindAddress:            "0.0.0.0:10000"
+p2pPublicAddress:          "0.0.0.0:10000"
+enclaveRPCTimeout:         10
+p2pConnectionTimeout:      10
+isInboundP2PDisabled:      false
+#hasClientRPCWebsockets:   calculated
+#hasClientRPCHTTP:         calculated
+
+# Extra Settings
 logLevel:                  3
 logPath:                   "sys_out"
-privateKey:                "0000000000000000000000000000000000000000000000000000000000000001"
-l1ChainID:                 1337
-tenChainID:                443
 profilerEnabled:           false
-l1StartHash:               ""
-sequencerID:               ""
 metricsEnabled:            true
 metricsHTTPPort:           14000
 useInMemoryDB:             true
@@ -31,9 +49,3 @@ levelDBPath:               "/data"
 postgresDBHost:            ""
 sqliteDBPath:              ""
 debugNamespaceEnabled:     false
-batchInterval:             1
-maxBatchInterval:          1
-rollupInterval:            5
-l1BlockTime:               15
-isInboundP2PDisabled:      false
-maxRollupSize:             65536 # 1024 * 64,

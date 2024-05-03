@@ -31,7 +31,7 @@ type EnclaveInputConfig struct {
 	ProfilerEnabled           bool   `yaml:"profilerEnabled"`
 	MinGasPrice               uint64 `yaml:"minGasPrice"`
 	MessageBusAddress         string `yaml:"messageBusAddress"`
-	SequencerP2PAddress       string `yaml:"SequencerP2PAddress"`
+	SequencerP2PAddress       string `yaml:"sequencerP2PAddress"`
 	TenGenesis                string `yaml:"tenGenesis"`
 	DebugNamespaceEnabled     bool   `yaml:"debugNamespaceEnabled"`
 	MaxBatchSize              uint64 `yaml:"maxBatchSize"`

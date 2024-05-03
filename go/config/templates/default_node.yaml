@@ -1,35 +1,39 @@
+# This is a template file for the node configuration
+
 networkConfig:            # NETWORK - There are fixed by your network you should not change
   l1StartHash:               "0xcb313b39ab33b15586f70662265c57455b6037530bfd5a006d4ca044da3f25a6"
+  l1ChainID:                 1337
   managementContractAddress: "0x8A63285Fa81eE2DDb42190480d01726816611a6C"
   messageBusAddress:         "0x250AA6244f03e5F38FdeC1806797a6a506822eec"
   sequencerP2PAddress:       "0x2fe9B92E12a8d94bfb2f19c19024B9554890C0CC"
 
 nodeDetails:              # Individual
-  nodeName:               "ten-node" # optional (custom short name - internal ref only)
+  nodeName:               "obscuronode" # optional (custom short name - internal ref only)
   hostID:                 "" # must override with public key
   privateKey:             "" # must override with private key matching hostID/public key
-  l1WebsocketURL:         "" # must override with L1 node WS (geth/infura etc.)
-  p2pPublicAddress:       "" # must override be sure this address:port is public accessible
-  p2pBindAddress:         "0.0.0.0:10000"
-  clientRPCPortHTTP:      80
-  clientRPCPortWS:        81
-  enclaveRPCAddresses:    ["0.0.0.0:11000"]
 
 nodeSettings:
   nodeType:               "validator"
   isSGXEnabled:           true # should be true for ITN
   isGenesis:              false
   pccsAddr:               "" # optional for attestation
-  debugNamespaceEnabled:  true
   enclaveDebug:           false
   logLevel:               3
-  profilerEnabled:        false
-  useInMemoryDB:          true # useInMemoryDB for host
-  postgresDBHost:         "" # only if `useInMemoryDB` set to false
+
+host:
+  l1WebsocketURL:         "" # must override with L1 node WS (geth/infura etc.)
+  p2pPublicAddress:       "0.0.0.0:11000" # must override be sure this address:port is public accessible
+  enclaveRPCTimeout:      10
+  p2pConnectionTimeout:   10
+  debugNamespaceEnabled:  true
+  useInMemoryDB:          true
+
+enclave:
+  address:                   "0.0.0.0:11001"
+  debugNamespaceEnabled:     false
 
 nodeImages:
   hostImage:              "testnetobscuronet.azurecr.io/obscuronet/sepolia_host:latest" # provided
   enclaveImage:           "testnetobscuronet.azurecr.io/obscuronet/sepolia_enclave:latest" # provided
   edgelessDBImage:        "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
-
 

@@ -19,31 +19,23 @@ type NodeConfig struct {
 	NodeDetails   NodeInputDetails   `yaml:"nodeDetails"`
 	NodeSettings  NodeInputSettings  `yaml:"nodeSettings"`
 	NodeImages    NodeInputImages    `yaml:"nodeImages"`
+	EnclaveConfig EnclaveInputConfig `yaml:"enclave"`
+	HostConfig    HostInputConfig    `yaml:"host"`
 }
 
 type NodeInputDetails struct {
-	NodeName            string   `yaml:"nodeName"`
-	HostID              string   `yaml:"hostID"`
-	PrivateKey          string   `yaml:"privateKey"`
-	L1WebsocketURL      string   `yaml:"l1WebsocketURL"`
-	P2pPublicAddress    string   `yaml:"p2pPublicAddress"`
-	P2pBindAddress      string   `yaml:"p2pBindAddress"`
-	ClientRPCPortHTTP   int      `yaml:"clientRPCPortHTTP"`
-	ClientRPCPortWS     int      `yaml:"clientRPCPortWS"`
-	EnclaveRPCAddresses []string `yaml:"enclaveRPCAddresses"`
+	NodeName   string `yaml:"nodeName"`
+	HostID     string `yaml:"hostID"`
+	PrivateKey string `yaml:"privateKey"`
 }
 
 type NodeInputSettings struct {
-	NodeType              string `yaml:"nodeType"`
-	IsSGXEnabled          bool   `yaml:"isSGXEnabled"`
-	IsGenesis             bool   `yaml:"isGenesis"`
-	PccsAddr              string `yaml:"pccsAddr"`
-	DebugNamespaceEnabled bool   `yaml:"debugNamespaceEnabled"`
-	EnclaveDebug          bool   `yaml:"enclaveDebug"`
-	LogLevel              int    `yaml:"logLevel"`
-	ProfilerEnabled       bool   `yaml:"profilerEnabled"`
-	UseInMemoryDB         bool   `yaml:"useInMemoryDB"`
-	PostgresDBHost        string `yaml:"postgresDBHost"`
+	NodeType     string `yaml:"nodeType"`
+	IsSGXEnabled bool   `yaml:"isSGXEnabled"`
+	IsGenesis    bool   `yaml:"isGenesis"`
+	PccsAddr     string `yaml:"pccsAddr"`
+	EnclaveDebug bool   `yaml:"enclaveDebug"`
+	LogLevel     int    `yaml:"logLevel"`
 }
 
 type NodeInputImages struct {
@@ -56,10 +48,11 @@ type NodeInputImages struct {
 // for an underlying `NetworkConfig` struct because typing only applies to the
 // derived types for HostConfig and EnclaveConfig
 type NetworkInputConfig struct {
+	L1StartHash               string `yaml:"l1StartHash"`
+	L1ChainID                 string `yaml:"l1ChainID"`
 	ManagementContractAddress string `yaml:"managementContractAddress"`
 	MessageBusAddress         string `yaml:"messageBusAddress"`
-	L1StartHash               string `yaml:"l1StartHash"`
-	SequencerID               string `yaml:"sequencerID"`
+	SequencerP2PAddress       string `yaml:"sequencerP2PAddress"`
 }
 
 func (p *HostInputConfig) GetNetwork() *NetworkInputConfig {

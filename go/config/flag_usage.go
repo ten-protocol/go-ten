@@ -34,6 +34,7 @@ const (
 	P2pPublicAddressFlag          = "p2pPublicAddress"
 	L1WebsocketURLFlag            = "l1WebsocketURL"
 	EnclaveRPCTimeoutFlag         = "enclaveRPCTimeout"
+	RPCTimeoutFlag                = "rpcTimeout"
 	L1RPCTimeoutFlag              = "l1RPCTimeout"
 	P2pConnectionTimeoutFlag      = "p2pConnectionTimeout"
 	PrivateKeyFlag                = "privateKey"
@@ -93,6 +94,7 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		LogLevelFlag:                  true,
 		LogPathFlag:                   true,
 		L1ChainIDFlag:                 true,
+		RPCTimeoutFlag:                true,
 		TenChainIDFlag:                true,
 		ProfilerEnabledFlag:           true,
 		MaxRollupSizeFlag:             true,
@@ -294,7 +296,8 @@ func FlagUsageMap() map[string]string {
 		P2pBindAddressFlag:            "The address where the p2p server is bound to. Defaults to 0.0.0.0:10000",
 		P2pPublicAddressFlag:          "The P2P address where the other servers should connect to. Defaults to 127.0.0.1:10000",
 		L1WebsocketURLFlag:            "The websocket RPC address the host can use for L1 requests",
-		EnclaveRPCTimeoutFlag:         "The timeout for host <-> enclave RPC communication",
+		EnclaveRPCTimeoutFlag:         "The timeout for host <-> enclave RPC communication - set in host",
+		RPCTimeoutFlag:                "The timeout for enclave <-> host RPC communication - set in enclave",
 		L1RPCTimeoutFlag:              "The timeout for connecting to, and communicating with, the Ethereum client",
 		P2pConnectionTimeoutFlag:      "The timeout for host <-> host P2P messaging",
 		PrivateKeyFlag:                "The private key for this node, deployer or service",
