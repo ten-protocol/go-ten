@@ -61,6 +61,7 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(ctx context.Context, b *comm
 	}
 
 	if len(rollups) > 1 {
+		// todo - we need to sort this out
 		rc.logger.Warn(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), b.Block.Hash()))
 	}
 
