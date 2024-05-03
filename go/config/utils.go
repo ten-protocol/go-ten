@@ -27,11 +27,12 @@ type Config interface{}
 // getTemplateFilePaths returns a map of the default static config per TypeConfig
 func getTemplateFilePaths() map[TypeConfig]string {
 	return map[TypeConfig]string{
-		Enclave: "templates/default_enclave_config.yaml",
-		Host:    "templates/default_host_config.yaml",
-		Network: "templates/ITN_network.yaml",
-		Node:    "templates/default_node.yaml",
-		Testnet: "templates/default_testnet.yaml",
+		Enclave:    "templates/default_enclave_config.yaml",
+		Host:       "templates/default_host_config.yaml",
+		Network:    "templates/ITN_network.yaml",
+		Node:       "templates/default_node.yaml",
+		Testnet:    "templates/default_testnet.yaml",
+		L1Deployer: "templates/supplemental/default_l1_deployer_config.yaml",
 	}
 }
 
@@ -70,6 +71,10 @@ func LoadConfigFromFile(t TypeConfig, configPath string) (Config, error) {
 		defaultConfig = &NetworkInputConfig{}
 	case Node:
 		defaultConfig = &NodeConfig{}
+	case Testnet:
+		defaultConfig = &TestnetConfig{}
+	case L1Deployer:
+		defaultConfig = &L1ContractDeployerConfig{}
 	default:
 		return nil, fmt.Errorf("invalid TypeConfig %s", t)
 	}

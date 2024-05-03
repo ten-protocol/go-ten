@@ -1,32 +1,15 @@
 package main
 
 import (
-	"flag"
+	"fmt"
+	"github.com/ten-protocol/go-ten/go/config"
 )
 
-// L1ContractDeployerConfigCLI represents the configurations passed into the deployer over CLI
-type L1ContractDeployerConfigCLI struct {
-	l1HTTPURL        string
-	privateKey       string
-	dockerImage      string
-	contractsEnvFile string
-}
-
-// ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
-func ParseConfigCLI() *L1ContractDeployerConfigCLI {
-	cfg := &L1ContractDeployerConfigCLI{}
-	flagUsageMap := getFlagUsageMap()
-
-	l1HTTPURL := flag.String(l1HTTPURLFlag, "http://eth2network:8025", flagUsageMap[l1HTTPURLFlag])
-	privateKey := flag.String(privateKeyFlag, "", flagUsageMap[privateKeyFlag])
-	dockerImage := flag.String(dockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest", flagUsageMap[dockerImageFlag])
-	contractsEnvFile := flag.String(contractsEnvFileFlag, "", flagUsageMap[contractsEnvFileFlag])
-	flag.Parse()
-
-	cfg.l1HTTPURL = *l1HTTPURL
-	cfg.privateKey = *privateKey
-	cfg.dockerImage = *dockerImage
-	cfg.contractsEnvFile = *contractsEnvFile
-
-	return cfg
+// ParseConfig returns an L1 Deployer connfig based the cli params and defaults.
+func ParseConfig(paths config.RunParams) (*config.L1ContractDeployerConfig, error) {
+	inputCfg, err := config.LoadDefaultInputConfig(config.L1Deployer, paths)
+	if err != nil {
+		panic(fmt.Errorf("issues loading default and override config from file. Cause: %w", err))
+	}
+	return inputCfg.(*config.L1ContractDeployerConfig), nil // assert
 }

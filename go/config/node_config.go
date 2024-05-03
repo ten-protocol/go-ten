@@ -81,6 +81,20 @@ func (n *NodeConfig) SetNetwork(config *NetworkInputConfig) {
 	}
 }
 
+func (n *NetworkInputConfig) GetNetwork() *NetworkInputConfig {
+	return n
+}
+
+func (n *NetworkInputConfig) SetNetwork(config *NetworkInputConfig) {
+	if config != nil {
+		n.L1StartHash = config.L1StartHash
+		n.L1ChainID = config.L1ChainID
+		n.ManagementContractAddress = config.ManagementContractAddress
+		n.MessageBusAddress = config.MessageBusAddress
+		n.SequencerP2PAddress = config.SequencerP2PAddress
+	}
+}
+
 func (n *TestnetConfig) GetNetwork() *NetworkInputConfig {
 	return &n.Network
 }

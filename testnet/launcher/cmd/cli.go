@@ -5,9 +5,9 @@ import (
 	"github.com/ten-protocol/go-ten/go/config"
 )
 
-// ParseConfig returns a NodeConfig based the cli params and defaults.
+// ParseConfig returns a TestNet config based the cli params and defaults.
 func ParseConfig(paths config.RunParams) (*config.TestnetConfig, error) {
-	inputCfg, err := config.LoadDefaultInputConfig(config.Node, paths)
+	inputCfg, err := config.LoadDefaultInputConfig(config.Testnet, paths)
 	if err != nil {
 		panic(fmt.Errorf("issues loading default and override config from file. Cause: %w", err))
 	}

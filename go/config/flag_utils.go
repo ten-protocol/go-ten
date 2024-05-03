@@ -181,6 +181,8 @@ func setupFlagsByType(fs *flag.FlagSet, t TypeConfig) error {
 			SetupFlagsFromStruct(&L2ContractDeployerConfig{}, fs, flagUsageMap)
 
 		}
+	case L1Deployer:
+		SetupFlagsFromStruct(&L1ContractDeployerConfig{}, fs, flagUsageMap)
 	default:
 		return fmt.Errorf("unknown TypeConfig %s", t.String())
 	}

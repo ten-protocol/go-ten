@@ -22,7 +22,13 @@ type ContractDeployer struct {
 	containerID string
 }
 
-func NewDockerContractDeployer(cfg *config.TestnetConfig) (*ContractDeployer, error) {
+func NewDockerContractDeployer(cfg *config.L1ContractDeployerConfig) (*ContractDeployer, error) {
+	return &ContractDeployer{
+		cfg: cfg,
+	}, nil // todo (@pedro) - add validation
+}
+
+func NewDockerContractDeployerFromTestnetConfig(cfg *config.TestnetConfig) (*ContractDeployer, error) {
 	return &ContractDeployer{
 		cfg:    &cfg.L1ContractDeployer,
 		netCfg: &cfg.Network,
@@ -56,10 +62,10 @@ func (n *ContractDeployer) Start() error {
             "accounts": [ "%s" ]
         }
     }
-`, n.cfg.L1HTTPURL, n.cfg.PrivateKey),
+`, n.cfg.L1HTTPurl, n.cfg.PrivateKey),
 	}
 
-	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.L1DeployerImage, cmds, ports, envs, nil, nil)
+	containerID, err := docker.StartNewContainer(n.cfg.ContainerName, n.cfg.L1DeployerImage, cmds, ports, envs, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -67,7 +73,7 @@ func (n *ContractDeployer) Start() error {
 	return nil
 }
 
-func (n *ContractDeployer) RetrieveL1ContractAddresses() (*config.NetworkInputConfig, error) {
+func (n *ContractDeployer) RetrieveL1ContractAddresses() (config.NetworkConfig, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return nil, err
@@ -131,11 +137,21 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*config.NetworkInputCo
 	}
 	l1BlockHash := readValue("L1Start", lines[2])
 
-	return &config.NetworkInputConfig{
+	network := &config.NetworkInputConfig{
 		ManagementContractAddress: managementAddr,
 		MessageBusAddress:         messageBusAddr,
 		L1StartHash:               l1BlockHash,
-	}, nil
+	}
+
+	// Builds up the network configuration for later use depending on how it was assembled
+	if n.netCfg != nil && n.netCfg.L1ChainID != "" {
+		network.L1ChainID = n.netCfg.L1ChainID
+	} else {
+		network.L1ChainID = "1337"
+		n.netCfg = network
+	}
+
+	return network, nil
 }
 
 func findAddress(line string) (string, error) {

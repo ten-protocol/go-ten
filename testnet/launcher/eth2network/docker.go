@@ -47,7 +47,7 @@ func (n *Eth2Network) Start() error {
 		exposedPorts = append(exposedPorts, n.cfg.GethWebsocketPort)
 	}
 
-	_, err := docker.StartNewContainer("eth2network", n.cfg.GethImage, cmds, exposedPorts, nil, nil, nil)
+	_, err := docker.StartNewContainer(n.cfg.ContainerName, n.cfg.GethImage, cmds, exposedPorts, nil, nil, nil)
 	return err
 }
 

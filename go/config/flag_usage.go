@@ -69,7 +69,7 @@ const (
 	GethImageFlag                 = "gethImage"
 	L1HTTPURLFlag                 = "l1HttpUrl"
 	L1DeployerImageFlag           = "l1DeployerImage"
-	ContractEnvsFileFlag          = "contractEnvsFile"
+	ContractEnvsFileFlag          = "contractsEnvFile"
 	L1PrivateKeyFlag              = "l1PrivateKey"
 	L2DeployerImageFlag           = "l2DeployerImage"
 	L2WebsocketURLFlag            = "l2WebsocketUrl"
@@ -81,6 +81,7 @@ const (
 	TenNodePortFlag               = "tenNodePort"
 	FaucetPortFlag                = "faucetPort"
 	FaucetImageFlag               = "faucetImage"
+	ContainerNameFlag             = "containerName"
 )
 
 var FlagsByService = map[TypeConfig]map[string]bool{
@@ -196,6 +197,7 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		GethPrefundedAddressesFlag: true,
 		GethNumNodesFlag:           true,
 		GethImageFlag:              true,
+		ContainerNameFlag:          true,
 	},
 	L1Deployer: {
 		DryRunFlag:                true,
@@ -207,6 +209,7 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		L1HTTPURLFlag:        true,
 		L1DeployerImageFlag:  true,
 		ContractEnvsFileFlag: true,
+		ContainerNameFlag:    true,
 	},
 	L2Deployer: {
 		DryRunFlag:                true,
@@ -221,6 +224,7 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		L2HOCPrivateKeyFlag: true,
 		L2POCPrivateKeyFlag: true,
 		FaucetFundingFlag:   true,
+		ContainerNameFlag:   true,
 	},
 	Faucet: {
 		DryRunFlag:     true,
@@ -228,10 +232,11 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		ConfigFlag:     true,
 		PrivateKeyFlag: true,
 		//
-		TenNodeHostFlag: true,
-		TenNodePortFlag: true,
-		FaucetPortFlag:  true,
-		FaucetImageFlag: true,
+		TenNodeHostFlag:   true,
+		TenNodePortFlag:   true,
+		FaucetPortFlag:    true,
+		FaucetImageFlag:   true,
+		ContainerNameFlag: true,
 	},
 }
 
@@ -330,5 +335,6 @@ func FlagUsageMap() map[string]string {
 		TenNodePortFlag:               "The port of the TEN node for the faucet",
 		FaucetPortFlag:                "The port on which the faucet service is listening",
 		FaucetImageFlag:               "The docker image for the faucet service",
+		ContainerNameFlag:             "The name of the container",
 	}
 }

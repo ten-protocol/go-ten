@@ -21,7 +21,7 @@ import (
 
 const _networkName = "node_network"
 
-// volumes is a map from volume name to dir name it will have within the container. If a volume doesn't exist this will create it.
+// StartNewContainer volumes is a map from volume name to dir name it will have within the container. If a volume doesn't exist this will create it.
 func StartNewContainer(containerName, image string, cmds []string, ports []int, envs, devices, volumes map[string]string) (string, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv)
@@ -134,6 +134,35 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 
 	_, _ = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
 	return resp.ID, nil
+}
+
+// RemoveContainer stops and removes a container with the given name (if exists)
+func RemoveContainer(containerName string) error {
+	if ContainerExists(containerName) {
+		err := StopAndRemove(containerName)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ContainerExists checks if a container with the given name exists
+func ContainerExists(containerName string) bool {
+	ctx := context.Background()
+	cli, _ := client.NewClientWithOpts(client.FromEnv)
+	defer cli.Close()
+
+	containers, _ := cli.ContainerList(ctx, types.ContainerListOptions{All: true})
+
+	for _, c := range containers {
+		for _, name := range c.Names {
+			if name == "/"+containerName {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func StopAndRemove(containerName string) error {
