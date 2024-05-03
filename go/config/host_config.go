@@ -32,7 +32,7 @@ type HostInputConfig struct {
 	TenChainID                int64    `yaml:"tenChainID"`
 	ProfilerEnabled           bool     `yaml:"profilerEnabled"`
 	L1StartHash               string   `yaml:"l1StartHash"`
-	SequencerID               string   `yaml:"sequencerID"`
+	SequencerP2PAddress       string   `yaml:"sequencerP2PAddress"`
 	MetricsEnabled            bool     `yaml:"metricsEnabled"`
 	MetricsHTTPPort           uint     `yaml:"metricsHTTPPort"`
 	UseInMemoryDB             bool     `yaml:"useInMemoryDB"`
@@ -71,6 +71,7 @@ func (p *HostInputConfig) ToHostConfig() (*HostConfig, error) {
 		PrivateKey:            p.PrivateKey,
 		L1ChainID:             p.L1ChainID,
 		TenChainID:            p.TenChainID,
+		SequencerP2PAddress:   p.SequencerP2PAddress,
 		ProfilerEnabled:       p.ProfilerEnabled,
 		MetricsEnabled:        p.MetricsEnabled,
 		MetricsHTTPPort:       p.MetricsHTTPPort,
@@ -99,7 +100,6 @@ func (p *HostInputConfig) ToHostConfig() (*HostConfig, error) {
 	hostConfig.ManagementContractAddress = gethcommon.HexToAddress(p.ManagementContractAddress)
 	hostConfig.MessageBusAddress = gethcommon.HexToAddress(p.MessageBusAddress)
 	hostConfig.L1StartHash = gethcommon.HexToHash(p.L1StartHash)
-	hostConfig.SequencerID = gethcommon.HexToAddress(p.SequencerID)
 
 	return hostConfig, nil
 }

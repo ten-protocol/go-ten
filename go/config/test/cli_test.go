@@ -18,7 +18,7 @@ const overrideConfig = "/partial.yaml"
 func TestHostConfigIsParsedFromYamlFileIfConfigFlagIsPresent(t *testing.T) {
 	resetFlagSet()
 
-	l1WebsocketURL := "ws://127.0.0.1:8546"
+	l1WebsocketURL := "ws://0.0.0.0:8546"
 	logLevel := 3
 
 	// Back up the original os.Args to be available after unit test

@@ -24,7 +24,7 @@ const (
 	DebugNamespaceEnabledFlag     = "debugNamespaceEnabled"
 	EnclaveDebugFlag              = "enclaveDebug"
 	UseInMemoryDBFlag             = "useInMemoryDB"
-	SequencerIDFlag               = "sequencerID"
+	SequencerP2PAddressFlag       = "sequencerP2PAddress"
 	IsGenesisFlag                 = "isGenesis"
 	ClientRPCPortHTTPFlag         = "clientRPCPortHTTP"
 	ClientRPCPortWSFlag           = "clientRPCPortWS"
@@ -99,7 +99,7 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		SQLiteDBPathFlag:              true,
 		DebugNamespaceEnabledFlag:     true,
 		UseInMemoryDBFlag:             true,
-		SequencerIDFlag:               true,
+		SequencerP2PAddressFlag:       true,
 		//
 		HostIDFlag:                 true,
 		HostAddressFlag:            true,
@@ -132,7 +132,7 @@ var FlagsByService = map[TypeConfig]map[string]bool{
 		SQLiteDBPathFlag:              true,
 		DebugNamespaceEnabledFlag:     true,
 		UseInMemoryDBFlag:             true,
-		SequencerIDFlag:               true,
+		SequencerP2PAddressFlag:       true,
 		//
 		IsGenesisFlag:            true,
 		ClientRPCPortHTTPFlag:    true,
@@ -271,7 +271,7 @@ func FlagUsageMap() map[string]string {
 		SQLiteDBPathFlag:              "Filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or if using InMemory DB or if using attestation/EdgelessDB)",
 		MinGasPriceFlag:               "The minimum gas price for mining a transaction",
 		MessageBusAddressFlag:         "The address of the L1 message bus contract owned by the management contract.",
-		SequencerIDFlag:               "The 20 bytes of the address of the sequencer for this network",
+		SequencerP2PAddressFlag:       "The 20 bytes of the address of the sequencer for this network",
 		MaxBatchSizeFlag:              "The maximum size a batch is allowed to reach uncompressed",
 		MaxRollupSizeFlag:             "The maximum size a rollup is allowed to reach",
 		L2BaseFeeFlag:                 "Base gas fee",

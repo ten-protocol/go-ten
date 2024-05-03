@@ -22,7 +22,7 @@ networkConfig:
   l1StartHash: # Calculated by L1 Contract Deployer
   managementContractAddress: "0x51D43a3Ca257584E770B6188232b199E76B022A2"
   messageBusAddress:         "0xDaBD89EEA0f08B602Ec509c3C608Cb8ED095249C"
-  sequencerID:               "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
+  sequencerP2PAddress:       "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
 
 nodes:
   - sequencer:

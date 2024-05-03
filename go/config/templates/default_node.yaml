@@ -2,7 +2,7 @@ networkConfig:            # NETWORK - There are fixed by your network you should
   l1StartHash:               "0xcb313b39ab33b15586f70662265c57455b6037530bfd5a006d4ca044da3f25a6"
   managementContractAddress: "0x8A63285Fa81eE2DDb42190480d01726816611a6C"
   messageBusAddress:         "0x250AA6244f03e5F38FdeC1806797a6a506822eec"
-  sequencerID:               "0x2fe9B92E12a8d94bfb2f19c19024B9554890C0CC"
+  sequencerP2PAddress:       "0x2fe9B92E12a8d94bfb2f19c19024B9554890C0CC"
 
 nodeDetails:              # Individual
   nodeName:               "ten-node" # optional (custom short name - internal ref only)

@@ -3,10 +3,6 @@ package config
 import (
 	"encoding/base64"
 	"fmt"
-	"math/big"
-	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -35,7 +31,7 @@ type EnclaveInputConfig struct {
 	ProfilerEnabled           bool   `yaml:"profilerEnabled"`
 	MinGasPrice               uint64 `yaml:"minGasPrice"`
 	MessageBusAddress         string `yaml:"messageBusAddress"`
-	SequencerID               string `yaml:"sequencerID"`
+	SequencerP2PAddress       string `yaml:"SequencerP2PAddress"`
 	TenGenesis                string `yaml:"tenGenesis"`
 	DebugNamespaceEnabled     bool   `yaml:"debugNamespaceEnabled"`
 	MaxBatchSize              uint64 `yaml:"maxBatchSize"`
@@ -44,6 +40,7 @@ type EnclaveInputConfig struct {
 	BaseFee                   uint64 `yaml:"l2BaseFee"`
 	GasBatchExecutionLimit    uint64 `yaml:"gasBatchExecutionLimit"`
 	GasLocalExecutionCap      uint64 `yaml:"gasLocalExecutionCap"`
+	RPCTimeout                int    `yaml:"rpcTimeout"`
 }
 
 // ToEnclaveConfig Generates an EnclaveConfig from flags or yaml to one with proper typing
@@ -68,6 +65,7 @@ func (p *EnclaveInputConfig) ToEnclaveConfig() (*EnclaveConfig, error) {
 		EdgelessDBHost:         p.EdgelessDBHost,
 		SqliteDBPath:           p.SqliteDBPath,
 		ProfilerEnabled:        p.ProfilerEnabled,
+		SequencerP2PAddress:    p.SequencerP2PAddress,
 		TenGenesis:             p.TenGenesis,
 		DebugNamespaceEnabled:  p.DebugNamespaceEnabled,
 		MaxBatchSize:           p.MaxBatchSize,
@@ -86,7 +84,6 @@ func (p *EnclaveInputConfig) ToEnclaveConfig() (*EnclaveConfig, error) {
 	enclaveConfig.HostID = gethcommon.HexToAddress(p.HostID)
 	enclaveConfig.ManagementContractAddress = gethcommon.HexToAddress(p.ManagementContractAddress)
 	enclaveConfig.MessageBusAddress = gethcommon.HexToAddress(p.MessageBusAddress)
-	enclaveConfig.SequencerID = gethcommon.HexToAddress(p.SequencerID)
 	enclaveConfig.GasPaymentAddress = gethcommon.HexToAddress(p.GasPaymentAddress)
 
 	// protocol params or override
@@ -98,6 +95,8 @@ func (p *EnclaveInputConfig) ToEnclaveConfig() (*EnclaveConfig, error) {
 	if p.BaseFee > 0 {
 		enclaveConfig.BaseFee = new(big.Int).SetUint64(p.BaseFee)
 	}
+
+	enclaveConfig.RPCTimeout = time.Duration(p.RPCTimeout) * time.Second
 
 	return enclaveConfig, nil
 }
@@ -143,7 +142,7 @@ type EnclaveConfig struct {
 	MessageBusAddress gethcommon.Address
 	// P2P address for validators to connect to the sequencer for live batch data
 	SequencerP2PAddress string
-	// A json string that specifies the prefunded addresses at the genesis of the Obscuro network
+	// A json string that specifies the prefunded addresses at the genesis of the TEN network
 	TenGenesis string
 	// Whether debug calls are available
 	DebugNamespaceEnabled bool
@@ -167,4 +166,8 @@ type EnclaveConfig struct {
 	GasBatchExecutionLimit uint64
 	// GasLocalExecutionCapFlag default is same value as `GasBatchExecutionLimit`
 	GasLocalExecutionCap uint64
+
+	// RPCTimeout - calls that are longer than this will be cancelled, to prevent resource starvation
+	// normally, the context is propagated from the host, but in some cases ( like the evm, we have to create a context)
+	RPCTimeout time.Duration
 }

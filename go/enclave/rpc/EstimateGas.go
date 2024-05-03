@@ -94,7 +94,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	// TODO: Change to fixed time period quotes, rather than this.
 	publishingGas = publishingGas.Mul(publishingGas, gethcommon.Big2)
 
-	executionGasEstimate, err := rpc.doEstimateGas(builder.ctx, txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
+	executionGasEstimate, err := rpc.doEstimateGas(builder.ctx, txArgs, blockNumber, rpc.config.GasLocalExecutionCap)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
