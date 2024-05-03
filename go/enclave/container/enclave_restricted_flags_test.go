@@ -18,7 +18,7 @@ func setupEnv(key, value string) {
 
 // Helper function to clean up environment
 func cleanupEnv(envVars map[string]string) {
-	for eFlag, _ := range envVars {
+	for eFlag := range envVars {
 		targetEnvVar := "EDG_" + strings.ToUpper(eFlag)
 		unSetHelper(targetEnvVar)
 	}
@@ -44,7 +44,7 @@ func TestRetrieveOrSetEnclaveRestrictedFlags_TestMode(t *testing.T) {
 	resultCfg, err := retrieveOrSetEnclaveRestrictedFlags(cfg)
 
 	// Assertion - all EGD_<RESTRICTED> env_vars should be unset
-	for eFlag, _ := range config.EnclaveRestrictedFlags {
+	for eFlag := range config.EnclaveRestrictedFlags {
 		targetEnvVar := "EDG_" + strings.ToUpper(eFlag)
 		val := os.Getenv(targetEnvVar)
 		assert.Equal(t, "", val, targetEnvVar+" should not be set.")
@@ -81,7 +81,7 @@ func TestRetrieveOrSetEnclaveRestrictedFlags_DefaultValues(t *testing.T) {
 	resultCfg, err := retrieveOrSetEnclaveRestrictedFlags(cfg)
 
 	// Assertion - all EGD_<RESTRICTED> env_vars should be set to the default values.
-	for eFlag, _ := range config.EnclaveRestrictedFlags {
+	for eFlag := range config.EnclaveRestrictedFlags {
 		targetEnvVar := "EDG_" + strings.ToUpper(eFlag)
 		val := os.Getenv(targetEnvVar)
 		switch strings.ToUpper(eFlag) {
@@ -136,7 +136,7 @@ func TestRetrieveOrSetEnclaveRestrictedFlags_SetEnvVars(t *testing.T) {
 	resultCfg, _ := retrieveOrSetEnclaveRestrictedFlags(cfg)
 
 	// Assertion - all EGD_<RESTRICTED> env_vars should be set with partial overrides.
-	for eFlag, _ := range config.EnclaveRestrictedFlags {
+	for eFlag := range config.EnclaveRestrictedFlags {
 		targetEnvVar := "EDG_" + strings.ToUpper(eFlag)
 		val := os.Getenv(targetEnvVar)
 		switch strings.ToUpper(eFlag) {
