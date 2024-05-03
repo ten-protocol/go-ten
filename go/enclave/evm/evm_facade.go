@@ -1,13 +1,19 @@
 package evm
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
+	_ "unsafe"
+
+	"github.com/ethereum/go-ethereum/core/tracing"
+	"github.com/holiman/uint256"
+
+	"github.com/ten-protocol/go-ten/go/config"
 
 	// unsafe package imported in order to link to a private function in go-ethereum.
 	// This allows us to customize the message generated from a signed transaction and inject custom gas logic.
-	_ "unsafe"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -34,24 +40,26 @@ import (
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
 func ExecuteTransactions(
+	ctx context.Context,
 	txs common.L2PricedTransactions,
 	s *state.StateDB,
 	header *common.BatchHeader,
 	storage storage.Storage,
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
+	config config.EnclaveConfig,
 	fromTxIndex int,
 	noBaseFee bool,
 	batchGasLimit uint64,
 	logger gethlog.Logger,
 ) map[common.TxHash]interface{} { // todo - return error
-	chain, vmCfg := initParams(storage, gethEncodingService, noBaseFee, logger)
+	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, logger)
 	gp := gethcore.GasPool(batchGasLimit)
 	zero := uint64(0)
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
 
-	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(header)
+	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
 		logger.Crit("Could not convert to eth header", log.ErrKey, err)
 		return nil
@@ -93,8 +101,12 @@ func ExecuteTransactions(
 	return result
 }
 
-//go:linkname applyTransaction github.com/ethereum/go-ethereum/core.applyTransaction
-func applyTransaction(msg *gethcore.Message, config *params.ChainConfig, gp *gethcore.GasPool, statedb *state.StateDB, blockNumber *big.Int, blockHash gethcommon.Hash, tx *types.Transaction, usedGas *uint64, evm *vm.EVM) (*types.Receipt, error)
+const (
+	BalanceDecreaseL1Payment       tracing.BalanceChangeReason = 100
+	BalanceIncreaseL1Payment       tracing.BalanceChangeReason = 101
+	BalanceRevertDecreaseL1Payment tracing.BalanceChangeReason = 102
+	BalanceRevertIncreaseL1Payment tracing.BalanceChangeReason = 103
+)
 
 func executeTransaction(
 	s *state.StateDB,
@@ -158,21 +170,21 @@ func executeTransaction(
 
 			// Remove the l1 cost from the sender
 			// and pay it to the coinbase of the batch
-			statedb.SubBalance(msg.From, l1cost)
-			statedb.AddBalance(header.Coinbase, l1cost)
+			statedb.SubBalance(msg.From, uint256.MustFromBig(l1cost), BalanceDecreaseL1Payment)
+			statedb.AddBalance(header.Coinbase, uint256.MustFromBig(l1cost), BalanceIncreaseL1Payment)
 		}
 
 		// Create a new context to be used in the EVM environment
 		blockContext := gethcore.NewEVMBlockContext(header, bc, author)
 		vmenv := vm.NewEVM(blockContext, vm.TxContext{BlobHashes: tx.Tx.BlobHashes(), GasPrice: header.BaseFee}, statedb, config, cfg)
 		var receipt *types.Receipt
-		receipt, err = applyTransaction(msg, config, gp, statedb, header.Number, header.Hash(), tx.Tx, usedGas, vmenv)
+		receipt, err = gethcore.ApplyTransactionWithEVM(msg, config, gp, statedb, header.Number, header.Hash(), tx.Tx, usedGas, vmenv)
 		if err != nil {
 			// If the transaction has l1 cost, then revert the funds exchange
 			// as it will not be published on error (no receipt condition)
 			if hasL1Cost {
-				statedb.SubBalance(header.Coinbase, l1cost)
-				statedb.AddBalance(msg.From, l1cost)
+				statedb.SubBalance(header.Coinbase, uint256.MustFromBig(l1cost), BalanceRevertIncreaseL1Payment)
+				statedb.AddBalance(msg.From, uint256.MustFromBig(l1cost), BalanceRevertDecreaseL1Payment)
 			}
 			return receipt, err
 		}
@@ -184,7 +196,7 @@ func executeTransaction(
 			executionGasCost := big.NewInt(0).Mul(gasUsed, header.BaseFee)
 			// As the baseFee is burned, we add it back to the coinbase.
 			// Geth should automatically add the tips.
-			statedb.AddBalance(header.Coinbase, executionGasCost)
+			statedb.AddBalance(header.Coinbase, uint256.MustFromBig(executionGasCost), tracing.BalanceDecreaseGasBuy)
 		}
 		receipt.GasUsed += l1Gas.Uint64()
 
@@ -213,23 +225,28 @@ func executeTransaction(
 }
 
 func logReceipt(r *types.Receipt, logger gethlog.Logger) {
-	logger.Trace("Receipt", log.TxKey, r.TxHash, "Result", gethlog.Lazy{Fn: func() string {
-		receiptJSON, err := r.MarshalJSON()
-		if err != nil {
-			if r.Status == types.ReceiptStatusFailed {
-				return "Unsuccessful (status != 1) (but could not print receipt as JSON)"
-			}
-			return "Successfully executed (but could not print receipt as JSON)"
-		}
+	if logger.Enabled(context.Background(), gethlog.LevelTrace) {
+		logger.Trace("Receipt", log.TxKey, r.TxHash, "Result", receiptToString(r))
+	}
+}
+
+func receiptToString(r *types.Receipt) string {
+	receiptJSON, err := r.MarshalJSON()
+	if err != nil {
 		if r.Status == types.ReceiptStatusFailed {
-			return fmt.Sprintf("Unsuccessful (status != 1). Receipt: %s", string(receiptJSON))
+			return "Unsuccessful (status != 1) (but could not print receipt as JSON)"
 		}
-		return fmt.Sprintf("Successfully executed. Receipt: %s", string(receiptJSON))
-	}})
+		return "Successfully executed (but could not print receipt as JSON)"
+	}
+	if r.Status == types.ReceiptStatusFailed {
+		return fmt.Sprintf("Unsuccessful (status != 1). Receipt: %s", string(receiptJSON))
+	}
+	return fmt.Sprintf("Successfully executed. Receipt: %s", string(receiptJSON))
 }
 
 // ExecuteObsCall - executes the eth_call call
 func ExecuteObsCall(
+	ctx context.Context,
 	msg *gethcore.Message,
 	s *state.StateDB,
 	header *common.BatchHeader,
@@ -237,6 +254,7 @@ func ExecuteObsCall(
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
 	gasEstimationCap uint64,
+	config config.EnclaveConfig,
 	logger gethlog.Logger,
 ) (*gethcore.ExecutionResult, error) {
 	noBaseFee := true
@@ -248,9 +266,9 @@ func ExecuteObsCall(
 
 	gp := gethcore.GasPool(gasEstimationCap)
 	gp.SetGas(gasEstimationCap)
-	chain, vmCfg := initParams(storage, gethEncodingService, noBaseFee, nil)
+	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, nil)
 
-	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(header)
+	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
 		return nil, err
 	}
@@ -285,11 +303,11 @@ func ExecuteObsCall(
 	return result, nil
 }
 
-func initParams(storage storage.Storage, gethEncodingService gethencoding.EncodingService, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {
+func initParams(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config config.EnclaveConfig, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {
 	vmCfg := vm.Config{
 		NoBaseFee: noBaseFee,
 	}
-	return NewObscuroChainContext(storage, gethEncodingService, l), vmCfg
+	return NewObscuroChainContext(storage, gethEncodingService, config, l), vmCfg
 }
 
 func newErrorWithReasonAndCode(err error) error {

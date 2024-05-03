@@ -43,7 +43,7 @@ func GetBalanceValidate(reqParams []any, builder *CallBuilder[BalanceReq, hexuti
 }
 
 func GetBalanceExecute(builder *CallBuilder[BalanceReq, hexutil.Big], rpc *EncryptionManager) error {
-	acctOwner, err := rpc.chain.AccountOwner(*builder.Param.Addr, builder.Param.Block.BlockNumber)
+	acctOwner, err := rpc.chain.AccountOwner(builder.ctx, *builder.Param.Addr, builder.Param.Block.BlockNumber)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func GetBalanceExecute(builder *CallBuilder[BalanceReq, hexutil.Big], rpc *Encry
 		return nil
 	}
 
-	balance, err := rpc.chain.GetBalanceAtBlock(*builder.Param.Addr, builder.Param.Block.BlockNumber)
+	balance, err := rpc.chain.GetBalanceAtBlock(builder.ctx, *builder.Param.Addr, builder.Param.Block.BlockNumber)
 	if err != nil {
 		return fmt.Errorf("unable to get balance - %w", err)
 	}

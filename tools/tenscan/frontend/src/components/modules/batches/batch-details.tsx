@@ -1,7 +1,7 @@
 import { Separator } from "@/src/components/ui/separator";
 import TruncatedAddress from "../common/truncated-address";
 import KeyValueItem, { KeyValueList } from "@/src/components/ui/key-value";
-import { formatTimeAgo } from "@/src/lib/utils";
+import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import { Badge } from "@/src/components/ui/badge";
 import { BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
 
@@ -59,11 +59,11 @@ export function BatchDetailsComponent({
         />
         <KeyValueItem
           label="Gas Limit"
-          value={Number(batchDetails?.Header?.gasLimit)}
+          value={formatNumber(batchDetails?.Header?.gasLimit)}
         />
         <KeyValueItem
           label="Gas Used"
-          value={Number(batchDetails?.Header?.gasUsed)}
+          value={formatNumber(batchDetails?.Header?.gasUsed)}
         />
         <KeyValueItem
           label="Base Fee"
@@ -79,7 +79,7 @@ export function BatchDetailsComponent({
         />
         <KeyValueItem
           label="Inbound Cross Chain Height"
-          value={batchDetails?.Header?.inboundCrossChainHeight}
+          value={Number(batchDetails?.Header?.inboundCrossChainHeight)}
         />
         <KeyValueItem
           label="Transfers Tree"
@@ -93,7 +93,7 @@ export function BatchDetailsComponent({
         />
         <KeyValueItem
           label="Base Fee Per Gas"
-          value={Number(batchDetails?.Header?.baseFeePerGas)}
+          value={formatNumber(batchDetails?.Header?.baseFeePerGas)}
           isLastItem
         />
       </KeyValueList>

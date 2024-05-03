@@ -13,7 +13,7 @@ export function RecentBlocks({ blocks }: { blocks: any }) {
           </Avatar>
           <div className="ml-4 space-y-1">
             <p className="text-sm font-medium leading-none">
-              #{+block?.blockHeader?.number}
+              #{Number(block?.blockHeader?.number)}
             </p>
             <p className="text-sm text-muted-foreground word-break-all">
               {formatTimeAgo(block?.blockHeader?.timestamp)}

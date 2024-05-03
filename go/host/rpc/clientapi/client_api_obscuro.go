@@ -1,6 +1,8 @@
 package clientapi
 
 import (
+	"context"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/host"
@@ -18,8 +20,8 @@ func NewObscuroAPI(host host.Host) *ObscuroAPI {
 }
 
 // Health returns the health status of obscuro host + enclave + db
-func (api *ObscuroAPI) Health() (*host.HealthCheck, error) {
-	return api.host.HealthCheck()
+func (api *ObscuroAPI) Health(ctx context.Context) (*host.HealthCheck, error) {
+	return api.host.HealthCheck(ctx)
 }
 
 // Config returns the config status of obscuro host + enclave + db
@@ -35,7 +37,6 @@ func (api *ObscuroAPI) Config() (*ChecksumFormattedObscuroNetworkConfig, error) 
 type ChecksumFormattedObscuroNetworkConfig struct {
 	ManagementContractAddress gethcommon.AddressEIP55
 	L1StartHash               gethcommon.Hash
-	SequencerID               gethcommon.AddressEIP55
 	MessageBusAddress         gethcommon.AddressEIP55
 	L2MessageBusAddress       gethcommon.AddressEIP55
 	ImportantContracts        map[string]gethcommon.AddressEIP55 // map of contract name to address
@@ -49,7 +50,6 @@ func checksumFormatted(info *common.ObscuroNetworkInfo) *ChecksumFormattedObscur
 	return &ChecksumFormattedObscuroNetworkConfig{
 		ManagementContractAddress: gethcommon.AddressEIP55(info.ManagementContractAddress),
 		L1StartHash:               info.L1StartHash,
-		SequencerID:               gethcommon.AddressEIP55(info.SequencerID),
 		MessageBusAddress:         gethcommon.AddressEIP55(info.MessageBusAddress),
 		L2MessageBusAddress:       gethcommon.AddressEIP55(info.L2MessageBusAddress),
 		ImportantContracts:        importantContracts,

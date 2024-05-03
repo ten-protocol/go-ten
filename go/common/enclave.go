@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"encoding/json"
 	"math/big"
 
@@ -34,19 +35,19 @@ type Enclave interface {
 	EnclaveScan
 
 	// Status checks whether the enclave is ready to process requests - only implemented by the RPC layer
-	Status() (Status, SystemError)
+	Status(context.Context) (Status, SystemError)
 
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
-	Attestation() (*AttestationReport, SystemError)
+	Attestation(context.Context) (*AttestationReport, SystemError)
 
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-	GenerateSecret() (EncryptedSharedEnclaveSecret, SystemError)
+	GenerateSecret(context.Context) (EncryptedSharedEnclaveSecret, SystemError)
 
 	// InitEnclave - initialise an enclave with a seed received by another enclave
-	InitEnclave(secret EncryptedSharedEnclaveSecret) SystemError
+	InitEnclave(ctx context.Context, secret EncryptedSharedEnclaveSecret) SystemError
 
 	// EnclaveID - returns the enclave's ID
-	EnclaveID() (EnclaveID, SystemError)
+	EnclaveID(context.Context) (EnclaveID, SystemError)
 
 	// SubmitL1Block - Used for the host to submit L1 blocks to the enclave, these may be:
 	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
@@ -54,41 +55,41 @@ type Enclave interface {
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitL1Block(block L1Block, receipts L1Receipts, isLatest bool) (*BlockSubmissionResponse, SystemError)
+	SubmitL1Block(ctx context.Context, block *L1Block, receipts L1Receipts, isLatest bool) (*BlockSubmissionResponse, SystemError)
 
 	// SubmitTx - user transactions
-	SubmitTx(tx EncryptedTx) (*responses.RawTx, SystemError)
+	SubmitTx(ctx context.Context, tx EncryptedTx) (*responses.RawTx, SystemError)
 
 	// SubmitBatch submits a batch received from the sequencer for processing.
-	SubmitBatch(batch *ExtBatch) SystemError
+	SubmitBatch(ctx context.Context, batch *ExtBatch) SystemError
 
 	// ObsCall - Execute a smart contract to retrieve data. The equivalent of "Eth_call"
 	// Todo - return the result with a block delay. To prevent frontrunning.
-	ObsCall(encryptedParams EncryptedParamsCall) (*responses.Call, SystemError)
+	ObsCall(ctx context.Context, encryptedParams EncryptedParamsCall) (*responses.Call, SystemError)
 
 	// GetTransactionCount returns the nonce of the wallet with the given address (encrypted with the acc viewing key)
-	GetTransactionCount(encryptedParams EncryptedParamsGetTxCount) (*responses.TxCount, SystemError)
+	GetTransactionCount(ctx context.Context, encryptedParams EncryptedParamsGetTxCount) (*responses.TxCount, SystemError)
 
 	// Stop gracefully stops the enclave
 	Stop() SystemError
 
 	// GetTransaction returns a transaction in JSON format, encrypted with the viewing key for the transaction's `from` field.
-	GetTransaction(encryptedParams EncryptedParamsGetTxByHash) (*responses.TxByHash, SystemError)
+	GetTransaction(ctx context.Context, encryptedParams EncryptedParamsGetTxByHash) (*responses.TxByHash, SystemError)
 
 	// GetTransactionReceipt returns a transaction receipt given its signed hash, or nil if the transaction is unknown
-	GetTransactionReceipt(encryptedParams EncryptedParamsGetTxReceipt) (*responses.TxReceipt, SystemError)
+	GetTransactionReceipt(ctx context.Context, encryptedParams EncryptedParamsGetTxReceipt) (*responses.TxReceipt, SystemError)
 
 	// GetBalance returns the balance of the address on the Obscuro network, encrypted with the viewing key for the
 	// address.
-	GetBalance(encryptedParams EncryptedParamsGetBalance) (*responses.Balance, SystemError)
+	GetBalance(ctx context.Context, encryptedParams EncryptedParamsGetBalance) (*responses.Balance, SystemError)
 
 	// GetCode returns the code stored at the given address in the state for the given rollup hash.
-	GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, SystemError)
+	GetCode(ctx context.Context, address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, SystemError)
 
 	// Subscribe adds a log subscription to the enclave under the given ID, provided the request is authenticated
 	// correctly. The events will be populated in the BlockSubmissionResponse. If there is an existing subscription
 	// with the given ID, it is overwritten.
-	Subscribe(id rpc.ID, encryptedParams EncryptedParamsLogSubscription) SystemError
+	Subscribe(ctx context.Context, id rpc.ID, encryptedParams EncryptedParamsLogSubscription) SystemError
 
 	// Unsubscribe removes the log subscription with the given ID from the enclave. If there is no subscription with
 	// the given ID, nothing is deleted.
@@ -98,54 +99,54 @@ type Enclave interface {
 	StopClient() SystemError
 
 	// EstimateGas tries to estimate the gas needed to execute a specific transaction based on the pending state.
-	EstimateGas(encryptedParams EncryptedParamsEstimateGas) (*responses.Gas, SystemError)
+	EstimateGas(ctx context.Context, encryptedParams EncryptedParamsEstimateGas) (*responses.Gas, SystemError)
 
 	// GetLogs returns all the logs matching the filter.
-	GetLogs(encryptedParams EncryptedParamsGetLogs) (*responses.Logs, SystemError)
+	GetLogs(ctx context.Context, encryptedParams EncryptedParamsGetLogs) (*responses.Logs, SystemError)
 
 	// HealthCheck returns whether the enclave is in a healthy state
-	HealthCheck() (bool, SystemError)
+	HealthCheck(context.Context) (bool, SystemError)
 
 	// GetBatch - retrieve a batch if existing within the enclave db.
-	GetBatch(hash L2BatchHash) (*ExtBatch, SystemError)
+	GetBatch(ctx context.Context, hash L2BatchHash) (*ExtBatch, SystemError)
 
 	// GetBatchBySeqNo - retrieve batch by sequencer number if it's in the db.
-	GetBatchBySeqNo(seqNo uint64) (*ExtBatch, SystemError)
+	GetBatchBySeqNo(ctx context.Context, seqNo uint64) (*ExtBatch, SystemError)
 
 	// GetRollupData - retrieve the first batch sequence and start time for a given rollup.
-	GetRollupData(hash L2RollupHash) (*PublicRollupMetadata, SystemError)
+	GetRollupData(ctx context.Context, hash L2RollupHash) (*PublicRollupMetadata, SystemError)
 
 	// CreateBatch - creates a new head batch extending the previous one for the latest known L1 head if the node is
 	// a sequencer. Will panic otherwise.
-	CreateBatch(skipIfEmpty bool) SystemError
+	CreateBatch(ctx context.Context, skipIfEmpty bool) SystemError
 
 	// CreateRollup - will create a new rollup by going through the sequencer if the node is a sequencer
 	// or panic otherwise.
-	CreateRollup(fromSeqNo uint64) (*ExtRollup, SystemError)
+	CreateRollup(ctx context.Context, fromSeqNo uint64) (*ExtRollup, SystemError)
 
 	// DebugTraceTransaction returns the trace of a transaction
-	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, SystemError)
+	DebugTraceTransaction(ctx context.Context, hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, SystemError)
 
 	// StreamL2Updates - will stream any new batches as they are created/detected
 	// All will be queued in the channel that has been returned.
 	StreamL2Updates() (chan StreamL2UpdatesResponse, func())
 	// DebugEventLogRelevancy returns the logs of a transaction
-	DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, SystemError)
+	DebugEventLogRelevancy(ctx context.Context, hash gethcommon.Hash) (json.RawMessage, SystemError)
 }
 
 // EnclaveScan represents the methods that are used for data scanning in the enclave
 type EnclaveScan interface {
 	// GetTotalContractCount returns the total number of contracts that have been deployed
-	GetTotalContractCount() (*big.Int, SystemError)
+	GetTotalContractCount(context.Context) (*big.Int, SystemError)
 
 	// GetCustomQuery returns the data of a custom query
-	GetCustomQuery(encryptedParams EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, SystemError)
+	GetCustomQuery(ctx context.Context, encryptedParams EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, SystemError)
 
 	// GetPublicTransactionData returns a list of public transaction data
-	GetPublicTransactionData(pagination *QueryPagination) (*TransactionListingResponse, SystemError)
+	GetPublicTransactionData(ctx context.Context, pagination *QueryPagination) (*TransactionListingResponse, SystemError)
 
 	// EnclavePublicConfig returns network data that is known to the enclave but can be shared publicly
-	EnclavePublicConfig() (*EnclavePublicConfig, SystemError)
+	EnclavePublicConfig(context.Context) (*EnclavePublicConfig, SystemError)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

@@ -332,7 +332,7 @@ func versionRequestHandler(walletExt *rpcapi.Services, userConn UserConn) {
 	}
 }
 
-// getMessageRequestHandler handles request to /get-message endpoint.
+// getMessageRequestHandler handles request to /getmessage endpoint.
 func getMessageRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 	// read the request
 	body, err := conn.ReadRequest()
@@ -351,8 +351,15 @@ func getMessageRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 
 	// get address from the request
 	encryptionToken, ok := reqJSONMap[common.JSONKeyEncryptionToken]
-	if !ok || len(encryptionToken.(string)) != common.MessageUserIDLen {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("unable to read encryptionToken field from the request or it is not of correct length"))
+	if !ok {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("encryptionToken field not found in the request"))
+		return
+	}
+	if tokenStr, ok := encryptionToken.(string); !ok {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("encryptionToken field is not a string"))
+		return
+	} else if len(tokenStr) != common.MessageUserIDLen {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("encryptionToken field is not of correct length"))
 		return
 	}
 

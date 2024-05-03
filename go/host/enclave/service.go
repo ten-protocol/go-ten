@@ -1,6 +1,7 @@
 package enclave
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"sync/atomic"
@@ -65,7 +66,7 @@ func (e *Service) Stop() error {
 	return nil
 }
 
-func (e *Service) HealthStatus() host.HealthStatus {
+func (e *Service) HealthStatus(ctx context.Context) host.HealthStatus {
 	if !e.running.Load() {
 		return &host.BasicErrHealthStatus{ErrMsg: "not running"}
 	}
@@ -74,7 +75,7 @@ func (e *Service) HealthStatus() host.HealthStatus {
 
 	for i, guardian := range e.enclaveGuardians {
 		// check the enclave health, which in turn checks the DB health
-		enclaveHealthy, err := guardian.enclaveClient.HealthCheck()
+		enclaveHealthy, err := guardian.enclaveClient.HealthCheck(ctx)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("unable to HealthCheck enclave[%d] - %w", i, err))
 		} else if !enclaveHealthy {
@@ -90,9 +91,9 @@ func (e *Service) HealthStatus() host.HealthStatus {
 	return &host.GroupErrsHealthStatus{Errors: errors}
 }
 
-func (e *Service) HealthyGuardian() *Guardian {
+func (e *Service) HealthyGuardian(ctx context.Context) *Guardian {
 	for _, guardian := range e.enclaveGuardians {
-		if guardian.HealthStatus().OK() {
+		if guardian.HealthStatus(ctx).OK() {
 			return guardian
 		}
 	}
@@ -101,14 +102,14 @@ func (e *Service) HealthyGuardian() *Guardian {
 
 // LookupBatchBySeqNo is used to fetch batch data from the enclave - it is only used as a fallback for the sequencer
 // host if it's missing a batch (other host services should use L2Repo to fetch batch data)
-func (e *Service) LookupBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error) {
-	hg := e.HealthyGuardian()
+func (e *Service) LookupBatchBySeqNo(ctx context.Context, seqNo *big.Int) (*common.ExtBatch, error) {
+	hg := e.HealthyGuardian(ctx)
 	state := hg.GetEnclaveState()
 	if state.GetEnclaveL2Head().Cmp(seqNo) < 0 {
 		return nil, errutil.ErrNotFound
 	}
 	client := hg.GetEnclaveClient()
-	return client.GetBatchBySeqNo(seqNo.Uint64())
+	return client.GetBatchBySeqNo(ctx, seqNo.Uint64())
 }
 
 func (e *Service) GetEnclaveClient() common.Enclave {
@@ -117,10 +118,10 @@ func (e *Service) GetEnclaveClient() common.Enclave {
 	return e.enclaveGuardians[0].GetEnclaveClient()
 }
 
-func (e *Service) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
+func (e *Service) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
-	enclaveResponse, sysError := e.GetEnclaveClient().SubmitTx(encryptedTx)
+	enclaveResponse, sysError := e.GetEnclaveClient().SubmitTx(ctx, encryptedTx)
 	if sysError != nil {
 		e.logger.Warn("Could not submit transaction due to sysError.", log.ErrKey, sysError)
 		return nil, sysError
@@ -141,7 +142,7 @@ func (e *Service) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSen
 }
 
 func (e *Service) Subscribe(id rpc.ID, encryptedParams common.EncryptedParamsLogSubscription) error {
-	return e.GetEnclaveClient().Subscribe(id, encryptedParams)
+	return e.GetEnclaveClient().Subscribe(context.Background(), id, encryptedParams)
 }
 
 func (e *Service) Unsubscribe(id rpc.ID) error {

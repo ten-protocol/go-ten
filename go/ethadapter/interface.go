@@ -2,7 +2,6 @@ package ethadapter
 
 import (
 	"context"
-	"errors"
 	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -13,9 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
-
-// ErrSubscriptionNotSupported return from BlockListener subscription if client doesn't support streaming (in-mem simulation)
-var ErrSubscriptionNotSupported = errors.New("block subscription not supported")
 
 // EthClient defines the interface for RPC communications with the ethereum nodes
 // todo (#1617) - some of these methods are composed calls that should be decoupled in the future (ie: BlocksBetween or IsBlockAncestor)

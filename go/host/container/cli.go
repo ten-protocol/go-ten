@@ -41,7 +41,7 @@ type HostConfigToml struct {
 	ObscuroChainID            int64
 	ProfilerEnabled           bool
 	L1StartHash               string
-	SequencerID               string
+	SequencerP2PAddress       string
 	MetricsEnabled            bool
 	MetricsHTTPPort           uint
 	UseInMemoryDB             bool
@@ -83,7 +83,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	privateKeyStr := flag.String(privateKeyName, cfg.PrivateKeyString, flagUsageMap[privateKeyName])
 	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, flagUsageMap[profilerEnabledName])
 	l1StartHash := flag.String(l1StartHashName, cfg.L1StartHash.Hex(), flagUsageMap[l1StartHashName])
-	sequencerID := flag.String(sequencerIDName, cfg.SequencerID.Hex(), flagUsageMap[sequencerIDName])
+	sequencerP2PAddress := flag.String(sequencerP2PAddrName, cfg.SequencerP2PAddress, flagUsageMap[sequencerP2PAddrName])
 	metricsEnabled := flag.Bool(metricsEnabledName, cfg.MetricsEnabled, flagUsageMap[metricsEnabledName])
 	metricsHTPPPort := flag.Uint(metricsHTTPPortName, cfg.MetricsHTTPPort, flagUsageMap[metricsHTTPPortName])
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, flagUsageMap[useInMemoryDBName])
@@ -129,7 +129,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.ObscuroChainID = *obscuroChainID
 	cfg.ProfilerEnabled = *profilerEnabled
 	cfg.L1StartHash = gethcommon.HexToHash(*l1StartHash)
-	cfg.SequencerID = gethcommon.HexToAddress(*sequencerID)
+	cfg.SequencerP2PAddress = *sequencerP2PAddress
 	cfg.MetricsEnabled = *metricsEnabled
 	cfg.MetricsHTTPPort = *metricsHTPPPort
 	cfg.UseInMemoryDB = *useInMemoryDB
@@ -206,7 +206,7 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		ObscuroChainID:            tomlConfig.ObscuroChainID,
 		ProfilerEnabled:           tomlConfig.ProfilerEnabled,
 		L1StartHash:               gethcommon.HexToHash(tomlConfig.L1StartHash),
-		SequencerID:               gethcommon.HexToAddress(tomlConfig.SequencerID),
+		SequencerP2PAddress:       tomlConfig.SequencerP2PAddress,
 		MetricsEnabled:            tomlConfig.MetricsEnabled,
 		MetricsHTTPPort:           tomlConfig.MetricsHTTPPort,
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,

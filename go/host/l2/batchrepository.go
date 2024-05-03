@@ -1,6 +1,7 @@
 package l2
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -83,7 +84,7 @@ func (r *Repository) Stop() error {
 	return nil
 }
 
-func (r *Repository) HealthStatus() host.HealthStatus {
+func (r *Repository) HealthStatus(context.Context) host.HealthStatus {
 	// todo (@matt) do proper health status based on last received batch or something
 	errMsg := ""
 	if !r.running.Load() {
@@ -148,13 +149,13 @@ func (r *Repository) Subscribe(handler host.L2BatchHandler) func() {
 	return r.batchSubscribers.Subscribe(handler)
 }
 
-func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error) {
+func (r *Repository) FetchBatchBySeqNo(ctx context.Context, seqNo *big.Int) (*common.ExtBatch, error) {
 	b, err := r.storage.FetchBatchBySeqNo(seqNo.Uint64())
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) && seqNo.Cmp(r.latestBatchSeqNo) < 0 {
 			if r.isSequencer {
 				// sequencer does not request batches from peers, it checks if its enclave has the batch
-				return r.fetchBatchFallbackToEnclave(seqNo)
+				return r.fetchBatchFallbackToEnclave(ctx, seqNo)
 			}
 			// we haven't seen this batch before, but it is older than the latest batch we have seen so far
 			// Request missing batches from peers (the batches from any response will be added asynchronously, so
@@ -189,8 +190,8 @@ func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	return nil
 }
 
-func (r *Repository) fetchBatchFallbackToEnclave(seqNo *big.Int) (*common.ExtBatch, error) {
-	b, err := r.sl.Enclaves().LookupBatchBySeqNo(seqNo)
+func (r *Repository) fetchBatchFallbackToEnclave(ctx context.Context, seqNo *big.Int) (*common.ExtBatch, error) {
+	b, err := r.sl.Enclaves().LookupBatchBySeqNo(ctx, seqNo)
 	if err != nil {
 		return nil, err
 	}

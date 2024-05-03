@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/ten-protocol/go-ten/go/config"
 
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
@@ -118,7 +121,7 @@ func createDB(t *testing.T) ethdb.Database {
 	lite := setupSQLite(t)
 	_, err := lite.Exec(createKVTable)
 	failIfError(t, err, "Failed to create key-value table in test db")
-	s, err := NewEnclaveDB(lite, testlog.Logger())
+	s, err := NewEnclaveDB(lite, config.EnclaveConfig{RPCTimeout: time.Second}, testlog.Logger())
 	failIfError(t, err, "Failed to create SQLEthDatabase for test")
 	return s
 }
