@@ -18,7 +18,7 @@ import (
 var EmptyHash = gethcommon.Hash{}
 
 // LCA - returns the latest common ancestor of the 2 blocks or an error if no common ancestor is found
-// it also returns the blocks that became canonincal, and the once that are now the fork
+// it also returns the blocks that became canonical, and the once that are now the fork
 func LCA(ctx context.Context, newCanonical *types.Block, oldCanonical *types.Block, resolver storage.BlockResolver) (*common.ChainFork, error) {
 	b, cp, ncp, err := internalLCA(ctx, newCanonical, oldCanonical, resolver, []common.L1BlockHash{}, []common.L1BlockHash{oldCanonical.Hash()})
 	// remove the common ancestor

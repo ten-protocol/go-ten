@@ -54,7 +54,7 @@ func WriteBatchAndTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Ba
 		isCanon = false
 	}
 
-	_, err = dbtx.ExecContext(ctx, "insert into batch values (?,?,?,?,?,?,?,?,?,?)",
+	args := []any{
 		batch.Header.SequencerOrderNo.Uint64(), // sequence
 		batch.Hash(),                           // full hash
 		convertedHash,                          // converted_hash
@@ -63,9 +63,15 @@ func WriteBatchAndTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Ba
 		isCanon,                                // is_canonical
 		header,                                 // header blob
 		batchBodyID,                            // reference to the batch body
-		blockId,                                // l1_proof block id
-		false,                                  // executed
-	)
+		batch.Header.L1Proof.Bytes(),           // l1 proof hash
+	}
+	if blockId == 0 {
+		args = append(args, nil) // l1_proof block id
+	} else {
+		args = append(args, blockId)
+	}
+	args = append(args, false) // executed
+	_, err = dbtx.ExecContext(ctx, "insert into batch values (?,?,?,?,?,?,?,?,?,?,?)", args...)
 	if err != nil {
 		return err
 	}

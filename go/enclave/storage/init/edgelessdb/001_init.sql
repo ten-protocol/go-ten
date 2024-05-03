@@ -89,6 +89,7 @@ create table if not exists obsdb.batch
     is_canonical   boolean    NOT NULL,
     header         blob       NOT NULL,
     body           int        NOT NULL,
+    l1_proof_hash  binary(32),
     l1_proof       INTEGER,
     is_executed    boolean    NOT NULL,
     primary key (sequence),

@@ -207,22 +207,33 @@ func (s *storageImpl) StoreBlock(ctx context.Context, b *types.Block, chainFork 
 		return err
 	}
 	defer dbTx.Rollback()
+
+	if err := enclavedb.WriteBlock(ctx, dbTx, b.Header()); err != nil {
+		return fmt.Errorf("2. could not store block %s. Cause: %w", b.Hash(), err)
+	}
+
+	blockId, err := enclavedb.GetBlockId(ctx, dbTx, b.Hash())
+	if err != nil {
+		return err
+	}
+
+	// In case there were any batches inserted before this block was received
+	err = enclavedb.SetMissingBlockId(ctx, dbTx, blockId, b.Hash())
+	if err != nil {
+		return err
+	}
+
 	if chainFork != nil && chainFork.IsFork() {
-		s.logger.Info(fmt.Sprintf("Fork. %s", chainFork))
-		err := enclavedb.UpdateCanonicalBlocks(ctx, dbTx, chainFork.CanonicalPath, chainFork.NonCanonicalPath, s.logger)
+		s.logger.Info(fmt.Sprintf("Update Fork. %s", chainFork))
+		err = enclavedb.UpdateCanonicalBlocks(ctx, dbTx, chainFork.CanonicalPath, chainFork.NonCanonicalPath, s.logger)
 		if err != nil {
 			return err
 		}
 	}
 
-	// In case there were any batches inserted before this block was received
 	err = enclavedb.UpdateCanonicalBlocks(ctx, dbTx, []common.L1BlockHash{b.Hash()}, nil, s.logger)
 	if err != nil {
 		return err
-	}
-
-	if err := enclavedb.WriteBlock(ctx, dbTx, b.Header()); err != nil {
-		return fmt.Errorf("2. could not store block %s. Cause: %w", b.Hash(), err)
 	}
 
 	if err := dbTx.Commit(); err != nil {
@@ -497,7 +508,7 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *core.Batch,
 		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
 	}
 
-	if batch.Number().Int64() > 1 {
+	if batch.Number().Uint64() > common.L2GenesisSeqNo {
 		stateDB, err := s.CreateStateDB(ctx, batch.Header.ParentHash)
 		if err != nil {
 			return fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)

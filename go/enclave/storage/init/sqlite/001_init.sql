@@ -73,6 +73,7 @@ create table if not exists batch
     is_canonical   boolean   NOT NULL,
     header         blob      NOT NULL,
     body           int       NOT NULL REFERENCES batch_body,
+    l1_proof_hash  binary(32),
     l1_proof       INTEGER, -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
     is_executed    boolean   NOT NULL
     --   the unique constraint is commented for now because there might be multiple non-canonical batches for the same height
@@ -135,7 +136,7 @@ create table if not exists events
     rel_address2_full binary(20),
     rel_address3_full binary(20),
     rel_address4_full binary(20),
-    tx                INTEGER    ,
+    tx                INTEGER,
     batch             INTEGER    NOT NULL REFERENCES batch
 );
 create index IDX_AD on events (address);

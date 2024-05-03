@@ -49,7 +49,7 @@ func UpdateCanonicalBlocks(ctx context.Context, dbtx *sql.Tx, canonical []common
 }
 
 func updateCanonicalValue(ctx context.Context, dbtx *sql.Tx, isCanonical bool, blocks []common.L1BlockHash, _ gethlog.Logger) error {
-	canonicalBlocks := repeat("(hash=? and full_hash=?)", "OR", len(blocks))
+	currentBlocks := repeat("(hash=? and full_hash=?)", "OR", len(blocks))
 
 	args := make([]any, 0)
 	args = append(args, isCanonical)
@@ -57,18 +57,25 @@ func updateCanonicalValue(ctx context.Context, dbtx *sql.Tx, isCanonical bool, b
 		args = append(args, truncTo4(blockHash), blockHash.Bytes())
 	}
 
-	updateBlocks := "update block set is_canonical=? where " + canonicalBlocks
+	updateBlocks := "update block set is_canonical=? where " + currentBlocks
 	_, err := dbtx.ExecContext(ctx, updateBlocks, args...)
 	if err != nil {
 		return err
 	}
 
-	updateBatches := "update batch set is_canonical=? where l1_proof in (select id from block where " + canonicalBlocks + ")"
+	updateBatches := "update batch set is_canonical=? where l1_proof in (select id from block where " + currentBlocks + ")"
 	_, err = dbtx.ExecContext(ctx, updateBatches, args...)
 	if err != nil {
 		return err
 	}
+
 	return nil
+}
+
+func SetMissingBlockId(ctx context.Context, dbtx *sql.Tx, blockId int64, blockHash common.L1BlockHash) error {
+	// handle the corner case where the block wasn't available
+	_, err := dbtx.ExecContext(ctx, "update batch set l1_proof=? where (l1_proof is null) and l1_proof_hash=?", blockId, blockHash.Bytes())
+	return err
 }
 
 // todo - remove this. For now creates a "block" but without a body.

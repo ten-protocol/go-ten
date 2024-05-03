@@ -32,6 +32,7 @@ var sqlFiles embed.FS
 
 // CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
 // otherwise dbPath is a filepath for the sqldb file, allows for tests that care about persistence between restarts
+// We create 2 sqlite instances. One R/W with a single connection, and a R/O with multiple connections
 func CreateTemporarySQLiteDB(dbPath string, dbOptions string, config config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	initialsed := false
 
