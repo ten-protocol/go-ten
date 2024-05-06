@@ -29,9 +29,6 @@ import {
   SelectValue,
 } from "../../ui/select";
 import { Separator } from "../../ui/separator";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import {
   Form,
@@ -46,6 +43,15 @@ import { Input } from "@/src/components/ui/input";
 import { toast } from "@/src/components/ui/use-toast";
 import { DrawerDialog } from "../common/drawer-dialog";
 import { Label } from "../../ui/label";
+import {
+  L1CHAINS,
+  L2CHAINS,
+  L1TOKENS,
+  L2TOKENS,
+  PERCENTAGES,
+} from "@/src/lib/constants";
+import { z } from "zod";
+import { useFormHook } from "@/src/hooks/useForm";
 
 interface Token {
   name: string;
@@ -54,76 +60,8 @@ interface Token {
   isEnabled: boolean;
 }
 
-const L1CHAINS = [
-  {
-    name: "Ethereum",
-    value: "ETH",
-    isNative: true,
-    isEnabled: true,
-  },
-];
-
-const L2CHAINS = [
-  {
-    name: "TEN",
-    value: "TEN",
-    isNative: false,
-    isEnabled: true,
-  },
-];
-
-const L1TOKENS = [
-  {
-    name: "ETH",
-    value: "ETH",
-    isNative: true,
-    isEnabled: true,
-  },
-];
-
-const L2TOKENS = [
-  // {
-  //   name: "ETH",
-  //   value: "ETH",
-  //   isNative: true,
-  //   isEnabled: true,
-  // },
-  {
-    name: "USDC",
-    value: "USDC",
-    isNative: false,
-    isEnabled: true,
-  },
-  {
-    name: "USDT",
-    value: "USDT",
-    isNative: false,
-    isEnabled: true,
-  },
-  {
-    name: "TEN",
-    value: "TEN",
-    isNative: false,
-    isEnabled: false,
-  },
-];
-
-const PERCENTAGES = [
-  {
-    name: "25%",
-    value: 25,
-  },
-  {
-    name: "50%",
-    value: 50,
-  },
-  {
-    name: "MAX",
-    value: 100,
-  },
-];
-
 export default function Dashboard() {
+  const { form, FormSchema } = useFormHook();
   const [loading, setLoading] = React.useState(false);
   const [isL1ToL2, setIsL1ToL2] = React.useState(true);
 
@@ -136,35 +74,6 @@ export default function Dashboard() {
   const swapTokens = () => {
     setIsL1ToL2(!isL1ToL2);
   };
-
-  const FormSchema = z.object({
-    amount: z.string().nonempty({
-      message: "Amount is required.",
-    }),
-    fromChain: z.string().nonempty({
-      message: "From Chain is required.",
-    }),
-    toChain: z.string().nonempty({
-      message: "To Chain is required.",
-    }),
-    fromToken: z.string().nonempty({
-      message: "From Token is required.",
-    }),
-    toToken: z.string().nonempty({
-      message: "To Token is required.",
-    }),
-  });
-
-  const form = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
-    defaultValues: {
-      amount: "",
-      fromChain: "",
-      toChain: "",
-      fromToken: "",
-      toToken: "",
-    },
-  });
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
     toast({

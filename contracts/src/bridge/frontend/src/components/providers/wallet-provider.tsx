@@ -11,6 +11,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
   const [provider, setProvider] = useState<any>(null);
   const [signer, setSigner] = useState<any>(null);
   const [address, setAddress] = useState<string | null>(null);
+  const [version, setVersion] = useState<string>("");
 
   useEffect(() => {
     if (provider) {
@@ -33,6 +34,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
     address,
     setProvider: handleSetProvider,
     setAddress: handleSetAddress,
+    version,
   };
 
   return (

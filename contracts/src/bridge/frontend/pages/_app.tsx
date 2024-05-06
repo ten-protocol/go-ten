@@ -9,7 +9,7 @@ import {
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
 import { Toaster } from "@/src/components/ui/toaster";
-import { WalletConnectionProvider } from "@/src/components/providers/wallet-provider";
+import { WalletProvider } from "@/src/components/providers/wallet-provider";
 import { NetworkStatus } from "@/src/components/modules/common/network-status";
 import HeadSeo from "@/src/components/head-seo";
 import { siteMetadata } from "@/src/lib/siteMetadata";
@@ -80,12 +80,12 @@ export default function App({ Component, pageProps }: AppProps) {
           enableSystem
           disableTransitionOnChange
         >
-          <WalletConnectionProvider>
+          <WalletProvider>
             <Component {...pageProps} />
             <Toaster />
             <NetworkStatus />
             <ReactQueryDevtools initialIsOpen={false} />
-          </WalletConnectionProvider>
+          </WalletProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </>

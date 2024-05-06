@@ -38,3 +38,72 @@ export const l1Bridge = process.env.NEXT_PUBLIC_L1_BRIDGE;
 export const l2Bridge = process.env.NEXT_PUBLIC_L2_BRIDGE;
 
 export const GOOGLE_ANALYTICS_ID = "G-2ZFPEN6PT9";
+
+export const L1CHAINS = [
+  {
+    name: "Ethereum",
+    value: "ETH",
+    isNative: true,
+    isEnabled: true,
+  },
+];
+
+export const L2CHAINS = [
+  {
+    name: "TEN",
+    value: "TEN",
+    isNative: false,
+    isEnabled: true,
+  },
+];
+
+export const L1TOKENS = [
+  {
+    name: "ETH",
+    value: "ETH",
+    isNative: true,
+    isEnabled: true,
+  },
+];
+
+export const L2TOKENS = [
+  // {
+  //   name: "ETH",
+  //   value: "ETH",
+  //   isNative: true,
+  //   isEnabled: true,
+  // },
+  {
+    name: "USDC",
+    value: "USDC",
+    isNative: false,
+    isEnabled: true,
+  },
+  {
+    name: "USDT",
+    value: "USDT",
+    isNative: false,
+    isEnabled: true,
+  },
+  {
+    name: "TEN",
+    value: "TEN",
+    isNative: false,
+    isEnabled: false,
+  },
+];
+
+export const PERCENTAGES = [
+  {
+    name: "25%",
+    value: 25,
+  },
+  {
+    name: "50%",
+    value: 50,
+  },
+  {
+    name: "MAX",
+    value: 100,
+  },
+];

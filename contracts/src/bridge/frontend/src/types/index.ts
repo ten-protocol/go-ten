@@ -130,6 +130,7 @@ export interface WalletConnectionContextType {
   address: string | null;
   setProvider: (newProvider: any) => void;
   setAddress: (newAddress: string) => void;
+  version: string;
 }
 
 export interface Props {
