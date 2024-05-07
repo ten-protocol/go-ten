@@ -105,7 +105,8 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         attested[_enclaveID] = true;
 
         // the enclave that starts the network with this call is implicitly a sequencer so doesn't need adding
-        GrantSequencerEnclave(_enclaveID);
+        sequencerEnclave[_enclaveID] = true;
+        emit SequencerEnclaveGranted(_enclaveID);
     }
 
     // Enclaves can request the Network Secret given an attestation request report
