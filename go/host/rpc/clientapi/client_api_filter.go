@@ -62,6 +62,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 	})
 	go subscriptioncommon.HandleUnsubscribe(subscription, &unsubscribed, func() {
 		api.host.UnsubscribeLogs(subscription.ID)
+		unsubscribed.Store(true)
 	})
 	return subscription, nil
 }

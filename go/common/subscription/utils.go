@@ -62,8 +62,5 @@ func ForwardFromChannels[R any](inputChannels []chan R, unsubscribed *atomic.Boo
 // Must be called as a go routine!
 func HandleUnsubscribe(connectionSub *rpc.Subscription, unsubscribed *atomic.Bool, onUnsub func()) {
 	<-connectionSub.Err()
-	if unsubscribed != nil {
-		unsubscribed.Store(true)
-	}
 	onUnsub()
 }
