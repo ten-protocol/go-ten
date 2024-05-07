@@ -1,0 +1,6 @@
+l1HttpUrl:                    "http://eth2network:8025" # URL of the L1 HTTP API
+privateKey:                   "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb" # Private key of the L1 deployer
+l1DeployerImage:              "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
+contractEnvsFile:             ""
+debugNamespaceEnabledFlag:    false
+containerName:                "hh-l1-deployer"

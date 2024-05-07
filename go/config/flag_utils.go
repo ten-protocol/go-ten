@@ -29,6 +29,14 @@ func LoadFlags(t TypeConfig, withDefaults bool) (RunParams, CliFlagSet, error) {
 		return nil, nil, err
 	}
 
+	// check args for an action
+	var action = "start"
+	cliAction := os.Args[len(os.Args)-1] // last element is args
+	if cliAction == "upgrade" || cliAction == "start" {
+		action = cliAction
+		os.Args = os.Args[:len(os.Args)-1] // remove the action from args
+	}
+
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, nil, err
 	}
@@ -43,8 +51,6 @@ func LoadFlags(t TypeConfig, withDefaults bool) (RunParams, CliFlagSet, error) {
 	}
 
 	os.Args = removeFlagsFromArgs(os.Args, rParams) // remove flags related to config from args
-
-	action := os.Args[len(os.Args)-1] // last element is args
 	rParams["action"] = action
 
 	return rParams, flagValues, nil
@@ -179,7 +185,6 @@ func setupFlagsByType(fs *flag.FlagSet, t TypeConfig) error {
 			SetupFlagsFromStruct(&Eth2NetworkConfig{}, fs, flagUsageMap)
 			SetupFlagsFromStruct(&L1ContractDeployerConfig{}, fs, flagUsageMap)
 			SetupFlagsFromStruct(&L2ContractDeployerConfig{}, fs, flagUsageMap)
-
 		}
 	case L1Deployer:
 		SetupFlagsFromStruct(&L1ContractDeployerConfig{}, fs, flagUsageMap)
@@ -211,7 +216,7 @@ func setupStructFlags(val reflect.Value, fs *flag.FlagSet, usageMap map[string]s
 
 		if _, exists := usageMap[yamlTag]; !exists {
 			// exclude the following tags from the check
-			if yamlTag != "networkConfig" && yamlTag != "nodeDetails" && yamlTag != "nodeSettings" && yamlTag != "nodeImages" {
+			if yamlTag != "networkConfig" && yamlTag != "nodeDetails" && yamlTag != "nodeSettings" && yamlTag != "nodeImages" && yamlTag != "host" && yamlTag != "enclave" {
 				println(fmt.Sprintf("Missing flag usage for yaml tag '%s'", yamlTag))
 			}
 		}

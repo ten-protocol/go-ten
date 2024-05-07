@@ -5,7 +5,7 @@ type TestnetConfig struct {
 	Eth2Network        Eth2NetworkConfig        `yaml:"eth2Network"`
 	L1ContractDeployer L1ContractDeployerConfig `yaml:"l1ContractDeployer"`
 	Network            NetworkInputConfig       `yaml:"networkConfig"`
-	Nodes              []NodeConfig             `yaml:"nodes"`
+	Nodes              []*NodeConfig            `yaml:"nodes"`
 	L2ContractDeployer L2ContractDeployerConfig `yaml:"l2ContractDeployer"`
 	Faucet             faucetConfig             `yaml:"faucet"`
 }
@@ -17,6 +17,7 @@ type TestNetSettings struct {
 	L2ContractDeployer bool `yaml:"l2ContractDeployer"`
 	Faucet             bool `yaml:"faucet"`
 	ReplaceRunning     bool `yaml:"replaceRunning"`
+	DryRun             bool `yaml:"dryRun"`
 }
 
 // Eth2NetworkConfig represents the configurations passed into the eth2network (L1) over CLI

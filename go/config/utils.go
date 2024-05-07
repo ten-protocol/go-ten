@@ -112,19 +112,27 @@ func WriteConfigToFile(c Config, filePath string) error {
 	return nil
 }
 
-// ApplyOverrides is a generic function that applies non-zero value fields from the override struct 'o' to 'c'.
 func ApplyOverrides[T any](c, o T) {
 	cVal := reflect.ValueOf(c).Elem()
 	oVal := reflect.ValueOf(o).Elem()
 
-	// Iterate over each field in the override struct.
+	applyFieldOverrides(cVal, oVal)
+}
+
+func applyFieldOverrides(cVal, oVal reflect.Value) {
 	for i := 0; i < oVal.NumField(); i++ {
 		oField := oVal.Field(i)
 		cField := cVal.Field(i)
 
-		// Apply override if the field in 'o' is set.
-		if isFieldSet(oField) {
-			cField.Set(oField)
+		// Check if the field is a struct and not a primitive type.
+		if oField.Kind() == reflect.Struct {
+			// Recursively apply overrides on struct fields.
+			applyFieldOverrides(cField, oField)
+		} else {
+			// Apply override if the field in 'o' is set (non-zero for simplicity).
+			if isFieldSet(oField) {
+				cField.Set(oField)
+			}
 		}
 	}
 }

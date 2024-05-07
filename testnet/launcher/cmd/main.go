@@ -62,7 +62,7 @@ func main() {
 		}
 	}
 
-	testnet := launcher.NewTestnetLauncher(testNetConfig)
+	testnet := launcher.NewTestnetLauncher(rParams, testNetConfig)
 
 	err = testnet.Start()
 	if err != nil {

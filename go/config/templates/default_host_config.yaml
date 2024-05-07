@@ -4,7 +4,6 @@
 isGenesis:                 false
 nodeType:                  "validator"
 privateKey:                "0000000000000000000000000000000000000000000000000000000000000001"
-#hostID:                   calculated
 
 # Network configuration
 l1StartHash:               ""

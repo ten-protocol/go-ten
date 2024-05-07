@@ -9,12 +9,12 @@ networkConfig:            # NETWORK - There are fixed by your network you should
 
 nodeDetails:              # Individual
   nodeName:               "obscuronode" # optional (custom short name - internal ref only)
-  hostID:                 "" # must override with public key
-  privateKey:             "" # must override with private key matching hostID/public key
+  hostID:                 "template" # must override with public key
+  privateKey:             "template" # must override with private key matching hostID/public key
 
 nodeSettings:
   nodeType:               "validator"
-  isSGXEnabled:           true # should be true for ITN
+  isSGXEnabled:           false # should be true for ITN
   isGenesis:              false
   pccsAddr:               "" # optional for attestation
   enclaveDebug:           false
@@ -33,7 +33,7 @@ enclave:
   debugNamespaceEnabled:     false
 
 nodeImages:
-  hostImage:              "testnetobscuronet.azurecr.io/obscuronet/sepolia_host:latest" # provided
-  enclaveImage:           "testnetobscuronet.azurecr.io/obscuronet/sepolia_enclave:latest" # provided
-  edgelessDBImage:        "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
+  hostImage:                "testnetobscuronet.azurecr.io/obscuronet/host:latest" # provided
+  enclaveImage:             "testnetobscuronet.azurecr.io/obscuronet/enclave:latest" # provided
+  edgelessDBImage:          "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
 
