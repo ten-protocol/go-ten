@@ -42,7 +42,8 @@ func GetTransactionListing(db HostDB, pagination *common.QueryPagination) (*comm
 			TransactionHash: common2.HexToHash(bytesToHexString(fullHash)),
 			BatchHeight:     b.Header.Number,
 			BatchTimestamp:  b.Header.Time,
-			Finality:        common.BatchFinal,
+			// TODO @will this will be implemented under #3336
+			Finality: common.BatchFinal,
 		}
 		txs = append(txs, tx)
 	}
@@ -54,16 +55,6 @@ func GetTransactionListing(db HostDB, pagination *common.QueryPagination) (*comm
 		TransactionsData: txs,
 		Total:            uint64(len(txs)),
 	}, nil
-}
-
-// GetTotalTxCount returns the total number of batched transactions.
-func GetTotalTxCount(db HostDB) (*big.Int, error) {
-	var totalCount int
-	err := db.GetSQLDB().QueryRow(selectTxCount).Scan(&totalCount)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve total transaction count: %w", err)
-	}
-	return big.NewInt(int64(totalCount)), nil
 }
 
 // GetTransaction returns a transaction given its hash
@@ -90,4 +81,14 @@ func GetTransaction(db HostDB, hash gethcommon.Hash) (*common.PublicTransaction,
 	}
 
 	return tx, nil
+}
+
+// GetTotalTxCount returns the total number of batched transactions
+func GetTotalTxCount(db HostDB) (*big.Int, error) {
+	var totalCount int
+	err := db.GetSQLDB().QueryRow(selectTxCount).Scan(&totalCount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve total transaction count: %w", err)
+	}
+	return big.NewInt(int64(totalCount)), nil
 }
