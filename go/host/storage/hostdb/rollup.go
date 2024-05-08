@@ -17,7 +17,7 @@ const (
 	selectExtRollup     = "SELECT ext_rollup from rollup_host r"
 	selectLatestRollup  = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
 	selectRollupBatches = "SELECT b.sequence, b.hash, b.full_hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON r.start_seq <= b.sequence AND r.end_seq >= b.sequence"
-	selectRollups       = "SELECT id, hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block FROM rollup_host ORDER BY id DESC "
+	selectRollups       = "SELECT id, hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block FROM rollup_host"
 )
 
 // AddRollup adds a rollup to the DB
@@ -44,7 +44,8 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 // GetRollupListing returns latest rollups given a pagination.
 // For example, offset 1, size 10 will return the latest 11-20 rollups.
 func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
-	query := selectRollups + db.GetSQLStatement().Pagination
+	orderQuery := " ORDER BY id DESC "
+	query := selectRollups + orderQuery + db.GetSQLStatement().Pagination
 
 	rows, err := db.GetSQLDB().Query(query, pagination.Size, pagination.Offset)
 	if err != nil {
