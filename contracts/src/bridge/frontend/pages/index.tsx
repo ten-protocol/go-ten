@@ -4,8 +4,8 @@ import Layout from "@/src/components/layouts/default-layout";
 import Dashboard from "@/src/components/modules/bridge";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
-  description: "Tenscan Dashboard",
+  title: "Ten Bridge",
+  description: "Ten Bridge Dashboard",
 };
 
 export default function DashboardPage() {
