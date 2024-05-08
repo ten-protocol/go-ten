@@ -1,7 +1,7 @@
 import { socialLinks } from "./constants";
 
 export const siteMetadata = {
-  companyName: "Tenscan",
+  companyName: "Ten Bridge",
   metaTitle:
     "Ten, a decentralized Layer 2 Rollup protocol designed to hyper-scale and encrypt the Ethereum blockchain.",
   description:

@@ -5,7 +5,6 @@ import {
   TwitterLogoIcon,
   DiscordLogoIcon,
 } from "@radix-ui/react-icons";
-import { useWalletStore } from "../providers/wallet-provider";
 
 const SOCIAL_LINKS = [
   {
@@ -26,8 +25,6 @@ const SOCIAL_LINKS = [
 ];
 
 export default function Footer() {
-  const { version } = useWalletStore();
-
   return (
     <div className="border-t p-2">
       <div className="flex h-16 items-center justify-between px-4 flex-wrap">
@@ -44,11 +41,6 @@ export default function Footer() {
               <item.icon />
             </a>
           ))}
-        </div>
-        <div className="flex items-center justify-center space-x-4 pr-2">
-          <h3 className="text-xs text-muted-foreground">
-            Version: {version || "Unknown"}
-          </h3>
         </div>
         <div className="flex items-center space-x-4">
           <Link
