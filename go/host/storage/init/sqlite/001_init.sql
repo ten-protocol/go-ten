@@ -33,7 +33,7 @@ create table if not exists batch_host
 );
 create index IDX_BATCH_HEIGHT_HOST on batch_host (height);
 
-create table if not exists transactions_host
+create table if not exists transaction_host
 (
     hash           binary(16) PRIMARY KEY,
     full_hash      binary(32) NOT NULL UNIQUE,

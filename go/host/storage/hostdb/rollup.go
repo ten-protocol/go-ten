@@ -17,7 +17,7 @@ const (
 	selectExtRollup     = "SELECT ext_rollup from rollup_host r"
 	selectLatestRollup  = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
 	selectRollupBatches = "SELECT b.sequence, b.hash, b.full_hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON r.start_seq <= b.sequence AND r.end_seq >= b.sequence"
-	selectPublicRollup  = "SELECT id, hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block FROM rollup_host"
+	selectRollups       = "SELECT id, hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block FROM rollup_host"
 )
 
 // AddRollup adds a rollup to the DB
@@ -44,9 +44,12 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 // GetRollupListing returns latest rollups given a pagination.
 // For example, offset 1, size 10 will return the latest 11-20 rollups.
 func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
-	rows, err := db.GetSQLDB().Query(db.GetSQLStatement().SelectRollups, pagination.Size, pagination.Offset)
+	orderQuery := " ORDER BY id DESC "
+	query := selectRollups + orderQuery + db.GetSQLStatement().Pagination
+
+	rows, err := db.GetSQLDB().Query(query, pagination.Size, pagination.Offset)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to execute query %s - %w", query, err)
 	}
 	defer rows.Close()
 	var rollups []common.PublicRollup
@@ -58,7 +61,7 @@ func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.Ro
 		var rollup common.PublicRollup
 		err = rows.Scan(&id, &hash, &startSeq, &endSeq, &timeStamp, &extRollup, &compressionBlock)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan query %s - %w", query, err)
 		}
 
 		extRollupDecoded := new(common.ExtRollup)
@@ -180,7 +183,7 @@ func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash) (*common.BatchListi
 func fetchRollupHeader(db *sql.DB, whereQuery string, args ...any) (*common.RollupHeader, error) {
 	rollup, err := fetchExtRollup(db, whereQuery, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch ext rollup - %w", err)
 	}
 	return rollup.Header, nil
 }
@@ -228,7 +231,7 @@ func fetchHeadRollup(db *sql.DB) (*common.ExtRollup, error) {
 }
 
 func fetchPublicRollup(db *sql.DB, whereQuery string, args ...any) (*common.PublicRollup, error) {
-	query := selectPublicRollup + whereQuery
+	query := selectRollups + whereQuery
 	var rollup common.PublicRollup
 	var hash, extRollup, compressionblock []byte
 	var id, firstSeq, lastSeq, timestamp int

@@ -48,6 +48,8 @@ type BatchResolver interface {
 	FetchTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error)
 	// FetchBatchTransactions returns a list of public transaction data within a given batch hash
 	FetchBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error)
+	// FetchTransactionListing returns a paginated list of public transaction data
+	FetchTransactionListing(pagination *common.QueryPagination) (*common.TransactionListingResponse, error)
 }
 
 type BlockResolver interface {
