@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS transaction_host
     FOREIGN KEY (b_sequence) REFERENCES batch_host(sequence)
 );
 
-CREATE INDEX IF NOT EXISTS IDX_TX_SEQ_HOST ON batch_host (b_sequence);
+CREATE INDEX IF NOT EXISTS IDX_TX_SEQ_HOST ON transaction_host (b_sequence);
 
 CREATE TABLE IF NOT EXISTS transaction_count
 (
