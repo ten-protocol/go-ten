@@ -1,11 +1,12 @@
 package hostdb
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/go/common"
 	"math/big"
 	"strconv"
 	"testing"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 func TestGetTransactionListing(t *testing.T) {

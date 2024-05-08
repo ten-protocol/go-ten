@@ -2,12 +2,12 @@ package hostdb
 
 import (
 	"fmt"
+	"math/big"
 
 	common2 "github.com/ethereum/go-ethereum/common"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
-	"math/big"
 )
 
 const (
