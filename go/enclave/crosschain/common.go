@@ -171,6 +171,7 @@ func convertLogsToValueTransfers(logs []types.Log, eventName string, messageBusA
 			Sender:   event.Sender,
 			Receiver: event.Receiver,
 			Amount:   event.Amount,
+			Sequence: event.Sequence,
 		})
 	}
 
@@ -299,6 +300,7 @@ func (vt ValueTransfers) HashPacked(index int) gethcommon.Hash {
 	valueTransfer := vt[index]
 
 	uint256Type, _ := abi.NewType("uint256", "", nil)
+	uint64Type, _ := abi.NewType("uint64", "", nil)
 	addrType, _ := abi.NewType("address", "", nil)
 
 	args := abi.Arguments{
@@ -311,9 +313,12 @@ func (vt ValueTransfers) HashPacked(index int) gethcommon.Hash {
 		{
 			Type: uint256Type,
 		},
+		{
+			Type: uint64Type,
+		},
 	}
 
-	bytes, _ := args.Pack(valueTransfer.Sender, valueTransfer.Receiver, valueTransfer.Amount)
+	bytes, _ := args.Pack(valueTransfer.Sender, valueTransfer.Receiver, valueTransfer.Amount, valueTransfer.Sequence)
 
 	hash := crypto.Keccak256Hash(bytes)
 	return hash

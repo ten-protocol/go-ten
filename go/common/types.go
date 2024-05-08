@@ -57,6 +57,7 @@ type (
 		Sender   common.Address
 		Receiver common.Address
 		Amount   *big.Int
+		Sequence uint64
 	}
 	ValueTransferEvents   = []ValueTransferEvent
 	EncryptedTx           []byte // A single transaction, encoded as a JSON list of transaction binary hexes and encrypted using the enclave's public key
