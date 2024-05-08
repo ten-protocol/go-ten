@@ -45,6 +45,7 @@ export default function Dashboard() {
     signer,
     provider,
     address,
+    walletConnected,
     switchNetwork,
     isL1ToL2,
     fromChains,
@@ -95,20 +96,38 @@ export default function Dashboard() {
     }
   }, [watchTokenChange, address, provider]);
 
-  function onSubmit(data: z.infer<typeof FormSchema>) {
-    toast({
-      title: "You submitted the following values:",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    });
+  async function onSubmit(data: z.infer<typeof FormSchema>) {
+    try {
+      console.log(data);
+      toast({
+        title: "Bridge Transaction",
+        description: "Bridge transaction initiated",
+        variant: "success",
+      });
+      const token = data.token;
+      const t = tokens.find((t) => t.value === token);
+      if (t?.isNative) {
+        await web3Service.sendNative(address, data.amount);
+      } else {
+        await web3Service.sendERC20(t.address, data.amount, address);
+      }
+      toast({
+        title: "Bridge Transaction",
+        description: "Bridge transaction completed",
+        variant: "success",
+      });
+      form.reset();
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Bridge Transaction",
+        description: "Error initiating bridge transaction",
+        variant: "destructive",
+      });
+    }
   }
 
   const setAmount = (value: number) => {
-    const vals = form.getValues();
-    console.log("token", vals);
     if (!form.getValues("token")) {
       form.setError("token", {
         type: "manual",
@@ -116,7 +135,7 @@ export default function Dashboard() {
       });
       return;
     }
-    const amount = Math.floor((fromTokenBalance * value) / 100);
+    const amount = (fromTokenBalance * value) / 100;
     form.setValue("amount", amount.toString());
   };
 
@@ -168,7 +187,7 @@ export default function Dashboard() {
                   />
                 </div>
 
-                <div className="bg-[#15171D] rounded-lg border">
+                <div className="bg-muted dark:bg-[#15171D] rounded-lg border">
                   <div className="flex items-center justify-between p-2">
                     {/* Token Select */}
                     <FormField
@@ -181,7 +200,7 @@ export default function Dashboard() {
                             onValueChange={field.onChange}
                           >
                             <FormControl>
-                              <SelectTrigger className="h-8 bg-[#292929]">
+                              <SelectTrigger className="h-8 dark:bg-[#292929]">
                                 <SelectValue
                                   placeholder={field.value || "Select Token"}
                                 />
@@ -206,7 +225,7 @@ export default function Dashboard() {
 
                     <div>
                       <p className="text-sm text-muted-foreground">Balance:</p>
-                      <strong className="text-lg text-white float-right">
+                      <strong className="text-lg float-right">
                         {loading ? <Skeleton /> : fromTokenBalance || 0}
                       </strong>
                     </div>
@@ -221,8 +240,10 @@ export default function Dashboard() {
                         <FormItem>
                           <FormControl>
                             <Input
+                              type="number"
                               placeholder="0"
-                              className="text-2xl font-bold w-full bg-[#292929] border-none outline-none overflow-ellipsis"
+                              className="text-2xl font-bold w-full dark:bg-[#292929] overflow-ellipsis"
+                              disabled={!walletConnected}
                               {...field}
                             />
                           </FormControl>
@@ -240,7 +261,7 @@ export default function Dashboard() {
                             key={percentage.name}
                             variant="outline"
                             size={"sm"}
-                            className="bg-[#292929]"
+                            className="dark:bg-[#292929]"
                             onClick={() => {
                               setAmount(percentage.value);
                             }}
@@ -303,6 +324,7 @@ export default function Dashboard() {
                 </div>
 
                 <div className="flex items-center justify-end">
+                  {/* Destination Address Input */}
                   <DrawerDialog
                     FormComponent={({ className }) => (
                       <form className={cn("grid items-start gap-4", className)}>
@@ -324,24 +346,24 @@ export default function Dashboard() {
                     )}
                   />
                 </div>
-                <div className="bg-[#15171D]">
+                <div className="bg-muted dark:bg-[#15171D]">
                   <div className="flex items-center justify-between p-2">
-                    <strong className="text-lg text-white">
+                    <strong className="text-lg">
                       {form.getValues().token}
                     </strong>
 
-                    <div>
+                    <div className="flex flex-col items-end">
                       <p className="text-sm text-muted-foreground">
                         You will receive:
                       </p>
-                      <strong className="text-lg text-white float-right">
-                        {loading ? <Skeleton /> : toReceive || 0}
+                      <strong className="text-lg float-right">
+                        {loading ? <Skeleton /> : form.watch("amount") || 0}
                       </strong>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-[#15171D] rounded-lg border flex items-center justify-between mt-2 p-2 h-14">
+                <div className="bg-muted dark:bg-[#15171D] rounded-lg border flex items-center justify-between mt-2 p-2 h-14">
                   <strong>Refuel gas</strong>
                   <div className="flex items-center">Not supported</div>
                 </div>

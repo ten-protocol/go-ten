@@ -71,14 +71,14 @@ export const L2TOKENS = [
     name: "USD Coin",
     value: "USDC",
     isNative: false,
-    isEnabled: true,
+    isEnabled: false,
     address: "0xb0E09857675Dc4c23ce90D4Ba62aC66fAb8b8155",
   },
   {
     name: "Tether USD",
     value: "USDT",
     isNative: false,
-    isEnabled: true,
+    isEnabled: false,
     address: "0x41ef84feDff3cE53d4C39097A81a74DD9A71280c",
   },
   {
@@ -102,14 +102,14 @@ export const L1TOKENS = [
     name: "USD Coin",
     value: "USDC",
     isNative: false,
-    isEnabled: true,
+    isEnabled: false,
     address: "0x718b239FFBB2dff8054ef424545A074d4EAbF220",
   },
   {
     name: "Tether USD",
     value: "USDT",
     isNative: false,
-    isEnabled: true,
+    isEnabled: false,
     address: "0x9Fa2813Fecc4706b3CA488EF21c0c73c7aD52c1F",
   },
   {

@@ -428,4 +428,9 @@ export default class Web3Service implements IWeb3Service {
   async getTransactionCount() {
     return this.signer.getTransactionCount();
   }
+
+  //get transactions
+  async getTransactions() {
+    return this.signer.getTransactions();
+  }
 }

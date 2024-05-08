@@ -165,7 +165,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
     provider,
     signer,
     address,
-    walletConnected: !!address,
+    walletConnected: !!provider,
     isL1ToL2,
     fromChains,
     toChains,
