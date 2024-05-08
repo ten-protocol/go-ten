@@ -6,21 +6,10 @@ import {
   Card,
   CardDescription,
 } from "@/src/components/ui/card";
-import {
-  LayersIcon,
-  FileTextIcon,
-  ReaderIcon,
-  CubeIcon,
-  RocketIcon,
-  ArrowRightIcon,
-} from "@radix-ui/react-icons";
-
 import { Button } from "@/src/components/ui/button";
 import { Skeleton } from "@/src/components/ui/skeleton";
-import Link from "next/link";
 import { cn } from "@/src/lib/utils";
-import { Badge } from "../../ui/badge";
-import { ArrowDownUpIcon, BlocksIcon, PlusIcon } from "lucide-react";
+import { ArrowDownUpIcon, Terminal } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -43,37 +32,68 @@ import { Input } from "@/src/components/ui/input";
 import { toast } from "@/src/components/ui/use-toast";
 import { DrawerDialog } from "../common/drawer-dialog";
 import { Label } from "../../ui/label";
-import {
-  L1CHAINS,
-  L2CHAINS,
-  L1TOKENS,
-  L2TOKENS,
-  PERCENTAGES,
-} from "@/src/lib/constants";
+import { L1TOKENS, L2TOKENS, PERCENTAGES } from "@/src/lib/constants";
 import { z } from "zod";
 import { useFormHook } from "@/src/hooks/useForm";
-
-interface Token {
-  name: string;
-  value: string;
-  isNative: boolean;
-  isEnabled: boolean;
-}
+import Web3Service from "@/src/services/web3service";
+import { useWalletStore } from "../../providers/wallet-provider";
+import { Token } from "@/src/types";
+import { Alert, AlertDescription } from "../../ui/alert";
 
 export default function Dashboard() {
+  const {
+    signer,
+    provider,
+    address,
+    switchNetwork,
+    isL1ToL2,
+    fromChains,
+    toChains,
+  } = useWalletStore();
+  const web3Service = new Web3Service(signer);
+
   const { form, FormSchema } = useFormHook();
   const [loading, setLoading] = React.useState(false);
-  const [isL1ToL2, setIsL1ToL2] = React.useState(true);
+  const [fromTokenBalance, setFromTokenBalance] = React.useState<any>(0);
+  const [toReceive, setToReceive] = React.useState(0);
 
-  const fromChains = isL1ToL2 ? L1CHAINS : L2CHAINS;
-  const toChains = isL1ToL2 ? L2CHAINS : L1CHAINS;
-
-  const fromTokens = isL1ToL2 ? L1TOKENS : L2TOKENS;
-  const toTokens = isL1ToL2 ? L2TOKENS : L1TOKENS;
+  const tokens = isL1ToL2 ? L1TOKENS : L2TOKENS;
 
   const swapTokens = () => {
-    setIsL1ToL2(!isL1ToL2);
+    switchNetwork(isL1ToL2 ? "L2" : "L1");
   };
+
+  const watchTokenChange = form.watch("token");
+  React.useEffect(() => {
+    const getTokenBalance = async (value: string, token: Token) => {
+      setLoading(true);
+      try {
+        tokens.find((t) => t.value === value);
+        let balance;
+        if (token.isNative) {
+          balance = await web3Service.getNativeBalance(provider, address);
+        } else {
+          balance = await web3Service.getTokenBalance(
+            token.address,
+            address,
+            provider
+          );
+        }
+        setFromTokenBalance(balance);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (watchTokenChange) {
+      const token = tokens.find((t) => t.value === watchTokenChange);
+      if (token) {
+        getTokenBalance(watchTokenChange, token);
+      }
+    }
+  }, [watchTokenChange, address, provider]);
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
     toast({
@@ -87,15 +107,16 @@ export default function Dashboard() {
   }
 
   const setAmount = (value: number) => {
-    if (!form.getValues("fromToken")) {
-      form.setError("fromToken", {
+    const vals = form.getValues();
+    console.log("token", vals);
+    if (!form.getValues("token")) {
+      form.setError("token", {
         type: "manual",
-        message: "Please select a token first.",
+        message: "Please select a token to get the balance",
       });
       return;
     }
-    const balance = 101;
-    const amount = Math.floor((balance * value) / 100);
+    const amount = Math.floor((fromTokenBalance * value) / 100);
     form.setValue("amount", amount.toString());
   };
 
@@ -149,10 +170,10 @@ export default function Dashboard() {
 
                 <div className="bg-[#15171D] rounded-lg border">
                   <div className="flex items-center justify-between p-2">
-                    {/* From Token Select */}
+                    {/* Token Select */}
                     <FormField
                       control={form.control}
-                      name="fromToken"
+                      name="token"
                       render={({ field }) => (
                         <FormItem>
                           <Select
@@ -160,17 +181,20 @@ export default function Dashboard() {
                             onValueChange={field.onChange}
                           >
                             <FormControl>
-                              <SelectTrigger className="h-8 w-[80px] bg-[#292929]">
-                                <SelectValue placeholder="From" />
+                              <SelectTrigger className="h-8 bg-[#292929]">
+                                <SelectValue
+                                  placeholder={field.value || "Select Token"}
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent side="top">
-                              {fromTokens.map((token) => (
+                              {tokens.map((token) => (
                                 <SelectItem
                                   key={token.value}
                                   value={token.value}
+                                  disabled={!token.isEnabled}
                                 >
-                                  {token.name}
+                                  {token.value}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -183,7 +207,7 @@ export default function Dashboard() {
                     <div>
                       <p className="text-sm text-muted-foreground">Balance:</p>
                       <strong className="text-lg text-white float-right">
-                        100.00
+                        {loading ? <Skeleton /> : fromTokenBalance || 0}
                       </strong>
                     </div>
                   </div>
@@ -286,49 +310,32 @@ export default function Dashboard() {
                           <Label htmlFor="address">Address</Label>
                           <Input type="address" id="address" defaultValue="" />
                         </div>
-                        <Button type="submit">Submit</Button>
+                        <Alert
+                          variant={"warning"}
+                          className="flex items-center space-x-2"
+                        >
+                          <Terminal className="h-4 w-4" />
+                          <AlertDescription>
+                            Make sure the address is correct before submitting.
+                          </AlertDescription>
+                        </Alert>
+                        <Button type="submit">Add destination address</Button>
                       </form>
                     )}
                   />
                 </div>
                 <div className="bg-[#15171D]">
                   <div className="flex items-center justify-between p-2">
-                    {/* To Token Select */}
-                    <FormField
-                      control={form.control}
-                      name="toToken"
-                      render={({ field }) => (
-                        <FormItem>
-                          <Select
-                            defaultValue={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="h-8 w-[80px] bg-[#292929]">
-                                <SelectValue placeholder="To" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent side="top">
-                              {toTokens.map((token) => (
-                                <SelectItem
-                                  key={token.value}
-                                  value={token.value}
-                                  disabled={!token.isEnabled}
-                                >
-                                  {token.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <strong className="text-lg text-white">
+                      {form.getValues().token}
+                    </strong>
 
                     <div>
-                      <p className="text-sm text-muted-foreground">Balance:</p>
+                      <p className="text-sm text-muted-foreground">
+                        You will receive:
+                      </p>
                       <strong className="text-lg text-white float-right">
-                        100.00
+                        {loading ? <Skeleton /> : toReceive || 0}
                       </strong>
                     </div>
                   </div>

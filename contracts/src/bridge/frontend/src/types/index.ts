@@ -127,10 +127,14 @@ export interface ResponseDataInterface<T> {
 export interface WalletConnectionContextType {
   provider: any;
   signer: any;
-  address: string | null;
-  setProvider: (newProvider: any) => void;
-  setAddress: (newAddress: string) => void;
-  version: string;
+  address: string;
+  walletConnected: boolean;
+  isL1ToL2: boolean;
+  fromChains: Chain[];
+  toChains: Chain[];
+  connectWallet: () => void;
+  disconnectWallet: () => void;
+  switchNetwork: (network: string) => void;
 }
 
 export interface Props {
@@ -143,4 +147,26 @@ export interface State {
 
 export interface WalletConnectionProviderProps {
   children: React.ReactNode;
+}
+
+export enum WalletNetwork {
+  L1_MAINNET = "0x1",
+  L1_SEPOLIA = "0xaa36a7",
+  L2_TEN_TESTNET = "0x1bb",
+}
+
+export interface Chain {
+  name: string;
+  value: string;
+  isNative: boolean;
+  isEnabled: boolean;
+  chainId?: string;
+}
+
+export interface Token {
+  name: string;
+  value: string;
+  isNative: boolean;
+  isEnabled: boolean;
+  address: string;
 }
