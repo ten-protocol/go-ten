@@ -311,8 +311,8 @@ func GetBatchByHeight(db HostDB, height *big.Int) (*common.PublicBatch, error) {
 
 // GetBatchTransactions returns the TransactionListingResponse for a given batch hash
 func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
-	whereQuery := " WHERE b.full_hash=" + db.GetSQLStatement().Placeholder
-	return fetchBatchTxs(db.GetSQLDB(), whereQuery, batchHash)
+	whereQuery := " WHERE b.hash=" + db.GetSQLStatement().Placeholder
+	return fetchBatchTxs(db.GetSQLDB(), whereQuery, truncTo16(batchHash))
 }
 
 func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.BatchHeader, error) {
@@ -490,7 +490,7 @@ func fetchTx(db HostDB, seqNo uint64) ([]common.TxHash, error) {
 	return transactions, nil
 }
 
-func fetchBatchTxs(db *sql.DB, whereQuery string, batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
+func fetchBatchTxs(db *sql.DB, whereQuery string, batchHash []byte) (*common.TransactionListingResponse, error) {
 	query := selectBatchTxs + whereQuery
 	rows, err := db.Query(query, batchHash)
 	if err != nil {
