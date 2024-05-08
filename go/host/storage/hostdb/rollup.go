@@ -45,8 +45,8 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 // For example, offset 1, size 10 will return the latest 11-20 rollups.
 func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
 	query := selectRollups + db.GetSQLStatement().Pagination
-	offset := uint64(pagination.Size) * pagination.Offset
-	rows, err := db.GetSQLDB().Query(query, pagination.Size, offset)
+
+	rows, err := db.GetSQLDB().Query(query, pagination.Size, pagination.Offset)
 	if err != nil {
 		return nil, err
 	}

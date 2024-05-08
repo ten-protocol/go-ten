@@ -2,7 +2,6 @@ package hostdb
 
 import (
 	"math/big"
-	"strconv"
 	"testing"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -36,7 +35,7 @@ func TestGetTransactionListing(t *testing.T) {
 	}
 	dbtx.Write()
 
-	// page 0, size 3
+	// offset 0, size 3
 	txListing, err := GetTransactionListing(db, &common.QueryPagination{Offset: 0, Size: 3})
 	if err != nil {
 		t.Errorf("could not get tx listing. Cause: %s", err)
@@ -58,13 +57,11 @@ func TestGetTransactionListing(t *testing.T) {
 	}
 
 	// page 1, size 3
-	txListing1, err := GetTransactionListing(db, &common.QueryPagination{Offset: 1, Size: 3})
+	txListing1, err := GetTransactionListing(db, &common.QueryPagination{Offset: 3, Size: 3})
 	if err != nil {
 		t.Errorf("could not get batch listing. Cause: %s", err)
 	}
-	for i, tx := range txListing1.TransactionsData {
-		println("item : ", strconv.Itoa(i), tx.BatchHeight.String())
-	}
+
 	// should be 3 elements
 	if big.NewInt(int64(txListing1.Total)).Cmp(big.NewInt(3)) != 0 {
 		t.Errorf("tx listing was not paginated correctly")
