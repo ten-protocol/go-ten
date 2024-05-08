@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS batch_host
     ext_batch   BYTEA         NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS IDX_BATCH_HASH_HOST ON batch_host USING HASH (hash);
 CREATE INDEX IF NOT EXISTS IDX_BATCH_HEIGHT_HOST ON batch_host (height);
 
 CREATE TABLE IF NOT EXISTS transaction_host
@@ -41,6 +42,8 @@ CREATE TABLE IF NOT EXISTS transaction_host
     b_sequence     INT,
     FOREIGN KEY (b_sequence) REFERENCES batch_host(sequence)
 );
+
+CREATE INDEX IF NOT EXISTS IDX_TX_SEQ_HOST ON batch_host (b_sequence);
 
 CREATE TABLE IF NOT EXISTS transaction_count
 (

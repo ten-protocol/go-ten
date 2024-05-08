@@ -16,7 +16,7 @@ const (
 	selectBatch        = "SELECT sequence, full_hash, hash, height, ext_batch FROM batch_host"
 	selectExtBatch     = "SELECT ext_batch FROM batch_host"
 	selectLatestBatch  = "SELECT sequence, full_hash, hash, height, ext_batch FROM batch_host ORDER BY sequence DESC LIMIT 1"
-	selectTxsAndBatch  = "SELECT t.hash FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.full_hash = "
+	selectTxsAndBatch  = "SELECT t.hash FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.hash = "
 	selectBatchSeqByTx = "SELECT b_sequence FROM transaction_host WHERE hash = "
 	selectTxBySeq      = "SELECT full_hash FROM transaction_host WHERE b_sequence = "
 	selectBatchTxs     = "SELECT t.full_hash, b.sequence, b.height, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence"
@@ -201,7 +201,7 @@ func GetBatchNumber(db HostDB, txHash gethcommon.Hash) (*big.Int, error) {
 // GetBatchTxHashes returns the transaction hashes of the batch with the given hash.
 func GetBatchTxHashes(db HostDB, batchHash gethcommon.Hash) ([]gethcommon.Hash, error) {
 	query := selectTxsAndBatch + db.GetSQLStatement().Placeholder
-	rows, err := db.GetSQLDB().Query(query, batchHash)
+	rows, err := db.GetSQLDB().Query(query, truncTo16(batchHash))
 	if err != nil {
 		return nil, fmt.Errorf("query execution failed: %w", err)
 	}
