@@ -122,7 +122,7 @@ but on mainnet this won't be possible, so we need to store the `tx_count` in thi
 `ExtBatch.TxHashes` and expose a new Enclave API to retrieve this.
 
 ```sql
-create table if not exists transactions_host
+create table if not exists transaction_host
 (
     hash           binary(32) primary key,
     b_sequence     int REFERENCES batch_host

@@ -17,7 +17,7 @@ const (
 	selectExtRollup     = "SELECT ext_rollup from rollup_host r"
 	selectLatestRollup  = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
 	selectRollupBatches = "SELECT b.sequence, b.hash, b.full_hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON r.start_seq <= b.sequence AND r.end_seq >= b.sequence"
-	selectPublicRollup  = "SELECT id, hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block FROM rollup_host"
+	selectRollups       = "SELECT id, hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block FROM rollup_host ORDER BY id DESC "
 )
 
 // AddRollup adds a rollup to the DB
@@ -44,7 +44,9 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 // GetRollupListing returns latest rollups given a pagination.
 // For example, offset 1, size 10 will return the latest 11-20 rollups.
 func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
-	rows, err := db.GetSQLDB().Query(db.GetSQLStatement().SelectRollups, pagination.Size, pagination.Offset)
+	query := selectRollups + db.GetSQLStatement().Pagination
+	offset := uint64(pagination.Size) * pagination.Offset
+	rows, err := db.GetSQLDB().Query(query, pagination.Size, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +230,7 @@ func fetchHeadRollup(db *sql.DB) (*common.ExtRollup, error) {
 }
 
 func fetchPublicRollup(db *sql.DB, whereQuery string, args ...any) (*common.PublicRollup, error) {
-	query := selectPublicRollup + whereQuery
+	query := selectRollups + whereQuery
 	var rollup common.PublicRollup
 	var hash, extRollup, compressionblock []byte
 	var id, firstSeq, lastSeq, timestamp int

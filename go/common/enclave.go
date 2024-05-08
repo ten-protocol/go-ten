@@ -142,6 +142,7 @@ type EnclaveScan interface {
 	// GetCustomQuery returns the data of a custom query
 	GetCustomQuery(ctx context.Context, encryptedParams EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, SystemError)
 
+	//TODO DELETE ME
 	// GetPublicTransactionData returns a list of public transaction data
 	GetPublicTransactionData(ctx context.Context, pagination *QueryPagination) (*TransactionListingResponse, SystemError)
 

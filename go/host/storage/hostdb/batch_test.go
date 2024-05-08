@@ -210,35 +210,6 @@ func TestTransactionsForUnknownBatchReturnsNotFound(t *testing.T) {
 	}
 }
 
-func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
-	db, _ := createSQLiteDB(t)
-	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	batchOne := createBatch(batchNumber, txHashesOne)
-	dbtx, _ := db.NewDBTransaction()
-	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
-	if err != nil {
-		t.Errorf("could not store batch. Cause: %s", err)
-	}
-
-	txHashesTwo := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
-	batchTwo := createBatch(batchNumber+1, txHashesTwo)
-
-	err = AddBatch(dbtx, db.GetSQLStatement(), &batchTwo)
-	if err != nil {
-		t.Errorf("could not store batch. Cause: %s", err)
-	}
-	dbtx.Write()
-
-	totalTxs, err := GetTotalTxCount(db)
-	if err != nil {
-		t.Errorf("was not able to read total number of transactions. Cause: %s", err)
-	}
-
-	if int(totalTxs.Int64()) != len(txHashesOne)+len(txHashesTwo) {
-		t.Errorf("total number of batch transactions was not stored correctly")
-	}
-}
-
 func TestGetLatestBatch(t *testing.T) {
 	db, _ := createSQLiteDB(t)
 	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
@@ -265,32 +236,6 @@ func TestGetLatestBatch(t *testing.T) {
 
 	if int(batch.SequencerOrderNo.Uint64()) != int(batchTwo.SeqNo().Uint64()) {
 		t.Errorf("latest batch was not retrieved correctly")
-	}
-}
-
-func TestGetTransaction(t *testing.T) {
-	db, _ := createSQLiteDB(t)
-	txHash1 := gethcommon.BytesToHash([]byte("magicStringOne"))
-	txHash2 := gethcommon.BytesToHash([]byte("magicStringOne"))
-	txHashes := []common.L2TxHash{txHash1, txHash2}
-	batchOne := createBatch(batchNumber, txHashes)
-	dbtx, _ := db.NewDBTransaction()
-	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
-	if err != nil {
-		t.Errorf("could not store batch. Cause: %s", err)
-	}
-	dbtx.Write()
-
-	tx, err := GetTransaction(db, txHash2)
-	if err != nil {
-		t.Errorf("was not able to get transaction. Cause: %s", err)
-	}
-
-	if tx.BatchHeight.Cmp(big.NewInt(batchNumber)) != 0 {
-		t.Errorf("tx batch height was not retrieved correctly")
-	}
-	if tx.TransactionHash.Cmp(txHash2) != 0 {
-		t.Errorf("tx hash was not retrieved correctly")
 	}
 }
 

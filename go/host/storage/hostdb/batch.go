@@ -13,15 +13,13 @@ import (
 )
 
 const (
-	selectTxCount      = "SELECT total FROM transaction_count WHERE id = 1"
-	selectTxSeqNo      = "SELECT full_hash, b_sequence FROM transactions_host WHERE hash = "
 	selectBatch        = "SELECT sequence, full_hash, hash, height, ext_batch FROM batch_host"
 	selectExtBatch     = "SELECT ext_batch FROM batch_host"
 	selectLatestBatch  = "SELECT sequence, full_hash, hash, height, ext_batch FROM batch_host ORDER BY sequence DESC LIMIT 1"
-	selectTxsAndBatch  = "SELECT t.hash FROM transactions_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.full_hash = "
-	selectBatchSeqByTx = "SELECT b_sequence FROM transactions_host WHERE hash = "
-	selectTxBySeq      = "SELECT full_hash FROM transactions_host WHERE b_sequence = "
-	selectBatchTxs     = "SELECT t.full_hash, b.sequence, b.height, b.ext_batch FROM transactions_host t JOIN batch_host b ON t.b_sequence = b.sequence"
+	selectTxsAndBatch  = "SELECT t.hash FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.full_hash = "
+	selectBatchSeqByTx = "SELECT b_sequence FROM transaction_host WHERE hash = "
+	selectTxBySeq      = "SELECT full_hash FROM transaction_host WHERE b_sequence = "
+	selectBatchTxs     = "SELECT t.full_hash, b.sequence, b.height, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence"
 )
 
 // AddBatch adds a batch and its header to the DB
@@ -224,42 +222,6 @@ func GetBatchTxHashes(db HostDB, batchHash gethcommon.Hash) ([]gethcommon.Hash, 
 	}
 
 	return transactions, nil
-}
-
-// GetTotalTxCount returns the total number of batched transactions.
-func GetTotalTxCount(db HostDB) (*big.Int, error) {
-	var totalCount int
-	err := db.GetSQLDB().QueryRow(selectTxCount).Scan(&totalCount)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve total transaction count: %w", err)
-	}
-	return big.NewInt(int64(totalCount)), nil
-}
-
-// GetTransaction returns a transaction given its hash
-func GetTransaction(db HostDB, hash gethcommon.Hash) (*common.PublicTransaction, error) {
-	query := selectTxSeqNo + db.GetSQLStatement().Placeholder
-
-	var fullHash []byte
-	var seq int
-	err := db.GetSQLDB().QueryRow(query, truncTo16(hash)).Scan(&fullHash, &seq)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve transaction sequence number: %w", err)
-	}
-
-	batch, err := GetBatchBySequenceNumber(db, uint64(seq))
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve batch by sequence number: %w", err)
-	}
-
-	tx := &common.PublicTransaction{
-		TransactionHash: gethcommon.BytesToHash(fullHash),
-		BatchHeight:     batch.Header.Number,
-		BatchTimestamp:  batch.Header.Time,
-		Finality:        common.BatchFinal,
-	}
-
-	return tx, nil
 }
 
 // GetPublicBatch returns the batch with the given hash.
