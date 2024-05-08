@@ -49,7 +49,7 @@ func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.Ro
 
 	rows, err := db.GetSQLDB().Query(query, pagination.Size, pagination.Offset)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to execute query %s - %w", query, err)
 	}
 	defer rows.Close()
 	var rollups []common.PublicRollup
@@ -61,7 +61,7 @@ func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.Ro
 		var rollup common.PublicRollup
 		err = rows.Scan(&id, &hash, &startSeq, &endSeq, &timeStamp, &extRollup, &compressionBlock)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan query %s - %w", query, err)
 		}
 
 		extRollupDecoded := new(common.ExtRollup)
@@ -183,7 +183,7 @@ func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash) (*common.BatchListi
 func fetchRollupHeader(db *sql.DB, whereQuery string, args ...any) (*common.RollupHeader, error) {
 	rollup, err := fetchExtRollup(db, whereQuery, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch ext rollup - %w", err)
 	}
 	return rollup.Header, nil
 }

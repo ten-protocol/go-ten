@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/big"
 
-	common2 "github.com/ethereum/go-ethereum/common"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -21,7 +20,7 @@ func GetTransactionListing(db HostDB, pagination *common.QueryPagination) (*comm
 	query := selectTxs + db.GetSQLStatement().Pagination
 	rows, err := db.GetSQLDB().Query(query, pagination.Size, pagination.Offset)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to execute query %s - %w", query, err)
 	}
 	defer rows.Close()
 	var txs []common.PublicTransaction
@@ -31,7 +30,7 @@ func GetTransactionListing(db HostDB, pagination *common.QueryPagination) (*comm
 
 		err = rows.Scan(&fullHash, &extBatch)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan query %s - %w", query, err)
 		}
 
 		b := new(common.ExtBatch)
@@ -39,7 +38,7 @@ func GetTransactionListing(db HostDB, pagination *common.QueryPagination) (*comm
 			return nil, fmt.Errorf("could not decode rollup hash. Cause: %w", err)
 		}
 		tx := common.PublicTransaction{
-			TransactionHash: common2.HexToHash(bytesToHexString(fullHash)),
+			TransactionHash: gethcommon.HexToHash(bytesToHexString(fullHash)),
 			BatchHeight:     b.Header.Number,
 			BatchTimestamp:  b.Header.Time,
 			// TODO @will this will be implemented under #3336

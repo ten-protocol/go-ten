@@ -69,7 +69,7 @@ func AddBatch(dbtx *dbTransaction, statements *SQLStatements, batch *common.ExtB
 func GetBatchListing(db HostDB, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	headBatch, err := GetCurrentHeadBatch(db)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch current head batch - %w", err)
 	}
 	batchesFrom := headBatch.SequencerOrderNo.Uint64() - pagination.Offset
 	batchesTo := int(batchesFrom) - int(pagination.Size) + 1
@@ -82,7 +82,7 @@ func GetBatchListing(db HostDB, pagination *common.QueryPagination) (*common.Bat
 	for i := batchesFrom; i >= uint64(batchesTo); i-- {
 		batch, err := GetPublicBatchBySequenceNumber(db, i)
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-			return nil, err
+			return nil, fmt.Errorf("failed to fetch batch by sequence number - %w", err)
 		}
 		if batch != nil {
 			batches = append(batches, *batch)
@@ -100,7 +100,7 @@ func GetBatchListing(db HostDB, pagination *common.QueryPagination) (*common.Bat
 func GetBatchListingDeprecated(db HostDB, pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
 	headBatch, err := GetCurrentHeadBatch(db)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch head batch - %w", err)
 	}
 	batchesFrom := headBatch.SequencerOrderNo.Uint64() - pagination.Offset
 	batchesTo := int(batchesFrom) - int(pagination.Size) + 1
@@ -174,7 +174,7 @@ func GetBatchHashByNumber(db HostDB, number *big.Int) (*gethcommon.Hash, error) 
 	whereQuery := " WHERE height=" + db.GetSQLStatement().Placeholder
 	batch, err := fetchBatchHeader(db.GetSQLDB(), whereQuery, number.Uint64())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch batch header - %w", err)
 	}
 	l2BatchHash := batch.Hash()
 	return &l2BatchHash, nil
@@ -184,7 +184,7 @@ func GetBatchHashByNumber(db HostDB, number *big.Int) (*gethcommon.Hash, error) 
 func GetHeadBatchHeader(db HostDB) (*common.BatchHeader, error) {
 	batch, err := fetchHeadBatch(db.GetSQLDB())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch head batch header - %w", err)
 	}
 	return batch.Header, nil
 }
@@ -193,7 +193,7 @@ func GetHeadBatchHeader(db HostDB) (*common.BatchHeader, error) {
 func GetBatchNumber(db HostDB, txHash gethcommon.Hash) (*big.Int, error) {
 	batchHeight, err := fetchBatchNumber(db, truncTo16(txHash))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch batch height - %w", err)
 	}
 	return batchHeight, nil
 }
@@ -239,7 +239,7 @@ func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.ExtBatch, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to execute query %s - %w", query, err)
 	}
 	return GetBatchBySequenceNumber(db, seqNo)
 }
@@ -290,7 +290,7 @@ func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.Batch
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to scan with query %s - %w", query, err)
 	}
 	// Decode batch
 	var b common.ExtBatch
@@ -314,7 +314,7 @@ func fetchBatchNumber(db HostDB, args ...any) (*big.Int, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to scan with query %s - %w", query, err)
 	}
 	batch, err := GetPublicBatchBySequenceNumber(db, seqNo)
 	if err != nil {
@@ -342,7 +342,7 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to scan with query %s - %w", query, err)
 	}
 	var b common.ExtBatch
 	err = rlp.DecodeBytes(extBatch, &b)
@@ -382,7 +382,7 @@ func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatc
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to scan with query %s - %w", query, err)
 	}
 	var b common.ExtBatch
 	err = rlp.DecodeBytes(extBatch, &b)
@@ -470,7 +470,7 @@ func fetchBatchTxs(db *sql.DB, whereQuery string, batchHash gethcommon.Hash) (*c
 		)
 		err := rows.Scan(&fullHash, &sequence, &height, &extBatch)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan with query %s - %w", query, err)
 		}
 		extBatchDecoded := new(common.ExtBatch)
 		if err := rlp.DecodeBytes(extBatch, extBatchDecoded); err != nil {
