@@ -31,6 +31,7 @@ create table if not exists batch_host
     height         int        NOT NULL,
     ext_batch      mediumblob NOT NULL
 );
+create index IDX_BATCH_HASH_HOST on batch_host (hash);
 create index IDX_BATCH_HEIGHT_HOST on batch_host (height);
 
 create table if not exists transaction_host
