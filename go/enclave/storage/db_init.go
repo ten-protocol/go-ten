@@ -43,21 +43,18 @@ func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (encla
 
 // validateDBConf high-level checks that you have a valid configuration for DB creation
 func validateDBConf(cfg *config.EnclaveConfig) error {
-	//if cfg.UseInMemoryDB && cfg.EdgelessDBHost != "" {
-	//	return fmt.Errorf("invalid db config, useInMemoryDB=true so EdgelessDB host not expected, but EdgelessDBHost=%s", cfg.EdgelessDBHost)
-	//}
-	//if !cfg.WillAttest && cfg.EdgelessDBHost != "" {
-	//	return fmt.Errorf("invalid db config, willAttest=false so EdgelessDB host not supported, but EdgelessDBHost=%s", cfg.EdgelessDBHost)
-	//}
-	//if !cfg.UseInMemoryDB && cfg.WillAttest && cfg.EdgelessDBHost == "" {
-	//	return fmt.Errorf("useInMemoryDB=false, willAttest=true so expected an EdgelessDB host but none was provided")
-	//}
-	//if cfg.SqliteDBPath != "" && cfg.UseInMemoryDB {
-	//	return fmt.Errorf("useInMemoryDB=true so sqlite database will not be used and no path is needed, but sqliteDBPath=%s", cfg.SqliteDBPath)
-	//}
-	//if cfg.SqliteDBPath != "" && cfg.WillAttest {
-	//	return fmt.Errorf("willAttest=true so sqlite database will not be used and no path is needed, but sqliteDBPath=%s", cfg.SqliteDBPath)
-	//}
+	if cfg.UseInMemoryDB && cfg.EdgelessDBHost != "" {
+		return fmt.Errorf("invalid db config, useInMemoryDB=true so EdgelessDB host not expected, but EdgelessDBHost=%s", cfg.EdgelessDBHost)
+	}
+	if cfg.UseInMemoryDB && cfg.WillAttest {
+		return fmt.Errorf("useInMemoryDB=true, willAttest=true : cannot support attestation for inmemory mode")
+	}
+	if cfg.SqliteDBPath != "" && cfg.UseInMemoryDB {
+		return fmt.Errorf("useInMemoryDB=true so sqlite database will not be used and no path is needed, but sqliteDBPath=%s", cfg.SqliteDBPath)
+	}
+	if cfg.SqliteDBPath != "" && cfg.WillAttest {
+		return fmt.Errorf("willAttest=true so sqlite database will not be used and no path is needed, but sqliteDBPath=%s", cfg.SqliteDBPath)
+	}
 	return nil
 }
 

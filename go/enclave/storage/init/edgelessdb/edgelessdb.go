@@ -81,7 +81,7 @@ const (
 	edbManifestEndpoint  = "/manifest"
 	edbSignatureEndpoint = "/signature"
 
-	dataDir         = "data"
+	dataDir         = "/data"
 	certIssuer      = "obscuroCA"
 	certSubject     = "obscuroUser"
 	enclaveHostName = "enclave"

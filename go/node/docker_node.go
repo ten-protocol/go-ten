@@ -216,9 +216,12 @@ func (d *DockerNode) startEdgelessDB() error {
 	if d.cfg.pccsAddr != "" {
 		envs["PCCS_ADDR"] = d.cfg.pccsAddr
 	}
-	dbVolume := map[string]string{d.cfg.nodeName + "-db-volume": "/data"}
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, dbVolume)
+	// todo - do we need this volume?
+	//dbVolume := map[string]string{d.cfg.nodeName + "-db-volume": "/data"}
+	//_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, dbVolume)
+
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, nil)
 
 	return err
 }
