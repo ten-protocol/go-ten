@@ -158,7 +158,6 @@ func (w *WebServer) getPublicTransactions(c *gin.Context) {
 }
 
 func (w *WebServer) getTotalTxCount(c *gin.Context) {
-
 	txCount, err := w.backend.GetTotalTransactionCount()
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to execute getTotalTxCount request %w", err), w.logger)
