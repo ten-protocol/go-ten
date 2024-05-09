@@ -193,9 +193,11 @@ func (d *DockerNode) startEnclave() error {
 		cmd = append(cmd, "-willAttest=false")
 	}
 
-	enclaveVolume := map[string]string{d.cfg.nodeName + "-enclave-volume": _enclaveDataDir}
+	// we'll only need the volume when we'll have upgrade scenarios
+	//enclaveVolume := map[string]string{d.cfg.nodeName + "-enclave-volume": _enclaveDataDir}
+	//_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, enclaveVolume)
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, enclaveVolume)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, nil)
 	return err
 }
 
