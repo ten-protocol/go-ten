@@ -103,7 +103,7 @@ GRANT ALL ON obsdb.batch TO obscuro;
 create table if not exists obsdb.tx
 (
     id             INTEGER AUTO_INCREMENT,
-    hash           binary(16),
+    hash           binary(4),
     full_hash      binary(32) NOT NULL,
     content        mediumblob NOT NULL,
     sender_address binary(20) NOT NULL,
