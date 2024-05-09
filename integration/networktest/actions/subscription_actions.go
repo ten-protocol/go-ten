@@ -60,7 +60,7 @@ func (r *recordNewHeadsSubscriptionAction) Run(ctx context.Context, network netw
 	return ctx, nil
 }
 
-func (r *recordNewHeadsSubscriptionAction) Verify(ctx context.Context, network networktest.NetworkConnector) error {
+func (r *recordNewHeadsSubscriptionAction) Verify(_ context.Context, _ networktest.NetworkConnector) error {
 	if len(r.recordedHeads) == 0 {
 		return fmt.Errorf("no new heads received during the %s period", r.duration)
 	}
