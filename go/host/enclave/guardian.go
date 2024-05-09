@@ -550,9 +550,7 @@ func (g *Guardian) periodicBatchProduction() {
 			g.logger.Debug("Create batch")
 			// if maxBatchInterval is set higher than batchInterval then we are happy to skip creating batches when there is no data
 			// (up to a maximum time of maxBatchInterval)
-			// todo - disable the skip mechanism
-			// skipBatchIfEmpty := g.maxBatchInterval > g.batchInterval && time.Since(g.lastBatchCreated) < g.maxBatchInterval
-			skipBatchIfEmpty := false
+			skipBatchIfEmpty := g.maxBatchInterval > g.batchInterval && time.Since(g.lastBatchCreated) < g.maxBatchInterval
 			err := g.enclaveClient.CreateBatch(context.Background(), skipBatchIfEmpty)
 			if err != nil {
 				g.logger.Error("Unable to produce batch", log.ErrKey, err)

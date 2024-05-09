@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ten-protocol/go-ten/go/config"
 
@@ -44,22 +43,20 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, config config.Encl
 		dbPath = tempPath
 	}
 
-	inMem := strings.Contains(dbOptions, "mode=memory")
-	description := "in memory"
-	if !inMem {
-		_, err := os.Stat(dbPath)
-		if err == nil {
-			description = "existing"
-			initialsed = true
-		} else {
-			myfile, e := os.Create(dbPath)
-			if e != nil {
-				logger.Crit("could not create temp sqlite DB file - %w", e)
-			}
-			myfile.Close()
+	var description string
 
-			description = "new"
+	_, err := os.Stat(dbPath)
+	if err == nil {
+		description = "existing"
+		initialsed = true
+	} else {
+		myfile, e := os.Create(dbPath)
+		if e != nil {
+			logger.Crit("could not create temp sqlite DB file - %w", e)
 		}
+		myfile.Close()
+
+		description = "new"
 	}
 
 	path := fmt.Sprintf("file:%s?mode=rw&%s", dbPath, dbOptions)

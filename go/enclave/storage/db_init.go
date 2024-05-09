@@ -13,15 +13,20 @@ import (
 	"github.com/ten-protocol/go-ten/go/config"
 )
 
+// _journal_mode=wal - The recommended running mode: "Write-ahead logging": https://www.sqlite.org/draft/matrix/wal.html
+// _txlock=immediate - db transactions start as soon as "BeginTx()" is called. Avoids deadlocks. https://www.sqlite.org/lang_transaction.html
+// _synchronous=normal - not exactly sure if we actually need this. It was recommended somewhere. https://www.sqlite.org/pragma.html#pragma_synchronous
+const sqliteCfg = "_foreign_keys=on&_journal_mode=wal&_txlock=immediate&_synchronous=normal"
+
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
 func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}
 	if cfg.UseInMemoryDB {
-		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
+		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating temporary sqlite database...")
 		// this creates a temporary sqlite sqldb
-		return sqlite.CreateTemporarySQLiteDB("", "_foreign_keys=on&_txlock=immediate&_synchronous=normal", *cfg, logger)
+		return sqlite.CreateTemporarySQLiteDB("", sqliteCfg, *cfg, logger)
 	}
 
 	if !cfg.WillAttest && len(cfg.SqliteDBPath) > 0 {
@@ -29,7 +34,7 @@ func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (encla
 		logger.Warn("Attestation is disabled, using a basic sqlite DB for persistence")
 		// when we want to test persistence after node restart the SqliteDBPath should be set
 		// (if empty string then a temp sqldb file will be created for the lifetime of the enclave)
-		return sqlite.CreateTemporarySQLiteDB(cfg.SqliteDBPath, "_foreign_keys=on&_txlock=immediate&_synchronous=normal", *cfg, logger)
+		return sqlite.CreateTemporarySQLiteDB(cfg.SqliteDBPath, sqliteCfg, *cfg, logger)
 	}
 
 	if !cfg.WillAttest && len(cfg.EdgelessDBHost) > 0 {
