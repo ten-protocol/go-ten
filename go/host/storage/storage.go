@@ -126,7 +126,7 @@ func (s *storageImpl) FetchBatch(batchHash gethcommon.Hash) (*common.ExtBatch, e
 }
 
 func (s *storageImpl) FetchBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
-	defer core.LogMethodDuration(s.logger, measure.NewStopwatch(), "Fetch batch by transaction", log.TransactionHashKey, txHash)
+	defer core.LogMethodDuration(s.logger, measure.NewStopwatch(), "Fetch batch by transaction", log.TxKey, txHash)
 	return hostdb.GetBatchByTx(s.db, txHash)
 }
 
