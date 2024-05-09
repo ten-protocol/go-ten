@@ -36,7 +36,8 @@ type batchRepoServiceLocator interface {
 // Repository is responsible for storing and retrieving batches from the database
 // If it can't find a batch it will request it from peers. It also subscribes for batch requests from peers and responds to them.
 type Repository struct {
-	batchSubscribers *subscription.Manager[host.L2BatchHandler]
+	batchSubscribers          *subscription.Manager[host.L2BatchHandler] // notified when a new batch is added to the repository
+	validatedBatchSubscribers *subscription.Manager[host.L2BatchHandler] // notified when a new batch is validated by the enclave
 
 	sl          batchRepoServiceLocator
 	storage     storage.Storage
@@ -45,6 +46,10 @@ type Repository struct {
 	// high watermark for batch sequence numbers seen so far. If we can't find batch for seq no < this, then we should ask peers for missing batches
 	latestBatchSeqNo *big.Int
 	latestSeqNoMutex sync.Mutex
+
+	// high watermark for batch sequence numbers validated by our enclave so far.
+	latestValidatedSeqNo *big.Int
+	latestValidatedMutex sync.Mutex
 
 	// The repository requests batches from peers asynchronously, we don't want to repeatedly spam out requests if we
 	// haven't received a response yet, but we also don't want to wait forever if there's no response.
@@ -59,13 +64,15 @@ type Repository struct {
 
 func NewBatchRepository(cfg *config.HostConfig, hostService batchRepoServiceLocator, storage storage.Storage, logger gethlog.Logger) *Repository {
 	return &Repository{
-		batchSubscribers: subscription.NewManager[host.L2BatchHandler](),
-		sl:               hostService,
-		storage:          storage,
-		isSequencer:      cfg.NodeType == common.Sequencer,
-		latestBatchSeqNo: big.NewInt(0),
-		running:          atomic.Bool{},
-		logger:           logger,
+		batchSubscribers:          subscription.NewManager[host.L2BatchHandler](),
+		validatedBatchSubscribers: subscription.NewManager[host.L2BatchHandler](),
+		sl:                        hostService,
+		storage:                   storage,
+		isSequencer:               cfg.NodeType == common.Sequencer,
+		latestBatchSeqNo:          big.NewInt(0),
+		latestValidatedSeqNo:      big.NewInt(0),
+		running:                   atomic.Bool{},
+		logger:                    logger,
 	}
 }
 
@@ -144,9 +151,13 @@ func (r *Repository) HandleBatchRequest(requesterID string, fromSeqNo *big.Int) 
 	}
 }
 
-// Subscribe registers a handler to be notified of new head batches as they arrive, returns unsubscribe func
-func (r *Repository) Subscribe(handler host.L2BatchHandler) func() {
+// SubscribeNewBatches registers a handler to be notified of new head batches as they arrive, returns unsubscribe func
+func (r *Repository) SubscribeNewBatches(handler host.L2BatchHandler) func() {
 	return r.batchSubscribers.Subscribe(handler)
+}
+
+func (r *Repository) SubscribeValidatedBatches(handler host.L2BatchHandler) func() {
+	return r.validatedBatchSubscribers.Subscribe(handler)
 }
 
 func (r *Repository) FetchBatchBySeqNo(ctx context.Context, seqNo *big.Int) (*common.ExtBatch, error) {
@@ -188,6 +199,19 @@ func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 		}
 	}
 	return nil
+}
+
+// NotifyNewValidatedHead - called after an enclave validates a batch, to update the repo's validated head and notify subscribers
+func (r *Repository) NotifyNewValidatedHead(batch *common.ExtBatch) {
+	r.latestValidatedMutex.Lock()
+	defer r.latestValidatedMutex.Unlock()
+	if batch.SeqNo().Cmp(r.latestValidatedSeqNo) > 0 {
+		r.latestValidatedSeqNo = batch.SeqNo()
+	}
+	// notify validated batch subscribers, a new batch has been successfully processed by an enclave
+	for _, subscriber := range r.validatedBatchSubscribers.Subscribers() {
+		go subscriber.HandleBatch(batch)
+	}
 }
 
 func (r *Repository) fetchBatchFallbackToEnclave(ctx context.Context, seqNo *big.Int) (*common.ExtBatch, error) {
