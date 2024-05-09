@@ -142,13 +142,13 @@ func (w *WebServer) getPublicTransactions(c *gin.Context) {
 		return
 	}
 
-	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
+	size, err := strconv.ParseUint(sizeStr, 10, 64)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to parse getPublicTransactions size units %w", err), w.logger)
 		return
 	}
 
-	publicTxs, err := w.backend.GetPublicTransactions(offset, parseUint)
+	publicTxs, err := w.backend.GetPublicTransactions(offset, size)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to execute getPublicTransactions request %w", err), w.logger)
 		return
@@ -202,13 +202,13 @@ func (w *WebServer) getBatchListingDeprecated(c *gin.Context) {
 		return
 	}
 
-	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
+	size, err := strconv.ParseUint(sizeStr, 10, 64)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to parse getBatchListingDeprecated size units %w", err), w.logger)
 		return
 	}
 
-	batchesListing, err := w.backend.GetBatchesListingDeprecated(offset, parseUint)
+	batchesListing, err := w.backend.GetBatchesListingDeprecated(offset, size)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to execute getBatchListingDeprecated request %w", err), w.logger)
 		return
@@ -227,13 +227,13 @@ func (w *WebServer) getRollupListing(c *gin.Context) {
 		return
 	}
 
-	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
+	size, err := strconv.ParseUint(sizeStr, 10, 64)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to parse getRollupListing size units %w", err), w.logger)
 		return
 	}
 
-	rollupListing, err := w.backend.GetRollupListing(offset, parseUint)
+	rollupListing, err := w.backend.GetRollupListing(offset, size)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to execute getRollupListing request %w", err), w.logger)
 		return
@@ -252,13 +252,13 @@ func (w *WebServer) getBlockListing(c *gin.Context) {
 		return
 	}
 
-	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
+	size, err := strconv.ParseUint(sizeStr, 10, 64)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to parse getBlockListing size units %w", err), w.logger)
 		return
 	}
 
-	batchesListing, err := w.backend.GetBlockListing(offset, parseUint)
+	batchesListing, err := w.backend.GetBlockListing(offset, size)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to execute getBlockListing request %w", err), w.logger)
 		return
