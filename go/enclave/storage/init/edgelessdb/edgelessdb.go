@@ -138,7 +138,7 @@ func Connector(edbCfg *Config, config config.EnclaveConfig, logger gethlog.Logge
 	}
 
 	// load credentials from encrypted persistence if available, otherwise perform handshake and initialization to prepare them
-	edbCredentials, err := getHandshakeCredentials(edbCfg, logger)
+	edbCredentials, err := getHandshakeCredentials(config, edbCfg, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func waitForEdgelessDBToStart(edbHost string, logger gethlog.Logger) error {
 		edgelessDBStartTimeout, edgelessHTTPAddr, err)
 }
 
-func getHandshakeCredentials(edbCfg *Config, logger gethlog.Logger) (*Credentials, error) {
+func getHandshakeCredentials(enclaveConfig config.EnclaveConfig, edbCfg *Config, logger gethlog.Logger) (*Credentials, error) {
 	// if we have previously performed the handshake we can retrieve the creds from disk and proceed
 	edbCreds, found, err := loadCredentialsFromFile()
 	if err != nil {
@@ -189,7 +189,7 @@ func getHandshakeCredentials(edbCfg *Config, logger gethlog.Logger) (*Credential
 	}
 	if !found {
 		// they don't exist on disk so we have to perform the handshake and set them up
-		edbCreds, err = performHandshake(edbCfg, logger)
+		edbCreds, err = performHandshake(enclaveConfig, edbCfg, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +216,7 @@ func loadCredentialsFromFile() (*Credentials, bool, error) {
 	return edbCreds, true, nil
 }
 
-func performHandshake(edbCfg *Config, logger gethlog.Logger) (*Credentials, error) {
+func performHandshake(enclaveConfig config.EnclaveConfig, edbCfg *Config, logger gethlog.Logger) (*Credentials, error) {
 	// we need to make sure this dir exists before we start read/writing files in there
 	err := os.MkdirAll(dataDir, 0o644)
 	if err != nil {
@@ -229,7 +229,7 @@ func performHandshake(edbCfg *Config, logger gethlog.Logger) (*Credentials, erro
 	// The trust path is as follows:
 	// 1. The Obscuro Enclave performs RA on the database enclave, and the RA object contains a certificate which only the database enclave controls.
 	// 2. Connecting to the database via mutually authenticated TLS using the above certificate, will give the Obscuro enclave confidence that it is only giving data away to some code and hardware it trusts.
-	edbPEM, err := performEDBRemoteAttestation(edbCfg.Host, defaultEDBConstraints, logger)
+	edbPEM, err := performEDBRemoteAttestation(enclaveConfig, edbCfg.Host, defaultEDBConstraints, logger)
 	if err != nil {
 		return nil, err
 	}

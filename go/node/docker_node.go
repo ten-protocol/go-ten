@@ -177,6 +177,7 @@ func (d *DockerNode) startEnclave() error {
 		"-maxRollupSize=65536",
 		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
 		"-obscuroGenesis", "{}",
+		"-edgelessDBHost", d.cfg.nodeName+"-edgelessdb",
 	)
 
 	if d.cfg.sgxEnabled {
@@ -187,41 +188,39 @@ func (d *DockerNode) startEnclave() error {
 
 		// prepend the entry.sh execution
 		cmd = append([]string{"/home/obscuro/go-obscuro/go/enclave/main/entry.sh"}, cmd...)
-		cmd = append(cmd,
-			"-edgelessDBHost", d.cfg.nodeName+"-edgelessdb",
-			"-willAttest=true",
-		)
+		cmd = append(cmd, "-willAttest=true")
 	} else {
-		cmd = append(cmd,
-			"-sqliteDBPath", "/data/sqlite.db",
-		)
+		cmd = append(cmd, "-willAttest=false")
 	}
 
+	// we need the enclave volume to store the db credentials
 	enclaveVolume := map[string]string{d.cfg.nodeName + "-enclave-volume": _enclaveDataDir}
-
 	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, enclaveVolume)
+
 	return err
 }
 
 func (d *DockerNode) startEdgelessDB() error {
-	if !d.cfg.sgxEnabled {
-		// Non-SGX hardware use sqlite database so EdgelessDB is not required.
-		return nil
-	}
-
 	envs := map[string]string{
 		"EDG_EDB_CERT_DNS": d.cfg.nodeName + "-edgelessdb",
 	}
+	devices := map[string]string{}
 
-	devices := map[string]string{
-		"/dev/sgx_enclave":   "/dev/sgx_enclave",
-		"/dev/sgx_provision": "/dev/sgx_provision",
+	if d.cfg.sgxEnabled {
+		devices["/dev/sgx_enclave"] = "/dev/sgx_enclave"
+		devices["/dev/sgx_provision"] = "/dev/sgx_provision"
+	} else {
+		envs["OE_SIMULATION"] = "1"
 	}
 
 	// only set the pccsAddr env var if it's defined
 	if d.cfg.pccsAddr != "" {
 		envs["PCCS_ADDR"] = d.cfg.pccsAddr
 	}
+
+	// todo - do we need this volume?
+	//dbVolume := map[string]string{d.cfg.nodeName + "-db-volume": "/data"}
+	//_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, dbVolume)
 
 	_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, nil)
 
