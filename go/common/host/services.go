@@ -118,14 +118,20 @@ type L1Publisher interface {
 
 // L2BatchRepository provides an interface for the host to request L2 batch data (live-streaming and historical)
 type L2BatchRepository interface {
-	// Subscribe will register a batch handler to receive new batches as they arrive
-	Subscribe(handler L2BatchHandler) func()
+	// SubscribeNewBatches will register a handler to receive new batches from the publisher as they arrive at the host
+	SubscribeNewBatches(handler L2BatchHandler) func()
+
+	// SubscribeValidatedBatches will register a handler to receive batches that have been validated by the enclave
+	SubscribeValidatedBatches(handler L2BatchHandler) func()
 
 	FetchBatchBySeqNo(background context.Context, seqNo *big.Int) (*common.ExtBatch, error)
 
 	// AddBatch is used to notify the repository of a new batch, e.g. from the enclave when seq produces one or a rollup is consumed
 	// Note: it is fine to add batches that the repo already has, it will just ignore them
 	AddBatch(batch *common.ExtBatch) error
+
+	// NotifyNewValidatedHead - called after an enclave validates a batch, to update the repo's validated head and notify subscribers
+	NotifyNewValidatedHead(batch *common.ExtBatch)
 }
 
 // L2BatchHandler is an interface for receiving new batches from the publisher as they arrive
