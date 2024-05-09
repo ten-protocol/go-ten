@@ -20,8 +20,9 @@ import (
 type GatewayUser struct {
 	wal wallet.Wallet
 
-	gwLib  *lib.TGLib // TenGateway utility
-	client *ethclient.Client
+	gwLib    *lib.TGLib // TenGateway utility
+	client   *ethclient.Client
+	wsClient *ethclient.Client // lazily initialized websocket client
 
 	// state managed by the wallet
 	nonce uint64
@@ -29,8 +30,8 @@ type GatewayUser struct {
 	logger gethlog.Logger
 }
 
-func NewGatewayUser(wal wallet.Wallet, gatewayURL string, logger gethlog.Logger) (*GatewayUser, error) {
-	gwLib := lib.NewTenGatewayLibrary(gatewayURL, "") // not providing wsURL for now, add if we need it
+func NewGatewayUser(wal wallet.Wallet, gatewayURL string, gatewayWSURL string, logger gethlog.Logger) (*GatewayUser, error) {
+	gwLib := lib.NewTenGatewayLibrary(gatewayURL, gatewayWSURL)
 
 	err := gwLib.Join()
 	if err != nil {
@@ -111,4 +112,15 @@ func (g *GatewayUser) NativeBalance(ctx context.Context) (*big.Int, error) {
 
 func (g *GatewayUser) Wallet() wallet.Wallet {
 	return g.wal
+}
+
+func (g *GatewayUser) WSClient() (*ethclient.Client, error) {
+	if g.wsClient == nil {
+		var err error
+		g.wsClient, err = ethclient.Dial(g.gwLib.WS())
+		if err != nil {
+			return nil, fmt.Errorf("failed to dial TenGateway WS: %w", err)
+		}
+	}
+	return g.wsClient, nil
 }
