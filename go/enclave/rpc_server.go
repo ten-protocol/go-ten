@@ -442,26 +442,6 @@ func (s *RPCServer) GetReceiptsByAddress(ctx context.Context, req *generated.Get
 	return &generated.GetReceiptsByAddressResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
-func (s *RPCServer) GetPublicTransactionData(ctx context.Context, req *generated.GetPublicTransactionDataRequest) (*generated.GetPublicTransactionDataResponse, error) {
-	publicTxData, sysError := s.enclave.GetPublicTransactionData(ctx, &common.QueryPagination{
-		Offset: uint64(req.Pagination.GetOffset()),
-		Size:   uint(req.Pagination.GetSize()),
-	})
-	if sysError != nil {
-		s.logger.Error("Error getting tx data", log.ErrKey, sysError)
-		// todo  do we want to exit here or return the usual response
-		return &generated.GetPublicTransactionDataResponse{SystemError: toRPCError(sysError)}, nil
-	}
-
-	marshal, err := json.Marshal(publicTxData)
-	if err != nil {
-		s.logger.Error("Error getting tx data", log.ErrKey, err)
-		return &generated.GetPublicTransactionDataResponse{SystemError: toRPCError(sysError)}, nil
-	}
-
-	return &generated.GetPublicTransactionDataResponse{PublicTransactionData: marshal}, nil
-}
-
 func (s *RPCServer) EnclavePublicConfig(ctx context.Context, _ *generated.EnclavePublicConfigRequest) (*generated.EnclavePublicConfigResponse, error) {
 	enclaveCfg, sysError := s.enclave.EnclavePublicConfig(ctx)
 	if sysError != nil {

@@ -583,32 +583,6 @@ func (c *Client) GetCustomQuery(ctx context.Context, encryptedParams common.Encr
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
-func (c *Client) GetPublicTransactionData(ctx context.Context, pagination *common.QueryPagination) (*common.TransactionListingResponse, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.GetPublicTransactionData(timeoutCtx, &generated.GetPublicTransactionDataRequest{
-		Pagination: &generated.Pagination{
-			Offset: int32(pagination.Offset),
-			Size:   int32(pagination.Size),
-		},
-	})
-	if err != nil {
-		return nil, syserr.NewRPCError(err)
-	}
-	if response != nil && response.SystemError != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-
-	var result common.TransactionListingResponse
-	err = json.Unmarshal(response.PublicTransactionData, &result)
-	if err != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-
-	return &result, nil
-}
-
 func (c *Client) EnclavePublicConfig(ctx context.Context) (*common.EnclavePublicConfig, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
 	defer cancel()

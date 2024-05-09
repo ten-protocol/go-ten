@@ -20,6 +20,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/ten-protocol/go-ten/go/config"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/edgelesssys/ego/attestation"
@@ -60,10 +62,10 @@ var defaultEDBConstraints = &EdgelessAttestationConstraints{
 }
 
 // performEDBRemoteAttestation perform the SGX enclave attestation to verify edb running in a legit enclave and with expected edb version etc.
-func performEDBRemoteAttestation(edbHost string, constraints *EdgelessAttestationConstraints, logger gethlog.Logger) (string, error) {
+func performEDBRemoteAttestation(config config.EnclaveConfig, edbHost string, constraints *EdgelessAttestationConstraints, logger gethlog.Logger) (string, error) {
 	logger.Info("Verifying attestation from edgeless DB...")
 	edbHTTPAddr := fmt.Sprintf("%s:%s", edbHost, edbHTTPPort)
-	certs, tcbStatus, err := performRAAndFetchTLSCert(edbHTTPAddr, constraints)
+	certs, tcbStatus, err := performRAAndFetchTLSCert(config, edbHTTPAddr, constraints)
 	if err != nil {
 		// todo (#1550) - should we check the error type with: err == attestation.ErrTCBLevelInvalid?
 		// for now it's maximum strictness (we can revisit this and permit some tcbStatuses if desired)
@@ -80,14 +82,14 @@ func performEDBRemoteAttestation(edbHost string, constraints *EdgelessAttestatio
 
 // performRAAndFetchTLSCert gets the TLS certificate from the Edgeless DB server in PEM format. It performs remote attestation
 // to verify the certificate. Attestation constraints must be provided to validate against.
-func performRAAndFetchTLSCert(host string, constraints *EdgelessAttestationConstraints) ([]*pem.Block, tcbstatus.Status, error) {
+func performRAAndFetchTLSCert(enclaveConfig config.EnclaveConfig, host string, constraints *EdgelessAttestationConstraints) ([]*pem.Block, tcbstatus.Status, error) {
 	// we don't need to verify the TLS because we will be verifying the attestation report and that can't be faked
 	cert, quote, err := httpGetCertQuote(&tls.Config{InsecureSkipVerify: true}, host, quoteEndpoint) //nolint:gosec
 	if err != nil {
 		return nil, tcbstatus.Unknown, err
 	}
 
-	if len(quote) == 0 {
+	if len(quote) == 0 && enclaveConfig.WillAttest {
 		return nil, tcbstatus.Unknown, errors.New("no quote found, attestation failed")
 	}
 
@@ -104,6 +106,10 @@ func performRAAndFetchTLSCert(host string, constraints *EdgelessAttestationConst
 			return nil, tcbstatus.Unknown, errors.New("could not parse certificate chain")
 		}
 		certs = append(certs, block)
+	}
+
+	if !enclaveConfig.WillAttest {
+		return certs, tcbstatus.Unknown, nil
 	}
 
 	report, verifyErr := enclave.VerifyRemoteReport(quote)

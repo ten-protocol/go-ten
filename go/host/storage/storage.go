@@ -174,6 +174,10 @@ func (s *storageImpl) FetchBatchTransactions(batchHash gethcommon.Hash) (*common
 	return hostdb.GetBatchTransactions(s.db, batchHash)
 }
 
+func (s *storageImpl) FetchTransactionListing(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
+	return hostdb.GetTransactionListing(s.db, pagination)
+}
+
 func (s *storageImpl) Close() error {
 	return s.db.GetSQLDB().Close()
 }

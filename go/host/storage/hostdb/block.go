@@ -8,6 +8,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
+const (
+	selectBlocks = "SELECT id, hash, header, rollup_hash FROM block_host ORDER BY id DESC "
+)
+
 // AddBlock stores a block header with the given rollupHash it contains in the host DB
 func AddBlock(dbtx *dbTransaction, statements *SQLStatements, b *types.Header, rollupHash common.L2RollupHash) error {
 	header, err := rlp.EncodeToBytes(b)
@@ -34,7 +38,8 @@ func AddBlock(dbtx *dbTransaction, statements *SQLStatements, b *types.Header, r
 
 // GetBlockListing returns a paginated list of blocks in descending order against the order they were added
 func GetBlockListing(db HostDB, pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
-	rows, err := db.GetSQLDB().Query(db.GetSQLStatement().SelectBlocks, pagination.Size, pagination.Offset)
+	query := selectBlocks + db.GetSQLStatement().Pagination
+	rows, err := db.GetSQLDB().Query(query, pagination.Size, pagination.Offset)
 	if err != nil {
 		return nil, err
 	}

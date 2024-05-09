@@ -95,19 +95,8 @@ service EnclaveProto {
 
   rpc GetReceiptsByAddress(GetReceiptsByAddressRequest) returns (GetReceiptsByAddressResponse) {}
 
-  rpc GetPublicTransactionData(GetPublicTransactionDataRequest) returns (GetPublicTransactionDataResponse) {}
-
   // EnclavePublicConfig returns public network data that is known to the enclave but may not be known to the host
   rpc EnclavePublicConfig(EnclavePublicConfigRequest) returns (EnclavePublicConfigResponse) {}
-}
-
-message GetPublicTransactionDataRequest {
-    Pagination pagination = 1;
-}
-
-message GetPublicTransactionDataResponse{
-  bytes publicTransactionData = 1;
-  SystemError systemError = 2;
 }
 
 message EnclavePublicConfigRequest {}
