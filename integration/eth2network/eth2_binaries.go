@@ -1,6 +1,7 @@
 package eth2network
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,11 +10,14 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
+
+	"github.com/codeclysm/extract/v3"
 )
 
 const (
-	_gethVersion  = "1.12.2"
+	_gethVersion  = "1.12.2-bed84606"
 	_prysmVersion = "v4.0.6"
 )
 
@@ -37,43 +41,88 @@ func EnsureBinariesExist() (string, error) {
 		panic(err)
 	}
 
-	// build geth
-	if !fileExists(path.Join(basepath, _eth2BinariesRelPath, _gethFileNameVersion)) {
-		gethScript := path.Join(basepath, "./build_geth_binary.sh")
-		cmd := exec.Command("bash", gethScript, fmt.Sprintf("%s=%s", "--version", "v"+_gethVersion))
-		cmd.Stderr = os.Stderr
-
-		if out, err := cmd.Output(); err != nil {
-			fmt.Printf("%s\n", out)
-			return "", err
+	var wg sync.WaitGroup
+	prysmaticURL := fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/", _prysmVersion)
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		err := checkOrDownloadBinary(_prysmBeaconChainFileNameVersion, fmt.Sprintf("%s%s", prysmaticURL, _prysmBeaconChainFileNameVersion), false)
+		if err != nil {
+			panic(err)
 		}
-	}
+	}()
+	go func() {
+		defer wg.Done()
+		err := checkOrDownloadBinary(_prysmCTLFileNameVersion, fmt.Sprintf("%s%s", prysmaticURL, _prysmCTLFileNameVersion), false)
+		if err != nil {
+			panic(err)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		err := checkOrDownloadBinary(_prysmValidatorFileNameVersion, fmt.Sprintf("%s%s", prysmaticURL, _prysmValidatorFileNameVersion), false)
+		if err != nil {
+			panic(err)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		err := checkOrDownloadBinary(_gethFileNameVersion, fmt.Sprintf("https://gethstore.blob.core.windows.net/builds/%s.tar.gz", _gethFileNameVersion), true)
+		if err != nil {
+			// geth 1.12 is not available to download for the mac, so we have to build it
+			println("Cannot download geth binary. Compiling from source.")
+			gethScript := path.Join(basepath, "./build_geth_binary.sh")
 
-	// download prysm files
-	for fileName, downloadURL := range map[string]string{
-		_prysmBeaconChainFileNameVersion: fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/beacon-chain-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, runtime.GOARCH),
-		_prysmCTLFileNameVersion:         fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/prysmctl-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, runtime.GOARCH),
-		_prysmValidatorFileNameVersion:   fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/validator-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, runtime.GOARCH),
-	} {
-		expectedFilePath := path.Join(basepath, _eth2BinariesRelPath, fileName)
-		if !fileExists(expectedFilePath) {
-			err := downloadFile(expectedFilePath, downloadURL)
-			if err != nil {
-				return "", err
+			v := strings.Split(_gethVersion, "-")
+			cmd := exec.Command(
+				"bash",
+				gethScript,
+				fmt.Sprintf("%s=%s", "--version", "v"+v[0]),
+				fmt.Sprintf("%s=%s", "--output", path.Join(basepath, _eth2BinariesRelPath, _gethFileNameVersion)),
+			)
+			cmd.Stderr = os.Stderr
+
+			if out, err := cmd.Output(); err != nil {
+				fmt.Printf("%s\n", out)
+				panic(err)
 			}
-			fmt.Printf("Downloaded - %s\n", fileName)
 		}
-	}
+	}()
 
+	wg.Wait()
 	return path.Join(basepath, _eth2BinariesRelPath), nil
 }
 
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
+func checkOrDownloadBinary(fileName string, url string, unTar bool) error {
+	expectedFilePath := path.Join(basepath, _eth2BinariesRelPath, fileName)
+	if fileExists(expectedFilePath) {
+		return nil
 	}
-	return !info.IsDir()
+	suffix := ""
+	if unTar {
+		suffix = ".tar.gz"
+	}
+	err := downloadFile(expectedFilePath+suffix, url)
+	if err != nil {
+		return err
+	}
+	if unTar {
+		f, err := os.Open(expectedFilePath + suffix)
+		if err != nil {
+			return err
+		}
+		err = extract.Gz(context.TODO(), f, path.Join(basepath, _eth2BinariesRelPath), nil)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf("Downloaded - %s\n", expectedFilePath)
+	return nil
+}
+
+func fileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	return !os.IsNotExist(err)
 }
 
 func downloadFile(filepath string, url string) error {
@@ -94,6 +143,7 @@ func downloadFile(filepath string, url string) error {
 
 	// Check server response
 	if resp.StatusCode != http.StatusOK {
+		os.Remove(filepath)
 		return fmt.Errorf("bad status: %s", resp.Status)
 	}
 
