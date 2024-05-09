@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -23,12 +24,19 @@ import (
 )
 
 const (
-	_dataDirFlag                     = "--datadir"
-	_eth2BinariesRelPath             = "../.build/eth2_bin"
-	_gethFileNameVersion             = "geth-v" + _gethVersion
-	_prysmBeaconChainFileNameVersion = "beacon-chain-" + _prysmVersion
-	_prysmCTLFileNameVersion         = "prysmctl-" + _prysmVersion
-	_prysmValidatorFileNameVersion   = "validator-" + _prysmVersion
+	_eth2BinariesRelPath = "../.build/eth2_bin"
+	_dataDirFlag         = "--datadir"
+	_gethBinaryName      = "geth"
+)
+
+// https://gethstore.blob.core.windows.net/builds/geth-darwin-amd64-1.14.2-35b2d07f.tar.gz
+var _gethFileNameVersion = fmt.Sprintf("geth-%s-%s-%s", runtime.GOOS, runtime.GOARCH, _gethVersion)
+
+// https://github.com/prysmaticlabs/prysm/releases/download/v4.0.6/
+var (
+	_prysmBeaconChainFileNameVersion = fmt.Sprintf("beacon-chain-%s-%s-%s", _prysmVersion, runtime.GOOS, runtime.GOARCH)
+	_prysmCTLFileNameVersion         = fmt.Sprintf("prysmctl-%s-%s-%s", _prysmVersion, runtime.GOOS, runtime.GOARCH)
+	_prysmValidatorFileNameVersion   = fmt.Sprintf("validator-%s-%s-%s", _prysmVersion, runtime.GOOS, runtime.GOARCH)
 )
 
 type Impl struct {
@@ -93,7 +101,7 @@ func NewEth2Network(
 	prysmGenesisPath := path.Join(buildDir, "genesis.ssz")
 	prysmConfigPath := path.Join(buildDir, "prysm_chain_config.yml")
 
-	gethBinaryPath := path.Join(binDir, _gethFileNameVersion)
+	gethBinaryPath := path.Join(binDir, _gethFileNameVersion, _gethBinaryName)
 	prysmBeaconBinaryPath := path.Join(binDir, _prysmBeaconChainFileNameVersion)
 	prysmBinaryPath := path.Join(binDir, _prysmCTLFileNameVersion)
 	prysmValidatorBinaryPath := path.Join(binDir, _prysmValidatorFileNameVersion)
