@@ -11,23 +11,30 @@ import (
 )
 
 func routeItems(r *gin.Engine, server *WebServer) {
-	r.GET("/items/batch/latest/", server.getLatestBatch)
-	r.GET("/items/batch/:hash", server.getBatch)
-	r.GET("/items/rollup/latest/", server.getLatestRollupHeader)
-	r.GET("/items/batches/", server.getBatchListingDeprecated)
-	r.GET("/items/blocks/", server.getBlockListing) // Deprecated
-	r.GET("/items/transactions/", server.getPublicTransactions)
+	// info
 	r.GET("/info/obscuro/", server.getConfig)
 	r.POST("/info/health/", server.getHealthStatus)
 
-	r.GET("/items/rollups/", server.getRollupListing) // New
+	// batches
+	r.GET("/items/batches/", server.getBatchListingDeprecated)
 	r.GET("/items/v2/batches/", server.getBatchListingNew)
-	r.GET("/items/rollup/:hash", server.getRollup)
-	r.GET("/items/rollup/:hash/batches", server.getRollupBatches)
+	r.GET("/items/batch/latest/", server.getLatestBatch)
+	r.GET("/items/batch/:hash", server.getBatch)
 	r.GET("/items/batch/:hash/transactions", server.getBatchTransactions)
 	r.GET("/items/batch/height/:height", server.getBatchByHeight)
+
+	// rollups
+	r.GET("/items/rollups/", server.getRollupListing) // New
+	r.GET("/items/rollup/latest/", server.getLatestRollupHeader)
+	r.GET("/items/rollup/:hash", server.getRollup)
+	r.GET("/items/rollup/:hash/batches", server.getRollupBatches)
 	r.GET("/items/rollup/batch/:seq", server.getRollupBySeq)
+
+	// transactions
+	r.GET("/items/transactions/", server.getPublicTransactions)
 	r.GET("/items/transaction/:hash", server.getTransaction)
+	r.GET("/items/transactions/count", server.getTotalTxCount)
+	r.GET("/items/blocks/", server.getBlockListing) // Deprecated
 }
 
 func (w *WebServer) getHealthStatus(c *gin.Context) {
@@ -148,6 +155,17 @@ func (w *WebServer) getPublicTransactions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"result": publicTxs})
+}
+
+func (w *WebServer) getTotalTxCount(c *gin.Context) {
+
+	txCount, err := w.backend.GetTotalTransactionCount()
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": txCount})
 }
 
 func (w *WebServer) getBatchListingNew(c *gin.Context) {
