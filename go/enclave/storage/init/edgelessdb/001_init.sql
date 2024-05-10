@@ -4,11 +4,10 @@ CREATE DATABASE obsdb;
 create table if not exists obsdb.keyvalue
 (
     id      INTEGER AUTO_INCREMENT,
-    ky      binary(4),
-    ky_full varbinary(64),
+    ky      varbinary(64),
     val     mediumblob NOT NULL,
     primary key (id),
-    INDEX (ky)
+    INDEX USING HASH (ky)
 );
 GRANT ALL ON obsdb.keyvalue TO obscuro;
 
@@ -39,7 +38,7 @@ create table if not exists obsdb.block
     height       int     NOT NULL,
     primary key (id),
     INDEX (height),
-    INDEX (hash(4))
+    INDEX USING HASH (hash(16))
 );
 GRANT ALL ON obsdb.block TO obscuro;
 
@@ -64,7 +63,7 @@ create table if not exists obsdb.rollup
     header            blob    NOT NULL,
     compression_block INTEGER NOT NULL,
     INDEX (compression_block),
-    INDEX (hash(4)),
+    INDEX USING HASH (hash(16)),
     primary key (id)
 );
 GRANT ALL ON obsdb.rollup TO obscuro;
@@ -90,7 +89,7 @@ create table if not exists obsdb.batch
     l1_proof       INTEGER,
     is_executed    boolean    NOT NULL,
     primary key (sequence),
-    INDEX (hash),
+    INDEX USING HASH (hash(16)),
     INDEX (body),
     INDEX (height, is_canonical),
     INDEX (l1_proof)
@@ -107,7 +106,7 @@ create table if not exists obsdb.tx
     idx            int        NOT NULL,
     body           int        NOT NULL,
     INDEX (body),
-    INDEX (hash(4)),
+    INDEX USING HASH (hash(16)),
     primary key (id)
 );
 GRANT ALL ON obsdb.tx TO obscuro;
@@ -120,7 +119,7 @@ create table if not exists obsdb.exec_tx
     tx                            int,
     batch                         int NOT NULL,
     INDEX (batch,tx),
-    INDEX (created_contract_address(4)),
+    INDEX (tx, created_contract_address(4)),
     primary key (id)
 );
 GRANT ALL ON obsdb.exec_tx TO obscuro;
@@ -143,8 +142,15 @@ create table if not exists obsdb.events
     tx              int,
     batch           int        NOT NULL,
     INDEX (batch, tx),
-    INDEX (address(4)),
-    INDEX (rel_address1(4), rel_address2(4), rel_address3(4), rel_address4(4)),
-    INDEX (topic0(4), topic1(4), topic2(4), topic3(4), topic4(4))
+    INDEX USING HASH (address(16)),
+    INDEX USING HASH (rel_address1(16)),
+    INDEX USING HASH (rel_address2(16)),
+    INDEX USING HASH (rel_address3(16)),
+    INDEX USING HASH (rel_address4(16)),
+    INDEX USING HASH (topic0(16)),
+    INDEX USING HASH (topic1(16)),
+    INDEX USING HASH (topic2(16)),
+    INDEX USING HASH (topic3(16)),
+    INDEX USING HASH (topic4(16))
 );
 GRANT ALL ON obsdb.events TO obscuro;

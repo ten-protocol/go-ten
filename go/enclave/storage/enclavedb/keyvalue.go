@@ -5,25 +5,24 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"hash/fnv"
 
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
 const (
-	getQry = `select keyvalue.val from keyvalue where keyvalue.ky = ? and keyvalue.ky_full = ?;`
+	getQry = `select keyvalue.val from keyvalue where keyvalue.ky = ? ;`
 	// `replace` will perform insert or replace if existing and this syntax works for both sqlite and edgeless db
-	putQry       = `replace into keyvalue (ky, ky_full, val) values(?, ?, ?);`
-	putQryBatch  = `replace into keyvalue (ky, ky_full, val) values`
-	putQryValues = `(?,?,?)`
-	delQry       = `delete from keyvalue where keyvalue.ky = ? and keyvalue.ky_full = ?;`
+	putQry       = `replace into keyvalue (ky,  val) values(?,  ?);`
+	putQryBatch  = `replace into keyvalue (ky, val) values`
+	putQryValues = `(?,?)`
+	delQry       = `delete from keyvalue where keyvalue.ky = ? ;`
 	// todo - how is the performance of this?
-	searchQry = `select ky_full, val from keyvalue where substring(keyvalue.ky_full, 1, ?) = ? and keyvalue.ky_full >= ? order by keyvalue.ky_full asc`
+	searchQry = `select ky, val from keyvalue where substring(keyvalue.ky, 1, ?) = ? and keyvalue.ky >= ? order by keyvalue.ky asc`
 )
 
 func Has(ctx context.Context, db *sql.DB, key []byte) (bool, error) {
-	err := db.QueryRowContext(ctx, getQry, hash(key), key).Scan()
+	err := db.QueryRowContext(ctx, getQry, key).Scan()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
@@ -36,7 +35,7 @@ func Has(ctx context.Context, db *sql.DB, key []byte) (bool, error) {
 func Get(ctx context.Context, db *sql.DB, key []byte) ([]byte, error) {
 	var res []byte
 
-	err := db.QueryRowContext(ctx, getQry, hash(key), key).Scan(&res)
+	err := db.QueryRowContext(ctx, getQry, key).Scan(&res)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -48,7 +47,7 @@ func Get(ctx context.Context, db *sql.DB, key []byte) ([]byte, error) {
 }
 
 func Put(ctx context.Context, db *sql.DB, key []byte, value []byte) error {
-	_, err := db.ExecContext(ctx, putQry, hash(key), key, value)
+	_, err := db.ExecContext(ctx, putQry, key, value)
 	return err
 }
 
@@ -63,7 +62,7 @@ func PutKeyValues(ctx context.Context, tx *sql.Tx, keys [][]byte, vals [][]byte)
 
 		values := make([]any, 0)
 		for i := range keys {
-			values = append(values, hash(keys[i]), keys[i], vals[i])
+			values = append(values, keys[i], vals[i])
 		}
 		_, err := tx.ExecContext(ctx, update, values...)
 		if err != nil {
@@ -75,13 +74,13 @@ func PutKeyValues(ctx context.Context, tx *sql.Tx, keys [][]byte, vals [][]byte)
 }
 
 func Delete(ctx context.Context, db *sql.DB, key []byte) error {
-	_, err := db.ExecContext(ctx, delQry, hash(key), key)
+	_, err := db.ExecContext(ctx, delQry, key)
 	return err
 }
 
 func DeleteKeys(ctx context.Context, db *sql.Tx, keys [][]byte) error {
 	for _, del := range keys {
-		_, err := db.ExecContext(ctx, delQry, hash(del), del)
+		_, err := db.ExecContext(ctx, delQry, del)
 		if err != nil {
 			return err
 		}
@@ -107,15 +106,4 @@ func NewIterator(ctx context.Context, db *sql.DB, prefix []byte, start []byte) e
 	return &iterator{
 		rows: rows,
 	}
-}
-
-// hash returns 4 bytes "hash" of the key to be indexed
-// truncating is not sufficient because the keys are not random
-func hash(key []byte) []byte {
-	h := fnv.New32()
-	_, err := h.Write(key)
-	if err != nil {
-		return nil
-	}
-	return h.Sum([]byte{})
 }
