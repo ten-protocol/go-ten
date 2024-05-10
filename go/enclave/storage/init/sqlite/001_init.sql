@@ -26,8 +26,7 @@ create table if not exists attestation_key
 create table if not exists block
 (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    hash         binary(4),
-    full_hash    binary(32),
+    hash         binary(32),
     is_canonical boolean NOT NULL,
     header       blob    NOT NULL,
     height       int     NOT NULL
@@ -49,8 +48,7 @@ create index L1_MSG_BLOCK_IDX on l1_msg (block);
 create table if not exists rollup
 (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    hash              binary(4),
-    full_hash         binary(32),
+    hash              binary(32),
     start_seq         int     NOT NULL,
     end_seq           int     NOT NULL,
     time_stamp        int     NOT NULL,
@@ -69,9 +67,8 @@ create table if not exists batch_body
 create table if not exists batch
 (
     sequence       int primary key,
-    full_hash      binary(32),
     converted_hash binary(32),
-    hash           binary(4) NOT NULL,
+    hash           binary(32) NOT NULL,
     height         int       NOT NULL,
     is_canonical   boolean   NOT NULL,
     header         blob      NOT NULL,
@@ -90,8 +87,7 @@ create index IDX_BATCH_BODY on batch (body);
 create table if not exists tx
 (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    hash           binary(4),
-    full_hash      binary(32) NOT NULL,
+    hash           binary(32),
     content        mediumblob NOT NULL,
     sender_address binary(20) NOT NULL,
     nonce          int        NOT NULL,
@@ -104,55 +100,35 @@ create index IDX_TX_BODY on tx (body);
 create table if not exists exec_tx
 (
     id                            INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_contract_address      binary(4),
-    created_contract_address_full binary(20),
+    created_contract_address      binary(20),
     receipt                       mediumblob,
     --     commenting out the fk until synthetic transactions are also stored
     tx                            INTEGER,
     batch                         INTEGER NOT NULL REFERENCES batch
 );
-create index IDX_EX_TX_TX on exec_tx (tx);
-create index IDX_EX_TX_BATCH on exec_tx (batch);
+create index IDX_EX_TX_BATCH on exec_tx (batch,tx);
 create index IDX_EX_TX_CCA on exec_tx (created_contract_address);
 
 -- todo denormalize. Extract contract and user table and point topic0 and rel_addreses to it
 create table if not exists events
 (
-    topic0            binary(4)  NOT NULL,
-    topic1            binary(4),
-    topic2            binary(4),
-    topic3            binary(4),
-    topic4            binary(4),
-    topic0_full       binary(32) NOT NULL,
-    topic1_full       binary(32),
-    topic2_full       binary(32),
-    topic3_full       binary(32),
-    topic4_full       binary(32),
-    datablob          mediumblob,
-    log_idx           int        NOT NULL,
-    address           binary(4)  NOT NULL,
-    address_full      binary(20) NOT NULL,
-    lifecycle_event   boolean    NOT NULL,
-    rel_address1      binary(4),
-    rel_address2      binary(4),
-    rel_address3      binary(4),
-    rel_address4      binary(4),
-    rel_address1_full binary(20),
-    rel_address2_full binary(20),
-    rel_address3_full binary(20),
-    rel_address4_full binary(20),
-    tx                INTEGER,
-    batch             INTEGER    NOT NULL REFERENCES batch
+    topic0          binary(32) NOT NULL,
+    topic1          binary(32),
+    topic2          binary(32),
+    topic3          binary(32),
+    topic4          binary(32),
+    datablob        mediumblob,
+    log_idx         int        NOT NULL,
+    address         binary(20) NOT NULL,
+    lifecycle_event boolean    NOT NULL,
+    rel_address1    binary(20),
+    rel_address2    binary(20),
+    rel_address3    binary(20),
+    rel_address4    binary(20),
+    tx              INTEGER,
+    batch           INTEGER    NOT NULL REFERENCES batch
 );
+create index IDX_BATCH_TX on events (batch, tx);
 create index IDX_AD on events (address);
-create index IDX_RAD1 on events (rel_address1);
-create index IDX_RAD2 on events (rel_address2);
-create index IDX_RAD3 on events (rel_address3);
-create index IDX_RAD4 on events (rel_address4);
-create index IDX_T0 on events (topic0);
-create index IDX_T1 on events (topic1);
-create index IDX_T2 on events (topic2);
-create index IDX_T3 on events (topic3);
-create index IDX_T4 on events (topic4);
-create index IDX_TX on events (tx);
-create index IDX_BATCH on events (batch);
+create index IDX_RAD1 on events (rel_address1, rel_address2, rel_address3, rel_address4);
+create index IDX_T0 on events (topic0, topic1, topic2, topic3, topic4);

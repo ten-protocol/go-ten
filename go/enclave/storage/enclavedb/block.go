@@ -22,12 +22,11 @@ func WriteBlock(ctx context.Context, dbtx *sql.Tx, b *types.Header) error {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
 	}
 
-	_, err = dbtx.ExecContext(ctx, "insert into block (hash,full_hash,is_canonical,header,height) values (?,?,?,?,?)",
-		truncTo4(b.Hash()), // hash
-		b.Hash().Bytes(),   // full_hash
-		true,               // is_canonical
-		header,             // header
-		b.Number.Uint64(),  // height
+	_, err = dbtx.ExecContext(ctx, "insert into block (hash,is_canonical,header,height) values (?,?,?,?)",
+		b.Hash().Bytes(),  // hash
+		true,              // is_canonical
+		header,            // header
+		b.Number.Uint64(), // height
 	)
 	return err
 }
@@ -49,12 +48,12 @@ func UpdateCanonicalBlocks(ctx context.Context, dbtx *sql.Tx, canonical []common
 }
 
 func updateCanonicalValue(ctx context.Context, dbtx *sql.Tx, isCanonical bool, blocks []common.L1BlockHash, _ gethlog.Logger) error {
-	currentBlocks := repeat("(hash=? and full_hash=?)", "OR", len(blocks))
+	currentBlocks := repeat(" hash=? ", "OR", len(blocks))
 
 	args := make([]any, 0)
 	args = append(args, isCanonical)
 	for _, blockHash := range blocks {
-		args = append(args, truncTo4(blockHash), blockHash.Bytes())
+		args = append(args, blockHash.Bytes())
 	}
 
 	updateBlocks := "update block set is_canonical=? where " + currentBlocks
@@ -80,7 +79,7 @@ func SetMissingBlockId(ctx context.Context, dbtx *sql.Tx, blockId int64, blockHa
 
 // todo - remove this. For now creates a "block" but without a body.
 func FetchBlock(ctx context.Context, db *sql.DB, hash common.L1BlockHash) (*types.Block, error) {
-	return fetchBlock(ctx, db, " where hash=? and full_hash=?", truncTo4(hash), hash.Bytes())
+	return fetchBlock(ctx, db, " where hash=?", hash.Bytes())
 }
 
 func FetchHeadBlock(ctx context.Context, db *sql.DB) (*types.Block, error) {
@@ -93,7 +92,7 @@ func FetchBlockHeaderByHeight(ctx context.Context, db *sql.DB, height *big.Int) 
 
 func GetBlockId(ctx context.Context, db *sql.Tx, hash common.L1BlockHash) (int64, error) {
 	var id int64
-	err := db.QueryRowContext(ctx, "select id from block where hash=? and full_hash=?", truncTo4(hash), hash).Scan(&id)
+	err := db.QueryRowContext(ctx, "select id from block where hash=? ", hash).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
@@ -123,8 +122,8 @@ func WriteL1Messages[T any](ctx context.Context, db *sql.Tx, blockId int64, mess
 
 func FetchL1Messages[T any](ctx context.Context, db *sql.DB, blockHash common.L1BlockHash, isTransfer bool) ([]T, error) {
 	var result []T
-	query := "select message from l1_msg m join block b on m.block=b.id where b.hash = ? and b.full_hash = ? and is_transfer = ?"
-	rows, err := db.QueryContext(ctx, query, truncTo4(blockHash), blockHash.Bytes(), isTransfer)
+	query := "select message from l1_msg m join block b on m.block=b.id where b.hash = ? and is_transfer = ?"
+	rows, err := db.QueryContext(ctx, query, blockHash.Bytes(), isTransfer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -158,8 +157,7 @@ func WriteRollup(ctx context.Context, dbtx *sql.Tx, rollup *common.RollupHeader,
 	if err != nil {
 		return fmt.Errorf("could not encode batch header. Cause: %w", err)
 	}
-	_, err = dbtx.ExecContext(ctx, "replace into rollup (hash, full_hash, start_seq, end_seq, time_stamp, header, compression_block) values (?,?,?,?,?,?,?)",
-		truncTo4(rollup.Hash()),
+	_, err = dbtx.ExecContext(ctx, "replace into rollup (hash, start_seq, end_seq, time_stamp, header, compression_block) values (?,?,?,?,?,?)",
 		rollup.Hash().Bytes(),
 		internalHeader.FirstBatchSequence.Uint64(),
 		rollup.LastBatchSeqNo,
@@ -175,13 +173,13 @@ func WriteRollup(ctx context.Context, dbtx *sql.Tx, rollup *common.RollupHeader,
 }
 
 func FetchReorgedRollup(ctx context.Context, db *sql.DB, reorgedBlocks []common.L1BlockHash) (*common.L2BatchHash, error) {
-	whereClause := repeat("(b.hash=? and b.full_hash=?)", "OR", len(reorgedBlocks))
+	whereClause := repeat(" b.hash=? ", "OR", len(reorgedBlocks))
 
-	query := "select r.full_hash from rollup r join block b on r.compression_block=b.id where " + whereClause
+	query := "select r.hash from rollup r join block b on r.compression_block=b.id where " + whereClause
 
 	args := make([]any, 0)
 	for _, blockHash := range reorgedBlocks {
-		args = append(args, truncTo4(blockHash), blockHash.Bytes())
+		args = append(args, blockHash.Bytes())
 	}
 	rollup := new(common.L2BatchHash)
 	err := db.QueryRowContext(ctx, query, args...).Scan(&rollup)
@@ -201,7 +199,7 @@ func FetchRollupMetadata(ctx context.Context, db *sql.DB, hash common.L2RollupHa
 
 	rollup := new(common.PublicRollupMetadata)
 	err := db.QueryRowContext(ctx,
-		"select start_seq, time_stamp from rollup where hash = ? and full_hash=?", truncTo4(hash), hash.Bytes(),
+		"select start_seq, time_stamp from rollup where hash = ?", hash.Bytes(),
 	).Scan(&startSeq, &startTime)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
