@@ -3,24 +3,24 @@ import { RouteIcon } from "lucide-react";
 import { ReaderIcon } from "@radix-ui/react-icons";
 
 export const NavLinks: NavLink[] = [
-  {
-    href: "/",
-    label: "Bridge",
-    isExternal: false,
-    isDropdown: false,
-    icon: RouteIcon,
-  },
-  {
-    href: "/transactions",
-    label: "Transactions",
-    isExternal: false,
-    isDropdown: false,
-    icon: ReaderIcon,
-  },
+  // {
+  //   href: "/",
+  //   label: "Bridge",
+  //   isExternal: false,
+  //   isDropdown: false,
+  //   icon: RouteIcon,
+  // },
+  // {
+  //   href: "/transactions",
+  //   label: "Transactions",
+  //   isExternal: false,
+  //   isDropdown: false,
+  //   icon: ReaderIcon,
+  // },
 ];
 
 export const apiRoutes = {
-  getHealthStatus: `/network-health/`,
+  getHealthStatus: `/info/health/`,
 };
 
 export const requestMethods = {
@@ -29,4 +29,5 @@ export const requestMethods = {
   addNetwork: "wallet_addEthereumChain",
   getStorageAt: "eth_getStorageAt",
   signTypedData: "eth_signTypedData_v4",
+  getChainId: "eth_chainId",
 };
