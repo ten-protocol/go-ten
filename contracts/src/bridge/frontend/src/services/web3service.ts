@@ -1,319 +1,9 @@
 import { ethers } from "ethers";
 import L1Bridge from "../../artifacts/IBridge.sol/IBridge.json";
-import { l1Bridge as l1BridgeAddress } from "../lib/constants";
-
-// "abi": [
-//   {
-//     "inputs": [
-//       {
-//         "internalType": "address",
-//         "name": "asset",
-//         "type": "address"
-//       },
-//       {
-//         "internalType": "uint256",
-//         "name": "amount",
-//         "type": "uint256"
-//       },
-//       {
-//         "internalType": "address",
-//         "name": "receiver",
-//         "type": "address"
-//       }
-//     ],
-//     "name": "receiveAssets",
-//     "outputs": [],
-//     "stateMutability": "nonpayable",
-//     "type": "function"
-//   },
-//   {
-//     "inputs": [
-//       {
-//         "internalType": "address",
-//         "name": "asset",
-//         "type": "address"
-//       },
-//       {
-//         "internalType": "uint256",
-//         "name": "amount",
-//         "type": "uint256"
-//       },
-//       {
-//         "internalType": "address",
-//         "name": "receiver",
-//         "type": "address"
-//       }
-//     ],
-//     "name": "sendERC20",
-//     "outputs": [],
-//     "stateMutability": "nonpayable",
-//     "type": "function"
-//   },
-//   {
-//     "inputs": [
-//       {
-//         "internalType": "address",
-//         "name": "receiver",
-//         "type": "address"
-//       }
-//     ],
-//     "name": "sendNative",
-//     "outputs": [],
-//     "stateMutability": "payable",
-//     "type": "function"
-//   }
-// ],
-
-// "abi": [
-// 	{
-// 		"inputs": [
-// 			{
-// 				"internalType": "string",
-// 				"name": "_name",
-// 				"type": "string"
-// 			},
-// 			{
-// 				"internalType": "string",
-// 				"name": "_symbol",
-// 				"type": "string"
-// 			},
-// 			{
-// 				"internalType": "uint8",
-// 				"name": "_decimals",
-// 				"type": "uint8"
-// 			},
-// 			{
-// 				"internalType": "uint256",
-// 				"name": "_totalSupply",
-// 				"type": "uint256"
-// 			}
-// 		],
-// 		"stateMutability": "nonpayable",
-// 		"type": "constructor"
-// 	},
-// 	{
-// 		"anonymous": false,
-// 		"inputs": [
-// 			{
-// 				"indexed": true,
-// 				"internalType": "address",
-// 				"name": "owner",
-// 				"type": "address"
-// 			},
-// 			{
-// 				"indexed": true,
-// 				"internalType": "address",
-// 				"name": "spender",
-// 				"type": "address"
-// 			},
-// 			{
-// 				"indexed": false,
-// 				"internalType": "uint256",
-// 				"name": "value",
-// 				"type": "uint256"
-// 			}
-// 		],
-// 		"name": "Approval",
-// 		"type": "event"
-// 	},
-// 	{
-// 		"inputs": [
-// 			{
-// 				"internalType": "address",
-// 				"name": "_spender",
-// 				"type": "address"
-// 			},
-// 			{
-// 				"internalType": "uint256",
-// 				"name": "_value",
-// 				"type": "uint256"
-// 			}
-// 		],
-// 		"name": "approve",
-// 		"outputs": [
-// 			{
-// 				"internalType": "bool",
-// 				"name": "",
-// 				"type": "bool"
-// 			}
-// 		],
-// 		"stateMutability": "nonpayable",
-// 		"type": "function"
-// 	},
-// 	{
-// 		"inputs": [
-// 			{
-// 				"internalType": "address",
-// 				"name": "_to",
-// 				"type": "address"
-// 			},
-// 			{
-// 				"internalType": "uint256",
-// 				"name": "_value",
-// 				"type": "uint256"
-// 			}
-// 		],
-// 		"name": "transfer",
-// 		"outputs": [
-// 			{
-// 				"internalType": "bool",
-// 				"name": "",
-// 				"type": "bool"
-// 			}
-// 		],
-// 		"stateMutability": "nonpayable",
-// 		"type": "function"
-// 	},
-// 	{
-// 		"anonymous": false,
-// 		"inputs": [
-// 			{
-// 				"indexed": true,
-// 				"internalType": "address",
-// 				"name": "from",
-// 				"type": "address"
-// 			},
-// 			{
-// 				"indexed": true,
-// 				"internalType": "address",
-// 				"name": "to",
-// 				"type": "address"
-// 			},
-// 			{
-// 				"indexed": false,
-// 				"internalType": "uint256",
-// 				"name": "value",
-// 				"type": "uint256"
-// 			}
-// 		],
-// 		"name": "Transfer",
-// 		"type": "event"
-// 	},
-// 	{
-// 		"inputs": [
-// 			{
-// 				"internalType": "address",
-// 				"name": "_from",
-// 				"type": "address"
-// 			},
-// 			{
-// 				"internalType": "address",
-// 				"name": "_to",
-// 				"type": "address"
-// 			},
-// 			{
-// 				"internalType": "uint256",
-// 				"name": "_value",
-// 				"type": "uint256"
-// 			}
-// 		],
-// 		"name": "transferFrom",
-// 		"outputs": [
-// 			{
-// 				"internalType": "bool",
-// 				"name": "",
-// 				"type": "bool"
-// 			}
-// 		],
-// 		"stateMutability": "nonpayable",
-// 		"type": "function"
-// 	},
-// 	{
-// 		"inputs": [
-// 			{
-// 				"internalType": "address",
-// 				"name": "",
-// 				"type": "address"
-// 			},
-// 			{
-// 				"internalType": "address",
-// 				"name": "",
-// 				"type": "address"
-// 			}
-// 		],
-// 		"name": "allowance",
-// 		"outputs": [
-// 			{
-// 				"internalType": "uint256",
-// 				"name": "",
-// 				"type": "uint256"
-// 			}
-// 		],
-// 		"stateMutability": "view",
-// 		"type": "function"
-// 	},
-// 	{
-// 		"inputs": [
-// 			{
-// 				"internalType": "address",
-// 				"name": "",
-// 				"type": "address"
-// 			}
-// 		],
-// 		"name": "balanceOf",
-// 		"outputs": [
-// 			{
-// 				"internalType": "uint256",
-// 				"name": "",
-// 				"type": "uint256"
-// 			}
-// 		],
-// 		"stateMutability": "view",
-// 		"type": "function"
-// 	},
-// 	{
-// 		"inputs": [],
-// 		"name": "decimals",
-// 		"outputs": [
-// 			{
-// 				"internalType": "uint8",
-// 				"name": "",
-// 				"type": "uint8"
-// 			}
-// 		],
-// 		"stateMutability": "view",
-// 		"type": "function"
-// 	},
-// 	{
-// 		"inputs": [],
-// 		"name": "name",
-// 		"outputs": [
-// 			{
-// 				"internalType": "string",
-// 				"name": "",
-// 				"type": "string"
-// 			}
-// 		],
-// 		"stateMutability": "view",
-// 		"type": "function"
-// 	},
-// 	{
-// 		"inputs": [],
-// 		"name": "symbol",
-// 		"outputs": [
-// 			{
-// 				"internalType": "string",
-// 				"name": "",
-// 				"type": "string"
-// 			}
-// 		],
-// 		"stateMutability": "view",
-// 		"type": "function"
-// 	},
-// 	{
-// 		"inputs": [],
-// 		"name": "totalSupply",
-// 		"outputs": [
-// 			{
-// 				"internalType": "uint256",
-// 				"name": "",
-// 				"type": "uint256"
-// 			}
-// 		],
-// 		"stateMutability": "view",
-// 		"type": "function"
-// 	}
-// ]
+import {
+  l1Bridge as l1BridgeAddress,
+  messageBusAddress,
+} from "../lib/constants";
 
 interface IWeb3Service {
   contract: ethers.Contract;
@@ -335,9 +25,13 @@ export default class Web3Service implements IWeb3Service {
 
   // Send native currency to the other network.
   async sendNative(receiver: string, value: string) {
-    return this.contract.sendNative(receiver, {
+    const res = await this.contract.sendNative(receiver, {
       value: ethers.utils.parseEther(value),
     });
+    console.log("🚀 ~ Web3Service ~ sendNative ~ res", res);
+    const receipt = await res.wait();
+    console.log("🚀 ~ Web3Service ~ sendNative ~ receipt", receipt);
+    return receipt;
   }
 
   // Send ERC20 assets to the other network.
@@ -391,7 +85,7 @@ export default class Web3Service implements IWeb3Service {
     }
     try {
       const p = new ethers.providers.Web3Provider(provider);
-      // Create a new instance of the ERC20 contract
+      // a new instance of the ERC20 contract
       const tokenContract = new ethers.Contract(
         tokenAddress,
         [
@@ -429,8 +123,81 @@ export default class Web3Service implements IWeb3Service {
     return this.signer.getTransactionCount();
   }
 
-  //get transactions
-  async getTransactions() {
-    return this.signer.getTransactions();
+  //get bridge transactions
+  async getBridgeTransactions(provider: any, userAddress: string) {
+    try {
+      if (!provider) {
+        console.error("Provider not found");
+        return null;
+      }
+      if (!userAddress) {
+        console.error("User address not found");
+        return null;
+      }
+      console.log(
+        "🚀 ~ Web3Service ~ getBridgeTransactions ~ adddress:",
+        ethers.utils.hexZeroPad(userAddress, 32)
+      );
+      if (!messageBusAddress) {
+        console.error("Message bus address not found");
+        return null;
+      }
+      const p = new ethers.providers.Web3Provider(provider);
+
+      // using topics to filter logs and get only the user's transactions
+      const topics = [
+        ethers.utils.id("ValueTransfer(address,address,uint256)"), // Event signature
+        ethers.utils.hexZeroPad(userAddress, 32),
+        // ethers.utils.hexZeroPad(messageBusAddress, 32),
+      ];
+
+      const filter = {
+        address: messageBusAddress,
+        topics,
+        fromBlock: 5868682,
+      };
+
+      const transactions = await p.getLogs(filter);
+
+      console.log("Transactions on bridge:", transactions);
+      return transactions;
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+    }
   }
+
+  // async getBridgeTransactions(provider: any, userAddress: string) {
+  //   console.log(
+  //     "🚀 ~ Web3Service ~ getBridgeTransactions ~ messageBusAddress:",
+  //     messageBusAddress
+  //   );
+  //   try {
+  //     // Convert the provider to Web3Provider
+  //     const web3Provider = new ethers.providers.Web3Provider(provider);
+
+  //     // Specify the topics for the logs
+  //     const topics = [
+  //       ethers.utils.id("ValueTransfer(address,address,uint256,uint256)"), // Event signature
+  //       null, // Placeholder for user's address topic
+  //       ethers.utils.hexZeroPad(messageBusAddress, 32), // Message bus address as a topic
+  //     ];
+
+  //     // Set the user's address as the second topic
+  //     topics[1] = ethers.utils.hexZeroPad(userAddress, 32);
+
+  //     // Filter logs based on the specified topics
+  //     const filter = {
+  //       address: messageBusAddress, // Contract address where the event occurred
+  //       topics: topics.filter((topic) => topic !== null), // Remove null topics
+  //     };
+
+  //     // Get logs based on the filter
+  //     const transactions = await web3Provider.getLogs(filter);
+
+  //     // Process and display transactions
+  //     console.log("User's transactions:", transactions);
+  //   } catch (error) {
+  //     console.error("Error fetching user's transactions:", error);
+  //   }
+  // }
 }

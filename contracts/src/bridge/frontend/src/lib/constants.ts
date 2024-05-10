@@ -36,6 +36,7 @@ export const apiHost = process.env.NEXT_PUBLIC_API_HOST;
 
 export const l1Bridge = process.env.NEXT_PUBLIC_L1_BRIDGE;
 export const l2Bridge = process.env.NEXT_PUBLIC_L2_BRIDGE;
+export const messageBusAddress = process.env.NEXT_PUBLIC_MESSAGE_BUS;
 
 export const GOOGLE_ANALYTICS_ID = "G-2ZFPEN6PT9";
 

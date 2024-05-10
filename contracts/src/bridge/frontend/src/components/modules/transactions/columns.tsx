@@ -5,11 +5,11 @@ import { Badge } from "@/src/components/ui/badge";
 
 import { statuses } from "./constants";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
-import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
+// import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
 import TruncatedAddress from "../common/truncated-address";
 import { formatTimeAgo } from "@/src/lib/utils";
 
-export const columns: ColumnDef<Transaction>[] = [
+export const columns: ColumnDef<any>[] = [
   {
     accessorKey: "BatchHeight",
     header: ({ column }) => (

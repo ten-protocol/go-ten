@@ -25,6 +25,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
     try {
       const detectedProvider = await detectEthereumProvider();
       setProvider(detectedProvider);
+      //@ts-ignore
       const chainId = await detectedProvider!.request({
         method: "eth_chainId",
       });
@@ -37,6 +38,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
         switchNetwork();
       }
 
+      //@ts-ignore
       const accounts = await detectedProvider!.request({
         method: "eth_requestAccounts",
       });
@@ -159,6 +161,11 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
       };
     }
   }, [provider]);
+
+  useEffect(() => {
+    //connect wallet
+    connectWallet();
+  }, []);
 
   // Context value
   const value = {

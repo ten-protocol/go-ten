@@ -9,6 +9,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/src/components/ui/tabs";
+import Web3Service from "@/src/services/web3service";
+import { useWalletStore } from "@/src/components/providers/wallet-provider";
 
 export const metadata: Metadata = {
   title: "Transactions",
@@ -16,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default function Transactions() {
+  const { signer, provider, address } = useWalletStore();
   const { transactions, refetchTransactions } = {
     transactions: {
       result: {
@@ -29,6 +32,19 @@ export default function Transactions() {
     TransactionsData: [],
     Total: 0,
   };
+
+  const getTransactions = async () => {
+    const web3Service = new Web3Service(signer);
+    const transactions = await web3Service.getBridgeTransactions(
+      provider,
+      address
+    );
+    console.log(transactions);
+  };
+
+  React.useEffect(() => {
+    getTransactions();
+  }, []);
 
   return (
     <Layout>
@@ -60,7 +76,7 @@ export default function Transactions() {
               <DataTable
                 columns={columns}
                 data={TransactionsData}
-                refetch={refetchTransactions}
+                refetch={getTransactions}
                 total={+Total}
               />
             ) : (

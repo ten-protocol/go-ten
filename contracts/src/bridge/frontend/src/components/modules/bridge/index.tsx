@@ -50,13 +50,13 @@ export default function Dashboard() {
     isL1ToL2,
     fromChains,
     toChains,
+    connectWallet,
   } = useWalletStore();
   const web3Service = new Web3Service(signer);
 
   const { form, FormSchema } = useFormHook();
   const [loading, setLoading] = React.useState(false);
   const [fromTokenBalance, setFromTokenBalance] = React.useState<any>(0);
-  const [toReceive, setToReceive] = React.useState(0);
 
   const tokens = isL1ToL2 ? L1TOKENS : L2TOKENS;
 
@@ -97,6 +97,9 @@ export default function Dashboard() {
   }, [watchTokenChange, address, provider]);
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
+    if (!walletConnected) {
+      return connectWallet();
+    }
     try {
       console.log(data);
       toast({
@@ -109,7 +112,7 @@ export default function Dashboard() {
       if (t?.isNative) {
         await web3Service.sendNative(address, data.amount);
       } else {
-        await web3Service.sendERC20(t.address, data.amount, address);
+        await web3Service.sendERC20(t!.address, data.amount, address);
       }
       toast({
         title: "Bridge Transaction",
@@ -373,11 +376,10 @@ export default function Dashboard() {
                   type="submit"
                   className="text-sm font-bold leading-none w-full"
                   size={"lg"}
-                  onClick={() => {
-                    console.log("Transfer");
-                  }}
                 >
-                  Initiate Bridge Transaction
+                  {walletConnected
+                    ? "Initiate Bridge Transaction"
+                    : "Connect Wallet"}
                 </Button>
               </div>
             </form>
