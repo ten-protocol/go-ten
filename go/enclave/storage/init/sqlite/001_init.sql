@@ -44,6 +44,7 @@ create table if not exists l1_msg
     block       INTEGER         NOT NULL REFERENCES block,
     is_transfer boolean
 );
+create index L1_MSG_BLOCK_IDX on l1_msg (block);
 
 create table if not exists rollup
 (
@@ -56,6 +57,8 @@ create table if not exists rollup
     header            blob    NOT NULL,
     compression_block INTEGER NOT NULL REFERENCES block
 );
+create index ROLLUP_COMPRESSION_BLOCK_IDX on rollup (compression_block);
+create index ROLLUP_COMPRESSION_HASH_IDX on rollup (hash);
 
 create table if not exists batch_body
 (
@@ -81,7 +84,8 @@ create table if not exists batch
 );
 create index IDX_BATCH_HASH on batch (hash);
 create index IDX_BATCH_HEIGHT on batch (height, is_canonical);
-create index IDX_BATCH_Block on batch (l1_proof);
+create index IDX_BATCH_BLOCK on batch (l1_proof);
+create index IDX_BATCH_BODY on batch (body);
 
 create table if not exists tx
 (
@@ -95,6 +99,7 @@ create table if not exists tx
     body           int REFERENCES batch_body
 );
 create index IDX_TX_HASH on tx (hash);
+create index IDX_TX_BODY on tx (body);
 
 create table if not exists exec_tx
 (
@@ -149,3 +154,5 @@ create index IDX_T1 on events (topic1);
 create index IDX_T2 on events (topic2);
 create index IDX_T3 on events (topic3);
 create index IDX_T4 on events (topic4);
+create index IDX_TX on events (tx);
+create index IDX_BATCH on events (batch);
