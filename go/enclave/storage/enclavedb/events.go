@@ -40,7 +40,8 @@ func StoreEventLogs(ctx context.Context, dbtx *sql.Tx, receipts []*types.Receipt
 		}
 	}
 	if totalLogs > 0 {
-		query := "insert into events values " + repeat("(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ",", totalLogs)
+		query := "insert into events (topic0,topic1,topic2,topic3,topic4,datablob,log_idx,address,lifecycle_event,rel_address1,rel_address2,rel_address3,rel_address4,tx,batch) values " +
+			repeat("(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ",", totalLogs)
 		_, err := dbtx.ExecContext(ctx, query, args...)
 		if err != nil {
 			return err
