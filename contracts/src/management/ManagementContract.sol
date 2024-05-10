@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 
 
 import "./Structs.sol";
+import * as MessageStructs from "../messaging/Structs.sol";
 import * as MessageBus from "../messaging/MessageBus.sol";
 import * as MerkleTreeMessageBus from "../messaging/MerkleTreeMessageBus.sol";
 
@@ -124,6 +125,11 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     // Enclaves can request the Network Secret given an attestation request report
     function RequestNetworkSecret(string calldata requestReport) public {
         // currently this is a no-op, nodes will monitor for these transactions and respond to them
+    }
+
+    function ExtractNativeValue(MessageStructs.Structs.ValueTransferMessage calldata _msg, bytes32[] calldata proof, bytes32 root) external {
+        merkleMessageBus.verifyValueTransferInclusion(_msg, proof, root);
+        messageBus.receiveValueFromL2(_msg.receiver, _msg.amount);
     }
 
     // An attested enclave will pickup the Network Secret Request

@@ -27,8 +27,17 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
         require(rootValidAfter[root] != 0, "Root is not published on this message bus.");
         require(block.timestamp >= rootValidAfter[root], "Root is not considered final yet.");
 
-        bytes32 leaf = keccak256(abi.encode(message));
+        bytes32 leaf = keccak256(abi.encode("message", keccak256(abi.encode(message))));
 
-        require(MerkleProof.verifyCalldata(proof, root, leaf), "Invalid inclusion proof for cross chain messages.");
+        require(MerkleProof.verifyCalldata(proof, root, leaf), "Invalid inclusion proof for cross chain message.");
+    }
+
+    function verifyValueTransferInclusion(Structs.ValueTransferMessage calldata message, bytes32[] calldata proof, bytes32 root) external view {
+        require(rootValidAfter[root] != 0, "Root is not published on this message bus.");
+        require(block.timestamp >= rootValidAfter[root], "Root is not considered final yet.");
+
+        bytes32 leaf = keccak256(abi.encode("value", keccak256(abi.encode(message))));
+
+        require(MerkleProof.verifyCalldata(proof, root, leaf), "Invalid inclusion proof for value transfer message.");
     }
 }

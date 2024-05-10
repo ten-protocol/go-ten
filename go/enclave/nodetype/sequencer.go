@@ -478,7 +478,7 @@ func (s *sequencer) Close() error {
 func (s *sequencer) ExportCrossChainData(fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
 	canonicalBatchesInRollup := make([]*core.Batch, 0)
 	for i := fromSeqNo; i <= toSeqNo; i++ {
-		batch, err := s.storage.FetchBatchBySeqNo(fromSeqNo)
+		batch, err := s.storage.FetchBatchBySeqNo(i)
 		if err != nil {
 			return nil, err
 		}

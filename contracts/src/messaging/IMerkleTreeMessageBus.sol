@@ -7,4 +7,5 @@ interface IMerkleTreeMessageBus {
     function addStateRoot(bytes32 stateRoot, uint256 activationTime) external;
     function blockStateRoot(bytes32 stateRoot) external;
     function verifyMessageInclusion(Structs.CrossChainMessage calldata message, bytes32[] memory proof, bytes32 root) external view;
+    function verifyValueTransferInclusion(Structs.ValueTransferMessage calldata message, bytes32[] calldata proof, bytes32 root) external view;
 }
