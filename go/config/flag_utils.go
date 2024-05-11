@@ -173,8 +173,8 @@ func setupFlagsByType(fs *flag.FlagSet, t TypeConfig) error {
 		SetupFlagsFromStruct(&HostInputConfig{}, fs, flagUsageMap)
 	case Node:
 		{
-			SetupFlagsFromStruct(&HostInputConfig{}, fs, flagUsageMap)
-			SetupFlagsFromStruct(&EnclaveInputConfig{}, fs, flagUsageMap)
+			//SetupFlagsFromStruct(&HostInputConfig{}, fs, flagUsageMap)
+			//SetupFlagsFromStruct(&EnclaveInputConfig{}, fs, flagUsageMap)
 			SetupFlagsFromStruct(&NodeConfig{}, fs, flagUsageMap)
 		}
 	case Testnet:
@@ -203,10 +203,10 @@ func SetupFlagsFromStruct[T Config](p *T, fs *flag.FlagSet, usageMap map[string]
 	if val.Kind() != reflect.Struct {
 		panic("SetupFlagsFromStruct only accepts struct types")
 	}
-	setupStructFlags(val, fs, usageMap)
+	setupStructFlags("", val, fs, usageMap)
 }
 
-func setupStructFlags(val reflect.Value, fs *flag.FlagSet, usageMap map[string]string) {
+func setupStructFlags(prefix string, val reflect.Value, fs *flag.FlagSet, usageMap map[string]string) {
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		yamlTag := val.Type().Field(i).Tag.Get("yaml")
@@ -222,9 +222,9 @@ func setupStructFlags(val reflect.Value, fs *flag.FlagSet, usageMap map[string]s
 		}
 
 		if field.Type().Kind() == reflect.Struct {
-			setupStructFlags(field, fs, usageMap)
+			setupStructFlags(yamlTag, field, fs, usageMap)
 		} else {
-			setupFlag(field, fs, yamlTag, usageMap[yamlTag])
+			setupFlag(field, fs, prefix+":"+yamlTag, usageMap[yamlTag])
 		}
 	}
 }
