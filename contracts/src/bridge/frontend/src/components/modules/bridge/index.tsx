@@ -37,8 +37,9 @@ import { z } from "zod";
 import { useFormHook } from "@/src/hooks/useForm";
 import Web3Service from "@/src/services/web3service";
 import { useWalletStore } from "../../providers/wallet-provider";
-import { Token } from "@/src/types";
+import { ToastType, Token } from "@/src/types";
 import { Alert, AlertDescription } from "../../ui/alert";
+import ConnectWalletButton from "../common/connect-wallet";
 
 export default function Dashboard() {
   const {
@@ -105,7 +106,7 @@ export default function Dashboard() {
       toast({
         title: "Bridge Transaction",
         description: "Bridge transaction initiated",
-        variant: "success",
+        variant: ToastType.SUCCESS,
       });
       const token = data.token;
       const t = tokens.find((t) => t.value === token);
@@ -117,7 +118,7 @@ export default function Dashboard() {
       toast({
         title: "Bridge Transaction",
         description: "Bridge transaction completed",
-        variant: "success",
+        variant: ToastType.SUCCESS,
       });
       form.reset();
     } catch (error) {
@@ -125,7 +126,7 @@ export default function Dashboard() {
       toast({
         title: "Bridge Transaction",
         description: "Error initiating bridge transaction",
-        variant: "destructive",
+        variant: ToastType.DESTRUCTIVE,
       });
     }
   }
@@ -226,9 +227,9 @@ export default function Dashboard() {
                       )}
                     />
 
-                    <div>
+                    <div className="pl-2">
                       <p className="text-sm text-muted-foreground">Balance:</p>
-                      <strong className="text-lg float-right">
+                      <strong className="text-lg float-right word-wrap">
                         {loading ? <Skeleton /> : fromTokenBalance || 0}
                       </strong>
                     </div>
@@ -255,7 +256,7 @@ export default function Dashboard() {
                       )}
                     />
 
-                    <div className="flex items-center p-3">
+                    <div className="flex items-center p-2">
                       {/* Percentage Buttons */}
                       <div className="flex items-center space-x-2">
                         {PERCENTAGES.map((percentage) => (
@@ -372,15 +373,20 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex items-center justify-center mt-4">
-                <Button
-                  type="submit"
-                  className="text-sm font-bold leading-none w-full"
-                  size={"lg"}
-                >
-                  {walletConnected
-                    ? "Initiate Bridge Transaction"
-                    : "Connect Wallet"}
-                </Button>
+                {walletConnected ? (
+                  <Button
+                    type="submit"
+                    className="text-sm font-bold leading-none w-full"
+                    size={"lg"}
+                  >
+                    Initiate Bridge Transaction
+                  </Button>
+                ) : (
+                  <ConnectWalletButton
+                    className="text-sm font-bold leading-none w-full"
+                    variant="default"
+                  />
+                )}
               </div>
             </form>
           </Form>

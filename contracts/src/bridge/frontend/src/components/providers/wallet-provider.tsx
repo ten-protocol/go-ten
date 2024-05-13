@@ -4,16 +4,19 @@ import detectEthereumProvider from "@metamask/detect-provider";
 import Web3Service from "@/src/services/web3service";
 import { toast } from "../ui/use-toast";
 import {
+  ToastType,
   WalletConnectionContextType,
   WalletConnectionProviderProps,
   WalletNetwork,
 } from "@/src/types";
 import { L1CHAINS, L2CHAINS } from "@/src/lib/constants";
+import { requestMethods } from "@/src/routes";
 
 const WalletContext = createContext<WalletConnectionContextType | null>(null);
 
 const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
   const [provider, setProvider] = useState<any>(null);
+  const [isWalletConnected, setIsWalletConnected] = useState<boolean>(false);
   const [signer, setSigner] = useState<any>(null);
   const [address, setAddress] = useState<string>("");
   const [isL1ToL2, setIsL1ToL2] = React.useState(true);
@@ -27,7 +30,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
       setProvider(detectedProvider);
       //@ts-ignore
       const chainId = await detectedProvider!.request({
-        method: "eth_chainId",
+        method: requestMethods.getChainId,
       });
 
       if (isL1ToL2 && chainId !== WalletNetwork.L1_SEPOLIA) {
@@ -40,20 +43,21 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
 
       //@ts-ignore
       const accounts = await detectedProvider!.request({
-        method: "eth_requestAccounts",
+        method: requestMethods.connectAccounts,
       });
+      setIsWalletConnected(true);
       setAddress(accounts[0]);
       toast({
         title: "Connected",
         description: "Connected to wallet! Account: " + accounts[0],
-        variant: "success",
+        variant: ToastType.SUCCESS,
       });
     } catch (error) {
       console.error("Error connecting to wallet:", error);
       toast({
         title: "Error",
         description: "Error connecting to wallet",
-        variant: "destructive",
+        variant: ToastType.DESTRUCTIVE,
       });
     }
   };
@@ -69,7 +73,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
         toast({
           title: "Disconnected",
           description: "Disconnected from wallet",
-          variant: "info",
+          variant: ToastType.INFO,
         });
       }
     } catch (error) {
@@ -77,7 +81,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
       toast({
         title: "Error",
         description: "Error disconnecting from wallet",
-        variant: "destructive",
+        variant: ToastType.DESTRUCTIVE,
       });
     }
   };
@@ -87,12 +91,12 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
     try {
       if (isL1ToL2) {
         await provider.request({
-          method: "wallet_switchEthereumChain",
+          method: requestMethods.switchNetwork,
           params: [{ chainId: WalletNetwork.L2_TEN_TESTNET }],
         });
       } else {
         await provider.request({
-          method: "wallet_switchEthereumChain",
+          method: requestMethods.switchNetwork,
           params: [{ chainId: WalletNetwork.L1_SEPOLIA }],
         });
       }
@@ -118,13 +122,13 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
                 </pre>
               </>
             ),
-            variant: "info",
+            variant: ToastType.INFO,
           });
         } else {
           toast({
             title: "Wrong Network",
             description: "Please install the network to continue.",
-            variant: "info",
+            variant: ToastType.INFO,
           });
         }
       } else {
@@ -132,7 +136,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
         toast({
           title: "Error",
           description: "Error switching network",
-          variant: "destructive",
+          variant: ToastType.DESTRUCTIVE,
         });
       }
     }
@@ -163,7 +167,6 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
   }, [provider]);
 
   useEffect(() => {
-    //connect wallet
     connectWallet();
   }, []);
 
@@ -172,7 +175,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
     provider,
     signer,
     address,
-    walletConnected: !!provider,
+    walletConnected: isWalletConnected,
     isL1ToL2,
     fromChains,
     toChains,
@@ -181,13 +184,11 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
     switchNetwork,
   };
 
-  // Render the provider with the context value
   return (
     <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
   );
 };
 
-// Custom hook to use the wallet context
 const useWalletStore = () => {
   const context = useContext(WalletContext);
   if (!context) {
@@ -196,5 +197,4 @@ const useWalletStore = () => {
   return context;
 };
 
-// Export provider and custom hook
 export { WalletProvider, useWalletStore };
