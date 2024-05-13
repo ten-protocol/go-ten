@@ -27,9 +27,16 @@ type FilterAPI struct {
 
 func NewFilterAPI(host host.Host, logger gethlog.Logger) *FilterAPI {
 	return &FilterAPI{
-		host:            host,
-		logger:          logger,
-		NewHeadsService: subscriptioncommon.NewNewHeadsServiceWithChannel(host.NewHeadsChan(), false, logger, nil),
+		host:   host,
+		logger: logger,
+		NewHeadsService: subscriptioncommon.NewNewHeadsService(
+			func() (chan *common.BatchHeader, error) {
+				return host.NewHeadsChan(), nil
+			},
+			false,
+			logger,
+			nil,
+		),
 	}
 }
 

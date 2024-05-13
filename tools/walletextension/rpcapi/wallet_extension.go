@@ -106,11 +106,15 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		Config:          config,
 	}
 
-	services.NewHeadsService = subscriptioncommon.NewNewHeadsServiceWithConnect(
-		func(ch chan *tencommon.BatchHeader) error {
+	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(
+		func() (chan *tencommon.BatchHeader, error) {
+			logger.Info("Connecting to new heads service...")
 			// clear the cache to avoid returning stale data during reconnecting.
 			services.Cache.EvictShortLiving()
-			return subscribeToNewHeadsWithReconnect(ch, services, logger)
+			ch := make(chan *tencommon.BatchHeader)
+			err := subscribeToNewHeadsWithReconnect(ch, services, logger)
+			logger.Info("Connected to new heads service.", log.ErrKey, err)
+			return ch, err
 		},
 		true,
 		logger,

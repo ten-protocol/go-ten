@@ -28,6 +28,7 @@ func ForwardFromChannels[R any](inputChannels []chan R, unsubscribed *atomic.Boo
 	lastMessageTime := time.Now()
 	unclosedInputChannels := len(inputCases)
 	for unclosedInputChannels > 0 {
+		// this mechanism removes closed input channels. When there is none left, the subscription is considered "disconnected".
 		chosen, value, ok := reflect.Select(inputCases)
 		if !ok {
 			// The chosen channel has been closed, so zero out the channel to disable the case

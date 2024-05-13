@@ -22,8 +22,7 @@ import (
 // also handles unsubscribe
 // Note: this is a service which must be Started and Stopped
 type NewHeadsService struct {
-	inputCh            chan *common.BatchHeader
-	connectFunc        func(chan *common.BatchHeader) error
+	connectFunc        func() (chan *common.BatchHeader, error)
 	convertToEthHeader bool
 	notifiersMutex     *sync.RWMutex
 	newHeadNotifiers   map[rpc.ID]*rpc.Notifier
@@ -32,7 +31,8 @@ type NewHeadsService struct {
 	logger             gethlog.Logger
 }
 
-func NewNewHeadsServiceWithConnect(connect func(chan *common.BatchHeader) error, convertToEthHeader bool, logger gethlog.Logger, onMessage func(*common.BatchHeader) error) *NewHeadsService {
+// connect - function that returns the input channel
+func NewNewHeadsService(connect func() (chan *common.BatchHeader, error), convertToEthHeader bool, logger gethlog.Logger, onMessage func(*common.BatchHeader) error) *NewHeadsService {
 	return &NewHeadsService{
 		connectFunc:        connect,
 		convertToEthHeader: convertToEthHeader,
@@ -44,29 +44,14 @@ func NewNewHeadsServiceWithConnect(connect func(chan *common.BatchHeader) error,
 	}
 }
 
-func NewNewHeadsServiceWithChannel(ch chan *common.BatchHeader, convertToEthHeader bool, logger gethlog.Logger, onMessage func(*common.BatchHeader) error) *NewHeadsService {
-	return &NewHeadsService{
-		inputCh:            ch,
-		convertToEthHeader: convertToEthHeader,
-		onMessage:          onMessage,
-		logger:             logger,
-		stopped:            &atomic.Bool{},
-		newHeadNotifiers:   make(map[rpc.ID]*rpc.Notifier),
-		notifiersMutex:     &sync.RWMutex{},
-	}
-}
-
 func (nhs *NewHeadsService) Start() error {
-	if nhs.inputCh == nil {
-		nhs.inputCh = make(chan *common.BatchHeader)
-		err := nhs.connectFunc(nhs.inputCh)
-		if err != nil {
-			return fmt.Errorf("could not connect to new heads: %w", err)
-		}
+	inputCh, err := nhs.connectFunc()
+	if err != nil {
+		return fmt.Errorf("could not connect to new heads: %w", err)
 	}
 
 	go ForwardFromChannels(
-		[]chan *common.BatchHeader{nhs.inputCh},
+		[]chan *common.BatchHeader{inputCh},
 		nhs.stopped,
 		func(head *common.BatchHeader) error {
 			if nhs.onMessage != nil {
@@ -81,8 +66,8 @@ func (nhs *NewHeadsService) Start() error {
 				msg = convertBatchHeader(head)
 			}
 
-			nhs.notifiersMutex.RLock()
-			defer nhs.notifiersMutex.RUnlock()
+			nhs.notifiersMutex.Lock()
+			defer nhs.notifiersMutex.Unlock()
 
 			// for each new head, notify all registered subscriptions
 			for id, notifier := range nhs.newHeadNotifiers {
@@ -93,18 +78,14 @@ func (nhs *NewHeadsService) Start() error {
 				if err != nil {
 					// on error, remove the notification
 					nhs.logger.Info("failed to notify newHead subscription", log.ErrKey, err, log.SubIDKey, id)
-					nhs.notifiersMutex.Lock()
 					delete(nhs.newHeadNotifiers, id)
-					nhs.notifiersMutex.Unlock()
 				}
 			}
 			return nil
 		},
 		func() {
-			if nhs.connectFunc == nil {
-				nhs.logger.Crit("the inbound new heads channel was closed.")
-			}
-			err := nhs.connectFunc(nhs.inputCh)
+			nhs.logger.Info("Disconnected from new head subscription. Reconnecting...")
+			inputCh, err = nhs.connectFunc()
 			if err != nil {
 				nhs.logger.Crit("could not connect to new heads: ", err)
 			}
