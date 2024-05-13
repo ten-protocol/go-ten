@@ -65,6 +65,9 @@ func (t *Testnet) Start() error {
 		node.WithLogLevel(t.cfg.logLevel),
 		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
 	)
+	if !t.cfg.isSGXEnabled {
+		sequencerNodeConfig.UpdateNodeConfig(node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"))
+	}
 
 	sequencerNode := node.NewDockerNode(sequencerNodeConfig)
 
@@ -105,6 +108,10 @@ func (t *Testnet) Start() error {
 		node.WithLogLevel(t.cfg.logLevel),
 		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
 	)
+
+	if !t.cfg.isSGXEnabled {
+		validatorNodeConfig.UpdateNodeConfig(node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"))
+	}
 
 	validatorNode := node.NewDockerNode(validatorNodeConfig)
 

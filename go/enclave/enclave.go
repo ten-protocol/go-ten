@@ -844,29 +844,6 @@ func (e *enclaveImpl) GetCustomQuery(ctx context.Context, encryptedParams common
 	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetCustomQueryValidate, rpc.GetCustomQueryExecute)
 }
 
-func (e *enclaveImpl) GetPublicTransactionData(ctx context.Context, pagination *common.QueryPagination) (*common.TransactionListingResponse, common.SystemError) {
-	// ensure the enclave is running
-	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested GetPublicTransactionData with the enclave stopping"))
-	}
-
-	paginatedData, err := e.storage.GetPublicTransactionData(ctx, pagination)
-	if err != nil {
-		return nil, responses.ToInternalError(fmt.Errorf("unable to fetch data - %w", err))
-	}
-
-	// Todo eventually make this a cacheable method
-	totalData, err := e.storage.GetPublicTransactionCount(ctx)
-	if err != nil {
-		return nil, responses.ToInternalError(fmt.Errorf("unable to fetch data - %w", err))
-	}
-
-	return &common.TransactionListingResponse{
-		TransactionsData: paginatedData,
-		Total:            totalData,
-	}, nil
-}
-
 func (e *enclaveImpl) EnclavePublicConfig(context.Context) (*common.EnclavePublicConfig, common.SystemError) {
 	address, systemError := e.crossChainProcessors.GetL2MessageBusAddress()
 	if systemError != nil {

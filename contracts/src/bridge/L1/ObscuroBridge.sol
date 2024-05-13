@@ -84,9 +84,9 @@ contract ObscuroBridge is
     }
 
     function sendERC20(
-        address asset, // USDC, USDT, TEN (disabled), ETH
-        uint256 amount, // 10
-        address receiver // ADDRESS
+        address asset,
+        uint256 amount,
+        address receiver
     ) external override {
         require(amount > 0, "Attempting empty transfer.");
         require(

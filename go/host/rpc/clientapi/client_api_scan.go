@@ -34,7 +34,7 @@ func (s *ScanAPI) GetTransaction(hash gethcommon.Hash) (*common.PublicTransactio
 	return s.host.Storage().FetchTransaction(hash)
 }
 
-// GetTotalTxCount returns the number of recorded transactions on the network.
+// GetTotalTransactionCount returns the number of recorded transactions on the network.
 func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
 	return s.host.Storage().FetchTotalTxCount()
 }
@@ -90,8 +90,8 @@ func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {
 }
 
 // GetPublicTransactionData returns a paginated list of transaction data
-func (s *ScanAPI) GetPublicTransactionData(ctx context.Context, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
-	return s.host.EnclaveClient().GetPublicTransactionData(ctx, pagination)
+func (s *ScanAPI) GetPublicTransactionData(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
+	return s.host.Storage().FetchTransactionListing(pagination)
 }
 
 // GetBlockListing returns a paginated list of blocks that include rollups

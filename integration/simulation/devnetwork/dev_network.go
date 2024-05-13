@@ -71,6 +71,13 @@ func (s *InMemDevNetwork) GetGatewayURL() (string, error) {
 	return fmt.Sprintf("http://localhost:%d", _gwHTTPPort), nil
 }
 
+func (s *InMemDevNetwork) GetGatewayWSURL() (string, error) {
+	if !s.tenConfig.TenGatewayEnabled {
+		return "", fmt.Errorf("ten gateway not enabled")
+	}
+	return fmt.Sprintf("ws://localhost:%d", _gwWSPort), nil
+}
+
 func (s *InMemDevNetwork) GetMCOwnerWallet() (wallet.Wallet, error) {
 	return s.networkWallets.MCOwnerWallet, nil
 }
@@ -147,11 +154,12 @@ func (s *InMemDevNetwork) Start() {
 	fmt.Println("Starting obscuro nodes")
 	s.startNodes()
 
+	// sleep to allow the nodes to start
+	time.Sleep(10 * time.Second)
+
 	if s.tenConfig.TenGatewayEnabled {
 		s.startTenGateway()
 	}
-	// sleep to allow the nodes to start
-	time.Sleep(10 * time.Second)
 }
 
 func (s *InMemDevNetwork) GetGatewayClient() (ethadapter.EthClient, error) {

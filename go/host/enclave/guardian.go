@@ -128,7 +128,7 @@ func (g *Guardian) Start() error {
 
 	// note: not keeping the unsubscribe functions because the lifespan of the guardian is the same as the host
 	g.sl.L1Repo().Subscribe(g)
-	g.sl.L2Repo().Subscribe(g)
+	g.sl.L2Repo().SubscribeNewBatches(g)
 
 	// start streaming data from the enclave
 	go g.streamEnclaveData()
@@ -659,8 +659,10 @@ func (g *Guardian) streamEnclaveData() {
 						g.logger.Error("Failed to broadcast batch", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
 					}
 				} else {
-					g.logger.Debug("Received batch from enclave", log.BatchSeqNoKey, resp.Batch.Header.SequencerOrderNo, log.BatchHashKey, resp.Batch.Hash())
+					g.logger.Debug("Received validated batch from enclave", log.BatchSeqNoKey, resp.Batch.Header.SequencerOrderNo, log.BatchHashKey, resp.Batch.Hash())
 				}
+				// Notify the L2 repo that an enclave has validated a batch, so it can update its validated head and notify subscribers
+				g.sl.L2Repo().NotifyNewValidatedHead(resp.Batch)
 				g.state.OnProcessedBatch(resp.Batch.Header.SequencerOrderNo)
 			}
 

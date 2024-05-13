@@ -20,8 +20,9 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     }
 
     event LogManagementContractCreated(address messageBusAddress);
-    // Event to log changes to important contract addresses
     event ImportantContractAddressUpdated(string key, address newAddress);
+    event SequencerEnclaveGranted(address enclaveID);
+    event SequencerEnclaveRevoked(address enclaveID);
 
     // mapping of enclaveID to whether it is attested
     mapping(address => bool) private attested;
@@ -105,6 +106,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
         // the enclave that starts the network with this call is implicitly a sequencer so doesn't need adding
         sequencerEnclave[_enclaveID] = true;
+        emit SequencerEnclaveGranted(_enclaveID);
     }
 
     // Enclaves can request the Network Secret given an attestation request report
@@ -158,12 +160,14 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         // require the enclave to be attested already
         require(attested[_addr], "enclaveID not attested");
         sequencerEnclave[_addr] = true;
+        emit SequencerEnclaveGranted(_addr);
     }
     // Function to revoke sequencer status for an enclave - contract owner only
     function RevokeSequencerEnclave(address _addr) public onlyOwner {
         // require the enclave to be a sequencer already
         require(sequencerEnclave[_addr], "enclaveID not a sequencer");
         delete sequencerEnclave[_addr];
+        emit SequencerEnclaveRevoked(_addr);
     }
 
     // Testnet function to allow the contract owner to retrieve **all** funds from the network bridge.

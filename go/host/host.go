@@ -97,7 +97,7 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
 
-	l2Repo.Subscribe(batchListener{newHeads: host.newHeads})
+	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
 	hostServices.RegisterService(hostcommon.P2PName, p2p)
 	hostServices.RegisterService(hostcommon.L1BlockRepositoryName, l1Repo)
 	maxWaitForL1Receipt := 6 * config.L1BlockTime   // wait ~10 blocks to see if tx gets published before retrying

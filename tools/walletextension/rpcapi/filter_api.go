@@ -114,6 +114,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 		for _, connection := range backendWSConnections {
 			_ = returnConn(api.we.rpcWSConnPool, connection.BackingClient())
 		}
+		unsubscribed.Store(true)
 	})
 
 	return subscription, err
