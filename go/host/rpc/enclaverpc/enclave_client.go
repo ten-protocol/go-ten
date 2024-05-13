@@ -160,9 +160,6 @@ func (c *Client) EnclaveID(ctx context.Context) (common.EnclaveID, common.System
 }
 
 func (c *Client) SubmitL1Block(ctx context.Context, block *common.L1Block, receipts common.L1Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
 	var buffer bytes.Buffer
 	if err := block.EncodeRLP(&buffer); err != nil {
 		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
@@ -173,7 +170,7 @@ func (c *Client) SubmitL1Block(ctx context.Context, block *common.L1Block, recei
 		return nil, fmt.Errorf("could not encode receipts. Cause: %w", err)
 	}
 
-	response, err := c.protoClient.SubmitL1Block(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedReceipts: serialized, IsLatest: isLatest})
+	response, err := c.protoClient.SubmitL1Block(ctx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedReceipts: serialized, IsLatest: isLatest})
 	if err != nil {
 		return nil, fmt.Errorf("could not submit block. Cause: %w", err)
 	}
@@ -203,12 +200,9 @@ func (c *Client) SubmitTx(ctx context.Context, tx common.EncryptedTx) (*response
 func (c *Client) SubmitBatch(ctx context.Context, batch *common.ExtBatch) common.SystemError {
 	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "SubmitBatch rpc call")
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
 	batchMsg := rpc.ToExtBatchMsg(batch)
 
-	response, err := c.protoClient.SubmitBatch(timeoutCtx, &generated.SubmitBatchRequest{Batch: &batchMsg})
+	response, err := c.protoClient.SubmitBatch(ctx, &generated.SubmitBatchRequest{Batch: &batchMsg})
 	if err != nil {
 		return syserr.NewRPCError(err)
 	}
@@ -253,10 +247,7 @@ func (c *Client) GetTransactionCount(ctx context.Context, encryptedParams common
 func (c *Client) Stop() common.SystemError {
 	c.logger.Info("Shutting down enclave client.")
 
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.enclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.Stop(timeoutCtx, &generated.StopRequest{})
+	response, err := c.protoClient.Stop(context.Background(), &generated.StopRequest{})
 	if err != nil {
 		return syserr.NewRPCError(fmt.Errorf("could not stop enclave: %w", err))
 	}
@@ -415,10 +406,7 @@ func (c *Client) HealthCheck(ctx context.Context) (bool, common.SystemError) {
 func (c *Client) CreateBatch(ctx context.Context, skipIfEmpty bool) common.SystemError {
 	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "CreateBatch rpc call")
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.CreateBatch(timeoutCtx, &generated.CreateBatchRequest{SkipIfEmpty: skipIfEmpty})
+	response, err := c.protoClient.CreateBatch(ctx, &generated.CreateBatchRequest{SkipIfEmpty: skipIfEmpty})
 	if err != nil {
 		return syserr.NewInternalError(err)
 	}
@@ -431,10 +419,7 @@ func (c *Client) CreateBatch(ctx context.Context, skipIfEmpty bool) common.Syste
 func (c *Client) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
 	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "CreateRollup rpc call")
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.CreateRollup(timeoutCtx, &generated.CreateRollupRequest{
+	response, err := c.protoClient.CreateRollup(ctx, &generated.CreateRollupRequest{
 		FromSequenceNumber: &fromSeqNo,
 	})
 	if err != nil {

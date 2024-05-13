@@ -5,20 +5,20 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
 const (
-	getQry = `select keyvalue.val from keyvalue where keyvalue.ky = ?;`
+	getQry = `select keyvalue.val from keyvalue where keyvalue.ky = ? ;`
 	// `replace` will perform insert or replace if existing and this syntax works for both sqlite and edgeless db
-	putQry       = `replace into keyvalue values(?, ?);`
-	putQryBatch  = `replace into keyvalue values`
+	putQry       = `replace into keyvalue (ky,  val) values(?,  ?);`
+	putQryBatch  = `replace into keyvalue (ky, val) values`
 	putQryValues = `(?,?)`
-	delQry       = `delete from keyvalue where keyvalue.ky = ?;`
-	searchQry    = `select * from keyvalue where substring(keyvalue.ky, 1, ?) = ? and keyvalue.ky >= ? order by keyvalue.ky asc`
+	delQry       = `delete from keyvalue where keyvalue.ky = ? ;`
+	// todo - how is the performance of this?
+	searchQry = `select ky, val from keyvalue where substring(keyvalue.ky, 1, ?) = ? and keyvalue.ky >= ? order by keyvalue.ky asc`
 )
 
 func Has(ctx context.Context, db *sql.DB, key []byte) (bool, error) {
@@ -58,14 +58,13 @@ func PutKeyValues(ctx context.Context, tx *sql.Tx, keys [][]byte, vals [][]byte)
 
 	if len(keys) > 0 {
 		// write the kv updates as a single update statement for increased efficiency
-		update := putQryBatch + strings.Repeat(putQryValues+",", len(keys))
-		update = update[0 : len(update)-1] // remove trailing comma
+		update := putQryBatch + repeat(putQryValues, ",", len(keys))
 
 		values := make([]any, 0)
 		for i := range keys {
 			values = append(values, keys[i], vals[i])
 		}
-		_, err := tx.Exec(update, values...)
+		_, err := tx.ExecContext(ctx, update, values...)
 		if err != nil {
 			return fmt.Errorf("failed to exec k/v transaction statement. kv=%v, err=%w", values, err)
 		}

@@ -449,6 +449,7 @@ func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndRece
 	}
 
 	if ingestion.IsFork() {
+		e.registry.OnL1Reorg(ingestion)
 		err := e.service.OnL1Fork(ctx, ingestion.ChainFork)
 		if err != nil {
 			return nil, err

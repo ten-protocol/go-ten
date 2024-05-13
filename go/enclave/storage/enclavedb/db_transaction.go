@@ -2,7 +2,6 @@ package enclavedb
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -19,62 +18,45 @@ type keyvalue struct {
 	delete bool
 }
 
-type statement struct {
-	query string
-	args  []any
+type dbTxBatch struct {
+	timeout time.Duration
+	db      EnclaveDB
+	writes  []keyvalue
+	size    int
 }
 
-type dbTransaction struct {
-	timeout    time.Duration
-	db         EnclaveDB
-	writes     []keyvalue
-	statements []statement
-	size       int
-}
-
-func (b *dbTransaction) GetDB() *sql.DB {
-	return b.db.GetSQLDB()
-}
-
-func (b *dbTransaction) ExecuteSQL(query string, args ...any) {
-	s := statement{
-		query: query,
-		args:  args,
-	}
-	b.statements = append(b.statements, s)
-}
-
-// Put inserts the given value into the batch for later committing.
-func (b *dbTransaction) Put(key, value []byte) error {
+// put inserts the given value into the batch for later committing.
+func (b *dbTxBatch) Put(key, value []byte) error {
 	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), common.CopyBytes(value), false})
 	b.size += len(key) + len(value)
 	return nil
 }
 
 // Delete inserts the a key removal into the batch for later committing.
-func (b *dbTransaction) Delete(key []byte) error {
+func (b *dbTxBatch) Delete(key []byte) error {
 	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), nil, true})
 	b.size += len(key)
 	return nil
 }
 
 // ValueSize retrieves the amount of data queued up for writing.
-func (b *dbTransaction) ValueSize() int {
+func (b *dbTxBatch) ValueSize() int {
 	return b.size
 }
 
 // Write executes a batch statement with all the updates
-func (b *dbTransaction) Write() error {
+func (b *dbTxBatch) Write() error {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), b.timeout)
 	defer cancelCtx()
-	return b.WriteCtx(ctx)
+	return b.writeCtx(ctx)
 }
 
-func (b *dbTransaction) WriteCtx(ctx context.Context) error {
-	tx, err := b.db.BeginTx(ctx)
+func (b *dbTxBatch) writeCtx(ctx context.Context) error {
+	tx, err := b.db.NewDBTransaction(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create batch transaction - %w", err)
 	}
+	defer tx.Rollback()
 
 	var deletes [][]byte
 	var updateKeys [][]byte
@@ -99,13 +81,6 @@ func (b *dbTransaction) WriteCtx(ctx context.Context) error {
 		return fmt.Errorf("failed to delete keys. Cause %w", err)
 	}
 
-	for _, s := range b.statements {
-		_, err := tx.Exec(s.query, s.args...)
-		if err != nil {
-			return fmt.Errorf("failed to exec db statement `%s` (%v). Cause: %w", s.query, s.args, err)
-		}
-	}
-
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("failed to commit batch of writes. Cause: %w", err)
@@ -114,14 +89,13 @@ func (b *dbTransaction) WriteCtx(ctx context.Context) error {
 }
 
 // Reset resets the batch for reuse.
-func (b *dbTransaction) Reset() {
+func (b *dbTxBatch) Reset() {
 	b.writes = b.writes[:0]
-	b.statements = b.statements[:0]
 	b.size = 0
 }
 
 // Replay replays the batch contents.
-func (b *dbTransaction) Replay(w ethdb.KeyValueWriter) error {
+func (b *dbTxBatch) Replay(w ethdb.KeyValueWriter) error {
 	for _, keyvalue := range b.writes {
 		if keyvalue.delete {
 			if err := w.Delete(keyvalue.key); err != nil {
