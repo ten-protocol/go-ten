@@ -535,7 +535,7 @@ func (s *sequencer) ExportCrossChainData(fromSeqNo uint64, toSeqNo uint64) (*com
 		L1BlockHash:      block.Hash(),
 		L1BlockNum:       big.NewInt(0).Set(block.Header().Number),
 		CrossChainHashes: crossChainHashes,
-	}
+	} //todo: check fromSeqNo
 
 	err = s.signCrossChainBundle(bundle)
 	if err != nil {

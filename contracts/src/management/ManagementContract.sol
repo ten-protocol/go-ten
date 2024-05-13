@@ -49,6 +49,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     //The messageBus where messages can be sent to Obscuro
     MessageBus.IMessageBus public messageBus;
     MerkleTreeMessageBus.IMerkleTreeMessageBus public merkleMessageBus;
+    mapping(bytes32 =>bool) public isWithdrawalSpent;
 
     function initialize() public initializer {
         __Ownable_init(msg.sender);
@@ -129,7 +130,12 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     function ExtractNativeValue(MessageStructs.Structs.ValueTransferMessage calldata _msg, bytes32[] calldata proof, bytes32 root) external {
         merkleMessageBus.verifyValueTransferInclusion(_msg, proof, root);
+        bytes32 msgHash = keccak256(abi.encode(_msg));
+        require(isWithdrawalSpent[msgHash] == false, "withdrawal already spent");
+        isWithdrawalSpent[keccak256(abi.encode(_msg))] = true;
+        
         messageBus.receiveValueFromL2(_msg.receiver, _msg.amount);
+        //todo track state
     }
 
     // An attested enclave will pickup the Network Secret Request
