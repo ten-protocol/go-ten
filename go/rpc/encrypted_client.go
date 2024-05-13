@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/rpc"
 	"github.com/ten-protocol/go-ten/go/common/subscription"
@@ -273,7 +274,10 @@ func (c *EncRPCClient) logSubscription(ctx context.Context, namespace string, ch
 			outboundChannel <- *decryptedLog
 		}
 		return nil
-	})
+	},
+		nil,
+		12*time.Hour,
+	)
 
 	return backendSub, nil
 }

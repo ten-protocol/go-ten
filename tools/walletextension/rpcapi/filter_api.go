@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	subscriptioncommon "github.com/ten-protocol/go-ten/go/common/subscription"
 
@@ -93,19 +94,25 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 	subscription := subNotifier.CreateSubscription()
 
 	unsubscribed := atomic.Bool{}
-	go subscriptioncommon.ForwardFromChannels(inputChannels, &unsubscribed, func(log types.Log) error {
-		uniqueLogKey := LogKey{
-			BlockHash: log.BlockHash,
-			TxHash:    log.TxHash,
-			Index:     log.Index,
-		}
+	go subscriptioncommon.ForwardFromChannels(
+		inputChannels,
+		&unsubscribed,
+		func(log types.Log) error {
+			uniqueLogKey := LogKey{
+				BlockHash: log.BlockHash,
+				TxHash:    log.TxHash,
+				Index:     log.Index,
+			}
 
-		if !dedupeBuffer.Contains(uniqueLogKey) {
-			dedupeBuffer.Push(uniqueLogKey)
-			return subNotifier.Notify(subscription.ID, log)
-		}
-		return nil
-	})
+			if !dedupeBuffer.Contains(uniqueLogKey) {
+				dedupeBuffer.Push(uniqueLogKey)
+				return subNotifier.Notify(subscription.ID, log)
+			}
+			return nil
+		},
+		nil,
+		12*time.Hour,
+	)
 
 	go subscriptioncommon.HandleUnsubscribe(subscription, &unsubscribed, func() {
 		for _, backendSub := range backendSubscriptions {

@@ -2,9 +2,11 @@ package subscription
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -21,6 +23,7 @@ import (
 // Note: this is a service which must be Started and Stopped
 type NewHeadsService struct {
 	inputCh            chan *common.BatchHeader
+	connectFunc        func(chan *common.BatchHeader) error
 	convertToEthHeader bool
 	notifiersMutex     *sync.RWMutex
 	newHeadNotifiers   map[rpc.ID]*rpc.Notifier
@@ -29,9 +32,21 @@ type NewHeadsService struct {
 	logger             gethlog.Logger
 }
 
-func NewNewHeadsService(inputCh chan *common.BatchHeader, convertToEthHeader bool, logger gethlog.Logger, onMessage func(*common.BatchHeader) error) *NewHeadsService {
+func NewNewHeadsServiceWithConnect(connect func(chan *common.BatchHeader) error, convertToEthHeader bool, logger gethlog.Logger, onMessage func(*common.BatchHeader) error) *NewHeadsService {
 	return &NewHeadsService{
-		inputCh:            inputCh,
+		connectFunc:        connect,
+		convertToEthHeader: convertToEthHeader,
+		onMessage:          onMessage,
+		logger:             logger,
+		stopped:            &atomic.Bool{},
+		newHeadNotifiers:   make(map[rpc.ID]*rpc.Notifier),
+		notifiersMutex:     &sync.RWMutex{},
+	}
+}
+
+func NewNewHeadsServiceWithChannel(ch chan *common.BatchHeader, convertToEthHeader bool, logger gethlog.Logger, onMessage func(*common.BatchHeader) error) *NewHeadsService {
+	return &NewHeadsService{
+		inputCh:            ch,
 		convertToEthHeader: convertToEthHeader,
 		onMessage:          onMessage,
 		logger:             logger,
@@ -42,38 +57,60 @@ func NewNewHeadsService(inputCh chan *common.BatchHeader, convertToEthHeader boo
 }
 
 func (nhs *NewHeadsService) Start() error {
-	go ForwardFromChannels([]chan *common.BatchHeader{nhs.inputCh}, nhs.stopped, func(head *common.BatchHeader) error {
-		if nhs.onMessage != nil {
-			err := nhs.onMessage(head)
+	if nhs.inputCh == nil {
+		nhs.inputCh = make(chan *common.BatchHeader)
+		err := nhs.connectFunc(nhs.inputCh)
+		if err != nil {
+			return fmt.Errorf("could not connect to new heads: %w", err)
+		}
+	}
+
+	go ForwardFromChannels(
+		[]chan *common.BatchHeader{nhs.inputCh},
+		nhs.stopped,
+		func(head *common.BatchHeader) error {
+			if nhs.onMessage != nil {
+				err := nhs.onMessage(head)
+				if err != nil {
+					nhs.logger.Info("failed invoking onMessage callback.", log.ErrKey, err)
+				}
+			}
+
+			var msg any = head
+			if nhs.convertToEthHeader {
+				msg = convertBatchHeader(head)
+			}
+
+			nhs.notifiersMutex.RLock()
+			defer nhs.notifiersMutex.RUnlock()
+
+			// for each new head, notify all registered subscriptions
+			for id, notifier := range nhs.newHeadNotifiers {
+				if nhs.stopped.Load() {
+					return nil
+				}
+				err := notifier.Notify(id, msg)
+				if err != nil {
+					// on error, remove the notification
+					nhs.logger.Info("failed to notify newHead subscription", log.ErrKey, err, log.SubIDKey, id)
+					nhs.notifiersMutex.Lock()
+					delete(nhs.newHeadNotifiers, id)
+					nhs.notifiersMutex.Unlock()
+				}
+			}
+			return nil
+		},
+		func() {
+			if nhs.connectFunc == nil {
+				nhs.logger.Crit("the inbound new heads channel was closed.")
+			}
+			err := nhs.connectFunc(nhs.inputCh)
 			if err != nil {
-				nhs.logger.Info("failed invoking onMessage callback.", log.ErrKey, err)
+				nhs.logger.Crit("could not connect to new heads: ", err)
 			}
-		}
-
-		var msg any = head
-		if nhs.convertToEthHeader {
-			msg = convertBatchHeader(head)
-		}
-
-		nhs.notifiersMutex.RLock()
-		defer nhs.notifiersMutex.RUnlock()
-
-		// for each new head, notify all registered subscriptions
-		for id, notifier := range nhs.newHeadNotifiers {
-			if nhs.stopped.Load() {
-				return nil
-			}
-			err := notifier.Notify(id, msg)
-			if err != nil {
-				// on error, remove the notification
-				nhs.logger.Info("failed to notify newHead subscription", log.ErrKey, err, log.SubIDKey, id)
-				nhs.notifiersMutex.Lock()
-				delete(nhs.newHeadNotifiers, id)
-				nhs.notifiersMutex.Unlock()
-			}
-		}
-		return nil
-	})
+		},
+		2*time.Minute, // todo - create constant
+	)
 	return nil
 }
 

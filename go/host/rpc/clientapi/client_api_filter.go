@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/host"
 	subscriptioncommon "github.com/ten-protocol/go-ten/go/common/subscription"
@@ -28,7 +29,7 @@ func NewFilterAPI(host host.Host, logger gethlog.Logger) *FilterAPI {
 	return &FilterAPI{
 		host:            host,
 		logger:          logger,
-		NewHeadsService: subscriptioncommon.NewNewHeadsService(host.NewHeadsChan(), false, logger, nil),
+		NewHeadsService: subscriptioncommon.NewNewHeadsServiceWithChannel(host.NewHeadsChan(), false, logger, nil),
 	}
 }
 
@@ -59,7 +60,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 	var unsubscribed atomic.Bool
 	go subscriptioncommon.ForwardFromChannels([]chan []byte{logsFromSubscription}, &unsubscribed, func(elem []byte) error {
 		return notifier.Notify(subscription.ID, elem)
-	})
+	}, nil, 12*time.Hour)
 	go subscriptioncommon.HandleUnsubscribe(subscription, &unsubscribed, func() {
 		api.host.UnsubscribeLogs(subscription.ID)
 		unsubscribed.Store(true)
