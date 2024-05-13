@@ -8,6 +8,7 @@ ARG GATEWAY_API_URL
 
 # ENV for URL to be used in the app
 ENV NEXT_PUBLIC_API_GATEWAY_URL=${GATEWAY_API_URL}
+ENV PORT=80
 
 # Copy package.json and package-lock.json (or yarn.lock) into the container
 COPY package*.json ./
@@ -15,4 +16,5 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 RUN npm run build
+EXPOSE 80
 CMD ["npm", "start"]
