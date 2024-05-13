@@ -7,6 +7,7 @@ create table if not exists obsdb.keyvalue
     ky  varbinary(64) NOT NULL,
     val mediumblob    NOT NULL,
     primary key (id),
+    UNIQUE (ky),
     INDEX USING HASH (ky)
 );
 GRANT ALL ON obsdb.keyvalue TO obscuro;
@@ -85,11 +86,12 @@ create table if not exists obsdb.batch
     is_canonical   boolean    NOT NULL,
     header         blob       NOT NULL,
     body           int        NOT NULL,
-    l1_proof_hash  binary(32),
+    l1_proof_hash  binary(32) NOT NULL,
     l1_proof       INTEGER,
     is_executed    boolean    NOT NULL,
     primary key (sequence),
     INDEX USING HASH (hash(8)),
+    INDEX USING HASH (l1_proof_hash(8)),
     INDEX (body, l1_proof),
     INDEX (height)
 );
