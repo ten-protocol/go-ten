@@ -61,9 +61,6 @@ type BatchResolver interface {
 	// BatchWasExecuted - return true if the batch was executed
 	BatchWasExecuted(ctx context.Context, hash common.L2BatchHash) (bool, error)
 
-	// FetchHeadBatchForBlock returns the hash of the head batch at a given L1 block.
-	FetchHeadBatchForBlock(ctx context.Context, blockHash common.L1BlockHash) (*core.Batch, error)
-
 	// StoreBatch stores an un-executed batch.
 	StoreBatch(ctx context.Context, batch *core.Batch, convertedHash gethcommon.Hash) error
 	// StoreExecutedBatch - store the batch after it was executed

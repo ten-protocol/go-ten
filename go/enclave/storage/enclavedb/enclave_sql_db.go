@@ -15,9 +15,10 @@ import (
 // enclaveDB - Implements the key-value ethdb.Database and also exposes the underlying sql database
 // should not be used directly outside the db package
 type enclaveDB struct {
-	sqldb  *sql.DB
-	config config.EnclaveConfig
-	logger gethlog.Logger
+	sqldb   *sql.DB
+	rwSqldb *sql.DB // required only by sqlite. For a normal db, it will be the same instance as sqldb
+	config  config.EnclaveConfig
+	logger  gethlog.Logger
 }
 
 func (sqlDB *enclaveDB) Tail() (uint64, error) {
@@ -55,16 +56,12 @@ func (sqlDB *enclaveDB) NewSnapshot() (ethdb.Snapshot, error) {
 	panic("implement me")
 }
 
-func NewEnclaveDB(db *sql.DB, config config.EnclaveConfig, logger gethlog.Logger) (EnclaveDB, error) {
-	return &enclaveDB{sqldb: db, config: config, logger: logger}, nil
+func NewEnclaveDB(db *sql.DB, rwdb *sql.DB, config config.EnclaveConfig, logger gethlog.Logger) (EnclaveDB, error) {
+	return &enclaveDB{sqldb: db, rwSqldb: rwdb, config: config, logger: logger}, nil
 }
 
 func (sqlDB *enclaveDB) GetSQLDB() *sql.DB {
 	return sqlDB.sqldb
-}
-
-func (sqlDB *enclaveDB) BeginTx(ctx context.Context) (*sql.Tx, error) {
-	return sqlDB.sqldb.BeginTx(ctx, nil)
 }
 
 func (sqlDB *enclaveDB) Has(key []byte) (bool, error) {
@@ -98,15 +95,16 @@ func (sqlDB *enclaveDB) Close() error {
 	return nil
 }
 
-func (sqlDB *enclaveDB) NewDBTransaction() *dbTransaction {
-	return &dbTransaction{
-		timeout: sqlDB.config.RPCTimeout,
-		db:      sqlDB,
+func (sqlDB *enclaveDB) NewDBTransaction(ctx context.Context) (*sql.Tx, error) {
+	tx, err := sqlDB.rwSqldb.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create db transaction - %w", err)
 	}
+	return tx, nil
 }
 
 func (sqlDB *enclaveDB) NewBatch() ethdb.Batch {
-	return &dbTransaction{
+	return &dbTxBatch{
 		timeout: sqlDB.config.RPCTimeout,
 		db:      sqlDB,
 	}

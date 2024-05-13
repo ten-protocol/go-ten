@@ -140,6 +140,7 @@ type EnclaveScan interface {
 	GetTotalContractCount(context.Context) (*big.Int, SystemError)
 
 	// GetCustomQuery returns the data of a custom query
+	// todo - better name and description
 	GetCustomQuery(ctx context.Context, encryptedParams EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, SystemError)
 
 	// EnclavePublicConfig returns network data that is known to the enclave but can be shared publicly

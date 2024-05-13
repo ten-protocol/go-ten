@@ -75,6 +75,16 @@ func (br *batchRegistry) UnsubscribeFromBatches() {
 	br.batchesCallback = nil
 }
 
+func (br *batchRegistry) OnL1Reorg(_ *BlockIngestionType) {
+	// refresh the cached head batch from the database because there was an L1 reorg
+	headBatch, err := br.storage.FetchHeadBatch(context.Background())
+	if err != nil {
+		br.logger.Error("Could not fetch head batch", log.ErrKey, err)
+		return
+	}
+	br.headBatchSeq = headBatch.SeqNo()
+}
+
 func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Receipts) {
 	br.callbackMutex.RLock()
 	defer br.callbackMutex.RUnlock()

@@ -3,9 +3,12 @@ CREATE DATABASE obsdb;
 
 create table if not exists obsdb.keyvalue
 (
-    ky  varbinary(64),
-    val mediumblob NOT NULL,
-    primary key (ky)
+    id  INTEGER AUTO_INCREMENT,
+    ky  varbinary(64) NOT NULL,
+    val mediumblob    NOT NULL,
+    primary key (id),
+    UNIQUE (ky),
+    INDEX USING HASH (ky)
 );
 GRANT ALL ON obsdb.keyvalue TO obscuro;
 
@@ -29,22 +32,23 @@ GRANT ALL ON obsdb.attestation_key TO obscuro;
 
 create table if not exists obsdb.block
 (
-    hash         binary(16),
-    parent       binary(16),
-    is_canonical boolean NOT NULL,
-    header       blob    NOT NULL,
-    height       int     NOT NULL,
-    primary key (hash),
-    INDEX (height)
+    id           INTEGER AUTO_INCREMENT,
+    hash         binary(32) NOT NULL,
+    is_canonical boolean    NOT NULL,
+    header       blob       NOT NULL,
+    height       int        NOT NULL,
+    primary key (id),
+    INDEX (height),
+    INDEX USING HASH (hash(8))
 );
 GRANT ALL ON obsdb.block TO obscuro;
 
 create table if not exists obsdb.l1_msg
 (
-    id      INTEGER AUTO_INCREMENT,
-    message varbinary(1024) NOT NULL,
-    block   binary(16)      NOT NULL,
-    is_transfer boolean     NOT NULL,
+    id          INTEGER AUTO_INCREMENT,
+    message     varbinary(1024) NOT NULL,
+    block       INTEGER         NOT NULL,
+    is_transfer boolean         NOT NULL,
     INDEX (block),
     primary key (id)
 );
@@ -52,20 +56,22 @@ GRANT ALL ON obsdb.l1_msg TO obscuro;
 
 create table if not exists obsdb.rollup
 (
-    hash              binary(16),
+    id                INTEGER AUTO_INCREMENT,
+    hash              binary(32) NOT NULL,
     start_seq         int        NOT NULL,
     end_seq           int        NOT NULL,
     time_stamp        int        NOT NULL,
     header            blob       NOT NULL,
-    compression_block binary(16) NOT NULL,
+    compression_block INTEGER    NOT NULL,
     INDEX (compression_block),
-    primary key (hash)
+    INDEX USING HASH (hash(8)),
+    primary key (id)
 );
 GRANT ALL ON obsdb.rollup TO obscuro;
 
 create table if not exists obsdb.batch_body
 (
-    id      int        NOT NULL,
+    id      INTEGER,
     content mediumblob NOT NULL,
     primary key (id)
 );
@@ -73,54 +79,54 @@ GRANT ALL ON obsdb.batch_body TO obscuro;
 
 create table if not exists obsdb.batch
 (
-    sequence     int,
-    full_hash    binary(32),
+    sequence       INTEGER,
     converted_hash binary(32) NOT NULL,
-    hash         binary(16) NOT NULL,
-    parent       binary(16),
-    height       int        NOT NULL,
-    is_canonical boolean    NOT NULL,
-    header       blob       NOT NULL,
-    body         int        NOT NULL,
-    l1_proof     binary(16) NOT NULL,
-    is_executed  boolean    NOT NULL,
+    hash           binary(32) NOT NULL,
+    height         int        NOT NULL,
+    is_canonical   boolean    NOT NULL,
+    header         blob       NOT NULL,
+    body           int        NOT NULL,
+    l1_proof_hash  binary(32) NOT NULL,
+    l1_proof       INTEGER,
+    is_executed    boolean    NOT NULL,
     primary key (sequence),
-    INDEX (hash),
-    INDEX (body),
-    INDEX (height, is_canonical),
-    INDEX (l1_proof)
+    INDEX USING HASH (hash(8)),
+    INDEX USING HASH (l1_proof_hash(8)),
+    INDEX (body, l1_proof),
+    INDEX (height)
 );
 GRANT ALL ON obsdb.batch TO obscuro;
 
 create table if not exists obsdb.tx
 (
-    hash           binary(16),
-    full_hash      binary(32) NOT NULL,
+    id             INTEGER AUTO_INCREMENT,
+    hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
     sender_address binary(20) NOT NULL,
     nonce          int        NOT NULL,
     idx            int        NOT NULL,
     body           int        NOT NULL,
-    INDEX (body),
-    primary key (hash)
+    INDEX USING HASH (hash(8)),
+    primary key (id)
 );
 GRANT ALL ON obsdb.tx TO obscuro;
 
 create table if not exists obsdb.exec_tx
 (
-    id                       binary(16),
+    id                       INTEGER AUTO_INCREMENT,
     created_contract_address binary(20),
     receipt                  mediumblob,
-    tx                       binary(16) NOT NULL,
-    batch                    int        NOT NULL,
+    tx                       int,
+    batch                    int NOT NULL,
     INDEX (batch),
-    INDEX (tx),
+    INDEX (tx, created_contract_address(4)),
     primary key (id)
 );
 GRANT ALL ON obsdb.exec_tx TO obscuro;
 
 create table if not exists obsdb.events
 (
+    id              INTEGER AUTO_INCREMENT,
     topic0          binary(32) NOT NULL,
     topic1          binary(32),
     topic2          binary(32),
@@ -134,17 +140,19 @@ create table if not exists obsdb.events
     rel_address2    binary(20),
     rel_address3    binary(20),
     rel_address4    binary(20),
-    exec_tx_id      binary(16) NOT NULL,
-    INDEX (exec_tx_id),
-    INDEX (address),
-    INDEX (rel_address1),
-    INDEX (rel_address2),
-    INDEX (rel_address3),
-    INDEX (rel_address4),
-    INDEX (topic0),
-    INDEX (topic1),
-    INDEX (topic2),
-    INDEX (topic3),
-    INDEX (topic4)
+    tx              int        NOT NULL,
+    batch           int        NOT NULL,
+    primary key (id),
+    INDEX (tx, batch),
+    INDEX USING HASH (address(8)),
+    INDEX USING HASH (rel_address1(8)),
+    INDEX USING HASH (rel_address2(8)),
+    INDEX USING HASH (rel_address3(8)),
+    INDEX USING HASH (rel_address4(8)),
+    INDEX USING HASH (topic0(8)),
+    INDEX USING HASH (topic1(8)),
+    INDEX USING HASH (topic2(8)),
+    INDEX USING HASH (topic3(8)),
+    INDEX USING HASH (topic4(8))
 );
 GRANT ALL ON obsdb.events TO obscuro;

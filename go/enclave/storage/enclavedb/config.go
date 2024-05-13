@@ -20,31 +20,19 @@ const (
 	attSelect = "select ky from attestation_key where party=?"
 )
 
-func WriteConfigToBatch(ctx context.Context, dbtx DBTransaction, key string, value any) {
-	dbtx.ExecuteSQL(cfgInsert, key, value)
-}
-
 func WriteConfigToTx(ctx context.Context, dbtx *sql.Tx, key string, value any) (sql.Result, error) {
 	return dbtx.Exec(cfgInsert, key, value)
 }
 
-func WriteConfig(ctx context.Context, db *sql.DB, key string, value []byte) (sql.Result, error) {
+func WriteConfig(ctx context.Context, db *sql.Tx, key string, value []byte) (sql.Result, error) {
 	return db.ExecContext(ctx, cfgInsert, key, value)
-}
-
-func UpdateConfigToBatch(ctx context.Context, dbtx DBTransaction, key string, value []byte) {
-	dbtx.ExecuteSQL(cfgUpdate, key, value)
-}
-
-func UpdateConfig(ctx context.Context, db *sql.DB, key string, value []byte) (sql.Result, error) {
-	return db.ExecContext(ctx, cfgUpdate, key, value)
 }
 
 func FetchConfig(ctx context.Context, db *sql.DB, key string) ([]byte, error) {
 	return readSingleRow(ctx, db, cfgSelect, key)
 }
 
-func WriteAttKey(ctx context.Context, db *sql.DB, party common.Address, key []byte) (sql.Result, error) {
+func WriteAttKey(ctx context.Context, db *sql.Tx, party common.Address, key []byte) (sql.Result, error) {
 	return db.ExecContext(ctx, attInsert, party.Bytes(), key)
 }
 

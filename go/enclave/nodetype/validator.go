@@ -74,6 +74,7 @@ func (val *obsValidator) VerifySequencerSignature(b *core.Batch) error {
 }
 
 func (val *obsValidator) ExecuteStoredBatches(ctx context.Context) error {
+	val.logger.Trace("Executing stored batches")
 	headBatchSeq := val.batchRegistry.HeadBatchSeq()
 	if headBatchSeq == nil {
 		headBatchSeq = big.NewInt(int64(common.L2GenesisSeqNo))
@@ -95,11 +96,14 @@ func (val *obsValidator) ExecuteStoredBatches(ctx context.Context) error {
 			}
 		}
 
+		val.logger.Trace("Executing stored batch", log.BatchSeqNoKey, batch.SeqNo())
+
 		// check batch execution prerequisites
 		canExecute, err := val.executionPrerequisites(ctx, batch)
 		if err != nil {
 			return fmt.Errorf("could not determine the execution prerequisites for batch %s. Cause: %w", batch.Hash(), err)
 		}
+		val.logger.Trace("Can executing stored batch", log.BatchSeqNoKey, batch.SeqNo(), "can", canExecute)
 
 		if canExecute {
 			receipts, err := val.batchExecutor.ExecuteBatch(ctx, batch)
@@ -124,16 +128,17 @@ func (val *obsValidator) executionPrerequisites(ctx context.Context, batch *core
 	// 1.l1 block exists
 	block, err := val.storage.FetchBlock(ctx, batch.Header.L1Proof)
 	if err != nil && errors.Is(err, errutil.ErrNotFound) {
-		val.logger.Info("Error fetching block", log.BlockHashKey, batch.Header.L1Proof, log.ErrKey, err)
+		val.logger.Warn("Error fetching block", log.BlockHashKey, batch.Header.L1Proof, log.ErrKey, err)
 		return false, err
 	}
-
+	val.logger.Trace("l1 block exists", log.BatchSeqNoKey, batch.SeqNo())
 	// 2. parent was executed
 	parentExecuted, err := val.storage.BatchWasExecuted(ctx, batch.Header.ParentHash)
 	if err != nil {
 		val.logger.Info("Error reading execution status of batch", log.BatchHashKey, batch.Header.ParentHash, log.ErrKey, err)
 		return false, err
 	}
+	val.logger.Trace("parentExecuted", log.BatchSeqNoKey, batch.SeqNo(), "val", parentExecuted)
 
 	return block != nil && parentExecuted, nil
 }
