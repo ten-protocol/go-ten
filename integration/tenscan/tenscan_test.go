@@ -128,6 +128,24 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
+	type batchlistingDeprecated struct {
+		Result common.BatchListingResponseDeprecated `json:"result"`
+	}
+
+	batchlistingObjDeprecated := batchlistingDeprecated{}
+	err = json.Unmarshal(body, &batchlistingObjDeprecated)
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, 9, len(batchlistingObjDeprecated.Result.BatchesData))
+	assert.LessOrEqual(t, uint64(9), batchlistingObjDeprecated.Result.Total)
+	// check results are descending order (latest first)
+	assert.LessOrEqual(t, batchlistingObjDeprecated.Result.BatchesData[1].Number.Cmp(batchlistingObjDeprecated.Result.BatchesData[0].Number), 0)
+	// check "hash" field is included in json response
+	assert.Contains(t, string(body), "\"hash\"")
+
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/v2/batches/?offset=0&size=10", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
 	type batchlisting struct {
 		Result common.BatchListingResponse `json:"result"`
 	}
@@ -138,10 +156,11 @@ func TestTenscan(t *testing.T) {
 	assert.LessOrEqual(t, 9, len(batchlistingObj.Result.BatchesData))
 	assert.LessOrEqual(t, uint64(9), batchlistingObj.Result.Total)
 	// check results are descending order (latest first)
-	assert.LessOrEqual(t, batchlistingObj.Result.BatchesData[1].Number.Cmp(batchlistingObj.Result.BatchesData[0].Number), 0)
+	assert.LessOrEqual(t, batchlistingObj.Result.BatchesData[1].Height.Cmp(batchlistingObj.Result.BatchesData[0].Height), 0)
 	// check "hash" field is included in json response
 	assert.Contains(t, string(body), "\"hash\"")
 
+	// fetch block listing
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/blocks/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
@@ -153,10 +172,9 @@ func TestTenscan(t *testing.T) {
 	blocklistingObj := blockListing{}
 	err = json.Unmarshal(body, &blocklistingObj)
 	assert.NoError(t, err)
-	// assert.LessOrEqual(t, 9, len(blocklistingObj.Result.BlocksData))
-	// assert.LessOrEqual(t, uint64(9), blocklistingObj.Result.Total)
 
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/%s", serverAddress, batchlistingObj.Result.BatchesData[0].Hash()))
+	// fetch batch by hash
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/%s", serverAddress, batchlistingObj.Result.BatchesData[0].Header.Hash()))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
@@ -167,7 +185,76 @@ func TestTenscan(t *testing.T) {
 	batchObj := batchFetch{}
 	err = json.Unmarshal(body, &batchObj)
 	assert.NoError(t, err)
-	assert.Equal(t, batchlistingObj.Result.BatchesData[0].Hash(), batchObj.Item.Hash())
+	assert.Equal(t, batchlistingObj.Result.BatchesData[0].Header.Hash(), batchObj.Item.Header.Hash())
+
+	// fetch rollup listing
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollups/?offset=0&size=10", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type rollupListing struct {
+		Result common.RollupListingResponse `json:"result"`
+	}
+
+	rollupListingObj := rollupListing{}
+	err = json.Unmarshal(body, &rollupListingObj)
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, 4, len(rollupListingObj.Result.RollupsData))
+	assert.LessOrEqual(t, uint64(4), rollupListingObj.Result.Total)
+	assert.Contains(t, string(body), "\"hash\"")
+
+	// fetch batches in rollup
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/%s/batches", serverAddress, rollupListingObj.Result.RollupsData[0].Header.Hash()))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	err = json.Unmarshal(body, &batchlistingObj)
+	assert.NoError(t, err)
+	assert.True(t, batchlistingObj.Result.Total > 0)
+
+	// fetch transaction listing
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/transactions/?offset=0&size=10", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type txListing struct {
+		Result common.TransactionListingResponse `json:"result"`
+	}
+
+	txListingObj := txListing{}
+	err = json.Unmarshal(body, &txListingObj)
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, 5, len(txListingObj.Result.TransactionsData))
+	assert.LessOrEqual(t, uint64(5), txListingObj.Result.Total)
+
+	// fetch batch by height from tx
+	batchHeight := txListingObj.Result.TransactionsData[0].BatchHeight
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/height/%s", serverAddress, batchHeight))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type publicBatchFetch struct {
+		Item *common.PublicBatch `json:"item"`
+	}
+
+	publicBatchObj := publicBatchFetch{}
+	err = json.Unmarshal(body, &publicBatchObj)
+	assert.NoError(t, err)
+	assert.True(t, publicBatchObj.Item.Height.Cmp(batchHeight) == 0)
+
+	// fetch tx by hash
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/transaction/%s", serverAddress, txListingObj.Result.TransactionsData[0].TransactionHash))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type txFetch struct {
+		Item *common.PublicTransaction `json:"item"`
+	}
+
+	txObj := txFetch{}
+	err = json.Unmarshal(body, &txObj)
+	assert.NoError(t, err)
+	assert.True(t, txObj.Item.Finality == common.BatchFinal)
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/obscuro/", serverAddress))
 	assert.NoError(t, err)
@@ -180,9 +267,7 @@ func TestTenscan(t *testing.T) {
 	configFetchObj := configFetch{}
 	err = json.Unmarshal(body, &configFetchObj)
 	assert.NoError(t, err)
-	assert.NotEqual(t, configFetchObj.Item.SequencerID, gethcommon.Address{})
 
-	// Gracefully shutdown
 	err = tenScanContainer.Stop()
 	assert.NoError(t, err)
 }
@@ -279,12 +364,6 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 			if err == nil {
 				break
 			}
-			//
-			// Currently when a receipt is not available the obscuro node is returning nil instead of err ethereum.NotFound
-			// once that's fixed this commented block should be removed
-			//if !errors.Is(err, ethereum.NotFound) {
-			//	t.Fatal(err)
-			//}
 			if receipt != nil && receipt.Status == 1 {
 				break
 			}

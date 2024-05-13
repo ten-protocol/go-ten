@@ -15,6 +15,7 @@ import (
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/networktest"
 	"github.com/ten-protocol/go-ten/integration/networktest/env"
+	"github.com/ten-protocol/go-ten/integration/simulation/devnetwork"
 )
 
 const (
@@ -31,7 +32,7 @@ const (
 func TestRunLocalNetwork(t *testing.T) {
 	//	networktest.TestOnlyRunsInIDE(t)
 	networktest.EnsureTestLogsSetUp("local-geth-network")
-	networkConnector, cleanUp, err := env.LocalDevNetwork(env.WithTenGateway()).Prepare()
+	networkConnector, cleanUp, err := env.LocalDevNetwork(devnetwork.WithGateway()).Prepare()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -430,7 +430,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		return
 	}
 	// check that the headers are serialised and deserialised correctly, by recomputing a header's hash
-	parentHeader, err := obscuroClient.BatchHeaderByHash(headBatchHeader.ParentHash)
+	parentHeader, err := obscuroClient.GetBatchHeaderByHash(headBatchHeader.ParentHash)
 	if err != nil {
 		t.Errorf("could not retrieve parent of head batch")
 		return
@@ -443,7 +443,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 func getLoggedWithdrawals(minObscuroHeight uint64, obscuroClient *obsclient.ObsClient, currentHeader *common.BatchHeader) *big.Int {
 	totalAmountLogged := big.NewInt(0)
 	for i := minObscuroHeight; i < currentHeader.Number.Uint64(); i++ {
-		header, err := obscuroClient.BatchHeaderByNumber(big.NewInt(int64(i)))
+		header, err := obscuroClient.GetBatchHeaderByNumber(big.NewInt(int64(i)))
 		if err != nil {
 			panic(err)
 		}
@@ -598,7 +598,7 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 		}
 
 		// note this retrieves batches currently.
-		newHeader, err := obscuroClient.BatchHeaderByHash(header.ParentHash)
+		newHeader, err := obscuroClient.GetBatchHeaderByHash(header.ParentHash)
 		if err != nil {
 			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve batch header %s. Cause: %s", nodeIdx, header.ParentHash, err))
 			return
@@ -643,15 +643,15 @@ func checkReceivedLogs(t *testing.T, s *Simulation) {
 }
 
 // Checks that a subscription has received the expected logs.
-func checkSubscribedLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
+func checkSubscribedLogs(t *testing.T, owner string, channel chan types.Log) int {
 	var logs []*types.Log
 
 	for {
 		if len(channel) == 0 {
 			break
 		}
-		idAndLog := <-channel
-		logs = append(logs, idAndLog.Log)
+		log := <-channel
+		logs = append(logs, &log)
 	}
 
 	assertLogsValid(t, owner, logs)
@@ -660,7 +660,7 @@ func checkSubscribedLogs(t *testing.T, owner string, channel chan common.IDAndLo
 
 func checkSnapshotLogs(t *testing.T, client *obsclient.AuthObsClient) int {
 	// To exercise the filtering mechanism, we get a snapshot for HOC events only, ignoring POC events.
-	hocFilter := common.FilterCriteriaJSON{
+	hocFilter := common.FilterCriteria{
 		Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + testcommon.HOCAddr)},
 	}
 	logs, err := client.GetLogs(context.Background(), hocFilter)
@@ -753,8 +753,11 @@ func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
 func checkTenscan(t *testing.T, s *Simulation) {
 	for idx, client := range s.RPCHandles.RPCClients {
 		checkTotalTransactions(t, client, idx)
-		latestTxHashes := checkLatestTxs(t, client, idx)
-		for _, txHash := range latestTxHashes {
+		checkForLatestBatches(t, client, idx)
+		checkForLatestRollups(t, client, idx)
+
+		txHashes := getLatestTransactions(t, client, idx)
+		for _, txHash := range txHashes {
 			checkBatchFromTxs(t, client, txHash, idx)
 		}
 	}
@@ -763,7 +766,7 @@ func checkTenscan(t *testing.T, s *Simulation) {
 // Checks that the node has stored sufficient transactions.
 func checkTotalTransactions(t *testing.T, client rpc.Client, nodeIdx int) {
 	var totalTxs *big.Int
-	err := client.Call(&totalTxs, rpc.GetTotalTxs)
+	err := client.Call(&totalTxs, rpc.GetTotalTxCount)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve total transactions. Cause: %s", nodeIdx, err)
 	}
@@ -772,23 +775,52 @@ func checkTotalTransactions(t *testing.T, client rpc.Client, nodeIdx int) {
 	}
 }
 
-// Checks that we can retrieve the latest transactions for the node.
-func checkLatestTxs(t *testing.T, client rpc.Client, nodeIdx int) []gethcommon.Hash {
-	var latestTxHashes []gethcommon.Hash
-	err := client.Call(&latestTxHashes, rpc.GetLatestTxs, txThreshold)
+// Checks that we can retrieve the latest batches
+func checkForLatestBatches(t *testing.T, client rpc.Client, nodeIdx int) {
+	var latestBatches common.BatchListingResponseDeprecated
+	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(5)}
+	err := client.Call(&latestBatches, rpc.GetBatchListing, &pagination)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve latest batches. Cause: %s", nodeIdx, err)
+	}
+	if len(latestBatches.BatchesData) != 5 {
+		t.Errorf("node %d: expected at least %d batches, but only received %d", nodeIdx, 5, len(latestBatches.BatchesData))
+	}
+}
+
+// Checks that we can retrieve the latest rollups
+func checkForLatestRollups(t *testing.T, client rpc.Client, nodeIdx int) {
+	var latestRollups common.RollupListingResponse
+	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(5)}
+	err := client.Call(&latestRollups, rpc.GetRollupListing, &pagination)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve latest transactions. Cause: %s", nodeIdx, err)
 	}
-	if len(latestTxHashes) != txThreshold {
-		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, txThreshold, len(latestTxHashes))
+	if len(latestRollups.RollupsData) != 5 {
+		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, 5, len(latestRollups.RollupsData))
 	}
-	return latestTxHashes
+}
+
+func getLatestTransactions(t *testing.T, client rpc.Client, nodeIdx int) []gethcommon.Hash {
+	var transactionResponse common.TransactionListingResponse
+	var txHashes []gethcommon.Hash
+	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(5)}
+	err := client.Call(&transactionResponse, rpc.GetPublicTransactionData, &pagination)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve latest transactions. Cause: %s", nodeIdx, err)
+	}
+
+	for _, transaction := range transactionResponse.TransactionsData {
+		txHashes = append(txHashes, transaction.TransactionHash)
+	}
+
+	return txHashes
 }
 
 // Retrieves the batch using the transaction hash, and validates it.
 func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, nodeIdx int) {
 	var batchByTx *common.ExtBatch
-	err := client.Call(&batchByTx, rpc.GetBatchForTx, txHash)
+	err := client.Call(&batchByTx, rpc.GetBatchByTx, txHash)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve batch for transaction. Cause: %s", nodeIdx, err)
 		return

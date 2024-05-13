@@ -1,11 +1,14 @@
 package enclave
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 
@@ -22,7 +25,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
 	"github.com/ten-protocol/go-ten/go/config"
-	"github.com/ten-protocol/go-ten/go/host/db"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 )
 
@@ -55,8 +57,8 @@ type Guardian struct {
 	state         *StateTracker // state machine that tracks our view of the enclave's state
 	enclaveClient common.Enclave
 
-	sl guardianServiceLocator
-	db *db.DB
+	sl      guardianServiceLocator
+	storage storage.Storage
 
 	submitDataLock sync.Mutex // we only submit one block, batch or transaction to enclave at a time
 
@@ -74,7 +76,7 @@ type Guardian struct {
 	enclaveID        *common.EnclaveID
 }
 
-func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
+func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, storage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
 	return &Guardian{
 		hostData:         hostData,
 		state:            NewStateTracker(logger),
@@ -86,7 +88,7 @@ func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator 
 		l1StartHash:      cfg.L1StartHash,
 		maxRollupSize:    cfg.MaxRollupSize,
 		blockTime:        cfg.L1BlockTime,
-		db:               db,
+		storage:          storage,
 		hostInterrupter:  interrupter,
 		logger:           logger,
 	}
@@ -101,7 +103,7 @@ func (g *Guardian) Start() error {
 	// Identify the enclave before starting (the enclave generates its ID immediately at startup)
 	// (retry until we get the enclave ID or the host is stopping)
 	for g.enclaveID == nil && !g.hostInterrupter.IsStopping() {
-		enclID, err := g.enclaveClient.EnclaveID()
+		enclID, err := g.enclaveClient.EnclaveID(context.Background())
 		if err != nil {
 			g.logger.Warn("could not get enclave ID", log.ErrKey, err)
 			time.Sleep(_retryInterval)
@@ -123,8 +125,10 @@ func (g *Guardian) Start() error {
 
 	// subscribe for L1 and P2P data
 	g.sl.P2P().SubscribeForTx(g)
+
+	// note: not keeping the unsubscribe functions because the lifespan of the guardian is the same as the host
 	g.sl.L1Repo().Subscribe(g)
-	g.sl.L2Repo().Subscribe(g)
+	g.sl.L2Repo().SubscribeNewBatches(g)
 
 	// start streaming data from the enclave
 	go g.streamEnclaveData()
@@ -146,7 +150,7 @@ func (g *Guardian) Stop() error {
 	return nil
 }
 
-func (g *Guardian) HealthStatus() host.HealthStatus {
+func (g *Guardian) HealthStatus(context.Context) host.HealthStatus {
 	// todo (@matt) do proper health status based on enclave state
 	errMsg := ""
 	if !g.hostInterrupter.IsStopping() {
@@ -186,17 +190,15 @@ func (g *Guardian) HandleBlock(block *types.Block) {
 // HandleBatch is called by the L2 repository when a new batch arrives
 // Note: this should only be called for validators, sequencers produce their own batches
 func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
-	if g.hostData.IsSequencer {
-		g.logger.Error("Repo received batch but we are a sequencer, ignoring")
-		return
-	}
-	g.logger.Debug("Received L2 block", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
+	g.logger.Debug("Host received L2 batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
 	// record the newest batch we've seen
 	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
-	if !g.state.IsUpToDate() {
+	// Sequencer enclaves produce batches, they cannot receive them. Also, enclave will reject new batches if it is not up-to-date
+	if g.hostData.IsSequencer || !g.state.IsUpToDate() {
 		return // ignore batches until we're up-to-date
 	}
-	err := g.submitL2Batch(batch)
+	// todo - @matt - does it make sense to use a timeout context?
+	err := g.submitL2Batch(context.Background(), batch)
 	if err != nil {
 		g.logger.Error("Error submitting batch to enclave", log.ErrKey, err)
 	}
@@ -209,7 +211,7 @@ func (g *Guardian) HandleTransaction(tx common.EncryptedTx) {
 		g.logger.Info("Enclave is not ready yet, dropping transaction.")
 		return // ignore transactions when enclave unavailable
 	}
-	resp, sysError := g.enclaveClient.SubmitTx(tx)
+	resp, sysError := g.enclaveClient.SubmitTx(context.Background(), tx)
 	if sysError != nil {
 		g.logger.Warn("could not submit transaction due to sysError", log.ErrKey, sysError)
 		return
@@ -266,7 +268,7 @@ func (g *Guardian) mainLoop() {
 }
 
 func (g *Guardian) checkEnclaveStatus() {
-	s, err := g.enclaveClient.Status()
+	s, err := g.enclaveClient.Status(context.Background())
 	if err != nil {
 		g.logger.Error("Could not get enclave status", log.ErrKey, err)
 		// we record this as a disconnection, we can't get any more info from the enclave about status currently
@@ -282,7 +284,7 @@ func (g *Guardian) provideSecret() error {
 		// instead of requesting a secret, we generate one and broadcast it
 		return g.generateAndBroadcastSecret()
 	}
-	att, err := g.enclaveClient.Attestation()
+	att, err := g.enclaveClient.Attestation(context.Background())
 	if err != nil {
 		return fmt.Errorf("could not retrieve attestation from enclave. Cause: %w", err)
 	}
@@ -306,7 +308,7 @@ func (g *Guardian) provideSecret() error {
 		secretRespTxs, _, _ := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(nextBlock)
 		for _, scrt := range secretRespTxs {
 			if scrt.RequesterID.Hex() == g.enclaveID.Hex() {
-				err = g.enclaveClient.InitEnclave(scrt.Secret)
+				err = g.enclaveClient.InitEnclave(context.Background(), scrt.Secret)
 				if err != nil {
 					g.logger.Error("Could not initialize enclave with received secret response", log.ErrKey, err)
 					continue // try the next secret response in the block if there are more
@@ -325,15 +327,13 @@ func (g *Guardian) provideSecret() error {
 	g.logger.Info("Secret received")
 	g.state.OnSecretProvided()
 
-	// we're now ready to catch up with network, sync peer list
-	go g.sl.P2P().RefreshPeerList()
 	return nil
 }
 
 func (g *Guardian) generateAndBroadcastSecret() error {
 	g.logger.Info("Node is genesis node. Publishing secret to L1 management contract.")
 	// Create the shared secret and submit it to the management contract for storage
-	attestation, err := g.enclaveClient.Attestation()
+	attestation, err := g.enclaveClient.Attestation(context.Background())
 	if err != nil {
 		return fmt.Errorf("could not retrieve attestation from enclave. Cause: %w", err)
 	}
@@ -341,7 +341,7 @@ func (g *Guardian) generateAndBroadcastSecret() error {
 		return fmt.Errorf("genesis enclave has ID %s, but its enclave produced an attestation using ID %s", g.enclaveID.Hex(), attestation.EnclaveID.Hex())
 	}
 
-	secret, err := g.enclaveClient.GenerateSecret()
+	secret, err := g.enclaveClient.GenerateSecret(context.Background())
 	if err != nil {
 		return fmt.Errorf("could not generate secret. Cause: %w", err)
 	}
@@ -394,12 +394,12 @@ func (g *Guardian) catchupWithL2() error {
 		nextHead := prevHead.Add(prevHead, big.NewInt(1))
 
 		g.logger.Trace("fetching next batch", log.BatchSeqNoKey, nextHead)
-		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(nextHead)
+		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(context.Background(), nextHead)
 		if err != nil {
 			return errors.Wrap(err, "could not fetch next L2 batch")
 		}
 
-		err = g.submitL2Batch(batch)
+		err = g.submitL2Batch(context.Background(), batch)
 		if err != nil {
 			return err
 		}
@@ -421,7 +421,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
 	}
-	resp, err := g.enclaveClient.SubmitL1Block(*block, receipts, isLatest)
+	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block, receipts, isLatest)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
@@ -443,8 +443,6 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	g.state.OnProcessedBlock(block.Hash())
 	g.processL1BlockTransactions(block)
 
-	// todo (@matt) this should not be here, it is only used by the RPC API server for batch data which will eventually just use L1 repo
-	err = g.db.AddBlock(block.Header())
 	if err != nil {
 		return false, fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}
@@ -459,24 +457,31 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 
 func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 	// if there are any secret responses in the block we should refresh our P2P list to re-sync with the network
-	secretRespTxs, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(block)
-	if len(secretRespTxs) > 0 {
-		// new peers may have been granted access to the network, notify p2p service to refresh its peer list
-		go g.sl.P2P().RefreshPeerList()
-	}
+	_, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(block)
 
 	for _, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
 			g.logger.Error("Could not decode rollup.", log.ErrKey, err)
 		}
-		err = g.db.AddRollupHeader(r, block)
+
+		metaData, err := g.enclaveClient.GetRollupData(context.Background(), r.Header.Hash())
+		if err != nil {
+			g.logger.Error("Could not fetch rollup metadata from enclave.", log.ErrKey, err)
+		} else {
+			err = g.storage.AddRollup(r, metaData, block)
+		}
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())
 			} else {
 				g.logger.Error("Could not store rollup.", log.ErrKey, err)
 			}
+		}
+		// TODO (@will) this should be removed and pulled from the L1
+		err = g.storage.AddBlock(block.Header(), r.Header.Hash())
+		if err != nil {
+			g.logger.Error("Could not add block to host db.", log.ErrKey, err)
 		}
 	}
 
@@ -508,9 +513,9 @@ func (g *Guardian) publishSharedSecretResponses(scrtResponses []*common.Produced
 	return nil
 }
 
-func (g *Guardian) submitL2Batch(batch *common.ExtBatch) error {
+func (g *Guardian) submitL2Batch(ctx context.Context, batch *common.ExtBatch) error {
 	g.submitDataLock.Lock()
-	err := g.enclaveClient.SubmitBatch(batch)
+	err := g.enclaveClient.SubmitBatch(ctx, batch)
 	g.submitDataLock.Unlock()
 	if err != nil {
 		// something went wrong, return error and let the main loop check status and try again when appropriate
@@ -546,7 +551,7 @@ func (g *Guardian) periodicBatchProduction() {
 			// if maxBatchInterval is set higher than batchInterval then we are happy to skip creating batches when there is no data
 			// (up to a maximum time of maxBatchInterval)
 			skipBatchIfEmpty := g.maxBatchInterval > g.batchInterval && time.Since(g.lastBatchCreated) < g.maxBatchInterval
-			err := g.enclaveClient.CreateBatch(skipBatchIfEmpty)
+			err := g.enclaveClient.CreateBatch(context.Background(), skipBatchIfEmpty)
 			if err != nil {
 				g.logger.Error("Unable to produce batch", log.ErrKey, err)
 			}
@@ -600,7 +605,7 @@ func (g *Guardian) periodicRollupProduction() {
 			sizeExceeded := estimatedRunningRollupSize >= g.maxRollupSize
 			if timeExpired || sizeExceeded {
 				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded)
-				producedRollup, err := g.enclaveClient.CreateRollup(fromBatch)
+				producedRollup, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
 				if err != nil {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue
@@ -611,7 +616,7 @@ func (g *Guardian) periodicRollupProduction() {
 
 				fromBatchNum := fromBatch
 				toBatchNum := producedRollup.Header.LastBatchSeqNo
-				bundle, err := g.enclaveClient.ExportCrossChainData(fromBatchNum, toBatchNum)
+				bundle, err := g.enclaveClient.ExportCrossChainData(context.Background(), fromBatchNum, toBatchNum)
 				if err != nil {
 					g.logger.Error("Unable to export cross chain bundle from enclave", log.ErrKey, err)
 					continue
@@ -663,8 +668,10 @@ func (g *Guardian) streamEnclaveData() {
 						g.logger.Error("Failed to broadcast batch", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
 					}
 				} else {
-					g.logger.Debug("Received batch from enclave", log.BatchSeqNoKey, resp.Batch.Header.SequencerOrderNo, log.BatchHashKey, resp.Batch.Hash())
+					g.logger.Debug("Received validated batch from enclave", log.BatchSeqNoKey, resp.Batch.Header.SequencerOrderNo, log.BatchHashKey, resp.Batch.Hash())
 				}
+				// Notify the L2 repo that an enclave has validated a batch, so it can update its validated head and notify subscribers
+				g.sl.L2Repo().NotifyNewValidatedHead(resp.Batch)
 				g.state.OnProcessedBatch(resp.Batch.Header.SequencerOrderNo)
 			}
 
@@ -688,7 +695,7 @@ func (g *Guardian) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error)
 
 	currentNo := seqNo
 	for {
-		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(big.NewInt(int64(currentNo)))
+		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(context.TODO(), big.NewInt(int64(currentNo)))
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
 				break // no more batches

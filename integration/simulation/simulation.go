@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth/filters"
 	gethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -42,8 +41,8 @@ type Simulation struct {
 	SimulationTime   time.Duration
 	Stats            *stats.Stats
 	Params           *params.SimParams
-	LogChannels      map[string][]chan common.IDAndLog // Maps an owner to the channels on which they receive logs for each client.
-	Subscriptions    []ethereum.Subscription           // A slice of all created event subscriptions.
+	LogChannels      map[string][]chan types.Log // Maps an owner to the channels on which they receive logs for each client.
+	Subscriptions    []ethereum.Subscription     // A slice of all created event subscriptions.
 	ctx              context.Context
 }
 
@@ -56,7 +55,7 @@ func (s *Simulation) Start() {
 
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	// and for all l2 nodes to receive the genesis l2 batch
-	time.Sleep(5 * time.Second)
+	time.Sleep(7 * time.Second)
 
 	s.bridgeFundingToObscuro()
 	s.trackLogs()              // Create log subscriptions, to validate that they're working correctly later.
@@ -127,7 +126,7 @@ func (s *Simulation) bridgeFundingToObscuro() {
 		return
 	}
 
-	destAddr := s.Params.L1SetupData.MessageBusAddr
+	destAddr := s.Params.L1TenData.MessageBusAddr
 	value, _ := big.NewInt(0).SetString("7400000000000000000000000000000", 10)
 
 	wallets := []wallet.Wallet{
@@ -186,13 +185,13 @@ func (s *Simulation) trackLogs() {
 
 	for owner, clients := range s.RPCHandles.AuthObsClients {
 		// There is a subscription, and corresponding log channel, per owner per client.
-		s.LogChannels[owner] = []chan common.IDAndLog{}
+		s.LogChannels[owner] = []chan types.Log{}
 
 		for _, client := range clients {
-			channel := make(chan common.IDAndLog, 1000)
+			channel := make(chan types.Log, 1000)
 
 			// To exercise the filtering mechanism, we subscribe for HOC events only, ignoring POC events.
-			hocFilter := filters.FilterCriteria{
+			hocFilter := common.FilterCriteria{
 				Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + testcommon.HOCAddr)},
 			}
 			sub, err := client.SubscribeFilterLogs(context.Background(), hocFilter, channel)
@@ -276,7 +275,7 @@ func (s *Simulation) prefundL1Accounts() {
 			Sender:        &ownerAddr,
 		}
 		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData)
-		estimatedTx, err := ethClient.PrepareTransactionToSend(tx, tokenOwner.Address(), tokenOwner.GetNonceAndIncrement())
+		estimatedTx, err := ethClient.PrepareTransactionToSend(s.ctx, tx, tokenOwner.Address())
 		if err != nil {
 			// ignore txs that are not able to be estimated/execute
 			testlog.Logger().Error("unable to estimate tx", log.ErrKey, err)

@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/config"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 const (
@@ -33,7 +33,7 @@ const (
 	nodeWebsocketPortUsage   = "The port on which to connect to the Obscuro node via RPC over websockets. Default: 81."
 
 	logPathName    = "logPath"
-	logPathDefault = "wallet_extension_logs.txt"
+	logPathDefault = "sys_out"
 	logPathUsage   = "The path to use for the wallet extension's log file"
 
 	databasePathName    = "databasePath"
@@ -61,7 +61,7 @@ const (
 	storeIncomingTxsUsage   = "Flag to enable storing incoming transactions in the database for debugging purposes. Default: true"
 )
 
-func parseCLIArgs() config.Config {
+func parseCLIArgs() wecommon.Config {
 	walletExtensionHost := flag.String(walletExtensionHostName, walletExtensionHostDefault, walletExtensionHostUsage)
 	walletExtensionPort := flag.Int(walletExtensionPortName, walletExtensionPortDefault, walletExtensionPortUsage)
 	walletExtensionPortWS := flag.Int(walletExtensionPortWSName, walletExtensionPortWSDefault, walletExtensionPortWSUsage)
@@ -77,7 +77,7 @@ func parseCLIArgs() config.Config {
 	storeIncomingTransactions := flag.Bool(storeIncomingTxs, storeIncomingTxsDefault, storeIncomingTxsUsage)
 	flag.Parse()
 
-	return config.Config{
+	return wecommon.Config{
 		WalletExtensionHost:     *walletExtensionHost,
 		WalletExtensionPortHTTP: *walletExtensionPort,
 		WalletExtensionPortWS:   *walletExtensionPortWS,

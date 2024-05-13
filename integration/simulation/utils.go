@@ -14,7 +14,6 @@ import (
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
@@ -23,8 +22,6 @@ import (
 const (
 	testLogs = "../.build/simulations/"
 )
-
-var SequencerGasKeys, _ = crypto.GenerateKey()
 
 func setupSimTestLog(simType string) {
 	testlog.Setup(&testlog.Cfg{
@@ -55,7 +52,7 @@ func getHeadBatchHeader(client *obsclient.ObsClient) (*common.BatchHeader, error
 		return nil, fmt.Errorf("simulation failed due to failed attempt to retrieve head rollup height. Cause: %w", err)
 	}
 
-	headBatchHeader, err := client.BatchHeaderByNumber(big.NewInt(int64(headBatchHeight)))
+	headBatchHeader, err := client.GetBatchHeaderByNumber(big.NewInt(int64(headBatchHeight)))
 	if err != nil {
 		return nil, fmt.Errorf("simulation failed due to failed attempt to retrieve rollup with height %d. Cause: %w", headBatchHeight, err)
 	}

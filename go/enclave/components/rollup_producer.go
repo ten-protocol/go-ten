@@ -1,6 +1,7 @@
 package components
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 
@@ -35,8 +36,8 @@ func NewRollupProducer(enclaveID gethcommon.Address, storage storage.Storage, ba
 	}
 }
 
-func (re *rollupProducerImpl) CreateInternalRollup(fromBatchNo uint64, upToL1Height uint64, limiter limiters.RollupLimiter) (*core.Rollup, error) {
-	batches, blocks, err := re.batchRegistry.BatchesAfter(fromBatchNo, upToL1Height, limiter)
+func (re *rollupProducerImpl) CreateInternalRollup(ctx context.Context, fromBatchNo uint64, upToL1Height uint64, limiter limiters.RollupLimiter) (*core.Rollup, error) {
+	batches, blocks, err := re.batchRegistry.BatchesAfter(ctx, fromBatchNo, upToL1Height, limiter)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch 'from' batch (seqNo=%d) for rollup: %w", fromBatchNo, err)
 	}
@@ -47,7 +48,7 @@ func (re *rollupProducerImpl) CreateInternalRollup(fromBatchNo uint64, upToL1Hei
 		return nil, fmt.Errorf("no batches for rollup")
 	}
 
-	block, err := re.storage.FetchCanonicaBlockByHeight(big.NewInt(int64(upToL1Height)))
+	block, err := re.storage.FetchCanonicaBlockByHeight(ctx, big.NewInt(int64(upToL1Height)))
 	if err != nil {
 		return nil, err
 	}

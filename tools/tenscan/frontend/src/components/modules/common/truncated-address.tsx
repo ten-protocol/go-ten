@@ -33,7 +33,7 @@ const TruncatedAddress = ({
             <Tooltip>
               <TooltipTrigger>{truncatedAddress}</TooltipTrigger>
               <TooltipContent>
-                <p>{address}</p>
+                <p className="text-primary">{address}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

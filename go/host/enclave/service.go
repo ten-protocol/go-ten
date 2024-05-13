@@ -1,17 +1,18 @@
 package enclave
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"sync/atomic"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/responses"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 // This private interface enforces the services that the enclaves service depends on
@@ -23,73 +24,104 @@ type enclaveServiceLocator interface {
 type Service struct {
 	hostData host.Identity
 	sl       enclaveServiceLocator
-	// eventually this service will support multiple enclaves for HA, but currently there's only one
-	// The service goes via the Guardian to talk to the enclave (because guardian knows if the enclave is healthy etc.)
-	enclaveGuardian *Guardian
+
+	// The service goes via the Guardians to talk to the enclave (because guardian knows if the enclave is healthy etc.)
+	enclaveGuardians []*Guardian
 
 	running atomic.Bool
 	logger  gethlog.Logger
 }
 
-func NewService(hostData host.Identity, serviceLocator enclaveServiceLocator, enclaveGuardian *Guardian, logger gethlog.Logger) *Service {
+func NewService(hostData host.Identity, serviceLocator enclaveServiceLocator, enclaveGuardians []*Guardian, logger gethlog.Logger) *Service {
 	return &Service{
-		hostData:        hostData,
-		sl:              serviceLocator,
-		enclaveGuardian: enclaveGuardian,
-		logger:          logger,
+		hostData:         hostData,
+		sl:               serviceLocator,
+		enclaveGuardians: enclaveGuardians,
+		logger:           logger,
 	}
 }
 
 func (e *Service) Start() error {
 	e.running.Store(true)
-	return e.enclaveGuardian.Start()
+	for _, guardian := range e.enclaveGuardians {
+		if err := guardian.Start(); err != nil {
+			// abandon starting the rest of the guardians if one fails
+			return err
+		}
+	}
+	return nil
 }
 
 func (e *Service) Stop() error {
 	e.running.Store(false)
-	return e.enclaveGuardian.Stop()
+	var errors []error
+	for i, guardian := range e.enclaveGuardians {
+		if err := guardian.Stop(); err != nil {
+			errors = append(errors, fmt.Errorf("error stopping enclave guardian [%d]: %w", i, err))
+		}
+	}
+	if len(errors) > 0 {
+		return fmt.Errorf("errors stopping enclave guardians: %v", errors)
+	}
+	return nil
 }
 
-func (e *Service) HealthStatus() host.HealthStatus {
+func (e *Service) HealthStatus(ctx context.Context) host.HealthStatus {
 	if !e.running.Load() {
 		return &host.BasicErrHealthStatus{ErrMsg: "not running"}
 	}
 
-	// check the enclave health, which in turn checks the DB health
-	enclaveHealthy, err := e.enclaveGuardian.enclaveClient.HealthCheck()
-	if err != nil {
-		return &host.BasicErrHealthStatus{ErrMsg: fmt.Sprintf("unable to HealthCheck enclave - %s", err.Error())}
-	} else if !enclaveHealthy {
-		return &host.BasicErrHealthStatus{ErrMsg: "enclave reported itself as not healthy"}
-	}
+	errors := make([]error, 0, len(e.enclaveGuardians))
 
-	if !e.enclaveGuardian.GetEnclaveState().InSyncWithL1() {
-		return &host.BasicErrHealthStatus{ErrMsg: "enclave not in sync with L1"}
+	for i, guardian := range e.enclaveGuardians {
+		// check the enclave health, which in turn checks the DB health
+		enclaveHealthy, err := guardian.enclaveClient.HealthCheck(ctx)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("unable to HealthCheck enclave[%d] - %w", i, err))
+		} else if !enclaveHealthy {
+			errors = append(errors, fmt.Errorf("enclave[%d] reported itself not healthy", i))
+		}
+
+		if !guardian.GetEnclaveState().InSyncWithL1() {
+			errors = append(errors, fmt.Errorf("enclave[%d] not in sync with L1", i))
+		}
 	}
 
 	// empty error msg means healthy
-	return &host.BasicErrHealthStatus{ErrMsg: ""}
+	return &host.GroupErrsHealthStatus{Errors: errors}
+}
+
+func (e *Service) HealthyGuardian(ctx context.Context) *Guardian {
+	for _, guardian := range e.enclaveGuardians {
+		if guardian.HealthStatus(ctx).OK() {
+			return guardian
+		}
+	}
+	return nil
 }
 
 // LookupBatchBySeqNo is used to fetch batch data from the enclave - it is only used as a fallback for the sequencer
 // host if it's missing a batch (other host services should use L2Repo to fetch batch data)
-func (e *Service) LookupBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error) {
-	state := e.enclaveGuardian.GetEnclaveState()
+func (e *Service) LookupBatchBySeqNo(ctx context.Context, seqNo *big.Int) (*common.ExtBatch, error) {
+	hg := e.HealthyGuardian(ctx)
+	state := hg.GetEnclaveState()
 	if state.GetEnclaveL2Head().Cmp(seqNo) < 0 {
 		return nil, errutil.ErrNotFound
 	}
-	client := e.enclaveGuardian.GetEnclaveClient()
-	return client.GetBatchBySeqNo(seqNo.Uint64())
+	client := hg.GetEnclaveClient()
+	return client.GetBatchBySeqNo(ctx, seqNo.Uint64())
 }
 
 func (e *Service) GetEnclaveClient() common.Enclave {
-	return e.enclaveGuardian.GetEnclaveClient()
+	// for now we always return first guardian's enclave client
+	// in future be good to load balance and failover but need to improve subscribe/unsubscribe (unsubscribe from same enclave)
+	return e.enclaveGuardians[0].GetEnclaveClient()
 }
 
-func (e *Service) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
+func (e *Service) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
-	enclaveResponse, sysError := e.enclaveGuardian.GetEnclaveClient().SubmitTx(encryptedTx)
+	enclaveResponse, sysError := e.GetEnclaveClient().SubmitTx(ctx, encryptedTx)
 	if sysError != nil {
 		e.logger.Warn("Could not submit transaction due to sysError.", log.ErrKey, sysError)
 		return nil, sysError
@@ -110,9 +142,9 @@ func (e *Service) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSen
 }
 
 func (e *Service) Subscribe(id rpc.ID, encryptedParams common.EncryptedParamsLogSubscription) error {
-	return e.enclaveGuardian.GetEnclaveClient().Subscribe(id, encryptedParams)
+	return e.GetEnclaveClient().Subscribe(context.Background(), id, encryptedParams)
 }
 
 func (e *Service) Unsubscribe(id rpc.ID) error {
-	return e.enclaveGuardian.GetEnclaveClient().Unsubscribe(id)
+	return e.GetEnclaveClient().Unsubscribe(id)
 }

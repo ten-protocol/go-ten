@@ -1,6 +1,7 @@
 package nodetype
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -101,21 +102,21 @@ func NewSequencer(
 	}
 }
 
-func (s *sequencer) CreateBatch(skipBatchIfEmpty bool) error {
+func (s *sequencer) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) error {
 	hasGenesis, err := s.batchRegistry.HasGenesisBatch()
 	if err != nil {
 		return fmt.Errorf("unknown genesis batch state. Cause: %w", err)
 	}
 
 	// L1 Head is only updated when isLatest: true
-	l1HeadBlock, err := s.blockProcessor.GetHead()
+	l1HeadBlock, err := s.blockProcessor.GetHead(ctx)
 	if err != nil {
 		return fmt.Errorf("failed retrieving l1 head. Cause: %w", err)
 	}
 
 	// the sequencer creates the initial genesis batch if one does not exist yet
 	if !hasGenesis {
-		return s.createGenesisBatch(l1HeadBlock)
+		return s.createGenesisBatch(ctx, l1HeadBlock)
 	}
 
 	if running := s.mempool.Running(); !running {
@@ -127,16 +128,17 @@ func (s *sequencer) CreateBatch(skipBatchIfEmpty bool) error {
 		}
 	}
 
-	return s.createNewHeadBatch(l1HeadBlock, skipBatchIfEmpty)
+	return s.createNewHeadBatch(ctx, l1HeadBlock, skipBatchIfEmpty)
 }
 
 // TODO - This is iffy, the producer commits the stateDB. The producer
 // should only create batches and stateDBs but not commit them to the database,
 // this is the responsibility of the sequencer. Refactor the code so genesis state
 // won't be committed by the producer.
-func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
+func (s *sequencer) createGenesisBatch(ctx context.Context, block *common.L1Block) error {
 	s.logger.Info("Initializing genesis state", log.BlockHashKey, block.Hash())
 	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(
+		ctx,
 		block.Hash(),
 		uint64(time.Now().Unix()),
 		s.settings.GasPaymentAddress,
@@ -150,7 +152,7 @@ func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 		return fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.StoreExecutedBatch(batch, nil); err != nil {
+	if err := s.StoreExecutedBatch(ctx, batch, nil); err != nil {
 		return fmt.Errorf("1. failed storing batch. Cause: %w", err)
 	}
 
@@ -171,6 +173,7 @@ func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 	time.Sleep(time.Second)
 	// produce batch #2 which has the message bus and any other system contracts
 	cb, err := s.produceBatch(
+		ctx,
 		big.NewInt(0).Add(batch.Header.SequencerOrderNo, big.NewInt(1)),
 		block.Hash(),
 		batch.Hash(),
@@ -199,22 +202,22 @@ func (s *sequencer) createGenesisBatch(block *common.L1Block) error {
 	return nil
 }
 
-func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfEmpty bool) error {
+func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *common.L1Block, skipBatchIfEmpty bool) error {
 	headBatchSeq := s.batchRegistry.HeadBatchSeq()
 	if headBatchSeq == nil {
 		headBatchSeq = big.NewInt(int64(common.L2GenesisSeqNo))
 	}
-	headBatch, err := s.storage.FetchBatchBySeqNo(headBatchSeq.Uint64())
+	headBatch, err := s.storage.FetchBatchBySeqNo(ctx, headBatchSeq.Uint64())
 	if err != nil {
 		return err
 	}
 
 	// todo - sanity check that the headBatch.Header.L1Proof is an ancestor of the l1HeadBlock
-	b, err := s.storage.FetchBlock(headBatch.Header.L1Proof)
+	b, err := s.storage.FetchBlock(ctx, headBatch.Header.L1Proof)
 	if err != nil {
 		return err
 	}
-	if !s.storage.IsAncestor(l1HeadBlock, b) {
+	if !s.storage.IsAncestor(ctx, l1HeadBlock, b) {
 		return fmt.Errorf("attempted to create batch on top of batch=%s. With l1 head=%s", headBatch.Hash(), l1HeadBlock.Hash())
 	}
 
@@ -240,13 +243,13 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfE
 		}
 	}
 
-	sequencerNo, err := s.storage.FetchCurrentSequencerNo()
+	sequencerNo, err := s.storage.FetchCurrentSequencerNo(ctx)
 	if err != nil {
 		return err
 	}
 
 	// todo - time is set only here; take from l1 block?
-	if _, err := s.produceBatch(sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), transactions, uint64(time.Now().Unix()), skipBatchIfEmpty); err != nil {
+	if _, err := s.produceBatch(ctx, sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), transactions, uint64(time.Now().Unix()), skipBatchIfEmpty); err != nil {
 		if errors.Is(err, components.ErrNoTransactionsToProcess) {
 			// skip batch production when there are no transactions to process
 			// todo: this might be a useful event to track for metrics (skipping batch production because empty batch)
@@ -260,6 +263,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block, skipBatchIfE
 }
 
 func (s *sequencer) produceBatch(
+	ctx context.Context,
 	sequencerNo *big.Int,
 	l1Hash common.L1BlockHash,
 	headBatch common.L2BatchHash,
@@ -267,16 +271,17 @@ func (s *sequencer) produceBatch(
 	batchTime uint64,
 	failForEmptyBatch bool,
 ) (*components.ComputedBatch, error) {
-	cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
-		BlockPtr:     l1Hash,
-		ParentPtr:    headBatch,
-		Transactions: transactions,
-		AtTime:       batchTime,
-		Creator:      s.settings.GasPaymentAddress,
-		BaseFee:      s.settings.BaseFee,
-		ChainConfig:  s.chainConfig,
-		SequencerNo:  sequencerNo,
-	}, failForEmptyBatch)
+	cb, err := s.batchProducer.ComputeBatch(ctx,
+		&components.BatchExecutionContext{
+			BlockPtr:     l1Hash,
+			ParentPtr:    headBatch,
+			Transactions: transactions,
+			AtTime:       batchTime,
+			Creator:      s.settings.GasPaymentAddress,
+			BaseFee:      s.settings.BaseFee,
+			ChainConfig:  s.chainConfig,
+			SequencerNo:  sequencerNo,
+		}, failForEmptyBatch)
 	if err != nil {
 		return nil, fmt.Errorf("failed computing batch. Cause: %w", err)
 	}
@@ -289,7 +294,7 @@ func (s *sequencer) produceBatch(
 		return nil, fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.StoreExecutedBatch(cb.Batch, cb.Receipts); err != nil {
+	if err := s.StoreExecutedBatch(ctx, cb.Batch, cb.Receipts); err != nil {
 		return nil, fmt.Errorf("2. failed storing batch. Cause: %w", err)
 	}
 
@@ -307,25 +312,25 @@ func (s *sequencer) produceBatch(
 
 // StoreExecutedBatch - stores an executed batch in one go. This can be done for the sequencer because it is guaranteed
 // that all dependencies are in place for the execution to be successful.
-func (s *sequencer) StoreExecutedBatch(batch *core.Batch, receipts types.Receipts) error {
+func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, receipts types.Receipts) error {
 	defer core.LogMethodDuration(s.logger, measure.NewStopwatch(), "Registry StoreBatch() exit", log.BatchHashKey, batch.Hash())
 
 	// Check if this batch is already stored.
-	if _, err := s.storage.FetchBatchHeader(batch.Hash()); err == nil {
+	if _, err := s.storage.FetchBatchHeader(ctx, batch.Hash()); err == nil {
 		s.logger.Warn("Attempted to store batch twice! This indicates issues with the batch processing loop")
 		return nil
 	}
 
-	convertedHeader, err := s.gethEncoding.CreateEthHeaderForBatch(batch.Header)
+	convertedHeader, err := s.gethEncoding.CreateEthHeaderForBatch(ctx, batch.Header)
 	if err != nil {
 		return err
 	}
 
-	if err := s.storage.StoreBatch(batch, convertedHeader.Hash()); err != nil {
+	if err := s.storage.StoreBatch(ctx, batch, convertedHeader.Hash()); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	if err := s.storage.StoreExecutedBatch(batch, receipts); err != nil {
+	if err := s.storage.StoreExecutedBatch(ctx, batch, receipts); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
@@ -334,20 +339,20 @@ func (s *sequencer) StoreExecutedBatch(batch *core.Batch, receipts types.Receipt
 	return nil
 }
 
-func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) {
+func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, error) {
 	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
 
-	currentL1Head, err := s.blockProcessor.GetHead()
+	currentL1Head, err := s.blockProcessor.GetHead(ctx)
 	if err != nil {
 		return nil, err
 	}
 	upToL1Height := currentL1Head.NumberU64() - RollupDelay
-	rollup, err := s.rollupProducer.CreateInternalRollup(lastBatchNo, upToL1Height, rollupLimiter)
+	rollup, err := s.rollupProducer.CreateInternalRollup(ctx, lastBatchNo, upToL1Height, rollupLimiter)
 	if err != nil {
 		return nil, err
 	}
 
-	extRollup, err := s.rollupCompression.CreateExtRollup(rollup)
+	extRollup, err := s.rollupCompression.CreateExtRollup(ctx, rollup)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compress rollup: %w", err)
 	}
@@ -360,12 +365,12 @@ func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) 
 	return extRollup, nil
 }
 
-func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash) error {
+func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash) error {
 	batchesToDuplicate := make([]*core.Batch, 0)
 
 	// read the batches attached to these blocks
 	for _, l1BlockHash := range nonCanonicalL1Path {
-		batches, err := s.storage.FetchBatchesByBlock(l1BlockHash)
+		batches, err := s.storage.FetchBatchesByBlock(ctx, l1BlockHash)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
 				continue
@@ -392,13 +397,13 @@ func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []c
 		if i > 0 && batchesToDuplicate[i].Header.ParentHash != batchesToDuplicate[i-1].Hash() {
 			s.logger.Crit("the batches that must be duplicated are invalid")
 		}
-		sequencerNo, err := s.storage.FetchCurrentSequencerNo()
+		sequencerNo, err := s.storage.FetchCurrentSequencerNo(ctx)
 		if err != nil {
 			return fmt.Errorf("could not fetch sequencer no. Cause %w", err)
 		}
 		sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))
 		// create the duplicate and store/broadcast it, recreate batch even if it was empty
-		cb, err := s.produceBatch(sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time, false)
+		cb, err := s.produceBatch(ctx, sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time, false)
 		if err != nil {
 			return fmt.Errorf("could not produce batch. Cause %w", err)
 		}
@@ -413,17 +418,17 @@ func (s *sequencer) SubmitTransaction(transaction *common.L2Tx) error {
 	return s.mempool.Add(transaction)
 }
 
-func (s *sequencer) OnL1Fork(fork *common.ChainFork) error {
+func (s *sequencer) OnL1Fork(ctx context.Context, fork *common.ChainFork) error {
 	if !fork.IsFork() {
 		return nil
 	}
 
-	err := s.duplicateBatches(fork.NewCanonical, fork.NonCanonicalPath)
+	err := s.duplicateBatches(ctx, fork.NewCanonical, fork.NonCanonicalPath)
 	if err != nil {
 		return fmt.Errorf("could not duplicate batches. Cause %w", err)
 	}
 
-	rollup, err := s.storage.FetchReorgedRollup(fork.NonCanonicalPath)
+	rollup, err := s.storage.FetchReorgedRollup(ctx, fork.NonCanonicalPath)
 	if err == nil {
 		s.logger.Error("Reissue rollup", log.RollupHashKey, rollup)
 		// todo - tudor - finalise the logic to reissue a rollup when the block used for compression was reorged
@@ -465,8 +470,7 @@ func (s *sequencer) signCrossChainBundle(bundle *common.ExtCrossChainBundle) err
 	}
 	return nil
 }
-
-func (s *sequencer) OnL1Block(_ types.Block, _ *components.BlockIngestionType) error {
+func (s *sequencer) OnL1Block(ctx context.Context, block *types.Block, result *components.BlockIngestionType) error {
 	// nothing to do
 	return nil
 }
@@ -475,21 +479,21 @@ func (s *sequencer) Close() error {
 	return s.mempool.Close()
 }
 
-func (s *sequencer) ExportCrossChainData(fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
+func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
 	canonicalBatchesInRollup := make([]*core.Batch, 0)
 	for i := fromSeqNo; i <= toSeqNo; i++ {
-		batch, err := s.storage.FetchBatchBySeqNo(i)
+		batch, err := s.storage.FetchBatchBySeqNo(ctx, i)
 		if err != nil {
 			return nil, err
 		}
 
 		l1BlockHash := batch.Header.L1Proof
-		block, err := s.storage.FetchBlock(l1BlockHash)
+		block, err := s.storage.FetchBlock(ctx, l1BlockHash)
 		if err != nil {
 			return nil, err
 		}
 
-		canonicalBlock, err := s.storage.FetchCanonicaBlockByHeight(block.Header().Number)
+		canonicalBlock, err := s.storage.FetchCanonicaBlockByHeight(ctx, block.Header().Number)
 		if err != nil {
 			return nil, err
 		}
@@ -518,7 +522,7 @@ func (s *sequencer) ExportCrossChainData(fromSeqNo uint64, toSeqNo uint64) (*com
 
 	batchesHash := tree.GetRoot()
 
-	block, err := s.blockProcessor.GetHead()
+	block, err := s.blockProcessor.GetHead(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/ten-protocol/go-ten/integration/networktest"
 	"github.com/ten-protocol/go-ten/integration/networktest/actions"
 	"github.com/ten-protocol/go-ten/integration/networktest/env"
+	"github.com/ten-protocol/go-ten/integration/simulation/devnetwork"
 )
 
 var _transferAmount = big.NewInt(100_000_000)
@@ -23,7 +24,7 @@ func TestGatewayHappyPath(t *testing.T) {
 	networktest.Run(
 		"gateway-happy-path",
 		t,
-		env.LocalDevNetwork(env.WithTenGateway()),
+		env.LocalDevNetwork(devnetwork.WithGateway()),
 		actions.Series(
 			&actions.CreateTestUser{UserID: 0, UseGateway: true},
 			&actions.CreateTestUser{UserID: 1, UseGateway: true},

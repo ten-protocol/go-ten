@@ -22,11 +22,11 @@ func TestClientGetRollup(t *testing.T) {
 
 	obsClient := obsclient.NewObsClient(client)
 
-	rollupHeader, err := obsClient.BatchHeaderByNumber(big.NewInt(4392))
+	batchHeader, err := obsClient.GetBatchHeaderByNumber(big.NewInt(4392))
 	assert.Nil(t, err)
 
 	var rollup *common.ExtRollup
-	err = client.Call(&rollup, rpc.GetBatch, rollupHeader.Hash())
+	err = client.Call(&rollup, rpc.GetBatch, batchHeader.Hash())
 	assert.Nil(t, err)
 }
 

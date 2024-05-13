@@ -1,9 +1,12 @@
 package l2chain
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
+
+	"github.com/ten-protocol/go-ten/go/config"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -15,7 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
@@ -24,11 +26,12 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/evm"
 	"github.com/ten-protocol/go-ten/go/enclave/genesis"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 type obscuroChain struct {
-	chainConfig *params.ChainConfig
-
+	chainConfig         *params.ChainConfig
+	config              config.EnclaveConfig
 	storage             storage.Storage
 	gethEncodingService gethencoding.EncodingService
 	genesis             *genesis.Genesis
@@ -41,6 +44,7 @@ type obscuroChain struct {
 
 func NewChain(
 	storage storage.Storage,
+	config config.EnclaveConfig,
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
 	genesis *genesis.Genesis,
@@ -50,6 +54,7 @@ func NewChain(
 ) ObscuroChain {
 	return &obscuroChain{
 		storage:             storage,
+		config:              config,
 		gethEncodingService: gethEncodingService,
 		chainConfig:         chainConfig,
 		logger:              logger,
@@ -59,9 +64,9 @@ func NewChain(
 	}
 }
 
-func (oc *obscuroChain) AccountOwner(address gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, error) {
+func (oc *obscuroChain) AccountOwner(ctx context.Context, address gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, error) {
 	// check if account is a contract
-	isContract, err := oc.isAccountContractAtBlock(address, blockNumber)
+	isContract, err := oc.isAccountContractAtBlock(ctx, address, blockNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -70,11 +75,11 @@ func (oc *obscuroChain) AccountOwner(address gethcommon.Address, blockNumber *ge
 	}
 
 	// If the address is a contract, find the signer of the deploy transaction
-	txHash, err := oc.storage.GetContractCreationTx(address)
+	txHash, err := oc.storage.GetContractCreationTx(ctx, address)
 	if err != nil {
 		return nil, err
 	}
-	transaction, _, _, _, err := oc.storage.GetTransaction(*txHash) //nolint:dogsled
+	transaction, _, _, _, err := oc.storage.GetTransaction(ctx, *txHash) //nolint:dogsled
 	if err != nil {
 		return nil, err
 	}
@@ -87,17 +92,17 @@ func (oc *obscuroChain) AccountOwner(address gethcommon.Address, blockNumber *ge
 	return &sender, nil
 }
 
-func (oc *obscuroChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
-	chainState, err := oc.Registry.GetBatchStateAtHeight(blockNumber)
+func (oc *obscuroChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
+	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
 	}
 
-	return (*hexutil.Big)(chainState.GetBalance(accountAddr)), nil
+	return (*hexutil.Big)(chainState.GetBalance(accountAddr).ToBig()), nil
 }
 
-func (oc *obscuroChain) ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
-	result, err := oc.ObsCallAtBlock(apiArgs, blockNumber)
+func (oc *obscuroChain) ObsCall(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+	result, err := oc.ObsCallAtBlock(ctx, apiArgs, blockNumber)
 	if err != nil {
 		oc.logger.Info(fmt.Sprintf("Obs_Call: failed to execute contract %s.", apiArgs.To), log.CtrErrKey, err.Error())
 		return nil, err
@@ -109,20 +114,20 @@ func (oc *obscuroChain) ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *g
 		return nil, result.Err
 	}
 
-	oc.logger.Trace("Obs_Call successful", "result", gethlog.Lazy{Fn: func() string {
-		return hexutils.BytesToHex(result.ReturnData)
-	}})
+	if oc.logger.Enabled(context.Background(), gethlog.LevelTrace) {
+		oc.logger.Trace("Obs_Call successful", "result", hexutils.BytesToHex(result.ReturnData))
+	}
 	return result, nil
 }
 
-func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+func (oc *obscuroChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
 	// fetch the chain state at given batch
-	blockState, err := oc.Registry.GetBatchStateAtHeight(blockNumber)
+	blockState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
 	if err != nil {
 		return nil, err
 	}
 
-	batch, err := oc.Registry.GetBatchAtHeight(*blockNumber)
+	batch, err := oc.Registry.GetBatchAtHeight(ctx, *blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
 	}
@@ -132,16 +137,16 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
 	}
 
-	oc.logger.Trace("Obs_Call: Successful result", "result", gethlog.Lazy{Fn: func() string {
-		return fmt.Sprintf("contractAddress=%s, from=%s, data=%s, batch=%s, state=%s",
+	if oc.logger.Enabled(context.Background(), gethlog.LevelTrace) {
+		oc.logger.Trace("Obs_Call: Successful result", "result", fmt.Sprintf("contractAddress=%s, from=%s, data=%s, batch=%s, state=%s",
 			callMsg.To,
 			callMsg.From,
 			hexutils.BytesToHex(callMsg.Data),
 			batch.Hash(),
-			batch.Header.Root.Hex())
-	}})
+			batch.Header.Root.Hex()))
+	}
 
-	result, err := evm.ExecuteObsCall(callMsg, blockState, batch.Header, oc.storage, oc.gethEncodingService, oc.chainConfig, oc.gasEstimationCap, oc.logger)
+	result, err := evm.ExecuteObsCall(ctx, callMsg, blockState, batch.Header, oc.storage, oc.gethEncodingService, oc.chainConfig, oc.gasEstimationCap, oc.config, oc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		return result, err
@@ -152,13 +157,13 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 
 // GetChainStateAtTransaction Returns the state of the chain at certain block height after executing transactions up to the selected transaction
 // TODO make this cacheable
-func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex int, _ uint64) (*gethcore.Message, vm.BlockContext, *state.StateDB, error) {
+func (oc *obscuroChain) GetChainStateAtTransaction(ctx context.Context, batch *core.Batch, txIndex int, _ uint64) (*gethcore.Message, vm.BlockContext, *state.StateDB, error) {
 	// Short circuit if it's genesis batch.
 	if batch.NumberU64() == 0 {
 		return nil, vm.BlockContext{}, nil, errors.New("no transaction in genesis")
 	}
 	// Create the parent state database
-	parent, err := oc.Registry.GetBatchAtHeight(gethrpc.BlockNumber(batch.NumberU64() - 1))
+	parent, err := oc.Registry.GetBatchAtHeight(ctx, gethrpc.BlockNumber(batch.NumberU64()-1))
 	if err != nil {
 		return nil, vm.BlockContext{}, nil, fmt.Errorf("unable to fetch parent batch - %w", err)
 	}
@@ -166,7 +171,7 @@ func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex in
 
 	// Lookup the statedb of parent batch from the live database,
 	// otherwise regenerate it on the flight.
-	statedb, err := oc.Registry.GetBatchStateAtHeight(&parentBlockNumber)
+	statedb, err := oc.Registry.GetBatchStateAtHeight(ctx, &parentBlockNumber)
 	if err != nil {
 		return nil, vm.BlockContext{}, nil, err
 	}
@@ -185,9 +190,9 @@ func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex in
 		}
 		txContext := gethcore.NewEVMTxContext(msg)
 
-		chain := evm.NewObscuroChainContext(oc.storage, oc.gethEncodingService, oc.logger)
+		chain := evm.NewObscuroChainContext(oc.storage, oc.gethEncodingService, oc.config, oc.logger)
 
-		blockHeader, err := oc.gethEncodingService.CreateEthHeaderForBatch(batch.Header)
+		blockHeader, err := oc.gethEncodingService.CreateEthHeaderForBatch(ctx, batch.Header)
 		if err != nil {
 			return nil, vm.BlockContext{}, nil, fmt.Errorf("unable to convert batch header to eth header - %w", err)
 		}
@@ -209,8 +214,8 @@ func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex in
 }
 
 // Returns whether the account is a contract
-func (oc *obscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (bool, error) {
-	chainState, err := oc.Registry.GetBatchStateAtHeight(blockNumber)
+func (oc *obscuroChain) isAccountContractAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (bool, error) {
+	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
 	if err != nil {
 		return false, fmt.Errorf("unable to get blockchain state - %w", err)
 	}

@@ -26,6 +26,7 @@ type NetworkConnector interface {
 	GetL1Client() (ethadapter.EthClient, error)
 	GetMCOwnerWallet() (wallet.Wallet, error) // wallet that owns the management contract (network admin)
 	GetGatewayURL() (string, error)
+	GetGatewayWSURL() (string, error)
 }
 
 // Action is any step in a test, they will typically be either minimally small steps in the test or they will be containers
@@ -58,8 +59,8 @@ type NodeOperator interface {
 	Start() error
 	Stop() error
 
-	StartEnclave() error
-	StopEnclave() error
+	StartEnclave(idx int) error
+	StopEnclave(idx int) error
 	StartHost() error
 	StopHost() error
 

@@ -1,9 +1,8 @@
 package log
 
 import (
-	"os"
-
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/lib/gethfork/debug"
 )
 
 // These are the keys of the log entries
@@ -47,25 +46,26 @@ const (
 	CrossChainCmp   = "cross_chain"
 )
 
-// Used when the logger has to write to Sys.out
+// SysOut - Used when the logger has to write to Sys.out
 const (
 	SysOut = "sys_out"
 )
 
 // New - helper function used to create a top level logger for a component.
 func New(component string, level int, out string, ctx ...interface{}) gethlog.Logger {
+	logFile := ""
+	if out != SysOut {
+		logFile = out
+	}
+	verbosity := gethlog.FromLegacyLevel(level)
+
+	err := debug.Setup("terminal", logFile, false, 0, 0, 0, false, false, verbosity, "")
+	if err != nil {
+		panic(err.Error())
+	}
+
 	context := append(ctx, CmpKey, component)
 	l := gethlog.New(context...)
-	var s gethlog.Handler
-	if out == SysOut {
-		s = gethlog.StreamHandler(os.Stdout, TenLogFormat())
-	} else {
-		s1, err := gethlog.FileHandler(out, TenLogFormat())
-		if err != nil {
-			panic(err)
-		}
-		s = s1
-	}
-	l.SetHandler(gethlog.LvlFilterHandler(gethlog.Lvl(level), s))
+
 	return l
 }

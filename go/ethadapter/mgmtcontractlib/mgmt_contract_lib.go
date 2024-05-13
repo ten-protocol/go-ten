@@ -169,7 +169,6 @@ func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, 
 		tx.RequesterID,
 		tx.AttesterSig,
 		tx.Secret,
-		tx.HostAddress,
 		verifyAttester,
 	)
 	if err != nil {
@@ -186,7 +185,6 @@ func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecr
 		InitializeSecretMethod,
 		tx.EnclaveID,
 		tx.InitialSecret,
-		tx.HostAddress,
 		base64EncodeToString(tx.Attestation),
 	)
 	if err != nil {
@@ -383,20 +381,10 @@ func (c *contractLibImpl) unpackRespondSecretTx(tx *types.Transaction, method *a
 		c.logger.Crit("could not decode responseSecret data")
 	}
 
-	hostAddressData, found := contractCallData["hostAddress"]
-	if !found {
-		c.logger.Crit("call data not found for hostAddress")
-	}
-	hostAddressString, ok := hostAddressData.(string)
-	if !ok {
-		c.logger.Crit("could not decode hostAddress data")
-	}
-
 	return &ethadapter.L1RespondSecretTx{
 		AttesterID:  attesterAddr,
 		RequesterID: requesterAddr,
 		Secret:      responseSecretBytes[:],
-		HostAddress: hostAddressString,
 	}
 }
 

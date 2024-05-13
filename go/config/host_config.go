@@ -32,7 +32,7 @@ type HostInputConfig struct {
 	// Host on which to handle client RPC requests
 	ClientRPCHost string
 	// Address on which to connect to the enclave
-	EnclaveRPCAddress string
+	EnclaveRPCAddresses []string
 	// P2PBindAddress is the address where the P2P server is bound to
 	P2PBindAddress string
 	// P2PPublicAddress is the advertised P2P server address
@@ -45,6 +45,8 @@ type HostInputConfig struct {
 	L1RPCTimeout time.Duration
 	// Timeout duration for messaging between hosts.
 	P2PConnectionTimeout time.Duration
+	// P2P address of network sequencer node
+	SequencerP2PAddress string
 	// The rollup contract address on the L1 network
 	ManagementContractAddress gethcommon.Address
 	// The message bus contract address on the L1 network
@@ -63,8 +65,6 @@ type HostInputConfig struct {
 	ProfilerEnabled bool
 	// L1StartHash is the hash of the L1 block we can start streaming from for all Obscuro state (e.g. management contract deployment block)
 	L1StartHash gethcommon.Hash
-	// The ID of the obscuro sequencer node
-	SequencerID gethcommon.Address
 
 	// MetricsEnabled defines whether the metrics are enabled or not
 	MetricsEnabled bool
@@ -75,8 +75,8 @@ type HostInputConfig struct {
 	// UseInMemoryDB sets whether the host should use in-memory or persistent storage
 	UseInMemoryDB bool
 
-	// LevelDBPath path for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable, or if using InMemory DB)
-	LevelDBPath string
+	// PostgresDBHost db url for connecting to Postgres host database
+	PostgresDBHost string
 
 	// DebugNamespaceEnabled enables the debug namespace handler in the host rpc server
 	DebugNamespaceEnabled bool
@@ -111,7 +111,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		HasClientRPCWebsockets:    p.HasClientRPCWebsockets,
 		ClientRPCPortWS:           p.ClientRPCPortWS,
 		ClientRPCHost:             p.ClientRPCHost,
-		EnclaveRPCAddress:         p.EnclaveRPCAddress,
+		EnclaveRPCAddresses:       p.EnclaveRPCAddresses,
 		P2PBindAddress:            p.P2PBindAddress,
 		P2PPublicAddress:          p.P2PPublicAddress,
 		L1WebsocketURL:            p.L1WebsocketURL,
@@ -127,12 +127,12 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		ObscuroChainID:            p.ObscuroChainID,
 		ProfilerEnabled:           p.ProfilerEnabled,
 		L1StartHash:               p.L1StartHash,
-		SequencerID:               p.SequencerID,
+		SequencerP2PAddress:       p.SequencerP2PAddress,
 		ID:                        gethcommon.Address{},
 		MetricsEnabled:            p.MetricsEnabled,
 		MetricsHTTPPort:           p.MetricsHTTPPort,
 		UseInMemoryDB:             p.UseInMemoryDB,
-		LevelDBPath:               p.LevelDBPath,
+		PostgresDBHost:            p.PostgresDBHost,
 		DebugNamespaceEnabled:     p.DebugNamespaceEnabled,
 		BatchInterval:             p.BatchInterval,
 		MaxBatchInterval:          p.MaxBatchInterval,
@@ -155,8 +155,8 @@ type HostConfig struct {
 	ObscuroChainID int64
 	// L1StartHash is the hash of the L1 block we can start streaming from for all Obscuro state (e.g. management contract deployment block)
 	L1StartHash gethcommon.Hash
-	// The ID of the obscuro sequencer node
-	SequencerID gethcommon.Address
+	// The address of the sequencer node's P2P server
+	SequencerP2PAddress string
 	// The rollup contract address on the L1 network
 	ManagementContractAddress gethcommon.Address
 	// The message bus contract address on the L1 network
@@ -191,8 +191,11 @@ type HostConfig struct {
 	LogPath string
 	// Whether the host should use in-memory or persistent storage
 	UseInMemoryDB bool
-	// filepath for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable, or if using InMemory DB)
-	LevelDBPath string
+	// Host address for Postgres DB instance (can be empty if using InMemory DB or if attestation is disabled)
+	PostgresDBHost string
+	// filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or
+	// if using InMemory DB)
+	SqliteDBPath string
 
 	//////
 	// NODE NETWORKING
@@ -208,8 +211,8 @@ type HostConfig struct {
 	ClientRPCPortWS uint64
 	// Host on which to handle client RPC requests
 	ClientRPCHost string
-	// Address on which to connect to the enclave
-	EnclaveRPCAddress string
+	// Addresses on which to connect to the node's enclaves (HA setups may have multiple)
+	EnclaveRPCAddresses []string
 	// P2PBindAddress is the address where the P2P server is bound to
 	P2PBindAddress string
 	// P2PPublicAddress is the advertised P2P server address
@@ -244,7 +247,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		HasClientRPCWebsockets:    true,
 		ClientRPCPortWS:           81,
 		ClientRPCHost:             "127.0.0.1",
-		EnclaveRPCAddress:         "127.0.0.1:11000",
+		EnclaveRPCAddresses:       []string{"127.0.0.1:11000"},
 		P2PBindAddress:            "0.0.0.0:10000",
 		P2PPublicAddress:          "127.0.0.1:10000",
 		L1WebsocketURL:            "ws://127.0.0.1:8546",
@@ -260,7 +263,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		ObscuroChainID:            443,
 		ProfilerEnabled:           false,
 		L1StartHash:               common.L1BlockHash{}, // this hash will not be found, host will log a warning and then stream from L1 genesis
-		SequencerID:               gethcommon.BytesToAddress([]byte("")),
+		SequencerP2PAddress:       "127.0.0.1:10000",
 		MetricsEnabled:            true,
 		MetricsHTTPPort:           14000,
 		UseInMemoryDB:             true,

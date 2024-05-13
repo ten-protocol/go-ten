@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -24,7 +25,7 @@ type HostConfigToml struct {
 	HasClientRPCWebsockets    bool
 	ClientRPCPortWS           uint
 	ClientRPCHost             string
-	EnclaveRPCAddress         string
+	EnclaveRPCAddresses       string // comma-separated
 	P2PBindAddress            string
 	P2PPublicAddress          string
 	L1WebsocketURL            string
@@ -40,11 +41,11 @@ type HostConfigToml struct {
 	ObscuroChainID            int64
 	ProfilerEnabled           bool
 	L1StartHash               string
-	SequencerID               string
+	SequencerP2PAddress       string
 	MetricsEnabled            bool
 	MetricsHTTPPort           uint
 	UseInMemoryDB             bool
-	LevelDBPath               string
+	PostgresDBHost            string
 	DebugNamespaceEnabled     bool
 	BatchInterval             string
 	MaxBatchInterval          string
@@ -66,7 +67,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	clientRPCPortHTTP := flag.Uint64(clientRPCPortHTTPName, cfg.ClientRPCPortHTTP, flagUsageMap[clientRPCPortHTTPName])
 	clientRPCPortWS := flag.Uint64(clientRPCPortWSName, cfg.ClientRPCPortWS, flagUsageMap[clientRPCPortWSName])
 	clientRPCHost := flag.String(clientRPCHostName, cfg.ClientRPCHost, flagUsageMap[clientRPCHostName])
-	enclaveRPCAddress := flag.String(enclaveRPCAddressName, cfg.EnclaveRPCAddress, flagUsageMap[enclaveRPCAddressName])
+	enclaveRPCAddressesStr := flag.String(enclaveRPCAddressesName, strings.Join(cfg.EnclaveRPCAddresses, ","), flagUsageMap[enclaveRPCAddressesName])
 	p2pBindAddress := flag.String(p2pBindAddressName, cfg.P2PBindAddress, flagUsageMap[p2pBindAddressName])
 	p2pPublicAddress := flag.String(p2pPublicAddressName, cfg.P2PPublicAddress, flagUsageMap[p2pPublicAddressName])
 	l1WSURL := flag.String(l1WebsocketURLName, cfg.L1WebsocketURL, flagUsageMap[l1WebsocketURLName])
@@ -82,11 +83,11 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	privateKeyStr := flag.String(privateKeyName, cfg.PrivateKeyString, flagUsageMap[privateKeyName])
 	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, flagUsageMap[profilerEnabledName])
 	l1StartHash := flag.String(l1StartHashName, cfg.L1StartHash.Hex(), flagUsageMap[l1StartHashName])
-	sequencerID := flag.String(sequencerIDName, cfg.SequencerID.Hex(), flagUsageMap[sequencerIDName])
+	sequencerP2PAddress := flag.String(sequencerP2PAddrName, cfg.SequencerP2PAddress, flagUsageMap[sequencerP2PAddrName])
 	metricsEnabled := flag.Bool(metricsEnabledName, cfg.MetricsEnabled, flagUsageMap[metricsEnabledName])
 	metricsHTPPPort := flag.Uint(metricsHTTPPortName, cfg.MetricsHTTPPort, flagUsageMap[metricsHTTPPortName])
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, flagUsageMap[useInMemoryDBName])
-	levelDBPath := flag.String(levelDBPathName, cfg.LevelDBPath, flagUsageMap[levelDBPathName])
+	postgresDBHost := flag.String(postgresDBHostName, cfg.PostgresDBHost, flagUsageMap[postgresDBHostName])
 	debugNamespaceEnabled := flag.Bool(debugNamespaceEnabledName, cfg.DebugNamespaceEnabled, flagUsageMap[debugNamespaceEnabledName])
 	batchInterval := flag.String(batchIntervalName, cfg.BatchInterval.String(), flagUsageMap[batchIntervalName])
 	maxBatchInterval := flag.String(maxBatchIntervalName, cfg.MaxBatchInterval.String(), flagUsageMap[maxBatchIntervalName])
@@ -112,7 +113,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.HasClientRPCWebsockets = true
 	cfg.ClientRPCPortWS = *clientRPCPortWS
 	cfg.ClientRPCHost = *clientRPCHost
-	cfg.EnclaveRPCAddress = *enclaveRPCAddress
+	cfg.EnclaveRPCAddresses = strings.Split(*enclaveRPCAddressesStr, ",")
 	cfg.P2PBindAddress = *p2pBindAddress
 	cfg.P2PPublicAddress = *p2pPublicAddress
 	cfg.L1WebsocketURL = *l1WSURL
@@ -128,11 +129,11 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.ObscuroChainID = *obscuroChainID
 	cfg.ProfilerEnabled = *profilerEnabled
 	cfg.L1StartHash = gethcommon.HexToHash(*l1StartHash)
-	cfg.SequencerID = gethcommon.HexToAddress(*sequencerID)
+	cfg.SequencerP2PAddress = *sequencerP2PAddress
 	cfg.MetricsEnabled = *metricsEnabled
 	cfg.MetricsHTTPPort = *metricsHTPPPort
 	cfg.UseInMemoryDB = *useInMemoryDB
-	cfg.LevelDBPath = *levelDBPath
+	cfg.PostgresDBHost = *postgresDBHost
 	cfg.DebugNamespaceEnabled = *debugNamespaceEnabled
 	cfg.BatchInterval, err = time.ParseDuration(*batchInterval)
 	if err != nil {
@@ -189,7 +190,7 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		HasClientRPCWebsockets:    tomlConfig.HasClientRPCWebsockets,
 		ClientRPCPortWS:           uint64(tomlConfig.ClientRPCPortWS),
 		ClientRPCHost:             tomlConfig.ClientRPCHost,
-		EnclaveRPCAddress:         tomlConfig.EnclaveRPCAddress,
+		EnclaveRPCAddresses:       strings.Split(tomlConfig.EnclaveRPCAddresses, ","),
 		P2PBindAddress:            tomlConfig.P2PBindAddress,
 		P2PPublicAddress:          tomlConfig.P2PPublicAddress,
 		L1WebsocketURL:            tomlConfig.L1WebsocketURL,
@@ -205,11 +206,11 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		ObscuroChainID:            tomlConfig.ObscuroChainID,
 		ProfilerEnabled:           tomlConfig.ProfilerEnabled,
 		L1StartHash:               gethcommon.HexToHash(tomlConfig.L1StartHash),
-		SequencerID:               gethcommon.HexToAddress(tomlConfig.SequencerID),
+		SequencerP2PAddress:       tomlConfig.SequencerP2PAddress,
 		MetricsEnabled:            tomlConfig.MetricsEnabled,
 		MetricsHTTPPort:           tomlConfig.MetricsHTTPPort,
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,
-		LevelDBPath:               tomlConfig.LevelDBPath,
+		PostgresDBHost:            tomlConfig.PostgresDBHost,
 		BatchInterval:             batchInterval,
 		MaxBatchInterval:          maxBatchInterval,
 		RollupInterval:            rollupInterval,

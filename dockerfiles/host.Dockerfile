@@ -4,7 +4,7 @@
 # build-host = copies over the source code and builds the binaries using a compiler cache
 # final = copies over only the executables in an alpine image that doesn't have any additional load.
 
-FROM golang:1.20-alpine3.18 as system
+FROM golang:1.22.1-alpine3.19 as system
 # set the base libs to build / run
 RUN apk add build-base bash
 ENV CGO_ENABLED=1
@@ -36,7 +36,11 @@ FROM alpine:3.18
 # Copy over just the binary from the previous build stage into this one.
 COPY --from=build-host \
     /home/obscuro/go-obscuro/go/host/main /home/obscuro/go-obscuro/go/host/main
-    
+
+# Workaround to fix postges filepath issue
+COPY --from=build-host \
+    /home/obscuro/go-obscuro/go/host/storage/init/postgres /home/obscuro/go-obscuro/go/host/storage/init/postgres
+
 WORKDIR /home/obscuro/go-obscuro/go/host/main
 
 # expose the http and the ws ports to the host

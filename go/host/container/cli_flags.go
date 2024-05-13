@@ -9,7 +9,7 @@ const (
 	clientRPCPortHTTPName        = "clientRPCPortHttp"
 	clientRPCPortWSName          = "clientRPCPortWs"
 	clientRPCHostName            = "clientRPCHost"
-	enclaveRPCAddressName        = "enclaveRPCAddress"
+	enclaveRPCAddressesName      = "enclaveRPCAddresses"
 	p2pBindAddressName           = "p2pBindAddress"
 	p2pPublicAddressName         = "p2pPublicAddress"
 	l1WebsocketURLName           = "l1WSURL"
@@ -25,11 +25,11 @@ const (
 	obscuroChainIDName           = "obscuroChainID"
 	profilerEnabledName          = "profilerEnabled"
 	l1StartHashName              = "l1Start"
-	sequencerIDName              = "sequencerID"
+	sequencerP2PAddrName         = "sequencerP2PAddress"
 	metricsEnabledName           = "metricsEnabled"
 	metricsHTTPPortName          = "metricsHTTPPort"
 	useInMemoryDBName            = "useInMemoryDB"
-	levelDBPathName              = "levelDBPath"
+	postgresDBHostName           = "postgresDBHost"
 	debugNamespaceEnabledName    = "debugNamespaceEnabled"
 	batchIntervalName            = "batchInterval"
 	maxBatchIntervalName         = "maxBatchInterval"
@@ -49,7 +49,7 @@ func getFlagUsageMap() map[string]string {
 		clientRPCPortHTTPName:        "The port on which to listen for client application RPC requests over HTTP",
 		clientRPCPortWSName:          "The port on which to listen for client application RPC requests over websockets",
 		clientRPCHostName:            "The host on which to handle client application RPC requests",
-		enclaveRPCAddressName:        "The address to use to connect to the Obscuro enclave service",
+		enclaveRPCAddressesName:      "The comma-separated addresses to use to connect to the Ten enclaves",
 		p2pBindAddressName:           "The address where the p2p server is bound to. Defaults to 0.0.0.0:10000",
 		p2pPublicAddressName:         "The P2P address where the other servers should connect to. Defaults to 127.0.0.1:10000",
 		l1WebsocketURLName:           "The websocket RPC address the host can use for L1 requests",
@@ -65,11 +65,11 @@ func getFlagUsageMap() map[string]string {
 		obscuroChainIDName:           "An integer representing the unique chain id of the Obscuro chain (default 443)",
 		profilerEnabledName:          "Runs a profiler instance (Defaults to false)",
 		l1StartHashName:              "The L1 block hash where the management contract was deployed",
-		sequencerIDName:              "The ID of the sequencer",
+		sequencerP2PAddrName:         "The P2P address of the sequencer",
 		metricsEnabledName:           "Whether the metrics are enabled (Defaults to true)",
 		metricsHTTPPortName:          "The port on which the metrics are served (Defaults to 0.0.0.0:14000)",
 		useInMemoryDBName:            "Whether the host will use an in-memory DB rather than persist data",
-		levelDBPathName:              "Filepath for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable or if using InMemory DB)",
+		postgresDBHostName:           "The host for the Postgres DB instance",
 		debugNamespaceEnabledName:    "Whether the debug names is enabled",
 		batchIntervalName:            "Duration between each batch. Can be put down as 1.0s",
 		maxBatchIntervalName:         "Max interval between each batch, if greater than batchInterval then some empty batches will be skipped. Can be put down as 1.0s",

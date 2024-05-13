@@ -32,6 +32,7 @@ func (n *DockerGateway) Start() error {
 		"--nodePortWS", fmt.Sprintf("%d", n.cfg.tenNodeWSPort),
 		"--nodeHost", n.cfg.tenNodeHost,
 		"--dbType", "sqlite",
+		"--logPath", "sys_out",
 	}
 
 	_, err := docker.StartNewContainer("gateway", n.cfg.dockerImage, cmds, []int{n.cfg.gatewayHTTPPort, n.cfg.gatewayWSPort}, nil, nil, nil)
@@ -43,7 +44,7 @@ func (n *DockerGateway) IsReady() error {
 	interval := time.Second
 
 	return retry.Do(func() error {
-		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("http://127.0.0.1:%d/health/", n.cfg.gatewayHTTPPort))
+		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("http://127.0.0.1:%d/v1/health/", n.cfg.gatewayHTTPPort))
 		if err != nil {
 			return err
 		}

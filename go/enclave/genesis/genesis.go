@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/core/tracing"
+	"github.com/holiman/uint256"
+
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -69,7 +72,7 @@ func (g Genesis) applyAllocations(storage storage.Storage) (*state.StateDB, erro
 
 	// set the accounts funds
 	for _, acc := range g.Accounts {
-		s.SetBalance(acc.Address, acc.Amount)
+		s.SetBalance(acc.Address, uint256.MustFromBig(acc.Amount), tracing.BalanceIncreaseGenesisBalance)
 	}
 
 	return s, nil

@@ -1,10 +1,11 @@
 package host
 
 import (
+	"context"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/responses"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -20,6 +21,7 @@ const (
 	L2BatchRepositoryName      = "l2-batch-repo"
 	EnclaveServiceName         = "enclaves"
 	LogSubscriptionServiceName = "log-subs"
+	FilterAPIServiceName       = "filter-api"
 )
 
 // The host has a number of services that encapsulate the various responsibilities of the host.
@@ -32,7 +34,7 @@ const (
 type Service interface {
 	Start() error
 	Stop() error
-	HealthStatus() HealthStatus
+	HealthStatus(context.Context) HealthStatus
 }
 
 // P2P provides an interface for the host to interact with the P2P network
@@ -54,9 +56,6 @@ type P2P interface {
 	// SubscribeForBatchRequests will register a handler to receive new batch requests from peers, returns unsubscribe func
 	// todo (@matt) feels a bit weird to have this in this interface since it relates to serving data rather than receiving
 	SubscribeForBatchRequests(handler P2PBatchRequestHandler) func()
-
-	// RefreshPeerList notifies the P2P service that its peer list might be out-of-date and it should resync
-	RefreshPeerList()
 }
 
 // P2PBatchHandler is an interface for receiving new batches from the P2P network as they arrive
@@ -111,8 +110,6 @@ type L1Publisher interface {
 
 	PublishCrossChainBundle(bundle *common.ExtCrossChainBundle)
 
-	FetchLatestPeersList() ([]string, error)
-
 	FetchLatestSeqNo() (*big.Int, error)
 
 	// GetImportantContracts returns a (cached) record of addresses of the important network contracts
@@ -123,14 +120,20 @@ type L1Publisher interface {
 
 // L2BatchRepository provides an interface for the host to request L2 batch data (live-streaming and historical)
 type L2BatchRepository interface {
-	// Subscribe will register a batch handler to receive new batches as they arrive
-	Subscribe(handler L2BatchHandler)
+	// SubscribeNewBatches will register a handler to receive new batches from the publisher as they arrive at the host
+	SubscribeNewBatches(handler L2BatchHandler) func()
 
-	FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
+	// SubscribeValidatedBatches will register a handler to receive batches that have been validated by the enclave
+	SubscribeValidatedBatches(handler L2BatchHandler) func()
+
+	FetchBatchBySeqNo(background context.Context, seqNo *big.Int) (*common.ExtBatch, error)
 
 	// AddBatch is used to notify the repository of a new batch, e.g. from the enclave when seq produces one or a rollup is consumed
 	// Note: it is fine to add batches that the repo already has, it will just ignore them
 	AddBatch(batch *common.ExtBatch) error
+
+	// NotifyNewValidatedHead - called after an enclave validates a batch, to update the repo's validated head and notify subscribers
+	NotifyNewValidatedHead(batch *common.ExtBatch)
 }
 
 // L2BatchHandler is an interface for receiving new batches from the publisher as they arrive
@@ -144,13 +147,13 @@ type L2BatchHandler interface {
 type EnclaveService interface {
 	// LookupBatchBySeqNo is used to fetch batch data from the enclave - it is only used as a fallback for the sequencer
 	// host if it's missing a batch (other host services should use L2Repo to fetch batch data)
-	LookupBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
+	LookupBatchBySeqNo(ctx context.Context, seqNo *big.Int) (*common.ExtBatch, error)
 
 	// GetEnclaveClient returns an enclave client // todo (@matt) we probably don't want to expose this
 	GetEnclaveClient() common.Enclave
 
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to other hosts on the network (in particular, to the sequencer)
-	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error)
+	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error)
 
 	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription) error
 	Unsubscribe(id rpc.ID) error

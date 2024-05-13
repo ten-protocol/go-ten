@@ -25,9 +25,19 @@ type BatchListingResponse struct {
 	Total       uint64
 }
 
+type BatchListingResponseDeprecated struct {
+	BatchesData []PublicBatchDeprecated
+	Total       uint64
+}
+
 type BlockListingResponse struct {
 	BlocksData []PublicBlock
 	Total      uint64
+}
+
+type RollupListingResponse struct {
+	RollupsData []PublicRollup
+	Total       uint64
 }
 
 type PublicTransaction struct {
@@ -38,8 +48,29 @@ type PublicTransaction struct {
 }
 
 type PublicBatch struct {
+	SequencerOrderNo *big.Int              `json:"sequence"`
+	Hash             string                `json:"hash"`
+	FullHash         common.Hash           `json:"fullHash"`
+	Height           *big.Int              `json:"height"`
+	TxCount          *big.Int              `json:"txCount"`
+	Header           *BatchHeader          `json:"header"`
+	EncryptedTxBlob  EncryptedTransactions `json:"encryptedTxBlob"`
+}
+
+// TODO (@will) remove when tenscan UI has been updated
+type PublicBatchDeprecated struct {
 	BatchHeader
 	TxHashes []TxHash `json:"txHashes"`
+}
+
+type PublicRollup struct {
+	ID        *big.Int
+	Hash      string
+	FirstSeq  *big.Int
+	LastSeq   *big.Int
+	Timestamp uint64
+	Header    *RollupHeader
+	L1Hash    string
 }
 
 type PublicBlock struct {
@@ -88,7 +119,6 @@ type PrivateCustomQueryListTransactions struct {
 type ObscuroNetworkInfo struct {
 	ManagementContractAddress common.Address
 	L1StartHash               common.Hash
-	SequencerID               common.Address
 	MessageBusAddress         common.Address
 	L2MessageBusAddress       common.Address
 	ImportantContracts        map[string]common.Address // map of contract name to address

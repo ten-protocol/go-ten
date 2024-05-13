@@ -1,14 +1,16 @@
 package common
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 
+	gethforklog "github.com/ten-protocol/go-ten/lib/gethfork/log"
+
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/go/rpc"
 
@@ -34,13 +36,8 @@ func BytesToPrivateKey(keyBytes []byte) (*ecies.PrivateKey, error) {
 	return eciesPrivateKey, nil
 }
 
-// GetUserIDbyte converts userID from string to correct byte format
-func GetUserIDbyte(userID string) ([]byte, error) {
-	return hex.DecodeString(userID)
-}
-
 func CreateEncClient(
-	hostRPCBindAddr string,
+	conn *gethrpc.Client,
 	addressBytes []byte,
 	privateKeyBytes []byte,
 	signature []byte,
@@ -61,7 +58,7 @@ func CreateEncClient(
 		SignatureWithAccountKey: signature,
 		SignatureType:           signatureType,
 	}
-	encClient, err := rpc.NewEncNetworkClient(hostRPCBindAddr, vk, logger)
+	encClient, err := rpc.NewEncNetworkClientFromConn(conn, vk, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create EncRPCClient: %w", err)
 	}
@@ -90,12 +87,5 @@ func NewFileLogger() gethlog.Logger {
 	if err != nil {
 		panic(err)
 	}
-
-	// Create a new logger instance
-	logger := gethlog.New()
-
-	// Set the handler to the file
-	logger.SetHandler(gethlog.StreamHandler(file, log.TenLogFormat()))
-
-	return logger
+	return gethlog.NewLogger(gethlog.NewGlogHandler(gethforklog.NewTerminalHandler(file, false)))
 }

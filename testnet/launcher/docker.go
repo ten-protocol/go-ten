@@ -56,7 +56,7 @@ func (t *Testnet) Start() error {
 		node.WithHostPublicP2PAddr("sequencer-host:15000"),
 		node.WithPrivateKey("8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"),
 		node.WithHostID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
-		node.WithSequencerID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
+		node.WithSequencerP2PAddr("sequencer-host:15000"),
 		node.WithManagementContractAddress(networkConfig.ManagementContractAddress),
 		node.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
 		node.WithL1Start(networkConfig.L1StartHash),
@@ -65,6 +65,9 @@ func (t *Testnet) Start() error {
 		node.WithLogLevel(t.cfg.logLevel),
 		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
 	)
+	if !t.cfg.isSGXEnabled {
+		sequencerNodeConfig.UpdateNodeConfig(node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"))
+	}
 
 	sequencerNode := node.NewDockerNode(sequencerNodeConfig)
 
@@ -96,7 +99,7 @@ func (t *Testnet) Start() error {
 		node.WithHostPublicP2PAddr("validator-host:15010"),
 		node.WithPrivateKey("ebca545772d6438bbbe1a16afbed455733eccf96157b52384f1722ea65ccfa89"),
 		node.WithHostID("0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A"),
-		node.WithSequencerID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
+		node.WithSequencerP2PAddr("sequencer-host:15000"),
 		node.WithManagementContractAddress(networkConfig.ManagementContractAddress),
 		node.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
 		node.WithL1Start(networkConfig.L1StartHash),
@@ -105,6 +108,10 @@ func (t *Testnet) Start() error {
 		node.WithLogLevel(t.cfg.logLevel),
 		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
 	)
+
+	if !t.cfg.isSGXEnabled {
+		validatorNodeConfig.UpdateNodeConfig(node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"))
+	}
 
 	validatorNode := node.NewDockerNode(validatorNodeConfig)
 

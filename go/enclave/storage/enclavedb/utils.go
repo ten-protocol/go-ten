@@ -1,19 +1,13 @@
 package enclavedb
 
-import gethcommon "github.com/ethereum/go-ethereum/common"
+import (
+	"strings"
+)
 
-const truncHash = 16
-
-func truncTo16(hash gethcommon.Hash) []byte {
-	return truncBTo16(hash.Bytes())
-}
-
-func truncBTo16(bytes []byte) []byte {
-	if len(bytes) == 0 {
-		return bytes
+func repeat(token string, sep string, count int) string {
+	elems := make([]string, count)
+	for i := 0; i < count; i++ {
+		elems[i] = token
 	}
-	b := bytes[0:truncHash]
-	c := make([]byte, truncHash)
-	copy(c, b)
-	return c
+	return strings.Join(elems, sep)
 }

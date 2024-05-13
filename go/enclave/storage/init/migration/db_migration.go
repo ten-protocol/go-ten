@@ -1,6 +1,7 @@
 package migration
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"errors"
@@ -27,7 +28,7 @@ func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 	maxMigration := int64(len(migrationFiles))
 
 	var maxDB int64
-	config, err := enclavedb.FetchConfig(db, currentMigrationVersionKey)
+	config, err := enclavedb.FetchConfig(context.Background(), db, currentMigrationVersionKey)
 	if err != nil {
 		// first time there is no entry, so 001 was executed already ( triggered at launch/manifest time )
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -61,12 +62,13 @@ func executeMigration(db *sql.DB, content string, migrationOrder int64) error {
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
 	_, err = tx.Exec(content)
 	if err != nil {
 		return err
 	}
 
-	_, err = enclavedb.WriteConfigToTx(tx, currentMigrationVersionKey, big.NewInt(migrationOrder).Bytes())
+	_, err = enclavedb.WriteConfigToTx(context.Background(), tx, currentMigrationVersionKey, big.NewInt(migrationOrder).Bytes())
 	if err != nil {
 		return err
 	}

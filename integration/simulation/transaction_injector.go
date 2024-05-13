@@ -334,7 +334,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		ti.logger.Error("Failed to retrieve receipt for withdrawal transaction", log.ErrKey, err)
 		return
 	}
-	header, err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).BatchHeaderByHash(receipt.BlockHash)
+	header, err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).GetBatchHeaderByHash(receipt.BlockHash)
 	if err != nil {
 		ti.logger.Error("Failed to retrieve batch header for withdrawal transaction", log.ErrKey, err)
 		return

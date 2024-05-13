@@ -28,7 +28,7 @@ const (
 	e2eTestPrefundedL1Addr = "0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944"
 )
 
-func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, blockDurationSeconds int) (*params.L1SetupData, []ethadapter.EthClient, eth2network.Eth2Network) {
+func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, blockDurationSeconds int) (*params.L1TenData, []ethadapter.EthClient, eth2network.Eth2Network) {
 	eth2Network, err := StartGethNetwork(wallets, startPort, blockDurationSeconds)
 	if err != nil {
 		panic(fmt.Errorf("error starting geth network %w", err))
@@ -95,7 +95,7 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int, blockDurationSe
 	return eth2Network, nil
 }
 
-func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.SimWallets, deployERC20s bool) (*params.L1SetupData, error) {
+func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.SimWallets, deployERC20s bool) (*params.L1TenData, error) {
 	bytecode, err := constants.Bytecode()
 	if err != nil {
 		return nil, err
@@ -135,8 +135,8 @@ func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.
 		"blockHash: ", mgmtContractReceipt.BlockHash, "l1BusAddress: ", l1BusAddress)
 
 	if !deployERC20s {
-		return &params.L1SetupData{
-			ObscuroStartBlock:   mgmtContractReceipt.BlockHash,
+		return &params.L1TenData{
+			TenStartBlock:       mgmtContractReceipt.BlockHash,
 			MgmtContractAddress: mgmtContractReceipt.ContractAddress,
 			MessageBusAddr:      l1BusAddress,
 		}, nil
@@ -152,8 +152,8 @@ func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.
 		erc20ContractAddr = append(erc20ContractAddr, erc20receipt.ContractAddress)
 	}
 
-	return &params.L1SetupData{
-		ObscuroStartBlock:   mgmtContractReceipt.BlockHash,
+	return &params.L1TenData{
+		TenStartBlock:       mgmtContractReceipt.BlockHash,
 		MgmtContractAddress: mgmtContractReceipt.ContractAddress,
 		ObxErc20Address:     erc20ContractAddr[0],
 		EthErc20Address:     erc20ContractAddr[1],
@@ -214,11 +214,12 @@ func InitializeContract(workerClient ethadapter.EthClient, w wallet.Wallet, cont
 // DeployContract returns receipt of deployment
 // todo (@matt) - this should live somewhere else
 func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*types.Receipt, error) {
-	deployContractTx, err := workerClient.PrepareTransactionToSend(&types.LegacyTx{
-		Data: contractBytes,
-	}, w.Address(), w.GetNonceAndIncrement())
+	deployContractTx, err := workerClient.PrepareTransactionToSend(
+		context.Background(),
+		&types.LegacyTx{Data: contractBytes},
+		w.Address(),
+	)
 	if err != nil {
-		w.SetNonce(w.GetNonce() - 1)
 		return nil, err
 	}
 

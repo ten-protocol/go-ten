@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ten-protocol/go-ten/integration/common/testlog"
+	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ten-protocol/go-ten/integration/simulation/network"
@@ -47,7 +47,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		stats,
 		networkClients,
 		params.Wallets,
-		&params.L1SetupData.MgmtContractAddress,
+		&params.L1TenData.MgmtContractAddress,
 		params.MgmtContractLib,
 		params.ERC20ContractLib,
 		0,
@@ -61,7 +61,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		SimulationTime:   params.SimulationTime,
 		Stats:            stats,
 		Params:           params,
-		LogChannels:      make(map[string][]chan common.IDAndLog),
+		LogChannels:      make(map[string][]chan types.Log),
 		Subscriptions:    []ethereum.Subscription{},
 	}
 

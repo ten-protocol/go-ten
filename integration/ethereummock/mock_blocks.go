@@ -37,5 +37,5 @@ func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transacti
 		BaseFee:     nil,
 	}
 
-	return types.NewBlock(&header, txs, nil, nil, &trie.StackTrie{})
+	return types.NewBlock(&header, txs, nil, nil, trie.NewStackTrie(nil))
 }

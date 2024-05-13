@@ -18,7 +18,7 @@ const (
 	enclaveHTTPPortFlag         = "enclave_http_port"
 	enclaveWSPortFlag           = "enclave_WS_port"
 	privateKeyFlag              = "private_key"
-	sequencerIDFlag             = "sequencer_id"
+	sequencerP2PAddrFlag        = "sequencer_addr"
 	managementContractAddrFlag  = "management_contract_addr"
 	messageBusContractAddrFlag  = "message_bus_contract_addr"
 	l1StartBlockFlag            = "l1_start"
@@ -31,6 +31,7 @@ const (
 	maxBatchIntervalFlag        = "max_batch_interval"
 	rollupIntervalFlag          = "rollup_interval"
 	l1ChainIDFlag               = "l1_chain_id"
+	postgresDBHostFlag          = "postgres_db_host"
 )
 
 // Returns a map of the flag usages.
@@ -51,7 +52,7 @@ func getFlagUsageMap() map[string]string {
 		enclaveHTTPPortFlag:         "Enclave's http bound port",
 		enclaveWSPortFlag:           "Enclave's WS bound port",
 		privateKeyFlag:              "L1 and L2 private key used in the node",
-		sequencerIDFlag:             "The 20 bytes of the address of the sequencer for this network",
+		sequencerP2PAddrFlag:        "The address for the sequencer p2p server",
 		managementContractAddrFlag:  "The management contract address on the L1",
 		messageBusContractAddrFlag:  "The address of the L1 message bus contract owned by the management contract.",
 		l1StartBlockFlag:            "The block hash on the L1 where the management contract was deployed",
@@ -66,5 +67,6 @@ func getFlagUsageMap() map[string]string {
 		maxBatchIntervalFlag:        "Max interval between batches, if greater than batchInterval then some empty batches will be skipped. Can be formatted like 500ms or 1s",
 		rollupIntervalFlag:          "Duration between each rollup. Can be formatted like 500ms or 1s",
 		l1ChainIDFlag:               "Chain ID of the L1 network",
+		postgresDBHostFlag:          "Host connection details for Postgres DB",
 	}
 }

@@ -26,7 +26,7 @@ type SimParams struct {
 	// ERC20ContractLib allows parsing ERC20Contract txs to and from the eth txs
 	ERC20ContractLib erc20contractlib.ERC20ContractLib
 
-	L1SetupData *L1SetupData
+	L1TenData *L1TenData
 
 	// Contains all the wallets required by the simulation
 	Wallets *SimWallets
@@ -41,9 +41,9 @@ type SimParams struct {
 	WithPrefunding             bool
 }
 
-type L1SetupData struct {
-	// ObscuroStartBlock is the L1 block hash where the Obscuro network activity begins (e.g. mgmt contract deployment)
-	ObscuroStartBlock common.Hash
+type L1TenData struct {
+	// TenStartBlock is the L1 block hash where the Ten network activity begins (e.g. mgmt contract deployment)
+	TenStartBlock common.Hash
 	// MgmtContractAddr defines the management contract address
 	MgmtContractAddress common.Address
 	// ObxErc20Address - the address of the "TEN" ERC20

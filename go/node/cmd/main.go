@@ -24,7 +24,6 @@ func main() {
 		node.WithEnclaveWSPort(cliConfig.enclaveWSPort),                      // 81
 		node.WithPrivateKey(cliConfig.privateKey),                            // "8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"
 		node.WithHostID(cliConfig.hostID),                                    // "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
-		node.WithSequencerID(cliConfig.sequencerID),                          // "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
 		node.WithManagementContractAddress(cliConfig.managementContractAddr), // "0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF"),
 		node.WithMessageBusContractAddress(cliConfig.messageBusContractAddr), // "0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"),
 		node.WithL1Start(cliConfig.l1Start),
@@ -37,6 +36,8 @@ func main() {
 		node.WithMaxBatchInterval(cliConfig.maxBatchInterval),
 		node.WithRollupInterval(cliConfig.rollupInterval),
 		node.WithL1ChainID(cliConfig.l1ChainID),
+		node.WithPostgresDBHost(cliConfig.postgresDBHost),
+		node.WithSequencerP2PAddr(cliConfig.sequencerP2PAddr),
 	)
 
 	dockerNode := node.NewDockerNode(nodeCfg)

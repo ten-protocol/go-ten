@@ -32,7 +32,7 @@ func VerifyBatchesDataAction() networktest.Action {
 		if batchListing.Total <= 10 {
 			return fmt.Errorf("expected more than 10 batches, got %d", batchListing.Total)
 		}
-		if batchListing.BatchesData[0].Number.Cmp(batchListing.BatchesData[1].Number) < 0 {
+		if batchListing.BatchesData[0].Height.Cmp(batchListing.BatchesData[1].Height) < 0 {
 			return fmt.Errorf("expected batches to be sorted by height descending")
 		}
 

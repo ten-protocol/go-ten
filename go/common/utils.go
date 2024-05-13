@@ -28,7 +28,7 @@ func ShortHash(hash gethcommon.Hash) uint64 {
 
 // ShortAddress converts the address to a shorter uint64 for printing.
 func ShortAddress(address gethcommon.Address) uint64 {
-	return ShortHash(address.Hash())
+	return address.Big().Uint64()
 }
 
 // ShortNonce converts the nonce to a shorter uint64 for printing.

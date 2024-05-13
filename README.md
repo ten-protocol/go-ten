@@ -209,7 +209,7 @@ root
 │   │   ├── <a href="./go/ethadapter/erc20contractlib">erc20contractlib</a>: Understand ERC20 transactions.
 │   │   └── <a href="./go/ethadapter/mgmtcontractlib">mgmtcontractlib</a>: Understand Ten Management contrract transactions. 
 │   ├── <a href="./go/host">host</a>: The standalone host process.
-│   │   ├── <a href="./go/host/db">db</a>: The host's database.
+│   │   ├── <a href="go/host/storage/db">db</a>: The host's database.
 │   │   ├── <a href="./go/host/hostrunner">hostrunner</a>: The entry point.
 │   │   ├── <a href="./go/host/main">main</a>: Main
 │   │   ├── <a href="./go/host/node">node</a>: The host implementation.
@@ -338,18 +338,12 @@ curl --location --request POST 'http://127.0.0.1:99/fund/eth' --header 'Content-
 --data-raw '{ "address":"<address>" }'
 ```
 
-Note that relevant contract addresses on the network are as below;
+Note that relevant contract addresses on the network can be found from running the below command;
 
-| Name                          | Address                                      | 
-|-------------------------------|----------------------------------------------|
-| L1ManagementAddress           | `0x51D43a3Ca257584E770B6188232b199E76B022A2` | 
-| L1BridgeAddress               | `0x19e98b050662b49D6AbDFBe2467016430197BA90` | 
-| L1MessageBusAddress           | `0xDaBD89EEA0f08B602Ec509c3C608Cb8ED095249C` | 
-| L1CrossChainMessengerAddress  | `0x16f41E9960da7C28F2c6d86284d2E1B26C82a184` |
-| L2BridgeAddress               | `0x1e553a8b477FaBaA664e2372FBc2C6Ce52A14E74` | 
-| L2MessageBusAddress           | `0x526c84529B2b8c11F57D93d3f5537aCA3AeCEf9B` | 
-| L2CrossChainMessengerAddress  | `0x3A8F3d0Eb8dA18da9e7Eb0DE1BC35d62B87c2eD4` |
-
+```bash
+curl -X POST 127.0.0.1:80  -H 'Content-Type: application/json' \
+-d '{"jsonrpc":"2.0","method":"obscuro_config","params":[],"id":1}'
+```
 
 ## Community 
 

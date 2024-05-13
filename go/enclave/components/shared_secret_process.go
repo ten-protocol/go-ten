@@ -1,6 +1,7 @@
 package components
 
 import (
+	"context"
 	"fmt"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -33,7 +34,7 @@ func NewSharedSecretProcessor(mgmtcontractlib mgmtcontractlib.MgmtContractLib, a
 }
 
 // ProcessNetworkSecretMsgs we watch for all messages that are requesting or receiving the secret and we store the nodes attested keys
-func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(br *common.BlockAndReceipts) []*common.ProducedSecretResponse {
+func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, br *common.BlockAndReceipts) []*common.ProducedSecretResponse {
 	var responses []*common.ProducedSecretResponse
 	transactions := br.SuccessfulTransactions()
 	block := br.Block
@@ -43,7 +44,7 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(br *common.BlockAndRe
 		// this transaction is for a node that has joined the network and needs to be sent the network secret
 		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
 			ssp.logger.Info("Process shared secret request.", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.TxKey, tx.Hash())
-			resp, err := ssp.processSecretRequest(scrtReqTx)
+			resp, err := ssp.processSecretRequest(ctx, scrtReqTx)
 			if err != nil {
 				ssp.logger.Error("Failed to process shared secret request.", log.ErrKey, err)
 				continue
@@ -61,7 +62,7 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(br *common.BlockAndRe
 				ssp.logger.Error("Could not decode attestation report", log.ErrKey, err)
 			}
 
-			err = ssp.storeAttestation(att)
+			err = ssp.storeAttestation(ctx, att)
 			if err != nil {
 				ssp.logger.Error("Could not store the attestation report.", log.ErrKey, err)
 			}
@@ -70,20 +71,20 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(br *common.BlockAndRe
 	return responses
 }
 
-func (ssp *SharedSecretProcessor) processSecretRequest(req *ethadapter.L1RequestSecretTx) (*common.ProducedSecretResponse, error) {
+func (ssp *SharedSecretProcessor) processSecretRequest(ctx context.Context, req *ethadapter.L1RequestSecretTx) (*common.ProducedSecretResponse, error) {
 	att, err := common.DecodeAttestation(req.Attestation)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode attestation - %w", err)
 	}
 
 	ssp.logger.Info("received attestation", "attestation", att)
-	secret, err := ssp.verifyAttestationAndEncryptSecret(att)
+	secret, err := ssp.verifyAttestationAndEncryptSecret(ctx, att)
 	if err != nil {
 		return nil, fmt.Errorf("secret request failed, no response will be published - %w", err)
 	}
 
 	// Store the attested key only if the attestation process succeeded.
-	err = ssp.storeAttestation(att)
+	err = ssp.storeAttestation(ctx, att)
 	if err != nil {
 		return nil, fmt.Errorf("could not store attestation, no response will be published. Cause: %w", err)
 	}
@@ -99,7 +100,7 @@ func (ssp *SharedSecretProcessor) processSecretRequest(req *ethadapter.L1Request
 }
 
 // ShareSecret verifies the request and if it trusts the report and the public key it will return the secret encrypted with that public key.
-func (ssp *SharedSecretProcessor) verifyAttestationAndEncryptSecret(att *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
+func (ssp *SharedSecretProcessor) verifyAttestationAndEncryptSecret(ctx context.Context, att *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
 	// First we verify the attestation report has come from a valid obscuro enclave running in a verified TEE.
 	data, err := ssp.attestationProvider.VerifyReport(att)
 	if err != nil {
@@ -111,7 +112,7 @@ func (ssp *SharedSecretProcessor) verifyAttestationAndEncryptSecret(att *common.
 	}
 	ssp.logger.Info(fmt.Sprintf("Successfully verified attestation and identity. Owner: %s", att.EnclaveID))
 
-	secret, err := ssp.storage.FetchSecret()
+	secret, err := ssp.storage.FetchSecret(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve secret; this should not happen. Cause: %w", err)
 	}
@@ -119,14 +120,14 @@ func (ssp *SharedSecretProcessor) verifyAttestationAndEncryptSecret(att *common.
 }
 
 // storeAttestation stores the attested keys of other nodes so we can decrypt their rollups
-func (ssp *SharedSecretProcessor) storeAttestation(att *common.AttestationReport) error {
+func (ssp *SharedSecretProcessor) storeAttestation(ctx context.Context, att *common.AttestationReport) error {
 	ssp.logger.Info(fmt.Sprintf("Store attestation. Owner: %s", att.EnclaveID))
 	// Store the attestation
 	key, err := gethcrypto.DecompressPubkey(att.PubKey)
 	if err != nil {
 		return fmt.Errorf("failed to parse public key %w", err)
 	}
-	err = ssp.storage.StoreAttestedKey(att.EnclaveID, key)
+	err = ssp.storage.StoreAttestedKey(ctx, att.EnclaveID, key)
 	if err != nil {
 		return fmt.Errorf("could not store attested key. Cause: %w", err)
 	}

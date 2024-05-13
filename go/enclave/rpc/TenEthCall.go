@@ -1,20 +1,18 @@
 package rpc
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 )
 
 func TenCallValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlock, string], _ *EncryptionManager) error {
-	// Parameters are [TransactionArgs, BlockNumber]
-	if len(reqParams) != 2 {
+	// Parameters are [TransactionArgs, BlockNumber, 2 more which we don't support yet]
+	if len(reqParams) < 2 && len(reqParams) > 4 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
 		return nil
 	}
@@ -36,7 +34,8 @@ func TenCallValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlock, 
 	}
 
 	builder.From = apiArgs.From
-	builder.Param = &CallParamsWithBlock{apiArgs, blkNumber}
+	// todo - support BlockNumberOrHash
+	builder.Param = &CallParamsWithBlock{apiArgs, blkNumber.BlockNumber}
 
 	return nil
 }
@@ -50,7 +49,7 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 
 	apiArgs := builder.Param.callParams
 	blkNumber := builder.Param.block
-	execResult, err := rpc.chain.ObsCall(apiArgs, blkNumber)
+	execResult, err := rpc.chain.ObsCall(builder.ctx, apiArgs, blkNumber)
 	if err != nil {
 		rpc.logger.Debug("Failed eth_call.", log.ErrKey, err)
 
@@ -59,11 +58,6 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 			return err
 		}
 
-		// extract the EVM error
-		evmErr, err := serializeEVMError(err)
-		if err == nil {
-			err = fmt.Errorf(string(evmErr))
-		}
 		builder.Err = err
 		return nil
 	}
@@ -71,27 +65,9 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 	var encodedResult string
 	if len(execResult.ReturnData) != 0 {
 		encodedResult = hexutil.Encode(execResult.ReturnData)
-	}
-	builder.ReturnValue = &encodedResult
-	return nil
-}
-
-func serializeEVMError(err error) ([]byte, error) {
-	var errReturn interface{}
-
-	// check if it's a serialized error and handle any error wrapping that might have occurred
-	var e *errutil.EVMSerialisableError
-	if ok := errors.As(err, &e); ok {
-		errReturn = e
+		builder.ReturnValue = &encodedResult
 	} else {
-		// it's a generic error, serialise it
-		errReturn = &errutil.EVMSerialisableError{Err: err.Error()}
+		builder.ReturnValue = nil
 	}
-
-	// serialise the error object returned by the evm into a json
-	errSerializedBytes, marshallErr := json.Marshal(errReturn)
-	if marshallErr != nil {
-		return nil, marshallErr
-	}
-	return errSerializedBytes, nil
+	return nil
 }

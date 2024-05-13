@@ -244,18 +244,18 @@ func (e *gethRPCClient) FetchLastBatchSeqNo(address gethcommon.Address) (*big.In
 	return contract.LastBatchSeqNo(&bind.CallOpts{})
 }
 
-// PrepareTransactionToSend takes a txData type and overrides the From, Nonce, Gas and Gas Price field with current values
-func (e *gethRPCClient) PrepareTransactionToSend(txData types.TxData, from gethcommon.Address, nonce uint64) (types.TxData, error) {
-	return e.PrepareTransactionToRetry(txData, from, nonce, 0)
+// PrepareTransactionToSend takes a txData type and overrides the From, Gas and Gas Price field with current values
+func (e *gethRPCClient) PrepareTransactionToSend(ctx context.Context, txData types.TxData, from gethcommon.Address) (types.TxData, error) {
+	return e.PrepareTransactionToRetry(ctx, txData, from, 0)
 }
 
-// PrepareTransactionToRetry takes a txData type and overrides the From, Nonce, Gas and Gas Price field with current values
+// PrepareTransactionToRetry takes a txData type and overrides the From, Gas and Gas Price field with current values
 // it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
-func (e *gethRPCClient) PrepareTransactionToRetry(txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int) (types.TxData, error) {
+func (e *gethRPCClient) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, retryNumber int) (types.TxData, error) {
 	unEstimatedTx := types.NewTx(txData)
-	gasPrice, err := e.EthClient().SuggestGasPrice(context.Background())
+	gasPrice, err := e.EthClient().SuggestGasPrice(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not suggest gas price - %w", err)
 	}
 
 	// it should never happen but to avoid any risk of repeated price increases we cap the possible retry price bumps to 5
@@ -269,14 +269,20 @@ func (e *gethRPCClient) PrepareTransactionToRetry(txData types.TxData, from geth
 	// prices aren't big enough for float error to matter
 	retryPrice, _ := retryPriceFloat.Int(nil)
 
-	gasLimit, err := e.EthClient().EstimateGas(context.Background(), ethereum.CallMsg{
+	gasLimit, err := e.EthClient().EstimateGas(ctx, ethereum.CallMsg{
 		From:  from,
 		To:    unEstimatedTx.To(),
 		Value: unEstimatedTx.Value(),
 		Data:  unEstimatedTx.Data(),
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not estimate gas - %w", err)
+	}
+
+	// we fetch the current nonce on every retry to avoid any risk of nonce reuse/conflicts
+	nonce, err := e.EthClient().PendingNonceAt(ctx, from)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch nonce - %w", err)
 	}
 
 	return &types.LegacyTx{

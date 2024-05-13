@@ -61,28 +61,12 @@ func awaitHealthStatus(rpcAddress string, timeout time.Duration) error {
 	}, retry.NewTimeoutStrategy(timeout, 200*time.Millisecond))
 }
 
-func LocalDevNetwork(opts ...LocalNetworkOption) networktest.Environment {
-	config := &LocalNetworkConfig{}
-	for _, opt := range opts {
-		opt(config)
-	}
-	return &devNetworkEnv{inMemDevNetwork: devnetwork.DefaultDevNetwork(config.TenGatewayEnabled)}
+func LocalDevNetwork(opts ...devnetwork.TenConfigOption) networktest.Environment {
+	return &devNetworkEnv{inMemDevNetwork: devnetwork.LocalDevNetwork(opts...)}
 }
 
 // LocalNetworkLiveL1 creates a local network that points to a live running L1.
 // Note: seqWallet and validatorWallets need funds. seqWallet is used to deploy the L1 contracts
 func LocalNetworkLiveL1(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet, l1RPCURLs []string) networktest.Environment {
 	return &devNetworkEnv{inMemDevNetwork: devnetwork.LiveL1DevNetwork(seqWallet, validatorWallets, l1RPCURLs)}
-}
-
-type LocalNetworkConfig struct {
-	TenGatewayEnabled bool
-}
-
-type LocalNetworkOption func(*LocalNetworkConfig)
-
-func WithTenGateway() LocalNetworkOption {
-	return func(c *LocalNetworkConfig) {
-		c.TenGatewayEnabled = true
-	}
 }

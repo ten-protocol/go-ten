@@ -2,8 +2,11 @@ package testlog
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
+
+	"github.com/ten-protocol/go-ten/lib/gethfork/debug"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 
@@ -28,7 +31,7 @@ type Cfg struct {
 	LogDir      string // directory for the log file
 	TestType    string // type of test (comes before timestamp in filename so sorted file list will block these together)
 	TestSubtype string // test subtype (comes after timestamp in filename so sorted file list will show latest of different subtypes together)
-	LogLevel    gethlog.Lvl
+	LogLevel    slog.Level
 }
 
 // Setup will direct logs to a timestamped log file with a standard naming pattern, useful for simulations etc.
@@ -44,8 +47,12 @@ func Setup(cfg *Cfg) *os.File {
 		panic(err)
 	}
 	logFile = f.Name()
-	// hardcode geth log level to error only
-	gethlog.Root().SetHandler(gethlog.LvlFilterHandler(cfg.LogLevel, gethlog.StreamHandler(f, log.TenLogFormat())))
-	testlog = gethlog.Root().New(log.CmpKey, log.TestLogCmp)
+
+	err = debug.Setup("terminal", logFile, false, 10000000, 0, 0, false, false, cfg.LogLevel, "")
+	if err != nil {
+		panic(err)
+	}
+
+	testlog = gethlog.New(log.CmpKey, log.TestLogCmp)
 	return f
 }

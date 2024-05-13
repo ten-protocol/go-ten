@@ -5,8 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -25,40 +23,64 @@ type L1Config struct {
 	AvgBlockDuration   time.Duration
 }
 
-// ObscuroConfig tells the L2 node operators how to configure the nodes
-type ObscuroConfig struct {
+type TenConfigOption func(*TenConfig) // option pattern - typically used as overrides to DefaultTenConfig
+
+// TenConfig describes the L2 network configuration we want to spin up
+type TenConfig struct {
 	PortStart         int
 	InitNumValidators int
 	BatchInterval     time.Duration
 	RollupInterval    time.Duration
-	L1BlockTime       time.Duration
-	SequencerID       common.Address
+	NumNodes          int
+	TenGatewayEnabled bool
+	NumSeqEnclaves    int
+
+	L1BlockTime time.Duration
 }
 
-// DefaultDevNetwork provides an off-the-shelf default config for a sim network
-func DefaultDevNetwork(tenGateway bool) *InMemDevNetwork {
-	numNodes := 4 // Default sim currently uses 4 L1 nodes. Obscuro nodes: 1 seq, 3 validators
-	networkWallets := params.NewSimWallets(0, numNodes, integration.EthereumChainID, integration.TenChainID)
+func DefaultTenConfig() *TenConfig {
+	return &TenConfig{
+		PortStart:         integration.StartPortNetworkTests,
+		NumNodes:          4,
+		InitNumValidators: 3,
+		BatchInterval:     1 * time.Second,
+		RollupInterval:    10 * time.Second,
+		TenGatewayEnabled: false,
+		NumSeqEnclaves:    1, // increase for HA simulation
+	}
+}
+
+func LocalDevNetwork(tenConfigOpts ...TenConfigOption) *InMemDevNetwork {
+	tenConfig := DefaultTenConfig()
+	for _, opt := range tenConfigOpts {
+		opt(tenConfig)
+	}
+
+	// 1 wallet per node
+	nodeOpL1Wallets := params.NewSimWallets(0, tenConfig.NumNodes, integration.EthereumChainID, integration.TenChainID)
 	l1Config := &L1Config{
 		PortStart:        integration.StartPortNetworkTests,
-		NumNodes:         4,
+		NumNodes:         tenConfig.NumNodes, // we'll have 1 L1 node per L2 node
 		AvgBlockDuration: 1 * time.Second,
 	}
-	l1Network := NewGethNetwork(networkWallets, l1Config)
+	l1Network := NewGethNetwork(nodeOpL1Wallets, l1Config)
+
+	return NewInMemDevNetwork(tenConfig, l1Network, nodeOpL1Wallets)
+}
+
+// NewInMemDevNetwork provides an off-the-shelf default config for a sim network
+// tenConfig - the requirements of the L2 network we are spinning up
+// l1Network - the L1 network we are running the L2 network on
+// nodeOpL1Wallets - the funded wallets for the node operators on the L1 network (expecting 1 per node)
+func NewInMemDevNetwork(tenConfig *TenConfig, l1Network L1Network, nodeOpL1Wallets *params.SimWallets) *InMemDevNetwork {
+	// update tenConfig references to be consistent with the L1 setup
+	tenConfig.L1BlockTime = l1Network.GetBlockTime()
 
 	return &InMemDevNetwork{
-		networkWallets: networkWallets,
+		networkWallets: nodeOpL1Wallets,
 		l1Network:      l1Network,
-		obscuroConfig: ObscuroConfig{
-			PortStart:         integration.StartPortNetworkTests,
-			InitNumValidators: 3,
-			BatchInterval:     1 * time.Second,
-			RollupInterval:    10 * time.Second,
-			L1BlockTime:       15 * time.Second,
-			SequencerID:       networkWallets.NodeWallets[0].Address(),
-		},
-		tenGatewayEnabled: tenGateway,
-		faucetLock:        sync.Mutex{},
+		tenConfig:      tenConfig,
+		faucetLock:     sync.Mutex{},
 	}
 }
 
@@ -91,13 +113,18 @@ func LiveL1DevNetwork(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet,
 		logger:         testlog.Logger(),
 		networkWallets: networkWallets,
 		l1Network:      l1Network,
-		obscuroConfig: ObscuroConfig{
-			PortStart:         integration.StartPortNetworkTests,
-			InitNumValidators: len(validatorWallets),
-			BatchInterval:     5 * time.Second,
-			RollupInterval:    3 * time.Minute,
-			L1BlockTime:       15 * time.Second,
-			SequencerID:       seqWallet.Address(),
-		},
+		tenConfig:      DefaultTenConfig(),
+	}
+}
+
+func WithGateway() TenConfigOption {
+	return func(tc *TenConfig) {
+		tc.TenGatewayEnabled = true
+	}
+}
+
+func WithHASequencer() TenConfigOption {
+	return func(tc *TenConfig) {
+		tc.NumSeqEnclaves = 2
 	}
 }

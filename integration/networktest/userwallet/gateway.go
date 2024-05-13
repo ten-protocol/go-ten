@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
-	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
 )
@@ -21,8 +20,9 @@ import (
 type GatewayUser struct {
 	wal wallet.Wallet
 
-	gwLib  *lib.TGLib // TenGateway utility
-	client *ethclient.Client
+	gwLib    *lib.TGLib // TenGateway utility
+	client   *ethclient.Client
+	wsClient *ethclient.Client // lazily initialized websocket client
 
 	// state managed by the wallet
 	nonce uint64
@@ -30,8 +30,8 @@ type GatewayUser struct {
 	logger gethlog.Logger
 }
 
-func NewGatewayUser(wal wallet.Wallet, gatewayURL string, logger gethlog.Logger) (*GatewayUser, error) {
-	gwLib := lib.NewTenGatewayLibrary(gatewayURL, "") // not providing wsURL for now, add if we need it
+func NewGatewayUser(wal wallet.Wallet, gatewayURL string, gatewayWSURL string, logger gethlog.Logger) (*GatewayUser, error) {
+	gwLib := lib.NewTenGatewayLibrary(gatewayURL, gatewayWSURL)
 
 	err := gwLib.Join()
 	if err != nil {
@@ -95,7 +95,7 @@ func (g *GatewayUser) AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash)
 	var err error
 	err = retry.Do(func() error {
 		receipt, err = g.client.TransactionReceipt(ctx, *txHash)
-		if !errors.Is(err, rpc.ErrNilResponse) {
+		if err != nil && !errors.Is(err, ethereum.NotFound) {
 			return retry.FailFast(err)
 		}
 		return err
@@ -112,4 +112,15 @@ func (g *GatewayUser) NativeBalance(ctx context.Context) (*big.Int, error) {
 
 func (g *GatewayUser) Wallet() wallet.Wallet {
 	return g.wal
+}
+
+func (g *GatewayUser) WSClient() (*ethclient.Client, error) {
+	if g.wsClient == nil {
+		var err error
+		g.wsClient, err = ethclient.Dial(g.gwLib.WS())
+		if err != nil {
+			return nil, fmt.Errorf("failed to dial TenGateway WS: %w", err)
+		}
+	}
+	return g.wsClient, nil
 }

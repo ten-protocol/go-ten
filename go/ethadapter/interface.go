@@ -1,7 +1,7 @@
 package ethadapter
 
 import (
-	"errors"
+	"context"
 	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -12,9 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
-
-// ErrSubscriptionNotSupported return from BlockListener subscription if client doesn't support streaming (in-mem simulation)
-var ErrSubscriptionNotSupported = errors.New("block subscription not supported")
 
 // EthClient defines the interface for RPC communications with the ethereum nodes
 // todo (#1617) - some of these methods are composed calls that should be decoupled in the future (ie: BlocksBetween or IsBlockAncestor)
@@ -37,8 +34,8 @@ type EthClient interface {
 	CallContract(msg ethereum.CallMsg) ([]byte, error) // Runs the provided call message on the latest block.
 
 	// PrepareTransactionToSend updates the tx with from address, current nonce and current estimates for the gas and the gas price
-	PrepareTransactionToSend(txData types.TxData, from gethcommon.Address, nonce uint64) (types.TxData, error)
-	PrepareTransactionToRetry(txData types.TxData, from gethcommon.Address, nonce uint64, retries int) (types.TxData, error)
+	PrepareTransactionToSend(ctx context.Context, txData types.TxData, from gethcommon.Address) (types.TxData, error)
+	PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, retries int) (types.TxData, error)
 
 	FetchLastBatchSeqNo(address gethcommon.Address) (*big.Int, error)
 

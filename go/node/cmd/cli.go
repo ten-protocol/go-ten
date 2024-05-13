@@ -29,7 +29,7 @@ type NodeConfigCLI struct {
 	enclaveWSPort           int
 	privateKey              string
 	hostID                  string
-	sequencerID             string
+	sequencerP2PAddr        string
 	managementContractAddr  string
 	messageBusContractAddr  string
 	l1Start                 string
@@ -45,6 +45,7 @@ type NodeConfigCLI struct {
 	maxBatchInterval        string // format like 500ms or 2s (any time parsable by time.ParseDuration())
 	rollupInterval          string // format like 500ms or 2s (any time parsable by time.ParseDuration())
 	l1ChainID               int
+	postgresDBHost          string
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
@@ -68,7 +69,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	enclaveWSPort := flag.Int(enclaveWSPortFlag, 11001, flagUsageMap[enclaveWSPortFlag])
 	privateKey := flag.String(privateKeyFlag, "", flagUsageMap[privateKeyFlag])
 	hostID := flag.String(hostIDFlag, "", flagUsageMap[hostIDFlag])
-	sequencerID := flag.String(sequencerIDFlag, "", flagUsageMap[sequencerIDFlag])
+	sequencerP2PAddr := flag.String(sequencerP2PAddrFlag, "", flagUsageMap[sequencerP2PAddrFlag])
 	managementContractAddr := flag.String(managementContractAddrFlag, "", flagUsageMap[managementContractAddrFlag])
 	messageBusContractAddr := flag.String(messageBusContractAddrFlag, "", flagUsageMap[messageBusContractAddrFlag])
 	l1Start := flag.String(l1StartBlockFlag, "", flagUsageMap[l1StartBlockFlag])
@@ -81,6 +82,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	maxBatchInterval := flag.String(maxBatchIntervalFlag, "1s", flagUsageMap[maxBatchIntervalFlag])
 	rollupInterval := flag.String(rollupIntervalFlag, "3s", flagUsageMap[rollupIntervalFlag])
 	l1ChainID := flag.Int(l1ChainIDFlag, 1337, flagUsageMap[l1ChainIDFlag])
+	postgresDBHost := flag.String(postgresDBHostFlag, "dd", flagUsageMap[postgresDBHostFlag])
 
 	flag.Parse()
 	cfg.nodeName = *nodeName
@@ -97,7 +99,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.enclaveWSPort = *enclaveWSPort
 	cfg.privateKey = *privateKey
 	cfg.hostID = *hostID
-	cfg.sequencerID = *sequencerID
+	cfg.sequencerP2PAddr = *sequencerP2PAddr
 	cfg.managementContractAddr = *managementContractAddr
 	cfg.messageBusContractAddr = *messageBusContractAddr
 	cfg.l1Start = *l1Start
@@ -112,6 +114,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.maxBatchInterval = *maxBatchInterval
 	cfg.rollupInterval = *rollupInterval
 	cfg.l1ChainID = *l1ChainID
+	cfg.postgresDBHost = *postgresDBHost
 
 	cfg.nodeAction = flag.Arg(0)
 	if !validateNodeAction(cfg.nodeAction) {

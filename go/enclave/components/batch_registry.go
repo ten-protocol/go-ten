@@ -1,24 +1,27 @@
 package components
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/core/state"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common/async"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/limiters"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 type batchRegistry struct {
@@ -34,7 +37,7 @@ type batchRegistry struct {
 
 func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegistry {
 	var headBatchSeq *big.Int
-	headBatch, err := storage.FetchHeadBatch()
+	headBatch, err := storage.FetchHeadBatch(context.Background())
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			headBatchSeq = nil
@@ -45,6 +48,7 @@ func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegis
 	} else {
 		headBatchSeq = headBatch.SeqNo()
 	}
+
 	return &batchRegistry{
 		storage:           storage,
 		headBatchSeq:      headBatchSeq,
@@ -71,6 +75,16 @@ func (br *batchRegistry) UnsubscribeFromBatches() {
 	br.batchesCallback = nil
 }
 
+func (br *batchRegistry) OnL1Reorg(_ *BlockIngestionType) {
+	// refresh the cached head batch from the database because there was an L1 reorg
+	headBatch, err := br.storage.FetchHeadBatch(context.Background())
+	if err != nil {
+		br.logger.Error("Could not fetch head batch", log.ErrKey, err)
+		return
+	}
+	br.headBatchSeq = headBatch.SeqNo()
+}
+
 func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Receipts) {
 	br.callbackMutex.RLock()
 	defer br.callbackMutex.RUnlock()
@@ -89,9 +103,9 @@ func (br *batchRegistry) HasGenesisBatch() (bool, error) {
 	return br.headBatchSeq != nil, nil
 }
 
-func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error) {
+func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error) {
 	// sanity check
-	headBatch, err := br.storage.FetchBatchBySeqNo(br.headBatchSeq.Uint64())
+	headBatch, err := br.storage.FetchBatchBySeqNo(ctx, br.headBatchSeq.Uint64())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -106,7 +120,7 @@ func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, ro
 	currentBatchSeq := batchSeqNo
 	var currentBlock *types.Block
 	for currentBatchSeq <= headBatch.SeqNo().Uint64() {
-		batch, err := br.storage.FetchBatchBySeqNo(currentBatchSeq)
+		batch, err := br.storage.FetchBatchBySeqNo(ctx, currentBatchSeq)
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not retrieve batch by sequence number %d. Cause: %w", currentBatchSeq, err)
 		}
@@ -114,7 +128,7 @@ func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, ro
 		// check the block height
 		// if it's the same block as the previous batch there is no reason to check
 		if currentBlock == nil || currentBlock.Hash() != batch.Header.L1Proof {
-			block, err := br.storage.FetchBlock(batch.Header.L1Proof)
+			block, err := br.storage.FetchBlock(ctx, batch.Header.L1Proof)
 			if err != nil {
 				return nil, nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 			}
@@ -153,15 +167,26 @@ func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, ro
 	return resultBatches, resultBlocks, nil
 }
 
-func (br *batchRegistry) GetBatchStateAtHeight(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
+func (br *batchRegistry) GetBatchState(ctx context.Context, hash *common.L2BatchHash) (*state.StateDB, error) {
+	batch, err := br.storage.FetchBatch(ctx, *hash)
+	if err != nil {
+		return nil, err
+	}
+	return getBatchState(ctx, br.storage, batch)
+}
+
+func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
 	// We retrieve the batch of interest.
-	batch, err := br.GetBatchAtHeight(*blockNumber)
+	batch, err := br.GetBatchAtHeight(ctx, *blockNumber)
 	if err != nil {
 		return nil, err
 	}
 
-	// We get that of the chain at that height
-	blockchainState, err := br.storage.CreateStateDB(batch.Hash())
+	return getBatchState(ctx, br.storage, batch)
+}
+
+func getBatchState(ctx context.Context, storage storage.Storage, batch *core.Batch) (*state.StateDB, error) {
+	blockchainState, err := storage.CreateStateDB(ctx, batch.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
@@ -173,27 +198,27 @@ func (br *batchRegistry) GetBatchStateAtHeight(blockNumber *gethrpc.BlockNumber)
 	return blockchainState, err
 }
 
-func (br *batchRegistry) GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Batch, error) {
+func (br *batchRegistry) GetBatchAtHeight(ctx context.Context, height gethrpc.BlockNumber) (*core.Batch, error) {
 	if br.headBatchSeq == nil {
 		return nil, fmt.Errorf("chain not initialised")
 	}
 	var batch *core.Batch
 	switch height {
 	case gethrpc.EarliestBlockNumber:
-		genesisBatch, err := br.storage.FetchBatchByHeight(0)
+		genesisBatch, err := br.storage.FetchBatchByHeight(ctx, 0)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 		}
 		batch = genesisBatch
 	// note: our API currently treats all these block statuses the same for obscuro batches
 	case gethrpc.SafeBlockNumber, gethrpc.FinalizedBlockNumber, gethrpc.LatestBlockNumber, gethrpc.PendingBlockNumber:
-		headBatch, err := br.storage.FetchBatchBySeqNo(br.headBatchSeq.Uint64())
+		headBatch, err := br.storage.FetchBatchBySeqNo(ctx, br.headBatchSeq.Uint64())
 		if err != nil {
 			return nil, fmt.Errorf("batch with requested height %d was not found. Cause: %w", height, err)
 		}
 		batch = headBatch
 	default:
-		maybeBatch, err := br.storage.FetchBatchByHeight(uint64(height))
+		maybeBatch, err := br.storage.FetchBatchByHeight(ctx, uint64(height))
 		if err != nil {
 			return nil, fmt.Errorf("batch with requested height %d could not be retrieved. Cause: %w", height, err)
 		}

@@ -1,6 +1,7 @@
 package ethereummock
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -106,7 +107,7 @@ func printBlock(b *types.Block, m *Node) string {
 			txs = append(txs, fmt.Sprintf("deposit(%d=%d)", to, l1Tx.Amount))
 		}
 	}
-	p, err := m.Resolver.FetchBlock(b.ParentHash())
+	p, err := m.Resolver.FetchBlock(context.Background(), b.ParentHash())
 	if err != nil {
 		testlog.Logger().Crit("Should not happen. Could not retrieve parent", log.ErrKey, err)
 	}

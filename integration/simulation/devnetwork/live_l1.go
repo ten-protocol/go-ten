@@ -13,6 +13,7 @@ import (
 type liveL1Network struct {
 	deployWallet wallet.Wallet // wallet that can deploy to the live L1 network
 	rpcURLs      []string
+	blockTime    time.Duration // expected interval between blocks
 
 	clients          []ethadapter.EthClient
 	seqWallet        wallet.Wallet
@@ -49,6 +50,10 @@ func (l *liveL1Network) NumNodes() int {
 
 func (l *liveL1Network) GetClient(i int) ethadapter.EthClient {
 	return l.clients[i%len(l.clients)]
+}
+
+func (l *liveL1Network) GetBlockTime() time.Duration {
+	return l.blockTime
 }
 
 func (l *liveL1Network) prepareClients() {

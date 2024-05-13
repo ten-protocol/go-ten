@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
+
+	"github.com/ten-protocol/go-ten/go/config"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 
@@ -21,7 +22,7 @@ import (
 )
 
 const (
-	tempDirName = "obscuro-persistence"
+	tempDirName = "ten-persistence"
 	initFile    = "001_init.sql"
 )
 
@@ -30,7 +31,8 @@ var sqlFiles embed.FS
 
 // CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
 // otherwise dbPath is a filepath for the sqldb file, allows for tests that care about persistence between restarts
-func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
+// We create 2 sqlite instances. One R/W with a single connection, and a R/O with multiple connections
+func CreateTemporarySQLiteDB(dbPath string, dbOptions string, config config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	initialsed := false
 
 	if dbPath == "" {
@@ -41,42 +43,56 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Log
 		dbPath = tempPath
 	}
 
-	inMem := strings.Contains(dbOptions, "mode=memory")
-	description := "in memory"
-	if !inMem {
-		_, err := os.Stat(dbPath)
-		if err == nil {
-			description = "existing"
-			initialsed = true
-		} else {
-			description = "new"
+	var description string
+
+	_, err := os.Stat(dbPath)
+	if err == nil {
+		description = "existing"
+		initialsed = true
+	} else {
+		myfile, e := os.Create(dbPath)
+		if e != nil {
+			logger.Crit("could not create temp sqlite DB file - %w", e)
 		}
+		myfile.Close()
+
+		description = "new"
 	}
 
-	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?%s", dbPath, dbOptions))
+	path := fmt.Sprintf("file:%s?mode=rw&%s", dbPath, dbOptions)
+	logger.Info("Connect to sqlite", "path", path)
+	rwdb, err := sql.Open("sqlite3", path)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
 
 	// Sqlite fails with table locks when there are multiple connections
-	db.SetMaxOpenConns(1)
+	rwdb.SetMaxOpenConns(1)
 
 	if !initialsed {
-		err = initialiseDB(db)
+		err = initialiseDB(rwdb)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// perform db migration
-	err = migration.DBMigration(db, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
+	err = migration.DBMigration(rwdb, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
 	if err != nil {
 		return nil, err
 	}
 
 	logger.Info(fmt.Sprintf("Opened %s sqlite db file at %s", description, dbPath))
 
-	return enclavedb.NewEnclaveDB(db, logger)
+	roPath := fmt.Sprintf("file:%s?mode=ro&%s", dbPath, dbOptions)
+	logger.Info("Connect to sqlite", "ro_path", roPath)
+	rodb, err := sql.Open("sqlite3", roPath)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
+	}
+	rodb.SetMaxOpenConns(10)
+
+	return enclavedb.NewEnclaveDB(rodb, rwdb, config, logger)
 }
 
 func initialiseDB(db *sql.DB) error {
@@ -84,10 +100,18 @@ func initialiseDB(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-
-	_, err = db.Exec(string(sqlInitFile))
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to initialise sqlite  %w", err)
+	}
+	defer tx.Rollback()
+	_, err = tx.Exec(string(sqlInitFile))
 	if err != nil {
 		return fmt.Errorf("failed to initialise sqlite %s - %w", sqlInitFile, err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
 	}
 	return nil
 }

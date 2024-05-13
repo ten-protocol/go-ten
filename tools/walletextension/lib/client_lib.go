@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ten-protocol/go-ten/integration"
 
@@ -33,7 +33,11 @@ func NewTenGatewayLibrary(httpURL, wsURL string) *TGLib {
 }
 
 func (o *TGLib) UserID() string {
-	return string(o.userID)
+	return hexutils.BytesToHex(o.userID)
+}
+
+func (o *TGLib) UserIDBytes() []byte {
+	return o.userID
 }
 
 func (o *TGLib) Join() error {
@@ -42,21 +46,22 @@ func (o *TGLib) Join() error {
 	if err != nil || statusCode != 200 {
 		return fmt.Errorf(fmt.Sprintf("Failed to get userID. Status code: %d, err: %s", statusCode, err))
 	}
-	o.userID = userID
+	o.userID = hexutils.HexToBytes(string(userID))
 	return nil
 }
 
 func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	rawMessageOptions, err := viewingkey.GenerateAuthenticationEIP712RawDataOptions(string(o.userID), integration.TenChainID)
+	message, err := viewingkey.GenerateMessage(o.userID, integration.TenChainID, 1, viewingkey.EIP712Signature)
 	if err != nil {
 		return err
 	}
-	if len(rawMessageOptions) == 0 {
-		return fmt.Errorf("GenerateAuthenticationEIP712RawDataOptions returned 0 options")
+
+	messageHash, err := viewingkey.GetMessageHash(message, viewingkey.EIP712Signature)
+	if err != nil {
+		return fmt.Errorf("failed to get message hash: %w", err)
 	}
 
-	messageHash := crypto.Keccak256(rawMessageOptions[0])
 	sig, err := crypto.Sign(messageHash, pk)
 	if err != nil {
 		return fmt.Errorf("failed to sign message: %w", err)
@@ -69,7 +74,7 @@ func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		http.MethodPost,
-		o.httpURL+"/v1/authenticate/?token="+string(o.userID),
+		o.httpURL+"/v1/authenticate/?token=0x"+hexutils.BytesToHex(o.userID),
 		strings.NewReader(payload),
 	)
 	if err != nil {
@@ -97,8 +102,15 @@ func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 
 func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	personalSignMessage := viewingkey.GeneratePersonalSignMessage(string(o.userID), integration.TenChainID, 1)
-	messageHash := accounts.TextHash([]byte(personalSignMessage))
+	message, err := viewingkey.GenerateMessage(o.userID, integration.TenChainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign)
+	if err != nil {
+		return err
+	}
+
+	messageHash, err := viewingkey.GetMessageHash(message, viewingkey.PersonalSign)
+	if err != nil {
+		return fmt.Errorf("failed to get message hash: %w", err)
+	}
 
 	sig, err := crypto.Sign(messageHash, pk)
 	if err != nil {
@@ -112,7 +124,7 @@ func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommo
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		http.MethodPost,
-		o.httpURL+"/v1/authenticate/?token="+string(o.userID),
+		o.httpURL+"/v1/authenticate/?token=0x"+hexutils.BytesToHex(o.userID),
 		strings.NewReader(payload),
 	)
 	if err != nil {
@@ -139,9 +151,9 @@ func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommo
 }
 
 func (o *TGLib) HTTP() string {
-	return fmt.Sprintf("%s/v1/?token=%s", o.httpURL, o.userID)
+	return fmt.Sprintf("%s/v1/?token=%s", o.httpURL, hexutils.BytesToHex(o.userID))
 }
 
 func (o *TGLib) WS() string {
-	return fmt.Sprintf("%s/v1/?token=%s", o.wsURL, o.userID)
+	return fmt.Sprintf("%s/v1/?token=%s", o.wsURL, hexutils.BytesToHex(o.userID))
 }

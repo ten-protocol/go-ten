@@ -1,6 +1,7 @@
 package host
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/host/enclave"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/naoina/toml"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -20,10 +20,11 @@ import (
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
-	"github.com/ten-protocol/go-ten/go/host/db"
 	"github.com/ten-protocol/go-ten/go/host/events"
+	"github.com/ten-protocol/go-ten/go/host/storage"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethmetrics "github.com/ethereum/go-ethereum/metrics"
@@ -39,7 +40,7 @@ type host struct {
 	// ignore incoming requests
 	stopControl *stopcontrol.StopControl
 
-	db *db.DB // Stores the host's publicly-available data
+	storage storage.Storage // Stores the host's publicly-available data
 
 	logger gethlog.Logger
 
@@ -47,13 +48,19 @@ type host struct {
 
 	// l2MessageBusAddress is fetched from the enclave but cache it here because it never changes
 	l2MessageBusAddress *gethcommon.Address
+	newHeads            chan *common.BatchHeader
 }
 
-func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
-	database, err := db.CreateDBFromConfig(config, regMetrics, logger)
-	if err != nil {
-		logger.Crit("unable to create database for host", log.ErrKey, err)
-	}
+type batchListener struct {
+	newHeads chan *common.BatchHeader
+}
+
+func (bl batchListener) HandleBatch(batch *common.ExtBatch) {
+	bl.newHeads <- batch.Header
+}
+
+func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
+	hostStorage := storage.NewHostStorageFromConfig(config, logger)
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
 		// config
@@ -64,19 +71,33 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		services: hostServices,
 
 		// Initialize the host DB
-		db: database,
+		storage: hostStorage,
 
 		logger:         logger,
 		metricRegistry: regMetrics,
 
 		stopControl: stopcontrol.New(),
+		newHeads:    make(chan *common.BatchHeader),
 	}
 
-	enclGuardian := enclave.NewGuardian(config, hostIdentity, hostServices, enclaveClient, database, host.stopControl, logger)
-	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardian, logger)
-	l2Repo := l2.NewBatchRepository(config, hostServices, database, logger)
+	enclGuardians := make([]*enclave.Guardian, 0, len(enclaveClients))
+	for i, enclClient := range enclaveClients {
+		// clone the hostIdentity data for each enclave
+		enclHostID := hostIdentity
+		if i > 0 {
+			// only the first enclave can be the sequencer for now, others behave as read-only validators
+			enclHostID.IsSequencer = false
+			enclHostID.IsGenesis = false
+		}
+		enclGuardian := enclave.NewGuardian(config, enclHostID, hostServices, enclClient, hostStorage, host.stopControl, logger)
+		enclGuardians = append(enclGuardians, enclGuardian)
+	}
+
+	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardians, logger)
+	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
 
+	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
 	hostServices.RegisterService(hostcommon.P2PName, p2p)
 	hostServices.RegisterService(hostcommon.L1BlockRepositoryName, l1Repo)
 	maxWaitForL1Receipt := 6 * config.L1BlockTime   // wait ~10 blocks to see if tx gets published before retrying
@@ -131,29 +152,25 @@ func (h *host) Config() *config.HostConfig {
 	return h.config
 }
 
-func (h *host) DB() *db.DB {
-	return h.db
-}
-
 func (h *host) EnclaveClient() common.Enclave {
 	return h.services.Enclaves().GetEnclaveClient()
 }
 
-func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
+func (h *host) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
 	if h.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitAndBroadcastTx with the host stopping"))
 	}
-	return h.services.Enclaves().SubmitAndBroadcastTx(encryptedParams)
+	return h.services.Enclaves().SubmitAndBroadcastTx(ctx, encryptedParams)
 }
 
-func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
+func (h *host) SubscribeLogs(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
 	if h.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested Subscribe with the host stopping"))
 	}
 	return h.services.LogSubs().Subscribe(id, encryptedLogSubscription, matchedLogsCh)
 }
 
-func (h *host) Unsubscribe(id rpc.ID) {
+func (h *host) UnsubscribeLogs(id rpc.ID) {
 	if h.stopControl.IsStopping() {
 		h.logger.Debug("requested Subscribe with the host stopping")
 	}
@@ -173,7 +190,7 @@ func (h *host) Stop() error {
 		}
 	}
 
-	if err := h.db.Stop(); err != nil {
+	if err := h.storage.Close(); err != nil {
 		h.logger.Error("Failed to stop DB", log.ErrKey, err)
 	}
 
@@ -182,7 +199,7 @@ func (h *host) Stop() error {
 }
 
 // HealthCheck returns whether the host, enclave and DB are healthy
-func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
+func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error) {
 	if h.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the host stopping"))
 	}
@@ -191,7 +208,7 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 
 	// loop through all registered services and collect their health statuses
 	for name, service := range h.services.All() {
-		status := service.HealthStatus()
+		status := service.HealthStatus(ctx)
 		if !status.OK() {
 			healthErrors = append(healthErrors, fmt.Sprintf("[%s] not healthy - %s", name, status.Message()))
 		}
@@ -206,7 +223,7 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 // ObscuroConfig returns info on the Obscuro network
 func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
 	if h.l2MessageBusAddress == nil {
-		publicCfg, err := h.EnclaveClient().EnclavePublicConfig()
+		publicCfg, err := h.EnclaveClient().EnclavePublicConfig(context.Background())
 		if err != nil {
 			return nil, responses.ToInternalError(fmt.Errorf("unable to get L2 message bus address - %w", err))
 		}
@@ -216,11 +233,18 @@ func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
 		ManagementContractAddress: h.config.ManagementContractAddress,
 		L1StartHash:               h.config.L1StartHash,
 
-		SequencerID:         h.config.SequencerID,
 		MessageBusAddress:   h.config.MessageBusAddress,
 		L2MessageBusAddress: *h.l2MessageBusAddress,
 		ImportantContracts:  h.services.L1Publisher().GetImportantContracts(),
 	}, nil
+}
+
+func (h *host) Storage() storage.Storage {
+	return h.storage
+}
+
+func (h *host) NewHeadsChan() chan *common.BatchHeader {
+	return h.newHeads
 }
 
 // Checks the host config is valid.

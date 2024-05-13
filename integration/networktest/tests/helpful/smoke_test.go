@@ -4,9 +4,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ten-protocol/go-ten/integration/networktest/actions"
-
 	"github.com/ten-protocol/go-ten/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest/actions"
 	"github.com/ten-protocol/go-ten/integration/networktest/env"
 )
 

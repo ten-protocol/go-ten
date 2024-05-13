@@ -70,16 +70,15 @@ func createInMemObscuroNode(
 		HasClientRPCHTTP:          false,
 		P2PPublicAddress:          fmt.Sprintf("%d", id),
 		L1StartHash:               l1StartBlk,
-		SequencerID:               gethcommon.BigToAddress(big.NewInt(0)),
 		ManagementContractAddress: *mgtContractAddress,
 		MessageBusAddress:         l1BusAddress,
 		BatchInterval:             batchInterval,
 		IsInboundP2PDisabled:      incomingP2PDisabled,
 		L1BlockTime:               l1BlockTime,
+		UseInMemoryDB:             true,
 	}
 
 	enclaveConfig := &config.EnclaveConfig{
-		SequencerID:               gethcommon.BigToAddress(big.NewInt(0)),
 		HostID:                    hostConfig.ID,
 		NodeType:                  nodeType,
 		L1ChainID:                 integration.EthereumChainID,
@@ -96,16 +95,17 @@ func createInMemObscuroNode(
 		BaseFee:                   big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
 		GasLocalExecutionCapFlag:  params.MaxGasLimit / 2,
 		GasBatchExecutionLimit:    params.MaxGasLimit / 2,
+		RPCTimeout:                5 * time.Second,
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
-	enclaveClient := enclave.NewEnclave(enclaveConfig, &genesis.TestnetGenesis, mgmtContractLib, enclaveLogger)
+	enclaveClients := []common.Enclave{enclave.NewEnclave(enclaveConfig, &genesis.TestnetGenesis, mgmtContractLib, enclaveLogger)}
 
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 	l1Repo := l1.NewL1Repository(ethClient, ethereummock.MgmtContractAddresses, hostLogger)
-	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Repo, enclaveClient, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
+	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Repo, enclaveClients, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
 
 	return currentContainer
 }

@@ -22,11 +22,6 @@ type ObscuroNoOpConsensusEngine struct {
 	logger gethlog.Logger
 }
 
-func (e *ObscuroNoOpConsensusEngine) Finalize(_ consensus.ChainHeaderReader, _ *types.Header, _ *state.StateDB, _ []*types.Transaction, _ []*types.Header, _ []*types.Withdrawal) {
-	// TODO implement me
-	panic("implement me")
-}
-
 // Author is used to determine where to send the gas collected from the fees.
 func (e *ObscuroNoOpConsensusEngine) Author(_ *types.Header) (common.Address, error) {
 	return PoolAddress, nil
@@ -52,9 +47,12 @@ func (e *ObscuroNoOpConsensusEngine) Prepare(_ consensus.ChainHeaderReader, _ *t
 	return nil
 }
 
-func (e *ObscuroNoOpConsensusEngine) FinalizeAndAssemble(_ consensus.ChainHeaderReader, _ *types.Header, _ *state.StateDB, _ []*types.Transaction,
-	_ []*types.Header, _ []*types.Receipt, _ []*types.Withdrawal,
-) (*types.Block, error) {
+func (e *ObscuroNoOpConsensusEngine) Finalize(_ consensus.ChainHeaderReader, _ *types.Header, _ *state.StateDB, _ *types.Body) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (e *ObscuroNoOpConsensusEngine) FinalizeAndAssemble(_ consensus.ChainHeaderReader, _ *types.Header, _ *state.StateDB, _ *types.Body, _ []*types.Receipt) (*types.Block, error) {
 	e.logger.Crit("noop")
 	return nil, nil //nolint:nilnil
 }

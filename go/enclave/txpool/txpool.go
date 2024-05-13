@@ -55,7 +55,7 @@ func (t *TxPool) Start() error {
 		return fmt.Errorf("tx pool already started")
 	}
 
-	memp, err := gethtxpool.New(t.gasTip, t.Chain, []gethtxpool.SubPool{t.legacyPool})
+	memp, err := gethtxpool.New(t.gasTip.Uint64(), t.Chain, []gethtxpool.SubPool{t.legacyPool})
 	if err != nil {
 		return fmt.Errorf("unable to init geth tx pool - %w", err)
 	}
@@ -67,7 +67,10 @@ func (t *TxPool) Start() error {
 
 // PendingTransactions returns all pending transactions grouped per address and ordered per nonce
 func (t *TxPool) PendingTransactions() map[gethcommon.Address][]*gethtxpool.LazyTransaction {
-	return t.pool.Pending(false)
+	// todo
+	return t.pool.Pending(gethtxpool.PendingFilter{
+		// BaseFee:
+	})
 }
 
 // Add adds a new transactions to the pool

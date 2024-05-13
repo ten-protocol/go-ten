@@ -1,4 +1,4 @@
-package faucet
+package obscurogateway
 
 import (
 	"context"
@@ -22,7 +22,7 @@ type GatewayUser struct {
 	tgClient   *lib.TGLib
 }
 
-func NewUser(wallets []wallet.Wallet, serverAddressHTTP string, serverAddressWS string) (*GatewayUser, error) {
+func NewGatewayUser(wallets []wallet.Wallet, serverAddressHTTP string, serverAddressWS string) (*GatewayUser, error) {
 	ogClient := lib.NewTenGatewayLibrary(serverAddressHTTP, serverAddressWS)
 
 	// automatically join

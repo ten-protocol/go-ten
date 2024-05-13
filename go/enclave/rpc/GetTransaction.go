@@ -32,7 +32,7 @@ func GetTransactionValidate(reqParams []any, builder *CallBuilder[gethcommon.Has
 
 func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
-	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(*builder.Param)
+	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(builder.ctx, *builder.Param)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			builder.Status = NotFound
@@ -56,7 +56,7 @@ func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction]
 	// Unlike in the Geth impl, we hardcode the use of a London signer.
 	// todo (#1553) - once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`
 	signer := types.NewLondonSigner(tx.ChainId())
-	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
+	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, rpc.config.BaseFee, signer)
 	builder.ReturnValue = rpcTx
 	return nil
 }

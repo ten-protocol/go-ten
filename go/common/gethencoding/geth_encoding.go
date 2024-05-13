@@ -1,6 +1,7 @@
 package gethencoding
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -23,11 +24,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 const (
@@ -46,8 +46,8 @@ const (
 
 // EncodingService handles conversion to Geth data structures
 type EncodingService interface {
-	CreateEthHeaderForBatch(h *common.BatchHeader) (*types.Header, error)
-	CreateEthBlockFromBatch(b *core.Batch) (*types.Block, error)
+	CreateEthHeaderForBatch(ctx context.Context, h *common.BatchHeader) (*types.Header, error)
+	CreateEthBlockFromBatch(ctx context.Context, b *core.Batch) (*types.Block, error)
 }
 
 type gethEncodingServiceImpl struct {
@@ -145,33 +145,68 @@ func ExtractAddress(param interface{}) (*gethcommon.Address, error) {
 }
 
 // ExtractOptionalBlockNumber defaults nil or empty block number params to latest block number
-func ExtractOptionalBlockNumber(params []interface{}, idx int) (*gethrpc.BlockNumber, error) {
+func ExtractOptionalBlockNumber(params []interface{}, idx int) (*gethrpc.BlockNumberOrHash, error) {
+	latest := gethrpc.BlockNumberOrHashWithNumber(gethrpc.LatestBlockNumber)
 	if len(params) <= idx {
-		return ExtractBlockNumber("latest")
+		return &latest, nil
 	}
 	if params[idx] == nil {
-		return ExtractBlockNumber("latest")
+		return &latest, nil
 	}
 	if emptyStr, ok := params[idx].(string); ok && len(strings.TrimSpace(emptyStr)) == 0 {
-		return ExtractBlockNumber("latest")
+		return &latest, nil
 	}
 
 	return ExtractBlockNumber(params[idx])
 }
 
-// ExtractBlockNumber returns a gethrpc.BlockNumber given an interface{}, errors if unexpected values are used
-func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumber, error) {
+func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumberOrHash, error) {
 	if param == nil {
-		return nil, errutil.ErrNotFound
+		latest := gethrpc.BlockNumberOrHashWithNumber(gethrpc.LatestBlockNumber)
+		return &latest, nil
 	}
 
-	blockNumber := gethrpc.BlockNumber(0)
-	err := blockNumber.UnmarshalJSON([]byte(param.(string)))
-	if err != nil {
-		return nil, fmt.Errorf("could not parse requested rollup number %s - %w", param.(string), err)
+	// when the param is a single string we try to convert it to a block number
+	blockString, ok := param.(string)
+	if ok {
+		blockNumber := gethrpc.BlockNumber(0)
+		err := blockNumber.UnmarshalJSON([]byte(blockString))
+		if err != nil {
+			return nil, fmt.Errorf("invalid block number %s - %w", blockString, err)
+		}
+		return &gethrpc.BlockNumberOrHash{BlockNumber: &blockNumber}, nil
 	}
 
-	return &blockNumber, err
+	var blockNo *gethrpc.BlockNumber
+	var blockHa *gethcommon.Hash
+	var reqCanon bool
+
+	blockAndHash, ok := param.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("invalid block or hash parameter %s", param.(string))
+	}
+	if blockAndHash["blockNumber"] != nil {
+		b := blockAndHash["blockNumber"].(string)
+		blockNumber := gethrpc.BlockNumber(0)
+		err := blockNumber.UnmarshalJSON([]byte(b))
+		if err != nil {
+			return nil, fmt.Errorf("invalid block number %s - %w", b, err)
+		}
+		blockNo = &blockNumber
+	}
+	if blockAndHash["blockHash"] != nil {
+		bh := blockAndHash["blockHash"].(gethcommon.Hash)
+		blockHa = &bh
+	}
+	if blockAndHash["RequireCanonical"] != nil {
+		reqCanon = blockAndHash["RequireCanonical"].(bool)
+	}
+
+	return &gethrpc.BlockNumberOrHash{
+		BlockNumber:      blockNo,
+		BlockHash:        blockHa,
+		RequireCanonical: reqCanon,
+	}, nil
 }
 
 // ExtractEthCall extracts the eth_call gethapi.TransactionArgs from an interface{}
@@ -273,11 +308,11 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 // CreateEthHeaderForBatch - the EVM requires an Ethereum header.
 // We convert the Batch headers to Ethereum headers to be able to use the Geth EVM.
 // Special care must be taken to maintain a valid chain of these converted headers.
-func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(h *common.BatchHeader) (*types.Header, error) {
+func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(ctx context.Context, h *common.BatchHeader) (*types.Header, error) {
 	// wrap in a caching layer
-	return common.GetCachedValue(enc.gethHeaderCache, enc.logger, h.Hash(), func(a any) (*types.Header, error) {
+	return common.GetCachedValue(ctx, enc.gethHeaderCache, enc.logger, h.Hash(), func(a any) (*types.Header, error) {
 		// deterministically calculate the private randomness that will be exposed to the EVM
-		secret, err := enc.storage.FetchSecret()
+		secret, err := enc.storage.FetchSecret(ctx)
 		if err != nil {
 			enc.logger.Crit("Could not fetch shared secret. Exiting.", log.ErrKey, err)
 		}
@@ -288,7 +323,7 @@ func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(h *common.BatchHeade
 		convertedParentHash := common.GethGenesisParentHash
 
 		if h.SequencerOrderNo.Uint64() > common.L2GenesisSeqNo {
-			convertedParentHash, err = enc.storage.FetchConvertedHash(h.ParentHash)
+			convertedParentHash, err = enc.storage.FetchConvertedHash(ctx, h.ParentHash)
 			if err != nil {
 				enc.logger.Error("Cannot find the converted value for the parent of", log.BatchSeqNoKey, h.SequencerOrderNo)
 				return nil, err
@@ -343,8 +378,8 @@ type localBlock struct {
 	ReceivedFrom interface{}
 }
 
-func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(b *core.Batch) (*types.Block, error) {
-	blockHeader, err := enc.CreateEthHeaderForBatch(b.Header)
+func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(ctx context.Context, b *core.Batch) (*types.Block, error) {
+	blockHeader, err := enc.CreateEthHeaderForBatch(ctx, b.Header)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create eth block from batch - %w", err)
 	}

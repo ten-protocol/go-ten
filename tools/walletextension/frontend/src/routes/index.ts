@@ -8,7 +8,7 @@ export const apiRoutes = {
   authenticate: `/${tenGatewayVersion}/authenticate/`,
   queryAccountToken: `/${tenGatewayVersion}/query/`,
   revoke: `/${tenGatewayVersion}/revoke/`,
-  version: `/version/`,
+  version: `/${tenGatewayVersion}/version/`,
 
   // **** INFO ****
   getHealthStatus: `/${tenGatewayVersion}/network-health/`,

@@ -15,7 +15,7 @@ var (
 	_l1Block124        = gethcommon.BytesToHash([]byte{1, 2, 4})
 	_l2Batch456        = big.NewInt(456)
 	_l2Batch457        = big.NewInt(457)
-	stateTrackerLogger = log.New("stateTracker", int(gethlog.LvlWarn), log.SysOut)
+	stateTrackerLogger = log.New("stateTracker", int(gethlog.LevelWarn), log.SysOut)
 )
 
 func TestStateTracker_InSyncWithL1(t *testing.T) {

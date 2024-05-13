@@ -5,22 +5,24 @@ az vm create \
   --resource-group Testnet \
   --name MakeImageVM \
   --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:20.04.202206220 \
+  --security-type 'Standard' \
   --admin-username obscurouser --admin-password 'PWD'
 
 ssh obscurouser@IPADDRESS
 
 sudo apt-get update \
  && sudo apt-get install -y gcc \
- && sudo snap refresh && sudo snap install --channel=1.20 go --classic \
+ && sudo snap refresh && sudo snap install go --channel=1.21/stable --classic \
  && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh
 
 exit
 
 az vm deallocate --resource-group Testnet --name MakeImageVM
 az vm generalize --resource-group Testnet --name MakeImageVM
+az image delete --resource-group Testnet --name ObscuroConfUbuntu
 az image create --resource-group Testnet --name ObscuroConfUbuntu --source MakeImageVM --hyper-v-generation V2
 
 az vm delete --resource-group Testnet --name MakeImageVM --yes
-az disk delete --resource-group Testnet --name MakeImageVM_OSDisk --yes
-az network nic delete --resource-group Testnet --name MakeImageVM_NIC
+az disk delete --resource-group Testnet --name MakeImageVM_OsDisk-<get uuid from azure> --yes --no-wait
+az network nic delete --resource-group Testnet --name MakeImageVMVMNIC --no-wait
 

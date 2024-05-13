@@ -1,6 +1,7 @@
 package enclavedb
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -13,19 +14,5 @@ import (
 type EnclaveDB interface {
 	ethdb.Database
 	GetSQLDB() *sql.DB
-	NewDBTransaction() *dbTransaction
-	BeginTx() (*sql.Tx, error)
-}
-
-// DBTransaction - represents a database transaction implemented unusually.
-// Typically, databases have a "beginTransaction" command which is also exposed by the db drivers,
-// and then the applications just sends commands on that connection.
-// There are rules as to what data is returned when running selects.
-// This implementation works by collecting all statements, and then writing them and committing in one go
-// todo - does it need to be an ethdb.Batch?
-// todo - can we use the typical
-type DBTransaction interface {
-	ethdb.Batch
-	GetDB() *sql.DB
-	ExecuteSQL(query string, args ...any)
+	NewDBTransaction(ctx context.Context) (*sql.Tx, error)
 }

@@ -1,6 +1,7 @@
 package crosschain
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -33,10 +34,10 @@ func NewBlockMessageExtractor(
 }
 
 func (m *blockMessageExtractor) Enabled() bool {
-	return m.GetBusAddress().Hash().Big().Cmp(gethcommon.Big0) != 0
+	return m.GetBusAddress().Big().Cmp(gethcommon.Big0) != 0
 }
 
-func (m *blockMessageExtractor) StoreCrossChainValueTransfers(block *common.L1Block, receipts common.L1Receipts) error {
+func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Context, block *common.L1Block, receipts common.L1Receipts) error {
 	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "Block value transfer messages processed", log.BlockHashKey, block.Hash())
 
 	/*areReceiptsValid := common.VerifyReceiptHash(block, receipts)
@@ -62,7 +63,7 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(block *common.L1Bl
 	}
 
 	m.logger.Trace("Storing value transfers for block", "nr", len(transfers), log.BlockHashKey, block.Hash())
-	err = m.storage.StoreValueTransfers(block.Hash(), transfers)
+	err = m.storage.StoreValueTransfers(ctx, block.Hash(), transfers)
 	if err != nil {
 		m.logger.Crit("Unable to store the transfers", log.ErrKey, err)
 		return err
@@ -75,7 +76,7 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(block *common.L1Bl
 // The messages will be stored in DB storage for later usage.
 // block - the L1 block for which events are extracted.
 // receipts - all of the receipts for the corresponding block. This is validated.
-func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error {
+func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, block *common.L1Block, receipts common.L1Receipts) error {
 	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "Block cross chain messages processed", log.BlockHashKey, block.Hash())
 
 	if len(receipts) == 0 {
@@ -91,7 +92,7 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, r
 
 	if len(messages) > 0 {
 		m.logger.Info(fmt.Sprintf("Storing %d messages for block", len(messages)), log.BlockHashKey, block.Hash())
-		err = m.storage.StoreL1Messages(block.Hash(), messages)
+		err = m.storage.StoreL1Messages(ctx, block.Hash(), messages)
 		if err != nil {
 			m.logger.Crit("Unable to store the messages", log.ErrKey, err)
 			return err

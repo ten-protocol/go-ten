@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/simulation/network"
-	gatewaycfg "github.com/ten-protocol/go-ten/tools/walletextension/config"
-	"github.com/ten-protocol/go-ten/tools/walletextension/container"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 
@@ -52,24 +53,29 @@ type InMemDevNetwork struct {
 	// When Obscuro network has been initialised on the L1 network, this will be populated
 	// - if reconnecting to an existing network it needs to be populated when initialising this object
 	// - if it is nil when `Start()` is called then Obscuro contracts will be deployed on the L1
-	l1SetupData *params.L1SetupData
+	l1SetupData *params.L1TenData
 
-	obscuroConfig       ObscuroConfig
-	obscuroSequencer    *InMemNodeOperator
-	obscuroValidators   []*InMemNodeOperator
-	tenGatewayContainer *container.WalletExtensionContainer
-
-	tenGatewayEnabled bool
+	tenConfig           *TenConfig
+	tenSequencer        *InMemNodeOperator
+	tenValidators       []*InMemNodeOperator
+	tenGatewayContainer *walletextension.Container
 
 	faucet     userwallet.User
 	faucetLock sync.Mutex
 }
 
 func (s *InMemDevNetwork) GetGatewayURL() (string, error) {
-	if !s.tenGatewayEnabled {
+	if !s.tenConfig.TenGatewayEnabled {
 		return "", fmt.Errorf("ten gateway not enabled")
 	}
 	return fmt.Sprintf("http://localhost:%d", _gwHTTPPort), nil
+}
+
+func (s *InMemDevNetwork) GetGatewayWSURL() (string, error) {
+	if !s.tenConfig.TenGatewayEnabled {
+		return "", fmt.Errorf("ten gateway not enabled")
+	}
+	return fmt.Sprintf("ws://localhost:%d", _gwWSPort), nil
 }
 
 func (s *InMemDevNetwork) GetMCOwnerWallet() (wallet.Wallet, error) {
@@ -123,15 +129,15 @@ func (s *InMemDevNetwork) GetL1Client() (ethadapter.EthClient, error) {
 }
 
 func (s *InMemDevNetwork) GetSequencerNode() networktest.NodeOperator {
-	return s.obscuroSequencer
+	return s.tenSequencer
 }
 
 func (s *InMemDevNetwork) GetValidatorNode(i int) networktest.NodeOperator {
-	return s.obscuroValidators[i]
+	return s.tenValidators[i]
 }
 
 func (s *InMemDevNetwork) NumValidators() int {
-	return len(s.obscuroValidators)
+	return len(s.tenValidators)
 }
 
 func (s *InMemDevNetwork) Start() {
@@ -148,11 +154,12 @@ func (s *InMemDevNetwork) Start() {
 	fmt.Println("Starting obscuro nodes")
 	s.startNodes()
 
-	if s.tenGatewayEnabled {
-		s.startTenGateway()
-	}
 	// sleep to allow the nodes to start
 	time.Sleep(10 * time.Second)
+
+	if s.tenConfig.TenGatewayEnabled {
+		s.startTenGateway()
+	}
 }
 
 func (s *InMemDevNetwork) GetGatewayClient() (ethadapter.EthClient, error) {
@@ -160,22 +167,22 @@ func (s *InMemDevNetwork) GetGatewayClient() (ethadapter.EthClient, error) {
 }
 
 func (s *InMemDevNetwork) startNodes() {
-	if s.obscuroSequencer == nil {
-		// initialise node operators
-		s.obscuroSequencer = NewInMemNodeOperator(0, s.obscuroConfig, common.Sequencer, s.l1SetupData, s.l1Network.GetClient(0), s.networkWallets.NodeWallets[0], s.logger)
-		for i := 1; i <= s.obscuroConfig.InitNumValidators; i++ {
+	if s.tenSequencer == nil {
+		// initialise node operators (sequencer is node 0, validators are 1..N)
+		s.tenSequencer = NewInMemNodeOperator(0, s.tenConfig, common.Sequencer, s.l1SetupData, s.l1Network.GetClient(0), s.networkWallets.NodeWallets[0], s.logger)
+		for i := 1; i <= s.tenConfig.InitNumValidators; i++ {
 			l1Client := s.l1Network.GetClient(i % s.l1Network.NumNodes())
-			s.obscuroValidators = append(s.obscuroValidators, NewInMemNodeOperator(i, s.obscuroConfig, common.Validator, s.l1SetupData, l1Client, s.networkWallets.NodeWallets[i], s.logger))
+			s.tenValidators = append(s.tenValidators, NewInMemNodeOperator(i, s.tenConfig, common.Validator, s.l1SetupData, l1Client, s.networkWallets.NodeWallets[i], s.logger))
 		}
 	}
 
 	go func() {
-		err := s.obscuroSequencer.Start()
+		err := s.tenSequencer.Start()
 		if err != nil {
 			panic(err)
 		}
 	}()
-	for _, v := range s.obscuroValidators {
+	for _, v := range s.tenValidators {
 		go func(v networktest.NodeOperator) {
 			err := v.Start()
 			if err != nil {
@@ -194,7 +201,7 @@ func (s *InMemDevNetwork) startTenGateway() {
 	validatorWS := validator.HostRPCWSAddress()
 	// remove ws:// prefix for the gateway config
 	validatorWS = validatorWS[len("ws://"):]
-	cfg := gatewaycfg.Config{
+	cfg := wecommon.Config{
 		WalletExtensionHost:     "127.0.0.1",
 		WalletExtensionPortHTTP: _gwHTTPPort,
 		WalletExtensionPortWS:   _gwWSPort,
@@ -205,7 +212,7 @@ func (s *InMemDevNetwork) startTenGateway() {
 		DBType:                  "sqlite",
 		TenChainID:              integration.TenChainID,
 	}
-	tenGWContainer := container.NewWalletExtensionContainerFromConfig(cfg, s.logger)
+	tenGWContainer := walletextension.NewContainerFromConfig(cfg, s.logger)
 	go func() {
 		fmt.Println("Starting Ten Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
 		err := tenGWContainer.Start()
@@ -218,7 +225,7 @@ func (s *InMemDevNetwork) startTenGateway() {
 }
 
 func (s *InMemDevNetwork) CleanUp() {
-	for _, v := range s.obscuroValidators {
+	for _, v := range s.tenValidators {
 		go func(v networktest.NodeOperator) {
 			err := v.Stop()
 			if err != nil {
@@ -227,7 +234,7 @@ func (s *InMemDevNetwork) CleanUp() {
 		}(v)
 	}
 	go func() {
-		err := s.obscuroSequencer.Stop()
+		err := s.tenSequencer.Stop()
 		if err != nil {
 			fmt.Println("failed to stop sequencer", err.Error())
 		}

@@ -30,7 +30,8 @@ func GetTransactionCountValidate(reqParams []any, builder *CallBuilder[uint64, s
 			return nil
 		}
 
-		b, err := rpc.registry.GetBatchAtHeight(*tag)
+		// todo - support BlockNumberOrHash
+		b, err := rpc.registry.GetBatchAtHeight(builder.ctx, *tag.BlockNumber)
 		if err != nil {
 			builder.Err = fmt.Errorf("cant retrieve batch for tag. Cause: %w", err)
 			return nil
@@ -51,11 +52,12 @@ func GetTransactionCountExecute(builder *CallBuilder[uint64, string], rpc *Encry
 	}
 
 	var nonce uint64
-	l2Head, err := rpc.storage.FetchBatchBySeqNo(*builder.Param)
+	l2Head, err := rpc.storage.FetchBatchBySeqNo(builder.ctx, *builder.Param)
 	if err == nil {
 		// todo - we should return an error when head state is not available, but for current test situations with race
 		//  conditions we allow it to return zero while head state is uninitialized
-		s, err := rpc.storage.CreateStateDB(l2Head.Hash())
+		h := l2Head.Hash()
+		s, err := rpc.registry.GetBatchState(builder.ctx, &h)
 		if err != nil {
 			return err
 		}

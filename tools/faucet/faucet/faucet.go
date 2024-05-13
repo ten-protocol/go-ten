@@ -6,16 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"os"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
-	tenlog "github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/obsclient"
-	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
@@ -38,7 +37,6 @@ type Faucet struct {
 
 func NewFaucet(rpcURL string, chainID int64, pkString string) (*Faucet, error) {
 	logger := log.New()
-	logger.SetHandler(log.StreamHandler(os.Stdout, tenlog.TenLogFormat()))
 	w := wallet.NewInMemoryWalletFromConfig(pkString, chainID, logger)
 	obsClient, err := obsclient.DialWithAuth(rpcURL, w, logger)
 	if err != nil {
@@ -84,12 +82,14 @@ func (f *Faucet) Fund(address *common.Address, token string, amount *big.Int) (s
 func (f *Faucet) validateTx(tx *types.Transaction) error {
 	for now := time.Now(); time.Since(now) < _timeout; time.Sleep(time.Second) {
 		receipt, err := f.client.TransactionReceipt(context.Background(), tx.Hash())
-		if err != nil {
-			if errors.Is(err, rpc.ErrNilResponse) {
-				// tx receipt is not available yet
-				continue
-			}
+		// end eagerly for unexpected errors
+		if err != nil && !errors.Is(err, ethereum.NotFound) {
 			return fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
+		}
+
+		// try again until timeout
+		if receipt == nil {
+			continue
 		}
 
 		txReceiptBytes, err := receipt.MarshalJSON()

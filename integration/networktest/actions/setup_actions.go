@@ -31,7 +31,11 @@ func (c *CreateTestUser) Run(ctx context.Context, network networktest.NetworkCon
 		if err != nil {
 			return ctx, fmt.Errorf("failed to get required gateway URL: %w", err)
 		}
-		user, err = userwallet.NewGatewayUser(wal, gwURL, logger)
+		gwWSURL, err := network.GetGatewayWSURL()
+		if err != nil {
+			return ctx, fmt.Errorf("failed to get required gateway WS URL: %w", err)
+		}
+		user, err = userwallet.NewGatewayUser(wal, gwURL, gwWSURL, logger)
 		if err != nil {
 			return ctx, fmt.Errorf("failed to create gateway user: %w", err)
 		}

@@ -8,11 +8,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/responses"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -39,7 +39,7 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 
 // BlockNumber returns the height of the current head batch.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	header, err := api.host.DB().GetHeadBatchHeader()
+	header, err := api.host.Storage().FetchHeadBatchHeader()
 	if err != nil {
 		// This error may be nefarious, but unfortunately the Eth API doesn't allow us to return an error.
 		api.logger.Error("could not retrieve head batch header", log.ErrKey, err)
@@ -59,7 +59,7 @@ func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNu
 
 // GetBlockByHash returns the header of the batch with the given hash.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (*common.BatchHeader, error) {
-	batchHeader, err := api.host.DB().GetBatchHeader(hash)
+	batchHeader, err := api.host.Storage().FetchBatchHeaderByHash(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, 
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
 func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
-	header, err := api.host.DB().GetHeadBatchHeader()
+	header, err := api.host.Storage().FetchHeadBatchHeader()
 	if err != nil {
 		return nil, err
 	}
@@ -82,8 +82,8 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 
 // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to the
 // `address` field and encoded as hex.
-func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().GetBalance(encryptedParams)
+func (api *EthereumAPI) GetBalance(ctx context.Context, encryptedParams common.EncryptedParamsGetBalance) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.EnclaveClient().GetBalance(ctx, encryptedParams)
 	if sysError != nil {
 		return api.handleSysError("GetBalance", sysError)
 	}
@@ -92,8 +92,8 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 
 // Call returns the result of executing the smart contract as a user, encrypted with the viewing key corresponding to
 // the `from` field and encoded as hex.
-func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().ObsCall(encryptedParams)
+func (api *EthereumAPI) Call(ctx context.Context, encryptedParams common.EncryptedParamsCall) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.EnclaveClient().ObsCall(ctx, encryptedParams)
 	if sysError != nil {
 		return api.handleSysError("Call", sysError)
 	}
@@ -102,8 +102,8 @@ func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.Encrypted
 
 // GetTransactionReceipt returns the transaction receipt for the given transaction hash, encrypted with the viewing key
 // corresponding to the original transaction submitter and encoded as hex, or nil if no matching transaction exists.
-func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().GetTransactionReceipt(encryptedParams)
+func (api *EthereumAPI) GetTransactionReceipt(ctx context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.EnclaveClient().GetTransactionReceipt(ctx, encryptedParams)
 	if sysError != nil {
 		return api.handleSysError("GetTransactionReceipt", sysError)
 	}
@@ -111,8 +111,8 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 }
 
 // EstimateGas requests the enclave the gas estimation based on the callMsg supplied params (encrypted)
-func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().EstimateGas(encryptedParams)
+func (api *EthereumAPI) EstimateGas(ctx context.Context, encryptedParams common.EncryptedParamsEstimateGas) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.EnclaveClient().EstimateGas(ctx, encryptedParams)
 	if sysError != nil {
 		return api.handleSysError("EstimateGas", sysError)
 	}
@@ -120,8 +120,8 @@ func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.En
 }
 
 // SendRawTransaction sends the encrypted transaction.
-func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.SubmitAndBroadcastTx(encryptedParams)
+func (api *EthereumAPI) SendRawTransaction(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.SubmitAndBroadcastTx(ctx, encryptedParams)
 	if sysError != nil {
 		return api.handleSysError("SendRawTransaction", sysError)
 	}
@@ -130,7 +130,7 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 
 // GetCode returns the code stored at the given address in the state for the given batch height or batch hash.
 // todo (#1620) - instead of converting the block number of hash client-side, do it on the enclave
-func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+func (api *EthereumAPI) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	var batchHash *gethcommon.Hash
 
 	// requested a number
@@ -151,7 +151,7 @@ func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, b
 		return nil, errors.New("invalid arguments; neither batch height nor batch hash specified")
 	}
 
-	code, sysError := api.host.EnclaveClient().GetCode(address, batchHash)
+	code, sysError := api.host.EnclaveClient().GetCode(ctx, address, batchHash)
 	if sysError != nil {
 		api.logger.Error(fmt.Sprintf("Enclave System Error. Function %s", "GetCode"), log.ErrKey, sysError)
 		return nil, fmt.Errorf(responses.InternalErrMsg)
@@ -160,8 +160,8 @@ func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, b
 	return code, nil
 }
 
-func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().GetTransactionCount(encryptedParams)
+func (api *EthereumAPI) GetTransactionCount(ctx context.Context, encryptedParams common.EncryptedParamsGetTxCount) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.EnclaveClient().GetTransactionCount(ctx, encryptedParams)
 	if sysError != nil {
 		return api.handleSysError("GetTransactionCount", sysError)
 	}
@@ -170,8 +170,8 @@ func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams c
 
 // GetTransactionByHash returns the transaction with the given hash, encrypted with the viewing key corresponding to the
 // `from` field and encoded as hex, or nil if no matching transaction exists.
-func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().GetTransaction(encryptedParams)
+func (api *EthereumAPI) GetTransactionByHash(ctx context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.EnclaveClient().GetTransaction(ctx, encryptedParams)
 	if sysError != nil {
 		return api.handleSysError("GetTransactionByHash", sysError)
 	}
@@ -179,15 +179,15 @@ func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams 
 }
 
 // GetStorageAt is a reused method for listing the users transactions
-func (api *EthereumAPI) GetStorageAt(_ context.Context, encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, error) {
-	return api.host.EnclaveClient().GetCustomQuery(encryptedParams)
+func (api *EthereumAPI) GetStorageAt(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, error) {
+	return api.host.EnclaveClient().GetCustomQuery(ctx, encryptedParams)
 }
 
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.
 // rpc.DecimalOrHex -> []byte
 func (api *EthereumAPI) FeeHistory(context.Context, string, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
 	// todo (#1621) - return a non-dummy fee history
-	header, err := api.host.DB().GetHeadBatchHeader()
+	header, err := api.host.Storage().FetchHeadBatchHeader()
 	if err != nil {
 		api.logger.Error("Unable to retrieve header for fee history.", log.ErrKey, err)
 		return nil, fmt.Errorf("unable to retrieve fee history")
@@ -226,16 +226,15 @@ func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*ge
 	// note: our API currently treats all these block statuses the same for obscuro batches
 	if batchNumber == rpc.LatestBlockNumber || batchNumber == rpc.PendingBlockNumber ||
 		batchNumber == rpc.FinalizedBlockNumber || batchNumber == rpc.SafeBlockNumber {
-		batchHeader, err := api.host.DB().GetHeadBatchHeader()
+		batchHeader, err := api.host.Storage().FetchHeadBatchHeader()
 		if err != nil {
 			return nil, err
 		}
 		batchHash := batchHeader.Hash()
 		return &batchHash, nil
 	}
-
 	batchNumberBig := big.NewInt(batchNumber.Int64())
-	batchHash, err := api.host.DB().GetBatchHash(batchNumberBig)
+	batchHash, err := api.host.Storage().FetchBatchHashByHeight(batchNumberBig)
 	if err != nil {
 		return nil, err
 	}

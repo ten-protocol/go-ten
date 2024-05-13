@@ -12,7 +12,7 @@ import (
 
 func main() {
 	config := contractdeployer.ParseConfig()
-	logger := log.New(log.DeployerCmp, int(gethlog.LvlError), log.SysOut)
+	logger := log.New(log.DeployerCmp, int(gethlog.LevelError), log.SysOut)
 
 	contractAddr, err := contractdeployer.Deploy(config, logger)
 	if err != nil {

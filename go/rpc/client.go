@@ -2,9 +2,8 @@ package rpc
 
 import (
 	"context"
-	"errors"
 
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 const (
@@ -27,40 +26,39 @@ const (
 	Health = "obscuro_health"
 	Config = "obscuro_config"
 
-	GetBlockHeaderByHash = "tenscan_getBlockHeaderByHash"
-	GetBatch             = "tenscan_getBatch"
-	GetBatchForTx        = "tenscan_getBatchForTx"
-	GetLatestTxs         = "tenscan_getLatestTransactions"
-	GetTotalTxs          = "tenscan_getTotalTransactions"
-	Attestation          = "tenscan_attestation"
-	StopHost             = "test_stopHost"
-	Subscribe            = "eth_subscribe"
-	Unsubscribe          = "eth_unsubscribe"
-	SubscribeNamespace   = "eth"
-	SubscriptionTypeLogs = "logs"
+	StopHost                 = "test_stopHost"
+	SubscribeNamespace       = "eth"
+	SubscriptionTypeLogs     = "logs"
+	SubscriptionTypeNewHeads = "newHeads"
 
-	// GetL1RollupHeaderByHash  = "scan_getL1RollupHeaderByHash"
-	// GetActiveNodeCount       = "scan_getActiveNodeCount"
-
+	GetBatchByTx             = "scan_getBatchByTx"
 	GetLatestRollupHeader    = "scan_getLatestRollupHeader"
-	GetTotalTransactionCount = "scan_getTotalTransactionCount"
+	GetTotalTxCount          = "scan_getTotalTransactionCount"
 	GetTotalContractCount    = "scan_getTotalContractCount"
 	GetPublicTransactionData = "scan_getPublicTransactionData"
 	GetBatchListing          = "scan_getBatchListing"
 	GetBlockListing          = "scan_getBlockListing"
-	GetFullBatchByHash       = "scan_getBatchByHash"
+	GetBatch                 = "scan_getBatch"
+	GetLatestBatch           = "scan_getLatestBatch"
+	GetBatchByHeight         = "scan_getBatchByHeight"
+	GetTransaction           = "scan_getTransaction"
+
+	GetRollupListing     = "scan_getRollupListing"
+	GetBatchListingNew   = "scan_getBatchListingNew"
+	GetRollupByHash      = "scan_getRollupByHash"
+	GetRollupBatches     = "scan_getRollupBatches"
+	GetRollupBySeqNo     = "scan_getRollupBySeqNo"
+	GetBatchTransactions = "scan_getBatchTransactions"
 )
 
-var ErrNilResponse = errors.New("nil response received from Obscuro node")
-
-// Client is used by client applications to interact with the Obscuro node
+// Client is used by client applications to interact with the Ten node
 type Client interface {
-	// Call executes the named method via RPC. (Returns `ErrNilResponse` on nil response from Node, this is used as "not found" for some method calls)
+	// Call executes the named method via RPC.
 	Call(result interface{}, method string, args ...interface{}) error
 	// CallContext If the context is canceled before the call has successfully returned, CallContext returns immediately.
 	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
 	// Subscribe creates a subscription to the Obscuro host.
-	Subscribe(ctx context.Context, result interface{}, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error)
+	Subscribe(ctx context.Context, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error)
 	// Stop closes the client.
 	Stop()
 }

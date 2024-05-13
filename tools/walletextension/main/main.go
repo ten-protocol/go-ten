@@ -7,9 +7,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension"
+
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/container"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
@@ -52,13 +53,13 @@ func main() {
 		}
 	}
 
-	logLvl := gethlog.LvlError
+	logLvl := gethlog.LevelError
 	if config.VerboseFlag {
-		logLvl = gethlog.LvlDebug
+		logLvl = gethlog.LevelDebug
 	}
 	logger := log.New(log.WalletExtCmp, int(logLvl), config.LogPath)
 
-	walletExtContainer := container.NewWalletExtensionContainerFromConfig(config, logger)
+	walletExtContainer := walletextension.NewContainerFromConfig(config, logger)
 
 	// Start the wallet extension.
 	err := walletExtContainer.Start()
@@ -68,7 +69,7 @@ func main() {
 
 	walletExtensionAddr := fmt.Sprintf("%s:%d", common.Localhost, config.WalletExtensionPortHTTP)
 	fmt.Printf("💡 Wallet extension started \n") // Some tests rely on seeing this message. Removed in next PR.
-	fmt.Printf("💡 Obscuro Gateway started - visit http://%s to use it.\n", walletExtensionAddr)
+	fmt.Printf("💡 Obscuro Gateway started - visit http://%s/static to use it.\n", walletExtensionAddr)
 
 	select {}
 }

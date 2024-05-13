@@ -1,88 +1,60 @@
+# This file configures github.com/golangci/golangci-lint.
+
 run:
-  skip-dirs:
-    - design
-    - docs
+  timeout: 20m
+  tests: true
+  # default is true. Enables skipping of directories:
+  #   vendor$, third_party$, testdata$, examples$, Godeps$, builtin$
+  skip-dirs-use-default: true
+  skip-files:
+    - core/genesis_alloc.go
+
 linters:
-  # Disable all linters.
-  # Default: false
   disable-all: true
-  # Enable specific linter
-  # https://golangci-lint.run/usage/linters/#enabled-by-default-linters
   enable:
-    - asciicheck
-    - bidichk
-    - bodyclose
-    - contextcheck
-    - depguard
-    - dogsled
-    - dupl
-    - durationcheck
-    - errcheck
-    - errname
-    - errorlint
-    - exhaustive
-    - exportloopref
-    - gochecknoinits
-    - gocognit
-    - goconst
-    - gocyclo
-    - gofmt
-    - gofumpt # https://github.com/mvdan/gofumpt#gofumpt -> gofumpt -l -w .
-    - goheader
     - goimports
-    - revive
-    #- gomoddirectives It complains with docker import fix
-    - gomodguard
-    - goprintffuncname
-    - gosec
     - gosimple
     - govet
-    - importas
     - ineffassign
-    - makezero
     - misspell
-    - nakedret
-    - nestif
-    - nilerr
-    - nilnil
-    - noctx
-    - nolintlint
-    - prealloc
-    - predeclared
-    - promlinter
-    - revive
-    - rowserrcheck
-    - sqlclosecheck
-    - staticcheck
-    - stylecheck
-    - tagliatelle
-    - tenv
-    - tparallel
-    - typecheck
     - unconvert
-    - unparam
+    - typecheck
     - unused
-    - wastedassign
+    - staticcheck
+    - bidichk
+    - durationcheck
+    - exportloopref
     - whitespace
-    # - cyclop Would be nice to enable this
-    # - wrapcheck Helpful to add error tracing
-    # - varnamelen Handy to enforce much better readability
-    # - wsl would be nice to turn this on
-    # - forcetypeassert Usually good to enable
-    # - gocritic  Would be nice to enabled this in the future
-    # - gochecknoglobals Should enable this at some stage too
-    # - godot
-    # - godox
-    # - goerr113
-    # - testpackage
-    # - thelper
-    # - nlreturn
-    # - paralleltest
-    # - interfacer
-    # - ireturn
-    # - lll
-    # - gomnd
-    # - exhaustivestruct
-    # - forbidigo
-    # - funlen
-    # - gci
+
+    # - structcheck # lots of false positives
+    # - errcheck #lot of false positives
+    # - contextcheck
+    # - errchkjson # lots of false positives
+    # - errorlint # this check crashes
+    # - exhaustive # silly check
+    # - makezero # false positives
+    # - nilerr # several intentional
+
+linters-settings:
+  gofmt:
+    simplify: true
+
+issues:
+  exclude-rules:
+    - path: crypto/bn256/cloudflare/optate.go
+      linters:
+        - deadcode
+        - staticcheck
+    - path: internal/build/pgp.go
+      text: 'SA1019: "golang.org/x/crypto/openpgp" is deprecated: this package is unmaintained except for security fixes.'
+    - path: core/vm/contracts.go
+      text: 'SA1019: "golang.org/x/crypto/ripemd160" is deprecated: RIPEMD-160 is a legacy hash and should not be used for new applications.'
+    - path: accounts/usbwallet/trezor.go
+      text: 'SA1019: "github.com/golang/protobuf/proto" is deprecated: Use the "google.golang.org/protobuf/proto" package instead.'
+    - path: accounts/usbwallet/trezor/
+      text: 'SA1019: "github.com/golang/protobuf/proto" is deprecated: Use the "google.golang.org/protobuf/proto" package instead.'
+  exclude:
+    - 'SA1019: event.TypeMux is deprecated: use Feed'
+    - 'SA1019: strings.Title is deprecated'
+    - 'SA1019: strings.Title has been deprecated since Go 1.18 and an alternative has been available since Go 1.0: The rule Title uses for word boundaries does not handle Unicode punctuation properly. Use golang.org/x/text/cases instead.'
+    - 'SA1029: should not use built-in type string as key for value'

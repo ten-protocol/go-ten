@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/ten-protocol/go-ten/go/config"
 
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
@@ -15,7 +18,13 @@ import (
 )
 
 var (
-	createKVTable = `create table if not exists keyvalue (ky varbinary(64) primary key, val mediumblob);`
+	createKVTable = `create table if not exists keyvalue
+(
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    ky      binary(4),
+    ky_full varbinary(64),
+    val     mediumblob NOT NULL
+);`
 
 	key1 = hexutils.HexToBytes("0000000000000000000000000000000000000000000000000000000000000001")
 	key2 = hexutils.HexToBytes("0000000000000000000000000000000000000000000000000000000000000002")
@@ -118,7 +127,7 @@ func createDB(t *testing.T) ethdb.Database {
 	lite := setupSQLite(t)
 	_, err := lite.Exec(createKVTable)
 	failIfError(t, err, "Failed to create key-value table in test db")
-	s, err := NewEnclaveDB(lite, testlog.Logger())
+	s, err := NewEnclaveDB(lite, lite, config.EnclaveConfig{RPCTimeout: time.Second}, testlog.Logger())
 	failIfError(t, err, "Failed to create SQLEthDatabase for test")
 	return s
 }

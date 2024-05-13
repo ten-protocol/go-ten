@@ -1,13 +1,15 @@
 package events
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"sync"
 
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/ten-protocol/go-ten/go/enclave/components"
+
 	"github.com/ten-protocol/go-ten/go/enclave/vkhandler"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 
@@ -19,7 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
@@ -37,7 +38,8 @@ type logSubscription struct {
 // SubscriptionManager manages the creation/deletion of subscriptions, and the filtering and encryption of logs for
 // active subscriptions.
 type SubscriptionManager struct {
-	storage storage.Storage
+	storage  storage.Storage
+	registry components.BatchRegistry
 
 	subscriptions     map[gethrpc.ID]*logSubscription
 	chainID           int64
@@ -46,9 +48,10 @@ type SubscriptionManager struct {
 	logger gethlog.Logger
 }
 
-func NewSubscriptionManager(storage storage.Storage, chainID int64, logger gethlog.Logger) *SubscriptionManager {
+func NewSubscriptionManager(storage storage.Storage, registry components.BatchRegistry, chainID int64, logger gethlog.Logger) *SubscriptionManager {
 	return &SubscriptionManager{
-		storage: storage,
+		storage:  storage,
+		registry: registry,
 
 		subscriptions:     map[gethrpc.ID]*logSubscription{},
 		chainID:           chainID,
@@ -61,8 +64,8 @@ func NewSubscriptionManager(storage storage.Storage, chainID int64, logger gethl
 // correctly. If there is an existing subscription with the given ID, it is overwritten.
 func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encodedSubscription []byte) error {
 	subscription := &common.LogSubscription{}
-	if err := rlp.DecodeBytes(encodedSubscription, subscription); err != nil {
-		return fmt.Errorf("could not decocde log subscription from RLP. Cause: %w", err)
+	if err := json.Unmarshal(encodedSubscription, subscription); err != nil {
+		return fmt.Errorf("could not decode log subscription. Cause: %w", err)
 	}
 
 	// verify the viewing key
@@ -90,9 +93,9 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 }
 
 // FilterLogsForReceipt removes the logs that the sender of a transaction is not allowed to view
-func FilterLogsForReceipt(receipt *types.Receipt, account *gethcommon.Address, storage storage.Storage) ([]*types.Log, error) {
-	filteredLogs := []*types.Log{}
-	stateDB, err := storage.CreateStateDB(receipt.BlockHash)
+func FilterLogsForReceipt(ctx context.Context, receipt *types.Receipt, account *gethcommon.Address, registry components.BatchRegistry) ([]*types.Log, error) {
+	var filteredLogs []*types.Log
+	stateDB, err := registry.GetBatchState(ctx, &receipt.BlockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 	}
@@ -109,7 +112,7 @@ func FilterLogsForReceipt(receipt *types.Receipt, account *gethcommon.Address, s
 
 // GetSubscribedLogsForBatch - Retrieves and encrypts the logs for the batch in live mode.
 // The assumption is that this function is called synchronously after the batch is produced
-func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, receipts types.Receipts) (common.EncryptedSubscriptionLogs, error) {
+func (s *SubscriptionManager) GetSubscribedLogsForBatch(ctx context.Context, batch *core.Batch, receipts types.Receipts) (common.EncryptedSubscriptionLogs, error) {
 	s.subscriptionMutex.RLock()
 	defer s.subscriptionMutex.RUnlock()
 
@@ -131,7 +134,8 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, recei
 	}
 
 	// the stateDb is needed to extract the user addresses from the topics
-	stateDB, err := s.storage.CreateStateDB(batch.Hash())
+	h := batch.Hash()
+	stateDB, err := s.registry.GetBatchState(ctx, &h)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 	}
@@ -238,15 +242,15 @@ func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []*gethcommon.
 
 // Lifted from eth/filters/filter.go in the go-ethereum repository.
 // filterLogs creates a slice of logs matching the given criteria.
-func filterLogs(logs []*types.Log, fromBlock, toBlock *big.Int, addresses []gethcommon.Address, topics [][]gethcommon.Hash, logger gethlog.Logger) []*types.Log { //nolint:gocognit
+func filterLogs(logs []*types.Log, fromBlock, toBlock *gethrpc.BlockNumber, addresses []gethcommon.Address, topics [][]gethcommon.Hash, logger gethlog.Logger) []*types.Log { //nolint:gocognit
 	var ret []*types.Log
 Logs:
 	for _, logItem := range logs {
-		if fromBlock != nil && fromBlock.Int64() >= 0 && fromBlock.Uint64() > logItem.BlockNumber {
+		if fromBlock != nil && fromBlock.Int64() >= 0 && fromBlock.Int64() > int64(logItem.BlockNumber) {
 			logger.Debug("Skipping log ", "log", logItem, "reason", "In the past. The starting block num for filter is bigger than log")
 			continue
 		}
-		if toBlock != nil && toBlock.Int64() > 0 && toBlock.Uint64() < logItem.BlockNumber {
+		if toBlock != nil && toBlock.Int64() > 0 && toBlock.Int64() < int64(logItem.BlockNumber) {
 			logger.Debug("Skipping log ", "log", logItem, "reason", "In the future. The ending block num for filter is smaller than log")
 			continue
 		}

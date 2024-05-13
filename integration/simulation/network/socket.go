@@ -45,18 +45,18 @@ func NewNetworkOfSocketNodes(wallets *params.SimWallets) Network {
 
 func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stats) (*RPCHandles, error) {
 	// kickoff the network with the prefunded wallet addresses
-	simParams.L1SetupData, n.gethClients, n.eth2Network = SetUpGethNetwork(
+	simParams.L1TenData, n.gethClients, n.eth2Network = SetUpGethNetwork(
 		n.wallets,
 		simParams.StartPort,
 		simParams.NumberOfNodes,
 		int(simParams.AvgBlockDuration.Seconds()),
 	)
 
-	simParams.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&simParams.L1SetupData.MgmtContractAddress, testlog.Logger())
+	simParams.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&simParams.L1TenData.MgmtContractAddress, testlog.Logger())
 	simParams.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(
-		&simParams.L1SetupData.MgmtContractAddress,
-		&simParams.L1SetupData.ObxErc20Address,
-		&simParams.L1SetupData.EthErc20Address,
+		&simParams.L1TenData.MgmtContractAddress,
+		&simParams.L1TenData.ObxErc20Address,
+		&simParams.L1TenData.EthErc20Address,
 	)
 
 	// get the sequencer Address
@@ -94,14 +94,14 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithGenesis(i == 0),
 				node.WithHostID(hostAddress.String()),
 				node.WithPrivateKey(privateKey),
-				node.WithSequencerID(seqHostAddress.String()),
+				node.WithSequencerP2PAddr(fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset)),
 				node.WithEnclaveWSPort(simParams.StartPort+integration.DefaultEnclaveOffset+i),
 				node.WithHostWSPort(simParams.StartPort+integration.DefaultHostRPCWSOffset+i),
 				node.WithHostHTTPPort(simParams.StartPort+integration.DefaultHostRPCHTTPOffset+i),
 				node.WithHostP2PPort(simParams.StartPort+integration.DefaultHostP2pOffset+i),
 				node.WithHostPublicP2PAddr(fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset+i)),
-				node.WithManagementContractAddress(simParams.L1SetupData.MgmtContractAddress.String()),
-				node.WithMessageBusContractAddress(simParams.L1SetupData.MessageBusAddr.String()),
+				node.WithManagementContractAddress(simParams.L1TenData.MgmtContractAddress.String()),
+				node.WithMessageBusContractAddress(simParams.L1TenData.MessageBusAddr.String()),
 				node.WithNodeType(nodeTypeStr),
 				node.WithCoinbase(simParams.Wallets.L2FeesWallet.Address().Hex()),
 				node.WithL1WebsocketURL(fmt.Sprintf("ws://%s:%d", "127.0.0.1", simParams.StartPort+100)),
@@ -160,7 +160,8 @@ func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) er
 		// create a connection to the newly created nodes - panic if no connection is made after some time
 		startTime := time.Now()
 		for connected := false; !connected; time.Sleep(500 * time.Millisecond) {
-			client, err = rpc.NewNetworkClient(fmt.Sprintf("ws://127.0.0.1:%d", simParams.StartPort+integration.DefaultHostRPCWSOffset+i))
+			port := simParams.StartPort + integration.DefaultHostRPCWSOffset + i
+			client, err = rpc.NewNetworkClient(fmt.Sprintf("ws://127.0.0.1:%d", port))
 			connected = err == nil // The client cannot be created until the node has started.
 			if time.Now().After(startTime.Add(2 * time.Minute)) {
 				return fmt.Errorf("failed to create a connect to node after 2 minute - %w", err)

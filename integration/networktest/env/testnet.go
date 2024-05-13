@@ -33,16 +33,18 @@ type testnetConnector struct {
 	faucetHTTPAddress     string
 	l1RPCURL              string
 	tenGatewayURL         string
+	tenGatewayWSURL       string
 	faucetWallet          userwallet.User
 }
 
-func newTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string, l1WSURL string, tenGatewayURL string) *testnetConnector {
+func newTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string, l1WSURL string, tenGatewayURL string, tenGatewayWSURL string) *testnetConnector {
 	return &testnetConnector{
 		seqRPCAddress:         seqRPCAddr,
 		validatorRPCAddresses: validatorRPCAddressses,
 		faucetHTTPAddress:     faucetHTTPAddress,
 		l1RPCURL:              l1WSURL,
 		tenGatewayURL:         tenGatewayURL,
+		tenGatewayWSURL:       tenGatewayWSURL,
 	}
 }
 
@@ -145,4 +147,8 @@ func (t *testnetConnector) GetGatewayClient() (ethadapter.EthClient, error) {
 
 func (t *testnetConnector) GetGatewayURL() (string, error) {
 	return t.tenGatewayURL, nil
+}
+
+func (t *testnetConnector) GetGatewayWSURL() (string, error) {
+	return t.tenGatewayWSURL, nil
 }

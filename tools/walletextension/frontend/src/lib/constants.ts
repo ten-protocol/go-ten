@@ -35,7 +35,7 @@ export const testnetUrls = {
 };
 
 export const SWITCHED_CODE = 4902;
-export const tokenHexLength = 40;
+export const tokenHexLength = 42;
 
 export const tenGatewayVersion = "v1";
 export const tenChainIDDecimal = 443;
@@ -43,7 +43,7 @@ export const tenChainIDDecimal = 443;
 export const tenChainIDHex = "0x" + tenChainIDDecimal.toString(16); // Convert to hexadecimal and prefix with '0x'
 export const METAMASK_CONNECTION_TIMEOUT = 3000;
 
-export const userStorageAddress = "getUserID";
+export const userStorageAddress = "0x0000000000000000000000000000000000000000";
 
 export const nativeCurrency = {
   name: "Sepolia Ether",
