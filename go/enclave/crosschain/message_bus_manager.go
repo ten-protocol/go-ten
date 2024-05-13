@@ -129,7 +129,7 @@ func (m *MessageBusManager) ExtractOutboundTransfers(receipts common.L2Receipts)
 		return make(common.ValueTransferEvents, 0), err
 	}
 
-	transfers, err := convertLogsToValueTransfers(logs, ValueTransferEventName, MessageBusABI)
+	transfers, err := ConvertLogsToValueTransfers(logs, ValueTransferEventName, MessageBusABI)
 	if err != nil {
 		m.logger.Error("Error converting transfers from L2 message bus!", log.ErrKey, err)
 		return make(common.ValueTransferEvents, 0), err

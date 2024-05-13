@@ -38,6 +38,6 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
 
         bytes32 leaf = keccak256(abi.encode("value", keccak256(abi.encode(message))));
 
-        require(MerkleProof.verifyCalldata(proof, root, leaf), "Invalid inclusion proof for value transfer message.");
+        require(MerkleProof.verifyCalldata(proof, root, keccak256(abi.encodePacked(leaf))), "Invalid inclusion proof for value transfer message.");
     }
 }

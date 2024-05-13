@@ -1,6 +1,7 @@
 package components
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -364,7 +365,7 @@ func (executor *batchExecutor) populateOutboundCrossChainData(batch *core.Batch,
 			return fmt.Errorf("unable to create merkle tree for cross chain messages. Cause: %w", err)
 		}
 
-		encodedTree, err := tree.TreeMarshal()
+		encodedTree, err := json.Marshal(xchainTree)
 		if err != nil {
 			panic(err) //todo: figure out what to do
 		}

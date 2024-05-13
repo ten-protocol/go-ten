@@ -157,7 +157,7 @@ func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) Mes
 }
 
 // convertLogsToMessages - converts the logs of the event to messages. The logs should be filtered, otherwise fails.
-func convertLogsToValueTransfers(logs []types.Log, eventName string, messageBusABI abi.ABI) (common.ValueTransferEvents, error) {
+func ConvertLogsToValueTransfers(logs []types.Log, eventName string, messageBusABI abi.ABI) (common.ValueTransferEvents, error) {
 	messages := make(common.ValueTransferEvents, 0)
 
 	for _, log := range logs {

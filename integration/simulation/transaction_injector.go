@@ -2,12 +2,14 @@ package simulation
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
 	"sync/atomic"
 	"time"
 
+	"github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -16,6 +18,7 @@ import (
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -319,6 +322,106 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 	// todo (@stefan) - rework this when old contract deployer is phased out?
 }
 
+func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction, fromWallet wallet.Wallet) {
+	err := testcommon.AwaitReceipt(ti.ctx, ti.rpcHandles.ObscuroWalletRndClient(fromWallet), tx.Hash(), 30*time.Second)
+	if err != nil {
+		ti.logger.Error("Failed to await receipt for withdrawal transaction", log.ErrKey, err)
+		return
+	}
+
+	receipt, err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).TransactionReceipt(ti.ctx, tx.Hash())
+	if err != nil {
+		ti.logger.Error("Failed to retrieve receipt for withdrawal transaction", log.ErrKey, err)
+		return
+	}
+	header, err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).BatchHeaderByHash(receipt.BlockHash)
+	if err != nil {
+		ti.logger.Error("Failed to retrieve batch header for withdrawal transaction", log.ErrKey, err)
+		return
+	}
+
+	xchainTree := make([][]interface{}, 0)
+	err = json.Unmarshal(header.CrossChainTree, &xchainTree)
+	if err != nil {
+		ti.logger.Error("Failed to unmarshal cross chain tree for withdrawal transaction", log.ErrKey, err)
+		return
+	}
+
+	for k, _ := range xchainTree {
+		xchainTree[k][1] = gethcommon.HexToHash(xchainTree[k][1].(string))
+	}
+
+	tree, err := standard_merkle_tree.Of(xchainTree, crosschain.CrossChainEncodings)
+	if err != nil {
+		ti.logger.Error("Failed to load cross chain tree for withdrawal transaction", log.ErrKey, err)
+		return
+	}
+
+	if gethcommon.BytesToHash(tree.GetRoot()) != header.TransfersTree {
+		ti.logger.Error("Root of cross chain tree does not match header", "expected", header.TransfersTree, "actual", gethcommon.BytesToHash(tree.GetRoot()))
+		return
+	}
+
+	if len(receipt.Logs) != 1 {
+		panic("unexpected number of logs in receipt")
+	}
+
+	logs := make([]types.Log, len(receipt.Logs))
+	for i, log := range receipt.Logs {
+		logs[i] = *log
+	}
+
+	transfers, err := crosschain.ConvertLogsToValueTransfers(logs, crosschain.ValueTransferEventName, crosschain.MessageBusABI)
+	if err != nil {
+		panic(err)
+	}
+
+	vTransfers := crosschain.ValueTransfers(transfers)
+	proof, err := tree.GetProof(vTransfers.ForMerkleTree()[0])
+	if err != nil {
+		panic("unable to get proof for value transfer")
+	}
+
+	if len(proof) == 0 {
+		return
+	}
+
+	mCtr, err := ManagementContract.NewManagementContract(*ti.mgmtContractAddr, ti.rpcHandles.RndEthClient().EthClient())
+	if err != nil {
+		panic(err)
+	}
+
+	opts, err := bind.NewKeyedTransactorWithChainID(ti.wallets.GasWithdrawalWallet.PrivateKey(), ti.wallets.GasWithdrawalWallet.ChainID())
+	if err != nil {
+		panic(err)
+	}
+
+	proof32 := make([][32]byte, 0)
+	for i := 0; i < len(proof); i++ {
+		proof32 = append(proof32, [32]byte(proof[i][0:32]))
+	}
+
+	time.Sleep(20 * time.Second)
+	withdrawalTx, err := mCtr.ExtractNativeValue(opts, ManagementContract.StructsValueTransferMessage(vTransfers[0]), proof32, header.TransfersTree)
+	if err != nil {
+		ti.logger.Error("Failed to extract value transfer from L2", log.ErrKey, err)
+		return
+	}
+
+	receipt, err = testcommon.AwaitReceiptEth(ti.ctx, ti.rpcHandles.RndEthClient().EthClient(), withdrawalTx.Hash(), 30*time.Second)
+	if err != nil {
+		ti.logger.Error("Failed to await receipt for withdrawal transaction", log.ErrKey, err)
+		return
+	}
+
+	if receipt.Status != 1 {
+		ti.logger.Error("Withdrawal transaction failed", log.TxKey, withdrawalTx.Hash())
+		return
+	}
+
+	ti.logger.Info("Successful bridge withdrawal", log.TxKey, withdrawalTx.Hash())
+}
+
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomWithdrawals() {
 	// todo (@stefan) - rework this when old contract deployer is phased out?
@@ -355,6 +458,8 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 		go ti.TxTracker.trackWithdrawalFromL2(signedTx)
 
 		ti.logger.Info("[CrossChain] successful withdrawal tx", log.TxKey, signedTx.Hash())
+
+		go ti.awaitAndFinalizeWithdrawal(signedTx, fromWallet)
 
 		time.Sleep(testcommon.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration))
 	}
