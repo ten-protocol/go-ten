@@ -1,13 +1,10 @@
 package walletextension
 
 import (
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/subscription"
-
-	"github.com/ten-protocol/go-ten/tools/walletextension/api"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/httpapi"
 
@@ -85,16 +82,6 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 			Service:   rpcapi.NewFilterAPI(walletExt),
 		},
 	})
-
-	// register the static files
-	// todo - remove this when the frontend is no longer served from the enclave
-	staticHandler := api.StaticFilesHandler(wecommon.PathStatic)
-	rpcServer.RegisterRoutes([]node.Route{{
-		Name: wecommon.PathStatic,
-		Func: func(resp http.ResponseWriter, req *http.Request) {
-			staticHandler.ServeHTTP(resp, req)
-		},
-	}})
 
 	return &Container{
 		stopControl:     stopControl,
