@@ -30,8 +30,8 @@ func NewFilterAPI(host host.Host, logger gethlog.Logger) *FilterAPI {
 		host:   host,
 		logger: logger,
 		NewHeadsService: subscriptioncommon.NewNewHeadsService(
-			func() (chan *common.BatchHeader, error) {
-				return host.NewHeadsChan(), nil
+			func() (chan *common.BatchHeader, <-chan error, error) {
+				return host.NewHeadsChan(), nil, nil
 			},
 			false,
 			logger,
@@ -65,10 +65,18 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 	}
 
 	var unsubscribed atomic.Bool
-	go subscriptioncommon.ForwardFromChannels([]chan []byte{logsFromSubscription}, &unsubscribed, func(elem []byte) error {
-		return notifier.Notify(subscription.ID, elem)
-	}, nil, 12*time.Hour)
-	go subscriptioncommon.HandleUnsubscribe(subscription, &unsubscribed, func() {
+	go subscriptioncommon.ForwardFromChannels(
+		[]chan []byte{logsFromSubscription},
+		func(elem []byte) error {
+			return notifier.Notify(subscription.ID, elem)
+		},
+		nil,
+		nil,
+		&unsubscribed,
+		12*time.Hour,
+		api.logger,
+	)
+	go subscriptioncommon.HandleUnsubscribe(subscription, func() {
 		api.host.UnsubscribeLogs(subscription.ID)
 		unsubscribed.Store(true)
 	})

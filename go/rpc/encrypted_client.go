@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sync/atomic"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/rpc"
@@ -254,32 +255,43 @@ func (c *EncRPCClient) logSubscription(ctx context.Context, namespace string, ch
 		return nil, err
 	}
 
-	// todo - do we need to handle unsubscribe in a special way?
-	// probably not, because when the inbound channel is closed, this goroutine will exit as well.
-	go subscription.ForwardFromChannels([]chan []byte{inboundChannel}, nil, func(encLog []byte) error {
-		jsonLogs, err := c.decryptResponse(encLog)
-		if err != nil {
-			c.logger.Error("could not decrypt logs received from subscription.", log.ErrKey, err)
-			return err
-		}
-
-		var logs []*types.Log
-		err = json.Unmarshal(jsonLogs, &logs)
-		if err != nil {
-			c.logger.Error(fmt.Sprintf("could not unmarshal log from JSON. Received data: %s.", string(jsonLogs)), log.ErrKey, err)
-			return err
-		}
-
-		for _, decryptedLog := range logs {
-			outboundChannel <- *decryptedLog
-		}
-		return nil
-	},
+	backendDisconnected := &atomic.Bool{}
+	go subscription.HandleUnsubscribeErrChan([]<-chan error{backendSub.Err()}, func() {
+		backendDisconnected.Store(true)
+	})
+	go subscription.ForwardFromChannels(
+		[]chan []byte{inboundChannel},
+		func(encLog []byte) error {
+			return c.onMessage(encLog, outboundChannel)
+		},
+		nil,
+		backendDisconnected,
 		nil,
 		12*time.Hour,
+		c.logger,
 	)
 
 	return backendSub, nil
+}
+
+func (c *EncRPCClient) onMessage(encLog []byte, outboundChannel chan types.Log) error {
+	jsonLogs, err := c.decryptResponse(encLog)
+	if err != nil {
+		c.logger.Error("could not decrypt logs received from subscription.", log.ErrKey, err)
+		return err
+	}
+
+	var logs []*types.Log
+	err = json.Unmarshal(jsonLogs, &logs)
+	if err != nil {
+		c.logger.Error(fmt.Sprintf("could not unmarshal log from JSON. Received data: %s.", string(jsonLogs)), log.ErrKey, err)
+		return err
+	}
+
+	for _, decryptedLog := range logs {
+		outboundChannel <- *decryptedLog
+	}
+	return nil
 }
 
 func (c *EncRPCClient) newHeadSubscription(ctx context.Context, namespace string, ch interface{}, args ...any) (*gethrpc.ClientSubscription, error) {

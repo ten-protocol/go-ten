@@ -2,7 +2,6 @@ package subscription
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -22,7 +21,7 @@ import (
 // also handles unsubscribe
 // Note: this is a service which must be Started and Stopped
 type NewHeadsService struct {
-	connectFunc        func() (chan *common.BatchHeader, error)
+	connectFunc        func() (chan *common.BatchHeader, <-chan error, error)
 	convertToEthHeader bool
 	notifiersMutex     *sync.RWMutex
 	newHeadNotifiers   map[rpc.ID]*rpc.Notifier
@@ -32,7 +31,7 @@ type NewHeadsService struct {
 }
 
 // connect - function that returns the input channel
-func NewNewHeadsService(connect func() (chan *common.BatchHeader, error), convertToEthHeader bool, logger gethlog.Logger, onMessage func(*common.BatchHeader) error) *NewHeadsService {
+func NewNewHeadsService(connect func() (chan *common.BatchHeader, <-chan error, error), convertToEthHeader bool, logger gethlog.Logger, onMessage func(*common.BatchHeader) error) *NewHeadsService {
 	return &NewHeadsService{
 		connectFunc:        connect,
 		convertToEthHeader: convertToEthHeader,
@@ -45,53 +44,68 @@ func NewNewHeadsService(connect func() (chan *common.BatchHeader, error), conver
 }
 
 func (nhs *NewHeadsService) Start() error {
-	inputCh, err := nhs.connectFunc()
-	if err != nil {
-		return fmt.Errorf("could not connect to new heads: %w", err)
-	}
+	nhs.reconnect()
+	return nil
+}
 
+func (nhs *NewHeadsService) reconnect() {
+	// reconnect to the backend and restart the listening
+	newCh, errCh, err := nhs.connectFunc()
+	if err != nil {
+		nhs.logger.Crit("could not connect to new heads: ", log.ErrKey, err)
+	}
+	nhs._subscribe(newCh, errCh)
+}
+
+func (nhs *NewHeadsService) _subscribe(inputCh chan *common.BatchHeader, errChan <-chan error) {
+	backedUnsub := &atomic.Bool{}
+	go HandleUnsubscribeErrChan([]<-chan error{errChan}, func() {
+		backedUnsub.Store(true)
+	})
 	go ForwardFromChannels(
 		[]chan *common.BatchHeader{inputCh},
-		nhs.stopped,
 		func(head *common.BatchHeader) error {
-			if nhs.onMessage != nil {
-				err := nhs.onMessage(head)
-				if err != nil {
-					nhs.logger.Info("failed invoking onMessage callback.", log.ErrKey, err)
-				}
-			}
-
-			var msg any = head
-			if nhs.convertToEthHeader {
-				msg = convertBatchHeader(head)
-			}
-
-			nhs.notifiersMutex.Lock()
-			defer nhs.notifiersMutex.Unlock()
-
-			// for each new head, notify all registered subscriptions
-			for id, notifier := range nhs.newHeadNotifiers {
-				if nhs.stopped.Load() {
-					return nil
-				}
-				err := notifier.Notify(id, msg)
-				if err != nil {
-					// on error, remove the notification
-					nhs.logger.Info("failed to notify newHead subscription", log.ErrKey, err, log.SubIDKey, id)
-					delete(nhs.newHeadNotifiers, id)
-				}
-			}
-			return nil
+			return nhs.onNewBatch(head)
 		},
 		func() {
 			nhs.logger.Info("Disconnected from new head subscription. Reconnecting...")
-			inputCh, err = nhs.connectFunc()
-			if err != nil {
-				nhs.logger.Crit("could not connect to new heads: ", err)
-			}
+			nhs.reconnect()
 		},
+		backedUnsub,
+		nhs.stopped,
 		2*time.Minute, // todo - create constant
+		nhs.logger,
 	)
+}
+
+func (nhs *NewHeadsService) onNewBatch(head *common.BatchHeader) error {
+	if nhs.onMessage != nil {
+		err := nhs.onMessage(head)
+		if err != nil {
+			nhs.logger.Info("failed invoking onMessage callback.", log.ErrKey, err)
+		}
+	}
+
+	var msg any = head
+	if nhs.convertToEthHeader {
+		msg = convertBatchHeader(head)
+	}
+
+	nhs.notifiersMutex.Lock()
+	defer nhs.notifiersMutex.Unlock()
+
+	// for each new head, notify all registered subscriptions
+	for id, notifier := range nhs.newHeadNotifiers {
+		if nhs.stopped.Load() {
+			return nil
+		}
+		err := notifier.Notify(id, msg)
+		if err != nil {
+			// on error, remove the notification
+			nhs.logger.Info("failed to notify newHead subscription", log.ErrKey, err, log.SubIDKey, id)
+			delete(nhs.newHeadNotifiers, id)
+		}
+	}
 	return nil
 }
 
@@ -100,7 +114,7 @@ func (nhs *NewHeadsService) RegisterNotifier(notifier *rpc.Notifier, subscriptio
 	defer nhs.notifiersMutex.Unlock()
 	nhs.newHeadNotifiers[subscription.ID] = notifier
 
-	go HandleUnsubscribe(subscription, nil, func() {
+	go HandleUnsubscribe(subscription, func() {
 		nhs.notifiersMutex.Lock()
 		defer nhs.notifiersMutex.Unlock()
 		delete(nhs.newHeadNotifiers, subscription.ID)

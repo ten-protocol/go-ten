@@ -107,14 +107,14 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 	}
 
 	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(
-		func() (chan *tencommon.BatchHeader, error) {
+		func() (chan *tencommon.BatchHeader, <-chan error, error) {
 			logger.Info("Connecting to new heads service...")
 			// clear the cache to avoid returning stale data during reconnecting.
 			services.Cache.EvictShortLiving()
 			ch := make(chan *tencommon.BatchHeader)
-			err := subscribeToNewHeadsWithReconnect(ch, services, logger)
+			errCh, err := subscribeToNewHeadsWithRetry(ch, services, logger)
 			logger.Info("Connected to new heads service.", log.ErrKey, err)
-			return ch, err
+			return ch, errCh, err
 		},
 		true,
 		logger,
@@ -126,17 +126,16 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 	return &services
 }
 
-func subscribeToNewHeadsWithReconnect(ch chan *tencommon.BatchHeader, services Services, logger gethlog.Logger) error {
-	connectionObj, err := services.rpcWSConnPool.BorrowObject(context.Background())
-	if err != nil {
-		return fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
-	}
-
-	rpcClient := connectionObj.(rpc.Client)
-
-	err = retry.Do(
+func subscribeToNewHeadsWithRetry(ch chan *tencommon.BatchHeader, services Services, logger gethlog.Logger) (<-chan error, error) {
+	var sub *gethrpc.ClientSubscription
+	err := retry.Do(
 		func() error {
-			_, err := rpcClient.Subscribe(context.Background(), rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeNewHeads)
+			connectionObj, err := services.rpcWSConnPool.BorrowObject(context.Background())
+			if err != nil {
+				return fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
+			}
+			rpcClient := connectionObj.(rpc.Client)
+			sub, err = rpcClient.Subscribe(context.Background(), rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeNewHeads)
 			if err != nil {
 				logger.Info("could not subscribe for new head blocks", log.ErrKey, err)
 			}
@@ -146,9 +145,10 @@ func subscribeToNewHeadsWithReconnect(ch chan *tencommon.BatchHeader, services S
 	)
 	if err != nil {
 		logger.Error("could not subscribe for new head blocks.", log.ErrKey, err)
-		return fmt.Errorf("cannot subscribe to new heads to the backend %w", err)
+		return nil, fmt.Errorf("cannot subscribe to new heads to the backend %w", err)
 	}
-	return nil
+
+	return sub.Err(), nil
 }
 
 // IsStopping returns whether the WE is stopping

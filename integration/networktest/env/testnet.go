@@ -60,6 +60,7 @@ func newTestnetConnectorWithFaucetAccount(seqRPCAddr string, validatorRPCAddress
 		faucetWallet:          userwallet.NewUserWallet(wal, validatorRPCAddressses[0], testlog.Logger()),
 		l1RPCURL:              l1RPCAddress,
 		tenGatewayURL:         tenGatewayURL,
+		tenGatewayWSURL:       "ws://127.0.0.1:3001",
 	}
 }
 

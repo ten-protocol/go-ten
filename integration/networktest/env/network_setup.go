@@ -61,7 +61,7 @@ func LongRunningLocalNetwork(l1WSURL string) networktest.Environment {
 		[]string{"ws://127.0.0.1:26901"},
 		genesis.TestnetPrefundedPK,
 		l1WSURL,
-		"",
+		l1WSURL,
 	)
 	return newTestnetEnv(connector)
 }

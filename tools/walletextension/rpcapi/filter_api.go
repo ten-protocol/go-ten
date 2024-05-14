@@ -6,6 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	subscriptioncommon "github.com/ten-protocol/go-ten/go/common/subscription"
 
 	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
@@ -20,12 +22,14 @@ import (
 )
 
 type FilterAPI struct {
-	we *Services
+	we     *Services
+	logger log.Logger
 }
 
 func NewFilterAPI(we *Services) *FilterAPI {
 	return &FilterAPI{
-		we: we,
+		we:     we,
+		logger: we.logger,
 	}
 }
 
@@ -71,6 +75,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 
 	backendWSConnections := make([]*tenrpc.EncRPCClient, 0)
 	inputChannels := make([]chan types.Log, 0)
+	errorChannels := make([]<-chan error, 0)
 	backendSubscriptions := make([]*rpc.ClientSubscription, 0)
 	for _, address := range candidateAddresses {
 		rpcWSClient, err := connectWS(user.accounts[*address], api.we.Logger())
@@ -87,16 +92,17 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 		}
 
 		inputChannels = append(inputChannels, inCh)
+		errorChannels = append(errorChannels, backendSubscription.Err())
 		backendSubscriptions = append(backendSubscriptions, backendSubscription)
 	}
 
 	dedupeBuffer := NewCircularBuffer(wecommon.DeduplicationBufferSize)
 	subscription := subNotifier.CreateSubscription()
 
-	unsubscribed := atomic.Bool{}
+	unsubscribedByClient := atomic.Bool{}
+	unsubscribedByBackend := atomic.Bool{}
 	go subscriptioncommon.ForwardFromChannels(
 		inputChannels,
-		&unsubscribed,
 		func(log types.Log) error {
 			uniqueLogKey := LogKey{
 				BlockHash: log.BlockHash,
@@ -110,21 +116,35 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 			}
 			return nil
 		},
-		nil,
+		nil, // todo - we can implement reconnect logic here
+		&unsubscribedByBackend,
+		&unsubscribedByClient,
 		12*time.Hour,
+		api.logger,
 	)
 
-	go subscriptioncommon.HandleUnsubscribe(subscription, &unsubscribed, func() {
-		for _, backendSub := range backendSubscriptions {
-			backendSub.Unsubscribe()
-		}
-		for _, connection := range backendWSConnections {
-			_ = returnConn(api.we.rpcWSConnPool, connection.BackingClient())
-		}
-		unsubscribed.Store(true)
+	// handles any of the backend connections being closed
+	go subscriptioncommon.HandleUnsubscribeErrChan(errorChannels, func() {
+		unsubscribedByBackend.Store(true)
+		api.closeConnections(backendSubscriptions, backendWSConnections)
+	})
+
+	// handles "unsubscribe" from the user
+	go subscriptioncommon.HandleUnsubscribe(subscription, func() {
+		unsubscribedByClient.Store(true)
+		api.closeConnections(backendSubscriptions, backendWSConnections)
 	})
 
 	return subscription, err
+}
+
+func (api *FilterAPI) closeConnections(backendSubscriptions []*rpc.ClientSubscription, backendWSConnections []*tenrpc.EncRPCClient) {
+	for _, backendSub := range backendSubscriptions {
+		backendSub.Unsubscribe()
+	}
+	for _, connection := range backendWSConnections {
+		_ = returnConn(api.we.rpcWSConnPool, connection.BackingClient())
+	}
 }
 
 func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *GWUser, error) {
