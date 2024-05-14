@@ -11,6 +11,13 @@ const nextConfig = {
         source: '/v1/:path*',
         destination: `${destinationUrl}/v1/:path*`,
         permanent: true,
+        has: [
+          {
+            type: 'header',
+            key: 'x-forwarded-proto',
+            value: '(https|http)',
+          },
+        ],
       },
     ]
   },
