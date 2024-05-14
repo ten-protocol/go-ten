@@ -71,9 +71,9 @@ func updateCanonicalValue(ctx context.Context, dbtx *sql.Tx, isCanonical bool, b
 	return nil
 }
 
-func SetMissingBlockId(ctx context.Context, dbtx *sql.Tx, blockId int64, blockHash common.L1BlockHash) error {
-	// handle the corner case where the block wasn't available
-	_, err := dbtx.ExecContext(ctx, "update batch set l1_proof=? where (l1_proof is null) and l1_proof_hash=?", blockId, blockHash.Bytes())
+// HandleBlockArrivedAfterBatches- handle the corner case where the block wasn't available when the batch was received
+func HandleBlockArrivedAfterBatches(ctx context.Context, dbtx *sql.Tx, blockId int64, blockHash common.L1BlockHash) error {
+	_, err := dbtx.ExecContext(ctx, "update batch set l1_proof=?, is_canonical=true where l1_proof_hash=?", blockId, blockHash.Bytes())
 	return err
 }
 
@@ -92,7 +92,7 @@ func FetchBlockHeaderByHeight(ctx context.Context, db *sql.DB, height *big.Int) 
 
 func GetBlockId(ctx context.Context, db *sql.Tx, hash common.L1BlockHash) (int64, error) {
 	var id int64
-	err := db.QueryRowContext(ctx, "select id from block where hash=? ", hash).Scan(&id)
+	err := db.QueryRowContext(ctx, "select id from block where hash=? ", hash.Bytes()).Scan(&id)
 	if err != nil {
 		return 0, err
 	}

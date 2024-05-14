@@ -200,7 +200,7 @@ func (s *storageImpl) FetchNonCanonicalBatchesBetween(ctx context.Context, start
 	return enclavedb.ReadNonCanonicalBatches(ctx, s.db.GetSQLDB(), startSeq, endSeq)
 }
 
-func (s *storageImpl) StoreBlock(ctx context.Context, b *types.Block, chainFork *common.ChainFork) error {
+func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Block, chainFork *common.ChainFork) error {
 	defer s.logDuration("StoreBlock", measure.NewStopwatch())
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
@@ -208,17 +208,17 @@ func (s *storageImpl) StoreBlock(ctx context.Context, b *types.Block, chainFork 
 	}
 	defer dbTx.Rollback()
 
-	if err := enclavedb.WriteBlock(ctx, dbTx, b.Header()); err != nil {
-		return fmt.Errorf("2. could not store block %s. Cause: %w", b.Hash(), err)
+	if err := enclavedb.WriteBlock(ctx, dbTx, block.Header()); err != nil {
+		return fmt.Errorf("2. could not store block %s. Cause: %w", block.Hash(), err)
 	}
 
-	blockId, err := enclavedb.GetBlockId(ctx, dbTx, b.Hash())
+	blockId, err := enclavedb.GetBlockId(ctx, dbTx, block.Hash())
 	if err != nil {
-		return fmt.Errorf("could not get block id - %w", err)
+		return fmt.Errorf("3. could not get block id - %w", err)
 	}
 
 	// In case there were any batches inserted before this block was received
-	err = enclavedb.SetMissingBlockId(ctx, dbTx, blockId, b.Hash())
+	err = enclavedb.HandleBlockArrivedAfterBatches(ctx, dbTx, blockId, block.Hash())
 	if err != nil {
 		return err
 	}
@@ -231,16 +231,11 @@ func (s *storageImpl) StoreBlock(ctx context.Context, b *types.Block, chainFork 
 		}
 	}
 
-	err = enclavedb.UpdateCanonicalBlocks(ctx, dbTx, []common.L1BlockHash{b.Hash()}, nil, s.logger)
-	if err != nil {
-		return err
-	}
-
 	if err := dbTx.Commit(); err != nil {
-		return fmt.Errorf("3. could not store block %s. Cause: %w", b.Hash(), err)
+		return fmt.Errorf("4. could not store block %s. Cause: %w", block.Hash(), err)
 	}
 
-	common.CacheValue(ctx, s.blockCache, s.logger, b.Hash(), b)
+	common.CacheValue(ctx, s.blockCache, s.logger, block.Hash(), block)
 
 	return nil
 }
