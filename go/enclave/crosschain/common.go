@@ -221,7 +221,7 @@ func (ms MessageStructs) EncodeIndex(index int, w *bytes.Buffer) {
 
 func (ms MessageStructs) ForMerkleTree() [][]interface{} {
 	values := make([][]interface{}, 0)
-	for idx, _ := range ms {
+	for idx := range ms {
 		hashedVal := ms.HashPacked(idx)
 		val := []interface{}{
 			"message",
@@ -288,7 +288,7 @@ func (vt ValueTransfers) EncodeIndex(index int, w *bytes.Buffer) {
 
 func (vt ValueTransfers) ForMerkleTree() [][]interface{} {
 	values := make([][]interface{}, 0)
-	for idx, _ := range vt {
+	for idx := range vt {
 		hashedVal := vt.HashPacked(idx)
 		val := []interface{}{
 			"value",

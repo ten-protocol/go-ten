@@ -510,7 +510,7 @@ func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, 
 		return nil, fmt.Errorf("no batches found for export of cross chain data")
 	}
 
-	// build a merkle tree of all the batches that are valid for the cannonical L1 chain
+	// build a merkle tree of all the batches that are valid for the canonical L1 chain
 	// The proof is double inclusion - one for the message being in the batch's tree and one for
 
 	smtValues := crosschain.MerkleBatches(canonicalBatchesInRollup).ForMerkleTree()

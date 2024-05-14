@@ -347,8 +347,8 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	for k, _ := range xchainTree {
-		xchainTree[k][1] = gethcommon.HexToHash(xchainTree[k][1].(string))
+	for k, value := range xchainTree {
+		xchainTree[k][1] = gethcommon.HexToHash(value[1].(string))
 	}
 
 	tree, err := standard_merkle_tree.Of(xchainTree, crosschain.CrossChainEncodings)
