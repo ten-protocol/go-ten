@@ -239,6 +239,10 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 }
 
 func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle) {
+	if p.mgmtContractLib.IsMock() {
+		return
+	}
+
 	if len(bundle.CrossChainHashes) == 0 {
 		return
 	}

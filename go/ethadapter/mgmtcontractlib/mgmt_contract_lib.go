@@ -24,6 +24,7 @@ const methodBytesLen = 4
 // MgmtContractLib provides methods for creating ethereum transactions by providing an L1Transaction, creating call
 // messages for call requests, and converting ethereum transactions into L1Transactions.
 type MgmtContractLib interface {
+	IsMock() bool
 	CreateRollup(t *ethadapter.L1RollupTx) types.TxData
 	CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData
 	CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, verifyAttester bool) types.TxData
@@ -64,6 +65,10 @@ func NewMgmtContractLib(addr *gethcommon.Address, logger gethlog.Logger) MgmtCon
 		contractABI: contractABI,
 		logger:      logger,
 	}
+}
+
+func (c *contractLibImpl) IsMock() bool {
+	return false
 }
 
 func (c *contractLibImpl) GetContractAddr() *gethcommon.Address {

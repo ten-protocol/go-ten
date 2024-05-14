@@ -54,31 +54,6 @@ func receiptsHash(receipts types.Receipts) string {
 	return hash.Hex()
 }
 
-/*
-func lazilyLogChecksum(msg string, transactions types.Transactions, logger gethlog.Logger) {
-	logger.Trace(msg, "Hash",
-		gethlog.Lazy{Fn: func() string {
-			hasher := sha3.NewLegacyKeccak256().(crypto.KeccakState)
-			hasher.Reset()
-			for _, tx := range transactions {
-				var buffer bytes.Buffer
-				err := tx.EncodeRLP(&buffer)
-				if err != nil {
-					return err.Error()
-				}
-
-				hasher.Write(buffer.Bytes())
-			}
-			var hash gethcommon.Hash
-			_, err := hasher.Read(hash[:])
-			if err != nil {
-				return err.Error()
-			}
-			return hash.Hex()
-		}})
-}
-*/
-
 // filterLogsFromReceipts - filters the receipts for logs matching address, if provided and topic if provided.
 func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address, topics []*gethcommon.Hash) ([]types.Log, error) {
 	logs := make([]types.Log, 0)
@@ -234,12 +209,6 @@ func (ms MessageStructs) ForMerkleTree() [][]interface{} {
 
 func (ms MessageStructs) HashPacked(index int) gethcommon.Hash {
 	messageStruct := ms[index]
-	/*	Sender           common.Address
-		Sequence         uint64
-		Nonce            uint32
-		Topic            uint32
-		Payload          []byte
-		ConsistencyLevel uint8 */
 
 	addrType, _ := abi.NewType("address", "", nil)
 	uint64Type, _ := abi.NewType("uint64", "", nil)

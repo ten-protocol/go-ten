@@ -41,6 +41,10 @@ func NewMgmtContractLibMock() mgmtcontractlib.MgmtContractLib {
 	return &mockContractLib{}
 }
 
+func (m *mockContractLib) IsMock() bool {
+	return true
+}
+
 func (m *mockContractLib) GetContractAddr() *gethcommon.Address {
 	return &rollupTxAddr
 }
