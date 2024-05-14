@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/host"
 	subscriptioncommon "github.com/ten-protocol/go-ten/go/common/subscription"
@@ -26,9 +27,16 @@ type FilterAPI struct {
 
 func NewFilterAPI(host host.Host, logger gethlog.Logger) *FilterAPI {
 	return &FilterAPI{
-		host:            host,
-		logger:          logger,
-		NewHeadsService: subscriptioncommon.NewNewHeadsService(host.NewHeadsChan(), false, logger, nil),
+		host:   host,
+		logger: logger,
+		NewHeadsService: subscriptioncommon.NewNewHeadsService(
+			func() (chan *common.BatchHeader, <-chan error, error) {
+				return host.NewHeadsChan(), nil, nil
+			},
+			false,
+			logger,
+			nil,
+		),
 	}
 }
 
@@ -57,10 +65,18 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 	}
 
 	var unsubscribed atomic.Bool
-	go subscriptioncommon.ForwardFromChannels([]chan []byte{logsFromSubscription}, &unsubscribed, func(elem []byte) error {
-		return notifier.Notify(subscription.ID, elem)
-	})
-	go subscriptioncommon.HandleUnsubscribe(subscription, &unsubscribed, func() {
+	go subscriptioncommon.ForwardFromChannels(
+		[]chan []byte{logsFromSubscription},
+		func(elem []byte) error {
+			return notifier.Notify(subscription.ID, elem)
+		},
+		nil,
+		nil,
+		&unsubscribed,
+		12*time.Hour,
+		api.logger,
+	)
+	go subscriptioncommon.HandleUnsubscribe(subscription, func() {
 		api.host.UnsubscribeLogs(subscription.ID)
 		unsubscribed.Store(true)
 	})
