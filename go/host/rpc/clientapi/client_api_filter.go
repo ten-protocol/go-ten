@@ -77,8 +77,11 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 		api.logger,
 	)
 	go subscriptioncommon.HandleUnsubscribe(subscription, func() {
-		api.host.UnsubscribeLogs(subscription.ID)
+		// first exit the forwarding go-routine
 		unsubscribed.Store(true)
+		time.Sleep(100 * time.Millisecond)
+		// and then close the channel
+		api.host.UnsubscribeLogs(subscription.ID)
 	})
 	return subscription, nil
 }

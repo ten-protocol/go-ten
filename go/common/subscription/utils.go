@@ -17,7 +17,7 @@ import (
 func ForwardFromChannels[R any](inputChannels []chan R, onMessage func(R) error, onBackendDisconnect func(), backendDisconnected *atomic.Bool, stopped *atomic.Bool, timeoutInterval time.Duration, logger gethlog.Logger) {
 	inputCases := make([]reflect.SelectCase, len(inputChannels)+1)
 
-	cleanupTicker := time.NewTicker(2 * time.Second)
+	cleanupTicker := time.NewTicker(1 * time.Second)
 	defer cleanupTicker.Stop()
 	// create a ticker to handle cleanup, check the "stopped" flag and exit the goroutine
 	inputCases[0] = reflect.SelectCase{
@@ -36,7 +36,7 @@ loop:
 		// this mechanism removes closed input channels. When there is none left, the subscription is considered "disconnected".
 		_, value, ok := reflect.Select(inputCases)
 		if !ok {
-			logger.Error("Failed to read from the channel")
+			logger.Debug("Failed to read from the channel")
 			break loop
 		}
 
