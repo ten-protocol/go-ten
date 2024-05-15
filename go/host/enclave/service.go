@@ -91,19 +91,11 @@ func (e *Service) HealthStatus(ctx context.Context) host.HealthStatus {
 	return &host.GroupErrsHealthStatus{Errors: errors}
 }
 
-func (e *Service) HealthyGuardian(ctx context.Context) *Guardian {
-	for _, guardian := range e.enclaveGuardians {
-		if guardian.HealthStatus(ctx).OK() {
-			return guardian
-		}
-	}
-	return nil
-}
-
 // LookupBatchBySeqNo is used to fetch batch data from the enclave - it is only used as a fallback for the sequencer
 // host if it's missing a batch (other host services should use L2Repo to fetch batch data)
 func (e *Service) LookupBatchBySeqNo(ctx context.Context, seqNo *big.Int) (*common.ExtBatch, error) {
-	hg := e.HealthyGuardian(ctx)
+	// todo (@matt) revisit this flow to make sure it handles HA scenarios properly
+	hg := e.enclaveGuardians[0]
 	state := hg.GetEnclaveState()
 	if state.GetEnclaveL2Head().Cmp(seqNo) < 0 {
 		return nil, errutil.ErrNotFound
