@@ -63,16 +63,18 @@ func (l *LogEventManager) Subscribe(id rpc.ID, encryptedLogSubscription common.E
 func (l *LogEventManager) Unsubscribe(id rpc.ID) {
 	enclaveUnsubErr := l.sl.Enclaves().Unsubscribe(id)
 	if enclaveUnsubErr != nil {
-		// this can happen when the client passes a invalid subscription id
+		// this can happen when the client passes an invalid subscription id
 		l.logger.Debug("Could not terminate enclave subscription", log.SubIDKey, id, log.ErrKey, enclaveUnsubErr)
 	}
-	l.subscriptionMutex.Lock()
-	defer l.subscriptionMutex.Unlock()
-
+	l.subscriptionMutex.RLock()
 	logSubscription, found := l.subscriptions[id]
+	close(logSubscription.ch)
+	l.subscriptionMutex.RUnlock()
+
 	if found {
-		close(logSubscription.ch)
+		l.subscriptionMutex.Lock()
 		delete(l.subscriptions, id)
+		l.subscriptionMutex.Unlock()
 		if enclaveUnsubErr != nil {
 			l.logger.Error("The subscription management between the host and the enclave is out of sync", log.SubIDKey, id, log.ErrKey, enclaveUnsubErr)
 		}
