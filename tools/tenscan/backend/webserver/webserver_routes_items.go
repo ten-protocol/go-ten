@@ -11,23 +11,30 @@ import (
 )
 
 func routeItems(r *gin.Engine, server *WebServer) {
-	r.GET("/items/batch/latest/", server.getLatestBatch)
-	r.GET("/items/batch/:hash", server.getBatch)
-	r.GET("/items/rollup/latest/", server.getLatestRollupHeader)
-	r.GET("/items/batches/", server.getBatchListingDeprecated)
-	r.GET("/items/blocks/", server.getBlockListing) // Deprecated
-	r.GET("/items/transactions/", server.getPublicTransactions)
+	// info
 	r.GET("/info/obscuro/", server.getConfig)
 	r.POST("/info/health/", server.getHealthStatus)
 
-	r.GET("/items/rollups/", server.getRollupListing) // New
+	// batches
+	r.GET("/items/batches/", server.getBatchListingDeprecated)
 	r.GET("/items/v2/batches/", server.getBatchListingNew)
-	r.GET("/items/rollup/:hash", server.getRollup)
-	r.GET("/items/rollup/:hash/batches", server.getRollupBatches)
+	r.GET("/items/batch/latest/", server.getLatestBatch)
+	r.GET("/items/batch/:hash", server.getBatch)
 	r.GET("/items/batch/:hash/transactions", server.getBatchTransactions)
 	r.GET("/items/batch/height/:height", server.getBatchByHeight)
+
+	// rollups
+	r.GET("/items/rollups/", server.getRollupListing) // New
+	r.GET("/items/rollup/latest/", server.getLatestRollupHeader)
+	r.GET("/items/rollup/:hash", server.getRollup)
+	r.GET("/items/rollup/:hash/batches", server.getRollupBatches)
 	r.GET("/items/rollup/batch/:seq", server.getRollupBySeq)
+
+	// transactions
+	r.GET("/items/transactions/", server.getPublicTransactions)
 	r.GET("/items/transaction/:hash", server.getTransaction)
+	r.GET("/items/transactions/count", server.getTotalTxCount)
+	r.GET("/items/blocks/", server.getBlockListing) // Deprecated
 }
 
 func (w *WebServer) getHealthStatus(c *gin.Context) {
@@ -40,7 +47,7 @@ func (w *WebServer) getHealthStatus(c *gin.Context) {
 func (w *WebServer) getLatestBatch(c *gin.Context) {
 	batch, err := w.backend.GetLatestBatch()
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getLatestBatch request %w", err), w.logger)
 		return
 	}
 
@@ -50,7 +57,7 @@ func (w *WebServer) getLatestBatch(c *gin.Context) {
 func (w *WebServer) getLatestRollupHeader(c *gin.Context) {
 	rollup, err := w.backend.GetLatestRollupHeader()
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getLatestRollupHeader request %w", err), w.logger)
 		return
 	}
 
@@ -62,7 +69,7 @@ func (w *WebServer) getBatch(c *gin.Context) {
 	parsedHash := gethcommon.HexToHash(hash)
 	batch, err := w.backend.GetBatchByHash(parsedHash)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getBatch request %w", err), w.logger)
 		return
 	}
 
@@ -76,7 +83,7 @@ func (w *WebServer) getBatchByHeight(c *gin.Context) {
 	heightBigInt.SetString(heightStr, 10)
 	batch, err := w.backend.GetBatchByHeight(heightBigInt)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getBatchByHeight request %w", err), w.logger)
 		return
 	}
 
@@ -94,7 +101,7 @@ func (w *WebServer) getRollupBySeq(c *gin.Context) {
 
 	batch, err := w.backend.GetRollupBySeqNo(seq)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getRollupBySeq request %w", err), w.logger)
 		return
 	}
 
@@ -106,7 +113,7 @@ func (w *WebServer) getBatchHeader(c *gin.Context) {
 	parsedHash := gethcommon.HexToHash(hash)
 	batch, err := w.backend.GetBatchHeader(parsedHash)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getBatchHeader request %w", err), w.logger)
 		return
 	}
 
@@ -118,7 +125,7 @@ func (w *WebServer) getTransaction(c *gin.Context) {
 	parsedHash := gethcommon.HexToHash(hash)
 	batch, err := w.backend.GetTransaction(parsedHash)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getTransaction request %w", err), w.logger)
 		return
 	}
 
@@ -131,23 +138,33 @@ func (w *WebServer) getPublicTransactions(c *gin.Context) {
 
 	offset, err := strconv.ParseUint(offsetStr, 10, 32)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to parse getPublicTransactions offset units %w", err), w.logger)
 		return
 	}
 
-	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
+	size, err := strconv.ParseUint(sizeStr, 10, 64)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to parse getPublicTransactions size units %w", err), w.logger)
 		return
 	}
 
-	publicTxs, err := w.backend.GetPublicTransactions(offset, parseUint)
+	publicTxs, err := w.backend.GetPublicTransactions(offset, size)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getPublicTransactions request %w", err), w.logger)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"result": publicTxs})
+}
+
+func (w *WebServer) getTotalTxCount(c *gin.Context) {
+	txCount, err := w.backend.GetTotalTransactionCount()
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute getTotalTxCount request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": txCount})
 }
 
 func (w *WebServer) getBatchListingNew(c *gin.Context) {
@@ -156,19 +173,19 @@ func (w *WebServer) getBatchListingNew(c *gin.Context) {
 
 	offset, err := strconv.ParseUint(offsetStr, 10, 32)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to parse getBatchListingNew offset units %w", err), w.logger)
 		return
 	}
 
 	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to parse getBatchListingNew size units %w", err), w.logger)
 		return
 	}
 
 	batchesListing, err := w.backend.GetBatchesListing(offset, parseUint)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getBatchListingNew request %w", err), w.logger)
 		return
 	}
 
@@ -181,19 +198,19 @@ func (w *WebServer) getBatchListingDeprecated(c *gin.Context) {
 
 	offset, err := strconv.ParseUint(offsetStr, 10, 32)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to parse getBatchListingDeprecated offset units %w", err), w.logger)
 		return
 	}
 
-	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
+	size, err := strconv.ParseUint(sizeStr, 10, 64)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to parse getBatchListingDeprecated size units %w", err), w.logger)
 		return
 	}
 
-	batchesListing, err := w.backend.GetBatchesListingDeprecated(offset, parseUint)
+	batchesListing, err := w.backend.GetBatchesListingDeprecated(offset, size)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getBatchListingDeprecated request %w", err), w.logger)
 		return
 	}
 
@@ -206,19 +223,19 @@ func (w *WebServer) getRollupListing(c *gin.Context) {
 
 	offset, err := strconv.ParseUint(offsetStr, 10, 32)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to parse getRollupListing offset units %w", err), w.logger)
 		return
 	}
 
-	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
+	size, err := strconv.ParseUint(sizeStr, 10, 64)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to parse getRollupListing size units %w", err), w.logger)
 		return
 	}
 
-	rollupListing, err := w.backend.GetRollupListing(offset, parseUint)
+	rollupListing, err := w.backend.GetRollupListing(offset, size)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getRollupListing request %w", err), w.logger)
 		return
 	}
 
@@ -231,19 +248,19 @@ func (w *WebServer) getBlockListing(c *gin.Context) {
 
 	offset, err := strconv.ParseUint(offsetStr, 10, 32)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to parse getBlockListing offset units %w", err), w.logger)
 		return
 	}
 
-	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
+	size, err := strconv.ParseUint(sizeStr, 10, 64)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to parse getBlockListing size units %w", err), w.logger)
 		return
 	}
 
-	batchesListing, err := w.backend.GetBlockListing(offset, parseUint)
+	batchesListing, err := w.backend.GetBlockListing(offset, size)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getBlockListing request %w", err), w.logger)
 		return
 	}
 
@@ -255,7 +272,7 @@ func (w *WebServer) getRollup(c *gin.Context) {
 	parsedHash := gethcommon.HexToHash(hash)
 	rollup, err := w.backend.GetRollupByHash(parsedHash)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getRollup request %w", err), w.logger)
 		return
 	}
 
@@ -267,7 +284,7 @@ func (w *WebServer) getRollupBatches(c *gin.Context) {
 	parsedHash := gethcommon.HexToHash(hash)
 	batchListing, err := w.backend.GetRollupBatches(parsedHash)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getRollupBatches request %w", err), w.logger)
 		return
 	}
 
@@ -279,7 +296,7 @@ func (w *WebServer) getBatchTransactions(c *gin.Context) {
 	parsedHash := gethcommon.HexToHash(hash)
 	txListing, err := w.backend.GetBatchTransactions(parsedHash)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getBatchTransactions request %w", err), w.logger)
 		return
 	}
 
