@@ -259,8 +259,14 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle) 
 		return
 	}
 
+	nonce, err := p.ethClient.EthClient().PendingNonceAt(context.Background(), p.hostWallet.Address())
+	if err != nil {
+		p.logger.Error("Unable to get nonce for management contract", log.ErrKey, err)
+		return
+	}
+
 	//	transactor.GasLimit = 200_000
-	transactor.Nonce = big.NewInt(0).SetUint64(p.hostWallet.GetNonceAndIncrement())
+	transactor.Nonce = big.NewInt(0).SetUint64(nonce)
 
 	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.StateRootHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainHashes, bundle.Signature)
 	if err != nil {

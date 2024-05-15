@@ -402,6 +402,13 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	}
 
 	time.Sleep(20 * time.Second)
+
+	oldBalance, err := ti.rpcHandles.RndEthClient().BalanceAt(vTransfers[0].Receiver, nil)
+	if err != nil {
+		ti.logger.Error("Failed to retrieve balance of receiver", log.ErrKey, err)
+		return
+	}
+
 	withdrawalTx, err := mCtr.ExtractNativeValue(opts, ManagementContract.StructsValueTransferMessage(vTransfers[0]), proof32, header.TransfersTree)
 	if err != nil {
 		ti.logger.Error("Failed to extract value transfer from L2", log.ErrKey, err)
@@ -416,6 +423,17 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 
 	if receipt.Status != 1 {
 		ti.logger.Error("Withdrawal transaction failed", log.TxKey, withdrawalTx.Hash())
+		return
+	}
+
+	newBalance, err := ti.rpcHandles.RndEthClient().BalanceAt(vTransfers[0].Receiver, nil)
+	if err != nil {
+		ti.logger.Error("Failed to retrieve balance of receiver", log.ErrKey, err)
+		return
+	}
+
+	if newBalance.Sub(newBalance, oldBalance).Cmp(vTransfers[0].Amount) != 0 {
+		ti.logger.Error("Balance of receiver did not increase by the expected amount", "expected", vTransfers[0].Amount, "actual", newBalance.Sub(newBalance, oldBalance))
 		return
 	}
 
