@@ -90,7 +90,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		}, nil, nil, nil)
 
 	cfg := pool.NewDefaultPoolConfig()
-	cfg.MaxTotal = 100 // todo - what is the right number
+	cfg.MaxTotal = 200 // todo - what is the right number
 
 	services := Services{
 		HostAddrHTTP:    hostAddrHTTP,
@@ -138,6 +138,7 @@ func subscribeToNewHeadsWithRetry(ch chan *tencommon.BatchHeader, services Servi
 			sub, err = rpcClient.Subscribe(context.Background(), rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeNewHeads)
 			if err != nil {
 				logger.Info("could not subscribe for new head blocks", log.ErrKey, err)
+				_ = returnConn(services.rpcWSConnPool, rpcClient, logger)
 			}
 			return err
 		},
@@ -270,7 +271,7 @@ func (w *Services) Version() string {
 }
 
 func (w *Services) GetTenNodeHealthStatus() (bool, error) {
-	res, err := withPlainRPCConnection[bool](w, func(client *gethrpc.Client) (*bool, error) {
+	res, err := withPlainRPCConnection[bool](context.Background(), w, func(client *gethrpc.Client) (*bool, error) {
 		res, err := obsclient.NewObsClient(client).Health()
 		return &res, err
 	})
