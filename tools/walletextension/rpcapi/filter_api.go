@@ -116,7 +116,10 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 			}
 			return nil
 		},
-		nil, // todo - we can implement reconnect logic here
+		func() {
+			// release resources
+			api.closeConnections(backendSubscriptions, backendWSConnections)
+		}, // todo - we can implement reconnect logic here
 		&unsubscribedByBackend,
 		&unsubscribedByClient,
 		12*time.Hour,
@@ -126,7 +129,6 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 	// handles any of the backend connections being closed
 	go subscriptioncommon.HandleUnsubscribeErrChan(errorChannels, func() {
 		unsubscribedByBackend.Store(true)
-		api.closeConnections(backendSubscriptions, backendWSConnections)
 	})
 
 	// handles "unsubscribe" from the user
