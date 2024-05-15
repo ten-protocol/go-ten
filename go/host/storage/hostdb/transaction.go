@@ -50,6 +50,9 @@ func GetTransactionListing(db HostDB, pagination *common.QueryPagination) (*comm
 		return nil, err
 	}
 
+	println("GetTransactionListing offset: ", pagination.Offset)
+	println("GetTransactionListing size: ", pagination.Size)
+	println("------")
 	return &common.TransactionListingResponse{
 		TransactionsData: txs,
 		Total:            uint64(len(txs)),

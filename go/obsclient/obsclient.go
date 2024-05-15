@@ -174,6 +174,9 @@ func (oc *ObsClient) GetLatestBatch() (*common.BatchHeader, error) {
 // GetPublicTxListing returns a list of public transactions
 func (oc *ObsClient) GetPublicTxListing(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
 	var result common.TransactionListingResponse
+	println("GetPublicTxListing offset: ", pagination.Offset)
+	println("GetPublicTxListing size: ", pagination.Size)
+	println("------")
 	err := oc.rpcClient.Call(&result, rpc.GetPublicTransactionData, pagination)
 	if err != nil {
 		return nil, err
