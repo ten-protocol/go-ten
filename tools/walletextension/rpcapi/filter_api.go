@@ -78,7 +78,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 	errorChannels := make([]<-chan error, 0)
 	backendSubscriptions := make([]*rpc.ClientSubscription, 0)
 	for _, address := range candidateAddresses {
-		rpcWSClient, err := connectWS(user.accounts[*address], api.we.Logger())
+		rpcWSClient, err := connectWS(ctx, user.accounts[*address], api.we.Logger())
 		if err != nil {
 			return nil, err
 		}
@@ -143,7 +143,7 @@ func (api *FilterAPI) closeConnections(backendSubscriptions []*rpc.ClientSubscri
 		backendSub.Unsubscribe()
 	}
 	for _, connection := range backendWSConnections {
-		_ = returnConn(api.we.rpcWSConnPool, connection.BackingClient())
+		_ = returnConn(api.we.rpcWSConnPool, connection.BackingClient(), api.logger)
 	}
 }
 

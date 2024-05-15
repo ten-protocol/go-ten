@@ -8,6 +8,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+
+	"github.com/ten-protocol/go-ten/go/common/log"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	pool "github.com/jolestar/go-commons-pool/v2"
 	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
@@ -72,7 +77,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *Cac
 	cacheArgs = append(cacheArgs, args...)
 
 	res, err := withCache(w.Cache, cfg, generateCacheKey(cacheArgs), func() (*R, error) {
-		return withPlainRPCConnection(w, func(client *rpc.Client) (*R, error) {
+		return withPlainRPCConnection(ctx, w, func(client *rpc.Client) (*R, error) {
 			var resp *R
 			var err error
 
@@ -117,7 +122,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		var rpcErr error
 		for i := range candidateAccts {
 			acct := candidateAccts[i]
-			result, err := withEncRPCConnection(w, acct, func(rpcClient *tenrpc.EncRPCClient) (*R, error) {
+			result, err := withEncRPCConnection(ctx, w, acct, func(rpcClient *tenrpc.EncRPCClient) (*R, error) {
 				var result *R
 				adjustedArgs := args
 				if cfg.adjustArgs != nil {
@@ -272,42 +277,48 @@ func cacheBlockNumber(lastBlock rpc.BlockNumber) CacheStrategy {
 	return LatestBatch
 }
 
-func connectWS(account *GWAccount, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
-	return conn(account.user.services.rpcWSConnPool, account, logger)
+func connectWS(ctx context.Context, account *GWAccount, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
+	return conn(ctx, account.user.services.rpcWSConnPool, account, logger)
 }
 
-func conn(p *pool.ObjectPool, account *GWAccount, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
-	connectionObj, err := p.BorrowObject(context.Background())
+func conn(ctx context.Context, p *pool.ObjectPool, account *GWAccount, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
+	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "get rpc connection")
+	connectionObj, err := p.BorrowObject(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
 	}
 	conn := connectionObj.(*rpc.Client)
 	encClient, err := wecommon.CreateEncClient(conn, account.address.Bytes(), account.user.userKey, account.signature, account.signatureType, logger)
 	if err != nil {
+		_ = returnConn(p, conn, logger)
 		return nil, fmt.Errorf("error creating new client, %w", err)
 	}
 	return encClient, nil
 }
 
-func returnConn(p *pool.ObjectPool, conn tenrpc.Client) error {
-	return p.ReturnObject(context.Background(), conn)
+func returnConn(p *pool.ObjectPool, conn tenrpc.Client, logger gethlog.Logger) error {
+	err := p.ReturnObject(context.Background(), conn)
+	if err != nil {
+		logger.Error("Error returning connection to pool", log.ErrKey, err)
+	}
+	return err
 }
 
-func withEncRPCConnection[R any](w *Services, acct *GWAccount, execute func(*tenrpc.EncRPCClient) (*R, error)) (*R, error) {
-	rpcClient, err := conn(acct.user.services.rpcHTTPConnPool, acct, w.logger)
+func withEncRPCConnection[R any](ctx context.Context, w *Services, acct *GWAccount, execute func(*tenrpc.EncRPCClient) (*R, error)) (*R, error) {
+	rpcClient, err := conn(ctx, acct.user.services.rpcHTTPConnPool, acct, w.logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to backed. Cause: %w", err)
 	}
-	defer returnConn(w.rpcHTTPConnPool, rpcClient.BackingClient())
+	defer returnConn(w.rpcHTTPConnPool, rpcClient.BackingClient(), w.logger)
 	return execute(rpcClient)
 }
 
-func withPlainRPCConnection[R any](w *Services, execute func(client *rpc.Client) (*R, error)) (*R, error) {
-	connectionObj, err := w.rpcHTTPConnPool.BorrowObject(context.Background())
+func withPlainRPCConnection[R any](ctx context.Context, w *Services, execute func(client *rpc.Client) (*R, error)) (*R, error) {
+	connectionObj, err := w.rpcHTTPConnPool.BorrowObject(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
 	}
 	rpcClient := connectionObj.(*rpc.Client)
-	defer returnConn(w.rpcHTTPConnPool, rpcClient)
+	defer returnConn(w.rpcHTTPConnPool, rpcClient, w.logger)
 	return execute(rpcClient)
 }
