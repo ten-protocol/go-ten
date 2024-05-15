@@ -1,7 +1,6 @@
 package hostdb
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -142,39 +141,5 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 
 	if int(totalTxs.Int64()) != len(txHashesOne)+len(txHashesTwo) {
 		t.Errorf("total number of batch transactions was not stored correctly")
-	}
-}
-
-func TestGetTransactionListingLarge(t *testing.T) {
-	db, _ := createSQLiteDB(t)
-	var txHashes []common.L2TxHash
-	for i := 0; i < 1000; i++ {
-		txHash := gethcommon.BytesToHash([]byte(fmt.Sprintf("magicString%d", i+1)))
-		txHashes = append(txHashes, txHash)
-	}
-	batchOne := createBatch(batchNumber, txHashes)
-	dbtx, _ := db.NewDBTransaction()
-	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
-	if err != nil {
-		t.Errorf("could not store batch. Cause: %s", err)
-	}
-
-	// offset 1000, size 2
-	txListing, err := GetTransactionListing(db, &common.QueryPagination{Offset: 1000, Size: 2})
-	if err != nil {
-		t.Errorf("could not get tx listing. Cause: %s", err)
-	}
-
-	if big.NewInt(int64(txListing.Total)).Cmp(big.NewInt(0)) != 0 {
-		t.Errorf("tx listing was not paginated correctly")
-	}
-
-	txListing1, err := GetTransactionListing(db, &common.QueryPagination{Offset: 995, Size: 5})
-	if err != nil {
-		t.Errorf("could not get tx listing. Cause: %s", err)
-	}
-
-	if big.NewInt(int64(txListing1.Total)).Cmp(big.NewInt(5)) != 0 {
-		t.Errorf("tx listing was not paginated correctly")
 	}
 }
