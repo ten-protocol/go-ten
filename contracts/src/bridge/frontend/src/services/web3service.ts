@@ -28,20 +28,17 @@ export default class Web3Service implements IWeb3Service {
     const res = await this.contract.sendNative(receiver, {
       value: ethers.utils.parseEther(value),
     });
-    console.log("🚀 ~ Web3Service ~ sendNative ~ res", res);
     const receipt = await res.wait();
-    console.log("🚀 ~ Web3Service ~ sendNative ~ receipt", receipt);
     return receipt;
   }
 
   // Send ERC20 assets to the other network.
-  async sendERC20(asset: string, amount: string, receiver: string) {
-    return this.contract.sendERC20(asset, amount, receiver);
-  }
-
-  // Receive assets that have been sent on the other network.
-  async receiveAssets(asset: string, amount: string, receiver: string) {
-    return this.contract.receiveAssets(asset, amount, receiver);
+  async sendERC20(
+    receiver: string,
+    amount: string,
+    tokenContractAddress: string
+  ) {
+    return this.contract.sendERC20(tokenContractAddress, amount, receiver);
   }
 
   // Get the balance of the signer.

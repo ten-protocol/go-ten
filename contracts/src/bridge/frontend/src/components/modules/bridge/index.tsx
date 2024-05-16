@@ -59,7 +59,7 @@ export default function Dashboard() {
   const [fromTokenBalance, setFromTokenBalance] = React.useState<any>(0);
 
   const tokens = isL1ToL2 ? L1TOKENS : L2TOKENS;
-  const receiver = form.watch("receiver");
+  const receiver = React.useMemo(() => form.watch("receiver"), [form.watch]);
 
   const swapTokens = () => {
     switchNetwork(isL1ToL2 ? "L2" : "L1");
@@ -110,15 +110,14 @@ export default function Dashboard() {
       });
       const token = data.token;
       const t = tokens.find((t) => t.value === token);
-      if (t?.isNative) {
-        await web3Service.sendNative(data.receiver ?? address, data.amount);
-      } else {
-        await web3Service.sendERC20(
-          t!.address,
-          data.amount,
-          data.receiver ?? address
-        );
+      if (!t) {
+        throw new Error("Invalid token");
       }
+
+      const sendTransaction = t.isNative
+        ? web3Service.sendNative
+        : web3Service.sendERC20;
+      await sendTransaction(data.receiver ?? address, data.amount, t.address);
       toast({
         title: "Bridge Transaction",
         description: "Bridge transaction completed",
@@ -129,10 +128,11 @@ export default function Dashboard() {
       console.error(error);
       toast({
         title: "Bridge Transaction",
-        description:
+        description: `Error: ${
           error instanceof Error
             ? error.message
-            : "Error initiating bridge transaction",
+            : "initiating bridge transaction"
+        }`,
         variant: ToastType.DESTRUCTIVE,
       });
     }
@@ -376,7 +376,9 @@ export default function Dashboard() {
                   <div className="bg-muted dark:bg-[#15171D] rounded-lg border flex items-center justify-between mt-2 p-2 h-14">
                     <strong className="text-lg">Receiver Address</strong>
                     <div className="flex items-center">
-                      {<Copy value={receiver ?? address} />}
+                      {receiver || address ? (
+                        <Copy value={receiver ?? address} />
+                      ) : null}
                     </div>
                   </div>
                 </div>
