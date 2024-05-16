@@ -68,7 +68,7 @@ func (l *LogEventManager) Unsubscribe(id rpc.ID) {
 	}
 	l.subscriptionMutex.RLock()
 	logSubscription, found := l.subscriptions[id]
-	close(logSubscription.ch)
+	ch := logSubscription.ch
 	l.subscriptionMutex.RUnlock()
 
 	if found {
@@ -78,6 +78,7 @@ func (l *LogEventManager) Unsubscribe(id rpc.ID) {
 		if enclaveUnsubErr != nil {
 			l.logger.Error("The subscription management between the host and the enclave is out of sync", log.SubIDKey, id, log.ErrKey, enclaveUnsubErr)
 		}
+		close(ch)
 	}
 }
 
