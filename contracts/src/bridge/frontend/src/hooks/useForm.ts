@@ -20,6 +20,7 @@ export const useFormHook = () => {
     token: z.string().nonempty({
       message: "Select a token.",
     }),
+    receiver: z.string().optional(),
   });
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -29,6 +30,7 @@ export const useFormHook = () => {
       fromChain: fromChains[0].value,
       toChain: toChains[0].value,
       token: isL1ToL2 ? L1TOKENS[0].value : L2TOKENS[0].value,
+      receiver: "",
     },
   });
 

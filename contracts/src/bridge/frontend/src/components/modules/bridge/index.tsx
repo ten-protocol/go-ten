@@ -8,7 +8,6 @@ import {
 } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
 import { Skeleton } from "@/src/components/ui/skeleton";
-import { cn } from "@/src/lib/utils";
 import { ArrowDownUpIcon, Terminal } from "lucide-react";
 import {
   Select,
@@ -31,7 +30,6 @@ import {
 import { Input } from "@/src/components/ui/input";
 import { toast } from "@/src/components/ui/use-toast";
 import { DrawerDialog } from "../common/drawer-dialog";
-import { Label } from "../../ui/label";
 import { L1TOKENS, L2TOKENS, PERCENTAGES } from "@/src/lib/constants";
 import { z } from "zod";
 import { useFormHook } from "@/src/hooks/useForm";
@@ -40,6 +38,7 @@ import { useWalletStore } from "../../providers/wallet-provider";
 import { ToastType, Token } from "@/src/types";
 import { Alert, AlertDescription } from "../../ui/alert";
 import ConnectWalletButton from "../common/connect-wallet";
+import Copy from "../common/copy";
 
 export default function Dashboard() {
   const {
@@ -60,6 +59,7 @@ export default function Dashboard() {
   const [fromTokenBalance, setFromTokenBalance] = React.useState<any>(0);
 
   const tokens = isL1ToL2 ? L1TOKENS : L2TOKENS;
+  const receiver = form.watch("receiver");
 
   const swapTokens = () => {
     switchNetwork(isL1ToL2 ? "L2" : "L1");
@@ -106,14 +106,18 @@ export default function Dashboard() {
       toast({
         title: "Bridge Transaction",
         description: "Bridge transaction initiated",
-        variant: ToastType.SUCCESS,
+        variant: ToastType.INFO,
       });
       const token = data.token;
       const t = tokens.find((t) => t.value === token);
       if (t?.isNative) {
-        await web3Service.sendNative(address, data.amount);
+        await web3Service.sendNative(data.receiver ?? address, data.amount);
       } else {
-        await web3Service.sendERC20(t!.address, data.amount, address);
+        await web3Service.sendERC20(
+          t!.address,
+          data.amount,
+          data.receiver ?? address
+        );
       }
       toast({
         title: "Bridge Transaction",
@@ -125,7 +129,10 @@ export default function Dashboard() {
       console.error(error);
       toast({
         title: "Bridge Transaction",
-        description: "Error initiating bridge transaction",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Error initiating bridge transaction",
         variant: ToastType.DESTRUCTIVE,
       });
     }
@@ -139,7 +146,8 @@ export default function Dashboard() {
       });
       return;
     }
-    const amount = (fromTokenBalance * value) / 100;
+    const roundDown = (num: number) => Math.floor(num * 100) / 100;
+    const amount = roundDown((fromTokenBalance * value) / 100);
     form.setValue("amount", amount.toString());
   };
 
@@ -346,33 +354,7 @@ export default function Dashboard() {
 
                   <div className="flex items-center justify-end">
                     {/* Destination Address Input */}
-                    <DrawerDialog
-                      FormComponent={({ className }) => (
-                        <form
-                          className={cn("grid items-start gap-4", className)}
-                        >
-                          <div className="grid gap-2">
-                            <Label htmlFor="address">Address</Label>
-                            <Input
-                              type="address"
-                              id="address"
-                              defaultValue=""
-                            />
-                          </div>
-                          <Alert
-                            variant={"warning"}
-                            className="flex items-center space-x-2"
-                          >
-                            <Terminal className="h-4 w-4" />
-                            <AlertDescription>
-                              Make sure the address is correct before
-                              submitting.
-                            </AlertDescription>
-                          </Alert>
-                          <Button type="submit">Add destination address</Button>
-                        </form>
-                      )}
-                    />
+                    <DrawerDialog />
                   </div>
                   <div className="bg-muted dark:bg-[#15171D]">
                     <div className="flex items-center justify-between p-2">
@@ -392,8 +374,10 @@ export default function Dashboard() {
                   </div>
 
                   <div className="bg-muted dark:bg-[#15171D] rounded-lg border flex items-center justify-between mt-2 p-2 h-14">
-                    <strong>Refuel gas</strong>
-                    <div className="flex items-center">Not supported</div>
+                    <strong className="text-lg">Receiver Address</strong>
+                    <div className="flex items-center">
+                      {<Copy value={receiver ?? address} />}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center justify-center mt-4">
