@@ -147,9 +147,7 @@ func (w *WebServer) getPublicTransactions(c *gin.Context) {
 		errorHandler(c, fmt.Errorf("unable to parse getPublicTransactions size units %w", err), w.logger)
 		return
 	}
-	println("getPublicTransactions offset: ", offset)
-	println("getPublicTransactions size: ", size)
-	println("------")
+
 	publicTxs, err := w.backend.GetPublicTransactions(offset, size)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to execute getPublicTransactions request %w", err), w.logger)

@@ -13,6 +13,7 @@ const (
 	selectTxCount = "SELECT total FROM transaction_count WHERE id = 1"
 	selectTx      = "SELECT full_hash, b_sequence FROM transaction_host WHERE hash = "
 	selectTxs     = "SELECT t.full_hash, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence ORDER BY b.height DESC "
+	countTxs      = "SELECT COUNT(b_sequence) AS row_count FROM transaction_host"
 )
 
 // GetTransactionListing returns a paginated list of transactions in descending order
@@ -50,9 +51,6 @@ func GetTransactionListing(db HostDB, pagination *common.QueryPagination) (*comm
 		return nil, err
 	}
 
-	println("GetTransactionListing offset: ", pagination.Offset)
-	println("GetTransactionListing size: ", pagination.Size)
-	println("------")
 	return &common.TransactionListingResponse{
 		TransactionsData: txs,
 		Total:            uint64(len(txs)),
@@ -85,12 +83,22 @@ func GetTransaction(db HostDB, hash gethcommon.Hash) (*common.PublicTransaction,
 	return tx, nil
 }
 
-// GetTotalTxCount returns the total number of batched transactions
+// GetTotalTxCount returns the
 func GetTotalTxCount(db HostDB) (*big.Int, error) {
 	var totalCount int
 	err := db.GetSQLDB().QueryRow(selectTxCount).Scan(&totalCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve total transaction count: %w", err)
+	}
+	return big.NewInt(int64(totalCount)), nil
+}
+
+// GetTotalTxsQuery returns the count of the transactions table
+func GetTotalTxsQuery(db HostDB) (*big.Int, error) {
+	var totalCount int
+	err := db.GetSQLDB().QueryRow(countTxs).Scan(&totalCount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count number of transactions: %w", err)
 	}
 	return big.NewInt(int64(totalCount)), nil
 }

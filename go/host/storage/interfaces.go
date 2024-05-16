@@ -44,6 +44,8 @@ type BatchResolver interface {
 	FetchBatchByHeight(height *big.Int) (*common.PublicBatch, error)
 	// FetchTotalTxCount returns the number of transactions in the DB
 	FetchTotalTxCount() (*big.Int, error)
+	// FetchTotalTxsQuery returns the number of transactions in the DB
+	FetchTotalTxsQuery() (*big.Int, error)
 	// FetchTransaction returns the transaction given its hash
 	FetchTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error)
 	// FetchBatchTransactions returns a list of public transaction data within a given batch hash
