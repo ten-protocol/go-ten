@@ -7,8 +7,8 @@ export const fetchTestnetStatus = async (): Promise<
   ResponseDataInterface<any>
 > => {
   return await httpRequest<ResponseDataInterface<any>>({
-    method: "post",
+    method: "get",
     url: pathToUrl(apiRoutes.getHealthStatus),
-    data: { jsonrpc: "2.0", method: "obscuro_health", params: [], id: 1 },
+    data: { jsonrpc: "2.0", method: "obscuro_health", id: 1 },
   });
 };
