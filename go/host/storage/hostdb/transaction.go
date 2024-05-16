@@ -83,7 +83,7 @@ func GetTransaction(db HostDB, hash gethcommon.Hash) (*common.PublicTransaction,
 	return tx, nil
 }
 
-// GetTotalTxCount returns the
+// GetTotalTxCount returns value from the transaction count table
 func GetTotalTxCount(db HostDB) (*big.Int, error) {
 	var totalCount int
 	err := db.GetSQLDB().QueryRow(selectTxCount).Scan(&totalCount)
