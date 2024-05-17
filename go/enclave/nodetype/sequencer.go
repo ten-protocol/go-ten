@@ -14,14 +14,12 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/measure"
-	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	"github.com/ten-protocol/go-ten/go/common/compression"
 
-	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -489,31 +487,22 @@ func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, 
 		return nil, fmt.Errorf("no batches found for export of cross chain data")
 	}
 
-	// build a bundle of all the cross chain roots that are valid for the canonical L1 chain
+	blockHash := canonicalBatches[len(canonicalBatches)-1].Header.L1Proof
 
-	smtValues := crosschain.MerkleBatches(canonicalBatches).ForMerkleTree()
-
-	tree, err := smt.Of(smtValues, []string{smt.SOL_BYTES32})
-	if err != nil {
-		return nil, err
-	}
-
-	batchesHash := tree.GetRoot()
-
-	block, err := s.blockProcessor.GetHead(ctx)
+	block, err := s.storage.FetchBlock(ctx, blockHash)
 	if err != nil {
 		return nil, err
 	}
 
 	crossChainHashes := make([][]byte, 0)
 	for _, batch := range canonicalBatches {
-		if batch.Header.CrossChainTreeHash != gethcommon.BigToHash(gethcommon.Big0) {
-			crossChainHashes = append(crossChainHashes, batch.Header.CrossChainTreeHash.Bytes())
+		if batch.Header.CrossChainRoot != gethcommon.BigToHash(gethcommon.Big0) {
+			crossChainHashes = append(crossChainHashes, batch.Header.CrossChainRoot.Bytes())
 		}
 	}
 
 	bundle := &common.ExtCrossChainBundle{
-		StateRootHash:    gethcommon.BytesToHash(batchesHash),
+		StateRootHash:    gethcommon.BigToHash(gethcommon.Big0), // unused for now.
 		L1BlockHash:      block.Hash(),
 		L1BlockNum:       big.NewInt(0).Set(block.Header().Number),
 		CrossChainHashes: crossChainHashes,

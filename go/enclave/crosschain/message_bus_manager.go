@@ -110,7 +110,7 @@ func (m *MessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, error) {
 
 // ExtractLocalMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
 func (m *MessageBusManager) ExtractOutboundMessages(ctx context.Context, receipts common.L2Receipts) (common.CrossChainMessages, error) {
-	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, []*gethcommon.Hash{&CrossChainEventID})
+	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &CrossChainEventID)
 	if err != nil {
 		m.logger.Error("Error extracting logs from L2 message bus!", log.ErrKey, err)
 		return make(common.CrossChainMessages, 0), err
@@ -127,7 +127,7 @@ func (m *MessageBusManager) ExtractOutboundMessages(ctx context.Context, receipt
 
 // ExtractOutboundTransfers - Finds relevant logs in the receipts and converts them to cross chain messages.
 func (m *MessageBusManager) ExtractOutboundTransfers(_ context.Context, receipts common.L2Receipts) (common.ValueTransferEvents, error) {
-	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, []*gethcommon.Hash{&ValueTransferEventID})
+	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &ValueTransferEventID)
 	if err != nil {
 		m.logger.Error("Error extracting logs from L2 message bus!", log.ErrKey, err)
 		return make(common.ValueTransferEvents, 0), err

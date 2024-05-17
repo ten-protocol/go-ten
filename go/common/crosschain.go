@@ -12,9 +12,9 @@ import (
 type ExtCrossChainBundle struct {
 	StateRootHash    gethcommon.Hash
 	Signature        []byte
-	L1BlockHash      gethcommon.Hash
-	L1BlockNum       *big.Int
-	CrossChainHashes [][]byte
+	L1BlockHash      gethcommon.Hash // The block hash that's expected to be canonical on signature submission
+	L1BlockNum       *big.Int        // The number of the block that has the block hash. This is used to verify the block hash.
+	CrossChainHashes [][]byte        //
 }
 
 func (bundle ExtCrossChainBundle) HashPacked() common.Hash {

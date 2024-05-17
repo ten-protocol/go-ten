@@ -55,7 +55,7 @@ func receiptsHash(receipts types.Receipts) string {
 }
 
 // filterLogsFromReceipts - filters the receipts for logs matching address, if provided and topic if provided.
-func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address, topics []*gethcommon.Hash) ([]types.Log, error) {
+func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address, topic *gethcommon.Hash) ([]types.Log, error) {
 	logs := make([]types.Log, 0)
 
 	for _, receipt := range receipts {
@@ -63,7 +63,7 @@ func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address
 			continue
 		}
 
-		logsForReceipt, err := filterLogsFromReceipt(receipt, address, topics)
+		logsForReceipt, err := filterLogsFromReceipt(receipt, address, topic)
 		if err != nil {
 			return logs, err
 		}
@@ -74,8 +74,8 @@ func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address
 	return logs, nil
 }
 
-// filterLogsFromReceipt - filters the receipt for logs matching address, if provided and topic if provided.
-func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, topics []*gethcommon.Hash) ([]types.Log, error) {
+// filterLogsFromReceipt - filters the receipt for logs matching address, if provided and matching any of the provided topics.
+func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, topic *gethcommon.Hash) ([]types.Log, error) {
 	logs := make([]types.Log, 0)
 
 	if receipt == nil {
@@ -89,10 +89,8 @@ func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, 
 			shouldSkip = true
 		}
 
-		for _, topic := range topics {
-			if topic != nil && log.Topics[0] != *topic {
-				shouldSkip = true
-			}
+		if topic != nil && log.Topics[0] != *topic {
+			shouldSkip = true
 		}
 
 		if shouldSkip {
@@ -164,7 +162,7 @@ func (mb MerkleBatches) Len() int {
 
 func (mb MerkleBatches) EncodeIndex(index int, w *bytes.Buffer) {
 	batch := mb[index]
-	if err := rlp.Encode(w, batch.Header.CrossChainTreeHash); err != nil {
+	if err := rlp.Encode(w, batch.Header.CrossChainRoot); err != nil {
 		panic(err)
 	}
 }
@@ -173,7 +171,7 @@ func (mb MerkleBatches) ForMerkleTree() [][]interface{} {
 	values := make([][]interface{}, 0)
 	for _, batch := range mb {
 		val := []interface{}{
-			batch.Header.CrossChainTreeHash,
+			batch.Header.CrossChainRoot,
 		}
 		values = append(values, val)
 	}
