@@ -95,6 +95,14 @@ func (p *Publisher) Start() error {
 	return nil
 }
 
+func (p *Publisher) RunBundleSubmission() {
+	managementCtr, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
+	if err != nil {
+		p.logger.Error("Unable to instantiate management contract client")
+		return
+	}
+}
+
 func (p *Publisher) Stop() error {
 	p.sendingCtxCancel()
 	return nil

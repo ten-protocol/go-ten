@@ -82,7 +82,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         }
 
         if ((blockhash(blockNum) != blockHash)) {
-     //       revert(string(abi.encodePacked("Invalid block binding:", Strings.toString(block.number),":", Strings.toString(uint256(blockHash)), ":", Strings.toString(uint256(blockhash(blockNum))))));
+            revert(string(abi.encodePacked("Invalid block binding:", Strings.toString(block.number),":", Strings.toString(uint256(blockHash)), ":", Strings.toString(uint256(blockhash(blockNum))))));
         }
 
         address enclaveID = ECDSA.recover(keccak256(abi.encode(root, blockHash, blockNum, crossChainHashes)), signature);
@@ -103,8 +103,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     // solc-ignore-next-line unused-param
     function AddRollup(Structs.MetaRollup calldata r, string calldata  _rollupData, Structs.HeaderCrossChainData calldata crossChainData) public {
-        // TODO: Add a check that ensures the cross messages are coming from the correct fork using block hashes.
-
         address enclaveID = ECDSA.recover(r.Hash, r.Signature);
         // revert if the EnclaveID is not attested
         require(attested[enclaveID], "enclaveID not attested");
