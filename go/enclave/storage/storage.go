@@ -200,6 +200,11 @@ func (s *storageImpl) FetchNonCanonicalBatchesBetween(ctx context.Context, start
 	return enclavedb.ReadNonCanonicalBatches(ctx, s.db.GetSQLDB(), startSeq, endSeq)
 }
 
+func (s *storageImpl) FetchCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error) {
+	defer s.logDuration("FetchCanonicalBatchesBetween", measure.NewStopwatch())
+	return enclavedb.ReadCanonicalBatches(ctx, s.db.GetSQLDB(), startSeq, endSeq)
+}
+
 func (s *storageImpl) StoreBlock(ctx context.Context, b *types.Block, chainFork *common.ChainFork) error {
 	defer s.logDuration("StoreBlock", measure.NewStopwatch())
 	dbTx, err := s.db.NewDBTransaction(ctx)
@@ -261,9 +266,9 @@ func (s *storageImpl) FetchCanonicaBlockByHeight(ctx context.Context, height *bi
 	return s.FetchBlock(ctx, header.Hash())
 }
 
-func (s *storageImpl) FetchCanonicalBlocksBetween(ctx context.Context, start *big.Int, end *big.Int) ([]*types.Header, error) {
+func (s *storageImpl) FetchCanonicalBlocksBetween(ctx context.Context, start *big.Int, end *big.Int) ([]*common.BatchHeader, error) {
 	defer s.logDuration("FetchCanonicalBlocksBetween", measure.NewStopwatch())
-	return enclavedb.FetchBlockHeadersBetween(ctx, s.db.GetSQLDB(), start, end)
+	return enclavedb.FetchBatchHeadersBetween(ctx, s.db.GetSQLDB(), start, end)
 }
 
 func (s *storageImpl) FetchHeadBlock(ctx context.Context) (*types.Block, error) {

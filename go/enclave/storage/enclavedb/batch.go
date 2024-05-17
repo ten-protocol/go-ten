@@ -166,6 +166,10 @@ func ReadNonCanonicalBatches(ctx context.Context, db *sql.DB, startAtSeq uint64,
 	return fetchBatches(ctx, db, " where b.sequence>=? and b.sequence <=? and b.is_canonical=false order by b.sequence", startAtSeq, endSeq)
 }
 
+func ReadCanonicalBatches(ctx context.Context, db *sql.DB, startAtSeq uint64, endSeq uint64) ([]*core.Batch, error) {
+	return fetchBatches(ctx, db, " where b.sequence>=? and b.sequence <=? and b.is_canonical=true order by b.sequence", startAtSeq, endSeq)
+}
+
 // todo - is there a better way to write this query?
 func ReadCurrentHeadBatch(ctx context.Context, db *sql.DB) (*core.Batch, error) {
 	return fetchBatch(ctx, db, " where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true)")

@@ -22,8 +22,6 @@ import (
 type BlockResolver interface {
 	// FetchBlock returns the L1 Block with the given hash.
 	FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Block, error)
-	// FetchCanonicalBlocksBetween - self explanatory
-	FetchCanonicalBlocksBetween(ctx context.Context, start *big.Int, end *big.Int) ([]*types.Header, error)
 	// FetchCanonicaBlockByHeight - self explanatory
 	FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Block, error)
 	// FetchHeadBlock - returns the head of the current chain.
@@ -55,6 +53,8 @@ type BatchResolver interface {
 	FetchBatchesByBlock(ctx context.Context, hash common.L1BlockHash) ([]*core.Batch, error)
 	// FetchNonCanonicalBatchesBetween - returns all reorged batches between the sequences
 	FetchNonCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error)
+	// FetchCanonicalBatchesBetween - returns all canon batches between the sequences
+	FetchCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error)
 	// FetchCanonicalUnexecutedBatches - return the list of the unexecuted batches that are canonical
 	FetchCanonicalUnexecutedBatches(context.Context, *big.Int) ([]*core.Batch, error)
 

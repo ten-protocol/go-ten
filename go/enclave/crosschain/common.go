@@ -164,7 +164,7 @@ func (mb MerkleBatches) Len() int {
 
 func (mb MerkleBatches) EncodeIndex(index int, w *bytes.Buffer) {
 	batch := mb[index]
-	if err := rlp.Encode(w, batch.Header.TransfersTree); err != nil {
+	if err := rlp.Encode(w, batch.Header.CrossChainTreeHash); err != nil {
 		panic(err)
 	}
 }
@@ -173,7 +173,7 @@ func (mb MerkleBatches) ForMerkleTree() [][]interface{} {
 	values := make([][]interface{}, 0)
 	for _, batch := range mb {
 		val := []interface{}{
-			batch.Header.TransfersTree,
+			batch.Header.CrossChainTreeHash,
 		}
 		values = append(values, val)
 	}

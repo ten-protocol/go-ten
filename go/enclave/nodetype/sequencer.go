@@ -480,40 +480,18 @@ func (s *sequencer) Close() error {
 }
 
 func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
-	canonicalBatchesInRollup := make([]*core.Batch, 0)
-	for i := fromSeqNo; i <= toSeqNo; i++ {
-		batch, err := s.storage.FetchBatchBySeqNo(ctx, i)
-		if err != nil {
-			return nil, err
-		}
-
-		l1BlockHash := batch.Header.L1Proof
-		block, err := s.storage.FetchBlock(ctx, l1BlockHash)
-		if err != nil {
-			return nil, err
-		}
-
-		canonicalBlock, err := s.storage.FetchCanonicaBlockByHeight(ctx, block.Header().Number)
-		if err != nil {
-			return nil, err
-		}
-
-		if canonicalBlock.Hash().Cmp(block.Hash()) != 0 {
-			continue
-		}
-
-		// Only add batches that point to canonical blocks.
-		canonicalBatchesInRollup = append(canonicalBatchesInRollup, batch)
+	canonicalBatches, err := s.storage.FetchCanonicalBatchesBetween((ctx), fromSeqNo, toSeqNo)
+	if err != nil {
+		return nil, err
 	}
 
-	if len(canonicalBatchesInRollup) == 0 {
+	if len(canonicalBatches) == 0 {
 		return nil, fmt.Errorf("no batches found for export of cross chain data")
 	}
 
-	// build a merkle tree of all the batches that are valid for the canonical L1 chain
-	// The proof is double inclusion - one for the message being in the batch's tree and one for
+	// build a bundle of all the cross chain roots that are valid for the canonical L1 chain
 
-	smtValues := crosschain.MerkleBatches(canonicalBatchesInRollup).ForMerkleTree()
+	smtValues := crosschain.MerkleBatches(canonicalBatches).ForMerkleTree()
 
 	tree, err := smt.Of(smtValues, []string{smt.SOL_BYTES32})
 	if err != nil {
@@ -528,9 +506,9 @@ func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, 
 	}
 
 	crossChainHashes := make([][]byte, 0)
-	for _, batch := range canonicalBatchesInRollup {
-		if batch.Header.TransfersTree != gethcommon.BigToHash(gethcommon.Big0) {
-			crossChainHashes = append(crossChainHashes, batch.Header.TransfersTree.Bytes())
+	for _, batch := range canonicalBatches {
+		if batch.Header.CrossChainTreeHash != gethcommon.BigToHash(gethcommon.Big0) {
+			crossChainHashes = append(crossChainHashes, batch.Header.CrossChainTreeHash.Bytes())
 		}
 	}
 

@@ -43,7 +43,7 @@ type BatchHeader struct {
 	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *big.Int                              `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
-	TransfersTree                 common.Hash                           `json:"transfersTree"`           // This is a merkle tree of all of the outbound value transfers for the MainNet
+	CrossChainTreeHash            common.Hash                           `json:"crossChainTreeHash"`      // This is a merkle tree of all of the outbound value transfers for the MainNet
 	CrossChainTree                SerializedCrossChainTree              `json:"crossChainTree"`
 }
 
@@ -93,7 +93,7 @@ func (b *BatchHeader) MarshalJSON() ([]byte, error) {
 		b.CrossChainMessages,
 		b.LatestInboundCrossChainHash,
 		(*hexutil.Big)(b.LatestInboundCrossChainHeight),
-		b.TransfersTree,
+		b.CrossChainTreeHash,
 		b.CrossChainTree,
 	})
 }
@@ -122,7 +122,7 @@ func (b *BatchHeader) UnmarshalJSON(data []byte) error {
 	b.CrossChainMessages = dec.CrossChainMessages
 	b.LatestInboundCrossChainHash = dec.LatestInboundCrossChainHash
 	b.LatestInboundCrossChainHeight = (*big.Int)(dec.LatestInboundCrossChainHeight)
-	b.TransfersTree = dec.TransfersTree
+	b.CrossChainTreeHash = dec.TransfersTree
 	b.CrossChainTree = dec.CrossChainTree
 	return nil
 }

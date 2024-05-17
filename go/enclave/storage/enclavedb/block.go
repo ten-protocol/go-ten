@@ -90,8 +90,8 @@ func FetchBlockHeaderByHeight(ctx context.Context, db *sql.DB, height *big.Int) 
 	return fetchBlockHeader(ctx, db, "where is_canonical=true and height=?", height.Int64())
 }
 
-func FetchBlockHeadersBetween(ctx context.Context, db *sql.DB, start *big.Int, end *big.Int) ([]*types.Header, error) {
-	return fetchBlockHeaders(ctx, db, "where is_canonical=true and height>? and height<?", start.Int64(), end.Int64())
+func FetchBatchHeadersBetween(ctx context.Context, db *sql.DB, start *big.Int, end *big.Int) ([]*common.BatchHeader, error) {
+	return fetchBatchHeaders(ctx, db, "where is_canonical=true and sequence between (?,?)", start.Int64(), end.Int64())
 }
 
 func GetBlockId(ctx context.Context, db *sql.Tx, hash common.L1BlockHash) (int64, error) {
@@ -216,9 +216,9 @@ func FetchRollupMetadata(ctx context.Context, db *sql.DB, hash common.L2RollupHa
 	return rollup, nil
 }
 
-func fetchBlockHeaders(ctx context.Context, db *sql.DB, whereQuery string, args ...any) ([]*types.Header, error) {
-	result := make([]*types.Header, 0)
-	query := "select header from block " + whereQuery
+func fetchBatchHeaders(ctx context.Context, db *sql.DB, whereQuery string, args ...any) ([]*common.BatchHeader, error) {
+	result := make([]*common.BatchHeader, 0)
+	query := "select * from batch " + whereQuery
 
 	rows, err := db.QueryContext(ctx, query+" "+whereQuery, args...)
 	if err != nil {
@@ -239,7 +239,7 @@ func fetchBlockHeaders(ctx context.Context, db *sql.DB, whereQuery string, args 
 		if err != nil {
 			return nil, err
 		}
-		h := new(types.Header)
+		h := new(common.BatchHeader)
 		if err := rlp.Decode(bytes.NewReader([]byte(header)), h); err != nil {
 			return nil, fmt.Errorf("could not decode l1 block header. Cause: %w", err)
 		}

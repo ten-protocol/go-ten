@@ -357,8 +357,8 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	if gethcommon.BytesToHash(tree.GetRoot()) != header.TransfersTree {
-		ti.logger.Error("Root of cross chain tree does not match header", "expected", header.TransfersTree, "actual", gethcommon.BytesToHash(tree.GetRoot()))
+	if gethcommon.BytesToHash(tree.GetRoot()) != header.CrossChainTreeHash {
+		ti.logger.Error("Root of cross chain tree does not match header", "expected", header.CrossChainTreeHash, "actual", gethcommon.BytesToHash(tree.GetRoot()))
 		return
 	}
 
@@ -409,7 +409,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	withdrawalTx, err := mCtr.ExtractNativeValue(opts, ManagementContract.StructsValueTransferMessage(vTransfers[0]), proof32, header.TransfersTree)
+	withdrawalTx, err := mCtr.ExtractNativeValue(opts, ManagementContract.StructsValueTransferMessage(vTransfers[0]), proof32, header.CrossChainTreeHash)
 	if err != nil {
 		ti.logger.Error("Failed to extract value transfer from L2", log.ErrKey, err)
 		return

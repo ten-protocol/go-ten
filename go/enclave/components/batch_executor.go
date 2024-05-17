@@ -311,18 +311,18 @@ func (executor *batchExecutor) CreateGenesisState(
 
 	genesisBatch := &core.Batch{
 		Header: &common.BatchHeader{
-			ParentHash:       common.L2BatchHash{},
-			L1Proof:          blkHash,
-			Root:             *preFundGenesisState,
-			TxHash:           types.EmptyRootHash,
-			Number:           big.NewInt(int64(0)),
-			SequencerOrderNo: big.NewInt(int64(common.L2GenesisSeqNo)), // genesis batch has seq number 1
-			ReceiptHash:      types.EmptyRootHash,
-			TransfersTree:    types.EmptyRootHash,
-			Time:             timeNow,
-			Coinbase:         coinbase,
-			BaseFee:          baseFee,
-			GasLimit:         executor.batchGasLimit,
+			ParentHash:         common.L2BatchHash{},
+			L1Proof:            blkHash,
+			Root:               *preFundGenesisState,
+			TxHash:             types.EmptyRootHash,
+			Number:             big.NewInt(int64(0)),
+			SequencerOrderNo:   big.NewInt(int64(common.L2GenesisSeqNo)), // genesis batch has seq number 1
+			ReceiptHash:        types.EmptyRootHash,
+			CrossChainTreeHash: types.EmptyRootHash,
+			Time:               timeNow,
+			Coinbase:           coinbase,
+			BaseFee:            baseFee,
+			GasLimit:           executor.batchGasLimit,
 		},
 		Transactions: []*common.L2Tx{},
 	}
@@ -387,7 +387,7 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 		executor.logger.Info("[CrossChain] adding messages to batch")
 	}
 	batch.Header.CrossChainMessages = crossChainMessages
-	batch.Header.TransfersTree = xchainHash
+	batch.Header.CrossChainTreeHash = xchainHash
 
 	executor.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch.",
 		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)
