@@ -628,7 +628,13 @@ func (g *Guardian) periodicBundleSubmission() {
 	defer g.logger.Info("Stopping bundle submission")
 
 	// check rollup every l1 block time
-	bundleSubmissionTicker := time.NewTicker(g.rollupInterval)
+
+	interval := g.rollupInterval
+	if interval == 0 {
+		interval = g.blockTime
+	}
+
+	bundleSubmissionTicker := time.NewTicker(interval)
 
 	for {
 		select {

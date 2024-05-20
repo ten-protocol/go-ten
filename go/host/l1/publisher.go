@@ -100,6 +100,10 @@ func (p *Publisher) Start() error {
 }
 
 func (p *Publisher) GetBundleRangeFromManagementContract() (*big.Int, *big.Int, error) {
+	if p.mgmtContractLib.IsMock() {
+		return nil, nil, fmt.Errorf("bundle publishing unavailable for mocked environments")
+	}
+
 	managementCtr, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
 	if err != nil {
 		p.logger.Error("Unable to instantiate management contract client")
