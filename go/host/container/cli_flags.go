@@ -34,6 +34,7 @@ const (
 	batchIntervalName            = "batchInterval"
 	maxBatchIntervalName         = "maxBatchInterval"
 	rollupIntervalName           = "rollupInterval"
+	crossChainIntervalName       = "crossChainInterval"
 	isInboundP2PDisabledName     = "isInboundP2PDisabled"
 	maxRollupSizeFlagName        = "maxRollupSize"
 )
@@ -76,5 +77,6 @@ func getFlagUsageMap() map[string]string {
 		rollupIntervalName:           "Duration between each rollup. Can be put down as 1.0s",
 		isInboundP2PDisabledName:     "Whether inbound p2p is enabled",
 		maxRollupSizeFlagName:        "Max size of a rollup",
+		crossChainIntervalName:       "Duration between each cross chain bundle. Can be put down as 1.0s",
 	}
 }
