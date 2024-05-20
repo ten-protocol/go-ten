@@ -122,6 +122,7 @@ func (p *Publisher) GetBundleRangeFromManagementContract() (*big.Int, *big.Int, 
 			return nil, nil, err
 		}
 		fromSeqNo = batch.SeqNo()
+		fromSeqNo = batch.SeqNo().Add(fromSeqNo, big.NewInt(1))
 	}
 
 	lastBatchRolledUpSeqNo, err := managementCtr.LastBatchSeqNo(&bind.CallOpts{})

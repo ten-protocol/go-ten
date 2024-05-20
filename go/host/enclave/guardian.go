@@ -644,6 +644,11 @@ func (g *Guardian) periodicBundleSubmission() {
 				continue
 			}
 
+			if len(bundle.CrossChainHashes) == 0 {
+				g.logger.Debug("No cross chain data to submit. Skipping.")
+				continue
+			}
+
 			err = g.sl.L1Publisher().PublishCrossChainBundle(bundle)
 			if err != nil {
 				g.logger.Error("Unable to publish cross chain bundle", log.ErrKey, err)
