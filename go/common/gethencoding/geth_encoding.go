@@ -369,7 +369,7 @@ func ExtractPrivateCustomQuery(methodName interface{}, queryParams interface{}) 
 		return nil, fmt.Errorf("unsupported method type %T", methodName)
 	}
 	// currently we only have to support this custom query method in the enclave
-	if methodNameStr != common.ListPrivateTransactionsMethodName {
+	if methodNameStr != common.ListPrivateTransactionsCQMethod {
 		return nil, fmt.Errorf("unsupported method %s", methodName)
 	}
 

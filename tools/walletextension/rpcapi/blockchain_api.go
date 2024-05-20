@@ -147,7 +147,7 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Addres
 // the final nil is to support the same number of params that getStorageAt sends, it is unused.
 func (api *BlockChainAPI) GetStorageAt(ctx context.Context, customMethod string, customParams any, _ any) (hexutil.Bytes, error) {
 	// GetStorageAt is repurposed to return the userID
-	if customMethod == common.UserIDRequestMethodName {
+	if customMethod == common.UserIDRequestCQMethod {
 		userID, err := extractUserID(ctx, api.we)
 		if err != nil {
 			return nil, err

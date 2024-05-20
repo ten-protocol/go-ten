@@ -723,7 +723,7 @@ func testGetStorageAtForReturningUserID(t *testing.T, httpURL, wsURL string, w w
 	var response JSONResponse
 
 	// make a request to GetStorageAt with correct parameters to get userID that exists in the database
-	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{wecommon.GetStorageAtUserIDRequestMethodName, "0", nil})
+	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{common.UserIDRequestCQMethod, "0", nil})
 	if err = json.Unmarshal(respBody, &response); err != nil {
 		t.Error("Unable to unmarshal response")
 	}
@@ -732,7 +732,7 @@ func testGetStorageAtForReturningUserID(t *testing.T, httpURL, wsURL string, w w
 	}
 
 	// make a request to GetStorageAt with correct parameters to get userID, but with wrong userID
-	respBody2 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, "0x0000000000000000000000000000000000000001", []interface{}{wecommon.GetStorageAtUserIDRequestMethodName, "0", nil})
+	respBody2 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, "0x0000000000000000000000000000000000000001", []interface{}{common.UserIDRequestCQMethod, "0", nil})
 	if !strings.Contains(string(respBody2), "not found") {
 		t.Error("eth_getStorageAt did not respond with not found error")
 	}

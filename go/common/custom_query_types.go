@@ -14,11 +14,11 @@ import "github.com/ethereum/go-ethereum/common"
 
 // CustomQuery methods
 const (
-	UserIDRequestMethodName           = "getUserID"
-	ListPrivateTransactionsMethodName = "listPersonalTransactions"
+	UserIDRequestCQMethod           = "getUserID"
+	ListPrivateTransactionsCQMethod = "listPersonalTransactions"
 
-	// DeprecatedUserIDRequestMethodName is still supported for backwards compatibility for User ID requests
-	DeprecatedUserIDRequestMethodName = "0x0000000000000000000000000000000000000000"
+	// DeprecatedUserIDRequestCQMethod is still supported for backwards compatibility for User ID requests
+	DeprecatedUserIDRequestCQMethod = "0x0000000000000000000000000000000000000000"
 )
 
 type ListPrivateTransactionsQueryParams struct {
