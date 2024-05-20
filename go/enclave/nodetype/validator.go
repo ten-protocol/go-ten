@@ -197,7 +197,6 @@ func startMempool(registry components.BatchRegistry, mempool *txpool.TxPool) {
 }
 
 func (v *obsValidator) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
-
 	bundle, err := ExportCrossChainData(ctx, v.storage, fromSeqNo, toSeqNo)
 	if err != nil {
 		return nil, err
