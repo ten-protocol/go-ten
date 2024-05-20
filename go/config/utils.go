@@ -2,12 +2,18 @@ package config
 
 import (
 	"embed"
+	"encoding/base64"
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
+)
+
+var (
+	ConfigEnvKey   = "CONFIG_YAML_BASE64"
+	OverrideEnvKey = "OVERRIDE_YAML_BASE64"
 )
 
 // Embedding the default YAML files into the binary.
@@ -112,7 +118,23 @@ func WriteConfigToFile(c Config, filePath string) error {
 	return nil
 }
 
-func ApplyOverrides[T any](c, o T) {
+// WriteConfigToEnv writes the configuration to the environment variables as serialized YAML.
+// This is useful for passing configuration to docker containers (see Dockerfiles)
+func WriteConfigToEnv(c Config, envs map[string]string, key string) error {
+	yamlStr, err := yaml.Marshal(c)
+	if err != nil {
+		return err
+	}
+
+	// base64 to capture newlines (docker doesn't support in env vars)
+	configBase64 := base64.StdEncoding.EncodeToString(yamlStr)
+
+	envs[strings.ToUpper(key)] = configBase64
+	return nil
+}
+
+// ApplyOverrides applies the overrides FROM the 'o' struct to the 'c' struct.
+func ApplyOverrides(c, o interface{}) {
 	cVal := reflect.ValueOf(c).Elem()
 	oVal := reflect.ValueOf(o).Elem()
 
@@ -122,7 +144,15 @@ func ApplyOverrides[T any](c, o T) {
 func applyFieldOverrides(cVal, oVal reflect.Value) {
 	for i := 0; i < oVal.NumField(); i++ {
 		oField := oVal.Field(i)
-		cField := cVal.Field(i)
+		oFieldType := oVal.Type().Field(i)
+
+		cField := cVal.FieldByName(oFieldType.Name)
+		cFieldType, ok := cVal.Type().FieldByName(oFieldType.Name)
+
+		// Ensure the field exists and has the same type.
+		if !ok || cFieldType.Type != oFieldType.Type {
+			continue
+		}
 
 		// Check if the field is a struct and not a primitive type.
 		if oField.Kind() == reflect.Struct {
@@ -137,26 +167,10 @@ func applyFieldOverrides(cVal, oVal reflect.Value) {
 	}
 }
 
-// isFieldSet determines whether the provided reflect.Value holds a non-default value.
-func isFieldSet(field reflect.Value) bool {
-	// Handle based on the field kind.
-	switch field.Kind() {
-	case reflect.Slice:
-		return !field.IsNil() && field.Len() > 0
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return field.Int() != 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return field.Uint() != 0
-	case reflect.String:
-		return field.String() != ""
-	case reflect.Bool:
-		return field.Bool()
-	default:
-		panic("unhandled default case")
-	}
-
-	// For struct or other complex types, you might need a more sophisticated approach.
-	return false
+// Example of isFieldSet function.
+func isFieldSet(v reflect.Value) bool {
+	zero := reflect.Zero(v.Type()).Interface()
+	return !reflect.DeepEqual(v.Interface(), zero)
 }
 
 // GetEnvString returns key as string or fallback

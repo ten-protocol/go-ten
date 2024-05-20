@@ -32,10 +32,8 @@ type NodeInputDetails struct {
 type NodeInputSettings struct {
 	NodeType     string `yaml:"nodeType"`
 	IsSGXEnabled bool   `yaml:"isSGXEnabled"`
-	IsGenesis    bool   `yaml:"isGenesis"`
 	PccsAddr     string `yaml:"pccsAddr"`
 	EnclaveDebug bool   `yaml:"enclaveDebug"`
-	LogLevel     int    `yaml:"logLevel"`
 }
 
 type NodeInputImages struct {
@@ -55,11 +53,28 @@ type NetworkInputConfig struct {
 	SequencerP2PAddress       string `yaml:"sequencerP2PAddress"`
 }
 
+func (p *EnclaveInputConfig) GetNetwork() *NetworkInputConfig {
+	return &NetworkInputConfig{
+		ManagementContractAddress: p.ManagementContractAddress,
+		MessageBusAddress:         p.MessageBusAddress,
+		SequencerP2PAddress:       p.SequencerP2PAddress,
+	}
+}
+
+func (p *EnclaveInputConfig) SetNetwork(config *NetworkInputConfig) {
+	if config != nil {
+		p.ManagementContractAddress = config.ManagementContractAddress
+		p.MessageBusAddress = config.MessageBusAddress
+		p.SequencerP2PAddress = config.SequencerP2PAddress
+	}
+}
+
 func (p *HostInputConfig) GetNetwork() *NetworkInputConfig {
 	return &NetworkInputConfig{
 		ManagementContractAddress: p.ManagementContractAddress,
 		MessageBusAddress:         p.MessageBusAddress,
 		L1StartHash:               p.L1StartHash,
+		SequencerP2PAddress:       p.SequencerP2PAddress,
 	}
 }
 
@@ -68,6 +83,7 @@ func (p *HostInputConfig) SetNetwork(config *NetworkInputConfig) {
 		p.ManagementContractAddress = config.ManagementContractAddress
 		p.MessageBusAddress = config.MessageBusAddress
 		p.L1StartHash = config.L1StartHash
+		p.SequencerP2PAddress = config.SequencerP2PAddress
 	}
 }
 
