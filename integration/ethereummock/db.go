@@ -46,10 +46,6 @@ func (n *blockResolverInMem) StoreBlock(_ context.Context, block *types.Block, _
 	return nil
 }
 
-func (n *blockResolverInMem) FetchCanonicalBlocksBetween(_ context.Context, start *big.Int, end *big.Int) ([]*types.Header, error) {
-	return nil, nil
-}
-
 func (n *blockResolverInMem) FetchBlock(_ context.Context, hash common.L1BlockHash) (*types.Block, error) {
 	n.m.RLock()
 	defer n.m.RUnlock()

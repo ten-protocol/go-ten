@@ -90,10 +90,6 @@ func FetchBlockHeaderByHeight(ctx context.Context, db *sql.DB, height *big.Int) 
 	return fetchBlockHeader(ctx, db, "where is_canonical=true and height=?", height.Int64())
 }
 
-func FetchBatchHeadersBetween(ctx context.Context, db *sql.DB, start *big.Int, end *big.Int) ([]*common.BatchHeader, error) {
-	return fetchBatchHeaders(ctx, db, "where is_canonical=true and sequence between (?,?)", start.Int64(), end.Int64())
-}
-
 func GetBlockId(ctx context.Context, db *sql.Tx, hash common.L1BlockHash) (int64, error) {
 	var id int64
 	err := db.QueryRowContext(ctx, "select id from block where hash=? ", hash.Bytes()).Scan(&id)
@@ -214,39 +210,6 @@ func FetchRollupMetadata(ctx context.Context, db *sql.DB, hash common.L2RollupHa
 	rollup.FirstBatchSequence = big.NewInt(startSeq)
 	rollup.StartTime = startTime
 	return rollup, nil
-}
-
-func fetchBatchHeaders(ctx context.Context, db *sql.DB, whereQuery string, args ...any) ([]*common.BatchHeader, error) {
-	result := make([]*common.BatchHeader, 0)
-	query := "select * from batch " + whereQuery
-
-	rows, err := db.QueryContext(ctx, query+" "+whereQuery, args...)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// make sure the error is converted to obscuro-wide not found error
-			return nil, errutil.ErrNotFound
-		}
-		return nil, err
-	}
-	defer rows.Close()
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	for rows.Next() {
-		var header string
-		var body []byte
-		err := rows.Scan(&header, &body)
-		if err != nil {
-			return nil, err
-		}
-		h := new(common.BatchHeader)
-		if err := rlp.Decode(bytes.NewReader([]byte(header)), h); err != nil {
-			return nil, fmt.Errorf("could not decode l1 block header. Cause: %w", err)
-		}
-
-		result = append(result, h)
-	}
-	return result, nil
 }
 
 func fetchBlockHeader(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*types.Header, error) {

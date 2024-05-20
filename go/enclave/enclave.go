@@ -212,7 +212,18 @@ func NewEnclave(
 			blockchain,
 		)
 	} else {
-		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, storage, sigVerifier, mempool, logger)
+		service = nodetype.NewValidator(
+			blockProcessor,
+			batchExecutor,
+			registry,
+			rConsumer,
+			chainConfig,
+			storage,
+			sigVerifier,
+			mempool,
+			enclaveKey,
+			logger,
+		)
 	}
 
 	chain := l2chain.NewChain(

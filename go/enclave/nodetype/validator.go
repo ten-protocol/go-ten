@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -33,10 +34,23 @@ type obsValidator struct {
 	sigValidator *components.SignatureValidator
 	mempool      *txpool.TxPool
 
+	enclaveKey *crypto.EnclaveKey
+
 	logger gethlog.Logger
 }
 
-func NewValidator(consumer components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupConsumer components.RollupConsumer, chainConfig *params.ChainConfig, storage storage.Storage, sigValidator *components.SignatureValidator, mempool *txpool.TxPool, logger gethlog.Logger) ObsValidator {
+func NewValidator(
+	consumer components.L1BlockProcessor,
+	batchExecutor components.BatchExecutor,
+	registry components.BatchRegistry,
+	rollupConsumer components.RollupConsumer,
+	chainConfig *params.ChainConfig,
+	storage storage.Storage,
+	sigValidator *components.SignatureValidator,
+	mempool *txpool.TxPool,
+	enclaveKey *crypto.EnclaveKey,
+	logger gethlog.Logger,
+) ObsValidator {
 	startMempool(registry, mempool)
 
 	return &obsValidator{
@@ -48,6 +62,7 @@ func NewValidator(consumer components.L1BlockProcessor, batchExecutor components
 		storage:        storage,
 		sigValidator:   sigValidator,
 		mempool:        mempool,
+		enclaveKey:     enclaveKey,
 		logger:         logger,
 	}
 }
