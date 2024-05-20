@@ -98,9 +98,12 @@ func removeFlagsFromArgs(args []string, flagsToRemove map[string]string) []strin
 			if strings.HasPrefix(args[i], "-"+key+"=") {
 				args = append(args[:i], args[i+1:]...)
 				i--
-			} else if args[i] == "-"+key && i+1 < len(args) {
+			} else if args[i] == "-"+key && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
 				// Check if the argument is a flag with a value in the form `-<flag> something`
 				args = append(args[:i], args[i+2:]...)
+				i--
+			} else if args[i] == "-"+key {
+				args = append(args[:i], args[i+1:]...)
 				i--
 			}
 		}
@@ -218,15 +221,19 @@ func setupStructFlags(prefix string, val reflect.Value, fs *flag.FlagSet, usageM
 
 		if _, exists := usageMap[yamlTag]; !exists {
 			// exclude the following tags from the check
-			if yamlTag != "networkConfig" && yamlTag != "nodeDetails" && yamlTag != "nodeSettings" && yamlTag != "nodeImages" && yamlTag != "host" && yamlTag != "enclave" {
-				println(fmt.Sprintf("Missing flag usage for yaml tag '%s'", yamlTag))
+			if yamlTag != "networkConfig" && yamlTag != "nodeDetails" && yamlTag != "nodeSettings" && yamlTag != "nodeImages" {
+				if yamlTag == "host" || yamlTag == "enclave" {
+					prefix = yamlTag + ":"
+				} else {
+					println(fmt.Sprintf("Incorrect flag usage for yaml tag '%s'", yamlTag))
+				}
 			}
 		}
 
 		if field.Type().Kind() == reflect.Struct {
-			setupStructFlags(yamlTag+":", field, fs, usageMap)
+			setupStructFlags(prefix, field, fs, usageMap)
 		} else {
-			setupFlag(field, fs, yamlTag, usageMap[yamlTag])
+			setupFlag(field, fs, prefix+yamlTag, usageMap[yamlTag])
 		}
 	}
 }
