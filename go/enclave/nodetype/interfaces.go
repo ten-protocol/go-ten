@@ -23,6 +23,8 @@ type NodeType interface {
 	// OnL1Block - performed after the block was processed
 	OnL1Block(ctx context.Context, block *types.Block, result *components.BlockIngestionType) error
 
+	ExportCrossChainData(context.Context, uint64, uint64) (*common.ExtCrossChainBundle, error)
+
 	Close() error
 }
 
@@ -33,8 +35,6 @@ type Sequencer interface {
 	// CreateRollup - creates a new rollup from the latest recorded rollup in the head l1 chain
 	// and adds as many batches to it as possible.
 	CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, error)
-
-	ExportCrossChainData(context.Context, uint64, uint64) (*common.ExtCrossChainBundle, error)
 
 	NodeType
 }

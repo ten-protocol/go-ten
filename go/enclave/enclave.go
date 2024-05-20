@@ -281,7 +281,7 @@ func NewEnclave(
 }
 
 func (e *enclaveImpl) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, common.SystemError) {
-	return e.Sequencer().ExportCrossChainData(ctx, fromSeqNo, toSeqNo)
+	return e.service.ExportCrossChainData(ctx, fromSeqNo, toSeqNo)
 }
 
 func (e *enclaveImpl) GetBatch(ctx context.Context, hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {
