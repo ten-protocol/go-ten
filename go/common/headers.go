@@ -43,8 +43,8 @@ type BatchHeader struct {
 	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *big.Int                              `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
-	CrossChainRoot                common.Hash                           `json:"crossChainTreeHash"`      // This is a merkle tree of all of the outbound value transfers for the MainNet
-	CrossChainTree                SerializedCrossChainTree              `json:"crossChainTree"`
+	CrossChainRoot                common.Hash                           `json:"crossChainTreeHash"`      // This is the root hash of a merkle tree, built from all the cross chain messages and transfers that need to go on MainNet.
+	CrossChainTree                SerializedCrossChainTree              `json:"crossChainTree"`          // Those are the leafs of the merkle tree hashed for privacy. Necessary for clients to be able to build proofs as they have no access to all transactions in a batch or their receipts.
 }
 
 type batchHeaderEncoding struct {
