@@ -302,15 +302,15 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle) 
 		return fmt.Errorf("unable to init")
 	}
 
+	p.logger.Info("Host preparing to send cross chain bundle transaction")
+	p.sendingLock.Lock()
+	defer p.sendingLock.Unlock()
+
 	nonce, err := p.ethClient.EthClient().PendingNonceAt(context.Background(), p.hostWallet.Address())
 	if err != nil {
 		p.logger.Error("Unable to get nonce for management contract", log.ErrKey, err)
 		return fmt.Errorf("unable to get nonce for management contract. Cause: %w", err)
 	}
-
-	p.logger.Info("Host preparing to send cross chain bundle transaction")
-	p.sendingLock.Lock()
-	defer p.sendingLock.Unlock()
 
 	transactor.Nonce = big.NewInt(0).SetUint64(nonce)
 
