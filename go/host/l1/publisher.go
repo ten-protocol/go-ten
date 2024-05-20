@@ -308,6 +308,10 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle) 
 		return fmt.Errorf("unable to get nonce for management contract. Cause: %w", err)
 	}
 
+	p.logger.Info("Host preparing to send cross chain bundle transaction")
+	p.sendingLock.Lock()
+	defer p.sendingLock.Unlock()
+
 	transactor.Nonce = big.NewInt(0).SetUint64(nonce)
 
 	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.LastBatchHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes, bundle.Signature)
