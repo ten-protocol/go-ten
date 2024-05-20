@@ -39,6 +39,11 @@ func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
 	return s.host.Storage().FetchTotalTxCount()
 }
 
+// GetTotalTransactionsQuery returns the number of recorded transactions on the network.
+func (s *ScanAPI) GetTotalTransactionsQuery() (*big.Int, error) {
+	return s.host.Storage().FetchTotalTxsQuery()
+}
+
 // GetBatchListingNew returns a paginated list of batches
 func (s *ScanAPI) GetBatchListingNew(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	return s.host.Storage().FetchBatchListing(pagination)

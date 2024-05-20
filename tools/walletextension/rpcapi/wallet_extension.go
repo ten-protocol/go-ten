@@ -45,11 +45,10 @@ type Services struct {
 	version      string
 	Cache        cache.Cache
 	// the OG maintains a connection pool of rpc connections to underlying nodes
-	rpcHTTPConnPool             *pool.ObjectPool
-	rpcWSConnPool               *pool.ObjectPool
-	Config                      *common.Config
-	backendNewHeadsSubscription *gethrpc.ClientSubscription
-	NewHeadsService             *subscriptioncommon.NewHeadsService
+	rpcHTTPConnPool *pool.ObjectPool
+	rpcWSConnPool   *pool.ObjectPool
+	Config          *common.Config
+	NewHeadsService *subscriptioncommon.NewHeadsService
 }
 
 type NewHeadNotifier interface {
@@ -91,7 +90,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		}, nil, nil, nil)
 
 	cfg := pool.NewDefaultPoolConfig()
-	cfg.MaxTotal = 100 // todo - what is the right number
+	cfg.MaxTotal = 200 // todo - what is the right number
 
 	services := Services{
 		HostAddrHTTP:    hostAddrHTTP,
@@ -107,42 +106,50 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		Config:          config,
 	}
 
-	connectionObj, err := services.rpcWSConnPool.BorrowObject(context.Background())
-	if err != nil {
-		panic(fmt.Errorf("cannot fetch rpc connection to backend node %w", err))
-	}
-
-	rpcClient := connectionObj.(rpc.Client)
-	ch := make(chan *tencommon.BatchHeader)
-	clientSubscription, err := subscribeToNewHeadsWithRetry(rpcClient, ch, retry.NewTimeoutStrategy(10*time.Minute, 1*time.Second), logger)
-	if err != nil {
-		panic(fmt.Errorf("cannot subscribe to new heads to the backend %w", err))
-	}
-	services.backendNewHeadsSubscription = clientSubscription
-	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(ch, true, logger, func(newHead *tencommon.BatchHeader) error {
-		services.Cache.EvictShortLiving()
-		return nil
-	})
+	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(
+		func() (chan *tencommon.BatchHeader, <-chan error, error) {
+			logger.Info("Connecting to new heads service...")
+			// clear the cache to avoid returning stale data during reconnecting.
+			services.Cache.EvictShortLiving()
+			ch := make(chan *tencommon.BatchHeader)
+			errCh, err := subscribeToNewHeadsWithRetry(ch, services, logger)
+			logger.Info("Connected to new heads service.", log.ErrKey, err)
+			return ch, errCh, err
+		},
+		true,
+		logger,
+		func(newHead *tencommon.BatchHeader) error {
+			services.Cache.EvictShortLiving()
+			return nil
+		})
 
 	return &services
 }
 
-func subscribeToNewHeadsWithRetry(rpcClient rpc.Client, ch chan *tencommon.BatchHeader, retryStrategy retry.Strategy, logger gethlog.Logger) (*gethrpc.ClientSubscription, error) {
+func subscribeToNewHeadsWithRetry(ch chan *tencommon.BatchHeader, services Services, logger gethlog.Logger) (<-chan error, error) {
 	var sub *gethrpc.ClientSubscription
-
-	err := retry.Do(func() error {
-		var err error
-		sub, err = rpcClient.Subscribe(context.Background(), rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeNewHeads)
-		if err != nil {
-			logger.Info("could not subscribe for new head blocks", log.ErrKey, err)
-		}
-		return err
-	}, retryStrategy)
+	err := retry.Do(
+		func() error {
+			connectionObj, err := services.rpcWSConnPool.BorrowObject(context.Background())
+			if err != nil {
+				return fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
+			}
+			rpcClient := connectionObj.(rpc.Client)
+			sub, err = rpcClient.Subscribe(context.Background(), rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeNewHeads)
+			if err != nil {
+				logger.Info("could not subscribe for new head blocks", log.ErrKey, err)
+				_ = returnConn(services.rpcWSConnPool, rpcClient, logger)
+			}
+			return err
+		},
+		retry.NewTimeoutStrategy(10*time.Minute, 1*time.Second),
+	)
 	if err != nil {
 		logger.Error("could not subscribe for new head blocks.", log.ErrKey, err)
+		return nil, fmt.Errorf("cannot subscribe to new heads to the backend %w", err)
 	}
 
-	return sub, err
+	return sub.Err(), nil
 }
 
 // IsStopping returns whether the WE is stopping
@@ -264,7 +271,7 @@ func (w *Services) Version() string {
 }
 
 func (w *Services) GetTenNodeHealthStatus() (bool, error) {
-	res, err := withPlainRPCConnection[bool](w, func(client *gethrpc.Client) (*bool, error) {
+	res, err := withPlainRPCConnection[bool](context.Background(), w, func(client *gethrpc.Client) (*bool, error) {
 		res, err := obsclient.NewObsClient(client).Health()
 		return &res, err
 	})
@@ -288,7 +295,6 @@ func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlic
 }
 
 func (w *Services) Stop() {
-	w.backendNewHeadsSubscription.Unsubscribe()
 	w.rpcHTTPConnPool.Close(context.Background())
 	w.rpcWSConnPool.Close(context.Background())
 }

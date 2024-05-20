@@ -352,7 +352,11 @@ func (e *enclaveImpl) StopClient() common.SystemError {
 }
 
 func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.StreamL2UpdatesResponse) {
-	e.logger.Info("Streaming batch to host", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
+	if batch.SeqNo().Uint64()%10 == 0 {
+		e.logger.Info("Streaming batch to host", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
+	} else {
+		e.logger.Debug("Streaming batch to host", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
+	}
 	extBatch, err := batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
 	if err != nil {
 		// this error is unrecoverable

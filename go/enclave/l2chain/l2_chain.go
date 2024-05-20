@@ -104,7 +104,7 @@ func (oc *obscuroChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethc
 func (oc *obscuroChain) ObsCall(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
 	result, err := oc.ObsCallAtBlock(ctx, apiArgs, blockNumber)
 	if err != nil {
-		oc.logger.Info(fmt.Sprintf("Obs_Call: failed to execute contract %s.", apiArgs.To), log.CtrErrKey, err.Error())
+		oc.logger.Debug(fmt.Sprintf("Obs_Call: failed to execute contract %s.", apiArgs.To), log.CtrErrKey, err.Error())
 		return nil, err
 	}
 

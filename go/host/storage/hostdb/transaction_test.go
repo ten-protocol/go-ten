@@ -1,6 +1,7 @@
 package hostdb
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -141,5 +142,30 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 
 	if int(totalTxs.Int64()) != len(txHashesOne)+len(txHashesTwo) {
 		t.Errorf("total number of batch transactions was not stored correctly")
+	}
+}
+
+func TestTotalTxsQuery(t *testing.T) {
+	db, _ := createSQLiteDB(t)
+	var txHashes []common.L2TxHash
+	for i := 0; i < 100; i++ {
+		txHash := gethcommon.BytesToHash([]byte(fmt.Sprintf("magicString%d", i+1)))
+		txHashes = append(txHashes, txHash)
+	}
+	batchOne := createBatch(batchNumber, txHashes)
+	dbtx, _ := db.NewDBTransaction()
+	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
+	if err != nil {
+		t.Errorf("could not store batch. Cause: %s", err)
+	}
+	dbtx.Write()
+
+	totalTxs, err := GetTotalTxsQuery(db)
+	if err != nil {
+		t.Errorf("was not able to count total number of transactions. Cause: %s", err)
+	}
+
+	if totalTxs.Cmp(big.NewInt(100)) != 0 {
+		t.Errorf("total number of transactions was not counted correction")
 	}
 }

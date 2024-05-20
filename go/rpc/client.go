@@ -34,6 +34,7 @@ const (
 	GetBatchByTx             = "scan_getBatchByTx"
 	GetLatestRollupHeader    = "scan_getLatestRollupHeader"
 	GetTotalTxCount          = "scan_getTotalTransactionCount"
+	GetTotalTxsQuery         = "scan_getTotalTransactionsQuery"
 	GetTotalContractCount    = "scan_getTotalContractCount"
 	GetPublicTransactionData = "scan_getPublicTransactionData"
 	GetBatchListing          = "scan_getBatchListing"
