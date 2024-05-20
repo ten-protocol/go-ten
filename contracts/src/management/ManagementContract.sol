@@ -55,6 +55,8 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     MerkleTreeMessageBus.IMerkleTreeMessageBus public merkleMessageBus;
     mapping(bytes32 =>bool) public isWithdrawalSpent;
 
+    bytes32 public lastBatchHash;
+
     function initialize() public initializer {
         __Ownable_init(msg.sender);
         lastBatchSeqNo = 0;
@@ -76,7 +78,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         }
     }
 
-    function addCrossChainMessagesRoot(bytes32 root, bytes32 blockHash, uint256 blockNum, bytes[] memory crossChainHashes, bytes calldata signature) external {
+    function addCrossChainMessagesRoot(bytes32 _lastBatchHash, bytes32 blockHash, uint256 blockNum, bytes[] memory crossChainHashes, bytes calldata signature) external {
         if (block.number > blockNum + 255) {
             revert("Block binding too old");
         }
@@ -85,8 +87,10 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
             revert(string(abi.encodePacked("Invalid block binding:", Strings.toString(block.number),":", Strings.toString(uint256(blockHash)), ":", Strings.toString(uint256(blockhash(blockNum))))));
         }
 
-        address enclaveID = ECDSA.recover(keccak256(abi.encode(root, blockHash, blockNum, crossChainHashes)), signature);
+        address enclaveID = ECDSA.recover(keccak256(abi.encode(_lastBatchHash, blockHash, blockNum, crossChainHashes)), signature);
         require(attested[enclaveID], "enclaveID not attested"); //todo: only sequencer, rather than everyone who has attested.
+
+        lastBatchHash = _lastBatchHash;
 
         for(uint256 i = 0; i < crossChainHashes.length; i++) {
             merkleMessageBus.addStateRoot(bytes32(crossChainHashes[i]), block.timestamp); //todo: change the activation time.

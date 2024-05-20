@@ -121,6 +121,7 @@ func (g *Guardian) Start() error {
 		// Note: after HA work this will need additional check that we are the **active** sequencer enclave
 		go g.periodicBatchProduction()
 		go g.periodicRollupProduction()
+		go g.periodicBundleSubmission()
 	}
 
 	// subscribe for L1 and P2P data
@@ -613,20 +614,43 @@ func (g *Guardian) periodicRollupProduction() {
 				// this method waits until the receipt is received
 				g.sl.L1Publisher().PublishRollup(producedRollup)
 				lastSuccessfulRollup = time.Now()
-
-				fromBatchNum := fromBatch
-				toBatchNum := producedRollup.Header.LastBatchSeqNo
-				bundle, err := g.enclaveClient.ExportCrossChainData(context.Background(), fromBatchNum, toBatchNum)
-				if err != nil {
-					g.logger.Error("Unable to export cross chain bundle from enclave", log.ErrKey, err)
-					continue
-				}
-				g.sl.L1Publisher().PublishCrossChainBundle(bundle)
 			}
 
 		case <-g.hostInterrupter.Done():
 			// interrupted - end periodic process
 			rollupCheckTicker.Stop()
+			return
+		}
+	}
+}
+
+func (g *Guardian) periodicBundleSubmission() {
+	defer g.logger.Info("Stopping bundle submission")
+
+	// check rollup every l1 block time
+	bundleSubmissionTicker := time.NewTicker(g.rollupInterval)
+
+	for {
+		select {
+		case <-bundleSubmissionTicker.C:
+			from, to, err := g.sl.L1Publisher().GetBundleRangeFromManagementContract()
+			if err != nil {
+				g.logger.Error("Unable to get bundle range from management contract", log.ErrKey, err)
+				continue
+			}
+			bundle, err := g.enclaveClient.ExportCrossChainData(context.Background(), from.Uint64(), to.Uint64())
+			if err != nil {
+				g.logger.Error("Unable to export cross chain bundle from enclave", log.ErrKey, err)
+				continue
+			}
+
+			err = g.sl.L1Publisher().PublishCrossChainBundle(bundle)
+			if err != nil {
+				g.logger.Error("Unable to publish cross chain bundle", log.ErrKey, err)
+				continue
+			}
+		case <-g.hostInterrupter.Done():
+			bundleSubmissionTicker.Stop()
 			return
 		}
 	}

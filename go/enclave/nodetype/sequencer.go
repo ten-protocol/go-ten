@@ -488,6 +488,7 @@ func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, 
 	}
 
 	blockHash := canonicalBatches[len(canonicalBatches)-1].Header.L1Proof
+	batchHash := canonicalBatches[len(canonicalBatches)-1].Header.Hash()
 
 	block, err := s.storage.FetchBlock(ctx, blockHash)
 	if err != nil {
@@ -502,7 +503,7 @@ func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, 
 	}
 
 	bundle := &common.ExtCrossChainBundle{
-		StateRootHash:    gethcommon.BigToHash(gethcommon.Big0), // unused for now.
+		LastBatchHash:    batchHash, // unused for now.
 		L1BlockHash:      block.Hash(),
 		L1BlockNum:       big.NewInt(0).Set(block.Header().Number),
 		CrossChainHashes: crossChainHashes,
