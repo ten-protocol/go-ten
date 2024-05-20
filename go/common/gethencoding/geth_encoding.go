@@ -13,7 +13,6 @@ import (
 	"github.com/dgraph-io/ristretto"
 	"github.com/eko/gocache/lib/v4/cache"
 	ristretto_store "github.com/eko/gocache/store/ristretto/v4"
-
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -361,14 +360,26 @@ func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(ctx context.Context,
 	return (*types.Block)(unsafe.Pointer(&lb)), nil
 }
 
-func ExtractPrivateCustomQuery(_ interface{}, query interface{}) (*common.PrivateCustomQueryListTransactions, error) {
+// ExtractPrivateCustomQuery is designed to support a wide range of custom Ten queries.
+// The first parameter here is the method name, which is used to determine the query type.
+// The second parameter is the query parameters.
+func ExtractPrivateCustomQuery(methodName interface{}, queryParams interface{}) (*common.ListPrivateTransactionsQueryParams, error) {
+	methodNameStr, ok := methodName.(string)
+	if !ok {
+		return nil, fmt.Errorf("unsupported method type %T", methodName)
+	}
+	// currently we only have to support this custom query method in the enclave
+	if methodNameStr != common.ListPrivateTransactionsMethodName {
+		return nil, fmt.Errorf("unsupported method %s", methodName)
+	}
+
 	// Convert the map to a JSON string
-	jsonData, err := json.Marshal(query)
+	jsonData, err := json.Marshal(queryParams)
 	if err != nil {
 		return nil, err
 	}
 
-	var result common.PrivateCustomQueryListTransactions
+	var result common.ListPrivateTransactionsQueryParams
 	err = json.Unmarshal(jsonData, &result)
 	if err != nil {
 		return nil, err

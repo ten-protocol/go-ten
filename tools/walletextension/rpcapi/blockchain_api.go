@@ -3,14 +3,15 @@ package rpcapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ten-protocol/go-ten/go/common"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 type BlockChainAPI struct {
@@ -34,7 +35,7 @@ func (api *BlockChainAPI) BlockNumber() hexutil.Uint64 {
 	return *nr
 }
 
-func (api *BlockChainAPI) GetBalance(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Big, error) {
+func (api *BlockChainAPI) GetBalance(ctx context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Big, error) {
 	return ExecAuthRPC[hexutil.Big](
 		ctx,
 		api.we,
@@ -55,13 +56,13 @@ func (api *BlockChainAPI) GetBalance(ctx context.Context, address common.Address
 
 // Result structs for GetProof
 type AccountResult struct {
-	Address      common.Address  `json:"address"`
-	AccountProof []string        `json:"accountProof"`
-	Balance      *hexutil.Big    `json:"balance"`
-	CodeHash     common.Hash     `json:"codeHash"`
-	Nonce        hexutil.Uint64  `json:"nonce"`
-	StorageHash  common.Hash     `json:"storageHash"`
-	StorageProof []StorageResult `json:"storageProof"`
+	Address      gethcommon.Address `json:"address"`
+	AccountProof []string           `json:"accountProof"`
+	Balance      *hexutil.Big       `json:"balance"`
+	CodeHash     gethcommon.Hash    `json:"codeHash"`
+	Nonce        hexutil.Uint64     `json:"nonce"`
+	StorageHash  gethcommon.Hash    `json:"storageHash"`
+	StorageProof []StorageResult    `json:"storageProof"`
 }
 
 type StorageResult struct {
@@ -70,7 +71,7 @@ type StorageResult struct {
 	Proof []string     `json:"proof"`
 }
 
-func (s *BlockChainAPI) GetProof(ctx context.Context, address common.Address, storageKeys []string, blockNrOrHash rpc.BlockNumberOrHash) (*AccountResult, error) {
+func (s *BlockChainAPI) GetProof(ctx context.Context, address gethcommon.Address, storageKeys []string, blockNrOrHash rpc.BlockNumberOrHash) (*AccountResult, error) {
 	return nil, rpcNotImplemented
 }
 
@@ -84,7 +85,7 @@ func (api *BlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.Bloc
 	return *resp, err
 }
 
-func (api *BlockChainAPI) GetHeaderByHash(ctx context.Context, hash common.Hash) map[string]interface{} {
+func (api *BlockChainAPI) GetHeaderByHash(ctx context.Context, hash gethcommon.Hash) map[string]interface{} {
 	resp, _ := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &CacheCfg{CacheType: LongLiving}, "eth_getHeaderByHash", hash)
 	if resp == nil {
 		return nil
@@ -107,7 +108,7 @@ func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.Block
 	return *resp, err
 }
 
-func (api *BlockChainAPI) GetBlockByHash(ctx context.Context, hash common.Hash, fullTx bool) (map[string]interface{}, error) {
+func (api *BlockChainAPI) GetBlockByHash(ctx context.Context, hash gethcommon.Hash, fullTx bool) (map[string]interface{}, error) {
 	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &CacheCfg{CacheType: LongLiving}, "eth_getBlockByHash", hash, fullTx)
 	if resp == nil {
 		return nil, err
@@ -115,7 +116,7 @@ func (api *BlockChainAPI) GetBlockByHash(ctx context.Context, hash common.Hash, 
 	return *resp, err
 }
 
-func (api *BlockChainAPI) GetCode(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	// todo - must be authenticated
 	resp, err := UnauthenticatedTenRPCCall[hexutil.Bytes](
 		ctx,
@@ -135,9 +136,18 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address common.Address, b
 	return *resp, err
 }
 
-func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address common.Address, hexKey string, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+// GetStorageAt is not compatible with ETH RPC tooling. Ten network will never support getStorageAt because it would
+// violate the privacy guarantees of the network.
+//
+// However, we can repurpose this method to be able to route Ten-specific requests through from an ETH RPC client.
+// We call these requests Custom Queries.
+//
+// If this method is called using the standard ETH API parameters it will error, the correct params for this method are:
+// [ customMethodName string, customMethodParams any, nil ]
+// the final nil is to support the same number of params that getStorageAt sends, it is unused.
+func (api *BlockChainAPI) GetStorageAt(ctx context.Context, customMethod string, customParams any, _ any) (hexutil.Bytes, error) {
 	// GetStorageAt is repurposed to return the userID
-	if address.Hex() == wecommon.GetStorageAtUserIDRequestMethodName {
+	if customMethod == common.UserIDRequestMethodName {
 		userID, err := extractUserID(ctx, api.we)
 		if err != nil {
 			return nil, err
@@ -150,7 +160,9 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address common.Addre
 		return userID, nil
 	}
 
-	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, api.we, &ExecCfg{account: &address}, "eth_getStorageAt", address, hexKey, blockNrOrHash)
+	// sensitive CustomQuery methods use the convention of having "address" at the top level of the params json
+	address, err := extractCustomQueryAddress(customParams)
+	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, api.we, &ExecCfg{account: address}, "eth_getStorageAt", customMethod, customParams, nil)
 	if resp == nil {
 		return nil, err
 	}
@@ -162,21 +174,21 @@ func (s *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.
 }
 
 type OverrideAccount struct {
-	Nonce     *hexutil.Uint64              `json:"nonce"`
-	Code      *hexutil.Bytes               `json:"code"`
-	Balance   **hexutil.Big                `json:"balance"`
-	State     *map[common.Hash]common.Hash `json:"state"`
-	StateDiff *map[common.Hash]common.Hash `json:"stateDiff"`
+	Nonce     *hexutil.Uint64                      `json:"nonce"`
+	Code      *hexutil.Bytes                       `json:"code"`
+	Balance   **hexutil.Big                        `json:"balance"`
+	State     *map[gethcommon.Hash]gethcommon.Hash `json:"state"`
+	StateDiff *map[gethcommon.Hash]gethcommon.Hash `json:"stateDiff"`
 }
 type (
-	StateOverride  map[common.Address]OverrideAccount
+	StateOverride  map[gethcommon.Address]OverrideAccount
 	BlockOverrides struct {
 		Number     *hexutil.Big
 		Difficulty *hexutil.Big
 		Time       *hexutil.Uint64
 		GasLimit   *hexutil.Uint64
-		Coinbase   *common.Address
-		Random     *common.Hash
+		Coinbase   *gethcommon.Address
+		Random     *gethcommon.Hash
 		BaseFee    *hexutil.Big
 	}
 )
@@ -188,7 +200,7 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 				return cacheBlockNumberOrHash(blockNrOrHash)
 			},
 		},
-		computeFromCallback: func(user *GWUser) *common.Address {
+		computeFromCallback: func(user *GWUser) *gethcommon.Address {
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
 		adjustArgs: func(acct *GWAccount) []any {
@@ -213,7 +225,7 @@ func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.Transact
 				return LatestBatch
 			},
 		},
-		computeFromCallback: func(user *GWUser) *common.Address {
+		computeFromCallback: func(user *GWUser) *gethcommon.Address {
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
 		adjustArgs: func(acct *GWAccount) []any {
@@ -233,7 +245,7 @@ func populateFrom(acct *GWAccount, args gethapi.TransactionArgs) gethapi.Transac
 	// clone the args
 	argsClone := cloneArgs(args)
 	// set the from
-	if args.From == nil || args.From.Hex() == (common.Address{}).Hex() {
+	if args.From == nil || args.From.Hex() == (gethcommon.Address{}).Hex() {
 		argsClone.From = acct.address
 	}
 	return argsClone
@@ -257,4 +269,32 @@ type accessListResult struct {
 
 func (s *BlockChainAPI) CreateAccessList(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash *rpc.BlockNumberOrHash) (*accessListResult, error) {
 	return nil, rpcNotImplemented
+}
+
+func extractCustomQueryAddress(params any) (*gethcommon.Address, error) {
+	// sensitive CustomQuery methods use the convention of having "address" at the top level of the params json
+	// we don't care about the params struct overall, just want to extract the address string field
+	paramsStr, ok := params.(string)
+	if !ok {
+		return nil, fmt.Errorf("params must be a json string")
+	}
+	var paramsJSON map[string]json.RawMessage
+	err := json.Unmarshal([]byte(paramsStr), &paramsJSON)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmarshal params string: %w", err)
+	}
+	// Extract the RawMessage for the key "address"
+	addressRaw, ok := paramsJSON["address"]
+	if !ok {
+		return nil, fmt.Errorf("params must contain an 'address' field")
+	}
+
+	// Unmarshal the RawMessage to a string
+	var addressStr string
+	err = json.Unmarshal(addressRaw, &addressStr)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmarshal address field to string: %w", err)
+	}
+	address := gethcommon.HexToAddress(addressStr)
+	return &address, nil
 }

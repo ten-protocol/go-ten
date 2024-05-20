@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -129,4 +130,9 @@ func (s *AuthClientUser) Init(ctx context.Context) (*AuthClientUser, error) {
 
 func (s *AuthClientUser) Wallet() wallet.Wallet {
 	return s.wal
+}
+
+func (s *AuthClientUser) GetPersonalTransactions(ctx context.Context, pagination common.QueryPagination) (types.Receipts, error) {
+	address := s.wal.Address()
+	return s.client.GetReceiptsByAddress(ctx, &address, pagination)
 }

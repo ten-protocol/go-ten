@@ -7,10 +7,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
 
-func GetCustomQueryValidate(reqParams []any, builder *CallBuilder[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], _ *EncryptionManager) error {
+func GetCustomQueryValidate(reqParams []any, builder *CallBuilder[common.ListPrivateTransactionsQueryParams, common.PrivateQueryResponse], _ *EncryptionManager) error {
 	// Parameters are [PrivateCustomQueryHeader, PrivateCustomQueryArgs, null]
 	if len(reqParams) != 3 {
-		builder.Err = fmt.Errorf("unexpected number of parameters")
+		builder.Err = fmt.Errorf("unexpected number of parameters (expected %d, got %d)", 3, len(reqParams))
 		return nil
 	}
 
@@ -24,7 +24,7 @@ func GetCustomQueryValidate(reqParams []any, builder *CallBuilder[common.Private
 	return nil
 }
 
-func GetCustomQueryExecute(builder *CallBuilder[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], rpc *EncryptionManager) error {
+func GetCustomQueryExecute(builder *CallBuilder[common.ListPrivateTransactionsQueryParams, common.PrivateQueryResponse], rpc *EncryptionManager) error {
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
 		builder.Err = err

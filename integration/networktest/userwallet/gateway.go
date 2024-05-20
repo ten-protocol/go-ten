@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/retry"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
@@ -108,6 +109,20 @@ func (g *GatewayUser) AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash)
 
 func (g *GatewayUser) NativeBalance(ctx context.Context) (*big.Int, error) {
 	return g.client.BalanceAt(ctx, g.wal.Address(), nil)
+}
+
+func (g *GatewayUser) GetPersonalTransactions(ctx context.Context, pagination common.QueryPagination) (types.Receipts, error) {
+	rpcClient := g.client.Client()
+	queryParams := &common.ListPrivateTransactionsQueryParams{
+		Address:    g.wal.Address(),
+		Pagination: pagination,
+	}
+	var result common.PrivateQueryResponse
+	err := rpcClient.CallContext(ctx, &result, "eth_getStorageAt", "listPersonalTransactions", queryParams, nil)
+	if err != nil {
+		return nil, fmt.Errorf("rpc call failed - %w", err)
+	}
+	return result.Receipts, nil
 }
 
 func (g *GatewayUser) Wallet() wallet.Wallet {
