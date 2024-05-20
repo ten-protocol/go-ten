@@ -286,7 +286,7 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle) 
 		return nil
 	}
 
-	if len(bundle.CrossChainHashes) == 0 {
+	if len(bundle.CrossChainRootHashes) == 0 {
 		return fmt.Errorf("nothing to publish in cross chain bundle")
 	}
 
@@ -308,10 +308,9 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle) 
 		return fmt.Errorf("unable to get nonce for management contract. Cause: %w", err)
 	}
 
-	//	transactor.GasLimit = 200_000
 	transactor.Nonce = big.NewInt(0).SetUint64(nonce)
 
-	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.LastBatchHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainHashes, bundle.Signature)
+	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.LastBatchHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes, bundle.Signature)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrCrossChainBundleRepublished) {
 			p.logger.Error("Error with submitting cross chain bundle transaction.", log.ErrKey, err, log.BundleHashKey, bundle.LastBatchHash)

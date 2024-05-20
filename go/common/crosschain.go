@@ -10,11 +10,11 @@ import (
 )
 
 type ExtCrossChainBundle struct {
-	LastBatchHash    gethcommon.Hash
-	Signature        []byte
-	L1BlockHash      gethcommon.Hash // The block hash that's expected to be canonical on signature submission
-	L1BlockNum       *big.Int        // The number of the block that has the block hash. This is used to verify the block hash.
-	CrossChainHashes [][]byte        //
+	LastBatchHash        gethcommon.Hash
+	Signature            []byte
+	L1BlockHash          gethcommon.Hash // The block hash that's expected to be canonical on signature submission
+	L1BlockNum           *big.Int        // The number of the block that has the block hash. This is used to verify the block hash.
+	CrossChainRootHashes [][]byte        // The CrossChainRoots of the batches that are being submitted
 }
 
 func (bundle ExtCrossChainBundle) HashPacked() common.Hash {
@@ -37,7 +37,7 @@ func (bundle ExtCrossChainBundle) HashPacked() common.Hash {
 		},
 	}
 
-	bytes, err := args.Pack(bundle.LastBatchHash, bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainHashes)
+	bytes, err := args.Pack(bundle.LastBatchHash, bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes)
 	if err != nil {
 		panic(err)
 	}

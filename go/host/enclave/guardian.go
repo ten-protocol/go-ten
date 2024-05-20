@@ -650,7 +650,7 @@ func (g *Guardian) periodicBundleSubmission() {
 				continue
 			}
 
-			if len(bundle.CrossChainHashes) == 0 {
+			if len(bundle.CrossChainRootHashes) == 0 {
 				g.logger.Debug("No cross chain data to submit. Skipping.")
 				continue
 			}

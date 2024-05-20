@@ -503,10 +503,10 @@ func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, 
 	}
 
 	bundle := &common.ExtCrossChainBundle{
-		LastBatchHash:    batchHash, // unused for now.
-		L1BlockHash:      block.Hash(),
-		L1BlockNum:       big.NewInt(0).Set(block.Header().Number),
-		CrossChainHashes: crossChainHashes,
+		LastBatchHash:        batchHash, // unused for now.
+		L1BlockHash:          block.Hash(),
+		L1BlockNum:           big.NewInt(0).Set(block.Header().Number),
+		CrossChainRootHashes: crossChainHashes,
 	} //todo: check fromSeqNo
 
 	err = s.signCrossChainBundle(bundle)
