@@ -94,6 +94,9 @@ type HostInputConfig struct {
 	// The expected time between blocks on the L1 network
 	L1BlockTime time.Duration
 
+	// CrossChainInterval - The interval at which the host will check for new cross chain data to submit
+	CrossChainInterval time.Duration
+
 	// Whether inbound p2p is enabled or not
 	IsInboundP2PDisabled bool
 
@@ -138,6 +141,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		MaxBatchInterval:          p.MaxBatchInterval,
 		RollupInterval:            p.RollupInterval,
 		L1BlockTime:               p.L1BlockTime,
+		CrossChainInterval:        p.CrossChainInterval,
 		IsInboundP2PDisabled:      p.IsInboundP2PDisabled,
 		MaxRollupSize:             p.MaxRollupSize,
 	}
@@ -172,6 +176,8 @@ type HostConfig struct {
 	MaxRollupSize uint64
 	// The expected time between blocks on the L1 network
 	L1BlockTime time.Duration
+	// CrossChainInterval - The interval at which the host will check for new cross chain data to submit
+	CrossChainInterval time.Duration
 
 	/////
 	// NODE CONFIG
@@ -273,5 +279,6 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		L1BlockTime:          15 * time.Second,
 		IsInboundP2PDisabled: false,
 		MaxRollupSize:        1024 * 64,
+		CrossChainInterval:   6 * time.Second,
 	}
 }

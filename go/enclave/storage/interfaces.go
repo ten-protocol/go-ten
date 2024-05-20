@@ -53,6 +53,8 @@ type BatchResolver interface {
 	FetchBatchesByBlock(ctx context.Context, hash common.L1BlockHash) ([]*core.Batch, error)
 	// FetchNonCanonicalBatchesBetween - returns all reorged batches between the sequences
 	FetchNonCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error)
+	// FetchCanonicalBatchesBetween - returns all canon batches between the sequences
+	FetchCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error)
 	// FetchCanonicalUnexecutedBatches - return the list of the unexecuted batches that are canonical
 	FetchCanonicalUnexecutedBatches(context.Context, *big.Int) ([]*core.Batch, error)
 

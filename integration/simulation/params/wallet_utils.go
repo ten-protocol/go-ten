@@ -42,7 +42,8 @@ type SimWallets struct {
 	SimEthWallets []wallet.Wallet // the wallets of the simulated users on the Ethereum side
 	SimObsWallets []wallet.Wallet // and their equivalents on the obscuro side (with a different chainId)
 
-	GasBridgeWallet wallet.Wallet
+	GasBridgeWallet     wallet.Wallet
+	GasWithdrawalWallet wallet.Wallet
 
 	L2FaucetWallet wallet.Wallet // the wallet of the L2 faucet
 	L2FeesWallet   wallet.Wallet
@@ -78,6 +79,7 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	l2FaucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), l2FaucetPrivKey, testlog.Logger())
 
 	gasWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(ethereumChainID), genesis.GasBridgingKeys, testlog.Logger())
+	withdrawalWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(ethereumChainID), genesis.GasWithdrawalKeys, testlog.Logger())
 
 	sequencerGasKeys, _ := crypto.GenerateKey()
 	sequencerFeeWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), sequencerGasKeys, testlog.Logger())
@@ -97,13 +99,14 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	}
 
 	return &SimWallets{
-		MCOwnerWallet:   mcOwnerWallet,
-		NodeWallets:     nodeWallets,
-		SimEthWallets:   simEthWallets,
-		SimObsWallets:   simObsWallets,
-		L2FaucetWallet:  l2FaucetWallet,
-		L2FeesWallet:    sequencerFeeWallet,
-		GasBridgeWallet: gasWallet,
+		MCOwnerWallet:       mcOwnerWallet,
+		NodeWallets:         nodeWallets,
+		SimEthWallets:       simEthWallets,
+		SimObsWallets:       simObsWallets,
+		L2FaucetWallet:      l2FaucetWallet,
+		L2FeesWallet:        sequencerFeeWallet,
+		GasBridgeWallet:     gasWallet,
+		GasWithdrawalWallet: withdrawalWallet,
 		Tokens: map[testcommon.ERC20]*SimToken{
 			testcommon.HOC: &hoc,
 			testcommon.POC: &poc,
@@ -122,6 +125,7 @@ func (w *SimWallets) AllEthWallets() []wallet.Wallet {
 		ethWallets = append(ethWallets, token.L1Owner)
 	}
 	ethWallets = append(ethWallets, w.GasBridgeWallet)
+	ethWallets = append(ethWallets, w.GasWithdrawalWallet)
 	ethWallets = append(ethWallets, w.PrefundedEthWallets.POC)
 	ethWallets = append(ethWallets, w.PrefundedEthWallets.HOC)
 	ethWallets = append(ethWallets, w.PrefundedEthWallets.Faucet)

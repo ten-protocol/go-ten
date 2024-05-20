@@ -27,26 +27,28 @@ type TenConfigOption func(*TenConfig) // option pattern - typically used as over
 
 // TenConfig describes the L2 network configuration we want to spin up
 type TenConfig struct {
-	PortStart         int
-	InitNumValidators int
-	BatchInterval     time.Duration
-	RollupInterval    time.Duration
-	NumNodes          int
-	TenGatewayEnabled bool
-	NumSeqEnclaves    int
+	PortStart          int
+	InitNumValidators  int
+	BatchInterval      time.Duration
+	RollupInterval     time.Duration
+	CrossChainInterval time.Duration
+	NumNodes           int
+	TenGatewayEnabled  bool
+	NumSeqEnclaves     int
 
 	L1BlockTime time.Duration
 }
 
 func DefaultTenConfig() *TenConfig {
 	return &TenConfig{
-		PortStart:         integration.StartPortNetworkTests,
-		NumNodes:          4,
-		InitNumValidators: 3,
-		BatchInterval:     1 * time.Second,
-		RollupInterval:    10 * time.Second,
-		TenGatewayEnabled: false,
-		NumSeqEnclaves:    1, // increase for HA simulation
+		PortStart:          integration.StartPortNetworkTests,
+		NumNodes:           4,
+		InitNumValidators:  3,
+		BatchInterval:      1 * time.Second,
+		RollupInterval:     10 * time.Second,
+		CrossChainInterval: 11 * time.Second,
+		TenGatewayEnabled:  false,
+		NumSeqEnclaves:     1, // increase for HA simulation
 	}
 }
 

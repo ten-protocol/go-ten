@@ -8,8 +8,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
+	"github.com/ten-protocol/go-ten/go/host/storage"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -28,6 +32,7 @@ type Publisher struct {
 	hostWallet      wallet.Wallet // Wallet used to issue ethereum transactions
 	ethClient       ethadapter.EthClient
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
+	storage         storage.Storage
 
 	// cached map of important contract addresses (updated when we see a SetImportantContractsTx)
 	importantContractAddresses map[string]gethcommon.Address
@@ -59,6 +64,7 @@ func NewL1Publisher(
 	logger gethlog.Logger,
 	maxWaitForL1Receipt time.Duration,
 	retryIntervalForL1Receipt time.Duration,
+	storage storage.Storage,
 ) *Publisher {
 	sendingCtx, cancelSendingCtx := context.WithCancel(context.Background())
 	return &Publisher{
@@ -71,6 +77,7 @@ func NewL1Publisher(
 		logger:                    logger,
 		maxWaitForL1Receipt:       maxWaitForL1Receipt,
 		retryIntervalForL1Receipt: retryIntervalForL1Receipt,
+		storage:                   storage,
 
 		importantContractAddresses: map[string]gethcommon.Address{},
 		importantAddressesMutex:    sync.RWMutex{},
@@ -90,6 +97,45 @@ func (p *Publisher) Start() error {
 		}
 	}()
 	return nil
+}
+
+func (p *Publisher) GetBundleRangeFromManagementContract() (*big.Int, *big.Int, error) {
+	if p.mgmtContractLib.IsMock() {
+		return nil, nil, fmt.Errorf("bundle publishing unavailable for mocked environments")
+	}
+
+	managementCtr, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
+	if err != nil {
+		p.logger.Error("Unable to instantiate management contract client")
+		return nil, nil, err
+	}
+
+	lastBatchHash, err := managementCtr.LastBatchHash(&bind.CallOpts{})
+	if err != nil {
+		p.logger.Error("Unable to fetch last batch hash from management contract", log.ErrKey, err)
+		return nil, nil, err
+	}
+
+	var fromSeqNo *big.Int
+	if lastBatchHash == [32]byte{} {
+		fromSeqNo = big.NewInt(0)
+	} else {
+		batch, err := p.storage.FetchBatch(lastBatchHash)
+		if err != nil {
+			p.logger.Error("Unable to fetch last batch from host db", log.ErrKey, err)
+			return nil, nil, err
+		}
+		fromSeqNo = batch.SeqNo()
+		fromSeqNo = batch.SeqNo().Add(fromSeqNo, big.NewInt(1))
+	}
+
+	lastBatchRolledUpSeqNo, err := managementCtr.LastBatchSeqNo(&bind.CallOpts{})
+	if err != nil {
+		p.logger.Error("Unable to fetch last batch seq no from management contract", log.ErrKey, err)
+		return nil, nil, err
+	}
+
+	return fromSeqNo, lastBatchRolledUpSeqNo, nil
 }
 
 func (p *Publisher) Stop() error {
@@ -235,6 +281,54 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	}
 }
 
+func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle) error {
+	if p.mgmtContractLib.IsMock() {
+		return nil
+	}
+
+	if len(bundle.CrossChainRootHashes) == 0 {
+		return fmt.Errorf("nothing to publish in cross chain bundle")
+	}
+
+	managementCtr, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
+	if err != nil {
+		p.logger.Error("Unable to instantiate management contract client")
+		return fmt.Errorf("unable to init")
+	}
+
+	transactor, err := bind.NewKeyedTransactorWithChainID(p.hostWallet.PrivateKey(), p.hostWallet.ChainID())
+	if err != nil {
+		p.logger.Error("Unable to create transactor for management contract")
+		return fmt.Errorf("unable to init")
+	}
+
+	nonce, err := p.ethClient.EthClient().PendingNonceAt(context.Background(), p.hostWallet.Address())
+	if err != nil {
+		p.logger.Error("Unable to get nonce for management contract", log.ErrKey, err)
+		return fmt.Errorf("unable to get nonce for management contract. Cause: %w", err)
+	}
+
+	transactor.Nonce = big.NewInt(0).SetUint64(nonce)
+
+	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.LastBatchHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes, bundle.Signature)
+	if err != nil {
+		if !errors.Is(err, errutil.ErrCrossChainBundleRepublished) {
+			p.logger.Error("Error with submitting cross chain bundle transaction.", log.ErrKey, err, log.BundleHashKey, bundle.LastBatchHash)
+		}
+		p.hostWallet.SetNonce(p.hostWallet.GetNonce() - 1)
+		return fmt.Errorf("unable to submit cross chain bundle transaction. Cause: %w", err)
+	}
+
+	err = p.awaitTransaction(tx)
+	if err != nil {
+		p.logger.Error("Error with receipt of cross chain publish transaction", log.TxKey, tx.Hash(), log.ErrKey, err)
+		return fmt.Errorf("unable to get receipt for cross chain bundle transaction. Cause: %w", err)
+	}
+
+	p.logger.Info("Successfully submitted bundle", log.BundleHashKey, bundle.LastBatchHash)
+	return nil
+}
+
 func (p *Publisher) GetImportantContracts() map[string]gethcommon.Address {
 	p.importantAddressesMutex.RLock()
 	defer p.importantAddressesMutex.RUnlock()
@@ -346,6 +440,30 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		p.logger.Debug("L1 transaction successful receipt found.", log.TxKey, signedTx.Hash(),
 			log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
 		break
+	}
+	return nil
+}
+
+func (p *Publisher) awaitTransaction(tx *types.Transaction) error {
+	var receipt *types.Receipt
+	var err error
+	err = retry.Do(
+		func() error {
+			receipt, err = p.ethClient.TransactionReceipt(tx.Hash())
+			if err != nil {
+				return fmt.Errorf("could not get receipt for L1 tx=%s: %w", tx.Hash(), err)
+			}
+			return err
+		},
+		retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
+	)
+	if err != nil {
+		p.logger.Info("Receipt not found for transaction, we will re-attempt", log.ErrKey, err)
+		return err
+	}
+
+	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
+		return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
 	}
 	return nil
 }
