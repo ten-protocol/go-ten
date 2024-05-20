@@ -29,12 +29,16 @@ func LoadFlags(t TypeConfig, withDefaults bool) (RunParams, CliFlagSet, error) {
 		return nil, nil, err
 	}
 
-	// check args for an action
-	var action = "start"
-	cliAction := os.Args[len(os.Args)-1] // last element is args
-	if cliAction == "upgrade" || cliAction == "start" {
-		action = cliAction
-		os.Args = os.Args[:len(os.Args)-1] // remove the action from args
+	// handle the node action
+	var action string
+	if t == Node {
+		// check args for an action
+		action = "start"
+		cliAction := os.Args[len(os.Args)-1] // last element is args
+		if cliAction == "upgrade" || cliAction == "start" {
+			action = cliAction
+			os.Args = os.Args[:len(os.Args)-1] // remove the action from args
+		}
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -173,8 +177,6 @@ func setupFlagsByType(fs *flag.FlagSet, t TypeConfig) error {
 		SetupFlagsFromStruct(&HostInputConfig{}, fs, flagUsageMap)
 	case Node:
 		{
-			//SetupFlagsFromStruct(&HostInputConfig{}, fs, flagUsageMap)
-			//SetupFlagsFromStruct(&EnclaveInputConfig{}, fs, flagUsageMap)
 			SetupFlagsFromStruct(&NodeConfig{}, fs, flagUsageMap)
 		}
 	case Testnet:
@@ -222,9 +224,9 @@ func setupStructFlags(prefix string, val reflect.Value, fs *flag.FlagSet, usageM
 		}
 
 		if field.Type().Kind() == reflect.Struct {
-			setupStructFlags(yamlTag, field, fs, usageMap)
+			setupStructFlags(yamlTag+":", field, fs, usageMap)
 		} else {
-			setupFlag(field, fs, prefix+":"+yamlTag, usageMap[yamlTag])
+			setupFlag(field, fs, yamlTag, usageMap[yamlTag])
 		}
 	}
 }

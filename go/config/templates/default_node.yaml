@@ -15,10 +15,8 @@ nodeDetails:              # Individual
 nodeSettings:
   nodeType:               "validator"
   isSGXEnabled:           false # should be true for ITN
-  isGenesis:              false
   pccsAddr:               "" # optional for attestation
   enclaveDebug:           false
-  logLevel:               3
 
 host:
   l1WebsocketURL:         "" # must override with L1 node WS (geth/infura etc.)
