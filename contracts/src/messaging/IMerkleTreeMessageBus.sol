@@ -7,7 +7,7 @@ interface IMerkleTreeMessageBus {
     // This function is called to add a cross chain state root to the message bus.
     function addStateRoot(bytes32 stateRoot, uint256 activationTime) external;
     // This function disables a cross chain state root from the message bus. On challenge
-    function blockStateRoot(bytes32 stateRoot) external;
+    function disableStateRoot(bytes32 stateRoot) external;
     // This function verifies that a cross chain message is included in the state root.
     // message - the message to verify
     // proof - merkle tree proof for the said message against root

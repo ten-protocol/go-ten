@@ -18,7 +18,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
         rootValidAfter[stateRoot] = activationTime;
     }
 
-    function blockStateRoot(bytes32 stateRoot) external onlyOwner {
+    function disableStateRoot(bytes32 stateRoot) external onlyOwner {
         require(rootValidAfter[stateRoot] != 0, "State root does not exist.");
         rootValidAfter[stateRoot] = 0;
     }
