@@ -269,7 +269,6 @@ func NewEnclave(
 	}
 }
 
-// todo - this does not query atomically. If stuff reorgs we might get weird exports.
 func (e *enclaveImpl) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, common.SystemError) {
 	return e.Sequencer().ExportCrossChainData(ctx, fromSeqNo, toSeqNo)
 }
