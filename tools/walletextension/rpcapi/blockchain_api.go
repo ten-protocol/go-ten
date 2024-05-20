@@ -162,6 +162,9 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, customMethod string,
 
 	// sensitive CustomQuery methods use the convention of having "address" at the top level of the params json
 	address, err := extractCustomQueryAddress(customParams)
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract address from custom query params: %w", err)
+	}
 	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, api.we, &ExecCfg{account: address}, "eth_getStorageAt", customMethod, customParams, nil)
 	if resp == nil {
 		return nil, err
