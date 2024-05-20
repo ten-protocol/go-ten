@@ -197,7 +197,7 @@ func (ms MessageStructs) ForMerkleTree() [][]interface{} {
 	for idx := range ms {
 		hashedVal := ms.HashPacked(idx)
 		val := []interface{}{
-			"message",
+			"m",
 			hashedVal,
 		}
 		values = append(values, val)
@@ -258,7 +258,7 @@ func (vt ValueTransfers) ForMerkleTree() [][]interface{} {
 	for idx := range vt {
 		hashedVal := vt.HashPacked(idx)
 		val := []interface{}{
-			"value",
+			"v",
 			hashedVal,
 		}
 		values = append(values, val)
