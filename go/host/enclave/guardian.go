@@ -632,11 +632,6 @@ func (g *Guardian) periodicBundleSubmission() {
 	interval := g.crossChainInterval
 	g.logger.Info("Starting cross chain bundle submission", "interval", interval)
 
-	if interval == 0 {
-		interval = 20 * time.Second
-		g.logger.Warn("Cross chain interval not set. Defaulting to 10 seconds")
-	}
-
 	bundleSubmissionTicker := time.NewTicker(interval)
 
 	for {
