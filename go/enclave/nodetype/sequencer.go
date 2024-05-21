@@ -363,8 +363,9 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	return extRollup, nil
 }
 
-func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash) error {
+func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash, canonicalL1Path []common.L1BlockHash) error {
 	batchesToDuplicate := make([]*core.Batch, 0)
+	batchesToExclude := make(map[uint64]*core.Batch, 0)
 
 	// read the batches attached to these blocks
 	for _, l1BlockHash := range nonCanonicalL1Path {
@@ -376,6 +377,20 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 			return fmt.Errorf("could not FetchBatchesByBlock %s. Cause %w", l1BlockHash, err)
 		}
 		batchesToDuplicate = append(batchesToDuplicate, batches...)
+	}
+
+	// check whether there are already batches on the canonical branch
+	for _, l1BlockHash := range canonicalL1Path {
+		batches, err := s.storage.FetchBatchesByBlock(ctx, l1BlockHash)
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				continue
+			}
+			return fmt.Errorf("could not FetchBatchesByBlock %s. Cause %w", l1BlockHash, err)
+		}
+		for _, batch := range batches {
+			batchesToExclude[batch.NumberU64()] = batch
+		}
 	}
 
 	if len(batchesToDuplicate) == 0 {
@@ -395,6 +410,10 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 		if i > 0 && batchesToDuplicate[i].Header.ParentHash != batchesToDuplicate[i-1].Hash() {
 			s.logger.Crit("the batches that must be duplicated are invalid")
 		}
+		if batchesToExclude[orphanBatch.NumberU64()] != nil {
+			s.logger.Info("Not duplicating batch because there is already a canonical batch on that height", log.BatchSeqNoKey, orphanBatch.SeqNo())
+			continue
+		}
 		sequencerNo, err := s.storage.FetchCurrentSequencerNo(ctx)
 		if err != nil {
 			return fmt.Errorf("could not fetch sequencer no. Cause %w", err)
@@ -409,6 +428,16 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 		s.logger.Info("Duplicated batch", log.BatchHashKey, currentHead)
 	}
 
+	// useful for debugging
+	//start := batchesToDuplicate[0].SeqNo().Uint64()
+	//batches, err := s.storage.FetchNonCanonicalBatchesBetween(ctx, start-1, start+uint64(len(batchesToDuplicate))+1)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//for _, batch := range batches {
+	//	s.logger.Info("After duplication. Noncanonical", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
+	//}
+
 	return nil
 }
 
@@ -421,7 +450,7 @@ func (s *sequencer) OnL1Fork(ctx context.Context, fork *common.ChainFork) error 
 		return nil
 	}
 
-	err := s.duplicateBatches(ctx, fork.NewCanonical, fork.NonCanonicalPath)
+	err := s.duplicateBatches(ctx, fork.NewCanonical, fork.NonCanonicalPath, fork.CanonicalPath)
 	if err != nil {
 		return fmt.Errorf("could not duplicate batches. Cause %w", err)
 	}
@@ -468,6 +497,7 @@ func (s *sequencer) signCrossChainBundle(bundle *common.ExtCrossChainBundle) err
 	}
 	return nil
 }
+
 func (s *sequencer) OnL1Block(ctx context.Context, block *types.Block, result *components.BlockIngestionType) error {
 	// nothing to do
 	return nil

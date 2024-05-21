@@ -175,7 +175,25 @@ func (rc *RollupCompression) createRollupHeader(ctx context.Context, rollup *cor
 	}
 	reorgMap := make(map[uint64]bool)
 	for _, batch := range reorgedBatches {
+		rc.logger.Info("Reorg batch", log.BatchSeqNoKey, batch.SeqNo().Uint64())
 		reorgMap[batch.SeqNo().Uint64()] = true
+	}
+
+	var parent *core.Batch
+
+	var firstCanonical *core.Batch
+	for _, batch := range batches {
+		if !reorgMap[batch.SeqNo().Uint64()] {
+			firstCanonical = batch
+			break
+		}
+	}
+
+	if firstCanonical != nil && firstCanonical.SeqNo().Uint64() > common.L2GenesisSeqNo {
+		parent, err = rc.storage.FetchBatch(ctx, firstCanonical.Header.ParentHash)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for i, batch := range batches {
@@ -188,6 +206,11 @@ func (rc *RollupCompression) createRollupHeader(ctx context.Context, rollup *cor
 			rc.logger.Info("Reorg", "pos", i)
 		} else {
 			reorgs[i] = nil
+			// sanity check
+			if parent != nil && batch.Header.ParentHash != parent.Hash() {
+				rc.logger.Crit("invalid chaining. should not happen")
+			}
+			parent = batch
 		}
 		batchHashes[i] = batch.Hash()
 		batchHeaders[i] = batch.Header

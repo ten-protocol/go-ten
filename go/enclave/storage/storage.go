@@ -230,11 +230,26 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Block, chainF
 
 	if chainFork != nil && chainFork.IsFork() {
 		s.logger.Info(fmt.Sprintf("Update Fork. %s", chainFork))
-		err = enclavedb.UpdateCanonicalBlocks(ctx, dbTx, chainFork.CanonicalPath, chainFork.NonCanonicalPath, s.logger)
-		if err != nil {
-			return err
+		if len(chainFork.NonCanonicalPath) > 0 {
+			err := enclavedb.UpdateCanonicalValue(ctx, dbTx, false, chainFork.NonCanonicalPath, s.logger)
+			if err != nil {
+				return err
+			}
+		}
+		if len(chainFork.CanonicalPath) > 0 {
+			err := enclavedb.UpdateCanonicalValue(ctx, dbTx, true, chainFork.CanonicalPath, s.logger)
+			if err != nil {
+				return err
+			}
 		}
 	}
+
+	// double check that there is always a single canonical batch or block per layer
+	// only for debugging
+	//err = enclavedb.CheckCanonicalValidity(ctx, dbTx)
+	//if err != nil {
+	//	return err
+	//}
 
 	if err := dbTx.Commit(); err != nil {
 		return fmt.Errorf("4. could not store block %s. Cause: %w", block.Hash(), err)
