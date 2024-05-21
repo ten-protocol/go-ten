@@ -6,6 +6,7 @@ import {
   TransactionCount,
   Price,
   TransactionResponse,
+  Transaction,
 } from "@/src/types/interfaces/TransactionInterfaces";
 
 export const fetchTransactions = async (
@@ -29,5 +30,14 @@ export const fetchEtherPrice = async (): Promise<Price> => {
   return await httpRequest<Price>({
     method: "get",
     url: apiRoutes.getEtherPrice,
+  });
+};
+
+export const fetchTransactionByHash = async (
+  hash: string
+): Promise<ResponseDataInterface<Transaction>> => {
+  return await httpRequest<ResponseDataInterface<Transaction>>({
+    method: "get",
+    url: pathToUrl(apiRoutes.getTransactionByHash, { hash }),
   });
 };

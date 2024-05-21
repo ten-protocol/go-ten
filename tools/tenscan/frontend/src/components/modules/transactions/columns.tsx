@@ -8,6 +8,8 @@ import { DataTableColumnHeader } from "../common/data-table/data-table-column-he
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
 import TruncatedAddress from "../common/truncated-address";
 import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
+import Link from "next/link";
+import { EyeOpenIcon } from "@radix-ui/react-icons";
 
 export const columns: ColumnDef<Transaction>[] = [
   {
@@ -82,6 +84,16 @@ export const columns: ColumnDef<Transaction>[] = [
     },
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id));
+    },
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      return (
+        <Link href={`/tx/${row.original.TransactionHash}`}>
+          <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
+        </Link>
+      );
     },
   },
 ];

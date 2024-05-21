@@ -1,3 +1,4 @@
+import Image from "next/image";
 import React from "react";
 
 const EmptyState = ({
@@ -20,7 +21,7 @@ const EmptyState = ({
       <div className="flex flex-col items-center justify-center space-y-4">
         {icon && <div className="w-24 h-24">{icon}</div>}
         {imageSrc && (
-          <img
+          <Image
             src={imageSrc}
             alt={imageAlt || "Empty state"}
             className="w-24 h-24 rounded-full"

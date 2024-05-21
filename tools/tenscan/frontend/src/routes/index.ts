@@ -16,6 +16,7 @@ export const apiRoutes = {
   // **** TRANSACTIONS ****
   getTransactions: "/items/transactions/",
   getTransactionCount: "/count/transactions/",
+  getTransactionByHash: "/items/transaction/:hash",
 
   getEtherPrice:
     "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
