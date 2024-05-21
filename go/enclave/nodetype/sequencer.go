@@ -412,6 +412,7 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 		}
 		if batchesToExclude[orphanBatch.NumberU64()] != nil {
 			s.logger.Info("Not duplicating batch because there is already a canonical batch on that height", log.BatchSeqNoKey, orphanBatch.SeqNo())
+			currentHead = batchesToExclude[orphanBatch.NumberU64()].Hash()
 			continue
 		}
 		sequencerNo, err := s.storage.FetchCurrentSequencerNo(ctx)

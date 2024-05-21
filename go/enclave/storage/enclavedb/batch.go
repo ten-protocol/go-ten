@@ -176,7 +176,7 @@ func ReadCurrentHeadBatch(ctx context.Context, db *sql.DB) (*core.Batch, error) 
 }
 
 func ReadBatchesByBlock(ctx context.Context, db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {
-	return fetchBatches(ctx, db, " join block l1b on b.l1_proof=l1b.id where l1b.hash=?  order by b.sequence", hash.Bytes())
+	return fetchBatches(ctx, db, " where l1_proof_hash=?  order by b.sequence", hash.Bytes())
 }
 
 func ReadCurrentSequencerNo(ctx context.Context, db *sql.DB) (*big.Int, error) {
