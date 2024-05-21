@@ -657,7 +657,7 @@ func (g *Guardian) periodicBundleSubmission() {
 
 			if len(bundle.CrossChainRootHashes) == 0 {
 				g.logger.Debug("No cross chain data to submit")
-				fromSequenceNumber = to.Uint64()
+				fromSequenceNumber = to.Uint64() + 1
 				continue
 			}
 
