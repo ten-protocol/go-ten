@@ -14,7 +14,7 @@ export function TransactionDetailsComponent({
     <div className="space-y-8">
       <KeyValueList>
         <KeyValueItem
-          label="Batch Number"
+          label="Batch Height"
           value={"#" + Number(transactionDetails?.BatchHeight)}
         />
         <KeyValueItem
