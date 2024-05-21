@@ -95,7 +95,10 @@ func (h *HostContainer) Host() hostcommon.Host {
 // NewHostContainerFromConfig uses config to create all HostContainer dependencies and inject them into a new HostContainer
 // (Note: it does not start the HostContainer process, `Start()` must be called on the container)
 func NewHostContainerFromConfig(cfg *config.HostConfig, logger gethlog.Logger) *HostContainer {
-
+	// If the cfg.PrivateKey has a 0x prefix, remove it
+	if cfg.PrivateKey[:2] == "0x" {
+		cfg.PrivateKey = cfg.PrivateKey[2:]
+	}
 	addr, err := wallet.RetrieveAddress(cfg.PrivateKey)
 	if err != nil {
 		panic("unable to retrieve the Node ID")
