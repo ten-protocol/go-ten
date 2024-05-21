@@ -53,6 +53,10 @@ FROM ghcr.io/edgelesssys/ego-deploy:v1.5.0
 # Copy just the binary for the enclave into this build stage
 COPY --from=build-enclave \
     /home/obscuro/go-obscuro/go/enclave/main /home/obscuro/go-obscuro/go/enclave/main
+
+# Copy just the binary for the config serialization into this build stage
+COPY --from=build-enclave \
+    /home/obscuro/go-obscuro/go/config/config-entrypoint.sh /home/obscuro/go-obscuro/go/enclave/main/config-entrypoint.sh
     
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 

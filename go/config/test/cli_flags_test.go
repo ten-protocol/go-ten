@@ -163,6 +163,46 @@ func TestEnclaveEnvVarOverridesDefaultConfigAndFlag(t *testing.T) {
 	}
 }
 
+func TestEnclaveConfigJson(t *testing.T) {
+	resetFlagSet()
+
+	confEIC := config.EnclaveInputConfig{
+		HostID:                    "example-host-id",
+		HostAddress:               "example-host-address",
+		Address:                   "example-address",
+		NodeType:                  "example-node-type",
+		L1ChainID:                 123,
+		TenChainID:                456,
+		WillAttest:                true,
+		ValidateL1Blocks:          false,
+		GenesisJSON:               "{}",
+		ManagementContractAddress: "example-management-contract-address",
+		LogLevel:                  1,
+		LogPath:                   "example-log-path",
+		UseInMemoryDB:             true,
+		EdgelessDBHost:            "example-edgeless-db-host",
+		SqliteDBPath:              "example-sqlite-db-path",
+		ProfilerEnabled:           true,
+		MinGasPrice:               1000,
+		MessageBusAddress:         "example-message-bus-address",
+		SequencerP2PAddress:       "example-sequencer-p2p-address",
+		TenGenesis:                "example-ten-genesis",
+		DebugNamespaceEnabled:     true,
+		MaxBatchSize:              2000,
+		MaxRollupSize:             3000,
+		GasPaymentAddress:         "example-gas-payment-address",
+		BaseFee:                   500,
+		GasBatchExecutionLimit:    6000,
+		GasLocalExecutionCap:      7000,
+		RPCTimeout:                10,
+	}
+
+	err := confEIC.ToEnclaveConfigJson("./enclave.json")
+	if err != nil {
+		return
+	}
+}
+
 // needed for subsequent runs testing flags
 func resetFlagSet() {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)

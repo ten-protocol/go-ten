@@ -15,7 +15,7 @@ address:                   "0.0.0.0:11001"
 willAttest:                false
 validateL1Blocks:          false
 useInMemoryDB:             false
-edgelessDBHost:            "obscuronode-edgelessdb"
+edgelessDBHost:            ""
 rpcTimeout:                5
 
 # L2 Details

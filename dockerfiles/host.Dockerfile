@@ -41,6 +41,10 @@ COPY --from=build-host \
 COPY --from=build-host \
     /home/obscuro/go-obscuro/go/host/storage/init/postgres /home/obscuro/go-obscuro/go/host/storage/init/postgres
 
+# Copy just the binary for the config serialization into this build stage
+COPY --from=build-host \
+    /home/obscuro/go-obscuro/go/config/config-entrypoint.sh /home/obscuro/go-obscuro/go/host/main/config-entrypoint.sh
+
 WORKDIR /home/obscuro/go-obscuro/go/host/main
 
 # expose the http and the ws ports to the host

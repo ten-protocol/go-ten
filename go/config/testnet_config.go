@@ -7,7 +7,7 @@ type TestnetConfig struct {
 	Network            NetworkInputConfig       `yaml:"networkConfig"`
 	Nodes              []*NodeConfig            `yaml:"nodes"`
 	L2ContractDeployer L2ContractDeployerConfig `yaml:"l2ContractDeployer"`
-	Faucet             faucetConfig             `yaml:"faucet"`
+	Faucet             FaucetConfig             `yaml:"faucet"`
 }
 
 type TestNetSettings struct {
@@ -54,7 +54,7 @@ type L2ContractDeployerConfig struct {
 	ContainerName         string `yaml:"containerName"`
 }
 
-type faucetConfig struct {
+type FaucetConfig struct {
 	TenNodeHost   string `yaml:"tenNodeHost"`
 	TenNodePort   int    `yaml:"tenNodePort"`
 	FaucetPort    int    `yaml:"faucetPort"`

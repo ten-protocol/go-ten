@@ -2,7 +2,11 @@ package config
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"os"
+	"reflect"
+	"strings"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -170,4 +174,93 @@ type EnclaveConfig struct {
 	// RPCTimeout - calls that are longer than this will be cancelled, to prevent resource starvation
 	// normally, the context is propagated from the host, but in some cases ( like the evm, we have to create a context)
 	RPCTimeout time.Duration
+}
+
+// SGX enclave.json configuration structs
+type EnclaveConfigJson struct {
+	Exe             string   `json:"exe"`
+	Key             string   `json:"key"`
+	Debug           bool     `json:"debug"`
+	HeapSize        int      `json:"heapSize"`
+	ExecutableHeap  bool     `json:"executableHeap"`
+	ProductID       int      `json:"productID"`
+	SecurityVersion int      `json:"securityVersion"`
+	Mounts          []Mount  `json:"mounts"`
+	Env             []EnvVar `json:"env"`
+}
+
+type Mount struct {
+	Source   string `json:"source"`
+	Target   string `json:"target"`
+	Type     string `json:"type"`
+	ReadOnly bool   `json:"readOnly"`
+}
+
+type EnvVar struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// ToEnclaveConfigJson writes enclave.json from EnclaveInputConfig
+func (p *EnclaveInputConfig) ToEnclaveConfigJson(filePath string) error {
+	enclaveFile := filePath
+	enclaveData, err := os.ReadFile(enclaveFile)
+	if err != nil {
+		fmt.Printf("Error reading enclave.json: %v\n", err)
+		return err
+	}
+
+	var enclaveConfigJson EnclaveConfigJson
+	err = json.Unmarshal(enclaveData, &enclaveConfigJson)
+	if err != nil {
+		fmt.Printf("Error unmarshalling enclave.json: %v\n", err)
+		return err
+	}
+
+	// Inject variables into enclave.json using reflection
+	configMap := createConfigMap(*p)
+
+	for key, value := range configMap {
+		if !isZeroValue(value) {
+			enclaveConfigJson.Env = append(enclaveConfigJson.Env, EnvVar{Name: key, Value: fmt.Sprintf("%v", value)})
+		}
+	}
+	// Write the updated enclave.json
+	updatedData, err := json.MarshalIndent(enclaveConfigJson, "", "  ")
+	if err != nil {
+		fmt.Printf("Error marshalling updated enclave.json: %v\n", err)
+		return err
+	}
+
+	err = os.WriteFile(enclaveFile, updatedData, 0644)
+	if err != nil {
+		fmt.Printf("Error writing updated enclave.json: %v\n", err)
+		return err
+	}
+
+	fmt.Println("enclave.json updated successfully")
+
+	return nil
+}
+
+// createConfigMap uses reflection to create a map from struct fields
+func createConfigMap(config EnclaveInputConfig) map[string]interface{} {
+	configMap := make(map[string]interface{})
+	v := reflect.ValueOf(config)
+	t := reflect.TypeOf(config)
+
+	for i := 0; i < v.NumField(); i++ {
+		field := t.Field(i)
+		value := v.Field(i).Interface()
+		if !isZeroValue(value) {
+			configMap[strings.ToUpper(field.Name)] = value
+		}
+	}
+
+	return configMap
+}
+
+// isZeroValue checks if a value is the zero value for its type
+func isZeroValue(x interface{}) bool {
+	return x == reflect.Zero(reflect.TypeOf(x)).Interface()
 }
