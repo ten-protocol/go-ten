@@ -323,6 +323,10 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 }
 
 func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction, fromWallet wallet.Wallet) {
+	if ti.mgmtContractLib.IsMock() {
+		return
+	}
+
 	err := testcommon.AwaitReceipt(ti.ctx, ti.rpcHandles.ObscuroWalletRndClient(fromWallet), tx.Hash(), 30*time.Second)
 	if err != nil {
 		ti.logger.Error("Failed to await receipt for withdrawal transaction", log.ErrKey, err)
