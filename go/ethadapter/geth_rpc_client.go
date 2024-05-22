@@ -249,6 +249,11 @@ func (e *gethRPCClient) PrepareTransactionToSend(ctx context.Context, txData typ
 	return e.PrepareTransactionToRetry(ctx, txData, from, 0)
 }
 
+// PrepareBlobTransactionToSend takes a txData type and overrides the From, Gas and Gas Price field with current values
+func (e *gethRPCClient) PrepareBlobTransactionToSend(ctx context.Context, txData types.TxData, from gethcommon.Address) (types.TxData, error) {
+	return e.PrepareTransactionToRetry(ctx, txData, from, 0)
+}
+
 // PrepareTransactionToRetry takes a txData type and overrides the From, Gas and Gas Price field with current values
 // it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
 func (e *gethRPCClient) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, retryNumber int) (types.TxData, error) {

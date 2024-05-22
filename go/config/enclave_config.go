@@ -64,6 +64,7 @@ type EnclaveConfig struct {
 	// have configured as the maximum size a transaction can have. Note that this isn't
 	// a protocol limit, but a miner imposed limit and it might be hard to find someone
 	// to include a transaction if it goes above it
+	// TODO Update with blob description
 	MaxRollupSize uint64
 
 	GasPaymentAddress        gethcommon.Address

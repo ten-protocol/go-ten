@@ -1,8 +1,11 @@
 package mgmtcontractlib
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"math"
 	"math/big"
 	"strings"
 
@@ -25,6 +28,7 @@ const methodBytesLen = 4
 // messages for call requests, and converting ethereum transactions into L1Transactions.
 type MgmtContractLib interface {
 	CreateRollup(t *ethadapter.L1RollupTx) types.TxData
+	CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error)
 	CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData
 	CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, verifyAttester bool) types.TxData
 	CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData
@@ -148,6 +152,124 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx) types.TxData {
 		To:   c.addr,
 		Data: data,
 	}
+}
+
+func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error) {
+	decodedRollup, err := common.DecodeRollup(t.Rollup)
+	if err != nil {
+		panic(err)
+	}
+
+	encRollupData := base64EncodeToString(t.Rollup)
+
+	metaRollup := ManagementContract.StructsMetaRollup{
+		Hash:               decodedRollup.Hash(),
+		Signature:          decodedRollup.Header.Signature,
+		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
+	}
+
+	crossChain := ManagementContract.StructsHeaderCrossChainData{
+		Messages: convertCrossChainMessages(decodedRollup.Header.CrossChainMessages),
+	}
+
+	data, err := c.contractABI.Pack(
+		AddRollupMethod,
+		metaRollup,
+		//encRollupData, // Remove rollup from calldata
+		crossChain,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	maxBlobSize := 128 * 1024 // 128KB in bytes TODO move to config
+	base64ChunkSize := int(math.Floor(float64(maxBlobSize) * 4 / 3))
+	base64ChunkSize = base64ChunkSize - (base64ChunkSize % 4) - 4 //metadata size
+
+	//TODO handle when blobs exceed 1Mb
+	blobs, _ := chunkRollup(encRollupData, base64ChunkSize)
+
+	var blobHashes []gethcommon.Hash
+	var sidecar *types.BlobTxSidecar
+
+	if sidecar, blobHashes, err = makeSidecar(blobs); err != nil {
+		return nil, fmt.Errorf("failed to make sidecar: %w", err)
+	}
+	return &types.BlobTx{
+		To:         *c.addr,
+		Data:       data,
+		BlobHashes: blobHashes,
+		Sidecar:    sidecar,
+	}, nil
+}
+
+// chunkRollup splits the rollup into blobs based on the max blob size and index's the blobs
+func chunkRollup(data string, maxBlobSize int) ([]*kzg4844.Blob, error) {
+	var blobs []*kzg4844.Blob
+	//indexByteSize := 4 // size in bytes for the chunk index metadata
+	chunkIndex := uint32(0)
+
+	for i := 0; i < len(data); i += maxBlobSize {
+		end := i + maxBlobSize
+		if end > len(data) {
+			end = len(data)
+		}
+
+		//metadata := make([]byte, indexByteSize)
+		//binary.BigEndian.PutUint32(metadata, chunkIndex)
+		//println("metadata: ", metadata)
+		//println("metadata indexByteSize: ", indexByteSize)
+
+		chunkData := []byte(data[i:end])
+
+		// ethereum expects fixed blob length so we need to pad it out
+		//actualLength := len(chunkData) + len(metadata)
+		actualLength := len(chunkData)
+		if actualLength < 131072 {
+			// Add padding
+			padding := make([]byte, 131072-actualLength)
+			chunkData = append(chunkData, padding...)
+		}
+
+		if len(chunkData) != 131072 {
+			return nil, fmt.Errorf("rollup blob must be 131072 in length")
+		}
+
+		blob := kzg4844.Blob(chunkData)
+		blobs = append(blobs, &blob)
+
+		chunkIndex++
+	}
+	return blobs, nil
+}
+
+// MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
+// data.
+func makeSidecar(blobs []*kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
+	sidecar := &types.BlobTxSidecar{}
+	blobHashes := []gethcommon.Hash{}
+	for i, blob := range blobs {
+		sidecar.Blobs = append(sidecar.Blobs, *blob)
+		println("blob before calling commitment: ", blob)
+		commitment, err := kzg4844.BlobToCommitment(blob)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot compute KZG commitment of blob %d in tx candidate: %w", i, err)
+		}
+		sidecar.Commitments = append(sidecar.Commitments, commitment)
+		proof, err := kzg4844.ComputeBlobProof(blob, commitment)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot compute KZG proof for fast commitment verification of blob %d in tx candidate: %w", i, err)
+		}
+		sidecar.Proofs = append(sidecar.Proofs, proof)
+		blobHashes = append(blobHashes, kzgToVersionedHash(commitment))
+	}
+	return sidecar, blobHashes, nil
+}
+
+// kzgToVersionedHash computes the versioned hash of a blob-commitment. Implemented here as it's not exposed by geth.
+func kzgToVersionedHash(commitment kzg4844.Commitment) (out gethcommon.Hash) {
+	hasher := sha256.New()
+	return kzg4844.CalcBlobHashV1(hasher, &commitment)
 }
 
 func (c *contractLibImpl) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData {

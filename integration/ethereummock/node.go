@@ -100,7 +100,25 @@ func (m *Node) PrepareTransactionToSend(_ context.Context, txData types.TxData, 
 }
 
 func (m *Node) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, _ int) (types.TxData, error) {
-	return m.PrepareTransactionToSend(ctx, txData, from)
+	switch tx := txData.(type) {
+	case *types.BlobTx:
+		return m.PrepareBlobTransactionToSend(ctx, tx, from)
+	case *types.LegacyTx:
+		return m.PrepareTransactionToSend(ctx, tx, from)
+	default:
+		return nil, fmt.Errorf("unsupported transaction type: %T", txData)
+	}
+}
+func (m *Node) PrepareBlobTransactionToSend(_ context.Context, txData types.TxData, _ gethcommon.Address) (types.TxData, error) {
+	tx := types.NewTx(txData)
+	return &types.LegacyTx{
+		Nonce:    123,
+		GasPrice: tx.GasPrice(),
+		Gas:      tx.Gas(),
+		To:       tx.To(),
+		Value:    tx.Value(),
+		Data:     tx.Data(),
+	}, nil
 }
 
 func (m *Node) SendTransaction(tx *types.Transaction) error {

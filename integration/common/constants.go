@@ -81,7 +81,7 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		ObscuroGenesis:            "",
 		DebugNamespaceEnabled:     false,
 		MaxBatchSize:              1024 * 55,
-		MaxRollupSize:             1024 * 64,
+		MaxRollupSize:             1024 * 128,
 		GasPaymentAddress:         gethcommon.HexToAddress("0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"),
 		BaseFee:                   new(big.Int).SetUint64(params.InitialBaseFee),
 

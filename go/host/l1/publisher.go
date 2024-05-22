@@ -225,9 +225,13 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
 	}
 
-	rollupTx := p.mgmtContractLib.CreateRollup(tx)
+	//rollupTx := p.mgmtContractLib.CreateRollup(tx)
+	rollupBlobTx, err := p.mgmtContractLib.CreateBlobRollup(tx)
+	if err != nil {
+		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
+	}
 
-	err = p.publishTransaction(rollupTx)
+	err = p.publishTransaction(rollupBlobTx)
 	if err != nil {
 		p.logger.Error("Could not issue rollup tx", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	} else {

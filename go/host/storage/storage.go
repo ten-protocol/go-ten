@@ -22,6 +22,7 @@ type storageImpl struct {
 }
 
 func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
+
 	// Check if the Batch is already stored
 	_, err := hostdb.GetBatchHeader(s.db, batch.Hash())
 	if err == nil {
