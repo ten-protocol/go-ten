@@ -3,7 +3,7 @@ import { NavLink } from "../types/interfaces";
 export const apiRoutes = {
   // **** BATCHES ****
   getLatestBatch: "/items/batch/latest/",
-  getBatches: "/items/batches/",
+  getBatches: "/items/v2/batches/",
   getBatchByHash: "/items/batch/:hash",
 
   // **** BLOCKS ****
@@ -24,6 +24,9 @@ export const apiRoutes = {
   // **** ROLLUPS ****
   getLatestRollup: "/items/rollup/latest/",
   decryptEncryptedRollup: "/actions/decryptTxBlob/",
+  getRollups: "/items/rollups/",
+  getRollupByHash: "/items/rollup/:hash",
+  getRollupByBatchSequence: "/items/rollup/batch/:seq",
 
   // **** INFO ****
   getHealthStatus: "/info/health/",
@@ -64,6 +67,11 @@ export const NavLinks: NavLink[] = [
       {
         href: "/batches",
         label: "Batches",
+        isExternal: false,
+      },
+      {
+        href: "/rollups",
+        label: "Rollups",
         isExternal: false,
       },
     ],

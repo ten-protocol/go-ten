@@ -27,6 +27,7 @@ import {
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
 import { useRouter } from "next/router";
+import { Skeleton } from "@/src/components/ui/skeleton";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -39,6 +40,7 @@ interface DataTableProps<TData, TValue> {
   updateQueryParams?: (query: any) => void;
   refetch?: () => void;
   total: number;
+  isLoading?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -47,6 +49,7 @@ export function DataTable<TData, TValue>({
   toolbar,
   refetch,
   total,
+  isLoading,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
@@ -119,7 +122,18 @@ export function DataTable<TData, TValue>({
             ))}
           </TableHeader>
           <TableBody>
-            {table?.getRowModel()?.rows?.length && data ? (
+            {isLoading ? (
+              <>
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    <Skeleton className="w-full h-full" />
+                  </TableCell>
+                </TableRow>
+              </>
+            ) : table?.getRowModel()?.rows?.length && data ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}

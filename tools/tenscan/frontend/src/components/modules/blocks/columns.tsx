@@ -10,6 +10,7 @@ import { Badge } from "../../ui/badge";
 import ExternalLink from "../../ui/external-link";
 import { externalLinks } from "@/src/routes";
 import { EyeOpenIcon } from "@radix-ui/react-icons";
+import Link from "next/link";
 
 export const columns: ColumnDef<Block>[] = [
   {
@@ -60,7 +61,9 @@ export const columns: ColumnDef<Block>[] = [
       return Number(row.original.rollupHash) === 0 ? (
         <Badge>No rollup</Badge>
       ) : (
-        <TruncatedAddress address={row.original.rollupHash} />
+        <Link href={`/rollups/${row.original.rollupHash}`}>
+          <TruncatedAddress address={row.original.rollupHash} />
+        </Link>
       );
     },
     enableSorting: false,
