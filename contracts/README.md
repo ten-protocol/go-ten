@@ -9,6 +9,13 @@ NPM (tested with 8.19.3)
 
 ## Installing
 
+First you'll need to install ethereum locally
+
+```shell
+brew tap ethereum/ethereum
+brew install ethereum
+```
+
 Running the following command will pull all of the relevant dependencies for node and solidity.
 
 ```shell
