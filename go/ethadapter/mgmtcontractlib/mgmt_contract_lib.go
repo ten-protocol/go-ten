@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"github.com/ethereum/go-ethereum/rlp"
 	"math"
 	"math/big"
 	"strings"
@@ -160,7 +161,10 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 		panic(err)
 	}
 
-	encRollupData := base64EncodeToString(t.Rollup)
+	serialized, err := rlp.EncodeToBytes(decodedRollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not serialize rollup. Cause: %w", err)
+	}
 
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),
@@ -175,7 +179,6 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 	data, err := c.contractABI.Pack(
 		AddRollupMethod,
 		metaRollup,
-		//encRollupData, // Remove rollup from calldata
 		crossChain,
 	)
 	if err != nil {
@@ -187,7 +190,9 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 	base64ChunkSize = base64ChunkSize - (base64ChunkSize % 4) - 4 //metadata size
 
 	//TODO handle when blobs exceed 1Mb
-	blobs, _ := chunkRollup(encRollupData, base64ChunkSize)
+	var blob ethadapter.Blob
+	_ = blob.FromData(serialized)
+	blobs, _ := chunkRollup(blob, base64ChunkSize)
 
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
@@ -204,15 +209,15 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 }
 
 // chunkRollup splits the rollup into blobs based on the max blob size and index's the blobs
-func chunkRollup(data string, maxBlobSize int) ([]*kzg4844.Blob, error) {
-	var blobs []*kzg4844.Blob
+func chunkRollup(blob ethadapter.Blob, maxBlobSize int) ([]ethadapter.Blob, error) {
 	//indexByteSize := 4 // size in bytes for the chunk index metadata
-	chunkIndex := uint32(0)
+	var blobs []ethadapter.Blob
+	//chunkIndex := uint32(0)
 
-	for i := 0; i < len(data); i += maxBlobSize {
+	for i := 0; i < len(blob); i += maxBlobSize {
 		end := i + maxBlobSize
-		if end > len(data) {
-			end = len(data)
+		if end > len(blob) {
+			end = len(blob)
 		}
 
 		//metadata := make([]byte, indexByteSize)
@@ -220,7 +225,7 @@ func chunkRollup(data string, maxBlobSize int) ([]*kzg4844.Blob, error) {
 		//println("metadata: ", metadata)
 		//println("metadata indexByteSize: ", indexByteSize)
 
-		chunkData := []byte(data[i:end])
+		chunkData := blob[i:end]
 
 		// ethereum expects fixed blob length so we need to pad it out
 		//actualLength := len(chunkData) + len(metadata)
@@ -235,28 +240,27 @@ func chunkRollup(data string, maxBlobSize int) ([]*kzg4844.Blob, error) {
 			return nil, fmt.Errorf("rollup blob must be 131072 in length")
 		}
 
-		blob := kzg4844.Blob(chunkData)
-		blobs = append(blobs, &blob)
+		blobs = append(blobs, blob)
 
-		chunkIndex++
+		//chunkIndex++
 	}
 	return blobs, nil
 }
 
 // MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
 // data.
-func makeSidecar(blobs []*kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
+func makeSidecar(blobs []ethadapter.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
 	sidecar := &types.BlobTxSidecar{}
 	blobHashes := []gethcommon.Hash{}
 	for i, blob := range blobs {
-		sidecar.Blobs = append(sidecar.Blobs, *blob)
-		println("blob before calling commitment: ", blob)
-		commitment, err := kzg4844.BlobToCommitment(blob)
+		rawBlob := *blob.KZGBlob()
+		sidecar.Blobs = append(sidecar.Blobs, rawBlob)
+		commitment, err := kzg4844.BlobToCommitment(&rawBlob)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot compute KZG commitment of blob %d in tx candidate: %w", i, err)
 		}
 		sidecar.Commitments = append(sidecar.Commitments, commitment)
-		proof, err := kzg4844.ComputeBlobProof(blob, commitment)
+		proof, err := kzg4844.ComputeBlobProof(&rawBlob, commitment)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot compute KZG proof for fast commitment verification of blob %d in tx candidate: %w", i, err)
 		}
