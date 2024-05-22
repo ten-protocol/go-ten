@@ -445,6 +445,10 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 	// todo (@stefan) - rework this when old contract deployer is phased out?
 	msgBusAddr := gethcommon.HexToAddress("0x526c84529B2b8c11F57D93d3f5537aCA3AeCEf9B")
 
+	if ti.mgmtContractLib.IsMock() {
+		return
+	}
+
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
 		client := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
