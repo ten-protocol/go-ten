@@ -111,7 +111,8 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 	case rpc.GetPublicTransactionData:
 		return c.getPublicTransactionData(result, args)
-
+	case rpc.GasPrice:
+		return c.getGasPrice(result)
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
@@ -369,6 +370,16 @@ func (c *inMemObscuroClient) getRollupListing(result interface{}, args []interfa
 		return fmt.Errorf("result is of type %T, expected *common.BatchListingResponseDeprecated", result)
 	}
 	*res = *rollups
+	return nil
+}
+
+func (c *inMemObscuroClient) getGasPrice(result interface{}) error {
+	gasPrice, err := c.ethAPI.GasPrice(context.Background())
+	if err != nil {
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GasPrice, err)
+	}
+
+	*result.(*hexutil.Big) = *gasPrice
 	return nil
 }
 
