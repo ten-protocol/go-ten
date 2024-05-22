@@ -629,14 +629,12 @@ func (g *Guardian) periodicRollupProduction() {
 func (g *Guardian) periodicBundleSubmission() {
 	defer g.logger.Info("Stopping bundle submission")
 
-	// check rollup every l1 block time
-
-	interval := g.rollupInterval
-	if interval == 0 {
-		interval = g.blockTime
-	}
+	interval := g.crossChainInterval
+	g.logger.Info("Starting cross chain bundle submission", "interval", interval)
 
 	bundleSubmissionTicker := time.NewTicker(interval)
+
+	fromSequenceNumber := uint64(0)
 
 	for {
 		select {
@@ -646,14 +644,20 @@ func (g *Guardian) periodicBundleSubmission() {
 				g.logger.Error("Unable to get bundle range from management contract", log.ErrKey, err)
 				continue
 			}
-			bundle, err := g.enclaveClient.ExportCrossChainData(context.Background(), from.Uint64(), to.Uint64())
+
+			if from.Uint64() > fromSequenceNumber {
+				fromSequenceNumber = from.Uint64()
+			}
+
+			bundle, err := g.enclaveClient.ExportCrossChainData(context.Background(), fromSequenceNumber, to.Uint64())
 			if err != nil {
 				g.logger.Error("Unable to export cross chain bundle from enclave", log.ErrKey, err)
 				continue
 			}
 
 			if len(bundle.CrossChainRootHashes) == 0 {
-				g.logger.Debug("No cross chain data to submit. Skipping.")
+				g.logger.Debug("No cross chain data to submit")
+				fromSequenceNumber = to.Uint64() + 1
 				continue
 			}
 

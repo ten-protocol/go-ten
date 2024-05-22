@@ -286,10 +286,6 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle) 
 		return nil
 	}
 
-	if len(bundle.CrossChainRootHashes) == 0 {
-		return fmt.Errorf("nothing to publish in cross chain bundle")
-	}
-
 	managementCtr, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
 	if err != nil {
 		p.logger.Error("Unable to instantiate management contract client")
