@@ -323,6 +323,10 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 }
 
 func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction, fromWallet wallet.Wallet) {
+	if ti.mgmtContractLib.IsMock() {
+		return
+	}
+
 	err := testcommon.AwaitReceipt(ti.ctx, ti.rpcHandles.ObscuroWalletRndClient(fromWallet), tx.Hash(), 30*time.Second)
 	if err != nil {
 		ti.logger.Error("Failed to await receipt for withdrawal transaction", log.ErrKey, err)
@@ -444,10 +448,6 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 func (ti *TransactionInjector) issueRandomWithdrawals() {
 	// todo (@stefan) - rework this when old contract deployer is phased out?
 	msgBusAddr := gethcommon.HexToAddress("0x526c84529B2b8c11F57D93d3f5537aCA3AeCEf9B")
-
-	if ti.mgmtContractLib.IsMock() {
-		return
-	}
 
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
