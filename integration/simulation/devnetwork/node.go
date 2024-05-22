@@ -151,6 +151,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		BatchInterval:         n.config.BatchInterval,
 		RollupInterval:        n.config.RollupInterval,
 		L1BlockTime:           n.config.L1BlockTime,
+		CrossChainInterval:    n.config.CrossChainInterval,
 		MaxRollupSize:         1024 * 64,
 	}
 
