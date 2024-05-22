@@ -210,6 +210,14 @@ func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *common.
 		return err
 	}
 
+	isCanon, err := s.storage.IsBatchCanonical(ctx, headBatchSeq.Uint64())
+	if err != nil {
+		return err
+	}
+	if !isCanon {
+		panic("should not happen. Batch is not canonical")
+	}
+
 	// todo - sanity check that the headBatch.Header.L1Proof is an ancestor of the l1HeadBlock
 	b, err := s.storage.FetchBlock(ctx, headBatch.Header.L1Proof)
 	if err != nil {
@@ -421,7 +429,7 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 		}
 		sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))
 		// create the duplicate and store/broadcast it, recreate batch even if it was empty
-		cb, err := s.produceBatch(ctx, sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time, false)
+		cb, err := s.produceBatch(ctx, sequencerNo, l1Head.Hash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time, false)
 		if err != nil {
 			return fmt.Errorf("could not produce batch. Cause %w", err)
 		}

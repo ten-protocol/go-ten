@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"database/sql"
 	"errors"
 	"fmt"
 	"math/big"
@@ -205,6 +206,11 @@ func (s *storageImpl) FetchCanonicalBatchesBetween(ctx context.Context, startSeq
 	return enclavedb.ReadCanonicalBatches(ctx, s.db.GetSQLDB(), startSeq, endSeq)
 }
 
+func (s *storageImpl) IsBatchCanonical(ctx context.Context, seq uint64) (bool, error) {
+	defer s.logDuration("IsBatchCanonical", measure.NewStopwatch())
+	return enclavedb.IsCanonicalBatchSeq(ctx, s.db.GetSQLDB(), seq)
+}
+
 func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Block, chainFork *common.ChainFork) error {
 	defer s.logDuration("StoreBlock", measure.NewStopwatch())
 	dbTx, err := s.db.NewDBTransaction(ctx)
@@ -213,13 +219,17 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Block, chainF
 	}
 	defer dbTx.Rollback()
 
-	if err := enclavedb.WriteBlock(ctx, dbTx, block.Header()); err != nil {
-		return fmt.Errorf("2. could not store block %s. Cause: %w", block.Hash(), err)
-	}
-
+	// only insert the block if it doesn't exist already
 	blockId, err := enclavedb.GetBlockId(ctx, dbTx, block.Hash())
-	if err != nil {
-		return fmt.Errorf("3. could not get block id - %w", err)
+	if errors.Is(err, sql.ErrNoRows) {
+		if err := enclavedb.WriteBlock(ctx, dbTx, block.Header()); err != nil {
+			return fmt.Errorf("2. could not store block %s. Cause: %w", block.Hash(), err)
+		}
+
+		blockId, err = enclavedb.GetBlockId(ctx, dbTx, block.Hash())
+		if err != nil {
+			return fmt.Errorf("3. could not get block id - %w", err)
+		}
 	}
 
 	// In case there were any batches inserted before this block was received
@@ -230,17 +240,13 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Block, chainF
 
 	if chainFork != nil && chainFork.IsFork() {
 		s.logger.Info(fmt.Sprintf("Update Fork. %s", chainFork))
-		if len(chainFork.NonCanonicalPath) > 0 {
-			err := enclavedb.UpdateCanonicalValue(ctx, dbTx, false, chainFork.NonCanonicalPath, s.logger)
-			if err != nil {
-				return err
-			}
+		err := enclavedb.UpdateCanonicalValue(ctx, dbTx, false, chainFork.NonCanonicalPath, s.logger)
+		if err != nil {
+			return err
 		}
-		if len(chainFork.CanonicalPath) > 0 {
-			err := enclavedb.UpdateCanonicalValue(ctx, dbTx, true, chainFork.CanonicalPath, s.logger)
-			if err != nil {
-				return err
-			}
+		err = enclavedb.UpdateCanonicalValue(ctx, dbTx, true, chainFork.CanonicalPath, s.logger)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -265,6 +271,16 @@ func (s *storageImpl) FetchBlock(ctx context.Context, blockHash common.L1BlockHa
 	return common.GetCachedValue(ctx, s.blockCache, s.logger, blockHash, func(hash any) (*types.Block, error) {
 		return enclavedb.FetchBlock(ctx, s.db.GetSQLDB(), hash.(common.L1BlockHash))
 	})
+}
+
+func (s *storageImpl) IsBlockCanonical(ctx context.Context, blockHash common.L1BlockHash) (bool, error) {
+	defer s.logDuration("IsBlockCanonical", measure.NewStopwatch())
+	dbtx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer dbtx.Rollback()
+	return enclavedb.IsCanonicalBlock(ctx, dbtx, &blockHash)
 }
 
 func (s *storageImpl) FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Block, error) {

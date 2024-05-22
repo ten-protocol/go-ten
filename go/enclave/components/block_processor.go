@@ -100,28 +100,26 @@ func (bp *l1BlockProcessor) HealthCheck() (bool, error) {
 func (bp *l1BlockProcessor) tryAndInsertBlock(ctx context.Context, br *common.BlockAndReceipts) (*BlockIngestionType, error) {
 	block := br.Block
 
-	_, err := bp.storage.FetchBlock(ctx, block.Hash())
-	if err == nil {
-		return nil, errutil.ErrBlockAlreadyProcessed
-	}
-
-	if !errors.Is(err, errutil.ErrNotFound) {
-		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
-	}
-
 	// We insert the block into the L1 chain and store it.
+	// in case the block already exists in the database, this will be treated like a fork, because the head changes to
+	// the block that was already saved
 	ingestionType, err := bp.ingestBlock(ctx, block)
 	if err != nil {
 		// Do not store the block if the L1 chain insertion failed
 		return nil, err
 	}
-	bp.logger.Trace("Block inserted successfully",
-		log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash(), "ingestionType", ingestionType)
+
+	if ingestionType.OldCanonicalBlock {
+		return nil, errutil.ErrBlockAlreadyProcessed
+	}
 
 	err = bp.storage.StoreBlock(ctx, block, ingestionType.ChainFork)
 	if err != nil {
 		return nil, fmt.Errorf("1. could not store block. Cause: %w", err)
 	}
+
+	bp.logger.Trace("Block inserted successfully",
+		log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash(), "ingestionType", ingestionType)
 
 	return ingestionType, nil
 }
@@ -138,9 +136,17 @@ func (bp *l1BlockProcessor) ingestBlock(ctx context.Context, block *common.L1Blo
 	}
 	// we do a basic sanity check, comparing the received block to the head block on the chain
 	if block.ParentHash() != prevL1Head.Hash() {
+		isCanon, err := bp.storage.IsBlockCanonical(ctx, block.Hash())
+		if err != nil {
+			return nil, fmt.Errorf("could not check if block is canonical. Cause: %w", err)
+		}
+		if isCanon {
+			return &BlockIngestionType{OldCanonicalBlock: true}, nil
+		}
+
 		chainFork, err := gethutil.LCA(ctx, block, prevL1Head, bp.storage)
 		if err != nil {
-			bp.logger.Trace("parent not found",
+			bp.logger.Trace("cannot calculate the fork for received block",
 				"blkHeight", block.NumberU64(), log.BlockHashKey, block.Hash(),
 				"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
 				log.ErrKey, err,
@@ -149,7 +155,7 @@ func (bp *l1BlockProcessor) ingestBlock(ctx context.Context, block *common.L1Blo
 		}
 
 		if chainFork.IsFork() {
-			bp.logger.Info("Fork detected in the l1 chain", "can", chainFork.CommonAncestor.Hash().Hex(), "noncan", prevL1Head.Hash().Hex())
+			bp.logger.Info("Fork detected in the l1 chain", "can", chainFork.CommonAncestor.Hash(), "noncan", prevL1Head.Hash())
 		}
 		return &BlockIngestionType{ChainFork: chainFork, PreGenesis: false}, nil
 	}

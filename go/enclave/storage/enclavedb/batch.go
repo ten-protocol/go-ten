@@ -43,15 +43,19 @@ func WriteBatchAndTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Ba
 		return err
 	}
 
-	var isCanon bool
-	err = dbtx.QueryRowContext(ctx,
-		"select is_canonical from block where hash=? ",
-		batch.Header.L1Proof.Bytes(),
-	).Scan(&isCanon)
+	isL1ProofCanonical, err := IsCanonicalBlock(ctx, dbtx, &batch.Header.L1Proof)
 	if err != nil {
-		// if the block is not found, we assume it is non-canonical
-		// fmt.Printf("IsCanon %s err: %s\n", batch.Header.L1Proof, err)
-		isCanon = false
+		return err
+	}
+	parentIsCanon, err := IsCanonicalBatch(ctx, dbtx, &batch.Header.ParentHash)
+	if err != nil {
+		return err
+	}
+	parentIsCanon = parentIsCanon || batch.SeqNo().Uint64() <= common.L2GenesisSeqNo+2
+
+	// sanity check that the parent is canonical
+	if isL1ProofCanonical && !parentIsCanon {
+		panic(fmt.Errorf("invalid chaining. Batch %s is canonical. Parent %s is not", batch.Hash(), batch.Header.ParentHash))
 	}
 
 	args := []any{
@@ -59,7 +63,7 @@ func WriteBatchAndTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Ba
 		convertedHash,                          // converted_hash
 		batch.Hash(),                           // hash
 		batch.Header.Number.Uint64(),           // height
-		isCanon,                                // is_canonical
+		isL1ProofCanonical,                     // is_canonical
 		header,                                 // header blob
 		batchBodyID,                            // reference to the batch body
 		batch.Header.L1Proof.Bytes(),           // l1 proof hash
@@ -105,6 +109,30 @@ func WriteBatchAndTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Ba
 	}
 
 	return nil
+}
+
+func IsCanonicalBatch(ctx context.Context, dbtx *sql.Tx, hash *gethcommon.Hash) (bool, error) {
+	var isCanon bool
+	err := dbtx.QueryRowContext(ctx, "select is_canonical from batch where hash=? ", hash.Bytes()).Scan(&isCanon)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return isCanon, err
+}
+
+func IsCanonicalBatchSeq(ctx context.Context, db *sql.DB, seqNo uint64) (bool, error) {
+	var isCanon bool
+	err := db.QueryRowContext(ctx, "select is_canonical from batch where sequence=? ", seqNo).Scan(&isCanon)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return isCanon, err
 }
 
 // WriteBatchExecution - save receipts
@@ -428,7 +456,7 @@ func ReadUnexecutedBatches(ctx context.Context, db *sql.DB, from *big.Int) ([]*c
 }
 
 func BatchWasExecuted(ctx context.Context, db *sql.DB, hash common.L2BatchHash) (bool, error) {
-	row := db.QueryRowContext(ctx, "select is_executed from batch where is_canonical=true and hash=? ", hash.Bytes())
+	row := db.QueryRowContext(ctx, "select is_executed from batch where hash=? ", hash.Bytes())
 
 	var result bool
 	err := row.Scan(&result)

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math/big"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -55,6 +57,19 @@ func UpdateCanonicalValue(ctx context.Context, dbtx *sql.Tx, isCanonical bool, b
 	return nil
 }
 
+func IsCanonicalBlock(ctx context.Context, dbtx *sql.Tx, hash *gethcommon.Hash) (bool, error) {
+	var isCanon bool
+	err := dbtx.QueryRowContext(ctx, "select is_canonical from block where hash=? ", hash.Bytes()).Scan(&isCanon)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return isCanon, err
+}
+
+// CheckCanonicalValidity - expensive but useful for debugging races
 func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx) error {
 	rows, err := dbtx.QueryContext(ctx, "select count(*), height from batch where is_canonical=true group by height having count(*) >1")
 	if err != nil {

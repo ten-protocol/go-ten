@@ -119,7 +119,7 @@ func (val *obsValidator) ExecuteStoredBatches(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("could not determine the execution prerequisites for batch %s. Cause: %w", batch.Hash(), err)
 		}
-		val.logger.Trace("Can executing stored batch", log.BatchSeqNoKey, batch.SeqNo(), "can", canExecute)
+		val.logger.Trace("Can execute stored batch", log.BatchSeqNoKey, batch.SeqNo(), "can", canExecute)
 
 		if canExecute {
 			receipts, err := val.batchExecutor.ExecuteBatch(ctx, batch)

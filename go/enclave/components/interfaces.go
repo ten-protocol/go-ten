@@ -25,6 +25,9 @@ type BlockIngestionType struct {
 
 	// ChainFork contains information about the status of the new block in the chain
 	ChainFork *common.ChainFork
+
+	// Block that is already on the canonical chain
+	OldCanonicalBlock bool
 }
 
 func (bit *BlockIngestionType) IsFork() bool {
