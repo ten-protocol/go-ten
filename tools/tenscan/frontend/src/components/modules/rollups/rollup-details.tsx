@@ -14,7 +14,7 @@ export function RollupDetailsComponent({
       <KeyValueList>
         <KeyValueItem label="ID" value={"#" + Number(rollupDetails?.ID)} />
         <KeyValueItem
-          label="Hash"
+          label="L1 Block Hash"
           value={<TruncatedAddress address={rollupDetails?.Hash} />}
         />
         <KeyValueItem
@@ -24,6 +24,10 @@ export function RollupDetailsComponent({
         <KeyValueItem
           label="L1 Hash"
           value={<TruncatedAddress address={rollupDetails?.L1Hash} />}
+        />
+        <KeyValueItem
+          label="Rollup Header Hash"
+          value={<TruncatedAddress address={rollupDetails?.Header?.hash} />}
         />
         <KeyValueItem
           label="First Sequencer"
@@ -77,10 +81,6 @@ export function RollupDetailsComponent({
               {"#" + rollupDetails?.Header?.LastBatchSeqNo}
             </Link>
           }
-        />
-        <KeyValueItem
-          label="Hash"
-          value={<TruncatedAddress address={rollupDetails?.Header?.hash} />}
         />
         <KeyValueItem
           label="Cross Chain Messages"
