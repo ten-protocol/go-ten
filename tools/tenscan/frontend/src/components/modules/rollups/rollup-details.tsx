@@ -14,12 +14,12 @@ export function RollupDetailsComponent({
       <KeyValueList>
         <KeyValueItem label="ID" value={"#" + Number(rollupDetails?.ID)} />
         <KeyValueItem
-          label="L1 Block Hash"
-          value={<TruncatedAddress address={rollupDetails?.Hash} />}
-        />
-        <KeyValueItem
           label="Timestamp"
           value={formatTimeAgo(rollupDetails?.Timestamp)}
+        />
+        <KeyValueItem
+          label="L1 Block Hash"
+          value={<TruncatedAddress address={rollupDetails?.Hash} />}
         />
         <KeyValueItem
           label="L1 Hash"
