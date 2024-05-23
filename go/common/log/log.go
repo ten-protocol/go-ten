@@ -14,6 +14,7 @@ const (
 	TxKey            = "tx"
 	DurationKey      = "duration"
 	DurationMilliKey = "durationMilli"
+	BundleHashKey    = "bundle"
 	BatchHashKey     = "batch"
 	BatchHeightKey   = "batch_height"
 	BatchSeqNoKey    = "batch_seq_num"

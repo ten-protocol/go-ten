@@ -108,12 +108,18 @@ type L1Publisher interface {
 	// PublishSecretResponse will create and publish a secret response tx to the management contract - fire and forget we don't wait for receipt
 	PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error
 
+	// PublishCrossChainBundle will create and publish a cross-chain bundle tx to the management contract
+	PublishCrossChainBundle(bundle *common.ExtCrossChainBundle) error
+
 	FetchLatestSeqNo() (*big.Int, error)
 
 	// GetImportantContracts returns a (cached) record of addresses of the important network contracts
 	GetImportantContracts() map[string]gethcommon.Address
 	// ResyncImportantContracts will fetch the latest important contracts from the management contract, update the cache
 	ResyncImportantContracts() error
+
+	// GetBundleRangeFromManagementContract returns the range of batches for which to build a bundle
+	GetBundleRangeFromManagementContract() (*big.Int, *big.Int, error)
 }
 
 // L2BatchRepository provides an interface for the host to request L2 batch data (live-streaming and historical)

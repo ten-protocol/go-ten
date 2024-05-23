@@ -5,6 +5,7 @@ go 1.21
 replace github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220224222438-c78f6963a1c0+incompatible
 
 require (
+	github.com/FantasyJony/openzeppelin-merkle-tree-go v1.1.2
 	github.com/Microsoft/go-winio v0.6.1
 	github.com/andybalholm/brotli v1.1.0
 	github.com/codeclysm/extract/v3 v3.1.1

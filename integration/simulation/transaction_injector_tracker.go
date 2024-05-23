@@ -60,6 +60,12 @@ func (m *txInjectorTracker) trackTransferL2Tx(tx *common.L2Tx) {
 	m.TransferL2Transactions = append(m.TransferL2Transactions, tx)
 }
 
+func (m *txInjectorTracker) trackWithdrawalFromL2(tx *common.L2Tx) {
+	m.l2TransactionsLock.Lock()
+	defer m.l2TransactionsLock.Unlock()
+	m.WithdrawalL2Transactions = append(m.WithdrawalL2Transactions, tx)
+}
+
 func (m *txInjectorTracker) trackNativeValueTransferL2Tx(tx *common.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()

@@ -151,7 +151,8 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		BatchInterval:         n.config.BatchInterval,
 		RollupInterval:        n.config.RollupInterval,
 		L1BlockTime:           n.config.L1BlockTime,
-		MaxRollupSize:         1024 * 128,
+		CrossChainInterval:    n.config.CrossChainInterval,
+		MaxRollupSize:         1024 * 64,
 	}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, n.l1Wallet.Address(), log.CmpKey, log.HostCmp)

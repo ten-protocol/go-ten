@@ -212,7 +212,18 @@ func NewEnclave(
 			blockchain,
 		)
 	} else {
-		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, storage, sigVerifier, mempool, logger)
+		service = nodetype.NewValidator(
+			blockProcessor,
+			batchExecutor,
+			registry,
+			rConsumer,
+			chainConfig,
+			storage,
+			sigVerifier,
+			mempool,
+			enclaveKey,
+			logger,
+		)
 	}
 
 	chain := l2chain.NewChain(
@@ -267,6 +278,10 @@ func NewEnclave(
 
 		mainMutex: sync.Mutex{},
 	}
+}
+
+func (e *enclaveImpl) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, common.SystemError) {
+	return e.service.ExportCrossChainData(ctx, fromSeqNo, toSeqNo)
 }
 
 func (e *enclaveImpl) GetBatch(ctx context.Context, hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {

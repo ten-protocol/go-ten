@@ -19,10 +19,11 @@ var (
 
 	// Standard errors that can be returned from block submission
 
-	ErrBlockAlreadyProcessed = errors.New("block already processed")
-	ErrBlockAncestorNotFound = errors.New("block ancestor not found")
-	ErrBlockForBatchNotFound = errors.New("block for batch not found")
-	ErrAncestorBatchNotFound = errors.New("parent for batch not found")
+	ErrBlockAlreadyProcessed       = errors.New("block already processed")
+	ErrBlockAncestorNotFound       = errors.New("block ancestor not found")
+	ErrBlockForBatchNotFound       = errors.New("block for batch not found")
+	ErrAncestorBatchNotFound       = errors.New("parent for batch not found")
+	ErrCrossChainBundleRepublished = errors.New("Root already added to the message bus")
 )
 
 // BlockRejectError is used as a standard format for error response from enclave for block submission errors

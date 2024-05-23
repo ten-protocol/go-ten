@@ -84,6 +84,7 @@ service EnclaveProto {
 
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
 
+  rpc ExportCrossChainData(ExportCrossChainDataRequest) returns (ExportCrossChainDataResponse) {}
 
   rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
 
@@ -190,7 +191,6 @@ message CreateBatchResponse{
   string error = 2;
 }
 
-
 message CreateRollupRequest{
   optional uint64 fromSequenceNumber = 1;
 }
@@ -198,6 +198,15 @@ message CreateRollupRequest{
 message CreateRollupResponse{
   ExtRollupMsg msg = 1;
   SystemError systemError = 2;
+}
+
+message ExportCrossChainDataRequest {
+  uint64 fromSeqNo = 1;
+  uint64 toSeqNo = 2;
+}
+
+message ExportCrossChainDataResponse {
+  bytes msg = 1;
 }
 
 message StatusRequest {}
@@ -413,6 +422,7 @@ message BatchHeaderMsg {
   repeated CrossChainMsg CrossChainMessages = 16;
   bytes TransferTree = 17;
   bytes Coinbase = 18;
+  bytes CrossChainTree = 19;
 }
 
 message ExtRollupMsg {

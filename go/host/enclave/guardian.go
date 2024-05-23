@@ -62,11 +62,12 @@ type Guardian struct {
 
 	submitDataLock sync.Mutex // we only submit one block, batch or transaction to enclave at a time
 
-	batchInterval  time.Duration
-	rollupInterval time.Duration
-	blockTime      time.Duration
-	l1StartHash    gethcommon.Hash
-	maxRollupSize  uint64
+	batchInterval      time.Duration
+	rollupInterval     time.Duration
+	blockTime          time.Duration
+	crossChainInterval time.Duration
+	l1StartHash        gethcommon.Hash
+	maxRollupSize      uint64
 
 	hostInterrupter *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
 
@@ -78,19 +79,20 @@ type Guardian struct {
 
 func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, storage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
 	return &Guardian{
-		hostData:         hostData,
-		state:            NewStateTracker(logger),
-		enclaveClient:    enclaveClient,
-		sl:               serviceLocator,
-		batchInterval:    cfg.BatchInterval,
-		maxBatchInterval: cfg.MaxBatchInterval,
-		rollupInterval:   cfg.RollupInterval,
-		l1StartHash:      cfg.L1StartHash,
-		maxRollupSize:    cfg.MaxRollupSize,
-		blockTime:        cfg.L1BlockTime,
-		storage:          storage,
-		hostInterrupter:  interrupter,
-		logger:           logger,
+		hostData:           hostData,
+		state:              NewStateTracker(logger),
+		enclaveClient:      enclaveClient,
+		sl:                 serviceLocator,
+		batchInterval:      cfg.BatchInterval,
+		maxBatchInterval:   cfg.MaxBatchInterval,
+		rollupInterval:     cfg.RollupInterval,
+		l1StartHash:        cfg.L1StartHash,
+		maxRollupSize:      cfg.MaxRollupSize,
+		blockTime:          cfg.L1BlockTime,
+		crossChainInterval: cfg.CrossChainInterval,
+		storage:            storage,
+		hostInterrupter:    interrupter,
+		logger:             logger,
 	}
 }
 
@@ -121,6 +123,7 @@ func (g *Guardian) Start() error {
 		// Note: after HA work this will need additional check that we are the **active** sequencer enclave
 		go g.periodicBatchProduction()
 		go g.periodicRollupProduction()
+		go g.periodicBundleSubmission()
 	}
 
 	// subscribe for L1 and P2P data
@@ -618,6 +621,53 @@ func (g *Guardian) periodicRollupProduction() {
 		case <-g.hostInterrupter.Done():
 			// interrupted - end periodic process
 			rollupCheckTicker.Stop()
+			return
+		}
+	}
+}
+
+func (g *Guardian) periodicBundleSubmission() {
+	defer g.logger.Info("Stopping bundle submission")
+
+	interval := g.crossChainInterval
+	g.logger.Info("Starting cross chain bundle submission", "interval", interval)
+
+	bundleSubmissionTicker := time.NewTicker(interval)
+
+	fromSequenceNumber := uint64(0)
+
+	for {
+		select {
+		case <-bundleSubmissionTicker.C:
+			from, to, err := g.sl.L1Publisher().GetBundleRangeFromManagementContract()
+			if err != nil {
+				g.logger.Error("Unable to get bundle range from management contract", log.ErrKey, err)
+				continue
+			}
+
+			if from.Uint64() > fromSequenceNumber {
+				fromSequenceNumber = from.Uint64()
+			}
+
+			bundle, err := g.enclaveClient.ExportCrossChainData(context.Background(), fromSequenceNumber, to.Uint64())
+			if err != nil {
+				g.logger.Error("Unable to export cross chain bundle from enclave", log.ErrKey, err)
+				continue
+			}
+
+			if len(bundle.CrossChainRootHashes) == 0 {
+				g.logger.Debug("No cross chain data to submit")
+				fromSequenceNumber = to.Uint64() + 1
+				continue
+			}
+
+			err = g.sl.L1Publisher().PublishCrossChainBundle(bundle)
+			if err != nil {
+				g.logger.Error("Unable to publish cross chain bundle", log.ErrKey, err)
+				continue
+			}
+		case <-g.hostInterrupter.Done():
+			bundleSubmissionTicker.Stop()
 			return
 		}
 	}

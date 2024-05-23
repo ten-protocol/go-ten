@@ -62,7 +62,24 @@ type sequencer struct {
 	blockchain             *ethchainadapter.EthChainAdapter
 }
 
-func NewSequencer(blockProcessor components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupProducer components.RollupProducer, rollupConsumer components.RollupConsumer, rollupCompression *components.RollupCompression, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger, chainConfig *params.ChainConfig, enclavePrivateKey *crypto.EnclaveKey, mempool *txpool.TxPool, storage storage.Storage, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, settings SequencerSettings, blockchain *ethchainadapter.EthChainAdapter) Sequencer {
+func NewSequencer(
+	blockProcessor components.L1BlockProcessor,
+	batchExecutor components.BatchExecutor,
+	registry components.BatchRegistry,
+	rollupProducer components.RollupProducer,
+	rollupConsumer components.RollupConsumer,
+	rollupCompression *components.RollupCompression,
+	gethEncodingService gethencoding.EncodingService,
+	logger gethlog.Logger,
+	chainConfig *params.ChainConfig,
+	enclavePrivateKey *crypto.EnclaveKey,
+	mempool *txpool.TxPool,
+	storage storage.Storage,
+	dataEncryptionService crypto.DataEncryptionService,
+	dataCompressionService compression.DataCompressionService,
+	settings SequencerSettings,
+	blockchain *ethchainadapter.EthChainAdapter,
+) Sequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
 		batchProducer:          batchExecutor,
@@ -442,6 +459,15 @@ func (s *sequencer) signRollup(rollup *common.ExtRollup) error {
 	return nil
 }
 
+func (s *sequencer) signCrossChainBundle(bundle *common.ExtCrossChainBundle) error {
+	var err error
+	h := bundle.HashPacked()
+	bundle.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
+	if err != nil {
+		return fmt.Errorf("could not sign batch. Cause: %w", err)
+	}
+	return nil
+}
 func (s *sequencer) OnL1Block(ctx context.Context, block *types.Block, result *components.BlockIngestionType) error {
 	// nothing to do
 	return nil
@@ -449,4 +475,18 @@ func (s *sequencer) OnL1Block(ctx context.Context, block *types.Block, result *c
 
 func (s *sequencer) Close() error {
 	return s.mempool.Close()
+}
+
+func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
+	bundle, err := ExportCrossChainData(ctx, s.storage, fromSeqNo, toSeqNo)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.signCrossChainBundle(bundle)
+	if err != nil {
+		return nil, err
+	}
+
+	return bundle, nil
 }

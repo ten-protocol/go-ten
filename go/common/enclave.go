@@ -132,6 +132,8 @@ type Enclave interface {
 	StreamL2Updates() (chan StreamL2UpdatesResponse, func())
 	// DebugEventLogRelevancy returns the logs of a transaction
 	DebugEventLogRelevancy(ctx context.Context, hash gethcommon.Hash) (json.RawMessage, SystemError)
+
+	ExportCrossChainData(context.Context, uint64, uint64) (*ExtCrossChainBundle, SystemError)
 }
 
 // EnclaveScan represents the methods that are used for data scanning in the enclave

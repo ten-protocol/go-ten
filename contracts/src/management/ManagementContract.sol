@@ -82,7 +82,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     // solc-ignore-next-line unused-param
     function AddRollup(Structs.MetaRollup calldata r, Structs.HeaderCrossChainData calldata crossChainData) public {
         // TODO: Add a check that ensures the cross messages are coming from the correct fork using block hashes.
-
         address enclaveID = ECDSA.recover(r.Hash, r.Signature);
         // revert if the EnclaveID is not attested
         require(attested[enclaveID], "enclaveID not attested");

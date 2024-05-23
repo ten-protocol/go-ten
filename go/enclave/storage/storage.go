@@ -200,6 +200,11 @@ func (s *storageImpl) FetchNonCanonicalBatchesBetween(ctx context.Context, start
 	return enclavedb.ReadNonCanonicalBatches(ctx, s.db.GetSQLDB(), startSeq, endSeq)
 }
 
+func (s *storageImpl) FetchCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error) {
+	defer s.logDuration("FetchCanonicalBatchesBetween", measure.NewStopwatch())
+	return enclavedb.ReadCanonicalBatches(ctx, s.db.GetSQLDB(), startSeq, endSeq)
+}
+
 func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Block, chainFork *common.ChainFork) error {
 	defer s.logDuration("StoreBlock", measure.NewStopwatch())
 	dbTx, err := s.db.NewDBTransaction(ctx)
@@ -668,24 +673,14 @@ func (s *storageImpl) BatchWasExecuted(ctx context.Context, hash common.L2BatchH
 	return enclavedb.BatchWasExecuted(ctx, s.db.GetSQLDB(), hash)
 }
 
-func (s *storageImpl) GetReceiptsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
-	defer s.logDuration("GetReceiptsPerAddress", measure.NewStopwatch())
-	return enclavedb.GetReceiptsPerAddress(ctx, s.db.GetSQLDB(), s.chainConfig, address, pagination)
+func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
+	defer s.logDuration("GetTransactionsPerAddress", measure.NewStopwatch())
+	return enclavedb.GetTransactionsPerAddress(ctx, s.db.GetSQLDB(), s.chainConfig, address, pagination)
 }
 
-func (s *storageImpl) GetReceiptsPerAddressCount(ctx context.Context, address *gethcommon.Address) (uint64, error) {
-	defer s.logDuration("GetReceiptsPerAddressCount", measure.NewStopwatch())
-	return enclavedb.GetReceiptsPerAddressCount(ctx, s.db.GetSQLDB(), address)
-}
-
-func (s *storageImpl) GetPublicTransactionData(ctx context.Context, pagination *common.QueryPagination) ([]common.PublicTransaction, error) {
-	defer s.logDuration("GetPublicTransactionData", measure.NewStopwatch())
-	return enclavedb.GetPublicTransactionData(ctx, s.db.GetSQLDB(), pagination)
-}
-
-func (s *storageImpl) GetPublicTransactionCount(ctx context.Context) (uint64, error) {
-	defer s.logDuration("GetPublicTransactionCount", measure.NewStopwatch())
-	return enclavedb.GetPublicTransactionCount(ctx, s.db.GetSQLDB())
+func (s *storageImpl) CountTransactionsPerAddress(ctx context.Context, address *gethcommon.Address) (uint64, error) {
+	defer s.logDuration("CountTransactionsPerAddress", measure.NewStopwatch())
+	return enclavedb.CountTransactionsPerAddress(ctx, s.db.GetSQLDB(), address)
 }
 
 func (s *storageImpl) logDuration(method string, stopWatch *measure.Stopwatch) {

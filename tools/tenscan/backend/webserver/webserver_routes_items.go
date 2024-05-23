@@ -13,7 +13,7 @@ import (
 func routeItems(r *gin.Engine, server *WebServer) {
 	// info
 	r.GET("/info/obscuro/", server.getConfig)
-	r.POST("/info/health/", server.getHealthStatus)
+	r.GET("/info/health/", server.getHealthStatus)
 
 	// batches
 	r.GET("/items/batches/", server.getBatchListingDeprecated)

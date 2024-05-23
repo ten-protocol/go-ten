@@ -10,4 +10,11 @@ interface Structs {
         bytes   payload; // The actual encoded message.
         uint8   consistencyLevel; //
     }
+
+    struct ValueTransferMessage {
+        address sender;
+        address receiver;
+        uint256 amount;
+        uint64  sequence;
+    }
 }

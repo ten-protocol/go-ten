@@ -73,6 +73,7 @@ func createInMemObscuroNode(
 		ManagementContractAddress: *mgtContractAddress,
 		MessageBusAddress:         l1BusAddress,
 		BatchInterval:             batchInterval,
+		CrossChainInterval:        config.DefaultHostParsedConfig().CrossChainInterval,
 		IsInboundP2PDisabled:      incomingP2PDisabled,
 		L1BlockTime:               l1BlockTime,
 		UseInMemoryDB:             true,
