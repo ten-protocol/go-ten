@@ -150,14 +150,4 @@ export const columns: ColumnDef<Batch>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-  {
-    id: "actions",
-    cell: ({ row }) => {
-      return (
-        <Link href={`/batch/${row.original.hash}`}>
-          <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
-        </Link>
-      );
-    },
-  },
 ];
