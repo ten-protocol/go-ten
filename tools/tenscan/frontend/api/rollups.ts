@@ -2,6 +2,7 @@ import { httpRequest } from ".";
 import { apiRoutes } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
 import { ResponseDataInterface } from "@/src/types/interfaces";
+import { Batch, BatchResponse } from "@/src/types/interfaces/BatchInterfaces";
 import {
   Rollup,
   RollupsResponse,
@@ -50,8 +51,21 @@ export const fetchRollupByHash = async (
 export const fetchRollupByBatchSequence = async (
   seq: string
 ): Promise<ResponseDataInterface<Rollup>> => {
-  return await httpRequest<ResponseDataInterface<Rollup>>({
+  const res = await httpRequest<ResponseDataInterface<Rollup>>({
     method: "get",
     url: pathToUrl(apiRoutes.getRollupByBatchSequence, { seq }),
+  });
+  console.log(res);
+  return res;
+};
+
+export const fetchBatchesInRollups = async (
+  hash: string,
+  options: Record<string, any>
+): Promise<ResponseDataInterface<BatchResponse>> => {
+  return await httpRequest<ResponseDataInterface<BatchResponse>>({
+    method: "get",
+    url: pathToUrl(apiRoutes.getBatchesInRollup, { hash }),
+    searchParams: options,
   });
 };

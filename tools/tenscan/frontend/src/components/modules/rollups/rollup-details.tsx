@@ -18,22 +18,36 @@ export function RollupDetailsComponent({
           value={formatTimeAgo(rollupDetails?.Timestamp)}
         />
         <KeyValueItem
-          label="L1 Block Hash"
-          value={<TruncatedAddress address={rollupDetails?.Hash} />}
+          label="Full Hash"
+          value={
+            <Link
+              href={`/rollup/${rollupDetails?.Hash}`}
+              className="text-primary"
+            >
+              <TruncatedAddress address={rollupDetails?.Hash} />
+            </Link>
+          }
+        />
+        <KeyValueItem
+          label="Rollup Header Hash"
+          value={
+            <Link
+              href={`/rollup/${rollupDetails?.Header?.hash}`}
+              className="text-primary"
+            >
+              <TruncatedAddress address={rollupDetails?.Header?.hash} />
+            </Link>
+          }
         />
         <KeyValueItem
           label="L1 Hash"
           value={<TruncatedAddress address={rollupDetails?.L1Hash} />}
         />
         <KeyValueItem
-          label="Rollup Header Hash"
-          value={<TruncatedAddress address={rollupDetails?.Header?.hash} />}
-        />
-        <KeyValueItem
           label="First Sequencer"
           value={
             <Link
-              href={`/rollup/sequence/${rollupDetails?.FirstSeq}`}
+              href={`/rollup/batch/sequence/${rollupDetails?.FirstSeq}`}
               className="text-primary"
             >
               {"#" + rollupDetails?.FirstSeq}
@@ -44,7 +58,7 @@ export function RollupDetailsComponent({
           label="Last Sequencer"
           value={
             <Link
-              href={`/rollup/sequence/${rollupDetails?.LastSeq}`}
+              href={`/rollup/batch/sequence/${rollupDetails?.LastSeq}`}
               className="text-primary"
             >
               {"#" + rollupDetails?.LastSeq}
@@ -75,7 +89,7 @@ export function RollupDetailsComponent({
           label="Last Batch Sequence No"
           value={
             <Link
-              href={`/rollup/sequence/${rollupDetails?.Header?.LastBatchSeqNo}`}
+              href={`/rollup/batch/sequence/${rollupDetails?.Header?.LastBatchSeqNo}`}
               className="text-primary"
             >
               {"#" + rollupDetails?.Header?.LastBatchSeqNo}
@@ -94,7 +108,7 @@ export function RollupDetailsComponent({
                         label="Sequence"
                         value={
                           <Link
-                            href={`/rollup/sequence/${msg.Sequence}`}
+                            href={`/rollup/batch/sequence/${msg.Sequence}`}
                             className="text-primary"
                           >
                             {"#" + msg.Sequence}

@@ -61,7 +61,10 @@ export const columns: ColumnDef<Block>[] = [
       return Number(row.original.rollupHash) === 0 ? (
         <Badge>No rollup</Badge>
       ) : (
-        <Link href={`/rollups/${row.original.rollupHash}`}>
+        <Link
+          href={`/rollup/${row.original.rollupHash}`}
+          className="text-primary"
+        >
           <TruncatedAddress address={row.original.rollupHash} />
         </Link>
       );

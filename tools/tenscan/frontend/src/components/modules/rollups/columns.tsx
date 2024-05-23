@@ -30,7 +30,17 @@ export const columns: ColumnDef<Rollup>[] = [
       <DataTableColumnHeader column={column} title="Hash" />
     ),
     cell: ({ row }) => {
-      return <TruncatedAddress address={row.getValue("Hash")} />;
+      return (
+        <Link
+          href={{
+            pathname: "/rollup/[hash]/batches",
+            query: { hash: row.getValue("Hash") },
+          }}
+          className="text-primary"
+        >
+          <TruncatedAddress address={row.getValue("Hash")} />
+        </Link>
+      );
     },
     enableSorting: false,
     enableHiding: false,
@@ -71,7 +81,10 @@ export const columns: ColumnDef<Rollup>[] = [
     cell: ({ row }) => {
       return (
         <div className="flex space-x-2">
-          <Link href={`/rollup/sequence/${row.original.FirstSeq}`}>
+          <Link
+            href={`/rollup/batch/sequence/${row.original.FirstSeq}`}
+            className="text-primary"
+          >
             <span className="max-w-[500px] truncate">
               {row.getValue("FirstSeq")}
             </span>
@@ -90,9 +103,14 @@ export const columns: ColumnDef<Rollup>[] = [
     cell: ({ row }) => {
       return (
         <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate">
-            {row.getValue("LastSeq")}
-          </span>
+          <Link
+            href={`/rollup/batch/sequence/${row.original.LastSeq}`}
+            className="text-primary"
+          >
+            <span className="max-w-[500px] truncate">
+              {row.getValue("LastSeq")}
+            </span>
+          </Link>
         </div>
       );
     },

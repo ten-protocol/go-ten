@@ -4,6 +4,7 @@ import KeyValueItem, { KeyValueList } from "@/src/components/ui/key-value";
 import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import { Badge } from "@/src/components/ui/badge";
 import { BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
+import Link from "next/link";
 
 export function BatchDetailsComponent({
   batchDetails,
@@ -34,9 +35,14 @@ export function BatchDetailsComponent({
         <KeyValueItem
           label="Transactions Root"
           value={
-            <TruncatedAddress
-              address={batchDetails?.Header?.transactionsRoot}
-            />
+            <Link
+              href={`/batch//${batchDetails?.Header?.transactionsRoot}`}
+              className="text-primary"
+            >
+              <TruncatedAddress
+                address={batchDetails?.Header?.transactionsRoot}
+              />
+            </Link>
           }
         />
         <KeyValueItem

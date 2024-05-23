@@ -6,8 +6,8 @@ export const apiRoutes = {
   getBatches: "/items/v2/batches/",
   getBatchByHash: "/items/batch/:hash",
   getBatchByHeight: "/items/batch/height/:height",
-  getBatchTransactions: "/items/batch/:fullHash/transactions/",
-  getBatchesInRollup: "/items/rollup/:hash/batches/",
+  getBatchTransactions: "/items/batch/:fullHash/transactions",
+  getBatchesInRollup: "/items/rollup/:hash/batches",
 
   // **** BLOCKS ****
   getBlocks: "/items/blocks/",

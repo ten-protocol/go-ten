@@ -1,16 +1,22 @@
 import {
   decryptEncryptedRollup,
+  fetchBatchesInRollups,
   fetchLatestRollups,
   fetchRollups,
 } from "@/api/rollups";
 import { toast } from "@/src/components/ui/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { pollingInterval } from "../lib/constants";
+import { getOptions, pollingInterval } from "../lib/constants";
+import { useRouter } from "next/router";
 
 export const useRollupsService = () => {
+  const { query } = useRouter();
+
   const [noPolling, setNoPolling] = useState(false);
   const [decryptedRollup, setDecryptedRollup] = useState<any>();
+
+  const options = getOptions(query);
 
   const { data: latestRollups } = useQuery({
     queryKey: ["latestRollups"],
@@ -38,6 +44,15 @@ export const useRollupsService = () => {
     },
   });
 
+  const {
+    data: rollupBatches,
+    isLoading: isRollupBatchesLoading,
+    refetch: refetchRollupBatches,
+  } = useQuery({
+    queryKey: ["rollupBatches", { hash: query.hash, options }],
+    queryFn: () => fetchBatchesInRollups(query.hash as string, options),
+  });
+
   return {
     rollups,
     latestRollups,
@@ -46,5 +61,8 @@ export const useRollupsService = () => {
     decryptEncryptedData,
     decryptedRollup,
     setNoPolling,
+    rollupBatches,
+    isRollupBatchesLoading,
+    refetchRollupBatches,
   };
 };

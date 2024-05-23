@@ -12,8 +12,12 @@ export const metadata: Metadata = {
 };
 
 export default function Transactions() {
-  const { transactions, refetchTransactions, setNoPolling } =
-    useTransactionsService();
+  const {
+    transactions,
+    refetchTransactions,
+    setNoPolling,
+    isTransactionsLoading,
+  } = useTransactionsService();
   const { TransactionsData, Total } = transactions?.result || {
     TransactionsData: [],
     Total: 0,
@@ -41,9 +45,10 @@ export default function Transactions() {
             data={TransactionsData}
             refetch={refetchTransactions}
             total={+Total}
+            isLoading={isTransactionsLoading}
           />
         ) : (
-          <p>Loading...</p>
+          <div>No rollups found.</div>
         )}
       </div>
     </Layout>
