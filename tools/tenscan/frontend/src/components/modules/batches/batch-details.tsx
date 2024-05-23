@@ -5,6 +5,7 @@ import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import { Badge } from "@/src/components/ui/badge";
 import { BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
+import { EyeOpenIcon } from "@radix-ui/react-icons";
 
 export function BatchDetailsComponent({
   batchDetails,
@@ -115,7 +116,12 @@ export function BatchDetailsComponent({
       <KeyValueList>
         <KeyValueItem
           label="Encrypted Tx Blob"
-          value={<TruncatedAddress address={batchDetails?.EncryptedTxBlob} />}
+          value={
+            <div className="flex items-center space-x-2">
+              <TruncatedAddress address={batchDetails?.EncryptedTxBlob} />{" "}
+              <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
+            </div>
+          }
           isLastItem
         />
       </KeyValueList>
