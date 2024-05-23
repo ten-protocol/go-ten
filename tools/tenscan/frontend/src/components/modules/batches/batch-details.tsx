@@ -5,13 +5,26 @@ import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import { Badge } from "@/src/components/ui/badge";
 import { BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
-import { EyeOpenIcon } from "@radix-ui/react-icons";
+import { EyeClosedIcon, EyeOpenIcon } from "@radix-ui/react-icons";
+import { Button } from "../../ui/button";
+import { useRollupsService } from "@/src/services/useRollupsService";
+import JSONPretty from "react-json-pretty";
+import { useState } from "react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../ui/tooltip";
 
 export function BatchDetailsComponent({
   batchDetails,
 }: {
   batchDetails: BatchDetails;
 }) {
+  const { decryptedRollup, decryptEncryptedData } = useRollupsService();
+  const [showDecryptedData, setShowDecryptedData] = useState(false);
+
   return (
     <div className="space-y-8">
       <KeyValueList>
@@ -119,10 +132,50 @@ export function BatchDetailsComponent({
         <KeyValueItem
           label="Encrypted Tx Blob"
           value={
-            <div className="flex items-center space-x-2">
-              <TruncatedAddress address={batchDetails?.EncryptedTxBlob} />{" "}
-              <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
-            </div>
+            <>
+              <div className="flex items-center space-x-2">
+                <TruncatedAddress address={batchDetails?.EncryptedTxBlob} />{" "}
+                <Button
+                  className="text-sm font-bold leading-none hover:text-primary hover:bg-transparent"
+                  variant="ghost"
+                  onClick={() => {
+                    decryptEncryptedData({
+                      StrData: batchDetails?.EncryptedTxBlob,
+                    });
+                    setShowDecryptedData(!showDecryptedData);
+                  }}
+                >
+                  {showDecryptedData && decryptedRollup ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <EyeClosedIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer ml-2" />
+                        </TooltipTrigger>
+                        <TooltipContent>Hide Encrypted Data</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer ml-2" />
+                        </TooltipTrigger>
+                        <TooltipContent>Show Encrypted Data</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </Button>
+              </div>
+              {decryptedRollup && showDecryptedData ? (
+                <>
+                  <Separator className="my-4" />
+                  <JSONPretty
+                    id="json-pretty"
+                    data={decryptedRollup}
+                  ></JSONPretty>
+                </>
+              ) : null}
+            </>
           }
           isLastItem
         />

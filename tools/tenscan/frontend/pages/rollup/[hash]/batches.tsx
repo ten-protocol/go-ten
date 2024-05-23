@@ -1,12 +1,9 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { columns } from "@/src/components/modules/batches/columns";
 import { DataTable } from "@/src/components/modules/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { formatNumber } from "@/src/lib/utils";
-import { fetchBatchesInRollups } from "@/api/rollups";
-import { useRouter } from "next/router";
-import { useQuery } from "@tanstack/react-query";
 import { useRollupsService } from "@/src/services/useRollupsService";
 
 export const metadata: Metadata = {

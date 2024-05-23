@@ -37,7 +37,6 @@ export const useRollupsService = () => {
     mutationFn: decryptEncryptedRollup,
     onSuccess: (data: any) => {
       setDecryptedRollup(data);
-      toast({ description: "Decryption successful!" });
     },
     onError: (error: any) => {
       toast({ description: error.message });
