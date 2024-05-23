@@ -15,7 +15,7 @@ import { PersonalTransactionsResponse } from "../types/interfaces/TransactionInt
 import { useRouter } from "next/router";
 import { showToast } from "../components/ui/use-toast";
 import { ToastType } from "../types/interfaces";
-import { ethMethods } from "../routes";
+import {ethMethods, tenCustomQueryMethods} from "../routes";
 
 export const useTransactionsService = () => {
   const { query } = useRouter();
@@ -62,8 +62,8 @@ export const useTransactionsService = () => {
           },
         };
         const personalTxData = await provider.send(ethMethods.getStorageAt, [
-          "listPersonalTransactions",
-          requestPayload,
+          tenCustomQueryMethods.listPersonalTransactions,
+          JSON.stringify(requestPayload),
           null,
         ]);
         setPersonalTxns(personalTxData);

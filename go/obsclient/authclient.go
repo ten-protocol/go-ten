@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
@@ -249,15 +250,18 @@ func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxDat
 	}
 }
 
-// GetReceiptsByAddress retrieves the receipts for the account registered on this client (due to obscuro privacy restrictions,
-// balance cannot be requested for other accounts)
-func (ac *AuthObsClient) GetReceiptsByAddress(ctx context.Context, address *gethcommon.Address, pagination common.QueryPagination) (types.Receipts, error) {
+// GetPrivateTransactions retrieves the receipts for the specified account (must be registered on this client)
+func (ac *AuthObsClient) GetPrivateTransactions(ctx context.Context, address *gethcommon.Address, pagination common.QueryPagination) (types.Receipts, error) {
 	queryParam := &common.ListPrivateTransactionsQueryParams{
 		Address:    *address,
 		Pagination: pagination,
 	}
-	var result common.PrivateQueryResponse
-	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetStorageAt, "listPersonalTransactions", queryParam, nil)
+	queryParamStr, err := json.Marshal(queryParam)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal query params - %w", err)
+	}
+	var result common.PrivateTransactionsQueryResponse
+	err = ac.rpcClient.CallContext(ctx, &result, rpc.GetStorageAt, common.ListPrivateTransactionsCQMethod, string(queryParamStr), nil)
 	if err != nil {
 		return nil, err
 	}

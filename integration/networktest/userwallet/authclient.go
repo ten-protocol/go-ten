@@ -134,5 +134,5 @@ func (s *AuthClientUser) Wallet() wallet.Wallet {
 
 func (s *AuthClientUser) GetPersonalTransactions(ctx context.Context, pagination common.QueryPagination) (types.Receipts, error) {
 	address := s.wal.Address()
-	return s.client.GetReceiptsByAddress(ctx, &address, pagination)
+	return s.client.GetPrivateTransactions(ctx, &address, pagination)
 }

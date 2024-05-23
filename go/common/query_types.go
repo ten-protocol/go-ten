@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-type PrivateQueryResponse struct {
+type PrivateTransactionsQueryResponse struct {
 	Receipts types.Receipts
 	Total    uint64
 }

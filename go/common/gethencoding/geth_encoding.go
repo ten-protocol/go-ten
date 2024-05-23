@@ -2,6 +2,7 @@ package gethencoding
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -363,27 +364,38 @@ func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(ctx context.Context,
 // ExtractPrivateCustomQuery is designed to support a wide range of custom Ten queries.
 // The first parameter here is the method name, which is used to determine the query type.
 // The second parameter is the query parameters.
-func ExtractPrivateCustomQuery(methodName interface{}, queryParams interface{}) (*common.ListPrivateTransactionsQueryParams, error) {
+func ExtractPrivateCustomQuery(methodName any, queryParams any) (*common.ListPrivateTransactionsQueryParams, error) {
+	// we expect the first parameter to be a string
 	methodNameStr, ok := methodName.(string)
 	if !ok {
-		return nil, fmt.Errorf("unsupported method type %T", methodName)
+		return nil, fmt.Errorf("expected methodName as string but was type %T", methodName)
 	}
 	// currently we only have to support this custom query method in the enclave
 	if methodNameStr != common.ListPrivateTransactionsCQMethod {
-		return nil, fmt.Errorf("unsupported method %s", methodName)
+		return nil, fmt.Errorf("unsupported method %s", methodNameStr)
 	}
 
-	// Convert the map to a JSON string
-	jsonData, err := json.Marshal(queryParams)
+	// we expect second param to be a json string
+	queryParamsStr, ok := queryParams.(string)
+	if !ok {
+		return nil, fmt.Errorf("expected queryParams as string but was type %T", queryParams)
+	}
+
+	var privateQueryParams common.ListPrivateTransactionsQueryParams
+	err := json.Unmarshal([]byte(queryParamsStr), &privateQueryParams)
 	if err != nil {
-		return nil, err
+		// if it fails, check if the string was base64 encoded
+		bytesStr, err64 := base64.StdEncoding.DecodeString(queryParamsStr)
+		if err64 != nil {
+			// was not base64 encoded, give up
+			return nil, fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
+		// was base64 encoded, try to unmarshal
+		err = json.Unmarshal(bytesStr, &privateQueryParams)
+		if err != nil {
+			return nil, fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
 	}
 
-	var result common.ListPrivateTransactionsQueryParams
-	err = json.Unmarshal(jsonData, &result)
-	if err != nil {
-		return nil, err
-	}
-
-	return &result, nil
+	return &privateQueryParams, nil
 }

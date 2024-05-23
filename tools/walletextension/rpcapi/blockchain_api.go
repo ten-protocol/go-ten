@@ -2,14 +2,14 @@ package rpcapi
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ten-protocol/go-ten/go/common"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
@@ -136,18 +136,19 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Addres
 	return *resp, err
 }
 
-// GetStorageAt is not compatible with ETH RPC tooling. Ten network will never support getStorageAt because it would
+// GetStorageAt is not compatible with ETH RPC tooling. Ten network does not getStorageAt because it would
 // violate the privacy guarantees of the network.
 //
 // However, we can repurpose this method to be able to route Ten-specific requests through from an ETH RPC client.
 // We call these requests Custom Queries.
 //
-// If this method is called using the standard ETH API parameters it will error, the correct params for this method are:
-// [ customMethodName string, customMethodParams any, nil ]
-// the final nil is to support the same number of params that getStorageAt sends, it is unused.
-func (api *BlockChainAPI) GetStorageAt(ctx context.Context, customMethod string, customParams any, _ any) (hexutil.Bytes, error) {
-	// GetStorageAt is repurposed to return the userID
-	if customMethod == common.UserIDRequestCQMethod {
+// This method signature matches eth_getStorageAt, but we use the address field to specify the custom query method,
+// the hex-encoded position field to specify the parameters json, and nil for the block number.
+//
+// In future, we can support both CustomQueries and some debug version of eth_getStorageAt if needed.
+func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.Address, params string, _ rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+	switch address.Hex() {
+	case common.UserIDRequestCQMethod:
 		userID, err := extractUserID(ctx, api.we)
 		if err != nil {
 			return nil, err
@@ -158,18 +159,25 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, customMethod string,
 			return nil, err
 		}
 		return userID, nil
+	case common.ListPrivateTransactionsCQMethod:
+		// sensitive CustomQuery methods use the convention of having "address" at the top level of the params json
+		userAddr, err := extractCustomQueryAddress(params)
+		if err != nil {
+			return nil, fmt.Errorf("unable to extract address from custom query params: %w", err)
+		}
+		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{account: userAddr}, "eth_getStorageAt", address.Hex(), params, nil)
+		if err != nil {
+			return nil, fmt.Errorf("unable to execute custom query: %w", err)
+		}
+		// turn resp object into hexutil.Bytes
+		serialised, err := json.Marshal(resp)
+		if err != nil {
+			return nil, fmt.Errorf("unable to marshal response object: %w", err)
+		}
+		return serialised, nil
+	default: // address was not a recognised custom query method address
+		return nil, fmt.Errorf("eth_getStorageAt is not supported on TEN")
 	}
-
-	// sensitive CustomQuery methods use the convention of having "address" at the top level of the params json
-	address, err := extractCustomQueryAddress(customParams)
-	if err != nil {
-		return nil, fmt.Errorf("unable to extract address from custom query params: %w", err)
-	}
-	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, api.we, &ExecCfg{account: address}, "eth_getStorageAt", customMethod, customParams, nil)
-	if resp == nil {
-		return nil, err
-	}
-	return *resp, err
 }
 
 func (s *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]map[string]interface{}, error) {
@@ -284,7 +292,17 @@ func extractCustomQueryAddress(params any) (*gethcommon.Address, error) {
 	var paramsJSON map[string]json.RawMessage
 	err := json.Unmarshal([]byte(paramsStr), &paramsJSON)
 	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal params string: %w", err)
+		// try to base64 decode the params string and then unmarshal before giving up
+		bytesStr, err64 := base64.StdEncoding.DecodeString(paramsStr)
+		if err64 != nil {
+			// was not base64 encoded, give up
+			return nil, fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
+		// was base64 encoded, try to unmarshal
+		err = json.Unmarshal(bytesStr, &paramsJSON)
+		if err != nil {
+			return nil, fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
 	}
 	// Extract the RawMessage for the key "address"
 	addressRaw, ok := paramsJSON["address"]

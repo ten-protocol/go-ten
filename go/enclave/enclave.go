@@ -857,7 +857,7 @@ func (e *enclaveImpl) GetTotalContractCount(ctx context.Context) (*big.Int, comm
 func (e *enclaveImpl) GetCustomQuery(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested GetReceiptsByAddress with the enclave stopping"))
+		return nil, responses.ToInternalError(fmt.Errorf("requested GetPrivateTransactions with the enclave stopping"))
 	}
 
 	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetCustomQueryValidate, rpc.GetCustomQueryExecute)
