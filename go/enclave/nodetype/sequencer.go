@@ -210,15 +210,16 @@ func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *common.
 		return err
 	}
 
+	// sanity check that the cached headBatch is canonical. (Might impact performance)
 	isCanon, err := s.storage.IsBatchCanonical(ctx, headBatchSeq.Uint64())
 	if err != nil {
 		return err
 	}
 	if !isCanon {
-		panic("should not happen. Batch is not canonical")
+		return fmt.Errorf("should not happen. Current head batch %d is not canonical", headBatchSeq)
 	}
 
-	// todo - sanity check that the headBatch.Header.L1Proof is an ancestor of the l1HeadBlock
+	// sanity check that the headBatch.Header.L1Proof is an ancestor of the l1HeadBlock
 	b, err := s.storage.FetchBlock(ctx, headBatch.Header.L1Proof)
 	if err != nil {
 		return err
@@ -388,6 +389,7 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 	}
 
 	// check whether there are already batches on the canonical branch
+	// because we don't want to duplicate a batch if there is already a canonical batch of the same height
 	for _, l1BlockHash := range canonicalL1Path {
 		batches, err := s.storage.FetchBatchesByBlock(ctx, l1BlockHash)
 		if err != nil {
