@@ -247,6 +247,51 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "sender",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "receiver",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint64",
+            "name": "sequence",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct Structs.ValueTransferMessage",
+        "name": "_msg",
+        "type": "tuple"
+      },
+      {
+        "internalType": "bytes32[]",
+        "name": "proof",
+        "type": "bytes32[]"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "root",
+        "type": "bytes32"
+      }
+    ],
+    "name": "ExtractNativeValue",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "GetImportantContractKeys",
     "outputs": [
@@ -455,6 +500,39 @@
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "_lastBatchHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "blockHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "blockNum",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "crossChainHashes",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "bytes",
+        "name": "signature",
+        "type": "bytes"
+      }
+    ],
+    "name": "addCrossChainMessagesRoot",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "string",
         "name": "",
         "type": "string"
@@ -498,6 +576,38 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "isWithdrawalSpent",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "lastBatchHash",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "lastBatchSeqNo",
     "outputs": [
@@ -505,6 +615,19 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "merkleMessageBus",
+    "outputs": [
+      {
+        "internalType": "contract IMerkleTreeMessageBus",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
