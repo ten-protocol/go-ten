@@ -10,7 +10,6 @@ import {
   CardContent,
   CardDescription,
 } from "@/src/components/ui/card";
-import { formatNumber } from "@/src/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import { getOptions } from "@/src/lib/constants";
@@ -35,11 +34,9 @@ export default function BatchTransactions() {
       {TransactionsData ? (
         <Card className="col-span-3">
           <CardHeader>
-            <CardTitle>
-              Batch Transactions at {"#" + TransactionsData[0]?.BatchHeight}
-            </CardTitle>
+            <CardTitle>Transactions</CardTitle>
             <CardDescription>
-              Overview of the batch transactions at{" "}
+              Overview of transactions at batch{" "}
               {"#" + TransactionsData[0]?.BatchHeight}
             </CardDescription>
           </CardHeader>

@@ -58,7 +58,7 @@ export type BatchDetails = {
     nonce: string;
     baseFeePerGas: number;
   };
-  TxHashes: [];
+  TxHashes: string[];
   EncryptedTxBlob: string;
 };
 

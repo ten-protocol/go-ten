@@ -95,7 +95,7 @@ export const columns: ColumnDef<Batch>[] = [
     ),
     cell: ({ row }) => {
       return (
-        <Link href={`/batch/${row.original.hash}`} className="text-primary">
+        <Link href={`/batch/${row.original.fullHash}`} className="text-primary">
           <TruncatedAddress address={row.getValue("hash")} />
         </Link>
       );
@@ -109,7 +109,7 @@ export const columns: ColumnDef<Batch>[] = [
       <DataTableColumnHeader column={column} title="Parent Hash" />
     ),
     cell: ({ row }) => {
-      return <TruncatedAddress address={row.getValue("parentHash")} />;
+      return <TruncatedAddress address={row.original.header.parentHash} />;
     },
     enableSorting: false,
     enableHiding: false,

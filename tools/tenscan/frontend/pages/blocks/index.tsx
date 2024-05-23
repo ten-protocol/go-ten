@@ -12,7 +12,8 @@ export const metadata: Metadata = {
 };
 
 export default function Blocks() {
-  const { blocks, setNoPolling, refetchBlocks } = useBlocksService();
+  const { blocks, setNoPolling, refetchBlocks, isBlocksLoading } =
+    useBlocksService();
   const { BlocksData, Total } = blocks?.result || {
     BlocksData: [],
     Total: 0,
@@ -41,6 +42,7 @@ export default function Blocks() {
             data={BlocksData}
             total={+Total}
             refetch={refetchBlocks}
+            isLoading={isBlocksLoading}
           />
         ) : (
           <p>Loading...</p>

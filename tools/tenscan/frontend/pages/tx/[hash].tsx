@@ -33,12 +33,7 @@ export default function TransactionDetails() {
       ) : transactionDetails ? (
         <Card className="col-span-3">
           <CardHeader>
-            <CardTitle>
-              Batch #{Number(transactionDetails?.BatchHeight)}
-            </CardTitle>
-            <CardDescription>
-              Overview of the batch #{Number(transactionDetails?.BatchHeight)}
-            </CardDescription>
+            <CardTitle>Transaction Details</CardTitle>
           </CardHeader>
           <CardContent>
             <TransactionDetailsComponent

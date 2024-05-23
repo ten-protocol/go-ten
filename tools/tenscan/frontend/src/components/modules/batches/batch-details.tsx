@@ -36,14 +36,9 @@ export function BatchDetailsComponent({
         <KeyValueItem
           label="Transactions Root"
           value={
-            <Link
-              href={`/batch//${batchDetails?.Header?.transactionsRoot}`}
-              className="text-primary"
-            >
-              <TruncatedAddress
-                address={batchDetails?.Header?.transactionsRoot}
-              />
-            </Link>
+            <TruncatedAddress
+              address={batchDetails?.Header?.transactionsRoot}
+            />
           }
         />
         <KeyValueItem
@@ -61,8 +56,8 @@ export function BatchDetailsComponent({
           }
         />
         <KeyValueItem
-          label="Coinbase"
-          value={<TruncatedAddress address={batchDetails?.Header?.coinbase} />}
+          label="L1 Proof"
+          value={<TruncatedAddress address={batchDetails?.Header?.l1Proof} />}
         />
         <KeyValueItem
           label="Gas Limit"
@@ -73,8 +68,8 @@ export function BatchDetailsComponent({
           value={formatNumber(batchDetails?.Header?.gasUsed)}
         />
         <KeyValueItem
-          label="Base Fee"
-          value={batchDetails?.Header?.baseFee || "-"}
+          label="Base Fee Per Gas"
+          value={batchDetails?.Header?.baseFeePerGas || "-"}
         />
         <KeyValueItem
           label="Inbound Cross Chain Hash"
@@ -108,7 +103,14 @@ export function BatchDetailsComponent({
       <KeyValueList>
         <KeyValueItem
           label="No. of Transactions"
-          value={batchDetails?.TxHashes?.length || "-"}
+          value={
+            <Link
+              href={`/batch/txs/${batchDetails?.Header?.hash}`}
+              className="text-primary"
+            >
+              {batchDetails?.TxHashes.length || "-"}
+            </Link>
+          }
           isLastItem
         />
       </KeyValueList>

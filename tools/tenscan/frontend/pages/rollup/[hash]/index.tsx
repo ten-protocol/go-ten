@@ -24,7 +24,6 @@ export default function RollupDetails() {
   });
 
   const rollupDetails = data?.item;
-  console.log("🚀 ~ RollupDetails ~ rollupDetails:", rollupDetails);
 
   return (
     <Layout>
@@ -35,7 +34,7 @@ export default function RollupDetails() {
           <CardHeader>
             <CardTitle>Rollup #{Number(rollupDetails?.ID)}</CardTitle>
             <CardDescription>
-              Overview of the Rollup #{Number(rollupDetails?.ID)}
+              Overview of rollup #{Number(rollupDetails?.ID)}
             </CardDescription>
           </CardHeader>
           <CardContent>
