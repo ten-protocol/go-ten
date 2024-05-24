@@ -651,7 +651,9 @@ func (g *Guardian) periodicBundleSubmission() {
 
 			bundle, err := g.enclaveClient.ExportCrossChainData(context.Background(), fromSequenceNumber, to.Uint64())
 			if err != nil {
-				g.logger.Error("Unable to export cross chain bundle from enclave", log.ErrKey, err)
+				if !errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
+					g.logger.Error("Unable to export cross chain bundle from enclave", log.ErrKey, err)
+				}
 				continue
 			}
 
