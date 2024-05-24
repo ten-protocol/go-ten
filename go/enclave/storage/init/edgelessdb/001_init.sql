@@ -108,6 +108,7 @@ create table if not exists obsdb.tx
     idx            int        NOT NULL,
     body           int        NOT NULL,
     INDEX USING HASH (hash(8)),
+    INDEX USING HASH (sender_address),
     primary key (id)
 );
 GRANT ALL ON obsdb.tx TO obscuro;

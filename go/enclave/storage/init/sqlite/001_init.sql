@@ -95,6 +95,7 @@ create table if not exists tx
     body           int        NOT NULL REFERENCES batch_body
 );
 create index IDX_TX_HASH on tx (hash);
+create index IDX_TX_SENDER_ADDRESS on tx (sender_address);
 
 create table if not exists exec_tx
 (

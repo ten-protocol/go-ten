@@ -1,6 +1,6 @@
 {
     "localGeth": {
-      "url": "http://127.0.0.1:26000",
+      "url": "http://127.0.0.1:28000",
       "deploy": [
         "deployment_scripts/core/layer1/",
         "deployment_scripts/testnet/layer1/",

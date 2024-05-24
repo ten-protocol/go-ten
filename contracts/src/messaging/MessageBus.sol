@@ -38,7 +38,8 @@ contract MessageBus is IMessageBus, Ownable {
         uint256 amount
     ) external payable {
         require(msg.value > 0 && msg.value == amount, "Attempting to send value without providing Ether");
-        emit ValueTransfer(msg.sender, receiver, msg.value);
+        uint64 sequence = incrementSequence(msg.sender);
+        emit ValueTransfer(msg.sender, receiver, msg.value, sequence);
     }
 
     function receiveValueFromL2(

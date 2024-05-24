@@ -145,10 +145,11 @@ func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
 		GasUsed:                     header.GasUsed,
 		Time:                        header.Time,
 		BaseFee:                     baseFee,
-		TransferTree:                header.TransfersTree.Bytes(),
+		TransferTree:                header.CrossChainRoot.Bytes(),
 		Coinbase:                    header.Coinbase.Bytes(),
 		CrossChainMessages:          ToCrossChainMsgs(header.CrossChainMessages),
 		LatestInboundCrossChainHash: header.LatestInboundCrossChainHash.Bytes(),
+		CrossChainTree:              header.CrossChainTree,
 	}
 
 	if header.LatestInboundCrossChainHeight != nil {
@@ -196,12 +197,13 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader {
 		GasLimit:                      header.GasLimit,
 		GasUsed:                       header.GasUsed,
 		Time:                          header.Time,
-		TransfersTree:                 gethcommon.BytesToHash(header.TransferTree),
+		CrossChainRoot:                gethcommon.BytesToHash(header.TransferTree),
 		BaseFee:                       big.NewInt(0).SetUint64(header.BaseFee),
 		Coinbase:                      gethcommon.BytesToAddress(header.Coinbase),
 		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
 		LatestInboundCrossChainHash:   gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
 		LatestInboundCrossChainHeight: big.NewInt(0).SetBytes(header.LatestInboundCrossChainHeight),
+		CrossChainTree:                header.CrossChainTree,
 	}
 }
 

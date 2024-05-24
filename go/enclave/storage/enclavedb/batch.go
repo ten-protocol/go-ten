@@ -166,6 +166,10 @@ func ReadNonCanonicalBatches(ctx context.Context, db *sql.DB, startAtSeq uint64,
 	return fetchBatches(ctx, db, " where b.sequence>=? and b.sequence <=? and b.is_canonical=false order by b.sequence", startAtSeq, endSeq)
 }
 
+func ReadCanonicalBatches(ctx context.Context, db *sql.DB, startAtSeq uint64, endSeq uint64) ([]*core.Batch, error) {
+	return fetchBatches(ctx, db, " where b.sequence>=? and b.sequence <=? and b.is_canonical=true order by b.sequence", startAtSeq, endSeq)
+}
+
 // todo - is there a better way to write this query?
 func ReadCurrentHeadBatch(ctx context.Context, db *sql.DB) (*core.Batch, error) {
 	return fetchBatch(ctx, db, " where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true)")
@@ -439,71 +443,12 @@ func BatchWasExecuted(ctx context.Context, db *sql.DB, hash common.L2BatchHash) 
 	return result, nil
 }
 
-func GetReceiptsPerAddress(ctx context.Context, db *sql.DB, config *params.ChainConfig, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
-	// todo - not indexed
+func GetTransactionsPerAddress(ctx context.Context, db *sql.DB, config *params.ChainConfig, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
 	return selectReceipts(ctx, db, config, "where tx.sender_address = ? ORDER BY height DESC LIMIT ? OFFSET ? ", address.Bytes(), pagination.Size, pagination.Offset)
 }
 
-func GetReceiptsPerAddressCount(ctx context.Context, db *sql.DB, address *gethcommon.Address) (uint64, error) {
-	// todo - this is not indexed and will do a full table scan!
+func CountTransactionsPerAddress(ctx context.Context, db *sql.DB, address *gethcommon.Address) (uint64, error) {
 	row := db.QueryRowContext(ctx, "select count(1) from exec_tx join tx on tx.id=exec_tx.tx join batch on batch.sequence=exec_tx.batch "+" where tx.sender_address = ?", address.Bytes())
-
-	var count uint64
-	err := row.Scan(&count)
-	if err != nil {
-		return 0, err
-	}
-
-	return count, nil
-}
-
-func GetPublicTransactionData(ctx context.Context, db *sql.DB, pagination *common.QueryPagination) ([]common.PublicTransaction, error) {
-	return selectPublicTxsBySender(ctx, db, " ORDER BY height DESC LIMIT ? OFFSET ? ", pagination.Size, pagination.Offset)
-}
-
-func selectPublicTxsBySender(ctx context.Context, db *sql.DB, query string, args ...any) ([]common.PublicTransaction, error) {
-	var publicTxs []common.PublicTransaction
-
-	q := "select tx.hash, batch.height, batch.header from exec_tx join batch on batch.sequence=exec_tx.batch join tx on tx.id=exec_tx.tx where batch.is_canonical=true " + query
-	rows, err := db.QueryContext(ctx, q, args...)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// make sure the error is converted to obscuro-wide not found error
-			return nil, errutil.ErrNotFound
-		}
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var txHash []byte
-		var batchHeight uint64
-		var batchHeader string
-		err := rows.Scan(&txHash, &batchHeight, &batchHeader)
-		if err != nil {
-			return nil, err
-		}
-
-		h := new(common.BatchHeader)
-		if err := rlp.DecodeBytes([]byte(batchHeader), h); err != nil {
-			return nil, fmt.Errorf("could not decode batch header. Cause: %w", err)
-		}
-
-		publicTxs = append(publicTxs, common.PublicTransaction{
-			TransactionHash: gethcommon.BytesToHash(txHash),
-			BatchHeight:     big.NewInt(0).SetUint64(batchHeight),
-			BatchTimestamp:  h.Time,
-			Finality:        common.BatchFinal,
-		})
-	}
-	if rows.Err() != nil {
-		return nil, rows.Err()
-	}
-
-	return publicTxs, nil
-}
-
-func GetPublicTransactionCount(ctx context.Context, db *sql.DB) (uint64, error) {
-	row := db.QueryRowContext(ctx, "select count(1) from exec_tx join batch on batch.sequence=exec_tx.batch where batch.is_canonical=true")
 
 	var count uint64
 	err := row.Scan(&count)

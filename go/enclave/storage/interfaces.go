@@ -53,6 +53,8 @@ type BatchResolver interface {
 	FetchBatchesByBlock(ctx context.Context, hash common.L1BlockHash) ([]*core.Batch, error)
 	// FetchNonCanonicalBatchesBetween - returns all reorged batches between the sequences
 	FetchNonCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error)
+	// FetchCanonicalBatchesBetween - returns all canon batches between the sequences
+	FetchCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error)
 	// FetchCanonicalUnexecutedBatches - return the list of the unexecuted batches that are canonical
 	FetchCanonicalUnexecutedBatches(context.Context, *big.Int) ([]*core.Batch, error)
 
@@ -150,9 +152,7 @@ type Storage interface {
 
 type ScanStorage interface {
 	GetContractCount(ctx context.Context) (*big.Int, error)
-	GetReceiptsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error)
-	GetPublicTransactionData(ctx context.Context, pagination *common.QueryPagination) ([]common.PublicTransaction, error)
-	GetPublicTransactionCount(ctx context.Context) (uint64, error)
+	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error)
 
-	GetReceiptsPerAddressCount(ctx context.Context, addr *gethcommon.Address) (uint64, error)
+	CountTransactionsPerAddress(ctx context.Context, addr *gethcommon.Address) (uint64, error)
 }

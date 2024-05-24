@@ -35,14 +35,15 @@ type (
 	L1Receipts    = types.Receipts
 
 	// Local Obscuro aliases
-	L2BatchHash    = common.Hash
-	L2RollupHash   = common.Hash
-	L2TxHash       = common.Hash
-	L2Tx           = types.Transaction
-	L2Transactions = types.Transactions
-	L2Address      = common.Address
-	L2Receipt      = types.Receipt
-	L2Receipts     = types.Receipts
+	L2BatchHash              = common.Hash
+	L2RollupHash             = common.Hash
+	L2TxHash                 = common.Hash
+	L2Tx                     = types.Transaction
+	L2Transactions           = types.Transactions
+	L2Address                = common.Address
+	L2Receipt                = types.Receipt
+	L2Receipts               = types.Receipts
+	SerializedCrossChainTree = []byte
 
 	L2PricedTransaction struct {
 		Tx             *L2Tx
@@ -56,6 +57,7 @@ type (
 		Sender   common.Address
 		Receiver common.Address
 		Amount   *big.Int
+		Sequence uint64
 	}
 	ValueTransferEvents   = []ValueTransferEvent
 	EncryptedTx           []byte // A single transaction, encoded as a JSON list of transaction binary hexes and encrypted using the enclave's public key

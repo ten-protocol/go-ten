@@ -144,7 +144,7 @@ func (m *blockMessageExtractor) getValueTransferMessages(receipts common.L1Recei
 		return make(common.ValueTransferEvents, 0), err
 	}
 
-	transfers, err := convertLogsToValueTransfers(logs, ValueTransferEventName, MessageBusABI)
+	transfers, err := ConvertLogsToValueTransfers(logs, ValueTransferEventName, MessageBusABI)
 	if err != nil {
 		m.logger.Error("Error encountered when converting value transfer receipt logs.", log.ErrKey, err)
 		return make(common.ValueTransferEvents, 0), err

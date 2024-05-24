@@ -24,7 +24,8 @@ interface IMessageBus {
     (
         address sender,
         address receiver,
-        uint256 amount
+        uint256 amount,
+        uint64 sequence
     );
 
     // This method is called from contracts to publish messages to the other linked message bus.
