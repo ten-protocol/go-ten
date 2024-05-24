@@ -23,7 +23,8 @@ var (
 	ErrBlockAncestorNotFound       = errors.New("block ancestor not found")
 	ErrBlockForBatchNotFound       = errors.New("block for batch not found")
 	ErrAncestorBatchNotFound       = errors.New("parent for batch not found")
-	ErrCrossChainBundleRepublished = errors.New("Root already added to the message bus")
+	ErrCrossChainBundleRepublished = errors.New("root already added to the message bus")
+	ErrCrossChainBundleNoBatches   = errors.New("no batches for cross chain bundle")
 )
 
 // BlockRejectError is used as a standard format for error response from enclave for block submission errors
