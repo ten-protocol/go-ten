@@ -124,17 +124,15 @@ export function BatchHashDetailsComponent({
         <KeyValueItem
           label="Transaction Hashes"
           value={
-            <div className="flex items-center space-x-2">
+            <ul>
               {batchDetails?.TxHashes?.map((txHash, index) => (
-                <Link
-                  key={index}
-                  href={`/tx/${txHash}`}
-                  className="text-primary"
-                >
-                  {txHash}
-                </Link>
+                <li key={index} className="text-sm">
+                  <Link href={`/tx/${txHash}`} className="text-primary">
+                    <TruncatedAddress address={txHash} />
+                  </Link>
+                </li>
               ))}
-            </div>
+            </ul>
           }
           isLastItem
         />
