@@ -1,6 +1,6 @@
 import { fetchBatchByHash } from "@/api/batches";
 import Layout from "@/src/components/layouts/default-layout";
-import { BatchDetailsComponent } from "@/src/components/modules/batches/batch-details";
+import { BatchHashDetailsComponent } from "@/src/components/modules/batches/batch-hash-details";
 import {
   Card,
   CardHeader,
@@ -36,7 +36,7 @@ export default function Batch() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <BatchDetailsComponent batchDetails={batchDetails} />
+            <BatchHashDetailsComponent batchDetails={batchDetails} />
           </CardContent>
         </Card>
       ) : (

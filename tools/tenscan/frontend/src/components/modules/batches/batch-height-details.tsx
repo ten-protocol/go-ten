@@ -3,7 +3,7 @@ import TruncatedAddress from "../common/truncated-address";
 import KeyValueItem, { KeyValueList } from "@/src/components/ui/key-value";
 import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import { Badge } from "@/src/components/ui/badge";
-import { Batch } from "@/src/types/interfaces/BatchInterfaces";
+import { Batch, BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
 import { EyeClosedIcon, EyeOpenIcon } from "@radix-ui/react-icons";
 import { Button } from "../../ui/button";
@@ -17,7 +17,7 @@ import {
   TooltipTrigger,
 } from "../../ui/tooltip";
 
-export function BatchDetailsComponent({
+export function BatchHeightDetailsComponent({
   batchDetails,
 }: {
   batchDetails: Batch;
@@ -29,12 +29,23 @@ export function BatchDetailsComponent({
     <div className="space-y-8">
       <KeyValueList>
         <KeyValueItem
-          label="Batch Number"
-          value={"#" + Number(batchDetails?.header?.number)}
+          label="Batch Height"
+          value={"#" + Number(batchDetails?.height)}
+        />
+        <KeyValueItem
+          label="Sequence"
+          value={"#" + Number(batchDetails?.sequence)}
         />
         <KeyValueItem
           label="Hash"
-          value={<TruncatedAddress address={batchDetails?.header?.hash} />}
+          value={
+            <Link
+              href={`/batch/${batchDetails?.header?.hash}`}
+              className="text-primary"
+            >
+              <TruncatedAddress address={batchDetails?.header?.hash} />
+            </Link>
+          }
         />
         <KeyValueItem
           label="Parent Hash"

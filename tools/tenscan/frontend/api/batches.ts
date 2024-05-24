@@ -2,7 +2,11 @@ import { httpRequest } from ".";
 import { apiRoutes } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
 import { ResponseDataInterface } from "@/src/types/interfaces";
-import { Batch, BatchResponse } from "@/src/types/interfaces/BatchInterfaces";
+import {
+  Batch,
+  BatchDetails,
+  BatchResponse,
+} from "@/src/types/interfaces/BatchInterfaces";
 
 export const fetchBatches = async (
   payload?: Record<string, any>
@@ -26,8 +30,8 @@ export const fetchLatestBatch = async (
 
 export const fetchBatchByHash = async (
   hash: string
-): Promise<ResponseDataInterface<Batch>> => {
-  return await httpRequest<ResponseDataInterface<Batch>>({
+): Promise<ResponseDataInterface<BatchDetails>> => {
+  return await httpRequest<ResponseDataInterface<BatchDetails>>({
     method: "get",
     url: pathToUrl(apiRoutes.getBatchByHash, { hash }),
   });
@@ -35,8 +39,8 @@ export const fetchBatchByHash = async (
 
 export const fetchBatchByHeight = async (
   height: string
-): Promise<ResponseDataInterface<any>> => {
-  return await httpRequest<ResponseDataInterface<any>>({
+): Promise<ResponseDataInterface<Batch>> => {
+  return await httpRequest<ResponseDataInterface<Batch>>({
     method: "get",
     url: pathToUrl(apiRoutes.getBatchByHeight, { height }),
   });

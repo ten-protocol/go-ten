@@ -1,6 +1,6 @@
 import { fetchBatchByHeight } from "@/api/batches";
 import Layout from "@/src/components/layouts/default-layout";
-import { BatchDetailsComponent } from "@/src/components/modules/batches/batch-details";
+import { BatchHeightDetailsComponent } from "@/src/components/modules/batches/batch-height-details";
 import {
   Card,
   CardHeader,
@@ -36,7 +36,7 @@ export default function Batch() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <BatchDetailsComponent batchDetails={batchDetails} />
+            <BatchHeightDetailsComponent batchDetails={batchDetails} />
           </CardContent>
         </Card>
       ) : (
