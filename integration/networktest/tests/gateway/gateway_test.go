@@ -1,12 +1,15 @@
 package gateway
 
 import (
+	"context"
+	"fmt"
 	"math/big"
 	"testing"
 
 	"github.com/ten-protocol/go-ten/integration/networktest"
 	"github.com/ten-protocol/go-ten/integration/networktest/actions"
 	"github.com/ten-protocol/go-ten/integration/networktest/env"
+	"github.com/ten-protocol/go-ten/integration/networktest/userwallet"
 	"github.com/ten-protocol/go-ten/integration/simulation/devnetwork"
 )
 
@@ -37,6 +40,34 @@ func TestGatewayHappyPath(t *testing.T) {
 
 			&actions.VerifyBalanceAfterTest{UserID: 1, ExpectedBalance: _transferAmount},
 			&actions.VerifyBalanceDiffAfterTest{UserID: 0, Snapshot: actions.SnapAfterAllocation, ExpectedDiff: big.NewInt(0).Neg(_transferAmount)},
+
+			// test net_version works through the gateway
+			actions.VerifyOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) error {
+				user, err := actions.FetchTestUser(ctx, 0)
+				if err != nil {
+					return err
+				}
+				// verify user is a gateway user
+				gwUser, ok := user.(*userwallet.GatewayUser)
+				if !ok {
+					return fmt.Errorf("user is not a gateway user")
+				}
+				ethClient := gwUser.Client()
+				rpcClient := ethClient.Client()
+				// check net_version response
+				var result string
+				err = rpcClient.CallContext(ctx, &result, "net_version")
+				if err != nil {
+					return fmt.Errorf("failed to get net_version: %w", err)
+				}
+				fmt.Println("net_version response:", result)
+				expectedResult := "443"
+				if result != expectedResult {
+					return fmt.Errorf("expected net_version to be %s but got %s", expectedResult, result)
+				}
+
+				return nil
+			}),
 		),
 	)
 }
