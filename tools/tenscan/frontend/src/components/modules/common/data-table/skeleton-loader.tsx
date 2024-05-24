@@ -1,5 +1,5 @@
-import { Skeleton } from "@/src/components/ui/skeleton";
-import { TableHeader, TableRow, TableBody } from "@/src/components/ui/table";
+import { Skeleton } from "@repo/ui/shared/skeleton";
+import { TableHeader, TableRow, TableBody } from "@repo/ui/shared/table";
 import { Table } from "lucide-react";
 import React from "react";
 

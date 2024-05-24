@@ -1,7 +1,7 @@
 import TruncatedAddress from "../common/truncated-address";
-import KeyValueItem, { KeyValueList } from "@/src/components/ui/key-value";
+import KeyValueItem, { KeyValueList } from "@repo/ui/shared/key-value";
 import { formatTimeAgo } from "@/src/lib/utils";
-import { Badge } from "@/src/components/ui/badge";
+import { Badge } from "@repo/ui/shared/badge";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
 import { BadgeType } from "@/src/types/interfaces";
 import Link from "next/link";

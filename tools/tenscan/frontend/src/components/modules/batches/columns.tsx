@@ -6,9 +6,8 @@ import { DataTableColumnHeader } from "../common/data-table/data-table-column-he
 import TruncatedAddress from "../common/truncated-address";
 import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
-import { EyeOpenIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
-import { Badge } from "../../ui/badge";
+import { Badge } from "@repo/ui/shared/badge";
 
 export const columns: ColumnDef<Batch>[] = [
   {

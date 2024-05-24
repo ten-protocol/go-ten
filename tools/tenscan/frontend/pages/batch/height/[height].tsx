@@ -7,8 +7,8 @@ import {
   CardTitle,
   CardContent,
   CardDescription,
-} from "@/src/components/ui/card";
-import { Skeleton } from "@/src/components/ui/skeleton";
+} from "@repo/ui/shared/card";
+import { Skeleton } from "@repo/ui/shared/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 

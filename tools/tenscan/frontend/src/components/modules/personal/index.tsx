@@ -2,7 +2,7 @@ import React from "react";
 import { columns } from "@/src/components/modules/personal/columns";
 import { DataTable } from "@/src/components/modules/common/data-table/data-table";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
-import { Skeleton } from "@/src/components/ui/skeleton";
+import { Skeleton } from "@repo/ui/shared/skeleton";
 import { formatNumber } from "@/src/lib/utils";
 
 export default function PersonalTransactions() {

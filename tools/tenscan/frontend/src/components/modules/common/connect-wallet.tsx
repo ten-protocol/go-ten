@@ -1,5 +1,5 @@
 import { useWalletConnection } from "@/src/components/providers/wallet-provider";
-import { Button } from "@/src/components/ui/button";
+import { Button } from "@repo/ui/shared/button";
 import { Link2Icon, LinkBreak2Icon } from "@radix-ui/react-icons";
 import React from "react";
 import TruncatedAddress from "./truncated-address";

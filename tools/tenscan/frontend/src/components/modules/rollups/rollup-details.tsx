@@ -1,5 +1,5 @@
 import TruncatedAddress from "../common/truncated-address";
-import KeyValueItem, { KeyValueList } from "@/src/components/ui/key-value";
+import KeyValueItem, { KeyValueList } from "@repo/ui/shared/key-value";
 import { formatTimeAgo } from "@/src/lib/utils";
 import { Rollup } from "@/src/types/interfaces/RollupInterfaces";
 import Link from "next/link";

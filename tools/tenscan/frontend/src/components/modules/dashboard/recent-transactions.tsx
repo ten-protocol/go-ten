@@ -1,7 +1,7 @@
 import TruncatedAddress from "../common/truncated-address";
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@repo/ui/shared/avatar";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
-import { Badge } from "../../ui/badge";
+import { Badge } from "@repo/ui/shared/badge";
 import { formatTimeAgo } from "@/src/lib/utils";
 import Link from "next/link";
 

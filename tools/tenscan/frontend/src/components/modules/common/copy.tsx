@@ -1,7 +1,7 @@
 import React from "react";
 import { CopyIcon, CheckIcon } from "@radix-ui/react-icons";
 import { useCopy } from "@/src/hooks/useCopy";
-import { Button } from "../../ui/button";
+import { Button } from "@repo/ui/shared/button";
 
 const Copy = ({ value }: { value: string | number }) => {
   const { copyToClipboard, copied } = useCopy();

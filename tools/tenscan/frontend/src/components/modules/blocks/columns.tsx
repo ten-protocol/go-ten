@@ -1,16 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { ColumnDef } from "@tanstack/react-table";
 
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
 import { Block, BlockHeader } from "@/src/types/interfaces/BlockInterfaces";
 import TruncatedAddress from "../common/truncated-address";
 import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
-import { Badge } from "../../ui/badge";
-import ExternalLink from "../../ui/external-link";
+import { Badge } from "@repo/ui/shared/badge";
+import ExternalLink from "@repo/ui/shared/external-link";
 import { externalLinks } from "@/src/routes";
 import { EyeOpenIcon } from "@radix-ui/react-icons";
-import Link from "next/link";
 
 export const columns: ColumnDef<Block>[] = [
   {

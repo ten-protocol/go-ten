@@ -1,6 +1,6 @@
 import TruncatedAddress from "../common/truncated-address";
 import { formatTimeAgo } from "@/src/lib/utils";
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@repo/ui/shared/avatar";
 import { Block } from "@/src/types/interfaces/BlockInterfaces";
 
 export function RecentBlocks({ blocks }: { blocks: any }) {

@@ -4,14 +4,14 @@ import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { MixerHorizontalIcon } from "@radix-ui/react-icons";
 import { Table } from "@tanstack/react-table";
 
-import { Button } from "@/src/components/ui/button";
+import { Button } from "@repo/ui/shared/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from "@/src/components/ui/dropdown-menu";
+} from "@repo/ui/shared/dropdown-menu";
 
 interface DataTableViewOptionsProps<TData> {
   table: Table<TData>;

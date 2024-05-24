@@ -1,5 +1,5 @@
 import React from "react";
-import { showToast } from "../components/ui/use-toast";
+import { showToast } from "@repo/ui/shared/use-toast";
 import { ToastType } from "../types/interfaces";
 import { RESET_COPIED_TIMEOUT } from "../lib/constants";
 

@@ -3,15 +3,15 @@ import { fetchTransactionByHash } from "@/api/transactions";
 import Layout from "@/src/components/layouts/default-layout";
 import { TransactionDetailsComponent } from "@/src/components/modules/transactions/transaction-details";
 import EmptyState from "@/src/components/modules/common/empty-state";
-import { Button } from "@/src/components/ui/button";
+import { Button } from "@repo/ui/shared/button";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
   CardDescription,
-} from "@/src/components/ui/card";
-import { Skeleton } from "@/src/components/ui/skeleton";
+} from "@repo/ui/shared/card";
+import { Skeleton } from "@repo/ui/shared/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 

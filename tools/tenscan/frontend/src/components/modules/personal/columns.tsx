@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Badge, badgeVariants } from "@/src/components/ui/badge";
+import { Badge, badgeVariants } from "@repo/ui/shared/badge";
 
 import { statuses, types } from "./data";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";

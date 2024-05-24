@@ -6,14 +6,14 @@ import {
 } from "@radix-ui/react-icons";
 import { Table } from "@tanstack/react-table";
 
-import { Button } from "@/src/components/ui/button";
+import { Button } from "@repo/ui/shared/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/src/components/ui/select";
+} from "@repo/ui/shared/select";
 import { formatNumber } from "@/src/lib/utils";
 
 interface DataTablePaginationProps<TData> {

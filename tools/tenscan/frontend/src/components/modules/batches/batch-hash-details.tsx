@@ -1,12 +1,12 @@
-import { Separator } from "@/src/components/ui/separator";
+import { Separator } from "@repo/ui/shared/separator";
 import TruncatedAddress from "../common/truncated-address";
-import KeyValueItem, { KeyValueList } from "@/src/components/ui/key-value";
+import KeyValueItem, { KeyValueList } from "@repo/ui/shared/key-value";
 import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
-import { Badge } from "@/src/components/ui/badge";
-import { Batch, BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
+import { Badge } from "@repo/ui/shared/badge";
+import { BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
 import { EyeClosedIcon, EyeOpenIcon } from "@radix-ui/react-icons";
-import { Button } from "../../ui/button";
+import { Button } from "@repo/ui/shared/button";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import JSONPretty from "react-json-pretty";
 import { useState } from "react";
@@ -15,7 +15,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "../../ui/tooltip";
+} from "@repo/ui/shared/tooltip";
 
 export function BatchHashDetailsComponent({
   batchDetails,

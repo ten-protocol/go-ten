@@ -1,11 +1,6 @@
 import React from "react";
 import { CalendarDateRangePicker } from "@/src/components/date-range-picker";
-import {
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Card,
-} from "@/src/components/ui/card";
+import { CardHeader, CardTitle, CardContent, Card } from "@repo/ui/shared/card";
 import {
   LayersIcon,
   FileTextIcon,
@@ -16,18 +11,18 @@ import {
 
 import { RecentBatches } from "./recent-batches";
 import { RecentTransactions } from "./recent-transactions";
-import { Button } from "@/src/components/ui/button";
+import { Button } from "@repo/ui/shared/button";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { useBatchesService } from "@/src/services/useBatchesService";
 import TruncatedAddress from "../common/truncated-address";
 import { useContractsService } from "@/src/services/useContractsService";
-import { Skeleton } from "@/src/components/ui/skeleton";
+import { Skeleton } from "@repo/ui/shared/skeleton";
 import { RecentBlocks } from "./recent-blocks";
 import { useBlocksService } from "@/src/services/useBlocksService";
 import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
 import { cn, formatNumber } from "@/src/lib/utils";
-import { Badge } from "../../ui/badge";
+import { Badge } from "@repo/ui/shared/badge";
 import { BlocksIcon } from "lucide-react";
 
 export default function Dashboard() {

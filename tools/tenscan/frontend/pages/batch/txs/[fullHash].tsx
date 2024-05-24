@@ -9,7 +9,7 @@ import {
   CardTitle,
   CardContent,
   CardDescription,
-} from "@/src/components/ui/card";
+} from "@repo/ui/shared/card";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import { getOptions } from "@/src/lib/constants";

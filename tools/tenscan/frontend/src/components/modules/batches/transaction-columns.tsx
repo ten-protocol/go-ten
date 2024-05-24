@@ -1,15 +1,13 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@/src/components/ui/badge";
-
+import { Badge } from "@repo/ui/shared/badge";
 import { statuses } from "../transactions/constants";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
 import TruncatedAddress from "../common/truncated-address";
-import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
+import { formatTimeAgo } from "@/src/lib/utils";
 import Link from "next/link";
-import { EyeOpenIcon } from "@radix-ui/react-icons";
 
 export const columns: ColumnDef<Transaction>[] = [
   {

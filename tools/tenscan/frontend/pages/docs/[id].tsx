@@ -1,10 +1,10 @@
 import Layout from "@/src/components/layouts/default-layout";
-import Spinner from "@/src/components/ui/spinner";
+import Spinner from "@repo/ui/shared/spinner";
 import { siteMetadata } from "@/src/lib/siteMetadata";
 import { useRouter } from "next/router";
 import React from "react";
 import Custom404Error from "../404";
-import { showToast } from "@/src/components/ui/use-toast";
+import { showToast } from "@repo/ui/shared/use-toast";
 import { ToastType } from "@/src/types/interfaces";
 
 type Document = {

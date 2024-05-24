@@ -4,7 +4,7 @@ import ConnectWalletButton from "../modules/common/connect-wallet";
 import Link from "next/link";
 import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
-import { Button } from "../ui/button";
+import { Button } from "@repo/ui/shared/button";
 import HealthIndicator from "../health-indicator";
 import Image from "next/image";
 

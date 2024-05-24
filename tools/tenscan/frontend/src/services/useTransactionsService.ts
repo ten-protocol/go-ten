@@ -13,7 +13,7 @@ import {
 } from "../lib/constants";
 import { PersonalTransactionsResponse } from "../types/interfaces/TransactionInterfaces";
 import { useRouter } from "next/router";
-import { showToast } from "../components/ui/use-toast";
+import { showToast } from "@repo/ui/shared/use-toast";
 import { ToastType } from "../types/interfaces";
 import { ethMethods } from "../routes";
 
