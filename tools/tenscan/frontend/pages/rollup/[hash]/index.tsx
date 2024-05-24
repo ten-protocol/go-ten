@@ -53,3 +53,9 @@ export default function RollupDetails() {
     </Layout>
   );
 }
+
+export async function getServerSideProps(context: any) {
+  return {
+    props: {},
+  };
+}

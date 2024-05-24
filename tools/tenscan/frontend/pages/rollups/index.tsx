@@ -21,6 +21,10 @@ export default function Rollups() {
 
   React.useEffect(() => {
     setNoPolling(true);
+
+    return () => {
+      setNoPolling(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

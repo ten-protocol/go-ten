@@ -20,6 +20,10 @@ export default function Batches() {
 
   React.useEffect(() => {
     setNoPolling(true);
+
+    return () => {
+      setNoPolling(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
