@@ -40,6 +40,6 @@ func ExportCrossChainData(ctx context.Context, storage storage.Storage, fromSeqN
 		L1BlockHash:          block.Hash(),
 		L1BlockNum:           big.NewInt(0).Set(block.Header().Number),
 		CrossChainRootHashes: crossChainHashes,
-	} //todo: check fromSeqNo
+	} // todo: check fromSeqNo
 	return bundle, nil
 }
