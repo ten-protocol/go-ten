@@ -538,7 +538,7 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *core.Batch,
 	if err := enclavedb.WriteBatchExecution(ctx, dbTx, batch.SeqNo(), receipts); err != nil {
 		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
 	}
-
+	s.logger.Trace("store executed batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo(), "receipts", len(receipts))
 	if batch.Number().Uint64() > common.L2GenesisSeqNo {
 		stateDB, err := s.CreateStateDB(ctx, batch.Header.ParentHash)
 		if err != nil {
