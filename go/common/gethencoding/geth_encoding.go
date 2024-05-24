@@ -77,54 +77,6 @@ func NewGethEncodingService(storage storage.Storage, logger gethlog.Logger) Enco
 	}
 }
 
-// ExtractEthCallMapString extracts the eth_call gethapi.TransactionArgs from an interface{}
-// it ensures that :
-// - All types are string
-// - All keys are lowercase
-// - There is only one key per value
-// - From field is set by default
-func ExtractEthCallMapString(paramBytes interface{}) (map[string]string, error) {
-	// geth lowercase the field name and uses the last seen value
-	var valString string
-	var ok bool
-	callMsg := map[string]string{
-		// From field is set by default
-		"from": gethcommon.HexToAddress("0x0").Hex(),
-	}
-	for field, val := range paramBytes.(map[string]interface{}) {
-		if val == nil {
-			continue
-		}
-		valString, ok = val.(string)
-		if !ok {
-			return nil, fmt.Errorf("unexpected type supplied in `%s` field", field)
-		}
-		if len(strings.TrimSpace(valString)) == 0 {
-			continue
-		}
-		switch strings.ToLower(field) {
-		case callFieldTo:
-			callMsg[callFieldTo] = valString
-		case CallFieldFrom:
-			callMsg[CallFieldFrom] = valString
-		case callFieldData, callFieldInput:
-			callMsg[callFieldInput] = valString
-		case callFieldValue:
-			callMsg[callFieldValue] = valString
-		case callFieldGas:
-			callMsg[callFieldGas] = valString
-		case callFieldMaxFeePerGas:
-			callMsg[callFieldMaxFeePerGas] = valString
-		case callFieldMaxPriorityFeePerGas:
-			callMsg[callFieldMaxPriorityFeePerGas] = valString
-		default:
-			callMsg[field] = valString
-		}
-	}
-
-	return callMsg, nil
-}
-
 // ExtractAddress returns a gethcommon.Address given an interface{}, errors if unexpected values are used
 func ExtractAddress(param interface{}) (*gethcommon.Address, error) {
 	if param == nil {
@@ -140,7 +92,7 @@ func ExtractAddress(param interface{}) (*gethcommon.Address, error) {
 		return nil, fmt.Errorf("no address specified")
 	}
 
-	addr := gethcommon.HexToAddress(param.(string))
+	addr := gethcommon.HexToAddress(paramStr)
 	return &addr, nil
 }
 
@@ -183,10 +135,13 @@ func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumberOrHash, error) {
 
 	blockAndHash, ok := param.(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("invalid block or hash parameter %s", param.(string))
+		return nil, fmt.Errorf("invalid block or hash parameter")
 	}
 	if blockAndHash["blockNumber"] != nil {
-		b := blockAndHash["blockNumber"].(string)
+		b, ok := blockAndHash["blockNumber"].(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid blockNumber parameter")
+		}
 		blockNumber := gethrpc.BlockNumber(0)
 		err := blockNumber.UnmarshalJSON([]byte(b))
 		if err != nil {
@@ -195,11 +150,17 @@ func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumberOrHash, error) {
 		blockNo = &blockNumber
 	}
 	if blockAndHash["blockHash"] != nil {
-		bh := blockAndHash["blockHash"].(gethcommon.Hash)
+		bh, ok := blockAndHash["blockHash"].(gethcommon.Hash)
+		if !ok {
+			return nil, fmt.Errorf("invalid blockhash parameter")
+		}
 		blockHa = &bh
 	}
 	if blockAndHash["RequireCanonical"] != nil {
-		reqCanon = blockAndHash["RequireCanonical"].(bool)
+		reqCanon, ok = blockAndHash["RequireCanonical"].(bool)
+		if !ok {
+			return nil, fmt.Errorf("invalid RequireCanonical parameter")
+		}
 	}
 
 	return &gethrpc.BlockNumberOrHash{
@@ -222,7 +183,12 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 	// if gas is not set it should be null
 	gas := (*hexutil.Uint64)(nil)
 
-	for field, val := range param.(map[string]interface{}) {
+	ethCallMap, ok := param.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid eth call parameter")
+	}
+
+	for field, val := range ethCallMap {
 		if val == nil {
 			continue
 		}
