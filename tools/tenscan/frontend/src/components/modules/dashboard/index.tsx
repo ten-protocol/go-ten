@@ -28,7 +28,6 @@ export default function Dashboard() {
   const { price, transactions, transactionCount } = useTransactionsService();
   const { contractCount } = useContractsService();
   const { batches, latestBatch } = useBatchesService();
-  console.log("🚀 ~ Dashboard ~ latestBatch:", latestBatch);
   const { blocks } = useBlocksService();
 
   const DASHBOARD_DATA = [

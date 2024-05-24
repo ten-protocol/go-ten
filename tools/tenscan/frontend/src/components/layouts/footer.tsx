@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { socialLinks, version } from "../../lib/constants";
+import { socialLinks, version } from "@repo/ui/lib/constants";
 import {
   GitHubLogoIcon,
   TwitterLogoIcon,
