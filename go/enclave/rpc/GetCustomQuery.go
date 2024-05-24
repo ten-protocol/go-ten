@@ -3,7 +3,6 @@ package rpc
 import (
 	"fmt"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
@@ -32,7 +31,7 @@ func GetCustomQueryExecute(builder *CallBuilder[common.ListPrivateTransactionsQu
 		builder.Err = err
 		return nil //nolint:nilerr
 	}
-	addr := gethcommon.Address(builder.Param.Address)
+	addr := builder.Param.Address
 	encryptReceipts, err := rpc.storage.GetTransactionsPerAddress(builder.ctx, &addr, &builder.Param.Pagination)
 	if err != nil {
 		return fmt.Errorf("GetTransactionsPerAddress - %w", err)
