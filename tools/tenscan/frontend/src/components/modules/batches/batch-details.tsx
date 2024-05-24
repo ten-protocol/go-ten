@@ -3,7 +3,7 @@ import TruncatedAddress from "../common/truncated-address";
 import KeyValueItem, { KeyValueList } from "@/src/components/ui/key-value";
 import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import { Badge } from "@/src/components/ui/badge";
-import { BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
+import { Batch } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
 import { EyeClosedIcon, EyeOpenIcon } from "@radix-ui/react-icons";
 import { Button } from "../../ui/button";
@@ -20,7 +20,7 @@ import {
 export function BatchDetailsComponent({
   batchDetails,
 }: {
-  batchDetails: BatchDetails;
+  batchDetails: Batch;
 }) {
   const { decryptedRollup, decryptEncryptedData } = useRollupsService();
   const [showDecryptedData, setShowDecryptedData] = useState(false);
@@ -30,85 +30,85 @@ export function BatchDetailsComponent({
       <KeyValueList>
         <KeyValueItem
           label="Batch Number"
-          value={"#" + Number(batchDetails?.Header?.number)}
+          value={"#" + Number(batchDetails?.header?.number)}
         />
         <KeyValueItem
           label="Hash"
-          value={<TruncatedAddress address={batchDetails?.Header?.hash} />}
+          value={<TruncatedAddress address={batchDetails?.header?.hash} />}
         />
         <KeyValueItem
           label="Parent Hash"
           value={
-            <TruncatedAddress address={batchDetails?.Header?.parentHash} />
+            <TruncatedAddress address={batchDetails?.header?.parentHash} />
           }
         />
         <KeyValueItem
           label="State Root"
-          value={<TruncatedAddress address={batchDetails?.Header?.stateRoot} />}
+          value={<TruncatedAddress address={batchDetails?.header?.stateRoot} />}
         />
         <KeyValueItem
           label="Transactions Root"
           value={
             <TruncatedAddress
-              address={batchDetails?.Header?.transactionsRoot}
+              address={batchDetails?.header?.transactionsRoot}
             />
           }
         />
         <KeyValueItem
           label="Receipts Root"
           value={
-            <TruncatedAddress address={batchDetails?.Header?.receiptsRoot} />
+            <TruncatedAddress address={batchDetails?.header?.receiptsRoot} />
           }
         />
         <KeyValueItem
           label="Timestamp"
           value={
             <Badge variant={"secondary"}>
-              {formatTimeAgo(batchDetails?.Header?.timestamp)}
+              {formatTimeAgo(batchDetails?.header?.timestamp)}
             </Badge>
           }
         />
         <KeyValueItem
           label="L1 Proof"
-          value={<TruncatedAddress address={batchDetails?.Header?.l1Proof} />}
+          value={<TruncatedAddress address={batchDetails?.header?.l1Proof} />}
         />
         <KeyValueItem
           label="Gas Limit"
-          value={formatNumber(batchDetails?.Header?.gasLimit)}
+          value={formatNumber(batchDetails?.header?.gasLimit)}
         />
         <KeyValueItem
           label="Gas Used"
-          value={formatNumber(batchDetails?.Header?.gasUsed)}
+          value={formatNumber(batchDetails?.header?.gasUsed)}
         />
         <KeyValueItem
           label="Base Fee Per Gas"
-          value={batchDetails?.Header?.baseFeePerGas || "-"}
+          value={batchDetails?.header?.baseFeePerGas || "-"}
         />
         <KeyValueItem
           label="Inbound Cross Chain Hash"
           value={
             <TruncatedAddress
-              address={batchDetails?.Header?.inboundCrossChainHash}
+              address={batchDetails?.header?.inboundCrossChainHash}
             />
           }
         />
         <KeyValueItem
           label="Inbound Cross Chain Height"
-          value={Number(batchDetails?.Header?.inboundCrossChainHeight)}
+          value={Number(batchDetails?.header?.inboundCrossChainHeight)}
         />
         <KeyValueItem
           label="Transfers Tree"
           value={
-            <TruncatedAddress address={batchDetails?.Header?.transfersTree} />
+            <TruncatedAddress address={batchDetails?.header?.TransfersTree} />
           }
         />
         <KeyValueItem
           label="Miner"
-          value={<TruncatedAddress address={batchDetails?.Header?.miner} />}
+          value={<TruncatedAddress address={batchDetails?.header?.miner} />}
         />
         <KeyValueItem
           label="Base Fee Per Gas"
-          value={formatNumber(batchDetails?.Header?.baseFeePerGas)}
+          value={formatNumber(batchDetails?.header?.baseFeePerGas)}
           isLastItem
         />
       </KeyValueList>
@@ -118,10 +118,10 @@ export function BatchDetailsComponent({
           label="No. of Transactions"
           value={
             <Link
-              href={`/batch/txs/${batchDetails?.Header?.hash}`}
+              href={`/batch/txs/${batchDetails?.header?.hash}`}
               className="text-primary"
             >
-              {batchDetails?.TxHashes.length || "-"}
+              {batchDetails?.txCount || "-"}
             </Link>
           }
           isLastItem
@@ -134,13 +134,13 @@ export function BatchDetailsComponent({
           value={
             <>
               <div className="flex items-center space-x-2">
-                <TruncatedAddress address={batchDetails?.EncryptedTxBlob} />{" "}
+                <TruncatedAddress address={batchDetails?.encryptedTxBlob} />{" "}
                 <Button
                   className="text-sm font-bold leading-none hover:text-primary hover:bg-transparent"
                   variant="ghost"
                   onClick={() => {
                     decryptEncryptedData({
-                      StrData: batchDetails?.EncryptedTxBlob,
+                      StrData: batchDetails?.encryptedTxBlob,
                     });
                     setShowDecryptedData(!showDecryptedData);
                   }}
