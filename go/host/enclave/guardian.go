@@ -439,17 +439,6 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 			}
 			return g.submitL1Block(nextCanonicalBlock, isLatest)
 		}
-		// todo - Matt - is this the right way to do this?
-		// the issue is that sometimes a block was skipped and never resent
-		if strings.Contains(err.Error(), errutil.ErrBlockAncestorNotFound.Error()) {
-			g.logger.Info("Submitting parent", "block", block.ParentHash())
-			height := block.Number().Uint64()
-			parent, err := g.sl.L1Repo().FetchBlockByHeight(big.NewInt(int64(height - 1)))
-			if err != nil {
-				return false, err
-			}
-			return g.submitL1Block(parent, false)
-		}
 		// something went wrong, return error and let the main loop check status and try again when appropriate
 		return false, errors.Wrap(err, "could not submit L1 block to enclave")
 	}
