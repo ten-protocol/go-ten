@@ -47,6 +47,7 @@
     "zustand": "^4.4.6"
   },
   "devDependencies": {
+    "@repo/ui": "workspace:*",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
