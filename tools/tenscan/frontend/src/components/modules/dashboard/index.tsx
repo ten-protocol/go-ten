@@ -48,8 +48,8 @@ export default function Dashboard() {
     },
     {
       title: "Latest L2 Batch",
-      value: latestBatch?.item?.number
-        ? Number(latestBatch.item.number)
+      value: latestBatch?.item?.height
+        ? Number(latestBatch.item.height)
         : "N/A",
       // TODO: add change
       // change: "+20.1%",
@@ -57,9 +57,9 @@ export default function Dashboard() {
     },
     {
       title: "Latest L1 Rollup",
-      value: latestBatch?.item?.l1Proof ? (
+      value: latestBatch?.item?.header?.l1Proof ? (
         <TruncatedAddress
-          address={latestBatch?.item?.l1Proof}
+          address={latestBatch?.item?.header?.l1Proof}
           prefixLength={6}
           suffixLength={4}
         />
