@@ -30,7 +30,7 @@ export default function Batches() {
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
             <p className="text-sm text-muted-foreground">
-              {formatNumber(Total)} Batches found.
+              {formatNumber(Total)} Batch(es) found.
             </p>
           </div>
         </div>

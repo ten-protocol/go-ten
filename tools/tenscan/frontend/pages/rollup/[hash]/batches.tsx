@@ -27,7 +27,7 @@ export default function RollupBatches() {
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
             <p className="text-sm text-muted-foreground">
-              {formatNumber(Total)} Batches found.
+              {formatNumber(Total)} Batch(es) found in this rollup.
             </p>
           </div>
         </div>
