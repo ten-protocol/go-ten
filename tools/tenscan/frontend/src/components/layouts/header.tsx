@@ -2,7 +2,7 @@ import { MainNav } from "../main-nav";
 import { ModeToggle } from "../mode-toggle";
 import ConnectWalletButton from "../modules/common/connect-wallet";
 import Link from "next/link";
-import { HamburgerMenuIcon } from "@radix-ui/react-icons";
+import { HamburgerMenuIcon } from "@repo/ui/shared/react-icons";
 import { useState } from "react";
 import { Button } from "@repo/ui/shared/button";
 import HealthIndicator from "../health-indicator";
@@ -19,6 +19,7 @@ export default function Header() {
             width={150}
             height={40}
             className="cursor-pointer dark:hidden"
+            fetchPriority="auto"
           />
           <Image
             src="/assets/images/white_logotype.png"
@@ -26,6 +27,7 @@ export default function Header() {
             width={150}
             height={40}
             className="cursor-pointer hidden dark:block"
+            fetchPriority="auto"
           />
         </Link>
         <div className="hidden md:flex items-center space-x-4">

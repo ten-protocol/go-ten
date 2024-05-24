@@ -1,5 +1,5 @@
 import React from "react";
-import { CopyIcon, CheckIcon } from "@radix-ui/react-icons";
+import { CopyIcon, CheckIcon } from "@repo/ui/shared/react-icons";
 import { useCopy } from "@/src/hooks/useCopy";
 import { Button } from "@repo/ui/shared/button";
 

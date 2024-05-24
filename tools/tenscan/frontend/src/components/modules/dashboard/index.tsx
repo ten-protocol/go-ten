@@ -1,5 +1,4 @@
 import React from "react";
-import { CalendarDateRangePicker } from "@/src/components/date-range-picker";
 import { CardHeader, CardTitle, CardContent, Card } from "@repo/ui/shared/card";
 import {
   LayersIcon,
@@ -7,7 +6,7 @@ import {
   ReaderIcon,
   CubeIcon,
   RocketIcon,
-} from "@radix-ui/react-icons";
+} from "@repo/ui/shared/react-icons";
 
 import { RecentBatches } from "./recent-batches";
 import { RecentTransactions } from "./recent-transactions";
@@ -23,12 +22,13 @@ import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
 import { cn, formatNumber } from "@/src/lib/utils";
 import { Badge } from "@repo/ui/shared/badge";
-import { BlocksIcon } from "lucide-react";
+import { BlocksIcon } from "@repo/ui/shared/react-icons";
 
 export default function Dashboard() {
   const { price, transactions, transactionCount } = useTransactionsService();
   const { contractCount } = useContractsService();
   const { batches, latestBatch } = useBatchesService();
+  console.log("🚀 ~ Dashboard ~ latestBatch:", latestBatch);
   const { blocks } = useBlocksService();
 
   const DASHBOARD_DATA = [

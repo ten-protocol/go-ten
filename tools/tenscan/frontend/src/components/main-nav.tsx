@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
 } from "@repo/ui/shared/dropdown-menu";
 
-import { ChevronDownIcon } from "@radix-ui/react-icons";
+import { ChevronDownIcon } from "@repo/ui/shared/react-icons";
 import { NavLink } from "@/src/types/interfaces";
 import { NavLinks } from "../routes";
 

@@ -5,7 +5,7 @@ import { Button } from "@repo/ui/shared/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@repo/ui/shared/card";
 import { Textarea } from "@repo/ui/shared/textarea";
 import { currentEncryptedKey } from "@/src/lib/constants";
-import { CopyIcon } from "@radix-ui/react-icons";
+import { CopyIcon } from "@repo/ui/shared/react-icons";
 import { Terminal } from "lucide-react";
 import { useRouter } from "next/router";
 import JSONPretty from "react-json-pretty";

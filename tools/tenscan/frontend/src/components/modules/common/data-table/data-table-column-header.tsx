@@ -3,7 +3,7 @@ import {
   ArrowUpIcon,
   CaretSortIcon,
   EyeNoneIcon,
-} from "@radix-ui/react-icons";
+} from "@repo/ui/shared/react-icons";
 import { Column } from "@tanstack/react-table";
 
 import { cn } from "@/src/lib/utils";

@@ -5,7 +5,7 @@ import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import { Badge } from "@repo/ui/shared/badge";
 import { BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
-import { EyeClosedIcon, EyeOpenIcon } from "@radix-ui/react-icons";
+import { EyeClosedIcon, EyeOpenIcon } from "@repo/ui/shared/react-icons";
 import { Button } from "@repo/ui/shared/button";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import JSONPretty from "react-json-pretty";

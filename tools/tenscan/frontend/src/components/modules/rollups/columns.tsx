@@ -5,7 +5,7 @@ import { DataTableColumnHeader } from "../common/data-table/data-table-column-he
 import TruncatedAddress from "../common/truncated-address";
 import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import Link from "next/link";
-import { EyeOpenIcon } from "@radix-ui/react-icons";
+import { EyeOpenIcon } from "@repo/ui/shared/react-icons";
 import { Rollup } from "@/src/types/interfaces/RollupInterfaces";
 
 export const columns: ColumnDef<Rollup>[] = [

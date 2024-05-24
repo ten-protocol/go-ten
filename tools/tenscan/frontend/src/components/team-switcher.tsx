@@ -5,7 +5,7 @@ import {
   CaretSortIcon,
   CheckIcon,
   PlusCircledIcon,
-} from "@radix-ui/react-icons";
+} from "@repo/ui/shared/react-icons";
 
 import { cn } from "@/src/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@repo/ui/shared/avatar";

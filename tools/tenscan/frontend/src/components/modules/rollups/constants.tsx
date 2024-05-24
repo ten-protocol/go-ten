@@ -4,7 +4,7 @@ import {
   ArrowUpIcon,
   CheckCircledIcon,
   ClockIcon,
-} from "@radix-ui/react-icons";
+} from "@repo/ui/shared/react-icons";
 
 export const labels = [
   {

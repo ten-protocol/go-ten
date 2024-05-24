@@ -4,7 +4,7 @@ import {
   GitHubLogoIcon,
   TwitterLogoIcon,
   DiscordLogoIcon,
-} from "@radix-ui/react-icons";
+} from "@repo/ui/shared/react-icons";
 
 const SOCIAL_LINKS = [
   {

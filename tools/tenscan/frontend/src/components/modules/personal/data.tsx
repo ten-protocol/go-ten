@@ -1,4 +1,4 @@
-import { CheckIcon, Cross2Icon } from "@radix-ui/react-icons";
+import { CheckIcon, Cross2Icon } from "@repo/ui/shared/react-icons";
 
 export const statuses = [
   {

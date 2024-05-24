@@ -1,7 +1,7 @@
 "use client";
 
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
-import { MixerHorizontalIcon } from "@radix-ui/react-icons";
+import { MixerHorizontalIcon } from "@repo/ui/shared/react-icons";
 import { Table } from "@tanstack/react-table";
 
 import { Button } from "@repo/ui/shared/button";

@@ -10,7 +10,7 @@ import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import { Badge } from "@repo/ui/shared/badge";
 import ExternalLink from "@repo/ui/shared/external-link";
 import { externalLinks } from "@/src/routes";
-import { EyeOpenIcon } from "@radix-ui/react-icons";
+import { EyeOpenIcon } from "@repo/ui/shared/react-icons";
 
 export const columns: ColumnDef<Block>[] = [
   {

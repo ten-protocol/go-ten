@@ -29,7 +29,7 @@ export function TransactionDetailsComponent({
           label="Transaction Hash"
           value={
             <Link
-              href={`/tx/${transactionDetails?.BatchHeight}`}
+              href={`/tx/${transactionDetails?.TransactionHash}`}
               className="text-primary"
             >
               <TruncatedAddress address={transactionDetails?.TransactionHash} />

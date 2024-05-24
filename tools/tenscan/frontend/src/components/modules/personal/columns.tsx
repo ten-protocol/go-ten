@@ -9,7 +9,7 @@ import { PersonalTransactions } from "@/src/types/interfaces/TransactionInterfac
 import TruncatedAddress from "../common/truncated-address";
 import { formatNumber } from "@/src/lib/utils";
 import Link from "next/link";
-import { EyeOpenIcon } from "@radix-ui/react-icons";
+import { EyeOpenIcon } from "@repo/ui/shared/react-icons";
 
 export const columns: ColumnDef<PersonalTransactions>[] = [
   {
