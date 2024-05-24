@@ -2,11 +2,11 @@ package nodetype
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 )
 
@@ -17,7 +17,7 @@ func ExportCrossChainData(ctx context.Context, storage storage.Storage, fromSeqN
 	}
 
 	if len(canonicalBatches) == 0 {
-		return nil, fmt.Errorf("no batches found for export of cross chain data")
+		return nil, errutil.ErrCrossChainBundleNoBatches
 	}
 
 	blockHash := canonicalBatches[len(canonicalBatches)-1].Header.L1Proof
