@@ -49,7 +49,7 @@ export type BatchDetails = {
     crossChainMessages: any[];
     inboundCrossChainHash: string;
     inboundCrossChainHeight: number;
-    transfersTree: string;
+    TransfersTree: string;
     hash: string;
     sha3Uncles: string;
     miner: string;

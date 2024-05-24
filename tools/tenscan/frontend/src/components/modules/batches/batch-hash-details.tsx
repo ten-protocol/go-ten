@@ -106,7 +106,7 @@ export function BatchHashDetailsComponent({
         <KeyValueItem
           label="Transfers Tree"
           value={
-            <TruncatedAddress address={batchDetails?.Header?.transfersTree} />
+            <TruncatedAddress address={batchDetails?.Header?.TransfersTree} />
           }
         />
         <KeyValueItem
