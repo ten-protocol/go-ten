@@ -55,14 +55,13 @@ func (s *Simulation) Start() {
 
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	// and for all l2 nodes to receive the genesis l2 batch
-	time.Sleep(7 * time.Second)
+	// todo - instead of sleeping, it would be better to poll
+	time.Sleep(10 * time.Second)
 
 	s.bridgeFundingToObscuro()
 	s.trackLogs()              // Create log subscriptions, to validate that they're working correctly later.
 	s.prefundObscuroAccounts() // Prefund every L2 wallet
 
-	// wait for the validator to become up to date
-	time.Sleep(1 * time.Second)
 	s.deployObscuroERC20s() // Deploy the Obscuro HOC and POC ERC20 contracts
 	s.prefundL1Accounts()   // Prefund every L1 wallet
 	s.checkHealthStatus()   // Checks the nodes health status
@@ -211,9 +210,9 @@ func (s *Simulation) prefundObscuroAccounts() {
 	faucetClient := s.RPCHandles.ObscuroWalletClient(faucetWallet.Address(), 0) // get sequencer, else errors on submission get swallowed
 	nonce := NextNonce(s.ctx, s.RPCHandles, faucetWallet)
 
-	// Give 100 ether per account - ether is 1e18 so best convert it by code
+	// Give 1000 ether per account - ether is 1e18 so best convert it by code
 	// as a lot of the hardcodes were giving way too little and choking the gas payments
-	allocObsWallets := big.NewInt(0).Mul(big.NewInt(100), big.NewInt(gethparams.Ether))
+	allocObsWallets := big.NewInt(0).Mul(big.NewInt(1000), big.NewInt(gethparams.Ether))
 
 	testcommon.PrefundWallets(s.ctx, faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), allocObsWallets, s.Params.ReceiptTimeout)
 }
