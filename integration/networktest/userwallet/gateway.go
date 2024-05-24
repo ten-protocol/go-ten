@@ -114,6 +114,10 @@ func (g *GatewayUser) Wallet() wallet.Wallet {
 	return g.wal
 }
 
+func (g *GatewayUser) Client() *ethclient.Client {
+	return g.client
+}
+
 func (g *GatewayUser) WSClient() (*ethclient.Client, error) {
 	if g.wsClient == nil {
 		var err error
