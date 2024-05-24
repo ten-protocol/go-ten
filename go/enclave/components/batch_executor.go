@@ -379,7 +379,7 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 
 		encodedTree, err := json.Marshal(xchainTree)
 		if err != nil {
-			panic(err) //todo: figure out what to do
+			panic(err) // todo: figure out what to do
 		}
 
 		batch.Header.CrossChainTree = encodedTree

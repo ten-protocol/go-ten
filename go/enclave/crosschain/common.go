@@ -234,7 +234,7 @@ func (ms MessageStructs) HashPacked(index int) gethcommon.Hash {
 		},
 	}
 
-	//todo @siliev: err
+	// todo @siliev: err
 	packed, _ := args.Pack(messageStruct.Sender, messageStruct.Sequence, messageStruct.Nonce, messageStruct.Topic, messageStruct.Payload, messageStruct.ConsistencyLevel)
 	hash := crypto.Keccak256Hash(packed)
 	return hash
