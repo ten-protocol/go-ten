@@ -1,10 +1,10 @@
 import React from "react";
 import { columns } from "@/src/components/modules/blocks/columns";
-import { DataTable } from "@/src/components/modules/common/data-table/data-table";
+import { DataTable } from "@repo/ui/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBlocksService } from "@/src/services/useBlocksService";
-import { formatNumber } from "@/src/lib/utils";
+import { formatNumber } from "@repo/ui/lib/utils";
 
 export const metadata: Metadata = {
   title: "Blocks",

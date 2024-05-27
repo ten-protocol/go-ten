@@ -1,8 +1,8 @@
 "use client";
 
-import { DotsHorizontalIcon } from "@repo/ui/shared/react-icons";
+import { DotsHorizontalIcon } from "../../shared/react-icons";
 import { Row } from "@tanstack/react-table";
-import { Button } from "@repo/ui/shared/button";
+import { Button } from "../../shared/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +14,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@repo/ui/shared/dropdown-menu";
+} from "../../shared/dropdown-menu";
 
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;

@@ -1,26 +1,32 @@
-import React from "react";
-import { showToast } from "@repo/ui/shared/use-toast";
-import { ToastType } from "../types/interfaces";
+import { showToast } from "../shared/use-toast";
+import { ToastType } from "../../../tools/tenscan/frontend/src/types/interfaces";
 import { RESET_COPIED_TIMEOUT } from "../lib/constants";
+import React from "react";
 
 export const useCopy = () => {
   const [copied, setCopied] = React.useState(false);
-  const copyToClipboard = (text: string, name?: string): Promise<void> => {
-    return copyText(text)
-      .catch(() => fallbackCopyTextToClipboard(text))
-      .then(() => {
+  const copyToClipboard = async (
+    text: string,
+    name?: string
+  ): Promise<void> => {
+    try {
+      try {
+        try {
+          await copyText(text);
+        } catch {
+          await fallbackCopyTextToClipboard(text);
+        }
         showToast(ToastType.SUCCESS, `${name ? name : "Copied!"}`);
         setCopied(true);
-      })
-      .catch(() => {
+      } catch {
         showToast(
           ToastType.DESTRUCTIVE,
           `Couldn't copy ${name ? name : "Text"}!!!`
         );
-      })
-      .finally(() => {
-        setTimeout(() => setCopied(false), RESET_COPIED_TIMEOUT);
-      });
+      }
+    } finally {
+      setTimeout(() => setCopied(false), RESET_COPIED_TIMEOUT);
+    }
   };
 
   return {

@@ -1,14 +1,18 @@
 import { MainNav } from "../main-nav";
 import { ModeToggle } from "../mode-toggle";
-import ConnectWalletButton from "../modules/common/connect-wallet";
+import ConnectWalletButton from "@repo/ui/common/connect-wallet";
 import Link from "next/link";
 import { HamburgerMenuIcon } from "@repo/ui/shared/react-icons";
 import { useState } from "react";
 import { Button } from "@repo/ui/shared/button";
 import HealthIndicator from "../health-indicator";
 import Image from "next/image";
+import { useWalletConnection } from "../providers/wallet-provider";
 
 export default function Header() {
+  const { walletConnected, walletAddress, connectWallet, disconnectWallet } =
+    useWalletConnection();
+
   return (
     <div className="border-b">
       <div className="flex h-16 justify-between items-center px-4">
@@ -35,7 +39,12 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             <HealthIndicator />
             <ModeToggle />
-            <ConnectWalletButton />
+            <ConnectWalletButton
+              walletConnected={walletConnected}
+              walletAddress={walletAddress}
+              connectWallet={connectWallet}
+              disconnectWallet={disconnectWallet}
+            />
           </div>
         </div>
         <div className="flex items-center space-x-4 md:hidden">
@@ -48,6 +57,8 @@ export default function Header() {
 
 const MobileMenu = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { walletConnected, walletAddress, connectWallet, disconnectWallet } =
+    useWalletConnection();
 
   return (
     <div className="relative">
@@ -64,7 +75,12 @@ const MobileMenu = () => {
           <div className="bg-background border rounded-lg shadow-lg">
             <div className="flex flex-col p-4 space-y-2">
               <MainNav className="flex flex-col" />
-              <ConnectWalletButton />
+              <ConnectWalletButton
+                walletConnected={walletConnected}
+                walletAddress={walletAddress}
+                connectWallet={connectWallet}
+                disconnectWallet={disconnectWallet}
+              />
             </div>
           </div>
         </div>

@@ -7,7 +7,7 @@ import {
   PlusCircledIcon,
 } from "@repo/ui/shared/react-icons";
 
-import { cn } from "@/src/lib/utils";
+import { cn } from "@repo/ui/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@repo/ui/shared/avatar";
 import { Button } from "@repo/ui/shared/button";
 import {

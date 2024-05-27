@@ -13,14 +13,14 @@ import { RecentTransactions } from "./recent-transactions";
 import { Button } from "@repo/ui/shared/button";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { useBatchesService } from "@/src/services/useBatchesService";
-import TruncatedAddress from "../common/truncated-address";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
 import { useContractsService } from "@/src/services/useContractsService";
 import { Skeleton } from "@repo/ui/shared/skeleton";
 import { RecentBlocks } from "./recent-blocks";
 import { useBlocksService } from "@/src/services/useBlocksService";
 import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
-import { cn, formatNumber } from "@/src/lib/utils";
+import { cn, formatNumber } from "@repo/ui/lib/utils";
 import { Badge } from "@repo/ui/shared/badge";
 import { BlocksIcon } from "@repo/ui/shared/react-icons";
 

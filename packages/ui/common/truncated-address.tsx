@@ -1,12 +1,9 @@
-import React from "react";
-
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@repo/ui/shared/tooltip";
-
+} from "../shared/tooltip";
 import Copy from "./copy";
 
 const TruncatedAddress = ({

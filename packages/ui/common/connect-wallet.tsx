@@ -1,13 +1,20 @@
-import { useWalletConnection } from "@/src/components/providers/wallet-provider";
-import { Button } from "@repo/ui/shared/button";
-import { Link2Icon, LinkBreak2Icon } from "@repo/ui/shared/react-icons";
-import React from "react";
+import { Button } from "../shared/button";
+import { Link2Icon, LinkBreak2Icon } from "../shared/react-icons";
 import TruncatedAddress from "./truncated-address";
-import { downloadMetaMask, ethereum } from "@/src/lib/utils";
-const ConnectWalletButton = ({ text }: { text?: string }) => {
-  const { walletConnected, walletAddress, connectWallet, disconnectWallet } =
-    useWalletConnection();
-
+import { downloadMetaMask, ethereum } from "../lib/utils";
+const ConnectWalletButton = ({
+  text,
+  walletConnected,
+  walletAddress,
+  connectWallet,
+  disconnectWallet,
+}: {
+  text?: string;
+  walletConnected: boolean;
+  walletAddress: string | null;
+  connectWallet: () => void;
+  disconnectWallet: () => void;
+}) => {
   return (
     <Button
       className="text-sm font-medium leading-none"

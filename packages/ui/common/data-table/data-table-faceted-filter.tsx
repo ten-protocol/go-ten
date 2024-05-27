@@ -1,10 +1,10 @@
 import * as React from "react";
-import { CheckIcon, PlusCircledIcon } from "@repo/ui/shared/react-icons";
+import { CheckIcon, PlusCircledIcon } from "../../shared/react-icons";
 import { Column } from "@tanstack/react-table";
 
-import { cn } from "@/src/lib/utils";
-import { Badge } from "@repo/ui/shared/badge";
-import { Button } from "@repo/ui/shared/button";
+import { cn } from "../../lib/utils";
+import { Badge } from "../../shared/badge";
+import { Button } from "../../shared/button";
 import {
   Command,
   CommandEmpty,
@@ -13,13 +13,9 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from "@repo/ui/shared/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@repo/ui/shared/popover";
-import { Separator } from "@repo/ui/shared/separator";
+} from "../../shared/command";
+import { Popover, PopoverContent, PopoverTrigger } from "../../shared/popover";
+import { Separator } from "../../shared/separator";
 
 interface DataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>;

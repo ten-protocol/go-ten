@@ -5,7 +5,7 @@ import { CalendarIcon } from "@repo/ui/shared/react-icons";
 import { addDays, format } from "date-fns";
 import { DateRange } from "react-day-picker";
 
-import { cn } from "@/src/lib/utils";
+import { cn } from "@repo/ui/lib/utils";
 import { Button } from "@repo/ui/shared/button";
 import { Calendar } from "@repo/ui/shared/calendar";
 import {

@@ -1,10 +1,10 @@
 import React from "react";
 import { columns } from "@/src/components/modules/transactions/columns";
-import { DataTable } from "@/src/components/modules/common/data-table/data-table";
+import { DataTable } from "@repo/ui/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { Metadata } from "next";
-import { formatNumber } from "@/src/lib/utils";
+import { formatNumber } from "@repo/ui/lib/utils";
 
 export const metadata: Metadata = {
   title: "Transactions",

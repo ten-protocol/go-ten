@@ -4,10 +4,10 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Badge, badgeVariants } from "@repo/ui/shared/badge";
 
 import { statuses, types } from "./data";
-import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
+import { DataTableColumnHeader } from "@repo/ui/common/data-table/data-table-column-header";
 import { PersonalTransactions } from "@/src/types/interfaces/TransactionInterfaces";
-import TruncatedAddress from "../common/truncated-address";
-import { formatNumber } from "@/src/lib/utils";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { formatNumber } from "@repo/ui/lib/utils";
 import Link from "next/link";
 import { EyeOpenIcon } from "@repo/ui/shared/react-icons";
 

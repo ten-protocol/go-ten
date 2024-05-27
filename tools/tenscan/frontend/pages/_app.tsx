@@ -10,7 +10,7 @@ import "@/styles/globals.css";
 import type { AppProps } from "next/app";
 import { Toaster } from "@repo/ui/shared/toaster";
 import { WalletConnectionProvider } from "@/src/components/providers/wallet-provider";
-import { NetworkStatus } from "@/src/components/modules/common/network-status";
+import { NetworkStatus } from "@repo/ui/common/network-status";
 import HeadSeo from "@/src/components/head-seo";
 import { siteMetadata } from "@/src/lib/siteMetadata";
 import Script from "next/script";

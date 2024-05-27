@@ -3,18 +3,18 @@ import {
   ChevronRightIcon,
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
-} from "@repo/ui/shared/react-icons";
+} from "../../shared/react-icons";
 import { Table } from "@tanstack/react-table";
 
-import { Button } from "@repo/ui/shared/button";
+import { Button } from "../../shared/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@repo/ui/shared/select";
-import { formatNumber } from "@/src/lib/utils";
+} from "../../shared/select";
+import { formatNumber } from "../../lib/utils";
 
 interface DataTablePaginationProps<TData> {
   table: Table<TData>;

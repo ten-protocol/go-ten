@@ -1,5 +1,5 @@
-import TruncatedAddress from "../common/truncated-address";
-import { formatTimeAgo } from "@/src/lib/utils";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { formatTimeAgo } from "@repo/ui/lib/utils";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
 import { Avatar, AvatarFallback } from "@repo/ui/shared/avatar";
 import Link from "next/link";

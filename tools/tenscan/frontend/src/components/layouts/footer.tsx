@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { socialLinks, version } from "@repo/ui/lib/constants";
+import { socialLinks } from "@repo/ui/lib/constants";
 import {
   GitHubLogoIcon,
   TwitterLogoIcon,
   DiscordLogoIcon,
 } from "@repo/ui/shared/react-icons";
+import { version } from "@/src/lib/constants";
 
 const SOCIAL_LINKS = [
   {

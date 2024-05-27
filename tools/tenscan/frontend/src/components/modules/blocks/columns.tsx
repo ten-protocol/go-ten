@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
+import { DataTableColumnHeader } from "@repo/ui/common/data-table/data-table-column-header";
 import { Block, BlockHeader } from "@/src/types/interfaces/BlockInterfaces";
-import TruncatedAddress from "../common/truncated-address";
-import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { formatNumber, formatTimeAgo } from "@repo/ui/lib/utils";
 import { Badge } from "@repo/ui/shared/badge";
 import ExternalLink from "@repo/ui/shared/external-link";
 import { externalLinks } from "@/src/routes";

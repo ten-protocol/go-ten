@@ -6,16 +6,16 @@ import { Card, CardHeader, CardTitle, CardContent } from "@repo/ui/shared/card";
 import { Textarea } from "@repo/ui/shared/textarea";
 import { currentEncryptedKey } from "@/src/lib/constants";
 import { CopyIcon } from "@repo/ui/shared/react-icons";
-import { Terminal } from "lucide-react";
+import { Terminal } from "@repo/ui/shared/react-icons";
 import { useRouter } from "next/router";
 import JSONPretty from "react-json-pretty";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import {
   Tooltip,
+  TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-  TooltipContent,
-} from "@radix-ui/react-tooltip";
+} from "@repo/ui/shared/tooltip";
 
 export default function Decrypt() {
   const router = useRouter();

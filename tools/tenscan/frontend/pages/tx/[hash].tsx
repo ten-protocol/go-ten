@@ -1,16 +1,9 @@
-import { fetchBatchByHash } from "@/api/batches";
 import { fetchTransactionByHash } from "@/api/transactions";
 import Layout from "@/src/components/layouts/default-layout";
 import { TransactionDetailsComponent } from "@/src/components/modules/transactions/transaction-details";
-import EmptyState from "@/src/components/modules/common/empty-state";
+import EmptyState from "@repo/ui/common/empty-state";
 import { Button } from "@repo/ui/shared/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardDescription,
-} from "@repo/ui/shared/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@repo/ui/shared/card";
 import { Skeleton } from "@repo/ui/shared/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";

@@ -1,9 +1,9 @@
 "use client";
 
-import { Cross2Icon, ReloadIcon } from "@repo/ui/shared/react-icons";
+import { Cross2Icon, ReloadIcon } from "../../shared/react-icons";
 import { Table } from "@tanstack/react-table";
 
-import { Button } from "@repo/ui/shared/button";
+import { Button } from "../../shared/button";
 import { DataTableViewOptions } from "./data-table-view-options";
 
 import { DataTableFacetedFilter } from "./data-table-faceted-filter";

@@ -1,6 +1,6 @@
 import { fetchRollupByBatchSequence } from "@/api/rollups";
 import Layout from "@/src/components/layouts/default-layout";
-import EmptyState from "@/src/components/modules/common/empty-state";
+import EmptyState from "@repo/ui/common/empty-state";
 import { RollupDetailsComponent } from "@/src/components/modules/rollups/rollup-details";
 import { Button } from "@repo/ui/shared/button";
 import {

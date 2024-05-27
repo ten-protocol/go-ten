@@ -2,9 +2,9 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 
-import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
-import TruncatedAddress from "../common/truncated-address";
-import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
+import { DataTableColumnHeader } from "@repo/ui/common/data-table/data-table-column-header";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { formatNumber, formatTimeAgo } from "@repo/ui/lib/utils";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
 import { Badge } from "@repo/ui/shared/badge";

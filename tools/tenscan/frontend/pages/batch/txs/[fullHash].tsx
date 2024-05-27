@@ -1,7 +1,7 @@
 import { fetchBatchTransactions } from "@/api/batches";
 import Layout from "@/src/components/layouts/default-layout";
-import { DataTable } from "@/src/components/modules/common/data-table/data-table";
-import EmptyState from "@/src/components/modules/common/empty-state";
+import { DataTable } from "@repo/ui/common/data-table/data-table";
+import EmptyState from "@repo/ui/common/empty-state";
 import { columns } from "@/src/components/modules/batches/transaction-columns";
 import {
   Card,

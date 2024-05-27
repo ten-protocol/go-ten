@@ -1,7 +1,7 @@
 import { Separator } from "@repo/ui/shared/separator";
-import TruncatedAddress from "../common/truncated-address";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
 import KeyValueItem, { KeyValueList } from "@repo/ui/shared/key-value";
-import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
+import { formatNumber, formatTimeAgo } from "@repo/ui/lib/utils";
 import { Badge } from "@repo/ui/shared/badge";
 import { BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";

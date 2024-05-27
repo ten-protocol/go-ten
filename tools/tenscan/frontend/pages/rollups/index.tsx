@@ -1,9 +1,9 @@
 import React from "react";
-import { DataTable } from "@/src/components/modules/common/data-table/data-table";
+import { DataTable } from "@repo/ui/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import { Metadata } from "next";
-import { formatNumber } from "@/src/lib/utils";
+import { formatNumber } from "@repo/ui/lib/utils";
 import { columns } from "@/src/components/modules/rollups/columns";
 
 export const metadata: Metadata = {

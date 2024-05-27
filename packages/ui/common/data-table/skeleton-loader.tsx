@@ -1,7 +1,6 @@
-import { Skeleton } from "@repo/ui/shared/skeleton";
-import { TableHeader, TableRow, TableBody } from "@repo/ui/shared/table";
+import { Skeleton } from "../../shared/skeleton";
+import { TableHeader, TableRow, TableBody } from "../../shared/table";
 import { Table } from "lucide-react";
-import React from "react";
 
 const DataTableSkeleton = ({ columns }: { columns: number }) => {
   const renderSkeletonColumns = () => {

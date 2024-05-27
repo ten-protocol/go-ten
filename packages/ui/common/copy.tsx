@@ -1,7 +1,6 @@
-import React from "react";
-import { CopyIcon, CheckIcon } from "@repo/ui/shared/react-icons";
-import { useCopy } from "@/src/hooks/useCopy";
-import { Button } from "@repo/ui/shared/button";
+import { CopyIcon, CheckIcon } from "../shared/react-icons";
+import { useCopy } from "../hooks/useCopy";
+import { Button } from "../shared/button";
 
 const Copy = ({ value }: { value: string | number }) => {
   const { copyToClipboard, copied } = useCopy();

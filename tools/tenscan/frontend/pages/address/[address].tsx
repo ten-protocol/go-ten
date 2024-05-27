@@ -1,5 +1,5 @@
 import Layout from "@/src/components/layouts/default-layout";
-import EmptyState from "@/src/components/modules/common/empty-state";
+import EmptyState from "@repo/ui/common/empty-state";
 import { Button } from "@repo/ui/shared/button";
 import { useRouter } from "next/router";
 import React from "react";

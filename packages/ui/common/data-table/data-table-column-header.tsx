@@ -3,18 +3,18 @@ import {
   ArrowUpIcon,
   CaretSortIcon,
   EyeNoneIcon,
-} from "@repo/ui/shared/react-icons";
+} from "../../shared/react-icons";
 import { Column } from "@tanstack/react-table";
 
-import { cn } from "@/src/lib/utils";
-import { Button } from "@repo/ui/shared/button";
+import { cn } from "../../lib/utils";
+import { Button } from "../../shared/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@repo/ui/shared/dropdown-menu";
+} from "../../shared/dropdown-menu";
 
 interface DataTableColumnHeaderProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {

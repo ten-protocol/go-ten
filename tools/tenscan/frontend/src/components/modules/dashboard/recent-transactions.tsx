@@ -1,8 +1,8 @@
-import TruncatedAddress from "../common/truncated-address";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
 import { Avatar, AvatarFallback } from "@repo/ui/shared/avatar";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
 import { Badge } from "@repo/ui/shared/badge";
-import { formatTimeAgo } from "@/src/lib/utils";
+import { formatTimeAgo } from "@repo/ui/lib/utils";
 import Link from "next/link";
 
 export function RecentTransactions({ transactions }: { transactions: any }) {

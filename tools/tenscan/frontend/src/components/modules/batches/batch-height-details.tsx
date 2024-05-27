@@ -1,9 +1,9 @@
 import { Separator } from "@repo/ui/shared/separator";
-import TruncatedAddress from "../common/truncated-address";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
 import KeyValueItem, { KeyValueList } from "@repo/ui/shared/key-value";
-import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
+import { formatNumber, formatTimeAgo } from "@repo/ui/lib/utils";
 import { Badge } from "@repo/ui/shared/badge";
-import { Batch, BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
+import { Batch } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
 import { EyeClosedIcon, EyeOpenIcon } from "@repo/ui/shared/react-icons";
 import { Button } from "@repo/ui/shared/button";
