@@ -6,6 +6,7 @@ import {
   Batch,
   BatchDetails,
   BatchResponse,
+  LatestBatch,
 } from "@/src/types/interfaces/BatchInterfaces";
 
 export const fetchBatches = async (
@@ -20,8 +21,8 @@ export const fetchBatches = async (
 
 export const fetchLatestBatch = async (
   payload?: Record<string, any>
-): Promise<ResponseDataInterface<Batch>> => {
-  return await httpRequest<ResponseDataInterface<Batch>>({
+): Promise<ResponseDataInterface<LatestBatch>> => {
+  return await httpRequest<ResponseDataInterface<LatestBatch>>({
     method: "get",
     url: pathToUrl(apiRoutes.getLatestBatch),
     searchParams: payload,
