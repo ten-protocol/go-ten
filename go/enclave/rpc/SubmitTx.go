@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"errors"
 	"fmt"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -9,7 +10,11 @@ import (
 )
 
 func SubmitTxValidate(reqParams []any, builder *CallBuilder[common.L2Tx, gethcommon.Hash], _ *EncryptionManager) error {
-	l2Tx, err := ExtractTx(reqParams[0].(string))
+	txStr, ok := reqParams[0].(string)
+	if !ok {
+		return errors.New("unsupported format")
+	}
+	l2Tx, err := ExtractTx(txStr)
 	if err != nil {
 		builder.Err = fmt.Errorf("could not extract transaction. Cause: %w", err)
 		return nil

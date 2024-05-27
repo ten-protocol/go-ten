@@ -66,6 +66,17 @@ func TestGatewayHappyPath(t *testing.T) {
 					return fmt.Errorf("expected net_version to be %s but got %s", expectedResult, result)
 				}
 
+				// check web3_clientVersion response
+				var cvResult string
+				err = rpcClient.CallContext(ctx, &cvResult, "web3_clientVersion")
+				if err != nil {
+					return fmt.Errorf("failed to get web3_clientVersion: %w", err)
+				}
+				fmt.Println("web3_clientVersion response:", cvResult)
+				if cvResult == "" {
+					return fmt.Errorf("expected web3_clientVersion to be non-empty")
+				}
+
 				return nil
 			}),
 		),

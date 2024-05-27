@@ -144,7 +144,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}
 
 	// These variables will be used to create the new batch
-	parent, err := executor.storage.FetchBatch(ctx, context.ParentPtr)
+	parentBatch, err := executor.storage.FetchBatch(ctx, context.ParentPtr)
 	if errors.Is(err, errutil.ErrNotFound) {
 		executor.logger.Error(fmt.Sprintf("can't find parent batch %s. Seq %d", context.ParentPtr, context.SequencerNo))
 		return nil, errutil.ErrAncestorBatchNotFound
@@ -154,17 +154,17 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}
 
 	parentBlock := block
-	if parent.Header.L1Proof != block.Hash() {
+	if parentBatch.Header.L1Proof != block.Hash() {
 		var err error
-		parentBlock, err = executor.storage.FetchBlock(ctx, parent.Header.L1Proof)
+		parentBlock, err = executor.storage.FetchBlock(ctx, parentBatch.Header.L1Proof)
 		if err != nil {
-			executor.logger.Error(fmt.Sprintf("Could not retrieve a proof for batch %s", parent.Hash()), log.ErrKey, err)
+			executor.logger.Error(fmt.Sprintf("Could not retrieve a proof for batch %s", parentBatch.Hash()), log.ErrKey, err)
 			return nil, err
 		}
 	}
 
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
-	batch := core.DeterministicEmptyBatch(parent.Header, block, context.AtTime, context.SequencerNo, context.BaseFee, context.Creator)
+	batch := core.DeterministicEmptyBatch(parentBatch.Header, block, context.AtTime, context.SequencerNo, context.BaseFee, context.Creator)
 
 	stateDB, err := executor.batchRegistry.GetBatchState(ctx, &batch.Header.ParentHash)
 	if err != nil {

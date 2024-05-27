@@ -364,7 +364,10 @@ func stringToHash(ns sql.NullString) gethcommon.Hash {
 	if err != nil {
 		return [32]byte{}
 	}
-	s := value.(string)
+	s, ok := value.(string)
+	if !ok {
+		return [32]byte{}
+	}
 	result := gethcommon.Hash{}
 	result.SetBytes([]byte(s))
 	return result
