@@ -5,7 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"math/big"
-	"strings"
+
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -15,32 +16,36 @@ import (
 )
 
 const (
-	baseEventsQuerySelect      = "select topic0, topic1, topic2, topic3, topic4, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address"
-	baseDebugEventsQuerySelect = "select rel_address1, rel_address2, rel_address3, rel_address4, lifecycle_event, topic0, topic1, topic2, topic3, topic4, datablob, b.full_hash, b.height, tx.full_hash, tx.idx, log_idx, address"
-	baseEventsJoin             = "from events e join exec_tx extx on e.exec_tx_id=extx.id join tx on extx.tx=tx.hash join batch b on extx.batch=b.sequence where b.is_canonical=true "
-	insertEvent                = "insert into events values "
-	insertEventValues          = "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-	orderBy                    = " order by b.height, tx.idx asc"
+	baseEventsJoin = "from events e join exec_tx extx on e.tx=extx.tx and e.batch=extx.batch  join tx on extx.tx=tx.id join batch b on extx.batch=b.sequence where b.is_canonical=true "
 )
 
-func StoreEventLogs(ctx context.Context, dbtx DBTransaction, receipts []*types.Receipt, stateDB *state.StateDB) error {
+func StoreEventLogs(ctx context.Context, dbtx *sql.Tx, receipts []*types.Receipt, batch *core.Batch, stateDB *state.StateDB) error {
 	var args []any
 	totalLogs := 0
 	for _, receipt := range receipts {
 		for _, l := range receipt.Logs {
-			logArgs, err := logDBValues(ctx, dbtx.GetDB(), l, receipt, stateDB)
+			logArgs, err := logDBValues(ctx, dbtx, l, stateDB)
 			if err != nil {
 				return err
 			}
 			args = append(args, logArgs...)
+			txId, _ := GetTxId(ctx, dbtx, l.TxHash)
+			if txId == 0 {
+				args = append(args, nil)
+			} else {
+				args = append(args, txId)
+			}
+			args = append(args, batch.SeqNo().Uint64())
 			totalLogs++
 		}
 	}
 	if totalLogs > 0 {
-		query := insertEvent + " " + strings.Repeat(insertEventValues+",", totalLogs)
-		query = query[0 : len(query)-1] // remove trailing comma
-
-		dbtx.ExecuteSQL(query, args...)
+		query := "insert into events (topic0,topic1,topic2,topic3,topic4,datablob,log_idx,address,lifecycle_event,rel_address1,rel_address2,rel_address3,rel_address4,tx,batch) values " +
+			repeat("(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ",", totalLogs)
+		_, err := dbtx.ExecContext(ctx, query, args...)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -50,7 +55,7 @@ func StoreEventLogs(ctx context.Context, dbtx DBTransaction, receipts []*types.R
 // The other 4 topics are set by the programmer
 // According to the data relevancy rules, an event is relevant to accounts referenced directly in topics
 // If the event is not referring any user address, it is considered a "lifecycle event", and is relevant to everyone
-func logDBValues(ctx context.Context, db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *state.StateDB) ([]any, error) {
+func logDBValues(ctx context.Context, db *sql.Tx, l *types.Log, stateDB *state.StateDB) ([]any, error) {
 	// The topics are stored in an array with a maximum of 5 entries, but usually less
 	var t0, t1, t2, t3, t4 []byte
 
@@ -124,9 +129,10 @@ func logDBValues(ctx context.Context, db *sql.DB, l *types.Log, receipt *types.R
 
 	return []any{
 		t0, t1, t2, t3, t4,
-		data, l.Index, l.Address.Bytes(),
-		isLifecycle, a1, a2, a3, a4,
-		executedTransactionID(&receipt.BlockHash, &l.TxHash),
+		data, l.Index,
+		l.Address.Bytes(),
+		isLifecycle,
+		a1, a2, a3, a4,
 	}, nil
 }
 
@@ -142,8 +148,8 @@ func FilterLogs(
 	queryParams := []any{}
 	query := ""
 	if batchHash != nil {
-		query += " AND b.hash = ?"
-		queryParams = append(queryParams, truncTo16(*batchHash))
+		query += " AND b.hash = ? "
+		queryParams = append(queryParams, batchHash.Bytes())
 	}
 
 	// ignore negative numbers
@@ -157,7 +163,8 @@ func FilterLogs(
 	}
 
 	if len(addresses) > 0 {
-		query += " AND address in (?" + strings.Repeat(",?", len(addresses)-1) + ")"
+		cond := repeat("(address=?)", " OR ", len(addresses))
+		query += " AND (" + cond + ")"
 		for _, address := range addresses {
 			queryParams = append(queryParams, address.Bytes())
 		}
@@ -169,8 +176,9 @@ func FilterLogs(
 		for i, sub := range topics {
 			// empty rule set == wildcard
 			if len(sub) > 0 {
-				column := fmt.Sprintf("topic%d", i)
-				query += " AND " + column + " in (?" + strings.Repeat(",?", len(sub)-1) + ")"
+				topicColumn := fmt.Sprintf("topic%d", i)
+				cond := repeat(fmt.Sprintf("(%s=? )", topicColumn), " OR ", len(sub))
+				query += " AND (" + cond + ")"
 				for _, topic := range sub {
 					queryParams = append(queryParams, topic.Bytes())
 				}
@@ -184,9 +192,11 @@ func FilterLogs(
 func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
 	var queryParams []any
 
-	query := baseDebugEventsQuerySelect + " " + baseEventsJoin + "AND tx.hash = ?"
+	query := "select rel_address1, rel_address2, rel_address3, rel_address4, lifecycle_event, topic0, topic1, topic2, topic3, topic4, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, address " +
+		baseEventsJoin +
+		" AND tx.hash = ? "
 
-	queryParams = append(queryParams, truncTo16(txHash))
+	queryParams = append(queryParams, txHash.Bytes())
 
 	result := make([]*tracers.DebugLogs, 0)
 
@@ -261,7 +271,7 @@ func bytesToAddress(b []byte) *gethcommon.Address {
 //     forcing its events to become permanently private (this is not implemented for now)
 //
 // todo - find a more efficient way
-func isEndUserAccount(ctx context.Context, db *sql.DB, topic gethcommon.Hash, stateDB *state.StateDB) (bool, *gethcommon.Address, error) {
+func isEndUserAccount(ctx context.Context, db *sql.Tx, topic gethcommon.Hash, stateDB *state.StateDB) (bool, *gethcommon.Address, error) {
 	potentialAddr := common.ExtractPotentialAddress(topic)
 	if potentialAddr == nil {
 		return false, nil, nil
@@ -269,7 +279,7 @@ func isEndUserAccount(ctx context.Context, db *sql.DB, topic gethcommon.Hash, st
 	addrBytes := potentialAddr.Bytes()
 	// Check the database if there are already entries for this address
 	var count int
-	query := "select count(*) from events where rel_address1=? OR rel_address2=? OR rel_address3=? OR rel_address4=?"
+	query := "select count(*) from events where (rel_address1=?) OR (rel_address2=?) OR (rel_address3=? ) OR (rel_address4=? )"
 	err := db.QueryRowContext(ctx, query, addrBytes, addrBytes, addrBytes, addrBytes).Scan(&count)
 	if err != nil {
 		// exit here
@@ -300,7 +310,7 @@ func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Add
 	}
 
 	result := make([]*types.Log, 0)
-	query := baseEventsQuerySelect + " " + baseEventsJoin
+	query := "select topic0, topic1, topic2, topic3, topic4, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, address" + " " + baseEventsJoin
 	var queryParams []any
 
 	// Add relevancy rules
@@ -315,7 +325,7 @@ func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Add
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
 
-	query += orderBy
+	query += " order by b.height, tx.idx asc"
 
 	rows, err := db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
@@ -354,7 +364,10 @@ func stringToHash(ns sql.NullString) gethcommon.Hash {
 	if err != nil {
 		return [32]byte{}
 	}
-	s := value.(string)
+	s, ok := value.(string)
+	if !ok {
+		return [32]byte{}
+	}
 	result := gethcommon.Hash{}
 	result.SetBytes([]byte(s))
 	return result

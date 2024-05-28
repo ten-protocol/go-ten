@@ -62,6 +62,7 @@ func executeMigration(db *sql.DB, content string, migrationOrder int64) error {
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
 	_, err = tx.Exec(content)
 	if err != nil {
 		return err

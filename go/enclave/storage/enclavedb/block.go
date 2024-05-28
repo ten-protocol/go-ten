@@ -7,7 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -15,84 +18,109 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
-const (
-	blockInsert       = "insert into block values (?,?,?,?,?)"
-	selectBlockHeader = "select header from block"
-
-	l1msgInsert = "insert into l1_msg (message, block, is_transfer) values "
-	l1msgValue  = "(?,?,?)"
-	selectL1Msg = "select message from l1_msg "
-
-	rollupInsert         = "replace into rollup values (?,?,?,?,?,?)"
-	rollupSelect         = "select hash from rollup where compression_block in "
-	rollupSelectMetadata = "select start_seq, time_stamp from rollup where hash = ? "
-
-	updateCanonicalBlock = "update block set is_canonical=? where hash in "
-	// todo - do we need the is_canonical field?
-	updateCanonicalBatches = "update batch set is_canonical=? where l1_proof in "
-)
-
-func WriteBlock(ctx context.Context, dbtx DBTransaction, b *types.Header) error {
+func WriteBlock(ctx context.Context, dbtx *sql.Tx, b *types.Header) error {
 	header, err := rlp.EncodeToBytes(b)
 	if err != nil {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
 	}
 
-	var parentBytes []byte
-	if b.Number.Uint64() > 1 {
-		parentBytes = truncTo16(b.ParentHash)
-	}
-	dbtx.ExecuteSQL(blockInsert,
-		truncTo16(b.Hash()), // hash
-		parentBytes,         // parent
-		true,                // is_canonical
-		header,              // header
-		b.Number.Uint64(),   // height
+	_, err = dbtx.ExecContext(ctx, "insert into block (hash,is_canonical,header,height) values (?,?,?,?)",
+		b.Hash().Bytes(),  // hash
+		true,              // is_canonical
+		header,            // header
+		b.Number.Uint64(), // height
 	)
-	return nil
+	return err
 }
 
-func UpdateCanonicalBlocks(ctx context.Context, dbtx DBTransaction, canonical []common.L1BlockHash, nonCanonical []common.L1BlockHash) {
-	if len(nonCanonical) > 0 {
-		updateCanonicalValue(ctx, dbtx, false, nonCanonical)
-	}
-	if len(canonical) > 0 {
-		updateCanonicalValue(ctx, dbtx, true, canonical)
-	}
-}
-
-func updateCanonicalValue(ctx context.Context, dbtx DBTransaction, isCanonical bool, values []common.L1BlockHash) {
-	argPlaceholders := strings.Repeat("?,", len(values))
-	argPlaceholders = argPlaceholders[0 : len(argPlaceholders)-1] // remove trailing comma
-
-	updateBlocks := updateCanonicalBlock + "(" + argPlaceholders + ")"
-	updateBatches := updateCanonicalBatches + "(" + argPlaceholders + ")"
+func UpdateCanonicalValue(ctx context.Context, dbtx *sql.Tx, isCanonical bool, blocks []common.L1BlockHash, _ gethlog.Logger) error {
+	currentBlocks := repeat(" hash=? ", "OR", len(blocks))
 
 	args := make([]any, 0)
 	args = append(args, isCanonical)
-	for _, value := range values {
-		args = append(args, truncTo16(value))
+	for _, blockHash := range blocks {
+		args = append(args, blockHash.Bytes())
 	}
-	dbtx.ExecuteSQL(updateBlocks, args...)
-	dbtx.ExecuteSQL(updateBatches, args...)
+
+	updateBlocks := "update block set is_canonical=? where " + currentBlocks
+	_, err := dbtx.ExecContext(ctx, updateBlocks, args...)
+	if err != nil {
+		return err
+	}
+
+	updateBatches := "update batch set is_canonical=? where l1_proof in (select id from block where " + currentBlocks + ")"
+	_, err = dbtx.ExecContext(ctx, updateBatches, args...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func IsCanonicalBlock(ctx context.Context, dbtx *sql.Tx, hash *gethcommon.Hash) (bool, error) {
+	var isCanon bool
+	err := dbtx.QueryRowContext(ctx, "select is_canonical from block where hash=? ", hash.Bytes()).Scan(&isCanon)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return isCanon, err
+}
+
+// CheckCanonicalValidity - expensive but useful for debugging races
+func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx) error {
+	rows, err := dbtx.QueryContext(ctx, "select count(*), height from batch where is_canonical=true group by height having count(*) >1")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if rows.Next() {
+		var cnt uint64
+		var heignt uint64
+		err := rows.Scan(&cnt, &heignt)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("found multiple (%d) canonical batches for height %d", cnt, heignt)
+	}
+	return nil
+}
+
+// HandleBlockArrivedAfterBatches- handle the corner case where the block wasn't available when the batch was received
+func HandleBlockArrivedAfterBatches(ctx context.Context, dbtx *sql.Tx, blockId int64, blockHash common.L1BlockHash) error {
+	_, err := dbtx.ExecContext(ctx, "update batch set l1_proof=?, is_canonical=true where l1_proof_hash=?", blockId, blockHash.Bytes())
+	return err
 }
 
 // todo - remove this. For now creates a "block" but without a body.
 func FetchBlock(ctx context.Context, db *sql.DB, hash common.L1BlockHash) (*types.Block, error) {
-	return fetchBlock(ctx, db, " where hash=?", truncTo16(hash))
+	return fetchBlock(ctx, db, " where hash=?", hash.Bytes())
 }
 
 func FetchHeadBlock(ctx context.Context, db *sql.DB) (*types.Block, error) {
-	return fetchBlock(ctx, db, "where is_canonical=true and height=(select max(b.height) from block b where is_canonical=true)")
+	return fetchBlock(ctx, db, "order by id desc limit 1")
 }
 
 func FetchBlockHeaderByHeight(ctx context.Context, db *sql.DB, height *big.Int) (*types.Header, error) {
 	return fetchBlockHeader(ctx, db, "where is_canonical=true and height=?", height.Int64())
 }
 
-func WriteL1Messages[T any](ctx context.Context, db *sql.DB, blockHash common.L1BlockHash, messages []T, isValueTransfer bool) error {
-	insert := l1msgInsert + strings.Repeat(l1msgValue+",", len(messages))
-	insert = insert[0 : len(insert)-1] // remove trailing comma
+func GetBlockId(ctx context.Context, db *sql.Tx, hash common.L1BlockHash) (int64, error) {
+	var id int64
+	err := db.QueryRowContext(ctx, "select id from block where hash=? ", hash.Bytes()).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+	return id, err
+}
+
+func WriteL1Messages[T any](ctx context.Context, db *sql.Tx, blockId int64, messages []T, isValueTransfer bool) error {
+	insert := "insert into l1_msg (message, block, is_transfer) values " + repeat("(?,?,?)", ",", len(messages))
 
 	args := make([]any, 0)
 
@@ -102,7 +130,7 @@ func WriteL1Messages[T any](ctx context.Context, db *sql.DB, blockHash common.L1
 			return err
 		}
 		args = append(args, data)
-		args = append(args, truncTo16(blockHash))
+		args = append(args, blockId)
 		args = append(args, isValueTransfer)
 	}
 	if len(messages) > 0 {
@@ -114,8 +142,8 @@ func WriteL1Messages[T any](ctx context.Context, db *sql.DB, blockHash common.L1
 
 func FetchL1Messages[T any](ctx context.Context, db *sql.DB, blockHash common.L1BlockHash, isTransfer bool) ([]T, error) {
 	var result []T
-	query := selectL1Msg + " where block = ? and is_transfer = ?"
-	rows, err := db.QueryContext(ctx, query, truncTo16(blockHash), isTransfer)
+	query := "select message from l1_msg m join block b on m.block=b.id where b.hash = ? and is_transfer = ?"
+	rows, err := db.QueryContext(ctx, query, blockHash.Bytes(), isTransfer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -143,32 +171,35 @@ func FetchL1Messages[T any](ctx context.Context, db *sql.DB, blockHash common.L1
 	return result, nil
 }
 
-func WriteRollup(ctx context.Context, dbtx DBTransaction, rollup *common.RollupHeader, internalHeader *common.CalldataRollupHeader) error {
+func WriteRollup(ctx context.Context, dbtx *sql.Tx, rollup *common.RollupHeader, blockId int64, internalHeader *common.CalldataRollupHeader) error {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(rollup)
 	if err != nil {
 		return fmt.Errorf("could not encode batch header. Cause: %w", err)
 	}
-	dbtx.ExecuteSQL(rollupInsert,
-		truncTo16(rollup.Hash()),
+	_, err = dbtx.ExecContext(ctx, "replace into rollup (hash, start_seq, end_seq, time_stamp, header, compression_block) values (?,?,?,?,?,?)",
+		rollup.Hash().Bytes(),
 		internalHeader.FirstBatchSequence.Uint64(),
 		rollup.LastBatchSeqNo,
 		internalHeader.StartTime,
 		data,
-		truncTo16(rollup.CompressionL1Head),
+		blockId,
 	)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func FetchReorgedRollup(ctx context.Context, db *sql.DB, reorgedBlocks []common.L1BlockHash) (*common.L2BatchHash, error) {
-	argPlaceholders := strings.Repeat("?,", len(reorgedBlocks))
-	argPlaceholders = argPlaceholders[0 : len(argPlaceholders)-1] // remove trailing comma
+	whereClause := repeat(" b.hash=? ", "OR", len(reorgedBlocks))
 
-	query := rollupSelect + " (" + argPlaceholders + ")"
+	query := "select r.hash from rollup r join block b on r.compression_block=b.id where " + whereClause
 
 	args := make([]any, 0)
-	for _, value := range reorgedBlocks {
-		args = append(args, truncTo16(value))
+	for _, blockHash := range reorgedBlocks {
+		args = append(args, blockHash.Bytes())
 	}
 	rollup := new(common.L2BatchHash)
 	err := db.QueryRowContext(ctx, query, args...).Scan(&rollup)
@@ -187,7 +218,9 @@ func FetchRollupMetadata(ctx context.Context, db *sql.DB, hash common.L2RollupHa
 	var startTime uint64
 
 	rollup := new(common.PublicRollupMetadata)
-	err := db.QueryRowContext(ctx, rollupSelectMetadata, truncTo16(hash)).Scan(&startSeq, &startTime)
+	err := db.QueryRowContext(ctx,
+		"select start_seq, time_stamp from rollup where hash = ?", hash.Bytes(),
+	).Scan(&startSeq, &startTime)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
@@ -201,7 +234,7 @@ func FetchRollupMetadata(ctx context.Context, db *sql.DB, hash common.L2RollupHa
 
 func fetchBlockHeader(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*types.Header, error) {
 	var header string
-	query := selectBlockHeader + " " + whereQuery
+	query := "select header from block " + whereQuery
 	var err error
 	if len(args) > 0 {
 		err = db.QueryRowContext(ctx, query, args...).Scan(&header)

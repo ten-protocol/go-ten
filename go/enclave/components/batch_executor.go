@@ -1,8 +1,8 @@
 package components
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -19,8 +19,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
 
+	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -144,7 +144,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}
 
 	// These variables will be used to create the new batch
-	parent, err := executor.storage.FetchBatch(ctx, context.ParentPtr)
+	parentBatch, err := executor.storage.FetchBatch(ctx, context.ParentPtr)
 	if errors.Is(err, errutil.ErrNotFound) {
 		executor.logger.Error(fmt.Sprintf("can't find parent batch %s. Seq %d", context.ParentPtr, context.SequencerNo))
 		return nil, errutil.ErrAncestorBatchNotFound
@@ -154,17 +154,17 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}
 
 	parentBlock := block
-	if parent.Header.L1Proof != block.Hash() {
+	if parentBatch.Header.L1Proof != block.Hash() {
 		var err error
-		parentBlock, err = executor.storage.FetchBlock(ctx, parent.Header.L1Proof)
+		parentBlock, err = executor.storage.FetchBlock(ctx, parentBatch.Header.L1Proof)
 		if err != nil {
-			executor.logger.Error(fmt.Sprintf("Could not retrieve a proof for batch %s", parent.Hash()), log.ErrKey, err)
+			executor.logger.Error(fmt.Sprintf("Could not retrieve a proof for batch %s", parentBatch.Hash()), log.ErrKey, err)
 			return nil, err
 		}
 	}
 
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
-	batch := core.DeterministicEmptyBatch(parent.Header, block, context.AtTime, context.SequencerNo, context.BaseFee, context.Creator)
+	batch := core.DeterministicEmptyBatch(parentBatch.Header, block, context.AtTime, context.SequencerNo, context.BaseFee, context.Creator)
 
 	stateDB, err := executor.batchRegistry.GetBatchState(ctx, &batch.Header.ParentHash)
 	if err != nil {
@@ -297,19 +297,6 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	return cb.Receipts, nil
 }
 
-type ValueTransfers []common.ValueTransferEvent
-
-func (vt ValueTransfers) Len() int {
-	return len(vt)
-}
-
-func (vt ValueTransfers) EncodeIndex(index int, w *bytes.Buffer) {
-	transfer := vt[index]
-	if err := rlp.Encode(w, transfer); err != nil {
-		panic(err)
-	}
-}
-
 func (executor *batchExecutor) CreateGenesisState(
 	ctx context.Context,
 	blkHash common.L1BlockHash,
@@ -331,7 +318,7 @@ func (executor *batchExecutor) CreateGenesisState(
 			Number:           big.NewInt(int64(0)),
 			SequencerOrderNo: big.NewInt(int64(common.L2GenesisSeqNo)), // genesis batch has seq number 1
 			ReceiptHash:      types.EmptyRootHash,
-			TransfersTree:    types.EmptyRootHash,
+			CrossChainRoot:   types.EmptyRootHash,
 			Time:             timeNow,
 			Coinbase:         coinbase,
 			BaseFee:          baseFee,
@@ -367,10 +354,40 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 		return fmt.Errorf("could not extract cross chain value transfers. Cause: %w", err)
 	}
 
-	transfersHash := types.DeriveSha(ValueTransfers(valueTransferMessages), &trie.StackTrie{})
+	xchainTree := make([][]interface{}, 0)
 
+	hasMessages := false
+	if len(valueTransferMessages) > 0 {
+		transfers := crosschain.ValueTransfers(valueTransferMessages).ForMerkleTree()
+		xchainTree = append(xchainTree, transfers...)
+		hasMessages = true
+	}
+
+	if len(crossChainMessages) > 0 {
+		messages := crosschain.MessageStructs(crossChainMessages).ForMerkleTree()
+		xchainTree = append(xchainTree, messages...)
+		hasMessages = true
+	}
+
+	var xchainHash gethcommon.Hash = gethcommon.BigToHash(gethcommon.Big0)
+	if hasMessages {
+		tree, err := smt.Of(xchainTree, crosschain.CrossChainEncodings)
+		if err != nil {
+			executor.logger.Error("Unable to create merkle tree for cross chain messages", log.ErrKey, err)
+			return fmt.Errorf("unable to create merkle tree for cross chain messages. Cause: %w", err)
+		}
+
+		encodedTree, err := json.Marshal(xchainTree)
+		if err != nil {
+			panic(err) // todo: figure out what to do
+		}
+
+		batch.Header.CrossChainTree = encodedTree
+		xchainHash = gethcommon.BytesToHash(tree.GetRoot())
+		executor.logger.Info("[CrossChain] adding messages to batch")
+	}
 	batch.Header.CrossChainMessages = crossChainMessages
-	batch.Header.TransfersTree = transfersHash
+	batch.Header.CrossChainRoot = xchainHash
 
 	executor.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch.",
 		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)

@@ -4,10 +4,13 @@ pragma solidity >=0.7.0 <0.9.0;
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 
 import "./Structs.sol";
+import * as MessageStructs from "../messaging/Structs.sol";
 import * as MessageBus from "../messaging/MessageBus.sol";
+import * as MerkleTreeMessageBus from "../messaging/MerkleTreeMessageBus.sol";
 
 contract ManagementContract is Initializable, OwnableUpgradeable {
 
@@ -49,10 +52,17 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     Structs.RollupStorage private rollups;
     //The messageBus where messages can be sent to Obscuro
     MessageBus.IMessageBus public messageBus;
+    MerkleTreeMessageBus.IMerkleTreeMessageBus public merkleMessageBus;
+    mapping(bytes32 =>bool) public isWithdrawalSpent;
+
+    bytes32 public lastBatchHash;
+
     function initialize() public initializer {
         __Ownable_init(msg.sender);
         lastBatchSeqNo = 0;
-        messageBus = new MessageBus.MessageBus();
+        merkleMessageBus = new MerkleTreeMessageBus.MerkleTreeMessageBus();
+        messageBus = MessageBus.IMessageBus(address(merkleMessageBus));
+
         emit LogManagementContractCreated(address(messageBus));
     }
 
@@ -67,9 +77,25 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
             lastBatchSeqNo = _r.LastSequenceNumber;
         }
     }
-    //
-    //  -- End of Tree element list Library
-    //
+
+    function addCrossChainMessagesRoot(bytes32 _lastBatchHash, bytes32 blockHash, uint256 blockNum, bytes[] memory crossChainHashes, bytes calldata signature) external {
+        if (block.number > blockNum + 255) {
+            revert("Block binding too old");
+        }
+
+        if ((blockhash(blockNum) != blockHash)) {
+            revert(string(abi.encodePacked("Invalid block binding:", Strings.toString(block.number),":", Strings.toString(uint256(blockHash)), ":", Strings.toString(uint256(blockhash(blockNum))))));
+        }
+
+        address enclaveID = ECDSA.recover(keccak256(abi.encode(_lastBatchHash, blockHash, blockNum, crossChainHashes)), signature);
+        require(attested[enclaveID], "enclaveID not attested"); //todo: only sequencer, rather than everyone who has attested.
+
+        lastBatchHash = _lastBatchHash;
+
+        for(uint256 i = 0; i < crossChainHashes.length; i++) {
+            merkleMessageBus.addStateRoot(bytes32(crossChainHashes[i]), block.timestamp); //todo: change the activation time.
+        }
+    }
 
 // TODO: ensure challenge period is added on top of block timestamp.
     function pushCrossChainMessages(Structs.HeaderCrossChainData calldata crossChainData) internal {
@@ -80,9 +106,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     }
 
     // solc-ignore-next-line unused-param
-    function AddRollup(Structs.MetaRollup calldata r, string calldata  _rollupData, Structs.HeaderCrossChainData calldata crossChainData) public {
-        // TODO: Add a check that ensures the cross messages are coming from the correct fork using block hashes.
-
+    function AddRollup(Structs.MetaRollup calldata r, string calldata  _rollupData, Structs.HeaderCrossChainData calldata) public {
         address enclaveID = ECDSA.recover(r.Hash, r.Signature);
         // revert if the EnclaveID is not attested
         require(attested[enclaveID], "enclaveID not attested");
@@ -90,7 +114,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
 
         AppendRollup(r);
-        pushCrossChainMessages(crossChainData);
     }
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once
@@ -112,6 +135,16 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     // Enclaves can request the Network Secret given an attestation request report
     function RequestNetworkSecret(string calldata requestReport) public {
         // currently this is a no-op, nodes will monitor for these transactions and respond to them
+    }
+
+    function ExtractNativeValue(MessageStructs.Structs.ValueTransferMessage calldata _msg, bytes32[] calldata proof, bytes32 root) external {
+        merkleMessageBus.verifyValueTransferInclusion(_msg, proof, root);
+        bytes32 msgHash = keccak256(abi.encode(_msg));
+        require(isWithdrawalSpent[msgHash] == false, "withdrawal already spent");
+        isWithdrawalSpent[keccak256(abi.encode(_msg))] = true;
+        
+        messageBus.receiveValueFromL2(_msg.receiver, _msg.amount);
+        //todo track state
     }
 
     // An attested enclave will pickup the Network Secret Request

@@ -62,7 +62,24 @@ type sequencer struct {
 	blockchain             *ethchainadapter.EthChainAdapter
 }
 
-func NewSequencer(blockProcessor components.L1BlockProcessor, batchExecutor components.BatchExecutor, registry components.BatchRegistry, rollupProducer components.RollupProducer, rollupConsumer components.RollupConsumer, rollupCompression *components.RollupCompression, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger, chainConfig *params.ChainConfig, enclavePrivateKey *crypto.EnclaveKey, mempool *txpool.TxPool, storage storage.Storage, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, settings SequencerSettings, blockchain *ethchainadapter.EthChainAdapter) Sequencer {
+func NewSequencer(
+	blockProcessor components.L1BlockProcessor,
+	batchExecutor components.BatchExecutor,
+	registry components.BatchRegistry,
+	rollupProducer components.RollupProducer,
+	rollupConsumer components.RollupConsumer,
+	rollupCompression *components.RollupCompression,
+	gethEncodingService gethencoding.EncodingService,
+	logger gethlog.Logger,
+	chainConfig *params.ChainConfig,
+	enclavePrivateKey *crypto.EnclaveKey,
+	mempool *txpool.TxPool,
+	storage storage.Storage,
+	dataEncryptionService crypto.DataEncryptionService,
+	dataCompressionService compression.DataCompressionService,
+	settings SequencerSettings,
+	blockchain *ethchainadapter.EthChainAdapter,
+) Sequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
 		batchProducer:          batchExecutor,
@@ -193,7 +210,16 @@ func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *common.
 		return err
 	}
 
-	// todo - sanity check that the headBatch.Header.L1Proof is an ancestor of the l1HeadBlock
+	// sanity check that the cached headBatch is canonical. (Might impact performance)
+	isCanon, err := s.storage.IsBatchCanonical(ctx, headBatchSeq.Uint64())
+	if err != nil {
+		return err
+	}
+	if !isCanon {
+		return fmt.Errorf("should not happen. Current head batch %d is not canonical", headBatchSeq)
+	}
+
+	// sanity check that the headBatch.Header.L1Proof is an ancestor of the l1HeadBlock
 	b, err := s.storage.FetchBlock(ctx, headBatch.Header.L1Proof)
 	if err != nil {
 		return err
@@ -346,8 +372,9 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	return extRollup, nil
 }
 
-func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash) error {
+func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash, canonicalL1Path []common.L1BlockHash) error {
 	batchesToDuplicate := make([]*core.Batch, 0)
+	batchesToExclude := make(map[uint64]*core.Batch, 0)
 
 	// read the batches attached to these blocks
 	for _, l1BlockHash := range nonCanonicalL1Path {
@@ -359,6 +386,21 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 			return fmt.Errorf("could not FetchBatchesByBlock %s. Cause %w", l1BlockHash, err)
 		}
 		batchesToDuplicate = append(batchesToDuplicate, batches...)
+	}
+
+	// check whether there are already batches on the canonical branch
+	// because we don't want to duplicate a batch if there is already a canonical batch of the same height
+	for _, l1BlockHash := range canonicalL1Path {
+		batches, err := s.storage.FetchBatchesByBlock(ctx, l1BlockHash)
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				continue
+			}
+			return fmt.Errorf("could not FetchBatchesByBlock %s. Cause %w", l1BlockHash, err)
+		}
+		for _, batch := range batches {
+			batchesToExclude[batch.NumberU64()] = batch
+		}
 	}
 
 	if len(batchesToDuplicate) == 0 {
@@ -378,19 +420,34 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 		if i > 0 && batchesToDuplicate[i].Header.ParentHash != batchesToDuplicate[i-1].Hash() {
 			s.logger.Crit("the batches that must be duplicated are invalid")
 		}
+		if batchesToExclude[orphanBatch.NumberU64()] != nil {
+			s.logger.Info("Not duplicating batch because there is already a canonical batch on that height", log.BatchSeqNoKey, orphanBatch.SeqNo())
+			currentHead = batchesToExclude[orphanBatch.NumberU64()].Hash()
+			continue
+		}
 		sequencerNo, err := s.storage.FetchCurrentSequencerNo(ctx)
 		if err != nil {
 			return fmt.Errorf("could not fetch sequencer no. Cause %w", err)
 		}
 		sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))
 		// create the duplicate and store/broadcast it, recreate batch even if it was empty
-		cb, err := s.produceBatch(ctx, sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time, false)
+		cb, err := s.produceBatch(ctx, sequencerNo, l1Head.Hash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time, false)
 		if err != nil {
 			return fmt.Errorf("could not produce batch. Cause %w", err)
 		}
 		currentHead = cb.Batch.Hash()
 		s.logger.Info("Duplicated batch", log.BatchHashKey, currentHead)
 	}
+
+	// useful for debugging
+	//start := batchesToDuplicate[0].SeqNo().Uint64()
+	//batches, err := s.storage.FetchNonCanonicalBatchesBetween(ctx, start-1, start+uint64(len(batchesToDuplicate))+1)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//for _, batch := range batches {
+	//	s.logger.Info("After duplication. Noncanonical", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
+	//}
 
 	return nil
 }
@@ -404,7 +461,7 @@ func (s *sequencer) OnL1Fork(ctx context.Context, fork *common.ChainFork) error 
 		return nil
 	}
 
-	err := s.duplicateBatches(ctx, fork.NewCanonical, fork.NonCanonicalPath)
+	err := s.duplicateBatches(ctx, fork.NewCanonical, fork.NonCanonicalPath, fork.CanonicalPath)
 	if err != nil {
 		return fmt.Errorf("could not duplicate batches. Cause %w", err)
 	}
@@ -442,6 +499,16 @@ func (s *sequencer) signRollup(rollup *common.ExtRollup) error {
 	return nil
 }
 
+func (s *sequencer) signCrossChainBundle(bundle *common.ExtCrossChainBundle) error {
+	var err error
+	h := bundle.HashPacked()
+	bundle.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
+	if err != nil {
+		return fmt.Errorf("could not sign batch. Cause: %w", err)
+	}
+	return nil
+}
+
 func (s *sequencer) OnL1Block(ctx context.Context, block *types.Block, result *components.BlockIngestionType) error {
 	// nothing to do
 	return nil
@@ -449,4 +516,18 @@ func (s *sequencer) OnL1Block(ctx context.Context, block *types.Block, result *c
 
 func (s *sequencer) Close() error {
 	return s.mempool.Close()
+}
+
+func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
+	bundle, err := ExportCrossChainData(ctx, s.storage, fromSeqNo, toSeqNo)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.signCrossChainBundle(bundle)
+	if err != nil {
+		return nil, err
+	}
+
+	return bundle, nil
 }

@@ -25,6 +25,9 @@ type BlockIngestionType struct {
 
 	// ChainFork contains information about the status of the new block in the chain
 	ChainFork *common.ChainFork
+
+	// Block that is already on the canonical chain
+	OldCanonicalBlock bool
 }
 
 func (bit *BlockIngestionType) IsFork() bool {
@@ -100,6 +103,7 @@ type BatchRegistry interface {
 	UnsubscribeFromBatches()
 
 	OnBatchExecuted(batch *core.Batch, receipts types.Receipts)
+	OnL1Reorg(*BlockIngestionType)
 
 	// HasGenesisBatch - returns if genesis batch is available yet or not, or error in case
 	// the function is unable to determine.

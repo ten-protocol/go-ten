@@ -212,7 +212,18 @@ func NewEnclave(
 			blockchain,
 		)
 	} else {
-		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, chainConfig, storage, sigVerifier, mempool, logger)
+		service = nodetype.NewValidator(
+			blockProcessor,
+			batchExecutor,
+			registry,
+			rConsumer,
+			chainConfig,
+			storage,
+			sigVerifier,
+			mempool,
+			enclaveKey,
+			logger,
+		)
 	}
 
 	chain := l2chain.NewChain(
@@ -267,6 +278,10 @@ func NewEnclave(
 
 		mainMutex: sync.Mutex{},
 	}
+}
+
+func (e *enclaveImpl) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, common.SystemError) {
+	return e.service.ExportCrossChainData(ctx, fromSeqNo, toSeqNo)
 }
 
 func (e *enclaveImpl) GetBatch(ctx context.Context, hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {
@@ -347,7 +362,11 @@ func (e *enclaveImpl) StopClient() common.SystemError {
 }
 
 func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.StreamL2UpdatesResponse) {
-	e.logger.Info("Streaming batch to host", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
+	if batch.SeqNo().Uint64()%10 == 0 {
+		e.logger.Info("Streaming batch to host", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
+	} else {
+		e.logger.Debug("Streaming batch to host", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
+	}
 	extBatch, err := batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
 	if err != nil {
 		// this error is unrecoverable
@@ -449,6 +468,7 @@ func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndRece
 	}
 
 	if ingestion.IsFork() {
+		e.registry.OnL1Reorg(ingestion)
 		err := e.service.OnL1Fork(ctx, ingestion.ChainFork)
 		if err != nil {
 			return nil, err
@@ -552,7 +572,6 @@ func (e *enclaveImpl) CreateRollup(ctx context.Context, fromSeqNo uint64) (*comm
 		return nil, responses.ToInternalError(fmt.Errorf("requested GenerateRollup with the enclave stopping"))
 	}
 
-	// todo - remove once the db operations are more atomic
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 

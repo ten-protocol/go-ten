@@ -22,6 +22,7 @@ import (
 type BlockResolver interface {
 	// FetchBlock returns the L1 Block with the given hash.
 	FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Block, error)
+	IsBlockCanonical(ctx context.Context, blockHash common.L1BlockHash) (bool, error)
 	// FetchCanonicaBlockByHeight - self explanatory
 	FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Block, error)
 	// FetchHeadBlock - returns the head of the current chain.
@@ -53,6 +54,10 @@ type BatchResolver interface {
 	FetchBatchesByBlock(ctx context.Context, hash common.L1BlockHash) ([]*core.Batch, error)
 	// FetchNonCanonicalBatchesBetween - returns all reorged batches between the sequences
 	FetchNonCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error)
+	// FetchCanonicalBatchesBetween - returns all canon batches between the sequences
+	FetchCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error)
+	// IsBatchCanonical - true if the batch is canonical
+	IsBatchCanonical(ctx context.Context, seq uint64) (bool, error)
 	// FetchCanonicalUnexecutedBatches - return the list of the unexecuted batches that are canonical
 	FetchCanonicalUnexecutedBatches(context.Context, *big.Int) ([]*core.Batch, error)
 
@@ -60,9 +65,6 @@ type BatchResolver interface {
 
 	// BatchWasExecuted - return true if the batch was executed
 	BatchWasExecuted(ctx context.Context, hash common.L2BatchHash) (bool, error)
-
-	// FetchHeadBatchForBlock returns the hash of the head batch at a given L1 block.
-	FetchHeadBatchForBlock(ctx context.Context, blockHash common.L1BlockHash) (*core.Batch, error)
 
 	// StoreBatch stores an un-executed batch.
 	StoreBatch(ctx context.Context, batch *core.Batch, convertedHash gethcommon.Hash) error
@@ -153,9 +155,7 @@ type Storage interface {
 
 type ScanStorage interface {
 	GetContractCount(ctx context.Context) (*big.Int, error)
-	GetReceiptsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error)
-	GetPublicTransactionData(ctx context.Context, pagination *common.QueryPagination) ([]common.PublicTransaction, error)
-	GetPublicTransactionCount(ctx context.Context) (uint64, error)
+	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error)
 
-	GetReceiptsPerAddressCount(ctx context.Context, addr *gethcommon.Address) (uint64, error)
+	CountTransactionsPerAddress(ctx context.Context, addr *gethcommon.Address) (uint64, error)
 }

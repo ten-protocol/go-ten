@@ -75,6 +75,16 @@ func (br *batchRegistry) UnsubscribeFromBatches() {
 	br.batchesCallback = nil
 }
 
+func (br *batchRegistry) OnL1Reorg(_ *BlockIngestionType) {
+	// refresh the cached head batch from the database because there was an L1 reorg
+	headBatch, err := br.storage.FetchHeadBatch(context.Background())
+	if err != nil {
+		br.logger.Error("Could not fetch head batch", log.ErrKey, err)
+		return
+	}
+	br.headBatchSeq = headBatch.SeqNo()
+}
+
 func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Receipts) {
 	br.callbackMutex.RLock()
 	defer br.callbackMutex.RUnlock()
@@ -90,12 +100,12 @@ func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Recei
 }
 
 func (br *batchRegistry) HasGenesisBatch() (bool, error) {
-	return br.headBatchSeq != nil, nil
+	return br.HeadBatchSeq() != nil, nil
 }
 
 func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error) {
 	// sanity check
-	headBatch, err := br.storage.FetchBatchBySeqNo(ctx, br.headBatchSeq.Uint64())
+	headBatch, err := br.storage.FetchBatchBySeqNo(ctx, br.HeadBatchSeq().Uint64())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -189,7 +199,7 @@ func getBatchState(ctx context.Context, storage storage.Storage, batch *core.Bat
 }
 
 func (br *batchRegistry) GetBatchAtHeight(ctx context.Context, height gethrpc.BlockNumber) (*core.Batch, error) {
-	if br.headBatchSeq == nil {
+	if br.HeadBatchSeq() == nil {
 		return nil, fmt.Errorf("chain not initialised")
 	}
 	var batch *core.Batch
@@ -202,7 +212,7 @@ func (br *batchRegistry) GetBatchAtHeight(ctx context.Context, height gethrpc.Bl
 		batch = genesisBatch
 	// note: our API currently treats all these block statuses the same for obscuro batches
 	case gethrpc.SafeBlockNumber, gethrpc.FinalizedBlockNumber, gethrpc.LatestBlockNumber, gethrpc.PendingBlockNumber:
-		headBatch, err := br.storage.FetchBatchBySeqNo(ctx, br.headBatchSeq.Uint64())
+		headBatch, err := br.storage.FetchBatchBySeqNo(ctx, br.HeadBatchSeq().Uint64())
 		if err != nil {
 			return nil, fmt.Errorf("batch with requested height %d was not found. Cause: %w", height, err)
 		}

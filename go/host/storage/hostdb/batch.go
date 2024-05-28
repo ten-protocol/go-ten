@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -37,6 +38,9 @@ func AddBatch(dbtx *dbTransaction, statements *SQLStatements, batch *common.ExtB
 		extBatch,                     // ext_batch
 	)
 	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "unique") {
+			return errutil.ErrAlreadyExists
+		}
 		return fmt.Errorf("host failed to insert batch: %w", err)
 	}
 

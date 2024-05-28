@@ -31,14 +31,14 @@ func GetCustomQueryExecute(builder *CallBuilder[common.PrivateCustomQueryListTra
 		return nil //nolint:nilerr
 	}
 
-	encryptReceipts, err := rpc.storage.GetReceiptsPerAddress(builder.ctx, &builder.Param.Address, &builder.Param.Pagination)
+	encryptReceipts, err := rpc.storage.GetTransactionsPerAddress(builder.ctx, &builder.Param.Address, &builder.Param.Pagination)
 	if err != nil {
-		return fmt.Errorf("GetReceiptsPerAddress - %w", err)
+		return fmt.Errorf("GetTransactionsPerAddress - %w", err)
 	}
 
-	receiptsCount, err := rpc.storage.GetReceiptsPerAddressCount(builder.ctx, &builder.Param.Address)
+	receiptsCount, err := rpc.storage.CountTransactionsPerAddress(builder.ctx, &builder.Param.Address)
 	if err != nil {
-		return fmt.Errorf("GetReceiptsPerAddressCount - %w", err)
+		return fmt.Errorf("CountTransactionsPerAddress - %w", err)
 	}
 
 	builder.ReturnValue = &common.PrivateQueryResponse{
