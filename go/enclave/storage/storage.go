@@ -370,13 +370,13 @@ func (s *storageImpl) IsBlockAncestor(ctx context.Context, block *types.Block, m
 
 func (s *storageImpl) HealthCheck(ctx context.Context) (bool, error) {
 	defer s.logDuration("HealthCheck", measure.NewStopwatch())
-	headBatch, err := s.FetchHeadBatch(ctx)
+	seqNo, err := s.FetchCurrentSequencerNo(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	if headBatch == nil {
-		return false, fmt.Errorf("head batch is nil")
+	if seqNo == nil {
+		return false, fmt.Errorf("no batches are stored")
 	}
 
 	return true, nil
