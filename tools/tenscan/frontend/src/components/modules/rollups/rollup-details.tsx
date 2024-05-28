@@ -44,7 +44,7 @@ export function RollupDetailsComponent({
           value={<TruncatedAddress address={rollupDetails?.L1Hash} />}
         />
         <KeyValueItem
-          label="First Sequencer"
+          label="First Seq No."
           value={
             <Link
               href={`/rollup/batch/sequence/${rollupDetails?.FirstSeq}`}
@@ -55,7 +55,7 @@ export function RollupDetailsComponent({
           }
         />
         <KeyValueItem
-          label="Last Sequencer"
+          label="Last Seq No."
           value={
             <Link
               href={`/rollup/batch/sequence/${rollupDetails?.LastSeq}`}
