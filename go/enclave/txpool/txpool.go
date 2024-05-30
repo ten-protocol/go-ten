@@ -51,7 +51,7 @@ func NewTxPool(blockchain *ethchainadapter.EthChainAdapter, gasTip *big.Int, log
 // Start starts the pool
 // can only be started after t.blockchain has at least one block inside
 func (t *TxPool) Start() error {
-	if t.pool != nil {
+	if t.running {
 		return fmt.Errorf("tx pool already started")
 	}
 
@@ -75,6 +75,9 @@ func (t *TxPool) PendingTransactions() map[gethcommon.Address][]*gethtxpool.Lazy
 
 // Add adds a new transactions to the pool
 func (t *TxPool) Add(transaction *common.L2Tx) error {
+	if !t.running {
+		return fmt.Errorf("tx pool not running")
+	}
 	var strErrors []string
 	for _, err := range t.pool.Add([]*types.Transaction{transaction}, false, false) {
 		if err != nil {
