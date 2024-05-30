@@ -25,11 +25,21 @@ export default class Web3Service implements IWeb3Service {
 
   // Send native currency to the other network.
   async sendNative(receiver: string, value: string) {
-    const res = await this.contract.sendNative(receiver, {
-      value: ethers.utils.parseEther(value),
-    });
-    const receipt = await res.wait();
-    return receipt;
+    if (!this.contract) {
+      console.error("Contract not found");
+      return null;
+    }
+    try {
+      const res = await this.contract.sendNative(receiver, {
+        value: ethers.utils.parseEther(value),
+      });
+      console.log("🚀 ~ Web3Service ~ sendNative ~ res:", res);
+      const receipt = await res.wait();
+      return receipt;
+    } catch (error) {
+      console.error("Error sending native currency:", error);
+      return null;
+    }
   }
 
   // Send ERC20 assets to the other network.
@@ -39,11 +49,6 @@ export default class Web3Service implements IWeb3Service {
     tokenContractAddress: string
   ) {
     return this.contract.sendERC20(tokenContractAddress, amount, receiver);
-  }
-
-  // Get the balance of the signer.
-  async getBalance() {
-    return this.signer.getBalance();
   }
 
   async getNativeBalance(provider: any, walletAddress: string) {
@@ -66,7 +71,7 @@ export default class Web3Service implements IWeb3Service {
     }
   }
 
-  // Get the balance of an ERC20 asset.
+  // balance of an ERC20 asset.
   async getTokenBalance(
     tokenAddress: string,
     walletAddress: string,
@@ -82,7 +87,6 @@ export default class Web3Service implements IWeb3Service {
     }
     try {
       const p = new ethers.providers.Web3Provider(provider);
-      // a new instance of the ERC20 contract
       const tokenContract = new ethers.Contract(
         tokenAddress,
         [
@@ -91,7 +95,6 @@ export default class Web3Service implements IWeb3Service {
         ],
         p
       );
-      console.log("🚀 ~ Web3Service ~ tokenContract:", tokenContract);
 
       // Call the balanceOf function of the ERC20 contract
       const balance = await tokenContract.balanceOf(walletAddress);
@@ -107,17 +110,6 @@ export default class Web3Service implements IWeb3Service {
       console.error("Error checking token balance:", error);
       return null;
     }
-  }
-
-  // Get the allowance of an ERC20 asset.
-  async getERC20Allowance(asset: string) {}
-
-  // Approve an ERC20 asset.
-  async approveERC20(asset: string, amount: string) {}
-
-  // Get the transaction count of the signer.
-  async getTransactionCount() {
-    return this.signer.getTransactionCount();
   }
 
   //get bridge transactions
@@ -162,39 +154,4 @@ export default class Web3Service implements IWeb3Service {
       console.error("Error fetching transactions:", error);
     }
   }
-
-  // async getBridgeTransactions(provider: any, userAddress: string) {
-  //   console.log(
-  //     "🚀 ~ Web3Service ~ getBridgeTransactions ~ messageBusAddress:",
-  //     messageBusAddress
-  //   );
-  //   try {
-  //     // Convert the provider to Web3Provider
-  //     const web3Provider = new ethers.providers.Web3Provider(provider);
-
-  //     // Specify the topics for the logs
-  //     const topics = [
-  //       ethers.utils.id("ValueTransfer(address,address,uint256,uint256)"), // Event signature
-  //       null, // Placeholder for user's address topic
-  //       ethers.utils.hexZeroPad(messageBusAddress, 32), // Message bus address as a topic
-  //     ];
-
-  //     // Set the user's address as the second topic
-  //     topics[1] = ethers.utils.hexZeroPad(userAddress, 32);
-
-  //     // Filter logs based on the specified topics
-  //     const filter = {
-  //       address: messageBusAddress, // Contract address where the event occurred
-  //       topics: topics.filter((topic) => topic !== null), // Remove null topics
-  //     };
-
-  //     // Get logs based on the filter
-  //     const transactions = await web3Provider.getLogs(filter);
-
-  //     // Process and display transactions
-  //     console.log("User's transactions:", transactions);
-  //   } catch (error) {
-  //     console.error("Error fetching user's transactions:", error);
-  //   }
-  // }
 }

@@ -70,6 +70,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
         setProvider(null);
         setSigner(null);
         setAddress("");
+        setIsWalletConnected(false);
         toast({
           title: "Disconnected",
           description: "Disconnected from wallet",
@@ -166,9 +167,9 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
     }
   }, [provider]);
 
-  useEffect(() => {
-    connectWallet();
-  }, []);
+  // useEffect(() => {
+  //   connectWallet();
+  // }, []);
 
   // Context value
   const value = {

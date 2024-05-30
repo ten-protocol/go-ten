@@ -5,7 +5,7 @@ import { useWalletStore } from "../components/providers/wallet-provider";
 import { L1TOKENS, L2TOKENS } from "../lib/constants";
 
 export const useFormHook = () => {
-  const { fromChains, toChains, isL1ToL2 } = useWalletStore();
+  const { fromChains, toChains, isL1ToL2, address } = useWalletStore();
 
   const FormSchema = z.object({
     amount: z.string().nonempty({
@@ -30,7 +30,7 @@ export const useFormHook = () => {
       fromChain: fromChains[0].value,
       toChain: toChains[0].value,
       token: isL1ToL2 ? L1TOKENS[0].value : L2TOKENS[0].value,
-      receiver: "",
+      receiver: address,
     },
   });
 

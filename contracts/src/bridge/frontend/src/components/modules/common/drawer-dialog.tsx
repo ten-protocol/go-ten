@@ -29,8 +29,6 @@ export function DrawerDialog({
   open: boolean;
   setOpen: (value: boolean) => void;
 }) {
-  const { form } = useFormHook();
-  const receiver = form.watch("receiver");
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   if (isDesktop) {
@@ -43,7 +41,7 @@ export function DrawerDialog({
               This address will be used to transfer the asset to.
             </DialogDescription>
           </DialogHeader>
-          <FormComponent setOpen={setOpen} form={form} receiver={receiver} />
+          <FormComponent setOpen={setOpen} />
         </DialogContent>
       </Dialog>
     );
@@ -58,12 +56,7 @@ export function DrawerDialog({
             This address will be used to transfer the asset to.
           </DrawerDescription>
         </DrawerHeader>
-        <FormComponent
-          className="px-4"
-          setOpen={setOpen}
-          form={form}
-          receiver={receiver}
-        />
+        <FormComponent className="px-4" setOpen={setOpen} />
         <DrawerFooter className="pt-2">
           <DrawerClose asChild>
             <Button variant="outline">Cancel</Button>

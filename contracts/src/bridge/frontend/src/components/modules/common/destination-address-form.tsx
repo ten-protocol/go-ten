@@ -5,18 +5,17 @@ import { Alert, AlertDescription } from "../../ui/alert";
 import { Button } from "../../ui/button";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
+import { useFormHook } from "@/src/hooks/useForm";
 
 export default function FormComponent({
   className,
   setOpen,
-  form,
-  receiver,
 }: {
   className?: string;
   setOpen: (value: boolean) => void;
-  form: any;
-  receiver: string | undefined;
 }) {
+  const { form } = useFormHook();
+  const receiver = form.getValues("receiver");
   const addAddressToMainForm = (e: any) => {
     e.preventDefault();
     form.setValue("receiver", e.target.elements.address.value);
@@ -32,7 +31,7 @@ export default function FormComponent({
         <Input
           type="address"
           id="address"
-          placeholder={receiver || "Enter address"}
+          placeholder="Enter address"
           defaultValue={receiver}
         />
       </div>

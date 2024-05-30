@@ -100,17 +100,17 @@ export default function Dashboard() {
   }, [watchTokenChange, address, provider]);
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
-    if (!walletConnected) {
-      return connectWallet();
-    }
     try {
-      console.log(data);
+      const d = {
+        ...data,
+        receiver: receiver ? receiver : address,
+      };
       toast({
         title: "Bridge Transaction",
         description: "Bridge transaction initiated",
         variant: ToastType.INFO,
       });
-      const token = data.token;
+      const token = d.token;
       const t = tokens.find((t) => t.value === token);
       if (!t) {
         throw new Error("Invalid token");
@@ -120,8 +120,8 @@ export default function Dashboard() {
         ? web3Service.sendNative
         : web3Service.sendERC20;
       await sendTransaction(
-        data.receiver ? data.receiver : address,
-        data.amount,
+        d.receiver ? d.receiver : address,
+        d.amount,
         t.address
       );
       toast({
@@ -253,6 +253,7 @@ export default function Dashboard() {
                         )}
                       />
 
+                      {/* Balance */}
                       <div className="pl-2">
                         <p className="text-sm text-muted-foreground">
                           Balance:
@@ -390,9 +391,7 @@ export default function Dashboard() {
                     <strong className="text-lg">Receiver Address</strong>
                     <div className="flex items-center">
                       {receiver || address ? (
-                        <TruncatedAddress
-                          address={receiver ? receiver : address}
-                        />
+                        <TruncatedAddress address={receiver || address} />
                       ) : null}
                     </div>
                   </div>
