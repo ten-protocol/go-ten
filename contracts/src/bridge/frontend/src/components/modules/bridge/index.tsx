@@ -8,7 +8,7 @@ import {
 } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
 import { Skeleton } from "@/src/components/ui/skeleton";
-import { ArrowDownUpIcon, Terminal } from "lucide-react";
+import { ArrowDownUpIcon, PlusIcon, Terminal } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -39,6 +39,7 @@ import { ToastType, Token } from "@/src/types";
 import { Alert, AlertDescription } from "../../ui/alert";
 import ConnectWalletButton from "../common/connect-wallet";
 import Copy from "../common/copy";
+import TruncatedAddress from "../common/truncated-address";
 
 export default function Dashboard() {
   const {
@@ -59,12 +60,13 @@ export default function Dashboard() {
   const [fromTokenBalance, setFromTokenBalance] = React.useState<any>(0);
 
   const tokens = isL1ToL2 ? L1TOKENS : L2TOKENS;
-  const receiver = React.useMemo(() => form.watch("receiver"), [form.watch]);
+  const receiver = form.watch("receiver");
 
   const swapTokens = () => {
     switchNetwork(isL1ToL2 ? "L2" : "L1");
   };
 
+  const [open, setOpen] = React.useState(false);
   const watchTokenChange = form.watch("token");
   React.useEffect(() => {
     const getTokenBalance = async (value: string, token: Token) => {
@@ -117,7 +119,11 @@ export default function Dashboard() {
       const sendTransaction = t.isNative
         ? web3Service.sendNative
         : web3Service.sendERC20;
-      await sendTransaction(data.receiver ?? address, data.amount, t.address);
+      await sendTransaction(
+        data.receiver ? data.receiver : address,
+        data.amount,
+        t.address
+      );
       toast({
         title: "Bridge Transaction",
         description: "Bridge transaction completed",
@@ -354,7 +360,14 @@ export default function Dashboard() {
 
                   <div className="flex items-center justify-end">
                     {/* Destination Address Input */}
-                    <DrawerDialog />
+                    <Button
+                      variant="ghost"
+                      className="text-sm font-bold leading-none"
+                      onClick={() => setOpen(true)}
+                    >
+                      <PlusIcon className="h-3 w-3 mr-1" />
+                      <small>Edit destination address</small>
+                    </Button>
                   </div>
                   <div className="bg-muted dark:bg-[#15171D]">
                     <div className="flex items-center justify-between p-2">
@@ -377,7 +390,9 @@ export default function Dashboard() {
                     <strong className="text-lg">Receiver Address</strong>
                     <div className="flex items-center">
                       {receiver || address ? (
-                        <Copy value={receiver ?? address} />
+                        <TruncatedAddress
+                          address={receiver ? receiver : address}
+                        />
                       ) : null}
                     </div>
                   </div>
@@ -401,6 +416,7 @@ export default function Dashboard() {
                 </div>
               </form>
             </Form>
+            <DrawerDialog open={open} setOpen={setOpen} />
           </CardContent>
         </Card>
       </div>

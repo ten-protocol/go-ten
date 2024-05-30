@@ -7,8 +7,7 @@ export const fetchTestnetStatus = async (): Promise<
   ResponseDataInterface<boolean>
 > => {
   return await httpRequest<ResponseDataInterface<boolean>>({
-    method: "post",
+    method: "get",
     url: pathToUrl(apiRoutes.getHealthStatus),
-    data: { jsonrpc: "2.0", method: "obscuro_health", params: [], id: 1 },
   });
 };

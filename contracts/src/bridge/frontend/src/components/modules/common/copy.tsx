@@ -5,6 +5,7 @@ import { CopyIcon, CheckIcon } from "@radix-ui/react-icons";
 
 const Copy = ({ value }: { value: string | number | undefined }) => {
   const { copyToClipboard, copied } = useCopy();
+  if (!value) return null;
   return (
     <Button
       type="button"
