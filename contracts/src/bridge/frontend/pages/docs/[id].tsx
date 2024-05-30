@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import React from "react";
 import Custom404Error from "../404";
 import { showToast } from "@/src/components/ui/use-toast";
-import { ToastType } from "@/src/types/interfaces";
+import { ToastType } from "@/src/types";
 
 type Document = {
   title: string;
