@@ -391,12 +391,19 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 
 	retries := -1
 
+	// we keep trying to send the transaction with this nonce until it is included in a block
+	// note: this is only safe because of the sendingLock guaranteeing only one transaction in-flight at a time
+	nonce, err := p.ethClient.EthClient().PendingNonceAt(p.sendingContext, p.hostWallet.Address())
+	if err != nil {
+		return fmt.Errorf("could not get nonce for L1 tx: %w", err)
+	}
+
 	// while the publisher service is still alive we keep trying to get the transaction into the L1
 	for !p.hostStopper.IsStopping() {
 		retries++ // count each attempt so we can increase gas price
 
 		// update the tx gas price before each attempt
-		tx, err := p.ethClient.PrepareTransactionToRetry(p.sendingContext, tx, p.hostWallet.Address(), retries)
+		tx, err := p.ethClient.PrepareTransactionToRetry(p.sendingContext, tx, p.hostWallet.Address(), nonce, retries)
 		if err != nil {
 			return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 		}

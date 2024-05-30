@@ -99,7 +99,7 @@ func (m *Node) PrepareTransactionToSend(_ context.Context, txData types.TxData, 
 	}, nil
 }
 
-func (m *Node) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, _ int) (types.TxData, error) {
+func (m *Node) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, _ uint64, _ int) (types.TxData, error) {
 	return m.PrepareTransactionToSend(ctx, txData, from)
 }
 
