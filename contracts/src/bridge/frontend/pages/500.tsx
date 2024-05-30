@@ -1,4 +1,4 @@
-import { ErrorType } from "@/src/types/interfaces";
+import { ErrorType } from "@/src/types";
 import Error from "./_error";
 
 function Custom500Error({

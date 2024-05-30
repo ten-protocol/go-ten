@@ -1,5 +1,4 @@
 import React from "react";
-import { ethers } from "ethers";
 
 export interface SeoProps {
   title: string;
