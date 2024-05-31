@@ -92,7 +92,6 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	switch method.Name {
 	case AddRollupMethod:
 		sidecar := tx.BlobTxSidecar()
-		// FIXME a LegacyTx came in here somehow - gas accounting maybe?
 		blobs := sidecar.Blobs
 		var rollupData []byte
 
