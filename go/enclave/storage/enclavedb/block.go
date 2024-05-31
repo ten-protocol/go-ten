@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math/big"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -31,23 +33,7 @@ func WriteBlock(ctx context.Context, dbtx *sql.Tx, b *types.Header) error {
 	return err
 }
 
-func UpdateCanonicalBlocks(ctx context.Context, dbtx *sql.Tx, canonical []common.L1BlockHash, nonCanonical []common.L1BlockHash, logger gethlog.Logger) error {
-	if len(nonCanonical) > 0 {
-		err := updateCanonicalValue(ctx, dbtx, false, nonCanonical, logger)
-		if err != nil {
-			return err
-		}
-	}
-	if len(canonical) > 0 {
-		err := updateCanonicalValue(ctx, dbtx, true, canonical, logger)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func updateCanonicalValue(ctx context.Context, dbtx *sql.Tx, isCanonical bool, blocks []common.L1BlockHash, _ gethlog.Logger) error {
+func UpdateCanonicalValue(ctx context.Context, dbtx *sql.Tx, isCanonical bool, blocks []common.L1BlockHash, _ gethlog.Logger) error {
 	currentBlocks := repeat(" hash=? ", "OR", len(blocks))
 
 	args := make([]any, 0)
@@ -68,6 +54,40 @@ func updateCanonicalValue(ctx context.Context, dbtx *sql.Tx, isCanonical bool, b
 		return err
 	}
 
+	return nil
+}
+
+func IsCanonicalBlock(ctx context.Context, dbtx *sql.Tx, hash *gethcommon.Hash) (bool, error) {
+	var isCanon bool
+	err := dbtx.QueryRowContext(ctx, "select is_canonical from block where hash=? ", hash.Bytes()).Scan(&isCanon)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return isCanon, err
+}
+
+// CheckCanonicalValidity - expensive but useful for debugging races
+func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx) error {
+	rows, err := dbtx.QueryContext(ctx, "select count(*), height from batch where is_canonical=true group by height having count(*) >1")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if rows.Next() {
+		var cnt uint64
+		var heignt uint64
+		err := rows.Scan(&cnt, &heignt)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("found multiple (%d) canonical batches for height %d", cnt, heignt)
+	}
 	return nil
 }
 

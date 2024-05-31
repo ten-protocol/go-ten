@@ -254,23 +254,27 @@ func (e *gethRPCClient) FetchLastBatchSeqNo(address gethcommon.Address) (*big.In
 
 // PrepareTransactionToSend takes a txData type and overrides the From, Gas and Gas Price field with current values
 func (e *gethRPCClient) PrepareTransactionToSend(ctx context.Context, txData types.TxData, from gethcommon.Address) (types.TxData, error) {
-	return e.PrepareTransactionToRetry(ctx, txData, from, 0)
+	nonce, err := e.EthClient().PendingNonceAt(ctx, from)
+	if err != nil {
+		return nil, fmt.Errorf("could not get nonce - %w", err)
+	}
+	return e.PrepareTransactionToRetry(ctx, txData, from, nonce, 0)
 }
 
 // PrepareTransactionToRetry takes a txData type and overrides the From, Gas and Gas Price field with current values
 // it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
-func (e *gethRPCClient) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, retryNumber int) (types.TxData, error) {
+func (e *gethRPCClient) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int) (types.TxData, error) {
 	switch tx := txData.(type) {
 	case *types.LegacyTx:
-		return e.prepareLegacyTxToRetry(ctx, tx, from, 0)
+		return e.prepareLegacyTxToRetry(ctx, tx, from, nonce, 0)
 	case *types.BlobTx:
-		return e.prepareBlobTxToRetry(ctx, tx, from, 0)
+		return e.prepareBlobTxToRetry(ctx, tx, from, nonce, 0)
 	default:
 		return nil, fmt.Errorf("unsupported transaction type: %T", tx)
 	}
 }
 
-func (e *gethRPCClient) prepareLegacyTxToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, retryNumber int) (types.TxData, error) {
+func (e *gethRPCClient) prepareLegacyTxToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int) (types.TxData, error) {
 	unEstimatedTx := types.NewTx(txData)
 	gasPrice, err := e.EthClient().SuggestGasPrice(ctx)
 	if err != nil {
@@ -298,12 +302,6 @@ func (e *gethRPCClient) prepareLegacyTxToRetry(ctx context.Context, txData types
 		return nil, fmt.Errorf("could not estimate gas - %w", err)
 	}
 
-	// we fetch the current nonce on every retry to avoid any risk of nonce reuse/conflicts
-	nonce, err := e.EthClient().PendingNonceAt(ctx, from)
-	if err != nil {
-		return nil, fmt.Errorf("could not fetch nonce - %w", err)
-	}
-
 	return &types.LegacyTx{
 		Nonce:    nonce,
 		GasPrice: retryPrice,
@@ -316,7 +314,7 @@ func (e *gethRPCClient) prepareLegacyTxToRetry(ctx context.Context, txData types
 
 // PrepareBlobTransactionToRetry takes a txData type and overrides the From, Gas and Gas Price field with current values
 // it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
-func (e *gethRPCClient) prepareBlobTxToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, retryNumber int) (types.TxData, error) {
+func (e *gethRPCClient) prepareBlobTxToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int) (types.TxData, error) {
 	unEstimatedTx := types.NewTx(txData)
 	to := unEstimatedTx.To()
 	value := unEstimatedTx.Value()
@@ -348,11 +346,6 @@ func (e *gethRPCClient) prepareBlobTxToRetry(ctx context.Context, txData types.T
 		return nil, fmt.Errorf("could not estimate gas - %w", err)
 	}
 
-	// we fetch the current nonce on every retry to avoid any risk of nonce reuse/conflicts
-	nonce, err := e.EthClient().PendingNonceAt(ctx, from)
-	if err != nil {
-		return nil, fmt.Errorf("could not fetch nonce - %w", err)
-	}
 
 	//TODO calculate base fee cap
 	blobBaseFee := big.NewInt(1)

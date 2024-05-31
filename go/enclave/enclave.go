@@ -572,7 +572,6 @@ func (e *enclaveImpl) CreateRollup(ctx context.Context, fromSeqNo uint64) (*comm
 		return nil, responses.ToInternalError(fmt.Errorf("requested GenerateRollup with the enclave stopping"))
 	}
 
-	// todo - remove once the db operations are more atomic
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 

@@ -24,6 +24,11 @@ type blockResolverInMem struct {
 	m          sync.RWMutex
 }
 
+func (n *blockResolverInMem) IsBlockCanonical(ctx context.Context, blockHash common.L1BlockHash) (bool, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (n *blockResolverInMem) FetchCanonicaBlockByHeight(_ context.Context, _ *big.Int) (*types.Block, error) {
 	panic("implement me")
 }

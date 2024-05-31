@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"database/sql"
 	"errors"
 	"fmt"
 	"math/big"
@@ -205,6 +206,11 @@ func (s *storageImpl) FetchCanonicalBatchesBetween(ctx context.Context, startSeq
 	return enclavedb.ReadCanonicalBatches(ctx, s.db.GetSQLDB(), startSeq, endSeq)
 }
 
+func (s *storageImpl) IsBatchCanonical(ctx context.Context, seq uint64) (bool, error) {
+	defer s.logDuration("IsBatchCanonical", measure.NewStopwatch())
+	return enclavedb.IsCanonicalBatchSeq(ctx, s.db.GetSQLDB(), seq)
+}
+
 func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Block, chainFork *common.ChainFork) error {
 	defer s.logDuration("StoreBlock", measure.NewStopwatch())
 	dbTx, err := s.db.NewDBTransaction(ctx)
@@ -213,13 +219,17 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Block, chainF
 	}
 	defer dbTx.Rollback()
 
-	if err := enclavedb.WriteBlock(ctx, dbTx, block.Header()); err != nil {
-		return fmt.Errorf("2. could not store block %s. Cause: %w", block.Hash(), err)
-	}
-
+	// only insert the block if it doesn't exist already
 	blockId, err := enclavedb.GetBlockId(ctx, dbTx, block.Hash())
-	if err != nil {
-		return fmt.Errorf("3. could not get block id - %w", err)
+	if errors.Is(err, sql.ErrNoRows) {
+		if err := enclavedb.WriteBlock(ctx, dbTx, block.Header()); err != nil {
+			return fmt.Errorf("2. could not store block %s. Cause: %w", block.Hash(), err)
+		}
+
+		blockId, err = enclavedb.GetBlockId(ctx, dbTx, block.Hash())
+		if err != nil {
+			return fmt.Errorf("3. could not get block id - %w", err)
+		}
 	}
 
 	// In case there were any batches inserted before this block was received
@@ -230,11 +240,22 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Block, chainF
 
 	if chainFork != nil && chainFork.IsFork() {
 		s.logger.Info(fmt.Sprintf("Update Fork. %s", chainFork))
-		err = enclavedb.UpdateCanonicalBlocks(ctx, dbTx, chainFork.CanonicalPath, chainFork.NonCanonicalPath, s.logger)
+		err := enclavedb.UpdateCanonicalValue(ctx, dbTx, false, chainFork.NonCanonicalPath, s.logger)
+		if err != nil {
+			return err
+		}
+		err = enclavedb.UpdateCanonicalValue(ctx, dbTx, true, chainFork.CanonicalPath, s.logger)
 		if err != nil {
 			return err
 		}
 	}
+
+	// double check that there is always a single canonical batch or block per layer
+	// only for debugging
+	//err = enclavedb.CheckCanonicalValidity(ctx, dbTx)
+	//if err != nil {
+	//	return err
+	//}
 
 	if err := dbTx.Commit(); err != nil {
 		return fmt.Errorf("4. could not store block %s. Cause: %w", block.Hash(), err)
@@ -250,6 +271,16 @@ func (s *storageImpl) FetchBlock(ctx context.Context, blockHash common.L1BlockHa
 	return common.GetCachedValue(ctx, s.blockCache, s.logger, blockHash, func(hash any) (*types.Block, error) {
 		return enclavedb.FetchBlock(ctx, s.db.GetSQLDB(), hash.(common.L1BlockHash))
 	})
+}
+
+func (s *storageImpl) IsBlockCanonical(ctx context.Context, blockHash common.L1BlockHash) (bool, error) {
+	defer s.logDuration("IsBlockCanonical", measure.NewStopwatch())
+	dbtx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer dbtx.Rollback()
+	return enclavedb.IsCanonicalBlock(ctx, dbtx, &blockHash)
 }
 
 func (s *storageImpl) FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Block, error) {
@@ -339,13 +370,13 @@ func (s *storageImpl) IsBlockAncestor(ctx context.Context, block *types.Block, m
 
 func (s *storageImpl) HealthCheck(ctx context.Context) (bool, error) {
 	defer s.logDuration("HealthCheck", measure.NewStopwatch())
-	headBatch, err := s.FetchHeadBatch(ctx)
+	seqNo, err := s.FetchCurrentSequencerNo(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	if headBatch == nil {
-		return false, fmt.Errorf("head batch is nil")
+	if seqNo == nil {
+		return false, fmt.Errorf("no batches are stored")
 	}
 
 	return true, nil
@@ -507,7 +538,7 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *core.Batch,
 	if err := enclavedb.WriteBatchExecution(ctx, dbTx, batch.SeqNo(), receipts); err != nil {
 		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
 	}
-
+	s.logger.Trace("store executed batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo(), "receipts", len(receipts))
 	if batch.Number().Uint64() > common.L2GenesisSeqNo {
 		stateDB, err := s.CreateStateDB(ctx, batch.Header.ParentHash)
 		if err != nil {

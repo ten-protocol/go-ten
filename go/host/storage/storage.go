@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -35,7 +36,10 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 	}
 
 	if err := hostdb.AddBatch(dbtx, s.db.GetSQLStatement(), batch); err != nil {
-		if err := dbtx.Rollback(); err != nil {
+		if err1 := dbtx.Rollback(); err1 != nil {
+			return err1
+		}
+		if errors.Is(err, errutil.ErrAlreadyExists) {
 			return err
 		}
 		return fmt.Errorf("could not add batch to host. Cause: %w", err)

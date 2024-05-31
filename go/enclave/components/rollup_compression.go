@@ -175,6 +175,7 @@ func (rc *RollupCompression) createRollupHeader(ctx context.Context, rollup *cor
 	}
 	reorgMap := make(map[uint64]bool)
 	for _, batch := range reorgedBatches {
+		rc.logger.Info("Reorg batch", log.BatchSeqNoKey, batch.SeqNo().Uint64())
 		reorgMap[batch.SeqNo().Uint64()] = true
 	}
 

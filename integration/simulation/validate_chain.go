@@ -778,12 +778,13 @@ func checkTotalTransactions(t *testing.T, client rpc.Client, nodeIdx int) {
 // Checks that we can retrieve the latest batches
 func checkForLatestBatches(t *testing.T, client rpc.Client, nodeIdx int) {
 	var latestBatches common.BatchListingResponseDeprecated
-	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(5)}
+	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(20)}
 	err := client.Call(&latestBatches, rpc.GetBatchListing, &pagination)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve latest batches. Cause: %s", nodeIdx, err)
 	}
-	if len(latestBatches.BatchesData) != 5 {
+	// the batch listing function returns the last received batches , but it might receive them in a random order
+	if len(latestBatches.BatchesData) < 5 {
 		t.Errorf("node %d: expected at least %d batches, but only received %d", nodeIdx, 5, len(latestBatches.BatchesData))
 	}
 }
