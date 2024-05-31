@@ -21,19 +21,19 @@ import { useBatchesService } from "@/src/services/useBatchesService";
 import TruncatedAddress from "../common/truncated-address";
 import { useContractsService } from "@/src/services/useContractsService";
 import { Skeleton } from "@/src/components/ui/skeleton";
-import { RecentBlocks } from "./recent-blocks";
-import { useBlocksService } from "@/src/services/useBlocksService";
 import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
 import { cn, formatNumber } from "@/src/lib/utils";
 import { Badge } from "../../ui/badge";
 import { BlocksIcon } from "lucide-react";
+import { useRollupsService } from "@/src/services/useRollupsService";
+import { RecentRollups } from "./recent-rollups";
 
 export default function Dashboard() {
   const { price, transactions, transactionCount } = useTransactionsService();
   const { contractCount } = useContractsService();
   const { batches, latestBatch } = useBatchesService();
-  const { blocks } = useBlocksService();
+  const { rollups } = useRollupsService();
 
   const DASHBOARD_DATA = [
     {
@@ -94,10 +94,10 @@ export default function Dashboard() {
 
   const RECENT_DATA = [
     {
-      title: "Recent Blocks",
-      data: blocks,
-      component: <RecentBlocks blocks={blocks} />,
-      goTo: "/blocks",
+      title: "Recent Rollups",
+      data: rollups,
+      component: <RecentRollups rollups={rollups} />,
+      goTo: "/rollups",
       className: "col-span-1 md:col-span-2 lg:col-span-3",
     },
     {

@@ -3,7 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
 import TruncatedAddress from "../common/truncated-address";
-import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
+import { formatTimeAgo } from "@/src/lib/utils";
 import Link from "next/link";
 import { EyeOpenIcon } from "@radix-ui/react-icons";
 import { Rollup } from "@/src/types/interfaces/RollupInterfaces";
@@ -76,7 +76,7 @@ export const columns: ColumnDef<Rollup>[] = [
   {
     accessorKey: "FirstSeq",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="First Sequencer" />
+      <DataTableColumnHeader column={column} title="First Batch Seq. No." />
     ),
     cell: ({ row }) => {
       return (
@@ -98,7 +98,7 @@ export const columns: ColumnDef<Rollup>[] = [
   {
     accessorKey: "LastSeq",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Last Sequencer" />
+      <DataTableColumnHeader column={column} title="Last Batch Seq. No." />
     ),
     cell: ({ row }) => {
       return (
