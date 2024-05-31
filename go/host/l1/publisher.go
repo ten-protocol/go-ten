@@ -393,7 +393,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 
 	// we keep trying to send the transaction with this nonce until it is included in a block
 	// note: this is only safe because of the sendingLock guaranteeing only one transaction in-flight at a time
-	nonce, err := p.ethClient.EthClient().PendingNonceAt(p.sendingContext, p.hostWallet.Address())
+	nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
 	if err != nil {
 		return fmt.Errorf("could not get nonce for L1 tx: %w", err)
 	}
