@@ -31,6 +31,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/ratelimiter"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
 
@@ -44,6 +45,7 @@ type Services struct {
 	stopControl  *stopcontrol.StopControl
 	version      string
 	Cache        cache.Cache
+	RateLimiter  *ratelimiter.RateLimiter
 	// the OG maintains a connection pool of rpc connections to underlying nodes
 	rpcHTTPConnPool *pool.ObjectPool
 	rpcWSConnPool   *pool.ObjectPool
@@ -92,6 +94,8 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 	cfg := pool.NewDefaultPoolConfig()
 	cfg.MaxTotal = 200 // todo - what is the right number
 
+	rateLimiter := ratelimiter.NewRateLimiter(uint32(config.RateLimitThreshold), uint32(config.RateLimitDecay))
+
 	services := Services{
 		HostAddrHTTP:    hostAddrHTTP,
 		HostAddrWS:      hostAddrWS,
@@ -101,6 +105,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		stopControl:     stopControl,
 		version:         version,
 		Cache:           newGatewayCache,
+		RateLimiter:     rateLimiter,
 		rpcHTTPConnPool: pool.NewObjectPool(context.Background(), factoryHTTP, cfg),
 		rpcWSConnPool:   pool.NewObjectPool(context.Background(), factoryWS, cfg),
 		Config:          config,

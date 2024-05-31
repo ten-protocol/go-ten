@@ -46,12 +46,13 @@ const (
 var rpcNotImplemented = fmt.Errorf("rpc endpoint not implemented")
 
 type ExecCfg struct {
-	account             *gethcommon.Address
-	computeFromCallback func(user *GWUser) *gethcommon.Address
-	tryAll              bool
-	tryUntilAuthorised  bool
-	adjustArgs          func(acct *GWAccount) []any
-	cacheCfg            *CacheCfg
+	account                 *gethcommon.Address
+	computeFromCallback     func(user *GWUser) *gethcommon.Address
+	tryAll                  bool
+	tryUntilAuthorised      bool
+	adjustArgs              func(acct *GWAccount) []any
+	cacheCfg                *CacheCfg
+	calculateRateLimitScore func() uint32
 }
 
 type CacheStrategy uint8
@@ -99,6 +100,12 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 	userID, err := extractUserID(ctx, w)
 	if err != nil {
 		return nil, err
+	}
+
+	if cfg.calculateRateLimitScore != nil {
+		if !w.RateLimiter.Allow(gethcommon.Address(userID), cfg.calculateRateLimitScore()) {
+			return nil, fmt.Errorf("rate limit exceeded")
+		}
 	}
 
 	user, err := getUser(userID, w)
