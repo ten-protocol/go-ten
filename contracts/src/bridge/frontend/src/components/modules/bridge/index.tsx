@@ -33,17 +33,15 @@ import { DrawerDialog } from "../common/drawer-dialog";
 import { L1TOKENS, L2TOKENS, PERCENTAGES } from "@/src/lib/constants";
 import { z } from "zod";
 import { useFormHook } from "@/src/hooks/useForm";
-import Web3Service from "@/src/services/web3service";
 import { useWalletStore } from "../../providers/wallet-provider";
 import { ToastType, Token } from "@/src/types";
 import { Alert, AlertDescription } from "../../ui/alert";
 import ConnectWalletButton from "../common/connect-wallet";
-import Copy from "../common/copy";
 import TruncatedAddress from "../common/truncated-address";
+import { useContract } from "@/src/hooks/useContract";
 
 export default function Dashboard() {
   const {
-    signer,
     provider,
     address,
     walletConnected,
@@ -51,9 +49,9 @@ export default function Dashboard() {
     isL1ToL2,
     fromChains,
     toChains,
-    connectWallet,
   } = useWalletStore();
-  const web3Service = new Web3Service(signer);
+  const { getNativeBalance, getTokenBalance, sendERC20, sendNative } =
+    useContract();
 
   const { form, FormSchema } = useFormHook();
   const [loading, setLoading] = React.useState(false);
@@ -69,19 +67,15 @@ export default function Dashboard() {
   const [open, setOpen] = React.useState(false);
   const watchTokenChange = form.watch("token");
   React.useEffect(() => {
-    const getTokenBalance = async (value: string, token: Token) => {
+    const tokenBalance = async (value: string, token: Token) => {
       setLoading(true);
       try {
         tokens.find((t) => t.value === value);
         let balance;
         if (token.isNative) {
-          balance = await web3Service.getNativeBalance(provider, address);
+          balance = await getNativeBalance(provider, address);
         } else {
-          balance = await web3Service.getTokenBalance(
-            token.address,
-            address,
-            provider
-          );
+          balance = await getTokenBalance(token.address, address, provider);
         }
         setFromTokenBalance(balance);
       } catch (error) {
@@ -94,13 +88,15 @@ export default function Dashboard() {
     if (watchTokenChange) {
       const token = tokens.find((t) => t.value === watchTokenChange);
       if (token) {
-        getTokenBalance(watchTokenChange, token);
+        tokenBalance(watchTokenChange, token);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchTokenChange, address, provider]);
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     try {
+      setLoading(true);
       const d = {
         ...data,
         receiver: receiver ? receiver : address,
@@ -116,10 +112,8 @@ export default function Dashboard() {
         throw new Error("Invalid token");
       }
 
-      const sendTransaction = t.isNative
-        ? web3Service.sendNative
-        : web3Service.sendERC20;
-      await sendTransaction(
+      const sendTransaction = t.isNative ? sendNative : sendERC20;
+      const res = await sendTransaction(
         d.receiver ? d.receiver : address,
         d.amount,
         t.address
@@ -131,6 +125,7 @@ export default function Dashboard() {
       });
       form.reset();
     } catch (error) {
+      setLoading(false);
       console.error(error);
       toast({
         title: "Bridge Transaction",
@@ -141,6 +136,8 @@ export default function Dashboard() {
         }`,
         variant: ToastType.DESTRUCTIVE,
       });
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -404,7 +401,11 @@ export default function Dashboard() {
                       size={"lg"}
                       disabled={!isL1ToL2}
                     >
-                      Initiate Bridge Transaction
+                      {loading ? (
+                        <Skeleton className="w-20" />
+                      ) : (
+                        "Initiate Bridge Transaction"
+                      )}
                     </Button>
                   ) : (
                     <ConnectWalletButton

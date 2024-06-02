@@ -9,8 +9,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/src/components/ui/tabs";
-import Web3Service from "@/src/services/web3service";
 import { useWalletStore } from "@/src/components/providers/wallet-provider";
+import { useContract } from "@/src/hooks/useContract";
 
 export const metadata: Metadata = {
   title: "Transactions",
@@ -18,7 +18,8 @@ export const metadata: Metadata = {
 };
 
 export default function Transactions() {
-  const { signer, provider, address } = useWalletStore();
+  const { provider, address } = useWalletStore();
+  const { getBridgeTransactions } = useContract();
   const { transactions, refetchTransactions } = {
     transactions: {
       result: {
@@ -34,16 +35,13 @@ export default function Transactions() {
   };
 
   const getTransactions = async () => {
-    const web3Service = new Web3Service(signer);
-    const transactions = await web3Service.getBridgeTransactions(
-      provider,
-      address
-    );
+    const transactions = await getBridgeTransactions(provider, address);
     console.log(transactions);
   };
 
   React.useEffect(() => {
     getTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

@@ -1,7 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { ethers } from "ethers";
 import detectEthereumProvider from "@metamask/detect-provider";
-import Web3Service from "@/src/services/web3service";
 import { toast } from "../ui/use-toast";
 import {
   ToastType,
@@ -147,7 +146,6 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
   useEffect(() => {
     if (provider) {
       const newSigner = new ethers.providers.Web3Provider(provider).getSigner();
-      new Web3Service(newSigner);
       setSigner(newSigner);
 
       const handleAccountsChange = (accounts: string[]) => {
