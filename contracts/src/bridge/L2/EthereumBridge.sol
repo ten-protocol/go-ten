@@ -58,7 +58,6 @@ contract EthereumBridge is
 
     function sendNative(address receiver) external payable {
         require(msg.value > 0, "Nothing sent.");
-        require(hasTokenMapping(address(0x0)), "No mapping for token.");
 
         bytes memory data = abi.encodeWithSelector(
             IBridge.receiveAssets.selector,
@@ -67,6 +66,7 @@ contract EthereumBridge is
             receiver
         );
         queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0);
+        _messageBus().sendValueToL2{value: msg.value}(receiver, msg.value);
     }
 
     function sendERC20(

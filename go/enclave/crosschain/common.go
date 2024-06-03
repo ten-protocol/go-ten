@@ -258,7 +258,7 @@ func (vt ValueTransfers) ForMerkleTree() [][]interface{} {
 	for idx := range vt {
 		hashedVal := vt.HashPacked(idx)
 		val := []interface{}{
-			"v",
+			"v", // [v, "0xblabla"]
 			hashedVal,
 		}
 		values = append(values, val)

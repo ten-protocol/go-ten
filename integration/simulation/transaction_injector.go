@@ -344,7 +344,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	xchainTree := make([][]interface{}, 0)
+	xchainTree := make([][]interface{}, 0) // ["v", "0xblablablabla"]
 	err = json.Unmarshal(header.CrossChainTree, &xchainTree)
 	if err != nil {
 		ti.logger.Error("Failed to unmarshal cross chain tree for withdrawal transaction", log.ErrKey, err)
