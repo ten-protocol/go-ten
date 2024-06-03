@@ -123,7 +123,7 @@ func (g *Guardian) Start() error {
 		// Note: after HA work this will need additional check that we are the **active** sequencer enclave
 		go g.periodicBatchProduction()
 		go g.periodicRollupProduction()
-		go g.periodicBundleSubmission()
+		//go g.periodicBundleSubmission()
 	}
 
 	// subscribe for L1 and P2P data
