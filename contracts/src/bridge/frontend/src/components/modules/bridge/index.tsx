@@ -8,7 +8,7 @@ import {
 } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
 import { Skeleton } from "@/src/components/ui/skeleton";
-import { ArrowDownUpIcon, PlusIcon, Terminal } from "lucide-react";
+import { ArrowDownUpIcon, Loader, PlusIcon, Terminal } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -120,7 +120,7 @@ export default function Dashboard() {
       );
       toast({
         title: "Bridge Transaction",
-        description: "Bridge transaction completed",
+        description: `Bridge transaction completed: ${res.transactionHash}`,
         variant: ToastType.SUCCESS,
       });
       form.reset();
@@ -399,13 +399,9 @@ export default function Dashboard() {
                       type="submit"
                       className="text-sm font-bold leading-none w-full"
                       size={"lg"}
-                      disabled={!isL1ToL2}
+                      disabled={!isL1ToL2 || loading || fromTokenBalance <= 0}
                     >
-                      {loading ? (
-                        <Skeleton className="w-20" />
-                      ) : (
-                        "Initiate Bridge Transaction"
-                      )}
+                      {loading ? <Loader /> : "Initiate Bridge Transaction"}
                     </Button>
                   ) : (
                     <ConnectWalletButton
