@@ -36,6 +36,8 @@ import (
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
+var ErrGasNotEnoughForL1 = errors.New("gas limit too low to pay for execution and l1 fees")
+
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
@@ -91,7 +93,12 @@ func ExecuteTransactions(
 		if err != nil {
 			tCountRollback++
 			result[t.Tx.Hash()] = err
-			logger.Info("Failed to execute tx:", log.TxKey, t.Tx.Hash(), log.CtrErrKey, err)
+			// only log tx execution errors if they are unexpected
+			logFailedTx := logger.Info
+			if errors.Is(err, gethcore.ErrNonceTooHigh) || errors.Is(err, gethcore.ErrNonceTooLow) || errors.Is(err, gethcore.ErrFeeCapTooLow) || errors.Is(err, ErrGasNotEnoughForL1) {
+				logFailedTx = logger.Debug
+			}
+			logFailedTx("Failed to execute tx:", log.TxKey, t.Tx.Hash(), log.CtrErrKey, err)
 			continue
 		}
 		result[t.Tx.Hash()] = r
@@ -160,8 +167,9 @@ func executeTransaction(
 
 			// The gas limit of the transaction (evm message) should always be higher than the gas overhead
 			// used to cover the l1 cost
+			// todo - this check has to be added to the mempool as well
 			if msg.GasLimit < l1Gas.Uint64() {
-				return nil, fmt.Errorf("gas limit set by user is too low to pay for execution and l1 fees. Want at least: %d have: %d", l1Gas, msg.GasLimit)
+				return nil, fmt.Errorf("%w. Want at least: %d have: %d", ErrGasNotEnoughForL1, l1Gas, msg.GasLimit)
 			}
 
 			// Remove the gas overhead for l1 publishing from the gas limit in order to define
