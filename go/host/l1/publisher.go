@@ -1,13 +1,10 @@
 package l1
 
 import (
-	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/holiman/uint256"
 	"math/big"
 	"sync"
 	"time"
@@ -419,39 +416,12 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		if err != nil {
 			return errors.Wrap(err, "could not sign L1 tx")
 		}
-		blobTx, ok := tx.(*types.BlobTx)
-
-		if ok {
-			println(blobTx)
-			println("ChainID:", signedTx.ChainId().String())
-			println("Nonce:", signedTx.Nonce())
-			println("GasTipCap:", signedTx.GasTipCap().String())
-			println("GasFeeCap:", signedTx.GasFeeCap().String())
-			println("Gas:", signedTx.Gas())
-			println("To:", signedTx.To().Hex())
-			println("Value:", signedTx.Value().String())
-			println("Data:", hex.EncodeToString(signedTx.Data()))
-			println("AccessList:", signedTx.AccessList())
-			println("BlobFeeCap:", signedTx.BlobGasFeeCap().String())
-			println("BlobHashes:", signedTx.BlobHashes())
-			if signedTx.BlobTxSidecar() != nil {
-				println("Sidecar contents:", signedTx.BlobTxSidecar())
-			}
-			data, _ := signedTx.MarshalBinary()
-
-			encodedData := hexutil.Encode(data)
-
-			var decodedTx types.Transaction
-			if errors.Is(err, decodedTx.DecodeRLP(rlp.NewStream(bytes.NewReader([]byte(encodedData)), 0))) {
-				println("ERROR DECODING RLP", err.Error())
-			}
-		}
 		p.logger.Info("Host issuing l1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
 
 		//FIXME here rlp: expected input string or byte for *uint256.Int, decoding into (types.BlobTx).ChainID
 		err = p.ethClient.SendTransaction(signedTx)
 		if err != nil {
-			println("COULD NOT SendTransaction", signedTx.ChainId().Uint64(), err.Error())
+			println("COULD NOT SendTransaction", uint256.MustFromBig(signedTx.ChainId()).Uint64(), err.Error())
 			return errors.Wrap(err, "could not broadcast L1 tx")
 		}
 		p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
