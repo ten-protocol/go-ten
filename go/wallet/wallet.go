@@ -68,7 +68,7 @@ func NewInMemoryWalletFromConfig(pkStr string, l1ChainID int64, logger gethlog.L
 
 // SignTransaction returns a signed transaction
 func (m *inMemoryWallet) SignTransaction(tx types.TxData) (*types.Transaction, error) {
-	return types.SignNewTx(m.prvKey, types.NewCancunSigner(m.chainID), tx)
+	return types.MustSignNewTx(m.prvKey, types.NewCancunSigner(m.chainID), tx), nil
 }
 
 // Address returns the current wallet address

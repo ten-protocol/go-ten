@@ -266,9 +266,9 @@ func (e *gethRPCClient) PrepareTransactionToSend(ctx context.Context, txData typ
 func (e *gethRPCClient) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int) (types.TxData, error) {
 	switch tx := txData.(type) {
 	case *types.LegacyTx:
-		return e.prepareLegacyTxToRetry(ctx, tx, from, nonce, 0)
+		return e.prepareLegacyTxToRetry(ctx, tx, from, nonce, retryNumber)
 	case *types.BlobTx:
-		return e.prepareBlobTxToRetry(ctx, tx, from, nonce, 0)
+		return e.prepareBlobTxToRetry(ctx, tx, from, nonce, retryNumber)
 	default:
 		return nil, fmt.Errorf("unsupported transaction type: %T", tx)
 	}
@@ -346,13 +346,12 @@ func (e *gethRPCClient) prepareBlobTxToRetry(ctx context.Context, txData types.T
 		return nil, fmt.Errorf("could not estimate gas - %w", err)
 	}
 
-
 	//TODO calculate base fee cap
 	blobBaseFee := big.NewInt(1)
 	blobFeeCap := calcBlobFeeCap(blobBaseFee)
 
 	//FIXME from config
-	chainId, _ := uint256.FromBig(unEstimatedTx.ChainId())
+	chainId, _ := uint256.FromBig(big.NewInt(1337))
 
 	return &types.BlobTx{
 		ChainID:    chainId,

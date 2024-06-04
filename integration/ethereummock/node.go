@@ -88,10 +88,6 @@ type Node struct {
 	logger gethlog.Logger
 }
 
-func (m *Node) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, _ int) (types.TxData, error) {
-	return m.PrepareTransactionToSend(ctx, txData, from)
-}
-
 func (m *Node) PrepareTransactionToSend(_ context.Context, txData types.TxData, _ gethcommon.Address) (types.TxData, error) {
 	switch tx := txData.(type) {
 	case *types.LegacyTx:
@@ -101,6 +97,10 @@ func (m *Node) PrepareTransactionToSend(_ context.Context, txData types.TxData, 
 	default:
 		return nil, fmt.Errorf("unsupported transaction type: %T", tx)
 	}
+}
+
+func (m *Node) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, _ uint64, _ int) (types.TxData, error) {
+	return m.PrepareTransactionToSend(ctx, txData, from)
 }
 
 func createLegacyTx(txData types.TxData) (types.TxData, error) {

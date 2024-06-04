@@ -91,22 +91,37 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	contractCallData := map[string]interface{}{}
 	switch method.Name {
 	case AddRollupMethod:
-		sidecar := tx.BlobTxSidecar()
-		blobs := sidecar.Blobs
-		var rollupData []byte
+		//TODO clean this up
+		if tx.Type() == types.BlobTxType {
+			sidecar := tx.BlobTxSidecar()
+			blobs := sidecar.Blobs
+			var rollupData []byte
 
-		for _, blob := range blobs {
-			rollupData = append(rollupData, blob[:]...)
+			for _, blob := range blobs {
+				rollupData = append(rollupData, blob[:]...)
+			}
+
+			// TODO handle metadata
+			var encodedRollup common.EncodedRollup
+			if err := rlp.DecodeBytes(rollupData, &encodedRollup); err != nil {
+				panic(err)
+			}
+
+			return &ethadapter.L1RollupTx{
+				Rollup: encodedRollup,
+			}
 		}
-
-		// TODO handle metadata
-		var encodedRollup common.EncodedRollup
-		if err := rlp.DecodeBytes(rollupData, &encodedRollup); err != nil {
+		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
 			panic(err)
 		}
+		callData, found := contractCallData["_rollupData"]
+		if !found {
+			panic("call data not found for rollupData")
+		}
+		rollup := Base64DecodeFromString(callData.(string))
 
 		return &ethadapter.L1RollupTx{
-			Rollup: encodedRollup,
+			Rollup: rollup,
 		}
 
 	case RespondSecretMethod:
