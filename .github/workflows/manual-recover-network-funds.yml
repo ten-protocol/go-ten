@@ -1,4 +1,6 @@
-# Run script to retrieve funds from an existing testnet deployment
+# Run script to retrieve funds from an existing testnet deployment. The funds will be sent to the
+# deployer account of the management contract, the PK being available in 1Password as ACCOUNT_PK_WORKER.
+# Once this is run, funds can be transferred out of the deployer account to the gnosis wallet using other scripts.
 
 name: '[M] Recover Testnet Funds'
 run-name: '[M] Recover Testnet Funds ( ${{ github.event.inputs.testnet_type }} )'
@@ -17,10 +19,6 @@ on:
       mgmt_contract_addr:
         description: 'Deployed management contract which will be used to request the funds'
         required: true
-        type: string
-      acc_to_pay:
-        description: '(Ignored) Address which will receive the funds'
-        required: false
         type: string
 
 jobs:
@@ -48,16 +46,14 @@ jobs:
           DOCKER_BUILDKIT=1 docker build -t ${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} -f tools/hardhatdeployer/Dockerfile .
           docker push ${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }}
 
-      - name: 'Deploy L2 contracts'
-        id: deployL2Contracts
+      - name: 'Run the funds recovery'
         shell: bash
         run: |
           go run ./testnet/launcher/fundsrecovery/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -mgmt_contract_addr=${{ github.event.inputs.mgmt_contract_addr }} \
-          -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
-          -acc_to_pay=${{ github.event.inputs.acc_to_pay }}
+          -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} 
 
       - name: 'Save container logs on failure'
         if: failure()
