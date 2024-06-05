@@ -1,8 +1,0 @@
-=============== Jun 5, 2024 (BST) ===============
-13:40:56.758291 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
-13:40:56.772707 db@open opening
-13:40:56.773289 version@stat F·[] S·0B[] Sc·[]
-13:40:56.782851 db@janitor F·2 G·0
-13:40:56.782881 db@open done T·10.143333ms
-13:40:58.794015 db@close closing
-13:40:58.794234 db@close done T·221.375µs

@@ -11,7 +11,7 @@ import (
 // Any change to these configurations should be done using a pattern similar to the generateGenesis method.
 //
 
-const gethStartupScriptJS = `
+const importAndUnlockScript = `
 key = "%s";
 pwd = "password";
 

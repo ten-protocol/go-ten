@@ -247,7 +247,8 @@ func (n *Impl) Start() error {
 				n.gethNetworkPorts[nodeID],
 				n.gethHTTPPorts[nodeID],
 				n.gethWSPorts[nodeID],
-				dataDir)
+				dataDir,
+				n.preFundedMinerPKs[nodeID])
 			if err != nil {
 				panic(err)
 			}
@@ -373,43 +374,56 @@ func (n *Impl) gethInitGenesisData(dataDirPath string) error {
 }
 
 func (n *Impl) gethImportMinerAccount(nodeID int) error {
+	//args := []string{
+	//	"--datadir", n.preFundedMinerPKs[nodeID],
+	//	"--mine",
+	//	"--miner.etherbase", n.preFundedMinerPKs[nodeID],
+	//	"--http",
+	//	"--http.addr", "127.0.0.1",
+	//	"--http.port", fmt.Sprintf("%d", n.gethHTTPPorts[nodeID]),
+	//	"--http.api", "personal,eth,net,web3,miner",
+	//}
+	//
+	//cmd := exec.Command(n.gethBinaryPath, args...) //nolint
+	//cmd.Stdout = n.gethLogFile
+	//cmd.Stderr = n.gethLogFile
+	//
+	//if err := cmd.Start(); err != nil {
+	//	return err
+	//}
+	//
+	//// Allow some time for Geth to start
+	//time.Sleep(5 * time.Second)
+	//
+	//// Attach and run the JavaScript script to import and unlock the account
+	//script := fmt.Sprintf(importAndUnlockScript, n.preFundedMinerPKs[nodeID])
+	//
+	//args = []string{
+	//	"attach", fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[nodeID]),
+	//	"--exec", startScript,
+	//}
+	//
+	//cmd = exec.Command(n.gethBinaryPath, args...) //nolint
+	//cmd.Stdout = n.gethLogFile
+	//cmd.Stderr = n.gethLogFile
+	//
+	//return cmd.Run()
+	script := fmt.Sprintf(importAndUnlockScript, n.preFundedMinerPKs[nodeID])
+
+	// full command list at https://geth.ethereum.org/docs/fundamentals/command-line-options
 	args := []string{
-		"--datadir", n.preFundedMinerPKs[nodeID],
-		"--mine",
-		"--http",
-		"--http.addr", "127.0.0.1",
-		"--http.port", fmt.Sprintf("%d", n.gethHTTPPorts[nodeID]),
-		"--http.api", "personal,eth,net,web3,miner",
-		"--miner.etherbase", n.preFundedMinerPKs[nodeID],
+		"--exec", script,
+		"attach", fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[nodeID]),
 	}
 
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
 	cmd.Stdout = n.gethLogFile
 	cmd.Stderr = n.gethLogFile
 
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	// Allow some time for Geth to start
-	time.Sleep(5 * time.Second)
-
-	// Attach and run the JavaScript script to import and unlock the account
-	startScript := fmt.Sprintf(gethStartupScriptJS, n.preFundedMinerPKs[nodeID])
-
-	args = []string{
-		"attach", fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[nodeID]),
-		"--exec", startScript,
-	}
-
-	cmd = exec.Command(n.gethBinaryPath, args...) //nolint
-	cmd.Stdout = n.gethLogFile
-	cmd.Stderr = n.gethLogFile
-
 	return cmd.Run()
 }
 
-func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, dataDirPath string) (*exec.Cmd, error) {
+func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, dataDirPath string, minerAddress string) (*exec.Cmd, error) {
 	// full command list at https://geth.ethereum.org/docs/fundamentals/command-line-options
 	args := []string{
 		_dataDirFlag, dataDirPath,
@@ -419,6 +433,8 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 		"--http.port", fmt.Sprintf("%d", httpPort),
 		"--http.corsdomain", "*",
 		"--http.api", "admin,miner,engine,personal,eth,net,web3,debug",
+		"--mine",
+		"--miner.etherbase", minerAddress,
 		"--ws",
 		"--ws.addr", "0.0.0.0",
 		"--ws.origins", "*",
@@ -532,6 +548,7 @@ func (n *Impl) waitForMergeEvent(startTime time.Time) error {
 
 	// wait for the merge block
 	err = retry.Do(
+		// FIXME something in here not happy
 		func() error {
 			number, err = dial.BlockNumber(ctx)
 			if err != nil {
