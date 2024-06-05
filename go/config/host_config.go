@@ -278,7 +278,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		RollupInterval:       5 * time.Second,
 		L1BlockTime:          15 * time.Second,
 		IsInboundP2PDisabled: false,
-		MaxRollupSize:        1024 * 64,
+		MaxRollupSize:        1024 * 128,
 		CrossChainInterval:   6 * time.Second,
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/holiman/uint256"
 	"math/big"
 	"sync"
 	"time"
@@ -271,9 +272,12 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
 	}
 
-	rollupTx := p.mgmtContractLib.CreateRollup(tx)
+	rollupBlobTx, err := p.mgmtContractLib.CreateBlobRollup(tx)
+	if err != nil {
+		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
+	}
 
-	err = p.publishTransaction(rollupTx)
+	err = p.publishTransaction(rollupBlobTx)
 	if err != nil {
 		p.logger.Error("Could not issue rollup tx", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	} else {
@@ -412,10 +416,12 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		if err != nil {
 			return errors.Wrap(err, "could not sign L1 tx")
 		}
-
 		p.logger.Info("Host issuing l1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
+
+		//FIXME here rlp: expected input string or byte for *uint256.Int, decoding into (types.BlobTx).ChainID
 		err = p.ethClient.SendTransaction(signedTx)
 		if err != nil {
+			println("COULD NOT SendTransaction", uint256.MustFromBig(signedTx.ChainId()).Uint64(), err.Error())
 			return errors.Wrap(err, "could not broadcast L1 tx")
 		}
 		p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
