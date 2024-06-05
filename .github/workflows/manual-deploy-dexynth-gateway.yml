@@ -18,7 +18,7 @@ jobs:
   build-and-deploy-dexynth:
     runs-on: ubuntu-latest
     environment:
-      name: {{ github.event.inputs.testnet_type }}
+      name: ${{ github.event.inputs.testnet_type }}
     steps:
       - name: 'Print GitHub variables'
         # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
