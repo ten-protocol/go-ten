@@ -20,10 +20,6 @@ accts = personal.listAccounts;
 
 personal.unlockAccount(accts[0], pwd, 0);
 console.log("Unlocked account");
-miner.setEtherbase(accts[0]);
-
-miner.start();
-console.log("Miner Started");
 `
 
 const _beaconConfig = `
@@ -114,6 +110,9 @@ func generateGenesis(blockTimeSecs int, chainID int, signerAddrs, prefundedAddrs
 
 	// set the network id
 	genesisJSON["config"].(map[string]interface{})["chainId"] = chainID
+
+	// set the terminal total difficulty passed for PoS transition
+	genesisJSON["config"].(map[string]interface{})["terminalTotalDifficultyPassed"] = true
 
 	// set the signers addrs + remove the 0x
 	for i := range signerAddrs {
