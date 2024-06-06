@@ -144,7 +144,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         isWithdrawalSpent[keccak256(abi.encode(_msg))] = true;
         
         messageBus.receiveValueFromL2(_msg.receiver, _msg.amount);
-        //todo track state
     }
 
     // An attested enclave will pickup the Network Secret Request
