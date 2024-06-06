@@ -516,7 +516,7 @@ func (c *Client) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func())
 	batchChan := make(chan common.StreamL2UpdatesResponse, 10)
 	cancelCtx, cancel := context.WithCancel(context.Background())
 
-	stream, err := c.protoClient.StreamL2Updates(cancelCtx, &generated.StreamL2UpdatesRequest{})
+	stream, err := c.protoClient.StreamL2Updates(cancelCtx, &generated.StreamL2UpdatesRequest{}, grpc.MaxCallRecvMsgSize(1024*1024*50))
 	if err != nil {
 		c.logger.Error("Error opening batch stream.", log.ErrKey, err)
 		cancel()
