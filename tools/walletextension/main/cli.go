@@ -61,12 +61,12 @@ const (
 	storeIncomingTxsUsage   = "Flag to enable storing incoming transactions in the database for debugging purposes. Default: true"
 
 	rateLimitThresholdName    = "rateLimitThreshold"
-	rateLimitThresholdDefault = 1000000
+	rateLimitThresholdDefault = 1000
 	rateLimitThresholdUsage   = "Rate limit threshold per user. Default: 1000000."
 
 	rateLimitDecayName    = "rateLimitDecay"
-	rateLimitDecayDefault = 100
-	rateLimitDecayUsage   = "Rate limit decay per user. Default: 100."
+	rateLimitDecayDefault = 10
+	rateLimitDecayUsage   = "Rate limit decay per user. Default: 10."
 )
 
 func parseCLIArgs() wecommon.Config {

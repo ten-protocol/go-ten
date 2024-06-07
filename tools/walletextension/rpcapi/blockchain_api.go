@@ -46,9 +46,6 @@ func (api *BlockChainAPI) GetBalance(ctx context.Context, address common.Address
 			},
 			account:            &address,
 			tryUntilAuthorised: true, // the user can request the balance of a contract account
-			calculateRateLimitScore: func() uint32 {
-				return 100
-			},
 		},
 		"eth_getBalance",
 		address,

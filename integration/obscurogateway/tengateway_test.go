@@ -74,7 +74,7 @@ func TestTenGateway(t *testing.T) {
 		DBType:                  "sqlite",
 		TenChainID:              443,
 		StoreIncomingTxs:        true,
-		RateLimitThreshold:      100,
+		RateLimitThreshold:      800,
 		RateLimitDecay:          100,
 	}
 
@@ -103,17 +103,17 @@ func TestTenGateway(t *testing.T) {
 	// run the tests against the exis
 	for name, test := range map[string]func(*testing.T, string, string, wallet.Wallet){
 		//"testAreTxsMinted":            testAreTxsMinted, this breaks the other tests bc, enable once concurrency issues are fixed
-		//"testErrorHandling":                    testErrorHandling,
-		//"testMultipleAccountsSubscription":     testMultipleAccountsSubscription,
-		//"testNewHeadsSubscription":             testNewHeadsSubscription,
-		//"testErrorsRevertedArePassed":          testErrorsRevertedArePassed,
-		//"testUnsubscribe":                      testUnsubscribe,
-		//"testClosingConnectionWhileSubscribed": testClosingConnectionWhileSubscribed,
-		//"testSubscriptionTopics":               testSubscriptionTopics,
-		//"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
-		//"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
-		//"testGetStorageAtForReturningUserID":   testGetStorageAtForReturningUserID,
-		"testRateLimiter": testRateLimiter,
+		"testErrorHandling":                    testErrorHandling,
+		"testMultipleAccountsSubscription":     testMultipleAccountsSubscription,
+		"testNewHeadsSubscription":             testNewHeadsSubscription,
+		"testErrorsRevertedArePassed":          testErrorsRevertedArePassed,
+		"testUnsubscribe":                      testUnsubscribe,
+		"testClosingConnectionWhileSubscribed": testClosingConnectionWhileSubscribed,
+		"testSubscriptionTopics":               testSubscriptionTopics,
+		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
+		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
+		"testGetStorageAtForReturningUserID":   testGetStorageAtForReturningUserID,
+		"testRateLimiter":                      testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, httpURL, wsURL, w)
@@ -141,9 +141,27 @@ func testRateLimiter(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 
 	// sleep for a period of time to allow the rate limiter to reset
 	time.Sleep(1 * time.Second)
+
 	// first call after the rate limiter reset should be successful
 	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
 	require.NoError(t, err)
+
+	address := user0.Wallets[0].Address()
+
+	// make 100 request with the same user to "spam" the gateway
+	for i := 0; i < 1000; i++ {
+		_, _ = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+		msg := ethereum.CallMsg{
+			From: address,
+			To:   &address, // Example: self-call to the user's address
+			Gas:  uint64(i),
+			Data: nil,
+		}
+
+		gasLimit, err := user0.HTTPClient.EstimateGas(context.Background(), msg)
+		fmt.Println(gasLimit, err)
+	}
+
 	// second call should fail - rate limit exceeded
 	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
 	require.Error(t, err)
