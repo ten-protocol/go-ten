@@ -120,7 +120,10 @@ func (s *StateTracker) OnEnclaveStatus(es common.Status) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.enclaveStatusCode = es.StatusCode
-	s.enclaveL1Head = es.L1Head
+	// only update L1 head if non-empty head reported
+	if es.L1Head != gethutil.EmptyHash {
+		s.enclaveL1Head = es.L1Head
+	}
 	s.enclaveL2Head = es.L2Head
 
 	s.setStatus(s.calculateStatus())
