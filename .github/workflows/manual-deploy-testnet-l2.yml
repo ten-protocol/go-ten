@@ -224,6 +224,9 @@ jobs:
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
+            && cp /home/obscuro/go-obscuro/tools/edbconnect/edb-connect.sh /home/obscurouser/edb-connect.sh \
+            && chown obscurouser:obscurouser /home/obscurouser/edb-connect.sh \
+            && chmod u+x /home/obscurouser/edb-connect.sh' \
             && docker network create --driver bridge node_network || true \
             && docker run -d --name datadog-agent \
                --network node_network \
