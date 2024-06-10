@@ -148,9 +148,8 @@ func testRateLimiter(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 
 	address := user0.Wallets[0].Address()
 
-	// make 100 request with the same user to "spam" the gateway
+	// make 1000 requests with the same user to "spam" the gateway
 	for i := 0; i < 1000; i++ {
-		_, _ = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
 		msg := ethereum.CallMsg{
 			From: address,
 			To:   &address, // Example: self-call to the user's address
