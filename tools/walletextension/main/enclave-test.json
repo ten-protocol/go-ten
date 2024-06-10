@@ -1,0 +1,15 @@
+{
+  "exe": "main",
+  "key": "testnet.pem",
+  "debug": true,
+  "heapSize": 4096,
+  "executableHeap": true,
+  "productID": 1,
+  "securityVersion": 1,
+  "env": [
+    {
+      "name": "EDG_TESTMODE",
+      "value": "true"
+    }
+  ]
+}

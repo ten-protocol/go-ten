@@ -32,6 +32,10 @@ jobs:
           - testnet_type: 'sepolia-testnet'
             GATEWAY_API_URL: 'https://testnet.ten.xyz'
     steps:
+      - name: 'Check if selected testnet matches matrix testnet'
+        if: matrix.testnet_type != github.event.inputs.testnet_type
+        run: exit 0
+
       - name: 'Print GitHub variables'
         run: |
           echo "Selected Testnet Type: ${{ matrix.testnet_type }}"
