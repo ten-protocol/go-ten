@@ -46,13 +46,12 @@ const (
 var rpcNotImplemented = fmt.Errorf("rpc endpoint not implemented")
 
 type ExecCfg struct {
-	account                 *gethcommon.Address
-	computeFromCallback     func(user *GWUser) *gethcommon.Address
-	tryAll                  bool
-	tryUntilAuthorised      bool
-	adjustArgs              func(acct *GWAccount) []any
-	cacheCfg                *CacheCfg
-	calculateRateLimitScore func() uint32
+	account             *gethcommon.Address
+	computeFromCallback func(user *GWUser) *gethcommon.Address
+	tryAll              bool
+	tryUntilAuthorised  bool
+	adjustArgs          func(acct *GWAccount) []any
+	cacheCfg            *CacheCfg
 }
 
 type CacheStrategy uint8

@@ -1,9 +1,10 @@
 package ratelimiter
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type Score struct {

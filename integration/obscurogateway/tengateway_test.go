@@ -74,7 +74,7 @@ func TestTenGateway(t *testing.T) {
 		DBType:                  "sqlite",
 		TenChainID:              443,
 		StoreIncomingTxs:        true,
-		RateLimitThreshold:      800,
+		RateLimitThreshold:      1000,
 		RateLimitDecay:          100,
 	}
 
@@ -158,11 +158,10 @@ func testRateLimiter(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 			Data: nil,
 		}
 
-		gasLimit, err := user0.HTTPClient.EstimateGas(context.Background(), msg)
-		fmt.Println(gasLimit, err)
+		user0.HTTPClient.EstimateGas(context.Background(), msg)
 	}
 
-	// second call should fail - rate limit exceeded
+	// after 1000 requests, the rate limiter should block the user
 	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
 	require.Error(t, err)
 	require.Equal(t, "rate limit exceeded", err.Error())
