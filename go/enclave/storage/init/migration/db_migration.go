@@ -20,6 +20,13 @@ import (
 const currentMigrationVersionKey = "CURRENT_MIGRATION_VERSION"
 
 func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
+
+	// this is a temporary performance fix
+	_, err := db.Exec("truncate table events")
+	if err != nil {
+		return fmt.Errorf("failed to trunctate events. Cause: %w", err)
+	}
+
 	migrationFiles, err := readMigrationFiles(sqlFiles)
 	if err != nil {
 		return err
