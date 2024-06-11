@@ -14,14 +14,14 @@ export default function Header() {
       <div className="flex h-16 justify-between items-center px-4">
         <Link href="/">
           <Image
-            src="/assets/images/black_logotype.png"
+            src="/static/assets/images/black_logotype.png"
             alt="Logo"
             width={150}
             height={40}
             className="cursor-pointer dark:hidden"
           />
           <Image
-            src="/assets/images/white_logotype.png"
+            src="/static/assets/images/white_logotype.png"
             alt="Logo"
             width={150}
             height={40}
