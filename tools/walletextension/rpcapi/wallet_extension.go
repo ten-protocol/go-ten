@@ -94,7 +94,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 	cfg := pool.NewDefaultPoolConfig()
 	cfg.MaxTotal = 200 // todo - what is the right number
 
-	rateLimiter := ratelimiter.NewRateLimiter(uint32(config.RateLimitThreshold), uint32(config.RateLimitDecay))
+	rateLimiter := ratelimiter.NewRateLimiter(uint32(config.RateLimitThreshold), config.RateLimitDecay, uint32(config.RateLimitMaxScore))
 
 	services := Services{
 		HostAddrHTTP:    hostAddrHTTP,

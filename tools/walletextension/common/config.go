@@ -15,5 +15,6 @@ type Config struct {
 	TenChainID              int
 	StoreIncomingTxs        bool
 	RateLimitThreshold      int
-	RateLimitDecay          int
+	RateLimitDecay          float64
+	RateLimitMaxScore       int
 }

@@ -7,6 +7,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// Package ratelimiter implements a simple rate limiting mechanism
+// using a score-based approach. Each user has a score that decays
+// over time. Requests are allowed if the user's score is below a
+// specified threshold. The score increases with each request and
+// decays based on the time since the last request.
+
 type Score struct {
 	lastRequest time.Time
 	score       uint32
@@ -16,14 +22,24 @@ type RateLimiter struct {
 	mu        sync.Mutex
 	users     map[common.Address]Score
 	threshold uint32
-	decay     uint32
+	decay     float64
+	maxScore  uint32
 }
 
-func NewRateLimiter(threshold uint32, decay uint32) *RateLimiter {
+// NewRateLimiter creates a new RateLimiter with the specified threshold, decay rate, and maximum score.
+// Parameters:
+//   - threshold: The maximum score a user can have to be allowed to make a request. If a user's score
+//     exceeds this threshold, their request will be denied. Setting the threshold to 0 disables rate limiting.
+//   - Decay: The rate at which a user's score decays over time. It represents the amount by which the score
+//     decreases per millisecond since the last request. This helps in gradually lowering the score over time.
+//   - maxScore: The maximum score a user can accumulate. This prevents the score from growing indefinitely
+//     and allows for controlling the upper limit of a user's score.
+func NewRateLimiter(threshold uint32, decay float64, maxScore uint32) *RateLimiter {
 	return &RateLimiter{
 		users:     make(map[common.Address]Score),
 		threshold: threshold,
 		decay:     decay,
+		maxScore:  maxScore,
 	}
 }
 
@@ -46,18 +62,22 @@ func (rl *RateLimiter) Allow(userID common.Address) bool {
 		rl.users[userID] = Score{lastRequest: now, score: 0}
 	} else {
 		// Decay the score based on the time since the last request
-		timeSinceLastRequest := uint32(now.Sub(userScore.lastRequest).Milliseconds())
+		timeSinceLastRequest := float64(now.Sub(userScore.lastRequest).Milliseconds())
 
 		// calculate the new score by subtracting the decay from the user's score
-		newScore := int64(userScore.score) - int64(timeSinceLastRequest)*int64(rl.decay)
+		newScore := int64(userScore.score) - int64(timeSinceLastRequest*rl.decay)
 
 		// Ensure score does not become negative
 		if newScore < 0 {
 			newScore = 0
 		}
 
-		// Update user's score and last request time
-		rl.users[userID] = Score{lastRequest: now, score: uint32(newScore)}
+		// Update user's score and last request time if new score is less than the current score
+		// use min value of new score and max score to ensure the score does not exceed the max score
+		// we check if the score changes before updating to avoid updating time and keeping the score same
+		if uint32(newScore) < userScore.score {
+			rl.users[userID] = Score{lastRequest: now, score: min(uint32(newScore), rl.maxScore)}
+		}
 	}
 
 	// Check if the user's score is below the threshold
