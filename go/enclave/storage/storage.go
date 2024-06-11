@@ -662,15 +662,15 @@ func (s *storageImpl) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTxId 
 	for i := 1; i < len(l.Topics); i++ {
 		topic := l.Topics[i]
 		// first check if there is an entry already
-		eventTopicId, relAddress, err := s.findEventTopic(ctx, dbTX, topic.Bytes())
+		eventTopicId, relAddressId, err := s.findEventTopic(ctx, dbTX, topic.Bytes())
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
 				// check whether the topic is an EOA
-				relAddress, err = s.findRelevantAddress(ctx, dbTX, topic)
-				if err != nil {
+				relAddressId, err = s.findRelevantAddress(ctx, dbTX, topic)
+				if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 					return fmt.Errorf("could not find relevant address. Cause %w", err)
 				}
-				eventTopicId, err = enclavedb.WriteEventTopic(ctx, dbTX, &topic, relAddress)
+				eventTopicId, err = enclavedb.WriteEventTopic(ctx, dbTX, &topic, relAddressId)
 				if err != nil {
 					return fmt.Errorf("could not write event topic. Cause: %w", err)
 				}
@@ -678,7 +678,7 @@ func (s *storageImpl) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTxId 
 				return fmt.Errorf("could not find event topic. Cause: %w", err)
 			}
 		}
-		if relAddress != nil {
+		if relAddressId != nil {
 			isLifecycle = false
 		}
 		topicIds[i-1] = &eventTopicId
