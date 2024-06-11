@@ -430,7 +430,7 @@ func ReadContractCreationCount(ctx context.Context, db *sql.DB) (*big.Int, error
 		return nil, err
 	}
 
-	return big.NewInt(count), nil
+	return big.NewInt(count + 1), nil
 }
 
 func ReadUnexecutedBatches(ctx context.Context, db *sql.DB, from *big.Int) ([]*core.Batch, error) {
