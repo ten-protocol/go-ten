@@ -634,7 +634,11 @@ func (g *Guardian) periodicBundleSubmission() {
 
 	bundleSubmissionTicker := time.NewTicker(interval)
 
-	fromSequenceNumber := uint64(0)
+	fromSequenceNumber, _, err := g.sl.L1Publisher().GetBundleRangeFromManagementContract()
+	if err != nil {
+		g.logger.Error(`Unable to get bundle range from management contract and initialize cross chain publishing`, log.ErrKey, err)
+		return
+	}
 
 	for {
 		select {
@@ -645,21 +649,25 @@ func (g *Guardian) periodicBundleSubmission() {
 				continue
 			}
 
-			if from.Uint64() > fromSequenceNumber {
-				fromSequenceNumber = from.Uint64()
+			if from.Uint64() > fromSequenceNumber.Uint64() {
+				fromSequenceNumber.Set(from)
 			}
 
-			bundle, err := g.enclaveClient.ExportCrossChainData(context.Background(), fromSequenceNumber, to.Uint64())
+			bundle, err := g.enclaveClient.ExportCrossChainData(context.Background(), fromSequenceNumber.Uint64(), to.Uint64())
 			if err != nil {
 				if !errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
 					g.logger.Error("Unable to export cross chain bundle from enclave", log.ErrKey, err)
+				}
+				if errors.Is(err, context.DeadlineExceeded) {
+					g.logger.Error(`Cross chain bundle export timed out.`, log.ErrKey, err)
+					return // stop the process - if we are timing out we are not going to catch up
 				}
 				continue
 			}
 
 			if len(bundle.CrossChainRootHashes) == 0 {
 				g.logger.Debug("No cross chain data to submit")
-				fromSequenceNumber = to.Uint64() + 1
+				fromSequenceNumber.SetUint64(to.Uint64() + 1)
 				continue
 			}
 

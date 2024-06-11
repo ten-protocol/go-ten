@@ -35,7 +35,7 @@ type EthClient interface {
 
 	// PrepareTransactionToSend updates the tx with from address, current nonce and current estimates for the gas and the gas price
 	PrepareTransactionToSend(ctx context.Context, txData types.TxData, from gethcommon.Address) (types.TxData, error)
-	PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, retries int) (types.TxData, error)
+	PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, nonce uint64, retries int) (types.TxData, error)
 
 	FetchLastBatchSeqNo(address gethcommon.Address) (*big.Int, error)
 
