@@ -48,7 +48,8 @@ func UpdateCanonicalValue(ctx context.Context, dbtx *sql.Tx, isCanonical bool, b
 		return err
 	}
 
-	updateBatches := "update batch set is_canonical=? where l1_proof in (select id from block where " + currentBlocks + ")"
+	updateBatches := "update batch set is_canonical=? where " + repeat(" l1_proof_hash=? ", "OR", len(blocks))
+	// updateBatches := "update batch set is_canonical=? where l1_proof in (select id from block where " + currentBlocks + ")"
 	_, err = dbtx.ExecContext(ctx, updateBatches, args...)
 	if err != nil {
 		return err

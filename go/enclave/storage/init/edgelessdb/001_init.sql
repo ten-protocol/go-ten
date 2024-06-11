@@ -116,45 +116,67 @@ GRANT ALL ON obsdb.tx TO obscuro;
 create table if not exists obsdb.exec_tx
 (
     id                       INTEGER AUTO_INCREMENT,
-    created_contract_address binary(20),
+    created_contract_address int,
     receipt                  mediumblob,
     tx                       int,
     batch                    int NOT NULL,
     INDEX (batch),
-    INDEX (tx, created_contract_address(4)),
+    INDEX (created_contract_address, tx),
     primary key (id)
 );
 GRANT ALL ON obsdb.exec_tx TO obscuro;
 
-create table if not exists obsdb.events
+create table if not exists obsdb.contract
+(
+    id      INTEGER AUTO_INCREMENT,
+    address binary(20) NOT NULL,
+    primary key (id),
+    INDEX USING HASH (address(8))
+);
+GRANT ALL ON obsdb.contract TO obscuro;
+
+create table if not exists obsdb.externally_owned_account
+(
+    id      INTEGER AUTO_INCREMENT,
+    address binary(20) NOT NULL,
+    primary key (id),
+    INDEX USING HASH (address(8))
+);
+GRANT ALL ON obsdb.externally_owned_account TO obscuro;
+
+create table if not exists obsdb.event_type
 (
     id              INTEGER AUTO_INCREMENT,
-    topic0          binary(32) NOT NULL,
-    topic1          binary(32),
-    topic2          binary(32),
-    topic3          binary(32),
-    topic4          binary(32),
-    datablob        mediumblob,
-    log_idx         int        NOT NULL,
-    address         binary(20) NOT NULL,
+    contract        int        NOT NULL,
+    event_sig       binary(32) NOT NULL,
     lifecycle_event boolean    NOT NULL,
-    rel_address1    binary(20),
-    rel_address2    binary(20),
-    rel_address3    binary(20),
-    rel_address4    binary(20),
-    tx              int        NOT NULL,
-    batch           int        NOT NULL,
     primary key (id),
-    INDEX (tx, batch),
-    INDEX USING HASH (address(8)),
-    INDEX USING HASH (rel_address1(8)),
-    INDEX USING HASH (rel_address2(8)),
-    INDEX USING HASH (rel_address3(8)),
-    INDEX USING HASH (rel_address4(8)),
-    INDEX USING HASH (topic0(8)),
-    INDEX USING HASH (topic1(8)),
-    INDEX USING HASH (topic2(8)),
-    INDEX USING HASH (topic3(8)),
-    INDEX USING HASH (topic4(8))
+    INDEX USING HASH (contract, event_sig(8))
 );
-GRANT ALL ON obsdb.events TO obscuro;
+GRANT ALL ON obsdb.event_type TO obscuro;
+
+create table if not exists obsdb.event_topic
+(
+    id          INTEGER AUTO_INCREMENT,
+    topic       binary(32) NOT NULL,
+    rel_address INTEGER,
+    primary key (id),
+    INDEX USING HASH (topic),
+    INDEX (rel_address)
+);
+GRANT ALL ON obsdb.event_topic TO obscuro;
+
+create table if not exists obsdb.event_log
+(
+    id         INTEGER AUTO_INCREMENT,
+    event_type INTEGER NOT NULL,
+    topic1     INTEGER,
+    topic2     INTEGER,
+    topic3     INTEGER,
+    datablob   mediumblob,
+    log_idx    INTEGER NOT NULL,
+    exec_tx    INTEGER NOT NULL,
+    primary key (id),
+    INDEX (exec_tx, event_type, topic1, topic2, topic3)
+);
+GRANT ALL ON obsdb.event_log TO obscuro;

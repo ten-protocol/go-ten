@@ -25,6 +25,7 @@ const (
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
+// todo split into simple functions, and let the higher level handle the logic
 func WriteBatchAndTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, convertedHash gethcommon.Hash, blockId int64) error {
 	// todo - optimize for reorgs
 	batchBodyID := batch.SeqNo().Uint64()
@@ -135,45 +136,26 @@ func IsCanonicalBatchSeq(ctx context.Context, db *sql.DB, seqNo uint64) (bool, e
 	return isCanon, err
 }
 
-// WriteBatchExecution - save receipts
-func WriteBatchExecution(ctx context.Context, dbtx *sql.Tx, seqNo *big.Int, receipts []*types.Receipt) error {
+func MarkBatchExecuted(ctx context.Context, dbtx *sql.Tx, seqNo *big.Int) error {
 	_, err := dbtx.ExecContext(ctx, "update batch set is_executed=true where sequence=?", seqNo.Uint64())
-	if err != nil {
-		return err
-	}
-
-	args := make([]any, 0)
-	for _, receipt := range receipts {
-		// Convert the receipt into their storage form and serialize them
-		storageReceipt := (*types.ReceiptForStorage)(receipt)
-		receiptBytes, err := rlp.EncodeToBytes(storageReceipt)
-		if err != nil {
-			return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
-		}
-
-		// ignore the error because synthetic transactions will not be inserted
-		txId, _ := GetTxId(ctx, dbtx, storageReceipt.TxHash)
-		args = append(args, receipt.ContractAddress.Bytes()) // created_contract_address
-		args = append(args, receiptBytes)                    // the serialised receipt
-		if txId == 0 {
-			args = append(args, nil) // tx id
-		} else {
-			args = append(args, txId) // tx id
-		}
-		args = append(args, seqNo.Uint64()) // batch_seq
-	}
-	if len(args) > 0 {
-		insert := "insert into exec_tx (created_contract_address, receipt, tx, batch) values " + repeat("(?,?,?,?)", ",", len(receipts))
-		_, err = dbtx.ExecContext(ctx, insert, args...)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return err
 }
 
-func GetTxId(ctx context.Context, dbtx *sql.Tx, txHash gethcommon.Hash) (int64, error) {
-	var txId int64
+func WriteExecutedTransaction(ctx context.Context, dbtx *sql.Tx, batchSeqNo uint64, txId uint64, createdContract *uint64, receipt []byte) (uint64, error) {
+	insert := "insert into exec_tx (created_contract_address, receipt, tx, batch) values " + "(?,?,?,?)"
+	res, err := dbtx.ExecContext(ctx, insert, createdContract, receipt, txId, batchSeqNo)
+	if err != nil {
+		return 0, err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return uint64(id), nil
+}
+
+func GetTxId(ctx context.Context, dbtx *sql.Tx, txHash gethcommon.Hash) (uint64, error) {
+	var txId uint64
 	err := dbtx.QueryRowContext(ctx, "select id from tx where hash=? ", txHash.Bytes()).Scan(&txId)
 	return txId, err
 }
@@ -440,7 +422,7 @@ func GetContractCreationTx(ctx context.Context, db *sql.DB, address gethcommon.A
 }
 
 func ReadContractCreationCount(ctx context.Context, db *sql.DB) (*big.Int, error) {
-	row := db.QueryRowContext(ctx, "select count( distinct created_contract_address) from exec_tx ")
+	row := db.QueryRowContext(ctx, "select id from contract order by id desc limit 1")
 
 	var count int64
 	err := row.Scan(&count)
@@ -501,3 +483,90 @@ func FetchConvertedBatchHash(ctx context.Context, db *sql.DB, seqNo uint64) (get
 	}
 	return gethcommon.BytesToHash(hash), nil
 }
+
+func WriteEoa(ctx context.Context, dbTX *sql.Tx, sender *gethcommon.Address) (uint64, error) {
+	insert := "insert into externally_owned_account (address) values (?)"
+	res, err := dbTX.ExecContext(ctx, insert, sender.Bytes())
+	if err != nil {
+		return 0, err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return uint64(id), nil
+}
+
+func ReadEoa(ctx context.Context, dbTx *sql.Tx, addr *gethcommon.Address) (uint64, error) {
+	row := dbTx.QueryRowContext(ctx, "select id from externally_owned_account where address = ?", addr.Bytes())
+
+	var id uint64
+	err := row.Scan(&id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return 0, errutil.ErrNotFound
+		}
+		return 0, err
+	}
+
+	return id, nil
+}
+
+func WriteContractAddress(ctx context.Context, dbTX *sql.Tx, contractAddress *gethcommon.Address) (uint64, error) {
+	insert := "insert into contract (address) values (?)"
+	res, err := dbTX.ExecContext(ctx, insert, contractAddress.Bytes())
+	if err != nil {
+		return 0, err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return uint64(id), nil
+}
+
+func ReadContractAddress(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (uint64, error) {
+	row := dbTx.QueryRowContext(ctx, "select id from contract where address = ?", addr.Bytes())
+
+	var id uint64
+	err := row.Scan(&id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return 0, errutil.ErrNotFound
+		}
+		return 0, err
+	}
+
+	return id, nil
+}
+
+//func GetExecTxIds(ctx context.Context, dbTx *sql.Tx, batchSeq uint64, txHashes []*gethcommon.Hash) (map[gethcommon.Hash]uint64, error) {
+//	query := "select et.id, tx.hash from exec_tx et join tx on et.tx=tx.id where et.batch=? AND tx.hash in (" + repeat("?", ",", len(txHashes)) + ")"
+//	result := map[gethcommon.Hash]uint64{}
+//	args := make([]any, 0)
+//	args = append(args, batchSeq)
+//	for _, hash := range txHashes {
+//		args = append(args, hash.Bytes())
+//	}
+//	rows, err := dbTx.QueryContext(ctx, query, args...)
+//	if err != nil {
+//		if errors.Is(err, sql.ErrNoRows) {
+//			// make sure the error is converted to obscuro-wide not found error
+//			return nil, errutil.ErrNotFound
+//		}
+//		return nil, err
+//	}
+//	defer rows.Close()
+//	for rows.Next() {
+//		var execTxId uint64
+//		var txHash gethcommon.Hash
+//		err := rows.Scan(&execTxId, &txHash)
+//		if err != nil {
+//			return nil, err
+//		}
+//		result[txHash] = execTxId
+//	}
+//	return result, nil
+//}
