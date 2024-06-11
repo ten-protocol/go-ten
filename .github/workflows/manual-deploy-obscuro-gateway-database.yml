@@ -102,6 +102,7 @@ jobs:
                -v /proc/:/host/proc/:ro \
                -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+               --log-opt max-file=3 --log-opt max-size=10m \
                datadog/agent:latest \
             && cd /home/obscuro/go-obscuro/ \
             && docker run -d --name ${{ github.event.inputs.testnet_type }}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }} \
@@ -110,6 +111,7 @@ jobs:
                 -e MARIADB_USER=obscurouser \
                 -e MARIADB_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }} \
                 -v /home/obscuro/go-obscuro/tools/walletextension/storage/database/001_init.sql:/docker-entrypoint-initdb.d/schema.sql \
+                --log-opt max-file=3 --log-opt max-size=10m \
                 mariadb:11.1.2-jammy \
                 --max_password_errors=2'
 
