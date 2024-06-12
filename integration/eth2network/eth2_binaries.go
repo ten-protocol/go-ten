@@ -18,7 +18,7 @@ import (
 
 const (
 	_gethVersion  = "1.14.0-87246f3"
-	_prysmVersion = "v4.0.6"
+	_prysmVersion = "v5.0.0"
 )
 
 var (

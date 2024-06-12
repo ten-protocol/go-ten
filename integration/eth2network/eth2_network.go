@@ -374,40 +374,6 @@ func (n *Impl) gethInitGenesisData(dataDirPath string) error {
 }
 
 func (n *Impl) gethImportMinerAccount(nodeID int) error {
-	//args := []string{
-	//	"--datadir", n.preFundedMinerPKs[nodeID],
-	//	"--mine",
-	//	"--miner.etherbase", n.preFundedMinerPKs[nodeID],
-	//	"--http",
-	//	"--http.addr", "127.0.0.1",
-	//	"--http.port", fmt.Sprintf("%d", n.gethHTTPPorts[nodeID]),
-	//	"--http.api", "personal,eth,net,web3,miner",
-	//}
-	//
-	//cmd := exec.Command(n.gethBinaryPath, args...) //nolint
-	//cmd.Stdout = n.gethLogFile
-	//cmd.Stderr = n.gethLogFile
-	//
-	//if err := cmd.Start(); err != nil {
-	//	return err
-	//}
-	//
-	//// Allow some time for Geth to start
-	//time.Sleep(5 * time.Second)
-	//
-	//// Attach and run the JavaScript script to import and unlock the account
-	//script := fmt.Sprintf(importAndUnlockScript, n.preFundedMinerPKs[nodeID])
-	//
-	//args = []string{
-	//	"attach", fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[nodeID]),
-	//	"--exec", startScript,
-	//}
-	//
-	//cmd = exec.Command(n.gethBinaryPath, args...) //nolint
-	//cmd.Stdout = n.gethLogFile
-	//cmd.Stderr = n.gethLogFile
-	//
-	//return cmd.Run()
 	script := fmt.Sprintf(importAndUnlockScript, n.preFundedMinerPKs[nodeID])
 
 	// full command list at https://geth.ethereum.org/docs/fundamentals/command-line-options
@@ -462,11 +428,15 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 func (n *Impl) prysmGenerateGenesis() error {
 	// full command list at https://docs.prylabs.network/docs/prysm-usage/parameters
 	args := []string{
-		"testnet", "generate-genesis",
+		"testnet",
+		"generate-genesis",
+		"--fork", "deneb",
 		"--num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
 		"--output-ssz", n.prysmGenesisPath,
 		"--config-name", "interop",
 		"--chain-config-file", n.prysmConfigPath,
+		"--geth-genesis-json-in", n.gethGenesisPath,
+		"--geth-genesis-json-out", n.gethGenesisPath,
 	}
 	fmt.Printf("prysmGenerateGenesis: %s %s\n", n.prysmBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.prysmBinaryPath, args...) //nolint
@@ -514,6 +484,7 @@ func (n *Impl) prysmStartValidator(beaconHTTPPort int, nodeDataDir string) (*exe
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "validator"),
 		//"--beacon-rpc-gateway-provider", fmt.Sprintf("127.0.0.1:%d", prysmBeaconHTTPPort+10),
+		//"--min-sync-peers", "0",
 		"--beacon-rpc-provider", fmt.Sprintf("127.0.0.1:%d", beaconHTTPPort),
 		"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
 		"--interop-start-index", "0",
@@ -548,7 +519,6 @@ func (n *Impl) waitForMergeEvent(startTime time.Time) error {
 
 	// wait for the merge block
 	err = retry.Do(
-		// FIXME something in here not happy
 		func() error {
 			number, err = dial.BlockNumber(ctx)
 			if err != nil {
