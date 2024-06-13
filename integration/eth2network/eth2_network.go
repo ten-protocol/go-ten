@@ -136,7 +136,8 @@ func NewEth2Network(
 	}
 
 	// Write beacon config
-	beaconConf := fmt.Sprintf(_beaconConfig, chainID, chainID, secondsPerSlot, slotsPerEpoch)
+	//beaconConf := fmt.Sprintf(_beaconConfig, chainID, chainID, secondsPerSlot, slotsPerEpoch)
+	beaconConf := fmt.Sprintf(_beaconConfig, chainID, chainID)
 	err = os.WriteFile(prysmConfigPath, []byte(beaconConf), 0o600)
 	if err != nil {
 		panic(err)
@@ -415,7 +416,7 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 		"--allow-insecure-unlock", // allows to use personal accounts over http/ws
 		"--nodiscover",            // don't try and discover peers
 		"--ipcdisable",            // avoid geth erroring bc the ipc path is too long
-		"--verbosity", "1",        // error log level
+		"--verbosity", "3",        // error log level
 	}
 	fmt.Printf("gethStartNode: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
@@ -431,6 +432,7 @@ func (n *Impl) prysmGenerateGenesis() error {
 		"testnet",
 		"generate-genesis",
 		"--fork", "deneb",
+		"--genesis-time-delay", "15",
 		"--num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
 		"--output-ssz", n.prysmGenesisPath,
 		"--config-name", "interop",
@@ -455,13 +457,15 @@ func (n *Impl) prysmStartBeaconNode(gethAuthRPCPort, rpcPort, p2pPort int, nodeD
 		"--no-discovery",
 		"--rpc-port", fmt.Sprintf("%d", rpcPort),
 		"--p2p-udp-port", fmt.Sprintf("%d", p2pPort),
-		"--min-sync-peers", fmt.Sprintf("%d", len(n.dataDirs)-1),
-		// if nodes have zero or one peers then that's the min-peers, if more than that then say 2 peers is the min
-		"--minimum-peers-per-subnet", fmt.Sprintf("%d", min(len(n.dataDirs)-1, 2)),
+		"--min-sync-peers", "0",
+		"--minimum-peers-per-subnet", "0",
+		//"--min-sync-peers", fmt.Sprintf("%d", len(n.dataDirs)-1),
+		//"--minimum-peers-per-subnet", fmt.Sprintf("%d", min(len(n.dataDirs)-1, 2)),
 		"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
 		"--genesis-state", n.prysmGenesisPath,
 		"--chain-config-file", n.prysmConfigPath,
 		"--config-file", n.prysmConfigPath,
+		"--contract-deployment-block", "0",
 		"--chain-id", fmt.Sprintf("%d", n.chainID),
 		"--grpc-gateway-corsdomain", "*",
 		"--grpc-gateway-port", fmt.Sprintf("%d", rpcPort+10),
@@ -469,6 +473,8 @@ func (n *Impl) prysmStartBeaconNode(gethAuthRPCPort, rpcPort, p2pPort int, nodeD
 		"--jwt-secret", path.Join(nodeDataDir, "geth", "jwtsecret"),
 		"--contract-deployment-block", "0",
 		"--verbosity", "error",
+		"--enable-debug-rpc-endpoints",
+		"--force-clear-db",
 	}
 
 	fmt.Printf("prysmStartBeaconNode: %s %s\n", n.prysmBeaconBinaryPath, strings.Join(args, " "))
@@ -484,7 +490,6 @@ func (n *Impl) prysmStartValidator(beaconHTTPPort int, nodeDataDir string) (*exe
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "validator"),
 		//"--beacon-rpc-gateway-provider", fmt.Sprintf("127.0.0.1:%d", prysmBeaconHTTPPort+10),
-		//"--min-sync-peers", "0",
 		"--beacon-rpc-provider", fmt.Sprintf("127.0.0.1:%d", beaconHTTPPort),
 		"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
 		"--interop-start-index", "0",

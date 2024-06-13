@@ -44,14 +44,14 @@ TERMINAL_TOTAL_DIFFICULTY: 0
 # Capella
 CAPELLA_FORK_EPOCH: 0
 CAPELLA_FORK_VERSION: 0x20000092
+MAX_WITHDRAWALS_PER_PAYLOAD: 16
 
 # Deneb
-DENEB_FORK_EPOCH: 0
 DENEB_FORK_VERSION: 0x20000093
 
 # Time parameters
-SECONDS_PER_SLOT: %d
-SLOTS_PER_EPOCH: %d
+SECONDS_PER_SLOT: 12
+SLOTS_PER_EPOCH: 6
 
 # Deposit contract
 DEPOSIT_CONTRACT_ADDRESS: 0x4242424242424242424242424242424242424242
@@ -116,19 +116,21 @@ const _baseGenesis = `{
 		"londonBlock": 0,
 		"arrowGlacierBlock": 0,
 		"grayGlacierBlock": 0,
-		"shanghaiTime": 1710491285,
-		"cancunTime": 1710491289,
+		"shanghaiTime": 1717192598,
+		"cancunTime": 1736601494,
 		"terminalTotalDifficulty": 0,
-		"terminalTotalDifficultyPassed": true
+		"terminalTotalDifficultyPassed": true,
+		"clique": {
+      		"period": 1,
+      		"epoch": 1000
+		}
 	},
-  "nonce": "0x0",
-  "timestamp": "0x0",
-  "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000123463a4b065722e99115d6c222f267d9cabb5240000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-  "gasLimit": "0x1c9c380",
-  "difficulty": "0x1",
-  "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "coinbase": "0x0000000000000000000000000000000000000000",
-  "alloc": {
+	"nonce": "0x0",
+	"timestamp": "0x665a4796",
+	"gasLimit": "0x1c9c380",
+	"difficulty": "0x1",
+	"coinbase": "0x0000000000000000000000000000000000000000",
+	"alloc": {
 		"123463a4b065722e99115d6c222f267d9cabb524": {
 			"balance": "0x43c33c1937564800000"
 		},
@@ -204,7 +206,7 @@ const _baseGenesis = `{
 			"balance": "0x21e19e0c9bab2400000"
 		}
 	},
-  	"number": "0x0",
+	"number": "0x0",
 	"gasUsed": "0x0",
 	"parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 	"baseFeePerGas": null,
@@ -221,40 +223,24 @@ func generateGenesis(blockTimeSecs int, chainID int, signerAddrs, prefundedAddrs
 		return "", err
 	}
 
-	// Check and initialize missing fields
-	if genesisJSON["alloc"] == nil {
-		genesisJSON["alloc"] = make(map[string]interface{})
-	}
-
-	// Add the prefunded addresses
+	// add the prefunded prefundedAddrs
 	for _, account := range prefundedAddrs {
 		genesisJSON["alloc"].(map[string]interface{})[account] = map[string]string{"balance": "7500000000000000000000000000000"}
 	}
 
-	// Ensure the config map is properly initialized
-	config, ok := genesisJSON["config"].(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("config field is missing or not a map")
-	}
+	// set the block prod speed
+	genesisJSON["config"].(map[string]interface{})["clique"].(map[string]interface{})["period"] = blockTimeSecs
 
-	// Set the block production speed
-	clique, ok := config["clique"].(map[string]interface{})
-	if !ok {
-		clique = make(map[string]interface{})
-		config["clique"] = clique
-	}
-	clique["period"] = blockTimeSecs
+	// set the network id
+	genesisJSON["config"].(map[string]interface{})["chainId"] = chainID
 
-	// Set the network id
-	config["chainId"] = chainID
-
-	// Set the signers addresses and remove the 0x
+	// set the signers addrs + remove the 0x
 	for i := range signerAddrs {
 		signerAddrs[i] = signerAddrs[i][2:]
 	}
-	genesisJSON["extraData"] = fmt.Sprintf("0x0000000000000000000000000000000000000000000000000000000000000000%s0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", strings.Join(signerAddrs, ""))
+	genesisJSON["extradata"] = fmt.Sprintf("0x000000000000000000000000000000%s0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", strings.Join(signerAddrs, ""))
 
-	genesisBytes, err := json.MarshalIndent(genesisJSON, "", "  ")
+	genesisBytes, err := json.MarshalIndent(genesisJSON, "", " ")
 	if err != nil {
 		return "", err
 	}
