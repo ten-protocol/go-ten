@@ -116,7 +116,7 @@ func MarkBatchExecuted(ctx context.Context, dbtx *sql.Tx, seqNo *big.Int) error 
 	return err
 }
 
-func WriteExecutedTransaction(ctx context.Context, dbtx *sql.Tx, batchSeqNo uint64, txId uint64, createdContract *uint64, receipt []byte) (uint64, error) {
+func WriteExecutedTransaction(ctx context.Context, dbtx *sql.Tx, batchSeqNo uint64, txId *uint64, createdContract *uint64, receipt []byte) (uint64, error) {
 	insert := "insert into exec_tx (created_contract_address, receipt, tx, batch) values " + "(?,?,?,?)"
 	res, err := dbtx.ExecContext(ctx, insert, createdContract, receipt, txId, batchSeqNo)
 	if err != nil {
@@ -129,10 +129,17 @@ func WriteExecutedTransaction(ctx context.Context, dbtx *sql.Tx, batchSeqNo uint
 	return uint64(id), nil
 }
 
-func GetTxId(ctx context.Context, dbtx *sql.Tx, txHash gethcommon.Hash) (uint64, error) {
+func GetTxId(ctx context.Context, dbtx *sql.Tx, txHash gethcommon.Hash) (*uint64, error) {
 	var txId uint64
 	err := dbtx.QueryRowContext(ctx, "select id from tx where hash=? ", txHash.Bytes()).Scan(&txId)
-	return txId, err
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	return &txId, err
 }
 
 func ReadBatchHeaderBySeqNo(ctx context.Context, db *sql.DB, seqNo uint64) (*common.BatchHeader, error) {

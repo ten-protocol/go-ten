@@ -695,7 +695,7 @@ func (s *storageImpl) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx
 	}
 
 	txId, err := enclavedb.GetTxId(ctx, dbTX, receipt.TxHash)
-	if err != nil {
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not get transaction id. Cause: %w", err)
 	}
 
