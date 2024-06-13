@@ -20,8 +20,6 @@ type Wallet interface {
 	Address() common.Address
 	// SignTransaction returns a signed transaction
 	SignTransaction(tx types.TxData) (*types.Transaction, error)
-	SignTransactionForChainID(tx types.TxData, chainID *big.Int) (*types.Transaction, error)
-
 	// SetNonce overrides the current nonce
 	// The GetTransactionCount is expected to be the next nonce to use in a transaction, not the current account GetTransactionCount
 	SetNonce(nonce uint64)
@@ -69,11 +67,7 @@ func NewInMemoryWalletFromConfig(pkStr string, l1ChainID int64, logger gethlog.L
 
 // SignTransaction returns a signed transaction
 func (m *inMemoryWallet) SignTransaction(tx types.TxData) (*types.Transaction, error) {
-	return types.SignNewTx(m.prvKey, types.NewLondonSigner(m.chainID), tx)
-}
-
-func (m *inMemoryWallet) SignTransactionForChainID(tx types.TxData, chainID *big.Int) (*types.Transaction, error) {
-	return types.SignNewTx(m.prvKey, types.NewLondonSigner(chainID), tx)
+	return types.MustSignNewTx(m.prvKey, types.NewCancunSigner(m.chainID), tx), nil
 }
 
 // Address returns the current wallet address

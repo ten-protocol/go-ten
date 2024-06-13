@@ -126,7 +126,8 @@ func NewEth2Network(
 		preFundedMinerPKs[i] = fmt.Sprintf("%x", w.PrivateKey().D.Bytes())
 	}
 	// Generate and write genesis file
-	genesisStr, err := generateGenesis(blockTimeSecs, chainID, preFundedMinerAddrs, append(preFundedAddrs, preFundedMinerAddrs...))
+	addr := append(preFundedAddrs, preFundedMinerAddrs...)
+	genesisStr, err := generateGenesis(blockTimeSecs, chainID, preFundedMinerAddrs, addr)
 	if err != nil {
 		panic(err)
 	}
