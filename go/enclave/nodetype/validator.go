@@ -126,7 +126,6 @@ func (val *obsValidator) ExecuteStoredBatches(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("could not get txs for batch %s. Cause: %w", batchHeader.Hash(), err)
 			}
-			val.logger.Debug("Read txs ***", log.BatchHeightKey, batchHeader.Number, "nr", len(txs))
 
 			batch := &core.Batch{
 				Header:       batchHeader,

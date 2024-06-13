@@ -287,9 +287,6 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	if cb.Batch.Hash() != batch.Hash() {
 		// todo @stefan - generate a validator challenge here and return it
 		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v", cb.Batch.Header, batch.Header))
-		for i, transaction := range batch.Transactions {
-			executor.logger.Error(fmt.Sprintf("Tx %d. Hash %s. Len %d", i, transaction.Hash(), len(transaction.Data())))
-		}
 		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
 	}
 

@@ -591,10 +591,6 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 
 	// only insert transactions if this is the first time a batch of this height is created
 	if !existsHeight {
-		s.logger.Debug("Write txs ***", log.BatchHeightKey, batch.Header.Number, "nr", len(batch.Transactions))
-		for i, transaction := range batch.Transactions {
-			s.logger.Debug(fmt.Sprintf("Write tx %d. Hash %s ", i, transaction.Hash()))
-		}
 		if err := enclavedb.WriteTransactions(ctx, dbTx, batch); err != nil {
 			return fmt.Errorf("could not write transactions. Cause: %w", err)
 		}
@@ -613,7 +609,7 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 				if err != nil {
 					return fmt.Errorf("could not write the eoa. Cause: %w", err)
 				}
-				//tood
+				//todo
 				//etId, _, err := s.findEventTopic(ctx, dbTx, sender.Bytes())
 				//if err == nil {
 				//	err = enclavedb.UpdateEventTopic(ctx, dbTx, etId, id)

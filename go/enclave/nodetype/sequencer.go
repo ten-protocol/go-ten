@@ -430,9 +430,10 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 			return fmt.Errorf("could not fetch sequencer no. Cause %w", err)
 		}
 		sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))
-		// todo
-		var transactions common.L2Transactions
-		// transactions:=orphanBatch.Transactions
+		transactions, err := s.storage.FetchBatchTransactionsBySeq(ctx, orphanBatch.SequencerOrderNo.Uint64())
+		if err != nil {
+			return fmt.Errorf("could not fetch transactions to duplicate. Cause %w", err)
+		}
 		// create the duplicate and store/broadcast it, recreate batch even if it was empty
 		cb, err := s.produceBatch(ctx, sequencerNo, l1Head.Hash(), currentHead, transactions, orphanBatch.Time, false)
 		if err != nil {
