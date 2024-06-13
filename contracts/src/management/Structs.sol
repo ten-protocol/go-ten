@@ -12,6 +12,8 @@ interface Structs {
 
     struct RollupStorage {
         mapping(bytes32=>MetaRollup) byHash;
+        mapping(uint256=>bytes32) byOrder;
+        uint256 nextFreeSequenceNumber;
     }
 
     struct HeaderCrossChainData {

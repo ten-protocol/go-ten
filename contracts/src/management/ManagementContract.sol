@@ -61,6 +61,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     function initialize() public initializer {
         __Ownable_init(msg.sender);
         lastBatchSeqNo = 0;
+        rollups.nextFreeSequenceNumber = 0; //redundant as the default is 0, but for clarity
         merkleMessageBus = new MerkleTreeMessageBus.MerkleTreeMessageBus();
         messageBus = MessageBus.IMessageBus(address(merkleMessageBus));
 
@@ -72,8 +73,20 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         return (rol.Hash == rollupHash , rol);
     }
 
+    function GetRollupByNumber(uint256 number) view public returns(bool, Structs.MetaRollup memory) {
+        bytes32 hash = rollups.byOrder[number];
+        if (hash == 0x0) { // ensure we don't try to get rollup for hash zero as that would not pull anything, but the hash would match and return true
+            return (false, Structs.MetaRollup(0x0, "", 0));
+        }
+
+        return GetRollupByHash(hash);
+    }
+
     function AppendRollup(Structs.MetaRollup calldata _r) internal {
         rollups.byHash[_r.Hash] = _r;
+        rollups.byOrder[rollups.nextFreeSequenceNumber] = _r.Hash;
+        rollups.nextFreeSequenceNumber++;
+
         if (_r.LastSequenceNumber > lastBatchSeqNo) {
             lastBatchSeqNo = _r.LastSequenceNumber;
         }
