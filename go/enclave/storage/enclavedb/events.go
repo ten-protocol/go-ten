@@ -127,7 +127,7 @@ func FilterLogs(
 	for i := 0; i < len(topics); i++ {
 		if len(topics[i]) > 0 {
 			if i == 0 {
-				query += " AND ec.event_sig IN (" + repeat("?", ",", len(topics[0])) + ")"
+				query += " AND et.event_sig IN (" + repeat("?", ",", len(topics[0])) + ")"
 			} else {
 				query += " AND t" + string(rune(i)) + ".topic IN (" + repeat("?", ",", len(topics[i])) + ")"
 			}
