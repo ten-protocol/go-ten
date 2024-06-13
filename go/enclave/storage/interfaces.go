@@ -151,6 +151,10 @@ type Storage interface {
 
 	// StateDB - return the underlying state database
 	StateDB() state.Database
+
+	ReadEOA(ctx context.Context, addr gethcommon.Address) (*uint64, error)
+
+	ReadContractAddress(ctx context.Context, addr gethcommon.Address) (*uint64, error)
 }
 
 type ScanStorage interface {

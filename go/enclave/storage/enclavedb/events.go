@@ -31,7 +31,7 @@ const (
 		"where b.is_canonical=true "
 )
 
-func WriteEventType(ctx context.Context, dbTX *sql.Tx, contractID uint64, eventSignature gethcommon.Hash, isLifecycle bool) (uint64, error) {
+func WriteEventType(ctx context.Context, dbTX *sql.Tx, contractID *uint64, eventSignature gethcommon.Hash, isLifecycle bool) (uint64, error) {
 	res, err := dbTX.ExecContext(ctx, "insert into event_type (contract, event_sig, lifecycle_event) values (?, ?, ?)", contractID, eventSignature.Bytes(), isLifecycle)
 	if err != nil {
 		return 0, err
@@ -284,7 +284,7 @@ func WriteEoa(ctx context.Context, dbTX *sql.Tx, sender *gethcommon.Address) (ui
 	return uint64(id), nil
 }
 
-func ReadEoa(ctx context.Context, dbTx *sql.Tx, addr *gethcommon.Address) (uint64, error) {
+func ReadEoa(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (uint64, error) {
 	row := dbTx.QueryRowContext(ctx, "select id from externally_owned_account where address = ?", addr.Bytes())
 
 	var id uint64
@@ -300,17 +300,18 @@ func ReadEoa(ctx context.Context, dbTx *sql.Tx, addr *gethcommon.Address) (uint6
 	return id, nil
 }
 
-func WriteContractAddress(ctx context.Context, dbTX *sql.Tx, contractAddress *gethcommon.Address) (uint64, error) {
+func WriteContractAddress(ctx context.Context, dbTX *sql.Tx, contractAddress *gethcommon.Address) (*uint64, error) {
 	insert := "insert into contract (address) values (?)"
 	res, err := dbTX.ExecContext(ctx, insert, contractAddress.Bytes())
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return uint64(id), nil
+	v := uint64(id)
+	return &v, nil
 }
 
 func ReadContractAddress(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (uint64, error) {

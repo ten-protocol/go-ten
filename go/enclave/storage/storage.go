@@ -602,7 +602,7 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 		if err != nil {
 			return fmt.Errorf("could not read tx sender. Cause: %w", err)
 		}
-		_, err = s.findEOA(ctx, dbTx, sender)
+		_, err = s.readEOA(ctx, dbTx, *sender)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
 				_, err := enclavedb.WriteEoa(ctx, dbTx, sender)
@@ -675,7 +675,7 @@ func (s *storageImpl) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx
 	var createdContract *uint64
 	var nilAddr gethcommon.Address
 	if receipt.ContractAddress != nilAddr {
-		createdContractId, err := s.findContractAddress(ctx, dbTX, receipt.ContractAddress)
+		createdContractId, err := s.readContractAddress(ctx, dbTX, receipt.ContractAddress)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
 				createdContractId, err = enclavedb.WriteContractAddress(ctx, dbTX, &receipt.ContractAddress)
@@ -685,7 +685,7 @@ func (s *storageImpl) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx
 			}
 			// return fmt.Errorf("could not read contract address. Cause: %w", err)
 		}
-		createdContract = &createdContractId
+		createdContract = createdContractId
 	}
 	// Convert the receipt into their storage form and serialize them
 	storageReceipt := (*types.ReceiptForStorage)(receipt)
@@ -749,7 +749,7 @@ func (s *storageImpl) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTxId 
 	eventT, err := s.readEventType(ctx, dbTX, l.Address, l.Topics[0])
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			contractAddId, err := s.findContractAddress(ctx, dbTX, l.Address)
+			contractAddId, err := s.readContractAddress(ctx, dbTX, l.Address)
 			if err != nil {
 				if errors.Is(err, errutil.ErrNotFound) {
 					contractAddId, err = enclavedb.WriteContractAddress(ctx, dbTX, &l.Address)
@@ -796,11 +796,11 @@ func (s *storageImpl) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTxId 
 func (s *storageImpl) findRelevantAddress(ctx context.Context, dbTX *sql.Tx, topic gethcommon.Hash) (*uint64, error) {
 	potentialAddr := common.ExtractPotentialAddress(topic)
 	if potentialAddr != nil {
-		eoaID, err := s.findEOA(ctx, dbTX, potentialAddr)
+		eoaID, err := s.readEOA(ctx, dbTX, *potentialAddr)
 		if err != nil {
 			return nil, err
 		}
-		return &eoaID, nil
+		return eoaID, nil
 		// todo - do we need to check anything else?
 	}
 	return nil, nil
@@ -988,8 +988,17 @@ func (s *storageImpl) CountTransactionsPerAddress(ctx context.Context, address *
 	return enclavedb.CountTransactionsPerAddress(ctx, s.db.GetSQLDB(), address)
 }
 
-func (s *storageImpl) findEOA(ctx context.Context, dbTX *sql.Tx, addr *gethcommon.Address) (uint64, error) {
-	defer s.logDuration("findEOA", measure.NewStopwatch())
+func (s *storageImpl) ReadEOA(ctx context.Context, addr gethcommon.Address) (*uint64, error) {
+	dbtx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer dbtx.Rollback()
+	return s.readEOA(ctx, dbtx, addr)
+}
+
+func (s *storageImpl) readEOA(ctx context.Context, dbTX *sql.Tx, addr gethcommon.Address) (*uint64, error) {
+	defer s.logDuration("readEOA", measure.NewStopwatch())
 	id, err := common.GetCachedValue(ctx, s.eoaCache, s.logger, addr, func(v any) (*uint64, error) {
 		id, err := enclavedb.ReadEoa(ctx, dbTX, addr)
 		if err != nil {
@@ -998,13 +1007,22 @@ func (s *storageImpl) findEOA(ctx context.Context, dbTX *sql.Tx, addr *gethcommo
 		return &id, nil
 	})
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return *id, err
+	return id, err
 }
 
-func (s *storageImpl) findContractAddress(ctx context.Context, dbTX *sql.Tx, addr gethcommon.Address) (uint64, error) {
-	defer s.logDuration("findContractAddress", measure.NewStopwatch())
+func (s *storageImpl) ReadContractAddress(ctx context.Context, addr gethcommon.Address) (*uint64, error) {
+	dbtx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer dbtx.Rollback()
+	return s.readContractAddress(ctx, dbtx, addr)
+}
+
+func (s *storageImpl) readContractAddress(ctx context.Context, dbTX *sql.Tx, addr gethcommon.Address) (*uint64, error) {
+	defer s.logDuration("readContractAddress", measure.NewStopwatch())
 	id, err := common.GetCachedValue(ctx, s.contractAddressCache, s.logger, addr, func(v any) (*uint64, error) {
 		id, err := enclavedb.ReadContractAddress(ctx, dbTX, addr)
 		if err != nil {
@@ -1013,9 +1031,9 @@ func (s *storageImpl) findContractAddress(ctx context.Context, dbTX *sql.Tx, add
 		return &id, nil
 	})
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return *id, err
+	return id, err
 }
 
 func (s *storageImpl) findEventTopic(ctx context.Context, dbTX *sql.Tx, topic []byte) (uint64, *uint64, error) {

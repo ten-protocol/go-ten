@@ -389,7 +389,7 @@ func ReadBatchTransactions(ctx context.Context, db *sql.DB, height uint64) ([]*c
 }
 
 func GetContractCreationTx(ctx context.Context, db *sql.DB, address gethcommon.Address) (*gethcommon.Hash, error) {
-	row := db.QueryRowContext(ctx, "select tx.hash from exec_tx join tx on tx.id=exec_tx.tx where created_contract_address=? ", address.Bytes())
+	row := db.QueryRowContext(ctx, "select tx.hash from exec_tx join tx on tx.id=exec_tx.tx join contract on created_contract_address=contract.id where address=? ", address.Bytes())
 
 	var txHashBytes []byte
 	err := row.Scan(&txHashBytes)

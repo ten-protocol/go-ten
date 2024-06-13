@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+
 	"github.com/ten-protocol/go-ten/go/config"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -66,12 +68,13 @@ func NewChain(
 
 func (oc *obscuroChain) AccountOwner(ctx context.Context, address gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, error) {
 	// check if account is a contract
-	isContract, err := oc.isAccountContractAtBlock(ctx, address, blockNumber)
+	_, err := oc.storage.ReadContractAddress(ctx, address)
 	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			// the account is not a contract, so it must be an EOA
+			return &address, nil
+		}
 		return nil, err
-	}
-	if !isContract {
-		return &address, nil
 	}
 
 	// If the address is a contract, find the signer of the deploy transaction
@@ -211,14 +214,4 @@ func (oc *obscuroChain) GetChainStateAtTransaction(ctx context.Context, batch *c
 		statedb.Finalise(vmenv.ChainConfig().IsEIP158(batch.Number()))
 	}
 	return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction index %d out of range for batch %#x", txIndex, batch.Hash())
-}
-
-// Returns whether the account is a contract
-func (oc *obscuroChain) isAccountContractAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (bool, error) {
-	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
-	if err != nil {
-		return false, fmt.Errorf("unable to get blockchain state - %w", err)
-	}
-
-	return len(chainState.GetCode(accountAddr)) > 0, nil
 }
