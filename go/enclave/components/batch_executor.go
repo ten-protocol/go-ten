@@ -144,7 +144,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}
 
 	// These variables will be used to create the new batch
-	parentBatch, err := executor.storage.FetchBatch(ctx, context.ParentPtr)
+	parentBatch, err := executor.storage.FetchBatchHeader(ctx, context.ParentPtr)
 	if errors.Is(err, errutil.ErrNotFound) {
 		executor.logger.Error(fmt.Sprintf("can't find parent batch %s. Seq %d", context.ParentPtr, context.SequencerNo))
 		return nil, errutil.ErrAncestorBatchNotFound
@@ -154,9 +154,9 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}
 
 	parentBlock := block
-	if parentBatch.Header.L1Proof != block.Hash() {
+	if parentBatch.L1Proof != block.Hash() {
 		var err error
-		parentBlock, err = executor.storage.FetchBlock(ctx, parentBatch.Header.L1Proof)
+		parentBlock, err = executor.storage.FetchBlock(ctx, parentBatch.L1Proof)
 		if err != nil {
 			executor.logger.Error(fmt.Sprintf("Could not retrieve a proof for batch %s", parentBatch.Hash()), log.ErrKey, err)
 			return nil, err
@@ -164,7 +164,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}
 
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
-	batch := core.DeterministicEmptyBatch(parentBatch.Header, block, context.AtTime, context.SequencerNo, context.BaseFee, context.Creator)
+	batch := core.DeterministicEmptyBatch(parentBatch, block, context.AtTime, context.SequencerNo, context.BaseFee, context.Creator)
 
 	stateDB, err := executor.batchRegistry.GetBatchState(ctx, &batch.Header.ParentHash)
 	if err != nil {
@@ -286,7 +286,10 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 
 	if cb.Batch.Hash() != batch.Hash() {
 		// todo @stefan - generate a validator challenge here and return it
-		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v\n", cb.Batch.Header, batch.Header))
+		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v", cb.Batch.Header, batch.Header))
+		for i, transaction := range batch.Transactions {
+			executor.logger.Error(fmt.Sprintf("Tx %d. Hash %s. Len %d", i, transaction.Hash(), len(transaction.Data())))
+		}
 		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
 	}
 

@@ -59,12 +59,12 @@ func (e *EthChainAdapter) CurrentBlock() *gethtypes.Header {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), e.config.RPCTimeout)
 	defer cancelCtx()
 
-	currentBatch, err := e.storage.FetchBatchBySeqNo(ctx, currentBatchSeqNo.Uint64())
+	currentBatch, err := e.storage.FetchBatchHeaderBySeqNo(ctx, currentBatchSeqNo.Uint64())
 	if err != nil {
 		e.logger.Warn("unable to retrieve batch seq no", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
 		return nil
 	}
-	batch, err := e.gethEncoding.CreateEthHeaderForBatch(ctx, currentBatch.Header)
+	batch, err := e.gethEncoding.CreateEthHeaderForBatch(ctx, currentBatch)
 	if err != nil {
 		e.logger.Warn("unable to convert batch to eth header ", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
 		return nil

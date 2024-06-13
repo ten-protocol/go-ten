@@ -42,7 +42,7 @@ func (occ *ObscuroChainContext) GetHeader(hash common.Hash, _ uint64) *types.Hea
 	ctx, cancelCtx := context.WithTimeout(context.Background(), occ.config.RPCTimeout)
 	defer cancelCtx()
 
-	batch, err := occ.storage.FetchBatch(ctx, hash)
+	batch, err := occ.storage.FetchBatchHeader(ctx, hash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil
@@ -50,7 +50,7 @@ func (occ *ObscuroChainContext) GetHeader(hash common.Hash, _ uint64) *types.Hea
 		occ.logger.Crit("Could not retrieve rollup", log.ErrKey, err)
 	}
 
-	h, err := occ.gethEncodingService.CreateEthHeaderForBatch(ctx, batch.Header)
+	h, err := occ.gethEncodingService.CreateEthHeaderForBatch(ctx, batch)
 	if err != nil {
 		occ.logger.Crit("Could not convert to eth header", log.ErrKey, err)
 		return nil

@@ -102,7 +102,7 @@ type BatchRegistry interface {
 	SubscribeForExecutedBatches(func(*core.Batch, types.Receipts))
 	UnsubscribeFromBatches()
 
-	OnBatchExecuted(batch *core.Batch, receipts types.Receipts)
+	OnBatchExecuted(batch *common.BatchHeader, receipts types.Receipts)
 	OnL1Reorg(*BlockIngestionType)
 
 	// HasGenesisBatch - returns if genesis batch is available yet or not, or error in case

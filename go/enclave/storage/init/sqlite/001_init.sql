@@ -57,12 +57,6 @@ create table if not exists rollup
 create index ROLLUP_COMPRESSION_BLOCK_IDX on rollup (compression_block);
 create index ROLLUP_COMPRESSION_HASH_IDX on rollup (hash);
 
-create table if not exists batch_body
-(
-    id      int        NOT NULL primary key,
-    content mediumblob NOT NULL
-);
-
 create table if not exists batch
 (
     sequence       int primary key,
@@ -71,7 +65,6 @@ create table if not exists batch
     height         int        NOT NULL,
     is_canonical   boolean    NOT NULL,
     header         blob       NOT NULL,
-    body           int        NOT NULL REFERENCES batch_body,
     l1_proof_hash  binary(32) NOT NULL,
     l1_proof       INTEGER, -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
     is_executed    boolean    NOT NULL
@@ -80,7 +73,6 @@ create table if not exists batch
 );
 create index IDX_BATCH_HASH on batch (hash);
 create index IDX_BATCH_BLOCK on batch (l1_proof_hash);
-create index IDX_BATCH_BODY on batch (body);
 create index IDX_BATCH_L1 on batch (l1_proof);
 create index IDX_BATCH_HEIGHT on batch (height);
 
@@ -90,12 +82,12 @@ create table if not exists tx
     hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
     sender_address binary(20) NOT NULL,
-    nonce          int        NOT NULL,
     idx            int        NOT NULL,
-    body           int        NOT NULL REFERENCES batch_body
+    batch_height   int        NOT NULL
 );
 create index IDX_TX_HASH on tx (hash);
 create index IDX_TX_SENDER_ADDRESS on tx (sender_address);
+create index IDX_TX_BATCH_HEIGHT on tx (batch_height, idx);
 
 create table if not exists exec_tx
 (

@@ -19,54 +19,21 @@ import (
 )
 
 const (
-	selectBatch = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.id"
-
 	queryReceipts = "select exec_tx.receipt, tx.content, batch.hash, batch.height from exec_tx join tx on tx.id=exec_tx.tx join batch on batch.sequence=exec_tx.batch "
 )
 
-// WriteBatchAndTransactions - persists the batch and the transactions
-// todo split into simple functions, and let the higher level handle the logic
-func WriteBatchAndTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, convertedHash gethcommon.Hash, blockId int64) error {
-	// todo - optimize for reorgs
-	batchBodyID := batch.SeqNo().Uint64()
-
-	body, err := rlp.EncodeToBytes(batch.Transactions)
-	if err != nil {
-		return fmt.Errorf("could not encode L2 transactions. Cause: %w", err)
-	}
+func WriteBatchHeader(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, convertedHash gethcommon.Hash, blockId int64, isCanonical bool) error {
 	header, err := rlp.EncodeToBytes(batch.Header)
 	if err != nil {
 		return fmt.Errorf("could not encode batch header. Cause: %w", err)
 	}
-
-	_, err = dbtx.ExecContext(ctx, "replace into batch_body values (?,?)", batchBodyID, body)
-	if err != nil {
-		return err
-	}
-
-	isL1ProofCanonical, err := IsCanonicalBlock(ctx, dbtx, &batch.Header.L1Proof)
-	if err != nil {
-		return err
-	}
-	parentIsCanon, err := IsCanonicalBatch(ctx, dbtx, &batch.Header.ParentHash)
-	if err != nil {
-		return err
-	}
-	parentIsCanon = parentIsCanon || batch.SeqNo().Uint64() <= common.L2GenesisSeqNo+2
-
-	// sanity check that the parent is canonical
-	if isL1ProofCanonical && !parentIsCanon {
-		panic(fmt.Errorf("invalid chaining. Batch %s is canonical. Parent %s is not", batch.Hash(), batch.Header.ParentHash))
-	}
-
 	args := []any{
 		batch.Header.SequencerOrderNo.Uint64(), // sequence
 		convertedHash,                          // converted_hash
 		batch.Hash(),                           // hash
 		batch.Header.Number.Uint64(),           // height
-		isL1ProofCanonical,                     // is_canonical
+		isCanonical,                            // is_canonical
 		header,                                 // header blob
-		batchBodyID,                            // reference to the batch body
 		batch.Header.L1Proof.Bytes(),           // l1 proof hash
 	}
 	if blockId == 0 {
@@ -75,14 +42,24 @@ func WriteBatchAndTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Ba
 		args = append(args, blockId)
 	}
 	args = append(args, false) // executed
-	_, err = dbtx.ExecContext(ctx, "insert into batch values (?,?,?,?,?,?,?,?,?,?)", args...)
-	if err != nil {
-		return err
-	}
+	_, err = dbtx.ExecContext(ctx, "insert into batch values (?,?,?,?,?,?,?,?,?)", args...)
+	return err
+}
 
-	// creates a big insert statement for all transactions
+func ExistsBatchAtHeight(ctx context.Context, dbTx *sql.Tx, height *big.Int) (bool, error) {
+	var count int
+	err := dbTx.QueryRowContext(ctx, "select count(*) from batch where height=?", height.Uint64()).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// WriteTransactions - persists the batch and the transactions
+func WriteTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch) error {
+	// creates a batch insert statement for all entries
 	if len(batch.Transactions) > 0 {
-		insert := "replace into tx (hash, content, sender_address, nonce, idx, body) values " + repeat("(?,?,?,?,?,?)", ",", len(batch.Transactions))
+		insert := "insert into tx (hash, content, sender_address, idx, batch_height) values " + repeat("(?,?,?,?,?)", ",", len(batch.Transactions))
 
 		args := make([]any, 0)
 		for i, transaction := range batch.Transactions {
@@ -96,23 +73,21 @@ func WriteBatchAndTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Ba
 				return fmt.Errorf("unable to convert tx to message - %w", err)
 			}
 
-			args = append(args, transaction.Hash())  // tx_hash
-			args = append(args, txBytes)             // content
-			args = append(args, from.Bytes())        // sender_address
-			args = append(args, transaction.Nonce()) // nonce
-			args = append(args, i)                   // idx
-			args = append(args, batchBodyID)         // the batch body which contained it
+			args = append(args, transaction.Hash())           // tx_hash
+			args = append(args, txBytes)                      // content
+			args = append(args, from.Bytes())                 // sender_address
+			args = append(args, i)                            // idx
+			args = append(args, batch.Header.Number.Uint64()) // the batch height which contained it
 		}
-		_, err = dbtx.ExecContext(ctx, insert, args...)
+		_, err := dbtx.ExecContext(ctx, insert, args...)
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
-func IsCanonicalBatch(ctx context.Context, dbtx *sql.Tx, hash *gethcommon.Hash) (bool, error) {
+func IsCanonicalBatchHash(ctx context.Context, dbtx *sql.Tx, hash *gethcommon.Hash) (bool, error) {
 	var isCanon bool
 	err := dbtx.QueryRowContext(ctx, "select is_canonical from batch where hash=? ", hash.Bytes()).Scan(&isCanon)
 	if err != nil {
@@ -160,32 +135,32 @@ func GetTxId(ctx context.Context, dbtx *sql.Tx, txHash gethcommon.Hash) (uint64,
 	return txId, err
 }
 
-func ReadBatchBySeqNo(ctx context.Context, db *sql.DB, seqNo uint64) (*core.Batch, error) {
-	return fetchBatch(ctx, db, " where sequence=?", seqNo)
+func ReadBatchHeaderBySeqNo(ctx context.Context, db *sql.DB, seqNo uint64) (*common.BatchHeader, error) {
+	return fetchBatchHeader(ctx, db, " where sequence=?", seqNo)
 }
 
-func ReadBatchByHash(ctx context.Context, db *sql.DB, hash common.L2BatchHash) (*core.Batch, error) {
-	return fetchBatch(ctx, db, " where b.hash=? ", hash.Bytes())
+func ReadBatchHeaderByHash(ctx context.Context, db *sql.DB, hash common.L2BatchHash) (*common.BatchHeader, error) {
+	return fetchBatchHeader(ctx, db, " where b.hash=? ", hash.Bytes())
 }
 
-func ReadCanonicalBatchByHeight(ctx context.Context, db *sql.DB, height uint64) (*core.Batch, error) {
-	return fetchBatch(ctx, db, " where b.height=? and is_canonical=true", height)
+func ReadCanonicalBatchHeaderByHeight(ctx context.Context, db *sql.DB, height uint64) (*common.BatchHeader, error) {
+	return fetchBatchHeader(ctx, db, " where b.height=? and is_canonical=true", height)
 }
 
-func ReadNonCanonicalBatches(ctx context.Context, db *sql.DB, startAtSeq uint64, endSeq uint64) ([]*core.Batch, error) {
+func ReadNonCanonicalBatches(ctx context.Context, db *sql.DB, startAtSeq uint64, endSeq uint64) ([]*common.BatchHeader, error) {
 	return fetchBatches(ctx, db, " where b.sequence>=? and b.sequence <=? and b.is_canonical=false order by b.sequence", startAtSeq, endSeq)
 }
 
-func ReadCanonicalBatches(ctx context.Context, db *sql.DB, startAtSeq uint64, endSeq uint64) ([]*core.Batch, error) {
+func ReadCanonicalBatches(ctx context.Context, db *sql.DB, startAtSeq uint64, endSeq uint64) ([]*common.BatchHeader, error) {
 	return fetchBatches(ctx, db, " where b.sequence>=? and b.sequence <=? and b.is_canonical=true order by b.sequence", startAtSeq, endSeq)
 }
 
 // todo - is there a better way to write this query?
-func ReadCurrentHeadBatch(ctx context.Context, db *sql.DB) (*core.Batch, error) {
-	return fetchBatch(ctx, db, " where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true)")
+func ReadCurrentHeadBatchHeader(ctx context.Context, db *sql.DB) (*common.BatchHeader, error) {
+	return fetchBatchHeader(ctx, db, " where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true)")
 }
 
-func ReadBatchesByBlock(ctx context.Context, db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {
+func ReadBatchesByBlock(ctx context.Context, db *sql.DB, hash common.L1BlockHash) ([]*common.BatchHeader, error) {
 	return fetchBatches(ctx, db, " where l1_proof_hash=?  order by b.sequence", hash.Bytes())
 }
 
@@ -206,15 +181,14 @@ func ReadCurrentSequencerNo(ctx context.Context, db *sql.DB) (*big.Int, error) {
 	return big.NewInt(seq.Int64), nil
 }
 
-func fetchBatch(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*core.Batch, error) {
+func fetchBatchHeader(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*common.BatchHeader, error) {
 	var header string
-	var body []byte
-	query := selectBatch + " " + whereQuery
+	query := "select b.header from batch b " + whereQuery
 	var err error
 	if len(args) > 0 {
-		err = db.QueryRowContext(ctx, query, args...).Scan(&header, &body)
+		err = db.QueryRowContext(ctx, query, args...).Scan(&header)
 	} else {
-		err = db.QueryRowContext(ctx, query).Scan(&header, &body)
+		err = db.QueryRowContext(ctx, query).Scan(&header)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -227,23 +201,14 @@ func fetchBatch(ctx context.Context, db *sql.DB, whereQuery string, args ...any)
 	if err := rlp.DecodeBytes([]byte(header), h); err != nil {
 		return nil, fmt.Errorf("could not decode batch header. Cause: %w", err)
 	}
-	txs := new([]*common.L2Tx)
-	if err := rlp.DecodeBytes(body, txs); err != nil {
-		return nil, fmt.Errorf("could not decode L2 transactions %v. Cause: %w", body, err)
-	}
 
-	b := core.Batch{
-		Header:       h,
-		Transactions: *txs,
-	}
-
-	return &b, nil
+	return h, nil
 }
 
-func fetchBatches(ctx context.Context, db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, error) {
-	result := make([]*core.Batch, 0)
+func fetchBatches(ctx context.Context, db *sql.DB, whereQuery string, args ...any) ([]*common.BatchHeader, error) {
+	result := make([]*common.BatchHeader, 0)
 
-	rows, err := db.QueryContext(ctx, selectBatch+" "+whereQuery, args...)
+	rows, err := db.QueryContext(ctx, "select b.header from batch b "+whereQuery, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -257,8 +222,7 @@ func fetchBatches(ctx context.Context, db *sql.DB, whereQuery string, args ...an
 	}
 	for rows.Next() {
 		var header string
-		var body []byte
-		err := rows.Scan(&header, &body)
+		err := rows.Scan(&header)
 		if err != nil {
 			return nil, err
 		}
@@ -266,16 +230,8 @@ func fetchBatches(ctx context.Context, db *sql.DB, whereQuery string, args ...an
 		if err := rlp.DecodeBytes([]byte(header), h); err != nil {
 			return nil, fmt.Errorf("could not decode batch header. Cause: %w", err)
 		}
-		txs := new([]*common.L2Tx)
-		if err := rlp.DecodeBytes(body, txs); err != nil {
-			return nil, fmt.Errorf("could not decode L2 transactions %v. Cause: %w", body, err)
-		}
 
-		result = append(result,
-			&core.Batch{
-				Header:       h,
-				Transactions: *txs,
-			})
+		result = append(result, h)
 	}
 	return result, nil
 }
@@ -327,17 +283,6 @@ func selectReceipts(ctx context.Context, db *sql.DB, config *params.ChainConfig,
 	}
 
 	return allReceipts, nil
-}
-
-// ReadReceiptsByBatchHash retrieves all the transaction receipts belonging to a block, including
-// its corresponding metadata fields. If it is unable to populate these metadata
-// fields then nil is returned.
-//
-// The current implementation populates these metadata fields by reading the receipts'
-// corresponding block body, so if the block body is not found it will return nil even
-// if the receipt itself is stored.
-func ReadReceiptsByBatchHash(ctx context.Context, db *sql.DB, hash common.L2BatchHash, config *params.ChainConfig) (types.Receipts, error) {
-	return selectReceipts(ctx, db, config, "where batch.hash=? ", hash.Bytes())
 }
 
 func ReadReceipt(ctx context.Context, db *sql.DB, txHash common.L2TxHash, config *params.ChainConfig) (*types.Receipt, error) {
@@ -404,6 +349,38 @@ func ReadTransaction(ctx context.Context, db *sql.DB, txHash gethcommon.Hash) (*
 	return tx, batch, height, idx, nil
 }
 
+func ReadBatchTransactions(ctx context.Context, db *sql.DB, height uint64) ([]*common.L2Tx, error) {
+	var txs []*common.L2Tx
+
+	rows, err := db.QueryContext(ctx, "select content from tx where batch_height=? order by idx", height)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		// receipt, tx, batch, height
+		var txContent []byte
+		err := rows.Scan(&txContent)
+		if err != nil {
+			return nil, err
+		}
+		tx := new(common.L2Tx)
+		if err := rlp.DecodeBytes(txContent, tx); err != nil {
+			return nil, fmt.Errorf("could not decode L2 transaction. Cause: %w", err)
+		}
+		txs = append(txs, tx)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return txs, nil
+}
+
 func GetContractCreationTx(ctx context.Context, db *sql.DB, address gethcommon.Address) (*gethcommon.Hash, error) {
 	row := db.QueryRowContext(ctx, "select tx.hash from exec_tx join tx on tx.id=exec_tx.tx where created_contract_address=? ", address.Bytes())
 
@@ -433,7 +410,7 @@ func ReadContractCreationCount(ctx context.Context, db *sql.DB) (*big.Int, error
 	return big.NewInt(count + 1), nil
 }
 
-func ReadUnexecutedBatches(ctx context.Context, db *sql.DB, from *big.Int) ([]*core.Batch, error) {
+func ReadUnexecutedBatches(ctx context.Context, db *sql.DB, from *big.Int) ([]*common.BatchHeader, error) {
 	return fetchBatches(ctx, db, "where is_executed=false and is_canonical=true and sequence >= ? order by b.sequence", from.Uint64())
 }
 
@@ -483,90 +460,3 @@ func FetchConvertedBatchHash(ctx context.Context, db *sql.DB, seqNo uint64) (get
 	}
 	return gethcommon.BytesToHash(hash), nil
 }
-
-func WriteEoa(ctx context.Context, dbTX *sql.Tx, sender *gethcommon.Address) (uint64, error) {
-	insert := "insert into externally_owned_account (address) values (?)"
-	res, err := dbTX.ExecContext(ctx, insert, sender.Bytes())
-	if err != nil {
-		return 0, err
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return uint64(id), nil
-}
-
-func ReadEoa(ctx context.Context, dbTx *sql.Tx, addr *gethcommon.Address) (uint64, error) {
-	row := dbTx.QueryRowContext(ctx, "select id from externally_owned_account where address = ?", addr.Bytes())
-
-	var id uint64
-	err := row.Scan(&id)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// make sure the error is converted to obscuro-wide not found error
-			return 0, errutil.ErrNotFound
-		}
-		return 0, err
-	}
-
-	return id, nil
-}
-
-func WriteContractAddress(ctx context.Context, dbTX *sql.Tx, contractAddress *gethcommon.Address) (uint64, error) {
-	insert := "insert into contract (address) values (?)"
-	res, err := dbTX.ExecContext(ctx, insert, contractAddress.Bytes())
-	if err != nil {
-		return 0, err
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return uint64(id), nil
-}
-
-func ReadContractAddress(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (uint64, error) {
-	row := dbTx.QueryRowContext(ctx, "select id from contract where address = ?", addr.Bytes())
-
-	var id uint64
-	err := row.Scan(&id)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// make sure the error is converted to obscuro-wide not found error
-			return 0, errutil.ErrNotFound
-		}
-		return 0, err
-	}
-
-	return id, nil
-}
-
-//func GetExecTxIds(ctx context.Context, dbTx *sql.Tx, batchSeq uint64, txHashes []*gethcommon.Hash) (map[gethcommon.Hash]uint64, error) {
-//	query := "select et.id, tx.hash from exec_tx et join tx on et.tx=tx.id where et.batch=? AND tx.hash in (" + repeat("?", ",", len(txHashes)) + ")"
-//	result := map[gethcommon.Hash]uint64{}
-//	args := make([]any, 0)
-//	args = append(args, batchSeq)
-//	for _, hash := range txHashes {
-//		args = append(args, hash.Bytes())
-//	}
-//	rows, err := dbTx.QueryContext(ctx, query, args...)
-//	if err != nil {
-//		if errors.Is(err, sql.ErrNoRows) {
-//			// make sure the error is converted to obscuro-wide not found error
-//			return nil, errutil.ErrNotFound
-//		}
-//		return nil, err
-//	}
-//	defer rows.Close()
-//	for rows.Next() {
-//		var execTxId uint64
-//		var txHash gethcommon.Hash
-//		err := rows.Scan(&execTxId, &txHash)
-//		if err != nil {
-//			return nil, err
-//		}
-//		result[txHash] = execTxId
-//	}
-//	return result, nil
-//}

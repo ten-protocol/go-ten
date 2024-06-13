@@ -42,24 +42,26 @@ type BatchResolver interface {
 	FetchBatch(ctx context.Context, hash common.L2BatchHash) (*core.Batch, error)
 	// FetchBatchHeader returns the batch header with the given hash.
 	FetchBatchHeader(ctx context.Context, hash common.L2BatchHash) (*common.BatchHeader, error)
+	FetchBatchTransactionsBySeq(ctx context.Context, seqNo uint64) ([]*common.L2Tx, error)
 	// FetchBatchByHeight returns the batch on the canonical chain with the given height.
 	FetchBatchByHeight(ctx context.Context, height uint64) (*core.Batch, error)
 	// FetchBatchBySeqNo returns the batch with the given seq number.
 	FetchBatchBySeqNo(ctx context.Context, seqNum uint64) (*core.Batch, error)
-	// FetchHeadBatch returns the current head batch of the canonical chain.
-	FetchHeadBatch(ctx context.Context) (*core.Batch, error)
+	// FetchBatchHeaderBySeqNo returns the batch header with the given seq number.
+	FetchBatchHeaderBySeqNo(ctx context.Context, seqNum uint64) (*common.BatchHeader, error)
+	FetchHeadBatchHeader(ctx context.Context) (*common.BatchHeader, error)
 	// FetchCurrentSequencerNo returns the sequencer number
 	FetchCurrentSequencerNo(ctx context.Context) (*big.Int, error)
 	// FetchBatchesByBlock returns all batches with the block hash as the L1 proof
-	FetchBatchesByBlock(ctx context.Context, hash common.L1BlockHash) ([]*core.Batch, error)
+	FetchBatchesByBlock(ctx context.Context, hash common.L1BlockHash) ([]*common.BatchHeader, error)
 	// FetchNonCanonicalBatchesBetween - returns all reorged batches between the sequences
-	FetchNonCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error)
+	FetchNonCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*common.BatchHeader, error)
 	// FetchCanonicalBatchesBetween - returns all canon batches between the sequences
-	FetchCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error)
+	FetchCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*common.BatchHeader, error)
 	// IsBatchCanonical - true if the batch is canonical
 	IsBatchCanonical(ctx context.Context, seq uint64) (bool, error)
 	// FetchCanonicalUnexecutedBatches - return the list of the unexecuted batches that are canonical
-	FetchCanonicalUnexecutedBatches(context.Context, *big.Int) ([]*core.Batch, error)
+	FetchCanonicalUnexecutedBatches(context.Context, *big.Int) ([]*common.BatchHeader, error)
 
 	FetchConvertedHash(ctx context.Context, hash common.L2BatchHash) (gethcommon.Hash, error)
 
@@ -69,7 +71,7 @@ type BatchResolver interface {
 	// StoreBatch stores an un-executed batch.
 	StoreBatch(ctx context.Context, batch *core.Batch, convertedHash gethcommon.Hash) error
 	// StoreExecutedBatch - store the batch after it was executed
-	StoreExecutedBatch(ctx context.Context, batch *core.Batch, receipts []*types.Receipt) error
+	StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, receipts []*types.Receipt) error
 
 	// StoreRollup
 	StoreRollup(ctx context.Context, rollup *common.ExtRollup, header *common.CalldataRollupHeader) error
@@ -96,8 +98,6 @@ type TransactionStorage interface {
 	GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error)
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
 	GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (*types.Receipt, error)
-	// GetReceiptsByBatchHash retrieves the receipts for all transactions in a given rollup.
-	GetReceiptsByBatchHash(ctx context.Context, hash common.L2BatchHash) (types.Receipts, error)
 	// GetContractCreationTx returns the hash of the tx that created a contract
 	GetContractCreationTx(ctx context.Context, address gethcommon.Address) (*gethcommon.Hash, error)
 }

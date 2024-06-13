@@ -52,7 +52,7 @@ func GetTransactionCountExecute(builder *CallBuilder[uint64, string], rpc *Encry
 	}
 
 	var nonce uint64
-	l2Head, err := rpc.storage.FetchBatchBySeqNo(builder.ctx, *builder.Param)
+	l2Head, err := rpc.storage.FetchBatchHeaderBySeqNo(builder.ctx, *builder.Param)
 	if err == nil {
 		// todo - we should return an error when head state is not available, but for current test situations with race
 		//  conditions we allow it to return zero while head state is uninitialized
