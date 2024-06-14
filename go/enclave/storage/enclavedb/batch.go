@@ -384,23 +384,6 @@ func ReadBatchTransactions(ctx context.Context, db *sql.DB, height uint64) ([]*c
 	return txs, nil
 }
 
-func GetContractCreationTx(ctx context.Context, db *sql.DB, address gethcommon.Address) (*gethcommon.Hash, error) {
-	row := db.QueryRowContext(ctx, "select tx.hash from exec_tx join tx on tx.id=exec_tx.tx join contract on created_contract_address=contract.id where address=? ", address.Bytes())
-
-	var txHashBytes []byte
-	err := row.Scan(&txHashBytes)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// make sure the error is converted to obscuro-wide not found error
-			return nil, errutil.ErrNotFound
-		}
-		return nil, err
-	}
-	txHash := gethcommon.Hash{}
-	txHash.SetBytes(txHashBytes)
-	return &txHash, nil
-}
-
 func ReadContractCreationCount(ctx context.Context, db *sql.DB) (*big.Int, error) {
 	row := db.QueryRowContext(ctx, "select id from contract order by id desc limit 1")
 
