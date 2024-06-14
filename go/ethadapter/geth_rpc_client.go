@@ -273,11 +273,6 @@ func (e *gethRPCClient) PrepareTransactionToRetry(ctx context.Context, txData ty
 	// prices aren't big enough for float error to matter
 	retryPrice, _ := retryPriceFloat.Int(nil)
 
-	println("from ", from.Hex())
-	println("unEstimatedTx.To() ", unEstimatedTx.To())
-	println("unEstimatedTx.Value() ", unEstimatedTx.Value())
-	println("unEstimatedTx.Data() ", unEstimatedTx.Data())
-
 	gasLimit, err := e.EthClient().EstimateGas(ctx, ethereum.CallMsg{
 		From:  from,
 		To:    unEstimatedTx.To(),

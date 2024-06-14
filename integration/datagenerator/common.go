@@ -39,8 +39,8 @@ func RandomUInt64() uint64 {
 	return val.Uint64()
 }
 
-func RandomUint32() uint64 {
-	val, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt32))
+func RandomUint16() uint64 {
+	val, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt16))
 	if err != nil {
 		panic(err)
 	}

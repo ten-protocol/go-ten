@@ -42,7 +42,7 @@ func TestStartEth2Network(t *testing.T) {
 	binDir, err := EnsureBinariesExist()
 	assert.Nil(t, err)
 
-	chainID := int(datagenerator.RandomUint32())
+	chainID := int(datagenerator.RandomUint16())
 	randomWallets := make([]wallet.Wallet, _numTestNodes)
 	randomWalletAddrs := make([]string, _numTestNodes)
 	for i := 0; i < _numTestNodes; i++ {
