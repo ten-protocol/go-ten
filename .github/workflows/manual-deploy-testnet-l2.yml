@@ -124,7 +124,7 @@ jobs:
             done
 
       - name: 'Upload L1 deployer container logs'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deploy-l1-artifacts
           path: |
@@ -312,7 +312,7 @@ jobs:
           docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
 
       - name: 'Upload L2 deployer container logs'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deploy-l2-artifacts
           path: |

@@ -143,7 +143,7 @@ func FilterLogs(
 func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
 	var queryParams []any
 
-	query := "select rel_address1, rel_address2, rel_address3, rel_address4, lifecycle_event, topic0, topic1, topic2, topic3, topic4, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address " +
+	query := "select eoa1.address, eoa2.address, eoa3.address, et.lifecycle_event, et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address " +
 		baseEventsJoin +
 		" AND tx.hash = ? "
 
@@ -165,15 +165,14 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 			LifecycleEvent: false,
 		}
 
-		var t0, t1, t2, t3, t4 sql.NullString
-		var relAddress1, relAddress2, relAddress3, relAddress4 []byte
+		var t0, t1, t2, t3 sql.NullString
+		var relAddress1, relAddress2, relAddress3 []byte
 		err = rows.Scan(
 			&relAddress1,
 			&relAddress2,
 			&relAddress3,
-			&relAddress4,
 			&l.LifecycleEvent,
-			&t0, &t1, &t2, &t3, &t4,
+			&t0, &t1, &t2, &t3,
 			&l.Data,
 			&l.BlockHash,
 			&l.BlockNumber,
@@ -186,7 +185,7 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 			return nil, fmt.Errorf("could not load log entry from db: %w", err)
 		}
 
-		for _, topic := range []sql.NullString{t0, t1, t2, t3, t4} {
+		for _, topic := range []sql.NullString{t0, t1, t2, t3} {
 			if topic.Valid {
 				l.Topics = append(l.Topics, stringToHash(topic))
 			}
@@ -195,7 +194,6 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 		l.RelAddress1 = bytesToAddress(relAddress1)
 		l.RelAddress2 = bytesToAddress(relAddress2)
 		l.RelAddress3 = bytesToAddress(relAddress3)
-		l.RelAddress4 = bytesToAddress(relAddress4)
 
 		result = append(result, &l)
 	}
@@ -247,7 +245,7 @@ func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Add
 
 	for rows.Next() {
 		l := types.Log{
-			Topics: make([]gethcommon.Hash, 4),
+			Topics: make([]gethcommon.Hash, 0),
 		}
 		var t0, t1, t2, t3 []byte
 		err = rows.Scan(&t0, &t1, &t2, &t3, &l.Data, &l.BlockHash, &l.BlockNumber, &l.TxHash, &l.TxIndex, &l.Index, &l.Address)
@@ -255,9 +253,11 @@ func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Add
 			return nil, fmt.Errorf("could not load log entry from db: %w", err)
 		}
 
-		for i, topic := range [][]byte{t0, t1, t2, t3} {
+		for _, topic := range [][]byte{t0, t1, t2, t3} {
 			if len(topic) > 0 {
-				l.Topics[i] = byteArrayToHash(topic)
+				l.Topics = append(l.Topics, byteArrayToHash(topic))
+			} else {
+				l.Topics = append(l.Topics, gethcommon.Hash{})
 			}
 		}
 
