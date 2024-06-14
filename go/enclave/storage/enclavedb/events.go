@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 
@@ -126,10 +127,11 @@ func FilterLogs(
 
 	for i := 0; i < len(topics); i++ {
 		if len(topics[i]) > 0 {
+			valuesIn := "IN (" + repeat("?", ",", len(topics[i])) + ")"
 			if i == 0 {
-				query += " AND et.event_sig IN (" + repeat("?", ",", len(topics[0])) + ")"
+				query += " AND et.event_sig " + valuesIn
 			} else {
-				query += " AND t" + string(rune(i)) + ".topic IN (" + repeat("?", ",", len(topics[i])) + ")"
+				query += " AND t" + strconv.Itoa(i) + ".topic " + valuesIn
 			}
 			for _, hash := range topics[i] {
 				queryParams = append(queryParams, hash.Bytes())
