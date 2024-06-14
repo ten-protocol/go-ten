@@ -110,7 +110,7 @@ create table if not exists obsdb.exec_tx
     tx                       int,
     batch                    int NOT NULL,
     INDEX (batch),
-    INDEX (created_contract_address, tx),
+    INDEX (tx, created_contract_address),
     primary key (id)
 );
 GRANT ALL ON obsdb.exec_tx TO obscuro;
