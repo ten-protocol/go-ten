@@ -125,6 +125,7 @@ jobs:
                -v /proc/:/host/proc/:ro \
                -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+               --log-opt max-file=3 --log-opt max-size=10m \
                datadog/agent:latest \
             && docker run -d \
             -p 8025:8025 -p 8026:8026 -p 9000:9000 -p 9001:9001 \
