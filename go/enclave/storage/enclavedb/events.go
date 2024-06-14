@@ -258,8 +258,6 @@ func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Add
 		for _, topic := range [][]byte{t0, t1, t2, t3} {
 			if len(topic) > 0 {
 				l.Topics = append(l.Topics, byteArrayToHash(topic))
-			} else {
-				l.Topics = append(l.Topics, gethcommon.Hash{})
 			}
 		}
 

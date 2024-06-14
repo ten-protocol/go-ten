@@ -590,36 +590,36 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 		return fmt.Errorf("could not write batch header. Cause: %w", err)
 	}
 
-	senders := make([]*uint64, len(batch.Transactions))
-	// insert the tx signers as externally owned accounts
-	for i, tx := range batch.Transactions {
-		sender, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
-		if err != nil {
-			return fmt.Errorf("could not read tx sender. Cause: %w", err)
-		}
-		id, err := s.readEOA(ctx, dbTx, sender)
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				wid, err := enclavedb.WriteEoa(ctx, dbTx, sender)
-				if err != nil {
-					return fmt.Errorf("could not write the eoa. Cause: %w", err)
-				}
-				id = &wid
-				//todo - decide how to handle the corner case where events were emitted before
-				//etId, _, err := s.findEventTopic(ctx, dbTx, sender.Bytes())
-				//if err == nil {
-				//	err = enclavedb.UpdateEventTopic(ctx, dbTx, etId, id)
-				//	if err != nil {
-				//		return fmt.Errorf("could not update the event topic. Cause: %w", err)
-				//	}
-				//}
-			}
-		}
-		senders[i] = id
-	}
-
 	// only insert transactions if this is the first time a batch of this height is created
 	if !existsHeight {
+		senders := make([]*uint64, len(batch.Transactions))
+		// insert the tx signers as externally owned accounts
+		for i, tx := range batch.Transactions {
+			sender, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+			if err != nil {
+				return fmt.Errorf("could not read tx sender. Cause: %w", err)
+			}
+			id, err := s.readEOA(ctx, dbTx, sender)
+			if err != nil {
+				if errors.Is(err, errutil.ErrNotFound) {
+					wid, err := enclavedb.WriteEoa(ctx, dbTx, sender)
+					if err != nil {
+						return fmt.Errorf("could not write the eoa. Cause: %w", err)
+					}
+					id = &wid
+					//todo - decide how to handle the corner case where events were emitted before
+					//etId, _, err := s.findEventTopic(ctx, dbTx, sender.Bytes())
+					//if err == nil {
+					//	err = enclavedb.UpdateEventTopic(ctx, dbTx, etId, id)
+					//	if err != nil {
+					//		return fmt.Errorf("could not update the event topic. Cause: %w", err)
+					//	}
+					//}
+				}
+			}
+			senders[i] = id
+		}
+
 		if err := enclavedb.WriteTransactions(ctx, dbTx, batch, senders); err != nil {
 			return fmt.Errorf("could not write transactions. Cause: %w", err)
 		}
