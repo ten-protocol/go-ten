@@ -462,6 +462,7 @@ func (s *storageImpl) GetTransaction(ctx context.Context, txHash gethcommon.Hash
 	return enclavedb.ReadTransaction(ctx, s.db.GetSQLDB(), txHash)
 }
 
+// todo - get rid
 func (s *storageImpl) GetContractCreationTx(ctx context.Context, address gethcommon.Address) (*gethcommon.Hash, error) {
 	defer s.logDuration("GetContractCreationTx", measure.NewStopwatch())
 	return enclavedb.GetContractCreationTx(ctx, s.db.GetSQLDB(), address)
@@ -589,27 +590,22 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 		return fmt.Errorf("could not write batch header. Cause: %w", err)
 	}
 
-	// only insert transactions if this is the first time a batch of this height is created
-	if !existsHeight {
-		if err := enclavedb.WriteTransactions(ctx, dbTx, batch); err != nil {
-			return fmt.Errorf("could not write transactions. Cause: %w", err)
-		}
-	}
-
+	senders := make([]*uint64, len(batch.Transactions))
 	// insert the tx signers as externally owned accounts
-	for _, tx := range batch.Transactions {
-		sender, err := core.GetAuthenticatedSender(s.chainConfig.ChainID.Int64(), tx)
+	for i, tx := range batch.Transactions {
+		sender, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
 		if err != nil {
 			return fmt.Errorf("could not read tx sender. Cause: %w", err)
 		}
-		_, err = s.readEOA(ctx, dbTx, *sender)
+		id, err := s.readEOA(ctx, dbTx, sender)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
-				_, err := enclavedb.WriteEoa(ctx, dbTx, sender)
+				wid, err := enclavedb.WriteEoa(ctx, dbTx, sender)
 				if err != nil {
 					return fmt.Errorf("could not write the eoa. Cause: %w", err)
 				}
-				//todo
+				id = &wid
+				//todo - decide how to handle the corner case where events were emitted before
 				//etId, _, err := s.findEventTopic(ctx, dbTx, sender.Bytes())
 				//if err == nil {
 				//	err = enclavedb.UpdateEventTopic(ctx, dbTx, etId, id)
@@ -618,6 +614,14 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 				//	}
 				//}
 			}
+		}
+		senders[i] = id
+	}
+
+	// only insert transactions if this is the first time a batch of this height is created
+	if !existsHeight {
+		if err := enclavedb.WriteTransactions(ctx, dbTx, batch, senders); err != nil {
+			return fmt.Errorf("could not write transactions. Cause: %w", err)
 		}
 	}
 
@@ -671,6 +675,11 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.Batc
 
 // todo - move this to a separate service
 func (s *storageImpl) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx, batch *common.BatchHeader, receipt *types.Receipt) error {
+	txId, senderId, err := enclavedb.ReadTransactionIdAndSender(ctx, dbTX, receipt.TxHash)
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("could not get transaction id. Cause: %w", err)
+	}
+
 	// store the contract.address
 	var createdContract *uint64
 	var nilAddr gethcommon.Address
@@ -678,7 +687,7 @@ func (s *storageImpl) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx
 		createdContractId, err := s.readContractAddress(ctx, dbTX, receipt.ContractAddress)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
-				createdContractId, err = enclavedb.WriteContractAddress(ctx, dbTX, &receipt.ContractAddress)
+				createdContractId, err = enclavedb.WriteContractAddress(ctx, dbTX, receipt.ContractAddress, *senderId)
 				if err != nil {
 					return fmt.Errorf("could not write contract address. Cause: %w", err)
 				}
@@ -694,18 +703,13 @@ func (s *storageImpl) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx
 		return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 	}
 
-	txId, err := enclavedb.GetTxId(ctx, dbTX, receipt.TxHash)
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("could not get transaction id. Cause: %w", err)
-	}
-
 	execTxId, err := enclavedb.WriteExecutedTransaction(ctx, dbTX, batch.SequencerOrderNo.Uint64(), txId, createdContract, receiptBytes)
 	if err != nil {
 		return fmt.Errorf("could not write receipt. Cause: %w", err)
 	}
 
 	for _, l := range receipt.Logs {
-		err := s.storeEventLog(ctx, dbTX, execTxId, l)
+		err := s.storeEventLog(ctx, dbTX, execTxId, l, senderId)
 		if err != nil {
 			return fmt.Errorf("could not store log entry %v. Cause: %w", l, err)
 		}
@@ -713,7 +717,7 @@ func (s *storageImpl) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx
 	return nil
 }
 
-func (s *storageImpl) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTxId uint64, l *types.Log) error {
+func (s *storageImpl) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTxId uint64, l *types.Log, senderId *uint64) error {
 	topicIds := make([]*uint64, 3)
 	// iterate the topics containing user values
 	// reuse them if already inserted
@@ -752,7 +756,7 @@ func (s *storageImpl) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTxId 
 			contractAddId, err := s.readContractAddress(ctx, dbTX, l.Address)
 			if err != nil {
 				if errors.Is(err, errutil.ErrNotFound) {
-					contractAddId, err = enclavedb.WriteContractAddress(ctx, dbTX, &l.Address)
+					contractAddId, err = enclavedb.WriteContractAddress(ctx, dbTX, l.Address, *senderId)
 					if err != nil {
 						return fmt.Errorf("could not write contract address. Cause: %w", err)
 					}
@@ -817,7 +821,7 @@ func (s *storageImpl) readEventType(ctx context.Context, dbTX *sql.Tx, contractA
 		if err != nil {
 			return nil, err
 		}
-		id, isLifecycle, err := enclavedb.ReadEventType(ctx, dbTX, contractAddrId, eventSignature)
+		id, isLifecycle, err := enclavedb.ReadEventType(ctx, dbTX, *contractAddrId, eventSignature)
 		if err != nil {
 			return nil, err
 		}
@@ -1021,6 +1025,10 @@ func (s *storageImpl) ReadContractAddress(ctx context.Context, addr gethcommon.A
 	return s.readContractAddress(ctx, dbtx, addr)
 }
 
+func (s *storageImpl) ReadContractOwner(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error) {
+	return enclavedb.ReadContractOwner(ctx, s.db.GetSQLDB(), address)
+}
+
 func (s *storageImpl) readContractAddress(ctx context.Context, dbTX *sql.Tx, addr gethcommon.Address) (*uint64, error) {
 	defer s.logDuration("readContractAddress", measure.NewStopwatch())
 	id, err := common.GetCachedValue(ctx, s.contractAddressCache, s.logger, addr, func(v any) (*uint64, error) {
@@ -1028,7 +1036,7 @@ func (s *storageImpl) readContractAddress(ctx context.Context, dbTX *sql.Tx, add
 		if err != nil {
 			return nil, err
 		}
-		return &id, nil
+		return id, nil
 	})
 	if err != nil {
 		return nil, err

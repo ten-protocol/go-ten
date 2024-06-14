@@ -56,7 +56,7 @@ func ExistsBatchAtHeight(ctx context.Context, dbTx *sql.Tx, height *big.Int) (bo
 }
 
 // WriteTransactions - persists the batch and the transactions
-func WriteTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch) error {
+func WriteTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, senders []*uint64) error {
 	// creates a batch insert statement for all entries
 	if len(batch.Transactions) > 0 {
 		insert := "insert into tx (hash, content, sender_address, idx, batch_height) values " + repeat("(?,?,?,?,?)", ",", len(batch.Transactions))
@@ -68,14 +68,9 @@ func WriteTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch) err
 				return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 			}
 
-			from, err := types.Sender(types.LatestSignerForChainID(transaction.ChainId()), transaction)
-			if err != nil {
-				return fmt.Errorf("unable to convert tx to message - %w", err)
-			}
-
 			args = append(args, transaction.Hash())           // tx_hash
 			args = append(args, txBytes)                      // content
-			args = append(args, from.Bytes())                 // sender_address
+			args = append(args, senders[i])                   // sender_address
 			args = append(args, i)                            // idx
 			args = append(args, batch.Header.Number.Uint64()) // the batch height which contained it
 		}
@@ -129,17 +124,18 @@ func WriteExecutedTransaction(ctx context.Context, dbtx *sql.Tx, batchSeqNo uint
 	return uint64(id), nil
 }
 
-func GetTxId(ctx context.Context, dbtx *sql.Tx, txHash gethcommon.Hash) (*uint64, error) {
+func ReadTransactionIdAndSender(ctx context.Context, dbtx *sql.Tx, txHash gethcommon.Hash) (*uint64, *uint64, error) {
 	var txId uint64
-	err := dbtx.QueryRowContext(ctx, "select id from tx where hash=? ", txHash.Bytes()).Scan(&txId)
+	var senderId uint64
+	err := dbtx.QueryRowContext(ctx, "select id,sender_address from tx where hash=? ", txHash.Bytes()).Scan(&txId, &senderId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
-			return nil, errutil.ErrNotFound
+			return nil, nil, errutil.ErrNotFound
 		}
-		return nil, err
+		return nil, nil, err
 	}
-	return &txId, err
+	return &txId, &senderId, err
 }
 
 func ReadBatchHeaderBySeqNo(ctx context.Context, db *sql.DB, seqNo uint64) (*common.BatchHeader, error) {

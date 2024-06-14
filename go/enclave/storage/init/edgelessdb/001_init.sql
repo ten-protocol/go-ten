@@ -92,11 +92,11 @@ create table if not exists obsdb.tx
     id             INTEGER AUTO_INCREMENT,
     hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
-    sender_address binary(20) NOT NULL,
+    sender_address int NOT NULL,
     idx            int        NOT NULL,
     batch_height   int        NOT NULL,
     INDEX USING HASH (hash),
-    INDEX USING HASH (sender_address),
+    INDEX (sender_address),
     INDEX (batch_height, idx),
     primary key (id)
 );
@@ -119,6 +119,7 @@ create table if not exists obsdb.contract
 (
     id      INTEGER AUTO_INCREMENT,
     address binary(20) NOT NULL,
+    owner   int        NOT NULL,
     primary key (id),
     INDEX USING HASH (address)
 );

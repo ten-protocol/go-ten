@@ -66,33 +66,17 @@ func NewChain(
 	}
 }
 
-func (oc *obscuroChain) AccountOwner(ctx context.Context, address gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, error) {
-	// check if account is a contract
-	_, err := oc.storage.ReadContractAddress(ctx, address)
+func (oc *obscuroChain) AccountOwner(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error) {
+	// check if the account is a contract and return the owner
+	owner, err := oc.storage.ReadContractOwner(ctx, address)
 	if err != nil {
+		// it is not a conract, so it's an EOA
 		if errors.Is(err, errutil.ErrNotFound) {
-			// the account is not a contract, so it must be an EOA
 			return &address, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("could not read account owner. cause: %w", err)
 	}
-
-	// If the address is a contract, find the signer of the deploy transaction
-	txHash, err := oc.storage.GetContractCreationTx(ctx, address)
-	if err != nil {
-		return nil, err
-	}
-	transaction, _, _, _, err := oc.storage.GetTransaction(ctx, *txHash) //nolint:dogsled
-	if err != nil {
-		return nil, err
-	}
-	signer := types.NewLondonSigner(oc.chainConfig.ChainID)
-
-	sender, err := signer.Sender(transaction)
-	if err != nil {
-		return nil, err
-	}
-	return &sender, nil
+	return owner, nil
 }
 
 func (oc *obscuroChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {

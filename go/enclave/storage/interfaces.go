@@ -155,6 +155,7 @@ type Storage interface {
 	ReadEOA(ctx context.Context, addr gethcommon.Address) (*uint64, error)
 
 	ReadContractAddress(ctx context.Context, addr gethcommon.Address) (*uint64, error)
+	ReadContractOwner(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error)
 }
 
 type ScanStorage interface {

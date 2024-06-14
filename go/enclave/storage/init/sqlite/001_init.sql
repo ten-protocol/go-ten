@@ -81,7 +81,7 @@ create table if not exists tx
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
-    sender_address binary(20) NOT NULL,
+    sender_address int        NOT NULL REFERENCES externally_owned_account,
     idx            int        NOT NULL,
     batch_height   int        NOT NULL
 );
@@ -104,9 +104,11 @@ create index IDX_EX_TX_CCA on exec_tx (created_contract_address, tx);
 create table if not exists contract
 (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    address binary(20) NOT NULL
+    address binary(20) NOT NULL,
+--     denormalised for ease of access during balance checks
+    owner   int        NOT NULL REFERENCES externally_owned_account
 );
-create index IDX_CONTRACT_AD on contract (address);
+create index IDX_CONTRACT_AD on contract (address, owner);
 
 create table if not exists externally_owned_account
 (

@@ -271,7 +271,7 @@ func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Add
 	return result, nil
 }
 
-func WriteEoa(ctx context.Context, dbTX *sql.Tx, sender *gethcommon.Address) (uint64, error) {
+func WriteEoa(ctx context.Context, dbTX *sql.Tx, sender gethcommon.Address) (uint64, error) {
 	insert := "insert into externally_owned_account (address) values (?)"
 	res, err := dbTX.ExecContext(ctx, insert, sender.Bytes())
 	if err != nil {
@@ -300,9 +300,9 @@ func ReadEoa(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (uint64
 	return id, nil
 }
 
-func WriteContractAddress(ctx context.Context, dbTX *sql.Tx, contractAddress *gethcommon.Address) (*uint64, error) {
-	insert := "insert into contract (address) values (?)"
-	res, err := dbTX.ExecContext(ctx, insert, contractAddress.Bytes())
+func WriteContractAddress(ctx context.Context, dbTX *sql.Tx, contractAddress gethcommon.Address, ownerAddress uint64) (*uint64, error) {
+	insert := "insert into contract (address, owner) values (?,?)"
+	res, err := dbTX.ExecContext(ctx, insert, contractAddress.Bytes(), ownerAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +314,7 @@ func WriteContractAddress(ctx context.Context, dbTX *sql.Tx, contractAddress *ge
 	return &v, nil
 }
 
-func ReadContractAddress(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (uint64, error) {
+func ReadContractAddress(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (*uint64, error) {
 	row := dbTx.QueryRowContext(ctx, "select id from contract where address = ?", addr.Bytes())
 
 	var id uint64
@@ -322,12 +322,28 @@ func ReadContractAddress(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Addr
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
-			return 0, errutil.ErrNotFound
+			return nil, errutil.ErrNotFound
 		}
-		return 0, err
+		return nil, err
 	}
 
-	return id, nil
+	return &id, nil
+}
+
+func ReadContractOwner(ctx context.Context, db *sql.DB, address gethcommon.Address) (*gethcommon.Address, error) {
+	row := db.QueryRowContext(ctx, "select eoa.address from contract c join externally_owned_account eoa on c.owner=eoa.id  where c.address = ?", address.Bytes())
+
+	var eoaAddress gethcommon.Address
+	err := row.Scan(&eoaAddress)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &eoaAddress, nil
 }
 
 func stringToHash(ns sql.NullString) gethcommon.Hash {
