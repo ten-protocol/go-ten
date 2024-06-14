@@ -27,7 +27,7 @@ jobs:
         run: |
           echo "GitHub Variables = ${{ toJSON(vars) }}"
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: 'Extract branch name'
         shell: bash

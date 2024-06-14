@@ -70,7 +70,7 @@ func (oc *obscuroChain) AccountOwner(ctx context.Context, address gethcommon.Add
 	// check if the account is a contract and return the owner
 	owner, err := oc.storage.ReadContractOwner(ctx, address)
 	if err != nil {
-		// it is not a conract, so it's an EOA
+		// it is not a contract, so it's an EOA
 		if errors.Is(err, errutil.ErrNotFound) {
 			return &address, nil
 		}

@@ -34,7 +34,7 @@ jobs:
         run: |
           echo "GitHub Variables = ${{ toJSON(vars) }}"
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
