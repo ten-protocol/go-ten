@@ -18,7 +18,7 @@ func TestExecuteNativeFundsTransfer(t *testing.T) {
 	networktest.Run(
 		"native-funds-smoketest",
 		t,
-		env.SepoliaTestnet(),
+		env.LocalDevNetwork(),
 		actions.Series(
 			&actions.CreateTestUser{UserID: 0},
 			&actions.CreateTestUser{UserID: 1},

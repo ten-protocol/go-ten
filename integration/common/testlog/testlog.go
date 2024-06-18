@@ -57,7 +57,7 @@ func Setup(cfg *Cfg) *os.File {
 	return f
 }
 
-// SetupSysOut will direct logs to stdout
+// SetupSysOut will direct the test logs to stdout
 func SetupSysOut() {
 	err := debug.Setup("terminal", "", false, 10000000, 0, 0, false, false, slog.LevelDebug, "")
 	if err != nil {
