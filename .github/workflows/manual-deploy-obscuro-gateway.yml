@@ -134,7 +134,7 @@ jobs:
                datadog/agent:latest \
             && docker run -d -p 80:80 -p 81:81 --name ${{ github.event.inputs.testnet_type }}-TG-${{ GITHUB.RUN_NUMBER }}-SGX \
                --entrypoint "/home/ten/go-ten/tools/walletextension/main/entry.sh" \
-               -e OE_SIMULATION=1 \
+               -e OE_SIMULATION=0 \
                ${{ vars.DOCKER_BUILD_TAG_GATEWAY }}-SGX \
                ego run /home/ten/go-ten/tools/walletextension/main/main \
                -host=0.0.0.0 -port=80 -portWS=81 -nodeHost=${{ vars.L2_RPC_URL_VALIDATOR }} -verbose=true \
