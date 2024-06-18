@@ -36,7 +36,7 @@ docker run --name $CONTAINER_NAME \
   -v $VOLUME_NAME:/enclavedata \
   --device $SGX_ENCLAVE_DEVICE:$SGX_ENCLAVE_DEVICE:rwm \
   --device $SGX_PROVISION_DEVICE:$SGX_PROVISION_DEVICE:rwm \
-  $IMAGE_NAME $COMMAND
+  -it $IMAGE_NAME $COMMAND
 
 # After the REPL exits, destroy the container
 echo "Destroying the container ${CONTAINER_NAME} after command exits..."

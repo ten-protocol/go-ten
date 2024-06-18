@@ -54,8 +54,9 @@ func startREPL(db *sql.DB) {
 		query, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Println("Error reading user input:", err)
-			return
+			continue
 		}
+		fmt.Println("")
 
 		// Trim the newline character and surrounding whitespace
 		query = strings.TrimSpace(query)
@@ -163,23 +164,3 @@ func isPrintableString(data []byte) bool {
 	}
 	return true
 }
-
-//func main() {
-//	fmt.Println("Checking for existing EDB credentials...")
-//	file, found, err := edgelessdb.LoadCredentialsFromFile()
-//	if err != nil {
-//		fmt.Println("Error loading credentials from file:", err)
-//		panic(err)
-//	}
-//	if !found {
-//		panic("No existing EDB credentials found.")
-//	}
-//
-//	credJson, err := json.Marshal(file)
-//	if err != nil {
-//		fmt.Println("Error loading credentials from file:", err)
-//		panic(err)
-//	}
-//	fmt.Println("Found existing EDB credentials in file:", credJson)
-//
-//}
