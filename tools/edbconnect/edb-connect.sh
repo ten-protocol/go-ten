@@ -13,10 +13,10 @@ COMMAND="ego run /home/ten/go-ten/tools/edbconnect/main/main"
 
 # Function to destroy exited containers matching the base name
 destroy_exited_containers() {
-    exited_containers=$(docker ps -a -q -f name=${CONTAINER_BASE_NAME} -f status=exited)
+    exited_containers=$(sudo docker ps -a -q -f name=${CONTAINER_BASE_NAME} -f status=exited)
     if [ "$exited_containers" ];then
         echo "Removing exited containers matching ${CONTAINER_BASE_NAME}..."
-        docker rm $exited_containers || true
+        sudo docker rm $exited_containers || true
     else
         echo "No exited containers to remove."
     fi
@@ -27,11 +27,11 @@ destroy_exited_containers
 
 # Pull the latest image from Azure Docker repository
 echo "Pulling the latest Docker image..."
-docker pull $IMAGE_NAME
+sudo docker pull $IMAGE_NAME
 
 # Run the container with the specified command
 echo "Running the new container with name ${CONTAINER_NAME}..."
-docker run --name $CONTAINER_NAME \
+sudo docker run --name $CONTAINER_NAME \
   --network $NETWORK_NAME \
   -v $VOLUME_NAME:/enclavedata \
   --device $SGX_ENCLAVE_DEVICE:$SGX_ENCLAVE_DEVICE:rwm \
@@ -40,4 +40,4 @@ docker run --name $CONTAINER_NAME \
 
 # After the REPL exits, destroy the container
 echo "Destroying the container ${CONTAINER_NAME} after command exits..."
-docker rm $CONTAINER_NAME || true
+sudo docker rm $CONTAINER_NAME || true
