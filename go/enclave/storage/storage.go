@@ -292,11 +292,19 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Block, chainF
 
 	if chainFork != nil && chainFork.IsFork() {
 		s.logger.Info(fmt.Sprintf("Update Fork. %s", chainFork))
-		err := enclavedb.UpdateCanonicalValue(ctx, dbTx, false, chainFork.NonCanonicalPath, s.logger)
+		err := enclavedb.UpdateCanonicalBlock(ctx, dbTx, false, chainFork.NonCanonicalPath)
 		if err != nil {
 			return err
 		}
-		err = enclavedb.UpdateCanonicalValue(ctx, dbTx, true, chainFork.CanonicalPath, s.logger)
+		err = enclavedb.UpdateCanonicalBlock(ctx, dbTx, true, chainFork.CanonicalPath)
+		if err != nil {
+			return err
+		}
+		err = enclavedb.UpdateCanonicalBatch(ctx, dbTx, false, chainFork.NonCanonicalPath)
+		if err != nil {
+			return err
+		}
+		err = enclavedb.UpdateCanonicalBatch(ctx, dbTx, true, chainFork.CanonicalPath)
 		if err != nil {
 			return err
 		}
@@ -563,14 +571,13 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 	if err != nil {
 		return err
 	}
-	// sanity check because a batch can't be canonical if its parent is not
+
+	// sanity check: a batch can't be canonical if its parent is not
 	parentIsCanon, err := enclavedb.IsCanonicalBatchHash(ctx, dbTx, &batch.Header.ParentHash)
 	if err != nil {
 		return err
 	}
 	parentIsCanon = parentIsCanon || batch.SeqNo().Uint64() <= common.L2GenesisSeqNo+2
-
-	// sanity check that the parent is canonical
 	if isL1ProofCanonical && !parentIsCanon {
 		s.logger.Crit("invalid chaining. Batch  is canonical. Parent  is not", log.BatchHashKey, batch.Hash(), "parentHash", batch.Header.ParentHash)
 	}
@@ -586,32 +593,9 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 
 	// only insert transactions if this is the first time a batch of this height is created
 	if !existsHeight {
-		senders := make([]*uint64, len(batch.Transactions))
-		// insert the tx signers as externally owned accounts
-		for i, tx := range batch.Transactions {
-			sender, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
-			if err != nil {
-				return fmt.Errorf("could not read tx sender. Cause: %w", err)
-			}
-			id, err := s.readEOA(ctx, dbTx, sender)
-			if err != nil {
-				if errors.Is(err, errutil.ErrNotFound) {
-					wid, err := enclavedb.WriteEoa(ctx, dbTx, sender)
-					if err != nil {
-						return fmt.Errorf("could not write the eoa. Cause: %w", err)
-					}
-					id = &wid
-					//todo - decide how to handle the corner case where events were emitted before
-					//etId, _, err := s.findEventTopic(ctx, dbTx, sender.Bytes())
-					//if err == nil {
-					//	err = enclavedb.UpdateEventTopic(ctx, dbTx, etId, id)
-					//	if err != nil {
-					//		return fmt.Errorf("could not update the event topic. Cause: %w", err)
-					//	}
-					//}
-				}
-			}
-			senders[i] = id
+		senders, err := s.handleTxSenders(ctx, batch, dbTx)
+		if err != nil {
+			return err
 		}
 
 		if err := enclavedb.WriteTransactions(ctx, dbTx, batch, senders); err != nil {
@@ -629,6 +613,31 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 	// should always contain the canonical batch because the cache is overwritten by each new batch after a reorg
 	common.CacheValue(ctx, s.seqCacheByHeight, s.logger, batch.NumberU64()+1, batch.SeqNo())
 	return nil
+}
+
+func (s *storageImpl) handleTxSenders(ctx context.Context, batch *core.Batch, dbTx *sql.Tx) ([]*uint64, error) {
+	senders := make([]*uint64, len(batch.Transactions))
+	// insert the tx signers as externally owned accounts
+	for i, tx := range batch.Transactions {
+		sender, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+		if err != nil {
+			return nil, fmt.Errorf("could not read tx sender. Cause: %w", err)
+		}
+		eoaID, err := s.readEOA(ctx, dbTx, sender)
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				wid, err := enclavedb.WriteEoa(ctx, dbTx, sender)
+				if err != nil {
+					return nil, fmt.Errorf("could not write the eoa. Cause: %w", err)
+				}
+				eoaID = &wid
+			} else {
+				return nil, fmt.Errorf("could not insert EOA. cause: %w", err)
+			}
+		}
+		senders[i] = eoaID
+	}
+	return senders, nil
 }
 
 func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, receipts []*types.Receipt) error {
@@ -674,36 +683,31 @@ func (s *storageImpl) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx
 		return fmt.Errorf("could not get transaction id. Cause: %w", err)
 	}
 
-	// store the contract.address
-	var createdContract *uint64
-	var nilAddr gethcommon.Address
-	if receipt.ContractAddress != nilAddr {
-		createdContractId, err := s.readContractAddress(ctx, dbTX, receipt.ContractAddress)
+	// store the created contractaddress
+	var createdContractId *uint64
+	if len(receipt.ContractAddress.Bytes()) > 0 {
+		createdContractId, err = enclavedb.WriteContractAddress(ctx, dbTX, receipt.ContractAddress, *senderId)
 		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				createdContractId, err = enclavedb.WriteContractAddress(ctx, dbTX, receipt.ContractAddress, *senderId)
-				if err != nil {
-					return fmt.Errorf("could not write contract address. Cause: %w", err)
-				}
-			}
-			// return fmt.Errorf("could not read contract address. Cause: %w", err)
+			return fmt.Errorf("could not write contract address. Cause: %w", err)
 		}
-		createdContract = createdContractId
 	}
-	// Convert the receipt into their storage form and serialize them
+
+	// Convert the receipt into its storage form and serialize
+	// this removes information that can be recreated
+	// todo - in a future iteration, this can be slimmed down further because we already store the logs separately
 	storageReceipt := (*types.ReceiptForStorage)(receipt)
 	receiptBytes, err := rlp.EncodeToBytes(storageReceipt)
 	if err != nil {
 		return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 	}
 
-	execTxId, err := enclavedb.WriteExecutedTransaction(ctx, dbTX, batch.SequencerOrderNo.Uint64(), txId, createdContract, receiptBytes)
+	execTxId, err := enclavedb.WriteReceipt(ctx, dbTX, batch.SequencerOrderNo.Uint64(), txId, createdContractId, receiptBytes)
 	if err != nil {
 		return fmt.Errorf("could not write receipt. Cause: %w", err)
 	}
 
 	for _, l := range receipt.Logs {
-		err := s.storeEventLog(ctx, dbTX, execTxId, l, senderId)
+		err := s.storeEventLog(ctx, dbTX, execTxId, l)
 		if err != nil {
 			return fmt.Errorf("could not store log entry %v. Cause: %w", l, err)
 		}
@@ -711,67 +715,16 @@ func (s *storageImpl) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx
 	return nil
 }
 
-func (s *storageImpl) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTxId uint64, l *types.Log, senderId *uint64) error {
-	topicIds := make([]*uint64, 3)
-	// iterate the topics containing user values
-	// reuse them if already inserted
-	// if not, discover if there is a relevant externally owned address
-	isLifecycle := true
-	for i := 1; i < len(l.Topics); i++ {
-		topic := l.Topics[i]
-		// first check if there is an entry already
-		eventTopicId, relAddressId, err := s.findEventTopic(ctx, dbTX, topic.Bytes())
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				// check whether the topic is an EOA
-				relAddressId, err = s.findRelevantAddress(ctx, dbTX, topic)
-				if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-					return fmt.Errorf("could not find relevant address. Cause %w", err)
-				}
-				eventTopicId, err = enclavedb.WriteEventTopic(ctx, dbTX, &topic, relAddressId)
-				if err != nil {
-					return fmt.Errorf("could not write event topic. Cause: %w", err)
-				}
-			} else {
-				return fmt.Errorf("could not find event topic. Cause: %w", err)
-			}
-		}
-		if relAddressId != nil {
-			isLifecycle = false
-		}
-		topicIds[i-1] = &eventTopicId
-	}
-
-	// read the event type
-	var eventTypeId uint64
-	eventT, err := s.readEventType(ctx, dbTX, l.Address, l.Topics[0])
+func (s *storageImpl) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTxId uint64, l *types.Log) error {
+	topicIds, isLifecycle, err := s.handleUserTopics(ctx, dbTX, l)
 	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			contractAddId, err := s.readContractAddress(ctx, dbTX, l.Address)
-			if err != nil {
-				if errors.Is(err, errutil.ErrNotFound) {
-					contractAddId, err = enclavedb.WriteContractAddress(ctx, dbTX, l.Address, *senderId)
-					if err != nil {
-						return fmt.Errorf("could not write contract address. Cause: %w", err)
-					}
-				}
-				// return fmt.Errorf("could not read contract address. Cause: %w", err)
-			}
-
-			// if not found, insert
-			eventTypeId, err = enclavedb.WriteEventType(ctx, dbTX, contractAddId, l.Topics[0], isLifecycle)
-			if err != nil {
-				return fmt.Errorf("could not write event type. Cause: %w", err)
-			}
-		} else {
-			return fmt.Errorf("could not read event type. Cause: %w", err)
-		}
-	} else {
-		eventTypeId = eventT.id
+		return err
 	}
-	//if !isLifecycle && event.isLifecycle {
-	// todo - update event type
-	//}
+
+	eventTypeId, err := s.handleEventType(ctx, dbTX, l, isLifecycle)
+	if err != nil {
+		return err
+	}
 
 	// normalize data
 	data := l.Data
@@ -786,22 +739,100 @@ func (s *storageImpl) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTxId 
 	return nil
 }
 
+func (s *storageImpl) handleEventType(ctx context.Context, dbTX *sql.Tx, l *types.Log, isLifecycle bool) (uint64, error) {
+	et, err := s.readEventType(ctx, dbTX, l.Address, l.Topics[0])
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return 0, fmt.Errorf("could not read event type. Cause: %w", err)
+	}
+	if err == nil {
+		// in case we determined the current emitted event is not lifecycle, we must update the eventType
+		if !isLifecycle && et.isLifecycle {
+			err := enclavedb.UpdateEventTopicLifecycle(ctx, dbTX, et.id, isLifecycle)
+			if err != nil {
+				return 0, fmt.Errorf("could not update the event type. cause: %w", err)
+			}
+		}
+		return et.id, nil
+	}
+
+	// the first time an event of this type is emitted we must store it
+	contractAddId, err := s.readContractAddress(ctx, dbTX, l.Address)
+	if err != nil {
+		// the contract was already stored when it was created
+		return 0, fmt.Errorf("could not read contract address. Cause: %w", err)
+	}
+	return enclavedb.WriteEventType(ctx, dbTX, contractAddId, l.Topics[0], isLifecycle)
+}
+
+func (s *storageImpl) handleUserTopics(ctx context.Context, dbTX *sql.Tx, l *types.Log) ([]*uint64, bool, error) {
+	topicIds := make([]*uint64, 3)
+	// iterate the topics containing user values
+	// reuse them if already inserted
+	// if not, discover if there is a relevant externally owned address
+	isLifecycle := true
+	for i := 1; i < len(l.Topics); i++ {
+		topic := l.Topics[i]
+		// first check if there is an entry already for this topic
+		eventTopicId, relAddressId, err := s.findEventTopic(ctx, dbTX, topic.Bytes())
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			return nil, false, fmt.Errorf("could not read the event topic. Cause: %w", err)
+		}
+		if errors.Is(err, errutil.ErrNotFound) {
+			// check whether the topic is an EOA
+			relAddressId, err = s.findRelevantAddress(ctx, dbTX, topic)
+			if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+				return nil, false, fmt.Errorf("could not read relevant address. Cause %w", err)
+			}
+			eventTopicId, err = enclavedb.WriteEventTopic(ctx, dbTX, &topic, relAddressId)
+			if err != nil {
+				return nil, false, fmt.Errorf("could not write event topic. Cause: %w", err)
+			}
+		}
+
+		if relAddressId != nil {
+			isLifecycle = false
+		}
+		topicIds[i-1] = &eventTopicId
+	}
+	return topicIds, isLifecycle, nil
+}
+
 // Of the log's topics, returns those that are (potentially) user addresses. A topic is considered a user address if:
 //   - It has at least 12 leading zero bytes (since addresses are 20 bytes long, while hashes are 32) and at most 22 leading zero bytes
-//   - It does not have associated code (meaning it's a smart-contract address)
-//   - It has a non-zero nonce (to prevent accidental or malicious creation of the address matching a given topic,
-//     forcing its events to become permanently private (this is not implemented for now)
+//   - It is not a smart contract address
 func (s *storageImpl) findRelevantAddress(ctx context.Context, dbTX *sql.Tx, topic gethcommon.Hash) (*uint64, error) {
 	potentialAddr := common.ExtractPotentialAddress(topic)
-	if potentialAddr != nil {
-		eoaID, err := s.readEOA(ctx, dbTX, *potentialAddr)
-		if err != nil {
-			return nil, err
-		}
-		return eoaID, nil
-		// todo - do we need to check anything else?
+	if potentialAddr == nil {
+		return nil, errutil.ErrNotFound
 	}
-	return nil, nil
+
+	// first check whether there is already an entry in the EOA table
+	eoaID, err := s.readEOA(ctx, dbTX, *potentialAddr)
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return nil, err
+	}
+	if err == nil {
+		return eoaID, nil
+	}
+
+	// if the address is a contract then it's clearly not an EOA
+	_, err = s.readContractAddress(ctx, dbTX, *potentialAddr)
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return nil, err
+	}
+	if err == nil {
+		return nil, errutil.ErrNotFound
+	}
+
+	// when we reach this point, the value looks like an address, but we haven't yet seen it
+	// for the first iteration, we'll just assume it's an EOA
+	// we can make this smarter by passing in more information about the event
+	id, err := enclavedb.WriteEoa(ctx, dbTX, *potentialAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &id, nil
 }
 
 func (s *storageImpl) readEventType(ctx context.Context, dbTX *sql.Tx, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*eventType, error) {

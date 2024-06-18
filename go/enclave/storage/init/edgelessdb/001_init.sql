@@ -92,7 +92,7 @@ create table if not exists obsdb.tx
     id             INTEGER AUTO_INCREMENT,
     hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
-    sender_address int NOT NULL,
+    sender_address int        NOT NULL,
     idx            int        NOT NULL,
     batch_height   int        NOT NULL,
     INDEX USING HASH (hash),
@@ -102,18 +102,18 @@ create table if not exists obsdb.tx
 );
 GRANT ALL ON obsdb.tx TO obscuro;
 
-create table if not exists obsdb.exec_tx
+create table if not exists obsdb.receipt
 (
     id                       INTEGER AUTO_INCREMENT,
     created_contract_address int,
-    receipt                  mediumblob,
+    content                  mediumblob,
     tx                       int,
     batch                    int NOT NULL,
     INDEX (batch),
     INDEX (tx, created_contract_address),
     primary key (id)
 );
-GRANT ALL ON obsdb.exec_tx TO obscuro;
+GRANT ALL ON obsdb.receipt TO obscuro;
 
 create table if not exists obsdb.contract
 (
@@ -165,8 +165,8 @@ create table if not exists obsdb.event_log
     topic3     INTEGER,
     datablob   mediumblob,
     log_idx    INTEGER NOT NULL,
-    exec_tx    INTEGER NOT NULL,
+    receipt    INTEGER NOT NULL,
     primary key (id),
-    INDEX (exec_tx, event_type, topic1, topic2, topic3)
+    INDEX (receipt, event_type, topic1, topic2, topic3)
 );
 GRANT ALL ON obsdb.event_log TO obscuro;

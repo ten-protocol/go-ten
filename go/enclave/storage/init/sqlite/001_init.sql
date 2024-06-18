@@ -89,17 +89,17 @@ create index IDX_TX_HASH on tx (hash);
 create index IDX_TX_SENDER_ADDRESS on tx (sender_address);
 create index IDX_TX_BATCH_HEIGHT on tx (batch_height, idx);
 
-create table if not exists exec_tx
+create table if not exists receipt
 (
     id                       INTEGER PRIMARY KEY AUTOINCREMENT,
     created_contract_address INTEGER REFERENCES contract,
-    receipt                  mediumblob,
+    content                  mediumblob,
     --     commenting out the fk until synthetic transactions are also stored
     tx                       INTEGER,
     batch                    INTEGER NOT NULL REFERENCES batch
 );
-create index IDX_EX_TX_BATCH on exec_tx (batch);
-create index IDX_EX_TX_CCA on exec_tx (created_contract_address, tx);
+create index IDX_EX_TX_BATCH on receipt (batch);
+create index IDX_EX_TX_CCA on receipt (created_contract_address, tx);
 
 create table if not exists contract
 (
@@ -147,13 +147,13 @@ create table if not exists event_log
     topic3     INTEGER references event_topic,
     datablob   mediumblob,
     log_idx    INTEGER NOT NULL,
-    exec_tx    INTEGER NOT NULL references exec_tx
+    receipt    INTEGER NOT NULL references receipt
 );
--- create index IDX_BATCH_TX on event_log (exec_tx);
-create index IDX_EV on event_log (exec_tx, event_type, topic1, topic2, topic3);
+-- create index IDX_BATCH_TX on event_log (receipt);
+create index IDX_EV on event_log (receipt, event_type, topic1, topic2, topic3);
 
 -- requester - address
--- exec_tx - range of batch heights or a single batch
+-- receipt - range of batch heights or a single batch
 -- address []list of contract addresses
 -- topic0 - event sig   []list
 -- topic1    []list
@@ -162,8 +162,8 @@ create index IDX_EV on event_log (exec_tx, event_type, topic1, topic2, topic3);
 
 
 -- select * from event_log
---          join exec_tx on exec_tx
---              join batch on exec_tx.batch -- to get the batch height range
+--          join receipt on receipt
+--              join batch on receipt.batch -- to get the batch height range
 --          join event_type ec on event_type
 --              join contract c  on
 --          left join event_topic t1 on topic1
@@ -173,7 +173,7 @@ create index IDX_EV on event_log (exec_tx, event_type, topic1, topic2, topic3);
 --          left join event_topic t3 on topic3
 --              left join externally_owned_account eoa3 on t3.rel_address
 -- where
---  exec_tx.
+--  receipt.
 --  c.address in [address..] AND
 --  ec.event_sig in [topic0..] AND
 --  t1.topic in [topic1..] AND

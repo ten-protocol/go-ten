@@ -92,8 +92,9 @@ func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, receip
 	defer br.callbackMutex.RUnlock()
 
 	txs, err := br.storage.FetchBatchTransactionsBySeq(context.Background(), batchHeader.SequencerOrderNo.Uint64())
-	if err != nil {
-		br.logger.Crit("cannot get transactions. ", log.ErrKey, err)
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		// this function is called after a batch was successfully executed. This is a catastrophic failure
+		br.logger.Crit("should not happen. cannot get transactions. ", log.ErrKey, err)
 	}
 	br.headBatchSeq = batchHeader.SequencerOrderNo
 	if br.batchesCallback != nil {

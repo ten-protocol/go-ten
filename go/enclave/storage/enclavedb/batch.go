@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	queryReceipts = "select exec_tx.receipt, tx.content, batch.hash, batch.height from exec_tx join tx on tx.id=exec_tx.tx join batch on batch.sequence=exec_tx.batch "
+	queryReceipts = "select receipt.content, tx.content, batch.hash, batch.height from receipt join tx on tx.id=receipt.tx join batch on batch.sequence=receipt.batch "
 )
 
 func WriteBatchHeader(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, convertedHash gethcommon.Hash, blockId int64, isCanonical bool) error {
@@ -46,13 +46,25 @@ func WriteBatchHeader(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, conv
 	return err
 }
 
+func UpdateCanonicalBatch(ctx context.Context, dbtx *sql.Tx, isCanonical bool, blocks []common.L1BlockHash) error {
+	args := make([]any, 0)
+	args = append(args, isCanonical)
+	for _, blockHash := range blocks {
+		args = append(args, blockHash.Bytes())
+	}
+
+	updateBatches := "update batch set is_canonical=? where " + repeat(" l1_proof_hash=? ", "OR", len(blocks))
+	_, err := dbtx.ExecContext(ctx, updateBatches, args...)
+	return err
+}
+
 func ExistsBatchAtHeight(ctx context.Context, dbTx *sql.Tx, height *big.Int) (bool, error) {
-	var count int
-	err := dbTx.QueryRowContext(ctx, "select count(*) from batch where height=?", height.Uint64()).Scan(&count)
+	var exists bool
+	err := dbTx.QueryRowContext(ctx, "select exists(select 1 from batch where height=?)", height.Uint64()).Scan(&exists)
 	if err != nil {
 		return false, err
 	}
-	return count > 0, nil
+	return exists, nil
 }
 
 // WriteTransactions - persists the batch and the transactions
@@ -111,8 +123,8 @@ func MarkBatchExecuted(ctx context.Context, dbtx *sql.Tx, seqNo *big.Int) error 
 	return err
 }
 
-func WriteExecutedTransaction(ctx context.Context, dbtx *sql.Tx, batchSeqNo uint64, txId *uint64, createdContract *uint64, receipt []byte) (uint64, error) {
-	insert := "insert into exec_tx (created_contract_address, receipt, tx, batch) values " + "(?,?,?,?)"
+func WriteReceipt(ctx context.Context, dbtx *sql.Tx, batchSeqNo uint64, txId *uint64, createdContract *uint64, receipt []byte) (uint64, error) {
+	insert := "insert into receipt (created_contract_address, content, tx, batch) values " + "(?,?,?,?)"
 	res, err := dbtx.ExecContext(ctx, insert, createdContract, receipt, txId, batchSeqNo)
 	if err != nil {
 		return 0, err
@@ -289,8 +301,7 @@ func selectReceipts(ctx context.Context, db *sql.DB, config *params.ChainConfig,
 }
 
 func ReadReceipt(ctx context.Context, db *sql.DB, txHash common.L2TxHash, config *params.ChainConfig) (*types.Receipt, error) {
-	// todo - canonical?
-	row := db.QueryRowContext(ctx, queryReceipts+" where tx.hash=? ", txHash.Bytes())
+	row := db.QueryRowContext(ctx, queryReceipts+" where batch.is_canonical=true AND tx.hash=? ", txHash.Bytes())
 	// receipt, tx, batch, height
 	var receiptData []byte
 	var txData []byte
@@ -327,7 +338,7 @@ func ReadReceipt(ctx context.Context, db *sql.DB, txHash common.L2TxHash, config
 
 func ReadTransaction(ctx context.Context, db *sql.DB, txHash gethcommon.Hash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error) {
 	row := db.QueryRowContext(ctx,
-		"select tx.content, batch.hash, batch.height, tx.idx from exec_tx join tx on tx.id=exec_tx.tx join batch on batch.sequence=exec_tx.batch where batch.is_canonical=true and tx.hash=?",
+		"select tx.content, batch.hash, batch.height, tx.idx from receipt join tx on tx.id=receipt.tx join batch on batch.sequence=receipt.batch where batch.is_canonical=true and tx.hash=?",
 		txHash.Bytes())
 
 	// tx, batch, height, idx
@@ -421,7 +432,7 @@ func GetTransactionsPerAddress(ctx context.Context, db *sql.DB, config *params.C
 }
 
 func CountTransactionsPerAddress(ctx context.Context, db *sql.DB, address *gethcommon.Address) (uint64, error) {
-	row := db.QueryRowContext(ctx, "select count(1) from exec_tx join tx on tx.id=exec_tx.tx join batch on batch.sequence=exec_tx.batch "+" where tx.sender_address = ?", address.Bytes())
+	row := db.QueryRowContext(ctx, "select count(1) from receipt join tx on tx.id=receipt.tx join batch on batch.sequence=receipt.batch "+" where tx.sender_address = ?", address.Bytes())
 
 	var count uint64
 	err := row.Scan(&count)

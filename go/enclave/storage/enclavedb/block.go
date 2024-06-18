@@ -10,8 +10,6 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -33,29 +31,16 @@ func WriteBlock(ctx context.Context, dbtx *sql.Tx, b *types.Header) error {
 	return err
 }
 
-func UpdateCanonicalValue(ctx context.Context, dbtx *sql.Tx, isCanonical bool, blocks []common.L1BlockHash, _ gethlog.Logger) error {
-	currentBlocks := repeat(" hash=? ", "OR", len(blocks))
-
+func UpdateCanonicalBlock(ctx context.Context, dbtx *sql.Tx, isCanonical bool, blocks []common.L1BlockHash) error {
 	args := make([]any, 0)
 	args = append(args, isCanonical)
 	for _, blockHash := range blocks {
 		args = append(args, blockHash.Bytes())
 	}
 
-	updateBlocks := "update block set is_canonical=? where " + currentBlocks
+	updateBlocks := "update block set is_canonical=? where " + repeat(" hash=? ", "OR", len(blocks))
 	_, err := dbtx.ExecContext(ctx, updateBlocks, args...)
-	if err != nil {
-		return err
-	}
-
-	updateBatches := "update batch set is_canonical=? where " + repeat(" l1_proof_hash=? ", "OR", len(blocks))
-	// updateBatches := "update batch set is_canonical=? where l1_proof in (select id from block where " + currentBlocks + ")"
-	_, err = dbtx.ExecContext(ctx, updateBatches, args...)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func IsCanonicalBlock(ctx context.Context, dbtx *sql.Tx, hash *gethcommon.Hash) (bool, error) {

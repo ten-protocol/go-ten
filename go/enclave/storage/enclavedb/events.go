@@ -18,7 +18,7 @@ import (
 
 const (
 	baseEventsJoin = "from event_log e " +
-		"join exec_tx extx on e.exec_tx=extx.id" +
+		"join receipt extx on e.receipt=extx.id" +
 		"	join tx on extx.tx=tx.id " +
 		"	join batch b on extx.batch=b.sequence " +
 		"join event_type et on e.event_type=et.id " +
@@ -67,8 +67,8 @@ func WriteEventTopic(ctx context.Context, dbTX *sql.Tx, topic *gethcommon.Hash, 
 	return uint64(id), nil
 }
 
-func UpdateEventTopic(ctx context.Context, dbTx *sql.Tx, etId uint64, eoaId uint64) error {
-	_, err := dbTx.ExecContext(ctx, "update event_topic set rel_address=? where id=?", eoaId, etId)
+func UpdateEventTopicLifecycle(ctx context.Context, dbTx *sql.Tx, etId uint64, isLifecycle bool) error {
+	_, err := dbTx.ExecContext(ctx, "update event_topic set lifecycle_event=? where id=?", isLifecycle, etId)
 	return err
 }
 
@@ -84,7 +84,7 @@ func ReadEventTopic(ctx context.Context, dbTX *sql.Tx, topic []byte) (uint64, *u
 }
 
 func WriteEventLog(ctx context.Context, dbTX *sql.Tx, eventTypeId uint64, userTopics []*uint64, data []byte, logIdx uint, execTx uint64) error {
-	_, err := dbTX.ExecContext(ctx, "insert into event_log (event_type, topic1, topic2, topic3, datablob, log_idx, exec_tx) values (?,?,?,?,?,?,?)",
+	_, err := dbTX.ExecContext(ctx, "insert into event_log (event_type, topic1, topic2, topic3, datablob, log_idx, receipt) values (?,?,?,?,?,?,?)",
 		eventTypeId, userTopics[0], userTopics[1], userTopics[2], data, logIdx, execTx)
 	return err
 }
