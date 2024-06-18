@@ -121,6 +121,8 @@ jobs:
             && docker network inspect node_network >/dev/null 2>&1 || docker network create --driver bridge node_network \
             && docker run -d --name datadog-agent \
                --network node_network \
+               --device /dev/sgx_enclave \
+               --device /dev/sgx_provision \
                -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
                -e DD_LOGS_ENABLED=true \
                -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
