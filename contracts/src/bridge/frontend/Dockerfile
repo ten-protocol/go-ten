@@ -1,4 +1,6 @@
-FROM node:18-buster as runner
+# Use an official Node.js 22 as a parent image
+FROM node:22-alpine
+
 # setup container data structure
 RUN mkdir -p /home/obscuro/go-obscuro/contracts/src/bridge
 COPY ./contracts/src/bridge/frontend /home/obscuro/go-obscuro/contracts/src/bridge/frontend
