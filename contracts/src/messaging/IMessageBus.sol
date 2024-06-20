@@ -12,7 +12,7 @@ interface IMessageBus {
     // The enclave listens for it on the deployed message bus addresses.
     event LogMessagePublished
     (
-        address sender, 
+        address indexed sender, 
         uint64 sequence, 
         uint32 nonce, 
         uint32 topic, 
@@ -22,8 +22,8 @@ interface IMessageBus {
 
     event ValueTransfer
     (
-        address sender,
-        address receiver,
+        address indexed sender,
+        address indexed receiver,
         uint256 amount,
         uint64 sequence
     );

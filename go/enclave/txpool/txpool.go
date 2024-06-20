@@ -5,15 +5,17 @@ import (
 	"math/big"
 	"strings"
 	"sync"
+	_ "unsafe"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/holiman/uint256"
 
 	// unsafe package imported in order to link to a private function in go-ethereum.
 	// This allows us to validate transactions against the tx pool rules.
-	_ "unsafe"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/log"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethtxpool "github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/txpool/legacypool"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -51,7 +53,7 @@ func NewTxPool(blockchain *ethchainadapter.EthChainAdapter, gasTip *big.Int, log
 // Start starts the pool
 // can only be started after t.blockchain has at least one block inside
 func (t *TxPool) Start() error {
-	if t.pool != nil {
+	if t.running {
 		return fmt.Errorf("tx pool already started")
 	}
 
@@ -67,14 +69,19 @@ func (t *TxPool) Start() error {
 
 // PendingTransactions returns all pending transactions grouped per address and ordered per nonce
 func (t *TxPool) PendingTransactions() map[gethcommon.Address][]*gethtxpool.LazyTransaction {
-	// todo
+	// todo - for now using the base fee from the block
+	baseFee := t.Chain.CurrentBlock().BaseFee
 	return t.pool.Pending(gethtxpool.PendingFilter{
-		// BaseFee:
+		BaseFee:      uint256.NewInt(baseFee.Uint64()),
+		OnlyPlainTxs: true,
 	})
 }
 
 // Add adds a new transactions to the pool
 func (t *TxPool) Add(transaction *common.L2Tx) error {
+	if !t.running {
+		return fmt.Errorf("tx pool not running")
+	}
 	var strErrors []string
 	for _, err := range t.pool.Add([]*types.Transaction{transaction}, false, false) {
 		if err != nil {
@@ -118,5 +125,5 @@ func (t *TxPool) Close() error {
 			t.logger.Error("Could not close legacy pool", log.ErrKey, err)
 		}
 	}()
-	return t.legacyPool.Close()
+	return t.pool.Close()
 }

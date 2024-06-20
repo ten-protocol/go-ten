@@ -68,8 +68,8 @@ type batchHeaderEncoding struct {
 	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *hexutil.Big                          `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
-	TransfersTree                 common.Hash
-	CrossChainTree                SerializedCrossChainTree `json:"crossChainTree"`
+	CrossChainRootHash            common.Hash                           `json:"crossChainTreeHash"`
+	CrossChainTree                SerializedCrossChainTree              `json:"crossChainTree"`
 }
 
 // MarshalJSON custom marshals the BatchHeader into a json
@@ -122,7 +122,7 @@ func (b *BatchHeader) UnmarshalJSON(data []byte) error {
 	b.CrossChainMessages = dec.CrossChainMessages
 	b.LatestInboundCrossChainHash = dec.LatestInboundCrossChainHash
 	b.LatestInboundCrossChainHeight = (*big.Int)(dec.LatestInboundCrossChainHeight)
-	b.CrossChainRoot = dec.TransfersTree
+	b.CrossChainRoot = dec.CrossChainRootHash
 	b.CrossChainTree = dec.CrossChainTree
 	return nil
 }
