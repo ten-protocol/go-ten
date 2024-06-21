@@ -53,7 +53,7 @@ func startREPL(db *sql.DB) {
 		Prompt:          ">>> ",
 		HistoryFile:     "/tmp/readline.tmp",
 		InterruptPrompt: "^C",
-		AutoComplete:    readline.NewPrefixCompleter(),
+		EOFPrompt:       "exit",
 	})
 	if err != nil {
 		log.Fatal(err)
