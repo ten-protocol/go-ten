@@ -2,7 +2,7 @@
   "exe": "main",
   "key": "testnet.pem",
   "debug": true,
-  "heapSize": 4096,
+  "heapSize": 1024,
   "executableHeap": true,
   "productID": 1,
   "securityVersion": 1,

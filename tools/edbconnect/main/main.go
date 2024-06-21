@@ -1,12 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"database/sql"
+	"errors"
 	"fmt"
-	"os"
+	"io"
+	"log"
 	"strings"
 
+	"github.com/chzyer/readline"
 	"github.com/ten-protocol/go-ten/go/enclave/storage/init/edgelessdb"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 )
@@ -47,15 +49,33 @@ func main() {
 
 // Starts a loop that reads user input and runs queries against the Edgeless DB until user types "exit"
 func startREPL(db *sql.DB) {
-	reader := bufio.NewReader(os.Stdin)
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:          ">>> ",
+		HistoryFile:     "/tmp/readline.tmp",
+		InterruptPrompt: "^C",
+		AutoComplete:    readline.NewPrefixCompleter(),
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rl.Close()
 	for {
 		fmt.Println("\nEnter a query to run against the Edgeless DB (or type 'exit' to quit):")
-		fmt.Print(">>> ")
-		query, err := reader.ReadString('\n')
-		if err != nil {
+		query, err := rl.Readline()
+		if err != nil { // Handle EOF and Interrupt errors
+			if errors.Is(err, readline.ErrInterrupt) {
+				if len(query) == 0 {
+					break
+				} else {
+					continue
+				}
+			} else if errors.Is(err, io.EOF) {
+				break
+			}
 			fmt.Println("Error reading user input:", err)
 			continue
 		}
+		// line break for readability
 		fmt.Println("")
 
 		// Trim the newline character and surrounding whitespace
