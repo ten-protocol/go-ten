@@ -92,14 +92,13 @@ create index IDX_TX_BATCH_HEIGHT on tx (batch_height, idx);
 create table if not exists receipt
 (
     id                       INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_contract_address INTEGER REFERENCES contract,
     content                  mediumblob,
     --     commenting out the fk until synthetic transactions are also stored
     tx                       INTEGER,
     batch                    INTEGER NOT NULL REFERENCES batch
 );
 create index IDX_EX_TX_BATCH on receipt (batch);
-create index IDX_EX_TX_CCA on receipt (created_contract_address, tx);
+create index IDX_EX_TX_CCA on receipt (tx);
 
 create table if not exists contract
 (

@@ -105,12 +105,11 @@ GRANT ALL ON obsdb.tx TO obscuro;
 create table if not exists obsdb.receipt
 (
     id                       INTEGER AUTO_INCREMENT,
-    created_contract_address int,
     content                  mediumblob,
     tx                       int,
     batch                    int NOT NULL,
     INDEX (batch),
-    INDEX (tx, created_contract_address),
+    INDEX (tx),
     primary key (id)
 );
 GRANT ALL ON obsdb.receipt TO obscuro;

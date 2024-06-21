@@ -123,9 +123,9 @@ func MarkBatchExecuted(ctx context.Context, dbtx *sql.Tx, seqNo *big.Int) error 
 	return err
 }
 
-func WriteReceipt(ctx context.Context, dbtx *sql.Tx, batchSeqNo uint64, txId *uint64, createdContract *uint64, receipt []byte) (uint64, error) {
-	insert := "insert into receipt (created_contract_address, content, tx, batch) values " + "(?,?,?,?)"
-	res, err := dbtx.ExecContext(ctx, insert, createdContract, receipt, txId, batchSeqNo)
+func WriteReceipt(ctx context.Context, dbtx *sql.Tx, batchSeqNo uint64, txId *uint64, receipt []byte) (uint64, error) {
+	insert := "insert into receipt (content, tx, batch) values " + "(?,?,?)"
+	res, err := dbtx.ExecContext(ctx, insert, receipt, txId, batchSeqNo)
 	if err != nil {
 		return 0, err
 	}
@@ -396,7 +396,7 @@ func ReadBatchTransactions(ctx context.Context, db *sql.DB, height uint64) ([]*c
 }
 
 func ReadContractCreationCount(ctx context.Context, db *sql.DB) (*big.Int, error) {
-	row := db.QueryRowContext(ctx, "select id from contract order by id desc limit 1")
+	row := db.QueryRowContext(ctx, "select count(id) from contract")
 
 	var count int64
 	err := row.Scan(&count)
@@ -404,7 +404,7 @@ func ReadContractCreationCount(ctx context.Context, db *sql.DB) (*big.Int, error
 		return nil, err
 	}
 
-	return big.NewInt(count + 1), nil
+	return big.NewInt(count), nil
 }
 
 func ReadUnexecutedBatches(ctx context.Context, db *sql.DB, from *big.Int) ([]*common.BatchHeader, error) {
