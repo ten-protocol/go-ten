@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"strings"
@@ -14,35 +13,35 @@ import (
 )
 
 func main() {
-	fmt.Println("Retrieving Edgeless DB credentials...")
+	log.Println("Retrieving Edgeless DB credentials...")
 	creds, found, err := edgelessdb.LoadCredentialsFromFile()
 	if err != nil {
-		fmt.Println("Error loading credentials from file:", err)
+		log.Println("Error loading credentials from file:", err)
 		panic(err)
 	}
 	if !found {
 		panic("No existing EDB credentials found.")
 	}
-	fmt.Println("Found existing EDB credentials. Creating TLS config...")
+	log.Println("Found existing EDB credentials. Creating TLS config...")
 	cfg, err := edgelessdb.CreateTLSCfg(creds)
 	if err != nil {
-		fmt.Println("Error creating TLS config from credentials:", err)
+		log.Println("Error creating TLS config from credentials:", err)
 		panic(err)
 	}
-	fmt.Println("TLS config created. Connecting to Edgeless DB...")
+	log.Println("TLS config created. Connecting to Edgeless DB...")
 	testlog.SetupSysOut()
 	db, err := edgelessdb.ConnectToEdgelessDB("obscuronode-edgelessdb", cfg, testlog.Logger())
 	if err != nil {
-		fmt.Println("Error connecting to Edgeless DB:", err)
+		log.Println("Error connecting to Edgeless DB:", err)
 		panic(err)
 	}
-	fmt.Println("Connected to Edgeless DB.")
+	log.Println("Connected to Edgeless DB.")
 
 	startREPL(db)
 
 	err = db.Close()
 	if err != nil {
-		fmt.Println("Error closing Edgeless DB connection:", err)
+		log.Println("Error closing Edgeless DB connection:", err)
 		panic(err)
 	}
 }
@@ -107,14 +106,14 @@ func startREPL(db *sql.DB) {
 func runQuery(db *sql.DB, query string) {
 	rows, err := db.Query(query)
 	if err != nil {
-		fmt.Println("Error executing query:", err)
+		log.Println("Error executing query:", err)
 		return
 	}
 	defer rows.Close()
 
 	cols, err := rows.Columns()
 	if err != nil {
-		fmt.Println("Error fetching columns:", err)
+		log.Println("Error fetching columns:", err)
 		return
 	}
 
@@ -158,22 +157,22 @@ func runQuery(db *sql.DB, query string) {
 	}
 
 	if err = rows.Err(); err != nil {
-		fmt.Println("Error during row iteration:", err)
+		log.Println("Error during row iteration:", err)
 	}
 }
 
 func runExec(db *sql.DB, query string) {
 	result, err := db.Exec(query)
 	if err != nil {
-		fmt.Println("Error executing query against Edgeless DB:", err)
+		log.Println("Error executing query against Edgeless DB:", err)
 		return
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		fmt.Println("Error getting number of rows affected:", err)
+		log.Println("Error getting number of rows affected:", err)
 		return
 	}
-	fmt.Println("Number of rows affected:", rowsAffected)
+	log.Println("Number of rows affected:", rowsAffected)
 }
 
 // isPrintableString checks if a byte slice contains only printable characters
