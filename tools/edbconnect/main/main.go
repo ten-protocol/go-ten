@@ -59,8 +59,9 @@ func startREPL(db *sql.DB) {
 		log.Fatal(err)
 	}
 	defer rl.Close()
+	log.SetOutput(rl.Stderr())
 	for {
-		fmt.Println("\nEnter a query to run against the Edgeless DB (or type 'exit' to quit):")
+		log.Println("\nEnter a query to run against the Edgeless DB (or type 'exit' to quit):")
 		query, err := rl.Readline()
 		if err != nil { // Handle EOF and Interrupt errors
 			if errors.Is(err, readline.ErrInterrupt) {
@@ -72,11 +73,11 @@ func startREPL(db *sql.DB) {
 			} else if errors.Is(err, io.EOF) {
 				break
 			}
-			fmt.Println("Error reading user input:", err)
+			log.Println("Error reading user input:", err)
 			continue
 		}
 		// line break for readability
-		fmt.Println("")
+		log.Println()
 
 		// Trim the newline character and surrounding whitespace
 		query = strings.TrimSpace(query)
@@ -100,7 +101,7 @@ func startREPL(db *sql.DB) {
 			runExec(db, query)
 		}
 	}
-	fmt.Println("Exiting...")
+	log.Println("Exiting...")
 }
 
 func runQuery(db *sql.DB, query string) {
@@ -119,9 +120,9 @@ func runQuery(db *sql.DB, query string) {
 
 	// Print column headers
 	for _, colName := range cols {
-		fmt.Printf("%s\t", colName)
+		log.Printf("%s\t", colName)
 	}
-	fmt.Println()
+	log.Println()
 
 	// Prepare a slice to hold the values
 	values := make([]interface{}, len(cols))
@@ -133,7 +134,7 @@ func runQuery(db *sql.DB, query string) {
 
 		err = rows.Scan(valuePtrs...)
 		if err != nil {
-			fmt.Println("Error scanning row:", err)
+			log.Println("Error scanning row:", err)
 			return
 		}
 
@@ -142,18 +143,18 @@ func runQuery(db *sql.DB, query string) {
 			// Handle NULL values and convert byte slices to strings
 			switch v := val.(type) {
 			case nil:
-				fmt.Print("NULL\t")
+				log.Print("NULL\t")
 			case []byte:
 				if isPrintableString(v) {
-					fmt.Printf("%s\t", string(v))
+					log.Printf("%s\t", string(v))
 				} else {
-					fmt.Printf("%x\t", v) // Print binary data as hexadecimal
+					log.Printf("%x\t", v) // Print binary data as hexadecimal
 				}
 			default:
-				fmt.Printf("%v\t", v)
+				log.Printf("%v\t", v)
 			}
 		}
-		fmt.Println()
+		log.Println()
 	}
 
 	if err = rows.Err(); err != nil {
