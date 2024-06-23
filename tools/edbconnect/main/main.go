@@ -103,6 +103,7 @@ func runQuery(db *sql.DB, query string) {
 	for _, colName := range cols {
 		fmt.Printf("%s\t", colName)
 	}
+	fmt.Println()
 
 	// Prepare a slice to hold the values
 	values := make([]interface{}, len(cols))
@@ -134,6 +135,7 @@ func runQuery(db *sql.DB, query string) {
 				fmt.Printf("%v\t", v)
 			}
 		}
+		fmt.Println()
 	}
 
 	if err = rows.Err(); err != nil {
