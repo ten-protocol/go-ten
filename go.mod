@@ -8,6 +8,7 @@ require (
 	github.com/FantasyJony/openzeppelin-merkle-tree-go v1.1.2
 	github.com/Microsoft/go-winio v0.6.1
 	github.com/andybalholm/brotli v1.1.0
+	github.com/chzyer/readline v1.5.1
 	github.com/codeclysm/extract/v3 v3.1.1
 	github.com/deckarep/golang-set/v2 v2.6.0
 	github.com/dgraph-io/ristretto v0.1.1
