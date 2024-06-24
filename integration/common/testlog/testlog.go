@@ -56,3 +56,12 @@ func Setup(cfg *Cfg) *os.File {
 	testlog = gethlog.New(log.CmpKey, log.TestLogCmp)
 	return f
 }
+
+// SetupSysOut will direct the test logs to stdout
+func SetupSysOut() {
+	err := debug.Setup("terminal", "", false, 10000000, 0, 0, false, false, slog.LevelDebug, "")
+	if err != nil {
+		panic(err)
+	}
+	testlog = gethlog.New(log.CmpKey, log.TestLogCmp)
+}
