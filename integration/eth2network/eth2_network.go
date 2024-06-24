@@ -433,13 +433,13 @@ func (n *Impl) prysmGenerateGenesis() error {
 		"testnet",
 		"generate-genesis",
 		"--fork", "deneb",
-		"--genesis-time-delay", "15",
+		"--genesis-time-delay", "10",
 		"--num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
-		"--output-ssz", n.prysmGenesisPath,
 		"--config-name", "interop",
 		"--chain-config-file", n.prysmConfigPath,
 		"--geth-genesis-json-in", n.gethGenesisPath,
 		"--geth-genesis-json-out", n.gethGenesisPath,
+		"--output-ssz", n.prysmGenesisPath,
 	}
 	fmt.Printf("prysmGenerateGenesis: %s %s\n", n.prysmBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.prysmBinaryPath, args...) //nolint
@@ -473,7 +473,7 @@ func (n *Impl) prysmStartBeaconNode(gethAuthRPCPort, rpcPort, p2pPort int, nodeD
 		"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", gethAuthRPCPort),
 		"--jwt-secret", path.Join(nodeDataDir, "geth", "jwtsecret"),
 		"--contract-deployment-block", "0",
-		"--verbosity", "error",
+		"--verbosity", "trace",
 		"--enable-debug-rpc-endpoints",
 		"--force-clear-db",
 	}
