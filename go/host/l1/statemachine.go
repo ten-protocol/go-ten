@@ -83,7 +83,6 @@ func (c *crossChainStateMachine) HealthStatus(context.Context) host.HealthStatus
 		errMsg = "not running"
 	}
 	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
-
 }
 
 func (c *crossChainStateMachine) GetRollupData(number RollupNumber) (RollupInfo, error) {
@@ -130,12 +129,10 @@ func (c *crossChainStateMachine) PublishNextBundle() error {
 	c.currentRollup++
 
 	return nil
-
 }
 
 // Synchronize - checks if there are any new rollups or forks and moves the tracking needle to the latest common ancestor.
 func (c *crossChainStateMachine) Synchronize() error {
-
 	forkUID, _, _, err := c.publisher.GetBundleRangeFromManagementContract(big.NewInt(0).SetUint64(c.latestRollup.Number), c.latestRollup.ForkUID)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNoNextRollup) {
@@ -162,7 +159,6 @@ func (c *crossChainStateMachine) Synchronize() error {
 }
 
 func (c *crossChainStateMachine) RevertToLatestKnownCommonAncestorRollup() error {
-
 	managementContract, err := ManagementContract.NewManagementContract(*c.mgmtContractLib.GetContractAddr(), c.ethClient.EthClient())
 	if err != nil {
 		return err
