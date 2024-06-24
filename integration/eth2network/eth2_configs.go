@@ -78,8 +78,8 @@ const _baseGenesis = `{
 		"terminalBlockHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 		"arrowGlacierBlock": 0,
 		"grayGlacierBlock": 0,
-        "shanghaiTime": 1707123228,
-        "cancunTime": 1707123228,
+        "shanghaiTime": 1719219940,
+        "cancunTime": 1719220012,
 		"ethash": {},
 		"terminalTotalDifficulty": 0,
 		"terminalTotalDifficultyPassed": true
@@ -99,9 +99,9 @@ const _baseGenesis = `{
 	"number": "0x0",
 	"gasUsed": "0x0",
 	"parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-	"baseFeePerGas": null,
-	"excessBlobGas": null,
-	"blobGasUsed": null
+	"baseFeePerGas": "0x0",
+	"excessBlobGas": "0x0",
+	"blobGasUsed": "0x0"
 }`
 
 // generateGenesis returns a genesis with specified params
@@ -131,8 +131,8 @@ func generateGenesis(blockTimeSecs int, chainID int, signerAddrs, prefundedAddrs
 	joinedSigners := strings.Join(signerAddrs, "")
 
 	extraData := fmt.Sprintf("0x%s%s%s",
-		strings.Repeat("0", 64), // 32 bytes of zeroes
-		joinedSigners,           // Concatenated signer addresses
+		strings.Repeat("0", 64),  // 32 bytes of zeroes
+		joinedSigners,            // Concatenated signer addresses
 		strings.Repeat("0", 130)) // 65 bytes of zeroes
 	genesisJSON["extraData"] = extraData
 
