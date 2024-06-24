@@ -961,7 +961,7 @@ func replayBatchesToValidState(ctx context.Context, storage storage.Storage, reg
 		}
 
 		// calculate the stateDB after this batch and store it in the cache
-		_, err := batchExecutor.ExecuteBatch(ctx, batch)
+		_, _, err := batchExecutor.ExecuteBatch(ctx, batch)
 		if err != nil {
 			return err
 		}

@@ -10,8 +10,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/core/tracing"
-
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -453,52 +451,9 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2Batc
 
 	statedb, err := state.New(batch.Root, s.stateCache, nil)
 	if err != nil {
-		return nil, fmt.Errorf("could not create state DB for %s. Cause: %w", batch.Root, err)
+		return nil, fmt.Errorf("could not create state DB for batch: %d. Cause: %w", batch.SequencerOrderNo, err)
 	}
-	var ownerAddress *gethcommon.Address
-	// todo - this should be set only when executing a batch
-	statedb.SetLogger(&tracing.Hooks{
-		// when a
-		OnNonceChange: func(addr gethcommon.Address, prev, new uint64) {
-			ownerAddress = &addr
-		},
-		// called when the code of a contract changes.
-		OnCodeChange: func(addr gethcommon.Address, prevCodeHash gethcommon.Hash, prevCode []byte, codeHash gethcommon.Hash, code []byte) {
-			if len(prevCode) > 0 {
-				return
-			}
-			// only proceed for new deployments.
-			//
-			err := s.SaveContract(context.Background(), addr, *ownerAddress)
-			if err != nil {
-				s.logger.Error("could not save contract address", log.ErrKey, err)
-			}
-		},
-	})
 	return statedb, nil
-}
-
-func (s *storageImpl) SaveContract(ctx context.Context, contractAddr, sender gethcommon.Address) error {
-	s.logger.Debug("Writing contract address ", "addr", contractAddr)
-	dbTX, err := s.db.NewDBTransaction(context.Background())
-	if err != nil {
-		return fmt.Errorf("could not create db tx. cause %w", err)
-	}
-
-	senderId, err := s.readOrWriteEOA(context.Background(), dbTX, sender)
-	if err != nil {
-		return fmt.Errorf("could not readOrWriteEOA. cause %w", err)
-	}
-
-	_, err = enclavedb.WriteContractAddress(ctx, dbTX, contractAddr, *senderId)
-	if err != nil {
-		return fmt.Errorf("could not write contract address. cause %w", err)
-	}
-	err = dbTX.Commit()
-	if err != nil {
-		return fmt.Errorf("could not commit db tx. cause %w", err)
-	}
-	return nil
 }
 
 func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
@@ -677,7 +632,7 @@ func (s *storageImpl) handleTxSenders(ctx context.Context, batch *core.Batch, db
 	return senders, nil
 }
 
-func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, receipts []*types.Receipt) error {
+func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, receipts []*types.Receipt, newContracts map[gethcommon.Hash][]*gethcommon.Address) error {
 	defer s.logDuration("StoreExecutedBatch", measure.NewStopwatch())
 	executed, err := enclavedb.BatchWasExecuted(ctx, s.db.GetSQLDB(), batch.Hash())
 	if err != nil {
@@ -701,7 +656,7 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.Batc
 	}
 
 	for _, receipt := range receipts {
-		err = s.storeReceiptAndEventLogs(ctx, dbTx, batch, receipt)
+		err = s.storeReceiptAndEventLogs(ctx, dbTx, batch, receipt, newContracts[receipt.TxHash])
 		if err != nil {
 			return fmt.Errorf("could not store receipt. Cause: %w", err)
 		}
@@ -714,10 +669,17 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.Batc
 }
 
 // todo - move this to a separate service
-func (s *storageImpl) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx, batch *common.BatchHeader, receipt *types.Receipt) error {
-	txId, _, err := enclavedb.ReadTransactionIdAndSender(ctx, dbTX, receipt.TxHash)
+func (s *storageImpl) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx, batch *common.BatchHeader, receipt *types.Receipt, createdContracts []*gethcommon.Address) error {
+	txId, senderId, err := enclavedb.ReadTransactionIdAndSender(ctx, dbTX, receipt.TxHash)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not get transaction id. Cause: %w", err)
+	}
+
+	for _, createdContract := range createdContracts {
+		_, err = enclavedb.WriteContractAddress(ctx, dbTX, createdContract, *senderId)
+		if err != nil {
+			return fmt.Errorf("could not write contract address. cause %w", err)
+		}
 	}
 
 	// Convert the receipt into its storage form and serialize

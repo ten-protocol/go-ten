@@ -71,7 +71,7 @@ type BatchResolver interface {
 	// StoreBatch stores an un-executed batch.
 	StoreBatch(ctx context.Context, batch *core.Batch, convertedHash gethcommon.Hash) error
 	// StoreExecutedBatch - store the batch after it was executed
-	StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, receipts []*types.Receipt) error
+	StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, receipts []*types.Receipt, contracts map[gethcommon.Hash][]*gethcommon.Address) error
 
 	// StoreRollup
 	StoreRollup(ctx context.Context, rollup *common.ExtRollup, header *common.CalldataRollupHeader) error
@@ -152,7 +152,6 @@ type Storage interface {
 
 	ReadEOA(ctx context.Context, addr gethcommon.Address) (*uint64, error)
 
-	SaveContract(ctx context.Context, contractAddr, sender gethcommon.Address) error
 	ReadContractAddress(ctx context.Context, addr gethcommon.Address) (*uint64, error)
 	ReadContractOwner(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error)
 }

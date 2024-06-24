@@ -65,7 +65,9 @@ type BatchExecutionContext struct {
 type ComputedBatch struct {
 	Batch    *core.Batch
 	Receipts types.Receipts
-	Commit   func(bool) (gethcommon.Hash, error)
+	// while executing the batch, we collect the newly created contracts mapped by the transaction that created them
+	CreatedContracts map[gethcommon.Hash][]*gethcommon.Address
+	Commit           func(bool) (gethcommon.Hash, error)
 }
 
 type BatchExecutor interface {
@@ -76,7 +78,7 @@ type BatchExecutor interface {
 	ComputeBatch(ctx context.Context, batchContext *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error)
 
 	// ExecuteBatch - executes the transactions and xchain messages, returns the receipts, and updates the stateDB
-	ExecuteBatch(context.Context, *core.Batch) (types.Receipts, error)
+	ExecuteBatch(context.Context, *core.Batch) (types.Receipts, map[gethcommon.Hash][]*gethcommon.Address, error)
 
 	// CreateGenesisState - will create and commit the genesis state in the stateDB for the given block hash,
 	// and uint64 timestamp representing the time now. In this genesis state is where one can

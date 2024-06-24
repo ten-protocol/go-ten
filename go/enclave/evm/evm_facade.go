@@ -38,6 +38,12 @@ import (
 
 var ErrGasNotEnoughForL1 = errors.New("gas limit too low to pay for execution and l1 fees")
 
+type TxExecResult struct {
+	Receipt          *types.Receipt
+	CreatedContracts []*gethcommon.Address
+	Err              error
+}
+
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
@@ -54,17 +60,17 @@ func ExecuteTransactions(
 	noBaseFee bool,
 	batchGasLimit uint64,
 	logger gethlog.Logger,
-) map[common.TxHash]interface{} { // todo - return error
+) (map[common.TxHash]*TxExecResult, error) {
 	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, logger)
 	gp := gethcore.GasPool(batchGasLimit)
 	zero := uint64(0)
 	usedGas := &zero
-	result := map[common.TxHash]interface{}{}
+	result := map[common.TxHash]*TxExecResult{}
 
 	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
-		logger.Crit("Could not convert to eth header", log.ErrKey, err)
-		return nil
+		logger.Error("Could not convert to eth header", log.ErrKey, err)
+		return nil, err
 	}
 
 	hash := header.Hash()
@@ -77,7 +83,9 @@ func ExecuteTransactions(
 	// this should not open up any attack vectors on the randomness.
 	tCountRollback := 0
 	for i, t := range txs {
-		r, err := executeTransaction(
+		txResult := &TxExecResult{}
+		result[t.Tx.Hash()] = txResult
+		r, createdContracts, err := executeTransaction(
 			s,
 			chainConfig,
 			chain,
@@ -92,7 +100,7 @@ func ExecuteTransactions(
 		)
 		if err != nil {
 			tCountRollback++
-			result[t.Tx.Hash()] = err
+			txResult.Err = err
 			// only log tx execution errors if they are unexpected
 			logFailedTx := logger.Info
 			if errors.Is(err, gethcore.ErrNonceTooHigh) || errors.Is(err, gethcore.ErrNonceTooLow) || errors.Is(err, gethcore.ErrFeeCapTooLow) || errors.Is(err, ErrGasNotEnoughForL1) {
@@ -101,11 +109,13 @@ func ExecuteTransactions(
 			logFailedTx("Failed to execute tx:", log.TxKey, t.Tx.Hash(), log.CtrErrKey, err)
 			continue
 		}
-		result[t.Tx.Hash()] = r
+
 		logReceipt(r, logger)
+		txResult.Receipt = r
+		txResult.CreatedContracts = createdContracts
 	}
 	s.Finalise(true)
-	return result
+	return result, nil
 }
 
 const (
@@ -127,16 +137,27 @@ func executeTransaction(
 	tCount int,
 	batchHash common.L2BatchHash,
 	batchHeight uint64,
-) (*types.Receipt, error) {
+) (*types.Receipt, []*gethcommon.Address, error) {
+	var createdContracts []*gethcommon.Address
 	rules := cc.Rules(big.NewInt(0), true, 0)
 	from, err := types.Sender(types.LatestSigner(cc), t.Tx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	s.Prepare(rules, from, gethcommon.Address{}, t.Tx.To(), nil, nil)
 	snap := s.Snapshot()
 	s.SetTxContext(t.Tx.Hash(), tCount)
 
+	s.SetLogger(&tracing.Hooks{
+		// called when the code of a contract changes.
+		OnCodeChange: func(addr gethcommon.Address, prevCodeHash gethcommon.Hash, prevCode []byte, codeHash gethcommon.Hash, code []byte) {
+			// only proceed for new deployments.
+			if len(prevCode) > 0 {
+				return
+			}
+			createdContracts = append(createdContracts, &addr)
+		},
+	})
 	before := header.MixDigest
 	// calculate a random value per transaction
 	header.MixDigest = crypto.CalculateTxRnd(before.Bytes(), tCount)
@@ -226,10 +247,10 @@ func executeTransaction(
 	header.MixDigest = before
 	if err != nil {
 		s.RevertToSnapshot(snap)
-		return receipt, err
+		return receipt, nil, err
 	}
 
-	return receipt, nil
+	return receipt, createdContracts, nil
 }
 
 func logReceipt(r *types.Receipt, logger gethlog.Logger) {
