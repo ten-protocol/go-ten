@@ -300,9 +300,9 @@ func ReadEoa(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (uint64
 	return id, nil
 }
 
-func WriteContractAddress(ctx context.Context, dbTX *sql.Tx, contractAddress *gethcommon.Address, ownerAddress uint64) (*uint64, error) {
+func WriteContractAddress(ctx context.Context, dbTX *sql.Tx, contractAddress *gethcommon.Address, eoaId uint64) (*uint64, error) {
 	insert := "insert into contract (address, owner) values (?,?)"
-	res, err := dbTX.ExecContext(ctx, insert, contractAddress.Bytes(), ownerAddress)
+	res, err := dbTX.ExecContext(ctx, insert, contractAddress.Bytes(), eoaId)
 	if err != nil {
 		return nil, err
 	}

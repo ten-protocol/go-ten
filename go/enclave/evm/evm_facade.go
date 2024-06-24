@@ -158,6 +158,8 @@ func executeTransaction(
 			createdContracts = append(createdContracts, &addr)
 		},
 	})
+	defer s.SetLogger(nil)
+
 	before := header.MixDigest
 	// calculate a random value per transaction
 	header.MixDigest = crypto.CalculateTxRnd(before.Bytes(), tCount)
