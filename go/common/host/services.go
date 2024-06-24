@@ -22,6 +22,7 @@ const (
 	EnclaveServiceName         = "enclaves"
 	LogSubscriptionServiceName = "log-subs"
 	FilterAPIServiceName       = "filter-api"
+	CrossChainServiceName      = "cross-chain"
 )
 
 // The host has a number of services that encapsulate the various responsibilities of the host.
@@ -119,7 +120,7 @@ type L1Publisher interface {
 	ResyncImportantContracts() error
 
 	// GetBundleRangeFromManagementContract returns the range of batches for which to build a bundle
-	GetBundleRangeFromManagementContract() (*big.Int, *big.Int, error)
+	GetBundleRangeFromManagementContract(lastRollupNumber *big.Int, lastRollupUID gethcommon.Hash) (*gethcommon.Hash, *big.Int, *big.Int, error)
 }
 
 // L2BatchRepository provides an interface for the host to request L2 batch data (live-streaming and historical)

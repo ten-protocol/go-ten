@@ -46,6 +46,7 @@ type guardianServiceLocator interface {
 	L1Repo() host.L1BlockRepository
 	L2Repo() host.L2BatchRepository
 	LogSubs() host.LogSubscriptionManager
+	CrossChainMachine() l1.CrossChainStateMachine
 }
 
 // Guardian is a host service which monitors an enclave, it's responsibilities include:
@@ -634,46 +635,18 @@ func (g *Guardian) periodicBundleSubmission() {
 
 	bundleSubmissionTicker := time.NewTicker(interval)
 
-	fromSequenceNumber, _, err := g.sl.L1Publisher().GetBundleRangeFromManagementContract()
-	if err != nil {
-		g.logger.Error(`Unable to get bundle range from management contract and initialize cross chain publishing`, log.ErrKey, err)
-		return
-	}
-
 	for {
 		select {
 		case <-bundleSubmissionTicker.C:
-			from, to, err := g.sl.L1Publisher().GetBundleRangeFromManagementContract()
+			err := g.sl.CrossChainMachine().Synchronize()
 			if err != nil {
-				g.logger.Error("Unable to get bundle range from management contract", log.ErrKey, err)
+				g.logger.Error("Failed to synchronize cross chain state machine", log.ErrKey, err)
 				continue
 			}
 
-			if from.Uint64() > fromSequenceNumber.Uint64() {
-				fromSequenceNumber.Set(from)
-			}
-
-			bundle, err := g.enclaveClient.ExportCrossChainData(context.Background(), fromSequenceNumber.Uint64(), to.Uint64())
+			err = g.sl.CrossChainMachine().PublishNextBundle()
 			if err != nil {
-				if !errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
-					g.logger.Error("Unable to export cross chain bundle from enclave", log.ErrKey, err)
-				}
-				if errors.Is(err, context.DeadlineExceeded) {
-					g.logger.Error(`Cross chain bundle export timed out.`, log.ErrKey, err)
-					return // stop the process - if we are timing out we are not going to catch up
-				}
-				continue
-			}
-
-			if len(bundle.CrossChainRootHashes) == 0 {
-				g.logger.Debug("No cross chain data to submit")
-				fromSequenceNumber.SetUint64(to.Uint64() + 1)
-				continue
-			}
-
-			err = g.sl.L1Publisher().PublishCrossChainBundle(bundle)
-			if err != nil {
-				g.logger.Error("Unable to publish cross chain bundle", log.ErrKey, err)
+				g.logger.Error("Failed to publish next bundle", log.ErrKey, err)
 				continue
 			}
 		case <-g.hostInterrupter.Done():

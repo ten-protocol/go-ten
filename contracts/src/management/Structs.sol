@@ -13,6 +13,7 @@ interface Structs {
     struct RollupStorage {
         mapping(bytes32=>MetaRollup) byHash;
         mapping(uint256=>bytes32) byOrder;
+        mapping(uint256=>bytes32) toUniqueForkID;
         uint256 nextFreeSequenceNumber;
     }
 

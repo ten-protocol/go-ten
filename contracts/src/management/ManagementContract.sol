@@ -82,9 +82,19 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         return GetRollupByHash(hash);
     }
 
+    function GetUniqueForkID(uint256 number) view public returns(bytes32, Structs.MetaRollup memory) {
+        (bool success, Structs.MetaRollup memory rollup) = GetRollupByNumber(number);
+        if (!success) {
+            return (0x0, rollup);
+        }
+
+        return (rollups.toUniqueForkID[number], rollup);
+    }
+
     function AppendRollup(Structs.MetaRollup calldata _r) internal {
         rollups.byHash[_r.Hash] = _r;
         rollups.byOrder[rollups.nextFreeSequenceNumber] = _r.Hash;
+        rollups.toUniqueForkID[rollups.nextFreeSequenceNumber] = keccak256(abi.encode(_r.Hash, blockhash(block.number-1)));
         rollups.nextFreeSequenceNumber++;
 
         if (_r.LastSequenceNumber > lastBatchSeqNo) {
