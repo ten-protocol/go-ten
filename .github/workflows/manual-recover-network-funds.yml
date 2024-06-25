@@ -34,7 +34,7 @@ jobs:
         run: |
           echo "GitHub Variables = ${{ toJSON(vars) }}"
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -65,7 +65,7 @@ jobs:
           docker logs `docker ps -aqf "name=recover-funds"` > recover-funds.out 2>&1
 
       - name: 'Upload container logs on failure'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: recover-funds

@@ -75,7 +75,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	}
 
 	headBatchSeq := rpc.registry.HeadBatchSeq()
-	batch, err := rpc.storage.FetchBatchBySeqNo(builder.ctx, headBatchSeq.Uint64())
+	batch, err := rpc.storage.FetchBatchHeaderBySeqNo(builder.ctx, headBatchSeq.Uint64())
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
 	// the expected cost into l2 gas based on current pricing.
 	// todo @siliev - add overhead when the base fee becomes dynamic.
-	publishingGas := big.NewInt(0).Div(l1Cost, batch.Header.BaseFee)
+	publishingGas := big.NewInt(0).Div(l1Cost, batch.BaseFee)
 
 	// The one additional gas captures the modulo leftover in some edge cases
 	// where BaseFee is bigger than the l1cost.

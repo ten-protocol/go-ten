@@ -26,6 +26,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     event ImportantContractAddressUpdated(string key, address newAddress);
     event SequencerEnclaveGranted(address enclaveID);
     event SequencerEnclaveRevoked(address enclaveID);
+    event RollupAdded(bytes32 rollupHash);
 
     // mapping of enclaveID to whether it is attested
     mapping(address => bool) private attested;
@@ -114,6 +115,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
 
         AppendRollup(r);
+        emit RollupAdded(r.Hash);
     }
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once
