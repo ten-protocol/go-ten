@@ -646,7 +646,11 @@ func (g *Guardian) periodicBundleSubmission() {
 
 			err = g.sl.CrossChainMachine().PublishNextBundle()
 			if err != nil {
-				g.logger.Error("Failed to publish next bundle", log.ErrKey, err)
+				if errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
+					g.logger.Debug("No batches to publish")
+				} else {
+					g.logger.Error("Failed to publish next bundle", log.ErrKey, err)
+				}
 				continue
 			}
 		case <-g.hostInterrupter.Done():
