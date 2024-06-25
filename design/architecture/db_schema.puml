@@ -1,0 +1,131 @@
+@startuml
+
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+
+class attestation_key {
+   party: binary(20)
+   ky: binary(33)
+}
+class batch {
+   converted_hash: binary(32)
+   hash: binary(32)
+   height: int
+   is_canonical: boolean
+   header: blob
+   l1_proof_hash: binary(32)
+   l1_proof: integer
+   is_executed: boolean
+   sequence: int
+}
+class block {
+   hash: binary(32)
+   is_canonical: boolean
+   header: blob
+   height: int
+   id: integer
+}
+class config {
+   val: mediumblob
+   ky: varchar(64)
+}
+class contract {
+   address: binary(20)
+   owner: int
+   id: integer
+}
+class event_log {
+   event_type: integer
+   topic1: integer
+   topic2: integer
+   topic3: integer
+   datablob: mediumblob
+   log_idx: integer
+   exec_tx: integer
+   id: integer
+}
+class event_topic {
+   topic: binary(32)
+   rel_address: integer
+   id: integer
+}
+class event_type {
+   contract: integer
+   event_sig: binary(32)
+   lifecycle_event: boolean
+   id: integer
+}
+class exec_tx {
+   created_contract_address: integer
+   receipt: mediumblob
+   tx: integer
+   batch: integer
+   id: integer
+}
+class externally_owned_account {
+   address: binary(20)
+   id: integer
+}
+class keyvalue {
+   ky: varbinary(64)
+   val: mediumblob
+   id: integer
+}
+class l1_msg {
+   message: varbinary(1024)
+   block: integer
+   is_transfer: boolean
+   id: integer
+}
+class receipt {
+   content: mediumblob
+   tx: integer
+   batch: integer
+   id: integer
+}
+class rollup {
+   hash: binary(32)
+   start_seq: int
+   end_seq: int
+   time_stamp: int
+   header: blob
+   compression_block: integer
+   id: integer
+}
+class sqlite_master {
+   type: text
+   name: text
+   tbl_name: text
+   rootpage: int
+   sql: text
+}
+class sqlite_sequence {
+   name: unknown
+   seq: unknown
+}
+class tx {
+   hash: binary(32)
+   content: mediumblob
+   sender_address: int
+   idx: int
+   batch_height: int
+   id: integer
+}
+
+contract                  -[#595959,plain]-^  externally_owned_account : "owner:id"
+event_log                 -[#595959,plain]-^  event_topic              : "topic2:id"
+event_log                 -[#595959,plain]-^  event_topic              : "topic1:id"
+event_log                 -[#595959,plain]-^  event_topic              : "topic3:id"
+event_log                 -[#595959,plain]-^  event_type               : "event_type:id"
+event_log                 -[#595959,plain]-^  exec_tx                  : "exec_tx:id"
+event_topic               -[#595959,plain]-^  externally_owned_account : "rel_address:id"
+event_type                -[#595959,plain]-^  contract                 : "contract:id"
+exec_tx                   -[#595959,plain]-^  batch                    : "batch:sequence"
+exec_tx                   -[#595959,plain]-^  contract                 : "created_contract_address:id"
+l1_msg                    -[#595959,plain]-^  block                    : "block:id"
+receipt                   -[#595959,plain]-^  batch                    : "batch:sequence"
+receipt                   -[#595959,plain]-^  tx                       : "tx:id"
+rollup                    -[#595959,plain]-^  block                    : "compression_block:id"
+tx                        -[#595959,plain]-^  externally_owned_account : "sender_address:id"
+@enduml
