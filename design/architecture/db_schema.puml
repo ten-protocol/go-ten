@@ -42,7 +42,7 @@ class event_log {
    topic3: integer
    datablob: mediumblob
    log_idx: integer
-   exec_tx: integer
+   receipt: integer
    id: integer
 }
 class event_topic {
@@ -54,13 +54,6 @@ class event_type {
    contract: integer
    event_sig: binary(32)
    lifecycle_event: boolean
-   id: integer
-}
-class exec_tx {
-   created_contract_address: integer
-   receipt: mediumblob
-   tx: integer
-   batch: integer
    id: integer
 }
 class externally_owned_account {
@@ -93,17 +86,6 @@ class rollup {
    compression_block: integer
    id: integer
 }
-class sqlite_master {
-   type: text
-   name: text
-   tbl_name: text
-   rootpage: int
-   sql: text
-}
-class sqlite_sequence {
-   name: unknown
-   seq: unknown
-}
 class tx {
    hash: binary(32)
    content: mediumblob
@@ -113,16 +95,15 @@ class tx {
    id: integer
 }
 
+batch                     -[#595959,plain]-^  block                    : "l1_proof:id"
 contract                  -[#595959,plain]-^  externally_owned_account : "owner:id"
 event_log                 -[#595959,plain]-^  event_topic              : "topic2:id"
 event_log                 -[#595959,plain]-^  event_topic              : "topic1:id"
 event_log                 -[#595959,plain]-^  event_topic              : "topic3:id"
 event_log                 -[#595959,plain]-^  event_type               : "event_type:id"
-event_log                 -[#595959,plain]-^  exec_tx                  : "exec_tx:id"
+event_log                 -[#595959,plain]-^  receipt                  : "receipt:id"
 event_topic               -[#595959,plain]-^  externally_owned_account : "rel_address:id"
 event_type                -[#595959,plain]-^  contract                 : "contract:id"
-exec_tx                   -[#595959,plain]-^  batch                    : "batch:sequence"
-exec_tx                   -[#595959,plain]-^  contract                 : "created_contract_address:id"
 l1_msg                    -[#595959,plain]-^  block                    : "block:id"
 receipt                   -[#595959,plain]-^  batch                    : "batch:sequence"
 receipt                   -[#595959,plain]-^  tx                       : "tx:id"
