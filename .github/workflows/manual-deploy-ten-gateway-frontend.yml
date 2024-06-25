@@ -37,7 +37,7 @@ jobs:
           echo "Selected Testnet Type: ${{ matrix.testnet_type }}"
           echo "Gateway API URL: ${{ matrix.GATEWAY_API_URL }}"
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: 'Extract branch name'
         shell: bash

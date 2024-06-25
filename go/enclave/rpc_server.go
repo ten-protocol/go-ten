@@ -35,8 +35,10 @@ type RPCServer struct {
 // NewEnclaveRPCServer prepares an enclave RPCServer (doesn't start listening until `StartServer` is called
 func NewEnclaveRPCServer(listenAddress string, enclave common.Enclave, logger gethlog.Logger) *RPCServer {
 	return &RPCServer{
-		enclave:       enclave,
-		grpcServer:    grpc.NewServer(),
+		enclave: enclave,
+		grpcServer: grpc.NewServer(
+			grpc.MaxRecvMsgSize(1024 * 1024 * 50),
+		),
 		logger:        logger,
 		listenAddress: listenAddress,
 	}
