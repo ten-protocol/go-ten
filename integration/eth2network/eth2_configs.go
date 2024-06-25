@@ -19,6 +19,10 @@ personal.importRawKey(key, pwd);
 accts = personal.listAccounts;
 
 personal.unlockAccount(accts[0], pwd, 0);
+
+console.log("key: ", key)
+console.log("pwd: ", pwd)
+console.log("accts: ", accts[0]);
 console.log("Unlocked account");
 `
 
@@ -26,27 +30,24 @@ const _beaconConfig = `
 CONFIG_NAME: interop
 PRESET_BASE: interop
 
-DEPOSIT_CHAIN_ID: %d
-DEPOSIT_NETWORK_ID: %d
-
 # Genesis
 GENESIS_FORK_VERSION: 0x20000089
 
 # Altair
-ALTAIR_FORK_EPOCH: 1
+ALTAIR_FORK_EPOCH: 0
 ALTAIR_FORK_VERSION: 0x20000090
 
 # Merge
-BELLATRIX_FORK_EPOCH: 2
+BELLATRIX_FORK_EPOCH: 0
 BELLATRIX_FORK_VERSION: 0x20000091
 TERMINAL_TOTAL_DIFFICULTY: 0
 
 # Capella
-CAPELLA_FORK_EPOCH: 3
+CAPELLA_FORK_EPOCH: 0
 CAPELLA_FORK_VERSION: 0x20000092
 MAX_WITHDRAWALS_PER_PAYLOAD: 16
 
-DENEB_FORK_EPOCH: 4
+DENEB_FORK_EPOCH: 0
 DENEB_FORK_VERSION: 0x20000093
 
 # Time parameters
@@ -59,13 +60,10 @@ DEPOSIT_CONTRACT_ADDRESS: 0x4242424242424242424242424242424242424242
 
 const _baseGenesis = `{
    "config": {
-		"ChainName": "l1_chain",
 		"chainId": 32382,
-		"consensus": "ethash",
 		"homesteadBlock": 0,
 		"daoForkSupport": true,
 		"eip150Block": 0,
-		"eip150Hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 		"eip155Block": 0,
 		"eip158Block": 0,
 		"byzantiumBlock": 0,
@@ -75,17 +73,15 @@ const _baseGenesis = `{
 		"muirGlacierBlock": 0,
 		"berlinBlock": 0,
 		"londonBlock": 0,
-		"terminalBlockHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 		"arrowGlacierBlock": 0,
 		"grayGlacierBlock": 0,
-        "shanghaiTime": 1719219940,
-        "cancunTime": 1719220012,
+        "shanghaiTime": 1694203366,
 		"ethash": {},
 		"terminalTotalDifficulty": 0,
 		"terminalTotalDifficultyPassed": true
 	},
-	"nonce": "0",
-	"timestamp": "0x65c0a21c",
+	"nonce": "0x0",
+	"timestamp": "0x667ad601",
 	"gasLimit": "0x1c9c380",
 	"difficulty": "0x1",
 	"mixHash":"0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -99,9 +95,9 @@ const _baseGenesis = `{
 	"number": "0x0",
 	"gasUsed": "0x0",
 	"parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-	"baseFeePerGas": "0x0",
-	"excessBlobGas": "0x0",
-	"blobGasUsed": "0x0"
+	"baseFeePerGas": null,
+	"excessBlobGas": null,
+	"blobGasUsed": null
 }`
 
 // generateGenesis returns a genesis with specified params
@@ -115,11 +111,8 @@ func generateGenesis(blockTimeSecs int, chainID int, signerAddrs, prefundedAddrs
 
 	// add the prefunded prefundedAddrs
 	for _, account := range prefundedAddrs {
-		genesisJSON["alloc"].(map[string]interface{})[account] = map[string]string{"balance": "7500000000000000000000000000000"}
+		genesisJSON["alloc"].(map[string]interface{})[account] = map[string]string{"balance": "0x21e19e0c9bab2400000"}
 	}
-
-	//// set the block prod speed
-	//genesisJSON["config"].(map[string]interface{})["clique"].(map[string]interface{})["period"] = blockTimeSecs
 
 	// set the network id
 	genesisJSON["config"].(map[string]interface{})["chainId"] = chainID

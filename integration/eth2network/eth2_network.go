@@ -138,8 +138,8 @@ func NewEth2Network(
 
 	// Write beacon config
 	//beaconConf := fmt.Sprintf(_beaconConfig, chainID, chainID, secondsPerSlot, slotsPerEpoch)
-	beaconConf := fmt.Sprintf(_beaconConfig, chainID, chainID)
-	err = os.WriteFile(prysmConfigPath, []byte(beaconConf), 0o600)
+	//beaconConf := fmt.Sprintf(_beaconConfig, chainID, chainID)
+	err = os.WriteFile(prysmConfigPath, []byte(_beaconConfig), 0o600)
 	if err != nil {
 		panic(err)
 	}
@@ -397,9 +397,7 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 		_dataDirFlag, dataDirPath,
 		"--http",
 		"--http.addr", "0.0.0.0",
-		"--http.vhosts", "*",
 		"--http.port", fmt.Sprintf("%d", httpPort),
-		"--http.corsdomain", "*",
 		"--http.api", "admin,miner,engine,personal,eth,net,web3,debug",
 		"--mine",
 		"--miner.etherbase", minerAddress,
@@ -416,8 +414,7 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 		"--syncmode", "full", // sync mode to download and test all blocks and txs
 		"--allow-insecure-unlock", // allows to use personal accounts over http/ws
 		"--nodiscover",            // don't try and discover peers
-		"--ipcdisable",            // avoid geth erroring bc the ipc path is too long
-		"--verbosity", "3",        // error log level
+		"--verbosity", "5",        // error log level
 	}
 	fmt.Printf("gethStartNode: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
@@ -433,9 +430,8 @@ func (n *Impl) prysmGenerateGenesis() error {
 		"testnet",
 		"generate-genesis",
 		"--fork", "deneb",
-		"--genesis-time-delay", "10",
 		"--num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
-		"--config-name", "interop",
+		"--genesis-time-delay", "10",
 		"--chain-config-file", n.prysmConfigPath,
 		"--geth-genesis-json-in", n.gethGenesisPath,
 		"--geth-genesis-json-out", n.gethGenesisPath,
@@ -453,30 +449,60 @@ func (n *Impl) prysmStartBeaconNode(gethAuthRPCPort, rpcPort, p2pPort int, nodeD
 	// full command list at https://docs.prylabs.network/docs/prysm-usage/parameters
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
-		"--interop-eth1data-votes",
-		"--accept-terms-of-use",
-		"--no-discovery",
-		"--rpc-port", fmt.Sprintf("%d", rpcPort),
-		"--p2p-udp-port", fmt.Sprintf("%d", p2pPort),
 		"--min-sync-peers", "0",
-		"--minimum-peers-per-subnet", "0",
-		//"--min-sync-peers", fmt.Sprintf("%d", len(n.dataDirs)-1),
-		//"--minimum-peers-per-subnet", fmt.Sprintf("%d", min(len(n.dataDirs)-1, 2)),
-		"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
 		"--genesis-state", n.prysmGenesisPath,
+		"--bootstrap-node", "",
+		"--interop-eth1data-votes",
 		"--chain-config-file", n.prysmConfigPath,
-		"--config-file", n.prysmConfigPath,
 		"--contract-deployment-block", "0",
 		"--chain-id", fmt.Sprintf("%d", n.chainID),
-		"--grpc-gateway-corsdomain", "*",
-		"--grpc-gateway-port", fmt.Sprintf("%d", rpcPort+10),
-		"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", gethAuthRPCPort),
+		"--accept-terms-of-use",
 		"--jwt-secret", path.Join(nodeDataDir, "geth", "jwtsecret"),
-		"--contract-deployment-block", "0",
-		"--verbosity", "trace",
+		//"--suggested-fee-recipient", n.preFundedMinerPKs["n0"]
+		"--minimum-peers-per-subnet", "0",
 		"--enable-debug-rpc-endpoints",
+		"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", gethAuthRPCPort),
+
+		//"--rpc-port", fmt.Sprintf("%d", rpcPort),
+		//"--p2p-udp-port", fmt.Sprintf("%d", p2pPort),
+		//"--min-sync-peers", fmt.Sprintf("%d", len(n.dataDirs)-1),
+		//"--minimum-peers-per-subnet", fmt.Sprintf("%d", min(len(n.dataDirs)-1, 2)),
+		//"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
+		//"--config-file", n.prysmConfigPath,
+		//"--grpc-gateway-corsdomain", "*",
+		//"--grpc-gateway-port", fmt.Sprintf("%d", rpcPort+10),
+		//"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", gethAuthRPCPort),
+		//"--contract-deployment-block", "0",
+		//"--verbosity", "trace",
+		//"--enable-debug-rpc-endpoints",
 		"--force-clear-db",
 	}
+	//args := []string{
+	//	"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
+	//	"--interop-eth1data-votes",
+	//	"--accept-terms-of-use",
+	//	"--no-discovery",
+	//	"--rpc-port", fmt.Sprintf("%d", rpcPort),
+	//	"--p2p-udp-port", fmt.Sprintf("%d", p2pPort),
+	//	"--min-sync-peers", "0",
+	//	"--minimum-peers-per-subnet", "0",
+	//	//"--min-sync-peers", fmt.Sprintf("%d", len(n.dataDirs)-1),
+	//	//"--minimum-peers-per-subnet", fmt.Sprintf("%d", min(len(n.dataDirs)-1, 2)),
+	//	"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
+	//	"--genesis-state", n.prysmGenesisPath,
+	//	"--chain-config-file", n.prysmConfigPath,
+	//	"--config-file", n.prysmConfigPath,
+	//	"--contract-deployment-block", "0",
+	//	"--chain-id", fmt.Sprintf("%d", n.chainID),
+	//	"--grpc-gateway-corsdomain", "*",
+	//	"--grpc-gateway-port", fmt.Sprintf("%d", rpcPort+10),
+	//	"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", gethAuthRPCPort),
+	//	"--jwt-secret", path.Join(nodeDataDir, "geth", "jwtsecret"),
+	//	"--contract-deployment-block", "0",
+	//	"--verbosity", "trace",
+	//	"--enable-debug-rpc-endpoints",
+	//	"--force-clear-db",
+	//}
 
 	fmt.Printf("prysmStartBeaconNode: %s %s\n", n.prysmBeaconBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.prysmBeaconBinaryPath, args...) //nolint
