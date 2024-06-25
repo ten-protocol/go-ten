@@ -69,7 +69,7 @@ export default function App({ Component, pageProps }: AppProps) {
         ogTwitterImage={siteMetadata.siteLogo}
         ogType={"website"}
       >
-        <link rel="icon" href="/static/favicon.ico" />
+        <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
       </HeadSeo>
