@@ -1,6 +1,6 @@
 export const socialLinks = {
   github: "https://github.com/ten-protocol",
-  discord: "https://discord.gg/QJZ39Den7d",
+  discord: "https://discord.gg/tenprotocol",
   twitter: "https://twitter.com/tenprotocol",
   twitterHandle: "@tenprotocol",
 };

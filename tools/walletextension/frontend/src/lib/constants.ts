@@ -5,7 +5,7 @@ export const tenscanLink = "https://testnet.tenscan.io";
 
 export const socialLinks = {
   github: "https://github.com/ten-protocol",
-  discord: "https://discord.gg/fVXstswaJY",
+  discord: "https://discord.gg/tenprotocol",
   twitter: "https://twitter.com/tenprotocol",
   twitterHandle: "@tenprotocol",
 };
