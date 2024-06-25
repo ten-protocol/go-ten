@@ -2,7 +2,7 @@
 FROM node:22-alpine
 
 # setup container data structure
-RUN mkdir -p /home/obscuro/go-obscuro/contracts/src/bridge
+RUN mkdir -p /home/obscuro/go-obscuro/contracts/src/bridge/frontend
 COPY ./contracts/src/bridge/frontend /home/obscuro/go-obscuro/contracts/src/bridge/frontend
 
 WORKDIR /home/obscuro/go-obscuro/contracts/src/bridge/frontend
@@ -23,4 +23,8 @@ ENV NEXT_PUBLIC_BRIDGE_GOOGLE_ANALYTICS_ID=${GOOGLE_ANALYTICS_ID}
 
 RUN npm install
 
+RUN npm run build
+
 EXPOSE 80
+
+CMD ["npm", "start"]
