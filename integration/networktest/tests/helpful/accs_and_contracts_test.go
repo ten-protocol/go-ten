@@ -102,7 +102,6 @@ func TestTransferL1Funds(t *testing.T) {
 				}
 				return nil
 			}, retry.NewTimeoutStrategy(70*time.Second, 20*time.Second))
-
 			if err != nil {
 				panic(err)
 			}

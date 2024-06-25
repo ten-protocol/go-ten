@@ -175,8 +175,8 @@ func (rc *RollupCompression) createRollupHeader(ctx context.Context, rollup *cor
 	}
 	reorgMap := make(map[uint64]bool)
 	for _, batch := range reorgedBatches {
-		rc.logger.Info("Reorg batch", log.BatchSeqNoKey, batch.SeqNo().Uint64())
-		reorgMap[batch.SeqNo().Uint64()] = true
+		rc.logger.Info("Reorg batch", log.BatchSeqNoKey, batch.SequencerOrderNo.Uint64())
+		reorgMap[batch.SequencerOrderNo.Uint64()] = true
 	}
 
 	for i, batch := range batches {
@@ -404,7 +404,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 	parentHash := calldataRollupHeader.FirstCanonParentHash
 
 	if calldataRollupHeader.FirstBatchSequence.Uint64() != common.L2GenesisSeqNo {
-		_, err := rc.storage.FetchBatch(ctx, parentHash)
+		_, err := rc.storage.FetchBatchHeader(ctx, parentHash)
 		if err != nil {
 			rc.logger.Error("Could not find batch mentioned in the rollup. This should not happen.", log.ErrKey, err)
 			return err
@@ -470,11 +470,11 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 			if err != nil {
 				return err
 			}
-			err = rc.storage.StoreExecutedBatch(ctx, genBatch, nil)
+			err = rc.storage.StoreExecutedBatch(ctx, genBatch.Header, nil, nil)
 			if err != nil {
 				return err
 			}
-			rc.batchRegistry.OnBatchExecuted(genBatch, nil)
+			rc.batchRegistry.OnBatchExecuted(genBatch.Header, nil)
 
 			rc.logger.Info("Stored genesis", log.BatchHashKey, genBatch.Hash())
 			parentHash = genBatch.Hash()
@@ -514,11 +514,11 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 			if err != nil {
 				return err
 			}
-			err = rc.storage.StoreExecutedBatch(ctx, computedBatch.Batch, computedBatch.Receipts)
+			err = rc.storage.StoreExecutedBatch(ctx, computedBatch.Batch.Header, computedBatch.Receipts, computedBatch.CreatedContracts)
 			if err != nil {
 				return err
 			}
-			rc.batchRegistry.OnBatchExecuted(computedBatch.Batch, nil)
+			rc.batchRegistry.OnBatchExecuted(computedBatch.Batch.Header, nil)
 
 			parentHash = computedBatch.Batch.Hash()
 		}

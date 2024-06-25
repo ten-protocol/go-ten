@@ -47,9 +47,9 @@ jobs:
         run: |
           echo "GitHub Variables = ${{ toJSON(vars) }}"
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.21.8
 
@@ -124,7 +124,7 @@ jobs:
             done
 
       - name: 'Upload L1 deployer container logs'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deploy-l1-artifacts
           path: |
@@ -275,7 +275,7 @@ jobs:
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: "Wait until obscuro node is healthy"
         shell: bash
@@ -292,7 +292,7 @@ jobs:
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: 'Deploy L2 contracts'
         id: deployL2Contracts
@@ -316,7 +316,7 @@ jobs:
           docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
 
       - name: 'Upload L2 deployer container logs'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deploy-l2-artifacts
           path: |
@@ -330,7 +330,7 @@ jobs:
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1

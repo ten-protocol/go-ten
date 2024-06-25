@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/ten-protocol/go-ten/lib/gethfork/debug"
-
 	"github.com/ten-protocol/go-ten/go/common/log"
+
+	"github.com/ten-protocol/go-ten/lib/gethfork/debug"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
