@@ -51,12 +51,10 @@ export const fetchRollupByHash = async (
 export const fetchRollupByBatchSequence = async (
   seq: string
 ): Promise<ResponseDataInterface<Rollup>> => {
-  const res = await httpRequest<ResponseDataInterface<Rollup>>({
+  return await httpRequest<ResponseDataInterface<Rollup>>({
     method: "get",
     url: pathToUrl(apiRoutes.getRollupByBatchSequence, { seq }),
   });
-  console.log(res);
-  return res;
 };
 
 export const fetchBatchesInRollups = async (
