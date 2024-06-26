@@ -123,7 +123,7 @@ func GetLatestRollup(db HostDB) (*common.RollupHeader, error) {
 }
 
 func GetRollupByHash(db HostDB, rollupHash gethcommon.Hash) (*common.PublicRollup, error) {
-	whereQuery := " WHERE hash=" + db.GetSQLStatement().Placeholder
+	whereQuery := " WHERE rh.hash=" + db.GetSQLStatement().Placeholder
 	return fetchPublicRollup(db.GetSQLDB(), whereQuery, rollupHash.Bytes())
 }
 
