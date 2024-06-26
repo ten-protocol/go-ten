@@ -94,7 +94,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	// TODO: Change to fixed time period quotes, rather than this.
 	publishingGas = publishingGas.Mul(publishingGas, gethcommon.Big2)
 
-	executionGasEstimate, err := rpc.doEstimateGas(builder.ctx, txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
+	executionGasEstimate, gasPrice, err := rpc.doEstimateGas(builder.ctx, txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
@@ -107,7 +107,17 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 		return nil
 	}
 
-	totalGasEstimate := hexutil.Uint64(publishingGas.Uint64() + uint64(executionGasEstimate))
+	totalGasEstimateUint64 := publishingGas.Uint64() + uint64(executionGasEstimate)
+	totalGasEstimate := hexutil.Uint64(totalGasEstimateUint64)
+	balance, err := rpc.chain.GetBalanceAtBlock(builder.ctx, *txArgs.From, blockNumber)
+	if err != nil {
+		return err
+	}
+
+	if balance.ToInt().Cmp(big.NewInt(0).Mul(gasPrice, big.NewInt(0).SetUint64(totalGasEstimateUint64))) < 0 {
+		return fmt.Errorf("insufficient funds for gas estimate")
+	}
+
 	builder.ReturnValue = &totalGasEstimate
 	return nil
 }
@@ -116,7 +126,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 // This is a copy of https://github.com/ethereum/go-ethereum/blob/master/internal/ethapi/api.go#L1055
 // there's a high complexity to the method due to geth business rules (which is mimic'd here)
 // once the work of obscuro gas mechanics is established this method should be simplified
-func (rpc *EncryptionManager) doEstimateGas(ctx context.Context, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, common.SystemError) { //nolint: gocognit
+func (rpc *EncryptionManager) doEstimateGas(ctx context.Context, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, *big.Int, common.SystemError) { //nolint: gocognit
 	// Binary search the gas requirement, as it may be higher than the amount used
 	var ( //nolint: revive
 		lo  = params.TxGas - 1
@@ -148,7 +158,7 @@ func (rpc *EncryptionManager) doEstimateGas(ctx context.Context, args *gethapi.T
 	// Normalize the max fee per gas the call is willing to spend.
 	var feeCap *big.Int
 	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
-		return 0, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
+		return 0, gethcommon.Big0, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
 	} else if args.GasPrice != nil {
 		feeCap = args.GasPrice.ToInt()
 	} else if args.MaxFeePerGas != nil {
@@ -160,13 +170,13 @@ func (rpc *EncryptionManager) doEstimateGas(ctx context.Context, args *gethapi.T
 	if feeCap.BitLen() != 0 { //nolint:nestif
 		balance, err := rpc.chain.GetBalanceAtBlock(ctx, *args.From, blkNumber)
 		if err != nil {
-			return 0, fmt.Errorf("unable to fetch account balance - %w", err)
+			return 0, gethcommon.Big0, fmt.Errorf("unable to fetch account balance - %w", err)
 		}
 
 		available := new(big.Int).Set(balance.ToInt())
 		if args.Value != nil {
 			if args.Value.ToInt().Cmp(available) >= 0 {
-				return 0, errors.New("insufficient funds for transfer")
+				return 0, gethcommon.Big0, errors.New("insufficient funds for transfer")
 			}
 			available.Sub(available, args.Value.ToInt())
 		}
@@ -204,7 +214,7 @@ func (rpc *EncryptionManager) doEstimateGas(ctx context.Context, args *gethapi.T
 		// call or transaction will never be accepted no matter how much gas it is
 		// assigned. Return the error directly, don't struggle any more.
 		if err != nil {
-			return 0, err
+			return 0, gethcommon.Big0, err
 		}
 		if failed {
 			lo = mid
@@ -216,20 +226,20 @@ func (rpc *EncryptionManager) doEstimateGas(ctx context.Context, args *gethapi.T
 	if hi == cap { //nolint:nestif
 		failed, result, err := rpc.isGasEnough(ctx, args, hi, blkNumber)
 		if err != nil {
-			return 0, err
+			return 0, gethcommon.Big0, err
 		}
 		if failed {
 			if result != nil && result.Err != vm.ErrOutOfGas { //nolint: errorlint
 				if len(result.Revert()) > 0 {
-					return 0, newRevertError(result)
+					return 0, gethcommon.Big0, newRevertError(result)
 				}
-				return 0, result.Err
+				return 0, gethcommon.Big0, result.Err
 			}
 			// Otherwise, the specified gas cap is too low
-			return 0, fmt.Errorf("gas required exceeds allowance (%d)", cap)
+			return 0, gethcommon.Big0, fmt.Errorf("gas required exceeds allowance (%d)", cap)
 		}
 	}
-	return hexutil.Uint64(hi), nil
+	return hexutil.Uint64(hi), feeCap, nil
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction
