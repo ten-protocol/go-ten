@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -18,9 +20,15 @@ func TestCanStoreAndRetrieveRollup(t *testing.T) {
 
 	metadata := createRollupMetadata(batchNumber - 10)
 	rollup := createRollup(batchNumber)
-	block := common.L1Block{}
+	block := types.NewBlock(&types.Header{}, nil, nil, nil, nil)
 	dbtx, _ := db.NewDBTransaction()
-	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup, &metadata, &block)
+	err = AddBlock(dbtx, db.GetSQLStatement(), block.Header())
+	if err != nil {
+		t.Errorf("could not store block. Cause: %s", err)
+	}
+	dbtx.Write()
+	dbtx, _ = db.NewDBTransaction()
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup, &metadata, block)
 	if err != nil {
 		t.Errorf("could not store rollup. Cause: %s", err)
 	}
