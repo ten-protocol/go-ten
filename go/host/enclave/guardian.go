@@ -462,6 +462,12 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 	// if there are any secret responses in the block we should refresh our P2P list to re-sync with the network
 	_, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(block)
 
+	// TODO (@will) this should be removed and pulled from the L1
+	err := g.storage.AddBlock(block.Header())
+	if err != nil {
+		g.logger.Error("Could not add block to host db.", log.ErrKey, err)
+	}
+
 	for _, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
@@ -480,11 +486,6 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 			} else {
 				g.logger.Error("Could not store rollup.", log.ErrKey, err)
 			}
-		}
-		// TODO (@will) this should be removed and pulled from the L1
-		err = g.storage.AddBlock(block.Header(), r.Header.Hash())
-		if err != nil {
-			g.logger.Error("Could not add block to host db.", log.ErrKey, err)
 		}
 	}
 

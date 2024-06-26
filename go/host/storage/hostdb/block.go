@@ -9,25 +9,19 @@ import (
 )
 
 const (
-	selectBlocks = "SELECT id, hash, header, rollup_hash FROM block_host ORDER BY id DESC "
+	selectBlocks = "SELECT b.id, b.hash, b.header, r.hash FROM block_host b join rollup_host r on r.compression_block=b.id ORDER BY id DESC "
 )
 
 // AddBlock stores a block header with the given rollupHash it contains in the host DB
-func AddBlock(dbtx *dbTransaction, statements *SQLStatements, b *types.Header, rollupHash common.L2RollupHash) error {
+func AddBlock(dbtx *dbTransaction, statements *SQLStatements, b *types.Header) error {
 	header, err := rlp.EncodeToBytes(b)
 	if err != nil {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
 	}
 
-	r, err := rlp.EncodeToBytes(rollupHash)
-	if err != nil {
-		return fmt.Errorf("could not encode rollup hash transactions: %w", err)
-	}
-
 	_, err = dbtx.tx.Exec(statements.InsertBlock,
-		b.Hash(), // hash
-		header,   // l1 block header
-		r,        // rollup hash
+		b.Hash().Bytes(), // hash
+		header,           // l1 block header
 	)
 	if err != nil {
 		return fmt.Errorf("could not insert block. Cause: %w", err)

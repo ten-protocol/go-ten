@@ -14,13 +14,13 @@ import (
 )
 
 const (
-	selectBatch        = "SELECT sequence, full_hash, hash, height, ext_batch FROM batch_host"
+	selectBatch        = "SELECT sequence, hash, height, ext_batch FROM batch_host"
 	selectExtBatch     = "SELECT ext_batch FROM batch_host"
-	selectLatestBatch  = "SELECT sequence, full_hash, hash, height, ext_batch FROM batch_host ORDER BY sequence DESC LIMIT 1"
+	selectLatestBatch  = "SELECT sequence, hash, height, ext_batch FROM batch_host ORDER BY sequence DESC LIMIT 1"
 	selectTxsAndBatch  = "SELECT t.hash FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.hash = "
 	selectBatchSeqByTx = "SELECT b_sequence FROM transaction_host WHERE hash = "
-	selectTxBySeq      = "SELECT full_hash FROM transaction_host WHERE b_sequence = "
-	selectBatchTxs     = "SELECT t.full_hash, b.sequence, b.height, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence"
+	selectTxBySeq      = "SELECT hash FROM transaction_host WHERE b_sequence = "
+	selectBatchTxs     = "SELECT t.hash, b.sequence, b.height, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence"
 )
 
 // AddBatch adds a batch and its header to the DB
@@ -33,7 +33,6 @@ func AddBatch(dbtx *dbTransaction, statements *SQLStatements, batch *common.ExtB
 	_, err = dbtx.tx.Exec(statements.InsertBatch,
 		batch.SeqNo().Uint64(),       // sequence
 		batch.Hash(),                 // full hash
-		truncTo16(batch.Hash()),      // shortened hash
 		batch.Header.Number.Uint64(), // height
 		extBatch,                     // ext_batch
 	)
@@ -45,11 +44,16 @@ func AddBatch(dbtx *dbTransaction, statements *SQLStatements, batch *common.ExtB
 	}
 
 	if len(batch.TxHashes) > 0 {
-		for _, txHash := range batch.TxHashes {
-			_, err = dbtx.tx.Exec(statements.InsertTransactions, truncTo16(txHash), txHash.Bytes(), batch.SeqNo().Uint64())
-			if err != nil {
-				return fmt.Errorf("failed to insert transaction with hash: %d", err)
-			}
+		insert := statements.InsertTransactions
+		args := make([]any, 0)
+		for i, txHash := range batch.TxHashes {
+			insert += fmt.Sprintf(" (%s, %s),", statements.GetPlaceHolder(i*2+1), statements.GetPlaceHolder(i*2+2))
+			args = append(args, txHash.Bytes(), batch.SeqNo().Uint64())
+		}
+		insert = strings.TrimRight(insert, ",")
+		_, err = dbtx.tx.Exec(insert, args...)
+		if err != nil {
+			return fmt.Errorf("failed to insert transactions. cause: %w", err)
 		}
 	}
 
@@ -60,7 +64,7 @@ func AddBatch(dbtx *dbTransaction, statements *SQLStatements, batch *common.ExtB
 	}
 
 	newTotal := currentTotal + len(batch.TxHashes)
-	_, err = dbtx.tx.Exec(statements.InsertTxCount, 1, newTotal)
+	_, err = dbtx.tx.Exec(statements.UpdateTxCount, newTotal)
 	if err != nil {
 		return fmt.Errorf("failed to update transaction count: %w", err)
 	}
@@ -170,7 +174,7 @@ func GetCurrentHeadBatch(db HostDB) (*common.PublicBatch, error) {
 // GetBatchHeader returns the batch header given the hash.
 func GetBatchHeader(db HostDB, hash gethcommon.Hash) (*common.BatchHeader, error) {
 	whereQuery := " WHERE hash=" + db.GetSQLStatement().Placeholder
-	return fetchBatchHeader(db.GetSQLDB(), whereQuery, truncTo16(hash))
+	return fetchBatchHeader(db.GetSQLDB(), whereQuery, hash.Bytes())
 }
 
 // GetBatchHashByNumber returns the hash of a batch given its number.
@@ -195,7 +199,7 @@ func GetHeadBatchHeader(db HostDB) (*common.BatchHeader, error) {
 
 // GetBatchNumber returns the height of the batch containing the given transaction hash.
 func GetBatchNumber(db HostDB, txHash gethcommon.Hash) (*big.Int, error) {
-	batchHeight, err := fetchBatchNumber(db, truncTo16(txHash))
+	batchHeight, err := fetchBatchNumber(db, txHash.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch batch height - %w", err)
 	}
@@ -205,7 +209,7 @@ func GetBatchNumber(db HostDB, txHash gethcommon.Hash) (*big.Int, error) {
 // GetBatchTxHashes returns the transaction hashes of the batch with the given hash.
 func GetBatchTxHashes(db HostDB, batchHash gethcommon.Hash) ([]gethcommon.Hash, error) {
 	query := selectTxsAndBatch + db.GetSQLStatement().Placeholder
-	rows, err := db.GetSQLDB().Query(query, truncTo16(batchHash))
+	rows, err := db.GetSQLDB().Query(query, batchHash.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("query execution failed: %w", err)
 	}
@@ -231,14 +235,14 @@ func GetBatchTxHashes(db HostDB, batchHash gethcommon.Hash) ([]gethcommon.Hash, 
 // GetPublicBatch returns the batch with the given hash.
 func GetPublicBatch(db HostDB, hash common.L2BatchHash) (*common.PublicBatch, error) {
 	whereQuery := " WHERE b.hash=" + db.GetSQLStatement().Placeholder
-	return fetchPublicBatch(db.GetSQLDB(), whereQuery, truncTo16(hash))
+	return fetchPublicBatch(db.GetSQLDB(), whereQuery, hash.Bytes())
 }
 
 // GetBatchByTx returns the batch with the given hash.
 func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.ExtBatch, error) {
 	var seqNo uint64
 	query := selectBatchSeqByTx + db.GetSQLStatement().Placeholder
-	err := db.GetSQLDB().QueryRow(query, truncTo16(txHash)).Scan(&seqNo)
+	err := db.GetSQLDB().QueryRow(query, txHash.Bytes()).Scan(&seqNo)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
@@ -251,7 +255,7 @@ func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.ExtBatch, error) {
 // GetBatchByHash returns the batch with the given hash.
 func GetBatchByHash(db HostDB, hash common.L2BatchHash) (*common.ExtBatch, error) {
 	whereQuery := " WHERE hash=" + db.GetSQLStatement().Placeholder
-	return fetchFullBatch(db.GetSQLDB(), whereQuery, truncTo16(hash))
+	return fetchFullBatch(db.GetSQLDB(), whereQuery, hash.Bytes())
 }
 
 // GetLatestBatch returns the head batch header
@@ -278,7 +282,7 @@ func GetBatchByHeight(db HostDB, height *big.Int) (*common.PublicBatch, error) {
 // GetBatchTransactions returns the TransactionListingResponse for a given batch hash
 func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
 	whereQuery := " WHERE b.hash=" + db.GetSQLStatement().Placeholder
-	return fetchBatchTxs(db.GetSQLDB(), whereQuery, truncTo16(batchHash))
+	return fetchBatchTxs(db.GetSQLDB(), whereQuery, batchHash.Bytes())
 }
 
 func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.BatchHeader, error) {
@@ -330,7 +334,6 @@ func fetchBatchNumber(db HostDB, args ...any) (*big.Int, error) {
 func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.PublicBatch, error) {
 	var sequenceInt64 uint64
 	var fullHash common.TxHash
-	var hash []byte
 	var heightInt64 int
 	var extBatch []byte
 
@@ -338,9 +341,9 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 
 	var err error
 	if len(args) > 0 {
-		err = db.QueryRow(query, args...).Scan(&sequenceInt64, &fullHash, &hash, &heightInt64, &extBatch)
+		err = db.QueryRow(query, args...).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 	} else {
-		err = db.QueryRow(query).Scan(&sequenceInt64, &fullHash, &hash, &heightInt64, &extBatch)
+		err = db.QueryRow(query).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -356,7 +359,6 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 
 	batch := &common.PublicBatch{
 		SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
-		Hash:             bytesToHexString(hash),
 		FullHash:         fullHash,
 		Height:           new(big.Int).SetInt64(int64(heightInt64)),
 		TxCount:          new(big.Int).SetInt64(int64(len(b.TxHashes))),
@@ -370,7 +372,6 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatch, error) {
 	var sequenceInt64 uint64
 	var fullHash common.TxHash
-	var hash []byte
 	var heightInt64 int
 	var extBatch []byte
 
@@ -378,9 +379,9 @@ func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatc
 
 	var err error
 	if len(args) > 0 {
-		err = db.QueryRow(query, args...).Scan(&sequenceInt64, &fullHash, &hash, &heightInt64, &extBatch)
+		err = db.QueryRow(query, args...).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 	} else {
-		err = db.QueryRow(query).Scan(&sequenceInt64, &fullHash, &hash, &heightInt64, &extBatch)
+		err = db.QueryRow(query).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -400,11 +401,10 @@ func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatc
 func fetchHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 	var sequenceInt64 int
 	var fullHash gethcommon.Hash // common.Hash
-	var hash []byte
 	var heightInt64 int
 	var extBatch []byte
 
-	err := db.QueryRow(selectLatestBatch).Scan(&sequenceInt64, &fullHash, &hash, &heightInt64, &extBatch)
+	err := db.QueryRow(selectLatestBatch).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
@@ -420,7 +420,6 @@ func fetchHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 
 	batch := &common.PublicBatch{
 		SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
-		Hash:             bytesToHexString(hash),
 		FullHash:         fullHash,
 		Height:           new(big.Int).SetInt64(int64(heightInt64)),
 		TxCount:          new(big.Int).SetInt64(int64(len(b.TxHashes))),
