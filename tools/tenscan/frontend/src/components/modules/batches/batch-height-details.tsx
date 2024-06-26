@@ -108,12 +108,6 @@ export function BatchHeightDetailsComponent({
           value={Number(batchDetails?.header?.inboundCrossChainHeight)}
         />
         <KeyValueItem
-          label="Transfers Tree"
-          value={
-            <TruncatedAddress address={batchDetails?.header?.TransfersTree} />
-          }
-        />
-        <KeyValueItem
           label="Miner"
           value={<TruncatedAddress address={batchDetails?.header?.miner} />}
         />
