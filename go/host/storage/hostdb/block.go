@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	selectBlocks = "SELECT b.id, b.hash, b.header, r.hash FROM block_host b join rollup_host r on r.compression_block=b.id ORDER BY id DESC "
+	selectBlocks = "SELECT b.id, b.hash, b.header, r.hash FROM block_host b join rollup_host r on r.compression_block=b.id ORDER BY b.id DESC "
 )
 
 // AddBlock stores a block header with the given rollupHash it contains in the host DB
@@ -54,9 +54,7 @@ func GetBlockListing(db HostDB, pagination *common.QueryPagination) (*common.Blo
 			return nil, fmt.Errorf("could not decode block header. Cause: %w", err)
 		}
 		r := new(common.L2RollupHash)
-		if err := rlp.DecodeBytes(rollupHash, r); err != nil {
-			return nil, fmt.Errorf("could not decode rollup hash. Cause: %w", err)
-		}
+		r.SetBytes(rollupHash)
 		block := common.PublicBlock{
 			BlockHeader: *blockHeader,
 			RollupHash:  *r,
