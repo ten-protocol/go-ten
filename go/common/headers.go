@@ -47,6 +47,12 @@ type BatchHeader struct {
 	CrossChainTree                SerializedCrossChainTree              `json:"crossChainTree"`          // Those are the leafs of the merkle tree hashed for privacy. Necessary for clients to be able to build proofs as they have no access to all transactions in a batch or their receipts.
 }
 
+// IsGenesis indicates whether the batch is the genesis batch.
+// todo (#718) - Change this to a check against a hardcoded genesis hash.
+func (b *BatchHeader) IsGenesis() bool {
+	return b.Number.Cmp(big.NewInt(int64(L2GenesisHeight))) == 0
+}
+
 type batchHeaderEncoding struct {
 	Hash             common.Hash     `json:"hash"`
 	ParentHash       L2BatchHash     `json:"parentHash"`
