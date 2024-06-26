@@ -110,7 +110,7 @@ type L1Publisher interface {
 	PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error
 
 	// PublishCrossChainBundle will create and publish a cross-chain bundle tx to the management contract
-	PublishCrossChainBundle(bundle *common.ExtCrossChainBundle) error
+	PublishCrossChainBundle(*common.ExtCrossChainBundle, *big.Int, gethcommon.Hash) error
 
 	FetchLatestSeqNo() (*big.Int, error)
 

@@ -27,6 +27,9 @@ type CrossChainStateMachine interface {
 	host.Service
 }
 
+// crossChainStateMachine - responsible for maintaining a view of the submitted cross chain bundles for the rollups on the L1.
+// Whenever a reorg happens, the state machine will revert to the latest known common ancestor rollup.
+// Bundles are only submitted after a rollup is pushed on the L1. The state machine will keep track of the latest rollup and the bundles that have been submitted.
 type crossChainStateMachine struct {
 	latestRollup  RollupInfo
 	rollupHistory map[RollupNumber]RollupInfo
@@ -41,7 +44,6 @@ type crossChainStateMachine struct {
 }
 
 type RollupInfo struct {
-	Hash    gethcommon.Hash
 	ForkUID ForkUniqueID
 	Number  RollupNumber
 }
@@ -56,7 +58,6 @@ func NewCrossChainStateMachine(
 ) CrossChainStateMachine {
 	return &crossChainStateMachine{
 		latestRollup: RollupInfo{
-			Hash:    gethcommon.Hash{},
 			ForkUID: gethcommon.Hash{},
 			Number:  0,
 		},
@@ -120,7 +121,7 @@ func (c *crossChainStateMachine) PublishNextBundle() error {
 		return err
 	}
 
-	err = c.publisher.PublishCrossChainBundle(bundle)
+	err = c.publisher.PublishCrossChainBundle(bundle, big.NewInt(0).SetUint64(data.Number), data.ForkUID)
 	if err != nil {
 		return err
 	}
@@ -141,7 +142,7 @@ func (c *crossChainStateMachine) Synchronize() error {
 		}
 
 		if errors.Is(err, errutil.ErrRollupForkMismatch) {
-			return c.RevertToLatestKnownCommonAncestorRollup()
+			return c.revertToLatestKnownCommonAncestorRollup()
 		}
 
 		c.logger.Error("Failed to get bundle range from management contract", "error", err)
@@ -150,7 +151,6 @@ func (c *crossChainStateMachine) Synchronize() error {
 
 	c.rollupHistory[c.latestRollup.Number] = c.latestRollup
 	c.latestRollup = RollupInfo{
-		Hash:    gethcommon.Hash{},
 		ForkUID: *forkUID,
 		Number:  c.latestRollup.Number + 1,
 	}
@@ -158,7 +158,7 @@ func (c *crossChainStateMachine) Synchronize() error {
 	return nil
 }
 
-func (c *crossChainStateMachine) RevertToLatestKnownCommonAncestorRollup() error {
+func (c *crossChainStateMachine) revertToLatestKnownCommonAncestorRollup() error {
 	managementContract, err := ManagementContract.NewManagementContract(*c.mgmtContractLib.GetContractAddr(), c.ethClient.EthClient())
 	if err != nil {
 		return err
