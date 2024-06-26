@@ -49,7 +49,6 @@ type PublicTransaction struct {
 
 type PublicBatch struct {
 	SequencerOrderNo *big.Int              `json:"sequence"`
-	Hash             string                `json:"hash"`
 	FullHash         common.Hash           `json:"fullHash"`
 	Height           *big.Int              `json:"height"`
 	TxCount          *big.Int              `json:"txCount"`
