@@ -61,6 +61,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     function initialize() public initializer {
         __Ownable_init(msg.sender);
         lastBatchSeqNo = 0;
+        rollups.nextFreeSequenceNumber = 0; //redundant as the default is 0, but for clarity
         merkleMessageBus = new MerkleTreeMessageBus.MerkleTreeMessageBus();
         messageBus = MessageBus.IMessageBus(address(merkleMessageBus));
 
@@ -72,20 +73,46 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         return (rol.Hash == rollupHash , rol);
     }
 
+    function GetRollupByNumber(uint256 number) view public returns(bool, Structs.MetaRollup memory) {
+        bytes32 hash = rollups.byOrder[number];
+        if (hash == 0x0) { // ensure we don't try to get rollup for hash zero as that would not pull anything, but the hash would match and return true
+            return (false, Structs.MetaRollup(0x0, "", 0));
+        }
+
+        return GetRollupByHash(hash);
+    }
+
+    function GetUniqueForkID(uint256 number) view public returns(bytes32, Structs.MetaRollup memory) {
+        (bool success, Structs.MetaRollup memory rollup) = GetRollupByNumber(number);
+        if (!success) {
+            return (0x0, rollup);
+        }
+
+        return (rollups.toUniqueForkID[number], rollup);
+    }
+
     function AppendRollup(Structs.MetaRollup calldata _r) internal {
         rollups.byHash[_r.Hash] = _r;
+        rollups.byOrder[rollups.nextFreeSequenceNumber] = _r.Hash;
+        rollups.toUniqueForkID[rollups.nextFreeSequenceNumber] = keccak256(abi.encode(_r.Hash, blockhash(block.number-1)));
+        rollups.nextFreeSequenceNumber++;
+
         if (_r.LastSequenceNumber > lastBatchSeqNo) {
             lastBatchSeqNo = _r.LastSequenceNumber;
         }
     }
 
-    function addCrossChainMessagesRoot(bytes32 _lastBatchHash, bytes32 blockHash, uint256 blockNum, bytes[] memory crossChainHashes, bytes calldata signature) external {
+    function addCrossChainMessagesRoot(bytes32 _lastBatchHash, bytes32 blockHash, uint256 blockNum, bytes[] memory crossChainHashes, bytes calldata signature, uint256 rollupNumber, bytes32 forkID) external {
         if (block.number > blockNum + 255) {
             revert("Block binding too old");
         }
 
         if ((blockhash(blockNum) != blockHash)) {
             revert(string(abi.encodePacked("Invalid block binding:", Strings.toString(block.number),":", Strings.toString(uint256(blockHash)), ":", Strings.toString(uint256(blockhash(blockNum))))));
+        }
+
+        if (rollups.toUniqueForkID[rollupNumber] != forkID) {
+            revert("Invalid forkID");
         }
 
         address enclaveID = ECDSA.recover(keccak256(abi.encode(_lastBatchHash, blockHash, blockNum, crossChainHashes)), signature);
