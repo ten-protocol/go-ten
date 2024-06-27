@@ -103,7 +103,7 @@ func (c *crossChainStateMachine) PublishNextBundle() error {
 	}
 
 	// Get the bundle range from the management contract
-	nextForkUID, begin, end, err := c.publisher.GetBundleRangeFromManagementContract(big.NewInt(0).SetUint64(c.currentRollup), c.latestRollup.ForkUID)
+	nextForkUID, begin, end, err := c.publisher.GetBundleRangeFromManagementContract(big.NewInt(0).SetUint64(c.currentRollup), c.rollupHistory[c.currentRollup].ForkUID)
 	if err != nil {
 		return err
 	}
