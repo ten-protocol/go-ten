@@ -29,9 +29,10 @@ export default function PersonalTransactions() {
           <h2 className="text-2xl font-bold tracking-tight">
             Personal Transactions
           </h2>
-          <p className="text-muted-foreground">
+          {/* comment out the following line when feature is implemented */}
+          {/* <p className="text-muted-foreground">
             {formatNumber(Total)} personal transaction(s).
-          </p>
+          </p> */}
         </div>
       </div>
       {personalTxnsLoading ? (

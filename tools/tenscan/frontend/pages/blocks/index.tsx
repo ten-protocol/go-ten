@@ -31,9 +31,10 @@ export default function Blocks() {
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Blocks</h2>
-            <p className="text-sm text-muted-foreground">
+            {/* comment out the following line when feature is implemented */}
+            {/* <p className="text-sm text-muted-foreground">
               {formatNumber(Total)} Blocks found.
-            </p>
+            </p> */}
           </div>
         </div>
         {BlocksData ? (

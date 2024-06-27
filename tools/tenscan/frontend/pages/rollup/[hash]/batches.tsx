@@ -26,9 +26,10 @@ export default function RollupBatches() {
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
-            <p className="text-sm text-muted-foreground">
+            {/* comment out the following line when feature is implemented */}
+            {/* <p className="text-sm text-muted-foreground">
               {formatNumber(Total)} Batch(es) found in this rollup.
-            </p>
+            </p> */}
           </div>
         </div>
         {BatchesData ? (
