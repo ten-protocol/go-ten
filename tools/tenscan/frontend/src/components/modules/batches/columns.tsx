@@ -6,7 +6,6 @@ import { DataTableColumnHeader } from "../common/data-table/data-table-column-he
 import TruncatedAddress from "../common/truncated-address";
 import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
-import { EyeOpenIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 import { Badge } from "../../ui/badge";
 
@@ -80,7 +79,9 @@ export const columns: ColumnDef<Batch>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {formatNumber(row.original?.header?.gasUsed) || "N/A"}
+            <Badge variant={"outline"}>
+              {formatNumber(row.original?.header?.gasUsed) || "N/A"}
+            </Badge>
           </span>
         </div>
       );

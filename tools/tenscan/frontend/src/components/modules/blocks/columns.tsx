@@ -23,7 +23,7 @@ export const columns: ColumnDef<Block>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {Number(blockHeader?.number)}
+            #{Number(blockHeader?.number)}
           </span>
         </div>
       );
@@ -102,7 +102,9 @@ export const columns: ColumnDef<Block>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {formatNumber(blockHeader?.gasLimit)}
+            <Badge variant={"outline"}>
+              {formatNumber(blockHeader?.gasLimit)}
+            </Badge>
           </span>
         </div>
       );

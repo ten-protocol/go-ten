@@ -85,11 +85,19 @@ export function BatchHeightDetailsComponent({
         />
         <KeyValueItem
           label="Gas Limit"
-          value={formatNumber(batchDetails?.header?.gasLimit)}
+          value={
+            <Badge variant={"outline"}>
+              {formatNumber(batchDetails?.header?.gasLimit)}
+            </Badge>
+          }
         />
         <KeyValueItem
           label="Gas Used"
-          value={formatNumber(batchDetails?.header?.gasUsed)}
+          value={
+            <Badge variant={"outline"}>
+              {formatNumber(batchDetails?.header?.gasUsed)}
+            </Badge>
+          }
         />
         <KeyValueItem
           label="Base Fee Per Gas"
