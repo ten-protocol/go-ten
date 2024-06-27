@@ -12,7 +12,7 @@ export default function Header() {
   return (
     <div className="border-b">
       <div className="flex h-16 justify-between items-center px-4">
-        <Link href="/">
+        <Link href="/" className="min-w-[100px]">
           <Image
             src="/assets/images/black_logotype.png"
             alt="Logo"
@@ -28,8 +28,8 @@ export default function Header() {
             className="cursor-pointer hidden dark:block"
           />
         </Link>
-        <div className="hidden md:flex items-center space-x-4">
-          <MainNav className="mx-6" />
+        <div className="hidden md:flex items-center space-x-2">
+          <MainNav className="px-2" />
           <div className="flex items-center space-x-4">
             <HealthIndicator />
             <ModeToggle />
@@ -48,7 +48,8 @@ const MobileMenu = () => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="relative">
+    <div className="relative flex items-center space-x-">
+      <HealthIndicator />
       <ModeToggle />
       <Button
         variant={"clear"}
