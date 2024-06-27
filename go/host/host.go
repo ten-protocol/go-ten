@@ -114,10 +114,13 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		retryIntervalForL1Receipt,
 		hostStorage,
 	)
+
 	hostServices.RegisterService(hostcommon.L1PublisherName, l1Publisher)
 	hostServices.RegisterService(hostcommon.L2BatchRepositoryName, l2Repo)
 	hostServices.RegisterService(hostcommon.EnclaveServiceName, enclService)
 	hostServices.RegisterService(hostcommon.LogSubscriptionServiceName, subsService)
+	l1StateMachine := l1.NewCrossChainStateMachine(l1Publisher, mgmtContractLib, ethClient, hostServices.Enclaves().GetEnclaveClient(), logger, host.stopControl)
+	hostServices.RegisterService(hostcommon.CrossChainServiceName, l1StateMachine)
 
 	var prof *profiler.Profiler
 	if config.ProfilerEnabled {

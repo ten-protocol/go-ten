@@ -1,6 +1,5 @@
 import { fetchTestnetStatus } from "@/api/general";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
 
 export const useGeneralService = () => {
   const { data: testnetStatus, isLoading: isStatusLoading } = useQuery({

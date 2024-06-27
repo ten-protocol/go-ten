@@ -9,7 +9,7 @@ export const useCopy = () => {
     copyText(text)
       .catch(() => fallbackCopyTextToClipboard(text))
       .then(() => {
-        showToast(ToastType.DESTRUCTIVE, `${name ? name : "Copied!"}`);
+        showToast(ToastType.SUCCESS, `${name ? name : "Copied!"}`);
         setCopied(true);
       })
       .catch(() => {

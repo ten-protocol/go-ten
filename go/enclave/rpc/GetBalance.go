@@ -43,9 +43,9 @@ func GetBalanceValidate(reqParams []any, builder *CallBuilder[BalanceReq, hexuti
 }
 
 func GetBalanceExecute(builder *CallBuilder[BalanceReq, hexutil.Big], rpc *EncryptionManager) error {
-	acctOwner, err := rpc.chain.AccountOwner(builder.ctx, *builder.Param.Addr, builder.Param.Block.BlockNumber)
+	acctOwner, err := rpc.chain.AccountOwner(builder.ctx, *builder.Param.Addr)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot determine account owner. Cause: %w", err)
 	}
 
 	// authorise the call
