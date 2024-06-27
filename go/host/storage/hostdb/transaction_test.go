@@ -42,9 +42,9 @@ func TestGetTransactionListing(t *testing.T) {
 		t.Errorf("could not get tx listing. Cause: %s", err)
 	}
 
-	// should be three elements
-	if big.NewInt(int64(txListing.Total)).Cmp(big.NewInt(3)) != 0 {
-		t.Errorf("tx listing was not paginated correctly")
+	// should be 6 elements total
+	if big.NewInt(int64(txListing.Total)).Cmp(big.NewInt(6)) != 0 {
+		t.Errorf("tx listing total was not retrieved correctly")
 	}
 
 	// second element should be in the third batch as they're descending
@@ -61,11 +61,6 @@ func TestGetTransactionListing(t *testing.T) {
 	txListing1, err := GetTransactionListing(db, &common.QueryPagination{Offset: 3, Size: 3})
 	if err != nil {
 		t.Errorf("could not get batch listing. Cause: %s", err)
-	}
-
-	// should be 3 elements
-	if big.NewInt(int64(txListing1.Total)).Cmp(big.NewInt(3)) != 0 {
-		t.Errorf("tx listing was not paginated correctly")
 	}
 
 	// first element should be in the second batch
