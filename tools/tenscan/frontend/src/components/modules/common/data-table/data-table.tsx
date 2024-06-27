@@ -51,6 +51,7 @@ export function DataTable<TData, TValue>({
   total,
   isLoading,
 }: DataTableProps<TData, TValue>) {
+  const { query, push, pathname } = useRouter();
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -59,8 +60,8 @@ export function DataTable<TData, TValue>({
   );
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [pagination, setPagination] = React.useState({
-    pageIndex: 0,
-    pageSize: 20,
+    pageIndex: query && query.page ? Number(query.page) - 1 : 0,
+    pageSize: query && query.size ? Number(query.size) : 20,
   });
 
   const table = useReactTable({
@@ -75,7 +76,7 @@ export function DataTable<TData, TValue>({
     },
     onPaginationChange: setPagination,
     manualPagination: true,
-    pageCount: Math.ceil(total / pagination.pageSize),
+    // pageCount: Math.ceil(total / pagination.pageSize),
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
@@ -89,7 +90,6 @@ export function DataTable<TData, TValue>({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  const { query, push, pathname } = useRouter();
   const { pageIndex, pageSize } = table.getState().pagination;
 
   React.useEffect(() => {
@@ -163,7 +163,7 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
       {table.getRowModel().rows.length > 0 && (
-        <DataTablePagination table={table} />
+        <DataTablePagination table={table} refetch={refetch} />
       )}
     </div>
   );
