@@ -28,7 +28,7 @@ import (
 
 const (
 	_startPort = integration.StartPortEth2NetworkTests
-	// todo (@pedro) - ensure it works with more than 1 node
+	// todo (@will) - ensure it works with more than 1 node
 	_numTestNodes = 1
 )
 

@@ -19,10 +19,6 @@ personal.importRawKey(key, pwd);
 accts = personal.listAccounts;
 
 personal.unlockAccount(accts[0], pwd, 0);
-
-console.log("key: ", key)
-console.log("pwd: ", pwd)
-console.log("accts: ", accts[0]);
 console.log("Unlocked account");
 `
 
@@ -75,14 +71,15 @@ const _baseGenesis = `{
 		"londonBlock": 0,
 		"arrowGlacierBlock": 0,
 		"grayGlacierBlock": 0,
-        "shanghaiTime": 1694203366,
+        "shanghaiTime": 1696000704,
+        "cancunTime": 1707305664,
 		"ethash": {},
-		"terminalTotalDifficulty": 0,
+		"terminalTotalDifficulty": 50,
 		"terminalTotalDifficultyPassed": true
 	},
-	"nonce": "0x0",
-	"timestamp": "0x667ad601",
-	"gasLimit": "0x1c9c380",
+	"nonce": "0x1234",
+	"timestamp": "0x0",
+	"gasLimit": "1673487293",
 	"difficulty": "0x1",
 	"mixHash":"0x0000000000000000000000000000000000000000000000000000000000000000",
 	"coinbase": "0x0000000000000000000000000000000000000000",

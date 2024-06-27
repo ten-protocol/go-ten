@@ -476,6 +476,7 @@ func (n *Impl) prysmStartBeaconNode(gethAuthRPCPort, rpcPort, p2pPort int, nodeD
 		//"--verbosity", "trace",
 		//"--enable-debug-rpc-endpoints",
 		"--force-clear-db",
+		"--verbosity", "trace",
 	}
 	//args := []string{
 	//	"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
@@ -516,17 +517,17 @@ func (n *Impl) prysmStartValidator(beaconHTTPPort int, nodeDataDir string) (*exe
 	// full command list at https://docs.prylabs.network/docs/prysm-usage/parameters
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "validator"),
-		//"--beacon-rpc-gateway-provider", fmt.Sprintf("127.0.0.1:%d", prysmBeaconHTTPPort+10),
-		"--beacon-rpc-provider", fmt.Sprintf("127.0.0.1:%d", beaconHTTPPort),
-		"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
-		"--interop-start-index", "0",
-		"--chain-config-file", n.prysmConfigPath,
-		"--config-file", n.prysmConfigPath,
-		"--suggested-fee-recipient", "0x52FfeB84540173B15eEC5a486FdB5c769F50400a", // random address to avoid a continuous warning
-		"--force-clear-db",
-		"--disable-account-metrics",
 		"--accept-terms-of-use",
-		"--verbosity", "error",
+		"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
+		"--chain-config-file", n.prysmConfigPath,
+		"--verbosity", "trace",
+		//"--force-clear-db",
+
+		//"--beacon-rpc-provider", fmt.Sprintf("127.0.0.1:%d", beaconHTTPPort),
+		//"--interop-start-index", "0",
+		//"--config-file", n.prysmConfigPath,
+		//"--suggested-fee-recipient", "0x52FfeB84540173B15eEC5a486FdB5c769F50400a", // random address to avoid a continuous warning
+		//"--disable-account-metrics",
 	}
 
 	fmt.Printf("prysmStartValidator: %s %s\n", n.prysmValidatorBinaryPath, strings.Join(args, " "))
