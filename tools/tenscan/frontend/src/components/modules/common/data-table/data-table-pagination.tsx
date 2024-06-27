@@ -71,7 +71,7 @@ export function DataTablePagination<TData>({
             value={page}
             onChange={handlePageChange}
           />
-          {/* comment out the following line when total count feature is implemented */}
+          {/* uncomment the following line when total count feature is implemented */}
           {/* of {formatNumber(table.getPageCount())} */}
         </div>
         <div className="flex items-center space-x-2">
@@ -97,13 +97,13 @@ export function DataTablePagination<TData>({
             variant="outline"
             className="h-8 w-8 p-0"
             onClick={() => table.nextPage()}
-            // comment out the following line when total count feature is implemented
+            // uncomment the following line when total count feature is implemented
             // disabled={!table.getCanNextPage()}
           >
             <span className="sr-only">Go to next page</span>
             <ChevronRightIcon className="h-4 w-4" />
           </Button>
-          {/* comment out the following line when total count feature is implemented */}
+          {/* uncomment the following line when total count feature is implemented */}
           {/* <Button
             variant="outline"
             className="hidden h-8 w-8 p-0 lg:flex"

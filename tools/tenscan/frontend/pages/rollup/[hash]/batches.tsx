@@ -26,7 +26,7 @@ export default function RollupBatches() {
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
-            {/* comment out the following line when total count feature is implemented */}
+            {/* uncomment the following line when total count feature is implemented */}
             {/* <p className="text-sm text-muted-foreground">
               {formatNumber(Total)} Batch(es) found in this rollup.
             </p> */}
