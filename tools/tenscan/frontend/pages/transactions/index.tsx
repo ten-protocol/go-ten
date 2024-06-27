@@ -38,7 +38,7 @@ export default function Transactions() {
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Transactions</h2>
-            {/* comment out the following line when feature is implemented */}
+            {/* comment out the following line when total count feature is implemented */}
             {/* <p className="text-sm text-muted-foreground">
               {formatNumber(Total)} Transactions found.
             </p> */}
