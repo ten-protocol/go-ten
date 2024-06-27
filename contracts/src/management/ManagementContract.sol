@@ -61,7 +61,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     function initialize() public initializer {
         __Ownable_init(msg.sender);
         lastBatchSeqNo = 0;
-        rollups.nextFreeSequenceNumber = 0; //redundant as the default is 0, but for clarity
+        rollups.nextFreeSequenceNumber = 1; // rollup 0 == nil hash
         merkleMessageBus = new MerkleTreeMessageBus.MerkleTreeMessageBus();
         messageBus = MessageBus.IMessageBus(address(merkleMessageBus));
 
