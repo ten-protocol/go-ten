@@ -166,6 +166,12 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 	// and never error.
 	resultBytes, _ := decodedResult.MarshalJSON()
 
+	// if expected result type is bytes, we return the bytes
+	if _, ok := result.(*[]byte); ok {
+		*result.(*[]byte) = resultBytes
+		return nil
+	}
+
 	// We put the raw json in the passed result object.
 	// This works for structs, strings, integers and interface types.
 	err = json.Unmarshal(resultBytes, result)

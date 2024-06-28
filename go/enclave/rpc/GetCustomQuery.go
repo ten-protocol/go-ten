@@ -7,10 +7,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
 
-func GetCustomQueryValidate(reqParams []any, builder *CallBuilder[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], _ *EncryptionManager) error {
+func GetCustomQueryValidate(reqParams []any, builder *CallBuilder[common.ListPrivateTransactionsQueryParams, common.PrivateTransactionsQueryResponse], _ *EncryptionManager) error {
 	// Parameters are [PrivateCustomQueryHeader, PrivateCustomQueryArgs, null]
 	if len(reqParams) != 3 {
-		builder.Err = fmt.Errorf("unexpected number of parameters")
+		builder.Err = fmt.Errorf("unexpected number of parameters (expected %d, got %d)", 3, len(reqParams))
 		return nil
 	}
 
@@ -19,29 +19,30 @@ func GetCustomQueryValidate(reqParams []any, builder *CallBuilder[common.Private
 		builder.Err = fmt.Errorf("unable to extract query - %w", err)
 		return nil
 	}
-	builder.From = &privateCustomQuery.Address
+	addr := privateCustomQuery.Address
+	builder.From = &addr
 	builder.Param = privateCustomQuery
 	return nil
 }
 
-func GetCustomQueryExecute(builder *CallBuilder[common.PrivateCustomQueryListTransactions, common.PrivateQueryResponse], rpc *EncryptionManager) error {
+func GetCustomQueryExecute(builder *CallBuilder[common.ListPrivateTransactionsQueryParams, common.PrivateTransactionsQueryResponse], rpc *EncryptionManager) error {
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
 		builder.Err = err
 		return nil //nolint:nilerr
 	}
-
-	encryptReceipts, err := rpc.storage.GetTransactionsPerAddress(builder.ctx, &builder.Param.Address, &builder.Param.Pagination)
+	addr := builder.Param.Address
+	encryptReceipts, err := rpc.storage.GetTransactionsPerAddress(builder.ctx, &addr, &builder.Param.Pagination)
 	if err != nil {
 		return fmt.Errorf("GetTransactionsPerAddress - %w", err)
 	}
 
-	receiptsCount, err := rpc.storage.CountTransactionsPerAddress(builder.ctx, &builder.Param.Address)
+	receiptsCount, err := rpc.storage.CountTransactionsPerAddress(builder.ctx, &addr)
 	if err != nil {
 		return fmt.Errorf("CountTransactionsPerAddress - %w", err)
 	}
 
-	builder.ReturnValue = &common.PrivateQueryResponse{
+	builder.ReturnValue = &common.PrivateTransactionsQueryResponse{
 		Receipts: encryptReceipts,
 		Total:    receiptsCount,
 	}

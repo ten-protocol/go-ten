@@ -2,6 +2,7 @@ package userwallet
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -9,9 +10,11 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/retry"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
@@ -108,6 +111,29 @@ func (g *GatewayUser) AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash)
 
 func (g *GatewayUser) NativeBalance(ctx context.Context) (*big.Int, error) {
 	return g.client.BalanceAt(ctx, g.wal.Address(), nil)
+}
+
+func (g *GatewayUser) GetPersonalTransactions(ctx context.Context, pagination common.QueryPagination) (types.Receipts, uint64, error) {
+	rpcClient := g.client.Client()
+	queryParams := &common.ListPrivateTransactionsQueryParams{
+		Address:    g.wal.Address(),
+		Pagination: pagination,
+	}
+	queryParamsStr, err := json.Marshal(queryParams)
+	if err != nil {
+		return nil, 0, fmt.Errorf("unable to marshal query params - %w", err)
+	}
+	var resultBytes hexutil.Bytes
+	err = rpcClient.CallContext(ctx, &resultBytes, "eth_getStorageAt", common.ListPrivateTransactionsCQMethod, queryParamsStr, nil)
+	if err != nil {
+		return nil, 0, fmt.Errorf("rpc call failed - %w", err)
+	}
+	var result common.PrivateTransactionsQueryResponse
+	err = json.Unmarshal(resultBytes, &result)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to unmarshal result - %w", err)
+	}
+	return result.Receipts, result.Total, nil
 }
 
 func (g *GatewayUser) Wallet() wallet.Wallet {

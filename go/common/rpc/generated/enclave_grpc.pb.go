@@ -49,7 +49,7 @@ const (
 	EnclaveProto_StreamL2Updates_FullMethodName        = "/generated.EnclaveProto/StreamL2Updates"
 	EnclaveProto_DebugEventLogRelevancy_FullMethodName = "/generated.EnclaveProto/DebugEventLogRelevancy"
 	EnclaveProto_GetTotalContractCount_FullMethodName  = "/generated.EnclaveProto/GetTotalContractCount"
-	EnclaveProto_GetReceiptsByAddress_FullMethodName   = "/generated.EnclaveProto/GetReceiptsByAddress"
+	EnclaveProto_GetReceiptsByAddress_FullMethodName   = "/generated.EnclaveProto/GetPrivateTransactions"
 	EnclaveProto_EnclavePublicConfig_FullMethodName    = "/generated.EnclaveProto/EnclavePublicConfig"
 )
 
@@ -606,7 +606,7 @@ func (UnimplementedEnclaveProtoServer) GetTotalContractCount(context.Context, *G
 	return nil, status.Errorf(codes.Unimplemented, "method GetTotalContractCount not implemented")
 }
 func (UnimplementedEnclaveProtoServer) GetReceiptsByAddress(context.Context, *GetReceiptsByAddressRequest) (*GetReceiptsByAddressResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetReceiptsByAddress not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method GetPrivateTransactions not implemented")
 }
 func (UnimplementedEnclaveProtoServer) EnclavePublicConfig(context.Context, *EnclavePublicConfigRequest) (*EnclavePublicConfigResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EnclavePublicConfig not implemented")
@@ -1327,7 +1327,7 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EnclaveProto_GetTotalContractCount_Handler,
 		},
 		{
-			MethodName: "GetReceiptsByAddress",
+			MethodName: "GetPrivateTransactions",
 			Handler:    _EnclaveProto_GetReceiptsByAddress_Handler,
 		},
 		{
