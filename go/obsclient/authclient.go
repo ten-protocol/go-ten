@@ -250,21 +250,21 @@ func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxDat
 	}
 }
 
-// GetPrivateTransactions retrieves the receipts for the specified account (must be registered on this client)
-func (ac *AuthObsClient) GetPrivateTransactions(ctx context.Context, address *gethcommon.Address, pagination common.QueryPagination) (types.Receipts, error) {
+// GetPrivateTransactions retrieves the receipts for the specified account (must be registered on this client), returns requested range of receipts and the total number of receipts for that acc
+func (ac *AuthObsClient) GetPrivateTransactions(ctx context.Context, address *gethcommon.Address, pagination common.QueryPagination) (types.Receipts, uint64, error) {
 	queryParam := &common.ListPrivateTransactionsQueryParams{
 		Address:    *address,
 		Pagination: pagination,
 	}
 	queryParamStr, err := json.Marshal(queryParam)
 	if err != nil {
-		return nil, fmt.Errorf("unable to marshal query params - %w", err)
+		return nil, 0, fmt.Errorf("unable to marshal query params - %w", err)
 	}
 	var result common.PrivateTransactionsQueryResponse
 	err = ac.rpcClient.CallContext(ctx, &result, rpc.GetStorageAt, common.ListPrivateTransactionsCQMethod, string(queryParamStr), nil)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return result.Receipts, nil
+	return result.Receipts, result.Total, nil
 }

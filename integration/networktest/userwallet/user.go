@@ -20,5 +20,5 @@ type User interface {
 	SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int) (*gethcommon.Hash, error)
 	AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash) (*types.Receipt, error)
 	NativeBalance(ctx context.Context) (*big.Int, error)
-	GetPersonalTransactions(ctx context.Context, pagination common.QueryPagination) (types.Receipts, error)
+	GetPersonalTransactions(ctx context.Context, pagination common.QueryPagination) (types.Receipts, uint64, error)
 }

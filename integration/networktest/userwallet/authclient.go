@@ -132,7 +132,7 @@ func (s *AuthClientUser) Wallet() wallet.Wallet {
 	return s.wal
 }
 
-func (s *AuthClientUser) GetPersonalTransactions(ctx context.Context, pagination common.QueryPagination) (types.Receipts, error) {
+func (s *AuthClientUser) GetPersonalTransactions(ctx context.Context, pagination common.QueryPagination) (types.Receipts, uint64, error) {
 	address := s.wal.Address()
 	return s.client.GetPrivateTransactions(ctx, &address, pagination)
 }

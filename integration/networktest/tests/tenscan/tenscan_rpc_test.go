@@ -69,7 +69,7 @@ func TestPersonalTransactions(t *testing.T) {
 					Offset: 0,
 					Size:   20,
 				}
-				personalTxs, err := user.GetPersonalTransactions(ctx, pagination)
+				personalTxs, total, err := user.GetPersonalTransactions(ctx, pagination)
 				if err != nil {
 					return fmt.Errorf("unable to get personal transactions - %w", err)
 				}
@@ -77,6 +77,11 @@ func TestPersonalTransactions(t *testing.T) {
 				// verify the transactions
 				if len(personalTxs) != 2 {
 					return fmt.Errorf("expected 2 transactions, got %d", len(personalTxs))
+				}
+
+				// verify total set
+				if total != 2 {
+					return fmt.Errorf("expected total receipts to be at least 2, got %d", total)
 				}
 				return nil
 			}),
