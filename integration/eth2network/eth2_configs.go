@@ -43,12 +43,19 @@ CAPELLA_FORK_EPOCH: 0
 CAPELLA_FORK_VERSION: 0x20000092
 MAX_WITHDRAWALS_PER_PAYLOAD: 16
 
-DENEB_FORK_EPOCH: 0
+# Deneb
 DENEB_FORK_VERSION: 0x20000093
+DENEB_FORK_EPOCH: 0
+
+# Electra, but disabled
+ELECTRA_FORK_VERSION: 0x20000094
+ELECTRA_FORK_EPOCH: 18446744073709551615
 
 # Time parameters
-SECONDS_PER_SLOT: 12
+SECONDS_PER_SLOT: 3
 SLOTS_PER_EPOCH: 6
+
+DEPOSIT_NETWORK_ID: 48815
 
 # Deposit contract
 DEPOSIT_CONTRACT_ADDRESS: 0x4242424242424242424242424242424242424242
@@ -71,15 +78,14 @@ const _baseGenesis = `{
 		"londonBlock": 0,
 		"arrowGlacierBlock": 0,
 		"grayGlacierBlock": 0,
-        "shanghaiTime": 1696000704,
-        "cancunTime": 1707305664,
-		"ethash": {},
-		"terminalTotalDifficulty": 50,
+        "shanghaiTime": 0,
+        "cancunTime": 0,
+		"terminalTotalDifficulty": 0,
 		"terminalTotalDifficultyPassed": true
 	},
-	"nonce": "0x1234",
+	"nonce": "0x0",
 	"timestamp": "0x0",
-	"gasLimit": "1673487293",
+	"gasLimit": "0x1c9c380",
 	"difficulty": "0x1",
 	"mixHash":"0x0000000000000000000000000000000000000000000000000000000000000000",
 	"coinbase": "0x0000000000000000000000000000000000000000",
