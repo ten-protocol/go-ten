@@ -3,6 +3,7 @@ import { ModeToggle } from "../mode-toggle";
 import ConnectWalletButton from "../modules/common/connect-wallet";
 import Link from "next/link";
 import { HamburgerMenuIcon } from "@radix-ui/react-icons";
+import { X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../ui/button";
 import HealthIndicator from "../health-indicator";
@@ -12,7 +13,7 @@ export default function Header() {
   return (
     <div className="border-b">
       <div className="flex h-16 justify-between items-center px-4">
-        <Link href="/" className="min-w-[100px]">
+        <Link href="/" className="min-w-[80px]">
           <Image
             src="/assets/images/black_logotype.png"
             alt="Logo"
@@ -50,13 +51,12 @@ const MobileMenu = () => {
   return (
     <div className="relative flex items-center space-x-">
       <HealthIndicator />
-      <ModeToggle />
       <Button
         variant={"clear"}
         className="text-muted-foreground hover:text-primary transition-colors"
         onClick={() => setMenuOpen(!menuOpen)}
       >
-        <HamburgerMenuIcon />
+        {menuOpen ? <X /> : <HamburgerMenuIcon />}
       </Button>
       {menuOpen && (
         <div className="absolute z-10 top-0 right-0 mt-12">
@@ -64,6 +64,7 @@ const MobileMenu = () => {
             <div className="flex flex-col p-4 space-y-2">
               <MainNav className="flex flex-col" />
               <ConnectWalletButton />
+              <ModeToggle />
             </div>
           </div>
         </div>
