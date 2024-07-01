@@ -18,9 +18,9 @@ import (
 
 const (
 	baseEventsJoin = "from event_log e " +
-		"join receipt extx on e.receipt=extx.id" +
-		"	join tx on extx.tx=tx.id " +
-		"	join batch b on extx.batch=b.sequence " +
+		"join receipt rec on e.receipt=rec.id" +
+		"	join tx on rec.tx=tx.id " +
+		"	join batch b on rec.batch=b.sequence " +
 		"join event_type et on e.event_type=et.id " +
 		"	join contract c on et.contract=c.id " +
 		"left join event_topic t1 on e.topic1=t1.id " +
