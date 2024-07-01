@@ -1,6 +1,8 @@
 package ratelimiter
 
 import (
+	"log"
+	"math"
 	"sync"
 	"time"
 
@@ -19,11 +21,13 @@ type Score struct {
 }
 
 type RateLimiter struct {
-	mu        sync.Mutex
-	users     map[common.Address]Score
-	threshold uint32
-	decay     float64
-	maxScore  uint32
+	mu                  sync.Mutex
+	users               map[common.Address]Score
+	threshold           uint32
+	decay               float64
+	maxScore            uint32
+	totalRequests       uint64
+	rateLimitedRequests uint64
 }
 
 // NewRateLimiter creates a new RateLimiter with the specified threshold, decay rate, and maximum score.
@@ -35,12 +39,14 @@ type RateLimiter struct {
 //   - maxScore: The maximum score a user can accumulate. This prevents the score from growing indefinitely
 //     and allows for controlling the upper limit of a user's score.
 func NewRateLimiter(threshold uint32, decay float64, maxScore uint32) *RateLimiter {
-	return &RateLimiter{
+	rl := &RateLimiter{
 		users:     make(map[common.Address]Score),
 		threshold: threshold,
 		decay:     decay,
 		maxScore:  maxScore,
 	}
+	go rl.logRateLimitedStats()
+	return rl
 }
 
 // Allow checks if the user is allowed to make a request based on the rate limit threshold
@@ -48,6 +54,8 @@ func NewRateLimiter(threshold uint32, decay float64, maxScore uint32) *RateLimit
 func (rl *RateLimiter) Allow(userID common.Address) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
+
+	rl.totalRequests++
 
 	// If the threshold is 0, allow all requests (rate limiting is disabled)
 	if rl.threshold == 0 {
@@ -81,7 +89,11 @@ func (rl *RateLimiter) Allow(userID common.Address) bool {
 	}
 
 	// Check if the user's score is below the threshold
-	return rl.users[userID].score <= rl.threshold
+	if rl.users[userID].score > rl.threshold {
+		rl.rateLimitedRequests++
+		return false
+	}
+	return true
 }
 
 // UpdateScore updates the score of the user based on the additional score (time taken to process the request)
@@ -90,4 +102,22 @@ func (rl *RateLimiter) UpdateScore(userID common.Address, additionalScore uint32
 	defer rl.mu.Unlock()
 	newScore := rl.users[userID].score + additionalScore
 	rl.users[userID] = Score{lastRequest: time.Now(), score: newScore}
+}
+
+func (rl *RateLimiter) logRateLimitedStats() {
+	for {
+		time.Sleep(30 * time.Minute)
+		rl.mu.Lock()
+		totalRequests := rl.totalRequests
+		rateLimitedRequests := rl.rateLimitedRequests
+		rl.totalRequests = 0
+		rl.rateLimitedRequests = 0
+		rl.mu.Unlock()
+
+		rateLimitedPercentage := float64(rateLimitedRequests) / float64(totalRequests) * 100
+		if math.IsNaN(rateLimitedPercentage) {
+			rateLimitedPercentage = 0
+		}
+		log.Printf("Total requests: %d, Rate-limited requests: %d (%.4f%%)", totalRequests, rateLimitedRequests, rateLimitedPercentage)
+	}
 }
