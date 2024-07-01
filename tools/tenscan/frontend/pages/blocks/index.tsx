@@ -4,7 +4,6 @@ import { DataTable } from "@/src/components/modules/common/data-table/data-table
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBlocksService } from "@/src/services/useBlocksService";
-import { formatNumber } from "@/src/lib/utils";
 
 export const metadata: Metadata = {
   title: "Blocks",
@@ -31,10 +30,14 @@ export default function Blocks() {
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Blocks</h2>
-            {/* uncomment the following line when total count feature is implemented */}
-            {/* <p className="text-sm text-muted-foreground">
-              {formatNumber(Total)} Blocks found.
-            </p> */}
+            {BlocksData.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Showing blocks #{BlocksData[0]?.height} to #
+                {BlocksData[BlocksData.length - 1]?.height}
+                {/* uncomment the following line when total count feature is implemented */}
+                {/* of {formatNumber(Total)} blocks. */}
+              </p>
+            )}
           </div>
         </div>
         {BlocksData ? (

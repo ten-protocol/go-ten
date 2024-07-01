@@ -29,7 +29,7 @@ export const useRollupsService = () => {
     refetch: refetchRollups,
   } = useQuery({
     queryKey: ["rollups"],
-    queryFn: () => fetchRollups(),
+    queryFn: () => fetchRollups(options),
     refetchInterval: noPolling ? false : pollingInterval,
   });
 

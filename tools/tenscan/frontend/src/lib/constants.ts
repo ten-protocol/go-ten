@@ -23,7 +23,7 @@ export const getOptions = (query: {
   const options = {
     offset: Number.isNaN(offset) ? 0 : offset,
     size: Number.isNaN(parseInt(query.size as string, 10))
-      ? 10
+      ? 20
       : parseInt(query.size as string, 10),
     // sort: query.sort ? (query.sort as string) : "blockNumber",
     // order: query.order ? (query.order as string) : "desc",

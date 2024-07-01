@@ -3,7 +3,6 @@ import { DataTable } from "@/src/components/modules/common/data-table/data-table
 import Layout from "@/src/components/layouts/default-layout";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import { Metadata } from "next";
-import { formatNumber } from "@/src/lib/utils";
 import { columns } from "@/src/components/modules/rollups/columns";
 
 export const metadata: Metadata = {
@@ -34,10 +33,14 @@ export default function Rollups() {
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Rollups</h2>
-            {/* uncomment the following line when total count feature is implemented */}
-            {/* <p className="text-sm text-muted-foreground">
-              {formatNumber(Total)} Rollups found.
-            </p> */}
+            {RollupsData.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Showing rollups #{RollupsData[0]?.ID} to #
+                {RollupsData[RollupsData.length - 1]?.ID}
+                {/* uncomment the following line when total count feature is implemented */}
+                {/* of {formatNumber(Total)} rollups. */}
+              </p>
+            )}
           </div>
         </div>
         {RollupsData ? (

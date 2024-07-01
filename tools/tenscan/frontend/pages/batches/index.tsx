@@ -4,7 +4,6 @@ import { DataTable } from "@/src/components/modules/common/data-table/data-table
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBatchesService } from "@/src/services/useBatchesService";
-import { formatNumber } from "@/src/lib/utils";
 
 export const metadata: Metadata = {
   title: "Batches",
@@ -12,7 +11,8 @@ export const metadata: Metadata = {
 };
 
 export default function Batches() {
-  const { batches, refetchBatches, setNoPolling } = useBatchesService();
+  const { batches, refetchBatches, isBatchesLoading, setNoPolling } =
+    useBatchesService();
   const { BatchesData, Total } = batches?.result || {
     BatchesData: [],
     Total: 0,
@@ -33,10 +33,14 @@ export default function Batches() {
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
-            {/* uncomment the following line when total count feature is implemented */}
-            {/* <p className="text-sm text-muted-foreground">
-              {formatNumber(Total)} Batch(es) found.
-            </p> */}
+            {BatchesData.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Showing batches #{BatchesData[0]?.height} to #
+                {BatchesData[BatchesData.length - 1]?.height}
+                {/* uncomment the following line when total count feature is implemented */}
+                {/* of {formatNumber(Total)} batches. */}
+              </p>
+            )}
           </div>
         </div>
         {BatchesData ? (
@@ -45,6 +49,7 @@ export default function Batches() {
             data={BatchesData}
             refetch={refetchBatches}
             total={+Total}
+            isLoading={isBatchesLoading}
           />
         ) : (
           <p>Loading...</p>

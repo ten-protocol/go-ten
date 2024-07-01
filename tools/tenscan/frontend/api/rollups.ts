@@ -18,12 +18,13 @@ export const fetchLatestRollups = async (
   });
 };
 
-export const fetchRollups = async (): Promise<
-  ResponseDataInterface<RollupsResponse>
-> => {
+export const fetchRollups = async (
+  payload?: Record<string, any>
+): Promise<ResponseDataInterface<RollupsResponse>> => {
   return await httpRequest<ResponseDataInterface<RollupsResponse>>({
     method: "get",
     url: pathToUrl(apiRoutes.getRollups),
+    searchParams: payload,
   });
 };
 
