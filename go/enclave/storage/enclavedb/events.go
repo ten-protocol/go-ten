@@ -237,8 +237,6 @@ func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Add
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
 
-	query += " order by b.height, tx.idx asc"
-
 	rows, err := db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
