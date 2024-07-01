@@ -47,6 +47,7 @@ export default function BatchTransactions() {
               refetch={refetch}
               total={+Total}
               isLoading={isLoading}
+              noPagination={true}
             />
           </CardContent>
         </Card>
