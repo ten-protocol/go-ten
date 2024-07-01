@@ -192,14 +192,18 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 		&ExecCfg{
 			cacheCfg: &CacheCfg{
 				CacheTypeDynamic: func() CacheStrategy {
-					// when the toBlock is not specified, the request is open-ended
 					if crit.ToBlock != nil && crit.ToBlock.Int64() > 0 {
 						return LongLiving
 					}
+					if crit.BlockHash != nil {
+						return LongLiving
+					}
+					// when the toBlock or the block Hash are not specified, the request is open-ended
 					return LatestBatch
 				},
 			},
-			tryUntilAuthorised: true,
+			tryAll:            true,
+			accumulateResults: true, // we want the events that are relevant to all accounts registered by the current user
 			adjustArgs: func(acct *GWAccount) []any {
 				// convert to something serializable
 				return []any{common.FromCriteria(crit)}
