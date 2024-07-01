@@ -156,14 +156,6 @@ export default function Dashboard() {
 
   return (
     <>
-      {!isL1ToL2 && (
-        <Alert variant={"destructive"} className="flex items-center space-x-2">
-          <Terminal className="h-4 w-4" />
-          <AlertDescription>
-            Sorry! 😔 L2 to L1 bridge is not supported yet.
-          </AlertDescription>
-        </Alert>
-      )}
       <div className="h-full flex flex-col space-y-4 justify-center items-center">
         <Card className="max-w-[600px] p-0">
           <CardHeader>
@@ -399,7 +391,7 @@ export default function Dashboard() {
                       type="submit"
                       className="text-sm font-bold leading-none w-full"
                       size={"lg"}
-                      disabled={!isL1ToL2 || loading || fromTokenBalance <= 0}
+                      disabled={loading || fromTokenBalance <= 0}
                     >
                       {loading ? <Loader /> : "Initiate Bridge Transaction"}
                     </Button>

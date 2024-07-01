@@ -89,48 +89,40 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
   // Function to switch network
   const switchNetwork = async () => {
     try {
-      if (isL1ToL2) {
-        await provider.request({
-          method: requestMethods.switchNetwork,
-          params: [{ chainId: WalletNetwork.L2_TEN_TESTNET }],
-        });
-      } else {
-        await provider.request({
-          method: requestMethods.switchNetwork,
-          params: [{ chainId: WalletNetwork.L1_SEPOLIA }],
-        });
-      }
+      await provider.request({
+        method: requestMethods.switchNetwork,
+        params: [
+          {
+            chainId: isL1ToL2
+              ? WalletNetwork.L2_TEN_TESTNET
+              : WalletNetwork.L1_SEPOLIA,
+          },
+        ],
+      });
       setIsL1ToL2(!isL1ToL2);
     } catch (error: any) {
       console.error("Error switching network:", error);
       if (error.code === 4902) {
-        // if the network is not installed
-        if (isL1ToL2) {
-          toast({
-            title: "Wrong Network",
-            description: (
-              <>
-                <span> You are not connected to Ten! Connect at: </span>
-                <pre className="mt-2 w-[500px] rounded-md bg-slate-950 p-4">
-                  <a
-                    href="https://testnet.ten.xyz/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    https://testnet.ten.xyz/
-                  </a>
-                </pre>
-              </>
-            ),
-            variant: ToastType.INFO,
-          });
-        } else {
-          toast({
-            title: "Wrong Network",
-            description: "Please install the network to continue.",
-            variant: ToastType.INFO,
-          });
-        }
+        toast({
+          title: "Wrong Network",
+          description: isL1ToL2 ? (
+            <>
+              <span> You are not connected to Ten! Connect at: </span>
+              <pre className="mt-2 w-[500px] rounded-md bg-slate-950 p-4">
+                <a
+                  href="https://testnet.ten.xyz/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  https://testnet.ten.xyz/
+                </a>
+              </pre>
+            </>
+          ) : (
+            "Please install the network to continue."
+          ),
+          variant: ToastType.INFO,
+        });
       } else {
         // generic error message
         toast({
