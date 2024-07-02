@@ -197,9 +197,6 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 		return nil, err
 	}
 
-	cacheArgs := []any{userID, method}
-	cacheArgs = append(cacheArgs, crit)
-
 	res, err := withCache(
 		api.we.Cache,
 		&CacheCfg{
@@ -214,14 +211,17 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 				return LatestBatch
 			},
 		},
-		generateCacheKey(cacheArgs),
-		func() (*[]*types.Log, error) {
+		generateCacheKey([]any{userID, method, common.SerializableFilterCriteria(crit)}),
+		func() (*[]*types.Log, error) { // called when there is no entry in the cache
 			user, err := getUser(userID, api.we)
 			if err != nil {
 				return nil, err
 			}
 
 			allEventLogsMap := make(map[LogKey]*types.Log)
+			// for each account registered for the current user
+			// execute the get_Logs function
+			// dedupe and concatenate the results
 			for _, acct := range user.accounts {
 				eventLogs, err := withEncRPCConnection(ctx, api.we, acct, func(rpcClient *tenrpc.EncRPCClient) (*[]*types.Log, error) {
 					var result []*types.Log
@@ -230,7 +230,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 					timeoutContext, cancelCtx := context.WithTimeout(ctx, maximumRPCCallDuration)
 					defer cancelCtx()
 
-					err := rpcClient.CallContext(timeoutContext, &result, method, common.FromCriteria(crit))
+					err := rpcClient.CallContext(timeoutContext, &result, method, common.SerializableFilterCriteria(crit))
 					return &result, err
 				})
 				if err != nil {

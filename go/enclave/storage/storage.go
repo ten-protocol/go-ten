@@ -984,6 +984,8 @@ func (s *storageImpl) FilterLogs(
 	if err != nil {
 		return nil, err
 	}
+	// the database returns an unsorted list of event logs.
+	// we have to perform the sorting programatically
 	sort.Slice(logs, func(i, j int) bool {
 		if logs[i].BlockNumber == logs[j].BlockNumber {
 			return logs[i].Index < logs[j].Index
