@@ -61,12 +61,10 @@ export const columns: ColumnDef<Block>[] = [
       return Number(row.original.rollupHash) === 0 ? (
         <Badge>No rollup</Badge>
       ) : (
-        <Link
-          href={`/rollup/${row.original.rollupHash}`}
-          className="text-primary"
-        >
-          <TruncatedAddress address={row.original.rollupHash} />
-        </Link>
+        <TruncatedAddress
+          address={row.original.rollupHash}
+          link={`/rollup/${row.original.rollupHash}`}
+        />
       );
     },
     enableSorting: false,

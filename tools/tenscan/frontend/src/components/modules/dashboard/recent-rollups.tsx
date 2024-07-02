@@ -24,9 +24,10 @@ export function RecentRollups({ rollups }: { rollups: any }) {
             </p>
           </div>
           <div className="ml-auto font-medium min-w-[140px]">
-            <Link href={`/rollup/${rollup?.Hash}`} className="text-primary">
-              <TruncatedAddress address={rollup?.Hash} />
-            </Link>
+            <TruncatedAddress
+              address={rollup?.Hash}
+              link={`/rollup/${rollup?.Hash}`}
+            />
           </div>
         </div>
       ))}

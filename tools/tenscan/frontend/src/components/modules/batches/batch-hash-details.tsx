@@ -16,6 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../../ui/tooltip";
+import Copy from "../common/copy";
 
 export function BatchHashDetailsComponent({
   batchDetails,
@@ -122,9 +123,7 @@ export function BatchHashDetailsComponent({
               <ul>
                 {batchDetails?.TxHashes?.map((txHash, index) => (
                   <li key={index} className="text-sm">
-                    <Link href={`/tx/${txHash}`} className="text-primary">
-                      <TruncatedAddress address={txHash} />
-                    </Link>
+                    <TruncatedAddress address={txHash} link={`/tx/${txHash}`} />
                   </li>
                 ))}
               </ul>
@@ -173,14 +172,23 @@ export function BatchHashDetailsComponent({
                     </TooltipProvider>
                   )}
                 </Button>
+                {showDecryptedData && decryptedRollup ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Copy value={decryptedRollup} />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Copy Decrypted Data to Clipboard
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : null}
               </div>
               {decryptedRollup && showDecryptedData ? (
                 <>
                   <Separator className="my-4" />
-                  <JSONPretty
-                    id="json-pretty"
-                    data={decryptedRollup}
-                  ></JSONPretty>
+                  <JSONPretty id="json-pretty" data={decryptedRollup} />
                 </>
               ) : null}
             </>

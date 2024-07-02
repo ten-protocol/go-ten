@@ -96,9 +96,10 @@ export const columns: ColumnDef<Batch>[] = [
     ),
     cell: ({ row }) => {
       return (
-        <Link href={`/batch/${row.original.fullHash}`} className="text-primary">
-          <TruncatedAddress address={row.original.header.hash} />
-        </Link>
+        <TruncatedAddress
+          address={row.original.header.hash}
+          link={`/batch/${row.original.fullHash}`}
+        />
       );
     },
     enableSorting: false,

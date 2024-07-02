@@ -58,12 +58,10 @@ export const columns: ColumnDef<Transaction>[] = [
     ),
     cell: ({ row }) => {
       return (
-        <Link
-          href={`/tx/${row.original.TransactionHash}`}
-          className="text-primary"
-        >
-          <TruncatedAddress address={row.getValue("TransactionHash")} />
-        </Link>
+        <TruncatedAddress
+          address={row.getValue("TransactionHash")}
+          link={`/tx/${row.original.TransactionHash}`}
+        />
       );
     },
     enableSorting: false,

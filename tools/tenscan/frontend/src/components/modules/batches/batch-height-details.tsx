@@ -39,12 +39,10 @@ export function BatchHeightDetailsComponent({
         <KeyValueItem
           label="Hash"
           value={
-            <Link
-              href={`/batch/${batchDetails?.header?.hash}`}
-              className="text-primary"
-            >
-              <TruncatedAddress address={batchDetails?.header?.hash} />
-            </Link>
+            <TruncatedAddress
+              address={batchDetails?.header?.hash}
+              link={`/batch/${batchDetails?.header?.hash}`}
+            />
           }
         />
         <KeyValueItem

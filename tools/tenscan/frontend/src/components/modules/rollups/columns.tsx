@@ -31,15 +31,13 @@ export const columns: ColumnDef<Rollup>[] = [
     ),
     cell: ({ row }) => {
       return (
-        <Link
-          href={{
+        <TruncatedAddress
+          address={row.getValue("Hash")}
+          link={{
             pathname: "/rollup/[hash]/batches",
             query: { hash: row.getValue("Hash") },
           }}
-          className="text-primary"
-        >
-          <TruncatedAddress address={row.getValue("Hash")} />
-        </Link>
+        />
       );
     },
     enableSorting: false,

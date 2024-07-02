@@ -29,13 +29,10 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
               </p>
             </div>
             <div className="ml-auto font-medium">
-              <Link
-                href={`/tx/${transaction?.TransactionHash}`}
-                className="text-primary"
-              >
-                {" "}
-                <TruncatedAddress address={transaction?.TransactionHash} />
-              </Link>
+              <TruncatedAddress
+                address={transaction?.TransactionHash}
+                link={`/tx/${transaction?.TransactionHash}`}
+              />
             </div>
             <div className="ml-auto">
               <Badge>{transaction?.Finality}</Badge>
