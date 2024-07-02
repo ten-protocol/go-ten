@@ -14,4 +14,7 @@ type Config struct {
 	DBConnectionURL         string
 	TenChainID              int
 	StoreIncomingTxs        bool
+	RateLimitThreshold      int
+	RateLimitDecay          float64
+	RateLimitMaxScore       int
 }

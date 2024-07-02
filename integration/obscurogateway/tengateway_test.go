@@ -74,6 +74,9 @@ func TestTenGateway(t *testing.T) {
 		DBType:                  "sqlite",
 		TenChainID:              443,
 		StoreIncomingTxs:        true,
+		RateLimitThreshold:      10000,
+		RateLimitDecay:          0.2,
+		RateLimitMaxScore:       20000,
 	}
 
 	tenGwContainer := walletextension.NewContainerFromConfig(tenGatewayConf, testlog.Logger())
@@ -111,6 +114,7 @@ func TestTenGateway(t *testing.T) {
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
 		"testGetStorageAtForReturningUserID":   testGetStorageAtForReturningUserID,
+		"testRateLimiter":                      testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, httpURL, wsURL, w)
@@ -122,6 +126,45 @@ func TestTenGateway(t *testing.T) {
 	time.Sleep(20 * time.Second)
 	err = tenGwContainer.Stop()
 	assert.NoError(t, err)
+}
+
+func testRateLimiter(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
+	// register the user so we can call the endpoints that require authentication
+	err = user0.RegisterAccounts()
+	require.NoError(t, err)
+
+	// call BalanceAt - fist call should be successful
+	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+	require.NoError(t, err)
+
+	// sleep for a period of time to allow the rate limiter to reset
+	time.Sleep(1 * time.Second)
+
+	// first call after the rate limiter reset should be successful
+	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+	require.NoError(t, err)
+
+	address := user0.Wallets[0].Address()
+
+	// make 1000 requests with the same user to "spam" the gateway
+	for i := 0; i < 1000; i++ {
+		msg := ethereum.CallMsg{
+			From: address,
+			To:   &address, // Example: self-call to the user's address
+			Gas:  uint64(i),
+			Data: nil,
+		}
+
+		user0.HTTPClient.EstimateGas(context.Background(), msg)
+	}
+
+	// after 1000 requests, the rate limiter should block the user
+	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+	require.Error(t, err)
+	require.Equal(t, "rate limit exceeded", err.Error())
 }
 
 func testNewHeadsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {

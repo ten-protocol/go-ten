@@ -59,6 +59,18 @@ const (
 	storeIncomingTxs        = "storeIncomingTxs"
 	storeIncomingTxsDefault = true
 	storeIncomingTxsUsage   = "Flag to enable storing incoming transactions in the database for debugging purposes. Default: true"
+
+	rateLimitThresholdName    = "rateLimitThreshold"
+	rateLimitThresholdDefault = 1000
+	rateLimitThresholdUsage   = "Rate limit threshold per user. Default: 1000."
+
+	rateLimitDecayName    = "rateLimitDecay"
+	rateLimitDecayDefault = 0.2
+	rateLimitDecayUsage   = "Rate limit decay per user. Default: 0.2"
+
+	rateLimitMaxScoreName    = "rateLimitMaxScore"
+	rateLimitMinScoreDefault = 10000
+	rateLimitMinScoreUsage   = "With rateLimitMaxScore we limit the time user is blocked from making new requests if one/multiple previous requests took very long time to finish. Default: 10000."
 )
 
 func parseCLIArgs() wecommon.Config {
@@ -75,6 +87,9 @@ func parseCLIArgs() wecommon.Config {
 	dbConnectionURL := flag.String(dbConnectionURLFlagName, dbConnectionURLFlagDefault, dbConnectionURLFlagUsage)
 	tenChainID := flag.Int(tenChainIDName, tenChainIDDefault, tenChainIDFlagUsage)
 	storeIncomingTransactions := flag.Bool(storeIncomingTxs, storeIncomingTxsDefault, storeIncomingTxsUsage)
+	rateLimitThreshold := flag.Int(rateLimitThresholdName, rateLimitThresholdDefault, rateLimitThresholdUsage)
+	rateLimitDecay := flag.Float64(rateLimitDecayName, rateLimitDecayDefault, rateLimitDecayUsage)
+	rateLimitMaxScore := flag.Int(rateLimitMaxScoreName, rateLimitMinScoreDefault, rateLimitMinScoreUsage)
 	flag.Parse()
 
 	return wecommon.Config{
@@ -90,5 +105,8 @@ func parseCLIArgs() wecommon.Config {
 		DBConnectionURL:         *dbConnectionURL,
 		TenChainID:              *tenChainID,
 		StoreIncomingTxs:        *storeIncomingTransactions,
+		RateLimitThreshold:      *rateLimitThreshold,
+		RateLimitDecay:          *rateLimitDecay,
+		RateLimitMaxScore:       *rateLimitMaxScore,
 	}
 }
