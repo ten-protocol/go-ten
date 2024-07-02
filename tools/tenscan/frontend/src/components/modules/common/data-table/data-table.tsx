@@ -4,6 +4,8 @@ import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
+  OnChangeFn,
+  PaginationState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -61,10 +63,19 @@ export function DataTable<TData, TValue>({
     []
   );
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [pagination, setPagination] = React.useState({
-    pageIndex: Number(query.page) - 1 || 0,
-    pageSize: Number(query.size) || 20,
-  });
+  const pagination = React.useMemo(() => {
+    return {
+      pageIndex: (Number(query.page) - 1 || 0) + 1,
+      pageSize: Number(query.size) || 20,
+    };
+  }, [query.page, query.size]);
+
+  const setPagination: OnChangeFn<PaginationState> = (func) => {
+    const { pageIndex, pageSize } =
+      typeof func === "function" ? func(pagination) : func;
+    const params = { ...query, page: pageIndex + 1, size: pageSize };
+    push({ pathname, query: params });
+  };
 
   const table = useReactTable({
     data,
@@ -91,14 +102,6 @@ export function DataTable<TData, TValue>({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
-
-  const { pageIndex, pageSize } = table.getState().pagination;
-
-  React.useEffect(() => {
-    const params = { ...query, page: pageIndex + 1, size: pageSize };
-    push({ pathname, query: params });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageIndex, pageSize]);
 
   return (
     <div className="space-y-4">

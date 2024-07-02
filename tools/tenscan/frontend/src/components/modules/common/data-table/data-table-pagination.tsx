@@ -24,7 +24,7 @@ export function DataTablePagination<TData>({
   table,
   refetch,
 }: DataTablePaginationProps<TData>) {
-  const [page, setPage] = useState(table.getState().pagination.pageIndex + 1);
+  const [page, setPage] = useState(table.getState().pagination.pageIndex);
 
   const handlePageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPage(Number(e.target.value));
@@ -78,7 +78,7 @@ export function DataTablePagination<TData>({
             onKeyDown={handleKey}
             min={1}
             onFocus={(e) => e.target.select()}
-            onBlur={() => setPage(table.getState().pagination.pageIndex + 1)}
+            onBlur={() => setPage(table.getState().pagination.pageIndex)}
           />
           {/* uncomment the following line when total count feature is implemented */}
           {/* of {formatNumber(table.getPageCount())} */}
