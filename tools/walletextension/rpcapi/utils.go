@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
@@ -52,7 +50,6 @@ type ExecCfg struct {
 	computeFromCallback func(user *GWUser) *gethcommon.Address
 	tryAll              bool
 	tryUntilAuthorised  bool
-	accumulateResults   bool
 	adjustArgs          func(acct *GWAccount) []any
 	cacheCfg            *CacheCfg
 }
@@ -104,15 +101,15 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		return nil, err
 	}
 
-	user, err := getUser(userID, w)
-	if err != nil {
-		return nil, err
-	}
-
 	cacheArgs := []any{userID, method}
 	cacheArgs = append(cacheArgs, args...)
 
 	res, err := withCache(w.Cache, cfg.cacheCfg, generateCacheKey(cacheArgs), func() (*R, error) {
+		user, err := getUser(userID, w)
+		if err != nil {
+			return nil, err
+		}
+
 		// determine candidate "from"
 		candidateAccts, err := getCandidateAccounts(user, w, cfg)
 		if err != nil {
@@ -123,7 +120,6 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		}
 
 		var rpcErr error
-		accumulatedResponse := make([]*types.Log, 0)
 		for i := range candidateAccts {
 			acct := candidateAccts[i]
 			result, err := withEncRPCConnection(ctx, w, acct, func(rpcClient *tenrpc.EncRPCClient) (*R, error) {
@@ -148,22 +144,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 				rpcErr = err
 				continue
 			}
-			if cfg.accumulateResults {
-				resArray, ok := (any(result)).(*[]*types.Log)
-				if !ok {
-					return nil, fmt.Errorf("accumulate result only supported for getLogs")
-				}
-				accumulatedResponse = append(accumulatedResponse, *resArray...)
-			} else {
-				return result, nil
-			}
-		}
-		if cfg.accumulateResults {
-			r, ok := any(accumulatedResponse).(R)
-			if !ok {
-				return nil, fmt.Errorf("cannot accumulate result on non arrays")
-			}
-			return &r, nil
+			return result, nil
 		}
 		return nil, rpcErr
 	})

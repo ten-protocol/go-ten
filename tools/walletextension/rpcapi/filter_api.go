@@ -3,8 +3,11 @@ package rpcapi
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync/atomic"
 	"time"
+
+	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ethereum/go-ethereum/log"
 
@@ -186,36 +189,80 @@ func (api *FilterAPI) NewFilter(crit common.FilterCriteria) (rpc.ID, error) {
 }
 
 func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) ([]*types.Log, error) {
-	logs, err := ExecAuthRPC[[]*types.Log](
-		ctx,
-		api.we,
-		&ExecCfg{
-			cacheCfg: &CacheCfg{
-				CacheTypeDynamic: func() CacheStrategy {
-					if crit.ToBlock != nil && crit.ToBlock.Int64() > 0 {
-						return LongLiving
-					}
-					if crit.BlockHash != nil {
-						return LongLiving
-					}
-					// when the toBlock or the block Hash are not specified, the request is open-ended
-					return LatestBatch
-				},
-			},
-			tryAll:            true,
-			accumulateResults: true, // we want the events that are relevant to all accounts registered by the current user
-			adjustArgs: func(acct *GWAccount) []any {
-				// convert to something serializable
-				return []any{common.FromCriteria(crit)}
+	method := "eth_getLogs"
+	audit(api.we, "RPC start method=%s args=%v", method, ctx)
+	requestStartTime := time.Now()
+	userID, err := extractUserID(ctx, api.we)
+	if err != nil {
+		return nil, err
+	}
+
+	cacheArgs := []any{userID, method}
+	cacheArgs = append(cacheArgs, crit)
+
+	res, err := withCache(
+		api.we.Cache,
+		&CacheCfg{
+			CacheTypeDynamic: func() CacheStrategy {
+				if crit.ToBlock != nil && crit.ToBlock.Int64() > 0 {
+					return LongLiving
+				}
+				if crit.BlockHash != nil {
+					return LongLiving
+				}
+				// when the toBlock or the block Hash are not specified, the request is open-ended
+				return LatestBatch
 			},
 		},
-		"eth_getLogs",
-		crit,
-	)
-	if logs != nil {
-		return *logs, err
+		generateCacheKey(cacheArgs),
+		func() (*[]*types.Log, error) {
+			user, err := getUser(userID, api.we)
+			if err != nil {
+				return nil, err
+			}
+
+			allEventLogsMap := make(map[LogKey]*types.Log)
+			for _, acct := range user.accounts {
+				eventLogs, err := withEncRPCConnection(ctx, api.we, acct, func(rpcClient *tenrpc.EncRPCClient) (*[]*types.Log, error) {
+					var result []*types.Log
+
+					// wrap the context with a timeout to prevent long executions
+					timeoutContext, cancelCtx := context.WithTimeout(ctx, maximumRPCCallDuration)
+					defer cancelCtx()
+
+					err := rpcClient.CallContext(timeoutContext, &result, method, common.FromCriteria(crit))
+					return &result, err
+				})
+				if err != nil {
+					return nil, fmt.Errorf("could not read logs. cause: %w", err)
+				}
+				// dedupe event logs
+				for _, eventLog := range *eventLogs {
+					allEventLogsMap[LogKey{
+						BlockHash: eventLog.BlockHash,
+						TxHash:    eventLog.TxHash,
+						Index:     eventLog.Index,
+					}] = eventLog
+				}
+			}
+
+			result := make([]*types.Log, 0)
+			for _, eventLog := range allEventLogsMap {
+				result = append(result, eventLog)
+			}
+			sort.Slice(result, func(i, j int) bool {
+				if result[i].BlockNumber == result[j].BlockNumber {
+					return result[i].Index < result[j].Index
+				}
+				return result[i].BlockNumber < result[j].BlockNumber
+			})
+			return &result, nil
+		})
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	audit(api.we, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(userID), method, crit, res, err, time.Since(requestStartTime).Milliseconds())
+	return *res, err
 }
 
 func (api *FilterAPI) UninstallFilter(id rpc.ID) bool {

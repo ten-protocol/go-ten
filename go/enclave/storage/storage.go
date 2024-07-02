@@ -984,22 +984,13 @@ func (s *storageImpl) FilterLogs(
 	if err != nil {
 		return nil, err
 	}
-	sort.Sort(sortByHeightAndIndex(logs))
+	sort.Slice(logs, func(i, j int) bool {
+		if logs[i].BlockNumber == logs[j].BlockNumber {
+			return logs[i].Index < logs[j].Index
+		}
+		return logs[i].BlockNumber < logs[j].BlockNumber
+	})
 	return logs, nil
-}
-
-type sortByHeightAndIndex []*types.Log
-
-func (c sortByHeightAndIndex) Len() int      { return len(c) }
-func (c sortByHeightAndIndex) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
-func (c sortByHeightAndIndex) Less(i, j int) bool {
-	if c[i].BlockNumber < c[j].BlockNumber {
-		return true
-	}
-	if c[i].BlockNumber == c[j].BlockNumber {
-		return c[i].Index < c[j].Index
-	}
-	return false
 }
 
 func (s *storageImpl) GetContractCount(ctx context.Context) (*big.Int, error) {
