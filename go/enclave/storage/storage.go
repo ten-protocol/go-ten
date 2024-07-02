@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -979,7 +980,19 @@ func (s *storageImpl) FilterLogs(
 	topics [][]gethcommon.Hash,
 ) ([]*types.Log, error) {
 	defer s.logDuration("FilterLogs", measure.NewStopwatch())
-	return enclavedb.FilterLogs(ctx, s.db.GetSQLDB(), requestingAccount, fromBlock, toBlock, blockHash, addresses, topics)
+	logs, err := enclavedb.FilterLogs(ctx, s.db.GetSQLDB(), requestingAccount, fromBlock, toBlock, blockHash, addresses, topics)
+	if err != nil {
+		return nil, err
+	}
+	// the database returns an unsorted list of event logs.
+	// we have to perform the sorting programatically
+	sort.Slice(logs, func(i, j int) bool {
+		if logs[i].BlockNumber == logs[j].BlockNumber {
+			return logs[i].Index < logs[j].Index
+		}
+		return logs[i].BlockNumber < logs[j].BlockNumber
+	})
+	return logs, nil
 }
 
 func (s *storageImpl) GetContractCount(ctx context.Context) (*big.Int, error) {
