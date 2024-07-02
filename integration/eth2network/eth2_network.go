@@ -307,7 +307,7 @@ func (n *Impl) Start() error {
 		dataDir := nodeDataDir
 		go func() {
 			n.prysmBeaconProcesses[nodeID], err = n.prysmStartBeaconNode(
-				n.gethHTTPPorts[nodeID],
+				n.gethAuthRPCPorts[nodeID],
 				n.prysmBeaconHTTPPorts[nodeID],
 				n.prysmBeaconP2PPorts[nodeID],
 				dataDir,
@@ -393,9 +393,10 @@ func (n *Impl) gethImportMinerAccount(nodeID int) error {
 
 func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, dataDirPath string, minerAddress string) (*exec.Cmd, error) {
 	// full command list at https://geth.ethereum.org/docs/fundamentals/command-line-options
-	println("GETH HTTP PORT: ", httpPort)
-	println("GETH AUTH PORT: ", executionPort)
-	println("GETH NET PORT: ", networkPort)
+
+	println("GETH HTTP: ", httpPort)
+	println("GETH RPC: ", executionPort)
+	println("GETH NET: ", networkPort)
 	args := []string{
 		_dataDirFlag, dataDirPath,
 		"--http",
@@ -408,12 +409,12 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 		"--ws",
 		"--ws.api", "admin,eth,net,web3,debug,txpool",
 		"--ws.addr", "0.0.0.0",
+		"--ws.port", fmt.Sprintf("%d", wsPort),
 		"--ws.origins", "*",
-		//"--ws.port", fmt.Sprintf("%d", wsPort),
-		//"--authrpc.addr", "0.0.0.0",
-		//"--authrpc.port", fmt.Sprintf("%d", executionPort),
-		//"--authrpc.jwtsecret", path.Join(dataDirPath, "geth", "jwtsecret"),
-		"--port", fmt.Sprintf("%d", networkPort),
+		"--authrpc.addr", "0.0.0.0",
+		"--authrpc.port", fmt.Sprintf("%d", executionPort),
+		"--authrpc.jwtsecret", path.Join(dataDirPath, "geth", "jwtsecret"),
+		//"--port", fmt.Sprintf("%d", networkPort),
 		"--networkid", fmt.Sprintf("%d", n.chainID),
 		"--gcmode", "archive",
 		"--history.transactions", "0",
@@ -421,7 +422,7 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 		"--syncmode", "full", // sync mode to download and test all blocks and txs
 		"--allow-insecure-unlock", // allows to use personal accounts over http/ws
 		"--nodiscover",            // don't try and discover peers
-		"--verbosity", "5",        // error log level
+		"--verbosity", "1",        // error log level
 	}
 	fmt.Printf("gethStartNode: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
@@ -463,16 +464,17 @@ func (n *Impl) prysmStartBeaconNode(gethPort, rpcPort, p2pPort int, nodeDataDir 
 		"--chain-config-file", n.prysmConfigPath,
 		"--contract-deployment-block", "0",
 		"--chain-id", fmt.Sprintf("%d", n.chainID),
-		"--rpc-host", "0.0.0.0",
-		"--grpc-gateway-host", "0.0.0.0",
+		"--rpc-host", "127.0.0.1",
+		"--rpc-port", fmt.Sprintf("%d", rpcPort),
+		//"--grpc-gateway-host", "0.0.0.0",
+		//"--grpc-gateway-corsdomain", "*",
+		//"--grpc-gateway-port", fmt.Sprintf("%d", rpcPort+10),
 		"--accept-terms-of-use",
 		"--jwt-secret", path.Join(nodeDataDir, "geth", "jwtsecret"),
-		//"--suggested-fee-recipient", n.preFundedMinerPKs["n0"]
 		"--minimum-peers-per-subnet", "0",
 		"--enable-debug-rpc-endpoints",
+		"--verbosity", "debug",
 		"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", gethPort),
-		"--force-clear-db",
-		"--verbosity", "trace",
 	}
 
 	fmt.Printf("prysmStartBeaconNode: %s %s\n", n.prysmBeaconBinaryPath, strings.Join(args, " "))
@@ -485,13 +487,15 @@ func (n *Impl) prysmStartBeaconNode(gethPort, rpcPort, p2pPort int, nodeDataDir 
 
 func (n *Impl) prysmStartValidator(beaconHTTPPort int, nodeDataDir string) (*exec.Cmd, error) {
 	// full command list at https://docs.prylabs.network/docs/prysm-usage/parameters
+	println("BEACON HTTP PORT: ", beaconHTTPPort)
+
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "validator"),
+		"--beacon-rpc-provider", fmt.Sprintf("127.0.0.1:%d", beaconHTTPPort),
 		"--accept-terms-of-use",
 		"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
-		"--interop-start-index", "0",
 		"--chain-config-file", n.prysmConfigPath,
-		"--verbosity", "trace",
+		"--verbosity", "error",
 	}
 
 	fmt.Printf("prysmStartValidator: %s %s\n", n.prysmValidatorBinaryPath, strings.Join(args, " "))

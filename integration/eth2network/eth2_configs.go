@@ -48,10 +48,8 @@ DENEB_FORK_VERSION: 0x20000093
 DENEB_FORK_EPOCH: 0
 
 # Time parameters
-SECONDS_PER_SLOT: 3
+SECONDS_PER_SLOT: 12
 SLOTS_PER_EPOCH: 6
-
-DEPOSIT_NETWORK_ID: 48815
 
 # Deposit contract
 DEPOSIT_CONTRACT_ADDRESS: 0x4242424242424242424242424242424242424242
@@ -74,13 +72,13 @@ const _baseGenesis = `{
 		"londonBlock": 0,
 		"arrowGlacierBlock": 0,
 		"grayGlacierBlock": 0,
-        "shanghaiTime": 0,
-        "cancunTime": 0,
+        "shanghaiTime": 1695897038,
+        "cancunTime": 1695897038,
 		"terminalTotalDifficulty": 0,
 		"terminalTotalDifficultyPassed": true
 	},
 	"nonce": "0x0",
-	"timestamp": "0x0",
+	"timestamp": "0x651555ce",
 	"gasLimit": "0x1c9c380",
 	"difficulty": "0x1",
 	"mixHash":"0x0000000000000000000000000000000000000000000000000000000000000000",
