@@ -12,10 +12,11 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
         (transaction: Transaction, i: number) => (
           <div className="flex items-center" key={i}>
             <Avatar className="h-9 w-9">
-              <AvatarFallback>BN</AvatarFallback>
+              <AvatarFallback>TX</AvatarFallback>
             </Avatar>
             <div className="ml-4 space-y-1">
               <p className="text-sm font-medium leading-none">
+                <span className="text-muted-foreground">Batch </span>
                 <Link
                   href={`/batch/height/${transaction?.BatchHeight}`}
                   className="text-primary"

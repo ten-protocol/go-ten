@@ -97,7 +97,7 @@ export const columns: ColumnDef<Batch>[] = [
     cell: ({ row }) => {
       return (
         <Link href={`/batch/${row.original.fullHash}`} className="text-primary">
-          <TruncatedAddress address={row.getValue("hash")} />
+          <TruncatedAddress address={row.original.header.hash} />
         </Link>
       );
     },
