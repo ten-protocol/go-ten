@@ -114,15 +114,14 @@ func (t *testnetEnv) startTenGateway() {
 		TenChainID:              integration.TenChainID,
 	}
 	tenGWContainer := walletextension.NewContainerFromConfig(cfg, t.logger)
-	go func() {
-		fmt.Println("Starting Ten Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
-		err := tenGWContainer.Start()
-		if err != nil {
-			t.logger.Error("failed to start ten gateway", "err", err)
-			panic(err)
-		}
-		t.tenGatewayContainer = tenGWContainer
-	}()
+
+	fmt.Println("Starting Ten Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
+	err := tenGWContainer.Start()
+	if err != nil {
+		t.logger.Error("failed to start ten gateway", "err", err)
+		panic(err)
+	}
+	t.tenGatewayContainer = tenGWContainer
 	t.testnetConnector.tenGatewayURL = fmt.Sprintf("http://localhost:%d", _gwHTTPPort)
 }
 

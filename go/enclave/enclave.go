@@ -510,7 +510,7 @@ func (e *enclaveImpl) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch
 	e.logger.Info("Received new p2p batch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	seqNo := extBatch.Header.SequencerOrderNo.Uint64()
 	if seqNo > common.L2GenesisSeqNo+1 {
-		_, err := e.storage.FetchBatchBySeqNo(ctx, seqNo-1)
+		_, err := e.storage.FetchBatchHeaderBySeqNo(ctx, seqNo-1)
 		if err != nil {
 			return responses.ToInternalError(fmt.Errorf("could not find previous batch with seq: %d", seqNo-1))
 		}
@@ -961,7 +961,7 @@ func replayBatchesToValidState(ctx context.Context, storage storage.Storage, reg
 		}
 
 		// calculate the stateDB after this batch and store it in the cache
-		_, err := batchExecutor.ExecuteBatch(ctx, batch)
+		_, _, err := batchExecutor.ExecuteBatch(ctx, batch)
 		if err != nil {
 			return err
 		}
