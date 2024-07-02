@@ -18,7 +18,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
   const [isWalletConnected, setIsWalletConnected] = useState<boolean>(false);
   const [signer, setSigner] = useState<any>(null);
   const [address, setAddress] = useState<string>("");
-  const [isL1ToL2, setIsL1ToL2] = React.useState(true);
+  const [isL1ToL2, setIsL1ToL2] = useState(true);
   const fromChains = isL1ToL2 ? L1CHAINS : L2CHAINS;
   const toChains = isL1ToL2 ? L2CHAINS : L1CHAINS;
 
@@ -33,11 +33,11 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
       });
 
       if (isL1ToL2 && chainId !== WalletNetwork.L1_SEPOLIA) {
-        switchNetwork();
+        switchNetwork(WalletNetwork.L1_SEPOLIA);
       }
 
       if (!isL1ToL2 && chainId !== WalletNetwork.L2_TEN_TESTNET) {
-        switchNetwork();
+        switchNetwork(WalletNetwork.L2_TEN_TESTNET);
       }
 
       //@ts-ignore
@@ -87,40 +87,53 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
   };
 
   // Function to switch network
-  const switchNetwork = async () => {
+  const switchNetwork = async (desiredNetwork: WalletNetwork) => {
+    console.log("🚀 ~ switchNetwork ~ desiredNetwork:", desiredNetwork);
+    if (!provider) {
+      toast({
+        title: "Error",
+        description: "Please connect to wallet first",
+        variant: ToastType.DESTRUCTIVE,
+      });
+      return;
+    }
     try {
       await provider.request({
         method: requestMethods.switchNetwork,
-        params: [
-          {
-            chainId: isL1ToL2
-              ? WalletNetwork.L2_TEN_TESTNET
-              : WalletNetwork.L1_SEPOLIA,
-          },
-        ],
+        params: [{ chainId: desiredNetwork }],
       });
-      setIsL1ToL2(!isL1ToL2);
+      setIsL1ToL2(desiredNetwork === WalletNetwork.L1_SEPOLIA);
+      toast({
+        title: "Network Switched",
+        description: `Switched to ${
+          desiredNetwork === WalletNetwork.L2_TEN_TESTNET
+            ? "L2 TEN Testnet"
+            : "L1 Sepolia"
+        }`,
+        variant: ToastType.SUCCESS,
+      });
     } catch (error: any) {
       console.error("Error switching network:", error);
       if (error.code === 4902) {
         toast({
-          title: "Wrong Network",
-          description: isL1ToL2 ? (
-            <>
-              <span> You are not connected to Ten! Connect at: </span>
-              <pre className="mt-2 w-[500px] rounded-md bg-slate-950 p-4">
-                <a
-                  href="https://testnet.ten.xyz/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  https://testnet.ten.xyz/
-                </a>
-              </pre>
-            </>
-          ) : (
-            "Please install the network to continue."
-          ),
+          title: "Network Not Found",
+          description:
+            desiredNetwork === WalletNetwork.L2_TEN_TESTNET ? (
+              <>
+                <span>You are not connected to Ten! Connect at: </span>
+                <pre className="mt-2 w-[500px] rounded-md bg-slate-950 p-4">
+                  <a
+                    href="https://testnet.ten.xyz/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    https://testnet.ten.xyz/
+                  </a>
+                </pre>
+              </>
+            ) : (
+              "Please install the network to continue."
+            ),
           variant: ToastType.INFO,
         });
       } else {
@@ -157,9 +170,9 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
     }
   }, [provider]);
 
-  // useEffect(() => {
-  //   connectWallet();
-  // }, []);
+  useEffect(() => {
+    connectWallet();
+  }, []);
 
   // Context value
   const value = {
