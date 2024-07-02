@@ -28,7 +28,7 @@ import (
 
 const (
 	_startPort = integration.StartPortEth2NetworkTests
-	// todo (@pedro) - ensure it works with more than 1 node
+	// todo (@will) - ensure it works with more than 1 node
 	_numTestNodes = 1
 )
 
@@ -42,7 +42,7 @@ func TestStartEth2Network(t *testing.T) {
 	binDir, err := EnsureBinariesExist()
 	assert.Nil(t, err)
 
-	chainID := int(datagenerator.RandomUInt64())
+	chainID := int(datagenerator.RandomUint16())
 	randomWallets := make([]wallet.Wallet, _numTestNodes)
 	randomWalletAddrs := make([]string, _numTestNodes)
 	for i := 0; i < _numTestNodes; i++ {
