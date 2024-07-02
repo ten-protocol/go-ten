@@ -3,34 +3,15 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/src/components/ui/badge";
 
-import { statuses } from "./constants";
+import { statuses } from "../transactions/constants";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
 import TruncatedAddress from "../common/truncated-address";
-import { formatTimeAgo } from "@/src/lib/utils";
+import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import Link from "next/link";
+import { EyeOpenIcon } from "@radix-ui/react-icons";
 
 export const columns: ColumnDef<Transaction>[] = [
-  {
-    accessorKey: "BatchHeight",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Batch" />
-    ),
-    cell: ({ row }) => {
-      return (
-        <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate">
-            #{row.getValue("BatchHeight")}
-          </span>
-        </div>
-      );
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
-    },
-    enableHiding: false,
-  },
-
   {
     accessorKey: "BatchTimestamp",
     header: ({ column }) => (
@@ -45,9 +26,7 @@ export const columns: ColumnDef<Transaction>[] = [
         </div>
       );
     },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
-    },
+    enableSorting: false,
     enableHiding: false,
   },
 

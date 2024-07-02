@@ -15,7 +15,10 @@ export default function PersonalTransactions() {
 
   React.useEffect(() => {
     setNoPolling(true);
-    return () => setNoPolling(false);
+
+    return () => {
+      setNoPolling(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -26,9 +29,10 @@ export default function PersonalTransactions() {
           <h2 className="text-2xl font-bold tracking-tight">
             Personal Transactions
           </h2>
-          <p className="text-muted-foreground">
+          {/* uncomment the following line when total count feature is implemented */}
+          {/* <p className="text-muted-foreground">
             {formatNumber(Total)} personal transaction(s).
-          </p>
+          </p> */}
         </div>
       </div>
       {personalTxnsLoading ? (

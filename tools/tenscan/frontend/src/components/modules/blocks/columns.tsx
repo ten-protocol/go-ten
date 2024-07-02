@@ -10,6 +10,7 @@ import { Badge } from "../../ui/badge";
 import ExternalLink from "../../ui/external-link";
 import { externalLinks } from "@/src/routes";
 import { EyeOpenIcon } from "@radix-ui/react-icons";
+import Link from "next/link";
 
 export const columns: ColumnDef<Block>[] = [
   {
@@ -22,7 +23,7 @@ export const columns: ColumnDef<Block>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {Number(blockHeader?.number)}
+            #{Number(blockHeader?.number)}
           </span>
         </div>
       );
@@ -60,7 +61,12 @@ export const columns: ColumnDef<Block>[] = [
       return Number(row.original.rollupHash) === 0 ? (
         <Badge>No rollup</Badge>
       ) : (
-        <TruncatedAddress address={row.original.rollupHash} />
+        <Link
+          href={`/rollup/${row.original.rollupHash}`}
+          className="text-primary"
+        >
+          <TruncatedAddress address={row.original.rollupHash} />
+        </Link>
       );
     },
     enableSorting: false,
@@ -96,7 +102,9 @@ export const columns: ColumnDef<Block>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {formatNumber(blockHeader?.gasLimit)}
+            <Badge variant={"outline"}>
+              {formatNumber(blockHeader?.gasLimit)}
+            </Badge>
           </span>
         </div>
       );

@@ -100,3 +100,9 @@ const Document = () => {
 };
 
 export default Document;
+
+export async function getServerSideProps(context: any) {
+  return {
+    props: {},
+  };
+}

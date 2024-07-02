@@ -6,6 +6,7 @@ import {
   Batch,
   BatchDetails,
   BatchResponse,
+  LatestBatch,
 } from "@/src/types/interfaces/BatchInterfaces";
 
 export const fetchBatches = async (
@@ -20,8 +21,8 @@ export const fetchBatches = async (
 
 export const fetchLatestBatch = async (
   payload?: Record<string, any>
-): Promise<ResponseDataInterface<Batch>> => {
-  return await httpRequest<ResponseDataInterface<Batch>>({
+): Promise<ResponseDataInterface<LatestBatch>> => {
+  return await httpRequest<ResponseDataInterface<LatestBatch>>({
     method: "get",
     url: pathToUrl(apiRoutes.getLatestBatch),
     searchParams: payload,
@@ -34,5 +35,25 @@ export const fetchBatchByHash = async (
   return await httpRequest<ResponseDataInterface<BatchDetails>>({
     method: "get",
     url: pathToUrl(apiRoutes.getBatchByHash, { hash }),
+  });
+};
+
+export const fetchBatchByHeight = async (
+  height: string
+): Promise<ResponseDataInterface<Batch>> => {
+  return await httpRequest<ResponseDataInterface<Batch>>({
+    method: "get",
+    url: pathToUrl(apiRoutes.getBatchByHeight, { height }),
+  });
+};
+
+export const fetchBatchTransactions = async (
+  fullHash: string,
+  options?: Record<string, any>
+): Promise<ResponseDataInterface<any>> => {
+  return await httpRequest<ResponseDataInterface<any>>({
+    method: "get",
+    url: pathToUrl(apiRoutes.getBatchTransactions, { fullHash }),
+    searchParams: options,
   });
 };

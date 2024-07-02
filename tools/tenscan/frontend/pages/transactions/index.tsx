@@ -12,8 +12,12 @@ export const metadata: Metadata = {
 };
 
 export default function Transactions() {
-  const { transactions, refetchTransactions, setNoPolling } =
-    useTransactionsService();
+  const {
+    transactions,
+    refetchTransactions,
+    setNoPolling,
+    isTransactionsLoading,
+  } = useTransactionsService();
   const { TransactionsData, Total } = transactions?.result || {
     TransactionsData: [],
     Total: 0,
@@ -21,6 +25,10 @@ export default function Transactions() {
 
   React.useEffect(() => {
     setNoPolling(true);
+
+    return () => {
+      setNoPolling(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -30,9 +38,10 @@ export default function Transactions() {
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Transactions</h2>
-            <p className="text-sm text-muted-foreground">
+            {/* uncomment the following line when total count feature is implemented */}
+            {/* <p className="text-sm text-muted-foreground">
               {formatNumber(Total)} Transactions found.
-            </p>
+            </p> */}
           </div>
         </div>
         {TransactionsData ? (
@@ -41,9 +50,10 @@ export default function Transactions() {
             data={TransactionsData}
             refetch={refetchTransactions}
             total={+Total}
+            isLoading={isTransactionsLoading}
           />
         ) : (
-          <p>Loading...</p>
+          <div>No rollups found.</div>
         )}
       </div>
     </Layout>

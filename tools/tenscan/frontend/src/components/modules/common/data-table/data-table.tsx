@@ -4,6 +4,8 @@ import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
+  OnChangeFn,
+  PaginationState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -27,6 +29,7 @@ import {
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
 import { useRouter } from "next/router";
+import { Skeleton } from "@/src/components/ui/skeleton";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -39,6 +42,8 @@ interface DataTableProps<TData, TValue> {
   updateQueryParams?: (query: any) => void;
   refetch?: () => void;
   total: number;
+  isLoading?: boolean;
+  noPagination?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -47,7 +52,10 @@ export function DataTable<TData, TValue>({
   toolbar,
   refetch,
   total,
+  isLoading,
+  noPagination,
 }: DataTableProps<TData, TValue>) {
+  const { query, push, pathname } = useRouter();
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -55,10 +63,19 @@ export function DataTable<TData, TValue>({
     []
   );
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [pagination, setPagination] = React.useState({
-    pageIndex: 0,
-    pageSize: 20,
-  });
+  const pagination = React.useMemo(() => {
+    return {
+      pageIndex: (Number(query.page) - 1 || 0) + 1,
+      pageSize: Number(query.size) || 20,
+    };
+  }, [query.page, query.size]);
+
+  const setPagination: OnChangeFn<PaginationState> = (func) => {
+    const { pageIndex, pageSize } =
+      typeof func === "function" ? func(pagination) : func;
+    const params = { ...query, page: pageIndex + 1, size: pageSize };
+    push({ pathname, query: params });
+  };
 
   const table = useReactTable({
     data,
@@ -72,7 +89,7 @@ export function DataTable<TData, TValue>({
     },
     onPaginationChange: setPagination,
     manualPagination: true,
-    pageCount: Math.ceil(total / pagination.pageSize),
+    // pageCount: Math.ceil(total / pagination.pageSize),
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
@@ -85,15 +102,6 @@ export function DataTable<TData, TValue>({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
-
-  const { query, push, pathname } = useRouter();
-  const { pageIndex, pageSize } = table.getState().pagination;
-
-  React.useEffect(() => {
-    const params = { ...query, page: pageIndex + 1, size: pageSize };
-    push({ pathname, query: params });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageIndex, pageSize]);
 
   return (
     <div className="space-y-4">
@@ -119,7 +127,18 @@ export function DataTable<TData, TValue>({
             ))}
           </TableHeader>
           <TableBody>
-            {table?.getRowModel()?.rows?.length && data ? (
+            {isLoading ? (
+              <>
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    <Skeleton className="w-full h-full" />
+                  </TableCell>
+                </TableRow>
+              </>
+            ) : table?.getRowModel()?.rows?.length && data ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -148,7 +167,9 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} />
+      {(table.getRowModel().rows.length > 0 || noPagination) && (
+        <DataTablePagination table={table} refetch={refetch} />
+      )}
     </div>
   );
 }

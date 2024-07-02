@@ -21,3 +21,9 @@ const AddressDetails = () => {
 };
 
 export default AddressDetails;
+
+export async function getServerSideProps(context: any) {
+  return {
+    props: {},
+  };
+}

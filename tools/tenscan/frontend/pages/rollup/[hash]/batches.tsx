@@ -3,29 +3,22 @@ import { columns } from "@/src/components/modules/batches/columns";
 import { DataTable } from "@/src/components/modules/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
-import { useBatchesService } from "@/src/services/useBatchesService";
+import { formatNumber } from "@/src/lib/utils";
+import { useRollupsService } from "@/src/services/useRollupsService";
 
 export const metadata: Metadata = {
   title: "Batches",
   description: "A table of Batches.",
 };
 
-export default function Batches() {
-  const { batches, refetchBatches, isBatchesLoading, setNoPolling } =
-    useBatchesService();
-  const { BatchesData, Total } = batches?.result || {
+export default function RollupBatches() {
+  const { rollupBatches, isRollupBatchesLoading, refetchRollupBatches } =
+    useRollupsService();
+
+  const { BatchesData, Total } = rollupBatches?.result || {
     BatchesData: [],
     Total: 0,
   };
-
-  React.useEffect(() => {
-    setNoPolling(true);
-
-    return () => {
-      setNoPolling(false);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <Layout>
@@ -33,23 +26,19 @@ export default function Batches() {
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
-            {BatchesData.length > 0 && (
-              <p className="text-sm text-muted-foreground">
-                Showing batches #{BatchesData[0]?.height} to #
-                {BatchesData[BatchesData.length - 1]?.height}
-                {/* uncomment the following line when total count feature is implemented */}
-                {/* of {formatNumber(Total)} batches. */}
-              </p>
-            )}
+            {/* uncomment the following line when total count feature is implemented */}
+            {/* <p className="text-sm text-muted-foreground">
+              {formatNumber(Total)} Batch(es) found in this rollup.
+            </p> */}
           </div>
         </div>
         {BatchesData ? (
           <DataTable
             columns={columns}
             data={BatchesData}
-            refetch={refetchBatches}
+            refetch={refetchRollupBatches}
             total={+Total}
-            isLoading={isBatchesLoading}
+            isLoading={isRollupBatchesLoading}
           />
         ) : (
           <p>Loading...</p>
@@ -57,4 +46,10 @@ export default function Batches() {
       </div>
     </Layout>
   );
+}
+
+export async function getServerSideProps(context: any) {
+  return {
+    props: {},
+  };
 }

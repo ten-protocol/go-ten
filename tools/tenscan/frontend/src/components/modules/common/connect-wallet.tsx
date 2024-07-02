@@ -10,7 +10,7 @@ const ConnectWalletButton = ({ text }: { text?: string }) => {
 
   return (
     <Button
-      className="text-sm font-medium leading-none"
+      className="font-medium leading-none"
       variant={"outline"}
       onClick={
         ethereum
@@ -33,7 +33,7 @@ const ConnectWalletButton = ({ text }: { text?: string }) => {
       ) : (
         <>
           <Link2Icon className="h-4 w-4 mr-1" />
-          {ethereum ? "Connect Wallet" : text || "Install MetaMask"}
+          {ethereum ? "Connect" : text || "Install MetaMask"}
         </>
       )}
     </Button>
