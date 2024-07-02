@@ -307,7 +307,7 @@ func (n *Impl) Start() error {
 		dataDir := nodeDataDir
 		go func() {
 			n.prysmBeaconProcesses[nodeID], err = n.prysmStartBeaconNode(
-				n.gethAuthRPCPorts[nodeID],
+				n.gethHTTPPorts[nodeID],
 				n.prysmBeaconHTTPPorts[nodeID],
 				n.prysmBeaconP2PPorts[nodeID],
 				dataDir,
@@ -393,6 +393,9 @@ func (n *Impl) gethImportMinerAccount(nodeID int) error {
 
 func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, dataDirPath string, minerAddress string) (*exec.Cmd, error) {
 	// full command list at https://geth.ethereum.org/docs/fundamentals/command-line-options
+	println("GETH HTTP PORT: ", httpPort)
+	println("GETH AUTH PORT: ", executionPort)
+	println("GETH NET PORT: ", networkPort)
 	args := []string{
 		_dataDirFlag, dataDirPath,
 		"--http",
@@ -449,7 +452,7 @@ func (n *Impl) prysmGenerateGenesis() error {
 	return cmd.Run()
 }
 
-func (n *Impl) prysmStartBeaconNode(gethAuthRPCPort, rpcPort, p2pPort int, nodeDataDir string) (*exec.Cmd, error) {
+func (n *Impl) prysmStartBeaconNode(gethPort, rpcPort, p2pPort int, nodeDataDir string) (*exec.Cmd, error) {
 	// full command list at https://docs.prylabs.network/docs/prysm-usage/parameters
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
@@ -467,7 +470,7 @@ func (n *Impl) prysmStartBeaconNode(gethAuthRPCPort, rpcPort, p2pPort int, nodeD
 		//"--suggested-fee-recipient", n.preFundedMinerPKs["n0"]
 		"--minimum-peers-per-subnet", "0",
 		"--enable-debug-rpc-endpoints",
-		"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", gethAuthRPCPort),
+		"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", gethPort),
 		"--force-clear-db",
 		"--verbosity", "trace",
 	}
