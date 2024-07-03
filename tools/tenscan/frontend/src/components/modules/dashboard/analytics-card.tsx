@@ -5,17 +5,13 @@ import {
   CardContent,
 } from "@/src/components/ui/card";
 import { Skeleton } from "@/src/components/ui/skeleton";
+import { DashboardAnalyticsData } from "@/src/types/interfaces";
 import React from "react";
 
 export default function AnalyticsCard({
   item,
 }: {
-  item: {
-    title: string;
-    value: string | number | JSX.Element;
-    change?: string;
-    icon: any;
-  };
+  item: DashboardAnalyticsData;
 }) {
   return (
     <Card>

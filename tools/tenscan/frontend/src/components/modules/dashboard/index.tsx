@@ -28,13 +28,7 @@ import { Badge } from "../../ui/badge";
 import { BlocksIcon } from "lucide-react";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import { RecentRollups } from "./recent-rollups";
-
-interface DashboardData {
-  title: string;
-  value: string | number | JSX.Element;
-  icon: JSX.Element;
-  change?: string;
-}
+import { DashboardAnalyticsData } from "@/src/types/interfaces";
 
 interface RecentData {
   title: string;
@@ -137,7 +131,7 @@ export default function Dashboard() {
         <h2 className="text-3xl font-bold tracking-tight">Tenscan</h2>
       </div>
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-4">
-        {DASHBOARD_DATA.map((item: DashboardData, index) => (
+        {DASHBOARD_DATA.map((item: DashboardAnalyticsData, index: number) => (
           <AnalyticsCard key={index} item={item} />
         ))}
       </div>

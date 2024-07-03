@@ -87,3 +87,10 @@ export enum BadgeType {
   DEFAULT = "default",
   OUTLINE = "outline",
 }
+
+export interface DashboardAnalyticsData {
+  title: string;
+  value: string | number | JSX.Element;
+  change?: string;
+  icon: any;
+}
