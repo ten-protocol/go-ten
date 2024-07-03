@@ -61,11 +61,12 @@ export const useTransactionsService = () => {
             ...options,
           },
         };
-        const personalTxData = await provider.send(ethMethods.getStorageAt, [
+        const personalTxResp = await provider.send(ethMethods.getStorageAt, [
           tenCustomQueryMethods.listPersonalTransactions,
           JSON.stringify(requestPayload),
           null,
         ]);
+        const personalTxData = jsonHexToObj(personalTxResp);
         setPersonalTxns(personalTxData);
       }
     } catch (error) {
@@ -96,3 +97,7 @@ export const useTransactionsService = () => {
     price,
   };
 };
+
+function jsonHexToObj(hex: string) {
+  return JSON.parse(Buffer.from(hex.slice(2), "hex").toString());
+}
