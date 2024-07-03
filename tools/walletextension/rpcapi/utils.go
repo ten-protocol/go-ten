@@ -105,11 +105,6 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		return nil, fmt.Errorf("rate limit exceeded")
 	}
 
-	user, err := getUser(userID, w)
-	if err != nil {
-		return nil, err
-	}
-
 	cacheArgs := []any{userID, method}
 	cacheArgs = append(cacheArgs, args...)
 
