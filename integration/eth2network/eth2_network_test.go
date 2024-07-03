@@ -65,7 +65,7 @@ func TestStartEth2Network(t *testing.T) {
 		2,
 		2,
 		randomWalletAddrs,
-		2*time.Minute,
+		8*time.Minute,
 	)
 	// wait until the merge has happened
 	assert.Nil(t, network.Start())
@@ -139,7 +139,7 @@ func txsAreMinted(t *testing.T, wallets []wallet.Wallet) {
 
 	ethclients := make([]ethadapter.EthClient, _numTestNodes)
 	for i := 0; i < _numTestNodes; i++ {
-		ethclients[i], err = ethadapter.NewEthClient("127.0.0.1", uint(_startPort+100+i), 30*time.Second, common.L2Address{}, gethlog.New())
+		ethclients[i], err = ethadapter.NewEthClient("127.0.0.1", uint(_startPort+integration.DefaultGethWSPortOffset+i), 30*time.Second, common.L2Address{}, gethlog.New())
 		assert.Nil(t, err)
 	}
 

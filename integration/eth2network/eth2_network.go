@@ -284,16 +284,16 @@ func (n *Impl) Start() error {
 	}
 
 	// import prefunded key to each node and start mining
-	for i := range n.dataDirs {
-		nodeID := i
-		eg.Go(func() error {
-			return n.gethImportMinerAccount(nodeID)
-		})
-	}
-	err = eg.Wait()
-	if err != nil {
-		return err
-	}
+	//for i := range n.dataDirs {
+	//	nodeID := i
+	//	eg.Go(func() error {
+	//		return n.gethImportMinerAccount(nodeID)
+	//	})
+	//}
+	//err = eg.Wait()
+	//if err != nil {
+	//	return err
+	//}
 
 	// generate the genesis using the node 0
 	err = n.prysmGenerateGenesis()
@@ -318,7 +318,7 @@ func (n *Impl) Start() error {
 		}()
 	}
 
-	time.Sleep(5 * time.Second)
+	//time.Sleep(5 * time.Second)
 	// start each of the validator nodes
 	for i, nodeDataDir := range n.dataDirs {
 		nodeID := i
@@ -403,10 +403,15 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 		"--http.addr", "0.0.0.0",
 		"--http.port", fmt.Sprintf("%d", httpPort),
 		"--http.api", "admin,eth,net,web3,debug,txpool",
+		"--ws",
+		"--ws.api", "admin,eth,net,web3,debug,txpool",
+		"--ws.port", fmt.Sprintf("%d", wsPort),
 		"--networkid", fmt.Sprintf("%d", n.chainID),
 		"--syncmode", "full", // sync mode to download and test all blocks and txs
 		"--allow-insecure-unlock", // allows to use personal accounts over http/ws
-		"--nodiscover",            // don't try and discover peers
+		//"--unlock", n.preFundedMinerAddrs[0], //TODO work for multinode
+		//"--password", "password.txt",
+		"--nodiscover", // don't try and discover peers
 		//"--verbosity", "1",        // error log level
 	}
 	fmt.Printf("gethStartNode: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
@@ -632,11 +637,4 @@ func (n *Impl) ensureNoDuplicatedNetwork() error {
 		}
 	}
 	return nil
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
