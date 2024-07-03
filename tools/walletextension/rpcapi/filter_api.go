@@ -197,6 +197,10 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 		return nil, err
 	}
 
+	if !api.we.RateLimiter.Allow(gethcommon.Address(userID)) {
+		return nil, fmt.Errorf("rate limit exceeded")
+	}
+
 	res, err := withCache(
 		api.we.Cache,
 		&CacheCfg{
@@ -261,6 +265,8 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 	if err != nil {
 		return nil, err
 	}
+	executionDuration := time.Since(requestStartTime).Milliseconds()
+	api.we.RateLimiter.UpdateScore(gethcommon.Address(userID), uint32(executionDuration))
 	audit(api.we, "RPC call. uid=%s, method=%s args=%v result=%v error=%v time=%d", hexutils.BytesToHex(userID), method, crit, res, err, time.Since(requestStartTime).Milliseconds())
 	return *res, err
 }

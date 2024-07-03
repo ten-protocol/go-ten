@@ -96,19 +96,25 @@ func (rl *RateLimiter) UpdateScore(userID common.Address, executionDuration uint
 	// Decay the score of the user based on the time since the last request
 	now := time.Now()
 	userScore, exists := rl.users[userID]
-	scoreDecay := uint32(0)
-	// if user exists decay the score based on the time since the last request
-	if exists {
-		// Decay the score based on the time since the last request and the decay rate
-		timeSinceLastRequest := float64(now.Sub(userScore.lastRequest).Milliseconds())
-		// limit the decay to the user's current score
-		scoreDecay = min(uint32(timeSinceLastRequest*rl.decay), userScore.score)
+	//
+	if !exists {
+		log.Println("User not found in the rate limiter")
+		return
 	}
+	scoreDecay := uint32(0)
+	// Decay the score based on the time since the last request and the decay rate
+	timeSinceLastRequest := float64(now.Sub(userScore.lastRequest).Milliseconds())
+	// limit the decay to the user's current score
+	scoreDecay = min(uint32(timeSinceLastRequest*rl.decay), userScore.score)
 
 	// Increase the score of the user based on the execution duration of the request
 	// and update the last request time
 	newScore := rl.users[userID].score + executionDuration - scoreDecay
-	rl.users[userID] = Score{lastRequest: now, score: newScore, concurrentRequests: userScore.concurrentRequests - 1}
+	newConcurrentRequests := userScore.concurrentRequests
+	if newConcurrentRequests > 0 {
+		newConcurrentRequests -= 1
+	}
+	rl.users[userID] = Score{lastRequest: userScore.lastRequest, score: newScore, concurrentRequests: newConcurrentRequests}
 }
 
 func (rl *RateLimiter) logRateLimitedStats() {
