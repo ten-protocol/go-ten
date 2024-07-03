@@ -32,8 +32,9 @@ export default function Blocks() {
             <h2 className="text-2xl font-bold tracking-tight">Blocks</h2>
             {BlocksData.length > 0 && (
               <p className="text-sm text-muted-foreground">
-                Showing blocks #{BlocksData[0]?.height} to #
-                {BlocksData[BlocksData.length - 1]?.height}
+                Showing blocks #{Number(BlocksData[0]?.blockHeader?.number)} to
+                #
+                {Number(BlocksData[BlocksData.length - 1]?.blockHeader?.number)}
                 {/* uncomment the following line when total count feature is implemented */}
                 {/* of {formatNumber(Total)} blocks. */}
               </p>

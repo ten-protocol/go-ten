@@ -82,17 +82,6 @@ export function RollupDetailsComponent({
           }
         />
         <KeyValueItem
-          label="Last Batch Sequence No"
-          value={
-            <Link
-              href={`/rollup/batch/sequence/${rollupDetails?.Header?.LastBatchSeqNo}`}
-              className="text-primary"
-            >
-              {"#" + rollupDetails?.Header?.LastBatchSeqNo}
-            </Link>
-          }
-        />
-        <KeyValueItem
           label="Cross Chain Messages"
           value={
             rollupDetails?.Header?.crossChainMessages.length > 0

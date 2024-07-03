@@ -33,7 +33,7 @@ export function BatchHashDetailsComponent({
           label="Batch Height"
           value={
             <Link
-              href={`/batch/height/${batchDetails?.Header?.number}`}
+              href={`/batch/height/${Number(batchDetails?.Header?.number)}`}
               className="text-primary"
             >
               {"#" + Number(batchDetails?.Header?.number)}

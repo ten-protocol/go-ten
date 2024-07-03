@@ -10,7 +10,6 @@ import { Badge } from "../../ui/badge";
 import ExternalLink from "../../ui/external-link";
 import { externalLinks } from "@/src/routes";
 import { EyeOpenIcon } from "@radix-ui/react-icons";
-import Link from "next/link";
 
 export const columns: ColumnDef<Block>[] = [
   {
