@@ -55,7 +55,7 @@ type Impl struct {
 	gethWSPorts              []int
 	gethNetworkPorts         []int
 	gethAuthRPCPorts         []int
-	prysmBeaconHTTPPorts     []int
+	prysmBeaconRPCPorts      []int
 	prysmBeaconP2PPorts      []int
 	gethProcesses            []*exec.Cmd
 	prysmBeaconProcesses     []*exec.Cmd
@@ -82,7 +82,7 @@ func NewEth2Network(
 	gethWSPortStart int,
 	gethAuthRPCPortStart int,
 	gethNetworkPortStart int,
-	prysmBeaconHTTPPortStart int,
+	prysmBeaconRPCPortStart int,
 	prysmBeaconP2PPortStart int,
 	chainID int,
 	numNodes int,
@@ -154,7 +154,7 @@ func NewEth2Network(
 	gethWSPorts := make([]int, numNodes)
 	gethAuthRPCPorts := make([]int, numNodes)
 	gethNetworkPorts := make([]int, numNodes)
-	prysmBeaconHTTPPorts := make([]int, numNodes)
+	prysmBeaconRPCPorts := make([]int, numNodes)
 	prysmBeaconP2PPorts := make([]int, numNodes)
 
 	for i := 0; i < numNodes; i++ {
@@ -163,7 +163,7 @@ func NewEth2Network(
 		gethWSPorts[i] = gethWSPortStart + i
 		gethAuthRPCPorts[i] = gethAuthRPCPortStart + i
 		gethNetworkPorts[i] = gethNetworkPortStart + i
-		prysmBeaconHTTPPorts[i] = prysmBeaconHTTPPortStart + i
+		prysmBeaconRPCPorts[i] = prysmBeaconRPCPortStart + i
 		prysmBeaconP2PPorts[i] = prysmBeaconP2PPortStart + i
 	}
 
@@ -199,7 +199,7 @@ func NewEth2Network(
 		gethWSPorts:              gethWSPorts,
 		gethNetworkPorts:         gethNetworkPorts,
 		gethAuthRPCPorts:         gethAuthRPCPorts,
-		prysmBeaconHTTPPorts:     prysmBeaconHTTPPorts,
+		prysmBeaconRPCPorts:      prysmBeaconRPCPorts,
 		prysmBeaconP2PPorts:      prysmBeaconP2PPorts,
 		gethBinaryPath:           gethBinaryPath,
 		prysmBinaryPath:          prysmBinaryPath,
@@ -308,7 +308,7 @@ func (n *Impl) Start() error {
 		go func() {
 			n.prysmBeaconProcesses[nodeID], err = n.prysmStartBeaconNode(
 				n.gethAuthRPCPorts[nodeID],
-				n.prysmBeaconHTTPPorts[nodeID],
+				n.prysmBeaconRPCPorts[nodeID],
 				n.prysmBeaconP2PPorts[nodeID],
 				dataDir,
 			)
@@ -324,7 +324,7 @@ func (n *Impl) Start() error {
 		nodeID := i
 		dataDir := nodeDataDir
 		go func() {
-			n.prysmValidatorProcesses[nodeID], err = n.prysmStartValidator(n.prysmBeaconHTTPPorts[nodeID], dataDir)
+			n.prysmValidatorProcesses[nodeID], err = n.prysmStartValidator(n.prysmBeaconRPCPorts[nodeID], dataDir)
 			if err != nil {
 				panic(err)
 			}
@@ -403,26 +403,26 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 		"--http.addr", "0.0.0.0",
 		"--http.port", fmt.Sprintf("%d", httpPort),
 		"--http.api", "admin,eth,net,web3,debug,txpool",
-		"--http.corsdomain", "*",
-		"--http.vhosts", "*",
-		"--mine",
-		"--ws",
-		"--ws.api", "admin,eth,net,web3,debug,txpool",
-		"--ws.addr", "0.0.0.0",
-		"--ws.port", fmt.Sprintf("%d", wsPort),
-		"--ws.origins", "*",
-		"--authrpc.addr", "0.0.0.0",
-		"--authrpc.port", fmt.Sprintf("%d", executionPort),
-		"--authrpc.jwtsecret", path.Join(dataDirPath, "geth", "jwtsecret"),
+		//"--http.corsdomain", "*",
+		//"--http.vhosts", "*",
+		//"--mine",
+		//"--ws",
+		//"--ws.api", "admin,eth,net,web3,debug,txpool",
+		//"--ws.addr", "0.0.0.0",
+		//"--ws.port", fmt.Sprintf("%d", wsPort),
+		//"--ws.origins", "*",
+		//"--authrpc.addr", "0.0.0.0",
+		//"--authrpc.port", fmt.Sprintf("%d", executionPort),
+		//"--authrpc.jwtsecret", path.Join(dataDirPath, "geth", "jwtsecret"),
 		//"--port", fmt.Sprintf("%d", networkPort),
 		"--networkid", fmt.Sprintf("%d", n.chainID),
-		"--gcmode", "archive",
-		"--history.transactions", "0",
-		"--history.state", "0",
+		//"--gcmode", "archive",
+		//"--history.transactions", "0",
+		//"--history.state", "0",
 		"--syncmode", "full", // sync mode to download and test all blocks and txs
 		"--allow-insecure-unlock", // allows to use personal accounts over http/ws
 		"--nodiscover",            // don't try and discover peers
-		"--verbosity", "1",        // error log level
+		//"--verbosity", "1",        // error log level
 	}
 	fmt.Printf("gethStartNode: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
@@ -455,6 +455,10 @@ func (n *Impl) prysmGenerateGenesis() error {
 
 func (n *Impl) prysmStartBeaconNode(gethPort, rpcPort, p2pPort int, nodeDataDir string) (*exec.Cmd, error) {
 	// full command list at https://docs.prylabs.network/docs/prysm-usage/parameters
+	println("BEACON NODE RPC: ", rpcPort)
+	println("BEACON NODE GETH: ", gethPort)
+	println("geth.ipc path: ", path.Join(nodeDataDir, "geth.ipc"))
+
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
 		"--min-sync-peers", "0",
@@ -466,15 +470,11 @@ func (n *Impl) prysmStartBeaconNode(gethPort, rpcPort, p2pPort int, nodeDataDir 
 		"--chain-id", fmt.Sprintf("%d", n.chainID),
 		"--rpc-host", "127.0.0.1",
 		"--rpc-port", fmt.Sprintf("%d", rpcPort),
-		//"--grpc-gateway-host", "0.0.0.0",
-		//"--grpc-gateway-corsdomain", "*",
-		//"--grpc-gateway-port", fmt.Sprintf("%d", rpcPort+10),
 		"--accept-terms-of-use",
 		"--jwt-secret", path.Join(nodeDataDir, "geth", "jwtsecret"),
 		"--minimum-peers-per-subnet", "0",
 		"--enable-debug-rpc-endpoints",
-		"--verbosity", "debug",
-		"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", gethPort),
+		"--execution-endpoint", path.Join(nodeDataDir, "geth.ipc"),
 	}
 
 	fmt.Printf("prysmStartBeaconNode: %s %s\n", n.prysmBeaconBinaryPath, strings.Join(args, " "))
@@ -495,7 +495,6 @@ func (n *Impl) prysmStartValidator(beaconHTTPPort int, nodeDataDir string) (*exe
 		"--accept-terms-of-use",
 		"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
 		"--chain-config-file", n.prysmConfigPath,
-		"--verbosity", "error",
 	}
 
 	fmt.Printf("prysmStartValidator: %s %s\n", n.prysmValidatorBinaryPath, strings.Join(args, " "))

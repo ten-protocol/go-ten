@@ -47,6 +47,8 @@ MAX_WITHDRAWALS_PER_PAYLOAD: 16
 DENEB_FORK_VERSION: 0x20000093
 DENEB_FORK_EPOCH: 0
 
+ELECTRA_FORK_VERSION: 0x20000094
+
 # Time parameters
 SECONDS_PER_SLOT: 12
 SLOTS_PER_EPOCH: 6
@@ -72,13 +74,12 @@ const _baseGenesis = `{
 		"londonBlock": 0,
 		"arrowGlacierBlock": 0,
 		"grayGlacierBlock": 0,
-        "shanghaiTime": 1695897038,
-        "cancunTime": 1695897038,
+        "shanghaiTime": 1694203366,
 		"terminalTotalDifficulty": 0,
 		"terminalTotalDifficultyPassed": true
 	},
 	"nonce": "0x0",
-	"timestamp": "0x651555ce",
+	"timestamp": "0x64fb7de6",
 	"gasLimit": "0x1c9c380",
 	"difficulty": "0x1",
 	"mixHash":"0x0000000000000000000000000000000000000000000000000000000000000000",
