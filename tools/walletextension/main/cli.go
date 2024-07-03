@@ -68,9 +68,9 @@ const (
 	rateLimitDecayDefault = 0.2
 	rateLimitDecayUsage   = "Rate limit decay per user. Default: 0.2"
 
-	rateLimitMaxScoreName    = "rateLimitMaxScore"
-	rateLimitMinScoreDefault = 10000
-	rateLimitMinScoreUsage   = "With rateLimitMaxScore we limit the time user is blocked from making new requests if one/multiple previous requests took very long time to finish. Default: 10000."
+	rateLimitMaxConcurrentRequestsName    = "maxConcurrentRequestsPerUser"
+	rateLimitMaxConcurrentRequestsDefault = 3
+	rateLimitMaxConcurrentRequestsUsage   = "Number of concurrent requests allowed per user. Default: 3"
 )
 
 func parseCLIArgs() wecommon.Config {
@@ -89,24 +89,24 @@ func parseCLIArgs() wecommon.Config {
 	storeIncomingTransactions := flag.Bool(storeIncomingTxs, storeIncomingTxsDefault, storeIncomingTxsUsage)
 	rateLimitThreshold := flag.Int(rateLimitThresholdName, rateLimitThresholdDefault, rateLimitThresholdUsage)
 	rateLimitDecay := flag.Float64(rateLimitDecayName, rateLimitDecayDefault, rateLimitDecayUsage)
-	rateLimitMaxScore := flag.Int(rateLimitMaxScoreName, rateLimitMinScoreDefault, rateLimitMinScoreUsage)
+	rateLimitMaxConcurrentRequests := flag.Int(rateLimitMaxConcurrentRequestsName, rateLimitMaxConcurrentRequestsDefault, rateLimitMaxConcurrentRequestsUsage)
 	flag.Parse()
 
 	return wecommon.Config{
-		WalletExtensionHost:     *walletExtensionHost,
-		WalletExtensionPortHTTP: *walletExtensionPort,
-		WalletExtensionPortWS:   *walletExtensionPortWS,
-		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", *nodeHost, *nodeHTTPPort),
-		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),
-		LogPath:                 *logPath,
-		DBPathOverride:          *databasePath,
-		VerboseFlag:             *verboseFlag,
-		DBType:                  *dbType,
-		DBConnectionURL:         *dbConnectionURL,
-		TenChainID:              *tenChainID,
-		StoreIncomingTxs:        *storeIncomingTransactions,
-		RateLimitThreshold:      *rateLimitThreshold,
-		RateLimitDecay:          *rateLimitDecay,
-		RateLimitMaxScore:       *rateLimitMaxScore,
+		WalletExtensionHost:            *walletExtensionHost,
+		WalletExtensionPortHTTP:        *walletExtensionPort,
+		WalletExtensionPortWS:          *walletExtensionPortWS,
+		NodeRPCHTTPAddress:             fmt.Sprintf("%s:%d", *nodeHost, *nodeHTTPPort),
+		NodeRPCWebsocketAddress:        fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),
+		LogPath:                        *logPath,
+		DBPathOverride:                 *databasePath,
+		VerboseFlag:                    *verboseFlag,
+		DBType:                         *dbType,
+		DBConnectionURL:                *dbConnectionURL,
+		TenChainID:                     *tenChainID,
+		StoreIncomingTxs:               *storeIncomingTransactions,
+		RateLimitThreshold:             *rateLimitThreshold,
+		RateLimitDecay:                 *rateLimitDecay,
+		RateLimitMaxConcurrentRequests: *rateLimitMaxConcurrentRequests,
 	}
 }

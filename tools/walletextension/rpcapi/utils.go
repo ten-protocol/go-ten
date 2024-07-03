@@ -154,10 +154,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 	})
 
 	executionDuration := time.Since(requestStartTime).Milliseconds()
-	// The Execution cost is 100 times the execution duration in milliseconds;
-	// we can change how much user can run by changing decay rate
-	executionCost := uint32(executionDuration) * 100
-	w.RateLimiter.UpdateScore(gethcommon.Address(userID), executionCost)
+	w.RateLimiter.UpdateScore(gethcommon.Address(userID), uint32(executionDuration))
 
 	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(userID), method, args, res, err, executionDuration)
 	return res, err
