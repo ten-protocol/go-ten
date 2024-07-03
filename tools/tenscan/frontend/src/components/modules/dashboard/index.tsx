@@ -29,6 +29,21 @@ import { BlocksIcon } from "lucide-react";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import { RecentRollups } from "./recent-rollups";
 
+interface DashboardData {
+  title: string;
+  value: string | number | JSX.Element;
+  icon: JSX.Element;
+  change?: string;
+}
+
+interface RecentData {
+  title: string;
+  data: any;
+  component: JSX.Element;
+  goTo: string;
+  className: string;
+}
+
 export default function Dashboard() {
   const { price, transactions, transactionCount } = useTransactionsService();
   const { contractCount } = useContractsService();
@@ -122,17 +137,17 @@ export default function Dashboard() {
         <h2 className="text-3xl font-bold tracking-tight">Tenscan</h2>
       </div>
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-4">
-        {DASHBOARD_DATA.map((item: any, index) => (
+        {DASHBOARD_DATA.map((item: DashboardData, index) => (
           <AnalyticsCard key={index} item={item} />
         ))}
       </div>
       <div className="grid gap-4 grid-cols-1 md:grid-cols-6 lg:grid-cols-9">
-        {RECENT_DATA.map((item: any, index) => (
+        {RECENT_DATA.map((item: RecentData, index) => (
           <Card
             key={index}
-            className={cn(item.className, "h-[450px] overflow-y-auto")}
+            className={cn(item.className, "h-[450px] overflow-y-auto relative")}
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sticky top-0 left-0 right-0 bg-background z-10">
               <CardTitle>{item.title}</CardTitle>
               <Link
                 href={{

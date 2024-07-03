@@ -10,7 +10,12 @@ import React from "react";
 export default function AnalyticsCard({
   item,
 }: {
-  item: { title: string; value: string; change: string; icon: any };
+  item: {
+    title: string;
+    value: string | number | JSX.Element;
+    change?: string;
+    icon: any;
+  };
 }) {
   return (
     <Card>
@@ -26,7 +31,7 @@ export default function AnalyticsCard({
             <Skeleton className="w-[100px] h-[20px] rounded-full" />
           )}
         </div>
-        {item.change && (
+        {item?.change && (
           <p className="text-xs text-muted-foreground">{item.change}</p>
         )}
       </CardContent>
