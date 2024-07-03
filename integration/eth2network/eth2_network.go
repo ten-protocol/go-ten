@@ -403,22 +403,7 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 		"--http.addr", "0.0.0.0",
 		"--http.port", fmt.Sprintf("%d", httpPort),
 		"--http.api", "admin,eth,net,web3,debug,txpool",
-		//"--http.corsdomain", "*",
-		//"--http.vhosts", "*",
-		//"--mine",
-		//"--ws",
-		//"--ws.api", "admin,eth,net,web3,debug,txpool",
-		//"--ws.addr", "0.0.0.0",
-		//"--ws.port", fmt.Sprintf("%d", wsPort),
-		//"--ws.origins", "*",
-		//"--authrpc.addr", "0.0.0.0",
-		//"--authrpc.port", fmt.Sprintf("%d", executionPort),
-		//"--authrpc.jwtsecret", path.Join(dataDirPath, "geth", "jwtsecret"),
-		//"--port", fmt.Sprintf("%d", networkPort),
 		"--networkid", fmt.Sprintf("%d", n.chainID),
-		//"--gcmode", "archive",
-		//"--history.transactions", "0",
-		//"--history.state", "0",
 		"--syncmode", "full", // sync mode to download and test all blocks and txs
 		"--allow-insecure-unlock", // allows to use personal accounts over http/ws
 		"--nodiscover",            // don't try and discover peers
