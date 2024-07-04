@@ -11,8 +11,8 @@ import (
 
 const (
 	selectTxCount = "SELECT total FROM transaction_count WHERE id = 1"
-	selectTx      = "SELECT full_hash, b_sequence FROM transaction_host WHERE hash = "
-	selectTxs     = "SELECT t.full_hash, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence ORDER BY b.height DESC "
+	selectTx      = "SELECT hash, b_sequence FROM transaction_host WHERE hash = "
+	selectTxs     = "SELECT t.hash, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence ORDER BY b.height DESC "
 	countTxs      = "SELECT COUNT(b_sequence) AS row_count FROM transaction_host"
 )
 
@@ -63,7 +63,7 @@ func GetTransaction(db HostDB, hash gethcommon.Hash) (*common.PublicTransaction,
 
 	var fullHash []byte
 	var seq int
-	err := db.GetSQLDB().QueryRow(query, truncTo16(hash)).Scan(&fullHash, &seq)
+	err := db.GetSQLDB().QueryRow(query, hash.Bytes()).Scan(&fullHash, &seq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve transaction sequence number: %w", err)
 	}

@@ -114,8 +114,9 @@ func NewEnclave(
 	}
 
 	// Initialise the database
+	cachingService := storage.NewCacheService(logger)
 	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.ObscuroChainID))
-	storage := storage.NewStorageFromConfig(config, chainConfig, logger)
+	storage := storage.NewStorageFromConfig(config, cachingService, chainConfig, logger)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
 	// todo (#1056) - valid block
@@ -160,7 +161,7 @@ func NewEnclave(
 
 	obscuroKey := crypto.GetObscuroKey(logger)
 
-	gethEncodingService := gethencoding.NewGethEncodingService(storage, logger)
+	gethEncodingService := gethencoding.NewGethEncodingService(storage, cachingService, logger)
 	dataEncryptionService := crypto.NewDataEncryptionService(logger)
 	dataCompressionService := compression.NewBrotliDataCompressionService()
 
