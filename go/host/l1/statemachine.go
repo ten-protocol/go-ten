@@ -17,8 +17,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
-type ForkUniqueID = gethcommon.Hash
-type RollupNumber = uint64
+type (
+	ForkUniqueID = gethcommon.Hash
+	RollupNumber = uint64
+)
 
 type CrossChainStateMachine interface {
 	GetRollupData(number RollupNumber) (RollupInfo, error)
@@ -75,9 +77,11 @@ func NewCrossChainStateMachine(
 func (c *crossChainStateMachine) Start() error {
 	return nil
 }
+
 func (c *crossChainStateMachine) Stop() error {
 	return nil
 }
+
 func (c *crossChainStateMachine) HealthStatus(context.Context) host.HealthStatus {
 	errMsg := ""
 	if c.hostStopper.IsStopping() {
@@ -103,7 +107,7 @@ func (c *crossChainStateMachine) PublishNextBundle() error {
 	}
 
 	// Get the bundle range from the management contract
-	nextForkUID, begin, end, err := c.publisher.GetBundleRangeFromManagementContract(big.NewInt(0).SetUint64(c.currentRollup), c.latestRollup.ForkUID)
+	nextForkUID, begin, end, err := c.publisher.GetBundleRangeFromManagementContract(big.NewInt(0).SetUint64(c.currentRollup), c.rollupHistory[c.currentRollup].ForkUID)
 	if err != nil {
 		return err
 	}
@@ -174,7 +178,7 @@ func (c *crossChainStateMachine) revertToLatestKnownCommonAncestorRollup() error
 
 	for forkHash != c.latestRollup.ForkUID {
 		// Revert to previous rollup; No need to wipe the map as the synchronization reinserts the latest rollup
-		c.latestRollup = c.rollupHistory[c.latestRollup.Number-1] //go to previous rollup
+		c.latestRollup = c.rollupHistory[c.latestRollup.Number-1] // go to previous rollup
 
 		hashBytes, _, err = managementContract.GetUniqueForkID(&bind.CallOpts{}, big.NewInt(0).SetUint64(c.latestRollup.Number))
 		if err != nil {

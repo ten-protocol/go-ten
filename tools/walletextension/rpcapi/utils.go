@@ -101,15 +101,15 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		return nil, err
 	}
 
-	user, err := getUser(userID, w)
-	if err != nil {
-		return nil, err
-	}
-
 	cacheArgs := []any{userID, method}
 	cacheArgs = append(cacheArgs, args...)
 
 	res, err := withCache(w.Cache, cfg.cacheCfg, generateCacheKey(cacheArgs), func() (*R, error) {
+		user, err := getUser(userID, w)
+		if err != nil {
+			return nil, err
+		}
+
 		// determine candidate "from"
 		candidateAccts, err := getCandidateAccounts(user, w, cfg)
 		if err != nil {
