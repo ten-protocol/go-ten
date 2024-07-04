@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS block_host
 
 CREATE INDEX IF NOT EXISTS IDX_BLOCK_HASH_HOST ON block_host USING HASH (hash);
 
-CREATE TABLE IF NOT EXISTS rollup_host
+selectLatestRollupCount = "SELECT id FROM rollup_host ORDER BY id DESC LIMIT 1"CREATE TABLE IF NOT EXISTS rollup_host
 (
     id                SERIAL PRIMARY KEY,
     hash              BYTEA       NOT NULL UNIQUE,

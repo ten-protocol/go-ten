@@ -14,10 +14,11 @@ import (
 )
 
 const (
-	selectExtRollup     = "SELECT ext_rollup from rollup_host r join block_host b on r.compression_block=b.id "
-	selectLatestRollup  = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
-	selectRollupBatches = "SELECT b.sequence, b.hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON r.start_seq <= b.sequence AND r.end_seq >= b.sequence"
-	selectRollups       = "SELECT rh.id, rh.hash, rh.start_seq, rh.end_seq, rh.time_stamp, rh.ext_rollup, bh.hash FROM rollup_host rh join block_host bh on rh.compression_block=bh.id "
+	selectExtRollup         = "SELECT ext_rollup from rollup_host r join block_host b on r.compression_block=b.id "
+	selectLatestExtRollup   = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
+	selectLatestRollupCount = "SELECT id FROM rollup_host ORDER BY id DESC LIMIT 1"
+	selectRollupBatches     = "SELECT b.sequence, b.hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON r.start_seq <= b.sequence AND r.end_seq >= b.sequence"
+	selectRollups           = "SELECT rh.id, rh.hash, rh.start_seq, rh.end_seq, rh.time_stamp, rh.ext_rollup, bh.hash FROM rollup_host rh join block_host bh on rh.compression_block=bh.id "
 )
 
 // AddRollup adds a rollup to the DB
@@ -90,9 +91,14 @@ func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.Ro
 		return nil, err
 	}
 
+	totalRollups, err := fetchTotalRollups(db.GetSQLDB())
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch total rollups. Cause: %w", err)
+	}
+
 	return &common.RollupListingResponse{
 		RollupsData: rollups,
-		Total:       uint64(len(rollups)),
+		Total:       totalRollups.Uint64(),
 	}, nil
 }
 
@@ -218,7 +224,7 @@ func fetchExtRollup(db *sql.DB, whereQuery string, args ...any) (*common.ExtRoll
 
 func fetchHeadRollup(db *sql.DB) (*common.ExtRollup, error) {
 	var extRollup []byte
-	err := db.QueryRow(selectLatestRollup).Scan(&extRollup)
+	err := db.QueryRow(selectLatestExtRollup).Scan(&extRollup)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
@@ -232,6 +238,20 @@ func fetchHeadRollup(db *sql.DB) (*common.ExtRollup, error) {
 	}
 
 	return &rollup, nil
+}
+
+func fetchTotalRollups(db *sql.DB) (*big.Int, error) {
+	var total int
+	err := db.QueryRow(selectLatestRollupCount).Scan(&total)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to fetch rollup latest rollup ID: %w", err)
+	}
+
+	bigTotal := big.NewInt(int64(total))
+	return bigTotal, nil
 }
 
 func fetchPublicRollup(db *sql.DB, whereQuery string, args ...any) (*common.PublicRollup, error) {

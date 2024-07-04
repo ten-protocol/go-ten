@@ -154,7 +154,7 @@ func TestTenscan(t *testing.T) {
 	err = json.Unmarshal(body, &batchlistingObj)
 	assert.NoError(t, err)
 	assert.LessOrEqual(t, 9, len(batchlistingObj.Result.BatchesData))
-	assert.LessOrEqual(t, uint64(9), batchlistingObj.Result.Total)
+	assert.LessOrEqual(t, uint64(40), batchlistingObj.Result.Total)
 	// check results are descending order (latest first)
 	assert.LessOrEqual(t, batchlistingObj.Result.BatchesData[1].Height.Cmp(batchlistingObj.Result.BatchesData[0].Height), 0)
 	// check "hash" field is included in json response

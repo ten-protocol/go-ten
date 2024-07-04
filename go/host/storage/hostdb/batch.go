@@ -99,7 +99,7 @@ func GetBatchListing(db HostDB, pagination *common.QueryPagination) (*common.Bat
 
 	return &common.BatchListingResponse{
 		BatchesData: batches,
-		Total:       uint64(len(batches)),
+		Total:       headBatch.SequencerOrderNo.Uint64(),
 	}, nil
 }
 
