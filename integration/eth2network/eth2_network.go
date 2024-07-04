@@ -452,6 +452,8 @@ func (n *Impl) prysmStartBeaconNode(gethPort, rpcPort, p2pPort int, nodeDataDir 
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
 		"--min-sync-peers", "0",
+		//"--checkpoint-sync-url", fmt.Sprintf("http://127.0.0.1:%d", p2pPort),
+		//"--genesis-beacon-api-url", fmt.Sprintf("http://127.0.0.1:%d", p2pPort),
 		"--genesis-state", n.prysmGenesisPath,
 		"--bootstrap-node", "",
 		"--interop-eth1data-votes",
