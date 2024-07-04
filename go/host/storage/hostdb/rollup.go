@@ -91,6 +91,7 @@ func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.Ro
 		return nil, err
 	}
 
+	// TODO @will we will want to cache this value in the future
 	totalRollups, err := fetchTotalRollups(db.GetSQLDB())
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch total rollups. Cause: %w", err)
