@@ -6,6 +6,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
@@ -19,4 +20,5 @@ type User interface {
 	SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int) (*gethcommon.Hash, error)
 	AwaitReceipt(ctx context.Context, txHash *gethcommon.Hash) (*types.Receipt, error)
 	NativeBalance(ctx context.Context) (*big.Int, error)
+	GetPersonalTransactions(ctx context.Context, pagination common.QueryPagination) (types.Receipts, uint64, error)
 }
