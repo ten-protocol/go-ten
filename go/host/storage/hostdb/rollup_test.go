@@ -230,8 +230,8 @@ func TestGetRollupListing(t *testing.T) {
 		t.Errorf("could not get rollup listing. Cause: %s", err)
 	}
 
-	// should be two elements
-	if big.NewInt(int64(rollupListing.Total)).Cmp(big.NewInt(2)) != 0 {
+	// should be 3 elements
+	if big.NewInt(int64(rollupListing.Total)).Cmp(big.NewInt(3)) != 0 {
 		t.Errorf("rollup listing was not paginated correctly")
 	}
 
@@ -279,8 +279,8 @@ func TestGetRollupListing(t *testing.T) {
 		t.Errorf("could not get rollup listing. Cause: %s", err)
 	}
 
-	// should be 0 elements
-	if big.NewInt(int64(rollupListing3.Total)).Cmp(big.NewInt(0)) != 0 {
+	// should be 3 elements
+	if big.NewInt(int64(rollupListing3.Total)).Cmp(big.NewInt(3)) != 0 {
 		t.Errorf("rollup listing was not paginated correctly")
 	}
 }
