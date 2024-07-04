@@ -87,7 +87,10 @@ export function DataTablePagination<TData>({
           <Button
             variant="outline"
             className="hidden h-8 w-8 p-0 lg:flex"
-            onClick={() => table.setPageIndex(1)}
+            onClick={() => {
+              setPage(1);
+              table.setPageIndex(1);
+            }}
             disabled={table.getState().pagination.pageIndex === 1}
           >
             <span className="sr-only">Go to first page</span>
@@ -96,7 +99,10 @@ export function DataTablePagination<TData>({
           <Button
             variant="outline"
             className="h-8 w-8 p-0"
-            onClick={() => table.previousPage()}
+            onClick={() => {
+              setPage(table.getState().pagination.pageIndex);
+              table.previousPage();
+            }}
             disabled={table.getState().pagination.pageIndex === 1}
           >
             <span className="sr-only">Go to previous page</span>
@@ -105,7 +111,10 @@ export function DataTablePagination<TData>({
           <Button
             variant="outline"
             className="h-8 w-8 p-0"
-            onClick={() => table.nextPage()}
+            onClick={() => {
+              setPage(table.getState().pagination.pageIndex);
+              table.nextPage();
+            }}
             // uncomment the following line when total count feature is implemented
             // disabled={!table.getCanNextPage()}
           >
