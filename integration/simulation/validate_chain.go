@@ -384,10 +384,11 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 
 	totalSuccessfullyWithdrawn := extractWithdrawals(t, obscuroClient, nodeIdx)
 
+	/* -- this doesn't work anymore; gas bridging has replaced it.
 	totalAmountLogged := getLoggedWithdrawals(minObscuroHeight, obscuroClient, headBatchHeader)
 	if totalAmountLogged.Cmp(totalSuccessfullyWithdrawn) != 0 {
 		t.Errorf("Node %d: Logged withdrawals do not match!", nodeIdx)
-	}
+	} */
 
 	injectorDepositedAmt := big.NewInt(0)
 	for _, tx := range s.TxInjector.TxTracker.GetL1Transactions() {

@@ -190,12 +190,12 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *common.L1Bloc
 	}
 
 	if len(cb.Receipts) == 0 || cb.Receipts[0].TxHash.Hex() != msgBusTx.Hash().Hex() {
-		err = fmt.Errorf("message Bus contract not minted - no receipts in batch")
+		err = fmt.Errorf("MessageBus contract not created - no receipts in batch")
 		s.logger.Error(err.Error())
 		return err
 	}
 
-	s.logger.Info("Message Bus Contract minted successfully", "address", cb.Receipts[0].ContractAddress.Hex())
+	s.logger.Info("MessageBus Contract created successfully", "address", cb.Receipts[0].ContractAddress.Hex())
 
 	return nil
 }

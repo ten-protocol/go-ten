@@ -150,6 +150,11 @@ func (ti *TransactionInjector) Start() {
 	})
 
 	wg.Go(func() error {
+		ti.issueRandomL2toL1Messages()
+		return nil
+	})
+
+	wg.Go(func() error {
 		ti.issueRandomValueTransfers()
 		return nil
 	})
@@ -236,10 +241,31 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		if err != nil {
 			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
 		}
-
 		// todo (@pedro) - retrieve receipt
 
 		go ti.TxTracker.trackTransferL2Tx(signedTx)
+		sleepRndBtw(ti.avgBlockDuration/100, ti.avgBlockDuration/20)
+	}
+}
+
+func (ti *TransactionInjector) issueRandomL2toL1Messages() {
+	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
+		fromWallet := ti.rndObsWallet()
+		toWallet := gethcommon.HexToAddress("0x0a0Aaf0A52a9FDD0b034fe9031A4880dBDC1c480")
+		obscuroClient := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
+
+		tx := ti.newObscuroTransferTx(fromWallet, toWallet, testcommon.RndBtw(1, 500), testcommon.HOC)
+		tx = obscuroClient.EstimateGasAndGasPrice(tx)
+		signedTx, err := fromWallet.SignTransaction(tx)
+		if err != nil {
+			panic(err)
+		}
+
+		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
+		if err != nil {
+			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
+		}
+
 		sleepRndBtw(ti.avgBlockDuration/100, ti.avgBlockDuration/20)
 	}
 }
@@ -315,6 +341,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		} else {
 			go ti.TxTracker.trackTransferL2Tx(signedTx)
 		}
+
 		// todo (@pedro) - retrieve receipt
 
 		sleepRndBtw(ti.avgBlockDuration/3, ti.avgBlockDuration)
