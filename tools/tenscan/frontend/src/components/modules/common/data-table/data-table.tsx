@@ -73,7 +73,7 @@ export function DataTable<TData, TValue>({
   const setPagination: OnChangeFn<PaginationState> = (func) => {
     const { pageIndex, pageSize } =
       typeof func === "function" ? func(pagination) : func;
-    const params = { ...query, page: pageIndex + 1, size: pageSize };
+    const params = { ...query, page: pageIndex, size: pageSize };
     push({ pathname, query: params });
   };
 

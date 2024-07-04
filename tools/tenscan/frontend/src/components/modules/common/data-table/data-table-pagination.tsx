@@ -34,9 +34,9 @@ export function DataTablePagination<TData>({
     if (
       e.key === "Enter" &&
       page > 0 &&
-      page !== table.getState().pagination.pageIndex + 1
+      page !== table.getState().pagination.pageIndex
     ) {
-      table.setPageIndex(page - 1);
+      table.setPageIndex(page);
       refetch?.();
     }
   };
@@ -87,8 +87,8 @@ export function DataTablePagination<TData>({
           <Button
             variant="outline"
             className="hidden h-8 w-8 p-0 lg:flex"
-            onClick={() => table.setPageIndex(0)}
-            disabled={table.getState().pagination.pageIndex === 0}
+            onClick={() => table.setPageIndex(1)}
+            disabled={table.getState().pagination.pageIndex === 1}
           >
             <span className="sr-only">Go to first page</span>
             <DoubleArrowLeftIcon className="h-4 w-4" />
@@ -97,7 +97,7 @@ export function DataTablePagination<TData>({
             variant="outline"
             className="h-8 w-8 p-0"
             onClick={() => table.previousPage()}
-            disabled={table.getState().pagination.pageIndex === 0}
+            disabled={table.getState().pagination.pageIndex === 1}
           >
             <span className="sr-only">Go to previous page</span>
             <ChevronLeftIcon className="h-4 w-4" />
