@@ -60,13 +60,13 @@ const (
 	storeIncomingTxsDefault = true
 	storeIncomingTxsUsage   = "Flag to enable storing incoming transactions in the database for debugging purposes. Default: true"
 
-	rateLimitThresholdName    = "rateLimitThreshold"
-	rateLimitThresholdDefault = 1000
-	rateLimitThresholdUsage   = "Rate limit threshold per user. Default: 1000."
+	rateLimitUserComputeTimeName    = "rateLimitUserComputeTime"
+	rateLimitUserComputeTimeDefault = 100
+	rateLimitUserComputeTimeUsage   = "rateLimitUserComputeTime represents number of ms that we allow per user in rateLimitWindow time . Default: 100."
 
-	rateLimitDecayName    = "rateLimitDecay"
-	rateLimitDecayDefault = 0.2
-	rateLimitDecayUsage   = "Rate limit decay per user. Default: 0.2"
+	rateLimitWindowName    = "rateLimitWindow"
+	rateLimitWindowDefault = 1000
+	rateLimitWindowUsage   = "rateLimitWindow represents window in which we allow one user to use compute time defined with rateLimitUserComputeTime  Default: 1000"
 
 	rateLimitMaxConcurrentRequestsName    = "maxConcurrentRequestsPerUser"
 	rateLimitMaxConcurrentRequestsDefault = 3
@@ -87,8 +87,8 @@ func parseCLIArgs() wecommon.Config {
 	dbConnectionURL := flag.String(dbConnectionURLFlagName, dbConnectionURLFlagDefault, dbConnectionURLFlagUsage)
 	tenChainID := flag.Int(tenChainIDName, tenChainIDDefault, tenChainIDFlagUsage)
 	storeIncomingTransactions := flag.Bool(storeIncomingTxs, storeIncomingTxsDefault, storeIncomingTxsUsage)
-	rateLimitThreshold := flag.Int(rateLimitThresholdName, rateLimitThresholdDefault, rateLimitThresholdUsage)
-	rateLimitDecay := flag.Float64(rateLimitDecayName, rateLimitDecayDefault, rateLimitDecayUsage)
+	rateLimitUserComputeTime := flag.Int(rateLimitUserComputeTimeName, rateLimitUserComputeTimeDefault, rateLimitUserComputeTimeUsage)
+	rateLimitWindow := flag.Int(rateLimitWindowName, rateLimitWindowDefault, rateLimitWindowUsage)
 	rateLimitMaxConcurrentRequests := flag.Int(rateLimitMaxConcurrentRequestsName, rateLimitMaxConcurrentRequestsDefault, rateLimitMaxConcurrentRequestsUsage)
 	flag.Parse()
 
@@ -105,8 +105,8 @@ func parseCLIArgs() wecommon.Config {
 		DBConnectionURL:                *dbConnectionURL,
 		TenChainID:                     *tenChainID,
 		StoreIncomingTxs:               *storeIncomingTransactions,
-		RateLimitThreshold:             *rateLimitThreshold,
-		RateLimitDecay:                 *rateLimitDecay,
+		RateLimitUserComputeTime:       *rateLimitUserComputeTime,
+		RateLimitWindow:                *rateLimitWindow,
 		RateLimitMaxConcurrentRequests: *rateLimitMaxConcurrentRequests,
 	}
 }
