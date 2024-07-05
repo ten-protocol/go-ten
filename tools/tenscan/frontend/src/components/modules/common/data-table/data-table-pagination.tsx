@@ -102,7 +102,7 @@ export function DataTablePagination<TData>({
             variant="outline"
             className="h-8 w-8 p-0"
             onClick={() => {
-              setPage(table.getState().pagination.pageIndex);
+              setPage(table.getState().pagination.pageIndex - 1);
               table.previousPage();
             }}
             disabled={table.getState().pagination.pageIndex === 1}
@@ -114,7 +114,7 @@ export function DataTablePagination<TData>({
             variant="outline"
             className="h-8 w-8 p-0"
             onClick={() => {
-              setPage(table.getState().pagination.pageIndex);
+              setPage(table.getState().pagination.pageIndex + 1);
               table.nextPage();
             }}
             // uncomment the following line when total count feature is implemented
