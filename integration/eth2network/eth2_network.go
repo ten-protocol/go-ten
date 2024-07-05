@@ -429,12 +429,13 @@ func (n *Impl) prysmGenerateGenesis() error {
 		"generate-genesis",
 		"--fork", "deneb",
 		"--num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
-		"--genesis-time-delay", "10",
+		"--genesis-time-delay", "600",
 		"--chain-config-file", n.prysmConfigPath,
 		"--geth-genesis-json-in", n.gethGenesisPath,
 		"--geth-genesis-json-out", n.gethGenesisPath,
 		"--output-ssz", n.prysmGenesisPath,
 	}
+
 	fmt.Printf("prysmGenerateGenesis: %s %s\n", n.prysmBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.prysmBinaryPath, args...) //nolint
 	cmd.Stdout = n.prysmBeaconLogFile
@@ -449,11 +450,25 @@ func (n *Impl) prysmStartBeaconNode(gethPort, rpcPort, p2pPort int, nodeDataDir 
 	println("BEACON NODE GETH: ", gethPort)
 	println("geth.ipc path: ", path.Join(nodeDataDir, "geth.ipc"))
 
+	//args := []string{
+	//	"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
+	//	"--min-sync-peers", "0",
+	//	"--checkpoint-sync-url", "https://checkpoint-sync.sepolia.ethpandaops.io",
+	//	"--genesis-beacon-api-url", "https://checkpoint-sync.sepolia.ethpandaops.io",
+	//	"--execution-endpoint", path.Join(nodeDataDir, "geth.ipc"),
+	//	//"--bootstrap-node", "",
+	//	//"--interop-eth1data-votes",
+	//	//"--chain-config-file", n.prysmConfigPath,
+	//	//"--rpc-host", "127.0.0.1",
+	//	//"--rpc-port", fmt.Sprintf("%d", rpcPort),
+	//	"--accept-terms-of-use",
+	//	//"--jwt-secret", path.Join(nodeDataDir, "geth", "jwtsecret"),
+	//	//"--enable-debug-rpc-endpoints",
+	//}
+
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
 		"--min-sync-peers", "0",
-		//"--checkpoint-sync-url", fmt.Sprintf("http://127.0.0.1:%d", p2pPort),
-		//"--genesis-beacon-api-url", fmt.Sprintf("http://127.0.0.1:%d", p2pPort),
 		"--genesis-state", n.prysmGenesisPath,
 		"--bootstrap-node", "",
 		"--interop-eth1data-votes",
