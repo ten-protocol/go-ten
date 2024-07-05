@@ -4,6 +4,7 @@ import { DataTable } from "@/src/components/modules/common/data-table/data-table
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBlocksService } from "@/src/services/useBlocksService";
+import { firstItem, lastItem } from "@/src/lib/utils";
 
 export const metadata: Metadata = {
   title: "Blocks",
@@ -24,17 +25,20 @@ export default function Blocks() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const firstBlockNumber = Number(firstItem(BlocksData, "blockHeader.number"));
+  const lastBlockNumber = Number(lastItem(BlocksData, "blockHeader.number"));
+
   return (
     <Layout>
       <div className="h-full flex-1 flex-col space-y-8 md:flex">
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Blocks</h2>
-            {BlocksData.length > 0 && (
+            {BlocksData?.length > 0 && (
               <p className="text-sm text-muted-foreground">
-                Showing blocks #{Number(BlocksData[0]?.blockHeader?.number)} to
-                #
-                {Number(BlocksData[BlocksData.length - 1]?.blockHeader?.number)}
+                Showing blocks #{firstBlockNumber}{" "}
+                {lastBlockNumber !== firstBlockNumber &&
+                  "to #" + lastBlockNumber}
                 {/* uncomment the following line when total count feature is implemented */}
                 {/* of {formatNumber(Total)} blocks. */}
               </p>

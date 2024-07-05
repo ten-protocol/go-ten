@@ -63,9 +63,10 @@ export function DataTable<TData, TValue>({
     []
   );
   const [sorting, setSorting] = React.useState<SortingState>([]);
+
   const pagination = React.useMemo(() => {
     return {
-      pageIndex: (Number(query.page) - 1 || 0) + 1,
+      pageIndex: Number(query.page) || 1,
       pageSize: Number(query.size) || 20,
     };
   }, [query.page, query.size]);
@@ -73,7 +74,12 @@ export function DataTable<TData, TValue>({
   const setPagination: OnChangeFn<PaginationState> = (func) => {
     const { pageIndex, pageSize } =
       typeof func === "function" ? func(pagination) : func;
-    const params = { ...query, page: pageIndex, size: pageSize };
+    const newPageIndex = pagination.pageSize !== pageSize ? 1 : pageIndex;
+    const params = {
+      ...query,
+      page: newPageIndex > 0 ? newPageIndex : 1,
+      size: pageSize <= 100 ? pageSize : 100,
+    };
     push({ pathname, query: params });
   };
 
@@ -168,7 +174,11 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
       {(table.getRowModel().rows.length > 0 || noPagination) && (
-        <DataTablePagination table={table} refetch={refetch} />
+        <DataTablePagination
+          table={table}
+          refetch={refetch}
+          setPagination={setPagination}
+        />
       )}
     </div>
   );

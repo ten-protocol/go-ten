@@ -25,3 +25,15 @@ export const formatNumber = (number: string | number) => {
   const num = Number(number);
   return num.toLocaleString();
 };
+
+export const firstItem = <T>(arr: T[], key: keyof T) => {
+  if (!arr.length) return null;
+  if (!arr[0][key]) return null;
+  return arr[0][key];
+};
+
+export const lastItem = <T>(arr: T[], key: keyof T) => {
+  if (!arr.length) return null;
+  if (!arr[0][key]) return null;
+  return arr[arr.length - 1][key];
+};

@@ -3,7 +3,7 @@ import {
   ChevronRightIcon,
   DoubleArrowLeftIcon,
 } from "@radix-ui/react-icons";
-import { Table } from "@tanstack/react-table";
+import { PaginationState, Table } from "@tanstack/react-table";
 import { Button } from "@/src/components/ui/button";
 import {
   Select,
@@ -18,11 +18,13 @@ import { useState } from "react";
 interface DataTablePaginationProps<TData> {
   table: Table<TData>;
   refetch?: () => void;
+  setPagination: (pagination: PaginationState) => void;
 }
 
 export function DataTablePagination<TData>({
   table,
   refetch,
+  setPagination,
 }: DataTablePaginationProps<TData>) {
   const [page, setPage] = useState(table.getState().pagination.pageIndex);
 
@@ -53,7 +55,7 @@ export function DataTablePagination<TData>({
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value: string) => {
               table.setPageSize(Number(value));
-              refetch?.();
+              setPagination({ pageIndex: 1, pageSize: Number(value) });
             }}
           >
             <SelectTrigger className="h-8 w-[70px]">

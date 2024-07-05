@@ -4,6 +4,7 @@ import { DataTable } from "@/src/components/modules/common/data-table/data-table
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBatchesService } from "@/src/services/useBatchesService";
+import { firstItem, lastItem } from "@/src/lib/utils";
 
 export const metadata: Metadata = {
   title: "Batches",
@@ -27,16 +28,20 @@ export default function Batches() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const firstBatchHeight = Number(firstItem(BatchesData, "height"));
+  const lastBatchHeight = Number(lastItem(BatchesData, "height"));
+
   return (
     <Layout>
       <div className="h-full flex-1 flex-col space-y-8 md:flex">
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
-            {BatchesData.length > 0 && (
+            {BatchesData?.length > 0 && (
               <p className="text-sm text-muted-foreground">
-                Showing batches #{BatchesData[0]?.height} to #
-                {BatchesData[BatchesData.length - 1]?.height}
+                Showing batches #{firstBatchHeight}{" "}
+                {lastBatchHeight !== firstBatchHeight &&
+                  "to #" + lastBatchHeight}
                 {/* uncomment the following line when total count feature is implemented */}
                 {/* of {formatNumber(Total)} batches. */}
               </p>
