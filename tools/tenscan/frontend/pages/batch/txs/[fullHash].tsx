@@ -1,7 +1,6 @@
 import { fetchBatchTransactions } from "@/api/batches";
 import Layout from "@/src/components/layouts/default-layout";
 import { DataTable } from "@/src/components/modules/common/data-table/data-table";
-import EmptyState from "@/src/components/modules/common/empty-state";
 import { columns } from "@/src/components/modules/batches/transaction-columns";
 import {
   Card,
@@ -13,6 +12,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import { getOptions } from "@/src/lib/constants";
+import TruncatedAddress from "@/src/components/modules/common/truncated-address";
 
 export default function BatchTransactions() {
   const router = useRouter();
@@ -31,32 +31,30 @@ export default function BatchTransactions() {
 
   return (
     <Layout>
-      {TransactionsData ? (
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Transactions</CardTitle>
-            <CardDescription>
-              Overview of transactions at batch{" "}
-              {"#" + TransactionsData[0]?.BatchHeight}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DataTable
-              columns={columns}
-              data={TransactionsData}
-              refetch={refetch}
-              total={+Total}
-              isLoading={isLoading}
-              noPagination={true}
+      <Card className="col-span-3">
+        <CardHeader>
+          <CardTitle>Transactions</CardTitle>
+          <CardDescription className="flex items-center space-x-2">
+            <p>Overview of all transactions in this batch:</p>
+            <TruncatedAddress
+              address={fullHash as string}
+              showCopy={false}
+              link={"/batch/" + fullHash}
             />
-          </CardContent>
-        </Card>
-      ) : (
-        <EmptyState
-          title="No transactions found"
-          description="There are no transactions in this batch."
-        />
-      )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            columns={columns}
+            data={TransactionsData}
+            refetch={refetch}
+            total={+Total}
+            isLoading={isLoading}
+            noResultsMessage="No transactions found in this batch."
+            noPagination={true}
+          />
+        </CardContent>
+      </Card>
     </Layout>
   );
 }

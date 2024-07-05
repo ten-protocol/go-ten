@@ -46,6 +46,7 @@ interface DataTableProps<TData, TValue> {
   isLoading?: boolean;
   noPagination?: boolean;
   noResultsWord?: string;
+  noResultsMessage?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -57,6 +58,7 @@ export function DataTable<TData, TValue>({
   isLoading,
   noPagination,
   noResultsWord,
+  noResultsMessage,
 }: DataTableProps<TData, TValue>) {
   const { query, push, pathname } = useRouter();
   const [rowSelection, setRowSelection] = React.useState({});
@@ -171,26 +173,33 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  <p>
-                    No {noResultsWord || "results"} found for the selected
-                    filters.
-                    <Button
-                      variant={"link"}
-                      onClick={() => {
-                        setPagination({ pageIndex: 1, pageSize: 20 });
-                        refetch?.();
-                      }}
-                    >
-                      Clear Filters
-                    </Button>
-                  </p>
+                  {pagination.pageIndex > 1 ? (
+                    <p>
+                      No {noResultsWord || "results"} found for the selected
+                      filters.
+                      <Button
+                        variant={"link"}
+                        onClick={() => {
+                          setPagination({ pageIndex: 1, pageSize: 20 });
+                          refetch?.();
+                        }}
+                      >
+                        Clear Filters
+                      </Button>
+                    </p>
+                  ) : (
+                    <p>
+                      {noResultsMessage ||
+                        `No ${noResultsWord || "results"} found.`}
+                    </p>
+                  )}
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-      {data && (table?.getRowModel()?.rows?.length > 0 || noPagination) && (
+      {(data || isLoading) && !noPagination && (
         <DataTablePagination
           table={table}
           refetch={refetch}
