@@ -20,7 +20,7 @@ func TestCanStoreAndRetrieveRollup(t *testing.T) {
 
 	metadata := createRollupMetadata(batchNumber - 10)
 	rollup := createRollup(batchNumber)
-	block := types.NewBlock(&types.Header{}, nil, nil, nil, nil)
+	block := types.NewBlock(&types.Header{}, nil, nil, nil)
 	dbtx, _ := db.NewDBTransaction()
 	err = AddBlock(dbtx, db.GetSQLStatement(), block.Header())
 	if err != nil {
@@ -60,7 +60,7 @@ func TestGetRollupByBlockHash(t *testing.T) {
 
 	metadata := createRollupMetadata(batchNumber - 10)
 	rollup := createRollup(batchNumber)
-	block := types.NewBlock(&types.Header{}, nil, nil, nil, nil)
+	block := types.NewBlock(&types.Header{}, nil, nil, nil)
 	dbtx, _ := db.NewDBTransaction()
 	err = AddBlock(dbtx, db.GetSQLStatement(), block.Header())
 	if err != nil {
@@ -92,7 +92,7 @@ func TestGetLatestRollup(t *testing.T) {
 	rollup1LastSeq := int64(batchNumber)
 	metadata1 := createRollupMetadata(rollup1FirstSeq)
 	rollup1 := createRollup(rollup1LastSeq)
-	block := types.NewBlock(&types.Header{}, nil, nil, nil, nil)
+	block := types.NewBlock(&types.Header{}, nil, nil, nil)
 	dbtx, _ := db.NewDBTransaction()
 	err = AddBlock(dbtx, db.GetSQLStatement(), block.Header())
 	if err != nil {
@@ -137,7 +137,7 @@ func TestGetRollupBySeqNo(t *testing.T) {
 	rollup1LastSeq := int64(batchNumber)
 	metadata1 := createRollupMetadata(rollup1FirstSeq)
 	rollup1 := createRollup(rollup1LastSeq)
-	block := types.NewBlock(&types.Header{}, nil, nil, nil, nil)
+	block := types.NewBlock(&types.Header{}, nil, nil, nil)
 	dbtx, _ := db.NewDBTransaction()
 	err = AddBlock(dbtx, db.GetSQLStatement(), block.Header())
 	if err != nil {
@@ -192,7 +192,7 @@ func TestGetRollupListing(t *testing.T) {
 	rollup1LastSeq := int64(batchNumber)
 	metadata1 := createRollupMetadata(rollup1FirstSeq)
 	rollup1 := createRollup(rollup1LastSeq)
-	block := types.NewBlock(&types.Header{}, nil, nil, nil, nil)
+	block := types.NewBlock(&types.Header{}, nil, nil, nil)
 	dbtx, _ := db.NewDBTransaction()
 	err = AddBlock(dbtx, db.GetSQLStatement(), block.Header())
 	if err != nil {
@@ -295,7 +295,7 @@ func TestGetRollupByHash(t *testing.T) {
 	rollup1LastSeq := int64(batchNumber)
 	metadata1 := createRollupMetadata(rollup1FirstSeq)
 	rollup1 := createRollup(rollup1LastSeq)
-	block := types.NewBlock(&types.Header{}, nil, nil, nil, nil)
+	block := types.NewBlock(&types.Header{}, nil, nil, nil)
 	dbtx, _ := db.NewDBTransaction()
 	err = AddBlock(dbtx, db.GetSQLStatement(), block.Header())
 	if err != nil {
@@ -336,7 +336,7 @@ func TestGetRollupBatches(t *testing.T) {
 	db, _ := createSQLiteDB(t)
 	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
 	batchOne := createBatch(batchNumber, txHashesOne)
-	block := types.NewBlock(&types.Header{}, nil, nil, nil, nil)
+	block := types.NewBlock(&types.Header{}, nil, nil, nil)
 	dbtx, _ := db.NewDBTransaction()
 	err := AddBlock(dbtx, db.GetSQLStatement(), block.Header())
 	if err != nil {
