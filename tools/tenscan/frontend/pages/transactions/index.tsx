@@ -54,17 +54,14 @@ export default function Transactions() {
             )}
           </div>
         </div>
-        {TransactionsData ? (
-          <DataTable
-            columns={columns}
-            data={TransactionsData}
-            refetch={refetchTransactions}
-            total={+Total}
-            isLoading={isTransactionsLoading}
-          />
-        ) : (
-          <div>No rollups found.</div>
-        )}
+        <DataTable
+          columns={columns}
+          data={TransactionsData}
+          refetch={refetchTransactions}
+          total={+Total}
+          isLoading={isTransactionsLoading}
+          noResultsWord="transactions"
+        />
       </div>
     </Layout>
   );

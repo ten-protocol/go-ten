@@ -45,17 +45,14 @@ export default function Blocks() {
             )}
           </div>
         </div>
-        {BlocksData ? (
-          <DataTable
-            columns={columns}
-            data={BlocksData}
-            total={+Total}
-            refetch={refetchBlocks}
-            isLoading={isBlocksLoading}
-          />
-        ) : (
-          <p>Loading...</p>
-        )}
+        <DataTable
+          columns={columns}
+          data={BlocksData}
+          total={+Total}
+          refetch={refetchBlocks}
+          isLoading={isBlocksLoading}
+          noResultsWord="blocks"
+        />
       </div>
     </Layout>
   );

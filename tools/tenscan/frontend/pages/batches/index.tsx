@@ -48,17 +48,14 @@ export default function Batches() {
             )}
           </div>
         </div>
-        {BatchesData ? (
-          <DataTable
-            columns={columns}
-            data={BatchesData}
-            refetch={refetchBatches}
-            total={+Total}
-            isLoading={isBatchesLoading}
-          />
-        ) : (
-          <p>Loading...</p>
-        )}
+        <DataTable
+          columns={columns}
+          data={BatchesData}
+          refetch={refetchBatches}
+          total={+Total}
+          isLoading={isBatchesLoading}
+          noResultsWord="batches"
+        />
       </div>
     </Layout>
   );

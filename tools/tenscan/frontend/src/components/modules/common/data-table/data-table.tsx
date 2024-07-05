@@ -30,6 +30,7 @@ import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
 import { useRouter } from "next/router";
 import { Skeleton } from "@/src/components/ui/skeleton";
+import { Button } from "@/src/components/ui/button";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -44,6 +45,7 @@ interface DataTableProps<TData, TValue> {
   total: number;
   isLoading?: boolean;
   noPagination?: boolean;
+  noResultsWord?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -54,6 +56,7 @@ export function DataTable<TData, TValue>({
   total,
   isLoading,
   noPagination,
+  noResultsWord,
 }: DataTableProps<TData, TValue>) {
   const { query, push, pathname } = useRouter();
   const [rowSelection, setRowSelection] = React.useState({});
@@ -111,7 +114,9 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      <DataTableToolbar table={table} toolbar={toolbar} refetch={refetch} />
+      {data && (
+        <DataTableToolbar table={table} toolbar={toolbar} refetch={refetch} />
+      )}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -144,7 +149,7 @@ export function DataTable<TData, TValue>({
                   </TableCell>
                 </TableRow>
               </>
-            ) : table?.getRowModel()?.rows?.length && data ? (
+            ) : data && table?.getRowModel()?.rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -166,14 +171,26 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  <p>
+                    No {noResultsWord || "results"} found for the selected
+                    filters.
+                    <Button
+                      variant={"link"}
+                      onClick={() => {
+                        setPagination({ pageIndex: 1, pageSize: 20 });
+                        refetch?.();
+                      }}
+                    >
+                      Clear Filters
+                    </Button>
+                  </p>
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-      {(table.getRowModel().rows.length > 0 || noPagination) && (
+      {data && (table?.getRowModel()?.rows?.length > 0 || noPagination) && (
         <DataTablePagination
           table={table}
           refetch={refetch}

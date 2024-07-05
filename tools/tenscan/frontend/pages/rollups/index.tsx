@@ -47,17 +47,14 @@ export default function Rollups() {
             )}
           </div>
         </div>
-        {RollupsData ? (
-          <DataTable
-            columns={columns}
-            data={RollupsData}
-            refetch={refetchRollups}
-            total={+Total}
-            isLoading={isRollupsLoading}
-          />
-        ) : (
-          <div>No rollups found.</div>
-        )}
+        <DataTable
+          columns={columns}
+          data={RollupsData}
+          refetch={refetchRollups}
+          total={+Total}
+          isLoading={isRollupsLoading}
+          noResultsWord="rollups"
+        />
       </div>
     </Layout>
   );
