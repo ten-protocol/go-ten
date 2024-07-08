@@ -48,6 +48,9 @@ type PosImpl struct {
 	gethLogFile              string
 	prysmBeaconLogFile       string
 	prysmValidatorLogFile    string
+	gethdataDir              string
+	beacondataDir            string
+	validatordataDir         string
 	timeout                  time.Duration
 }
 
@@ -57,14 +60,17 @@ type PosEth2Network interface {
 }
 
 func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPPort int, beaconRPCPort int, timeout time.Duration) PosEth2Network {
+
+	// Build dirs are suffixed with a timestamp so multiple executions don't collide
 	timestamp := strconv.FormatInt(time.Now().UnixMicro(), 10)
-	basepath, _ := os.Getwd() // Ensure the base path is set correctly
+
+	// set the paths
 	buildDir := path.Join(basepath, "../.build/eth2", timestamp)
 
-	gethBinaryPath := path.Join(binDir, "geth-darwin-arm64-1.14.6", "geth")
-	prysmBeaconBinaryPath := path.Join(binDir, "beacon-chain-v5.0.4-darwin-arm64")
-	prysmCTLBinaryPath := path.Join(binDir, "prysmctl-v5.0.4-darwin-arm64")
-	prysmValidatorBinaryPath := path.Join(binDir, "validator-v5.0.4-darwin-arm64")
+	gethBinaryPath := path.Join(binDir, gethFileNameVersion, _gethBinaryName)
+	prysmBeaconBinaryPath := path.Join(binDir, prysmBeaconChainFileNameVersion)
+	prysmBinaryPath := path.Join(binDir, prysmCTLFileNameVersion)
+	prysmValidatorBinaryPath := path.Join(binDir, prysmValidatorFileNameVersion)
 
 	if _, err := os.Stat(buildDir); err == nil {
 		panic(fmt.Sprintf("folder %s already exists", buildDir))
@@ -79,6 +85,20 @@ func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPP
 	prysmBeaconLogFile := path.Join(buildDir, "beacon-chain.log")
 	prysmValidatorLogFile := path.Join(buildDir, "validator.log")
 
+	gethdataDir := path.Join(buildDir, "/gethdata")
+	beacondataDir := path.Join(buildDir, "/beacondata")
+	validatordataDir := path.Join(buildDir, "/validatordata")
+
+	if err = os.MkdirAll(gethdataDir, os.ModePerm); err != nil {
+		panic(err)
+	}
+	if err = os.MkdirAll(beacondataDir, os.ModePerm); err != nil {
+		panic(err)
+	}
+	if err = os.MkdirAll(validatordataDir, os.ModePerm); err != nil {
+		panic(err)
+	}
+
 	return &PosImpl{
 		buildDir:                 buildDir,
 		binDir:                   binDir,
@@ -87,12 +107,15 @@ func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPP
 		gethHTTPPort:             gethHTTPPort,
 		beaconRPCPort:            beaconRPCPort,
 		gethBinaryPath:           gethBinaryPath,
-		prysmBinaryPath:          prysmCTLBinaryPath,
+		prysmBinaryPath:          prysmBinaryPath,
 		prysmBeaconBinaryPath:    prysmBeaconBinaryPath,
 		prysmValidatorBinaryPath: prysmValidatorBinaryPath,
 		gethLogFile:              gethLogFile,
 		prysmBeaconLogFile:       prysmBeaconLogFile,
 		prysmValidatorLogFile:    prysmValidatorLogFile,
+		gethdataDir:              gethdataDir,
+		beacondataDir:            beacondataDir,
+		validatordataDir:         validatordataDir,
 		timeout:                  timeout,
 	}
 }
@@ -104,7 +127,8 @@ func (n *PosImpl) Start() error {
 	}
 
 	err := startNetworkScript(n.gethRPCPort, n.gethWSPort, n.beaconRPCPort, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
-		n.gethLogFile, n.gethBinaryPath, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath)
+		n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath, n.gethBinaryPath,
+		n.gethdataDir, n.beacondataDir, n.validatordataDir)
 	if err != nil {
 		return fmt.Errorf("could not run the script to start l1 pos network. cause: %s", err.Error())
 	}
@@ -176,22 +200,10 @@ func (n *PosImpl) prefundedBalanceActive(client *ethclient.Client) error {
 	return nil
 }
 
-func startNetworkScript(gethRPCPort, gethWSPort, beaconRPCPort int, gethBinary, beaconBinary, prysmctlBinary, validatorBinary, beaconLogFile, validatorLogFile, gethLogFile string) error {
+func startNetworkScript(gethRPCPort, gethWSPort, beaconRPCPort int, beaconLogFile, validatorLogFile, gethLogFile,
+	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string) error {
 	scriptPath := filepath.Join(".", "start-pos-network.sh")
 
-	// Ensure the log file directories exist
-	err := os.MkdirAll(filepath.Dir(beaconLogFile), os.ModePerm)
-	if err != nil {
-		return fmt.Errorf("failed to create log directory for beacon log: %w", err)
-	}
-	err = os.MkdirAll(filepath.Dir(validatorLogFile), os.ModePerm)
-	if err != nil {
-		return fmt.Errorf("failed to create log directory for validator log: %w", err)
-	}
-	err = os.MkdirAll(filepath.Dir(gethLogFile), os.ModePerm)
-	if err != nil {
-		return fmt.Errorf("failed to create log directory for geth log: %w", err)
-	}
 	beaconRPCPortStr := strconv.Itoa(beaconRPCPort)
 	gethRPCPortStr := strconv.Itoa(gethRPCPort)
 	gethWSPortStr := strconv.Itoa(gethWSPort)
@@ -199,20 +211,23 @@ func startNetworkScript(gethRPCPort, gethWSPort, beaconRPCPort int, gethBinary, 
 		"--geth-rpc", gethRPCPortStr,
 		"--geth-ws", gethWSPortStr,
 		"--beacon-rpc", beaconRPCPortStr,
-		"--geth-binary", gethBinary,
-		"--beacon-binary", beaconBinary,
-		"--prysmctl-binary", prysmctlBinary,
-		"--validator-binary", validatorBinary,
 		"--beacon-log", beaconLogFile,
 		"--validator-log", validatorLogFile,
 		"--geth-log", gethLogFile,
+		"--beacon-binary", beaconBinary,
+		"--prysmctl-binary", prysmBinary,
+		"--validator-binary", validatorBinary,
+		"--geth-binary", gethBinary,
+		"--gethdata-dir", gethdataDir,
+		"--beacondata-dir", beacondataDir,
+		"--validatordata-dir", validatordataDir,
 	)
 
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 
-	err = cmd.Start()
+	err := cmd.Start()
 	if err != nil {
 		return fmt.Errorf("failed to start script: %w", err)
 	}

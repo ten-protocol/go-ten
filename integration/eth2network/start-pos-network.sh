@@ -4,18 +4,25 @@
 BEACON_RPC_PORT=4000
 GETH_RPC_PORT=8545
 GETH_WS_PORT=8546
-BEACON_LOG_FILE="./beacon-chain.log"
-VALIDATOR_LOG_FILE="./validator.log"
-GETH_LOG_FILE="./geth.log"
 GETH_BINARY="./geth"
 BEACON_BINARY="./beacon-chain"
 PRYSMCTL_BINARY="./prysmctl"
 VALIDATOR_BINARY="./validator"
+BEACON_LOG_FILE="./beacon-chain.log"
+VALIDATOR_LOG_FILE="./validator.log"
+GETH_LOG_FILE="./geth.log"
+GETHDATA_DIR="/gethdata"
+BEACONDATA_DIR="/beacondata"
+VALIDATORDATA_DIR="/validatordata"
 
 # Function to display usage
 usage() {
-  echo "Usage: $0 [--geth-rpc GETH_RPC_PORT] [--geth-ws GETH_WS_PORT] [--beacon-rpc BEACON_RPC_PORT] [--geth-binary GETH_BINARY] [--beacon-binary BEACON_BINARY] [--prysmctl-binary PRYSMCTL_BINARY] [--validator-binary VALIDATOR_BINARY] [--beacon-log BEACON_LOG_FILE] [--validator-log VALIDATOR_LOG_FILE] [--geth-log GETH_LOG_FILE]"
-  exit 1
+    echo "Usage: $0 [--geth-rpc GETH_RPC_PORT] [--geth-ws GETH_WS_PORT] [--beacon-rpc BEACON_RPC_PORT]
+    [--beacon-log BEACON_LOG_FILE] [--validator-log VALIDATOR_LOG_FILE] [--geth-log GETH_LOG_FILE]
+    [--geth-binary GETH_BINARY] [--beacon-binary BEACON_BINARY] [--prysmctl-binary PRYSMCTL_BINARY]
+    [--validator-binary VALIDATOR_BINARY] [--gethdata-dir GETHDATA_DIR] [--beacondata-dir BEACONDATA_DIR]
+    [--validatordata-dir VALIDATORDATA_DIR]"
+    exit 1
 }
 
 # Parse command-line arguments
@@ -31,20 +38,48 @@ while [[ "$#" -gt 0 ]]; do
         --beacon-log) BEACON_LOG_FILE="$2"; shift ;;
         --validator-log) VALIDATOR_LOG_FILE="$2"; shift ;;
         --geth-log) GETH_LOG_FILE="$2"; shift ;;
+        --gethdata-dir) GETHDATA_DIR="$2"; shift ;;
+        --beacondata-dir) BEACONDATA_DIR="$2"; shift ;;
+        --validatordata-dir) VALIDATORDATA_DIR="$2"; shift ;;
         *) usage ;;
     esac
     shift
 done
 
-# Ensure the log file directories exist
 mkdir -p "$(dirname "${BEACON_LOG_FILE}")"
 mkdir -p "$(dirname "${VALIDATOR_LOG_FILE}")"
 mkdir -p "$(dirname "${GETH_LOG_FILE}")"
 
-${GETH_BINARY} --datadir=gethdata account import pk.txt
+echo "Beacon RPC Port: ${BEACON_RPC_PORT}"
+echo "Geth RPC Port: ${GETH_RPC_PORT}"
+echo "Geth WS Port: ${GETH_WS_PORT}"
+echo "Geth Data Directory: ${GETHDATA_DIR}"
+echo "Beacon Data Directory: ${BEACONDATA_DIR}"
+echo "Validator Data Directory: ${VALIDATORDATA_DIR}"
+echo "Geth Log: ${GETH_LOG_FILE}"
+echo "Beacon Log: ${BEACON_LOG_FILE}"
+echo "Validator lod: ${VALIDATOR_LOG_FILE}"
+
+if [ ! -f "${BEACON_BINARY}" ]; then
+    echo "Error: Beacon binary not found at ${BEACON_BINARY}"
+    exit 1
+fi
+
+if [ ! -f "${PRYSMCTL_BINARY}" ]; then
+    echo "Error: Prysmctl binary not found at ${PRYSMCTL_BINARY}"
+    exit 1
+fi
+
+if [ ! -f "${VALIDATOR_BINARY}" ]; then
+    echo "Error: Validator binary not found at ${VALIDATOR_BINARY}"
+    exit 1
+fi
+
+# Run the commands
+echo -e "\n\n" | ${GETH_BINARY} --datadir="${GETHDATA_DIR}" account import pk.txt
 echo "Private key imported"
 
-${GETH_BINARY} --datadir=gethdata init genesis.json
+${GETH_BINARY} --datadir="${GETHDATA_DIR}" init genesis.json
 echo "Geth genesis initialized"
 
 ${PRYSMCTL_BINARY} testnet generate-genesis \
@@ -54,34 +89,34 @@ ${PRYSMCTL_BINARY} testnet generate-genesis \
            --chain-config-file config.yml \
            --geth-genesis-json-in genesis.json \
            --geth-genesis-json-out genesis.json \
-           --output-ssz genesis.ssz
+           --output-ssz "${BEACONDATA_DIR}/genesis.ssz"
 sleep 5
 echo "Prysm genesis generated"
 
 # Run the Prysm beacon node
-${BEACON_BINARY} --datadir beacondata \
+${BEACON_BINARY} --datadir="${BEACONDATA_DIR}" \
                --min-sync-peers 0 \
-               --genesis-state genesis.ssz \
+               --genesis-state "${BEACONDATA_DIR}/genesis.ssz" \
                --bootstrap-node= \
                --interop-eth1data-votes \
                --chain-config-file config.yml \
                --contract-deployment-block 0 \
                --chain-id 32382 \
                --rpc-host=127.0.0.1 \
-               --rpc-port=${BEACON_RPC_PORT} \
+               --rpc-port="${BEACON_RPC_PORT}" \
                --accept-terms-of-use \
                --jwt-secret jwt.hex \
                --suggested-fee-recipient 0x123463a4B065722E99115D6c222f267d9cABb524 \
                --minimum-peers-per-subnet 0 \
                --enable-debug-rpc-endpoints \
                --verbosity=debug \
-               --execution-endpoint gethdata/geth.ipc > "${BEACON_LOG_FILE}" 2>&1 &
+               --execution-endpoint "${GETHDATA_DIR}/geth.ipc" > "${BEACON_LOG_FILE}" 2>&1 &
 
 echo "Beacon node started"
 
 # Run Prysm validator client
-${VALIDATOR_BINARY} --beacon-rpc-provider=127.0.0.1:${BEACON_RPC_PORT} \
-            --datadir validatordata \
+${VALIDATOR_BINARY} --beacon-rpc-provider=127.0.0.1:"${BEACON_RPC_PORT}" \
+            --datadir="${VALIDATORDATA_DIR}" \
             --accept-terms-of-use \
             --interop-num-validators 4 \
             --chain-config-file config.yml > "${VALIDATOR_LOG_FILE}" 2>&1 &
@@ -95,7 +130,7 @@ ${GETH_BINARY} --http \
        --ws --ws.api eth,net,web3 \
        --ws.port ${GETH_WS_PORT} \
        --authrpc.jwtsecret jwt.hex \
-       --datadir gethdata \
+       --datadir="${GETHDATA_DIR}" \
        --nodiscover \
        --syncmode full \
        --allow-insecure-unlock \
