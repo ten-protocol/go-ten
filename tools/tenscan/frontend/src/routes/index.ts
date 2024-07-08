@@ -68,11 +68,6 @@ export const NavLinks: NavLink[] = [
         isExternal: false,
       },
       {
-        href: "/blocks",
-        label: "Blocks",
-        isExternal: false,
-      },
-      {
         href: "/batches",
         label: "Batches",
         isExternal: false,
