@@ -114,13 +114,13 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     }
 
     function addCrossChainMessagesRoot(bytes32 _lastBatchHash, bytes32 blockHash, uint256 blockNum, bytes[] memory crossChainHashes, bytes calldata signature, uint256 rollupNumber, bytes32 forkID) external {
-        if (block.number > blockNum + 255) {
+      /*  if (block.number > blockNum + 255) {
             revert("Block binding too old");
         }
 
         if ((blockhash(blockNum) != blockHash)) {
             revert(string(abi.encodePacked("Invalid block binding:", Strings.toString(block.number),":", Strings.toString(uint256(blockHash)), ":", Strings.toString(uint256(blockhash(blockNum))))));
-        }
+        } */
 
         if (rollups.toUniqueForkID[rollupNumber] != forkID) {
             revert("Invalid forkID");
