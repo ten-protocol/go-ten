@@ -72,7 +72,7 @@ export const columns: ColumnDef<Block>[] = [
   {
     accessorKey: "blockHeader.gasUsed",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Rollup Gas Used" />
+      <DataTableColumnHeader column={column} title="Gas Used" />
     ),
     cell: ({ row }) => {
       const blockHeader = row.original.blockHeader as BlockHeader;
