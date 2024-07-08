@@ -136,6 +136,15 @@ func (c *crossChainStateMachine) PublishNextBundle() error {
 	return nil
 }
 
+func (c *crossChainStateMachine) IsBundleAlreadyPublished() (bool, error) {
+	managementContract, err := ManagementContract.NewManagementContract(*c.mgmtContractLib.GetContractAddr(), c.ethClient.EthClient())
+	if err != nil {
+		return false, err
+	}
+
+	return false, nil
+}
+
 // Synchronize - checks if there are any new rollups or forks and moves the tracking needle to the latest common ancestor.
 func (c *crossChainStateMachine) Synchronize() error {
 	forkUID, _, _, err := c.publisher.GetBundleRangeFromManagementContract(big.NewInt(0).SetUint64(c.latestRollup.Number), c.latestRollup.ForkUID)
