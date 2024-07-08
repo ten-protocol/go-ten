@@ -74,9 +74,9 @@ func TestTenGateway(t *testing.T) {
 		DBType:                         "sqlite",
 		TenChainID:                     443,
 		StoreIncomingTxs:               true,
-		RateLimitUserComputeTime:       100,
+		RateLimitUserComputeTime:       200,
 		RateLimitWindow:                1000,
-		RateLimitMaxConcurrentRequests: 10,
+		RateLimitMaxConcurrentRequests: 3,
 	}
 
 	tenGwContainer := walletextension.NewContainerFromConfig(tenGatewayConf, testlog.Logger())

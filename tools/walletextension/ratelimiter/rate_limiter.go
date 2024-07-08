@@ -44,11 +44,10 @@ func (rl *RateLimiter) AddRequest(userID common.Address, interval RequestInterva
 
 // UpdateRequest updates the end time of a request interval given its UUID.
 func (rl *RateLimiter) UpdateRequest(userID common.Address, id uuid.UUID) {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
 	if user, userExists := rl.users[userID]; userExists {
 		if request, requestExists := user.CurrentRequests[id]; requestExists {
+			rl.mu.Lock()
+			defer rl.mu.Unlock()
 			now := time.Now()
 			request.End = &now
 			user.CurrentRequests[id] = request
@@ -104,6 +103,34 @@ type RateLimiter struct {
 	rateLimitedRequests   uint64
 }
 
+// IncrementTotalRequests increments the total requests counter by 1 with thread safety.
+func (rl *RateLimiter) IncrementTotalRequests() {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	rl.totalRequests++
+}
+
+// IncrementRateLimitedRequests increments the total requests counter by 1 with thread safety.
+func (rl *RateLimiter) IncrementRateLimitedRequests() {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	rl.rateLimitedRequests++
+}
+
+// GetMaxConcurrentRequest returns the maximum number of concurrent requests allowed.
+func (rl *RateLimiter) GetMaxConcurrentRequest() uint32 {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	return rl.maxConcurrentRequests
+}
+
+// GetUserComputeTime returns the user compute time in milliseconds.
+func (rl *RateLimiter) GetUserComputeTime() uint32 {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	return rl.userComputeTime
+}
+
 func NewRateLimiter(rateLimitUserComputeTime uint32, rateLimitWindow uint32, concurrentRequestsLimit uint32) *RateLimiter {
 	rl := &RateLimiter{
 		users:                 make(map[common.Address]*RateLimitUser),
@@ -120,17 +147,15 @@ func NewRateLimiter(rateLimitUserComputeTime uint32, rateLimitWindow uint32, con
 // before comparing to the threshold also decays the score of the user based on the decay rate
 func (rl *RateLimiter) Allow(userID common.Address) (bool, uuid.UUID) {
 	// If the userComputeTime is 0, allow all requests (rate limiting is disabled)
-	if rl.userComputeTime == 0 {
+	if rl.GetUserComputeTime() == 0 {
 		return true, zeroUUID
 	}
-
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-	rl.totalRequests++
+	// Increment the total requests counter for statistics
+	rl.IncrementTotalRequests()
 
 	// Check if the user has reached the maximum number of concurrent requests
-	if uint32(rl.CountOpenRequests(userID)) >= rl.maxConcurrentRequests {
-		rl.rateLimitedRequests++
+	if uint32(rl.CountOpenRequests(userID)) >= rl.GetMaxConcurrentRequest() {
+		rl.IncrementRateLimitedRequests()
 		return false, zeroUUID
 	}
 
@@ -140,9 +165,7 @@ func (rl *RateLimiter) Allow(userID common.Address) (bool, uuid.UUID) {
 		requestUUID := rl.AddRequest(userID, RequestInterval{Start: time.Now()})
 		return true, requestUUID
 	}
-
-	// If the user has exceeded the rate limit, increment the rateLimitedRequests counter
-	rl.rateLimitedRequests++
+	rl.IncrementRateLimitedRequests()
 	return false, zeroUUID
 }
 
