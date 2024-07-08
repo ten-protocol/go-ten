@@ -1,22 +1,22 @@
 import React from "react";
-import { columns } from "@/src/components/modules/batches/columns";
 import { DataTable } from "@/src/components/modules/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
+import { useRollupsService } from "@/src/services/useRollupsService";
 import { Metadata } from "next";
-import { useBatchesService } from "@/src/services/useBatchesService";
+import { columns } from "@/src/components/modules/rollups/columns";
 import { getItem } from "@/src/lib/utils";
 import { ItemPosition } from "@/src/types/interfaces";
 
 export const metadata: Metadata = {
-  title: "Batches",
-  description: "A table of Batches.",
+  title: "Rollups",
+  description: "A table of rollups.",
 };
 
-export default function Batches() {
-  const { batches, refetchBatches, isBatchesLoading, setNoPolling } =
-    useBatchesService();
-  const { BatchesData, Total } = batches?.result || {
-    BatchesData: [],
+export default function Rollups() {
+  const { rollups, setNoPolling, isRollupsLoading, refetchRollups } =
+    useRollupsService();
+  const { RollupsData, Total } = rollups?.result || {
+    RollupsData: [],
     Total: 0,
   };
 
@@ -29,35 +29,32 @@ export default function Batches() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const firstBatchHeight = Number(getItem(BatchesData, "height"));
-  const lastBatchHeight = Number(
-    getItem(BatchesData, "height", ItemPosition.LAST)
-  );
+  const firstRollupID = Number(getItem(RollupsData, "ID"));
+  const lastRollupID = Number(getItem(RollupsData, "ID", ItemPosition.LAST));
 
   return (
     <Layout>
       <div className="h-full flex-1 flex-col space-y-8 md:flex">
         <div className="flex items-center justify-between space-y-2">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
-            {BatchesData?.length > 0 && (
+            <h2 className="text-2xl font-bold tracking-tight">Rollups</h2>
+            {RollupsData?.length > 0 && (
               <p className="text-sm text-muted-foreground">
-                Showing batches #{firstBatchHeight}{" "}
-                {lastBatchHeight !== firstBatchHeight &&
-                  "to #" + lastBatchHeight}
+                Showing rollups #{firstRollupID}{" "}
+                {lastRollupID !== firstRollupID && "to #" + lastRollupID}
                 {/* uncomment the following line when total count feature is implemented */}
-                {/* of {formatNumber(Total)} batches. */}
+                {/* of {formatNumber(Total)} rollups. */}
               </p>
             )}
           </div>
         </div>
         <DataTable
           columns={columns}
-          data={BatchesData}
-          refetch={refetchBatches}
+          data={RollupsData}
+          refetch={refetchRollups}
           total={+Total}
-          isLoading={isBatchesLoading}
-          noResultsText="batches"
+          isLoading={isRollupsLoading}
+          noResultsText="rollups"
         />
       </div>
     </Layout>

@@ -1,6 +1,6 @@
 export const socialLinks = {
   github: "https://github.com/ten-protocol",
-  discord: "https://discord.gg/QJZ39Den7d",
+  discord: "https://discord.gg/tenprotocol",
   twitter: "https://twitter.com/tenprotocol",
   twitterHandle: "@tenprotocol",
 };
@@ -11,25 +11,20 @@ export const pricePollingInterval = 60 * 1000;
 
 export const RESET_COPIED_TIMEOUT = 2000;
 
-export const getOptions = (query: {
-  page?: string | string[];
-  size?: string | string[];
-}) => {
-  const offset =
-    query.page && query.size
-      ? (parseInt(query.page as string, 10) - 1) *
-        parseInt(query.size as string, 10)
-      : 0;
-  const options = {
-    offset: Number.isNaN(offset) ? 0 : offset,
-    size: Number.isNaN(parseInt(query.size as string, 10))
-      ? 10
-      : parseInt(query.size as string, 10),
-    // sort: query.sort ? (query.sort as string) : "blockNumber",
-    // order: query.order ? (query.order as string) : "desc",
-    // filter: query.filter ? (query.filter as string) : "",
+const calculateOffset = (page: number, size: number) => {
+  if (page <= 0) return 0;
+  return (page - 1) * size;
+};
+
+export const getOptions = (query: { page?: number; size?: number }) => {
+  const defaultSize = 20;
+  const size = query.size ? (query.size > 100 ? 100 : query.size) : defaultSize;
+  const page = query.page || 1;
+  const offset = calculateOffset(page, size);
+  return {
+    offset: Number.isNaN(offset) || offset < 0 ? 0 : offset,
+    size,
   };
-  return options;
 };
 
 export const version = process.env.NEXT_PUBLIC_FE_VERSION;

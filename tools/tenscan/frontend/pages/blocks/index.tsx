@@ -4,7 +4,8 @@ import { DataTable } from "@/src/components/modules/common/data-table/data-table
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBlocksService } from "@/src/services/useBlocksService";
-import { formatNumber } from "@/src/lib/utils";
+import { getItem } from "@/src/lib/utils";
+import { ItemPosition } from "@/src/types/interfaces";
 
 export const metadata: Metadata = {
   title: "Blocks",
@@ -12,7 +13,8 @@ export const metadata: Metadata = {
 };
 
 export default function Blocks() {
-  const { blocks, setNoPolling, refetchBlocks } = useBlocksService();
+  const { blocks, setNoPolling, refetchBlocks, isBlocksLoading } =
+    useBlocksService();
   const { BlocksData, Total } = blocks?.result || {
     BlocksData: [],
     Total: 0,
@@ -24,27 +26,36 @@ export default function Blocks() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const firstBlockNumber = Number(getItem(BlocksData, "blockHeader.number"));
+  const lastBlockNumber = Number(
+    getItem(BlocksData, "blockHeader.number", ItemPosition.LAST)
+  );
+
   return (
     <Layout>
       <div className="h-full flex-1 flex-col space-y-8 md:flex">
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Blocks</h2>
-            <p className="text-sm text-muted-foreground">
-              {formatNumber(Total)} Blocks found.
-            </p>
+            {BlocksData?.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Showing blocks #{firstBlockNumber}{" "}
+                {lastBlockNumber !== firstBlockNumber &&
+                  "to #" + lastBlockNumber}
+                {/* uncomment the following line when total count feature is implemented */}
+                {/* of {formatNumber(Total)} blocks. */}
+              </p>
+            )}
           </div>
         </div>
-        {BlocksData ? (
-          <DataTable
-            columns={columns}
-            data={BlocksData}
-            total={+Total}
-            refetch={refetchBlocks}
-          />
-        ) : (
-          <p>Loading...</p>
-        )}
+        <DataTable
+          columns={columns}
+          data={BlocksData}
+          total={+Total}
+          refetch={refetchBlocks}
+          isLoading={isBlocksLoading}
+          noResultsText="blocks"
+        />
       </div>
     </Layout>
   );

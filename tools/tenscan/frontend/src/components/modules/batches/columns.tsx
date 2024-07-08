@@ -6,7 +6,6 @@ import { DataTableColumnHeader } from "../common/data-table/data-table-column-he
 import TruncatedAddress from "../common/truncated-address";
 import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
-import { EyeOpenIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 import { Badge } from "../../ui/badge";
 
@@ -19,9 +18,14 @@ export const columns: ColumnDef<Batch>[] = [
     cell: ({ row }) => {
       return (
         <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate">
-            #{Number(row.getValue("number"))}
-          </span>
+          <Link
+            href={`/batch/height/${row.original.height}`}
+            className="text-primary"
+          >
+            <span className="max-w-[500px] truncate">
+              #{Number(row.original.height)}
+            </span>
+          </Link>
         </div>
       );
     },
@@ -37,8 +41,8 @@ export const columns: ColumnDef<Batch>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {row.getValue("timestamp")
-              ? formatTimeAgo(row.getValue("timestamp"))
+            {row.original.header.timestamp
+              ? formatTimeAgo(row.original.header.timestamp)
               : "N/A"}
           </span>
         </div>
@@ -57,7 +61,7 @@ export const columns: ColumnDef<Batch>[] = [
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
             <Badge variant={"outline"}>
-              {formatNumber(row.getValue("gasUsed"))}
+              {formatNumber(row.original?.header?.gasUsed) || "N/A"}
             </Badge>
           </span>
         </div>
@@ -75,7 +79,9 @@ export const columns: ColumnDef<Batch>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {formatNumber(row.getValue("gasLimit"))}
+            <Badge variant={"outline"}>
+              {formatNumber(row.original?.header?.gasUsed) || "N/A"}
+            </Badge>
           </span>
         </div>
       );
@@ -89,7 +95,12 @@ export const columns: ColumnDef<Batch>[] = [
       <DataTableColumnHeader column={column} title="Hash" />
     ),
     cell: ({ row }) => {
-      return <TruncatedAddress address={row.getValue("hash")} />;
+      return (
+        <TruncatedAddress
+          address={row.original.header.hash}
+          link={`/batch/${row.original.fullHash}`}
+        />
+      );
     },
     enableSorting: false,
     enableHiding: false,
@@ -100,41 +111,45 @@ export const columns: ColumnDef<Batch>[] = [
       <DataTableColumnHeader column={column} title="Parent Hash" />
     ),
     cell: ({ row }) => {
-      return <TruncatedAddress address={row.getValue("parentHash")} />;
+      return <TruncatedAddress address={row.original.header.parentHash} />;
     },
     enableSorting: false,
     enableHiding: false,
   },
   {
-    accessorKey: "l1Proof",
+    accessorKey: "sequence",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="L1 Proof" />
+      <DataTableColumnHeader column={column} title="Sequence" />
     ),
-    cell: ({ row }) => {
-      return <TruncatedAddress address={row.original.l1Proof} />;
-    },
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "miner",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Miner" />
-    ),
-    cell: ({ row }) => {
-      return <TruncatedAddress address={row.original.miner} />;
-    },
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    id: "actions",
     cell: ({ row }) => {
       return (
-        <Link href={`/batches/${row.original.hash}`}>
-          <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
+        <Link
+          href={`/rollup/batch/sequence/${row.original.sequence}`}
+          className="text-primary"
+        >
+          {row.original.sequence}
         </Link>
       );
     },
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "txCount",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Tx Count" />
+    ),
+    cell: ({ row }) => {
+      return (
+        <Link
+          href={`/batch/txs/${row.original.fullHash}`}
+          className="text-primary"
+        >
+          {row.original.txCount}
+        </Link>
+      );
+    },
+    enableSorting: false,
+    enableHiding: false,
   },
 ];
