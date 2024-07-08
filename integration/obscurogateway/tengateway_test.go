@@ -64,18 +64,19 @@ func TestTenGateway(t *testing.T) {
 	createTenNetwork(t, startPort)
 
 	tenGatewayConf := wecommon.Config{
-		WalletExtensionHost:     "127.0.0.1",
-		WalletExtensionPortHTTP: startPort + integration.DefaultTenGatewayHTTPPortOffset,
-		WalletExtensionPortWS:   startPort + integration.DefaultTenGatewayWSPortOffset,
-		NodeRPCHTTPAddress:      fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
-		NodeRPCWebsocketAddress: fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
-		LogPath:                 "sys_out",
-		VerboseFlag:             false,
-		DBType:                  "sqlite",
-		TenChainID:              443,
-		StoreIncomingTxs:        true,
-		RateLimitThreshold:      1000,
-		RateLimitDecay:          0.2,
+		WalletExtensionHost:            "127.0.0.1",
+		WalletExtensionPortHTTP:        startPort + integration.DefaultTenGatewayHTTPPortOffset,
+		WalletExtensionPortWS:          startPort + integration.DefaultTenGatewayWSPortOffset,
+		NodeRPCHTTPAddress:             fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
+		NodeRPCWebsocketAddress:        fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
+		LogPath:                        "sys_out",
+		VerboseFlag:                    false,
+		DBType:                         "sqlite",
+		TenChainID:                     443,
+		StoreIncomingTxs:               true,
+		RateLimitUserComputeTime:       100,
+		RateLimitWindow:                1000,
+		RateLimitMaxConcurrentRequests: 10,
 	}
 
 	tenGwContainer := walletextension.NewContainerFromConfig(tenGatewayConf, testlog.Logger())

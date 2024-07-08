@@ -101,7 +101,8 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		return nil, err
 	}
 
-	if !w.RateLimiter.Allow(gethcommon.Address(userID)) {
+	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(userID))
+	if !rateLimitAllowed {
 		return nil, fmt.Errorf("rate limit exceeded")
 	}
 
@@ -153,10 +154,9 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		return nil, rpcErr
 	})
 
-	executionDuration := time.Since(requestStartTime).Milliseconds()
-	w.RateLimiter.UpdateScore(gethcommon.Address(userID), uint32(executionDuration))
+	w.RateLimiter.UpdateRequest(gethcommon.Address(userID), requestUUID)
 
-	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(userID), method, args, res, err, executionDuration)
+	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(userID), method, args, res, err, time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 

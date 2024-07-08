@@ -6,115 +6,171 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// Package ratelimiter implements a simple rate limiting mechanism
-// using a score-based approach. Each user has a score that decays
-// over time. Requests are allowed if the user's score is below a
-// specified threshold. The score increases with each request and
-// decays based on the time since the last request.
+// RequestInterval represents an interval for a request with a start and optional end timestamp.
+type RequestInterval struct {
+	Start time.Time
+	End   *time.Time // can be nil if the request is not over yet
+}
 
-type Score struct {
-	lastRequest        time.Time
-	score              uint32
-	concurrentRequests uint32
+// RateLimitUser represents a user with a map of current requests.
+type RateLimitUser struct {
+	CurrentRequests map[uuid.UUID]RequestInterval
+}
+
+// zeroUUID is a zero UUID returned when no new request is added.
+var zeroUUID uuid.UUID
+
+// AddRequest adds a new request interval to a user's current requests and returns the UUID.
+func (rl *RateLimiter) AddRequest(userID common.Address, interval RequestInterval) uuid.UUID {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	user, exists := rl.users[userID]
+	if !exists {
+		user = &RateLimitUser{
+			CurrentRequests: make(map[uuid.UUID]RequestInterval),
+		}
+		rl.users[userID] = user
+	}
+	id := uuid.New()
+	user.CurrentRequests[id] = interval
+	return id
+}
+
+// UpdateRequest updates the end time of a request interval given its UUID.
+func (rl *RateLimiter) UpdateRequest(userID common.Address, id uuid.UUID) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	if user, userExists := rl.users[userID]; userExists {
+		if request, requestExists := user.CurrentRequests[id]; requestExists {
+			now := time.Now()
+			request.End = &now
+			user.CurrentRequests[id] = request
+		} else {
+			log.Printf("Request with ID %s not found for user %s.", id, userID.Hex())
+		}
+	} else {
+		log.Printf("User %s not found while trying to update the request.", userID.Hex())
+	}
+}
+
+// CountOpenRequests counts the number of requests without an End time set.
+func (rl *RateLimiter) CountOpenRequests(userID common.Address) int {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	var count int
+	if user, exists := rl.users[userID]; exists {
+		for _, interval := range user.CurrentRequests {
+			if interval.End == nil {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+// SumComputeTime sums the compute time for requests within the rate limiter's window
+// and returns it as uint32 milliseconds.
+func (rl *RateLimiter) SumComputeTime(userID common.Address) uint32 {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	var totalComputeTime time.Duration
+	if user, exists := rl.users[userID]; exists {
+		cutoff := time.Now().Add(-time.Duration(rl.window) * time.Millisecond)
+		for _, interval := range user.CurrentRequests {
+			if interval.End != nil && interval.End.After(cutoff) {
+				totalComputeTime += interval.End.Sub(interval.Start)
+			}
+		}
+	}
+	return uint32(totalComputeTime / time.Millisecond)
 }
 
 type RateLimiter struct {
 	mu                    sync.Mutex
-	users                 map[common.Address]Score
-	threshold             uint32
-	decay                 float64
+	users                 map[common.Address]*RateLimitUser
+	userComputeTime       uint32
+	window                uint32
 	maxConcurrentRequests uint32
 	totalRequests         uint64
 	rateLimitedRequests   uint64
 }
 
-// NewRateLimiter creates a new RateLimiter with the specified threshold, decay rate, and maximum score.
-// Parameters:
-//   - threshold: The maximum score a user can have to be allowed to make a request. If a user's score
-//     exceeds this threshold, their request will be denied. Setting the threshold to 0 disables rate limiting.
-//   - Decay: The rate at which a user's score decays over time. It represents the amount by which the score
-//     has decreased per millisecond since the last request. This helps in gradually lowering the score over time.
-//   - concurrentRequestsLimit: The maximum number of concurrent requests a user can make. If a user exceeds this
-//     limit, their request will be denied.
-func NewRateLimiter(threshold uint32, decay float64, concurrentRequestsLimit uint32) *RateLimiter {
+func NewRateLimiter(rateLimitUserComputeTime uint32, rateLimitWindow uint32, concurrentRequestsLimit uint32) *RateLimiter {
 	rl := &RateLimiter{
-		users:                 make(map[common.Address]Score),
-		threshold:             threshold,
-		decay:                 decay,
+		users:                 make(map[common.Address]*RateLimitUser),
+		userComputeTime:       rateLimitUserComputeTime,
+		window:                rateLimitWindow,
 		maxConcurrentRequests: concurrentRequestsLimit,
 	}
 	go rl.logRateLimitedStats()
+	go rl.periodicPrune()
 	return rl
 }
 
 // Allow checks if the user is allowed to make a request based on the rate limit threshold
 // before comparing to the threshold also decays the score of the user based on the decay rate
-func (rl *RateLimiter) Allow(userID common.Address) bool {
-	// If the threshold is 0, allow all requests (rate limiting is disabled)
-	if rl.threshold == 0 {
-		return true
+func (rl *RateLimiter) Allow(userID common.Address) (bool, uuid.UUID) {
+	// If the userComputeTime is 0, allow all requests (rate limiting is disabled)
+	if rl.userComputeTime == 0 {
+		return true, zeroUUID
 	}
 
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
-
 	rl.totalRequests++
-	now := time.Now()
-	userScore, exists := rl.users[userID]
 
-	if !exists {
-		// Create a new entry for the user if not exists
-		rl.users[userID] = Score{lastRequest: now, score: 0, concurrentRequests: 1}
-		return true
-	} else {
-		// Increase the number of concurrent requests by 1
-		rl.users[userID] = Score{lastRequest: now, score: userScore.score, concurrentRequests: userScore.concurrentRequests + 1}
-	}
-
-	// Check if the user's score is below the threshold (taking into account the decay)
-	timeSinceLastRequest := float64(now.Sub(userScore.lastRequest).Milliseconds())
-	newScore := int64(userScore.score) - int64(timeSinceLastRequest*rl.decay)
-	if newScore > int64(rl.threshold) || userScore.concurrentRequests > rl.maxConcurrentRequests {
+	// Check if the user has reached the maximum number of concurrent requests
+	if uint32(rl.CountOpenRequests(userID)) >= rl.maxConcurrentRequests {
 		rl.rateLimitedRequests++
-		return false
+		return false, zeroUUID
 	}
-	return true
+
+	// Check if user is in limits of rate limiting
+	userComputeTimeForUser := rl.SumComputeTime(userID)
+	if userComputeTimeForUser <= rl.userComputeTime {
+		requestUUID := rl.AddRequest(userID, RequestInterval{Start: time.Now()})
+		return true, requestUUID
+	}
+
+	// If the user has exceeded the rate limit, increment the rateLimitedRequests counter
+	rl.rateLimitedRequests++
+	return false, zeroUUID
 }
 
-// UpdateScore updates the score of the user based on the execution duration of the request.
-func (rl *RateLimiter) UpdateScore(userID common.Address, executionDuration uint32) {
-	// If the threshold is 0,rate limiting is disabled and there is no need for updating the score
-	if rl.threshold == 0 {
-		return
-	}
+// PruneRequests deletes all requests that have ended before the rate limiter's window.
+func (rl *RateLimiter) PruneRequests() {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
-	// Decay the score of the user based on the time since the last request
-	now := time.Now()
-	userScore, exists := rl.users[userID]
-	//
-	if !exists {
-		log.Println("User not found in the rate limiter")
-		return
+	// delete all the requests that have
+	cutoff := time.Now().Add(-time.Duration(rl.window) * time.Millisecond)
+	for userID, user := range rl.users {
+		for id, interval := range user.CurrentRequests {
+			if interval.End != nil && interval.End.Before(cutoff) {
+				delete(user.CurrentRequests, id)
+			}
+		}
+		if len(user.CurrentRequests) == 0 {
+			delete(rl.users, userID)
+		}
 	}
-	scoreDecay := uint32(0)
-	// Decay the score based on the time since the last request and the decay rate
-	timeSinceLastRequest := float64(now.Sub(userScore.lastRequest).Milliseconds())
-	// limit the decay to the user's current score
-	scoreDecay = min(uint32(timeSinceLastRequest*rl.decay), userScore.score)
+}
 
-	// Increase the score of the user based on the execution duration of the request
-	// and update the last request time
-	newScore := rl.users[userID].score + executionDuration - scoreDecay
-	newConcurrentRequests := userScore.concurrentRequests
-	if newConcurrentRequests > 0 {
-		newConcurrentRequests -= 1
+// periodically prunes the requests that have ended before the rate limiter's window every 10 * window milliseconds
+func (rl *RateLimiter) periodicPrune() {
+	for {
+		time.Sleep(time.Duration(rl.window) * time.Millisecond * 10)
+		rl.PruneRequests()
 	}
-	rl.users[userID] = Score{lastRequest: userScore.lastRequest, score: newScore, concurrentRequests: newConcurrentRequests}
 }
 
 func (rl *RateLimiter) logRateLimitedStats() {

@@ -62,7 +62,7 @@ const (
 
 	rateLimitUserComputeTimeName    = "rateLimitUserComputeTime"
 	rateLimitUserComputeTimeDefault = 100
-	rateLimitUserComputeTimeUsage   = "rateLimitUserComputeTime represents number of ms that we allow per user in rateLimitWindow time . Default: 100."
+	rateLimitUserComputeTimeUsage   = "rateLimitUserComputeTime represents number of ms that we allow per user in rateLimitWindow time. If rateLimitUserComputeTime is set to 0, rate limiting is turned off. Default: 100."
 
 	rateLimitWindowName    = "rateLimitWindow"
 	rateLimitWindowDefault = 1000
