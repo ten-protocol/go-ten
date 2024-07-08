@@ -4,7 +4,8 @@ import { DataTable } from "@/src/components/modules/common/data-table/data-table
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBatchesService } from "@/src/services/useBatchesService";
-import { firstItem, lastItem } from "@/src/lib/utils";
+import { getItem } from "@/src/lib/utils";
+import { ItemPosition } from "@/src/types/interfaces";
 
 export const metadata: Metadata = {
   title: "Batches",
@@ -28,8 +29,10 @@ export default function Batches() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const firstBatchHeight = Number(firstItem(BatchesData, "height"));
-  const lastBatchHeight = Number(lastItem(BatchesData, "height"));
+  const firstBatchHeight = Number(getItem(BatchesData, "height"));
+  const lastBatchHeight = Number(
+    getItem(BatchesData, "height", ItemPosition.LAST)
+  );
 
   return (
     <Layout>

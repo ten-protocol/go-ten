@@ -4,7 +4,8 @@ import Layout from "@/src/components/layouts/default-layout";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import { Metadata } from "next";
 import { columns } from "@/src/components/modules/rollups/columns";
-import { firstItem, lastItem } from "@/src/lib/utils";
+import { getItem } from "@/src/lib/utils";
+import { ItemPosition } from "@/src/types/interfaces";
 
 export const metadata: Metadata = {
   title: "Rollups",
@@ -28,8 +29,8 @@ export default function Rollups() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const firstRollupID = Number(firstItem(RollupsData, "ID"));
-  const lastRollupID = Number(lastItem(RollupsData, "ID"));
+  const firstRollupID = Number(getItem(RollupsData, "ID"));
+  const lastRollupID = Number(getItem(RollupsData, "ID", ItemPosition.LAST));
 
   return (
     <Layout>

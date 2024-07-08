@@ -4,7 +4,8 @@ import { DataTable } from "@/src/components/modules/common/data-table/data-table
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBlocksService } from "@/src/services/useBlocksService";
-import { firstItem, lastItem } from "@/src/lib/utils";
+import { getItem } from "@/src/lib/utils";
+import { ItemPosition } from "@/src/types/interfaces";
 
 export const metadata: Metadata = {
   title: "Blocks",
@@ -25,8 +26,10 @@ export default function Blocks() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const firstBlockNumber = Number(firstItem(BlocksData, "blockHeader.number"));
-  const lastBlockNumber = Number(lastItem(BlocksData, "blockHeader.number"));
+  const firstBlockNumber = Number(getItem(BlocksData, "blockHeader.number"));
+  const lastBlockNumber = Number(
+    getItem(BlocksData, "blockHeader.number", ItemPosition.LAST)
+  );
 
   return (
     <Layout>

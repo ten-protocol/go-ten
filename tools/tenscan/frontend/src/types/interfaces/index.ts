@@ -94,3 +94,8 @@ export interface DashboardAnalyticsData {
   change?: string;
   icon: any;
 }
+
+export enum ItemPosition {
+  FIRST = "first",
+  LAST = "last",
+}

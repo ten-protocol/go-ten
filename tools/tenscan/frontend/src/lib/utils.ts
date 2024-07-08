@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { formatDistanceToNow } from "date-fns";
 import { twMerge } from "tailwind-merge";
+import { ItemPosition } from "../types/interfaces";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -26,16 +27,25 @@ export const formatNumber = (number: string | number) => {
   return num.toLocaleString();
 };
 
-export const firstItem = <T>(arr: T[], key: keyof T) => {
-  if (!arr || !arr.length || !arr[0][key]) {
+export const getItem = <T>(
+  arr: T[],
+  key: string,
+  position: ItemPosition = ItemPosition.FIRST
+) => {
+  if (!arr || !arr.length) {
     return null;
   }
-  return arr[0][key];
-};
 
-export const lastItem = <T>(arr: T[], key: keyof T) => {
-  if (!arr || !arr.length || !arr[0][key]) {
-    return null;
+  const keys = key.split(".");
+  const item = position === ItemPosition.FIRST ? arr[0] : arr[arr.length - 1];
+  let value: any = item;
+
+  for (const k of keys) {
+    if (value[k] === undefined) {
+      return null;
+    }
+    value = value[k];
   }
-  return arr[arr.length - 1][key];
+
+  return value;
 };

@@ -4,7 +4,8 @@ import { DataTable } from "@/src/components/modules/common/data-table/data-table
 import Layout from "@/src/components/layouts/default-layout";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { Metadata } from "next";
-import { firstItem, lastItem } from "@/src/lib/utils";
+import { getItem } from "@/src/lib/utils";
+import { ItemPosition } from "@/src/types/interfaces";
 
 export const metadata: Metadata = {
   title: "Transactions",
@@ -32,8 +33,12 @@ export default function Transactions() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const firstBatchHeight = firstItem(TransactionsData, "BatchHeight");
-  const lastBatchHeight = lastItem(TransactionsData, "BatchHeight");
+  const firstBatchHeight = getItem(TransactionsData, "BatchHeight");
+  const lastBatchHeight = getItem(
+    TransactionsData,
+    "BatchHeight",
+    ItemPosition.LAST
+  );
 
   return (
     <Layout>
