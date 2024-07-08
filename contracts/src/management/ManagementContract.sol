@@ -55,6 +55,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     MessageBus.IMessageBus public messageBus;
     MerkleTreeMessageBus.IMerkleTreeMessageBus public merkleMessageBus;
     mapping(bytes32 =>bool) public isWithdrawalSpent;
+    mapping(bytes32 =>bool) public isBundleSaved;
 
     bytes32 public lastBatchHash;
 
@@ -102,6 +103,16 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         }
     }
 
+    function isBundleAvailable(bytes[] memory crossChainHashes) public view returns (bool) {
+        bytes32 bundleHash = bytes32(0);
+
+        for(uint256 i = 0; i < crossChainHashes.length; i++) {
+            bundleHash = keccak256(abi.encode(bundleHash, bytes32(crossChainHashes[i])));
+        }
+
+        return isBundleSaved[bundleHash];
+    }
+
     function addCrossChainMessagesRoot(bytes32 _lastBatchHash, bytes32 blockHash, uint256 blockNum, bytes[] memory crossChainHashes, bytes calldata signature, uint256 rollupNumber, bytes32 forkID) external {
       /*  if (block.number > blockNum + 255) {
             revert("Block binding too old");
@@ -120,9 +131,14 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
         lastBatchHash = _lastBatchHash;
 
+        bytes32 bundleHash = bytes32(0);
+
         for(uint256 i = 0; i < crossChainHashes.length; i++) {
             merkleMessageBus.addStateRoot(bytes32(crossChainHashes[i]), block.timestamp); //todo: change the activation time.
+            bundleHash = keccak256(abi.encode(bundleHash, bytes32(crossChainHashes[i])));
         }
+
+        isBundleSaved[bundleHash] = true;
     }
 
 // TODO: ensure challenge period is added on top of block timestamp.

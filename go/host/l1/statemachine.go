@@ -125,6 +125,16 @@ func (c *crossChainStateMachine) PublishNextBundle() error {
 		return err
 	}
 
+	alreadyPublished, err := c.IsBundleAlreadyPublished(bundle)
+	if err != nil {
+		return err
+	}
+
+	if alreadyPublished {
+		c.currentRollup++
+		return nil
+	}
+
 	err = c.publisher.PublishCrossChainBundle(bundle, big.NewInt(0).SetUint64(data.Number), data.ForkUID)
 	if err != nil {
 		return err
@@ -134,6 +144,15 @@ func (c *crossChainStateMachine) PublishNextBundle() error {
 	c.currentRollup++
 
 	return nil
+}
+
+func (c *crossChainStateMachine) IsBundleAlreadyPublished(bundle *common.ExtCrossChainBundle) (bool, error) {
+	managementContract, err := ManagementContract.NewManagementContract(*c.mgmtContractLib.GetContractAddr(), c.ethClient.EthClient())
+	if err != nil {
+		return false, err
+	}
+
+	return managementContract.IsBundleAvailable(&bind.CallOpts{}, bundle.CrossChainRootHashes)
 }
 
 // Synchronize - checks if there are any new rollups or forks and moves the tracking needle to the latest common ancestor.
