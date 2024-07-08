@@ -57,7 +57,7 @@ export default function Batches() {
           refetch={refetchBatches}
           total={+Total}
           isLoading={isBatchesLoading}
-          noResultsWord="batches"
+          noResultsText="batches"
         />
       </div>
     </Layout>

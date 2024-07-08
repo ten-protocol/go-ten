@@ -45,7 +45,7 @@ interface DataTableProps<TData, TValue> {
   total: number;
   isLoading?: boolean;
   noPagination?: boolean;
-  noResultsWord?: string;
+  noResultsText?: string;
   noResultsMessage?: string;
 }
 
@@ -57,7 +57,7 @@ export function DataTable<TData, TValue>({
   total,
   isLoading,
   noPagination,
-  noResultsWord,
+  noResultsText,
   noResultsMessage,
 }: DataTableProps<TData, TValue>) {
   const { query, push, pathname } = useRouter();
@@ -175,7 +175,7 @@ export function DataTable<TData, TValue>({
                 >
                   {pagination.pageIndex > 1 ? (
                     <p>
-                      No {noResultsWord || "results"} found for the selected
+                      No {noResultsText || "results"} found for the selected
                       filters.
                       <Button
                         variant={"link"}
@@ -190,7 +190,7 @@ export function DataTable<TData, TValue>({
                   ) : (
                     <p>
                       {noResultsMessage ||
-                        `No ${noResultsWord || "results"} found.`}
+                        `No ${noResultsText || "results"} found.`}
                     </p>
                   )}
                 </TableCell>
@@ -199,7 +199,7 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      {(data || isLoading) && !noPagination && (
+      {data && !isLoading && !noPagination && (
         <DataTablePagination
           table={table}
           refetch={refetch}

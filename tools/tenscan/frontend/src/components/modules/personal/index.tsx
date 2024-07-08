@@ -35,13 +35,13 @@ export default function PersonalTransactions() {
           </p> */}
         </div>
       </div>
-      {personalTxnsLoading ? (
-        <Skeleton className="h-96" />
-      ) : Receipts ? (
-        <DataTable columns={columns} data={Receipts} total={Total} />
-      ) : (
-        <p>No transactions found.</p>
-      )}
+      <DataTable
+        columns={columns}
+        data={Receipts}
+        total={Total}
+        isLoading={personalTxnsLoading}
+        noResultsText="personal transactions"
+      />
     </>
   );
 }

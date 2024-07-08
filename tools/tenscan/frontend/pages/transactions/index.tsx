@@ -65,7 +65,7 @@ export default function Transactions() {
           refetch={refetchTransactions}
           total={+Total}
           isLoading={isTransactionsLoading}
-          noResultsWord="transactions"
+          noResultsText="transactions"
         />
       </div>
     </Layout>

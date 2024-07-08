@@ -54,7 +54,7 @@ export default function Blocks() {
           total={+Total}
           refetch={refetchBlocks}
           isLoading={isBlocksLoading}
-          noResultsWord="blocks"
+          noResultsText="blocks"
         />
       </div>
     </Layout>

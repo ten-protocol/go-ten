@@ -54,7 +54,7 @@ export default function Rollups() {
           refetch={refetchRollups}
           total={+Total}
           isLoading={isRollupsLoading}
-          noResultsWord="rollups"
+          noResultsText="rollups"
         />
       </div>
     </Layout>
