@@ -4,10 +4,17 @@
 BEACON_RPC_PORT=4000
 GETH_RPC_PORT=8545
 GETH_WS_PORT=8546
+BEACON_LOG_FILE="./beacon-chain.log"
+VALIDATOR_LOG_FILE="./validator.log"
+GETH_LOG_FILE="./geth.log"
+GETH_BINARY="./geth"
+BEACON_BINARY="./beacon-chain"
+PRYSMCTL_BINARY="./prysmctl"
+VALIDATOR_BINARY="./validator"
 
 # Function to display usage
 usage() {
-  echo "Usage: $0 [--geth-rpc GETH_RPC_PORT] [--geth-ws GETH_WS_PORT] [--geth-http GETH_HTTP_PORT] [--beacon-rpc BEACON_RPC_PORT]"
+  echo "Usage: $0 [--geth-rpc GETH_RPC_PORT] [--geth-ws GETH_WS_PORT] [--beacon-rpc BEACON_RPC_PORT] [--geth-binary GETH_BINARY] [--beacon-binary BEACON_BINARY] [--prysmctl-binary PRYSMCTL_BINARY] [--validator-binary VALIDATOR_BINARY] [--beacon-log BEACON_LOG_FILE] [--validator-log VALIDATOR_LOG_FILE] [--geth-log GETH_LOG_FILE]"
   exit 1
 }
 
@@ -17,18 +24,30 @@ while [[ "$#" -gt 0 ]]; do
         --beacon-rpc) BEACON_RPC_PORT="$2"; shift ;;
         --geth-rpc) GETH_RPC_PORT="$2"; shift ;;
         --geth-ws) GETH_WS_PORT="$2"; shift ;;
+        --geth-binary) GETH_BINARY="$2"; shift ;;
+        --beacon-binary) BEACON_BINARY="$2"; shift ;;
+        --prysmctl-binary) PRYSMCTL_BINARY="$2"; shift ;;
+        --validator-binary) VALIDATOR_BINARY="$2"; shift ;;
+        --beacon-log) BEACON_LOG_FILE="$2"; shift ;;
+        --validator-log) VALIDATOR_LOG_FILE="$2"; shift ;;
+        --geth-log) GETH_LOG_FILE="$2"; shift ;;
         *) usage ;;
     esac
     shift
 done
 
-./geth --datadir=gethdata account import pk.txt
+# Ensure the log file directories exist
+mkdir -p "$(dirname "${BEACON_LOG_FILE}")"
+mkdir -p "$(dirname "${VALIDATOR_LOG_FILE}")"
+mkdir -p "$(dirname "${GETH_LOG_FILE}")"
+
+${GETH_BINARY} --datadir=gethdata account import pk.txt
 echo "Private key imported"
 
-./geth --datadir=gethdata init genesis.json
+${GETH_BINARY} --datadir=gethdata init genesis.json
 echo "Geth genesis initialized"
 
-./prysmctl testnet generate-genesis \
+${PRYSMCTL_BINARY} testnet generate-genesis \
            --fork deneb \
            --num-validators 2 \
            --genesis-time-delay 600 \
@@ -40,7 +59,7 @@ sleep 5
 echo "Prysm genesis generated"
 
 # Run the Prysm beacon node
-./beacon-chain --datadir beacondata \
+${BEACON_BINARY} --datadir beacondata \
                --min-sync-peers 0 \
                --genesis-state genesis.ssz \
                --bootstrap-node= \
@@ -56,41 +75,21 @@ echo "Prysm genesis generated"
                --minimum-peers-per-subnet 0 \
                --enable-debug-rpc-endpoints \
                --verbosity=debug \
-               --execution-endpoint gethdata/geth.ipc &
-#               --execution-endpoint gethdata/geth.ipc > "${prysm_logs}/beacon-chain.log" 2>&1 &
+               --execution-endpoint gethdata/geth.ipc > "${BEACON_LOG_FILE}" 2>&1 &
 
 echo "Beacon node started"
 
-## Allow time for the beacon node to start
-#sleep 30
-#
-## Check if beacon node started successfully
-#if ! pgrep -f beacon-chain > /dev/null; then
-#    echo "Failed to start beacon node"
-#    exit 1
-#fi
-
 # Run Prysm validator client
-./validator --beacon-rpc-provider=127.0.0.1:${BEACON_RPC_PORT} \
+${VALIDATOR_BINARY} --beacon-rpc-provider=127.0.0.1:${BEACON_RPC_PORT} \
             --datadir validatordata \
             --accept-terms-of-use \
             --interop-num-validators 4 \
-            --chain-config-file config.yml &
-#            --chain-config-file config.yml > "${prysm_logs}/validator.log" 2>&1 &
+            --chain-config-file config.yml > "${VALIDATOR_LOG_FILE}" 2>&1 &
 
 echo "Validator client started"
 
-## Allow time for the validator client to start
-#sleep 30
-#
-## Check if validator client started successfully
-#if ! pgrep -f validator > /dev/null; then
-#    echo "Failed to start validator client"
-#    exit 1
-#fi
-
 # Run go-ethereum
-./geth --http \
+${GETH_BINARY} --http \
        --http.api eth,net,web3 \
        --http.port ${GETH_RPC_PORT} \
        --ws --ws.api eth,net,web3 \
@@ -101,18 +100,7 @@ echo "Validator client started"
        --syncmode full \
        --allow-insecure-unlock \
        --unlock 0x123463a4b065722e99115d6c222f267d9cabb524 \
-       --password ./password.txt &
-#       --password ./password.txt > "${prysm_logs}/geth.log" 2>&1 &
+       --password ./password.txt > "${GETH_LOG_FILE}" 2>&1 &
 
 echo "Geth network started"
-
-## Allow time for geth to start
-#sleep 30
-#
-## Check if geth started successfully
-#if ! pgrep -f geth > /dev/null; then
-#    echo "Failed to start geth"
-#    exit 1
-#fi
-
 echo "Running ..."
