@@ -104,10 +104,11 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 		Env:          envVars,
 	},
 		&container.HostConfig{
-			PortBindings: portBindings,
-			Mounts:       mountVolumes,
-			Resources:    container.Resources{Devices: deviceMapping},
-			LogConfig:    container.LogConfig{Type: "json-file", Config: logOptions},
+			PortBindings:  portBindings,
+			Mounts:        mountVolumes,
+			RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
+			Resources:     container.Resources{Devices: deviceMapping},
+			LogConfig:     container.LogConfig{Type: "json-file", Config: logOptions},
 		},
 		&network.NetworkingConfig{
 			EndpointsConfig: map[string]*network.EndpointSettings{
