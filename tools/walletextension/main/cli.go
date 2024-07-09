@@ -62,12 +62,12 @@ const (
 	storeIncomingTxsUsage   = "Flag to enable storing incoming transactions in the database for debugging purposes. Default: true"
 
 	rateLimitUserComputeTimeName    = "rateLimitUserComputeTime"
-	rateLimitUserComputeTimeDefault = 200 * time.Millisecond
-	rateLimitUserComputeTimeUsage   = "rateLimitUserComputeTime represents how much compute time is user allowed to used in rateLimitWindow time. If rateLimitUserComputeTime is set to 0, rate limiting is turned off. Default: 200ms."
+	rateLimitUserComputeTimeDefault = 10 * time.Second
+	rateLimitUserComputeTimeUsage   = "rateLimitUserComputeTime represents how much compute time is user allowed to used in rateLimitWindow time. If rateLimitUserComputeTime is set to 0, rate limiting is turned off. Default: 10s."
 
 	rateLimitWindowName    = "rateLimitWindow"
-	rateLimitWindowDefault = 1000 * time.Millisecond
-	rateLimitWindowUsage   = "rateLimitWindow represents time window in which we allow one user to use compute time defined with rateLimitUserComputeTimeMs  Default: 1000ms"
+	rateLimitWindowDefault = 1 * time.Minute
+	rateLimitWindowUsage   = "rateLimitWindow represents time window in which we allow one user to use compute time defined with rateLimitUserComputeTimeMs  Default: 1m"
 
 	rateLimitMaxConcurrentRequestsName    = "maxConcurrentRequestsPerUser"
 	rateLimitMaxConcurrentRequestsDefault = 3
