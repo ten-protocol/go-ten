@@ -95,7 +95,7 @@ func (es *eventsStorage) handleEventType(ctx context.Context, dbTX *sql.Tx, l *t
 	if err == nil {
 		// in case we determined the current emitted event is not lifecycle, we must update the EventType
 		if !isLifecycle && et.isLifecycle {
-			err := enclavedb.UpdateEventTopicLifecycle(ctx, dbTX, et.id, isLifecycle)
+			err := enclavedb.UpdateEventTypeLifecycle(ctx, dbTX, et.id, isLifecycle)
 			if err != nil {
 				return 0, fmt.Errorf("could not update the event type. cause: %w", err)
 			}
