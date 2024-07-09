@@ -68,7 +68,7 @@ func WriteEventTopic(ctx context.Context, dbTX *sql.Tx, topic *gethcommon.Hash, 
 }
 
 func UpdateEventTopicLifecycle(ctx context.Context, dbTx *sql.Tx, etId uint64, isLifecycle bool) error {
-	_, err := dbTx.ExecContext(ctx, "update event_topic set lifecycle_event=? where id=?", isLifecycle, etId)
+	_, err := dbTx.ExecContext(ctx, "update event_type set lifecycle_event=? where id=?", isLifecycle, etId)
 	return err
 }
 
