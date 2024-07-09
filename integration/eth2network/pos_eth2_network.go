@@ -126,7 +126,7 @@ func (n *PosImpl) Start() error {
 		return err
 	}
 
-	err := startNetworkScript(n.gethRPCPort, n.gethWSPort, n.beaconRPCPort, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
+	err := startNetworkScript(n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.buildDir, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
 		n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath, n.gethBinaryPath,
 		n.gethdataDir, n.beacondataDir, n.validatordataDir)
 	if err != nil {
@@ -200,17 +200,18 @@ func (n *PosImpl) prefundedBalanceActive(client *ethclient.Client) error {
 	return nil
 }
 
-func startNetworkScript(gethRPCPort, gethWSPort, beaconRPCPort int, beaconLogFile, validatorLogFile, gethLogFile,
+func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
 	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string) error {
 	scriptPath := filepath.Join(".", "start-pos-network.sh")
 
 	beaconRPCPortStr := strconv.Itoa(beaconRPCPort)
-	gethRPCPortStr := strconv.Itoa(gethRPCPort)
+	gethHTTPPortStr := strconv.Itoa(gethHTTPPort)
 	gethWSPortStr := strconv.Itoa(gethWSPort)
 	cmd := exec.Command("/bin/bash", scriptPath,
-		"--geth-rpc", gethRPCPortStr,
+		"--geth-http", gethHTTPPortStr,
 		"--geth-ws", gethWSPortStr,
 		"--beacon-rpc", beaconRPCPortStr,
+		"--build-dir", buildDir,
 		"--beacon-log", beaconLogFile,
 		"--validator-log", validatorLogFile,
 		"--geth-log", gethLogFile,

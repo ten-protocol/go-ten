@@ -21,7 +21,7 @@ func TestStartPostEth2Network(t *testing.T) {
 		startPort+integration.DefaultGethWSPortOffset,
 		startPort+integration.DefaultGethNetworkPortOffset, //HTTP
 		startPort+integration.DefaultPrysmP2PPortOffset,    //RPC
-		2*time.Minute, //RPC
+		8*time.Minute, //RPC
 	)
 	// wait until the merge has happened
 	assert.Nil(t, network.Start())

@@ -2,8 +2,9 @@
 
 # Default port values
 BEACON_RPC_PORT=4000
-GETH_RPC_PORT=8545
+GETH_HTTP_PORT=8545
 GETH_WS_PORT=8546
+BUILD_DIR="./build"
 GETH_BINARY="./geth"
 BEACON_BINARY="./beacon-chain"
 PRYSMCTL_BINARY="./prysmctl"
@@ -17,7 +18,7 @@ VALIDATORDATA_DIR="/validatordata"
 
 # Function to display usage
 usage() {
-    echo "Usage: $0 [--geth-rpc GETH_RPC_PORT] [--geth-ws GETH_WS_PORT] [--beacon-rpc BEACON_RPC_PORT]
+    echo "Usage: $0 [--geth-http GETH_HTTP_PORT] [--geth-ws GETH_WS_PORT] [--beacon-rpc BEACON_RPC_PORT] [--build-dir BUILD_DIR ]
     [--beacon-log BEACON_LOG_FILE] [--validator-log VALIDATOR_LOG_FILE] [--geth-log GETH_LOG_FILE]
     [--geth-binary GETH_BINARY] [--beacon-binary BEACON_BINARY] [--prysmctl-binary PRYSMCTL_BINARY]
     [--validator-binary VALIDATOR_BINARY] [--gethdata-dir GETHDATA_DIR] [--beacondata-dir BEACONDATA_DIR]
@@ -29,8 +30,9 @@ usage() {
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --beacon-rpc) BEACON_RPC_PORT="$2"; shift ;;
-        --geth-rpc) GETH_RPC_PORT="$2"; shift ;;
+        --geth-http) GETH_HTTP_PORT="$2"; shift ;;
         --geth-ws) GETH_WS_PORT="$2"; shift ;;
+        --build-dir) BUILD_DIR="$2"; shift ;;
         --geth-binary) GETH_BINARY="$2"; shift ;;
         --beacon-binary) BEACON_BINARY="$2"; shift ;;
         --prysmctl-binary) PRYSMCTL_BINARY="$2"; shift ;;
@@ -51,8 +53,9 @@ mkdir -p "$(dirname "${VALIDATOR_LOG_FILE}")"
 mkdir -p "$(dirname "${GETH_LOG_FILE}")"
 
 echo "Beacon RPC Port: ${BEACON_RPC_PORT}"
-echo "Geth RPC Port: ${GETH_RPC_PORT}"
+echo "Geth HTTP Port: ${GETH_HTTP_PORT}"
 echo "Geth WS Port: ${GETH_WS_PORT}"
+echo "Build Directory: ${BUILD_DIR}"
 echo "Geth Data Directory: ${GETHDATA_DIR}"
 echo "Beacon Data Directory: ${BEACONDATA_DIR}"
 echo "Validator Data Directory: ${VALIDATORDATA_DIR}"
@@ -82,21 +85,39 @@ echo "Private key imported"
 ${GETH_BINARY} --datadir="${GETHDATA_DIR}" init genesis.json
 echo "Geth genesis initialized"
 
+# Run go-ethereum
+${GETH_BINARY} --http \
+       --http.api eth,net,web3 \
+       --http.port ${GETH_HTTP_PORT} \
+       --ws --ws.api eth,net,web3 \
+       --ws.port ${GETH_WS_PORT} \
+       --authrpc.jwtsecret jwt.hex \
+       --datadir="${GETHDATA_DIR}" \
+       --nodiscover \
+       --syncmode full \
+       --allow-insecure-unlock \
+       --unlock 0x123463a4b065722e99115d6c222f267d9cabb524 \
+       --password ./password.txt > "${GETH_LOG_FILE}" 2>&1 &
+
+echo "Geth network started"
+sleep 3
+
 ${PRYSMCTL_BINARY} testnet generate-genesis \
            --fork deneb \
            --num-validators 2 \
-           --genesis-time-delay 600 \
+           --genesis-time-delay 30 \
            --chain-config-file config.yml \
            --geth-genesis-json-in genesis.json \
            --geth-genesis-json-out genesis.json \
-           --output-ssz "${BEACONDATA_DIR}/genesis.ssz"
+           --output-ssz genesis.ssz
+
 sleep 5
 echo "Prysm genesis generated"
 
 # Run the Prysm beacon node
 ${BEACON_BINARY} --datadir="${BEACONDATA_DIR}" \
                --min-sync-peers 0 \
-               --genesis-state "${BEACONDATA_DIR}/genesis.ssz" \
+               --genesis-state genesis.ssz \
                --bootstrap-node= \
                --interop-eth1data-votes \
                --chain-config-file config.yml \
@@ -111,31 +132,12 @@ ${BEACON_BINARY} --datadir="${BEACONDATA_DIR}" \
                --enable-debug-rpc-endpoints \
                --verbosity=debug \
                --execution-endpoint "${GETHDATA_DIR}/geth.ipc" > "${BEACON_LOG_FILE}" 2>&1 &
-
 echo "Beacon node started"
 
 # Run Prysm validator client
 ${VALIDATOR_BINARY} --beacon-rpc-provider=127.0.0.1:"${BEACON_RPC_PORT}" \
             --datadir="${VALIDATORDATA_DIR}" \
             --accept-terms-of-use \
-            --interop-num-validators 4 \
+            --interop-num-validators 2 \
             --chain-config-file config.yml > "${VALIDATOR_LOG_FILE}" 2>&1 &
-
 echo "Validator client started"
-
-# Run go-ethereum
-${GETH_BINARY} --http \
-       --http.api eth,net,web3 \
-       --http.port ${GETH_RPC_PORT} \
-       --ws --ws.api eth,net,web3 \
-       --ws.port ${GETH_WS_PORT} \
-       --authrpc.jwtsecret jwt.hex \
-       --datadir="${GETHDATA_DIR}" \
-       --nodiscover \
-       --syncmode full \
-       --allow-insecure-unlock \
-       --unlock 0x123463a4b065722e99115d6c222f267d9cabb524 \
-       --password ./password.txt > "${GETH_LOG_FILE}" 2>&1 &
-
-echo "Geth network started"
-echo "Running ..."
