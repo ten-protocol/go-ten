@@ -266,7 +266,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 	if err != nil {
 		return nil, err
 	}
-	api.we.RateLimiter.UpdateRequest(gethcommon.Address(userID), requestUUID)
+	api.we.RateLimiter.SetRequestEnd(gethcommon.Address(userID), requestUUID)
 	audit(api.we, "RPC call. uid=%s, method=%s args=%v result=%v error=%v time=%d", hexutils.BytesToHex(userID), method, crit, res, err, time.Since(requestStartTime).Milliseconds())
 	return *res, err
 }

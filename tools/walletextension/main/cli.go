@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"time"
 
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
@@ -61,12 +62,12 @@ const (
 	storeIncomingTxsUsage   = "Flag to enable storing incoming transactions in the database for debugging purposes. Default: true"
 
 	rateLimitUserComputeTimeName    = "rateLimitUserComputeTime"
-	rateLimitUserComputeTimeDefault = 100
-	rateLimitUserComputeTimeUsage   = "rateLimitUserComputeTime represents number of ms that we allow per user in rateLimitWindow time. If rateLimitUserComputeTime is set to 0, rate limiting is turned off. Default: 100."
+	rateLimitUserComputeTimeDefault = 200 * time.Millisecond
+	rateLimitUserComputeTimeUsage   = "rateLimitUserComputeTime represents how much compute time is user allowed to used in rateLimitWindow time. If rateLimitUserComputeTime is set to 0, rate limiting is turned off. Default: 200ms."
 
 	rateLimitWindowName    = "rateLimitWindow"
-	rateLimitWindowDefault = 1000
-	rateLimitWindowUsage   = "rateLimitWindow represents window in which we allow one user to use compute time defined with rateLimitUserComputeTime  Default: 1000"
+	rateLimitWindowDefault = 1000 * time.Millisecond
+	rateLimitWindowUsage   = "rateLimitWindow represents time window in which we allow one user to use compute time defined with rateLimitUserComputeTimeMs  Default: 1000ms"
 
 	rateLimitMaxConcurrentRequestsName    = "maxConcurrentRequestsPerUser"
 	rateLimitMaxConcurrentRequestsDefault = 3
@@ -87,8 +88,8 @@ func parseCLIArgs() wecommon.Config {
 	dbConnectionURL := flag.String(dbConnectionURLFlagName, dbConnectionURLFlagDefault, dbConnectionURLFlagUsage)
 	tenChainID := flag.Int(tenChainIDName, tenChainIDDefault, tenChainIDFlagUsage)
 	storeIncomingTransactions := flag.Bool(storeIncomingTxs, storeIncomingTxsDefault, storeIncomingTxsUsage)
-	rateLimitUserComputeTime := flag.Int(rateLimitUserComputeTimeName, rateLimitUserComputeTimeDefault, rateLimitUserComputeTimeUsage)
-	rateLimitWindow := flag.Int(rateLimitWindowName, rateLimitWindowDefault, rateLimitWindowUsage)
+	rateLimitUserComputeTime := flag.Duration(rateLimitUserComputeTimeName, rateLimitUserComputeTimeDefault, rateLimitUserComputeTimeUsage)
+	rateLimitWindow := flag.Duration(rateLimitWindowName, rateLimitWindowDefault, rateLimitWindowUsage)
 	rateLimitMaxConcurrentRequests := flag.Int(rateLimitMaxConcurrentRequestsName, rateLimitMaxConcurrentRequestsDefault, rateLimitMaxConcurrentRequestsUsage)
 	flag.Parse()
 

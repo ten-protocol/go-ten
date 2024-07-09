@@ -154,7 +154,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		return nil, rpcErr
 	})
 
-	w.RateLimiter.UpdateRequest(gethcommon.Address(userID), requestUUID)
+	w.RateLimiter.SetRequestEnd(gethcommon.Address(userID), requestUUID)
 
 	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(userID), method, args, res, err, time.Since(requestStartTime).Milliseconds())
 	return res, err

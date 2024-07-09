@@ -1,5 +1,7 @@
 package common
 
+import "time"
+
 // Config contains the configuration required by the WalletExtension.
 type Config struct {
 	WalletExtensionHost            string
@@ -14,7 +16,7 @@ type Config struct {
 	DBConnectionURL                string
 	TenChainID                     int
 	StoreIncomingTxs               bool
-	RateLimitUserComputeTime       int
-	RateLimitWindow                int
+	RateLimitUserComputeTime       time.Duration
+	RateLimitWindow                time.Duration
 	RateLimitMaxConcurrentRequests int
 }

@@ -1,10 +1,11 @@
 package ratelimiter
 
 import (
-	"log"
 	"math"
 	"sync"
 	"time"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/google/uuid"
 
@@ -42,8 +43,8 @@ func (rl *RateLimiter) AddRequest(userID common.Address, interval RequestInterva
 	return id
 }
 
-// UpdateRequest updates the end time of a request interval given its UUID.
-func (rl *RateLimiter) UpdateRequest(userID common.Address, id uuid.UUID) {
+// SetRequestEnd updates the end time of a request interval given its UUID.
+func (rl *RateLimiter) SetRequestEnd(userID common.Address, id uuid.UUID) {
 	if user, userExists := rl.users[userID]; userExists {
 		if request, requestExists := user.CurrentRequests[id]; requestExists {
 			rl.mu.Lock()
@@ -52,10 +53,10 @@ func (rl *RateLimiter) UpdateRequest(userID common.Address, id uuid.UUID) {
 			request.End = &now
 			user.CurrentRequests[id] = request
 		} else {
-			log.Printf("Request with ID %s not found for user %s.", id, userID.Hex())
+			rl.logger.Info("Request with ID %s not found for user %s.", id, userID.Hex())
 		}
 	} else {
-		log.Printf("User %s not found while trying to update the request.", userID.Hex())
+		rl.logger.Info("User %s not found while trying to update the request.", userID.Hex())
 	}
 }
 
@@ -77,30 +78,36 @@ func (rl *RateLimiter) CountOpenRequests(userID common.Address) int {
 
 // SumComputeTime sums the compute time for requests within the rate limiter's window
 // and returns it as uint32 milliseconds.
-func (rl *RateLimiter) SumComputeTime(userID common.Address) uint32 {
+func (rl *RateLimiter) SumComputeTime(userID common.Address) time.Duration {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
 	var totalComputeTime time.Duration
 	if user, exists := rl.users[userID]; exists {
-		cutoff := time.Now().Add(-time.Duration(rl.window) * time.Millisecond)
+		cutoff := time.Now().Add(-rl.window)
 		for _, interval := range user.CurrentRequests {
+			// if the request has ended and it's within the window, add the compute time
 			if interval.End != nil && interval.End.After(cutoff) {
 				totalComputeTime += interval.End.Sub(interval.Start)
 			}
+			// if the request hasn't ended yet, add the compute time until now
+			if interval.End == nil {
+				totalComputeTime += time.Since(interval.Start)
+			}
 		}
 	}
-	return uint32(totalComputeTime / time.Millisecond)
+	return totalComputeTime
 }
 
 type RateLimiter struct {
 	mu                    sync.Mutex
 	users                 map[common.Address]*RateLimitUser
-	userComputeTime       uint32
-	window                uint32
+	userComputeTime       time.Duration
+	window                time.Duration
 	maxConcurrentRequests uint32
 	totalRequests         uint64
 	rateLimitedRequests   uint64
+	logger                gethlog.Logger
 }
 
 // IncrementTotalRequests increments the total requests counter by 1 with thread safety.
@@ -124,19 +131,20 @@ func (rl *RateLimiter) GetMaxConcurrentRequest() uint32 {
 	return rl.maxConcurrentRequests
 }
 
-// GetUserComputeTime returns the user compute time in milliseconds.
-func (rl *RateLimiter) GetUserComputeTime() uint32 {
+// GetUserComputeTime returns the user compute time
+func (rl *RateLimiter) GetUserComputeTime() time.Duration {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 	return rl.userComputeTime
 }
 
-func NewRateLimiter(rateLimitUserComputeTime uint32, rateLimitWindow uint32, concurrentRequestsLimit uint32) *RateLimiter {
+func NewRateLimiter(rateLimitUserComputeTime time.Duration, rateLimitWindow time.Duration, concurrentRequestsLimit uint32, logger gethlog.Logger) *RateLimiter {
 	rl := &RateLimiter{
 		users:                 make(map[common.Address]*RateLimitUser),
 		userComputeTime:       rateLimitUserComputeTime,
 		window:                rateLimitWindow,
 		maxConcurrentRequests: concurrentRequestsLimit,
+		logger:                logger,
 	}
 	go rl.logRateLimitedStats()
 	go rl.periodicPrune()
@@ -156,26 +164,29 @@ func (rl *RateLimiter) Allow(userID common.Address) (bool, uuid.UUID) {
 	// Check if the user has reached the maximum number of concurrent requests
 	if uint32(rl.CountOpenRequests(userID)) >= rl.GetMaxConcurrentRequest() {
 		rl.IncrementRateLimitedRequests()
+		rl.logger.Info("User %s has reached the maximum number of concurrent requests.", userID.Hex())
 		return false, zeroUUID
 	}
 
 	// Check if user is in limits of rate limiting
 	userComputeTimeForUser := rl.SumComputeTime(userID)
-	if userComputeTimeForUser <= rl.userComputeTime {
-		requestUUID := rl.AddRequest(userID, RequestInterval{Start: time.Now()})
-		return true, requestUUID
+	if userComputeTimeForUser > rl.userComputeTime {
+		rl.IncrementRateLimitedRequests()
+		rl.logger.Info("User %s has reached the rate limit threshold.", userID.Hex())
+		return false, zeroUUID
 	}
-	rl.IncrementRateLimitedRequests()
-	return false, zeroUUID
+
+	requestUUID := rl.AddRequest(userID, RequestInterval{Start: time.Now()})
+	return true, requestUUID
 }
 
 // PruneRequests deletes all requests that have ended before the rate limiter's window.
 func (rl *RateLimiter) PruneRequests() {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
-
+	startTime := time.Now()
 	// delete all the requests that have
-	cutoff := time.Now().Add(-time.Duration(rl.window) * time.Millisecond)
+	cutoff := time.Now().Add(-rl.window)
 	for userID, user := range rl.users {
 		for id, interval := range user.CurrentRequests {
 			if interval.End != nil && interval.End.Before(cutoff) {
@@ -186,12 +197,16 @@ func (rl *RateLimiter) PruneRequests() {
 			delete(rl.users, userID)
 		}
 	}
+	timeTaken := time.Since(startTime)
+	if timeTaken > 1*time.Second {
+		rl.logger.Warn("PruneRequests completed in %s", timeTaken)
+	}
 }
 
 // periodically prunes the requests that have ended before the rate limiter's window every 10 * window milliseconds
 func (rl *RateLimiter) periodicPrune() {
 	for {
-		time.Sleep(time.Duration(rl.window) * time.Millisecond * 10)
+		time.Sleep(rl.window * 10)
 		rl.PruneRequests()
 	}
 }
@@ -210,6 +225,6 @@ func (rl *RateLimiter) logRateLimitedStats() {
 		if math.IsNaN(rateLimitedPercentage) {
 			rateLimitedPercentage = 0
 		}
-		log.Printf("Total requests: %d, Rate-limited requests: %d (%.4f%%)", totalRequests, rateLimitedRequests, rateLimitedPercentage)
+		rl.logger.Info("Total requests: %d, Rate-limited requests: %d (%.4f%%)", totalRequests, rateLimitedRequests, rateLimitedPercentage)
 	}
 }

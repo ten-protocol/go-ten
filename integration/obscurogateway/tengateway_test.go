@@ -74,8 +74,8 @@ func TestTenGateway(t *testing.T) {
 		DBType:                         "sqlite",
 		TenChainID:                     443,
 		StoreIncomingTxs:               true,
-		RateLimitUserComputeTime:       200,
-		RateLimitWindow:                1000,
+		RateLimitUserComputeTime:       200 * time.Millisecond,
+		RateLimitWindow:                1 * time.Second,
 		RateLimitMaxConcurrentRequests: 3,
 	}
 
