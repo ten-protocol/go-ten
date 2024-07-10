@@ -261,7 +261,8 @@ func (ac *AuthObsClient) GetPrivateTransactions(ctx context.Context, address *ge
 		return nil, 0, fmt.Errorf("unable to marshal query params - %w", err)
 	}
 	var result common.PrivateTransactionsQueryResponse
-	err = ac.rpcClient.CallContext(ctx, &result, rpc.GetStorageAt, common.ListPrivateTransactionsCQMethod, string(queryParamStr), nil)
+	// todo @matt don't use the string method name here and avoid stringifying the params
+	err = ac.rpcClient.CallContext(ctx, &result, rpc.GetPersonalTransactions, common.ListPrivateTransactionsCQMethod, string(queryParamStr), nil)
 	if err != nil {
 		return nil, 0, err
 	}

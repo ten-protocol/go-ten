@@ -165,8 +165,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		if err != nil {
 			return nil, fmt.Errorf("unable to extract address from custom query params: %w", err)
 		}
-		// todo: we should be calling something like `ten_getPrivateTransactions` here, this custom query stuff only needs to be in the gateway layer
-		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{account: userAddr}, "eth_getStorageAt", address.Hex(), params, nil)
+		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{account: userAddr}, "scan_getPersonalTransactions", address.Hex(), params, nil)
 		if err != nil {
 			return nil, fmt.Errorf("unable to execute custom query: %w", err)
 		}
