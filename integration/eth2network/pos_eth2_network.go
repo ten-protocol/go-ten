@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/go/common/retry"
 	"os"
 	"os/exec"
 	"path"
@@ -15,13 +13,16 @@ import (
 	"strings"
 	"time"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/integration"
+
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 const (
-	eth2BinariesRelPath = "../.build/eth2_bin"
-	gethBinaryName      = "geth"
-	prefundedAddr       = "0x123463a4B065722E99115D6c222f267d9cABb524"
+	_eth2BinariesRelPath = "../.build/eth2_bin"
+	_gethBinaryName      = "geth"
 )
 
 var (
@@ -60,11 +61,9 @@ type PosEth2Network interface {
 }
 
 func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPPort int, beaconRPCPort int, timeout time.Duration) PosEth2Network {
-
 	// Build dirs are suffixed with a timestamp so multiple executions don't collide
 	timestamp := strconv.FormatInt(time.Now().UnixMicro(), 10)
 
-	// set the paths
 	buildDir := path.Join(basepath, "../.build/eth2", timestamp)
 
 	gethBinaryPath := path.Join(binDir, gethFileNameVersion, _gethBinaryName)
@@ -140,11 +139,11 @@ func (n *PosImpl) Stop() error {
 }
 
 func (n *PosImpl) checkExistingNetworks() error {
-	//port := n.gethWSPort
-	//_, err := ethclient.Dial(fmt.Sprintf("ws://127.0.0.1:%d", port))
-	//if err == nil {
-	//	return fmt.Errorf("unexpected geth node %d is active before the network is started")
-	//}
+	port := n.gethWSPort
+	_, err := ethclient.Dial(fmt.Sprintf("ws://127.0.0.1:%d", port))
+	if err == nil {
+		return fmt.Errorf("unexpected geth node is active before the network is started")
+	}
 	return nil
 }
 
@@ -188,54 +187,27 @@ func (n *PosImpl) waitForMergeEvent(startTime time.Time) error {
 }
 
 func (n *PosImpl) prefundedBalanceActive(client *ethclient.Client) error {
-	balance, err := client.BalanceAt(context.Background(), gethcommon.HexToAddress(prefundedAddr), nil)
+	balance, err := client.BalanceAt(context.Background(), gethcommon.HexToAddress(integration.GethNodeAddress), nil)
 	if err != nil {
-		return fmt.Errorf("unable to check balance for account %s - %w", prefundedAddr, err)
+		return fmt.Errorf("unable to check balance for account %s - %w", integration.GethNodeAddress, err)
 	}
 	if balance.Cmp(gethcommon.Big0) == 0 {
-		return fmt.Errorf("unexpected %s balance for account %s", balance.String(), prefundedAddr)
+		return fmt.Errorf("unexpected %s balance for account %s", balance.String(), integration.GethNodeAddress)
 	}
-	fmt.Printf("Account %s prefunded with %s\n", prefundedAddr, balance.String())
+	fmt.Printf("Account %s prefunded with %s\n", integration.GethNodeAddress, balance.String())
 
-	return nil
-}
-
-func initialiseGethScript(gethBinary, prysmBinary, gethdataDir string) error {
-	scriptPath := filepath.Join(".", "start-initialise-geth.sh")
-
-	cmd := exec.Command("/bin/bash", scriptPath)
-
-	//cmd := exec.Command("/bin/bash", scriptPath,
-	//	"--geth-binary", gethBinary,
-	//	"--prysmctl-binary", prysmBinary,
-	//	"--gethdata-dir", gethdataDir,
-	//)
-
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-
-	err := cmd.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start script: %w", err)
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		return fmt.Errorf("script execution failed: %w\nOutput: %s", err, out.String())
-	}
-
-	fmt.Printf("Script output: %s\n", out.String())
 	return nil
 }
 
 func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
-	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string) error {
+	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string,
+) error {
 	scriptPath := filepath.Join(".", "start-pos-network.sh")
-
 	beaconRPCPortStr := strconv.Itoa(beaconRPCPort)
 	gethHTTPPortStr := strconv.Itoa(gethHTTPPort)
 	gethWSPortStr := strconv.Itoa(gethWSPort)
+
+	// TODO move all this to a config file
 	cmd := exec.Command("/bin/bash", scriptPath,
 		"--geth-http", gethHTTPPortStr,
 		"--geth-ws", gethWSPortStr,
@@ -253,21 +225,12 @@ func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort int, buildDir, b
 		"--validatordata-dir", validatordataDir,
 	)
 
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = os.Stderr
 
-	err := cmd.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start script: %w", err)
+	if out, err := cmd.Output(); err != nil {
+		fmt.Printf("%s\n", out)
+		panic(err)
 	}
-
-	err = cmd.Wait()
-	if err != nil {
-		return fmt.Errorf("script execution failed: %w\nOutput: %s", err, out.String())
-	}
-
-	fmt.Printf("Script output: %s\n", out.String())
 	return nil
 }
 

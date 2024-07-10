@@ -87,7 +87,7 @@ ${PRYSMCTL_BINARY} testnet generate-genesis \
 	         --genesis-time-delay 30 \
            --chain-config-file config.yml \
            --geth-genesis-json-in genesis.json \
-	         --output-ssz genesis.ssz \
+	         --output-ssz "${BEACONDATA_DIR}/genesis.ssz" \
 	         --geth-genesis-json-out genesis.json
 
 sleep 1
@@ -103,14 +103,14 @@ echo "Geth genesis initialized"
 # Run the Prysm beacon node
 ${BEACON_BINARY} --datadir="${BEACONDATA_DIR}" \
                --min-sync-peers 0 \
-               --genesis-state genesis.ssz \
+               --genesis-state "${BEACONDATA_DIR}/genesis.ssz" \
                --bootstrap-node= \
                --interop-eth1data-votes \
                --chain-config-file config.yml \
                --contract-deployment-block 0 \
                --chain-id 32382 \
                --rpc-host=127.0.0.1 \
-               --rpc-port=4000 \
+               --rpc-port="${BEACON_RPC_PORT}" \
                --accept-terms-of-use \
                --jwt-secret jwt.hex \
                --suggested-fee-recipient 0x123463a4B065722E99115D6c222f267d9cABb524 \
@@ -121,7 +121,7 @@ ${BEACON_BINARY} --datadir="${BEACONDATA_DIR}" \
 echo "Beacon node started"
 
 # Run Prysm validator client
-${VALIDATOR_BINARY} --beacon-rpc-provider=127.0.0.1:4000 \
+${VALIDATOR_BINARY} --beacon-rpc-provider=127.0.0.1:"${BEACON_RPC_PORT}" \
             --datadir="${VALIDATORDATA_DIR}" \
             --accept-terms-of-use \
             --interop-num-validators 2 \
@@ -131,7 +131,9 @@ echo "Validator client started"
 # Run go-ethereum
 ${GETH_BINARY} --http \
        --http.api eth,net,web3 \
+       --http.port="${GETH_HTTP_PORT}" \
        --ws --ws.api eth,net,web3 \
+       --ws.port="${GETH_WS_PORT}" \
        --authrpc.jwtsecret jwt.hex \
        --datadir="${GETHDATA_DIR}" \
        --nodiscover \
@@ -141,4 +143,4 @@ ${GETH_BINARY} --http \
        --password ./password.txt > "${GETH_LOG_FILE}" 2>&1 &
 
 echo "Geth network started"
-sleep 500
+sleep 10
