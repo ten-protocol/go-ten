@@ -130,7 +130,7 @@ func (n *PosImpl) Start() error {
 		n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath, n.gethBinaryPath,
 		n.gethdataDir, n.beacondataDir, n.validatordataDir)
 	if err != nil {
-		return fmt.Errorf("could not run the script to start l1 pos network. cause: %s", err.Error())
+		return fmt.Errorf("could not run the script to start l1 pos network. Cause: %s", err.Error())
 	}
 	return n.waitForMergeEvent(startTime)
 }
@@ -197,6 +197,35 @@ func (n *PosImpl) prefundedBalanceActive(client *ethclient.Client) error {
 	}
 	fmt.Printf("Account %s prefunded with %s\n", prefundedAddr, balance.String())
 
+	return nil
+}
+
+func initialiseGethScript(gethBinary, prysmBinary, gethdataDir string) error {
+	scriptPath := filepath.Join(".", "start-initialise-geth.sh")
+
+	cmd := exec.Command("/bin/bash", scriptPath)
+
+	//cmd := exec.Command("/bin/bash", scriptPath,
+	//	"--geth-binary", gethBinary,
+	//	"--prysmctl-binary", prysmBinary,
+	//	"--gethdata-dir", gethdataDir,
+	//)
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+
+	err := cmd.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start script: %w", err)
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		return fmt.Errorf("script execution failed: %w\nOutput: %s", err, out.String())
+	}
+
+	fmt.Printf("Script output: %s\n", out.String())
 	return nil
 }
 

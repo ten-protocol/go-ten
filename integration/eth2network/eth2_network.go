@@ -239,50 +239,6 @@ func (n *Impl) Start() error {
 		return err
 	}
 
-	// start each of the nodes
-	for i, nodeDataDir := range n.dataDirs {
-		dataDir := nodeDataDir
-		nodeID := i
-		go func() {
-			n.gethProcesses[nodeID], err = n.gethStartNode(
-				n.gethAuthRPCPorts[nodeID],
-				n.gethNetworkPorts[nodeID],
-				n.gethHTTPPorts[nodeID],
-				n.gethWSPorts[nodeID],
-				dataDir,
-				n.preFundedMinerPKs[nodeID])
-			if err != nil {
-				panic(err)
-			}
-			time.Sleep(time.Second)
-		}()
-	}
-
-	// wait for each of the nodes to start
-	for i := range n.dataDirs {
-		nodeID := i
-		eg.Go(func() error {
-			return n.waitForNodeUp(nodeID, time.Minute)
-		})
-	}
-	err = eg.Wait()
-	if err != nil {
-		return err
-	}
-
-	// link nodes together by providing the enodes (eth node address) of the other nodes
-	enodes := make([]string, len(n.dataDirs))
-	for i := 0; i < len(n.dataDirs); i++ {
-		enodes[i], err = n.gethGetEnode(i)
-		if err != nil {
-			return err
-		}
-	}
-	err = n.gethImportEnodes(enodes)
-	if err != nil {
-		return err
-	}
-
 	// import prefunded key to each node and start mining
 	//for i := range n.dataDirs {
 	//	nodeID := i
@@ -329,6 +285,50 @@ func (n *Impl) Start() error {
 				panic(err)
 			}
 		}()
+	}
+
+	// start each of the nodes
+	for i, nodeDataDir := range n.dataDirs {
+		dataDir := nodeDataDir
+		nodeID := i
+		go func() {
+			n.gethProcesses[nodeID], err = n.gethStartNode(
+				n.gethAuthRPCPorts[nodeID],
+				n.gethNetworkPorts[nodeID],
+				n.gethHTTPPorts[nodeID],
+				n.gethWSPorts[nodeID],
+				dataDir,
+				n.preFundedMinerPKs[nodeID])
+			if err != nil {
+				panic(err)
+			}
+			time.Sleep(time.Second)
+		}()
+	}
+
+	// wait for each of the nodes to start
+	for i := range n.dataDirs {
+		nodeID := i
+		eg.Go(func() error {
+			return n.waitForNodeUp(nodeID, time.Minute)
+		})
+	}
+	err = eg.Wait()
+	if err != nil {
+		return err
+	}
+
+	// link nodes together by providing the enodes (eth node address) of the other nodes
+	enodes := make([]string, len(n.dataDirs))
+	for i := 0; i < len(n.dataDirs); i++ {
+		enodes[i], err = n.gethGetEnode(i)
+		if err != nil {
+			return err
+		}
+	}
+	err = n.gethImportEnodes(enodes)
+	if err != nil {
+		return err
 	}
 
 	// blocking wait until the network reaches the Merge
@@ -403,6 +403,7 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 		"--http.addr", "0.0.0.0",
 		"--http.port", fmt.Sprintf("%d", httpPort),
 		"--http.api", "admin,eth,net,web3,debug,txpool",
+		"--authrpc.jwtsecret", "jwt.hex",
 		"--ws",
 		"--ws.api", "admin,eth,net,web3,debug,txpool",
 		"--ws.port", fmt.Sprintf("%d", wsPort),
@@ -429,7 +430,7 @@ func (n *Impl) prysmGenerateGenesis() error {
 		"generate-genesis",
 		"--fork", "deneb",
 		"--num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
-		"--genesis-time-delay", "600",
+		"--genesis-time-delay", "30",
 		"--chain-config-file", n.prysmConfigPath,
 		"--geth-genesis-json-in", n.gethGenesisPath,
 		"--geth-genesis-json-out", n.gethGenesisPath,
@@ -478,7 +479,7 @@ func (n *Impl) prysmStartBeaconNode(gethPort, rpcPort, p2pPort int, nodeDataDir 
 		"--rpc-host", "127.0.0.1",
 		"--rpc-port", fmt.Sprintf("%d", rpcPort),
 		"--accept-terms-of-use",
-		"--jwt-secret", path.Join(nodeDataDir, "geth", "jwtsecret"),
+		"--jwt-secret", "jwt.hex",
 		"--minimum-peers-per-subnet", "0",
 		"--enable-debug-rpc-endpoints",
 		"--execution-endpoint", path.Join(nodeDataDir, "geth.ipc"),

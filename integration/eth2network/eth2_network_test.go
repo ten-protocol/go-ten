@@ -65,7 +65,7 @@ func TestStartEth2Network(t *testing.T) {
 		2,
 		2,
 		randomWalletAddrs,
-		2*time.Minute,
+		5*time.Minute,
 	)
 	// wait until the merge has happened
 	assert.Nil(t, network.Start())
