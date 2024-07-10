@@ -63,16 +63,16 @@ type (
 	EncryptedTx           []byte // A single transaction, encoded as a JSON list of transaction binary hexes and encrypted using the enclave's public key
 	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup, with the nonce prepended.
 
-	EncryptedParamsGetBalance      []byte // The params for an RPC getBalance request, as a JSON object encrypted with the public key of the enclave.
-	EncryptedParamsCall            []byte // As above, but for an RPC call request.
-	EncryptedParamsGetTxByHash     []byte // As above, but for an RPC getTransactionByHash request.
-	EncryptedParamsGetTxReceipt    []byte // As above, but for an RPC getTransactionReceipt request.
-	EncryptedParamsLogSubscription []byte // As above, but for an RPC logs subscription request.
-	EncryptedParamsSendRawTx       []byte // As above, but for an RPC sendRawTransaction request.
-	EncryptedParamsGetTxCount      []byte // As above, but for an RPC getTransactionCount request.
-	EncryptedParamsEstimateGas     []byte // As above, but for an RPC estimateGas request.
-	EncryptedParamsGetLogs         []byte // As above, but for an RPC getLogs request.
-	EncryptedParamsGetStorageAt    []byte
+	EncryptedParamsGetBalance              []byte // The params for an RPC getBalance request, as a JSON object encrypted with the public key of the enclave.
+	EncryptedParamsCall                    []byte // As above, but for an RPC call request.
+	EncryptedParamsGetTxByHash             []byte // As above, but for an RPC getTransactionByHash request.
+	EncryptedParamsGetTxReceipt            []byte // As above, but for an RPC getTransactionReceipt request.
+	EncryptedParamsLogSubscription         []byte // As above, but for an RPC logs subscription request.
+	EncryptedParamsSendRawTx               []byte // As above, but for an RPC sendRawTransaction request.
+	EncryptedParamsGetTxCount              []byte // As above, but for an RPC getTransactionCount request.
+	EncryptedParamsEstimateGas             []byte // As above, but for an RPC estimateGas request.
+	EncryptedParamsGetLogs                 []byte // As above, but for an RPC getLogs request.
+	EncryptedParamsGetPersonalTransactions []byte
 
 	Nonce               = uint64
 	EncodedRollup       []byte

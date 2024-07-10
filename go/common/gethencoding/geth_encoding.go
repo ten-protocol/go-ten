@@ -345,20 +345,10 @@ func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(ctx context.Context,
 	return (*types.Block)(unsafe.Pointer(&lb)), nil
 }
 
-// ExtractPrivateCustomQuery is designed to support a wide range of custom Ten queries.
+// ExtractPrivateTransactionsQuery is designed to support a wide range of custom Ten queries.
 // The first parameter here is the method name, which is used to determine the query type.
 // The second parameter is the query parameters.
-func ExtractPrivateCustomQuery(methodName any, queryParams any) (*common.ListPrivateTransactionsQueryParams, error) {
-	// we expect the first parameter to be a string
-	methodNameStr, ok := methodName.(string)
-	if !ok {
-		return nil, fmt.Errorf("expected methodName as string but was type %T", methodName)
-	}
-	// currently we only have to support this custom query method in the enclave
-	if methodNameStr != common.ListPrivateTransactionsCQMethod {
-		return nil, fmt.Errorf("unsupported method %s", methodNameStr)
-	}
-
+func ExtractPrivateTransactionsQuery(methodName any, queryParams any) (*common.ListPrivateTransactionsQueryParams, error) {
 	// we expect second param to be a json string
 	queryParamsStr, ok := queryParams.(string)
 	if !ok {

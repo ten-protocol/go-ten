@@ -452,7 +452,7 @@ func (s *RPCServer) GetTotalContractCount(ctx context.Context, _ *generated.GetT
 }
 
 func (s *RPCServer) GetReceiptsByAddress(ctx context.Context, req *generated.GetReceiptsByAddressRequest) (*generated.GetReceiptsByAddressResponse, error) {
-	enclaveResp, sysError := s.enclave.GetCustomQuery(ctx, req.EncryptedParams)
+	enclaveResp, sysError := s.enclave.GetPersonalTransactions(ctx, req.EncryptedParams)
 	if sysError != nil {
 		s.logger.Error("Error getting receipt", log.ErrKey, sysError)
 		return &generated.GetReceiptsByAddressResponse{SystemError: toRPCError(sysError)}, nil

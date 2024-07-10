@@ -855,15 +855,14 @@ func (e *enclaveImpl) GetTotalContractCount(ctx context.Context) (*big.Int, comm
 	return e.storage.GetContractCount(ctx)
 }
 
-// GetCustomQuery is a generic query method for queries that don't match the eth API.
-// todo: get rid of this method and use specific methods for each query (e.g. GetPersonalTransactions)
-func (e *enclaveImpl) GetCustomQuery(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, common.SystemError) {
+// GetPersonalTransactions returns the recent private transactions for the given account
+func (e *enclaveImpl) GetPersonalTransactions(ctx context.Context, encryptedParams common.EncryptedParamsGetPersonalTransactions) (*responses.PersonalTransactionsResponse, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetPrivateTransactions with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetCustomQueryValidate, rpc.GetCustomQueryExecute)
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetPersonalTransactionsValidate, rpc.GetPersonalTransactionsExecute)
 }
 
 func (e *enclaveImpl) EnclavePublicConfig(context.Context) (*common.EnclavePublicConfig, common.SystemError) {
