@@ -428,11 +428,14 @@ func BatchWasExecuted(ctx context.Context, db *sql.DB, hash common.L2BatchHash) 
 }
 
 func GetTransactionsPerAddress(ctx context.Context, db *sql.DB, config *params.ChainConfig, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
-	return selectReceipts(ctx, db, config, "where tx.sender_address = ? ORDER BY height DESC LIMIT ? OFFSET ? ", address.Bytes(), pagination.Size, pagination.Offset)
+	return selectReceipts(ctx, db, config, "join externally_owned_account eoa on tx.sender_address = eoa.id where eoa.address = ? ORDER BY height DESC LIMIT ? OFFSET ? ", address.Bytes(), pagination.Size, pagination.Offset)
 }
 
 func CountTransactionsPerAddress(ctx context.Context, db *sql.DB, address *gethcommon.Address) (uint64, error) {
-	row := db.QueryRowContext(ctx, "select count(1) from receipt join tx on tx.id=receipt.tx join batch on batch.sequence=receipt.batch "+" where tx.sender_address = ?", address.Bytes())
+	row := db.QueryRowContext(ctx, "select count(1) from receipt "+
+		"join tx on tx.id=receipt.tx "+
+		"join externally_owned_account eoa on eoa.id = tx.sender_address "+
+		"where eoa.address = ?", address.Bytes())
 
 	var count uint64
 	err := row.Scan(&count)

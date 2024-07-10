@@ -29,6 +29,8 @@ const (
 	_sepoliaValidator1PK = "<pk>" // account 0x<acc>
 )
 
+// Spins up a local network with a gateway, with all processes debuggable. The network will run until the test is stopped.
+// Note: If you want to access the gateway frontend you need to `npm run build` its frontend with NEXT_PUBLIC_API_GATEWAY_URL=http://localhost:11180
 func TestRunLocalNetwork(t *testing.T) {
 	networktest.TestOnlyRunsInIDE(t)
 	networktest.EnsureTestLogsSetUp("local-geth-network")

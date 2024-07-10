@@ -104,12 +104,12 @@ GRANT ALL ON obsdb.tx TO obscuro;
 
 create table if not exists obsdb.receipt
 (
-    id                       INTEGER AUTO_INCREMENT,
-    content                  mediumblob,
-    tx                       int,
-    batch                    int NOT NULL,
+    id      INTEGER AUTO_INCREMENT,
+    content mediumblob,
+    tx      int,
+    batch   int NOT NULL,
     INDEX (batch),
-    INDEX (tx),
+    INDEX (tx, batch),
     primary key (id)
 );
 GRANT ALL ON obsdb.receipt TO obscuro;
@@ -166,6 +166,7 @@ create table if not exists obsdb.event_log
     log_idx    INTEGER NOT NULL,
     receipt    INTEGER NOT NULL,
     primary key (id),
-    INDEX (receipt, event_type, topic1, topic2, topic3)
+    INDEX (receipt, event_type, topic1, topic2, topic3),
+    INDEX (event_type, topic1, topic2, topic3)
 );
 GRANT ALL ON obsdb.event_log TO obscuro;
