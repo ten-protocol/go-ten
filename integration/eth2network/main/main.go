@@ -16,7 +16,7 @@ func main() {
 
 	fmt.Printf("Starting eth2network with params: %+v\n", config)
 
-	binariesPath, err := eth2network.EnsureBinariesExist()
+	binDir, err := eth2network.EnsureBinariesExist()
 	if err != nil {
 		panic(err)
 	}
@@ -24,22 +24,12 @@ func main() {
 	if config.onlyDownload {
 		os.Exit(0)
 	}
-
-	eth2Network := eth2network.NewEth2Network(
-		binariesPath,
-		config.logToFile,
-		config.gethHTTPStartPort,
+	eth2Network := eth2network.NewPosEth2Network(
+		binDir,
+		config.gethAuthRPCStartPort, // RPC
 		config.gethWSStartPort,
-		config.gethAuthRPCStartPort,
-		config.gethNetworkStartPort,
-		config.prysmBeaconRPCStartPort,
-		config.prysmBeaconRPCStartPort,
-		config.chainID,
-		config.numNodes,
-		config.blockTimeSecs,
-		config.slotsPerEpoch,
-		config.secondsPerSlot,
-		config.prefundedAddrs,
+		config.gethNetworkStartPort,    // HTTP
+		config.prysmBeaconRPCStartPort, // RPC
 		5*time.Minute,
 	)
 
@@ -54,7 +44,7 @@ func main() {
 }
 
 // Shuts down the Geth network when an interrupt is received.
-func handleInterrupt(network eth2network.Eth2Network) {
+func handleInterrupt(network eth2network.PosEth2Network) {
 	interruptChannel := make(chan os.Signal, 1)
 	signal.Notify(interruptChannel, os.Interrupt, syscall.SIGTERM)
 	<-interruptChannel
