@@ -30,7 +30,7 @@ const _startPort = integration.StartPortSmartContractTests
 type netInfo struct {
 	ethClients  []ethadapter.EthClient
 	wallets     []wallet.Wallet
-	eth2Network eth2network.Eth2Network
+	eth2Network eth2network.PosEth2Network
 }
 
 var testLogs = "../.build/noderunner/"
