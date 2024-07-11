@@ -53,46 +53,28 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, bl
 	return l1Data, ethClients, eth2Network
 }
 
-func StartGethNetwork(wallets *params.SimWallets, startPort int, blockDurationSeconds int) (eth2network.Eth2Network, error) {
+func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.PosEth2Network, error) {
 	// make sure the geth network binaries exist
-	path, err := eth2network.EnsureBinariesExist()
+	binDir, err := eth2network.EnsureBinariesExist()
 	if err != nil {
 		return nil, err
 	}
 
-	// get the node wallet addresses to prefund them with Eth, so they can submit rollups, deploy contracts, deposit to the bridge, etc
-	walletAddresses := []string{e2eTestPrefundedL1Addr}
-	for _, w := range wallets.AllEthWallets() {
-		walletAddresses = append(walletAddresses, w.Address().String())
-	}
-
-	fmt.Printf("Prefunded wallet addresses: %d\n", len(walletAddresses))
-
-	// kickoff the network with the prefunded wallet addresses
-	eth2Network := eth2network.NewEth2Network(
-		path,
-		true,
-		startPort,
+	network := eth2network.NewPosEth2Network(
+		binDir,
+		startPort+integration.DefaultGethAUTHPortOffset, // RPC
 		startPort+integration.DefaultGethWSPortOffset,
-		startPort+integration.DefaultGethAUTHPortOffset,
-		startPort+integration.DefaultGethNetworkPortOffset,
-		startPort+integration.DefaultPrysmHTTPPortOffset,
-		startPort+integration.DefaultPrysmP2PPortOffset,
-		1337,
-		1,
-		blockDurationSeconds,
-		2,
-		2,
-		walletAddresses,
-		2*time.Minute,
+		startPort+integration.DefaultGethNetworkPortOffset, // HTTP
+		startPort+integration.DefaultPrysmP2PPortOffset,    // RPC
+		3*time.Minute,
 	)
 
-	err = eth2Network.Start()
+	err = network.Start()
 	if err != nil {
 		return nil, err
 	}
 
-	return eth2Network, nil
+	return network, nil
 }
 
 func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.SimWallets, deployERC20s bool) (*params.L1TenData, error) {

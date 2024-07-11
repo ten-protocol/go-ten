@@ -1,14 +1,12 @@
 package noderunner
 
 import (
-	"encoding/hex"
 	"fmt"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common/profiler"
 	"github.com/ten-protocol/go-ten/go/node"
 	"github.com/ten-protocol/go-ten/go/rpc"
@@ -16,7 +14,6 @@ import (
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/eth2network"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
@@ -27,7 +24,7 @@ const (
 )
 
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
-func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
+func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 	testlog.Setup(&testlog.Cfg{
 		LogDir:      _testLogs,
 		TestType:    "noderunner",
@@ -36,30 +33,22 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	})
 
 	// todo run the noderunner test with different obscuro node instances
-	newNode, hostAddr := createInMemoryNode(t)
+	newNode := createInMemoryNode()
 
-	binariesPath, err := eth2network.EnsureBinariesExist()
+	binDir, err := eth2network.EnsureBinariesExist()
 	if err != nil {
 		panic(err)
 	}
 
-	network := eth2network.NewEth2Network(
-		binariesPath,
-		true,
-		_startPort,
+	network := eth2network.NewPosEth2Network(
+		binDir,
+		_startPort+integration.DefaultGethAUTHPortOffset, // RPC
 		_startPort+integration.DefaultGethWSPortOffset,
-		_startPort+integration.DefaultGethAUTHPortOffset,
-		_startPort+integration.DefaultGethNetworkPortOffset,
-		_startPort+integration.DefaultPrysmHTTPPortOffset,
-		_startPort+integration.DefaultPrysmP2PPortOffset,
-		1337,
-		1,
-		1,
-		2,
-		2,
-		[]string{hostAddr.String()},
-		2*time.Minute,
+		_startPort+integration.DefaultGethNetworkPortOffset, // HTTP
+		_startPort+integration.DefaultPrysmP2PPortOffset,    // RPC
+		3*time.Minute,
 	)
+
 	defer network.Stop() //nolint: errcheck
 	err = network.Start()
 	if err != nil {
@@ -115,16 +104,10 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	t.Fatalf("Zero rollups have been produced after ten seconds. Something is wrong. Latest error was: %s", err)
 }
 
-func createInMemoryNode(t *testing.T) (node.Node, gethcommon.Address) {
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	hostAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
-
+func createInMemoryNode() node.Node {
 	nodeCfg := node.NewNodeConfig(
-		node.WithPrivateKey(hex.EncodeToString(crypto.FromECDSA(privateKey))),
-		node.WithHostID(hostAddress.String()),
+		node.WithPrivateKey(integration.GethNodePK),
+		node.WithHostID(integration.GethNodeAddress),
 		node.WithEnclaveWSPort(_startPort+integration.DefaultEnclaveOffset),
 		node.WithHostHTTPPort(_startPort+integration.DefaultHostRPCHTTPOffset),
 		node.WithHostWSPort(_startPort+integration.DefaultHostRPCWSOffset),
@@ -134,5 +117,5 @@ func createInMemoryNode(t *testing.T) (node.Node, gethcommon.Address) {
 		node.WithL1BlockTime(1*time.Second),
 	)
 
-	return NewInMemNode(nodeCfg), hostAddress
+	return NewInMemNode(nodeCfg)
 }

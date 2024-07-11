@@ -47,7 +47,7 @@ func init() { //nolint:gochecknoinits
 // runGethNetwork runs a geth network with one prefunded wallet
 func runGethNetwork(t *testing.T) *netInfo {
 	// make sure the geth network binaries exist
-	path, err := eth2network.EnsureBinariesExist()
+	binDir, err := eth2network.EnsureBinariesExist()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,23 +55,13 @@ func runGethNetwork(t *testing.T) *netInfo {
 	// prefund one wallet as the worker wallet
 	workerWallet := datagenerator.RandomWallet(integration.EthereumChainID)
 
-	// define + run the network
-	eth2Network := eth2network.NewEth2Network(
-		path,
-		true,
-		_startPort,
+	eth2Network := eth2network.NewPosEth2Network(
+		binDir,
+		_startPort+integration.DefaultGethAUTHPortOffset, // RPC
 		_startPort+integration.DefaultGethWSPortOffset,
-		_startPort+integration.DefaultGethAUTHPortOffset,
-		_startPort+integration.DefaultGethNetworkPortOffset,
-		_startPort+integration.DefaultPrysmHTTPPortOffset,
-		_startPort+integration.DefaultPrysmP2PPortOffset,
-		1337,
-		1,
-		1,
-		2,
-		2,
-		[]string{workerWallet.Address().String()},
-		2*time.Minute,
+		_startPort+integration.DefaultGethNetworkPortOffset, // HTTP
+		_startPort+integration.DefaultPrysmP2PPortOffset,    // RPC
+		3*time.Minute,
 	)
 
 	if err = eth2Network.Start(); err != nil {

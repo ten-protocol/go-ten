@@ -35,4 +35,10 @@ const (
 const (
 	EthereumChainID = 1337
 	TenChainID      = 443
+	GethChainID     = 32382
+)
+
+const (
+	GethNodeAddress = "0x123463a4b065722e99115d6c222f267d9cabb524"
+	GethNodePK      = "2e0834786285daccd064ca17f1654f67b4aef298acbb82cef9ec422fb4975622"
 )
