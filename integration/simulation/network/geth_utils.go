@@ -54,13 +54,20 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.Po
 		return nil, err
 	}
 
+	// get the node wallet addresses to prefund them with Eth, so they can submit rollups, deploy contracts, deposit to the bridge, etc
+	walletAddresses := []string{integration.GethNodeAddress}
+	for _, w := range wallets.AllEthWallets() {
+		walletAddresses = append(walletAddresses, w.Address().String())
+	}
+
 	network := eth2network.NewPosEth2Network(
 		binDir,
 		startPort+integration.DefaultGethAUTHPortOffset, // RPC
 		startPort+integration.DefaultGethWSPortOffset,
 		startPort+integration.DefaultGethNetworkPortOffset, // HTTP
 		startPort+integration.DefaultPrysmP2PPortOffset,    // RPC
-		3*time.Minute,
+		6*time.Minute,
+		walletAddresses...,
 	)
 
 	err = network.Start()

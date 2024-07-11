@@ -36,7 +36,7 @@ func TestEnsureBinariesAreAvail(t *testing.T) {
 	t.Logf("Successfully downloaded files to %s", path)
 }
 
-func TestStartPostEth2Network(t *testing.T) {
+func TestStartPosEth2Network(t *testing.T) {
 	binDir, err := EnsureBinariesExist()
 	assert.Nil(t, err)
 
@@ -46,7 +46,7 @@ func TestStartPostEth2Network(t *testing.T) {
 		_startPort+integration.DefaultGethWSPortOffset,
 		_startPort+integration.DefaultGethNetworkPortOffset, // HTTP
 		_startPort+integration.DefaultPrysmP2PPortOffset,    // RPC
-		3*time.Minute,
+		6*time.Minute,
 	)
 
 	// wait until the merge has happened

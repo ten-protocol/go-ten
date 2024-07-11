@@ -3,6 +3,7 @@ package eth2network
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -59,8 +60,7 @@ type PosEth2Network interface {
 	GenesisBytes() []byte
 }
 
-func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPPort int, beaconRPCPort int, timeout time.Duration) PosEth2Network {
-	// Build dirs are suffixed with a timestamp so multiple executions don't collide
+func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPPort int, beaconRPCPort int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
 	timestamp := strconv.FormatInt(time.Now().UnixMicro(), 10)
 
 	buildDir := path.Join(basepath, "../.build/eth2", timestamp)
@@ -97,9 +97,9 @@ func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPP
 		panic(err)
 	}
 
-	genesis, err := genesisBytes()
+	genesis, err := fundWallets(walletsToFund)
 	if err != nil {
-		panic("Could not generate genesis")
+		panic(fmt.Sprintf("could not generate genesis. cause: %s", err.Error()))
 	}
 
 	return &PosImpl{
@@ -119,7 +119,7 @@ func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPP
 		gethdataDir:              gethdataDir,
 		beacondataDir:            beacondataDir,
 		validatordataDir:         validatordataDir,
-		gethGenesisBytes:         genesis,
+		gethGenesisBytes:         []byte(genesis),
 		timeout:                  timeout,
 	}
 }
@@ -211,7 +211,7 @@ func (n *PosImpl) GenesisBytes() []byte {
 func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
 	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string,
 ) error {
-	scriptPath := filepath.Join(".", "start-pos-network.sh")
+	scriptPath := filepath.Join(basepath, "start-pos-network.sh")
 	beaconRPCPortStr := strconv.Itoa(beaconRPCPort)
 	gethHTTPPortStr := strconv.Itoa(gethHTTPPort)
 	gethWSPortStr := strconv.Itoa(gethWSPort)
@@ -221,6 +221,7 @@ func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort int, buildDir, b
 		"--geth-http", gethHTTPPortStr,
 		"--geth-ws", gethWSPortStr,
 		"--beacon-rpc", beaconRPCPortStr,
+		//"--base-path", basepath,
 		"--build-dir", buildDir,
 		"--beacon-log", beaconLogFile,
 		"--validator-log", validatorLogFile,
@@ -271,11 +272,37 @@ func stopProcesses() error {
 	return nil
 }
 
-func genesisBytes() ([]byte, error) {
-	fileName := "genesis.json"
-	genesis, err := os.ReadFile(fileName)
+// we parse the wallet addresses and append them to the genesis json, using an intermediate file which is cleaned up
+// at the end of the network script. genesis bytes are returned to be parsed to the enclave config
+func fundWallets(walletsToFund []string) (string, error) {
+	filePath := filepath.Join(basepath, "genesis-init.json")
+	genesis, err := os.ReadFile(filePath)
 	if err != nil {
-		return make([]byte, 0), err
+		return "", err
 	}
-	return genesis, nil
+
+	var genesisJSON map[string]interface{}
+	err = json.Unmarshal(genesis, &genesisJSON)
+	if err != nil {
+		return "", err
+	}
+
+	walletsToFund = append(walletsToFund, integration.GethNodeAddress)
+	for _, account := range walletsToFund {
+		genesisJSON["alloc"].(map[string]interface{})[account] = map[string]string{"balance": "7500000000000000000000000000000"}
+	}
+
+	// Marshal it back to a JSON string with indentation
+	formattedGenesisBytes, err := json.MarshalIndent(genesisJSON, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	newFile := filepath.Join(basepath, "genesis-updated.json")
+	err = os.WriteFile(newFile, formattedGenesisBytes, 0o644) //nolint:gosec
+	if err != nil {
+		return "", err
+	}
+
+	return string(formattedGenesisBytes), nil
 }
