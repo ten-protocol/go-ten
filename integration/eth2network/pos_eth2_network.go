@@ -38,9 +38,6 @@ type PosImpl struct {
 	gethBinaryPath           string
 	prysmBinaryPath          string
 	prysmBeaconBinaryPath    string
-	gethGenesisPath          string
-	prysmGenesisPath         string
-	prysmConfigPath          string
 	prysmValidatorBinaryPath string
 	gethWSPort               int
 	gethRPCPort              int

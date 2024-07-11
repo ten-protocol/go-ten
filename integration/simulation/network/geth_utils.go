@@ -22,12 +22,6 @@ import (
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
 )
 
-const (
-	// These are the addresses that the end-to-end tests expect to be prefunded when run locally. Corresponds to
-	// private key hex "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb".
-	e2eTestPrefundedL1Addr = "0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944"
-)
-
 func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int) (*params.L1TenData, []ethadapter.EthClient, eth2network.PosEth2Network) {
 	eth2Network, err := StartGethNetwork(wallets, startPort)
 	if err != nil {
