@@ -190,6 +190,10 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		if err != nil {
 			return nil, fmt.Errorf("unable to execute custom query: %w", err)
 		}
+		if resp == nil {
+			return nil, nil
+		}
+
 		// turn resp object into hexutil.Bytes
 		serialised, err := json.Marshal(resp)
 		if err != nil {

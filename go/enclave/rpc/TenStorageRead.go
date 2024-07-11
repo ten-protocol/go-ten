@@ -89,6 +89,11 @@ func TenStorageReadExecute(builder *CallBuilder[StorageReadWithBlock, string], r
 		return nil
 	}
 
+	if len(value) == 0 {
+		builder.ReturnValue = nil
+		return nil
+	}
+
 	encodedResult := hexutil.Encode(value)
 	builder.ReturnValue = &encodedResult
 	return nil
