@@ -31,14 +31,14 @@ const (
 
 func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
 	// Create the in memory obscuro nodes, each connect each to a geth node
-	obscuroNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
-	obscuroHosts := make([]host.Host, params.NumberOfNodes)
+	tenNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
+	tenHosts := make([]host.Host, params.NumberOfNodes)
 	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithInboundP2PDisabled)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
-		obscuroNodes[i] = createInMemObscuroNode(
+		tenNodes[i] = createInMemObscuroNode(
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
@@ -54,11 +54,11 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			true,
 			params.AvgBlockDuration,
 		)
-		obscuroHosts[i] = obscuroNodes[i].Host()
+		tenHosts[i] = tenNodes[i].Host()
 	}
 
 	// start each obscuro node
-	for _, m := range obscuroNodes {
+	for _, m := range tenNodes {
 		t := m
 		go func() {
 			err := t.Start()
@@ -70,7 +70,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 
 	// Create a handle to each node
 	obscuroClients := make([]rpc.Client, params.NumberOfNodes)
-	for i, node := range obscuroNodes {
+	for i, node := range tenNodes {
 		obscuroClients[i] = p2p.NewInMemObscuroClient(node)
 	}
 	time.Sleep(100 * time.Millisecond)

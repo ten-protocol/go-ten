@@ -16,7 +16,7 @@ type networkInMemGeth struct {
 	l2Clients []rpc.Client
 
 	// geth
-	eth2Network eth2network.Eth2Network
+	eth2Network eth2network.PosEth2Network
 	gethClients []ethadapter.EthClient
 	wallets     *params.SimWallets
 }
@@ -34,7 +34,6 @@ func (n *networkInMemGeth) Create(params *params.SimParams, _ *stats.Stats) (*RP
 		n.wallets,
 		params.StartPort,
 		params.NumberOfNodes,
-		int(params.AvgBlockDuration.Seconds()),
 	)
 
 	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&params.L1TenData.MgmtContractAddress, testlog.Logger())
@@ -42,7 +41,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, _ *stats.Stats) (*RP
 		&params.L1TenData.ObxErc20Address, &params.L1TenData.EthErc20Address)
 
 	// Start the obscuro nodes and return the handles
-	n.l2Clients = startInMemoryObscuroNodes(params, n.eth2Network.GethGenesis(), n.gethClients)
+	n.l2Clients = startInMemoryObscuroNodes(params, n.eth2Network.GenesisBytes(), n.gethClients)
 
 	obscuroClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
 	for idx, l2Client := range n.l2Clients {

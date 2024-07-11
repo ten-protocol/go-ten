@@ -52,12 +52,14 @@ type PosImpl struct {
 	gethdataDir              string
 	beacondataDir            string
 	validatordataDir         string
+	gethGenesisBytes         []byte
 	timeout                  time.Duration
 }
 
 type PosEth2Network interface {
 	Start() error
 	Stop() error
+	GenesisBytes() []byte
 }
 
 func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPPort int, beaconRPCPort int, timeout time.Duration) PosEth2Network {
@@ -98,6 +100,11 @@ func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPP
 		panic(err)
 	}
 
+	genesis, err := genesisBytes()
+	if err != nil {
+		panic("Could not generate genesis")
+	}
+
 	return &PosImpl{
 		buildDir:                 buildDir,
 		binDir:                   binDir,
@@ -115,6 +122,7 @@ func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPP
 		gethdataDir:              gethdataDir,
 		beacondataDir:            beacondataDir,
 		validatordataDir:         validatordataDir,
+		gethGenesisBytes:         genesis,
 		timeout:                  timeout,
 	}
 }
@@ -199,6 +207,10 @@ func (n *PosImpl) prefundedBalanceActive(client *ethclient.Client) error {
 	return nil
 }
 
+func (n *PosImpl) GenesisBytes() []byte {
+	return n.gethGenesisBytes
+}
+
 func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
 	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string,
 ) error {
@@ -260,4 +272,13 @@ func stopProcesses() error {
 	}
 
 	return nil
+}
+
+func genesisBytes() ([]byte, error) {
+	fileName := "genesis.json"
+	genesis, err := os.ReadFile(fileName)
+	if err != nil {
+		return make([]byte, 0), err
+	}
+	return genesis, nil
 }

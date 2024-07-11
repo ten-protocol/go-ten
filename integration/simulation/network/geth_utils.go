@@ -28,8 +28,8 @@ const (
 	e2eTestPrefundedL1Addr = "0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944"
 )
 
-func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, blockDurationSeconds int) (*params.L1TenData, []ethadapter.EthClient, eth2network.Eth2Network) {
-	eth2Network, err := StartGethNetwork(wallets, startPort, blockDurationSeconds)
+func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int) (*params.L1TenData, []ethadapter.EthClient, eth2network.PosEth2Network) {
+	eth2Network, err := StartGethNetwork(wallets, startPort)
 	if err != nil {
 		panic(fmt.Errorf("error starting geth network %w", err))
 	}
@@ -40,7 +40,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, bl
 		panic(fmt.Errorf("error connecting to te first host %w", err))
 	}
 
-	l1Data, err := DeployObscuroNetworkContracts(tmpEthClient, wallets, true)
+	l1Data, err := DeployTenNetworkContracts(tmpEthClient, wallets, true)
 	if err != nil {
 		panic(fmt.Errorf("error deploying obscuro contract %w", err))
 	}
@@ -77,7 +77,7 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.Po
 	return network, nil
 }
 
-func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.SimWallets, deployERC20s bool) (*params.L1TenData, error) {
+func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimWallets, deployERC20s bool) (*params.L1TenData, error) {
 	bytecode, err := constants.Bytecode()
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.
 	}, nil
 }
 
-func StopEth2Network(clients []ethadapter.EthClient, netw eth2network.Eth2Network) {
+func StopEth2Network(clients []ethadapter.EthClient, netw eth2network.PosEth2Network) {
 	// Stop the clients first
 	for _, c := range clients {
 		if c != nil {

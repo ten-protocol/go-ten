@@ -149,7 +149,7 @@ func (s *InMemDevNetwork) Start() {
 	if s.l1SetupData == nil {
 		// this is a new network, deploy the contracts to the L1
 		fmt.Println("Deploying obscuro contracts to L1")
-		s.deployObscuroNetworkContracts()
+		s.deployTenNetworkContracts()
 	}
 	fmt.Println("Starting obscuro nodes")
 	s.startNodes()
@@ -253,10 +253,10 @@ func (s *InMemDevNetwork) CleanUp() {
 	time.Sleep(3 * time.Second)
 }
 
-func (s *InMemDevNetwork) deployObscuroNetworkContracts() {
+func (s *InMemDevNetwork) deployTenNetworkContracts() {
 	client := s.l1Network.GetClient(0)
 	// note: we don't currently deploy ERC20s here, don't want to waste gas on sepolia
-	l1SetupData, err := network.DeployObscuroNetworkContracts(client, s.networkWallets, false)
+	l1SetupData, err := network.DeployTenNetworkContracts(client, s.networkWallets, false)
 	if err != nil {
 		panic(err)
 	}

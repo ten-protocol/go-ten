@@ -31,7 +31,7 @@ type networkOfSocketNodes struct {
 	hostWebsocketURLs []string
 
 	// geth
-	eth2Network    eth2network.Eth2Network
+	eth2Network    eth2network.PosEth2Network
 	gethClients    []ethadapter.EthClient
 	wallets        *params.SimWallets
 	obscuroClients []*obsclient.ObsClient
@@ -49,7 +49,6 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		n.wallets,
 		simParams.StartPort,
 		simParams.NumberOfNodes,
-		int(simParams.AvgBlockDuration.Seconds()),
 	)
 
 	simParams.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&simParams.L1TenData.MgmtContractAddress, testlog.Logger())
