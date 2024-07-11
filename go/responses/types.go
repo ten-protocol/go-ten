@@ -34,6 +34,7 @@ type (
 	Logs                         = EnclaveResponse
 	Receipts                     = EnclaveResponse
 	PersonalTransactionsResponse = EnclaveResponse
+	StorageSlotResponse          = EnclaveResponse
 )
 
 // Data Types

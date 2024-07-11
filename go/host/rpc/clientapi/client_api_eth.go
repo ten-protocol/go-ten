@@ -179,8 +179,12 @@ func (api *EthereumAPI) GetTransactionByHash(ctx context.Context, encryptedParam
 }
 
 // GetStorageAt is not currently supported (some narrow version of it may be supported in the future for proxy contracts).
-func (api *EthereumAPI) GetStorageAt(ctx context.Context, encryptedParams common.EncryptedParamsGetPersonalTransactions) (*responses.Receipts, error) {
-	return nil, fmt.Errorf("GetStorageAt is not supported on TEN")
+func (api *EthereumAPI) GetStorageAt(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageSlot) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.EnclaveClient().GetStorageSlot(ctx, encryptedParams)
+	if sysError != nil {
+		return api.handleSysError("GetStorageAt", sysError)
+	}
+	return *enclaveResponse, nil
 }
 
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.
