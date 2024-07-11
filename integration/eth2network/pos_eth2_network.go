@@ -221,7 +221,7 @@ func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort int, buildDir, b
 		"--geth-http", gethHTTPPortStr,
 		"--geth-ws", gethWSPortStr,
 		"--beacon-rpc", beaconRPCPortStr,
-		//"--base-path", basepath,
+		"--base-path", basepath,
 		"--build-dir", buildDir,
 		"--beacon-log", beaconLogFile,
 		"--validator-log", validatorLogFile,
@@ -234,8 +234,6 @@ func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort int, buildDir, b
 		"--beacondata-dir", beacondataDir,
 		"--validatordata-dir", validatordataDir,
 	)
-
-	cmd.Stderr = os.Stderr
 
 	if out, err := cmd.Output(); err != nil {
 		fmt.Printf("%s\n", out)

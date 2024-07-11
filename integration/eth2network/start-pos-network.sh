@@ -5,6 +5,7 @@ BEACON_RPC_PORT=4000
 GETH_HTTP_PORT=8545
 GETH_WS_PORT=8546
 BUILD_DIR="./build"
+BASE_PATH="./"
 GETH_BINARY="./geth"
 BEACON_BINARY="./beacon-chain"
 PRYSMCTL_BINARY="./prysmctl"
@@ -19,7 +20,7 @@ VALIDATORDATA_DIR="/validatordata"
 # Function to display usage
 usage() {
     echo "Usage: $0 [--geth-http GETH_HTTP_PORT] [--geth-ws GETH_WS_PORT] [--beacon-rpc BEACON_RPC_PORT] [--build-dir BUILD_DIR ]
-    [--beacon-log BEACON_LOG_FILE] [--validator-log VALIDATOR_LOG_FILE] [--geth-log GETH_LOG_FILE]
+    [--base-path BASE_PATH ] [--beacon-log BEACON_LOG_FILE] [--validator-log VALIDATOR_LOG_FILE] [--geth-log GETH_LOG_FILE]
     [--geth-binary GETH_BINARY] [--beacon-binary BEACON_BINARY] [--prysmctl-binary PRYSMCTL_BINARY]
     [--validator-binary VALIDATOR_BINARY] [--gethdata-dir GETHDATA_DIR] [--beacondata-dir BEACONDATA_DIR]
     [--validatordata-dir VALIDATORDATA_DIR]"
@@ -33,6 +34,7 @@ while [[ "$#" -gt 0 ]]; do
         --geth-http) GETH_HTTP_PORT="$2"; shift ;;
         --geth-ws) GETH_WS_PORT="$2"; shift ;;
         --build-dir) BUILD_DIR="$2"; shift ;;
+        --base-path) BASE_PATH="$2"; shift ;;
         --geth-binary) GETH_BINARY="$2"; shift ;;
         --beacon-binary) BEACON_BINARY="$2"; shift ;;
         --prysmctl-binary) PRYSMCTL_BINARY="$2"; shift ;;
@@ -79,24 +81,24 @@ if [ ! -f "${VALIDATOR_BINARY}" ]; then
 fi
 
 # Needed as this is overwritten each time and the timestamps are incredibly specific
-cp genesis-init.json genesis.json
+cp "${BASE_PATH}/genesis-updated.json" "${BASE_PATH}/genesis.json"
 
 ${PRYSMCTL_BINARY} testnet generate-genesis \
            --fork deneb \
            --num-validators 2 \
 	         --genesis-time-delay 30 \
-           --chain-config-file config.yml \
-           --geth-genesis-json-in genesis.json \
+           --chain-config-file "${BASE_PATH}/config.yml" \
+           --geth-genesis-json-in "${BASE_PATH}/genesis.json" \
 	         --output-ssz "${BEACONDATA_DIR}/genesis.ssz" \
-	         --geth-genesis-json-out genesis.json
+	         --geth-genesis-json-out "${BASE_PATH}/genesis.json"
 
 sleep 1
 echo "Prysm genesis generated"
 
-echo -e "\n\n" | ${GETH_BINARY} --datadir="${GETHDATA_DIR}" account import pk.txt
+echo -e "\n\n" | ${GETH_BINARY} --datadir="${GETHDATA_DIR}" account import "${BASE_PATH}/pk.txt"
 echo "Private key imported into gethdata"
 
-${GETH_BINARY} --datadir="${GETHDATA_DIR}" init genesis.json
+${GETH_BINARY} --datadir="${GETHDATA_DIR}" init "${BASE_PATH}/genesis.json"
 sleep 1
 echo "Geth genesis initialized"
 
@@ -106,13 +108,13 @@ ${BEACON_BINARY} --datadir="${BEACONDATA_DIR}" \
                --genesis-state "${BEACONDATA_DIR}/genesis.ssz" \
                --bootstrap-node= \
                --interop-eth1data-votes \
-               --chain-config-file config.yml \
+               --chain-config-file "${BASE_PATH}/config.yml" \
                --contract-deployment-block 0 \
                --chain-id 32382 \
                --rpc-host=127.0.0.1 \
                --rpc-port="${BEACON_RPC_PORT}" \
                --accept-terms-of-use \
-               --jwt-secret jwt.hex \
+               --jwt-secret "${BASE_PATH}/jwt.hex" \
                --suggested-fee-recipient 0x123463a4B065722E99115D6c222f267d9cABb524 \
                --minimum-peers-per-subnet 0 \
                --enable-debug-rpc-endpoints \
@@ -125,7 +127,7 @@ ${VALIDATOR_BINARY} --beacon-rpc-provider=127.0.0.1:"${BEACON_RPC_PORT}" \
             --datadir="${VALIDATORDATA_DIR}" \
             --accept-terms-of-use \
             --interop-num-validators 2 \
-            --chain-config-file config.yml > "${VALIDATOR_LOG_FILE}" 2>&1 &
+            --chain-config-file "${BASE_PATH}/config.yml" > "${VALIDATOR_LOG_FILE}" 2>&1 &
 echo "Validator client started"
 
 # Run go-ethereum
@@ -134,13 +136,16 @@ ${GETH_BINARY} --http \
        --http.port="${GETH_HTTP_PORT}" \
        --ws --ws.api eth,net,web3 \
        --ws.port="${GETH_WS_PORT}" \
-       --authrpc.jwtsecret jwt.hex \
+       --authrpc.jwtsecret "${BASE_PATH}/jwt.hex" \
        --datadir="${GETHDATA_DIR}" \
        --nodiscover \
        --syncmode full \
        --allow-insecure-unlock \
        --unlock 0x123463a4b065722e99115d6c222f267d9cabb524 \
-       --password ./password.txt > "${GETH_LOG_FILE}" 2>&1 &
+       --password "${BASE_PATH}/password.txt" > "${GETH_LOG_FILE}" 2>&1 &
 
 echo "Geth network started"
+
+#clean up intermediate file
+#rm "${BASE_PATH}/genesis-updated.json"
 sleep 10
