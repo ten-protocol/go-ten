@@ -194,13 +194,12 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 			return nil, nil
 		}
 
-		// turn resp object into hexutil.Bytes
-		serialised, err := json.Marshal(resp)
-		if err != nil {
-			return nil, fmt.Errorf("unable to marshal response object: %w", err)
+		respHex, ok := (*resp).(string)
+		if !ok {
+			return nil, fmt.Errorf("unable to decode response")
 		}
-		return serialised, nil
-
+		// turn resp object into hexutil.Bytes
+		return hexutil.MustDecode(respHex), nil
 	}
 }
 

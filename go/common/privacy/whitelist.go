@@ -15,6 +15,8 @@ func NewWhitelist() *Whitelist {
 	whitelistMap[toEip1967HashHex("eip1967.proxy.beacon")] = true
 	whitelistMap[toEip1967HashHex("eip1967.proxy.implementation")] = true
 	whitelistMap[toEip1967FallbackHashHex("org.zeppelinos.proxy.implementation")] = true
+	whitelistMap[toEip1967HashHex("eip1967.proxy.admin")] = true
+	whitelistMap[toEip1967FallbackHashHex("org.zeppelinos.proxy.admin")] = true
 
 	return &Whitelist{
 		AllowedStorageSlots: whitelistMap,

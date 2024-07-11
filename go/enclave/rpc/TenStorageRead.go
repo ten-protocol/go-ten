@@ -76,7 +76,25 @@ func TenStorageReadExecute(builder *CallBuilder[StorageReadWithBlock, string], r
 		return nil
 	}
 
-	value, err := stateDb.GetTrie().GetStorage(builder.Param.address, common.HexToHash(builder.Param.storageSlot).Bytes())
+	storageSlot, err := common.ParseHexOrString(builder.Param.storageSlot)
+	if err != nil {
+		builder.Err = err
+		return nil
+	}
+
+	account, err := stateDb.GetTrie().GetAccount(builder.Param.address)
+	if err != nil {
+		builder.Err = err
+		return nil
+	}
+
+	trie, err := stateDb.Database().OpenTrie(account.Root)
+	if err != nil {
+		builder.Err = err
+		return nil
+	}
+
+	value, err := trie.GetStorage(builder.Param.address, storageSlot)
 	if err != nil {
 		rpc.logger.Debug("Failed eth_getStorageAt.", log.ErrKey, err)
 
