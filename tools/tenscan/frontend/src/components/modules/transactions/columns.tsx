@@ -7,7 +7,8 @@ import { statuses } from "./constants";
 import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
 import TruncatedAddress from "../common/truncated-address";
-import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
+import { formatTimeAgo } from "@/src/lib/utils";
+import Link from "next/link";
 
 export const columns: ColumnDef<Transaction>[] = [
   {
@@ -19,12 +20,14 @@ export const columns: ColumnDef<Transaction>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            #{formatNumber(row.getValue("BatchHeight"))}
+            #{row.getValue("BatchHeight")}
           </span>
         </div>
       );
     },
-    enableSorting: false,
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
     enableHiding: false,
   },
 
@@ -42,7 +45,9 @@ export const columns: ColumnDef<Transaction>[] = [
         </div>
       );
     },
-    enableSorting: false,
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
     enableHiding: false,
   },
 
@@ -52,7 +57,12 @@ export const columns: ColumnDef<Transaction>[] = [
       <DataTableColumnHeader column={column} title="Transaction Hash" />
     ),
     cell: ({ row }) => {
-      return <TruncatedAddress address={row.getValue("TransactionHash")} />;
+      return (
+        <TruncatedAddress
+          address={row.getValue("TransactionHash")}
+          link={`/tx/${row.original.TransactionHash}`}
+        />
+      );
     },
     enableSorting: false,
     enableHiding: false,

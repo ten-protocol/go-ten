@@ -51,9 +51,14 @@ func GetTransactionListing(db HostDB, pagination *common.QueryPagination) (*comm
 		return nil, err
 	}
 
+	totalTx, err := GetTotalTxCount(db)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch the transaction count. Cause: %w", err)
+	}
+
 	return &common.TransactionListingResponse{
 		TransactionsData: txs,
-		Total:            uint64(len(txs)),
+		Total:            totalTx.Uint64(),
 	}, nil
 }
 

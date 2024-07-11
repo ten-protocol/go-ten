@@ -5,7 +5,7 @@ export const tenscanLink = "https://testnet.tenscan.io";
 
 export const socialLinks = {
   github: "https://github.com/ten-protocol",
-  discord: "https://discord.gg/fVXstswaJY",
+  discord: "https://discord.gg/tenprotocol",
   twitter: "https://twitter.com/tenprotocol",
   twitterHandle: "@tenprotocol",
 };
@@ -43,7 +43,7 @@ export const tenChainIDDecimal = 443;
 export const tenChainIDHex = "0x" + tenChainIDDecimal.toString(16); // Convert to hexadecimal and prefix with '0x'
 export const METAMASK_CONNECTION_TIMEOUT = 3000;
 
-export const userStorageAddress = "0x0000000000000000000000000000000000000000";
+export const userStorageAddress = "0x0000000000000000000000000000000000000001";
 
 export const nativeCurrency = {
   name: "Sepolia Ether",

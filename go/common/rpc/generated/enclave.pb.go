@@ -5087,7 +5087,7 @@ var file_enclave_proto_depIdxs = []int32{
 	10, // 69: generated.EnclaveProto.StreamL2Updates:input_type -> generated.StreamL2UpdatesRequest
 	16, // 70: generated.EnclaveProto.DebugEventLogRelevancy:input_type -> generated.DebugEventLogRelevancyRequest
 	14, // 71: generated.EnclaveProto.GetTotalContractCount:input_type -> generated.GetTotalContractCountRequest
-	2,  // 72: generated.EnclaveProto.GetReceiptsByAddress:input_type -> generated.GetReceiptsByAddressRequest
+	2,  // 72: generated.EnclaveProto.GetPrivateTransactions:input_type -> generated.GetReceiptsByAddressRequest
 	0,  // 73: generated.EnclaveProto.EnclavePublicConfig:input_type -> generated.EnclavePublicConfigRequest
 	27, // 74: generated.EnclaveProto.Status:output_type -> generated.StatusResponse
 	29, // 75: generated.EnclaveProto.Attestation:output_type -> generated.AttestationResponse
@@ -5119,7 +5119,7 @@ var file_enclave_proto_depIdxs = []int32{
 	11, // 101: generated.EnclaveProto.StreamL2Updates:output_type -> generated.EncodedUpdateResponse
 	17, // 102: generated.EnclaveProto.DebugEventLogRelevancy:output_type -> generated.DebugEventLogRelevancyResponse
 	15, // 103: generated.EnclaveProto.GetTotalContractCount:output_type -> generated.GetTotalContractCountResponse
-	3,  // 104: generated.EnclaveProto.GetReceiptsByAddress:output_type -> generated.GetReceiptsByAddressResponse
+	3,  // 104: generated.EnclaveProto.GetPrivateTransactions:output_type -> generated.GetReceiptsByAddressResponse
 	1,  // 105: generated.EnclaveProto.EnclavePublicConfig:output_type -> generated.EnclavePublicConfigResponse
 	74, // [74:106] is the sub-list for method output_type
 	42, // [42:74] is the sub-list for method input_type

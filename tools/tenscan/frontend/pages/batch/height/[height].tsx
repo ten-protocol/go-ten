@@ -1,6 +1,6 @@
-import { fetchBatchByHash } from "@/api/batches";
+import { fetchBatchByHeight } from "@/api/batches";
 import Layout from "@/src/components/layouts/default-layout";
-import { BatchDetailsComponent } from "@/src/components/modules/batches/batch-details";
+import { BatchHeightDetailsComponent } from "@/src/components/modules/batches/batch-height-details";
 import {
   Card,
   CardHeader,
@@ -14,11 +14,11 @@ import { useRouter } from "next/router";
 
 export default function Batch() {
   const router = useRouter();
-  const { hash } = router.query;
+  const { height } = router.query;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["batch", hash],
-    queryFn: () => fetchBatchByHash(hash as string),
+    queryKey: ["batchHeight", height],
+    queryFn: () => fetchBatchByHeight(height as string),
   });
 
   const batchDetails = data?.item;
@@ -30,13 +30,13 @@ export default function Batch() {
       ) : batchDetails ? (
         <Card className="col-span-3">
           <CardHeader>
-            <CardTitle>Batch #{Number(batchDetails?.Header?.number)}</CardTitle>
+            <CardTitle>Batch #{Number(batchDetails?.header?.number)}</CardTitle>
             <CardDescription>
-              Overview of the batch #{Number(batchDetails?.Header?.number)}
+              Overview of the batch #{Number(batchDetails?.header?.number)}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <BatchDetailsComponent batchDetails={batchDetails} />
+            <BatchHeightDetailsComponent batchDetails={batchDetails} />
           </CardContent>
         </Card>
       ) : (
@@ -44,4 +44,10 @@ export default function Batch() {
       )}
     </Layout>
   );
+}
+
+export async function getServerSideProps(context: any) {
+  return {
+    props: {},
+  };
 }

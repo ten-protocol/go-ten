@@ -5,12 +5,13 @@ import {
   CardContent,
 } from "@/src/components/ui/card";
 import { Skeleton } from "@/src/components/ui/skeleton";
+import { DashboardAnalyticsData } from "@/src/types/interfaces";
 import React from "react";
 
 export default function AnalyticsCard({
   item,
 }: {
-  item: { title: string; value: string; change: string; icon: any };
+  item: DashboardAnalyticsData;
 }) {
   return (
     <Card>
@@ -26,7 +27,7 @@ export default function AnalyticsCard({
             <Skeleton className="w-[100px] h-[20px] rounded-full" />
           )}
         </div>
-        {item.change && (
+        {item?.change && (
           <p className="text-xs text-muted-foreground">{item.change}</p>
         )}
       </CardContent>

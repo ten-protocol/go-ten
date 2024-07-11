@@ -15,7 +15,7 @@ import { PersonalTransactionsResponse } from "../types/interfaces/TransactionInt
 import { useRouter } from "next/router";
 import { showToast } from "../components/ui/use-toast";
 import { ToastType } from "../types/interfaces";
-import { ethMethods } from "../routes";
+import {ethMethods, tenCustomQueryMethods} from "../routes";
 
 export const useTransactionsService = () => {
   const { query } = useRouter();
@@ -61,11 +61,12 @@ export const useTransactionsService = () => {
             ...options,
           },
         };
-        const personalTxData = await provider.send(ethMethods.getStorageAt, [
-          "listPersonalTransactions",
-          requestPayload,
+        const personalTxResp = await provider.send(ethMethods.getStorageAt, [
+          tenCustomQueryMethods.listPersonalTransactions,
+          JSON.stringify(requestPayload),
           null,
         ]);
+        const personalTxData = jsonHexToObj(personalTxResp);
         setPersonalTxns(personalTxData);
       }
     } catch (error) {
@@ -96,3 +97,7 @@ export const useTransactionsService = () => {
     price,
   };
 };
+
+function jsonHexToObj(hex: string) {
+  return JSON.parse(Buffer.from(hex.slice(2), "hex").toString());
+}

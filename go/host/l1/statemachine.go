@@ -17,8 +17,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
-type ForkUniqueID = gethcommon.Hash
-type RollupNumber = uint64
+type (
+	ForkUniqueID = gethcommon.Hash
+	RollupNumber = uint64
+)
 
 type CrossChainStateMachine interface {
 	GetRollupData(number RollupNumber) (RollupInfo, error)
@@ -75,9 +77,11 @@ func NewCrossChainStateMachine(
 func (c *crossChainStateMachine) Start() error {
 	return nil
 }
+
 func (c *crossChainStateMachine) Stop() error {
 	return nil
 }
+
 func (c *crossChainStateMachine) HealthStatus(context.Context) host.HealthStatus {
 	errMsg := ""
 	if c.hostStopper.IsStopping() {
@@ -121,6 +125,16 @@ func (c *crossChainStateMachine) PublishNextBundle() error {
 		return err
 	}
 
+	alreadyPublished, err := c.IsBundleAlreadyPublished(bundle)
+	if err != nil {
+		return err
+	}
+
+	if alreadyPublished {
+		c.currentRollup++
+		return nil
+	}
+
 	err = c.publisher.PublishCrossChainBundle(bundle, big.NewInt(0).SetUint64(data.Number), data.ForkUID)
 	if err != nil {
 		return err
@@ -130,6 +144,15 @@ func (c *crossChainStateMachine) PublishNextBundle() error {
 	c.currentRollup++
 
 	return nil
+}
+
+func (c *crossChainStateMachine) IsBundleAlreadyPublished(bundle *common.ExtCrossChainBundle) (bool, error) {
+	managementContract, err := ManagementContract.NewManagementContract(*c.mgmtContractLib.GetContractAddr(), c.ethClient.EthClient())
+	if err != nil {
+		return false, err
+	}
+
+	return managementContract.IsBundleAvailable(&bind.CallOpts{}, bundle.CrossChainRootHashes)
 }
 
 // Synchronize - checks if there are any new rollups or forks and moves the tracking needle to the latest common ancestor.
@@ -174,7 +197,7 @@ func (c *crossChainStateMachine) revertToLatestKnownCommonAncestorRollup() error
 
 	for forkHash != c.latestRollup.ForkUID {
 		// Revert to previous rollup; No need to wipe the map as the synchronization reinserts the latest rollup
-		c.latestRollup = c.rollupHistory[c.latestRollup.Number-1] //go to previous rollup
+		c.latestRollup = c.rollupHistory[c.latestRollup.Number-1] // go to previous rollup
 
 		hashBytes, _, err = managementContract.GetUniqueForkID(&bind.CallOpts{}, big.NewInt(0).SetUint64(c.latestRollup.Number))
 		if err != nil {

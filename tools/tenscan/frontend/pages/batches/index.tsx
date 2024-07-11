@@ -4,7 +4,8 @@ import { DataTable } from "@/src/components/modules/common/data-table/data-table
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBatchesService } from "@/src/services/useBatchesService";
-import { formatNumber } from "@/src/lib/utils";
+import { getItem } from "@/src/lib/utils";
+import { ItemPosition } from "@/src/types/interfaces";
 
 export const metadata: Metadata = {
   title: "Batches",
@@ -12,7 +13,8 @@ export const metadata: Metadata = {
 };
 
 export default function Batches() {
-  const { batches, refetchBatches, setNoPolling } = useBatchesService();
+  const { batches, refetchBatches, isBatchesLoading, setNoPolling } =
+    useBatchesService();
   const { BatchesData, Total } = batches?.result || {
     BatchesData: [],
     Total: 0,
@@ -20,8 +22,17 @@ export default function Batches() {
 
   React.useEffect(() => {
     setNoPolling(true);
+
+    return () => {
+      setNoPolling(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const firstBatchHeight = Number(getItem(BatchesData, "height"));
+  const lastBatchHeight = Number(
+    getItem(BatchesData, "height", ItemPosition.LAST)
+  );
 
   return (
     <Layout>
@@ -29,21 +40,25 @@ export default function Batches() {
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
-            <p className="text-sm text-muted-foreground">
-              {formatNumber(Total)} Batches found.
-            </p>
+            {BatchesData?.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Showing batches #{firstBatchHeight}{" "}
+                {lastBatchHeight !== firstBatchHeight &&
+                  "to #" + lastBatchHeight}
+                {/* uncomment the following line when total count feature is implemented */}
+                {/* of {formatNumber(Total)} batches. */}
+              </p>
+            )}
           </div>
         </div>
-        {BatchesData ? (
-          <DataTable
-            columns={columns}
-            data={BatchesData}
-            refetch={refetchBatches}
-            total={+Total}
-          />
-        ) : (
-          <p>Loading...</p>
-        )}
+        <DataTable
+          columns={columns}
+          data={BatchesData}
+          refetch={refetchBatches}
+          total={+Total}
+          isLoading={isBatchesLoading}
+          noResultsText="batches"
+        />
       </div>
     </Layout>
   );
