@@ -165,7 +165,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		if err != nil {
 			return nil, fmt.Errorf("unable to extract address from custom query params: %w", err)
 		}
-		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{account: userAddr}, "scan_getPersonalTransactions", address.Hex(), params, nil)
+		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{account: userAddr}, "scan_getPersonalTransactions", params)
 		if err != nil {
 			return nil, fmt.Errorf("unable to execute custom query: %w", err)
 		}

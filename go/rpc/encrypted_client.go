@@ -41,6 +41,7 @@ var SensitiveMethods = []string{
 	EstimateGas,
 	GetLogs,
 	GetStorageAt,
+	GetPersonalTransactions,
 }
 
 // EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption

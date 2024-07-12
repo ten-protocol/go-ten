@@ -348,7 +348,7 @@ func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(ctx context.Context,
 // ExtractPrivateTransactionsQuery is designed to support a wide range of custom Ten queries.
 // The first parameter here is the method name, which is used to determine the query type.
 // The second parameter is the query parameters.
-func ExtractPrivateTransactionsQuery(methodName any, queryParams any) (*common.ListPrivateTransactionsQueryParams, error) {
+func ExtractPrivateTransactionsQuery(queryParams any) (*common.ListPrivateTransactionsQueryParams, error) {
 	// we expect second param to be a json string
 	queryParamsStr, ok := queryParams.(string)
 	if !ok {

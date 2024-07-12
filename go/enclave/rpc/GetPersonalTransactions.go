@@ -8,13 +8,13 @@ import (
 )
 
 func GetPersonalTransactionsValidate(reqParams []any, builder *CallBuilder[common.ListPrivateTransactionsQueryParams, common.PrivateTransactionsQueryResponse], _ *EncryptionManager) error {
-	// Parameters are [PrivateCustomQueryHeader, PrivateCustomQueryArgs, null]
-	if len(reqParams) != 3 {
-		builder.Err = fmt.Errorf("unexpected number of parameters (expected %d, got %d)", 3, len(reqParams))
+	// Parameters are [PrivateTransactionListParams]
+	if len(reqParams) != 1 {
+		builder.Err = fmt.Errorf("unexpected number of parameters (expected %d, got %d)", 1, len(reqParams))
 		return nil
 	}
 
-	privateCustomQuery, err := gethencoding.ExtractPrivateTransactionsQuery(reqParams[0], reqParams[1])
+	privateCustomQuery, err := gethencoding.ExtractPrivateTransactionsQuery(reqParams[0])
 	if err != nil {
 		builder.Err = fmt.Errorf("unable to extract query - %w", err)
 		return nil
