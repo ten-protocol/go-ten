@@ -14,14 +14,13 @@ import (
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
-type StorageReadWithBlock struct {
+type storageReadWithBlock struct {
 	address     common.Address
 	storageSlot string
 	block       *gethrpc.BlockNumberOrHash
 }
 
-func TenStorageReadValidate(reqParams []any, builder *CallBuilder[StorageReadWithBlock, string], _ *EncryptionManager) error {
-	// Parameters are [TransactionArgs, BlockNumber, 2 more which we don't support yet]
+func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWithBlock, string], _ *EncryptionManager) error {
 	if len(reqParams) < 2 || len(reqParams) > 3 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
 		return nil
@@ -43,7 +42,7 @@ func TenStorageReadValidate(reqParams []any, builder *CallBuilder[StorageReadWit
 	//todo: @siliev - this whitelist creation every time is bugging me
 	whitelist := privacy.NewWhitelist()
 	if !whitelist.AllowedStorageSlots[slot] {
-		builder.Err = fmt.Errorf("storage slot not whitelisted")
+		builder.Err = fmt.Errorf("eth_getStorageAt is not supported on TEN")
 		return nil
 	}
 
@@ -53,12 +52,12 @@ func TenStorageReadValidate(reqParams []any, builder *CallBuilder[StorageReadWit
 		return nil
 	}
 
-	builder.Param = &StorageReadWithBlock{address, slot, blkNumber}
+	builder.Param = &storageReadWithBlock{address, slot, blkNumber}
 
 	return nil
 }
 
-func TenStorageReadExecute(builder *CallBuilder[StorageReadWithBlock, string], rpc *EncryptionManager) error {
+func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], rpc *EncryptionManager) error {
 	var err error
 	var stateDb *state.StateDB
 	blkNumber := builder.Param.block

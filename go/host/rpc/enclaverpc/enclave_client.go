@@ -87,7 +87,6 @@ func (c *Client) GetStorageSlot(ctx context.Context, encryptedParams common.Encr
 	}
 
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
-
 }
 
 func (c *Client) ExportCrossChainData(ctx context.Context, from uint64, to uint64) (*common.ExtCrossChainBundle, common.SystemError) {

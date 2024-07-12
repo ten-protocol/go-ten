@@ -182,10 +182,6 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		}
 		return serialised, nil
 	default: // address was not a recognised custom query method address
-		if !api.storageWhitelist.AllowedStorageSlots[params] {
-			return nil, fmt.Errorf("eth_getStorageAt is not supported on TEN")
-		}
-
 		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{tryUntilAuthorised: true}, "eth_getStorageAt", address.Hex(), params, nil)
 		if err != nil {
 			return nil, fmt.Errorf("unable to execute custom query: %w", err)
