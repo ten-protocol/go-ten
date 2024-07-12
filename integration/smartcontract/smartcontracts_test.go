@@ -61,6 +61,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 		_startPort+integration.DefaultGethWSPortOffset,
 		_startPort+integration.DefaultGethNetworkPortOffset, // HTTP
 		_startPort+integration.DefaultPrysmP2PPortOffset,    // RPC
+		integration.EthereumChainID,
 		3*time.Minute,
 	)
 

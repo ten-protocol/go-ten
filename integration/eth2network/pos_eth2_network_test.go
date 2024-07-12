@@ -46,6 +46,7 @@ func TestStartPosEth2Network(t *testing.T) {
 		_startPort+integration.DefaultGethWSPortOffset,
 		_startPort+integration.DefaultGethNetworkPortOffset, // HTTP
 		_startPort+integration.DefaultPrysmP2PPortOffset,    // RPC
+		integration.GethChainID,
 		6*time.Minute,
 	)
 

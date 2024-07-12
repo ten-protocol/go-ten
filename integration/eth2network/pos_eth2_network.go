@@ -36,6 +36,7 @@ var (
 type PosImpl struct {
 	buildDir                 string
 	binDir                   string
+	chainID                  int
 	gethBinaryPath           string
 	prysmBinaryPath          string
 	prysmBeaconBinaryPath    string
@@ -60,7 +61,7 @@ type PosEth2Network interface {
 	GenesisBytes() []byte
 }
 
-func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPPort int, beaconRPCPort int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
+func NewPosEth2Network(binDir string, gethRPCPort, gethWSPort, gethHTTPPort, beaconRPCPort, chainID int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
 	timestamp := strconv.FormatInt(time.Now().UnixMicro(), 10)
 
 	buildDir := path.Join(basepath, "../.build/eth2", timestamp)
@@ -97,7 +98,7 @@ func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPP
 		panic(err)
 	}
 
-	genesis, err := fundWallets(walletsToFund)
+	genesis, err := fundWallets(walletsToFund, chainID)
 	if err != nil {
 		panic(fmt.Sprintf("could not generate genesis. cause: %s", err.Error()))
 	}
@@ -105,6 +106,7 @@ func NewPosEth2Network(binDir string, gethRPCPort int, gethWSPort int, gethHTTPP
 	return &PosImpl{
 		buildDir:                 buildDir,
 		binDir:                   binDir,
+		chainID:                  chainID,
 		gethWSPort:               gethWSPort,
 		gethRPCPort:              gethRPCPort,
 		gethHTTPPort:             gethHTTPPort,
@@ -130,7 +132,7 @@ func (n *PosImpl) Start() error {
 		return err
 	}
 
-	err := startNetworkScript(n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.buildDir, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
+	err := startNetworkScript(n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.chainID, n.buildDir, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
 		n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath, n.gethBinaryPath,
 		n.gethdataDir, n.beacondataDir, n.validatordataDir)
 	if err != nil {
@@ -208,21 +210,23 @@ func (n *PosImpl) GenesisBytes() []byte {
 	return n.gethGenesisBytes
 }
 
-func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
+func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
 	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string,
 ) error {
 	scriptPath := filepath.Join(basepath, "start-pos-network.sh")
 	beaconRPCPortStr := strconv.Itoa(beaconRPCPort)
 	gethHTTPPortStr := strconv.Itoa(gethHTTPPort)
 	gethWSPortStr := strconv.Itoa(gethWSPort)
+	chainStr := strconv.Itoa(chainID)
 
 	// TODO move all this to a config file
 	cmd := exec.Command("/bin/bash", scriptPath,
 		"--geth-http", gethHTTPPortStr,
 		"--geth-ws", gethWSPortStr,
 		"--beacon-rpc", beaconRPCPortStr,
-		"--base-path", basepath,
+		"--chainid", chainStr,
 		"--build-dir", buildDir,
+		"--base-path", basepath,
 		"--beacon-log", beaconLogFile,
 		"--validator-log", validatorLogFile,
 		"--geth-log", gethLogFile,
@@ -272,7 +276,7 @@ func stopProcesses() error {
 
 // we parse the wallet addresses and append them to the genesis json, using an intermediate file which is cleaned up
 // at the end of the network script. genesis bytes are returned to be parsed to the enclave config
-func fundWallets(walletsToFund []string) (string, error) {
+func fundWallets(walletsToFund []string, chainID int) (string, error) {
 	filePath := filepath.Join(basepath, "genesis-init.json")
 	genesis, err := os.ReadFile(filePath)
 	if err != nil {
@@ -290,7 +294,9 @@ func fundWallets(walletsToFund []string) (string, error) {
 		genesisJSON["alloc"].(map[string]interface{})[account] = map[string]string{"balance": "7500000000000000000000000000000"}
 	}
 
-	// Marshal it back to a JSON string with indentation
+	// set the chain ID
+	genesisJSON["config"].(map[string]interface{})["chainId"] = chainID
+
 	formattedGenesisBytes, err := json.MarshalIndent(genesisJSON, "", "  ")
 	if err != nil {
 		return "", err

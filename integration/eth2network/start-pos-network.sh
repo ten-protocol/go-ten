@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
 # Default port values
-BEACON_RPC_PORT=4000
 GETH_HTTP_PORT=8545
 GETH_WS_PORT=8546
+BEACON_RPC_PORT=4000
+CHAIN_ID=32382
 BUILD_DIR="./build"
 BASE_PATH="./"
 GETH_BINARY="./geth"
@@ -19,11 +20,11 @@ VALIDATORDATA_DIR="/validatordata"
 
 # Function to display usage
 usage() {
-    echo "Usage: $0 [--geth-http GETH_HTTP_PORT] [--geth-ws GETH_WS_PORT] [--beacon-rpc BEACON_RPC_PORT] [--build-dir BUILD_DIR ]
-    [--base-path BASE_PATH ] [--beacon-log BEACON_LOG_FILE] [--validator-log VALIDATOR_LOG_FILE] [--geth-log GETH_LOG_FILE]
-    [--geth-binary GETH_BINARY] [--beacon-binary BEACON_BINARY] [--prysmctl-binary PRYSMCTL_BINARY]
+    echo "Usage: $0 [--geth-http GETH_HTTP_PORT] [--geth-ws GETH_WS_PORT] [--beacon-rpc BEACON_RPC_PORT] [--chainid CHAIN_ID ]
+    [--build-dir BUILD_DIR ] [--base-path BASE_PATH ] [--beacon-log BEACON_LOG_FILE] [--validator-log VALIDATOR_LOG_FILE]
+    [--geth-log GETH_LOG_FILE] [--geth-binary GETH_BINARY] [--beacon-binary BEACON_BINARY] [--prysmctl-binary PRYSMCTL_BINARY]
     [--validator-binary VALIDATOR_BINARY] [--gethdata-dir GETHDATA_DIR] [--beacondata-dir BEACONDATA_DIR]
-    [--validatordata-dir VALIDATORDATA_DIR]"
+    [--validatordata-dir VALIDATORDATA_DIR] "
     exit 1
 }
 
@@ -33,6 +34,7 @@ while [[ "$#" -gt 0 ]]; do
         --beacon-rpc) BEACON_RPC_PORT="$2"; shift ;;
         --geth-http) GETH_HTTP_PORT="$2"; shift ;;
         --geth-ws) GETH_WS_PORT="$2"; shift ;;
+        --chainid) CHAIN_ID="$2"; shift ;;
         --build-dir) BUILD_DIR="$2"; shift ;;
         --base-path) BASE_PATH="$2"; shift ;;
         --geth-binary) GETH_BINARY="$2"; shift ;;
@@ -54,16 +56,17 @@ mkdir -p "$(dirname "${BEACON_LOG_FILE}")"
 mkdir -p "$(dirname "${VALIDATOR_LOG_FILE}")"
 mkdir -p "$(dirname "${GETH_LOG_FILE}")"
 
-echo "Beacon RPC Port: ${BEACON_RPC_PORT}"
 echo "Geth HTTP Port: ${GETH_HTTP_PORT}"
 echo "Geth WS Port: ${GETH_WS_PORT}"
+echo "Beacon RPC Port: ${BEACON_RPC_PORT}"
+echo "Chain ID: ${CHAIN_ID}"
 echo "Build Directory: ${BUILD_DIR}"
 echo "Geth Data Directory: ${GETHDATA_DIR}"
 echo "Beacon Data Directory: ${BEACONDATA_DIR}"
 echo "Validator Data Directory: ${VALIDATORDATA_DIR}"
 echo "Geth Log: ${GETH_LOG_FILE}"
 echo "Beacon Log: ${BEACON_LOG_FILE}"
-echo "Validator lod: ${VALIDATOR_LOG_FILE}"
+echo "Validator Log: ${VALIDATOR_LOG_FILE}"
 
 if [ ! -f "${BEACON_BINARY}" ]; then
     echo "Error: Beacon binary not found at ${BEACON_BINARY}"
@@ -110,7 +113,7 @@ ${BEACON_BINARY} --datadir="${BEACONDATA_DIR}" \
                --interop-eth1data-votes \
                --chain-config-file "${BASE_PATH}/config.yml" \
                --contract-deployment-block 0 \
-               --chain-id 32382 \
+               --chain-id "${CHAIN_ID}" \
                --rpc-host=127.0.0.1 \
                --rpc-port="${BEACON_RPC_PORT}" \
                --accept-terms-of-use \

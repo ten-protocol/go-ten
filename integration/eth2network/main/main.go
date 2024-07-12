@@ -30,6 +30,7 @@ func main() {
 		config.gethWSStartPort,
 		config.gethNetworkStartPort,    // HTTP
 		config.prysmBeaconRPCStartPort, // RPC
+		config.chainID,
 		5*time.Minute,
 	)
 
