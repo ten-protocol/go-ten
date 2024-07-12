@@ -162,10 +162,11 @@ func (n *PosImpl) waitForMergeEvent(startTime time.Time) error {
 		return err
 	}
 	time.Sleep(2 * time.Second)
-	number, err := dial.BlockNumber(ctx)
-	if err != nil {
-		return err
-	}
+	//number, err := dial.BlockNumber(ctx)
+	//if err != nil {
+	//	return err
+	//}
+	number := uint64(0)
 	// wait for the merge block
 	err = retry.Do(
 		func() error {
