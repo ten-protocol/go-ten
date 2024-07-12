@@ -199,8 +199,8 @@ func TestTenscan(t *testing.T) {
 	rollupListingObj := rollupListing{}
 	err = json.Unmarshal(body, &rollupListingObj)
 	assert.NoError(t, err)
-	assert.LessOrEqual(t, 4, len(rollupListingObj.Result.RollupsData))
-	assert.LessOrEqual(t, uint64(4), rollupListingObj.Result.Total)
+	assert.LessOrEqual(t, 1, len(rollupListingObj.Result.RollupsData))
+	assert.LessOrEqual(t, uint64(1), rollupListingObj.Result.Total)
 	assert.Contains(t, string(body), "\"hash\"")
 
 	// fetch batches in rollup
@@ -304,9 +304,9 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 		WithPrefunding:   true,
 	}
 
-	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
-	t.Cleanup(obscuroNetwork.TearDown)
-	_, err := obscuroNetwork.Create(&simParams, nil)
+	tenNetwork := network.NewNetworkOfSocketNodes(wallets)
+	t.Cleanup(tenNetwork.TearDown)
+	_, err := tenNetwork.Create(&simParams, nil)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
 	}

@@ -45,7 +45,7 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 	return miner
 }
 
-func createInMemObscuroNode(
+func createInMemTenNode(
 	id int64,
 	isGenesis bool,
 	nodeType common.NodeType,

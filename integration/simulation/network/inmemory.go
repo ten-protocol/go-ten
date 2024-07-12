@@ -53,7 +53,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 
-		agg := createInMemObscuroNode(
+		agg := createInMemTenNode(
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
@@ -69,11 +69,11 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			incomingP2PDisabled,
 			params.AvgBlockDuration,
 		)
-		obscuroClient := p2p.NewInMemObscuroClient(agg)
+		tenClient := p2p.NewInMemTenClient(agg)
 
 		n.ethNodes[i] = miner
 		obscuroNodes[i] = agg
-		n.l2Clients[i] = obscuroClient
+		n.l2Clients[i] = tenClient
 		l1Clients[i] = miner
 		obscuroHosts[i] = obscuroNodes[i].Host()
 	}

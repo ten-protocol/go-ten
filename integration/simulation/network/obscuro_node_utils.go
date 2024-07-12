@@ -38,7 +38,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
-		tenNodes[i] = createInMemObscuroNode(
+		tenNodes[i] = createInMemTenNode(
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
@@ -71,7 +71,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 	// Create a handle to each node
 	obscuroClients := make([]rpc.Client, params.NumberOfNodes)
 	for i, node := range tenNodes {
-		obscuroClients[i] = p2p.NewInMemObscuroClient(node)
+		obscuroClients[i] = p2p.NewInMemTenClient(node)
 	}
 	time.Sleep(100 * time.Millisecond)
 

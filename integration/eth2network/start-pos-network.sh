@@ -149,6 +149,6 @@ ${GETH_BINARY} --http \
 
 echo "Geth network started"
 
-clean up intermediate file
+# clean up intermediate file
 rm "${BASE_PATH}/genesis-updated.json"
 sleep 10

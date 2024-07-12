@@ -268,7 +268,7 @@ func stopProcesses() error {
 		if err != nil {
 			return fmt.Errorf("failed to kill process %s: %w", pid, err)
 		}
-		fmt.Printf("Killed process %s\n", pid)
+		fmt.Printf("Killed geth and beacon processes")
 	}
 
 	return nil

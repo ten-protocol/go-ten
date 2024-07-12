@@ -29,8 +29,8 @@ const (
 
 // todo - move this from the P2P folder
 // An in-memory implementation of `rpc.Client` that speaks directly to the node.
-type inMemObscuroClient struct {
-	obscuroAPI       *clientapi.ObscuroAPI
+type inMemTenClient struct {
+	tenAPI           *clientapi.ObscuroAPI
 	ethAPI           *clientapi.EthereumAPI
 	filterAPI        *clientapi.FilterAPI
 	tenScanAPI       *clientapi.ScanAPI
@@ -38,7 +38,7 @@ type inMemObscuroClient struct {
 	enclavePublicKey *ecies.PublicKey
 }
 
-func NewInMemObscuroClient(hostContainer *container.HostContainer) rpc.Client {
+func NewInMemTenClient(hostContainer *container.HostContainer) rpc.Client {
 	logger := testlog.Logger().New(log.CmpKey, log.RPCClientCmp)
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
 	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
@@ -47,8 +47,8 @@ func NewInMemObscuroClient(hostContainer *container.HostContainer) rpc.Client {
 	}
 	enclPubKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
-	return &inMemObscuroClient{
-		obscuroAPI:       clientapi.NewObscuroAPI(hostContainer.Host()),
+	return &inMemTenClient{
+		tenAPI:           clientapi.NewObscuroAPI(hostContainer.Host()),
 		ethAPI:           clientapi.NewEthereumAPI(hostContainer.Host(), logger),
 		filterAPI:        clientapi.NewFilterAPI(hostContainer.Host(), logger),
 		tenScanAPI:       clientapi.NewScanAPI(hostContainer.Host(), logger),
@@ -58,7 +58,7 @@ func NewInMemObscuroClient(hostContainer *container.HostContainer) rpc.Client {
 }
 
 // Call bypasses RPC, and invokes methods on the node directly.
-func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
+func (c *inMemTenClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
 	case rpc.SendRawTransaction:
 		return c.sendRawTransaction(result, args)
@@ -119,15 +119,15 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 }
 
 // CallContext not currently supported by in-memory obscuro client, the context will be ignored.
-func (c *inMemObscuroClient) CallContext(_ context.Context, result interface{}, method string, args ...interface{}) error {
+func (c *inMemTenClient) CallContext(_ context.Context, result interface{}, method string, args ...interface{}) error {
 	return c.Call(result, method, args...) //nolint: contextcheck
 }
 
-func (c *inMemObscuroClient) Subscribe(context.Context, string, interface{}, ...interface{}) (*gethrpc.ClientSubscription, error) {
+func (c *inMemTenClient) Subscribe(context.Context, string, interface{}, ...interface{}) (*gethrpc.ClientSubscription, error) {
 	panic("not implemented")
 }
 
-func (c *inMemObscuroClient) sendRawTransaction(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) sendRawTransaction(result interface{}, args []interface{}) error {
 	encBytes, err := getEncryptedBytes(args, rpc.SendRawTransaction)
 	if err != nil {
 		return err
@@ -141,7 +141,7 @@ func (c *inMemObscuroClient) sendRawTransaction(result interface{}, args []inter
 	return err
 }
 
-func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) getTransactionByHash(result interface{}, args []interface{}) error {
 	enc, err := getEncryptedBytes(args, rpc.GetTransactionByHash)
 	if err != nil {
 		return err
@@ -156,7 +156,7 @@ func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []int
 	return nil
 }
 
-func (c *inMemObscuroClient) rpcCall(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) rpcCall(result interface{}, args []interface{}) error {
 	enc, err := getEncryptedBytes(args, rpc.Call)
 	if err != nil {
 		return err
@@ -169,7 +169,7 @@ func (c *inMemObscuroClient) rpcCall(result interface{}, args []interface{}) err
 	return nil
 }
 
-func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) getTransactionReceipt(result interface{}, args []interface{}) error {
 	enc, err := getEncryptedBytes(args, rpc.GetTransactionReceipt)
 	if err != nil {
 		return err
@@ -184,7 +184,7 @@ func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []in
 	return nil
 }
 
-func (c *inMemObscuroClient) getTransactionCount(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) getTransactionCount(result interface{}, args []interface{}) error {
 	enc, err := getEncryptedBytes(args, rpc.GetTransactionCount)
 	if err != nil {
 		return err
@@ -198,7 +198,7 @@ func (c *inMemObscuroClient) getTransactionCount(result interface{}, args []inte
 	return nil
 }
 
-func (c *inMemObscuroClient) getLogs(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) getLogs(result interface{}, args []interface{}) error {
 	enc, err := getEncryptedBytes(args, rpc.GetLogs)
 	if err != nil {
 		return err
@@ -211,7 +211,7 @@ func (c *inMemObscuroClient) getLogs(result interface{}, args []interface{}) err
 	return nil
 }
 
-func (c *inMemObscuroClient) getBatchByNumber(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) getBatchByNumber(result interface{}, args []interface{}) error {
 	blockNumberHex, ok := args[0].(string)
 	if !ok {
 		return fmt.Errorf("arg to %s is of type %T, expected int64", rpc.GetBatchByNumber, args[0])
@@ -241,7 +241,7 @@ func (c *inMemObscuroClient) getBatchByNumber(result interface{}, args []interfa
 	return nil
 }
 
-func (c *inMemObscuroClient) getBatchByHash(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) getBatchByHash(result interface{}, args []interface{}) error {
 	blockHash, ok := args[0].(gethcommon.Hash)
 	if !ok {
 		return fmt.Errorf("arg to %s is of type %T, expected common.Hash", rpc.GetBatchByHash, args[0])
@@ -266,24 +266,24 @@ func (c *inMemObscuroClient) getBatchByHash(result interface{}, args []interface
 	return nil
 }
 
-func (c *inMemObscuroClient) Stop() {
+func (c *inMemTenClient) Stop() {
 	// There is no RPC connection to close.
 }
 
-func (c *inMemObscuroClient) SetViewingKey(_ *ecies.PrivateKey, _ []byte) {
+func (c *inMemTenClient) SetViewingKey(_ *ecies.PrivateKey, _ []byte) {
 	panic("viewing key encryption/decryption is not currently supported by in-memory obscuro-client")
 }
 
-func (c *inMemObscuroClient) RegisterViewingKey(_ gethcommon.Address, _ []byte) error {
+func (c *inMemTenClient) RegisterViewingKey(_ gethcommon.Address, _ []byte) error {
 	panic("viewing key encryption/decryption is not currently supported by in-memory obscuro-client")
 }
 
-func (c *inMemObscuroClient) health(result interface{}) error {
+func (c *inMemTenClient) health(result interface{}) error {
 	*result.(**hostcommon.HealthCheck) = &hostcommon.HealthCheck{OverallHealth: true}
 	return nil
 }
 
-func (c *inMemObscuroClient) getTotalTransactions(result interface{}) error {
+func (c *inMemTenClient) getTotalTransactions(result interface{}) error {
 	totalTxs, err := c.tenScanAPI.GetTotalTransactionCount()
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTotalTxCount, err)
@@ -293,7 +293,7 @@ func (c *inMemObscuroClient) getTotalTransactions(result interface{}) error {
 	return nil
 }
 
-func (c *inMemObscuroClient) getBatchByTx(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) getBatchByTx(result interface{}, args []interface{}) error {
 	if len(args) != 1 {
 		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetBatchByTx, len(args))
 	}
@@ -311,7 +311,7 @@ func (c *inMemObscuroClient) getBatchByTx(result interface{}, args []interface{}
 	return nil
 }
 
-func (c *inMemObscuroClient) getBatch(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) getBatch(result interface{}, args []interface{}) error {
 	if len(args) != 1 {
 		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetBatch, len(args))
 	}
@@ -329,7 +329,7 @@ func (c *inMemObscuroClient) getBatch(result interface{}, args []interface{}) er
 	return nil
 }
 
-func (c *inMemObscuroClient) getBatchListingDeprecated(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) getBatchListingDeprecated(result interface{}, args []interface{}) error {
 	if len(args) != 1 {
 		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetBatchListing, len(args))
 	}
@@ -351,7 +351,7 @@ func (c *inMemObscuroClient) getBatchListingDeprecated(result interface{}, args 
 	return nil
 }
 
-func (c *inMemObscuroClient) getRollupListing(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) getRollupListing(result interface{}, args []interface{}) error {
 	if len(args) != 1 {
 		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetRollupListing, len(args))
 	}
@@ -373,7 +373,7 @@ func (c *inMemObscuroClient) getRollupListing(result interface{}, args []interfa
 	return nil
 }
 
-func (c *inMemObscuroClient) getGasPrice(result interface{}) error {
+func (c *inMemTenClient) getGasPrice(result interface{}) error {
 	gasPrice, err := c.ethAPI.GasPrice(context.Background())
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GasPrice, err)
@@ -383,7 +383,7 @@ func (c *inMemObscuroClient) getGasPrice(result interface{}) error {
 	return nil
 }
 
-func (c *inMemObscuroClient) getPublicTransactionData(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) getPublicTransactionData(result interface{}, args []interface{}) error {
 	if len(args) != 1 {
 		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetPublicTransactionData, len(args))
 	}
