@@ -157,6 +157,8 @@ func (n *PosImpl) checkExistingNetworks() error {
 // waitForMergeEvent connects to the geth node and waits until block 2 (the merge block) is reached
 func (n *PosImpl) waitForMergeEvent(startTime time.Time) error {
 	ctx := context.Background()
+	// needed for GH actions
+	time.Sleep(10 * time.Second)
 	dial, err := ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPort))
 	if err != nil {
 		return err
