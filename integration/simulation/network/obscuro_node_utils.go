@@ -29,8 +29,8 @@ const (
 	networkTCP        = "tcp"
 )
 
-func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
-	// Create the in memory obscuro nodes, each connect each to a geth node
+func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
+	// Create the in memory ten nodes, each connect each to a geth node
 	tenNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
 	tenHosts := make([]host.Host, params.NumberOfNodes)
 	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithInboundP2PDisabled)
@@ -108,8 +108,8 @@ func CreateAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 	return authClients
 }
 
-// StopObscuroNodes stops the Obscuro nodes and their RPC clients.
-func StopObscuroNodes(clients []rpc.Client) {
+// StopTenNodes stops the Ten nodes and their RPC clients.
+func StopTenNodes(clients []rpc.Client) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	eg, _ := errgroup.WithContext(ctx)

@@ -295,7 +295,7 @@ func (s *Simulation) prefundL1Accounts() {
 }
 
 func (s *Simulation) checkHealthStatus() {
-	for _, client := range s.RPCHandles.ObscuroClients {
+	for _, client := range s.RPCHandles.TenClients {
 		err := retry.Do(func() error {
 			healthy, err := client.Health()
 			if !healthy || err != nil {

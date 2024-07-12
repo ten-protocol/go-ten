@@ -112,9 +112,9 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	minHeight := uint64(float64(s.Params.SimulationTime.Microseconds()) / (2 * float64(s.Params.AvgBlockDuration)))
 
 	// process the blockchain of each node in parallel to minimize the difference between them since they are still running
-	heights := make([]uint64, len(s.RPCHandles.ObscuroClients))
+	heights := make([]uint64, len(s.RPCHandles.TenClients))
 	var wg sync.WaitGroup
-	for idx := range s.RPCHandles.ObscuroClients {
+	for idx := range s.RPCHandles.TenClients {
 		wg.Add(1)
 		go checkBlockchainOfObscuroNode(t, s.RPCHandles, minHeight, maxL1Height, s, &wg, heights, idx)
 	}
@@ -323,7 +323,7 @@ func verifyGasBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
 
 func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) {
 	defer wg.Done()
-	obscuroClient := rpcHandles.ObscuroClients[nodeIdx]
+	obscuroClient := rpcHandles.TenClients[nodeIdx]
 
 	// check that the L1 view is consistent with the L1 network.
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks

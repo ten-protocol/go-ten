@@ -30,7 +30,7 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereummock.Node, params.NumberOfNodes)
-	obscuroNodes := make([]*container.HostContainer, params.NumberOfNodes)
+	tenNodes := make([]*container.HostContainer, params.NumberOfNodes)
 	n.l2Clients = make([]rpc.Client, params.NumberOfNodes)
 	obscuroHosts := make([]host.Host, params.NumberOfNodes)
 
@@ -72,10 +72,10 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		tenClient := p2p.NewInMemTenClient(agg)
 
 		n.ethNodes[i] = miner
-		obscuroNodes[i] = agg
+		tenNodes[i] = agg
 		n.l2Clients[i] = tenClient
 		l1Clients[i] = miner
-		obscuroHosts[i] = obscuroNodes[i].Host()
+		obscuroHosts[i] = tenNodes[i].Host()
 	}
 
 	// populate the nodes field of each network
@@ -95,7 +95,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		time.Sleep(params.AvgBlockDuration)
 	}
 
-	for _, m := range obscuroNodes {
+	for _, m := range tenNodes {
 		t := m
 		go func() {
 			err := t.Start()
@@ -114,14 +114,14 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 	return &RPCHandles{
 		EthClients:     l1Clients,
-		ObscuroClients: obscuroClients,
+		TenClients:     obscuroClients,
 		RPCClients:     n.l2Clients,
 		AuthObsClients: walletClients,
 	}, nil
 }
 
 func (n *basicNetworkOfInMemoryNodes) TearDown() {
-	StopObscuroNodes(n.l2Clients)
+	StopTenNodes(n.l2Clients)
 
 	for _, node := range n.ethNodes {
 		temp := node

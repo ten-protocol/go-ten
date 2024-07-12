@@ -148,7 +148,5 @@ ${GETH_BINARY} --http \
        --password "${BASE_PATH}/password.txt" > "${GETH_LOG_FILE}" 2>&1 &
 
 echo "Geth network started"
-
 # clean up intermediate file
 rm "${BASE_PATH}/genesis-updated.json"
-sleep 10

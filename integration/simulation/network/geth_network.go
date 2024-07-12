@@ -40,18 +40,18 @@ func (n *networkInMemGeth) Create(params *params.SimParams, _ *stats.Stats) (*RP
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(&params.L1TenData.MgmtContractAddress,
 		&params.L1TenData.ObxErc20Address, &params.L1TenData.EthErc20Address)
 
-	// Start the obscuro nodes and return the handles
-	n.l2Clients = startInMemoryObscuroNodes(params, n.eth2Network.GenesisBytes(), n.gethClients)
+	// Start the ten nodes and return the handles
+	n.l2Clients = startInMemoryTenNodes(params, n.eth2Network.GenesisBytes(), n.gethClients)
 
-	obscuroClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
+	tenClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
 	for idx, l2Client := range n.l2Clients {
-		obscuroClients[idx] = obsclient.NewObsClient(l2Client)
+		tenClients[idx] = obsclient.NewObsClient(l2Client)
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
 
 	return &RPCHandles{
 		EthClients:     n.gethClients,
-		ObscuroClients: obscuroClients,
+		TenClients:     tenClients,
 		RPCClients:     n.l2Clients,
 		AuthObsClients: walletClients,
 	}, nil
@@ -59,7 +59,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, _ *stats.Stats) (*RP
 
 func (n *networkInMemGeth) TearDown() {
 	// Stop the obscuro nodes first
-	StopObscuroNodes(n.l2Clients)
+	StopTenNodes(n.l2Clients)
 
 	// Stop geth last
 	StopEth2Network(n.gethClients, n.eth2Network)

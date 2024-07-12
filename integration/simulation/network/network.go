@@ -33,7 +33,7 @@ type RPCHandles struct {
 	EthClients []ethadapter.EthClient
 
 	// An Obscuro client per Obscuro node in the network.
-	ObscuroClients []*obsclient.ObsClient
+	TenClients []*obsclient.ObsClient
 	// An RPC client per Obscuro node in the network (used for APIs that don't have methods on `ObsClient`.
 	RPCClients []rpc.Client
 

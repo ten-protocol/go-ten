@@ -63,6 +63,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 		_startPort+integration.DefaultPrysmP2PPortOffset,    // RPC
 		integration.EthereumChainID,
 		3*time.Minute,
+		workerWallet.Address().String(),
 	)
 
 	if err = eth2Network.Start(); err != nil {
@@ -87,7 +88,7 @@ func TestManagementContract(t *testing.T) {
 	sim := runGethNetwork(t)
 	defer sim.eth2Network.Stop() //nolint: errcheck
 
-	// setup the client and the (debug) wallet
+	// set up the client and the (debug) wallet
 	client := sim.ethClients[0]
 	w := newDebugWallet(sim.wallets[0])
 
