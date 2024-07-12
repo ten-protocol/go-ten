@@ -587,7 +587,7 @@ func (c *Client) GetTotalContractCount(ctx context.Context) (*big.Int, common.Sy
 	return big.NewInt(response.Count), nil
 }
 
-func (c *Client) GetCustomQuery(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, common.SystemError) {
+func (c *Client) GetPersonalTransactions(ctx context.Context, encryptedParams common.EncryptedParamsGetPersonalTransactions) (*responses.PersonalTransactionsResponse, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
 	defer cancel()
 

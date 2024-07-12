@@ -24,16 +24,16 @@ func (ur *UserResponse[T]) Error() error {
 // Responses
 
 type (
-	Balance              = EnclaveResponse // The response for an RPC getBalance request, as a JSON object encrypted with the viewing key of the user.
-	Call                 = EnclaveResponse // As above, but for an RPC call request.
-	TxReceipt            = EnclaveResponse // As above, but for an RPC getTransactionReceipt request.
-	RawTx                = EnclaveResponse // As above, but for an RPC sendRawTransaction request.
-	TxByHash             = EnclaveResponse // As above, but for an RPC getTransactionByHash request.
-	TxCount              = EnclaveResponse // As above, but for an RPC getTransactionCount request.
-	Gas                  = EnclaveResponse // As above, but for an RPC estimateGas response.
-	Logs                 = EnclaveResponse
-	Receipts             = EnclaveResponse
-	PrivateQueryResponse = EnclaveResponse
+	Balance                      = EnclaveResponse // The response for an RPC getBalance request, as a JSON object encrypted with the viewing key of the user.
+	Call                         = EnclaveResponse // As above, but for an RPC call request.
+	TxReceipt                    = EnclaveResponse // As above, but for an RPC getTransactionReceipt request.
+	RawTx                        = EnclaveResponse // As above, but for an RPC sendRawTransaction request.
+	TxByHash                     = EnclaveResponse // As above, but for an RPC getTransactionByHash request.
+	TxCount                      = EnclaveResponse // As above, but for an RPC getTransactionCount request.
+	Gas                          = EnclaveResponse // As above, but for an RPC estimateGas response.
+	Logs                         = EnclaveResponse
+	Receipts                     = EnclaveResponse
+	PersonalTransactionsResponse = EnclaveResponse
 )
 
 // Data Types
