@@ -31,9 +31,9 @@ jobs:
       # Close specified ports using lsof before testing / local port list compiled from ./integration/constants.go
       - name: Close Integration Test Ports
         run: |
-          killall -9 geth-v1.12.2 || true
-          killall -9 beacon-chain-v4.0.6 || true
-          killall -9 validator-v4.0.6 || true
+          killall -9 geth-v1.14.6 || true
+          killall -9 beacon-chain-v5.0.4 || true
+          killall -9 validator-v5.0.4 || true
           
           lowest_port=8000  # Lowest starting port
           highest_port=58000 # Highest port considering the offset
