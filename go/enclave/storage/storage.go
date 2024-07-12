@@ -741,6 +741,23 @@ func (s *storageImpl) DebugGetLogs(ctx context.Context, txHash common.TxHash) ([
 	return enclavedb.DebugGetLogs(ctx, s.db.GetSQLDB(), txHash)
 }
 
+func (s *storageImpl) FilterLogsForReceipt(ctx context.Context, requestingAccount *gethcommon.Address, txHash gethcommon.Hash) ([]*types.Log, error) {
+	defer s.logDuration("FilterLogs", measure.NewStopwatch())
+	logs, err := enclavedb.FilterLogs(ctx, s.db.GetSQLDB(), requestingAccount, nil, nil, nil, nil, nil, &txHash)
+	if err != nil {
+		return nil, err
+	}
+	// the database returns an unsorted list of event logs.
+	// we have to perform the sorting programatically
+	sort.Slice(logs, func(i, j int) bool {
+		if logs[i].BlockNumber == logs[j].BlockNumber {
+			return logs[i].Index < logs[j].Index
+		}
+		return logs[i].BlockNumber < logs[j].BlockNumber
+	})
+	return logs, nil
+}
+
 func (s *storageImpl) FilterLogs(
 	ctx context.Context,
 	requestingAccount *gethcommon.Address,
@@ -750,7 +767,7 @@ func (s *storageImpl) FilterLogs(
 	topics [][]gethcommon.Hash,
 ) ([]*types.Log, error) {
 	defer s.logDuration("FilterLogs", measure.NewStopwatch())
-	logs, err := enclavedb.FilterLogs(ctx, s.db.GetSQLDB(), requestingAccount, fromBlock, toBlock, blockHash, addresses, topics)
+	logs, err := enclavedb.FilterLogs(ctx, s.db.GetSQLDB(), requestingAccount, fromBlock, toBlock, blockHash, addresses, topics, nil)
 	if err != nil {
 		return nil, err
 	}
