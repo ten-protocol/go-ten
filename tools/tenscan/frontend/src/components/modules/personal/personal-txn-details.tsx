@@ -153,7 +153,7 @@ export function PersonalTxnDetailsComponent({
         <KeyValueItem
           label="Logs"
           value={
-            transactionDetails?.logs ? (
+            transactionDetails?.logs.length > 0 ? (
               <div className="space-y-4">
                 {transactionDetails?.logs.map((log, index) => (
                   <div key={index}>
