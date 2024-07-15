@@ -13,10 +13,12 @@ import { useRouter } from "next/router";
 import { fetchPersonalTxnByHash } from "@/api/transactions";
 import { useWalletConnection } from "@/src/components/providers/wallet-provider";
 import { PersonalTxnDetailsComponent } from "@/src/components/modules/personal/personal-txn-details";
+import ConnectWalletButton from "@/src/components/modules/common/connect-wallet";
+import { ethereum } from "@/src/lib/utils";
 
 export default function TransactionDetails() {
   const router = useRouter();
-  const { provider } = useWalletConnection();
+  const { provider, walletConnected } = useWalletConnection();
   const { hash } = router.query;
 
   const { data: transactionDetails, isLoading } = useQuery({
@@ -27,25 +29,46 @@ export default function TransactionDetails() {
 
   return (
     <Layout>
-      {isLoading ? (
-        <Skeleton className="h-full w-full" />
-      ) : transactionDetails ? (
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Transaction Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PersonalTxnDetailsComponent
-              transactionDetails={transactionDetails}
-            />
-          </CardContent>
-        </Card>
+      {walletConnected ? (
+        isLoading ? (
+          <Skeleton className="h-full w-full" />
+        ) : transactionDetails ? (
+          <Card className="col-span-3">
+            <CardHeader>
+              <CardTitle>Transaction Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PersonalTxnDetailsComponent
+                transactionDetails={transactionDetails}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <EmptyState
+            title="Transaction not found"
+            description="The transaction you are looking for does not exist."
+            action={
+              <Button onClick={() => router.push("/personal")}>Go back</Button>
+            }
+          />
+        )
       ) : (
         <EmptyState
-          title="Transaction not found"
-          description="The transaction you are looking for does not exist."
+          title="Connect Wallet"
+          description="Connect your wallet to view transaction details."
           action={
-            <Button onClick={() => router.push("/personal")}>Go back</Button>
+            <div className="flex flex-col space-y-2">
+              <ConnectWalletButton
+                text={
+                  ethereum
+                    ? "Connect Wallet to continue"
+                    : "Install MetaMask to continue"
+                }
+              />
+              <Button variant={"link"} onClick={() => router.push("/personal")}>
+                Go back
+              </Button>
+            </div>
           }
         />
       )}
