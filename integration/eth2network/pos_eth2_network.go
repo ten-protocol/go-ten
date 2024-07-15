@@ -240,6 +240,8 @@ func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, bu
 		"--validatordata-dir", validatordataDir,
 	)
 
+	time.Sleep(2 * time.Second)
+
 	if out, err := cmd.Output(); err != nil {
 		fmt.Printf("%s\n", out)
 		panic(err)
