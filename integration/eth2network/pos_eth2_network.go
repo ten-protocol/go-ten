@@ -149,7 +149,8 @@ func (n *PosImpl) Stop() error {
 	if err != nil {
 		return fmt.Errorf("could not run stop the geth and beacon processes. Cause: %s", err.Error())
 	}
-	return cleanup(n.gethdataDir)
+	return err
+	//return cleanup(n.gethdataDir)
 }
 
 func (n *PosImpl) checkExistingNetworks() error {
