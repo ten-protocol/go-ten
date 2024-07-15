@@ -54,7 +54,7 @@ export function PersonalTxnDetailsComponent({
           label="Transaction Index"
           value={
             <Badge variant={"outline"}>
-              {transactionDetails?.transactionIndex}{" "}
+              {Number(transactionDetails?.transactionIndex)}
             </Badge>
           }
         />
@@ -122,10 +122,6 @@ export function PersonalTxnDetailsComponent({
         <KeyValueItem
           label="Block Hash"
           value={<TruncatedAddress address={transactionDetails?.blockHash} />}
-        />
-        <KeyValueItem
-          label="Transaction Index"
-          value={transactionDetails?.transactionIndex}
         />
         <KeyValueItem
           label="Logs Bloom"
@@ -216,7 +212,7 @@ export function PersonalTxnDetailsComponent({
                         label="Transaction Index"
                         value={
                           <Badge variant={"outline"}>
-                            {transactionDetails?.transactionIndex}
+                            {Number(transactionDetails?.transactionIndex)}
                           </Badge>
                         }
                         isLastItem
