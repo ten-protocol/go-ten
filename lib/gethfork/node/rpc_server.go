@@ -53,14 +53,15 @@ func NewServer(config *RPCConfig, logger gethlog.Logger) Server {
 	if config.EnableHTTP {
 		rpcConfig.HTTPHost = config.Host
 		rpcConfig.HTTPPort = config.HTTPPort
-		// todo (@pedro) - review if this poses a security issue
+		// todo - review if this poses a security issue
+		rpcConfig.HTTPCors = []string{allOrigins}
 		rpcConfig.HTTPVirtualHosts = []string{allOrigins}
 		rpcConfig.HTTPPathPrefix = config.HTTPPath
 	}
 	if config.EnableWs {
 		rpcConfig.WSHost = config.Host
 		rpcConfig.WSPort = config.WsPort
-		// todo (@pedro) - review if this poses a security issue
+		// todo - review if this poses a security issue
 		rpcConfig.WSOrigins = []string{allOrigins}
 		rpcConfig.WSPathPrefix = config.WsPath
 	}
