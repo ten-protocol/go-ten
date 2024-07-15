@@ -50,7 +50,7 @@ export const personalTransactionsData = async (
   options: Record<string, any>
 ) => {
   try {
-    if (provider) {
+    if (provider && walletAddress) {
       const requestPayload = {
         address: walletAddress,
         pagination: {
@@ -65,6 +65,8 @@ export const personalTransactionsData = async (
       const personalTxData = jsonHexToObj(personalTxResp);
       return personalTxData;
     }
+
+    return null;
   } catch (error) {
     console.error("Error fetching personal transactions:", error);
     showToast(ToastType.DESTRUCTIVE, "Error fetching personal transactions");
