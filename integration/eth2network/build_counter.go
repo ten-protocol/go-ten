@@ -42,5 +42,5 @@ func readNextBuildNumber() (int, error) {
 }
 
 func writeBuildNumber(buildNumber int) error {
-	return os.WriteFile(buildNumberFile, []byte(fmt.Sprintf("%d", buildNumber)), 0644)
+	return os.WriteFile(buildNumberFile, []byte(fmt.Sprintf("%d", buildNumber)), 0o644)
 }
