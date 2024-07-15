@@ -84,7 +84,8 @@ func NewPosEth2Network(binDir string, gethRPCPort, gethWSPort, gethHTTPPort, bea
 	prysmBeaconLogFile := path.Join(buildDir, "beacon-chain.log")
 	prysmValidatorLogFile := path.Join(buildDir, "validator.log")
 
-	gethdataDir := path.Join(buildDir, "/gethdata")
+	// needed to get around unix 107 character endpoint limit
+	gethdataDir := path.Join(basepath, "../.build/eth2/gethdata")
 	beacondataDir := path.Join(buildDir, "/beacondata")
 	validatordataDir := path.Join(buildDir, "/validatordata")
 

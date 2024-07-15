@@ -94,10 +94,7 @@ func EnsureBinariesExist() (string, error) {
 			fmt.Printf("%s\n", out)
 			panic(err)
 		}
-	}()
-
-	wg.Wait()
-	return path.Join(basepath, _eth2BinariesRelPath), nil
+	}()hh, _eth2BinariesRelPath), nil
 }
 
 func checkOrDownloadBinary(fileName string, url string, unTar bool) error {
