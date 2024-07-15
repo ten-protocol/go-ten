@@ -278,7 +278,7 @@ func stopProcesses() error {
 
 func cleanup(gethdataDir string) error {
 	var out bytes.Buffer
-	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("rm -rf %s/geth.ipc", gethdataDir))
+	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("rm -rf %s", gethdataDir))
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 
