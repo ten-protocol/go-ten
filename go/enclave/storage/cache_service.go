@@ -64,6 +64,7 @@ func NewCacheService(logger gethlog.Logger) *CacheService {
 	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 10 * 10 * 1000,    // 10 times the expected elements (10 caches * 1000 historic elements)
 		MaxCost:     512 * 1024 * 1024, // allocate 512MB
+		BufferItems: 64,                // number of keys per Get buffer.
 	})
 	if err != nil {
 		logger.Crit("Could not initialise ristretto cache", log.ErrKey, err)
