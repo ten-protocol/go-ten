@@ -49,3 +49,7 @@ export const getItem = <T>(
 
   return value;
 };
+
+export function jsonHexToObj(hex: string) {
+  return JSON.parse(Buffer.from(hex.slice(2), "hex").toString());
+}

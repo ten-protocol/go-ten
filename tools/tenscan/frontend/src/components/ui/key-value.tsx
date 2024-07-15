@@ -10,7 +10,7 @@ export const KeyValueItem = ({
   value,
   isLastItem,
 }: {
-  label: string;
+  label?: string;
   value: string | number | React.ReactNode;
   isLastItem?: boolean;
 }) => (
@@ -19,7 +19,7 @@ export const KeyValueItem = ({
    ${isLastItem ? "" : "mb-2"}`}
   >
     <div className="py-2 grid grid-cols-9">
-      <span className="font-bold col-span-3">{label}</span>
+      {label && <span className="font-bold col-span-3">{label}</span>}
       <span className="ml-2 col-span-6">{value}</span>
     </div>
     {!isLastItem && <Separator />}

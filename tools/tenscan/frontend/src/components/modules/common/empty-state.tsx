@@ -25,6 +25,8 @@ const EmptyState = ({
             src={imageSrc}
             alt={imageAlt || "Empty state"}
             className="w-24 h-24 rounded-full"
+            width={96}
+            height={96}
           />
         )}
         {title && (

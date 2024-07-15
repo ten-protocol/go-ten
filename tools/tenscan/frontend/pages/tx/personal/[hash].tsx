@@ -1,6 +1,4 @@
-import { fetchTransactionByHash } from "@/api/transactions";
 import Layout from "@/src/components/layouts/default-layout";
-import { TransactionDetailsComponent } from "@/src/components/modules/transactions/transaction-details";
 import EmptyState from "@/src/components/modules/common/empty-state";
 import { Button } from "@/src/components/ui/button";
 import {
@@ -12,17 +10,20 @@ import {
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
+import { fetchPersonalTxnByHash } from "@/api/transactions";
+import { useWalletConnection } from "@/src/components/providers/wallet-provider";
+import { PersonalTxnDetailsComponent } from "@/src/components/modules/personal/personal-txn-details";
 
 export default function TransactionDetails() {
   const router = useRouter();
+  const { provider } = useWalletConnection();
   const { hash } = router.query;
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["transactionDetails", hash],
-    queryFn: () => fetchTransactionByHash(hash as string),
+  const { data: transactionDetails, isLoading } = useQuery({
+    queryKey: ["personalTxnData", hash],
+    queryFn: () => fetchPersonalTxnByHash(provider, hash as string),
+    enabled: !!provider && !!hash,
   });
-
-  const transactionDetails = data?.item;
 
   return (
     <Layout>
@@ -34,7 +35,7 @@ export default function TransactionDetails() {
             <CardTitle>Transaction Details</CardTitle>
           </CardHeader>
           <CardContent>
-            <TransactionDetailsComponent
+            <PersonalTxnDetailsComponent
               transactionDetails={transactionDetails}
             />
           </CardContent>
@@ -44,9 +45,7 @@ export default function TransactionDetails() {
           title="Transaction not found"
           description="The transaction you are looking for does not exist."
           action={
-            <Button onClick={() => router.push("/transactions")}>
-              Go back
-            </Button>
+            <Button onClick={() => router.push("/personal")}>Go back</Button>
           }
         />
       )}
