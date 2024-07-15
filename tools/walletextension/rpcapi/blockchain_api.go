@@ -184,7 +184,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 	default: // address was not a recognised custom query method address
 		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{tryUntilAuthorised: true}, "eth_getStorageAt", address.Hex(), params, nil)
 		if err != nil {
-			return nil, fmt.Errorf("unable to execute custom query: %w", err)
+			return nil, fmt.Errorf("unable to execute eth_getStorageAt: %w", err)
 		}
 		if resp == nil {
 			return nil, nil
