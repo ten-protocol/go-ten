@@ -62,7 +62,7 @@ type PosEth2Network interface {
 }
 
 func NewPosEth2Network(binDir string, gethRPCPort, gethWSPort, gethHTTPPort, beaconRPCPort, chainID int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
-	timestamp := strconv.FormatInt(time.Now().UnixMicro(), 10)
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 
 	buildDir := path.Join(basepath, "../.build/eth2", timestamp)
 
@@ -85,13 +85,13 @@ func NewPosEth2Network(binDir string, gethRPCPort, gethWSPort, gethHTTPPort, bea
 	prysmValidatorLogFile := path.Join(buildDir, "validator.log")
 
 	// needed to get around unix 107 character endpoint limit
-	gethdataDir := path.Join(basepath, "../.build/eth2/gethdata")
+	gethdataDir := path.Join(buildDir)
 	beacondataDir := path.Join(buildDir, "/beacondata")
 	validatordataDir := path.Join(buildDir, "/validatordata")
 
-	if err = os.MkdirAll(gethdataDir, os.ModePerm); err != nil {
-		panic(err)
-	}
+	//if err = os.MkdirAll(gethdataDir, os.ModePerm); err != nil {
+	//	panic(err)
+	//}
 	if err = os.MkdirAll(beacondataDir, os.ModePerm); err != nil {
 		panic(err)
 	}
@@ -163,10 +163,6 @@ func (n *PosImpl) waitForMergeEvent(startTime time.Time) error {
 		return err
 	}
 	time.Sleep(2 * time.Second)
-	//number, err := dial.BlockNumber(ctx)
-	//if err != nil {
-	//	return err
-	//}
 	number := uint64(0)
 	// wait for the merge block
 	err = retry.Do(
@@ -270,7 +266,6 @@ func stopProcesses() error {
 		if err != nil {
 			return fmt.Errorf("failed to kill process %s: %w", pid, err)
 		}
-		fmt.Printf("Killed geth and beacon processes")
 	}
 	return nil
 }
