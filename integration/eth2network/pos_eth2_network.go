@@ -149,8 +149,7 @@ func (n *PosImpl) Stop() error {
 	if err != nil {
 		return fmt.Errorf("could not run stop the geth and beacon processes. Cause: %s", err.Error())
 	}
-	return err
-	// return cleanup(n.gethdataDir)
+	return cleanup(n.gethdataDir)
 }
 
 func (n *PosImpl) checkExistingNetworks() error {
@@ -279,7 +278,7 @@ func stopProcesses() error {
 
 func cleanup(gethdataDir string) error {
 	var out bytes.Buffer
-	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("rm -rf %s", gethdataDir))
+	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("rm -rf %s/geth.ipc", gethdataDir))
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 
