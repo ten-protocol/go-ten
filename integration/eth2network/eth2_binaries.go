@@ -95,6 +95,7 @@ func EnsureBinariesExist() (string, error) {
 			panic(err)
 		}
 	}()
+
 	wg.Wait()
 	return path.Join(basepath, _eth2BinariesRelPath), nil
 }

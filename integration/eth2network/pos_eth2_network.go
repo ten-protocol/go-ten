@@ -62,9 +62,12 @@ type PosEth2Network interface {
 }
 
 func NewPosEth2Network(binDir string, gethRPCPort, gethWSPort, gethHTTPPort, beaconRPCPort, chainID int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-
-	buildDir := path.Join(basepath, "../.build/eth2", timestamp)
+	build, err := getBuildNumber()
+	if err != nil {
+		panic(fmt.Sprintf("could not get build number: %s", err.Error()))
+	}
+	buildString := strconv.Itoa(build)
+	buildDir := path.Join(basepath, "../.build/eth2", buildString)
 
 	gethBinaryPath := path.Join(binDir, gethFileNameVersion, _gethBinaryName)
 	prysmBeaconBinaryPath := path.Join(binDir, prysmBeaconChainFileNameVersion)
@@ -75,7 +78,7 @@ func NewPosEth2Network(binDir string, gethRPCPort, gethWSPort, gethHTTPPort, bea
 		panic(fmt.Sprintf("folder %s already exists", buildDir))
 	}
 
-	err := os.MkdirAll(buildDir, os.ModePerm)
+	err = os.MkdirAll(buildDir, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
@@ -84,14 +87,13 @@ func NewPosEth2Network(binDir string, gethRPCPort, gethWSPort, gethHTTPPort, bea
 	prysmBeaconLogFile := path.Join(buildDir, "beacon-chain.log")
 	prysmValidatorLogFile := path.Join(buildDir, "validator.log")
 
-	// needed to get around unix 107 character endpoint limit
-	gethdataDir := path.Join(buildDir)
+	gethdataDir := path.Join(buildDir, "/gethdata")
 	beacondataDir := path.Join(buildDir, "/beacondata")
 	validatordataDir := path.Join(buildDir, "/validatordata")
 
-	//if err = os.MkdirAll(gethdataDir, os.ModePerm); err != nil {
-	//	panic(err)
-	//}
+	if err = os.MkdirAll(gethdataDir, os.ModePerm); err != nil {
+		panic(err)
+	}
 	if err = os.MkdirAll(beacondataDir, os.ModePerm); err != nil {
 		panic(err)
 	}
@@ -143,7 +145,12 @@ func (n *PosImpl) Start() error {
 }
 
 func (n *PosImpl) Stop() error {
-	return stopProcesses()
+	err := stopProcesses()
+	if err != nil {
+		return fmt.Errorf("could not run stop the geth and beacon processes. Cause: %s", err.Error())
+	}
+	return err
+	//return cleanup(n.gethdataDir)
 }
 
 func (n *PosImpl) checkExistingNetworks() error {
@@ -267,6 +274,20 @@ func stopProcesses() error {
 			return fmt.Errorf("failed to kill process %s: %w", pid, err)
 		}
 	}
+	return nil
+}
+
+func cleanup(gethdataDir string) error {
+	var out bytes.Buffer
+	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("rm -rf %s", gethdataDir))
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to delete gethdatadir: %w\nOutput: %s", err, out.String())
+	}
+
 	return nil
 }
 
