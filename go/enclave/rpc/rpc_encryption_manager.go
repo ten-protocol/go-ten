@@ -3,6 +3,7 @@ package rpc
 import (
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/go/common/privacy"
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 
@@ -29,6 +30,7 @@ type EncryptionManager struct {
 	l1BlockProcessor       components.L1BlockProcessor
 	config                 *config.EnclaveConfig
 	logger                 gethlog.Logger
+	whitelist              *privacy.Whitelist
 }
 
 func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey, storage storage.Storage, registry components.BatchRegistry, processors *crosschain.Processors, service nodetype.NodeType, config *config.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain l2chain.ObscuroChain, logger gethlog.Logger) *EncryptionManager {
@@ -44,6 +46,7 @@ func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey, storage stor
 		gasOracle:              oracle,
 		logger:                 logger,
 		enclavePrivateKeyECIES: enclavePrivateKeyECIES,
+		whitelist:              privacy.NewWhitelist(),
 	}
 }
 

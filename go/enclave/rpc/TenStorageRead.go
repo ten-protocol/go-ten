@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/common/privacy"
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
@@ -20,7 +19,7 @@ type storageReadWithBlock struct {
 	block       *gethrpc.BlockNumberOrHash
 }
 
-func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWithBlock, string], _ *EncryptionManager) error {
+func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWithBlock, string], rpc *EncryptionManager) error {
 	if len(reqParams) < 2 || len(reqParams) > 3 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
 		return nil
@@ -39,8 +38,7 @@ func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWit
 	}
 
 	//todo: @siliev - this whitelist creation every time is bugging me
-	whitelist := privacy.NewWhitelist()
-	if !whitelist.AllowedStorageSlots[slot] {
+	if !rpc.whitelist.AllowedStorageSlots[slot] {
 		builder.Err = fmt.Errorf("eth_getStorageAt is not supported on TEN")
 		return nil
 	}
