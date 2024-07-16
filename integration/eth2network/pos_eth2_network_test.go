@@ -46,7 +46,7 @@ func TestStartPosEth2Network(t *testing.T) {
 		_startPort+integration.DefaultGethWSPortOffset,
 		_startPort+integration.DefaultGethNetworkPortOffset, // HTTP
 		_startPort+integration.DefaultPrysmP2PPortOffset,    // RPC
-		integration.GethChainID,
+		integration.EthereumChainID,
 		6*time.Minute,
 	)
 
@@ -57,7 +57,7 @@ func TestStartPosEth2Network(t *testing.T) {
 
 	// test input configurations
 	t.Run("areConfigsUphold", func(t *testing.T) {
-		areConfigsUphold(t, gethcommon.HexToAddress(integration.GethNodeAddress), integration.GethChainID)
+		areConfigsUphold(t, gethcommon.HexToAddress(integration.GethNodeAddress), integration.EthereumChainID)
 	})
 
 	// test number of nodes
@@ -67,7 +67,7 @@ func TestStartPosEth2Network(t *testing.T) {
 
 	minerWallet := wallet.NewInMemoryWalletFromConfig(
 		integration.GethNodePK,
-		integration.GethChainID,
+		integration.EthereumChainID,
 		gethlog.New())
 
 	t.Run("txsAreMinted", func(t *testing.T) {
