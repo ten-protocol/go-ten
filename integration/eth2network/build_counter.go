@@ -3,6 +3,7 @@ package eth2network
 import (
 	"fmt"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -23,7 +24,8 @@ func getBuildNumber() (int, error) {
 }
 
 func readNextBuildNumber() (int, error) {
-	data, err := os.ReadFile(buildNumberFile)
+	filePath := path.Join(basepath, buildNumberFile)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return 1, nil // Start from 1 if file does not exist
@@ -42,5 +44,6 @@ func readNextBuildNumber() (int, error) {
 }
 
 func writeBuildNumber(buildNumber int) error {
-	return os.WriteFile(buildNumberFile, []byte(fmt.Sprintf("%d", buildNumber)), 0o644)
+	filePath := path.Join(basepath, buildNumberFile)
+	return os.WriteFile(filePath, []byte(fmt.Sprintf("%d", buildNumber)), 0o644)
 }
