@@ -182,7 +182,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		}
 		return serialised, nil
 	default: // address was not a recognised custom query method address
-		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{tryUntilAuthorised: true}, "eth_getStorageAt", address.Hex(), params, nil)
+		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{tryUntilAuthorised: true}, "eth_getStorageAt", address, params, nil)
 		if err != nil {
 			return nil, fmt.Errorf("unable to execute eth_getStorageAt: %w", err)
 		}

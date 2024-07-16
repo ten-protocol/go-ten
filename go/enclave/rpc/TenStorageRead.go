@@ -15,7 +15,7 @@ import (
 )
 
 type storageReadWithBlock struct {
-	address     common.Address
+	address     *common.Address
 	storageSlot string
 	block       *gethrpc.BlockNumberOrHash
 }
@@ -26,13 +26,12 @@ func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWit
 		return nil
 	}
 
-	addressHex, ok := reqParams[0].(string)
-	if !ok {
-		builder.Err = fmt.Errorf("address not provided in parameters")
+	address, err := gethencoding.ExtractAddress(reqParams[0])
+	if err != nil {
+		builder.Err = fmt.Errorf("error extracting address - %w", err)
 		return nil
 	}
 
-	address := common.HexToAddress(addressHex)
 	slot, ok := reqParams[1].(string)
 	if !ok {
 		builder.Err = fmt.Errorf("storage slot not provided in parameters")
@@ -81,7 +80,7 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 		return nil
 	}
 
-	account, err := stateDb.GetTrie().GetAccount(builder.Param.address)
+	account, err := stateDb.GetTrie().GetAccount(*builder.Param.address)
 	if err != nil {
 		builder.Err = err
 		return nil
@@ -93,7 +92,7 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 		return nil
 	}
 
-	value, err := trie.GetStorage(builder.Param.address, storageSlot)
+	value, err := trie.GetStorage(*builder.Param.address, storageSlot)
 	if err != nil {
 		rpc.logger.Debug("Failed eth_getStorageAt.", log.ErrKey, err)
 
