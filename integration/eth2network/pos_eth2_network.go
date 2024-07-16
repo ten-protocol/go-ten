@@ -51,6 +51,7 @@ type PosImpl struct {
 	beacondataDir            string
 	validatordataDir         string
 	gethGenesisBytes         []byte
+	networkProcess           *exec.Cmd
 	timeout                  time.Duration
 }
 
