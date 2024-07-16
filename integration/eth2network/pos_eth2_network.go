@@ -269,6 +269,7 @@ func stopProcesses() error {
 			return fmt.Errorf("failed to kill process %s: %w", pid, err)
 		}
 	}
+	time.Sleep(2 * time.Second)
 	return nil
 }
 
