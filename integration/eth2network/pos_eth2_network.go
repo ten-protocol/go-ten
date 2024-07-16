@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"os"
 	"os/exec"
 	"path"
@@ -131,13 +132,21 @@ func NewPosEth2Network(binDir string, gethRPCPort, gethWSPort, gethHTTPPort, bea
 
 func (n *PosImpl) Start() error {
 	startTime := time.Now()
+	var eg errgroup.Group
 	if err := n.checkExistingNetworks(); err != nil {
 		return err
 	}
 
-	err := startNetworkScript(n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.chainID, n.buildDir, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
-		n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath, n.gethBinaryPath,
-		n.gethdataDir, n.beacondataDir, n.validatordataDir)
+	err := eg.Wait()
+	go func() {
+		n.networkProcess, err = startNetworkScript(n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.chainID, n.buildDir, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
+			n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath, n.gethBinaryPath,
+			n.gethdataDir, n.beacondataDir, n.validatordataDir)
+		if err != nil {
+			panic(err)
+		}
+		time.Sleep(time.Second)
+	}()
 	if err != nil {
 		return fmt.Errorf("could not run the script to start l1 pos network. Cause: %s", err.Error())
 	}
@@ -145,7 +154,10 @@ func (n *PosImpl) Start() error {
 }
 
 func (n *PosImpl) Stop() error {
-	return stopProcesses()
+	kill(n.networkProcess.Process)
+	time.Sleep(time.Second)
+	return nil
+	//return stopProcesses()
 }
 
 func (n *PosImpl) checkExistingNetworks() error {
@@ -212,7 +224,7 @@ func (n *PosImpl) GenesisBytes() []byte {
 
 func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
 	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string,
-) error {
+) (*exec.Cmd, error) {
 	startScript := filepath.Join(basepath, "start-pos-network.sh")
 	beaconRPCPortStr := strconv.Itoa(beaconRPCPort)
 	gethHTTPPortStr := strconv.Itoa(gethHTTPPort)
@@ -239,11 +251,13 @@ func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, bu
 		"--validatordata-dir", validatordataDir,
 	)
 
-	if out, err := cmd.Output(); err != nil {
-		fmt.Printf("%s\n", out)
-		panic(err)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start network script: %w", err)
 	}
-	return nil
+	return cmd, nil
 }
 
 func stopProcesses() error {
@@ -260,6 +274,18 @@ func stopProcesses() error {
 
 	fmt.Println(out.String())
 	return nil
+}
+
+func kill(p *os.Process) {
+	killErr := p.Kill()
+	if killErr != nil {
+		fmt.Printf("Error killing process %s", killErr)
+	}
+	time.Sleep(200 * time.Millisecond)
+	err := p.Release()
+	if err != nil {
+		fmt.Printf("Error releasing process %s", err)
+	}
 }
 
 // we parse the wallet addresses and append them to the genesis json, using an intermediate file which is cleaned up
