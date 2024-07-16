@@ -158,9 +158,8 @@ func (n *PosImpl) Start() error {
 
 func (n *PosImpl) Stop() error {
 	kill(n.networkProcess.Process)
-	time.Sleep(time.Second)
+	time.Sleep(5 * time.Second)
 	return nil
-	//return stopProcesses()
 }
 
 func (n *PosImpl) checkExistingNetworks() error {

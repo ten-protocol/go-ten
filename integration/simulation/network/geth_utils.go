@@ -145,7 +145,7 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	}, nil
 }
 
-func StopEth2Network(clients []ethadapter.EthClient, netw eth2network.PosEth2Network) {
+func StopEth2Network(clients []ethadapter.EthClient, network eth2network.PosEth2Network) {
 	// Stop the clients first
 	for _, c := range clients {
 		if c != nil {
@@ -153,8 +153,8 @@ func StopEth2Network(clients []ethadapter.EthClient, netw eth2network.PosEth2Net
 		}
 	}
 	// Stop the nodes second
-	if netw != nil { // If network creation failed, we may be attempting to tear down the Geth network before it even exists.
-		err := netw.Stop()
+	if network != nil { // If network creation failed, we may be attempting to tear down the Geth network before it even exists.
+		err := network.Stop()
 		if err != nil {
 			fmt.Println(err)
 		}
