@@ -72,7 +72,8 @@ jobs:
             integration/.build/simulations/sim-log-*.txt
             integration/.build/noderunner/noderunner-*.txt
             integration/.build/wallet_extension/wal-ext-*.txt
-            integration/.build/eth2/*.log
+            integration/.build/eth2/*
+            !integration/.build/eth2/*.ipc
             integration/.build/faucet/*
             integration/.build/tenscan/*
             integration/.build/tengateway/*
