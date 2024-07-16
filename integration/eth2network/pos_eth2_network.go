@@ -212,14 +212,14 @@ func (n *PosImpl) GenesisBytes() []byte {
 func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
 	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string,
 ) error {
-	scriptPath := filepath.Join(basepath, "start-pos-network.sh")
+	startScript := filepath.Join(basepath, "start-pos-network.sh")
 	beaconRPCPortStr := strconv.Itoa(beaconRPCPort)
 	gethHTTPPortStr := strconv.Itoa(gethHTTPPort)
 	gethWSPortStr := strconv.Itoa(gethWSPort)
 	chainStr := strconv.Itoa(chainID)
 
 	// TODO move all this to a config file
-	cmd := exec.Command("/bin/bash", scriptPath,
+	cmd := exec.Command("/bin/bash", startScript,
 		"--geth-http", gethHTTPPortStr,
 		"--geth-ws", gethWSPortStr,
 		"--beacon-rpc", beaconRPCPortStr,
@@ -246,7 +246,8 @@ func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, bu
 }
 
 func stopProcesses() error {
-	cmd := exec.Command("/bin/bash", "stop-processes.sh")
+	stopScript := filepath.Join(basepath, "stop-processes.sh")
+	cmd := exec.Command("/bin/bash", stopScript)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
