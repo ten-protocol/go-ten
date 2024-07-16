@@ -11,15 +11,21 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
+	"github.com/ten-protocol/go-ten/go/common/privacy"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 type BlockChainAPI struct {
-	we *Services
+	we               *Services
+	storageWhitelist *privacy.Whitelist
 }
 
 func NewBlockChainAPI(we *Services) *BlockChainAPI {
-	return &BlockChainAPI{we}
+	whitelist := privacy.NewWhitelist()
+	return &BlockChainAPI{
+		we:               we,
+		storageWhitelist: whitelist,
+	}
 }
 
 func (api *BlockChainAPI) ChainId() *hexutil.Big { //nolint:stylecheck
@@ -176,7 +182,20 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		}
 		return serialised, nil
 	default: // address was not a recognised custom query method address
-		return nil, fmt.Errorf("eth_getStorageAt is not supported on TEN")
+		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{tryUntilAuthorised: true}, "eth_getStorageAt", address, params, nil)
+		if err != nil {
+			return nil, fmt.Errorf("unable to execute eth_getStorageAt: %w", err)
+		}
+		if resp == nil {
+			return nil, nil
+		}
+
+		respHex, ok := (*resp).(string)
+		if !ok {
+			return nil, fmt.Errorf("unable to decode response")
+		}
+		// turn resp object into hexutil.Bytes
+		return hexutil.MustDecode(respHex), nil
 	}
 }
 

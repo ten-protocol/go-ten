@@ -34,6 +34,7 @@ const (
 	EnclaveProto_GetTransactionReceipt_FullMethodName  = "/generated.EnclaveProto/GetTransactionReceipt"
 	EnclaveProto_GetBalance_FullMethodName             = "/generated.EnclaveProto/GetBalance"
 	EnclaveProto_GetCode_FullMethodName                = "/generated.EnclaveProto/GetCode"
+	EnclaveProto_GetStorageSlot_FullMethodName         = "/generated.EnclaveProto/GetStorageSlot"
 	EnclaveProto_Subscribe_FullMethodName              = "/generated.EnclaveProto/Subscribe"
 	EnclaveProto_Unsubscribe_FullMethodName            = "/generated.EnclaveProto/Unsubscribe"
 	EnclaveProto_EstimateGas_FullMethodName            = "/generated.EnclaveProto/EstimateGas"
@@ -49,7 +50,7 @@ const (
 	EnclaveProto_StreamL2Updates_FullMethodName        = "/generated.EnclaveProto/StreamL2Updates"
 	EnclaveProto_DebugEventLogRelevancy_FullMethodName = "/generated.EnclaveProto/DebugEventLogRelevancy"
 	EnclaveProto_GetTotalContractCount_FullMethodName  = "/generated.EnclaveProto/GetTotalContractCount"
-	EnclaveProto_GetReceiptsByAddress_FullMethodName   = "/generated.EnclaveProto/GetPrivateTransactions"
+	EnclaveProto_GetReceiptsByAddress_FullMethodName   = "/generated.EnclaveProto/GetReceiptsByAddress"
 	EnclaveProto_EnclavePublicConfig_FullMethodName    = "/generated.EnclaveProto/EnclavePublicConfig"
 )
 
@@ -97,6 +98,7 @@ type EnclaveProtoClient interface {
 	GetBalance(ctx context.Context, in *GetBalanceRequest, opts ...grpc.CallOption) (*GetBalanceResponse, error)
 	// GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash
 	GetCode(ctx context.Context, in *GetCodeRequest, opts ...grpc.CallOption) (*GetCodeResponse, error)
+	GetStorageSlot(ctx context.Context, in *GetStorageSlotRequest, opts ...grpc.CallOption) (*GetStorageSlotResponse, error)
 	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (*SubscribeResponse, error)
 	Unsubscribe(ctx context.Context, in *UnsubscribeRequest, opts ...grpc.CallOption) (*UnsubscribeResponse, error)
 	// EstimateGas returns the estimation of gas used for the given transactions
@@ -259,6 +261,15 @@ func (c *enclaveProtoClient) GetBalance(ctx context.Context, in *GetBalanceReque
 func (c *enclaveProtoClient) GetCode(ctx context.Context, in *GetCodeRequest, opts ...grpc.CallOption) (*GetCodeResponse, error) {
 	out := new(GetCodeResponse)
 	err := c.cc.Invoke(ctx, EnclaveProto_GetCode_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *enclaveProtoClient) GetStorageSlot(ctx context.Context, in *GetStorageSlotRequest, opts ...grpc.CallOption) (*GetStorageSlotResponse, error) {
+	out := new(GetStorageSlotResponse)
+	err := c.cc.Invoke(ctx, EnclaveProto_GetStorageSlot_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -485,6 +496,7 @@ type EnclaveProtoServer interface {
 	GetBalance(context.Context, *GetBalanceRequest) (*GetBalanceResponse, error)
 	// GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash
 	GetCode(context.Context, *GetCodeRequest) (*GetCodeResponse, error)
+	GetStorageSlot(context.Context, *GetStorageSlotRequest) (*GetStorageSlotResponse, error)
 	Subscribe(context.Context, *SubscribeRequest) (*SubscribeResponse, error)
 	Unsubscribe(context.Context, *UnsubscribeRequest) (*UnsubscribeResponse, error)
 	// EstimateGas returns the estimation of gas used for the given transactions
@@ -560,6 +572,9 @@ func (UnimplementedEnclaveProtoServer) GetBalance(context.Context, *GetBalanceRe
 func (UnimplementedEnclaveProtoServer) GetCode(context.Context, *GetCodeRequest) (*GetCodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCode not implemented")
 }
+func (UnimplementedEnclaveProtoServer) GetStorageSlot(context.Context, *GetStorageSlotRequest) (*GetStorageSlotResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetStorageSlot not implemented")
+}
 func (UnimplementedEnclaveProtoServer) Subscribe(context.Context, *SubscribeRequest) (*SubscribeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Subscribe not implemented")
 }
@@ -606,7 +621,7 @@ func (UnimplementedEnclaveProtoServer) GetTotalContractCount(context.Context, *G
 	return nil, status.Errorf(codes.Unimplemented, "method GetTotalContractCount not implemented")
 }
 func (UnimplementedEnclaveProtoServer) GetReceiptsByAddress(context.Context, *GetReceiptsByAddressRequest) (*GetReceiptsByAddressResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetPrivateTransactions not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method GetReceiptsByAddress not implemented")
 }
 func (UnimplementedEnclaveProtoServer) EnclavePublicConfig(context.Context, *EnclavePublicConfigRequest) (*EnclavePublicConfigResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EnclavePublicConfig not implemented")
@@ -890,6 +905,24 @@ func _EnclaveProto_GetCode_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).GetCode(ctx, req.(*GetCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _EnclaveProto_GetStorageSlot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStorageSlotRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).GetStorageSlot(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EnclaveProto_GetStorageSlot_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).GetStorageSlot(ctx, req.(*GetStorageSlotRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1271,6 +1304,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EnclaveProto_GetCode_Handler,
 		},
 		{
+			MethodName: "GetStorageSlot",
+			Handler:    _EnclaveProto_GetStorageSlot_Handler,
+		},
+		{
 			MethodName: "Subscribe",
 			Handler:    _EnclaveProto_Subscribe_Handler,
 		},
@@ -1327,7 +1364,7 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EnclaveProto_GetTotalContractCount_Handler,
 		},
 		{
-			MethodName: "GetPrivateTransactions",
+			MethodName: "GetReceiptsByAddress",
 			Handler:    _EnclaveProto_GetReceiptsByAddress_Handler,
 		},
 		{

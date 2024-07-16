@@ -698,6 +698,14 @@ func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, b
 	return stateDB.GetCode(address), nil
 }
 
+func (e *enclaveImpl) GetStorageSlot(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageSlot) (*responses.EnclaveResponse, common.SystemError) {
+	if e.stopControl.IsStopping() {
+		return nil, responses.ToInternalError(fmt.Errorf("requested GetCode with the enclave stopping"))
+	}
+
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.TenStorageReadValidate, rpc.TenStorageReadExecute)
+}
+
 func (e *enclaveImpl) Subscribe(ctx context.Context, id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) common.SystemError {
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested SubscribeForExecutedBatches with the enclave stopping"))
