@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -247,60 +246,18 @@ func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, bu
 }
 
 func stopProcesses() error {
-	// First, find and kill the processes
-	cmd := exec.Command("/bin/bash", "-c", "lsof -i :12000 -i :30303 -t")
+	cmd := exec.Command("/bin/bash", "stop-processes.sh")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("failed to find processes: %w\nOutput: %s", err, out.String())
+		return fmt.Errorf("failed to stop processes: %w\nOutput: %s", err, out.String())
 	}
 
-	pids := strings.Fields(out.String())
-	if len(pids) == 0 {
-		return fmt.Errorf("no processes found on UDP:12000 or TCP:30303")
-	}
-
-	for _, pid := range pids {
-		killCmd := exec.Command("kill", "-9", pid)
-		err := killCmd.Run()
-		if err != nil {
-			return fmt.Errorf("failed to kill process %s: %w", pid, err)
-		}
-	}
-
-	for i := 0; i < 5; i++ {
-		time.Sleep(1 * time.Second)
-		cmd = exec.Command("/bin/bash", "-c", "lsof -i :12000 -i :30303 -t")
-		out.Reset()
-		cmd.Stdout = &out
-		cmd.Stderr = &out
-
-		err := cmd.Run()
-		if err != nil {
-			if strings.Contains(out.String(), "No such file or directory") {
-				return nil // No processes found, exit successfully
-			}
-			return fmt.Errorf("error while checking processes: %w\nOutput: %s", err, out.String())
-		}
-
-		pids = strings.Fields(out.String())
-		if len(pids) == 0 {
-			return nil // No processes found, exit successfully
-		}
-
-		for _, pid := range pids {
-			killCmd := exec.Command("kill", "-9", pid)
-			err := killCmd.Run()
-			if err != nil {
-				return fmt.Errorf("failed to kill process %s: %w", pid, err)
-			}
-		}
-	}
-
-	return fmt.Errorf("processes on UDP:12000 or TCP:30303 are still running")
+	fmt.Println(out.String())
+	return nil
 }
 
 // we parse the wallet addresses and append them to the genesis json, using an intermediate file which is cleaned up
