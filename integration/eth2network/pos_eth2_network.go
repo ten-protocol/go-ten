@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"golang.org/x/sync/errgroup"
+	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -24,6 +25,8 @@ import (
 const (
 	_eth2BinariesRelPath = "../.build/eth2_bin"
 	_gethBinaryName      = "geth"
+	udpPort              = "12000"
+	tcpPort              = "30303"
 )
 
 var (
@@ -166,6 +169,7 @@ func (n *PosImpl) checkExistingNetworks() error {
 	if err == nil {
 		return fmt.Errorf("unexpected geth node is active before the network is started")
 	}
+	checkBindAddresses(udpPort, tcpPort)
 	return nil
 }
 
@@ -260,34 +264,6 @@ func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, bu
 	return cmd, nil
 }
 
-func stopProcesses() error {
-	stopScript := filepath.Join(basepath, "stop-processes.sh")
-	cmd := exec.Command("/bin/bash", stopScript)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("failed to stop processes: %w\nOutput: %s", err, out.String())
-	}
-
-	fmt.Println(out.String())
-	return nil
-}
-
-func kill(p *os.Process) {
-	killErr := p.Kill()
-	if killErr != nil {
-		fmt.Printf("Error killing process %s", killErr)
-	}
-	time.Sleep(200 * time.Millisecond)
-	err := p.Release()
-	if err != nil {
-		fmt.Printf("Error releasing process %s", err)
-	}
-}
-
 // we parse the wallet addresses and append them to the genesis json, using an intermediate file which is cleaned up
 // at the end of the network script. genesis bytes are returned to be parsed to the enclave config
 func fundWallets(walletsToFund []string, chainID int) (string, error) {
@@ -323,4 +299,60 @@ func fundWallets(walletsToFund []string, chainID int) (string, error) {
 	}
 
 	return string(formattedGenesisBytes), nil
+}
+
+func kill(p *os.Process) {
+	_ = stopProcesses()
+	checkBindAddresses("12000", "30303")
+	err := p.Release()
+	if err != nil {
+		fmt.Printf("Error releasing process %s", err)
+	}
+}
+
+// checkBindAddresses checks that no processes exist at the specified UDP and TCP ports
+func checkBindAddresses(udpPort, tcpPort string) {
+	udpAddr, err := net.ResolveUDPAddr("udp", ":"+udpPort)
+	if err != nil {
+		fmt.Printf("Error resolving UDP address: %s\n", err)
+	} else {
+		conn, err := net.ListenUDP("udp", udpAddr)
+		if err != nil {
+			fmt.Printf("UDP port %s is in use\n", udpPort)
+			_ = stopProcesses()
+		} else {
+			fmt.Printf("UDP port %s is available\n", udpPort)
+			conn.Close()
+		}
+	}
+
+	tcpAddr, err := net.ResolveTCPAddr("tcp", ":"+tcpPort)
+	if err != nil {
+		fmt.Printf("Error resolving TCP address: %s\n", err)
+	} else {
+		listener, err := net.ListenTCP("tcp", tcpAddr)
+		if err != nil {
+			fmt.Printf("TCP port %s is in use\n", tcpPort)
+			_ = stopProcesses()
+		} else {
+			fmt.Printf("TCP port %s is available\n", tcpPort)
+			listener.Close()
+		}
+	}
+}
+
+func stopProcesses() error {
+	stopScript := filepath.Join(basepath, "stop-processes.sh")
+	cmd := exec.Command("/bin/bash", stopScript)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to stop processes: %w\nOutput: %s", err, out.String())
+	}
+
+	fmt.Println(out.String())
+	return nil
 }

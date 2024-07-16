@@ -56,33 +56,6 @@ mkdir -p "$(dirname "${BEACON_LOG_FILE}")"
 mkdir -p "$(dirname "${VALIDATOR_LOG_FILE}")"
 mkdir -p "$(dirname "${GETH_LOG_FILE}")"
 
-echo "Geth HTTP Port: ${GETH_HTTP_PORT}"
-echo "Geth WS Port: ${GETH_WS_PORT}"
-echo "Beacon RPC Port: ${BEACON_RPC_PORT}"
-echo "Chain ID: ${CHAIN_ID}"
-echo "Build Directory: ${BUILD_DIR}"
-echo "Geth Data Directory: ${GETHDATA_DIR}"
-echo "Beacon Data Directory: ${BEACONDATA_DIR}"
-echo "Validator Data Directory: ${VALIDATORDATA_DIR}"
-echo "Geth Log: ${GETH_LOG_FILE}"
-echo "Beacon Log: ${BEACON_LOG_FILE}"
-echo "Validator Log: ${VALIDATOR_LOG_FILE}"
-
-if [ ! -f "${BEACON_BINARY}" ]; then
-    echo "Error: Beacon binary not found at ${BEACON_BINARY}"
-    exit 1
-fi
-
-if [ ! -f "${PRYSMCTL_BINARY}" ]; then
-    echo "Error: Prysmctl binary not found at ${PRYSMCTL_BINARY}"
-    exit 1
-fi
-
-if [ ! -f "${VALIDATOR_BINARY}" ]; then
-    echo "Error: Validator binary not found at ${VALIDATOR_BINARY}"
-    exit 1
-fi
-
 # Needed as this is overwritten each time and the timestamps are incredibly specific
 cp "${BASE_PATH}/genesis-updated.json" "${BASE_PATH}/genesis.json"
 
