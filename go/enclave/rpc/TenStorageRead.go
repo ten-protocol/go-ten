@@ -37,7 +37,6 @@ func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWit
 		return nil
 	}
 
-	//todo: @siliev - this whitelist creation every time is bugging me
 	if !rpc.whitelist.AllowedStorageSlots[slot] {
 		builder.Err = fmt.Errorf("eth_getStorageAt is not supported on TEN")
 		return nil
