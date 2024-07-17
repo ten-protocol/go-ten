@@ -193,6 +193,10 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}
 
 	syntheticTransactions := append(xchainTxs, freeTransactions...)
+	fmt.Printf("Number of synthetic transactions: %d\n", int64(len(syntheticTransactions)))
+	for _, xTx := range syntheticTransactions {
+		fmt.Printf("Syntheic tx hash: %s\n", xTx.Tx.Hash().Hex())
+	}
 
 	// fromTxIndex - Here we start from the 0 index. This will be the same for a validator.
 	successfulTxs, excludedTxs, txReceipts, createdContracts, err := executor.processTransactions(ctx, batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
@@ -209,6 +213,9 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 
 	if err = executor.verifyInboundCrossChainTransactions(syntheticTransactions, ccSuccessfulTxs, ccReceipts); err != nil {
 		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
+	}
+	for _, tx := range ccSuccessfulTxs {
+		fmt.Printf("Successful TX for batch with hash: %s\n", tx.Hash().Hex())
 	}
 
 	if failForEmptyBatch &&
@@ -245,6 +252,10 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 			l.BlockHash = copyBatch.Hash()
 		}
 	}
+	for _, tx := range copyBatch.Transactions {
+		fmt.Printf("Computed batch TX hash: %s\n", tx.Hash().Hex())
+	}
+	fmt.Printf("Computed batch txs hashes: %s\n", copyBatch.Transactions)
 	maps.Copy(createdContracts, createdContractsSyn)
 	return &ComputedBatch{
 		Batch:            &copyBatch,
