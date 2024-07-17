@@ -49,6 +49,7 @@ func AddBatch(dbtx *dbTransaction, statements *SQLStatements, batch *common.ExtB
 		for i, txHash := range batch.TxHashes {
 			insert += fmt.Sprintf(" (%s, %s),", statements.GetPlaceHolder(i*2+1), statements.GetPlaceHolder(i*2+2))
 			args = append(args, txHash.Bytes(), batch.SeqNo().Uint64())
+			fmt.Printf("Inserting tx with hash: %s\n", txHash.Hex())
 		}
 		insert = strings.TrimRight(insert, ",")
 		_, err = dbtx.tx.Exec(insert, args...)

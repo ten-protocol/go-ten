@@ -37,7 +37,7 @@ CREATE INDEX IF NOT EXISTS IDX_BATCH_HEIGHT_HOST ON batch_host (height);
 CREATE TABLE IF NOT EXISTS transaction_host
 (
     id             SERIAL PRIMARY KEY,
-    hash           BYTEA NOT NULL UNIQUE,
+    hash           BYTEA,
     b_sequence     INT,
     FOREIGN KEY (b_sequence) REFERENCES batch_host(sequence)
 );
