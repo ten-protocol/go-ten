@@ -34,7 +34,9 @@ func SubmitTxExecute(builder *CallBuilder[common.L2Tx, gethcommon.Hash], rpc *En
 		builder.Err = err
 		return nil
 	}
+
 	h := builder.Param.Hash()
+	fmt.Printf("Submit TX execute hash: %s\n", h.Hex())
 	builder.ReturnValue = &h
 	return nil
 }
