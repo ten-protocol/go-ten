@@ -1,3 +1,4 @@
+import { fetchBatchByHash } from "@/api/batches";
 import { fetchTransactionByHash } from "@/api/transactions";
 import Layout from "@/src/components/layouts/default-layout";
 import { TransactionDetailsComponent } from "@/src/components/modules/transactions/transaction-details";
@@ -8,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
   CardContent,
+  CardDescription,
 } from "@/src/components/ui/card";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
@@ -26,40 +28,30 @@ export default function TransactionDetails() {
 
   return (
     <Layout>
-      <Card className="col-span-3">
-        {isLoading ? (
-          <>
-            <Skeleton className="h-10 w-100" />
-            <Skeleton className="h-10 w-100" />
-            <Skeleton className="h-10 w-100" />
-            <Skeleton className="h-10 w-100" />
-            <Skeleton className="h-10 w-100" />
-            <Skeleton className="h-10 w-100" />
-          </>
-        ) : transactionDetails ? (
-          <>
-            <CardHeader>
-              <CardTitle>Transaction Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TransactionDetailsComponent
-                transactionDetails={transactionDetails}
-              />
-            </CardContent>
-          </>
-        ) : (
-          <EmptyState
-            title="Transaction not found"
-            description="The transaction you are looking for does not exist."
-            action={
-              <Button onClick={() => router.push("/transactions")}>
-                Go back
-              </Button>
-            }
-            className="p-8"
-          />
-        )}
-      </Card>
+      {isLoading ? (
+        <Skeleton className="h-full w-full" />
+      ) : transactionDetails ? (
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Transaction Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TransactionDetailsComponent
+              transactionDetails={transactionDetails}
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <EmptyState
+          title="Transaction not found"
+          description="The transaction you are looking for does not exist."
+          action={
+            <Button onClick={() => router.push("/transactions")}>
+              Go back
+            </Button>
+          }
+        />
+      )}
     </Layout>
   );
 }

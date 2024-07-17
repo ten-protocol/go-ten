@@ -27,14 +27,7 @@ export type PersonalTransactionsResponse = {
   Total: number;
 };
 
-export type TransactionType = "0x0" | "0x1" | "0x2" | "0x3";
-
-export enum PersonalTransactionType {
-  Legacy = "0x0",
-  AccessList = "0x1",
-  DynamicFee = "0x2",
-  Blob = "0x3",
-}
+export type TransactionType = 0x0 | 0x1 | 0x2 | 0x3;
 
 export type PersonalTransactions = {
   id: number;
@@ -51,33 +44,4 @@ export type PersonalTransactions = {
   root: string;
   transactionIndex: string;
   type: TransactionType;
-};
-
-export type TransactionReceipt = {
-  blockHash: string;
-  blockNumber: string;
-  contractAddress: string;
-  cumulativeGasUsed: string;
-  effectiveGasPrice: string;
-  from: string;
-  gasUsed: string;
-  logs: Log[];
-  logsBloom: string;
-  status: string;
-  to: string;
-  transactionHash: string;
-  transactionIndex: string;
-  type: TransactionType;
-};
-
-export type Log = {
-  address: string;
-  blockHash: string;
-  blockNumber: string;
-  data: string;
-  logIndex: string;
-  removed: boolean;
-  topics: string[];
-  transactionHash: string;
-  transactionIndex: string;
 };

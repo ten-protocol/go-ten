@@ -93,7 +93,6 @@ export interface DashboardAnalyticsData {
   value: string | number | JSX.Element;
   change?: string;
   icon: any;
-  loading?: boolean;
 }
 
 export enum ItemPosition {

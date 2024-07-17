@@ -117,10 +117,6 @@ export function DataTablePagination<TData>({
               setPage(table.getState().pagination.pageIndex + 1);
               table.nextPage();
             }}
-            disabled={
-              table.getState().pagination.pageSize >
-              table?.getFilteredRowModel()?.rows?.length
-            }
             // uncomment the following line when total count feature is implemented
             // disabled={!table.getCanNextPage()}
           >

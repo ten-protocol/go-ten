@@ -18,9 +18,7 @@ const calculateOffset = (page: number, size: number) => {
 
 export const getOptions = (query: { page?: number; size?: number }) => {
   const defaultSize = 20;
-  const size = query.size
-    ? +(query.size > 100 ? 100 : query.size)
-    : defaultSize;
+  const size = query.size ? (query.size > 100 ? 100 : query.size) : defaultSize;
   const page = query.page || 1;
   const offset = calculateOffset(page, size);
   return {
