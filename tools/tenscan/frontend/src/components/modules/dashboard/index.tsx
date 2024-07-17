@@ -39,9 +39,15 @@ interface RecentData {
 }
 
 export default function Dashboard() {
-  const { price, transactions, transactionCount } = useTransactionsService();
-  const { contractCount } = useContractsService();
-  const { batches, latestBatch } = useBatchesService();
+  const {
+    price,
+    isPriceLoading,
+    transactions,
+    transactionCount,
+    isTransactionCountLoading,
+  } = useTransactionsService();
+  const { contractCount, isContractCountLoading } = useContractsService();
+  const { batches, latestBatch, isLatestBatchLoading } = useBatchesService();
   const { rollups } = useRollupsService();
 
   const DASHBOARD_DATA = [
@@ -53,6 +59,7 @@ export default function Dashboard() {
       // TODO: add change
       // change: "+20.1%",
       icon: RocketIcon,
+      loading: isPriceLoading,
     },
     {
       title: "Latest L2 Batch",
@@ -62,6 +69,7 @@ export default function Dashboard() {
       // TODO: add change
       // change: "+20.1%",
       icon: LayersIcon,
+      loading: isLatestBatchLoading,
     },
     {
       title: "Latest L1 Rollup",
@@ -77,6 +85,7 @@ export default function Dashboard() {
       // TODO: add change
       // change: "+20.1%",
       icon: CubeIcon,
+      loading: isLatestBatchLoading,
     },
     {
       title: "Transactions",
@@ -86,6 +95,7 @@ export default function Dashboard() {
       // TODO: add change
       // change: "+20.1%",
       icon: ReaderIcon,
+      loading: isTransactionCountLoading,
     },
     {
       title: "Contracts",
@@ -93,6 +103,7 @@ export default function Dashboard() {
       // TODO: add change
       // change: "+20.1%",
       icon: FileTextIcon,
+      loading: isContractCountLoading,
     },
     {
       title: "Nodes",
