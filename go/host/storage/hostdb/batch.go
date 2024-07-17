@@ -43,15 +43,16 @@ func AddBatch(dbtx *dbTransaction, statements *SQLStatements, batch *common.ExtB
 		return fmt.Errorf("host failed to insert batch: %w", err)
 	}
 	var totalCount int
-	total := dbtx.tx.QueryRow(countTxs).Scan(&totalCount)
+	_ = dbtx.tx.QueryRow(countTxs).Scan(&totalCount)
 	if len(batch.TxHashes) > 0 {
 		insert := statements.InsertTransactions
 		args := make([]any, 0)
+		fmt.Printf("Total before inserting tx: %d\n", int64(totalCount))
+		fmt.Printf("Inserting %d new tx hashes \n", len(batch.TxHashes))
 		for i, txHash := range batch.TxHashes {
 			insert += fmt.Sprintf(" (%s, %s),", statements.GetPlaceHolder(i*2+1), statements.GetPlaceHolder(i*2+2))
 			args = append(args, txHash.Bytes(), batch.SeqNo().Uint64())
-			fmt.Printf("Total before inserting tx: %s\n", total)
-			fmt.Printf("Inserting tx with hash: %s\n %d\n", txHash.Hex(), batch.SeqNo().Uint64())
+			fmt.Printf("Inserting tx with hash: %s %d\n", txHash.Hex(), batch.SeqNo().Uint64())
 		}
 		insert = strings.TrimRight(insert, ",")
 		_, err = dbtx.tx.Exec(insert, args...)
@@ -60,8 +61,8 @@ func AddBatch(dbtx *dbTransaction, statements *SQLStatements, batch *common.ExtB
 		}
 	}
 
-	total = dbtx.tx.QueryRow(countTxs).Scan(&totalCount)
-	fmt.Printf("Total after inserting tx: %s\n", total)
+	_ = dbtx.tx.QueryRow(countTxs).Scan(&totalCount)
+	fmt.Printf("Total after inserting tx: %d\n", int64(totalCount))
 	var currentTotal int
 	err = dbtx.tx.QueryRow(selectTxCount).Scan(&currentTotal)
 	if err != nil {
