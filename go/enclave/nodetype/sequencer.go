@@ -235,6 +235,7 @@ func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *common.
 	for _, group := range pendingTransactions {
 		// lazily resolve transactions until the batch runs out of space
 		for _, lazyTx := range group {
+			fmt.Printf("Mempool tx hash: %s\n", lazyTx.Hash.Hex())
 			if tx := lazyTx.Resolve(); tx != nil {
 				err = limiter.AcceptTransaction(tx)
 				if err != nil {
@@ -463,6 +464,7 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 }
 
 func (s *sequencer) SubmitTransaction(transaction *common.L2Tx) error {
+	fmt.Printf("Adding tx to mempool: %s\n", transaction.Hash().Hex())
 	return s.mempool.Add(transaction)
 }
 
