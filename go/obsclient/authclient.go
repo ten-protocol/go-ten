@@ -176,6 +176,7 @@ func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg,
 }
 
 func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Transaction) error {
+	fmt.Printf("Send Transaction: %s\n", signedTx.Hash().Hex())
 	var result responses.RawTxType
 	err := ac.rpcClient.CallContext(ctx, &result, rpc.SendRawTransaction, encodeTx(signedTx))
 	if err != nil {
