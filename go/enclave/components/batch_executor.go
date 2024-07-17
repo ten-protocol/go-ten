@@ -93,6 +93,7 @@ func (executor *batchExecutor) filterTransactionsWithSufficientFunds(ctx context
 	block, _ := executor.storage.FetchBlock(ctx, context.BlockPtr)
 
 	for _, tx := range context.Transactions {
+		fmt.Printf("Tx from context hash: %s\n", tx.Hash().Hex())
 		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
 		if err != nil {
 			executor.logger.Error("Unable to extract sender for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
@@ -252,10 +253,15 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 			l.BlockHash = copyBatch.Hash()
 		}
 	}
+	for _, tx := range freeTransactions.ToTransactions() {
+		fmt.Printf("Free tx hash: %s\n", tx.Hash().Hex())
+	}
+	for _, tx := range transactionsToProcess.ToTransactions() {
+		fmt.Printf("TransactionsToProcess tx hash: %s\n", tx.Hash().Hex())
+	}
 	for _, tx := range copyBatch.Transactions {
 		fmt.Printf("Computed batch TX hash: %s\n", tx.Hash().Hex())
 	}
-	fmt.Printf("Computed batch txs hashes: %s\n", copyBatch.Transactions)
 	maps.Copy(createdContracts, createdContractsSyn)
 	return &ComputedBatch{
 		Batch:            &copyBatch,
