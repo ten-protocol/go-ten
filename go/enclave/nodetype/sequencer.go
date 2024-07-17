@@ -255,6 +255,9 @@ func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *common.
 		return err
 	}
 
+	for _, tx := range transactions {
+		fmt.Printf("sequencer producing new head batch tx: %s\n", tx.Hash().Hex())
+	}
 	// todo - time is set only here; take from l1 block?
 	if _, err := s.produceBatch(ctx, sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), transactions, uint64(time.Now().Unix()), skipBatchIfEmpty); err != nil {
 		if errors.Is(err, components.ErrNoTransactionsToProcess) {
@@ -435,6 +438,9 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 			return fmt.Errorf("could not fetch transactions to duplicate. Cause %w", err)
 		}
 		// create the duplicate and store/broadcast it, recreate batch even if it was empty
+		for _, tx := range transactions {
+			fmt.Printf("sequencer dublicate batch tx: %s\n", tx.Hash().Hex())
+		}
 		cb, err := s.produceBatch(ctx, sequencerNo, l1Head.Hash(), currentHead, transactions, orphanBatch.Time, false)
 		if err != nil {
 			return fmt.Errorf("could not produce batch. Cause %w", err)
