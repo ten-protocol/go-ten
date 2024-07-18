@@ -2804,6 +2804,108 @@ func (x *GetBalanceResponse) GetSystemError() *SystemError {
 	return nil
 }
 
+type GetStorageSlotRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	EncryptedParams []byte `protobuf:"bytes,1,opt,name=encryptedParams,proto3" json:"encryptedParams,omitempty"`
+}
+
+func (x *GetStorageSlotRequest) Reset() {
+	*x = GetStorageSlotRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_enclave_proto_msgTypes[56]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetStorageSlotRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStorageSlotRequest) ProtoMessage() {}
+
+func (x *GetStorageSlotRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_enclave_proto_msgTypes[56]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStorageSlotRequest.ProtoReflect.Descriptor instead.
+func (*GetStorageSlotRequest) Descriptor() ([]byte, []int) {
+	return file_enclave_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *GetStorageSlotRequest) GetEncryptedParams() []byte {
+	if x != nil {
+		return x.EncryptedParams
+	}
+	return nil
+}
+
+type GetStorageSlotResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	EncodedEnclaveResponse []byte       `protobuf:"bytes,1,opt,name=encodedEnclaveResponse,proto3" json:"encodedEnclaveResponse,omitempty"`
+	SystemError            *SystemError `protobuf:"bytes,2,opt,name=systemError,proto3" json:"systemError,omitempty"`
+}
+
+func (x *GetStorageSlotResponse) Reset() {
+	*x = GetStorageSlotResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_enclave_proto_msgTypes[57]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetStorageSlotResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStorageSlotResponse) ProtoMessage() {}
+
+func (x *GetStorageSlotResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_enclave_proto_msgTypes[57]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStorageSlotResponse.ProtoReflect.Descriptor instead.
+func (*GetStorageSlotResponse) Descriptor() ([]byte, []int) {
+	return file_enclave_proto_rawDescGZIP(), []int{57}
+}
+
+func (x *GetStorageSlotResponse) GetEncodedEnclaveResponse() []byte {
+	if x != nil {
+		return x.EncodedEnclaveResponse
+	}
+	return nil
+}
+
+func (x *GetStorageSlotResponse) GetSystemError() *SystemError {
+	if x != nil {
+		return x.SystemError
+	}
+	return nil
+}
+
 type GetCodeRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2816,7 +2918,7 @@ type GetCodeRequest struct {
 func (x *GetCodeRequest) Reset() {
 	*x = GetCodeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[56]
+		mi := &file_enclave_proto_msgTypes[58]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2829,7 +2931,7 @@ func (x *GetCodeRequest) String() string {
 func (*GetCodeRequest) ProtoMessage() {}
 
 func (x *GetCodeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[56]
+	mi := &file_enclave_proto_msgTypes[58]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2842,7 +2944,7 @@ func (x *GetCodeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCodeRequest.ProtoReflect.Descriptor instead.
 func (*GetCodeRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{56}
+	return file_enclave_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *GetCodeRequest) GetAddress() []byte {
@@ -2871,7 +2973,7 @@ type GetCodeResponse struct {
 func (x *GetCodeResponse) Reset() {
 	*x = GetCodeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[57]
+		mi := &file_enclave_proto_msgTypes[59]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2884,7 +2986,7 @@ func (x *GetCodeResponse) String() string {
 func (*GetCodeResponse) ProtoMessage() {}
 
 func (x *GetCodeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[57]
+	mi := &file_enclave_proto_msgTypes[59]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2897,7 +2999,7 @@ func (x *GetCodeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCodeResponse.ProtoReflect.Descriptor instead.
 func (*GetCodeResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{57}
+	return file_enclave_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *GetCodeResponse) GetCode() []byte {
@@ -2926,7 +3028,7 @@ type SubscribeRequest struct {
 func (x *SubscribeRequest) Reset() {
 	*x = SubscribeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[58]
+		mi := &file_enclave_proto_msgTypes[60]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2939,7 +3041,7 @@ func (x *SubscribeRequest) String() string {
 func (*SubscribeRequest) ProtoMessage() {}
 
 func (x *SubscribeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[58]
+	mi := &file_enclave_proto_msgTypes[60]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2952,7 +3054,7 @@ func (x *SubscribeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{58}
+	return file_enclave_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *SubscribeRequest) GetId() []byte {
@@ -2980,7 +3082,7 @@ type SubscribeResponse struct {
 func (x *SubscribeResponse) Reset() {
 	*x = SubscribeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[59]
+		mi := &file_enclave_proto_msgTypes[61]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2993,7 +3095,7 @@ func (x *SubscribeResponse) String() string {
 func (*SubscribeResponse) ProtoMessage() {}
 
 func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[59]
+	mi := &file_enclave_proto_msgTypes[61]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3006,7 +3108,7 @@ func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeResponse.ProtoReflect.Descriptor instead.
 func (*SubscribeResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{59}
+	return file_enclave_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *SubscribeResponse) GetSystemError() *SystemError {
@@ -3027,7 +3129,7 @@ type UnsubscribeRequest struct {
 func (x *UnsubscribeRequest) Reset() {
 	*x = UnsubscribeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[60]
+		mi := &file_enclave_proto_msgTypes[62]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3040,7 +3142,7 @@ func (x *UnsubscribeRequest) String() string {
 func (*UnsubscribeRequest) ProtoMessage() {}
 
 func (x *UnsubscribeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[60]
+	mi := &file_enclave_proto_msgTypes[62]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3053,7 +3155,7 @@ func (x *UnsubscribeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsubscribeRequest.ProtoReflect.Descriptor instead.
 func (*UnsubscribeRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{60}
+	return file_enclave_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *UnsubscribeRequest) GetId() []byte {
@@ -3074,7 +3176,7 @@ type UnsubscribeResponse struct {
 func (x *UnsubscribeResponse) Reset() {
 	*x = UnsubscribeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[61]
+		mi := &file_enclave_proto_msgTypes[63]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3087,7 +3189,7 @@ func (x *UnsubscribeResponse) String() string {
 func (*UnsubscribeResponse) ProtoMessage() {}
 
 func (x *UnsubscribeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[61]
+	mi := &file_enclave_proto_msgTypes[63]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3100,7 +3202,7 @@ func (x *UnsubscribeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsubscribeResponse.ProtoReflect.Descriptor instead.
 func (*UnsubscribeResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{61}
+	return file_enclave_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *UnsubscribeResponse) GetSystemError() *SystemError {
@@ -3121,7 +3223,7 @@ type EstimateGasRequest struct {
 func (x *EstimateGasRequest) Reset() {
 	*x = EstimateGasRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[62]
+		mi := &file_enclave_proto_msgTypes[64]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3134,7 +3236,7 @@ func (x *EstimateGasRequest) String() string {
 func (*EstimateGasRequest) ProtoMessage() {}
 
 func (x *EstimateGasRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[62]
+	mi := &file_enclave_proto_msgTypes[64]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3147,7 +3249,7 @@ func (x *EstimateGasRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EstimateGasRequest.ProtoReflect.Descriptor instead.
 func (*EstimateGasRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{62}
+	return file_enclave_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *EstimateGasRequest) GetEncryptedParams() []byte {
@@ -3169,7 +3271,7 @@ type EstimateGasResponse struct {
 func (x *EstimateGasResponse) Reset() {
 	*x = EstimateGasResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[63]
+		mi := &file_enclave_proto_msgTypes[65]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3182,7 +3284,7 @@ func (x *EstimateGasResponse) String() string {
 func (*EstimateGasResponse) ProtoMessage() {}
 
 func (x *EstimateGasResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[63]
+	mi := &file_enclave_proto_msgTypes[65]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3195,7 +3297,7 @@ func (x *EstimateGasResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EstimateGasResponse.ProtoReflect.Descriptor instead.
 func (*EstimateGasResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{63}
+	return file_enclave_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *EstimateGasResponse) GetEncodedEnclaveResponse() []byte {
@@ -3223,7 +3325,7 @@ type GetLogsRequest struct {
 func (x *GetLogsRequest) Reset() {
 	*x = GetLogsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[64]
+		mi := &file_enclave_proto_msgTypes[66]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3236,7 +3338,7 @@ func (x *GetLogsRequest) String() string {
 func (*GetLogsRequest) ProtoMessage() {}
 
 func (x *GetLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[64]
+	mi := &file_enclave_proto_msgTypes[66]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3249,7 +3351,7 @@ func (x *GetLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLogsRequest.ProtoReflect.Descriptor instead.
 func (*GetLogsRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{64}
+	return file_enclave_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *GetLogsRequest) GetEncryptedParams() []byte {
@@ -3271,7 +3373,7 @@ type GetLogsResponse struct {
 func (x *GetLogsResponse) Reset() {
 	*x = GetLogsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[65]
+		mi := &file_enclave_proto_msgTypes[67]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3284,7 +3386,7 @@ func (x *GetLogsResponse) String() string {
 func (*GetLogsResponse) ProtoMessage() {}
 
 func (x *GetLogsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[65]
+	mi := &file_enclave_proto_msgTypes[67]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3297,7 +3399,7 @@ func (x *GetLogsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLogsResponse.ProtoReflect.Descriptor instead.
 func (*GetLogsResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{65}
+	return file_enclave_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *GetLogsResponse) GetEncodedEnclaveResponse() []byte {
@@ -3326,7 +3428,7 @@ type HealthCheckResponse struct {
 func (x *HealthCheckResponse) Reset() {
 	*x = HealthCheckResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[66]
+		mi := &file_enclave_proto_msgTypes[68]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3339,7 +3441,7 @@ func (x *HealthCheckResponse) String() string {
 func (*HealthCheckResponse) ProtoMessage() {}
 
 func (x *HealthCheckResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[66]
+	mi := &file_enclave_proto_msgTypes[68]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3352,7 +3454,7 @@ func (x *HealthCheckResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthCheckResponse.ProtoReflect.Descriptor instead.
 func (*HealthCheckResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{66}
+	return file_enclave_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *HealthCheckResponse) GetStatus() bool {
@@ -3378,7 +3480,7 @@ type EmptyArgs struct {
 func (x *EmptyArgs) Reset() {
 	*x = EmptyArgs{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[67]
+		mi := &file_enclave_proto_msgTypes[69]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3391,7 +3493,7 @@ func (x *EmptyArgs) String() string {
 func (*EmptyArgs) ProtoMessage() {}
 
 func (x *EmptyArgs) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[67]
+	mi := &file_enclave_proto_msgTypes[69]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3404,7 +3506,7 @@ func (x *EmptyArgs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EmptyArgs.ProtoReflect.Descriptor instead.
 func (*EmptyArgs) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{67}
+	return file_enclave_proto_rawDescGZIP(), []int{69}
 }
 
 type AttestationReportMsg struct {
@@ -3422,7 +3524,7 @@ type AttestationReportMsg struct {
 func (x *AttestationReportMsg) Reset() {
 	*x = AttestationReportMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[68]
+		mi := &file_enclave_proto_msgTypes[70]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3435,7 +3537,7 @@ func (x *AttestationReportMsg) String() string {
 func (*AttestationReportMsg) ProtoMessage() {}
 
 func (x *AttestationReportMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[68]
+	mi := &file_enclave_proto_msgTypes[70]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3448,7 +3550,7 @@ func (x *AttestationReportMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttestationReportMsg.ProtoReflect.Descriptor instead.
 func (*AttestationReportMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{68}
+	return file_enclave_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *AttestationReportMsg) GetReport() []byte {
@@ -3498,7 +3600,7 @@ type BlockSubmissionResponseMsg struct {
 func (x *BlockSubmissionResponseMsg) Reset() {
 	*x = BlockSubmissionResponseMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[69]
+		mi := &file_enclave_proto_msgTypes[71]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3511,7 +3613,7 @@ func (x *BlockSubmissionResponseMsg) String() string {
 func (*BlockSubmissionResponseMsg) ProtoMessage() {}
 
 func (x *BlockSubmissionResponseMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[69]
+	mi := &file_enclave_proto_msgTypes[71]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3524,7 +3626,7 @@ func (x *BlockSubmissionResponseMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockSubmissionResponseMsg.ProtoReflect.Descriptor instead.
 func (*BlockSubmissionResponseMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{69}
+	return file_enclave_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *BlockSubmissionResponseMsg) GetProducedSecretResponses() []*SecretResponseMsg {
@@ -3553,7 +3655,7 @@ type BlockSubmissionErrorMsg struct {
 func (x *BlockSubmissionErrorMsg) Reset() {
 	*x = BlockSubmissionErrorMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[70]
+		mi := &file_enclave_proto_msgTypes[72]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3566,7 +3668,7 @@ func (x *BlockSubmissionErrorMsg) String() string {
 func (*BlockSubmissionErrorMsg) ProtoMessage() {}
 
 func (x *BlockSubmissionErrorMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[70]
+	mi := &file_enclave_proto_msgTypes[72]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3579,7 +3681,7 @@ func (x *BlockSubmissionErrorMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockSubmissionErrorMsg.ProtoReflect.Descriptor instead.
 func (*BlockSubmissionErrorMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{70}
+	return file_enclave_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *BlockSubmissionErrorMsg) GetCause() string {
@@ -3611,7 +3713,7 @@ type CrossChainMsg struct {
 func (x *CrossChainMsg) Reset() {
 	*x = CrossChainMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[71]
+		mi := &file_enclave_proto_msgTypes[73]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3624,7 +3726,7 @@ func (x *CrossChainMsg) String() string {
 func (*CrossChainMsg) ProtoMessage() {}
 
 func (x *CrossChainMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[71]
+	mi := &file_enclave_proto_msgTypes[73]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3637,7 +3739,7 @@ func (x *CrossChainMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CrossChainMsg.ProtoReflect.Descriptor instead.
 func (*CrossChainMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{71}
+	return file_enclave_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *CrossChainMsg) GetSender() []byte {
@@ -3688,7 +3790,7 @@ type ExtBatchMsg struct {
 func (x *ExtBatchMsg) Reset() {
 	*x = ExtBatchMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[72]
+		mi := &file_enclave_proto_msgTypes[74]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3701,7 +3803,7 @@ func (x *ExtBatchMsg) String() string {
 func (*ExtBatchMsg) ProtoMessage() {}
 
 func (x *ExtBatchMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[72]
+	mi := &file_enclave_proto_msgTypes[74]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3714,7 +3816,7 @@ func (x *ExtBatchMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtBatchMsg.ProtoReflect.Descriptor instead.
 func (*ExtBatchMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{72}
+	return file_enclave_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *ExtBatchMsg) GetHeader() *BatchHeaderMsg {
@@ -3767,7 +3869,7 @@ type BatchHeaderMsg struct {
 func (x *BatchHeaderMsg) Reset() {
 	*x = BatchHeaderMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[73]
+		mi := &file_enclave_proto_msgTypes[75]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3780,7 +3882,7 @@ func (x *BatchHeaderMsg) String() string {
 func (*BatchHeaderMsg) ProtoMessage() {}
 
 func (x *BatchHeaderMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[73]
+	mi := &file_enclave_proto_msgTypes[75]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3793,7 +3895,7 @@ func (x *BatchHeaderMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchHeaderMsg.ProtoReflect.Descriptor instead.
 func (*BatchHeaderMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{73}
+	return file_enclave_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *BatchHeaderMsg) GetParentHash() []byte {
@@ -3942,7 +4044,7 @@ type ExtRollupMsg struct {
 func (x *ExtRollupMsg) Reset() {
 	*x = ExtRollupMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[74]
+		mi := &file_enclave_proto_msgTypes[76]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3955,7 +4057,7 @@ func (x *ExtRollupMsg) String() string {
 func (*ExtRollupMsg) ProtoMessage() {}
 
 func (x *ExtRollupMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[74]
+	mi := &file_enclave_proto_msgTypes[76]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3968,7 +4070,7 @@ func (x *ExtRollupMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtRollupMsg.ProtoReflect.Descriptor instead.
 func (*ExtRollupMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{74}
+	return file_enclave_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *ExtRollupMsg) GetHeader() *RollupHeaderMsg {
@@ -4011,7 +4113,7 @@ type RollupHeaderMsg struct {
 func (x *RollupHeaderMsg) Reset() {
 	*x = RollupHeaderMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[75]
+		mi := &file_enclave_proto_msgTypes[77]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4024,7 +4126,7 @@ func (x *RollupHeaderMsg) String() string {
 func (*RollupHeaderMsg) ProtoMessage() {}
 
 func (x *RollupHeaderMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[75]
+	mi := &file_enclave_proto_msgTypes[77]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4037,7 +4139,7 @@ func (x *RollupHeaderMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollupHeaderMsg.ProtoReflect.Descriptor instead.
 func (*RollupHeaderMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{75}
+	return file_enclave_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *RollupHeaderMsg) GetParentHash() []byte {
@@ -4118,7 +4220,7 @@ type SecretResponseMsg struct {
 func (x *SecretResponseMsg) Reset() {
 	*x = SecretResponseMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[76]
+		mi := &file_enclave_proto_msgTypes[78]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4131,7 +4233,7 @@ func (x *SecretResponseMsg) String() string {
 func (*SecretResponseMsg) ProtoMessage() {}
 
 func (x *SecretResponseMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[76]
+	mi := &file_enclave_proto_msgTypes[78]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4144,7 +4246,7 @@ func (x *SecretResponseMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretResponseMsg.ProtoReflect.Descriptor instead.
 func (*SecretResponseMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{76}
+	return file_enclave_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *SecretResponseMsg) GetSecret() []byte {
@@ -4195,7 +4297,7 @@ type WithdrawalMsg struct {
 func (x *WithdrawalMsg) Reset() {
 	*x = WithdrawalMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[77]
+		mi := &file_enclave_proto_msgTypes[79]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4208,7 +4310,7 @@ func (x *WithdrawalMsg) String() string {
 func (*WithdrawalMsg) ProtoMessage() {}
 
 func (x *WithdrawalMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[77]
+	mi := &file_enclave_proto_msgTypes[79]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4221,7 +4323,7 @@ func (x *WithdrawalMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawalMsg.ProtoReflect.Descriptor instead.
 func (*WithdrawalMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{77}
+	return file_enclave_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *WithdrawalMsg) GetAmount() []byte {
@@ -4547,6 +4649,19 @@ var file_enclave_proto_rawDesc = []byte{
 	0x73, 0x74, 0x65, 0x6d, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32,
 	0x16, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x53, 0x79, 0x73, 0x74,
 	0x65, 0x6d, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x52, 0x0b, 0x73, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x45,
+	0x72, 0x72, 0x6f, 0x72, 0x22, 0x41, 0x0a, 0x15, 0x47, 0x65, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x61,
+	0x67, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x28, 0x0a,
+	0x0f, 0x65, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x50, 0x61, 0x72, 0x61, 0x6d, 0x73,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0f, 0x65, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65,
+	0x64, 0x50, 0x61, 0x72, 0x61, 0x6d, 0x73, 0x22, 0x8a, 0x01, 0x0a, 0x16, 0x47, 0x65, 0x74, 0x53,
+	0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x36, 0x0a, 0x16, 0x65, 0x6e, 0x63, 0x6f, 0x64, 0x65, 0x64, 0x45, 0x6e, 0x63,
+	0x6c, 0x61, 0x76, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x0c, 0x52, 0x16, 0x65, 0x6e, 0x63, 0x6f, 0x64, 0x65, 0x64, 0x45, 0x6e, 0x63, 0x6c, 0x61,
+	0x76, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x38, 0x0a, 0x0b, 0x73, 0x79,
+	0x73, 0x74, 0x65, 0x6d, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32,
+	0x16, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x53, 0x79, 0x73, 0x74,
+	0x65, 0x6d, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x52, 0x0b, 0x73, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x45,
 	0x72, 0x72, 0x6f, 0x72, 0x22, 0x4a, 0x0a, 0x0e, 0x47, 0x65, 0x74, 0x43, 0x6f, 0x64, 0x65, 0x52,
 	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73,
 	0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73,
@@ -4745,7 +4860,7 @@ var file_enclave_proto_rawDesc = []byte{
 	0x65, 0x63, 0x69, 0x70, 0x69, 0x65, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x09,
 	0x72, 0x65, 0x63, 0x69, 0x70, 0x69, 0x65, 0x6e, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x63, 0x6f, 0x6e,
 	0x74, 0x72, 0x61, 0x63, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x08, 0x63, 0x6f, 0x6e,
-	0x74, 0x72, 0x61, 0x63, 0x74, 0x32, 0xab, 0x15, 0x0a, 0x0c, 0x45, 0x6e, 0x63, 0x6c, 0x61, 0x76,
+	0x74, 0x72, 0x61, 0x63, 0x74, 0x32, 0x84, 0x16, 0x0a, 0x0c, 0x45, 0x6e, 0x63, 0x6c, 0x61, 0x76,
 	0x65, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x3f, 0x0a, 0x06, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73,
 	0x12, 0x18, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x53, 0x74, 0x61,
 	0x74, 0x75, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x67, 0x65, 0x6e,
@@ -4821,104 +4936,109 @@ var file_enclave_proto_rawDesc = []byte{
 	0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x43, 0x6f, 0x64, 0x65, 0x52, 0x65, 0x71,
 	0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
 	0x2e, 0x47, 0x65, 0x74, 0x43, 0x6f, 0x64, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x00, 0x12, 0x48, 0x0a, 0x09, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x12,
-	0x1b, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x53, 0x75, 0x62, 0x73,
-	0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1c, 0x2e, 0x67,
-	0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69,
-	0x62, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x4e, 0x0a, 0x0b,
-	0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x12, 0x1d, 0x2e, 0x67, 0x65,
-	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63, 0x72,
-	0x69, 0x62, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1e, 0x2e, 0x67, 0x65, 0x6e,
-	0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69,
-	0x62, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x4e, 0x0a, 0x0b,
-	0x45, 0x73, 0x74, 0x69, 0x6d, 0x61, 0x74, 0x65, 0x47, 0x61, 0x73, 0x12, 0x1d, 0x2e, 0x67, 0x65,
-	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x45, 0x73, 0x74, 0x69, 0x6d, 0x61, 0x74, 0x65,
-	0x47, 0x61, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1e, 0x2e, 0x67, 0x65, 0x6e,
-	0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x45, 0x73, 0x74, 0x69, 0x6d, 0x61, 0x74, 0x65, 0x47,
-	0x61, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x42, 0x0a, 0x07,
-	0x47, 0x65, 0x74, 0x4c, 0x6f, 0x67, 0x73, 0x12, 0x19, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61,
-	0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x4c, 0x6f, 0x67, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x1a, 0x1a, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47,
-	0x65, 0x74, 0x4c, 0x6f, 0x67, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00,
-	0x12, 0x45, 0x0a, 0x0b, 0x48, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x43, 0x68, 0x65, 0x63, 0x6b, 0x12,
-	0x14, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x45, 0x6d, 0x70, 0x74,
-	0x79, 0x41, 0x72, 0x67, 0x73, 0x1a, 0x1e, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65,
-	0x64, 0x2e, 0x48, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x43, 0x68, 0x65, 0x63, 0x6b, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x45, 0x0a, 0x08, 0x47, 0x65, 0x74, 0x42, 0x61,
-	0x74, 0x63, 0x68, 0x12, 0x1a, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e,
-	0x47, 0x65, 0x74, 0x42, 0x61, 0x74, 0x63, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
-	0x1b, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x42,
-	0x61, 0x74, 0x63, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x53,
-	0x0a, 0x0f, 0x47, 0x65, 0x74, 0x42, 0x61, 0x74, 0x63, 0x68, 0x42, 0x79, 0x53, 0x65, 0x71, 0x4e,
-	0x6f, 0x12, 0x21, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65,
-	0x74, 0x42, 0x61, 0x74, 0x63, 0x68, 0x42, 0x79, 0x53, 0x65, 0x71, 0x4e, 0x6f, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x1a, 0x1b, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
-	0x2e, 0x47, 0x65, 0x74, 0x42, 0x61, 0x74, 0x63, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x22, 0x00, 0x12, 0x54, 0x0a, 0x0d, 0x47, 0x65, 0x74, 0x52, 0x6f, 0x6c, 0x6c, 0x75, 0x70,
-	0x44, 0x61, 0x74, 0x61, 0x12, 0x1f, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
-	0x2e, 0x47, 0x65, 0x74, 0x52, 0x6f, 0x6c, 0x6c, 0x75, 0x70, 0x44, 0x61, 0x74, 0x61, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x20, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65,
-	0x64, 0x2e, 0x47, 0x65, 0x74, 0x52, 0x6f, 0x6c, 0x6c, 0x75, 0x70, 0x44, 0x61, 0x74, 0x61, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x4e, 0x0a, 0x0b, 0x43, 0x72, 0x65,
-	0x61, 0x74, 0x65, 0x42, 0x61, 0x74, 0x63, 0x68, 0x12, 0x1d, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72,
-	0x61, 0x74, 0x65, 0x64, 0x2e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x42, 0x61, 0x74, 0x63, 0x68,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1e, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61,
-	0x74, 0x65, 0x64, 0x2e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x42, 0x61, 0x74, 0x63, 0x68, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x51, 0x0a, 0x0c, 0x43, 0x72, 0x65,
-	0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x6c, 0x75, 0x70, 0x12, 0x1e, 0x2e, 0x67, 0x65, 0x6e, 0x65,
-	0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x6c,
-	0x75, 0x70, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1f, 0x2e, 0x67, 0x65, 0x6e, 0x65,
-	0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x6c,
-	0x75, 0x70, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x69, 0x0a, 0x14,
-	0x45, 0x78, 0x70, 0x6f, 0x72, 0x74, 0x43, 0x72, 0x6f, 0x73, 0x73, 0x43, 0x68, 0x61, 0x69, 0x6e,
-	0x44, 0x61, 0x74, 0x61, 0x12, 0x26, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
-	0x2e, 0x45, 0x78, 0x70, 0x6f, 0x72, 0x74, 0x43, 0x72, 0x6f, 0x73, 0x73, 0x43, 0x68, 0x61, 0x69,
-	0x6e, 0x44, 0x61, 0x74, 0x61, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x27, 0x2e, 0x67,
-	0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x45, 0x78, 0x70, 0x6f, 0x72, 0x74, 0x43,
-	0x72, 0x6f, 0x73, 0x73, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x44, 0x61, 0x74, 0x61, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x6c, 0x0a, 0x15, 0x44, 0x65, 0x62, 0x75, 0x67,
-	0x54, 0x72, 0x61, 0x63, 0x65, 0x54, 0x72, 0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e,
-	0x12, 0x27, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x44, 0x65, 0x62,
-	0x75, 0x67, 0x54, 0x72, 0x61, 0x63, 0x65, 0x54, 0x72, 0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69,
-	0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x28, 0x2e, 0x67, 0x65, 0x6e, 0x65,
+	0x22, 0x00, 0x12, 0x57, 0x0a, 0x0e, 0x47, 0x65, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65,
+	0x53, 0x6c, 0x6f, 0x74, 0x12, 0x20, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
+	0x2e, 0x47, 0x65, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74,
+	0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x53, 0x6c, 0x6f,
+	0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x48, 0x0a, 0x09, 0x53,
+	0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x12, 0x1b, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72,
+	0x61, 0x74, 0x65, 0x64, 0x2e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1c, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65,
+	0x64, 0x2e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x4e, 0x0a, 0x0b, 0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63,
+	0x72, 0x69, 0x62, 0x65, 0x12, 0x1d, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
+	0x2e, 0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x1a, 0x1e, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e,
+	0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x4e, 0x0a, 0x0b, 0x45, 0x73, 0x74, 0x69, 0x6d, 0x61, 0x74,
+	0x65, 0x47, 0x61, 0x73, 0x12, 0x1d, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
+	0x2e, 0x45, 0x73, 0x74, 0x69, 0x6d, 0x61, 0x74, 0x65, 0x47, 0x61, 0x73, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x1a, 0x1e, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e,
+	0x45, 0x73, 0x74, 0x69, 0x6d, 0x61, 0x74, 0x65, 0x47, 0x61, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x42, 0x0a, 0x07, 0x47, 0x65, 0x74, 0x4c, 0x6f, 0x67, 0x73,
+	0x12, 0x19, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74,
+	0x4c, 0x6f, 0x67, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e, 0x67, 0x65,
+	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x4c, 0x6f, 0x67, 0x73, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x45, 0x0a, 0x0b, 0x48, 0x65, 0x61,
+	0x6c, 0x74, 0x68, 0x43, 0x68, 0x65, 0x63, 0x6b, 0x12, 0x14, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72,
+	0x61, 0x74, 0x65, 0x64, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x41, 0x72, 0x67, 0x73, 0x1a, 0x1e,
+	0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x48, 0x65, 0x61, 0x6c, 0x74,
+	0x68, 0x43, 0x68, 0x65, 0x63, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00,
+	0x12, 0x45, 0x0a, 0x08, 0x47, 0x65, 0x74, 0x42, 0x61, 0x74, 0x63, 0x68, 0x12, 0x1a, 0x2e, 0x67,
+	0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x42, 0x61, 0x74, 0x63,
+	0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1b, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72,
+	0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x42, 0x61, 0x74, 0x63, 0x68, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x53, 0x0a, 0x0f, 0x47, 0x65, 0x74, 0x42, 0x61,
+	0x74, 0x63, 0x68, 0x42, 0x79, 0x53, 0x65, 0x71, 0x4e, 0x6f, 0x12, 0x21, 0x2e, 0x67, 0x65, 0x6e,
+	0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x42, 0x61, 0x74, 0x63, 0x68, 0x42,
+	0x79, 0x53, 0x65, 0x71, 0x4e, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1b, 0x2e,
+	0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x42, 0x61, 0x74,
+	0x63, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x54, 0x0a, 0x0d,
+	0x47, 0x65, 0x74, 0x52, 0x6f, 0x6c, 0x6c, 0x75, 0x70, 0x44, 0x61, 0x74, 0x61, 0x12, 0x1f, 0x2e,
+	0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x52, 0x6f, 0x6c,
+	0x6c, 0x75, 0x70, 0x44, 0x61, 0x74, 0x61, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x20,
+	0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x52, 0x6f,
+	0x6c, 0x6c, 0x75, 0x70, 0x44, 0x61, 0x74, 0x61, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x00, 0x12, 0x4e, 0x0a, 0x0b, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x42, 0x61, 0x74, 0x63,
+	0x68, 0x12, 0x1d, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x43, 0x72,
+	0x65, 0x61, 0x74, 0x65, 0x42, 0x61, 0x74, 0x63, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x1e, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x43, 0x72, 0x65,
+	0x61, 0x74, 0x65, 0x42, 0x61, 0x74, 0x63, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x00, 0x12, 0x51, 0x0a, 0x0c, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x6c,
+	0x75, 0x70, 0x12, 0x1e, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x43,
+	0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x6c, 0x75, 0x70, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x1f, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x43,
+	0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x6c, 0x75, 0x70, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x69, 0x0a, 0x14, 0x45, 0x78, 0x70, 0x6f, 0x72, 0x74, 0x43,
+	0x72, 0x6f, 0x73, 0x73, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x44, 0x61, 0x74, 0x61, 0x12, 0x26, 0x2e,
+	0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x45, 0x78, 0x70, 0x6f, 0x72, 0x74,
+	0x43, 0x72, 0x6f, 0x73, 0x73, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x44, 0x61, 0x74, 0x61, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x27, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65,
+	0x64, 0x2e, 0x45, 0x78, 0x70, 0x6f, 0x72, 0x74, 0x43, 0x72, 0x6f, 0x73, 0x73, 0x43, 0x68, 0x61,
+	0x69, 0x6e, 0x44, 0x61, 0x74, 0x61, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00,
+	0x12, 0x6c, 0x0a, 0x15, 0x44, 0x65, 0x62, 0x75, 0x67, 0x54, 0x72, 0x61, 0x63, 0x65, 0x54, 0x72,
+	0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x27, 0x2e, 0x67, 0x65, 0x6e, 0x65,
 	0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x44, 0x65, 0x62, 0x75, 0x67, 0x54, 0x72, 0x61, 0x63, 0x65,
-	0x54, 0x72, 0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x5a, 0x0a, 0x0f, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x4c,
-	0x32, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x73, 0x12, 0x21, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72,
-	0x61, 0x74, 0x65, 0x64, 0x2e, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x4c, 0x32, 0x55, 0x70, 0x64,
-	0x61, 0x74, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x20, 0x2e, 0x67, 0x65,
-	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x45, 0x6e, 0x63, 0x6f, 0x64, 0x65, 0x64, 0x55,
-	0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x30,
-	0x01, 0x12, 0x6f, 0x0a, 0x16, 0x44, 0x65, 0x62, 0x75, 0x67, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x4c,
-	0x6f, 0x67, 0x52, 0x65, 0x6c, 0x65, 0x76, 0x61, 0x6e, 0x63, 0x79, 0x12, 0x28, 0x2e, 0x67, 0x65,
-	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x44, 0x65, 0x62, 0x75, 0x67, 0x45, 0x76, 0x65,
-	0x6e, 0x74, 0x4c, 0x6f, 0x67, 0x52, 0x65, 0x6c, 0x65, 0x76, 0x61, 0x6e, 0x63, 0x79, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x29, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65,
-	0x64, 0x2e, 0x44, 0x65, 0x62, 0x75, 0x67, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x4c, 0x6f, 0x67, 0x52,
-	0x65, 0x6c, 0x65, 0x76, 0x61, 0x6e, 0x63, 0x79, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x00, 0x12, 0x6c, 0x0a, 0x15, 0x47, 0x65, 0x74, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f,
-	0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x27, 0x2e, 0x67, 0x65,
-	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x54, 0x6f, 0x74, 0x61, 0x6c,
-	0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x1a, 0x28, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
+	0x54, 0x72, 0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x28, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x44,
+	0x65, 0x62, 0x75, 0x67, 0x54, 0x72, 0x61, 0x63, 0x65, 0x54, 0x72, 0x61, 0x6e, 0x73, 0x61, 0x63,
+	0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x5a,
+	0x0a, 0x0f, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x4c, 0x32, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65,
+	0x73, 0x12, 0x21, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x53, 0x74,
+	0x72, 0x65, 0x61, 0x6d, 0x4c, 0x32, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x73, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x20, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
+	0x2e, 0x45, 0x6e, 0x63, 0x6f, 0x64, 0x65, 0x64, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x30, 0x01, 0x12, 0x6f, 0x0a, 0x16, 0x44, 0x65,
+	0x62, 0x75, 0x67, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x4c, 0x6f, 0x67, 0x52, 0x65, 0x6c, 0x65, 0x76,
+	0x61, 0x6e, 0x63, 0x79, 0x12, 0x28, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
+	0x2e, 0x44, 0x65, 0x62, 0x75, 0x67, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x4c, 0x6f, 0x67, 0x52, 0x65,
+	0x6c, 0x65, 0x76, 0x61, 0x6e, 0x63, 0x79, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x29,
+	0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x44, 0x65, 0x62, 0x75, 0x67,
+	0x45, 0x76, 0x65, 0x6e, 0x74, 0x4c, 0x6f, 0x67, 0x52, 0x65, 0x6c, 0x65, 0x76, 0x61, 0x6e, 0x63,
+	0x79, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x6c, 0x0a, 0x15, 0x47,
+	0x65, 0x74, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x43,
+	0x6f, 0x75, 0x6e, 0x74, 0x12, 0x27, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
 	0x2e, 0x47, 0x65, 0x74, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63,
-	0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00,
-	0x12, 0x69, 0x0a, 0x14, 0x47, 0x65, 0x74, 0x52, 0x65, 0x63, 0x65, 0x69, 0x70, 0x74, 0x73, 0x42,
-	0x79, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x26, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72,
-	0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x52, 0x65, 0x63, 0x65, 0x69, 0x70, 0x74, 0x73,
-	0x42, 0x79, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x1a, 0x27, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74,
+	0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x28, 0x2e,
+	0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x54, 0x6f, 0x74,
+	0x61, 0x6c, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x69, 0x0a, 0x14, 0x47, 0x65, 0x74,
 	0x52, 0x65, 0x63, 0x65, 0x69, 0x70, 0x74, 0x73, 0x42, 0x79, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73,
-	0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x66, 0x0a, 0x13, 0x45,
+	0x73, 0x12, 0x26, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65,
+	0x74, 0x52, 0x65, 0x63, 0x65, 0x69, 0x70, 0x74, 0x73, 0x42, 0x79, 0x41, 0x64, 0x64, 0x72, 0x65,
+	0x73, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x27, 0x2e, 0x67, 0x65, 0x6e, 0x65,
+	0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x47, 0x65, 0x74, 0x52, 0x65, 0x63, 0x65, 0x69, 0x70, 0x74,
+	0x73, 0x42, 0x79, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x22, 0x00, 0x12, 0x66, 0x0a, 0x13, 0x45, 0x6e, 0x63, 0x6c, 0x61, 0x76, 0x65, 0x50,
+	0x75, 0x62, 0x6c, 0x69, 0x63, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x25, 0x2e, 0x67, 0x65,
+	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x45, 0x6e, 0x63, 0x6c, 0x61, 0x76, 0x65, 0x50,
+	0x75, 0x62, 0x6c, 0x69, 0x63, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x26, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x45,
 	0x6e, 0x63, 0x6c, 0x61, 0x76, 0x65, 0x50, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x43, 0x6f, 0x6e, 0x66,
-	0x69, 0x67, 0x12, 0x25, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x45,
-	0x6e, 0x63, 0x6c, 0x61, 0x76, 0x65, 0x50, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x43, 0x6f, 0x6e, 0x66,
-	0x69, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x26, 0x2e, 0x67, 0x65, 0x6e, 0x65,
-	0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x45, 0x6e, 0x63, 0x6c, 0x61, 0x76, 0x65, 0x50, 0x75, 0x62,
-	0x6c, 0x69, 0x63, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x22, 0x00, 0x42, 0x17, 0x5a, 0x15, 0x65, 0x6e, 0x63, 0x6c, 0x61, 0x76, 0x65, 0x2f, 0x72,
-	0x70, 0x63, 0x2f, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x62, 0x06, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x33,
+	0x69, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x17, 0x5a, 0x15,
+	0x65, 0x6e, 0x63, 0x6c, 0x61, 0x76, 0x65, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x67, 0x65, 0x6e, 0x65,
+	0x72, 0x61, 0x74, 0x65, 0x64, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -4933,7 +5053,7 @@ func file_enclave_proto_rawDescGZIP() []byte {
 	return file_enclave_proto_rawDescData
 }
 
-var file_enclave_proto_msgTypes = make([]protoimpl.MessageInfo, 78)
+var file_enclave_proto_msgTypes = make([]protoimpl.MessageInfo, 80)
 var file_enclave_proto_goTypes = []interface{}{
 	(*EnclavePublicConfigRequest)(nil),     // 0: generated.EnclavePublicConfigRequest
 	(*EnclavePublicConfigResponse)(nil),    // 1: generated.EnclavePublicConfigResponse
@@ -4991,28 +5111,30 @@ var file_enclave_proto_goTypes = []interface{}{
 	(*GetTransactionReceiptResponse)(nil),  // 53: generated.GetTransactionReceiptResponse
 	(*GetBalanceRequest)(nil),              // 54: generated.GetBalanceRequest
 	(*GetBalanceResponse)(nil),             // 55: generated.GetBalanceResponse
-	(*GetCodeRequest)(nil),                 // 56: generated.GetCodeRequest
-	(*GetCodeResponse)(nil),                // 57: generated.GetCodeResponse
-	(*SubscribeRequest)(nil),               // 58: generated.SubscribeRequest
-	(*SubscribeResponse)(nil),              // 59: generated.SubscribeResponse
-	(*UnsubscribeRequest)(nil),             // 60: generated.UnsubscribeRequest
-	(*UnsubscribeResponse)(nil),            // 61: generated.UnsubscribeResponse
-	(*EstimateGasRequest)(nil),             // 62: generated.EstimateGasRequest
-	(*EstimateGasResponse)(nil),            // 63: generated.EstimateGasResponse
-	(*GetLogsRequest)(nil),                 // 64: generated.GetLogsRequest
-	(*GetLogsResponse)(nil),                // 65: generated.GetLogsResponse
-	(*HealthCheckResponse)(nil),            // 66: generated.HealthCheckResponse
-	(*EmptyArgs)(nil),                      // 67: generated.EmptyArgs
-	(*AttestationReportMsg)(nil),           // 68: generated.AttestationReportMsg
-	(*BlockSubmissionResponseMsg)(nil),     // 69: generated.BlockSubmissionResponseMsg
-	(*BlockSubmissionErrorMsg)(nil),        // 70: generated.BlockSubmissionErrorMsg
-	(*CrossChainMsg)(nil),                  // 71: generated.CrossChainMsg
-	(*ExtBatchMsg)(nil),                    // 72: generated.ExtBatchMsg
-	(*BatchHeaderMsg)(nil),                 // 73: generated.BatchHeaderMsg
-	(*ExtRollupMsg)(nil),                   // 74: generated.ExtRollupMsg
-	(*RollupHeaderMsg)(nil),                // 75: generated.RollupHeaderMsg
-	(*SecretResponseMsg)(nil),              // 76: generated.SecretResponseMsg
-	(*WithdrawalMsg)(nil),                  // 77: generated.WithdrawalMsg
+	(*GetStorageSlotRequest)(nil),          // 56: generated.GetStorageSlotRequest
+	(*GetStorageSlotResponse)(nil),         // 57: generated.GetStorageSlotResponse
+	(*GetCodeRequest)(nil),                 // 58: generated.GetCodeRequest
+	(*GetCodeResponse)(nil),                // 59: generated.GetCodeResponse
+	(*SubscribeRequest)(nil),               // 60: generated.SubscribeRequest
+	(*SubscribeResponse)(nil),              // 61: generated.SubscribeResponse
+	(*UnsubscribeRequest)(nil),             // 62: generated.UnsubscribeRequest
+	(*UnsubscribeResponse)(nil),            // 63: generated.UnsubscribeResponse
+	(*EstimateGasRequest)(nil),             // 64: generated.EstimateGasRequest
+	(*EstimateGasResponse)(nil),            // 65: generated.EstimateGasResponse
+	(*GetLogsRequest)(nil),                 // 66: generated.GetLogsRequest
+	(*GetLogsResponse)(nil),                // 67: generated.GetLogsResponse
+	(*HealthCheckResponse)(nil),            // 68: generated.HealthCheckResponse
+	(*EmptyArgs)(nil),                      // 69: generated.EmptyArgs
+	(*AttestationReportMsg)(nil),           // 70: generated.AttestationReportMsg
+	(*BlockSubmissionResponseMsg)(nil),     // 71: generated.BlockSubmissionResponseMsg
+	(*BlockSubmissionErrorMsg)(nil),        // 72: generated.BlockSubmissionErrorMsg
+	(*CrossChainMsg)(nil),                  // 73: generated.CrossChainMsg
+	(*ExtBatchMsg)(nil),                    // 74: generated.ExtBatchMsg
+	(*BatchHeaderMsg)(nil),                 // 75: generated.BatchHeaderMsg
+	(*ExtRollupMsg)(nil),                   // 76: generated.ExtRollupMsg
+	(*RollupHeaderMsg)(nil),                // 77: generated.RollupHeaderMsg
+	(*SecretResponseMsg)(nil),              // 78: generated.SecretResponseMsg
+	(*WithdrawalMsg)(nil),                  // 79: generated.WithdrawalMsg
 }
 var file_enclave_proto_depIdxs = []int32{
 	13, // 0: generated.EnclavePublicConfigResponse.systemError:type_name -> generated.SystemError
@@ -5023,19 +5145,19 @@ var file_enclave_proto_depIdxs = []int32{
 	13, // 5: generated.GetTotalContractCountResponse.systemError:type_name -> generated.SystemError
 	13, // 6: generated.DebugEventLogRelevancyResponse.systemError:type_name -> generated.SystemError
 	13, // 7: generated.DebugTraceTransactionResponse.systemError:type_name -> generated.SystemError
-	74, // 8: generated.CreateRollupResponse.msg:type_name -> generated.ExtRollupMsg
+	76, // 8: generated.CreateRollupResponse.msg:type_name -> generated.ExtRollupMsg
 	13, // 9: generated.CreateRollupResponse.systemError:type_name -> generated.SystemError
 	13, // 10: generated.StatusResponse.systemError:type_name -> generated.SystemError
-	68, // 11: generated.AttestationResponse.attestationReportMsg:type_name -> generated.AttestationReportMsg
+	70, // 11: generated.AttestationResponse.attestationReportMsg:type_name -> generated.AttestationReportMsg
 	13, // 12: generated.AttestationResponse.systemError:type_name -> generated.SystemError
 	13, // 13: generated.GenerateSecretResponse.systemError:type_name -> generated.SystemError
 	13, // 14: generated.InitEnclaveResponse.systemError:type_name -> generated.SystemError
 	13, // 15: generated.EnclaveIDResponse.systemError:type_name -> generated.SystemError
 	13, // 16: generated.StartResponse.systemError:type_name -> generated.SystemError
-	69, // 17: generated.SubmitBlockResponse.blockSubmissionResponse:type_name -> generated.BlockSubmissionResponseMsg
+	71, // 17: generated.SubmitBlockResponse.blockSubmissionResponse:type_name -> generated.BlockSubmissionResponseMsg
 	13, // 18: generated.SubmitBlockResponse.systemError:type_name -> generated.SystemError
 	13, // 19: generated.SubmitTxResponse.systemError:type_name -> generated.SystemError
-	72, // 20: generated.SubmitBatchRequest.batch:type_name -> generated.ExtBatchMsg
+	74, // 20: generated.SubmitBatchRequest.batch:type_name -> generated.ExtBatchMsg
 	13, // 21: generated.SubmitBatchResponse.systemError:type_name -> generated.SystemError
 	13, // 22: generated.ObsCallResponse.systemError:type_name -> generated.SystemError
 	13, // 23: generated.GetTransactionCountResponse.systemError:type_name -> generated.SystemError
@@ -5043,89 +5165,92 @@ var file_enclave_proto_depIdxs = []int32{
 	13, // 25: generated.GetTransactionResponse.systemError:type_name -> generated.SystemError
 	13, // 26: generated.GetTransactionReceiptResponse.systemError:type_name -> generated.SystemError
 	13, // 27: generated.GetBalanceResponse.systemError:type_name -> generated.SystemError
-	13, // 28: generated.GetCodeResponse.systemError:type_name -> generated.SystemError
-	13, // 29: generated.SubscribeResponse.systemError:type_name -> generated.SystemError
-	13, // 30: generated.UnsubscribeResponse.systemError:type_name -> generated.SystemError
-	13, // 31: generated.EstimateGasResponse.systemError:type_name -> generated.SystemError
-	13, // 32: generated.GetLogsResponse.systemError:type_name -> generated.SystemError
-	13, // 33: generated.HealthCheckResponse.systemError:type_name -> generated.SystemError
-	13, // 34: generated.AttestationReportMsg.systemError:type_name -> generated.SystemError
-	76, // 35: generated.BlockSubmissionResponseMsg.producedSecretResponses:type_name -> generated.SecretResponseMsg
-	70, // 36: generated.BlockSubmissionResponseMsg.error:type_name -> generated.BlockSubmissionErrorMsg
-	73, // 37: generated.ExtBatchMsg.header:type_name -> generated.BatchHeaderMsg
-	71, // 38: generated.BatchHeaderMsg.CrossChainMessages:type_name -> generated.CrossChainMsg
-	75, // 39: generated.ExtRollupMsg.header:type_name -> generated.RollupHeaderMsg
-	71, // 40: generated.RollupHeaderMsg.CrossChainMessages:type_name -> generated.CrossChainMsg
-	13, // 41: generated.SecretResponseMsg.systemError:type_name -> generated.SystemError
-	26, // 42: generated.EnclaveProto.Status:input_type -> generated.StatusRequest
-	28, // 43: generated.EnclaveProto.Attestation:input_type -> generated.AttestationRequest
-	30, // 44: generated.EnclaveProto.GenerateSecret:input_type -> generated.GenerateSecretRequest
-	32, // 45: generated.EnclaveProto.InitEnclave:input_type -> generated.InitEnclaveRequest
-	34, // 46: generated.EnclaveProto.EnclaveID:input_type -> generated.EnclaveIDRequest
-	38, // 47: generated.EnclaveProto.SubmitL1Block:input_type -> generated.SubmitBlockRequest
-	40, // 48: generated.EnclaveProto.SubmitTx:input_type -> generated.SubmitTxRequest
-	42, // 49: generated.EnclaveProto.SubmitBatch:input_type -> generated.SubmitBatchRequest
-	44, // 50: generated.EnclaveProto.ObsCall:input_type -> generated.ObsCallRequest
-	46, // 51: generated.EnclaveProto.GetTransactionCount:input_type -> generated.GetTransactionCountRequest
-	48, // 52: generated.EnclaveProto.Stop:input_type -> generated.StopRequest
-	50, // 53: generated.EnclaveProto.GetTransaction:input_type -> generated.GetTransactionRequest
-	52, // 54: generated.EnclaveProto.GetTransactionReceipt:input_type -> generated.GetTransactionReceiptRequest
-	54, // 55: generated.EnclaveProto.GetBalance:input_type -> generated.GetBalanceRequest
-	56, // 56: generated.EnclaveProto.GetCode:input_type -> generated.GetCodeRequest
-	58, // 57: generated.EnclaveProto.Subscribe:input_type -> generated.SubscribeRequest
-	60, // 58: generated.EnclaveProto.Unsubscribe:input_type -> generated.UnsubscribeRequest
-	62, // 59: generated.EnclaveProto.EstimateGas:input_type -> generated.EstimateGasRequest
-	64, // 60: generated.EnclaveProto.GetLogs:input_type -> generated.GetLogsRequest
-	67, // 61: generated.EnclaveProto.HealthCheck:input_type -> generated.EmptyArgs
-	4,  // 62: generated.EnclaveProto.GetBatch:input_type -> generated.GetBatchRequest
-	5,  // 63: generated.EnclaveProto.GetBatchBySeqNo:input_type -> generated.GetBatchBySeqNoRequest
-	7,  // 64: generated.EnclaveProto.GetRollupData:input_type -> generated.GetRollupDataRequest
-	20, // 65: generated.EnclaveProto.CreateBatch:input_type -> generated.CreateBatchRequest
-	22, // 66: generated.EnclaveProto.CreateRollup:input_type -> generated.CreateRollupRequest
-	24, // 67: generated.EnclaveProto.ExportCrossChainData:input_type -> generated.ExportCrossChainDataRequest
-	18, // 68: generated.EnclaveProto.DebugTraceTransaction:input_type -> generated.DebugTraceTransactionRequest
-	10, // 69: generated.EnclaveProto.StreamL2Updates:input_type -> generated.StreamL2UpdatesRequest
-	16, // 70: generated.EnclaveProto.DebugEventLogRelevancy:input_type -> generated.DebugEventLogRelevancyRequest
-	14, // 71: generated.EnclaveProto.GetTotalContractCount:input_type -> generated.GetTotalContractCountRequest
-	2,  // 72: generated.EnclaveProto.GetReceiptsByAddress:input_type -> generated.GetReceiptsByAddressRequest
-	0,  // 73: generated.EnclaveProto.EnclavePublicConfig:input_type -> generated.EnclavePublicConfigRequest
-	27, // 74: generated.EnclaveProto.Status:output_type -> generated.StatusResponse
-	29, // 75: generated.EnclaveProto.Attestation:output_type -> generated.AttestationResponse
-	31, // 76: generated.EnclaveProto.GenerateSecret:output_type -> generated.GenerateSecretResponse
-	33, // 77: generated.EnclaveProto.InitEnclave:output_type -> generated.InitEnclaveResponse
-	35, // 78: generated.EnclaveProto.EnclaveID:output_type -> generated.EnclaveIDResponse
-	39, // 79: generated.EnclaveProto.SubmitL1Block:output_type -> generated.SubmitBlockResponse
-	41, // 80: generated.EnclaveProto.SubmitTx:output_type -> generated.SubmitTxResponse
-	43, // 81: generated.EnclaveProto.SubmitBatch:output_type -> generated.SubmitBatchResponse
-	45, // 82: generated.EnclaveProto.ObsCall:output_type -> generated.ObsCallResponse
-	47, // 83: generated.EnclaveProto.GetTransactionCount:output_type -> generated.GetTransactionCountResponse
-	49, // 84: generated.EnclaveProto.Stop:output_type -> generated.StopResponse
-	51, // 85: generated.EnclaveProto.GetTransaction:output_type -> generated.GetTransactionResponse
-	53, // 86: generated.EnclaveProto.GetTransactionReceipt:output_type -> generated.GetTransactionReceiptResponse
-	55, // 87: generated.EnclaveProto.GetBalance:output_type -> generated.GetBalanceResponse
-	57, // 88: generated.EnclaveProto.GetCode:output_type -> generated.GetCodeResponse
-	59, // 89: generated.EnclaveProto.Subscribe:output_type -> generated.SubscribeResponse
-	61, // 90: generated.EnclaveProto.Unsubscribe:output_type -> generated.UnsubscribeResponse
-	63, // 91: generated.EnclaveProto.EstimateGas:output_type -> generated.EstimateGasResponse
-	65, // 92: generated.EnclaveProto.GetLogs:output_type -> generated.GetLogsResponse
-	66, // 93: generated.EnclaveProto.HealthCheck:output_type -> generated.HealthCheckResponse
-	6,  // 94: generated.EnclaveProto.GetBatch:output_type -> generated.GetBatchResponse
-	6,  // 95: generated.EnclaveProto.GetBatchBySeqNo:output_type -> generated.GetBatchResponse
-	8,  // 96: generated.EnclaveProto.GetRollupData:output_type -> generated.GetRollupDataResponse
-	21, // 97: generated.EnclaveProto.CreateBatch:output_type -> generated.CreateBatchResponse
-	23, // 98: generated.EnclaveProto.CreateRollup:output_type -> generated.CreateRollupResponse
-	25, // 99: generated.EnclaveProto.ExportCrossChainData:output_type -> generated.ExportCrossChainDataResponse
-	19, // 100: generated.EnclaveProto.DebugTraceTransaction:output_type -> generated.DebugTraceTransactionResponse
-	11, // 101: generated.EnclaveProto.StreamL2Updates:output_type -> generated.EncodedUpdateResponse
-	17, // 102: generated.EnclaveProto.DebugEventLogRelevancy:output_type -> generated.DebugEventLogRelevancyResponse
-	15, // 103: generated.EnclaveProto.GetTotalContractCount:output_type -> generated.GetTotalContractCountResponse
-	3,  // 104: generated.EnclaveProto.GetReceiptsByAddress:output_type -> generated.GetReceiptsByAddressResponse
-	1,  // 105: generated.EnclaveProto.EnclavePublicConfig:output_type -> generated.EnclavePublicConfigResponse
-	74, // [74:106] is the sub-list for method output_type
-	42, // [42:74] is the sub-list for method input_type
-	42, // [42:42] is the sub-list for extension type_name
-	42, // [42:42] is the sub-list for extension extendee
-	0,  // [0:42] is the sub-list for field type_name
+	13, // 28: generated.GetStorageSlotResponse.systemError:type_name -> generated.SystemError
+	13, // 29: generated.GetCodeResponse.systemError:type_name -> generated.SystemError
+	13, // 30: generated.SubscribeResponse.systemError:type_name -> generated.SystemError
+	13, // 31: generated.UnsubscribeResponse.systemError:type_name -> generated.SystemError
+	13, // 32: generated.EstimateGasResponse.systemError:type_name -> generated.SystemError
+	13, // 33: generated.GetLogsResponse.systemError:type_name -> generated.SystemError
+	13, // 34: generated.HealthCheckResponse.systemError:type_name -> generated.SystemError
+	13, // 35: generated.AttestationReportMsg.systemError:type_name -> generated.SystemError
+	78, // 36: generated.BlockSubmissionResponseMsg.producedSecretResponses:type_name -> generated.SecretResponseMsg
+	72, // 37: generated.BlockSubmissionResponseMsg.error:type_name -> generated.BlockSubmissionErrorMsg
+	75, // 38: generated.ExtBatchMsg.header:type_name -> generated.BatchHeaderMsg
+	73, // 39: generated.BatchHeaderMsg.CrossChainMessages:type_name -> generated.CrossChainMsg
+	77, // 40: generated.ExtRollupMsg.header:type_name -> generated.RollupHeaderMsg
+	73, // 41: generated.RollupHeaderMsg.CrossChainMessages:type_name -> generated.CrossChainMsg
+	13, // 42: generated.SecretResponseMsg.systemError:type_name -> generated.SystemError
+	26, // 43: generated.EnclaveProto.Status:input_type -> generated.StatusRequest
+	28, // 44: generated.EnclaveProto.Attestation:input_type -> generated.AttestationRequest
+	30, // 45: generated.EnclaveProto.GenerateSecret:input_type -> generated.GenerateSecretRequest
+	32, // 46: generated.EnclaveProto.InitEnclave:input_type -> generated.InitEnclaveRequest
+	34, // 47: generated.EnclaveProto.EnclaveID:input_type -> generated.EnclaveIDRequest
+	38, // 48: generated.EnclaveProto.SubmitL1Block:input_type -> generated.SubmitBlockRequest
+	40, // 49: generated.EnclaveProto.SubmitTx:input_type -> generated.SubmitTxRequest
+	42, // 50: generated.EnclaveProto.SubmitBatch:input_type -> generated.SubmitBatchRequest
+	44, // 51: generated.EnclaveProto.ObsCall:input_type -> generated.ObsCallRequest
+	46, // 52: generated.EnclaveProto.GetTransactionCount:input_type -> generated.GetTransactionCountRequest
+	48, // 53: generated.EnclaveProto.Stop:input_type -> generated.StopRequest
+	50, // 54: generated.EnclaveProto.GetTransaction:input_type -> generated.GetTransactionRequest
+	52, // 55: generated.EnclaveProto.GetTransactionReceipt:input_type -> generated.GetTransactionReceiptRequest
+	54, // 56: generated.EnclaveProto.GetBalance:input_type -> generated.GetBalanceRequest
+	58, // 57: generated.EnclaveProto.GetCode:input_type -> generated.GetCodeRequest
+	56, // 58: generated.EnclaveProto.GetStorageSlot:input_type -> generated.GetStorageSlotRequest
+	60, // 59: generated.EnclaveProto.Subscribe:input_type -> generated.SubscribeRequest
+	62, // 60: generated.EnclaveProto.Unsubscribe:input_type -> generated.UnsubscribeRequest
+	64, // 61: generated.EnclaveProto.EstimateGas:input_type -> generated.EstimateGasRequest
+	66, // 62: generated.EnclaveProto.GetLogs:input_type -> generated.GetLogsRequest
+	69, // 63: generated.EnclaveProto.HealthCheck:input_type -> generated.EmptyArgs
+	4,  // 64: generated.EnclaveProto.GetBatch:input_type -> generated.GetBatchRequest
+	5,  // 65: generated.EnclaveProto.GetBatchBySeqNo:input_type -> generated.GetBatchBySeqNoRequest
+	7,  // 66: generated.EnclaveProto.GetRollupData:input_type -> generated.GetRollupDataRequest
+	20, // 67: generated.EnclaveProto.CreateBatch:input_type -> generated.CreateBatchRequest
+	22, // 68: generated.EnclaveProto.CreateRollup:input_type -> generated.CreateRollupRequest
+	24, // 69: generated.EnclaveProto.ExportCrossChainData:input_type -> generated.ExportCrossChainDataRequest
+	18, // 70: generated.EnclaveProto.DebugTraceTransaction:input_type -> generated.DebugTraceTransactionRequest
+	10, // 71: generated.EnclaveProto.StreamL2Updates:input_type -> generated.StreamL2UpdatesRequest
+	16, // 72: generated.EnclaveProto.DebugEventLogRelevancy:input_type -> generated.DebugEventLogRelevancyRequest
+	14, // 73: generated.EnclaveProto.GetTotalContractCount:input_type -> generated.GetTotalContractCountRequest
+	2,  // 74: generated.EnclaveProto.GetReceiptsByAddress:input_type -> generated.GetReceiptsByAddressRequest
+	0,  // 75: generated.EnclaveProto.EnclavePublicConfig:input_type -> generated.EnclavePublicConfigRequest
+	27, // 76: generated.EnclaveProto.Status:output_type -> generated.StatusResponse
+	29, // 77: generated.EnclaveProto.Attestation:output_type -> generated.AttestationResponse
+	31, // 78: generated.EnclaveProto.GenerateSecret:output_type -> generated.GenerateSecretResponse
+	33, // 79: generated.EnclaveProto.InitEnclave:output_type -> generated.InitEnclaveResponse
+	35, // 80: generated.EnclaveProto.EnclaveID:output_type -> generated.EnclaveIDResponse
+	39, // 81: generated.EnclaveProto.SubmitL1Block:output_type -> generated.SubmitBlockResponse
+	41, // 82: generated.EnclaveProto.SubmitTx:output_type -> generated.SubmitTxResponse
+	43, // 83: generated.EnclaveProto.SubmitBatch:output_type -> generated.SubmitBatchResponse
+	45, // 84: generated.EnclaveProto.ObsCall:output_type -> generated.ObsCallResponse
+	47, // 85: generated.EnclaveProto.GetTransactionCount:output_type -> generated.GetTransactionCountResponse
+	49, // 86: generated.EnclaveProto.Stop:output_type -> generated.StopResponse
+	51, // 87: generated.EnclaveProto.GetTransaction:output_type -> generated.GetTransactionResponse
+	53, // 88: generated.EnclaveProto.GetTransactionReceipt:output_type -> generated.GetTransactionReceiptResponse
+	55, // 89: generated.EnclaveProto.GetBalance:output_type -> generated.GetBalanceResponse
+	59, // 90: generated.EnclaveProto.GetCode:output_type -> generated.GetCodeResponse
+	57, // 91: generated.EnclaveProto.GetStorageSlot:output_type -> generated.GetStorageSlotResponse
+	61, // 92: generated.EnclaveProto.Subscribe:output_type -> generated.SubscribeResponse
+	63, // 93: generated.EnclaveProto.Unsubscribe:output_type -> generated.UnsubscribeResponse
+	65, // 94: generated.EnclaveProto.EstimateGas:output_type -> generated.EstimateGasResponse
+	67, // 95: generated.EnclaveProto.GetLogs:output_type -> generated.GetLogsResponse
+	68, // 96: generated.EnclaveProto.HealthCheck:output_type -> generated.HealthCheckResponse
+	6,  // 97: generated.EnclaveProto.GetBatch:output_type -> generated.GetBatchResponse
+	6,  // 98: generated.EnclaveProto.GetBatchBySeqNo:output_type -> generated.GetBatchResponse
+	8,  // 99: generated.EnclaveProto.GetRollupData:output_type -> generated.GetRollupDataResponse
+	21, // 100: generated.EnclaveProto.CreateBatch:output_type -> generated.CreateBatchResponse
+	23, // 101: generated.EnclaveProto.CreateRollup:output_type -> generated.CreateRollupResponse
+	25, // 102: generated.EnclaveProto.ExportCrossChainData:output_type -> generated.ExportCrossChainDataResponse
+	19, // 103: generated.EnclaveProto.DebugTraceTransaction:output_type -> generated.DebugTraceTransactionResponse
+	11, // 104: generated.EnclaveProto.StreamL2Updates:output_type -> generated.EncodedUpdateResponse
+	17, // 105: generated.EnclaveProto.DebugEventLogRelevancy:output_type -> generated.DebugEventLogRelevancyResponse
+	15, // 106: generated.EnclaveProto.GetTotalContractCount:output_type -> generated.GetTotalContractCountResponse
+	3,  // 107: generated.EnclaveProto.GetReceiptsByAddress:output_type -> generated.GetReceiptsByAddressResponse
+	1,  // 108: generated.EnclaveProto.EnclavePublicConfig:output_type -> generated.EnclavePublicConfigResponse
+	76, // [76:109] is the sub-list for method output_type
+	43, // [43:76] is the sub-list for method input_type
+	43, // [43:43] is the sub-list for extension type_name
+	43, // [43:43] is the sub-list for extension extendee
+	0,  // [0:43] is the sub-list for field type_name
 }
 
 func init() { file_enclave_proto_init() }
@@ -5807,7 +5932,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[56].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetCodeRequest); i {
+			switch v := v.(*GetStorageSlotRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5819,7 +5944,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[57].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetCodeResponse); i {
+			switch v := v.(*GetStorageSlotResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5831,7 +5956,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[58].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubscribeRequest); i {
+			switch v := v.(*GetCodeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5843,7 +5968,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[59].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubscribeResponse); i {
+			switch v := v.(*GetCodeResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5855,7 +5980,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[60].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UnsubscribeRequest); i {
+			switch v := v.(*SubscribeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5867,7 +5992,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[61].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UnsubscribeResponse); i {
+			switch v := v.(*SubscribeResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5879,7 +6004,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[62].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EstimateGasRequest); i {
+			switch v := v.(*UnsubscribeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5891,7 +6016,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[63].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EstimateGasResponse); i {
+			switch v := v.(*UnsubscribeResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5903,7 +6028,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[64].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetLogsRequest); i {
+			switch v := v.(*EstimateGasRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5915,7 +6040,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[65].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetLogsResponse); i {
+			switch v := v.(*EstimateGasResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5927,7 +6052,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[66].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HealthCheckResponse); i {
+			switch v := v.(*GetLogsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5939,7 +6064,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[67].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EmptyArgs); i {
+			switch v := v.(*GetLogsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5951,7 +6076,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[68].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttestationReportMsg); i {
+			switch v := v.(*HealthCheckResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5963,7 +6088,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[69].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*BlockSubmissionResponseMsg); i {
+			switch v := v.(*EmptyArgs); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5975,7 +6100,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[70].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*BlockSubmissionErrorMsg); i {
+			switch v := v.(*AttestationReportMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5987,7 +6112,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[71].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CrossChainMsg); i {
+			switch v := v.(*BlockSubmissionResponseMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5999,7 +6124,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[72].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtBatchMsg); i {
+			switch v := v.(*BlockSubmissionErrorMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6011,7 +6136,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[73].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*BatchHeaderMsg); i {
+			switch v := v.(*CrossChainMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6023,7 +6148,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[74].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtRollupMsg); i {
+			switch v := v.(*ExtBatchMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6035,7 +6160,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[75].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RollupHeaderMsg); i {
+			switch v := v.(*BatchHeaderMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6047,7 +6172,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[76].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SecretResponseMsg); i {
+			switch v := v.(*ExtRollupMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6059,6 +6184,30 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[77].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RollupHeaderMsg); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_enclave_proto_msgTypes[78].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SecretResponseMsg); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_enclave_proto_msgTypes[79].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*WithdrawalMsg); i {
 			case 0:
 				return &v.state
@@ -6078,7 +6227,7 @@ func file_enclave_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_enclave_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   78,
+			NumMessages:   80,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

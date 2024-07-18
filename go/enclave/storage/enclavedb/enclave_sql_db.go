@@ -115,7 +115,7 @@ func (sqlDB *enclaveDB) NewIterator(prefix []byte, start []byte) ethdb.Iterator 
 	return NewIterator(context.Background(), sqlDB.sqldb, prefix, start)
 }
 
-func (sqlDB *enclaveDB) Stat(_ string) (string, error) {
+func (sqlDB *enclaveDB) Stat() (string, error) {
 	// todo - implement me
 	sqlDB.logger.Crit("implement me")
 	return "", nil

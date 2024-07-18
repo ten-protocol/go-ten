@@ -18,9 +18,9 @@ import (
 
 const (
 	baseEventsJoin = "from event_log e " +
-		"join receipt extx on e.receipt=extx.id" +
-		"	join tx on extx.tx=tx.id " +
-		"	join batch b on extx.batch=b.sequence " +
+		"join receipt rec on e.receipt=rec.id" +
+		"	join tx on rec.tx=tx.id " +
+		"	join batch b on rec.batch=b.sequence " +
 		"join event_type et on e.event_type=et.id " +
 		"	join contract c on et.contract=c.id " +
 		"left join event_topic t1 on e.topic1=t1.id " +
@@ -67,8 +67,8 @@ func WriteEventTopic(ctx context.Context, dbTX *sql.Tx, topic *gethcommon.Hash, 
 	return uint64(id), nil
 }
 
-func UpdateEventTopicLifecycle(ctx context.Context, dbTx *sql.Tx, etId uint64, isLifecycle bool) error {
-	_, err := dbTx.ExecContext(ctx, "update event_topic set lifecycle_event=? where id=?", isLifecycle, etId)
+func UpdateEventTypeLifecycle(ctx context.Context, dbTx *sql.Tx, etId uint64, isLifecycle bool) error {
+	_, err := dbTx.ExecContext(ctx, "update event_type set lifecycle_event=? where id=?", isLifecycle, etId)
 	return err
 }
 
@@ -89,17 +89,15 @@ func WriteEventLog(ctx context.Context, dbTX *sql.Tx, eventTypeId uint64, userTo
 	return err
 }
 
-func FilterLogs(
-	ctx context.Context,
-	db *sql.DB,
-	requestingAccount *gethcommon.Address,
-	fromBlock, toBlock *big.Int,
-	batchHash *common.L2BatchHash,
-	addresses []gethcommon.Address,
-	topics [][]gethcommon.Hash,
-) ([]*types.Log, error) {
+func FilterLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, batchHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash, txHash *gethcommon.Hash) ([]*types.Log, error) {
 	queryParams := []any{}
 	query := ""
+
+	if txHash != nil {
+		query += " AND tx.hash = ? "
+		queryParams = append(queryParams, txHash.Bytes())
+	}
+
 	if batchHash != nil {
 		query += " AND b.hash = ? "
 		queryParams = append(queryParams, batchHash.Bytes())
@@ -236,8 +234,6 @@ func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Add
 
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
-
-	query += " order by b.height, tx.idx asc"
 
 	rows, err := db.QueryContext(ctx, query, queryParams...)
 	if err != nil {

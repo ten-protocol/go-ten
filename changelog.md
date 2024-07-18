@@ -2,6 +2,43 @@
 ---
 # Ten Testnet Change Log
 
+# July 2024-07-03 (v0.25.0)
+* This is an L2 deployment release meaning state will be lost in order to upgrade the network. Any dApps on the
+  network will need to be redeployed. The release predominantly addresses performance improvements for large numbers
+  of transactions in the network, and for event log queries. 
+* A full list of the PRs merged in this release is as below;
+  * `ef0bf45e` Fix for xchain messages (#1973)
+  * `0dc7d5c5` Fix for integration test (#1971)
+  * `186bc2c3` Host db performance fixes (#1969)
+  * `c0ea9b43` Bundle submission rework (#1966)
+  * `0b01bfd1` Assets fix and clear console warnings (#1959)
+  * `ddff74a5` Update db schema (#1967)
+  * `e1c91243` Rework event logs and transaction database schema (#1961)
+  * `291a698d` Add db query tool (#1963)
+  * `b1af061b` Initiate bridge deployment (#1965)
+  * `95f35150` Initiate bridge deployment (#1960)
+  * `447ff489` Placeholder commit for new gh action workflow (#1964)
+  * `9d6e7747` Fix for startup (#1962)
+  * `b537d2e6` Add indexed events (#1954)
+  * `c6e5a48f` Adds log constraints to docker containers not instantiated by the go client (#1956)
+  * `85e6cd0d` Ignore empty l1 head status from enclave (#1955)
+  * `a9485fef` Fixes for ethereum bridge and json representation of batch header (#1953)
+  * `e6453082` Deploy separate ten gateway for dexynth (#1949)
+  * `b8935c31` Network tests: util func for l1 transfers (#1948)
+  * `0f3d42bf` Network tests: start gateway synchronously to fix race (#1947)
+  * `9cee2fd4` Increase max message size grpc config (#1946)
+  * `c0bf4086` Small mem pool fixes (#1943)
+  * `b335bd1e` Avoid spamming stuck l1 transactions (#1941)
+  * `99a8aeee` Fix panic on uninitialised mem pool (#1940)
+  * `1daffac0` Replace health-check db query (#1938)
+  * `a880b169` Hardcode response to client version request (#1937)
+  * `5780140e` Check conversions (#1936)
+  * `b97d0b93` Fix flakyness errors (#1927)
+  * `6e432a1a` Add net_version support and test (#1934)
+  * `4f39832e` Fixing log spam (#1931)
+  * `f8b86b52` Fix log spam (#1929)
+  * `762dfef9` Fix for interval (#1926)
+
 # May 2024-05-20 (v0.24.0)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network. Any dApps on the 
 network will need to be redeployed. High level changes made in the release include;

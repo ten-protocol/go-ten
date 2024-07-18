@@ -2,6 +2,7 @@ package gethencoding
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -9,10 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 	"unsafe"
-
-	"github.com/dgraph-io/ristretto"
-	"github.com/eko/gocache/lib/v4/cache"
-	ristretto_store "github.com/eko/gocache/store/ristretto/v4"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -51,29 +48,16 @@ type EncodingService interface {
 }
 
 type gethEncodingServiceImpl struct {
-	// conversion is expensive. Cache the converted headers. The key is the hash of the batch.
-	gethHeaderCache *cache.Cache[*types.Header]
-
-	storage storage.Storage
-	logger  gethlog.Logger
+	storage        storage.Storage
+	logger         gethlog.Logger
+	cachingService *storage.CacheService
 }
 
-func NewGethEncodingService(storage storage.Storage, logger gethlog.Logger) EncodingService {
-	// todo (tudor) figure out the best values
-	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 5000, // number of keys to track frequency of.
-		MaxCost:     500,  // todo - this represents how many items.
-		BufferItems: 64,   // number of keys per Get buffer. Todo - what is this
-	})
-	if err != nil {
-		panic(err)
-	}
-	ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
-
+func NewGethEncodingService(storage storage.Storage, cachingService *storage.CacheService, logger gethlog.Logger) EncodingService {
 	return &gethEncodingServiceImpl{
-		gethHeaderCache: cache.New[*types.Header](ristrettoStore),
-		storage:         storage,
-		logger:          logger,
+		storage:        storage,
+		logger:         logger,
+		cachingService: cachingService,
 	}
 }
 
@@ -276,7 +260,7 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 // Special care must be taken to maintain a valid chain of these converted headers.
 func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(ctx context.Context, h *common.BatchHeader) (*types.Header, error) {
 	// wrap in a caching layer
-	return common.GetCachedValue(ctx, enc.gethHeaderCache, enc.logger, h.Hash(), func(a any) (*types.Header, error) {
+	return enc.cachingService.ReadConvertedHeader(ctx, h.Hash(), func(a any) (*types.Header, error) {
 		// deterministically calculate the private randomness that will be exposed to the EVM
 		secret, err := enc.storage.FetchSecret(ctx)
 		if err != nil {
@@ -361,18 +345,31 @@ func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(ctx context.Context,
 	return (*types.Block)(unsafe.Pointer(&lb)), nil
 }
 
-func ExtractPrivateCustomQuery(_ interface{}, query interface{}) (*common.PrivateCustomQueryListTransactions, error) {
-	// Convert the map to a JSON string
-	jsonData, err := json.Marshal(query)
-	if err != nil {
-		return nil, err
+// ExtractPrivateTransactionsQuery is designed to support a wide range of custom Ten queries.
+// The first parameter here is the method name, which is used to determine the query type.
+// The second parameter is the query parameters.
+func ExtractPrivateTransactionsQuery(queryParams any) (*common.ListPrivateTransactionsQueryParams, error) {
+	// we expect second param to be a json string
+	queryParamsStr, ok := queryParams.(string)
+	if !ok {
+		return nil, fmt.Errorf("expected queryParams as string but was type %T", queryParams)
 	}
 
-	var result common.PrivateCustomQueryListTransactions
-	err = json.Unmarshal(jsonData, &result)
+	var privateQueryParams common.ListPrivateTransactionsQueryParams
+	err := json.Unmarshal([]byte(queryParamsStr), &privateQueryParams)
 	if err != nil {
-		return nil, err
+		// if it fails, check if the string was base64 encoded
+		bytesStr, err64 := base64.StdEncoding.DecodeString(queryParamsStr)
+		if err64 != nil {
+			// was not base64 encoded, give up
+			return nil, fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
+		// was base64 encoded, try to unmarshal
+		err = json.Unmarshal(bytesStr, &privateQueryParams)
+		if err != nil {
+			return nil, fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
 	}
 
-	return &result, nil
+	return &privateQueryParams, nil
 }

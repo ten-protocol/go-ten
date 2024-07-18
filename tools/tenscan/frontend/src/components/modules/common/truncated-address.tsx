@@ -8,17 +8,25 @@ import {
 } from "@/src/components/ui/tooltip";
 
 import Copy from "./copy";
+import Link from "next/link";
 
 const TruncatedAddress = ({
   address,
   prefixLength,
   suffixLength,
   showCopy = true,
+  link,
 }: {
   address: string;
   prefixLength?: number;
   suffixLength?: number;
   showCopy?: boolean;
+  link?:
+    | string
+    | {
+        pathname: string;
+        query: { [key: string]: string | number };
+      };
 }) => {
   const truncatedAddress = `${address?.substring(
     0,
@@ -29,14 +37,29 @@ const TruncatedAddress = ({
     <>
       {address ? (
         <div className="flex items-center">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>{truncatedAddress}</TooltipTrigger>
-              <TooltipContent>
-                <p className="text-primary">{address}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {link ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Link href={link} className="text-primary hover:underline">
+                    {truncatedAddress}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-primary">{address}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>{truncatedAddress}</TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-primary">{address}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           {showCopy && <Copy value={address} />}
         </div>
       ) : (

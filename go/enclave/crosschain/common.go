@@ -221,7 +221,7 @@ func (ms MessageStructs) HashPacked(index int) gethcommon.Hash {
 	addrType, _ := abi.NewType("address", "", nil)
 	uint64Type, _ := abi.NewType("uint64", "", nil)
 	uint32Type, _ := abi.NewType("uint32", "", nil)
-	uint8Type, _ := abi.NewType("uint32", "", nil)
+	uint8Type, _ := abi.NewType("uint8", "", nil)
 	bytesType, _ := abi.NewType("bytes", "", nil)
 	args := abi.Arguments{
 		{
@@ -245,7 +245,10 @@ func (ms MessageStructs) HashPacked(index int) gethcommon.Hash {
 	}
 
 	// todo @siliev: err
-	packed, _ := args.Pack(messageStruct.Sender, messageStruct.Sequence, messageStruct.Nonce, messageStruct.Topic, messageStruct.Payload, messageStruct.ConsistencyLevel)
+	packed, err := args.Pack(messageStruct.Sender, messageStruct.Sequence, messageStruct.Nonce, messageStruct.Topic, messageStruct.Payload, messageStruct.ConsistencyLevel)
+	if err != nil {
+		panic(err)
+	}
 	hash := crypto.Keccak256Hash(packed)
 	return hash
 }
@@ -298,7 +301,10 @@ func (vt ValueTransfers) HashPacked(index int) gethcommon.Hash {
 		},
 	}
 
-	bytes, _ := args.Pack(valueTransfer.Sender, valueTransfer.Receiver, valueTransfer.Amount, valueTransfer.Sequence)
+	bytes, err := args.Pack(valueTransfer.Sender, valueTransfer.Receiver, valueTransfer.Amount, valueTransfer.Sequence)
+	if err != nil {
+		panic(err)
+	}
 
 	hash := crypto.Keccak256Hash(bytes)
 	return hash
