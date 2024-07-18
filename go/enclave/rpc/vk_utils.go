@@ -64,24 +64,6 @@ func WithVKEncryption[P any, R any](
 	if err := json.Unmarshal(plaintextRequest, &decodedRequest); err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("could not unmarshal params - %w", err)), nil
 	}
-	for _, param := range decodedRequest.Params {
-		fmt.Printf("Decoded param: %s\n", param)
-	}
-
-	//// checkViewingKeyAndRecoverAddress checks the signature and recovers the address from the viewing key
-	//func checkViewingKeyAndRecoverAddress(vk *AuthenticatedViewingKey, chainID int64) (*gethcommon.Address, error) {
-	//	// get userID from viewingKey public key
-	//	userID := viewingkey.CalculateUserID(vk.rpcVK.PublicKey)
-	//	vk.UserID = userID
-	//
-	//	// check the signature and recover the address assuming the message was signed with EIP712
-	//	recoveredSignerAddress, err := viewingkey.CheckSignature(userID, vk.rpcVK.SignatureWithAccountKey, chainID, vk.rpcVK.SignatureType)
-	//	if err != nil {
-	//		return nil, fmt.Errorf("signature verification failed %w", err)
-	//	}
-	//
-	//	return recoveredSignerAddress, err
-	//}
 	userId := viewingkey.CalculateUserID(decodedRequest.VK.PublicKey)
 
 	recoveredSignerAddress, _ := viewingkey.CheckSignature(userId, decodedRequest.VK.SignatureWithAccountKey, 1337, decodedRequest.VK.SignatureType)
