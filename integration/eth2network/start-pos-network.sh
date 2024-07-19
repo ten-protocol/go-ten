@@ -122,4 +122,4 @@ ${GETH_BINARY} --http \
 
 echo "Geth network started"
 # clean up intermediate file
-rm "${BASE_PATH}/genesis-updated.json"
+#rm "${BASE_PATH}/genesis-updated.json"

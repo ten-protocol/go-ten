@@ -142,12 +142,9 @@ func (n *PosImpl) Start() error {
 
 	err := eg.Wait()
 	go func() {
-		n.networkProcess, err = startNetworkScript(n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.chainID, n.buildDir, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
+		startNetworkScript(n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.chainID, n.buildDir, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
 			n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath, n.gethBinaryPath,
 			n.gethdataDir, n.beacondataDir, n.validatordataDir)
-		if err != nil {
-			panic(err)
-		}
 		time.Sleep(time.Second)
 	}()
 	if err != nil {
@@ -227,7 +224,7 @@ func (n *PosImpl) GenesisBytes() []byte {
 
 func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
 	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string,
-) (*exec.Cmd, error) {
+) {
 	startScript := filepath.Join(basepath, "start-pos-network.sh")
 	beaconRPCPortStr := strconv.Itoa(beaconRPCPort)
 	gethHTTPPortStr := strconv.Itoa(gethHTTPPort)
@@ -256,11 +253,6 @@ func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, bu
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
-	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("failed to start network script: %w", err)
-	}
-	return cmd, nil
 }
 
 // we parse the wallet addresses and append them to the genesis json, using an intermediate file which is cleaned up
@@ -301,9 +293,15 @@ func fundWallets(walletsToFund []string, chainID int) (string, error) {
 }
 
 func kill(p *os.Process) {
+	killErr := p.Kill()
+	if killErr != nil {
+		fmt.Printf("Error killing process %s", killErr)
+	}
+	time.Sleep(200 * time.Millisecond)
+	err := p.Release()
+
 	_ = stopProcesses()
 	checkBindAddresses("12000", "30303")
-	err := p.Release()
 	if err != nil {
 		fmt.Printf("Error releasing process %s", err)
 	}
