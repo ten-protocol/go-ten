@@ -1,46 +1,85 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import L1Bridge from "../../artifacts/IBridge.sol/IBridge.json";
+import Bridge from "../../artifacts/IBridge.sol/IBridge.json";
 import {
   l1Bridge as l1BridgeAddress,
+  l2Bridge as l2BridgeAddress,
   messageBusAddress,
 } from "../lib/constants";
 import { useWalletStore } from "../components/providers/wallet-provider";
+import { showToast } from "../components/ui/use-toast";
+import { ToastType } from "../types";
 
 export const useContract = () => {
-  const [contract, setContract] = React.useState<ethers.Contract>();
-  const { signer } = useWalletStore();
+  const [contract, setContract] = useState<ethers.Contract>();
+  const [wallet, setWallet] = useState<ethers.Wallet>();
+  const { signer, isL1ToL2, provider } = useWalletStore();
 
-  React.useEffect(() => {
-    if (signer) {
-      const contract = new ethers.Contract(
-        l1BridgeAddress as string,
-        L1Bridge.abi,
-        signer
-      );
-      setContract(contract);
+  useEffect(() => {
+    // var abi = JSON.parse(json)
+    if (!provider) {
+      console.error("Provider not found");
+      return;
     }
-  }, [signer]);
+    const p = new ethers.providers.Web3Provider(provider);
+    const wallet = new ethers.Wallet(
+      process.env.NEXT_PUBLIC_PRIVATE_KEY as string,
+      p
+    );
+    const address = isL1ToL2 ? l1BridgeAddress : l2BridgeAddress;
+    const contract = new ethers.Contract(address as string, Bridge.abi, wallet);
+    setContract(contract);
+    setWallet(wallet);
+  }, [provider, isL1ToL2]);
 
   // Send native currency to the other network.
-  async function sendNative(receiver: string, value: string) {
+  const sendNative = async (receiver: string, value: string) => {
     if (!contract) {
       console.error("Contract not found");
       return null;
     }
     try {
-      const res = await contract.sendNative(receiver, {
+      if (!ethers.utils.isAddress(receiver)) {
+        console.error("Invalid address");
+        return null;
+      }
+
+      const gasPrice = await signer.provider.getGasPrice();
+      const estimatedGas = await contract.estimateGas.sendNative(receiver, {
         value: ethers.utils.parseEther(value),
       });
-      console.log("🚀 ~ sendNative ~ res:", res);
-      const receipt = await res.wait();
-      console.log("🚀 ~ sendNative ~ receipt:", receipt);
-      return receipt;
+
+      const tx = await contract.populateTransaction.sendNative(receiver, {
+        value: ethers.utils.parseEther(value),
+        gasPrice: gasPrice,
+        gasLimit: estimatedGas,
+      });
+
+      const txResponse = await signer.sendTransaction(tx);
+      const txReceipt = await txResponse.wait();
+      console.log("🚀 ~ sendNative ~ txReceipt:", txReceipt);
+
+      // Get the logs from the transaction receipt
+      const logs = txReceipt.logs;
+      console.log("🚀 ~ sendNative ~ logs:", logs);
+
+      logs.forEach((log: any) => {
+        console.log("🚀 ~ logs.forEach ~ log:", log);
+        try {
+          const parsedLog = contract.interface.parseLog(log);
+          console.log(parsedLog);
+        } catch (error) {
+          console.error("🚀 ~ logs.forEach ~ error:", error);
+          // Handle the case where the log does not match the contract's events
+        }
+      });
+
+      return txReceipt;
     } catch (error) {
       console.error("Error sending native currency:", error);
       throw error;
     }
-  }
+  };
 
   // Send ERC20 assets to the other network.
   async function sendERC20(
