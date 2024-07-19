@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -55,7 +56,9 @@ type PosImpl struct {
 	beacondataDir            string
 	validatordataDir         string
 	gethGenesisBytes         []byte
-	networkProcess           *exec.Cmd
+	gethProcessID            int
+	beaconProcessID          int
+	validatorProcessID       int
 	timeout                  time.Duration
 }
 
@@ -142,11 +145,12 @@ func (n *PosImpl) Start() error {
 
 	err := eg.Wait()
 	go func() {
-		startNetworkScript(n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.chainID, n.buildDir, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
+		n.gethProcessID, n.beaconProcessID, n.validatorProcessID, err = startNetworkScript(n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.chainID, n.buildDir, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
 			n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath, n.gethBinaryPath,
 			n.gethdataDir, n.beacondataDir, n.validatordataDir)
 		time.Sleep(time.Second)
 	}()
+
 	if err != nil {
 		return fmt.Errorf("could not run the script to start l1 pos network. Cause: %s", err.Error())
 	}
@@ -154,8 +158,10 @@ func (n *PosImpl) Start() error {
 }
 
 func (n *PosImpl) Stop() error {
-	kill(n.networkProcess.Process)
-	time.Sleep(5 * time.Second)
+	kill(n.gethProcessID)
+	kill(n.beaconProcessID)
+	kill(n.validatorProcessID)
+	time.Sleep(time.Second)
 	return nil
 }
 
@@ -224,14 +230,13 @@ func (n *PosImpl) GenesisBytes() []byte {
 
 func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
 	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string,
-) {
+) (int, int, int, error) {
 	startScript := filepath.Join(basepath, "start-pos-network.sh")
 	beaconRPCPortStr := strconv.Itoa(beaconRPCPort)
 	gethHTTPPortStr := strconv.Itoa(gethHTTPPort)
 	gethWSPortStr := strconv.Itoa(gethWSPort)
 	chainStr := strconv.Itoa(chainID)
 
-	// TODO move all this to a config file
 	cmd := exec.Command("/bin/bash", startScript,
 		"--geth-http", gethHTTPPortStr,
 		"--geth-ws", gethWSPortStr,
@@ -250,9 +255,61 @@ func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, bu
 		"--beacondata-dir", beacondataDir,
 		"--validatordata-dir", validatordataDir,
 	)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("failed to start network script: %w\nOutput: %s", err, out.String())
+	}
+
+	output := out.String()
+	return _parsePIDs(output)
+}
+
+func _parsePIDs(output string) (int, int, int, error) {
+	lines := strings.Split(output, "\n")
+	var gethPID, beaconPID, validatorPID int
+	var err error
+
+	// reverse order since PIDS are in the last three lines
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := lines[i]
+		if strings.Contains(line, "GETH PID") {
+			fields := strings.Fields(line)
+			pidStr := fields[len(fields)-1]
+			gethPID, err = strconv.Atoi(pidStr)
+			if err != nil {
+				return 0, 0, 0, fmt.Errorf("failed to parse GETH PID: %w", err)
+			}
+		} else if strings.Contains(line, "BEACON PID") {
+			fields := strings.Fields(line)
+			pidStr := fields[len(fields)-1]
+			beaconPID, err = strconv.Atoi(pidStr)
+			if err != nil {
+				return 0, 0, 0, fmt.Errorf("failed to parse BEACON PID: %w", err)
+			}
+		} else if strings.Contains(line, "VALIDATOR PID") {
+			fields := strings.Fields(line)
+			pidStr := fields[len(fields)-1]
+			validatorPID, err = strconv.Atoi(pidStr)
+			if err != nil {
+				return 0, 0, 0, fmt.Errorf("failed to parse VALIDATOR PID: %w", err)
+			}
+		}
+
+		// Break out of the loop if all PIDs are found
+		if gethPID != 0 && beaconPID != 0 && validatorPID != 0 {
+			break
+		}
+	}
+
+	if gethPID == 0 || beaconPID == 0 || validatorPID == 0 {
+		return 0, 0, 0, fmt.Errorf("failed to find all required PIDs in script output")
+	}
+
+	return gethPID, beaconPID, validatorPID, nil
 }
 
 // we parse the wallet addresses and append them to the genesis json, using an intermediate file which is cleaned up
@@ -292,18 +349,23 @@ func fundWallets(walletsToFund []string, chainID int) (string, error) {
 	return string(formattedGenesisBytes), nil
 }
 
-func kill(p *os.Process) {
-	killErr := p.Kill()
-	if killErr != nil {
-		fmt.Printf("Error killing process %s", killErr)
-	}
-	time.Sleep(200 * time.Millisecond)
-	err := p.Release()
-
-	_ = stopProcesses()
-	checkBindAddresses("12000", "30303")
+func kill(pid int) {
+	process, err := os.FindProcess(pid)
 	if err != nil {
-		fmt.Printf("Error releasing process %s", err)
+		fmt.Printf("Error finding process with PID %d: %v\n", pid, err)
+		return
+	}
+
+	killErr := process.Kill()
+	if killErr != nil {
+		fmt.Printf("Error killing process with PID %d: %v\n", pid, killErr)
+		return
+	}
+
+	time.Sleep(200 * time.Millisecond)
+	err = process.Release()
+	if err != nil {
+		fmt.Printf("Error releasing process with PID %d: %v\n", pid, err)
 	}
 }
 

@@ -96,7 +96,8 @@ ${BEACON_BINARY} --datadir="${BEACONDATA_DIR}" \
                --enable-debug-rpc-endpoints \
                --verbosity=debug \
                --execution-endpoint "${GETHDATA_DIR}/geth.ipc" > "${BEACON_LOG_FILE}" 2>&1 &
-echo "Beacon node started"
+beacon_pid=$!
+echo "BEACON PID $beacon_pid"
 
 # Run Prysm validator client
 ${VALIDATOR_BINARY} --beacon-rpc-provider=127.0.0.1:"${BEACON_RPC_PORT}" \
@@ -104,7 +105,8 @@ ${VALIDATOR_BINARY} --beacon-rpc-provider=127.0.0.1:"${BEACON_RPC_PORT}" \
             --accept-terms-of-use \
             --interop-num-validators 2 \
             --chain-config-file "${BASE_PATH}/config.yml" > "${VALIDATOR_LOG_FILE}" 2>&1 &
-echo "Validator client started"
+validator_pid=$!
+echo "VALIDATOR PID $validator_pid"
 
 # Run go-ethereum
 ${GETH_BINARY} --http \
@@ -119,7 +121,8 @@ ${GETH_BINARY} --http \
        --allow-insecure-unlock \
        --unlock 0x123463a4b065722e99115d6c222f267d9cabb524 \
        --password "${BASE_PATH}/password.txt" > "${GETH_LOG_FILE}" 2>&1 &
+geth_pid=$!
+echo "GETH PID $geth_pid"
 
-echo "Geth network started"
 # clean up intermediate file
 #rm "${BASE_PATH}/genesis-updated.json"
