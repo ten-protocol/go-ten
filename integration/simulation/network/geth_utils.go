@@ -67,6 +67,11 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.Po
 	println("GETH AUTH: ", startPort+integration.DefaultGethAUTHPortOffset)
 	println("GETH WS: ", startPort+integration.DefaultGethWSPortOffset)
 	println("GETH HTTP: ", startPort+integration.DefaultGethHTTPPortOffset)
+	//gethNetworkPort,
+	//beaconP2PPort,
+	//gethRPCPort,
+	//gethWSPort,
+	//gethHTTPPort
 	network := eth2network.NewPosEth2Network(
 		binDir,
 		startPort+integration.DefaultGethNetworkPortOffset,

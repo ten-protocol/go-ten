@@ -5,6 +5,7 @@ GETH_NETWORK_PORT=30303
 BEACON_P2P_PORT=12000
 GETH_HTTP_PORT=8545
 GETH_WS_PORT=8546
+GETH_RPC_PORT=8552
 BEACON_RPC_PORT=4000
 CHAIN_ID=1337
 BUILD_DIR="./build"
@@ -22,10 +23,23 @@ VALIDATORDATA_DIR="/validatordata"
 
 # Function to display usage
 usage() {
-    echo "Usage: $0 [--geth-http GETH_HTTP_PORT] [--geth-ws GETH_WS_PORT] [--beacon-rpc BEACON_RPC_PORT] [--chainid CHAIN_ID ]
-    [--build-dir BUILD_DIR ] [--base-path BASE_PATH ] [--beacon-log BEACON_LOG_FILE] [--validator-log VALIDATOR_LOG_FILE]
-    [--geth-log GETH_LOG_FILE] [--geth-binary GETH_BINARY] [--beacon-binary BEACON_BINARY] [--prysmctl-binary PRYSMCTL_BINARY]
-    [--validator-binary VALIDATOR_BINARY] [--gethdata-dir GETHDATA_DIR] [--beacondata-dir BEACONDATA_DIR]
+    echo "Usage: $0
+    [--geth-http GETH_HTTP_PORT]
+    [--geth-ws GETH_WS_PORT]
+    [--geth-rpc GETH_RPC_PORT]
+    [--beacon-rpc BEACON_RPC_PORT]
+    [--chainid CHAIN_ID ]
+    [--build-dir BUILD_DIR ]
+    [--base-path BASE_PATH ]
+    [--beacon-log BEACON_LOG_FILE]
+    [--validator-log VALIDATOR_LOG_FILE]
+    [--geth-log GETH_LOG_FILE]
+    [--geth-binary GETH_BINARY]
+    [--beacon-binary BEACON_BINARY]
+    [--prysmctl-binary PRYSMCTL_BINARY]
+    [--validator-binary VALIDATOR_BINARY]
+    [--gethdata-dir GETHDATA_DIR]
+    [--beacondata-dir BEACONDATA_DIR]
     [--validatordata-dir VALIDATORDATA_DIR] "
     exit 1
 }
@@ -38,6 +52,7 @@ while [[ "$#" -gt 0 ]]; do
         --beacon-rpc) BEACON_RPC_PORT="$2"; shift ;;
         --geth-http) GETH_HTTP_PORT="$2"; shift ;;
         --geth-ws) GETH_WS_PORT="$2"; shift ;;
+        --geth-rpc) GETH_RPC_PORT="$2"; shift ;;
         --chainid) CHAIN_ID="$2"; shift ;;
         --build-dir) BUILD_DIR="$2"; shift ;;
         --base-path) BASE_PATH="$2"; shift ;;
@@ -117,6 +132,7 @@ ${GETH_BINARY} --http \
        --ws --ws.api eth,net,web3 \
        --ws.port="${GETH_WS_PORT}" \
        --authrpc.jwtsecret "${BASE_PATH}/jwt.hex" \
+       --authrpc.port "${GETH_RPC_PORT}" \
        --port="${GETH_NETWORK_PORT}" \
        --datadir="${GETHDATA_DIR}" \
        --nodiscover \

@@ -147,9 +147,9 @@ func (n *PosImpl) Start() error {
 	err := eg.Wait()
 	go func() {
 		n.gethProcessID, n.beaconProcessID, n.validatorProcessID, err = startNetworkScript(n.gethNetworkPort, n.beaconP2PPort,
-			n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.chainID, n.buildDir, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
-			n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath, n.gethBinaryPath,
-			n.gethdataDir, n.beacondataDir, n.validatordataDir)
+			n.gethRPCPort, n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.chainID, n.buildDir, n.prysmBeaconLogFile,
+			n.prysmValidatorLogFile, n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath,
+			n.gethBinaryPath, n.gethdataDir, n.beacondataDir, n.validatordataDir)
 		time.Sleep(time.Second)
 	}()
 
@@ -230,7 +230,7 @@ func (n *PosImpl) GenesisBytes() []byte {
 	return n.gethGenesisBytes
 }
 
-func startNetworkScript(gethNetworkPort, beaconP2PPort, gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
+func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
 	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string,
 ) (int, int, int, error) {
 	startScript := filepath.Join(basepath, "start-pos-network.sh")
@@ -239,6 +239,7 @@ func startNetworkScript(gethNetworkPort, beaconP2PPort, gethHTTPPort, gethWSPort
 	beaconRPCPortStr := strconv.Itoa(beaconRPCPort)
 	gethHTTPPortStr := strconv.Itoa(gethHTTPPort)
 	gethWSPortStr := strconv.Itoa(gethWSPort)
+	gethRPCPortStr := strconv.Itoa(gethRPCPort)
 	chainStr := strconv.Itoa(chainID)
 
 	cmd := exec.Command("/bin/bash", startScript,
@@ -246,6 +247,7 @@ func startNetworkScript(gethNetworkPort, beaconP2PPort, gethHTTPPort, gethWSPort
 		"--beacon-p2p", beaconP2PPortStr,
 		"--geth-http", gethHTTPPortStr,
 		"--geth-ws", gethWSPortStr,
+		"--geth-rpc", gethRPCPortStr,
 		"--beacon-rpc", beaconRPCPortStr,
 		"--chainid", chainStr,
 		"--build-dir", buildDir,
