@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"os"
 	"os/exec"
 	"path"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common/retry"
@@ -173,7 +174,7 @@ func (n *PosImpl) checkExistingNetworks() error {
 	if err == nil {
 		return fmt.Errorf("unexpected geth node is active before the network is started")
 	}
-	//checkBindAddresses(n.beaconP2PPort, n.gethNetworkPort)
+	// checkBindAddresses(n.beaconP2PPort, n.gethNetworkPort)
 	return nil
 }
 

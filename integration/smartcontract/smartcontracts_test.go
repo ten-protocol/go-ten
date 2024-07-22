@@ -54,12 +54,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 
 	// prefund one wallet as the worker wallet
 	workerWallet := datagenerator.RandomWallet(integration.EthereumChainID)
-	println("GETH NETWORK: ", _startPort+integration.DefaultGethNetworkPortOffset)
-	println("BEACON NETWORK: ", _startPort+integration.DefaultPrysmP2PPortOffset)
-	println("BEACON RPC: ", _startPort+integration.DefaultPrysmRPCPortOffset)
-	println("GETH AUTH: ", _startPort+integration.DefaultGethAUTHPortOffset)
-	println("GETH WS: ", _startPort+integration.DefaultGethWSPortOffset)
-	println("GETH HTTP: ", _startPort+integration.DefaultGethHTTPPortOffset)
+
 	eth2Network := eth2network.NewPosEth2Network(
 		binDir,
 		_startPort+integration.DefaultGethNetworkPortOffset,
