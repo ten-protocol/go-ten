@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"golang.org/x/sync/errgroup"
-	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -108,7 +107,7 @@ func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPor
 		panic(err)
 	}
 
-	genesis, err := fundWallets(walletsToFund, chainID)
+	genesis, err := fundWallets(walletsToFund, buildDir, chainID)
 	if err != nil {
 		panic(fmt.Sprintf("could not generate genesis. cause: %s", err.Error()))
 	}
@@ -174,7 +173,7 @@ func (n *PosImpl) checkExistingNetworks() error {
 	if err == nil {
 		return fmt.Errorf("unexpected geth node is active before the network is started")
 	}
-	checkBindAddresses(n.beaconP2PPort, n.gethNetworkPort)
+	//checkBindAddresses(n.beaconP2PPort, n.gethNetworkPort)
 	return nil
 }
 
@@ -308,7 +307,7 @@ func _parsePIDs(output string) (int, int, int, error) {
 			}
 		}
 
-		// Break out of the loop if all PIDs are found
+		// finish loop early when PIDs are found
 		if gethPID != 0 && beaconPID != 0 && validatorPID != 0 {
 			break
 		}
@@ -323,7 +322,7 @@ func _parsePIDs(output string) (int, int, int, error) {
 
 // we parse the wallet addresses and append them to the genesis json, using an intermediate file which is cleaned up
 // at the end of the network script. genesis bytes are returned to be parsed to the enclave config
-func fundWallets(walletsToFund []string, chainID int) (string, error) {
+func fundWallets(walletsToFund []string, buildDir string, chainID int) (string, error) {
 	filePath := filepath.Join(basepath, "genesis-init.json")
 	genesis, err := os.ReadFile(filePath)
 	if err != nil {
@@ -349,7 +348,7 @@ func fundWallets(walletsToFund []string, chainID int) (string, error) {
 		return "", err
 	}
 
-	newFile := filepath.Join(basepath, "genesis-updated.json")
+	newFile := filepath.Join(buildDir, "genesis.json")
 	err = os.WriteFile(newFile, formattedGenesisBytes, 0o644) //nolint:gosec
 	if err != nil {
 		return "", err
@@ -375,34 +374,5 @@ func kill(pid int) {
 	err = process.Release()
 	if err != nil {
 		fmt.Printf("Error releasing process with PID %d: %v\n", pid, err)
-	}
-}
-
-// checkBindAddresses checks that no processes exist at the specified UDP and TCP ports
-func checkBindAddresses(beaconUDPPort, gethTCPPort int) {
-	udpPortStr := strconv.Itoa(beaconUDPPort)
-	tcpPortStr := strconv.Itoa(gethTCPPort)
-	udpAddr, err := net.ResolveUDPAddr("udp", ":"+udpPortStr)
-	if err != nil {
-		fmt.Printf("Error resolving UDP address: %s\n", err)
-	} else {
-		conn, err := net.ListenUDP("udp", udpAddr)
-		if err != nil {
-			fmt.Printf("UDP port %s is in use\n", udpPortStr)
-		} else {
-			conn.Close()
-		}
-	}
-
-	tcpAddr, err := net.ResolveTCPAddr("tcp", ":"+tcpPortStr)
-	if err != nil {
-		fmt.Printf("Error resolving TCP address: %s\n", err)
-	} else {
-		listener, err := net.ListenTCP("tcp", tcpAddr)
-		if err != nil {
-			fmt.Printf("TCP port %s is in use\n", tcpPortStr)
-		} else {
-			listener.Close()
-		}
 	}
 }

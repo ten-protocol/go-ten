@@ -40,6 +40,13 @@ func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 		panic(err)
 	}
 
+	println("GETH NETWORK: ", _startPort+integration.DefaultGethNetworkPortOffset)
+	println("BEACON NETWORK: ", _startPort+integration.DefaultPrysmP2PPortOffset)
+	println("BEACON RPC: ", _startPort+integration.DefaultPrysmRPCPortOffset)
+	println("GETH AUTH: ", _startPort+integration.DefaultGethAUTHPortOffset)
+	println("GETH WS: ", _startPort+integration.DefaultGethWSPortOffset)
+	println("GETH HTTP: ", _startPort+integration.DefaultGethHTTPPortOffset)
+
 	network := eth2network.NewPosEth2Network(
 		binDir,
 		_startPort+integration.DefaultGethNetworkPortOffset,

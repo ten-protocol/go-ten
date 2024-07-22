@@ -56,11 +56,6 @@ func TestStartPosEth2Network(t *testing.T) {
 	assert.Nil(t, network.Start())
 
 	defer network.Stop() //nolint: errcheck
-	//stopNetwork := func() {
-	//	if err := network.Stop(); err != nil {
-	//		t.Fatalf("Failed to stop the network: %v", err)
-	//	}
-	//}
 
 	// test input configurations
 	t.Run("areConfigsUphold", func(t *testing.T) {
@@ -80,7 +75,6 @@ func TestStartPosEth2Network(t *testing.T) {
 	t.Run("txsAreMinted", func(t *testing.T) {
 		txsAreMinted(t, minerWallet)
 	})
-	//stopNetwork()
 }
 
 func areConfigsUphold(t *testing.T, addr gethcommon.Address, chainID int) {

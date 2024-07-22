@@ -60,12 +60,21 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.Po
 		walletAddresses = append(walletAddresses, w.Address().String())
 	}
 
+	println("START PORT: ", startPort)
+	println("GETH NETWORK: ", startPort+integration.DefaultGethNetworkPortOffset)
+	println("BEACON NETWORK: ", startPort+integration.DefaultPrysmP2PPortOffset)
+	println("BEACON RPC: ", startPort+integration.DefaultPrysmRPCPortOffset)
+	println("GETH AUTH: ", startPort+integration.DefaultGethAUTHPortOffset)
+	println("GETH WS: ", startPort+integration.DefaultGethWSPortOffset)
+	println("GETH HTTP: ", startPort+integration.DefaultGethHTTPPortOffset)
 	network := eth2network.NewPosEth2Network(
 		binDir,
+		startPort+integration.DefaultGethNetworkPortOffset,
+		startPort+integration.DefaultPrysmP2PPortOffset,
 		startPort+integration.DefaultGethAUTHPortOffset, // RPC
 		startPort+integration.DefaultGethWSPortOffset,
-		startPort+integration.DefaultGethNetworkPortOffset, // HTTP
-		startPort+integration.DefaultPrysmP2PPortOffset,    // RPC
+		startPort+integration.DefaultGethHTTPPortOffset,
+		startPort+integration.DefaultPrysmRPCPortOffset, // RPC
 		integration.EthereumChainID,
 		6*time.Minute,
 		walletAddresses...,

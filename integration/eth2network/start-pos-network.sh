@@ -60,20 +60,14 @@ mkdir -p "$(dirname "${BEACON_LOG_FILE}")"
 mkdir -p "$(dirname "${VALIDATOR_LOG_FILE}")"
 mkdir -p "$(dirname "${GETH_LOG_FILE}")"
 
-echo "GETH_NETWORK_PORT=${GETH_NETWORK_PORT}"
-echo "BEACON_P2P_PORT=${BEACON_P2P_PORT}"
-
-# Needed as this is overwritten each time and the timestamps are incredibly specific
-cp "${BASE_PATH}/genesis-updated.json" "${BASE_PATH}/genesis.json"
-
 ${PRYSMCTL_BINARY} testnet generate-genesis \
            --fork deneb \
            --num-validators 2 \
-	         --genesis-time-delay 30 \
+	         --genesis-time-delay 5 \
            --chain-config-file "${BASE_PATH}/config.yml" \
-           --geth-genesis-json-in "${BASE_PATH}/genesis.json" \
+           --geth-genesis-json-in "${BUILD_DIR}/genesis.json" \
 	         --output-ssz "${BEACONDATA_DIR}/genesis.ssz" \
-	         --geth-genesis-json-out "${BASE_PATH}/genesis.json"
+	         --geth-genesis-json-out "${BUILD_DIR}/genesis.json"
 
 sleep 1
 echo "Prysm genesis generated"
@@ -81,7 +75,7 @@ echo "Prysm genesis generated"
 echo -e "\n\n" | ${GETH_BINARY} --datadir="${GETHDATA_DIR}" account import "${BASE_PATH}/pk.txt"
 echo "Private key imported into gethdata"
 
-${GETH_BINARY} --datadir="${GETHDATA_DIR}" init "${BASE_PATH}/genesis.json"
+${GETH_BINARY} --datadir="${GETHDATA_DIR}" init "${BUILD_DIR}/genesis.json"
 sleep 1
 echo "Geth genesis initialized"
 
@@ -132,5 +126,3 @@ ${GETH_BINARY} --http \
        --password "${BASE_PATH}/password.txt" > "${GETH_LOG_FILE}" 2>&1 &
 geth_pid=$!
 echo "GETH PID $geth_pid"
-
-# clean up intermediate file
