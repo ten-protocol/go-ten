@@ -169,3 +169,16 @@ export interface Token {
   isEnabled: boolean;
   address: string;
 }
+
+export interface ObscuroConfig {
+  ManagementContractAddress: string;
+  L1StartHash: string;
+  MessageBusAddress: string;
+  L2MessageBusAddress: string;
+  ImportantContracts: {
+    L1Bridge: string;
+    L1CrossChainMessenger: string;
+    L2Bridge: string;
+    L2CrossChainMessenger: string;
+  };
+}

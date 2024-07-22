@@ -1,6 +1,5 @@
 import { NavLink } from "../types";
-import { RouteIcon } from "lucide-react";
-import { ReaderIcon } from "@radix-ui/react-icons";
+import { environment } from "../lib/constants";
 
 export const NavLinks: NavLink[] = [
   // {
@@ -21,6 +20,7 @@ export const NavLinks: NavLink[] = [
 
 export const apiRoutes = {
   getHealthStatus: `/info/health/`,
+  getObscuroConfig: `http://erpc.${environment}.obscu.ro:80/`,
 };
 
 export const requestMethods = {

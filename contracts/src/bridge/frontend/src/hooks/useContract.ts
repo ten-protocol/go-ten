@@ -1,22 +1,63 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import { ethers } from "ethers";
 import Bridge from "../../artifacts/IBridge.sol/IBridge.json";
-import {
-  l1Bridge as l1BridgeAddress,
-  l2Bridge as l2BridgeAddress,
-  messageBusAddress,
-} from "../lib/constants";
+import ManagementContractAbi from "../../artifacts/ManagementContract.sol/ManagementContract.json";
 import { useWalletStore } from "../components/providers/wallet-provider";
 import { showToast } from "../components/ui/use-toast";
 import { ToastType } from "../types";
+import { useGeneralService } from "../services/useGeneralService";
+import { environment } from "../lib/constants";
+import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 
 export const useContract = () => {
   const [contract, setContract] = useState<ethers.Contract>();
+  const [managementContract, setManagementContract] =
+    useState<ethers.Contract>();
   const [wallet, setWallet] = useState<ethers.Wallet>();
   const { signer, isL1ToL2, provider } = useWalletStore();
+  const { obscuroConfig, isObscuroConfigLoading } = useGeneralService();
+
+  const [messageBusAddress, setMessageBusAddress] = useState<string>("");
+
+  const memoizedConfig = useMemo(() => {
+    if (isObscuroConfigLoading || !obscuroConfig || !obscuroConfig.result) {
+      return null;
+    }
+    return obscuroConfig.result;
+  }, [obscuroConfig, isObscuroConfigLoading]);
 
   useEffect(() => {
-    // var abi = JSON.parse(json)
+    // if (isObscuroConfigLoading) {
+    //   return;
+    // }
+    // if (!obscuroConfig) {
+    //   showToast(ToastType.DESTRUCTIVE, "Config not found");
+    //   return;
+    // }
+
+    // if (!memoizedConfig) {
+    //   showToast(ToastType.DESTRUCTIVE, "Config not found");
+    //   return;
+    // }
+
+    // sepolia
+    const l1BridgeAddress = "0x87B99D9709764b72C0c25Dffd1Eed5D1014b5F6C";
+    const l2BridgeAddress = "0xFeD8Fc00f96d652244c6EE628da65Ea766CcEc81";
+    const managementContractAddress =
+      "0x1fc65b3639643d82848BfCc3a0D5a2D5881965Ab";
+
+    // const l1BridgeAddress = memoizedConfig.ImportantContracts.L1Bridge;
+    // const l2BridgeAddress = memoizedConfig.ImportantContracts.L2Bridge;
+    // const messageBusAddress = memoizedConfig.MessageBusAddress;
+    // setMessageBusAddress(messageBusAddress);
+
+    // uat
+    // const l1BridgeAddress = "0xb68B5B0Ec17AA746F30CF3f1E51b6ace56B7eCCF";
+    // const l2BridgeAddress = "0xFeD8Fc00f96d652244c6EE628da65Ea766CcEc81";
+    // const managementContractAddress =
+    //   "0xc23D7eDdC53b235c30B02c05F753929a092B3872";
+
     if (!provider) {
       console.error("Provider not found");
       return;
@@ -28,11 +69,20 @@ export const useContract = () => {
     );
     const address = isL1ToL2 ? l1BridgeAddress : l2BridgeAddress;
     const contract = new ethers.Contract(address as string, Bridge.abi, wallet);
+    const managementContract = new ethers.Contract(
+      managementContractAddress as string,
+      ManagementContractAbi,
+      wallet
+    );
+    console.log("🚀 ~ useEffect ~ contract:", contract);
     setContract(contract);
+    setManagementContract(managementContract);
     setWallet(wallet);
-  }, [provider, isL1ToL2]);
 
-  // Send native currency to the other network.
+    console.log("🚀 ~ config", memoizedConfig);
+  }, [provider, isL1ToL2]);
+  // }, [obscuroConfig, isObscuroConfigLoading, memoizedConfig]);
+
   const sendNative = async (receiver: string, value: string) => {
     if (!contract) {
       console.error("Contract not found");
@@ -49,6 +99,7 @@ export const useContract = () => {
         value: ethers.utils.parseEther(value),
       });
 
+      // 1. Call into the Ethereum bridge sendNative method to initiate the transfer of funds from the L2 to the L1
       const tx = await contract.populateTransaction.sendNative(receiver, {
         value: ethers.utils.parseEther(value),
         gasPrice: gasPrice,
@@ -59,20 +110,79 @@ export const useContract = () => {
       const txReceipt = await txResponse.wait();
       console.log("🚀 ~ sendNative ~ txReceipt:", txReceipt);
 
-      // Get the logs from the transaction receipt
-      const logs = txReceipt.logs;
-      console.log("🚀 ~ sendNative ~ logs:", logs);
-
-      logs.forEach((log: any) => {
-        console.log("🚀 ~ logs.forEach ~ log:", log);
-        try {
-          const parsedLog = contract.interface.parseLog(log);
-          console.log(parsedLog);
-        } catch (error) {
-          console.error("🚀 ~ logs.forEach ~ error:", error);
-          // Handle the case where the log does not match the contract's events
-        }
+      const valueTransferEvent = txReceipt.logs.find(
+        (log: any) =>
+          log.topics[0] ===
+          ethers.utils.id("ValueTransfer(address,address,uint256,uint64)")
+      );
+      console.log("🚀 ~ sendNative ~ valueTransferEvent:", valueTransferEvent);
+      if (!valueTransferEvent) {
+        throw new Error("ValueTransfer event not found in the logs");
+      }
+      // Debug: Log all topics
+      txReceipt.logs.forEach((log: any, index: number) => {
+        console.log(`Log ${index}:`, log.topics[0]);
       });
+      const valueTransferEventData =
+        contract.interface.parseLog(valueTransferEvent);
+      console.log(
+        "🚀 ~ sendNative ~ valueTransferEventData:",
+        valueTransferEventData
+      );
+
+      const hashedValueTransfer = ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(
+          ["address", "address", "uint256", "uint64"],
+          [
+            valueTransferEventData.args.sender,
+            valueTransferEventData.args.receiver,
+            valueTransferEventData.args.amount,
+            valueTransferEventData.args.sequence,
+          ]
+        )
+      );
+
+      const blockHash = txReceipt.blockHash;
+      const block = await signer.provider.getBlock(blockHash);
+
+      const base64CrossChainTree = block.extraData; // Assuming crossChainTree is in extraData
+      const decodedCrossChainTree = Buffer.from(
+        base64CrossChainTree,
+        "base64"
+      ).toString("utf8");
+      const leafEntries = JSON.parse(decodedCrossChainTree);
+
+      const leaves = leafEntries.map((entry: any) =>
+        ethers.utils.keccak256(entry)
+      );
+      const tree = new StandardMerkleTree(leaves);
+      const root = tree.getHexRoot();
+      const proof = tree.getHexProof(hashedValueTransfer);
+
+      // const managementContractL1 = new ethers.Contract(MANAGEMENT_CONTRACT_ADDRESS_L1, MANAGEMENT_CONTRACT_ABI_L1, walletL1);
+
+      let gasLimit;
+      while (true) {
+        try {
+          gasLimit = await managementContract?.estimateGas.ExtractNativeValue(
+            hashedValueTransfer,
+            proof,
+            root
+          );
+          break;
+        } catch (error) {
+          // Retry until it stops failing
+        }
+      }
+
+      const txL1 = await managementContract?.ExtractNativeValue(
+        hashedValueTransfer,
+        proof,
+        root,
+        { gasLimit }
+      );
+      const receiptL1 = await txL1.wait();
+      console.log("Funds released:", receiptL1);
 
       return txReceipt;
     } catch (error) {

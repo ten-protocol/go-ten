@@ -1,4 +1,4 @@
-import { fetchTestnetStatus } from "@/api/general";
+import { fetchTestnetStatus, fetchObscuroConfig } from "@/api/general";
 import { useQuery } from "@tanstack/react-query";
 
 export const useGeneralService = () => {
@@ -8,5 +8,16 @@ export const useGeneralService = () => {
     refetchInterval: 10000,
   });
 
-  return { testnetStatus, isStatusLoading };
+  const { data: obscuroConfig, isLoading: isObscuroConfigLoading } = useQuery({
+    queryKey: ["obscuroConfig"],
+    queryFn: () => fetchObscuroConfig(),
+    refetchInterval: 10000,
+  });
+
+  return {
+    testnetStatus,
+    isStatusLoading,
+    obscuroConfig,
+    isObscuroConfigLoading,
+  };
 };

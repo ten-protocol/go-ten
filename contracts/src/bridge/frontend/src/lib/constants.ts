@@ -1,3 +1,7 @@
+export const environment = process.env.NEXT_PUBLIC_BRIDGE_ENVIRONMENT;
+
+export const apiHost = `https://${environment}-testnet-api.tenscan.io`;
+
 export const socialLinks = {
   github: "https://github.com/ten-protocol",
   discord: "https://discord.gg/tenprotocol",
@@ -7,7 +11,7 @@ export const socialLinks = {
 
 export const pollingInterval = 5000;
 export const maxRetries = 3;
-export const pricePollingInterval = 60 * 1000; // 1 minute in milliseconds
+export const pricePollingInterval = 60 * 1000;
 
 export const RESET_COPIED_TIMEOUT = 2000;
 
@@ -31,12 +35,6 @@ export const getOptions = (query: {
   };
   return options;
 };
-
-export const apiHost = process.env.NEXT_PUBLIC_BRIDGE_API_HOST;
-
-export const l1Bridge = process.env.NEXT_PUBLIC_BRIDGE_L1;
-export const l2Bridge = process.env.NEXT_PUBLIC_BRIDGE_L2;
-export const messageBusAddress = process.env.NEXT_PUBLIC_BRIDGE_MESSAGE_BUS;
 
 export const GOOGLE_ANALYTICS_ID =
   process.env.NEXT_PUBLIC_BRIDGE_GOOGLE_ANALYTICS_ID;
