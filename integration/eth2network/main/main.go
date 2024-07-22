@@ -26,9 +26,11 @@ func main() {
 	}
 	eth2Network := eth2network.NewPosEth2Network(
 		binDir,
+		config.gethNetworkStartPort,
+		config.prysmBeaconP2PStartPort,
 		config.gethAuthRPCStartPort, // RPC
 		config.gethWSStartPort,
-		config.gethNetworkStartPort,    // HTTP
+		config.gethHTTPStartPort,       // HTTP
 		config.prysmBeaconRPCStartPort, // RPC
 		config.chainID,
 		5*time.Minute,

@@ -26,8 +26,6 @@ import (
 const (
 	_eth2BinariesRelPath = "../.build/eth2_bin"
 	_gethBinaryName      = "geth"
-	udpPort              = "12000"
-	tcpPort              = "30303"
 )
 
 var (
@@ -45,6 +43,8 @@ type PosImpl struct {
 	prysmBinaryPath          string
 	prysmBeaconBinaryPath    string
 	prysmValidatorBinaryPath string
+	gethNetworkPort          int
+	beaconP2PPort            int
 	gethWSPort               int
 	gethRPCPort              int
 	gethHTTPPort             int
@@ -68,7 +68,7 @@ type PosEth2Network interface {
 	GenesisBytes() []byte
 }
 
-func NewPosEth2Network(binDir string, gethRPCPort, gethWSPort, gethHTTPPort, beaconRPCPort, chainID int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
+func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPort, gethWSPort, gethHTTPPort, beaconRPCPort, chainID int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
 	build, err := getBuildNumber()
 	if err != nil {
 		panic(fmt.Sprintf("could not get build number: %s", err.Error()))
@@ -117,6 +117,8 @@ func NewPosEth2Network(binDir string, gethRPCPort, gethWSPort, gethHTTPPort, bea
 		buildDir:                 buildDir,
 		binDir:                   binDir,
 		chainID:                  chainID,
+		gethNetworkPort:          gethNetworkPort,
+		beaconP2PPort:            beaconP2PPort,
 		gethWSPort:               gethWSPort,
 		gethRPCPort:              gethRPCPort,
 		gethHTTPPort:             gethHTTPPort,
@@ -145,7 +147,8 @@ func (n *PosImpl) Start() error {
 
 	err := eg.Wait()
 	go func() {
-		n.gethProcessID, n.beaconProcessID, n.validatorProcessID, err = startNetworkScript(n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.chainID, n.buildDir, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
+		n.gethProcessID, n.beaconProcessID, n.validatorProcessID, err = startNetworkScript(n.gethNetworkPort, n.beaconP2PPort,
+			n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.chainID, n.buildDir, n.prysmBeaconLogFile, n.prysmValidatorLogFile,
 			n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath, n.gethBinaryPath,
 			n.gethdataDir, n.beacondataDir, n.validatordataDir)
 		time.Sleep(time.Second)
@@ -171,7 +174,7 @@ func (n *PosImpl) checkExistingNetworks() error {
 	if err == nil {
 		return fmt.Errorf("unexpected geth node is active before the network is started")
 	}
-	checkBindAddresses(udpPort, tcpPort)
+	checkBindAddresses(n.beaconP2PPort, n.gethNetworkPort)
 	return nil
 }
 
@@ -228,16 +231,20 @@ func (n *PosImpl) GenesisBytes() []byte {
 	return n.gethGenesisBytes
 }
 
-func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
+func startNetworkScript(gethNetworkPort, beaconP2PPort, gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
 	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string,
 ) (int, int, int, error) {
 	startScript := filepath.Join(basepath, "start-pos-network.sh")
+	gethNetworkPortStr := strconv.Itoa(gethNetworkPort)
+	beaconP2PPortStr := strconv.Itoa(beaconP2PPort)
 	beaconRPCPortStr := strconv.Itoa(beaconRPCPort)
 	gethHTTPPortStr := strconv.Itoa(gethHTTPPort)
 	gethWSPortStr := strconv.Itoa(gethWSPort)
 	chainStr := strconv.Itoa(chainID)
 
 	cmd := exec.Command("/bin/bash", startScript,
+		"--geth-network", gethNetworkPortStr,
+		"--beacon-p2p", beaconP2PPortStr,
 		"--geth-http", gethHTTPPortStr,
 		"--geth-ws", gethWSPortStr,
 		"--beacon-rpc", beaconRPCPortStr,
@@ -261,13 +268,15 @@ func startNetworkScript(gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, bu
 
 	err := cmd.Run()
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("failed to start network script: %w\nOutput: %s", err, out.String())
+		panic(fmt.Errorf("failed to start network script: %w\nOutput: %s", err, out.String()))
 	}
 
 	output := out.String()
 	return _parsePIDs(output)
 }
 
+// we have to run all the processes from the same script for the geth.ipc to work for some reason so this is an ugly
+// workaround to capture the PIDs, so we can kill each process individually
 func _parsePIDs(output string) (int, int, int, error) {
 	lines := strings.Split(output, "\n")
 	var gethPID, beaconPID, validatorPID int
@@ -370,48 +379,30 @@ func kill(pid int) {
 }
 
 // checkBindAddresses checks that no processes exist at the specified UDP and TCP ports
-func checkBindAddresses(udpPort, tcpPort string) {
-	udpAddr, err := net.ResolveUDPAddr("udp", ":"+udpPort)
+func checkBindAddresses(beaconUDPPort, gethTCPPort int) {
+	udpPortStr := strconv.Itoa(beaconUDPPort)
+	tcpPortStr := strconv.Itoa(gethTCPPort)
+	udpAddr, err := net.ResolveUDPAddr("udp", ":"+udpPortStr)
 	if err != nil {
 		fmt.Printf("Error resolving UDP address: %s\n", err)
 	} else {
 		conn, err := net.ListenUDP("udp", udpAddr)
 		if err != nil {
-			fmt.Printf("UDP port %s is in use\n", udpPort)
-			_ = stopProcesses()
+			fmt.Printf("UDP port %s is in use\n", udpPortStr)
 		} else {
-			fmt.Printf("UDP port %s is available\n", udpPort)
 			conn.Close()
 		}
 	}
 
-	tcpAddr, err := net.ResolveTCPAddr("tcp", ":"+tcpPort)
+	tcpAddr, err := net.ResolveTCPAddr("tcp", ":"+tcpPortStr)
 	if err != nil {
 		fmt.Printf("Error resolving TCP address: %s\n", err)
 	} else {
 		listener, err := net.ListenTCP("tcp", tcpAddr)
 		if err != nil {
-			fmt.Printf("TCP port %s is in use\n", tcpPort)
-			_ = stopProcesses()
+			fmt.Printf("TCP port %s is in use\n", tcpPortStr)
 		} else {
-			fmt.Printf("TCP port %s is available\n", tcpPort)
 			listener.Close()
 		}
 	}
-}
-
-func stopProcesses() error {
-	stopScript := filepath.Join(basepath, "stop-processes.sh")
-	cmd := exec.Command("/bin/bash", stopScript)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("failed to stop processes: %w\nOutput: %s", err, out.String())
-	}
-
-	fmt.Println(out.String())
-	return nil
 }

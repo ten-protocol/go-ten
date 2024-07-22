@@ -21,8 +21,9 @@ const (
 	DefaultGethWSPortOffset         = 100
 	DefaultGethAUTHPortOffset       = 200
 	DefaultGethNetworkPortOffset    = 300
-	DefaultPrysmHTTPPortOffset      = 400
+	DefaultGethHTTPPortOffset       = 400
 	DefaultPrysmP2PPortOffset       = 500
+	DefaultPrysmRPCPortOffset       = 1000
 	DefaultHostP2pOffset            = 600 // The default offset for the host P2p
 	DefaultEnclaveOffset            = 700 // The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
 	DefaultHostRPCHTTPOffset        = 800 // The default offset for the host's RPC HTTP port

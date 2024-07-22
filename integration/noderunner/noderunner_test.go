@@ -42,10 +42,12 @@ func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 
 	network := eth2network.NewPosEth2Network(
 		binDir,
+		_startPort+integration.DefaultGethNetworkPortOffset,
+		_startPort+integration.DefaultPrysmP2PPortOffset,
 		_startPort+integration.DefaultGethAUTHPortOffset, // RPC
 		_startPort+integration.DefaultGethWSPortOffset,
-		_startPort+integration.DefaultGethNetworkPortOffset, // HTTP
-		_startPort+integration.DefaultPrysmP2PPortOffset,    // RPC
+		_startPort+integration.DefaultGethHTTPPortOffset,
+		_startPort+integration.DefaultPrysmRPCPortOffset, // RPC
 		integration.EthereumChainID,
 		3*time.Minute,
 	)

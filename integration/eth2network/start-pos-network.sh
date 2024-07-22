@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 # Default port values
+GETH_NETWORK_PORT=30303
+BEACON_P2P_PORT=12000
 GETH_HTTP_PORT=8545
 GETH_WS_PORT=8546
 BEACON_RPC_PORT=4000
@@ -31,6 +33,8 @@ usage() {
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
     case $1 in
+        --geth-network) GETH_NETWORK_PORT="$2"; shift ;;
+        --beacon-p2p) BEACON_P2P_PORT="$2"; shift ;;
         --beacon-rpc) BEACON_RPC_PORT="$2"; shift ;;
         --geth-http) GETH_HTTP_PORT="$2"; shift ;;
         --geth-ws) GETH_WS_PORT="$2"; shift ;;
@@ -55,6 +59,9 @@ done
 mkdir -p "$(dirname "${BEACON_LOG_FILE}")"
 mkdir -p "$(dirname "${VALIDATOR_LOG_FILE}")"
 mkdir -p "$(dirname "${GETH_LOG_FILE}")"
+
+echo "GETH_NETWORK_PORT=${GETH_NETWORK_PORT}"
+echo "BEACON_P2P_PORT=${BEACON_P2P_PORT}"
 
 # Needed as this is overwritten each time and the timestamps are incredibly specific
 cp "${BASE_PATH}/genesis-updated.json" "${BASE_PATH}/genesis.json"
@@ -89,6 +96,7 @@ ${BEACON_BINARY} --datadir="${BEACONDATA_DIR}" \
                --chain-id "${CHAIN_ID}" \
                --rpc-host=127.0.0.1 \
                --rpc-port="${BEACON_RPC_PORT}" \
+               --p2p-udp-port="${BEACON_P2P_PORT}" \
                --accept-terms-of-use \
                --jwt-secret "${BASE_PATH}/jwt.hex" \
                --suggested-fee-recipient 0x123463a4B065722E99115D6c222f267d9cABb524 \
@@ -115,6 +123,7 @@ ${GETH_BINARY} --http \
        --ws --ws.api eth,net,web3 \
        --ws.port="${GETH_WS_PORT}" \
        --authrpc.jwtsecret "${BASE_PATH}/jwt.hex" \
+       --port="${GETH_NETWORK_PORT}" \
        --datadir="${GETHDATA_DIR}" \
        --nodiscover \
        --syncmode full \
@@ -125,4 +134,3 @@ geth_pid=$!
 echo "GETH PID $geth_pid"
 
 # clean up intermediate file
-#rm "${BASE_PATH}/genesis-updated.json"
