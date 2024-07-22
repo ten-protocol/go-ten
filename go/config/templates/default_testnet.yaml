@@ -1,7 +1,7 @@
 testNetSettings:
-  eth2Network:                  true
-  l1ContractDeployer:           true
-  nodes:                        false
+  eth2Network:                  false
+  l1ContractDeployer:           false
+  nodes:                        true
   l2ContractDeployer:           false
   faucet:                       false
   replaceRunning:               true # replaces the container for each service if it's already running

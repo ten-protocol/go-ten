@@ -1,0 +1,31 @@
+networkConfig:            # NETWORK - There are fixed by your network you should not change
+  l1StartHash:               "0xeea2522d5857e0602d3b86033c056ae974f54399c010efc0328e7cd2103c634f"
+  managementContractAddress: "0x242dadB2A4267C61606036d8D089898e7bbC2161"
+  messageBusAddress:         "0xAaF7334367F04A7A84c6289EffCcaA009DB3B6f6"
+  sequencerP2PAddress:       "0xfB10845e22e0dDe322FF6347477944c4bcF88243"
+
+nodeDetails:              # Individual
+  nodeName:               "ten-node-0" # optional (custom short name - internal ref only)
+  hostID:                 "0x53Fd3258E53CbD7e8E7a4f8CE8251367D6948569" # must override with public key
+  privateKey:             "91ef2dc2d3847efe4031777777dd87ef21771b070b57722a715143656a9dfb87" # must override with private key matching hostID/public key
+  l1WebsocketURL:         "ws://uat-testnet-eth2network.uksouth.cloudapp.azure.com:9000" # must override with L1 node WS (geth/infura etc.)
+  p2pPublicAddress:       "nodeops-0-uat-testnet.uksouth.cloudapp.azure.com:10000" # must override be sure this address:port is public accessible
+  clientRPCPortHTTP:      80
+  clientRPCPortWS:        81
+
+nodeSettings:
+  nodeType:               "validator"
+  isSGXEnabled:           true # should be true for ITN
+  pccsAddr:               "" # optional for attestation
+  debugNamespaceEnabled:  true
+  logLevel:               3
+  profilerEnabled:        false
+  useInMemoryDB:          true # useInMemoryDB for host
+  postgresDBHost:         "" # only if `useInMemoryDB` set to false
+
+nodeImages:
+  hostImage:              "testnetobscuronet.azurecr.io/obscuronet/sepolia_host:latest" # provided
+  enclaveImage:           "testnetobscuronet.azurecr.io/obscuronet/sepolia_enclave:latest" # provided
+  edgelessDBImage:        "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
+
+

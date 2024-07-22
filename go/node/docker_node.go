@@ -23,6 +23,10 @@ type DockerNode struct {
 	DryRun   bool
 }
 
+// DockerStartBundle is a struct that holds the configuration settings for a docker container
+// ConfigParam whether cmd should expect a config replacement
+// OverrideParam whether cmd should expect a config override (additive)
+// See go/config/templates for the default configurations
 type DockerStartBundle struct {
 	Service                string
 	DryRun                 bool
@@ -133,7 +137,15 @@ func (d *DockerNode) startHost() error {
 
 	hostVolume := map[string]string{d.Cfg.NodeDetails.NodeName + "-host-volume": _hostDataDir}
 
-	envs = d.appendConfigStaticFlagEnvOverrides(config.Host, envs)
+	// prepend config override to the command
+	cmd = append([]string{"/home/obscuro/go-obscuro/go/host/main/config-entrypoint.sh"}, cmd...)
+
+	// set the override config
+	err := config.WriteConfigToEnv(d.Cfg.HostConfig, envs, config.OverrideEnvKey)
+	if err != nil {
+		return err
+	}
+	cmd = append(cmd, "-override", config.OverrideEnvKey+".yaml")
 
 	dsb := &DockerStartBundle{
 		config.Host.String(),
@@ -194,7 +206,15 @@ func (d *DockerNode) startEnclave() error {
 		)
 	}
 
-	envs = d.appendConfigStaticFlagEnvOverrides(config.Enclave, envs) // apply configurations
+	// prepend config override to the command
+	cmd = append([]string{"/home/obscuro/go-obscuro/go/enclave/main/config-entrypoint.sh"}, cmd...)
+
+	// set the override config
+	err := config.WriteConfigToEnv(d.Cfg.EnclaveConfig, envs, config.OverrideEnvKey)
+	if err != nil {
+		return err
+	}
+	cmd = append(cmd, "-override", config.OverrideEnvKey+".yaml")
 
 	enclaveVolume := map[string]string{d.Cfg.NodeDetails.NodeName + "-enclave-volume": _enclaveDataDir}
 
