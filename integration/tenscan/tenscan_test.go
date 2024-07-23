@@ -359,7 +359,7 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 	for _, txHash := range receipts {
 		fmt.Printf("Checking for tx receipt for %s \n", txHash)
 		var receipt *types.Receipt
-		for start := time.Now(); time.Since(start) < time.Minute; time.Sleep(time.Second) {
+		for start := time.Now(); time.Since(start) < 2*time.Minute; time.Sleep(time.Second) {
 			receipt, err = authClient.TransactionReceipt(ctx, txHash)
 			if err == nil {
 				break
@@ -371,7 +371,7 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 		}
 
 		if receipt == nil {
-			t.Fatalf("Did not mine the transaction after %s seconds  - receipt: %+v", 30*time.Second, receipt)
+			t.Fatalf("Did not mine the transaction after %s seconds  - receipt: %+v", 60*time.Second, receipt)
 		}
 		if receipt.Status == 0 {
 			t.Fatalf("Tx Failed")

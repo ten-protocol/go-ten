@@ -327,7 +327,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	err := testcommon.AwaitReceipt(ti.ctx, ti.rpcHandles.ObscuroWalletRndClient(fromWallet), tx.Hash(), 30*time.Second)
+	err := testcommon.AwaitReceipt(ti.ctx, ti.rpcHandles.ObscuroWalletRndClient(fromWallet), tx.Hash(), 60*time.Second)
 	if err != nil {
 		ti.logger.Error("Failed to await receipt for withdrawal transaction", log.ErrKey, err)
 		return

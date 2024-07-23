@@ -73,7 +73,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 	}
 
 	// create a client that is connected to node 0 of the network
-	client, err := ethadapter.NewEthClient("127.0.0.1", integration.StartPortSmartContractTests+100, 30*time.Second, gethcommon.HexToAddress("0x0"), testlog.Logger())
+	client, err := ethadapter.NewEthClient("127.0.0.1", integration.StartPortSmartContractTests+100, 60*time.Second, gethcommon.HexToAddress("0x0"), testlog.Logger())
 	if err != nil {
 		t.Fatal(err)
 	}

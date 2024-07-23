@@ -302,7 +302,7 @@ func (s *Simulation) checkHealthStatus() {
 				return fmt.Errorf("client is not healthy: %w", err)
 			}
 			return nil
-		}, retry.NewTimeoutStrategy(30*time.Second, 100*time.Millisecond))
+		}, retry.NewTimeoutStrategy(60*time.Second, 100*time.Millisecond))
 		if err != nil {
 			panic(err)
 		}

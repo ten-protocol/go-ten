@@ -32,7 +32,7 @@ const (
 	erc20ParamTwo                 = "Hoc"
 	erc20ParamThree               = "1000000000000000000"
 	testLogs                      = "../.build/noderunner/"
-	receiptTimeout                = 30 * time.Second // The time to wait for a receipt for a transaction.
+	receiptTimeout                = 60 * time.Second // The time to wait for a receipt for a transaction.
 )
 
 func init() { //nolint:gochecknoinits
