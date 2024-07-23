@@ -295,7 +295,7 @@ func ExtractDataFromEthereumChain(
 
 func verifyGasBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
 	// takes longer for the funds to be bridged across
-	time.Sleep(60 * time.Second)
+	time.Sleep(45 * time.Second)
 	mbusABI, _ := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
 	gasBridgeRecords := s.TxInjector.TxTracker.GasBridgeTransactions
 	for _, record := range gasBridgeRecords {

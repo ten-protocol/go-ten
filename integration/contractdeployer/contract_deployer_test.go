@@ -49,7 +49,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
 	creatTenNetwork(t, startPort)
 	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
-	time.Sleep(2 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	config := &contractdeployer.Config{
 		NodeHost:          network.Localhost,

@@ -33,7 +33,7 @@ func main() {
 		config.gethHTTPStartPort,       // HTTP
 		config.prysmBeaconRPCStartPort, // RPC
 		config.chainID,
-		5*time.Minute,
+		6*time.Minute,
 	)
 
 	err = eth2Network.Start()
