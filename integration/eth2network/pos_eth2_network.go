@@ -187,9 +187,10 @@ func (n *PosImpl) waitForMergeEvent(startTime time.Time) error {
 	if err != nil {
 		return err
 	}
-	time.Sleep(2 * time.Second)
+	time.Sleep(30 * time.Second)
 	number := uint64(0)
 	// wait for the merge block
+	fmt.Printf("WAITING FOR MERGE WITH TIMEOUT: %f minutes", n.timeout.Minutes())
 	err = retry.Do(
 		func() error {
 			number, err = dial.BlockNumber(ctx)
