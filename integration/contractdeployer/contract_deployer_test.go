@@ -32,7 +32,7 @@ const (
 	erc20ParamTwo                 = "Hoc"
 	erc20ParamThree               = "1000000000000000000"
 	testLogs                      = "../.build/noderunner/"
-	receiptTimeout                = 60 * time.Second // The time to wait for a receipt for a transaction.
+	receiptTimeout                = 30 * time.Second // The time to wait for a receipt for a transaction.
 )
 
 func init() { //nolint:gochecknoinits
@@ -49,7 +49,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
 	creatTenNetwork(t, startPort)
 	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
-	time.Sleep(10 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	config := &contractdeployer.Config{
 		NodeHost:          network.Localhost,

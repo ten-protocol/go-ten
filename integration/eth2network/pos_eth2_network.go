@@ -187,7 +187,7 @@ func (n *PosImpl) waitForMergeEvent(startTime time.Time) error {
 	if err != nil {
 		return err
 	}
-	time.Sleep(30 * time.Second)
+	time.Sleep(2 * time.Second)
 	number := uint64(0)
 	// wait for the merge block
 	err = retry.Do(
