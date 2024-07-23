@@ -59,6 +59,7 @@ type PosImpl struct {
 	gethProcessID            int
 	beaconProcessID          int
 	validatorProcessID       int
+	wallets                  []string
 	timeout                  time.Duration
 }
 
@@ -134,6 +135,7 @@ func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPor
 		beacondataDir:            beacondataDir,
 		validatordataDir:         validatordataDir,
 		gethGenesisBytes:         []byte(genesis),
+		wallets:                  walletsToFund,
 		timeout:                  timeout,
 	}
 }
@@ -215,15 +217,16 @@ func (n *PosImpl) waitForMergeEvent(startTime time.Time) error {
 }
 
 func (n *PosImpl) prefundedBalanceActive(client *ethclient.Client) error {
-	balance, err := client.BalanceAt(context.Background(), gethcommon.HexToAddress(integration.GethNodeAddress), nil)
-	if err != nil {
-		return fmt.Errorf("unable to check balance for account %s - %w", integration.GethNodeAddress, err)
+	for _, addr := range n.wallets {
+		balance, err := client.BalanceAt(context.Background(), gethcommon.HexToAddress(addr), nil)
+		if err != nil {
+			return fmt.Errorf("unable to check balance for account %s - %w", addr, err)
+		}
+		if balance.Cmp(gethcommon.Big0) == 0 {
+			return fmt.Errorf("unexpected %s balance for account %s", balance.String(), addr)
+		}
+		fmt.Printf("Account %s prefunded with %s\n", addr, balance.String())
 	}
-	if balance.Cmp(gethcommon.Big0) == 0 {
-		return fmt.Errorf("unexpected %s balance for account %s", balance.String(), integration.GethNodeAddress)
-	}
-	fmt.Printf("Account %s prefunded with %s\n", integration.GethNodeAddress, balance.String())
-
 	return nil
 }
 

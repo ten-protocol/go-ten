@@ -297,10 +297,10 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		}
 		fromWallet := ti.wallets.Tokens[fromWalletToken].L2Owner
 		toWallet := ti.rndObsWallet()
-		obscuroClient := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
+		tenClient := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
 		v := testcommon.RndBtw(500, 2000)
 		txData := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), v, fromWalletToken)
-		tx := obscuroClient.EstimateGasAndGasPrice(txData)
+		tx := tenClient.EstimateGasAndGasPrice(txData)
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -309,7 +309,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 
 		ti.stats.Deposit(big.NewInt(int64(v)))
 
-		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
+		err = tenClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue deposit via RPC.", log.ErrKey, err)
 		} else {
