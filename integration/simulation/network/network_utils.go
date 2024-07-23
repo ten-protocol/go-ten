@@ -32,7 +32,7 @@ import (
 
 const (
 	Localhost               = "127.0.0.1"
-	EnclaveClientRPCTimeout = 5 * time.Minute
+	EnclaveClientRPCTimeout = 8 * time.Minute
 	DefaultL1RPCTimeout     = 15 * time.Second
 )
 
