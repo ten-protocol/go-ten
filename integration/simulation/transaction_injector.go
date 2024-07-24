@@ -2,12 +2,14 @@ package simulation
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
 	"sync/atomic"
 	"time"
 
+	"github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -16,6 +18,7 @@ import (
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -444,6 +447,44 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomWithdrawals() {
 	// todo (@stefan) - rework this when old contract deployer is phased out?
+	msgBusAddr := gethcommon.HexToAddress("0x526c84529B2b8c11F57D93d3f5537aCA3AeCEf9B")
+
+	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
+		fromWallet := ti.rndObsWallet()
+		client := ti.rpcHandles.TenWalletRndClient(fromWallet)
+		price, err := client.GasPrice(ti.ctx)
+		if err != nil {
+			ti.logger.Error("unable to estimate gas price", log.ErrKey, err)
+			continue
+		}
+
+		tx := &types.LegacyTx{
+			Nonce:    fromWallet.GetNonceAndIncrement(),
+			Value:    gethcommon.Big1,
+			Gas:      uint64(1_000_000_000),
+			GasPrice: price,
+			Data:     nil,
+			To:       &msgBusAddr,
+		}
+		signedTx, err := fromWallet.SignTransaction(tx)
+		if err != nil {
+			ti.logger.Error("[CrossChain] unable to sign withdrawal transaction", log.ErrKey, err)
+			continue
+		}
+
+		err = client.SendTransaction(ti.ctx, signedTx)
+		if err != nil {
+			ti.logger.Error("[CrossChain] unable to send withdrawal transaction", log.ErrKey, err)
+		}
+
+		go ti.TxTracker.trackWithdrawalFromL2(signedTx)
+
+		ti.logger.Info("[CrossChain] successful withdrawal tx", log.TxKey, signedTx.Hash())
+
+		go ti.awaitAndFinalizeWithdrawal(signedTx, fromWallet)
+
+		time.Sleep(testcommon.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration))
+	}
 }
 
 // issueInvalidL2Txs creates and issues invalidly-signed L2 transactions proportional to the simulation time.
