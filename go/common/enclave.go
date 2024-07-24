@@ -86,6 +86,8 @@ type Enclave interface {
 	// GetCode returns the code stored at the given address in the state for the given rollup hash.
 	GetCode(ctx context.Context, address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, SystemError)
 
+	GetStorageSlot(ctx context.Context, encryptedParams EncryptedParamsGetStorageSlot) (*responses.EnclaveResponse, SystemError)
+
 	// Subscribe adds a log subscription to the enclave under the given ID, provided the request is authenticated
 	// correctly. The events will be populated in the BlockSubmissionResponse. If there is an existing subscription
 	// with the given ID, it is overwritten.
@@ -141,9 +143,8 @@ type EnclaveScan interface {
 	// GetTotalContractCount returns the total number of contracts that have been deployed
 	GetTotalContractCount(context.Context) (*big.Int, SystemError)
 
-	// GetCustomQuery returns the data of a custom query
-	// todo - better name and description
-	GetCustomQuery(ctx context.Context, encryptedParams EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, SystemError)
+	// GetPersonalTransactions returns the user's recent transactions according to specified pagination
+	GetPersonalTransactions(ctx context.Context, encryptedParams EncryptedParamsGetPersonalTransactions) (*responses.PersonalTransactionsResponse, SystemError)
 
 	// EnclavePublicConfig returns network data that is known to the enclave but can be shared publicly
 	EnclavePublicConfig(context.Context) (*EnclavePublicConfig, SystemError)

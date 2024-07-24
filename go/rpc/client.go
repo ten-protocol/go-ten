@@ -44,12 +44,13 @@ const (
 	GetBatchByHeight         = "scan_getBatchByHeight"
 	GetTransaction           = "scan_getTransaction"
 
-	GetRollupListing     = "scan_getRollupListing"
-	GetBatchListingNew   = "scan_getBatchListingNew"
-	GetRollupByHash      = "scan_getRollupByHash"
-	GetRollupBatches     = "scan_getRollupBatches"
-	GetRollupBySeqNo     = "scan_getRollupBySeqNo"
-	GetBatchTransactions = "scan_getBatchTransactions"
+	GetRollupListing        = "scan_getRollupListing"
+	GetBatchListingNew      = "scan_getBatchListingNew"
+	GetRollupByHash         = "scan_getRollupByHash"
+	GetRollupBatches        = "scan_getRollupBatches"
+	GetRollupBySeqNo        = "scan_getRollupBySeqNo"
+	GetBatchTransactions    = "scan_getBatchTransactions"
+	GetPersonalTransactions = "scan_getPersonalTransactions"
 )
 
 // Client is used by client applications to interact with the Ten node

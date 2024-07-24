@@ -37,6 +37,7 @@ export const apiRoutes = {
 
 export const ethMethods = {
   getStorageAt: "eth_getStorageAt",
+  getTransactionReceipt: "eth_getTransactionReceipt",
 };
 // to send TEN Custom Queries (CQ) through the provider we call eth_getStorageAt and use these addresses to identify the TEN CQ method
 export const tenCustomQueryMethods = {

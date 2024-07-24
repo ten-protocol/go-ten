@@ -737,6 +737,12 @@ func testGetStorageAtForReturningUserID(t *testing.T, httpURL, wsURL string, w w
 		t.Error("eth_getStorageAt did not respond with not found error")
 	}
 
+	err = user.RegisterAccounts()
+	if err != nil {
+		t.Errorf("Failed to register accounts: %s", err)
+		return
+	}
+
 	// make a request to GetStorageAt with wrong parameters to get userID, but correct userID
 	respBody3 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{"0x0000000000000000000000000000000000000007", "0", nil})
 	expectedErr := "not supported"

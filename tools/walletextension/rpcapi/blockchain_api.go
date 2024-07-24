@@ -11,15 +11,21 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
+	"github.com/ten-protocol/go-ten/go/common/privacy"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 type BlockChainAPI struct {
-	we *Services
+	we               *Services
+	storageWhitelist *privacy.Whitelist
 }
 
 func NewBlockChainAPI(we *Services) *BlockChainAPI {
-	return &BlockChainAPI{we}
+	whitelist := privacy.NewWhitelist()
+	return &BlockChainAPI{
+		we:               we,
+		storageWhitelist: whitelist,
+	}
 }
 
 func (api *BlockChainAPI) ChainId() *hexutil.Big { //nolint:stylecheck
@@ -165,8 +171,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		if err != nil {
 			return nil, fmt.Errorf("unable to extract address from custom query params: %w", err)
 		}
-		// todo: we should be calling something like `ten_getPrivateTransactions` here, this custom query stuff only needs to be in the gateway layer
-		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{account: userAddr}, "eth_getStorageAt", address.Hex(), params, nil)
+		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{account: userAddr}, "scan_getPersonalTransactions", params)
 		if err != nil {
 			return nil, fmt.Errorf("unable to execute custom query: %w", err)
 		}
@@ -177,7 +182,20 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		}
 		return serialised, nil
 	default: // address was not a recognised custom query method address
-		return nil, fmt.Errorf("eth_getStorageAt is not supported on TEN")
+		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{tryUntilAuthorised: true}, "eth_getStorageAt", address, params, nil)
+		if err != nil {
+			return nil, fmt.Errorf("unable to execute eth_getStorageAt: %w", err)
+		}
+		if resp == nil {
+			return nil, nil
+		}
+
+		respHex, ok := (*resp).(string)
+		if !ok {
+			return nil, fmt.Errorf("unable to decode response")
+		}
+		// turn resp object into hexutil.Bytes
+		return hexutil.MustDecode(respHex), nil
 	}
 }
 

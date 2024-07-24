@@ -178,9 +178,13 @@ func (api *EthereumAPI) GetTransactionByHash(ctx context.Context, encryptedParam
 	return *enclaveResponse, nil
 }
 
-// GetStorageAt is a reused method for listing the users transactions
-func (api *EthereumAPI) GetStorageAt(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, error) {
-	return api.host.EnclaveClient().GetCustomQuery(ctx, encryptedParams)
+// GetStorageAt is not currently supported (some narrow version of it may be supported in the future for proxy contracts).
+func (api *EthereumAPI) GetStorageAt(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageSlot) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.EnclaveClient().GetStorageSlot(ctx, encryptedParams)
+	if sysError != nil {
+		return api.handleSysError("GetStorageAt", sysError)
+	}
+	return *enclaveResponse, nil
 }
 
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.

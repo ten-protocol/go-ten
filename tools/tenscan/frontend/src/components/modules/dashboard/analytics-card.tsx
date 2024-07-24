@@ -21,10 +21,10 @@ export default function AnalyticsCard({
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold truncate mb-1">
-          {item.value ? (
-            item.value
-          ) : (
+          {item.loading ? (
             <Skeleton className="w-[100px] h-[20px] rounded-full" />
+          ) : (
+            item.value
           )}
         </div>
         {item?.change && (
