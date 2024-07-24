@@ -39,14 +39,6 @@ func RandomUInt64() uint64 {
 	return val.Uint64()
 }
 
-func RandomUint16() uint64 {
-	val, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt16))
-	if err != nil {
-		panic(err)
-	}
-	return val.Uint64()
-}
-
 // CreateL2Tx Creates a dummy L2Tx for testing
 func CreateL2Tx() *common.L2Tx {
 	return types.NewTx(CreateL2TxData())

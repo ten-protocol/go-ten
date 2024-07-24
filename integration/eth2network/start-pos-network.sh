@@ -81,8 +81,8 @@ ${PRYSMCTL_BINARY} testnet generate-genesis \
 	         --genesis-time-delay 5 \
            --chain-config-file "${BASE_PATH}/config.yml" \
            --geth-genesis-json-in "${BUILD_DIR}/genesis.json" \
-	         --output-ssz "${BEACONDATA_DIR}/genesis.ssz" \
-	         --geth-genesis-json-out "${BUILD_DIR}/genesis.json"
+	         --geth-genesis-json-out "${BUILD_DIR}/genesis.json" \
+	         --output-ssz "${BEACONDATA_DIR}/genesis.ssz"
 
 sleep 1
 echo "Prysm genesis generated"
