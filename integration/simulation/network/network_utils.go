@@ -83,7 +83,7 @@ func createInMemTenNode(
 		HostID:                    hostConfig.ID,
 		NodeType:                  nodeType,
 		L1ChainID:                 integration.EthereumChainID,
-		TenChainID:                integration.TenChainID,
+		ObscuroChainID:            integration.TenChainID,
 		WillAttest:                false,
 		ValidateL1Blocks:          validateBlocks,
 		GenesisJSON:               genesisJSON,
