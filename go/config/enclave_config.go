@@ -54,8 +54,8 @@ type EnclaveConfig struct {
 	MessageBusAddress gethcommon.Address
 	// P2P address for validators to connect to the sequencer for live batch data
 	SequencerP2PAddress string
-	// A json string that specifies the prefunded addresses at the genesis of the Obscuro network
-	ObscuroGenesis string
+	// A json string that specifies the prefunded addresses at the genesis of the Ten network
+	TenGenesis string
 	// Whether debug calls are available
 	DebugNamespaceEnabled bool
 	// Maximum bytes a batch can be uncompressed.
@@ -187,7 +187,7 @@ func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 	cfg.ProfilerEnabled = flags[ProfilerEnabledFlag].Bool()
 	cfg.MinGasPrice = big.NewInt(flags[MinGasPriceFlag].Int64())
 	cfg.MessageBusAddress = gethcommon.HexToAddress(flags[MessageBusAddressFlag].String())
-	cfg.ObscuroGenesis = flags[ObscuroGenesisFlag].String()
+	cfg.TenGenesis = flags[TenGenesisFlag].String()
 	cfg.DebugNamespaceEnabled = flags[DebugNamespaceEnabledFlag].Bool()
 	cfg.MaxBatchSize = flags[MaxBatchSizeFlag].Uint64()
 	cfg.MaxRollupSize = flags[MaxRollupSizeFlag].Uint64()

@@ -20,7 +20,6 @@ type Wallet interface {
 	Address() common.Address
 	// SignTransaction returns a signed transaction
 	SignTransaction(tx types.TxData) (*types.Transaction, error)
-
 	// SetNonce overrides the current nonce
 	// The GetTransactionCount is expected to be the next nonce to use in a transaction, not the current account GetTransactionCount
 	SetNonce(nonce uint64)

@@ -1,4 +1,4 @@
-package obscurogateway
+package tengateway
 
 import (
 	"bytes"
@@ -56,19 +56,19 @@ func init() { //nolint:gochecknoinits
 }
 
 const (
-	testLogs = "../.build/tengateway/"
+	testLogs   = "../.build/tengateway/"
+	_startPort = integration.StartPortTenGatewayUnitTest
 )
 
 func TestTenGateway(t *testing.T) {
-	startPort := integration.StartPortTenGatewayUnitTest
-	createTenNetwork(t, startPort)
+	createTenNetwork(t, _startPort)
 
 	tenGatewayConf := wecommon.Config{
 		WalletExtensionHost:     "127.0.0.1",
-		WalletExtensionPortHTTP: startPort + integration.DefaultTenGatewayHTTPPortOffset,
-		WalletExtensionPortWS:   startPort + integration.DefaultTenGatewayWSPortOffset,
-		NodeRPCHTTPAddress:      fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
-		NodeRPCWebsocketAddress: fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
+		WalletExtensionPortHTTP: _startPort + integration.DefaultTenGatewayHTTPPortOffset,
+		WalletExtensionPortWS:   _startPort + integration.DefaultTenGatewayWSPortOffset,
+		NodeRPCHTTPAddress:      fmt.Sprintf("127.0.0.1:%d", _startPort+integration.DefaultHostRPCHTTPOffset),
+		NodeRPCWebsocketAddress: fmt.Sprintf("127.0.0.1:%d", _startPort+integration.DefaultHostRPCWSOffset),
 		LogPath:                 "sys_out",
 		VerboseFlag:             false,
 		DBType:                  "sqlite",
@@ -478,7 +478,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 		require.NoError(t, err, req, response)
 
 		// repeat the process for the gateway
-		_, response, err = httputil.PostDataJSON(fmt.Sprintf("http://localhost:%d", integration.StartPortTenGatewayUnitTest), []byte(req))
+		_, response, err = httputil.PostDataJSON(fmt.Sprintf("http://localhost:%d", _startPort+integration.DefaultGethHTTPPortOffset), []byte(req))
 		require.NoError(t, err)
 
 		// we only care about format

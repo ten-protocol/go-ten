@@ -45,7 +45,7 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 	return miner
 }
 
-func createInMemObscuroNode(
+func createInMemTenNode(
 	id int64,
 	isGenesis bool,
 	nodeType common.NodeType,
@@ -102,7 +102,7 @@ func createInMemObscuroNode(
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
 	enclaveClients := []common.Enclave{enclave.NewEnclave(enclaveConfig, &genesis.TestnetGenesis, mgmtContractLib, enclaveLogger)}
 
-	// create an in memory obscuro node
+	// create an in memory Ten node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 	l1Repo := l1.NewL1Repository(ethClient, ethereummock.MgmtContractAddresses, hostLogger)

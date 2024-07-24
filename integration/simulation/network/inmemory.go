@@ -30,9 +30,9 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereummock.Node, params.NumberOfNodes)
-	obscuroNodes := make([]*container.HostContainer, params.NumberOfNodes)
+	tenNodes := make([]*container.HostContainer, params.NumberOfNodes)
 	n.l2Clients = make([]rpc.Client, params.NumberOfNodes)
-	obscuroHosts := make([]host.Host, params.NumberOfNodes)
+	tenHosts := make([]host.Host, params.NumberOfNodes)
 
 	p2pNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithInboundP2PDisabled)
 
@@ -53,7 +53,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 
-		agg := createInMemObscuroNode(
+		agg := createInMemTenNode(
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
@@ -69,13 +69,13 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			incomingP2PDisabled,
 			params.AvgBlockDuration,
 		)
-		obscuroClient := p2p.NewInMemObscuroClient(agg)
+		tenClient := p2p.NewInMemTenClient(agg)
 
 		n.ethNodes[i] = miner
-		obscuroNodes[i] = agg
-		n.l2Clients[i] = obscuroClient
+		tenNodes[i] = agg
+		n.l2Clients[i] = tenClient
 		l1Clients[i] = miner
-		obscuroHosts[i] = obscuroNodes[i].Host()
+		tenHosts[i] = tenNodes[i].Host()
 	}
 
 	// populate the nodes field of each network
@@ -86,8 +86,8 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	// The sequence of starting the nodes is important to catch various edge cases.
 	// Here we first start the mock layer 1 nodes, with a pause between them of a fraction of a block duration.
 	// The reason is to make sure that they catch up correctly.
-	// Then we pause for a while, to give the L1 network enough time to create a number of blocks, which will have to be ingested by the Obscuro nodes
-	// Then, we begin the starting sequence of the Obscuro nodes, again with a delay between them, to test that they are able to cach up correctly.
+	// Then we pause for a while, to give the L1 network enough time to create a number of blocks, which will have to be ingested by the en nodes
+	// Then, we begin the starting sequence of the Ten nodes, again with a delay between them, to test that they are able to cach up correctly.
 	// Note: Other simulations might test variations of this pattern.
 	for _, m := range n.ethNodes {
 		t := m
@@ -95,7 +95,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		time.Sleep(params.AvgBlockDuration)
 	}
 
-	for _, m := range obscuroNodes {
+	for _, m := range tenNodes {
 		t := m
 		go func() {
 			err := t.Start()
@@ -106,22 +106,22 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	obscuroClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
+	tenClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
 	for idx, l2Client := range n.l2Clients {
-		obscuroClients[idx] = obsclient.NewObsClient(l2Client)
+		tenClients[idx] = obsclient.NewObsClient(l2Client)
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
 
 	return &RPCHandles{
 		EthClients:     l1Clients,
-		ObscuroClients: obscuroClients,
+		TenClients:     tenClients,
 		RPCClients:     n.l2Clients,
 		AuthObsClients: walletClients,
 	}, nil
 }
 
 func (n *basicNetworkOfInMemoryNodes) TearDown() {
-	StopObscuroNodes(n.l2Clients)
+	StopTenNodes(n.l2Clients)
 
 	for _, node := range n.ethNodes {
 		temp := node

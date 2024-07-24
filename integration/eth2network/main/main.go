@@ -16,7 +16,7 @@ func main() {
 
 	fmt.Printf("Starting eth2network with params: %+v\n", config)
 
-	binariesPath, err := eth2network.EnsureBinariesExist()
+	binDir, err := eth2network.EnsureBinariesExist()
 	if err != nil {
 		panic(err)
 	}
@@ -24,23 +24,16 @@ func main() {
 	if config.onlyDownload {
 		os.Exit(0)
 	}
-
-	eth2Network := eth2network.NewEth2Network(
-		binariesPath,
-		config.logToFile,
-		config.gethHTTPStartPort,
-		config.gethWSStartPort,
-		config.gethAuthRPCStartPort,
+	eth2Network := eth2network.NewPosEth2Network(
+		binDir,
 		config.gethNetworkStartPort,
-		config.prysmBeaconRPCStartPort,
+		config.prysmBeaconP2PStartPort,
+		config.gethAuthRPCStartPort,
+		config.gethWSStartPort,
+		config.gethHTTPStartPort,
 		config.prysmBeaconRPCStartPort,
 		config.chainID,
-		config.numNodes,
-		config.blockTimeSecs,
-		config.slotsPerEpoch,
-		config.secondsPerSlot,
-		config.prefundedAddrs,
-		5*time.Minute,
+		6*time.Minute,
 	)
 
 	err = eth2Network.Start()
@@ -54,7 +47,7 @@ func main() {
 }
 
 // Shuts down the Geth network when an interrupt is received.
-func handleInterrupt(network eth2network.Eth2Network) {
+func handleInterrupt(network eth2network.PosEth2Network) {
 	interruptChannel := make(chan os.Signal, 1)
 	signal.Notify(interruptChannel, os.Interrupt, syscall.SIGTERM)
 	<-interruptChannel

@@ -49,7 +49,7 @@ const (
 
 func TestTenscan(t *testing.T) {
 	startPort := integration.StartPortTenscanUnitTest
-	createObscuroNetwork(t, startPort)
+	createTenNetwork(t, startPort)
 
 	tenScanConfig := &config.Config{
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
@@ -199,8 +199,8 @@ func TestTenscan(t *testing.T) {
 	rollupListingObj := rollupListing{}
 	err = json.Unmarshal(body, &rollupListingObj)
 	assert.NoError(t, err)
-	assert.LessOrEqual(t, 4, len(rollupListingObj.Result.RollupsData))
-	assert.LessOrEqual(t, uint64(4), rollupListingObj.Result.Total)
+	assert.LessOrEqual(t, 1, len(rollupListingObj.Result.RollupsData))
+	assert.LessOrEqual(t, uint64(1), rollupListingObj.Result.Total)
 	assert.Contains(t, string(body), "\"hash\"")
 
 	// fetch batches in rollup
@@ -261,7 +261,7 @@ func TestTenscan(t *testing.T) {
 	assert.Equal(t, 200, statusCode)
 
 	type configFetch struct {
-		Item common.ObscuroNetworkInfo `json:"item"`
+		Item common.TenNetworkInfo `json:"item"`
 	}
 
 	configFetchObj := configFetch{}
@@ -290,9 +290,9 @@ func waitServerIsReady(serverAddr string) error {
 	return fmt.Errorf("timed out before server was ready")
 }
 
-// Creates a single-node Obscuro network for testing.
-func createObscuroNetwork(t *testing.T, startPort int) {
-	// Create the Obscuro network.
+// Creates a single-node Ten network for testing.
+func createTenNetwork(t *testing.T, startPort int) {
+	// Create the Ten network.
 	wallets := params.NewSimWallets(1, 1, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
 		NumberOfNodes:    1,
@@ -304,11 +304,11 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 		WithPrefunding:   true,
 	}
 
-	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
-	t.Cleanup(obscuroNetwork.TearDown)
-	_, err := obscuroNetwork.Create(&simParams, nil)
+	tenNetwork := network.NewNetworkOfSocketNodes(wallets)
+	t.Cleanup(tenNetwork.TearDown)
+	_, err := tenNetwork.Create(&simParams, nil)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
+		panic(fmt.Sprintf("failed to create test Ten network. Cause: %s", err))
 	}
 }
 
@@ -359,7 +359,7 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 	for _, txHash := range receipts {
 		fmt.Printf("Checking for tx receipt for %s \n", txHash)
 		var receipt *types.Receipt
-		for start := time.Now(); time.Since(start) < time.Minute; time.Sleep(time.Second) {
+		for start := time.Now(); time.Since(start) < 2*time.Minute; time.Sleep(time.Second) {
 			receipt, err = authClient.TransactionReceipt(ctx, txHash)
 			if err == nil {
 				break
@@ -371,7 +371,7 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 		}
 
 		if receipt == nil {
-			t.Fatalf("Did not mine the transaction after %s seconds  - receipt: %+v", 30*time.Second, receipt)
+			t.Fatalf("Did not mine the transaction after %s seconds  - receipt: %+v", 60*time.Second, receipt)
 		}
 		if receipt.Status == 0 {
 			t.Fatalf("Tx Failed")

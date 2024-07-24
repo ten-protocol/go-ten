@@ -25,7 +25,7 @@ const (
 	ProfilerEnabledFlag           = "profilerEnabled"
 	MinGasPriceFlag               = "minGasPrice"
 	MessageBusAddressFlag         = "messageBusAddress"
-	ObscuroGenesisFlag            = "obscuroGenesis"
+	TenGenesisFlag                = "tenGenesis"
 	DebugNamespaceEnabledFlag     = "debugNamespaceEnabled"
 	MaxBatchSizeFlag              = "maxBatchSize"
 	MaxRollupSizeFlag             = "maxRollupSize"
@@ -55,7 +55,7 @@ var EnclaveFlags = map[string]*flag.TenFlag{
 	L2BaseFeeFlag:                 flag.NewUint64Flag(L2BaseFeeFlag, params.InitialBaseFee, ""),
 	L2CoinbaseFlag:                flag.NewStringFlag(L2CoinbaseFlag, "0xd6C9230053f45F873Cb66D8A02439380a37A4fbF", ""),
 	GasBatchExecutionLimit:        flag.NewUint64Flag(GasBatchExecutionLimit, 3_000_000_000, "Max gas that can be executed in a single batch"),
-	ObscuroGenesisFlag:            flag.NewStringFlag(ObscuroGenesisFlag, "", "The json string with the obscuro genesis"),
+	TenGenesisFlag:                flag.NewStringFlag(TenGenesisFlag, "", "The json string with the obscuro genesis"),
 	L1ChainIDFlag:                 flag.NewInt64Flag(L1ChainIDFlag, 1337, "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)"),
 	ObscuroChainIDFlag:            flag.NewInt64Flag(ObscuroChainIDFlag, 443, "An integer representing the unique chain id of the Obscuro chain (default 443)"),
 	UseInMemoryDBFlag:             flag.NewBoolFlag(UseInMemoryDBFlag, true, "Whether the enclave will use an in-memory DB rather than persist data"),
@@ -68,7 +68,7 @@ var EnclaveFlags = map[string]*flag.TenFlag{
 var enclaveRestrictedFlags = []string{
 	L1ChainIDFlag,
 	ObscuroChainIDFlag,
-	ObscuroGenesisFlag,
+	TenGenesisFlag,
 	UseInMemoryDBFlag,
 	ProfilerEnabledFlag,
 	DebugNamespaceEnabledFlag,

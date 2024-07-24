@@ -47,7 +47,7 @@ func init() { //nolint:gochecknoinits
 func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 	startPort := integration.StartPortContractDeployerTest1
 	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
-	createObscuroNetwork(t, startPort)
+	creatTenNetwork(t, startPort)
 	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
 	time.Sleep(2 * time.Second)
 
@@ -83,7 +83,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	startPort := integration.StartPortContractDeployerTest2
 	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
-	createObscuroNetwork(t, startPort)
+	creatTenNetwork(t, startPort)
 
 	faucetWallet := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.TenChainID, testlog.Logger())
 	faucetClient := getClient(hostWSPort, faucetWallet)
@@ -130,7 +130,7 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 }
 
 // Creates a single-node Obscuro network for testing.
-func createObscuroNetwork(t *testing.T, startPort int) {
+func creatTenNetwork(t *testing.T, startPort int) {
 	// Create the Obscuro network.
 	numberOfNodes := 1
 	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
@@ -144,9 +144,9 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 		WithPrefunding:   true,
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
-	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
-	t.Cleanup(obscuroNetwork.TearDown)
-	_, err := obscuroNetwork.Create(&simParams, simStats)
+	tenNetwork := network.NewNetworkOfSocketNodes(wallets)
+	t.Cleanup(tenNetwork.TearDown)
+	_, err := tenNetwork.Create(&simParams, simStats)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
 	}

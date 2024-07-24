@@ -16,7 +16,7 @@ type gethDockerNetwork struct {
 	networkWallets *params.SimWallets
 	l1Config       *L1Config
 	l1Clients      []ethadapter.EthClient
-	ethNetwork     eth2network.Eth2Network
+	ethNetwork     eth2network.PosEth2Network
 }
 
 func NewGethNetwork(networkWallets *params.SimWallets, l1Config *L1Config) L1Network {
@@ -27,7 +27,7 @@ func NewGethNetwork(networkWallets *params.SimWallets, l1Config *L1Config) L1Net
 }
 
 func (g *gethDockerNetwork) Prepare() {
-	gethNetwork, err := network.StartGethNetwork(g.networkWallets, g.l1Config.PortStart, int(g.l1Config.AvgBlockDuration.Seconds()))
+	gethNetwork, err := network.StartGethNetwork(g.networkWallets, g.l1Config.PortStart)
 	if err != nil {
 		panic(err)
 	}
