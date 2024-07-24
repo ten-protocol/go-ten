@@ -74,6 +74,21 @@ func NewClient(enclaveRPCAddress string, enclaveRPCTimeout time.Duration, logger
 	}
 }
 
+func (c *Client) GetStorageSlot(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageSlot) (*responses.EnclaveResponse, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetStorageSlot(timeoutCtx, &generated.GetStorageSlotRequest{EncryptedParams: encryptedParams})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
+}
+
 func (c *Client) ExportCrossChainData(ctx context.Context, from uint64, to uint64) (*common.ExtCrossChainBundle, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
 	defer cancel()
@@ -516,7 +531,7 @@ func (c *Client) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func())
 	batchChan := make(chan common.StreamL2UpdatesResponse, 10)
 	cancelCtx, cancel := context.WithCancel(context.Background())
 
-	stream, err := c.protoClient.StreamL2Updates(cancelCtx, &generated.StreamL2UpdatesRequest{})
+	stream, err := c.protoClient.StreamL2Updates(cancelCtx, &generated.StreamL2UpdatesRequest{}, grpc.MaxCallRecvMsgSize(1024*1024*50))
 	if err != nil {
 		c.logger.Error("Error opening batch stream.", log.ErrKey, err)
 		cancel()
@@ -587,7 +602,7 @@ func (c *Client) GetTotalContractCount(ctx context.Context) (*big.Int, common.Sy
 	return big.NewInt(response.Count), nil
 }
 
-func (c *Client) GetCustomQuery(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, common.SystemError) {
+func (c *Client) GetPersonalTransactions(ctx context.Context, encryptedParams common.EncryptedParamsGetPersonalTransactions) (*responses.PersonalTransactionsResponse, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
 	defer cancel()
 

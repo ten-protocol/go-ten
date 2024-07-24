@@ -1,31 +1,34 @@
+import { CrossChainMessage } from "./RollupInterfaces";
+
 export type Batch = {
-  parentHash: string;
-  stateRoot: string;
-  transactionsRoot: string;
-  receiptsRoot: string;
-  number: number;
-  sequencerOrderNo: number;
-  gasLimit: number;
-  gasUsed: number;
-  timestamp: string;
-  extraData: string;
-  baseFee: number;
-  coinbase: string;
-  l1Proof: string;
-  R: number;
-  S: number;
-  crossChainMessages: any[];
-  inboundCrossChainHash: string;
-  inboundCrossChainHeight: number;
-  transfersTree: string;
+  sequence: number;
   hash: string;
-  sha3Uncles: string;
-  miner: string;
-  logsBloom: string;
-  difficulty: string;
-  nonce: string;
-  baseFeePerGas: number;
-  EncryptedTxBlob: string;
+  fullHash: string;
+  height: number;
+  txCount: number;
+  header: {
+    hash: string;
+    parentHash: string;
+    stateRoot: string;
+    transactionsRoot: string;
+    receiptsRoot: string;
+    number: string;
+    sequencerOrderNo: string;
+    gasLimit: string;
+    gasUsed: string;
+    timestamp: string;
+    extraData: string;
+    baseFeePerGas: string;
+    miner: string;
+    l1Proof: string;
+    signature: string;
+    crossChainMessages: [];
+    inboundCrossChainHash: string;
+    inboundCrossChainHeight: string;
+    TransfersTree: string;
+    crossChainTree: string;
+  };
+  encryptedTxBlob: string;
 };
 
 export type BatchDetails = {
@@ -48,7 +51,7 @@ export type BatchDetails = {
     crossChainMessages: any[];
     inboundCrossChainHash: string;
     inboundCrossChainHeight: number;
-    transfersTree: string;
+    TransfersTree: string;
     hash: string;
     sha3Uncles: string;
     miner: string;
@@ -57,9 +60,32 @@ export type BatchDetails = {
     nonce: string;
     baseFeePerGas: number;
   };
-  TxHashes: [];
+  TxHashes: string[];
   EncryptedTxBlob: string;
 };
+
+export interface LatestBatch {
+  hash: string;
+  parentHash: string;
+  stateRoot: string;
+  transactionsRoot: string;
+  receiptsRoot: string;
+  number: string;
+  sequencerOrderNo: string;
+  gasLimit: string;
+  gasUsed: string;
+  timestamp: string;
+  extraData: string;
+  baseFeePerGas: string;
+  miner: string;
+  l1Proof: string;
+  signature: string;
+  crossChainMessages: CrossChainMessage[];
+  inboundCrossChainHash: string;
+  inboundCrossChainHeight: string;
+  TransfersTree: string;
+  crossChainTree: string;
+}
 
 export type BatchResponse = {
   BatchesData: Batch[];

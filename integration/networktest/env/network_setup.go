@@ -57,8 +57,8 @@ func DevTestnet(opts ...TestnetEnvOption) networktest.Environment {
 // LongRunningLocalNetwork is a local network, the l1WSURL is optional (can be empty string), only required if testing L1 interactions
 func LongRunningLocalNetwork(l1WSURL string) networktest.Environment {
 	connector := newTestnetConnectorWithFaucetAccount(
-		"ws://127.0.0.1:26900",
-		[]string{"ws://127.0.0.1:26901"},
+		"ws://127.0.0.1:17900",
+		[]string{"ws://127.0.0.1:17901"},
 		genesis.TestnetPrefundedPK,
 		l1WSURL,
 		"",
@@ -114,15 +114,14 @@ func (t *testnetEnv) startTenGateway() {
 		TenChainID:              integration.TenChainID,
 	}
 	tenGWContainer := walletextension.NewContainerFromConfig(cfg, t.logger)
-	go func() {
-		fmt.Println("Starting Ten Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
-		err := tenGWContainer.Start()
-		if err != nil {
-			t.logger.Error("failed to start ten gateway", "err", err)
-			panic(err)
-		}
-		t.tenGatewayContainer = tenGWContainer
-	}()
+
+	fmt.Println("Starting Ten Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
+	err := tenGWContainer.Start()
+	if err != nil {
+		t.logger.Error("failed to start ten gateway", "err", err)
+		panic(err)
+	}
+	t.tenGatewayContainer = tenGWContainer
 	t.testnetConnector.tenGatewayURL = fmt.Sprintf("http://localhost:%d", _gwHTTPPort)
 }
 

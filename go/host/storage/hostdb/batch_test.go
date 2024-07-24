@@ -295,8 +295,8 @@ func TestGetBatchListing(t *testing.T) {
 		t.Errorf("could not get batch listing. Cause: %s", err)
 	}
 
-	// should be two elements
-	if big.NewInt(int64(batchListing.Total)).Cmp(big.NewInt(2)) != 0 {
+	// should be the most recent sequence number
+	if big.NewInt(int64(batchListing.Total)).Cmp(big.NewInt(batchNumber+2)) != 0 {
 		t.Errorf("batch listing was not paginated correctly")
 	}
 
@@ -316,30 +316,14 @@ func TestGetBatchListing(t *testing.T) {
 		t.Errorf("batch listing was not paginated correctly")
 	}
 
-	// should be 3 elements
-	if big.NewInt(int64(batchListing1.Total)).Cmp(big.NewInt(3)) != 0 {
-		t.Errorf("batch listing was not paginated correctly")
-	}
-
-	// page 0, size 4
-	batchListing2, err := GetBatchListing(db, &common.QueryPagination{Offset: 0, Size: 4})
-	if err != nil {
-		t.Errorf("could not get batch listing. Cause: %s", err)
-	}
-
-	// should be 3 elements
-	if big.NewInt(int64(batchListing2.Total)).Cmp(big.NewInt(3)) != 0 {
-		t.Errorf("rollup listing was not paginated correctly")
-	}
-
 	// page 5, size 1
-	rollupListing3, err := GetBatchListing(db, &common.QueryPagination{Offset: 5, Size: 1})
+	batchListing3, err := GetBatchListing(db, &common.QueryPagination{Offset: 5, Size: 1})
 	if err != nil {
 		t.Errorf("could not get batch listing. Cause: %s", err)
 	}
 
-	// should be 0 elements
-	if big.NewInt(int64(rollupListing3.Total)).Cmp(big.NewInt(0)) != 0 {
+	// should be still be the most recent batch sequence number
+	if big.NewInt(int64(batchListing3.Total)).Cmp(big.NewInt(batchNumber+2)) != 0 {
 		t.Errorf("batch listing was not paginated correctly")
 	}
 }
@@ -411,17 +395,17 @@ func TestGetBatchListingDeprecated(t *testing.T) {
 
 	// should be 3 elements
 	if big.NewInt(int64(batchListing2.Total)).Cmp(big.NewInt(3)) != 0 {
-		t.Errorf("rollup listing was not paginated correctly")
+		t.Errorf("batch listing was not paginated correctly")
 	}
 
 	// page 5, size 1
-	rollupListing3, err := GetBatchListing(db, &common.QueryPagination{Offset: 5, Size: 1})
+	batchListing3, err := GetBatchListingDeprecated(db, &common.QueryPagination{Offset: 5, Size: 1})
 	if err != nil {
 		t.Errorf("could not get batch listing. Cause: %s", err)
 	}
 
 	// should be 0 elements
-	if big.NewInt(int64(rollupListing3.Total)).Cmp(big.NewInt(0)) != 0 {
+	if big.NewInt(int64(batchListing3.Total)).Cmp(big.NewInt(0)) != 0 {
 		t.Errorf("batch listing was not paginated correctly")
 	}
 }
