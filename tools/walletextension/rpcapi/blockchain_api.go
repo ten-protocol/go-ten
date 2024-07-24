@@ -116,6 +116,7 @@ func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.Block
 	// convert to geth header and marshall
 	header := subscription.ConvertBatchHeader(resp)
 	fields := RPCMarshalHeader(header)
+	addExtraTenFields(fields, resp)
 	return fields, err
 }
 
@@ -128,6 +129,7 @@ func (api *BlockChainAPI) GetBlockByHash(ctx context.Context, hash gethcommon.Ha
 	// convert to geth header and marshall
 	header := subscription.ConvertBatchHeader(resp)
 	fields := RPCMarshalHeader(header)
+	addExtraTenFields(fields, resp)
 	return fields, err
 }
 
@@ -385,4 +387,14 @@ func RPCMarshalHeader(head *types.Header) map[string]interface{} {
 		result["parentBeaconBlockRoot"] = head.ParentBeaconRoot
 	}
 	return result
+}
+
+func addExtraTenFields(fields map[string]interface{}, header *common.BatchHeader) {
+	fields["l1Proof"] = header.L1Proof
+	fields["signature"] = header.Signature
+	fields["crossChainMessages"] = header.CrossChainMessages
+	fields["inboundCrossChainHash"] = header.LatestInboundCrossChainHash
+	fields["inboundCrossChainHeight"] = header.LatestInboundCrossChainHeight
+	fields["crossChainTreeHash"] = header.CrossChainRoot
+	fields["crossChainTree"] = header.CrossChainTree
 }
