@@ -7,7 +7,6 @@ import (
 	"strconv"
 )
 
-// GetBuildNumber retrieves and increments the build number from an environment variable.
 func getBuildNumber() (int, error) {
 	buildNumberStr := os.Getenv("BUILD_NUMBER")
 	var buildNumber int
@@ -22,7 +21,7 @@ func getBuildNumber() (int, error) {
 		}
 	}
 
-	// Increment the build number until an unused folder is found
+	// increment the build number until an unused folder is found
 	for {
 		buildPath := path.Join(basepath, "../.build/eth2", strconv.Itoa(buildNumber))
 		if _, err := os.Stat(buildPath); os.IsNotExist(err) {
