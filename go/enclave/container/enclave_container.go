@@ -65,7 +65,7 @@ func NewEnclaveContainerWithLogger(config *config.EnclaveConfig, logger gethlog.
 		config.GenesisJSON = []byte(hardcodedGenesisJSON)
 	}
 
-	genesis, err := obscuroGenesis.New(config.ObscuroGenesis)
+	genesis, err := obscuroGenesis.New(config.TenGenesis)
 	if err != nil {
 		logger.Crit("unable to parse obscuro genesis", log.ErrKey, err)
 	}

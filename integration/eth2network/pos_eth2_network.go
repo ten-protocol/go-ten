@@ -176,7 +176,6 @@ func (n *PosImpl) checkExistingNetworks() error {
 	if err == nil {
 		return fmt.Errorf("unexpected geth node is active before the network is started")
 	}
-	// checkBindAddresses(n.beaconP2PPort, n.gethNetworkPort)
 	return nil
 }
 

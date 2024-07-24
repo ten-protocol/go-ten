@@ -83,7 +83,7 @@ func createInMemTenNode(
 		HostID:                    hostConfig.ID,
 		NodeType:                  nodeType,
 		L1ChainID:                 integration.EthereumChainID,
-		ObscuroChainID:            integration.TenChainID,
+		TenChainID:                integration.TenChainID,
 		WillAttest:                false,
 		ValidateL1Blocks:          validateBlocks,
 		GenesisJSON:               genesisJSON,
@@ -102,7 +102,7 @@ func createInMemTenNode(
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
 	enclaveClients := []common.Enclave{enclave.NewEnclave(enclaveConfig, &genesis.TestnetGenesis, mgmtContractLib, enclaveLogger)}
 
-	// create an in memory obscuro node
+	// create an in memory Ten node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 	l1Repo := l1.NewL1Repository(ethClient, ethereummock.MgmtContractAddresses, hostLogger)

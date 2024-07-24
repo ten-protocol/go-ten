@@ -1,4 +1,4 @@
-package obscurogateway
+package tengateway
 
 import (
 	"bytes"

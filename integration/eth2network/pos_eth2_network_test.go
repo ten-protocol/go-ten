@@ -44,10 +44,10 @@ func TestStartPosEth2Network(t *testing.T) {
 		binDir,
 		_startPort+integration.DefaultGethNetworkPortOffset,
 		_startPort+integration.DefaultPrysmP2PPortOffset,
-		_startPort+integration.DefaultGethAUTHPortOffset, // RPC
+		_startPort+integration.DefaultGethAUTHPortOffset,
 		_startPort+integration.DefaultGethWSPortOffset,
 		_startPort+integration.DefaultGethHTTPPortOffset,
-		_startPort+integration.DefaultPrysmRPCPortOffset, // RPC
+		_startPort+integration.DefaultPrysmRPCPortOffset,
 		integration.EthereumChainID,
 		6*time.Minute,
 	)

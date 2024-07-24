@@ -8,33 +8,33 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/host"
 )
 
-// ObscuroAPI implements Obscuro-specific JSON RPC operations.
-type ObscuroAPI struct {
+// TenAPI implements Ten-specific JSON RPC operations.
+type TenAPI struct {
 	host host.Host
 }
 
-func NewObscuroAPI(host host.Host) *ObscuroAPI {
-	return &ObscuroAPI{
+func NewTenAPI(host host.Host) *TenAPI {
+	return &TenAPI{
 		host: host,
 	}
 }
 
-// Health returns the health status of obscuro host + enclave + db
-func (api *ObscuroAPI) Health(ctx context.Context) (*host.HealthCheck, error) {
+// Health returns the health status of Ten host + enclave + db
+func (api *TenAPI) Health(ctx context.Context) (*host.HealthCheck, error) {
 	return api.host.HealthCheck(ctx)
 }
 
-// Config returns the config status of obscuro host + enclave + db
-func (api *ObscuroAPI) Config() (*ChecksumFormattedObscuroNetworkConfig, error) {
-	config, err := api.host.ObscuroConfig()
+// Config returns the config status of Ten host + enclave + db
+func (api *TenAPI) Config() (*ChecksumFormattedTenNetworkConfig, error) {
+	config, err := api.host.TenConfig()
 	if err != nil {
 		return nil, err
 	}
 	return checksumFormatted(config), nil
 }
 
-// ChecksumFormattedObscuroNetworkConfig serialises the addresses as EIP55 checksum addresses.
-type ChecksumFormattedObscuroNetworkConfig struct {
+// ChecksumFormattedTenNetworkConfig serialises the addresses as EIP55 checksum addresses.
+type ChecksumFormattedTenNetworkConfig struct {
 	ManagementContractAddress gethcommon.AddressEIP55
 	L1StartHash               gethcommon.Hash
 	MessageBusAddress         gethcommon.AddressEIP55
@@ -42,12 +42,12 @@ type ChecksumFormattedObscuroNetworkConfig struct {
 	ImportantContracts        map[string]gethcommon.AddressEIP55 // map of contract name to address
 }
 
-func checksumFormatted(info *common.ObscuroNetworkInfo) *ChecksumFormattedObscuroNetworkConfig {
+func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetworkConfig {
 	importantContracts := make(map[string]gethcommon.AddressEIP55)
 	for name, addr := range info.ImportantContracts {
 		importantContracts[name] = gethcommon.AddressEIP55(addr)
 	}
-	return &ChecksumFormattedObscuroNetworkConfig{
+	return &ChecksumFormattedTenNetworkConfig{
 		ManagementContractAddress: gethcommon.AddressEIP55(info.ManagementContractAddress),
 		L1StartHash:               info.L1StartHash,
 		MessageBusAddress:         gethcommon.AddressEIP55(info.MessageBusAddress),

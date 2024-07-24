@@ -28,10 +28,10 @@ func main() {
 		binDir,
 		config.gethNetworkStartPort,
 		config.prysmBeaconP2PStartPort,
-		config.gethAuthRPCStartPort, // RPC
+		config.gethAuthRPCStartPort,
 		config.gethWSStartPort,
-		config.gethHTTPStartPort,       // HTTP
-		config.prysmBeaconRPCStartPort, // RPC
+		config.gethHTTPStartPort,
+		config.prysmBeaconRPCStartPort,
 		config.chainID,
 		6*time.Minute,
 	)

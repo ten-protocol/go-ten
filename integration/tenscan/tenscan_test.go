@@ -49,7 +49,7 @@ const (
 
 func TestTenscan(t *testing.T) {
 	startPort := integration.StartPortTenscanUnitTest
-	createObscuroNetwork(t, startPort)
+	createTenNetwork(t, startPort)
 
 	tenScanConfig := &config.Config{
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
@@ -261,7 +261,7 @@ func TestTenscan(t *testing.T) {
 	assert.Equal(t, 200, statusCode)
 
 	type configFetch struct {
-		Item common.ObscuroNetworkInfo `json:"item"`
+		Item common.TenNetworkInfo `json:"item"`
 	}
 
 	configFetchObj := configFetch{}
@@ -290,9 +290,9 @@ func waitServerIsReady(serverAddr string) error {
 	return fmt.Errorf("timed out before server was ready")
 }
 
-// Creates a single-node Obscuro network for testing.
-func createObscuroNetwork(t *testing.T, startPort int) {
-	// Create the Obscuro network.
+// Creates a single-node Ten network for testing.
+func createTenNetwork(t *testing.T, startPort int) {
+	// Create the Ten network.
 	wallets := params.NewSimWallets(1, 1, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
 		NumberOfNodes:    1,
@@ -308,7 +308,7 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 	t.Cleanup(tenNetwork.TearDown)
 	_, err := tenNetwork.Create(&simParams, nil)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
+		panic(fmt.Sprintf("failed to create test Ten network. Cause: %s", err))
 	}
 }
 

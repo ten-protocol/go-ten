@@ -57,7 +57,7 @@ func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clien
 		tenHosts[i] = tenNodes[i].Host()
 	}
 
-	// start each obscuro node
+	// start each ten node
 	for _, m := range tenNodes {
 		t := m
 		go func() {
@@ -69,13 +69,13 @@ func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clien
 	}
 
 	// Create a handle to each node
-	obscuroClients := make([]rpc.Client, params.NumberOfNodes)
+	tenClients := make([]rpc.Client, params.NumberOfNodes)
 	for i, node := range tenNodes {
-		obscuroClients[i] = p2p.NewInMemTenClient(node)
+		tenClients[i] = p2p.NewInMemTenClient(node)
 	}
 	time.Sleep(100 * time.Millisecond)
 
-	return obscuroClients
+	return tenClients
 }
 
 func createAuthClientsPerWallet(clients []rpc.Client, wallets *params.SimWallets) map[string][]*obsclient.AuthObsClient {
@@ -119,7 +119,7 @@ func StopTenNodes(clients []rpc.Client) {
 		eg.Go(func() error {
 			err := c.Call(nil, rpc.StopHost)
 			if err != nil {
-				testlog.Logger().Error("Could not stop Obscuro node.", log.ErrKey, err)
+				testlog.Logger().Error("Could not stop Ten node.", log.ErrKey, err)
 				return err
 			}
 			c.Stop()
@@ -129,10 +129,10 @@ func StopTenNodes(clients []rpc.Client) {
 
 	err := eg.Wait()
 	if err != nil {
-		testlog.Logger().Error(fmt.Sprintf("Error waiting for the Obscuro nodes to stop - %s", err))
+		testlog.Logger().Error(fmt.Sprintf("Error waiting for the Ten nodes to stop - %s", err))
 	}
 
-	testlog.Logger().Info("Obscuro nodes stopped")
+	testlog.Logger().Info("Ten nodes stopped")
 }
 
 // CheckHostRPCServersStopped checks whether the hosts' RPC server addresses have been freed up.
@@ -157,10 +157,10 @@ func CheckHostRPCServersStopped(hostWSURLS []string) {
 
 	err := eg.Wait()
 	if err != nil {
-		panic(fmt.Sprintf("Timed out waiting for the Obscuro host RPC addresses to become available - %s", err))
+		panic(fmt.Sprintf("Timed out waiting for the Ten host RPC addresses to become available - %s", err))
 	}
 
-	testlog.Logger().Info("Obscuro host RPC addresses freed")
+	testlog.Logger().Info("Ten host RPC addresses freed")
 }
 
 func isAddressAvailable(address string) bool {

@@ -23,7 +23,7 @@ const (
 	_startPort = integration.StartPortNodeRunnerTest
 )
 
-// A smoke test to check that we can stand up a standalone Obscuro host and enclave.
+// A smoke test to check that we can stand up a standalone Ten host and enclave.
 func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 	testlog.Setup(&testlog.Cfg{
 		LogDir:      _testLogs,
@@ -44,15 +44,16 @@ func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 		binDir,
 		_startPort+integration.DefaultGethNetworkPortOffset,
 		_startPort+integration.DefaultPrysmP2PPortOffset,
-		_startPort+integration.DefaultGethAUTHPortOffset, // RPC
+		_startPort+integration.DefaultGethAUTHPortOffset,
 		_startPort+integration.DefaultGethWSPortOffset,
 		_startPort+integration.DefaultGethHTTPPortOffset,
-		_startPort+integration.DefaultPrysmRPCPortOffset, // RPC
+		_startPort+integration.DefaultPrysmRPCPortOffset,
 		integration.EthereumChainID,
 		3*time.Minute,
 	)
 
 	defer network.Stop() //nolint: errcheck
+
 	err = network.Start()
 	if err != nil {
 		panic(err)
@@ -65,10 +66,10 @@ func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 
 	// we create the node RPC client
 	wsURL := fmt.Sprintf("ws://127.0.0.1:%d", _startPort+integration.DefaultGethWSPortOffset)
-	var obscuroClient rpc.Client
+	var tenClient rpc.Client
 	wait := 30 // max wait in seconds
 	for {
-		obscuroClient, err = rpc.NewNetworkClient(wsURL)
+		tenClient, err = rpc.NewNetworkClient(wsURL)
 		if err == nil {
 			break
 		}
@@ -98,7 +99,7 @@ func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 		time.Sleep(time.Second)
 
 		var rollupNumber hexutil.Uint64
-		err = obscuroClient.Call(&rollupNumber, rpc.BatchNumber)
+		err = tenClient.Call(&rollupNumber, rpc.BatchNumber)
 		if err == nil && rollupNumber > 0 {
 			return
 		}

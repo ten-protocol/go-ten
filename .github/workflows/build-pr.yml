@@ -20,6 +20,11 @@ jobs:
         with:
           go-version: 1.21.8
 
+      # Set the initial build number environment variable
+      - name: Set Build Number
+        run: |
+          echo "BUILD_NUMBER=1" >> $GITHUB_ENV
+
       # Makes sure the artifacts are built correctly
       - name: Build
         run: go build -v ./...
@@ -71,8 +76,7 @@ jobs:
             integration/.build/simulations/sim-log-*.txt
             integration/.build/noderunner/noderunner-*.txt
             integration/.build/wallet_extension/wal-ext-*.txt
-            integration/.build/eth2/
-            !integration/.build/eth2/**/*.ipc
+            integration/.build/eth2/*
             integration/.build/faucet/*
             integration/.build/tenscan/*
             integration/.build/tengateway/*

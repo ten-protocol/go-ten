@@ -25,7 +25,7 @@ import (
 	"github.com/ten-protocol/go-ten/integration/simulation/stats"
 )
 
-// creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
+// creates Ten nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkOfSocketNodes struct {
 	l2Clients         []rpc.Client
 	hostWebsocketURLs []string
@@ -108,7 +108,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithLogLevel(4),
 				node.WithDebugNamespaceEnabled(true),
 				node.WithL1BlockTime(simParams.AvgBlockDuration),
-				node.WithObscuroGenesis(genesis),
+				node.WithTenGenesis(genesis),
 			),
 		)
 
@@ -119,8 +119,8 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 			if errCheck != nil {
 				testlog.Logger().Warn("no port found on error", log.ErrKey, err)
 			}
-			fmt.Printf("unable to start obscuro node: %s", err)
-			testlog.Logger().Error("unable to start obscuro node ", log.ErrKey, err)
+			fmt.Printf("unable to start Ten node: %s", err)
+			testlog.Logger().Error("unable to start Ten node ", log.ErrKey, err)
 		}
 	}
 

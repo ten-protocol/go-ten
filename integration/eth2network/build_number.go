@@ -3,47 +3,33 @@ package eth2network
 import (
 	"fmt"
 	"os"
-	"path"
 	"strconv"
-	"strings"
 )
 
-const buildNumberFile = "build_number.txt"
-
+// GetBuildNumber retrieves and increments the build number from an environment variable.
 func getBuildNumber() (int, error) {
-	buildNumber, err := readNextBuildNumber()
-	if err != nil {
-		return 0, fmt.Errorf("Error getting next build number: %v\n", err)
-	}
+	buildNumberStr := os.Getenv("BUILD_NUMBER")
+	var buildNumber int
+	var err error
 
-	err = writeBuildNumber(buildNumber)
-	if err != nil {
-		return 0, fmt.Errorf("Error saving build number: %v\n", err)
-	}
-	return buildNumber, nil
-}
-
-func readNextBuildNumber() (int, error) {
-	filePath := path.Join(basepath, buildNumberFile)
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return 1, nil // Start from 1 if file does not exist
+	if buildNumberStr == "" {
+		buildNumber = 1
+	} else {
+		buildNumber, err = strconv.Atoi(buildNumberStr)
+		if err != nil {
+			return 0, fmt.Errorf("Error converting build number: %v\n", err)
 		}
-		return 0, err
+		if buildNumber == 99 {
+			buildNumber = 1
+		} else {
+			buildNumber++
+		}
 	}
 
-	buildNumber, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	err = os.Setenv("BUILD_NUMBER", strconv.Itoa(buildNumber))
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("Error setting build number: %v\n", err)
 	}
-	if buildNumber == 99 {
-		return 1, err
-	}
-	return buildNumber + 1, nil
-}
 
-func writeBuildNumber(buildNumber int) error {
-	filePath := path.Join(basepath, buildNumberFile)
-	return os.WriteFile(filePath, []byte(fmt.Sprintf("%d", buildNumber)), 0o644)
+	return buildNumber, nil
 }

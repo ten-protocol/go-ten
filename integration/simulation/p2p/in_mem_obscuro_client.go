@@ -30,7 +30,7 @@ const (
 // todo - move this from the P2P folder
 // An in-memory implementation of `rpc.Client` that speaks directly to the node.
 type inMemTenClient struct {
-	tenAPI           *clientapi.ObscuroAPI
+	tenAPI           *clientapi.TenAPI
 	ethAPI           *clientapi.EthereumAPI
 	filterAPI        *clientapi.FilterAPI
 	tenScanAPI       *clientapi.ScanAPI
@@ -48,7 +48,7 @@ func NewInMemTenClient(hostContainer *container.HostContainer) rpc.Client {
 	enclPubKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
 	return &inMemTenClient{
-		tenAPI:           clientapi.NewObscuroAPI(hostContainer.Host()),
+		tenAPI:           clientapi.NewTenAPI(hostContainer.Host()),
 		ethAPI:           clientapi.NewEthereumAPI(hostContainer.Host(), logger),
 		filterAPI:        clientapi.NewFilterAPI(hostContainer.Host(), logger),
 		tenScanAPI:       clientapi.NewScanAPI(hostContainer.Host(), logger),
@@ -118,7 +118,7 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 	}
 }
 
-// CallContext not currently supported by in-memory obscuro client, the context will be ignored.
+// CallContext not currently supported by in-memory ten client, the context will be ignored.
 func (c *inMemTenClient) CallContext(_ context.Context, result interface{}, method string, args ...interface{}) error {
 	return c.Call(result, method, args...) //nolint: contextcheck
 }
@@ -271,11 +271,11 @@ func (c *inMemTenClient) Stop() {
 }
 
 func (c *inMemTenClient) SetViewingKey(_ *ecies.PrivateKey, _ []byte) {
-	panic("viewing key encryption/decryption is not currently supported by in-memory obscuro-client")
+	panic("viewing key encryption/decryption is not currently supported by in-memory ten-client")
 }
 
 func (c *inMemTenClient) RegisterViewingKey(_ gethcommon.Address, _ []byte) error {
-	panic("viewing key encryption/decryption is not currently supported by in-memory obscuro-client")
+	panic("viewing key encryption/decryption is not currently supported by in-memory ten-client")
 }
 
 func (c *inMemTenClient) health(result interface{}) error {
