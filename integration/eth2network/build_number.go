@@ -3,6 +3,7 @@ package eth2network
 import (
 	"fmt"
 	"os"
+	"path"
 	"strconv"
 )
 
@@ -19,10 +20,17 @@ func getBuildNumber() (int, error) {
 		if err != nil {
 			return 0, fmt.Errorf("Error converting build number: %v\n", err)
 		}
-		if buildNumber == 99 {
+	}
+
+	// Increment the build number until an unused folder is found
+	for {
+		buildPath := path.Join(basepath, "../.build/eth2", strconv.Itoa(buildNumber))
+		if _, err := os.Stat(buildPath); os.IsNotExist(err) {
+			break
+		}
+		buildNumber++
+		if buildNumber > 9999 {
 			buildNumber = 1
-		} else {
-			buildNumber++
 		}
 	}
 

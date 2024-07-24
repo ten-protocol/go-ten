@@ -82,8 +82,13 @@ func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPor
 	prysmBinaryPath := path.Join(binDir, prysmCTLFileNameVersion)
 	prysmValidatorBinaryPath := path.Join(binDir, prysmValidatorFileNameVersion)
 
+	// we overwrite when we exceed the max path length for eth2 logs
 	if _, err := os.Stat(buildDir); err == nil {
-		panic(fmt.Sprintf("folder %s already exists", buildDir))
+		fmt.Printf("Folder %s already exists, overwriting\n", buildDir)
+		err := os.RemoveAll(buildDir)
+		if err != nil {
+			panic(fmt.Sprintf("could not remove existing folder %s: %s", buildDir, err.Error()))
+		}
 	}
 
 	err = os.MkdirAll(buildDir, os.ModePerm)
