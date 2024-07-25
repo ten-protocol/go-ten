@@ -40,7 +40,7 @@ do
     value=$(echo $argument | cut -f2 -d=)
 
     case "$key" in
-            --pkaddresses)              pkaddresses=${value} ;;
+            --pkaddresses)                 pkaddresses=${value} ;;
             --wsport)                   wsport=${value} ;;
             --port)                     port=${value} ;;
             --help)                     help_and_exit ;;
