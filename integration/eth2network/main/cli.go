@@ -9,8 +9,8 @@ import (
 
 const (
 	// Flag names and usages.
-	numNodesName  = "numNodes"
-	numNodesUsage = "The number of nodes on the network"
+	chainIDName  = "chainId"
+	chainIDUsage = "The chain Id to use by the eth2 network"
 
 	gethHTTPStartPortName  = "gethHTTPStartPort"
 	gethHTTPStartPortUsage = "The initial port to start allocating ports from"
@@ -27,65 +27,38 @@ const (
 	prysmBeaconRPCStartPortName  = "prysmBeaconRPCStartPort"
 	prysmBeaconRPCStartPortUsage = "The initial port to start allocating prysm rpc port"
 
+	prysmBeaconP2PStartPortName  = "prysmBeaconP2PtartPort"
+	prysmBeaconP2PStartPortUsage = "The p2p udp prysm port"
+
 	prefundedAddrsName  = "prefundedAddrs"
 	prefundedAddrsUsage = "The addresses to prefund as a comma-separated list"
 
-	blockTimeSecsName  = "blockTimeSecs"
-	blockTimeSecsUsage = "The block time in seconds"
-
-	slotsPerEpochName  = "slotsPerEpoch"
-	slotsPerEpochUsage = "The slot each POS epoch contains."
-
-	secondsPerSlotName  = "slotsPerSecond"
-	secondsPerSlotUsage = "The seconds each slot lasts."
-
-	chainIDName  = "chainId"
-	chainIDUsage = "The chain Id to use by the eth2 network"
-
-	onlyDownloadName  = "onlyDownload"
-	onlyDownloadUsage = "Only downloads the necessary files doesn't start the network"
-
 	logLevelName  = "logLevel"
 	logLevelUsage = "logLevel"
-
-	logToFileName  = "logToFile"
-	logToFileUsage = "Whether files are logged to files or stdout"
 )
 
 type ethConfig struct {
-	numNodes                int
+	chainID                 int
 	gethHTTPStartPort       int
 	gethWSStartPort         int
 	gethAuthRPCStartPort    int
 	gethNetworkStartPort    int
 	prysmBeaconRPCStartPort int
 	prysmBeaconP2PStartPort int
-	blockTimeSecs           int
-	slotsPerEpoch           int
-	secondsPerSlot          int
 	logLevel                int
-	chainID                 int
-	onlyDownload            bool
-	logToFile               bool
 	prefundedAddrs          []string
 }
 
 func defaultConfig() *ethConfig {
 	return &ethConfig{
 		chainID:                 1337,
-		numNodes:                1,
 		gethHTTPStartPort:       12000,
 		gethWSStartPort:         12100,
 		gethAuthRPCStartPort:    12200,
 		gethNetworkStartPort:    12300,
 		prysmBeaconRPCStartPort: 12400,
 		prysmBeaconP2PStartPort: 12500,
-		onlyDownload:            false,
 		prefundedAddrs:          []string{},
-		blockTimeSecs:           1,
-		slotsPerEpoch:           2,
-		secondsPerSlot:          2,
-		logToFile:               true,
 		logLevel:                int(gethlog.LvlDebug),
 	}
 }
@@ -93,22 +66,15 @@ func defaultConfig() *ethConfig {
 func parseCLIArgs() *ethConfig {
 	defaultConfig := defaultConfig()
 
-	onlyDownload := flag.Bool(onlyDownloadName, defaultConfig.onlyDownload, onlyDownloadUsage)
-	numNodes := flag.Int(numNodesName, defaultConfig.numNodes, numNodesUsage)
-	startPort := flag.Int(gethHTTPStartPortName, defaultConfig.gethHTTPStartPort, gethHTTPStartPortUsage)
-	websocketStartPort := flag.Int(websocketStartPortName, defaultConfig.gethWSStartPort, websocketStartPortUsage)
-	prefundedAddrs := flag.String(prefundedAddrsName, "", prefundedAddrsUsage)
-	blockTimeSecs := flag.Int(blockTimeSecsName, defaultConfig.blockTimeSecs, blockTimeSecsUsage)
-	secondsPerSlot := flag.Int(secondsPerSlotName, defaultConfig.secondsPerSlot, secondsPerSlotUsage)
-	slotsPerEpoch := flag.Int(slotsPerEpochName, defaultConfig.slotsPerEpoch, slotsPerEpochUsage)
-
-	logLevel := flag.Int(logLevelName, defaultConfig.logLevel, logLevelUsage)
-	logToFile := flag.Bool(logToFileName, defaultConfig.logToFile, logToFileUsage)
 	chainID := flag.Int(chainIDName, defaultConfig.chainID, chainIDUsage)
-
+	gethHTTPPort := flag.Int(gethHTTPStartPortName, defaultConfig.gethHTTPStartPort, gethHTTPStartPortUsage)
+	gethWSPort := flag.Int(websocketStartPortName, defaultConfig.gethWSStartPort, websocketStartPortUsage)
 	gethAuthRPCStartPort := flag.Int(gethAuthRPCStartPortName, defaultConfig.gethAuthRPCStartPort, gethAuthRPCStartPortUsage)
 	gethNetworkStartPort := flag.Int(gethNetworkStartPortName, defaultConfig.gethNetworkStartPort, gethNetworkStartPortUsage)
+	prysmBeaconP2PStartPort := flag.Int(prysmBeaconP2PStartPortName, defaultConfig.prysmBeaconP2PStartPort, prysmBeaconP2PStartPortUsage)
 	prysmBeaconRPCStartPort := flag.Int(prysmBeaconRPCStartPortName, defaultConfig.prysmBeaconRPCStartPort, prysmBeaconRPCStartPortUsage)
+	logLevel := flag.Int(logLevelName, defaultConfig.logLevel, logLevelUsage)
+	prefundedAddrs := flag.String(prefundedAddrsName, "", prefundedAddrsUsage)
 
 	flag.Parse()
 
@@ -125,19 +91,14 @@ func parseCLIArgs() *ethConfig {
 	}
 
 	return &ethConfig{
-		numNodes:                *numNodes,
 		chainID:                 *chainID,
-		gethHTTPStartPort:       *startPort,
-		gethWSStartPort:         *websocketStartPort,
-		prefundedAddrs:          parsedPrefundedAddrs,
-		blockTimeSecs:           *blockTimeSecs,
-		slotsPerEpoch:           *slotsPerEpoch,
-		secondsPerSlot:          *secondsPerSlot,
-		logLevel:                *logLevel,
-		logToFile:               *logToFile,
+		gethHTTPStartPort:       *gethHTTPPort,
+		gethWSStartPort:         *gethWSPort,
 		gethAuthRPCStartPort:    *gethAuthRPCStartPort,
 		gethNetworkStartPort:    *gethNetworkStartPort,
 		prysmBeaconRPCStartPort: *prysmBeaconRPCStartPort,
-		onlyDownload:            *onlyDownload,
+		prysmBeaconP2PStartPort: *prysmBeaconP2PStartPort,
+		logLevel:                *logLevel,
+		prefundedAddrs:          parsedPrefundedAddrs,
 	}
 }

@@ -17,6 +17,11 @@ import (
 	l2cd "github.com/ten-protocol/go-ten/testnet/launcher/l2contractdeployer"
 )
 
+const (
+	GethHTTPPort = 12000
+	GethWSPort   = 12100
+)
+
 type Testnet struct {
 	cfg *Config
 }
@@ -40,6 +45,8 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to deploy l1 contracts - %w", err)
 	}
 
+	fmt.Printf("L1 CONTRACTS DEPLOYED")
+
 	sequencerNodeConfig := node.NewNodeConfig(
 		node.WithNodeName("sequencer"),
 		node.WithNodeType("sequencer"),
@@ -48,7 +55,7 @@ func (t *Testnet) Start() error {
 		node.WithEnclaveImage(t.cfg.sequencerEnclaveDockerImage),
 		node.WithEnclaveDebug(t.cfg.sequencerEnclaveDebug),
 		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),
-		node.WithL1WebsocketURL("ws://eth2network:9000"),
+		node.WithL1WebsocketURL(fmt.Sprintf("ws://eth2network:%d", GethWSPort)),
 		node.WithEnclaveWSPort(11000),
 		node.WithHostHTTPPort(80),
 		node.WithHostWSPort(81),
@@ -73,15 +80,16 @@ func (t *Testnet) Start() error {
 
 	err = sequencerNode.Start()
 	if err != nil {
-		return fmt.Errorf("unable to start the obscuro node - %w", err)
+		return fmt.Errorf("unable to start the Ten node - %w", err)
 	}
-	fmt.Println("Obscuro node was successfully started...")
+	fmt.Println("Ten node was successfully started...")
 
 	// wait until the node is healthy
 	err = waitForHealthyNode(80)
 	if err != nil {
-		return fmt.Errorf("sequencer obscuro node not healthy - %w", err)
+		return fmt.Errorf("sequencer Ten node not healthy - %w", err)
 	}
+	fmt.Printf("SEQUENCER HEALTHY")
 
 	validatorNodeConfig := node.NewNodeConfig(
 		node.WithNodeName("validator"),
@@ -91,7 +99,7 @@ func (t *Testnet) Start() error {
 		node.WithEnclaveImage(t.cfg.validatorEnclaveDockerImage),
 		node.WithEnclaveDebug(t.cfg.validatorEnclaveDebug),
 		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),
-		node.WithL1WebsocketURL("ws://eth2network:9000"),
+		node.WithL1WebsocketURL(fmt.Sprintf("ws://eth2network:%d", GethWSPort)),
 		node.WithEnclaveWSPort(11010),
 		node.WithHostHTTPPort(13010),
 		node.WithHostWSPort(13011),
@@ -119,17 +127,18 @@ func (t *Testnet) Start() error {
 	if err != nil {
 		return fmt.Errorf("unable to start the obscuro node - %w", err)
 	}
-	fmt.Println("Obscuro node was successfully started...")
+	fmt.Println("Ten validator node was successfully started...")
 
 	// wait until the node it healthy
 	err = waitForHealthyNode(13010)
 	if err != nil {
 		return fmt.Errorf("validator obscuro node not healthy - %w", err)
 	}
+	fmt.Printf("VALIDATOR NODE HEALTHY")
 
 	l2ContractDeployer, err := l2cd.NewDockerContractDeployer(
 		l2cd.NewContractDeployerConfig(
-			l2cd.WithL1HTTPURL("http://eth2network:8025"),
+			l2cd.WithL1HTTPURL(fmt.Sprintf("http://eth2network:%d", GethHTTPPort)),
 			l2cd.WithL2Host("sequencer-host"),
 			l2cd.WithL2WSPort(81),
 			l2cd.WithL1PrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
@@ -151,6 +160,8 @@ func (t *Testnet) Start() error {
 	if err != nil {
 		return fmt.Errorf("unable to start the l2 contract deployer - %w", err)
 	}
+
+	fmt.Printf("L2 CONTRACTS DEPLOYED")
 
 	err = l2ContractDeployer.WaitForFinish()
 	if err != nil {
@@ -212,15 +223,12 @@ func (t *Testnet) Start() error {
 	return nil
 }
 
+// EXPOSE 12000 12100 12200 12300 12400 12500
 func startEth2Network() error {
 	eth2Network, err := eth2network.NewDockerEth2Network(
 		eth2network.NewEth2NetworkConfig(
-			eth2network.WithGethHTTPStartPort(12000),
-			eth2network.WithGethWSStartPort(12100),
-			//eth2network.WithGethNetworkStartPort(30300),
-			//eth2network.WithGethRPCStartPort(30200),
-			//eth2network.WithPrysmP2PStartPort(30500),
-			//eth2network.WithPrysmRPCStartPort(30550),
+			eth2network.WithGethHTTPStartPort(GethHTTPPort),
+			eth2network.WithGethWSStartPort(GethWSPort),
 			eth2network.WithGethPrefundedAddrs([]string{
 				"0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944", // contract deployment pk - f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
 				"0x0654D8B60033144D567f25bF41baC1FB0D60F23B", // sequencer pk - 8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
@@ -251,7 +259,7 @@ func startEth2Network() error {
 func (t *Testnet) deployL1Contracts() (*node.NetworkConfig, error) {
 	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
 		l1cd.NewContractDeployerConfig(
-			l1cd.WithL1HTTPURL("http://eth2network:8025"),
+			l1cd.WithL1HTTPURL(fmt.Sprintf("http://eth2network:%d", GethHTTPPort)),
 			l1cd.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l1cd.WithDockerImage(t.cfg.contractDeployerDockerImage),
 			l1cd.WithDebugEnabled(t.cfg.contractDeployerDebug),

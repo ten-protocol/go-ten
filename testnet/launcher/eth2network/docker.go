@@ -77,7 +77,6 @@ func (n *Eth2Network) IsReady() error {
 	var dial *ethclient.Client
 	var err error
 
-	println("DOCKER ISREADY PORT: ", n.cfg.gethHTTPPort)
 	// retry the connection
 	err = retry.Do(func() error {
 		dial, err = ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.cfg.gethHTTPPort))

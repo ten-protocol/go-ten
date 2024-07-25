@@ -21,9 +21,6 @@ func main() {
 		panic(err)
 	}
 
-	if config.onlyDownload {
-		os.Exit(0)
-	}
 	eth2Network := eth2network.NewPosEth2Network(
 		binDir,
 		config.gethNetworkStartPort,
