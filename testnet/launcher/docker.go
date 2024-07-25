@@ -215,8 +215,12 @@ func (t *Testnet) Start() error {
 func startEth2Network() error {
 	eth2Network, err := eth2network.NewDockerEth2Network(
 		eth2network.NewEth2NetworkConfig(
-			eth2network.WithGethHTTPStartPort(8025),
-			eth2network.WithGethWSStartPort(9000),
+			eth2network.WithGethHTTPStartPort(12000),
+			eth2network.WithGethWSStartPort(12100),
+			//eth2network.WithGethNetworkStartPort(30300),
+			//eth2network.WithGethRPCStartPort(30200),
+			//eth2network.WithPrysmP2PStartPort(30500),
+			//eth2network.WithPrysmRPCStartPort(30550),
 			eth2network.WithGethPrefundedAddrs([]string{
 				"0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944", // contract deployment pk - f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
 				"0x0654D8B60033144D567f25bF41baC1FB0D60F23B", // sequencer pk - 8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99

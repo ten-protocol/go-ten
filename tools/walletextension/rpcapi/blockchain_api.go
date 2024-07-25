@@ -12,6 +12,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	"github.com/ten-protocol/go-ten/go/common/privacy"
+	"github.com/ten-protocol/go-ten/go/common/subscription"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
@@ -100,7 +101,7 @@ func (api *BlockChainAPI) GetHeaderByHash(ctx context.Context, hash gethcommon.H
 }
 
 func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, fullTx bool) (map[string]interface{}, error) {
-	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](
+	resp, err := UnauthenticatedTenRPCCall[common.BatchHeader](
 		ctx,
 		api.we,
 		&CacheCfg{
@@ -111,15 +112,25 @@ func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.Block
 	if resp == nil {
 		return nil, err
 	}
-	return *resp, err
+
+	// convert to geth header and marshall
+	header := subscription.ConvertBatchHeader(resp)
+	fields := RPCMarshalHeader(header)
+	addExtraTenFields(fields, resp)
+	return fields, err
 }
 
 func (api *BlockChainAPI) GetBlockByHash(ctx context.Context, hash gethcommon.Hash, fullTx bool) (map[string]interface{}, error) {
-	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &CacheCfg{CacheType: LongLiving}, "eth_getBlockByHash", hash, fullTx)
+	resp, err := UnauthenticatedTenRPCCall[common.BatchHeader](ctx, api.we, &CacheCfg{CacheType: LongLiving}, "eth_getBlockByHash", hash, fullTx)
 	if resp == nil {
 		return nil, err
 	}
-	return *resp, err
+
+	// convert to geth header and marshall
+	header := subscription.ConvertBatchHeader(resp)
+	fields := RPCMarshalHeader(header)
+	addExtraTenFields(fields, resp)
+	return fields, err
 }
 
 func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
@@ -337,4 +348,53 @@ func extractCustomQueryAddress(params any) (*gethcommon.Address, error) {
 	}
 	address := gethcommon.HexToAddress(addressStr)
 	return &address, nil
+}
+
+// RPCMarshalHeader converts the given header to the RPC output .
+// duplicated from go-ethereum
+func RPCMarshalHeader(head *types.Header) map[string]interface{} {
+	result := map[string]interface{}{
+		"number":           (*hexutil.Big)(head.Number),
+		"hash":             head.Hash(),
+		"parentHash":       head.ParentHash,
+		"nonce":            head.Nonce,
+		"mixHash":          head.MixDigest,
+		"sha3Uncles":       head.UncleHash,
+		"logsBloom":        head.Bloom,
+		"stateRoot":        head.Root,
+		"miner":            head.Coinbase,
+		"difficulty":       (*hexutil.Big)(head.Difficulty),
+		"extraData":        hexutil.Bytes(head.Extra),
+		"gasLimit":         hexutil.Uint64(head.GasLimit),
+		"gasUsed":          hexutil.Uint64(head.GasUsed),
+		"timestamp":        hexutil.Uint64(head.Time),
+		"transactionsRoot": head.TxHash,
+		"receiptsRoot":     head.ReceiptHash,
+	}
+	if head.BaseFee != nil {
+		result["baseFeePerGas"] = (*hexutil.Big)(head.BaseFee)
+	}
+	if head.WithdrawalsHash != nil {
+		result["withdrawalsRoot"] = head.WithdrawalsHash
+	}
+	if head.BlobGasUsed != nil {
+		result["blobGasUsed"] = hexutil.Uint64(*head.BlobGasUsed)
+	}
+	if head.ExcessBlobGas != nil {
+		result["excessBlobGas"] = hexutil.Uint64(*head.ExcessBlobGas)
+	}
+	if head.ParentBeaconRoot != nil {
+		result["parentBeaconBlockRoot"] = head.ParentBeaconRoot
+	}
+	return result
+}
+
+func addExtraTenFields(fields map[string]interface{}, header *common.BatchHeader) {
+	fields["l1Proof"] = header.L1Proof
+	fields["signature"] = header.Signature
+	fields["crossChainMessages"] = header.CrossChainMessages
+	fields["inboundCrossChainHash"] = header.LatestInboundCrossChainHash
+	fields["inboundCrossChainHeight"] = header.LatestInboundCrossChainHeight
+	fields["crossChainTreeHash"] = header.CrossChainRoot
+	fields["crossChainTree"] = header.CrossChainTree
 }

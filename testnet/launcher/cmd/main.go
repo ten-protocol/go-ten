@@ -9,7 +9,6 @@ import (
 
 func main() {
 	cliConfig := ParseConfigCLI()
-
 	fmt.Println("Starting a testnet with 1 sequencer and 1 validator...")
 	testnet := launcher.NewTestnetLauncher(
 		launcher.NewTestnetConfig(

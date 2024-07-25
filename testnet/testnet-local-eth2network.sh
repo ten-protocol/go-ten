@@ -40,7 +40,7 @@ do
     value=$(echo $argument | cut -f2 -d=)
 
     case "$key" in
-            --pkaddresses)                 pkaddresses=${value} ;;
+            --pkaddresses)              pkaddresses=${value} ;;
             --wsport)                   wsport=${value} ;;
             --port)                     port=${value} ;;
             --help)                     help_and_exit ;;
@@ -61,7 +61,6 @@ docker run --name=eth2network -d \
   -p 8025:8025 -p 8026:8026 -p 9000:9000 -p 9001:9001 \
   --entrypoint /home/obscuro/go-obscuro/integration/eth2network/main/main \
    testnetobscuronet.azurecr.io/obscuronet/eth2network:latest \
-  --numNodes=1 \
   --gethHTTPStartPort=${port} \
   --gethWSStartPort=${wsport} \
   --prefundedAddrs=${pkaddresses}

@@ -47,7 +47,6 @@ command docker build -t testnetobscuronet.azurecr.io/obscuronet/eth2network:late
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/host:latest -f "${root_path}/dockerfiles/host.Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest -f "${tools_path}/hardhatdeployer/Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave:latest --build-arg TESTMODE=true -f "${root_path}/dockerfiles/enclave.Dockerfile" "${root_path}" &
-#command docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave_debug:latest -f "${root_path}/dockerfiles/enclave.debug.Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/tenscan:latest -f "${tools_path}/tenscan/Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/faucet:latest -f "${tools_path}/faucet/Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway:latest -f "${tools_path}/walletextension/Dockerfile" "${root_path}" &
