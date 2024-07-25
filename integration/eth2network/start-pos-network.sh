@@ -127,16 +127,20 @@ echo "VALIDATOR PID $validator_pid"
 
 # Run go-ethereum
 ${GETH_BINARY} --http \
-       --http.api eth,net,web3 \
+       --http.api eth,net,web3,debug \
        --http.addr="0.0.0.0" \
        --http.port="${GETH_HTTP_PORT}" \
-       --ws --ws.api eth,net,web3 \
+       --http.corsdomain "*" \
+       --http.vhosts "*" \
+       --ws --ws.api eth,net,web3,debug \
        --ws.addr="0.0.0.0" \
        --ws.port="${GETH_WS_PORT}" \
+       --ws.origins "*" \
        --authrpc.jwtsecret "${BASE_PATH}/jwt.hex" \
        --authrpc.port "${GETH_RPC_PORT}" \
        --port="${GETH_NETWORK_PORT}" \
        --datadir="${GETHDATA_DIR}" \
+       --networkid="${CHAIN_ID}" \
        --nodiscover \
        --syncmode full \
        --allow-insecure-unlock \

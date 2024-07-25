@@ -82,7 +82,6 @@ func (t *Testnet) Start() error {
 	if err != nil {
 		return fmt.Errorf("sequencer Ten node not healthy - %w", err)
 	}
-	fmt.Printf("SEQUENCER HEALTHY")
 
 	validatorNodeConfig := node.NewNodeConfig(
 		node.WithNodeName("validator"),
@@ -262,8 +261,6 @@ func (t *Testnet) deployL1Contracts() (*node.NetworkConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to start l1 contract deployer - %w", err)
 	}
-
-	time.Sleep(2 * time.Minute)
 
 	networkConfig, err := l1ContractDeployer.RetrieveL1ContractAddresses()
 	if err != nil {
