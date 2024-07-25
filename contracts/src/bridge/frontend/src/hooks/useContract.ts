@@ -1,24 +1,29 @@
-import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import { useEffect, useMemo, useState } from "react";
 import { ethers } from "ethers";
 import Bridge from "../../artifacts/IBridge.sol/IBridge.json";
 import ManagementContractAbi from "../../artifacts/ManagementContract.sol/ManagementContract.json";
+import IMessageBusAbi from "../../artifacts/IMessageBus.sol/IMessageBus.json";
 import { useWalletStore } from "../components/providers/wallet-provider";
 import { showToast } from "../components/ui/use-toast";
 import { ToastType } from "../types";
 import { useGeneralService } from "../services/useGeneralService";
-import { environment } from "../lib/constants";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 
-export const useContract = () => {
-  const [contract, setContract] = useState<ethers.Contract>();
-  const [managementContract, setManagementContract] =
-    useState<ethers.Contract>();
-  const [wallet, setWallet] = useState<ethers.Wallet>();
+interface ContractState {
+  bridgeContract?: ethers.Contract;
+  managementContract?: ethers.Contract;
+  messageBusContract?: ethers.Contract;
+  wallet?: ethers.Wallet;
+  messageBusAddress: string;
+}
+
+const useContract = () => {
+  const [contractState, setContractState] = useState<ContractState>({
+    messageBusAddress: "",
+  });
+
   const { signer, isL1ToL2, provider } = useWalletStore();
   const { obscuroConfig, isObscuroConfigLoading } = useGeneralService();
-
-  const [messageBusAddress, setMessageBusAddress] = useState<string>("");
 
   const memoizedConfig = useMemo(() => {
     if (isObscuroConfigLoading || !obscuroConfig || !obscuroConfig.result) {
@@ -28,39 +33,27 @@ export const useContract = () => {
   }, [obscuroConfig, isObscuroConfigLoading]);
 
   useEffect(() => {
-    // if (isObscuroConfigLoading) {
-    //   return;
-    // }
-    // if (!obscuroConfig) {
-    //   showToast(ToastType.DESTRUCTIVE, "Config not found");
-    //   return;
-    // }
+    if (isObscuroConfigLoading) {
+      return;
+    }
+    if (!obscuroConfig) {
+      showToast(ToastType.DESTRUCTIVE, "Config not found");
+      return;
+    }
 
-    // if (!memoizedConfig) {
-    //   showToast(ToastType.DESTRUCTIVE, "Config not found");
-    //   return;
-    // }
+    if (!memoizedConfig) {
+      showToast(ToastType.DESTRUCTIVE, "Config not found");
+      return;
+    }
 
-    // sepolia
-    const l1BridgeAddress = "0x87B99D9709764b72C0c25Dffd1Eed5D1014b5F6C";
-    const l2BridgeAddress = "0xFeD8Fc00f96d652244c6EE628da65Ea766CcEc81";
-    const managementContractAddress =
-      "0x1fc65b3639643d82848BfCc3a0D5a2D5881965Ab";
-
-    // const l1BridgeAddress = memoizedConfig.ImportantContracts.L1Bridge;
-    // const l2BridgeAddress = memoizedConfig.ImportantContracts.L2Bridge;
-    // const messageBusAddress = memoizedConfig.MessageBusAddress;
-    // setMessageBusAddress(messageBusAddress);
-
-    // uat
-    // const l1BridgeAddress = "0xb68B5B0Ec17AA746F30CF3f1E51b6ace56B7eCCF";
-    // const l2BridgeAddress = "0xFeD8Fc00f96d652244c6EE628da65Ea766CcEc81";
-    // const managementContractAddress =
-    //   "0xc23D7eDdC53b235c30B02c05F753929a092B3872";
+    const l1BridgeAddress = memoizedConfig.ImportantContracts.L1Bridge;
+    const l2BridgeAddress = memoizedConfig.ImportantContracts.L2Bridge;
+    const l1MessageBusAddress = memoizedConfig.MessageBusAddress;
+    const l2MessageBusAddress = memoizedConfig.L2MessageBusAddress;
+    const managementContractAddress = memoizedConfig.ManagementContractAddress;
 
     if (!provider) {
-      console.error("Provider not found");
-      return;
+      throw new Error("Provider not found");
     }
     const p = new ethers.providers.Web3Provider(provider);
     const wallet = new ethers.Wallet(
@@ -68,176 +61,221 @@ export const useContract = () => {
       p
     );
     const address = isL1ToL2 ? l1BridgeAddress : l2BridgeAddress;
-    const contract = new ethers.Contract(address as string, Bridge.abi, wallet);
+    const messageBusAddress = isL1ToL2
+      ? l1MessageBusAddress
+      : l2MessageBusAddress;
+    const bridgeContract = new ethers.Contract(
+      address as string,
+      Bridge.abi,
+      wallet
+    );
+    const messageBusContract = new ethers.Contract(
+      messageBusAddress as string,
+      IMessageBusAbi,
+      wallet
+    );
     const managementContract = new ethers.Contract(
       managementContractAddress as string,
       ManagementContractAbi,
       wallet
     );
-    console.log("🚀 ~ useEffect ~ contract:", contract);
-    setContract(contract);
-    setManagementContract(managementContract);
-    setWallet(wallet);
+    setContractState({
+      bridgeContract,
+      managementContract,
+      messageBusContract,
+      wallet,
+      messageBusAddress,
+    });
 
     console.log("🚀 ~ config", memoizedConfig);
   }, [provider, isL1ToL2]);
   // }, [obscuroConfig, isObscuroConfigLoading, memoizedConfig]);
 
   const sendNative = async (receiver: string, value: string) => {
-    if (!contract) {
-      console.error("Contract not found");
+    const { bridgeContract, managementContract, messageBusContract, wallet } =
+      contractState;
+
+    if (!bridgeContract || !signer || !wallet) {
+      console.error("Required contract or wallet not found");
       return null;
     }
+
     try {
       if (!ethers.utils.isAddress(receiver)) {
-        console.error("Invalid address");
-        return null;
+        throw new Error("Invalid receiver address");
       }
 
       const gasPrice = await signer.provider.getGasPrice();
-      const estimatedGas = await contract.estimateGas.sendNative(receiver, {
-        value: ethers.utils.parseEther(value),
-      });
+      const estimatedGas = await bridgeContract.estimateGas.sendNative(
+        receiver,
+        { value: ethers.utils.parseEther(value) }
+      );
 
-      // 1. Call into the Ethereum bridge sendNative method to initiate the transfer of funds from the L2 to the L1
-      const tx = await contract.populateTransaction.sendNative(receiver, {
+      const tx = await bridgeContract.populateTransaction.sendNative(receiver, {
         value: ethers.utils.parseEther(value),
-        gasPrice: gasPrice,
+        gasPrice,
         gasLimit: estimatedGas,
       });
 
       const txResponse = await signer.sendTransaction(tx);
+      console.log("Transaction response:", txResponse);
+
       const txReceipt = await txResponse.wait();
-      console.log("🚀 ~ sendNative ~ txReceipt:", txReceipt);
+      console.log("Transaction receipt:", txReceipt);
+
+      if (isL1ToL2) {
+        return txReceipt;
+      }
 
       const valueTransferEvent = txReceipt.logs.find(
         (log: any) =>
           log.topics[0] ===
           ethers.utils.id("ValueTransfer(address,address,uint256,uint64)")
       );
-      console.log("🚀 ~ sendNative ~ valueTransferEvent:", valueTransferEvent);
+
       if (!valueTransferEvent) {
         throw new Error("ValueTransfer event not found in the logs");
       }
-      // Debug: Log all topics
-      txReceipt.logs.forEach((log: any, index: number) => {
-        console.log(`Log ${index}:`, log.topics[0]);
-      });
+
       const valueTransferEventData =
-        contract.interface.parseLog(valueTransferEvent);
-      console.log(
-        "🚀 ~ sendNative ~ valueTransferEventData:",
-        valueTransferEventData
-      );
+        messageBusContract?.interface.parseLog(valueTransferEvent);
 
-      const hashedValueTransfer = ethers.utils.keccak256(
-        ethers.utils.defaultAbiCoder.encode(
-          ["address", "address", "uint256", "uint64"],
-          [
-            valueTransferEventData.args.sender,
-            valueTransferEventData.args.receiver,
-            valueTransferEventData.args.amount,
-            valueTransferEventData.args.sequence,
-          ]
-        )
-      );
-
-      const blockHash = txReceipt.blockHash;
-      const block = await signer.provider.getBlock(blockHash);
-
-      const base64CrossChainTree = block.extraData; // Assuming crossChainTree is in extraData
-      const decodedCrossChainTree = Buffer.from(
-        base64CrossChainTree,
-        "base64"
-      ).toString("utf8");
-      const leafEntries = JSON.parse(decodedCrossChainTree);
-
-      const leaves = leafEntries.map((entry: any) =>
-        ethers.utils.keccak256(entry)
-      );
-      const tree = new StandardMerkleTree(leaves);
-      const root = tree.getHexRoot();
-      const proof = tree.getHexProof(hashedValueTransfer);
-
-      // const managementContractL1 = new ethers.Contract(MANAGEMENT_CONTRACT_ADDRESS_L1, MANAGEMENT_CONTRACT_ABI_L1, walletL1);
-
-      let gasLimit;
-      while (true) {
-        try {
-          gasLimit = await managementContract?.estimateGas.ExtractNativeValue(
-            hashedValueTransfer,
-            proof,
-            root
-          );
-          break;
-        } catch (error) {
-          // Retry until it stops failing
-        }
+      if (!valueTransferEventData) {
+        throw new Error("ValueTransfer event data not found");
       }
 
-      const txL1 = await managementContract?.ExtractNativeValue(
-        hashedValueTransfer,
-        proof,
-        root,
-        { gasLimit }
-      );
-      const receiptL1 = await txL1.wait();
-      console.log("Funds released:", receiptL1);
+      const abiTypes = ["address", "address", "uint256", "uint64"];
+      const _msg = [
+        valueTransferEventData.args.sender,
+        valueTransferEventData.args.receiver,
+        valueTransferEventData.args.amount.toString(),
+        valueTransferEventData.args.sequence.toString(),
+      ];
 
-      return txReceipt;
+      const abiCoder = new ethers.utils.AbiCoder();
+      const encodedMsg = abiCoder.encode(abiTypes, _msg);
+      const processedValueTransfer = [_msg, ethers.utils.keccak256(encodedMsg)];
+      const msg = processedValueTransfer[0];
+      const msgHash = processedValueTransfer[1];
+
+      const block = await provider.send("eth_getBlockByHash", [
+        ethers.utils.hexValue(txReceipt.blockHash),
+        true,
+      ]);
+
+      const base64CrossChainTree = block.result.crossChainTree;
+      const decodedCrossChainTree = atob(base64CrossChainTree);
+      console.log(
+        "🚀 ~ sendNative ~ decodedCrossChainTree:",
+        decodedCrossChainTree
+      );
+
+      const leafEntries = JSON.parse(decodedCrossChainTree);
+
+      if (decodedCrossChainTree[0][1] === msgHash) {
+        console.log("Value transfer hash is in the xchain tree");
+      }
+
+      const tree = StandardMerkleTree.of(leafEntries, ["string", "bytes32"]);
+      const proof = tree.getProof(["v", msgHash]);
+
+      const root = tree.root;
+
+      if (block.result.crossChainTreeHash === tree.root) {
+        console.log("Constructed merkle root matches block crossChainTreeHash");
+      }
+
+      let gasLimit: ethers.BigNumber | undefined;
+
+      const estimateGasWithTimeout = async (
+        timeout = 30000,
+        interval = 5000
+      ) => {
+        const startTime = Date.now();
+        while (!gasLimit) {
+          try {
+            gasLimit = await managementContract?.estimateGas.ExtractNativeValue(
+              msg,
+              proof,
+              root,
+              {}
+            );
+          } catch (error: any) {
+            console.log(`Estimate gas threw error: ${error.reason}`);
+          }
+          if (Date.now() - startTime >= timeout) {
+            console.log("Timed out waiting for gas estimate, using default");
+            return ethers.BigNumber.from(2000000);
+          }
+          await new Promise((resolve) => setTimeout(resolve, interval));
+        }
+        return gasLimit;
+      };
+
+      gasLimit = await estimateGasWithTimeout();
+
+      const txL1: ethers.PopulatedTransaction | undefined =
+        await managementContract?.populateTransaction.ExtractNativeValue(
+          msg,
+          proof,
+          root,
+          { gasPrice, gasLimit }
+        );
+
+      if (!txL1) {
+        console.error("Transaction not found");
+        return null;
+      }
+      const responseL1 = await wallet.sendTransaction(txL1);
+      const receiptL1 = await responseL1.wait();
+
+      return receiptL1;
     } catch (error) {
       console.error("Error sending native currency:", error);
       throw error;
     }
   };
 
-  // Send ERC20 assets to the other network.
-  async function sendERC20(
+  const sendERC20 = async (
     receiver: string,
     amount: string,
     tokenContractAddress: string
-  ) {
-    if (!contract) {
+  ) => {
+    const { bridgeContract } = contractState;
+
+    if (!bridgeContract) {
       console.error("Contract not found");
       return null;
     }
-    return contract.sendERC20(tokenContractAddress, amount, receiver);
-  }
+    return bridgeContract.sendERC20(tokenContractAddress, amount, receiver);
+  };
 
-  async function getNativeBalance(provider: any, walletAddress: string) {
-    if (!provider) {
-      console.error("Provider not found");
+  const getNativeBalance = async (provider: any, walletAddress: string) => {
+    if (!provider || !walletAddress) {
+      console.error("Provider or wallet address not found");
       return null;
     }
-    if (!walletAddress) {
-      console.error("Wallet address not found");
-      return null;
-    }
+
     try {
       const p = new ethers.providers.Web3Provider(provider);
       const balance = await p.getBalance(walletAddress);
-      const readableBalance = ethers.utils.formatEther(balance);
-      return readableBalance;
+      return ethers.utils.formatEther(balance);
     } catch (error) {
       console.error("Error checking Ether balance:", error);
       throw error;
     }
-  }
+  };
 
-  // balance of an ERC20 asset.
-  async function getTokenBalance(
+  const getTokenBalance = async (
     tokenAddress: string,
     walletAddress: string,
     provider: any
-  ) {
-    if (!provider) {
-      console.error("Provider not found");
+  ) => {
+    if (!provider || !walletAddress) {
+      console.error("Provider or wallet address not found");
       return null;
     }
-    if (!walletAddress) {
-      console.error("Wallet address not found");
-      return null;
-    }
+
     try {
       const p = new ethers.providers.Web3Provider(provider);
       const tokenContract = new ethers.Contract(
@@ -249,44 +287,29 @@ export const useContract = () => {
         p
       );
 
-      // Call the balanceOf function of the ERC20 contract
       const balance = await tokenContract.balanceOf(walletAddress);
-
-      // Call the decimals function of the ERC20 contract
       const decimals = await tokenContract.decimals();
-
-      // Convert balance to a readable format
-      const readableBalance = ethers.utils.formatUnits(balance, decimals);
-
-      return readableBalance;
+      return ethers.utils.formatUnits(balance, decimals);
     } catch (error) {
       console.error("Error checking token balance:", error);
       throw error;
     }
-  }
+  };
 
-  //get bridge transactions
-  async function getBridgeTransactions(provider: any, userAddress: string) {
+  const getBridgeTransactions = async (provider: any, userAddress: string) => {
+    const { messageBusAddress } = contractState;
+
+    if (!provider || !userAddress || !messageBusAddress) {
+      console.error("Provider, user address, or message bus address not found");
+      return null;
+    }
+
     try {
-      if (!provider) {
-        console.error("Provider not found");
-        return null;
-      }
-      if (!userAddress) {
-        console.error("User address not found");
-        return null;
-      }
-      if (!messageBusAddress) {
-        console.error("Message bus address not found");
-        return null;
-      }
       const p = new ethers.providers.Web3Provider(provider);
 
-      // using topics to filter logs and get only the user's transactions
       const topics = [
-        ethers.utils.id("ValueTransfer(address,address,uint256)"), // Event signature
+        ethers.utils.id("ValueTransfer(address,address,uint256)"),
         ethers.utils.hexZeroPad(userAddress, 32),
-        // ethers.utils.hexZeroPad(messageBusAddress, 32),
       ];
 
       const filter = {
@@ -295,18 +318,15 @@ export const useContract = () => {
         fromBlock: 5868682,
       };
 
-      const transactions = await p.getLogs(filter);
-
-      console.log("Transactions on bridge:", transactions);
-      return transactions;
+      return await p.getLogs(filter);
     } catch (error) {
       console.error("Error fetching transactions:", error);
       throw error;
     }
-  }
+  };
 
   return {
-    contract,
+    ...contractState,
     sendNative,
     sendERC20,
     getNativeBalance,
@@ -314,3 +334,5 @@ export const useContract = () => {
     getBridgeTransactions,
   };
 };
+
+export default useContract;
