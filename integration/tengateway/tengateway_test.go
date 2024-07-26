@@ -521,7 +521,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 		require.NoError(t, err, req, response)
 
 		// repeat the process for the gateway
-		_, response, err = httputil.PostDataJSON(fmt.Sprintf("http://localhost:%d", integration.StartPortTenGatewayUnitTest), []byte(req))
+		_, response, err = httputil.PostDataJSON(fmt.Sprintf("http://localhost:%d", _startPort+integration.DefaultGethHTTPPortOffset), []byte(req))
 		require.NoError(t, err)
 
 		// we only care about format
