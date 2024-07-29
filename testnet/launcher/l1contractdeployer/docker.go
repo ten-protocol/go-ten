@@ -76,7 +76,6 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	// make sure the container has finished execution (3 minutes allows time for L1 transactions to be mined)
 	err = docker.WaitForContainerToFinish(n.containerID, 3*time.Minute)
 	if err != nil {
-		println("HERE2")
 		return nil, err
 	}
 
@@ -94,7 +93,6 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	// Read the container logs
 	out, err := cli.ContainerLogs(context.Background(), n.containerID, logsOptions)
 	if err != nil {
-		println("HERE3")
 		return nil, err
 	}
 	defer out.Close()
@@ -103,7 +101,6 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	var buf bytes.Buffer
 	_, err = io.Copy(&buf, out)
 	if err != nil {
-		println("HERE4")
 		return nil, err
 	}
 
@@ -120,12 +117,10 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 
 	managementAddr, err := findAddress(lines[0])
 	if err != nil {
-		println("HERE5")
 		return nil, err
 	}
 	messageBusAddr, err := findAddress(lines[1])
 	if err != nil {
-		println("HERE6")
 		return nil, err
 	}
 	l1BlockHash := readValue("L1Start", lines[2])

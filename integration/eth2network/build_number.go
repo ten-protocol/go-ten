@@ -7,6 +7,8 @@ import (
 	"strconv"
 )
 
+// Need this due to character limit on unix path when deploying the geth network on azure and integration tests. We
+// incremenet the build number up to 9999 and then reset to 1, overwriting any existing files.
 func getBuildNumber() (int, error) {
 	buildNumberStr := os.Getenv("BUILD_NUMBER")
 	var buildNumber int

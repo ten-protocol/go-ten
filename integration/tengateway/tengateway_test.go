@@ -489,7 +489,6 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	require.NoError(t, err)
 
 	// make requests to geth for comparison
-
 	for _, req := range []string{
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[[]],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"topics":[]}],"id":1}`,
@@ -511,7 +510,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 		`{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["0x0000000000000000000000000000000000000000000000000000000000000000"],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_maxPriorityFeePerGas","params":[],"id":1}`,
 	} {
-		// ensure the geth request is issued correctly (should return 200 ok with jsonRPCError)
+		// ensure the gateway request is issued correctly (should return 200 ok with jsonRPCError)
 		_, response, err := httputil.PostDataJSON(ogClient.HTTP(), []byte(req))
 		require.NoError(t, err)
 		fmt.Printf("Resp: %s", response)
@@ -521,7 +520,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 		err = json.Unmarshal(response, &jsonRPCError)
 		require.NoError(t, err, req, response)
 
-		// repeat the process for the gateway
+		// repeat the process for geth
 		_, response, err = httputil.PostDataJSON(fmt.Sprintf("http://localhost:%d", _startPort+integration.DefaultGethHTTPPortOffset), []byte(req))
 		require.NoError(t, err)
 
