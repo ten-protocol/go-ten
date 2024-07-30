@@ -40,7 +40,7 @@ FROM node:16-alpine as install-npm-deps
 
 COPY ./contracts/package.json /home/obscuro/go-obscuro/contracts/package.json
 WORKDIR /home/obscuro/go-obscuro/contracts
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Final stage. Compiles the solidity contracts to cache them.
 FROM node:16-alpine
