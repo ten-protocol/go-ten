@@ -133,7 +133,7 @@ export interface WalletConnectionContextType {
   toChains: Chain[];
   connectWallet: () => void;
   disconnectWallet: () => void;
-  switchNetwork: (network: string) => void;
+  switchNetwork: () => void;
 }
 
 export interface Props {

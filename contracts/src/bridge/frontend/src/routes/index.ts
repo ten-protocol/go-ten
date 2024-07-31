@@ -20,7 +20,7 @@ export const NavLinks: NavLink[] = [
 
 export const apiRoutes = {
   getHealthStatus: `/info/health/`,
-  getObscuroConfig: `http://erpc.${environment}.obscu.ro:80/`,
+  getObscuroConfig: `http://erpc.${environment}-testnet.obscu.ro:80/`,
 };
 
 export const requestMethods = {
