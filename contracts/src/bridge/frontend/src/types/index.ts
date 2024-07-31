@@ -1,3 +1,4 @@
+import { ethers } from "ethers";
 import React from "react";
 
 export interface SeoProps {
@@ -181,4 +182,12 @@ export interface ObscuroConfig {
     L2Bridge: string;
     L2CrossChainMessenger: string;
   };
+}
+
+export interface ContractState {
+  bridgeContract?: ethers.Contract;
+  managementContract?: ethers.Contract;
+  messageBusContract?: ethers.Contract;
+  wallet?: ethers.Wallet;
+  messageBusAddress: string;
 }

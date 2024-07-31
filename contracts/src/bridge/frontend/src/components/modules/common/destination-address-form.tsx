@@ -18,14 +18,12 @@ export default function FormComponent({
   const receiver = form.getValues("receiver");
   const addAddressToMainForm = (e: any) => {
     e.preventDefault();
-    form.setValue("receiver", e.target.elements.address.value);
+    const address = e.target.form[0].value;
+    form.setValue("receiver", address);
     setOpen(false);
   };
   return (
-    <form
-      className={cn("grid items-start gap-4", className)}
-      onSubmit={addAddressToMainForm}
-    >
+    <form className={cn("grid items-start gap-4", className)}>
       <div className="grid gap-2">
         <Label htmlFor="address">Address</Label>
         <Input
@@ -41,7 +39,9 @@ export default function FormComponent({
           Make sure the address is correct before submitting.
         </AlertDescription>
       </Alert>
-      <Button type="submit">Add destination address</Button>
+      <Button type="button" onClick={addAddressToMainForm}>
+        Add destination address
+      </Button>
     </form>
   );
 }
