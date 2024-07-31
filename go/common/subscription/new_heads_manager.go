@@ -88,7 +88,7 @@ func (nhs *NewHeadsService) onNewBatch(head *common.BatchHeader) error {
 
 	var msg any = head
 	if nhs.convertToEthHeader {
-		msg = convertBatchHeader(head)
+		msg = ConvertBatchHeader(head)
 	}
 
 	nhs.notifiersMutex.Lock()
@@ -130,10 +130,11 @@ func (nhs *NewHeadsService) HealthStatus(context.Context) host.HealthStatus {
 	return &host.BasicErrHealthStatus{}
 }
 
-func convertBatchHeader(head *common.BatchHeader) *types.Header {
+func ConvertBatchHeader(head *common.BatchHeader) *types.Header {
 	return &types.Header{
 		ParentHash:  head.ParentHash,
 		UncleHash:   gethcommon.Hash{},
+		Coinbase:    head.Coinbase,
 		Root:        head.Root,
 		TxHash:      head.TxHash,
 		ReceiptHash: head.ReceiptHash,

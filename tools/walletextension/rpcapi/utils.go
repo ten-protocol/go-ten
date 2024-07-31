@@ -101,6 +101,12 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		return nil, err
 	}
 
+	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(userID))
+	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(userID), requestUUID)
+	if !rateLimitAllowed {
+		return nil, fmt.Errorf("rate limit exceeded")
+	}
+
 	cacheArgs := []any{userID, method}
 	cacheArgs = append(cacheArgs, args...)
 
