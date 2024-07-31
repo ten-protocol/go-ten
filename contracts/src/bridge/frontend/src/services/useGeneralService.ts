@@ -11,7 +11,7 @@ export const useGeneralService = () => {
   const { data: obscuroConfig, isLoading: isObscuroConfigLoading } = useQuery({
     queryKey: ["obscuroConfig"],
     queryFn: () => fetchObscuroConfig(),
-    refetchInterval: 10000,
+    // refetchInterval: 10000, // TODO: confirm if this is needed
   });
 
   return {

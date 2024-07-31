@@ -15,7 +15,7 @@ export const fetchTestnetStatus = async (): Promise<
 export const fetchObscuroConfig = async (): Promise<
   ResponseDataInterface<ObscuroConfig>
 > => {
-  const res = await httpRequest<ResponseDataInterface<ObscuroConfig>>({
+  return await httpRequest<ResponseDataInterface<ObscuroConfig>>({
     method: "post",
     url: apiRoutes.getObscuroConfig,
     data: {
@@ -25,6 +25,4 @@ export const fetchObscuroConfig = async (): Promise<
       id: 1,
     },
   });
-  console.log("🚀 ~ res:", res);
-  return res;
 };
