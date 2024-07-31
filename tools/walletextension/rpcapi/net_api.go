@@ -19,6 +19,7 @@ func (api *NetAPI) Version(ctx context.Context) (*string, error) {
 type ConfigResponseJson struct {
 	ManagementContractAddress string
 	MessageBusAddress         string
+	L2MessageBusAddress       string
 }
 
 func (api *NetAPI) Config(ctx context.Context) (*ConfigResponseJson, error) {
