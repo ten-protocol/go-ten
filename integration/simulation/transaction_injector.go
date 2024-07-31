@@ -126,7 +126,7 @@ func NewTransactionInjector(
 func (ti *TransactionInjector) Start() {
 	var wg errgroup.Group
 	wg.Go(func() error {
-		//	ti.issueRandomDeposits()
+		ti.issueRandomDeposits()
 		return nil
 	})
 
@@ -139,23 +139,23 @@ func (ti *TransactionInjector) Start() {
 	// to do complex bridge transactions
 	if !ti.params.IsInMem {
 		wg.Go(func() error {
-			//			ti.bridgeRandomGasTransfers()
+			ti.bridgeRandomGasTransfers()
 			return nil
 		})
 	}
 
 	wg.Go(func() error {
-		//	ti.issueRandomTransfers()
+		ti.issueRandomTransfers()
 		return nil
 	})
 
 	wg.Go(func() error {
-		//	ti.issueRandomValueTransfers()
+		ti.issueRandomValueTransfers()
 		return nil
 	})
 
 	wg.Go(func() error {
-		//	ti.issueInvalidL2Txs()
+		ti.issueInvalidL2Txs()
 		return nil
 	})
 
