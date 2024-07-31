@@ -79,7 +79,7 @@ describe("Bridge", function () {
 
       const eventSignature = "LogMessagePublished(address,uint64,uint32,uint32,bytes,uint8)";
       const topic = ethers.id(eventSignature)
-      let eventIface = new ethers.Interface([ `event LogMessagePublished(address indexed,uint64,uint32,uint32,bytes,uint8)`]);
+      let eventIface = new ethers.Interface([ `event LogMessagePublished(address,uint64,uint32,uint32,bytes,uint8)`]);
 
       const receipt = (await  tx.wait())!!;
 
@@ -283,7 +283,7 @@ describe("Bridge", function () {
 
       await expect(event).to.not.be.undefined;
 
-      let eventIface = new ethers.Interface([ `event LogMessagePublished(address indexed,uint64,uint32,uint32,bytes,uint8)`]);
+      let eventIface = new ethers.Interface([ `event LogMessagePublished(address,uint64,uint32,uint32,bytes,uint8)`]);
 
       const decodedEvent = eventIface.parseLog({
         topics: event!.topics!.map((v)=>v),

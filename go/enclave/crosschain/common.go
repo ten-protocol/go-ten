@@ -118,7 +118,6 @@ func convertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi
 		if err != nil {
 			return nil, err
 		}
-		event.Sender = gethcommon.BytesToAddress(log.Topics[1].Bytes())
 
 		msg := createCrossChainMessage(event)
 		messages = append(messages, msg)
