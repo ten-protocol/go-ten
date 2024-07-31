@@ -191,6 +191,7 @@ func (t *Testnet) Start() error {
 			gateway.WithTenNodeHTTPPort(13010),
 			gateway.WithTenNodeWSPort(13011),
 			gateway.WithTenNodeHost("validator-host"),
+			gateway.WithRateLimitUserComputeTime(0), // disable rate limiting for local network
 			gateway.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway:latest"),
 		),
 	)
