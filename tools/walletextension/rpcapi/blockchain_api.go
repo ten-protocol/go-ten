@@ -116,6 +116,11 @@ func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.Block
 	// convert to geth header and marshall
 	header := subscription.ConvertBatchHeader(resp)
 	fields := RPCMarshalHeader(header)
+
+	// dummy fields
+	fields["size"] = hexutil.Uint64(0)
+	fields["transactions"] = []any{}
+
 	addExtraTenFields(fields, resp)
 	return fields, err
 }
@@ -129,6 +134,11 @@ func (api *BlockChainAPI) GetBlockByHash(ctx context.Context, hash gethcommon.Ha
 	// convert to geth header and marshall
 	header := subscription.ConvertBatchHeader(resp)
 	fields := RPCMarshalHeader(header)
+
+	// dummy fields
+	fields["size"] = hexutil.Uint64(0)
+	fields["transactions"] = []any{}
+
 	addExtraTenFields(fields, resp)
 	return fields, err
 }
