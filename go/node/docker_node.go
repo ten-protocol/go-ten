@@ -176,7 +176,7 @@ func (d *DockerNode) startEnclave() error {
 		"-maxBatchSize=56320",
 		"-maxRollupSize=131072",
 		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
-		"-obscuroGenesis", "{}",
+		"-tenGenesis", "{}",
 		"-edgelessDBHost", d.cfg.nodeName+"-edgelessdb",
 	)
 

@@ -3,8 +3,8 @@
 # Default port values
 GETH_NETWORK_PORT=30303
 BEACON_P2P_PORT=12000
-GETH_HTTP_PORT=8545
-GETH_WS_PORT=8546
+GETH_HTTP_PORT=8025
+GETH_WS_PORT=9000
 GETH_RPC_PORT=8552
 BEACON_RPC_PORT=4000
 CHAIN_ID=1337
@@ -127,14 +127,20 @@ echo "VALIDATOR PID $validator_pid"
 
 # Run go-ethereum
 ${GETH_BINARY} --http \
-       --http.api eth,net,web3 \
+       --http.api eth,net,web3,debug \
+       --http.addr="0.0.0.0" \
        --http.port="${GETH_HTTP_PORT}" \
-       --ws --ws.api eth,net,web3 \
+       --http.corsdomain "*" \
+       --http.vhosts "*" \
+       --ws --ws.api eth,net,web3,debug \
+       --ws.addr="0.0.0.0" \
        --ws.port="${GETH_WS_PORT}" \
+       --ws.origins "*" \
        --authrpc.jwtsecret "${BASE_PATH}/jwt.hex" \
        --authrpc.port "${GETH_RPC_PORT}" \
        --port="${GETH_NETWORK_PORT}" \
        --datadir="${GETHDATA_DIR}" \
+       --networkid="${CHAIN_ID}" \
        --nodiscover \
        --syncmode full \
        --allow-insecure-unlock \

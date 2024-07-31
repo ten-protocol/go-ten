@@ -27,7 +27,6 @@ func (n *Eth2Network) Start() error {
 
 	cmds := []string{
 		"/home/obscuro/go-obscuro/integration/eth2network/main/main",
-		"--numNodes", "1",
 	}
 
 	if len(n.cfg.prefundedAddrs) > 1 {
@@ -53,7 +52,7 @@ func (n *Eth2Network) Start() error {
 }
 
 func (n *Eth2Network) IsReady() error {
-	timeout := 20 * time.Minute // this can be reduced when we no longer download the ethereum binaries
+	timeout := 10 * time.Minute // this can be reduced when we no longer download the ethereum binaries
 	interval := 2 * time.Second
 	var dial *ethclient.Client
 	var err error

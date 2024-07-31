@@ -21,9 +21,6 @@ func main() {
 		panic(err)
 	}
 
-	if config.onlyDownload {
-		os.Exit(0)
-	}
 	eth2Network := eth2network.NewPosEth2Network(
 		binDir,
 		config.gethNetworkStartPort,
@@ -34,6 +31,7 @@ func main() {
 		config.prysmBeaconRPCStartPort,
 		config.chainID,
 		6*time.Minute,
+		config.prefundedAddrs...,
 	)
 
 	err = eth2Network.Start()

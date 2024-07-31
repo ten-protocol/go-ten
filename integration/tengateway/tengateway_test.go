@@ -64,16 +64,16 @@ func TestTenGateway(t *testing.T) {
 	createTenNetwork(t, _startPort)
 
 	tenGatewayConf := wecommon.Config{
-		WalletExtensionHost:     "127.0.0.1",
-		WalletExtensionPortHTTP: _startPort + integration.DefaultTenGatewayHTTPPortOffset,
-		WalletExtensionPortWS:   _startPort + integration.DefaultTenGatewayWSPortOffset,
-		NodeRPCHTTPAddress:      fmt.Sprintf("127.0.0.1:%d", _startPort+integration.DefaultHostRPCHTTPOffset),
-		NodeRPCWebsocketAddress: fmt.Sprintf("127.0.0.1:%d", _startPort+integration.DefaultHostRPCWSOffset),
-		LogPath:                 "sys_out",
-		VerboseFlag:             false,
-		DBType:                  "sqlite",
-		TenChainID:              443,
-		StoreIncomingTxs:        true,
+		WalletExtensionHost:            "127.0.0.1",
+		WalletExtensionPortHTTP:        _startPort + integration.DefaultTenGatewayHTTPPortOffset,
+		WalletExtensionPortWS:          _startPort + integration.DefaultTenGatewayWSPortOffset,
+		NodeRPCHTTPAddress:             fmt.Sprintf("127.0.0.1:%d", _startPort+integration.DefaultHostRPCHTTPOffset),
+		NodeRPCWebsocketAddress:        fmt.Sprintf("127.0.0.1:%d", _startPort+integration.DefaultHostRPCWSOffset),
+		LogPath:                        "sys_out",
+		VerboseFlag:                    false,
+		DBType:                         "sqlite",
+		TenChainID:                     443,
+		StoreIncomingTxs:               true,
 		RateLimitUserComputeTime:       200 * time.Millisecond,
 		RateLimitWindow:                1 * time.Second,
 		RateLimitMaxConcurrentRequests: 3,
@@ -489,7 +489,6 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	require.NoError(t, err)
 
 	// make requests to geth for comparison
-
 	for _, req := range []string{
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[[]],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"topics":[]}],"id":1}`,
@@ -509,6 +508,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 		`{"jsonrpc":"2.0","method":"eth_getBalance","params":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "latest"],"id":1,"extra":"extra_field"}`,
 		`{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "0x1234"]],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["0x0000000000000000000000000000000000000000000000000000000000000000"],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_maxPriorityFeePerGas","params":[],"id":1}`,
 	} {
 		// ensure the gateway request is issued correctly (should return 200 ok with jsonRPCError)
 		_, response, err := httputil.PostDataJSON(ogClient.HTTP(), []byte(req))

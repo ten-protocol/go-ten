@@ -130,7 +130,5 @@ jobs:
             && docker run -d \
             -p 8025:8025 -p 8026:8026 -p 9000:9000 -p 9001:9001 \
             --entrypoint /home/obscuro/go-obscuro/integration/eth2network/main/main ${{ vars.DOCKER_BUILD_TAG_ETH2NETWORK }} \
-            --blockTimeSecs=15 --slotsPerEpoch=2 --slotsPerSecond=15 \
-            --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
-            --logToFile=false \
+            --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
             --prefundedAddrs="${{ vars.ACCOUNT_ADDR_WORKER }},${{ vars.ACCOUNT_ADDR_NODE_0 }},${{ vars.ACCOUNT_ADDR_NODE_1 }},${{ vars.ACCOUNT_ADDR_NODE_2 }},${{ vars.ACCOUNT_ADDR_L1_BRIDGE_TEST }}"'
