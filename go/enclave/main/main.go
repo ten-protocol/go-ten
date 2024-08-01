@@ -38,7 +38,7 @@ func main() {
 			if err != nil {
 				panic(fmt.Errorf("could not write CPU profile: %w", err))
 			}
-			stack, err := os.Open(fmt.Sprintf("heap_%s.pprof", time.Now().Format(time.RFC3339)))
+			stack, err := os.Open(fmt.Sprintf("stack_%s.pprof", time.Now().Format(time.RFC3339)))
 			if err != nil {
 				panic(fmt.Errorf("could not open CPU profile: %w", err))
 			}
