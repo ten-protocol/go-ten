@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"github.com/ten-protocol/go-ten/go/common/rpc"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -54,6 +54,7 @@ func WithVKEncryption[P any, R any](
 ) (*responses.EnclaveResponse, common.SystemError) {
 	// 1. Decrypt request
 	plaintextRequest, err := encManager.DecryptBytes(encReq)
+	fmt.Printf("Plaintext request: %s\n", plaintextRequest)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("could not decrypt params - %w", err)), nil
 	}
@@ -63,6 +64,10 @@ func WithVKEncryption[P any, R any](
 	if err := json.Unmarshal(plaintextRequest, &decodedRequest); err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("could not unmarshal params - %w", err)), nil
 	}
+	userId := viewingkey.CalculateUserID(decodedRequest.VK.PublicKey)
+
+	recoveredSignerAddress, _ := viewingkey.CheckSignature(userId, decodedRequest.VK.SignatureWithAccountKey, 1337, decodedRequest.VK.SignatureType)
+	fmt.Printf("Recovered signer address: %s\n", recoveredSignerAddress.Hex())
 
 	// 3. Verify the VK
 	if decodedRequest.VK == nil {

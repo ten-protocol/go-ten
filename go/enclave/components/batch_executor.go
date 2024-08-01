@@ -93,6 +93,7 @@ func (executor *batchExecutor) filterTransactionsWithSufficientFunds(ctx context
 	block, _ := executor.storage.FetchBlock(ctx, context.BlockPtr)
 
 	for _, tx := range context.Transactions {
+		fmt.Printf("Tx from context hash: %s\n", tx.Hash().Hex())
 		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
 		if err != nil {
 			executor.logger.Error("Unable to extract sender for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
@@ -193,6 +194,10 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}
 
 	syntheticTransactions := append(xchainTxs, freeTransactions...)
+	fmt.Printf("Number of synthetic transactions: %d\n", int64(len(syntheticTransactions)))
+	for _, xTx := range syntheticTransactions {
+		fmt.Printf("Syntheic tx hash: %s\n", xTx.Tx.Hash().Hex())
+	}
 
 	// fromTxIndex - Here we start from the 0 index. This will be the same for a validator.
 	successfulTxs, excludedTxs, txReceipts, createdContracts, err := executor.processTransactions(ctx, batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
@@ -209,6 +214,9 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 
 	if err = executor.verifyInboundCrossChainTransactions(syntheticTransactions, ccSuccessfulTxs, ccReceipts); err != nil {
 		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
+	}
+	for _, tx := range ccSuccessfulTxs {
+		fmt.Printf("Successful TX for batch with hash: %s\n", tx.Hash().Hex())
 	}
 
 	if failForEmptyBatch &&
@@ -244,6 +252,15 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 		for _, l := range receipt.Logs {
 			l.BlockHash = copyBatch.Hash()
 		}
+	}
+	for _, tx := range freeTransactions.ToTransactions() {
+		fmt.Printf("Free tx hash: %s\n", tx.Hash().Hex())
+	}
+	for _, tx := range transactionsToProcess.ToTransactions() {
+		fmt.Printf("TransactionsToProcess tx hash: %s\n", tx.Hash().Hex())
+	}
+	for _, tx := range copyBatch.Transactions {
+		fmt.Printf("Computed batch TX hash: %s\n", tx.Hash().Hex())
 	}
 	maps.Copy(createdContracts, createdContractsSyn)
 	return &ComputedBatch{

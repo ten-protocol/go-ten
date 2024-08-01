@@ -552,6 +552,9 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 			return err
 		}
 
+		for _, tx := range batch.Transactions {
+			fmt.Printf("Enclave storing tx: %s\n", tx.Hash().Hex())
+		}
 		if err := enclavedb.WriteTransactions(ctx, dbTx, batch, senders); err != nil {
 			return fmt.Errorf("could not write transactions. Cause: %w", err)
 		}
