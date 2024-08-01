@@ -30,7 +30,7 @@ func main() {
 	// temporary code to help identify OOM
 	go func() {
 		for {
-			heap, err := os.Create(fmt.Sprintf("/heap_%d.pprof", time.Now().UnixMilli()))
+			heap, err := os.Create(fmt.Sprintf("/data/heap_%d.pprof", time.Now().UnixMilli()))
 			if err != nil {
 				panic(fmt.Errorf("could not open heap profile: %w", err))
 			}
@@ -38,7 +38,7 @@ func main() {
 			if err != nil {
 				panic(fmt.Errorf("could not write CPU profile: %w", err))
 			}
-			stack, err := os.Create(fmt.Sprintf("/stack_%d.pprof", time.Now().UnixMilli()))
+			stack, err := os.Create(fmt.Sprintf("/data/stack_%d.pprof", time.Now().UnixMilli()))
 			if err != nil {
 				panic(fmt.Errorf("could not open stack profile: %w", err))
 			}
