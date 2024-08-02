@@ -93,6 +93,8 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	case AddRollupMethod:
 		//TODO clean this up
 		if tx.Type() == types.BlobTxType {
+
+			println("DECODE TX HASH WITH NO SIDECAR: ", tx.Hash().Hex())
 			sidecar := tx.BlobTxSidecar()
 			blobs := sidecar.Blobs
 			var rollupData []byte
@@ -111,6 +113,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 				Rollup: encodedRollup,
 			}
 		}
+		println("NONE BLOB ROLLUP FOUND")
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
 			panic(err)
 		}

@@ -150,7 +150,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     }
 
     // solc-ignore-next-line unused-param
-    function AddRollup(Structs.MetaRollup calldata r, Structs.HeaderCrossChainData calldata crossChainData) public {
+    function AddRollup(Structs.MetaRollup calldata r, Structs.HeaderCrossChainData calldata) public {
         address enclaveID = ECDSA.recover(r.Hash, r.Signature);
         // revert if the EnclaveID is not attested
         require(attested[enclaveID], "enclaveID not attested");

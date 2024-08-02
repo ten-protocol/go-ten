@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/holiman/uint256"
 	"math/big"
 	"sync"
 	"time"
@@ -424,7 +423,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		//FIXME here rlp: expected input string or byte for *uint256.Int, decoding into (types.BlobTx).ChainID
 		err = p.ethClient.SendTransaction(signedTx)
 		if err != nil {
-			println("COULD NOT SendTransaction", uint256.MustFromBig(signedTx.ChainId()).Uint64(), err.Error())
+			println("Error sending tx: ", signedTx.Hash().Hex(), err.Error())
 			return errors.Wrap(err, "could not broadcast L1 tx")
 		}
 		p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())

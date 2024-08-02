@@ -132,6 +132,19 @@
     "inputs": [
       {
         "indexed": false,
+        "internalType": "bytes32",
+        "name": "rollupHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "RollupAdded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "internalType": "address",
         "name": "enclaveID",
         "type": "address"
@@ -218,7 +231,7 @@
           }
         ],
         "internalType": "struct Structs.HeaderCrossChainData",
-        "name": "crossChainData",
+        "name": "",
         "type": "tuple"
       }
     ],
@@ -318,6 +331,88 @@
         "internalType": "bool",
         "name": "",
         "type": "bool"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "Hash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes",
+            "name": "Signature",
+            "type": "bytes"
+          },
+          {
+            "internalType": "uint256",
+            "name": "LastSequenceNumber",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Structs.MetaRollup",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "number",
+        "type": "uint256"
+      }
+    ],
+    "name": "GetRollupByNumber",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "Hash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes",
+            "name": "Signature",
+            "type": "bytes"
+          },
+          {
+            "internalType": "uint256",
+            "name": "LastSequenceNumber",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Structs.MetaRollup",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "number",
+        "type": "uint256"
+      }
+    ],
+    "name": "GetUniqueForkID",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       },
       {
         "components": [
@@ -523,6 +618,16 @@
         "internalType": "bytes",
         "name": "signature",
         "type": "bytes"
+      },
+      {
+        "internalType": "uint256",
+        "name": "rollupNumber",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "forkID",
+        "type": "bytes32"
       }
     ],
     "name": "addCrossChainMessagesRoot",
@@ -573,6 +678,44 @@
     "name": "initialize",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes[]",
+        "name": "crossChainHashes",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "isBundleAvailable",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "isBundleSaved",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {

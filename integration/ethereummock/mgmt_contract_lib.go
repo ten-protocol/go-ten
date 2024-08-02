@@ -75,7 +75,7 @@ func (m *mockContractLib) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 	base64ChunkSize := int(math.Floor(float64(maxBlobSize) * 4 / 3))
 	base64ChunkSize = base64ChunkSize - (base64ChunkSize % 4) - 4 //metadata size
 
-	blobs := chunkRollup(encRollupData, base64ChunkSize)
+	blobs, _ := chunkRollup(encRollupData, base64ChunkSize)
 
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
@@ -183,7 +183,12 @@ func encodeTx(tx ethadapter.L1Transaction, opType gethcommon.Address) types.TxDa
 }
 
 // chunkRollup splits the rollup into blobs based on the max blob size and index's the blobs
-func chunkRollup(data string, maxBlobSize int) []*kzg4844.Blob {
+func chunkRollup(data string, maxBlobSize int) ([]*kzg4844.Blob, error) {
+	const BlobSize = 131072
+	if maxBlobSize > BlobSize {
+		return nil, fmt.Errorf("maxBlobSize cannot be greater than BlobSize")
+	}
+
 	var blobs []*kzg4844.Blob
 	indexByteSize := 4 // size in bytes for the chunk index metadata
 	chunkIndex := uint32(0)
@@ -200,12 +205,17 @@ func chunkRollup(data string, maxBlobSize int) []*kzg4844.Blob {
 
 		// Convert string slice to bytes and append metadata to the chunk data
 		chunkData := append(metadata, []byte(data[i:end])...)
-		blob := kzg4844.Blob(chunkData)
+
+		// Ensure chunkData is exactly BlobSize
+		paddedChunkData := make([]byte, BlobSize)
+		copy(paddedChunkData, chunkData)
+
+		blob := kzg4844.Blob(paddedChunkData)
 		blobs = append(blobs, &blob)
 
 		chunkIndex++
 	}
-	return blobs
+	return blobs, nil
 }
 
 // MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
