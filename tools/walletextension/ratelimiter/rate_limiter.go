@@ -28,6 +28,10 @@ var zeroUUID uuid.UUID
 
 // AddRequest adds a new request interval to a user's current requests and returns the UUID.
 func (rl *RateLimiter) AddRequest(userID common.Address, interval RequestInterval) uuid.UUID {
+	// If the userComputeTime is 0, do nothing (rate limiting is disabled)
+	if rl.GetUserComputeTime() == 0 {
+		return zeroUUID
+	}
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
@@ -45,6 +49,11 @@ func (rl *RateLimiter) AddRequest(userID common.Address, interval RequestInterva
 
 // SetRequestEnd updates the end time of a request interval given its UUID.
 func (rl *RateLimiter) SetRequestEnd(userID common.Address, id uuid.UUID) {
+	// If the userComputeTime is 0, do nothing (rate limiting is disabled)
+	if rl.GetUserComputeTime() == 0 {
+		return
+	}
+
 	if user, userExists := rl.users[userID]; userExists {
 		if request, requestExists := user.CurrentRequests[id]; requestExists {
 			rl.mu.Lock()
@@ -205,6 +214,11 @@ func (rl *RateLimiter) PruneRequests() {
 
 // periodically prunes the requests that have ended before the rate limiter's window every 10 * window milliseconds
 func (rl *RateLimiter) periodicPrune() {
+	// If the userComputeTime is 0, do nothing (rate limiting is disabled)
+	if rl.GetUserComputeTime() == 0 {
+		return
+	}
+
 	for {
 		time.Sleep(rl.window * 10)
 		rl.PruneRequests()
@@ -212,6 +226,11 @@ func (rl *RateLimiter) periodicPrune() {
 }
 
 func (rl *RateLimiter) logRateLimitedStats() {
+	// If the userComputeTime is 0, do nothing (rate limiting is disabled)
+	if rl.GetUserComputeTime() == 0 {
+		return
+	}
+
 	for {
 		time.Sleep(30 * time.Minute)
 		rl.mu.Lock()
