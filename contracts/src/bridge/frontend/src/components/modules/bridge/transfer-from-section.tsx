@@ -2,7 +2,7 @@ import { Chain, Token } from "@/src/types";
 import { Separator } from "../../ui/separator";
 import { Skeleton } from "../../ui/skeleton";
 import { AmountInput } from "./amount-input";
-import { ChainSelectFrom } from "./chain-select";
+import { ChainSelect } from "./chain-select";
 import { PercentageButtons } from "./percentage-buttons";
 import { TokenSelect } from "./token-select";
 import useCustomHookForm from "@/src/hooks/useCustomHookForm";
@@ -28,7 +28,7 @@ export const TransferFromSection = ({
     <div>
       <div className="flex items-center justify-between mb-4">
         <strong>Transfer from</strong>
-        <ChainSelectFrom form={form} chains={fromChains} />
+        <ChainSelect form={form} chains={fromChains} name="fromChain" />
       </div>
       <div className="bg-muted dark:bg-[#15171D] rounded-lg border">
         <div className="flex items-center justify-between p-2">

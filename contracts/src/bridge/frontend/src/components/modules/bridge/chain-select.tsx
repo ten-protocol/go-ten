@@ -9,78 +9,51 @@ import {
 } from "../../ui/select";
 import useCustomHookForm from "@/src/hooks/useCustomHookForm";
 
-export const ChainSelectFrom = ({
+export const ChainSelect = ({
   form,
   chains,
+  name,
 }: {
   form: ReturnType<typeof useCustomHookForm>;
   chains: Chain[];
+  name: string;
 }) => {
+  console.log("🚀 ~ ChainSelect ~ ", name, form.getValues(name));
   return (
     <FormField
       control={form.control}
-      name="fromChain"
-      render={({ field }) => (
-        <FormItem>
-          <Select defaultValue={field.value} onValueChange={field.onChange}>
-            <FormControl>
-              <SelectTrigger className="h-8 bg-muted">
-                <SelectValue placeholder={field.value || "Select Chain"} />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              {chains.map((chain: Chain) => (
-                <SelectItem
-                  key={chain.value}
-                  value={chain.value}
-                  disabled={!chain.isEnabled}
-                >
-                  {chain.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  );
-};
-
-export const ChainSelectTo = ({
-  form,
-  chains,
-}: {
-  form: ReturnType<typeof useCustomHookForm>;
-  chains: Chain[];
-}) => {
-  return (
-    <FormField
-      control={form.control}
-      name="toChain"
-      render={({ field }) => (
-        <FormItem>
-          <Select defaultValue={field.value} onValueChange={field.onChange}>
-            <FormControl>
-              <SelectTrigger className="h-8 bg-muted">
-                <SelectValue placeholder={field.value || "Select Chain"} />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              {chains.map((chain: Chain) => (
-                <SelectItem
-                  key={chain.value}
-                  value={chain.value}
-                  disabled={!chain.isEnabled}
-                >
-                  {chain.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <FormMessage />
-        </FormItem>
-      )}
+      name={name}
+      render={({ field }) => {
+        console.log("🚀 ~", name, field.value.value);
+        return (
+          <FormItem>
+            <Select
+              defaultValue={field.value.value}
+              onValueChange={field.onChange}
+            >
+              <FormControl>
+                <SelectTrigger className="h-8 bg-muted">
+                  <SelectValue
+                    placeholder={field.value.value || "Select Chain"}
+                  />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {chains.map((chain: Chain) => (
+                  <SelectItem
+                    key={chain.value}
+                    value={chain.value}
+                    disabled={!chain.isEnabled}
+                  >
+                    {chain.value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        );
+      }}
     />
   );
 };

@@ -130,8 +130,6 @@ export interface WalletConnectionContextType {
   address: string;
   walletConnected: boolean;
   isL1ToL2: boolean;
-  fromChains: Chain[];
-  toChains: Chain[];
   connectWallet: () => void;
   disconnectWallet: () => void;
   switchNetwork: () => void;

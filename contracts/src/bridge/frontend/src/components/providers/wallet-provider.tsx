@@ -6,7 +6,6 @@ import {
   WalletConnectionProviderProps,
   WalletNetwork,
 } from "@/src/types";
-import { L1CHAINS, L2CHAINS } from "@/src/lib/constants";
 import { requestMethods } from "@/src/routes";
 import {
   getEthereumProvider,
@@ -25,8 +24,6 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
   const [signer, setSigner] = useState<any>(null);
   const [address, setAddress] = useState<string>("");
   const [isL1ToL2, setIsL1ToL2] = useState<boolean>(true);
-  const [fromChains, setFromChains] = useState(L1CHAINS);
-  const [toChains, setToChains] = useState(L2CHAINS);
 
   useEffect(() => {
     const storedAddress = handleStorage.get("walletAddress");
@@ -36,8 +33,6 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
       setAddress(storedAddress);
       setIsWalletConnected(true);
       setIsL1ToL2(storedIsL1ToL2);
-      setFromChains(storedIsL1ToL2 ? L1CHAINS : L2CHAINS);
-      setToChains(storedIsL1ToL2 ? L2CHAINS : L1CHAINS);
     }
 
     const initializeProvider = async () => {
@@ -50,8 +45,6 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
 
       const isL1 = chainId === WalletNetwork.L1_SEPOLIA;
       setIsL1ToL2(isL1);
-      setFromChains(isL1 ? L1CHAINS : L2CHAINS);
-      setToChains(isL1 ? L2CHAINS : L1CHAINS);
     };
 
     initializeProvider();
@@ -68,8 +61,6 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
 
       const isL1 = chainId === WalletNetwork.L1_SEPOLIA;
       setIsL1ToL2(isL1);
-      setFromChains(isL1 ? L1CHAINS : L2CHAINS);
-      setToChains(isL1 ? L2CHAINS : L1CHAINS);
 
       const accounts = await detectedProvider.request({
         method: requestMethods.connectAccounts,
@@ -148,10 +139,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
       });
       const isL1 = desiredNetwork === WalletNetwork.L1_SEPOLIA;
       setIsL1ToL2(isL1);
-      setFromChains(isL1 ? L1CHAINS : L2CHAINS);
-      setToChains(isL1 ? L2CHAINS : L1CHAINS);
       handleStorage.save("isL1ToL2", isL1.toString());
-      window.location.reload(); // Reload the page to apply changes
       toast({
         title: "Network Switched",
         description: `Switched to ${
@@ -185,8 +173,6 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
     address,
     walletConnected: isWalletConnected,
     isL1ToL2,
-    fromChains,
-    toChains,
     connectWallet,
     disconnectWallet,
     switchNetwork,

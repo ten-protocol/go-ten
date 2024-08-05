@@ -14,10 +14,15 @@ export const TokenSelect = ({ form, tokens }: any) => {
       name="token"
       render={({ field }) => (
         <FormItem>
-          <Select defaultValue={field.value} onValueChange={field.onChange}>
+          <Select
+            defaultValue={field.value.value}
+            onValueChange={field.onChange}
+          >
             <FormControl>
               <SelectTrigger className="h-8 dark:bg-[#292929]">
-                <SelectValue placeholder={field.value || "Select Token"} />
+                <SelectValue
+                  placeholder={field.value.value || "Select Token"}
+                />
               </SelectTrigger>
             </FormControl>
             <SelectContent side="top">
