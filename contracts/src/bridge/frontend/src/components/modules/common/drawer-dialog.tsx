@@ -20,11 +20,14 @@ import {
 } from "../../ui/drawer";
 import { useMediaQuery } from "@/src/hooks/useMediaQuery";
 import FormComponent from "./destination-address-form";
+import useCustomHookForm from "@/src/hooks/useCustomHookForm";
 
 export function DrawerDialog({
+  form,
   open,
   setOpen,
 }: {
+  form: ReturnType<typeof useCustomHookForm>;
   open: boolean;
   setOpen: (value: boolean) => void;
 }) {
@@ -40,7 +43,7 @@ export function DrawerDialog({
               This address will be used to transfer the asset to.
             </DialogDescription>
           </DialogHeader>
-          <FormComponent setOpen={setOpen} />
+          <FormComponent setOpen={setOpen} form={form} />
         </DialogContent>
       </Dialog>
     );
@@ -55,7 +58,7 @@ export function DrawerDialog({
             This address will be used to transfer the asset to.
           </DrawerDescription>
         </DrawerHeader>
-        <FormComponent className="px-4" setOpen={setOpen} />
+        <FormComponent className="px-4" setOpen={setOpen} form={form} />
         <DrawerFooter className="pt-2">
           <DrawerClose asChild>
             <Button variant="outline">Cancel</Button>

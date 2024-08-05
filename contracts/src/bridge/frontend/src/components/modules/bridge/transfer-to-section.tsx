@@ -2,8 +2,10 @@ import { PlusIcon } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Skeleton } from "../../ui/skeleton";
 import TruncatedAddress from "../common/truncated-address";
-import { ChainSelect } from "./chain-select";
+import { ChainSelectTo } from "./chain-select";
 import { Chain } from "@/src/types";
+import { isAddress } from "ethers/lib/utils";
+import useCustomHookForm from "@/src/hooks/useCustomHookForm";
 
 export const TransferToSection = ({
   form,
@@ -13,7 +15,7 @@ export const TransferToSection = ({
   address,
   setOpen,
 }: {
-  form: any;
+  form: ReturnType<typeof useCustomHookForm>;
   toChains: Chain[];
   loading: boolean;
   receiver?: string;
@@ -24,7 +26,7 @@ export const TransferToSection = ({
     <div>
       <div className="flex items-center justify-between">
         <strong>Transfer to</strong>
-        <ChainSelect form={form} chains={toChains} name="toChain" />
+        <ChainSelectTo form={form} chains={toChains} />
       </div>
       <div className="flex items-center justify-end">
         <Button
@@ -49,7 +51,7 @@ export const TransferToSection = ({
       </div>
       <div className="bg-muted dark:bg-[#15171D] rounded-lg border flex items-center justify-between mt-4 p-2">
         <span>To:</span>
-        {receiver ? (
+        {receiver && isAddress(receiver as string) ? (
           <TruncatedAddress address={receiver} />
         ) : address ? (
           <TruncatedAddress address={address} />

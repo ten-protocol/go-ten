@@ -2,9 +2,10 @@ import { Chain, Token } from "@/src/types";
 import { Separator } from "../../ui/separator";
 import { Skeleton } from "../../ui/skeleton";
 import { AmountInput } from "./amount-input";
-import { ChainSelect } from "./chain-select";
+import { ChainSelectFrom } from "./chain-select";
 import { PercentageButtons } from "./percentage-buttons";
 import { TokenSelect } from "./token-select";
+import useCustomHookForm from "@/src/hooks/useCustomHookForm";
 
 export const TransferFromSection = ({
   form,
@@ -15,7 +16,7 @@ export const TransferFromSection = ({
   setAmount,
   walletConnected,
 }: {
-  form: any;
+  form: ReturnType<typeof useCustomHookForm>;
   fromChains: Chain[];
   tokens: Token[];
   fromTokenBalance: string;
@@ -27,7 +28,7 @@ export const TransferFromSection = ({
     <div>
       <div className="flex items-center justify-between mb-4">
         <strong>Transfer from</strong>
-        <ChainSelect form={form} chains={fromChains} name="fromChain" />
+        <ChainSelectFrom form={form} chains={fromChains} />
       </div>
       <div className="bg-muted dark:bg-[#15171D] rounded-lg border">
         <div className="flex items-center justify-between p-2">

@@ -11,8 +11,8 @@ import { Form } from "@/src/components/ui/form";
 import { toast } from "@/src/components/ui/use-toast";
 import { DrawerDialog } from "../common/drawer-dialog";
 import { L1TOKENS, L2TOKENS } from "@/src/lib/constants";
-import { z } from "zod";
-import { useFormHook } from "@/src/hooks/useForm";
+import { useWatch } from "react-hook-form";
+import useCustomHookForm from "@/src/hooks/useCustomHookForm";
 import { useWalletStore } from "../../providers/wallet-provider";
 import { ToastType, Token } from "@/src/types";
 import { useContract } from "@/src/hooks/useContract";
@@ -20,6 +20,8 @@ import { TransferFromSection } from "./transfer-from-section";
 import { SubmitButton } from "./submit-button";
 import { SwitchNetworkButton } from "./switch-network-button";
 import { TransferToSection } from "./transfer-to-section";
+import { bridgeSchema } from "@/src/schemas/bridge";
+import { isAddress } from "ethers/lib/utils";
 
 export default function Dashboard() {
   const {
@@ -33,23 +35,53 @@ export default function Dashboard() {
   } = useWalletStore();
   const { getNativeBalance, getTokenBalance, sendERC20, sendNative } =
     useContract();
-  const { form, FormSchema } = useFormHook();
+
+  const defaultValues = {
+    amount: "",
+    fromChain: fromChains[0].value,
+    toChain: toChains[0].value,
+    token: isL1ToL2 ? L1TOKENS[0].value : L2TOKENS[0].value,
+    receiver: address,
+  };
+
+  const form = useCustomHookForm(bridgeSchema, { defaultValues });
+
+  const {
+    handleSubmit,
+    control,
+    setValue,
+    reset,
+    setError,
+    formState: { errors },
+  } = form;
+
+  const textValues = useWatch({
+    control,
+    name: ["fromChain", "toChain", "token", "receiver", "amount"],
+  });
+  const [fromChain, toChain, token, receiver, amount] = textValues;
+
   const [loading, setLoading] = React.useState(false);
   const [fromTokenBalance, setFromTokenBalance] = React.useState<any>(0);
 
   const tokens = isL1ToL2 ? L1TOKENS : L2TOKENS;
-  const receiver = form.watch("receiver");
 
   const [open, setOpen] = React.useState(false);
-  const watchTokenChange = form.watch("token");
 
   React.useEffect(() => {
-    const tokenBalance = async (token: Token) => {
+    const fetchTokenBalance = async (token: Token) => {
       setLoading(true);
       try {
         const balance = token.isNative
-          ? await getNativeBalance(provider, address)
-          : await getTokenBalance(token.address, address, provider);
+          ? await getNativeBalance(
+              provider,
+              isAddress(receiver) ? receiver : address
+            )
+          : await getTokenBalance(
+              token.address,
+              isAddress(receiver) ? receiver : address,
+              provider
+            );
         setFromTokenBalance(balance);
       } catch (error) {
         console.error(error);
@@ -58,16 +90,16 @@ export default function Dashboard() {
       }
     };
 
-    if (watchTokenChange) {
-      const token = tokens.find((t) => t.value === watchTokenChange);
-      if (token) {
-        tokenBalance(token);
+    if (token) {
+      const selectedToken = tokens.find((t) => t.value === token);
+      if (selectedToken) {
+        fetchTokenBalance(selectedToken);
       }
     }
-  }, [watchTokenChange, address, provider, tokens]);
+  }, [fromChain, token, amount, receiver, provider, tokens, isL1ToL2]);
 
   const onSubmit = React.useCallback(
-    async (data: z.infer<typeof FormSchema>) => {
+    async (data: any) => {
       try {
         setLoading(true);
         const transactionData = { ...data, receiver: receiver || address };
@@ -91,7 +123,7 @@ export default function Dashboard() {
           description: `Bridge transaction completed: ${res.transactionHash}`,
           variant: ToastType.SUCCESS,
         });
-        form.reset();
+        reset();
       } catch (error) {
         console.error(error);
         toast({
@@ -107,20 +139,20 @@ export default function Dashboard() {
         setLoading(false);
       }
     },
-    [address, form, receiver, sendERC20, sendNative, tokens]
+    [address, tokens, fromChain]
   );
 
   const setAmount = React.useCallback(
     (value: number) => {
-      if (!form.getValues("token")) {
-        form.setError("token", {
+      if (!token) {
+        setError("token", {
           type: "manual",
           message: "Please select a token to get the balance",
         });
         return;
       }
       const amount = Math.floor(((fromTokenBalance * value) / 100) * 100) / 100;
-      form.setValue("amount", amount.toString());
+      setValue("amount", amount.toString());
     },
     [form, fromTokenBalance]
   );
@@ -130,7 +162,7 @@ export default function Dashboard() {
       event.preventDefault();
       try {
         setLoading(true);
-        await switchNetwork();
+        switchNetwork();
       } catch (error) {
         console.error("Network switch failed", error);
         toast({
@@ -160,7 +192,7 @@ export default function Dashboard() {
         <Separator />
         <CardContent className="p-4">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+            <form onSubmit={handleSubmit(onSubmit)}>
               <TransferFromSection
                 form={form}
                 fromChains={fromChains}
@@ -189,7 +221,7 @@ export default function Dashboard() {
               />
             </form>
           </Form>
-          <DrawerDialog open={open} setOpen={setOpen} />
+          <DrawerDialog open={open} setOpen={setOpen} form={form} />
         </CardContent>
       </Card>
     </div>

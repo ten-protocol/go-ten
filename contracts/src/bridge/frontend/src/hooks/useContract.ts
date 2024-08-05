@@ -4,20 +4,12 @@ import Bridge from "../../artifacts/IBridge.sol/IBridge.json";
 import ManagementContractAbi from "../../artifacts/ManagementContract.sol/ManagementContract.json";
 import IMessageBusAbi from "../../artifacts/IMessageBus.sol/IMessageBus.json";
 import { useWalletStore } from "../components/providers/wallet-provider";
-import { showToast } from "../components/ui/use-toast";
-import { ToastType } from "../types";
+import { showToast, toast } from "../components/ui/use-toast";
+import { ContractState, ToastType } from "../types";
 import { useGeneralService } from "../services/useGeneralService";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 
-interface ContractState {
-  bridgeContract?: ethers.Contract;
-  managementContract?: ethers.Contract;
-  messageBusContract?: ethers.Contract;
-  wallet?: ethers.Wallet;
-  messageBusAddress: string;
-}
-
-const useContract = () => {
+export const useContract = () => {
   const [contractState, setContractState] = useState<ContractState>({
     messageBusAddress: "",
   });
@@ -53,7 +45,8 @@ const useContract = () => {
     const managementContractAddress = memoizedConfig.ManagementContractAddress;
 
     if (!provider) {
-      throw new Error("Provider not found");
+      showToast(ToastType.DESTRUCTIVE, "Provider not found");
+      return;
     }
     const p = new ethers.providers.Web3Provider(provider);
     const wallet = new ethers.Wallet(
@@ -86,18 +79,14 @@ const useContract = () => {
       wallet,
       messageBusAddress,
     });
-
-    console.log("🚀 ~ config", memoizedConfig);
-  }, [provider, isL1ToL2]);
-  // }, [obscuroConfig, isObscuroConfigLoading, memoizedConfig]);
+  }, [isObscuroConfigLoading, memoizedConfig, provider, isL1ToL2]);
 
   const sendNative = async (receiver: string, value: string) => {
     const { bridgeContract, managementContract, messageBusContract, wallet } =
       contractState;
 
-    if (!bridgeContract || !signer || !wallet) {
-      console.error("Required contract or wallet not found");
-      return null;
+    if (!bridgeContract || !signer || !wallet || !managementContract) {
+      throw new Error("Contract or signer not found");
     }
 
     try {
@@ -127,6 +116,11 @@ const useContract = () => {
         return txReceipt;
       }
 
+      toast({
+        description: "Extracting logs from the transaction",
+        variant: ToastType.INFO,
+      });
+
       const valueTransferEvent = txReceipt.logs.find(
         (log: any) =>
           log.topics[0] ===
@@ -137,12 +131,36 @@ const useContract = () => {
         throw new Error("ValueTransfer event not found in the logs");
       }
 
+      toast({
+        description: "ValueTransfer event found in the logs; processing data",
+        variant: ToastType.INFO,
+      });
+
       const valueTransferEventData =
         messageBusContract?.interface.parseLog(valueTransferEvent);
 
       if (!valueTransferEventData) {
         throw new Error("ValueTransfer event data not found");
       }
+
+      toast({
+        description: "ValueTransfer event data found; getting block data",
+        variant: ToastType.INFO,
+      });
+
+      const block = await provider.send("eth_getBlockByHash", [
+        ethers.utils.hexValue(txReceipt.blockHash),
+        true,
+      ]);
+
+      if (!block) {
+        throw new Error("Block not found");
+      }
+
+      toast({
+        description: "Block data found; processing value transfer",
+        variant: ToastType.INFO,
+      });
 
       const abiTypes = ["address", "address", "uint256", "uint64"];
       const _msg = [
@@ -158,43 +176,59 @@ const useContract = () => {
       const msg = processedValueTransfer[0];
       const msgHash = processedValueTransfer[1];
 
-      const block = await provider.send("eth_getBlockByHash", [
-        ethers.utils.hexValue(txReceipt.blockHash),
-        true,
-      ]);
-
       const base64CrossChainTree = block.result.crossChainTree;
       const decodedCrossChainTree = atob(base64CrossChainTree);
-      console.log(
-        "🚀 ~ sendNative ~ decodedCrossChainTree:",
-        decodedCrossChainTree
-      );
 
       const leafEntries = JSON.parse(decodedCrossChainTree);
 
-      if (decodedCrossChainTree[0][1] === msgHash) {
+      if (leafEntries[0][1] === msgHash) {
         console.log("Value transfer hash is in the xchain tree");
+        toast({
+          description: "Value transfer hash is in the xchain tree",
+          variant: ToastType.INFO,
+        });
       }
 
-      const tree = StandardMerkleTree.of(leafEntries, ["string", "bytes32"]);
-      const proof = tree.getProof(["v", msgHash]);
+      toast({
+        description: "Constructing merkle tree",
+        variant: ToastType.INFO,
+      });
 
+      const tree = StandardMerkleTree.of(leafEntries, ["string", "bytes32"]);
+
+      toast({
+        description: "Merkle tree constructed",
+        variant: ToastType.INFO,
+      });
+
+      const proof = tree.getProof(["v", msgHash]);
       const root = tree.root;
 
       if (block.result.crossChainTreeHash === tree.root) {
         console.log("Constructed merkle root matches block crossChainTreeHash");
+        toast({
+          description:
+            "Constructed merkle root matches block crossChainTreeHash",
+          variant: ToastType.INFO,
+        });
       }
 
-      let gasLimit: ethers.BigNumber | undefined;
+      let gasLimit: ethers.BigNumber | null = null;
+
+      toast({
+        description: "Estimating gas",
+        variant: ToastType.INFO,
+      });
 
       const estimateGasWithTimeout = async (
         timeout = 30000,
         interval = 5000
       ) => {
         const startTime = Date.now();
+        console.log("🚀 ~ sendNative ~ startTime:", startTime);
         while (!gasLimit) {
           try {
-            gasLimit = await managementContract?.estimateGas.ExtractNativeValue(
+            gasLimit = await managementContract.estimateGas.ExtractNativeValue(
               msg,
               proof,
               root,
@@ -213,21 +247,32 @@ const useContract = () => {
       };
 
       gasLimit = await estimateGasWithTimeout();
+      console.log("🚀 ~ sendNative ~ gasLimit:", gasLimit);
 
-      const txL1: ethers.PopulatedTransaction | undefined =
-        await managementContract?.populateTransaction.ExtractNativeValue(
+      toast({
+        description: "Sending value transfer to L2",
+        variant: ToastType.INFO,
+      });
+
+      const txL1: ethers.PopulatedTransaction =
+        await managementContract.populateTransaction.ExtractNativeValue(
           msg,
           proof,
           root,
           { gasPrice, gasLimit }
         );
+      console.log("🚀 ~ sendNative ~ txL1:", txL1);
 
-      if (!txL1) {
-        console.error("Transaction not found");
-        return null;
-      }
       const responseL1 = await wallet.sendTransaction(txL1);
+      console.log("🚀 ~ sendNative ~ responseL1:", responseL1);
+
+      toast({
+        description: "Value transfer sent to L2; waiting for confirmation",
+        variant: ToastType.INFO,
+      });
+
       const receiptL1 = await responseL1.wait();
+      console.log("🚀 ~ sendNative ~ receiptL1:", receiptL1);
 
       return receiptL1;
     } catch (error) {
@@ -334,5 +379,3 @@ const useContract = () => {
     getBridgeTransactions,
   };
 };
-
-export default useContract;

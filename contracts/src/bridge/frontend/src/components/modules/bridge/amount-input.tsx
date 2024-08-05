@@ -1,3 +1,4 @@
+import useCustomHookForm from "@/src/hooks/useCustomHookForm";
 import { FormField, FormItem, FormControl, FormMessage } from "../../ui/form";
 import { Input } from "../../ui/input";
 
@@ -5,7 +6,8 @@ export const AmountInput = ({
   form,
   walletConnected,
 }: {
-  form: any;
+  form: ReturnType<typeof useCustomHookForm>;
+
   walletConnected: boolean;
 }) => {
   return (

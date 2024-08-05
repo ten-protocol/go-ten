@@ -5,21 +5,24 @@ import { Alert, AlertDescription } from "../../ui/alert";
 import { Button } from "../../ui/button";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
-import { useFormHook } from "@/src/hooks/useForm";
+import useCustomHookForm from "@/src/hooks/useCustomHookForm";
+import { handleStorage } from "@/src/lib/utils/walletUtils";
 
 export default function FormComponent({
+  form,
   className,
   setOpen,
 }: {
+  form: ReturnType<typeof useCustomHookForm>;
   className?: string;
   setOpen: (value: boolean) => void;
 }) {
-  const { form } = useFormHook();
   const receiver = form.getValues("receiver");
   const addAddressToMainForm = (e: any) => {
     e.preventDefault();
     const address = e.target.form[0].value;
     form.setValue("receiver", address);
+    handleStorage.save("tenBridgeReceiver", address);
     setOpen(false);
   };
   return (

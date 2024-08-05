@@ -1,4 +1,4 @@
-import { ArrowDownUpIcon, Loader } from "lucide-react";
+import { ArrowDownUpIcon } from "lucide-react";
 import { Button } from "../../ui/button";
 
 export const SwitchNetworkButton = ({ handleSwitchNetwork, loading }: any) => {

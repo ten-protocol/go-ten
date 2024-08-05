@@ -1,4 +1,5 @@
 import detectEthereumProvider from "@metamask/detect-provider";
+import { ethers } from "ethers";
 
 export const getEthereumProvider = async () => {
   const provider = await detectEthereumProvider();
