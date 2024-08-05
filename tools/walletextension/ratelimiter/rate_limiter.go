@@ -220,7 +220,7 @@ func (rl *RateLimiter) periodicPrune() {
 	}
 
 	for {
-		time.Sleep(rl.window * 10)
+		time.Sleep(rl.window / 2)
 		rl.PruneRequests()
 	}
 }
