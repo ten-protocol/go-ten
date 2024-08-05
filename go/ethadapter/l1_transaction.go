@@ -15,7 +15,7 @@ import (
 type L1Transaction interface{}
 
 type L1RollupTx struct {
-	Rollup common.EncodedRollup
+	BlobHashes common.EncodedBlobHashes //FIXME
 }
 
 type L1DepositTx struct {

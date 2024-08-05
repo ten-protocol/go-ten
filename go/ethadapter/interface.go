@@ -50,3 +50,10 @@ type EthClient interface {
 type Info struct {
 	L2ID gethcommon.Address // the address of the Obscuro node this client is dedicated to
 }
+
+type L1BlockRef struct {
+	Hash       gethcommon.Hash `json:"hash"`
+	Number     uint64          `json:"number"`
+	ParentHash gethcommon.Hash `json:"parentHash"`
+	Time       uint64          `json:"timestamp"`
+}

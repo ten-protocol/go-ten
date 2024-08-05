@@ -94,12 +94,13 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 		//TODO clean this up
 		if tx.Type() == types.BlobTxType {
 
-			println("DECODE TX HASH WITH NO SIDECAR: ", tx.Hash().Hex())
-			sidecar := tx.BlobTxSidecar()
-			blobs := sidecar.Blobs
+			blobHashes := tx.BlobHashes()
+			for i, hash := range blobHashes {
+				fmt.Printf("DECODE TX with Blob Hash %d: %s\n", i, hash.Hex())
+			}
 			var rollupData []byte
 
-			for _, blob := range blobs {
+			for _, blob := range tx.BlobTxSidecar().Blobs {
 				rollupData = append(rollupData, blob[:]...)
 			}
 
@@ -183,7 +184,7 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx) types.TxData {
 }
 
 func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error) {
-	decodedRollup, err := common.DecodeRollup(t.Rollup)
+	decodedRollup, err := common.DecodeRollup(t.BlobHashes)
 	if err != nil {
 		panic(err)
 	}

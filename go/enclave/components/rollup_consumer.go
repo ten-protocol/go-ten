@@ -127,9 +127,9 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*com
 			continue
 		}
 
-		r, err := common.DecodeRollup(rolTx.Rollup)
+		r, err := rc.fetchRollupDataFromBlobs(rolTx.BlobHashes)
 		if err != nil {
-			rc.logger.Crit("could not decode rollup.", log.ErrKey, err)
+			rc.logger.Crit("could retrieve rollup data from blobs.", log.ErrKey, err)
 			return nil
 		}
 
