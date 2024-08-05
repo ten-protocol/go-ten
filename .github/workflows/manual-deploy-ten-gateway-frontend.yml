@@ -26,7 +26,7 @@ jobs:
       matrix:
         include:
           - testnet_type: 'dev-testnet'
-            GATEWAY_API_URL: 'https://sgx-testnet.ten.xyz' # For testing purposes
+            GATEWAY_API_URL: 'https://sgx-gateway.ten.xyz' # TODO @ziga - change this to dev-testnet before merging
           - testnet_type: 'uat-testnet'
             GATEWAY_API_URL: 'https://uat-testnet.ten.xyz'
           - testnet_type: 'sepolia-testnet'
