@@ -3,7 +3,6 @@ package nodetype
 import (
 	"context"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/components"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -21,7 +20,7 @@ type NodeType interface {
 	OnL1Fork(ctx context.Context, fork *common.ChainFork) error
 
 	// OnL1Block - performed after the block was processed
-	OnL1Block(ctx context.Context, block *types.Block, result *components.BlockIngestionType) error
+	OnL1Block(ctx context.Context, block *common.L1Block, result *components.BlockIngestionType) error
 
 	ExportCrossChainData(context.Context, uint64, uint64) (*common.ExtCrossChainBundle, error)
 

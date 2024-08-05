@@ -513,7 +513,7 @@ func (s *sequencer) signCrossChainBundle(bundle *common.ExtCrossChainBundle) err
 	return nil
 }
 
-func (s *sequencer) OnL1Block(ctx context.Context, block *types.Block, result *components.BlockIngestionType) error {
+func (s *sequencer) OnL1Block(ctx context.Context, _ *common.L1Block, result *components.BlockIngestionType) error {
 	// nothing to do
 	return nil
 }

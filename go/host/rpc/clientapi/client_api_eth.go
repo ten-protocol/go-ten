@@ -187,6 +187,18 @@ func (api *EthereumAPI) GetStorageAt(ctx context.Context, encryptedParams common
 	return *enclaveResponse, nil
 }
 
+func (api *EthereumAPI) MaxPriorityFeePerGas(_ context.Context) (*hexutil.Big, error) {
+	// todo - implement with the gas mechanics
+	header, err := api.host.Storage().FetchHeadBatchHeader()
+	if err != nil {
+		api.logger.Error("Unable to retrieve header for fee history.", log.ErrKey, err)
+		return nil, fmt.Errorf("unable to retrieve MaxPriorityFeePerGas")
+	}
+
+	// just return the base fee?
+	return (*hexutil.Big)(header.BaseFee), err
+}
+
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.
 // rpc.DecimalOrHex -> []byte
 func (api *EthereumAPI) FeeHistory(context.Context, string, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
