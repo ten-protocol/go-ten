@@ -23,37 +23,34 @@ export const ChainSelect = ({
     <FormField
       control={form.control}
       name={name}
-      render={({ field }) => {
-        console.log("🚀 ~", name, field.value.value);
-        return (
-          <FormItem>
-            <Select
-              defaultValue={field.value.value}
-              onValueChange={field.onChange}
-            >
-              <FormControl>
-                <SelectTrigger className="h-8 bg-muted">
-                  <SelectValue
-                    placeholder={field.value.value || "Select Chain"}
-                  />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {chains.map((chain: Chain) => (
-                  <SelectItem
-                    key={chain.value}
-                    value={chain.value}
-                    disabled={!chain.isEnabled}
-                  >
-                    {chain.value}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        );
-      }}
+      render={({ field }) => (
+        <FormItem>
+          <Select
+            defaultValue={field.value.value}
+            onValueChange={field.onChange}
+          >
+            <FormControl>
+              <SelectTrigger className="h-8 bg-muted">
+                <SelectValue
+                  placeholder={field.value.value || "Select Chain"}
+                />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {chains.map((chain: Chain) => (
+                <SelectItem
+                  key={chain.value}
+                  value={chain.value}
+                  disabled={!chain.isEnabled}
+                >
+                  {chain.value}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      )}
     />
   );
 };
