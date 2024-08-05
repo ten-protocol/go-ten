@@ -2,9 +2,7 @@
     "localGeth": {
       "url": "http://127.0.0.1:17000",
       "deploy": [
-        "deployment_scripts/core/layer1/",
-        "deployment_scripts/testnet/layer1/",
-        "deployment_scripts/bridge/layer1/"
+        "deployment_scripts/core"
       ],
       "accounts": [
         "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb",
@@ -19,6 +17,7 @@
         "layer1" : "localGeth"
       },
       "deploy": [
+        "deployment_scripts/funding/layer1",
         "deployment_scripts/messenger/layer1",
         "deployment_scripts/messenger/layer2",
         "deployment_scripts/bridge/",

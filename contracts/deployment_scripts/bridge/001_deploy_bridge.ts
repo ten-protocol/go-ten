@@ -12,7 +12,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         deployments, 
         getNamedAccounts
     } = hre;
-    const mgmtContractAddress = process.env.MGMT_CONTRACT_ADDRESS!!
+    var mgmtContractAddress = process.env.MGMT_CONTRACT_ADDRESS!!
+    if (mgmtContractAddress === undefined) {
+        const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
+        mgmtContractAddress = networkConfig.ManagementContractAddress;
+        console.log(`Fallback read of management contract address = ${mgmtContractAddress}`);
+    }
 
     // L2 address of a prefunded deployer account to be used in smart contracts
     const accountsL2 = await getNamedAccounts();
