@@ -9,8 +9,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/signature"
@@ -187,7 +185,7 @@ func (val *obsValidator) handleGenesis(ctx context.Context, batch *common.BatchH
 	return nil
 }
 
-func (val *obsValidator) OnL1Block(ctx context.Context, block *types.Block, result *components.BlockIngestionType) error {
+func (val *obsValidator) OnL1Block(ctx context.Context, _ *common.L1Block, result *components.BlockIngestionType) error {
 	return val.ExecuteStoredBatches(ctx)
 }
 

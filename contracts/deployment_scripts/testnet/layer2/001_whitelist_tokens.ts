@@ -54,7 +54,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const topic = hre.ethers.id(eventSignature)
 
     // Get the interface for the event in order to convert it to cross chain message.
-    let eventIface = new hre.ethers.Interface([ `event LogMessagePublished(address indexed,uint64,uint32,uint32,bytes,uint8)`]);
+    let eventIface = new hre.ethers.Interface([ `event LogMessagePublished(address,uint64,uint32,uint32,bytes,uint8)`]);
 
     // This function converts the logs from transaction receipts into cross chain messages
     function getXChainMessages(result: Receipt) {

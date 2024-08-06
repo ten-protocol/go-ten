@@ -109,16 +109,11 @@ func convertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi
 	messages := make(common.CrossChainMessages, 0)
 
 	for _, log := range logs {
-		if len(log.Topics) != 2 {
-			return nil, fmt.Errorf("invalid number of topics in log: %d", len(log.Topics))
-		}
-
 		var event MessageBus.MessageBusLogMessagePublished
 		err := messageBusABI.UnpackIntoInterface(&event, eventName, log.Data)
 		if err != nil {
 			return nil, err
 		}
-		event.Sender = gethcommon.BytesToAddress(log.Topics[1].Bytes())
 
 		msg := createCrossChainMessage(event)
 		messages = append(messages, msg)
