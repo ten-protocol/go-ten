@@ -8,6 +8,7 @@ import { showToast, toast } from "../components/ui/use-toast";
 import { ContractState, ToastType } from "../types";
 import { useGeneralService } from "../services/useGeneralService";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
+import { privateKey } from "../lib/constants";
 
 export const useContract = () => {
   const [contractState, setContractState] = useState<ContractState>({
@@ -49,10 +50,7 @@ export const useContract = () => {
       return;
     }
     const p = new ethers.providers.Web3Provider(provider);
-    const wallet = new ethers.Wallet(
-      process.env.NEXT_PUBLIC_PRIVATE_KEY as string,
-      p
-    );
+    const wallet = new ethers.Wallet(privateKey as string, p);
     const address = isL1ToL2 ? l1BridgeAddress : l2BridgeAddress;
     const messageBusAddress = isL1ToL2
       ? l1MessageBusAddress
@@ -108,6 +106,11 @@ export const useContract = () => {
 
       const txResponse = await signer.sendTransaction(tx);
       console.log("Transaction response:", txResponse);
+
+      toast({
+        description: "Transaction sent; waiting for confirmation",
+        variant: ToastType.INFO,
+      });
 
       const txReceipt = await txResponse.wait();
       console.log("Transaction receipt:", txReceipt);
@@ -225,7 +228,6 @@ export const useContract = () => {
         interval = 5000
       ) => {
         const startTime = Date.now();
-        console.log("🚀 ~ sendNative ~ startTime:", startTime);
         while (!gasLimit) {
           try {
             gasLimit = await managementContract.estimateGas.ExtractNativeValue(
@@ -239,6 +241,10 @@ export const useContract = () => {
           }
           if (Date.now() - startTime >= timeout) {
             console.log("Timed out waiting for gas estimate, using default");
+            toast({
+              description: "Timed out waiting for gas estimate, using default",
+              variant: ToastType.INFO,
+            });
             return ethers.BigNumber.from(2000000);
           }
           await new Promise((resolve) => setTimeout(resolve, interval));
