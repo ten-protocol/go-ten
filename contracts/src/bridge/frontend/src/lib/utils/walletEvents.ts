@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+import { ethereum } from ".";
 
 export const setupEventListeners = (
   provider: any,
@@ -23,5 +23,9 @@ export const setupEventListeners = (
 };
 
 export const initializeSigner = (provider: any) => {
-  return new ethers.providers.Web3Provider(provider).getSigner();
+  if (!provider) {
+    return null;
+  }
+
+  return provider.getSigner();
 };

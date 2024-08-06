@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import {
   CardHeader,
   CardTitle,
@@ -58,6 +58,13 @@ export default function Dashboard() {
 
   const onSubmit = React.useCallback(
     async (data: any) => {
+      if (amount > fromTokenBalance) {
+        setError("amount", {
+          type: "manual",
+          message: "Amount must be less than balance",
+        });
+        return;
+      }
       try {
         setLoading(true);
         const transactionData = { ...data, receiver: receiver || address };
@@ -143,10 +150,8 @@ export default function Dashboard() {
 
   React.useEffect(() => {
     const storedReceiver = handleStorage.get("tenBridgeReceiver");
-    if (storedReceiver) {
-      setValue("receiver", storedReceiver);
-    }
-  }, []);
+    setValue("receiver", storedReceiver ? storedReceiver : address);
+  }, [address]);
 
   React.useEffect(() => {
     const fetchTokenBalance = async (token: Token) => {
@@ -169,7 +174,13 @@ export default function Dashboard() {
         fetchTokenBalance(selectedToken);
       }
     }
-  }, [fromChain, token, amount, receiver, provider, isL1ToL2]);
+  }, [fromChain, token, amount, receiver, provider, isL1ToL2, walletConnected]);
+
+  React.useEffect(() => {
+    setValue("fromChain", isL1ToL2 ? L1CHAINS[0].value : L2CHAINS[0].value);
+    setValue("toChain", isL1ToL2 ? L2CHAINS[0].value : L1CHAINS[0].value);
+    setValue("token", isL1ToL2 ? L1TOKENS[0].value : L2TOKENS[0].value);
+  }, [isL1ToL2]);
 
   return (
     <div className="h-full flex flex-col space-y-4 justify-center items-center">

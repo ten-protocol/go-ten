@@ -25,50 +25,37 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
   const [address, setAddress] = useState<string>("");
   const [isL1ToL2, setIsL1ToL2] = useState<boolean>(true);
 
-  useEffect(() => {
-    const storedAddress = handleStorage.get("walletAddress");
-    const storedIsL1ToL2 = handleStorage.get("isL1ToL2") === "true";
+  const initializeProvider = async () => {
+    const detectedProvider = await getEthereumProvider();
+    setProvider(detectedProvider);
 
-    if (storedAddress) {
-      setAddress(storedAddress);
-      setIsWalletConnected(true);
-      setIsL1ToL2(storedIsL1ToL2);
-    }
+    const newSigner = initializeSigner(provider);
+    setSigner(newSigner);
 
-    const initializeProvider = async () => {
-      const detectedProvider = await getEthereumProvider();
-      setProvider(detectedProvider);
+    const chainId = await detectedProvider.send(requestMethods.getChainId, []);
 
-      const chainId = await detectedProvider.request({
-        method: requestMethods.getChainId,
-      });
-
-      const isL1 = chainId === WalletNetwork.L1_SEPOLIA;
-      setIsL1ToL2(isL1);
-    };
-
-    initializeProvider();
-  }, []);
+    const isL1 = chainId === WalletNetwork.L1_SEPOLIA;
+    setIsL1ToL2(isL1);
+  };
 
   const connectWallet = async () => {
     try {
       const detectedProvider = await getEthereumProvider();
       setProvider(detectedProvider);
 
-      const chainId = await detectedProvider.request({
-        method: requestMethods.getChainId,
-      });
+      const accounts = await detectedProvider.send(
+        requestMethods.connectAccounts,
+        []
+      );
 
-      const isL1 = chainId === WalletNetwork.L1_SEPOLIA;
-      setIsL1ToL2(isL1);
+      const newSigner = initializeSigner(detectedProvider);
+      setSigner(newSigner);
 
-      const accounts = await detectedProvider.request({
-        method: requestMethods.connectAccounts,
-      });
       setIsWalletConnected(true);
       setAddress(accounts[0]);
       handleStorage.save("walletAddress", accounts[0]);
-      handleStorage.save("isL1ToL2", isL1.toString());
+      handleStorage.save("isL1ToL2", isL1ToL2.toString());
+
       toast({
         title: "Connected",
         description: "Connected to wallet! Account: " + accounts[0],
@@ -94,6 +81,9 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
         setIsWalletConnected(false);
         handleStorage.remove("walletAddress");
         handleStorage.remove("isL1ToL2");
+        handleStorage.remove("tenBridgeReceiver");
+        window.location.reload();
+
         toast({
           title: "Disconnected",
           description: "Disconnected from wallet",
@@ -111,14 +101,17 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
   };
 
   useEffect(() => {
-    if (provider) {
-      const newSigner = initializeSigner(provider);
-      setSigner(newSigner);
+    const storedAddress = handleStorage.get("walletAddress");
+    const storedIsL1ToL2 = handleStorage.get("isL1ToL2") === "true";
 
-      const cleanup = setupEventListeners(provider, setAddress);
-      return cleanup;
+    if (storedAddress) {
+      setAddress(storedAddress);
+      setIsWalletConnected(true);
+      setIsL1ToL2(storedIsL1ToL2);
     }
-  }, [provider]);
+
+    initializeProvider();
+  }, []);
 
   const switchNetwork = async () => {
     if (!provider) {
@@ -133,13 +126,15 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
       const desiredNetwork = isL1ToL2
         ? WalletNetwork.L2_TEN_TESTNET
         : WalletNetwork.L1_SEPOLIA;
-      await provider.request({
-        method: requestMethods.switchNetwork,
-        params: [{ chainId: desiredNetwork }],
-      });
+
+      await provider.request(requestMethods.switchNetwork, [
+        { chainId: desiredNetwork },
+      ]);
+
       const isL1 = desiredNetwork === WalletNetwork.L1_SEPOLIA;
       setIsL1ToL2(isL1);
       handleStorage.save("isL1ToL2", isL1.toString());
+
       toast({
         title: "Network Switched",
         description: `Switched to ${
@@ -166,6 +161,16 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
       }
     }
   };
+
+  useEffect(() => {
+    if (provider) {
+      const newSigner = initializeSigner(provider);
+      setSigner(newSigner);
+
+      const cleanup = setupEventListeners(provider, setAddress);
+      return cleanup;
+    }
+  }, [provider]);
 
   const value = {
     provider,

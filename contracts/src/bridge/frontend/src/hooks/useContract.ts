@@ -4,7 +4,7 @@ import Bridge from "../../artifacts/IBridge.sol/IBridge.json";
 import ManagementContractAbi from "../../artifacts/ManagementContract.sol/ManagementContract.json";
 import IMessageBusAbi from "../../artifacts/IMessageBus.sol/IMessageBus.json";
 import { useWalletStore } from "../components/providers/wallet-provider";
-import { showToast, toast } from "../components/ui/use-toast";
+import { toast } from "../components/ui/use-toast";
 import { ContractState, ToastType } from "../types";
 import { useGeneralService } from "../services/useGeneralService";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
@@ -26,64 +26,56 @@ export const useContract = () => {
   }, [obscuroConfig, isObscuroConfigLoading]);
 
   useEffect(() => {
-    if (isObscuroConfigLoading) {
-      return;
-    }
-    if (!obscuroConfig) {
-      showToast(ToastType.DESTRUCTIVE, "Config not found");
-      return;
-    }
+    const setupContracts = async () => {
+      if (!memoizedConfig || !provider || !signer) {
+        return;
+      }
 
-    if (!memoizedConfig) {
-      showToast(ToastType.DESTRUCTIVE, "Config not found");
-      return;
-    }
+      const l1BridgeAddress = memoizedConfig.ImportantContracts.L1Bridge;
+      const l2BridgeAddress = memoizedConfig.ImportantContracts.L2Bridge;
+      const l1MessageBusAddress = memoizedConfig.MessageBusAddress;
+      const l2MessageBusAddress = memoizedConfig.L2MessageBusAddress;
+      const managementContractAddress =
+        memoizedConfig.ManagementContractAddress;
 
-    const l1BridgeAddress = memoizedConfig.ImportantContracts.L1Bridge;
-    const l2BridgeAddress = memoizedConfig.ImportantContracts.L2Bridge;
-    const l1MessageBusAddress = memoizedConfig.MessageBusAddress;
-    const l2MessageBusAddress = memoizedConfig.L2MessageBusAddress;
-    const managementContractAddress = memoizedConfig.ManagementContractAddress;
+      const wallet = new ethers.Wallet(privateKey as string, provider);
 
-    if (!provider) {
-      showToast(ToastType.DESTRUCTIVE, "Provider not found");
-      return;
-    }
-    const p = new ethers.providers.Web3Provider(provider);
-    const wallet = new ethers.Wallet(privateKey as string, p);
-    const address = isL1ToL2 ? l1BridgeAddress : l2BridgeAddress;
-    const messageBusAddress = isL1ToL2
-      ? l1MessageBusAddress
-      : l2MessageBusAddress;
-    const bridgeContract = new ethers.Contract(
-      address as string,
-      Bridge.abi,
-      wallet
-    );
-    const messageBusContract = new ethers.Contract(
-      messageBusAddress as string,
-      IMessageBusAbi,
-      wallet
-    );
-    const managementContract = new ethers.Contract(
-      managementContractAddress as string,
-      ManagementContractAbi,
-      wallet
-    );
-    setContractState({
-      bridgeContract,
-      managementContract,
-      messageBusContract,
-      wallet,
-      messageBusAddress,
-    });
-  }, [isObscuroConfigLoading, memoizedConfig, provider, isL1ToL2]);
+      const address = isL1ToL2 ? l1BridgeAddress : l2BridgeAddress;
+      const messageBusAddress = isL1ToL2
+        ? l1MessageBusAddress
+        : l2MessageBusAddress;
+
+      const bridgeContract = new ethers.Contract(address, Bridge.abi, wallet);
+      const messageBusContract = new ethers.Contract(
+        messageBusAddress,
+        IMessageBusAbi,
+        wallet
+      );
+      const managementContract = new ethers.Contract(
+        managementContractAddress,
+        ManagementContractAbi,
+        wallet
+      );
+
+      setContractState({
+        bridgeContract,
+        managementContract,
+        messageBusContract,
+        wallet,
+        messageBusAddress,
+      });
+    };
+
+    setupContracts();
+  }, [memoizedConfig, provider, isL1ToL2, signer]);
 
   const sendNative = async (receiver: string, value: string) => {
     const { bridgeContract, managementContract, messageBusContract, wallet } =
       contractState;
 
     if (!bridgeContract || !signer || !wallet || !managementContract) {
+      console.error("Contract or signer not found");
+      console.log("🚀 ~ sendNative ~ signer", signer, provider);
       throw new Error("Contract or signer not found");
     }
 
@@ -308,8 +300,7 @@ export const useContract = () => {
     }
 
     try {
-      const p = new ethers.providers.Web3Provider(provider);
-      const balance = await p.getBalance(walletAddress);
+      const balance = await provider.getBalance(walletAddress);
       return ethers.utils.formatEther(balance);
     } catch (error) {
       console.error("Error checking Ether balance:", error);
@@ -328,14 +319,13 @@ export const useContract = () => {
     }
 
     try {
-      const p = new ethers.providers.Web3Provider(provider);
       const tokenContract = new ethers.Contract(
         tokenAddress,
         [
           "function balanceOf(address owner) view returns (uint256)",
           "function decimals() view returns (uint8)",
         ],
-        p
+        provider
       );
 
       const balance = await tokenContract.balanceOf(walletAddress);
@@ -356,8 +346,6 @@ export const useContract = () => {
     }
 
     try {
-      const p = new ethers.providers.Web3Provider(provider);
-
       const topics = [
         ethers.utils.id("ValueTransfer(address,address,uint256)"),
         ethers.utils.hexZeroPad(userAddress, 32),
@@ -369,7 +357,7 @@ export const useContract = () => {
         fromBlock: 5868682,
       };
 
-      return await p.getLogs(filter);
+      return await provider.getLogs(filter);
     } catch (error) {
       console.error("Error fetching transactions:", error);
       throw error;
