@@ -1,16 +1,19 @@
 package gateway
 
+import "time"
+
 // Option is a function that applies configs to a Config Object
 type Option = func(c *Config)
 
 // Config holds the properties that configure the package
 type Config struct {
-	tenNodeHost     string
-	tenNodeHTTPPort int
-	tenNodeWSPort   int
-	gatewayHTTPPort int
-	gatewayWSPort   int
-	dockerImage     string
+	tenNodeHost              string
+	tenNodeHTTPPort          int
+	tenNodeWSPort            int
+	gatewayHTTPPort          int
+	gatewayWSPort            int
+	rateLimitUserComputeTime time.Duration
+	dockerImage              string
 }
 
 func NewGatewayConfig(opts ...Option) *Config {
@@ -56,5 +59,11 @@ func WithGatewayHTTPPort(i int) Option {
 func WithGatewayWSPort(i int) Option {
 	return func(c *Config) {
 		c.gatewayWSPort = i
+	}
+}
+
+func WithRateLimitUserComputeTime(d time.Duration) Option {
+	return func(c *Config) {
+		c.rateLimitUserComputeTime = d
 	}
 }
