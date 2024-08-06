@@ -3,9 +3,7 @@ package components
 import (
 	"context"
 	"fmt"
-
 	"github.com/ten-protocol/go-ten/go/enclave/core"
-
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/measure"
@@ -13,7 +11,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
@@ -22,8 +19,8 @@ type rollupConsumerImpl struct {
 
 	rollupCompression *RollupCompression
 	batchRegistry     BatchRegistry
-
-	logger gethlog.Logger
+	blobResolver      BlobResolver
+	logger            gethlog.Logger
 
 	storage      storage.Storage
 	sigValidator *SignatureValidator
@@ -32,6 +29,7 @@ type rollupConsumerImpl struct {
 func NewRollupConsumer(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	batchRegistry BatchRegistry,
+	blobResolver BlobResolver,
 	rollupCompression *RollupCompression,
 	storage storage.Storage,
 	logger gethlog.Logger,
@@ -40,6 +38,7 @@ func NewRollupConsumer(
 	return &rollupConsumerImpl{
 		MgmtContractLib:   mgmtContractLib,
 		batchRegistry:     batchRegistry,
+		blobResolver:      blobResolver,
 		rollupCompression: rollupCompression,
 		logger:            logger,
 		storage:           storage,
@@ -50,7 +49,7 @@ func NewRollupConsumer(
 func (rc *rollupConsumerImpl) ProcessRollupsInBlock(ctx context.Context, b *common.BlockAndReceipts) error {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed block", log.BlockHashKey, b.Block.Hash())
 
-	rollups := rc.extractRollups(b)
+	rollups := rc.extractRollups(ctx, b)
 	if len(rollups) == 0 {
 		return nil
 	}
@@ -111,23 +110,18 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 
 // todo - when processing the rollup, instead of looking up batches one by one, compare the last sequence number from the db with the ones in the rollup
 // extractRollups - returns a list of the rollups published in this block
-func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*common.ExtRollup {
+func (rc *rollupConsumerImpl) extractRollups(ctx context.Context, br *common.BlockAndReceipts) []*common.ExtRollup {
 	rollups := make([]*common.ExtRollup, 0)
 	b := br.Block
 
 	for _, tx := range *br.SuccessfulTransactions() {
-		// go through all rollup transactions
-		t := rc.MgmtContractLib.DecodeTx(tx)
-		if t == nil {
+		blobHashes := rc.MgmtContractLib.DecodeTx(tx)
+		if blobHashes == nil {
 			continue
 		}
 
-		rolTx, ok := t.(*ethadapter.L1RollupTx)
-		if !ok {
-			continue
-		}
-
-		r, err := rc.fetchRollupDataFromBlobs(rolTx.BlobHashes)
+		// call L1BeaconClient here
+		blobs, err := rc.blobResolver.FetchBlobs(ctx, br.Block.Header(), toIndexedBlobHashes(blobHashes))
 		if err != nil {
 			rc.logger.Crit("could retrieve rollup data from blobs.", log.ErrKey, err)
 			return nil

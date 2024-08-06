@@ -1,9 +1,8 @@
-package beaconclient
+package ethadapter
 
 import (
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/stretchr/testify/require"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"testing"
 )
 
@@ -16,20 +15,20 @@ func TestBlobsFromSidecars(t *testing.T) {
 	index1, sidecar1 := makeTestBlobSidecar(indices[1])
 	index2, sidecar2 := makeTestBlobSidecar(indices[2])
 
-	hashes := []ethadapter.IndexedBlobHash{index0, index1, index2}
+	hashes := []IndexedBlobHash{index0, index1, index2}
 
 	// put the sidecars in scrambled order to confirm error
-	sidecars := []*ethadapter.BlobSidecar{sidecar2, sidecar0, sidecar1}
+	sidecars := []*BlobSidecar{sidecar2, sidecar0, sidecar1}
 	_, err := blobsFromSidecars(sidecars, hashes)
 	require.Error(t, err)
 
 	// too few sidecars should error
-	sidecars = []*ethadapter.BlobSidecar{sidecar0, sidecar1}
+	sidecars = []*BlobSidecar{sidecar0, sidecar1}
 	_, err = blobsFromSidecars(sidecars, hashes)
 	require.Error(t, err)
 
 	// correct order should work
-	sidecars = []*ethadapter.BlobSidecar{sidecar0, sidecar1, sidecar2}
+	sidecars = []*BlobSidecar{sidecar0, sidecar1, sidecar2}
 	blobs, err := blobsFromSidecars(sidecars, hashes)
 	require.NoError(t, err)
 	// confirm order by checking first blob byte against expected index
@@ -59,8 +58,8 @@ func TestBlobsFromSidecars(t *testing.T) {
 }
 
 func TestBlobsFromSidecars_EmptySidecarList(t *testing.T) {
-	hashes := []ethadapter.IndexedBlobHash{}
-	sidecars := []*ethadapter.BlobSidecar{}
+	hashes := []IndexedBlobHash{}
+	sidecars := []*BlobSidecar{}
 	blobs, err := blobsFromSidecars(sidecars, hashes)
 	require.NoError(t, err)
 	require.Empty(t, blobs, "blobs should be empty when no sidecars are provided")
@@ -81,22 +80,22 @@ func TestClientPoolSeveral(t *testing.T) {
 	}
 }
 
-func makeTestBlobSidecar(index uint64) (ethadapter.IndexedBlobHash, *ethadapter.BlobSidecar) {
+func makeTestBlobSidecar(index uint64) (IndexedBlobHash, *BlobSidecar) {
 	blob := kzg4844.Blob{}
 	// make first byte of test blob match its index so we can easily verify if is returned in the
 	// expected order
 	blob[0] = byte(index)
 	commit, _ := kzg4844.BlobToCommitment(&blob)
 	proof, _ := kzg4844.ComputeBlobProof(&blob, commit)
-	hash := ethadapter.KZGToVersionedHash(commit)
+	hash := KZGToVersionedHash(commit)
 
-	idh := ethadapter.IndexedBlobHash{
+	idh := IndexedBlobHash{
 		Index: index,
 		Hash:  hash,
 	}
-	sidecar := ethadapter.BlobSidecar{
+	sidecar := BlobSidecar{
 		Index:         index,
-		Blob:          ethadapter.Blob(blob),
+		Blob:          Blob(blob),
 		KZGCommitment: commit,
 		KZGProof:      proof,
 	}

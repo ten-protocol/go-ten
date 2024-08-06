@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"math/big"
 	"sync"
 	"time"
@@ -170,6 +171,8 @@ func NewEnclave(
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 	registry := components.NewBatchRegistry(storage, logger)
+	beaconClient := ethadapter.NewL1BeaconClient()
+	blobResolver := components.NewBeaconBlobResolver(beaconClient)
 	batchExecutor := components.NewBatchExecutor(storage, registry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
 	sigVerifier, err := components.NewSignatureValidator(storage)
 	rProducer := components.NewRollupProducer(enclaveKey.EnclaveID(), storage, registry, logger)
@@ -177,7 +180,7 @@ func NewEnclave(
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
 	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
-	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
+	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, blobResolver, rollupCompression, storage, logger, sigVerifier)
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKey.EnclaveID(), storage, logger)
 
 	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, gethEncodingService, *config, logger)

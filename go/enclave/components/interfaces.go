@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"errors"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -126,4 +127,9 @@ type RollupConsumer interface {
 	// and verifies its integrity, saving and processing any batches that have
 	// not been seen previously.
 	ProcessRollupsInBlock(ctx context.Context, b *common.BlockAndReceipts) error
+}
+
+type BlobResolver interface {
+	// FetchBlobs Fetches the blob data using beacon chain APIs
+	FetchBlobs(ctx context.Context, b *types.Header, hashes []ethadapter.IndexedBlobHash) ([]*ethadapter.Blob, error)
 }

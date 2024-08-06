@@ -34,7 +34,7 @@ type MgmtContractLib interface {
 	CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, verifyAttester bool) types.TxData
 	CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData
 
-	// DecodeTx receives a *types.Transaction and converts it to an common.L1Transaction
+	// DecodeTx receives a *types.Transaction and converts it to a common.L1Transaction
 	DecodeTx(tx *types.Transaction) ethadapter.L1Transaction
 	GetContractAddr() *gethcommon.Address
 
@@ -91,42 +91,16 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	contractCallData := map[string]interface{}{}
 	switch method.Name {
 	case AddRollupMethod:
-		//TODO clean this up
 		if tx.Type() == types.BlobTxType {
-			blobHashes := tx.BlobHashes()
-			for i, hash := range blobHashes {
-				fmt.Printf("DECODE TX with Blob Hash %d: %s\n", i, hash.Hex())
+			blobHashes := toIndexedBlobHashes(tx.BlobHashes()...)
+
+			return &ethadapter.L1RollupHashes{
+				BlobHashes: blobHashes,
 			}
-			var rollupData []byte
-
-			for _, blob := range tx.BlobTxSidecar().Blobs {
-				rollupData = append(rollupData, blob[:]...)
-			}
-
-			// TODO handle metadata
-			var encodedRollup common.EncodedRollup
-			if err := rlp.DecodeBytes(rollupData, &encodedRollup); err != nil {
-				panic(err)
-			}
-
-			return &ethadapter.L1RollupTx{
-				Rollup: encodedRollup,
-			}
+		} else {
+			println("NONE BLOB ROLLUP FOUND !!")
+			return nil
 		}
-		println("NONE BLOB ROLLUP FOUND")
-		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
-			panic(err)
-		}
-		callData, found := contractCallData["_rollupData"]
-		if !found {
-			panic("call data not found for rollupData")
-		}
-		rollup := Base64DecodeFromString(callData.(string))
-
-		return &ethadapter.L1RollupTx{
-			Rollup: rollup,
-		}
-
 	case RespondSecretMethod:
 		return c.unpackRespondSecretTx(tx, method, contractCallData)
 
@@ -536,7 +510,6 @@ func chunkRollup(blob ethadapter.Blob) ([]ethadapter.Blob, error) {
 	base64ChunkSize = base64ChunkSize - (base64ChunkSize % 4) - 4 //metadata size
 	//indexByteSize := 4 // size in bytes for the chunk index metadata
 	var blobs []ethadapter.Blob
-	//chunkIndex := uint32(0)
 
 	for i := 0; i < len(blob); i += maxBlobSize {
 		end := i + maxBlobSize
@@ -544,15 +517,9 @@ func chunkRollup(blob ethadapter.Blob) ([]ethadapter.Blob, error) {
 			end = len(blob)
 		}
 
-		//metadata := make([]byte, indexByteSize)
-		//binary.BigEndian.PutUint32(metadata, chunkIndex)
-		//println("metadata: ", metadata)
-		//println("metadata indexByteSize: ", indexByteSize)
-
 		chunkData := blob[i:end]
 
 		// ethereum expects fixed blob length so we need to pad it out
-		//actualLength := len(chunkData) + len(metadata)
 		actualLength := len(chunkData)
 		if actualLength < 131072 {
 			// Add padding
@@ -565,8 +532,6 @@ func chunkRollup(blob ethadapter.Blob) ([]ethadapter.Blob, error) {
 		}
 
 		blobs = append(blobs, blob)
-
-		//chunkIndex++
 	}
 	return blobs, nil
 }
@@ -575,7 +540,7 @@ func chunkRollup(blob ethadapter.Blob) ([]ethadapter.Blob, error) {
 // data.
 func makeSidecar(blobs []ethadapter.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
 	sidecar := &types.BlobTxSidecar{}
-	blobHashes := []gethcommon.Hash{}
+	var blobHashes []gethcommon.Hash
 	for i, blob := range blobs {
 		rawBlob := *blob.KZGBlob()
 		sidecar.Blobs = append(sidecar.Blobs, rawBlob)
@@ -592,4 +557,12 @@ func makeSidecar(blobs []ethadapter.Blob) (*types.BlobTxSidecar, []gethcommon.Ha
 		blobHashes = append(blobHashes, ethadapter.KZGToVersionedHash(commitment))
 	}
 	return sidecar, blobHashes, nil
+}
+
+func toIndexedBlobHashes(hs ...gethcommon.Hash) []ethadapter.IndexedBlobHash {
+	hashes := make([]ethadapter.IndexedBlobHash, 0, len(hs))
+	for i, hash := range hs {
+		hashes = append(hashes, ethadapter.IndexedBlobHash{Index: uint64(i), Hash: hash})
+	}
+	return hashes
 }

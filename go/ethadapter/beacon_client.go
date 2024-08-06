@@ -1,11 +1,11 @@
-package beaconclient
+package ethadapter
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ethereum/go-ethereum/core/types"
 	"io"
 	"net/http"
 	"net/url"
@@ -41,14 +41,14 @@ type L1BeaconClient struct {
 // BeaconClient is a thin wrapper over the Beacon APIs.
 type BeaconClient interface {
 	NodeVersion(ctx context.Context) (string, error)
-	ConfigSpec(ctx context.Context) (ethadapter.APIConfigResponse, error)
-	BeaconGenesis(ctx context.Context) (ethadapter.APIGenesisResponse, error)
-	BeaconBlobSideCars(ctx context.Context, fetchAllSidecars bool, slot uint64, hashes []ethadapter.IndexedBlobHash) (ethadapter.APIGetBlobSidecarsResponse, error)
+	ConfigSpec(ctx context.Context) (APIConfigResponse, error)
+	BeaconGenesis(ctx context.Context) (APIGenesisResponse, error)
+	BeaconBlobSideCars(ctx context.Context, fetchAllSidecars bool, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error)
 }
 
 // BlobSideCarsFetcher is a thin wrapper over the Beacon APIs.
 type BlobSideCarsFetcher interface {
-	BeaconBlobSideCars(ctx context.Context, fetchAllSidecars bool, slot uint64, hashes []ethadapter.IndexedBlobHash) (ethadapter.APIGetBlobSidecarsResponse, error)
+	BeaconBlobSideCars(ctx context.Context, fetchAllSidecars bool, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error)
 }
 
 // BeaconHTTPClient implements BeaconClient. It provides golang types over the basic Beacon API.
@@ -61,8 +61,8 @@ func NewBeaconHTTPClient(client *http.Client, baseURL string) *BeaconHTTPClient 
 	return &BeaconHTTPClient{client: client, baseURL: baseURL}
 }
 
-func (cl *BeaconHTTPClient) apiReq(ctx context.Context, dest any, reqPath string, reqQuery url.Values) error {
-	baseURL, err := url.Parse(cl.baseURL)
+func (bc *BeaconHTTPClient) apiReq(ctx context.Context, dest any, reqPath string, reqQuery url.Values) error {
+	baseURL, err := url.Parse(bc.baseURL)
 	if err != nil {
 		return fmt.Errorf("failed to parse base URL: %w", err)
 	}
@@ -83,7 +83,7 @@ func (cl *BeaconHTTPClient) apiReq(ctx context.Context, dest any, reqPath string
 	}
 	req.Header = headers
 
-	resp, err := cl.client.Do(req)
+	resp, err := bc.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("http Get failed: %w", err)
 	}
@@ -104,31 +104,31 @@ func (cl *BeaconHTTPClient) apiReq(ctx context.Context, dest any, reqPath string
 	return nil
 }
 
-func (cl *BeaconHTTPClient) NodeVersion(ctx context.Context) (string, error) {
-	var resp ethadapter.APIVersionResponse
-	if err := cl.apiReq(ctx, &resp, versionMethod, nil); err != nil {
+func (bc *BeaconHTTPClient) NodeVersion(ctx context.Context) (string, error) {
+	var resp APIVersionResponse
+	if err := bc.apiReq(ctx, &resp, versionMethod, nil); err != nil {
 		return "", err
 	}
 	return resp.Data.Version, nil
 }
 
-func (cl *BeaconHTTPClient) ConfigSpec(ctx context.Context) (ethadapter.APIConfigResponse, error) {
-	var configResp ethadapter.APIConfigResponse
-	if err := cl.apiReq(ctx, &configResp, specMethod, nil); err != nil {
-		return ethadapter.APIConfigResponse{}, err
+func (bc *BeaconHTTPClient) ConfigSpec(ctx context.Context) (APIConfigResponse, error) {
+	var configResp APIConfigResponse
+	if err := bc.apiReq(ctx, &configResp, specMethod, nil); err != nil {
+		return APIConfigResponse{}, err
 	}
 	return configResp, nil
 }
 
-func (cl *BeaconHTTPClient) BeaconGenesis(ctx context.Context) (ethadapter.APIGenesisResponse, error) {
-	var genesisResp ethadapter.APIGenesisResponse
-	if err := cl.apiReq(ctx, &genesisResp, genesisMethod, nil); err != nil {
-		return ethadapter.APIGenesisResponse{}, err
+func (bc *BeaconHTTPClient) BeaconGenesis(ctx context.Context) (APIGenesisResponse, error) {
+	var genesisResp APIGenesisResponse
+	if err := bc.apiReq(ctx, &genesisResp, genesisMethod, nil); err != nil {
+		return APIGenesisResponse{}, err
 	}
 	return genesisResp, nil
 }
 
-func (cl *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, fetchAllSidecars bool, slot uint64, hashes []ethadapter.IndexedBlobHash) (ethadapter.APIGetBlobSidecarsResponse, error) {
+func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, fetchAllSidecars bool, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
 	reqPath := path.Join(sidecarsMethodPrefix, strconv.FormatUint(slot, 10))
 	var reqQuery url.Values
 	if !fetchAllSidecars {
@@ -137,9 +137,9 @@ func (cl *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, fetchAllSide
 			reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))
 		}
 	}
-	var resp ethadapter.APIGetBlobSidecarsResponse
-	if err := cl.apiReq(ctx, &resp, reqPath, reqQuery); err != nil {
-		return ethadapter.APIGetBlobSidecarsResponse{}, err
+	var resp APIGetBlobSidecarsResponse
+	if err := bc.apiReq(ctx, &resp, reqPath, reqQuery); err != nil {
+		return APIGetBlobSidecarsResponse{}, err
 	}
 	return resp, nil
 }
@@ -202,8 +202,8 @@ func (cl *L1BeaconClient) GetTimeToSlotFn(ctx context.Context) (TimeToSlotFn, er
 		return nil, err
 	}
 
-	genesisTime := uint64(genesis.Data.GenesisTime)
-	secondsPerSlot := uint64(config.Data.SecondsPerSlot)
+	genesisTime := genesis.Data.GenesisTime
+	secondsPerSlot := config.Data.SecondsPerSlot
 	if secondsPerSlot == 0 {
 		return nil, fmt.Errorf("got bad value for seconds per slot: %v", config.Data.SecondsPerSlot)
 	}
@@ -216,7 +216,7 @@ func (cl *L1BeaconClient) GetTimeToSlotFn(ctx context.Context) (TimeToSlotFn, er
 	return cl.timeToSlotFn, nil
 }
 
-func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes []ethadapter.IndexedBlobHash) (ethadapter.APIGetBlobSidecarsResponse, error) {
+func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
 	var errs []error
 	for i := 0; i < cl.pool.Len(); i++ {
 		f := cl.pool.Get()
@@ -228,32 +228,32 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 			return resp, nil
 		}
 	}
-	return ethadapter.APIGetBlobSidecarsResponse{}, errors.Join(errs...)
+	return APIGetBlobSidecarsResponse{}, errors.Join(errs...)
 }
 
 // GetBlobSidecars fetches blob sidecars that were confirmed in the specified
 // L1 block with the given indexed hashes.
 // Order of the returned sidecars is guaranteed to be that of the hashes.
 // Blob data is not checked for validity.
-func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, ref ethadapter.L1BlockRef, hashes []ethadapter.IndexedBlobHash) ([]*ethadapter.BlobSidecar, error) {
+func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, hashes []IndexedBlobHash) ([]*BlobSidecar, error) {
 	if len(hashes) == 0 {
-		return []*ethadapter.BlobSidecar{}, nil
+		return []*BlobSidecar{}, nil
 	}
 	slotFn, err := cl.GetTimeToSlotFn(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get time to slot function: %w", err)
 	}
-	slot, err := slotFn(ref.Time)
+	slot, err := slotFn(b.Time)
 	if err != nil {
 		return nil, fmt.Errorf("error in converting ref.Time to slot: %w", err)
 	}
 
 	resp, err := cl.fetchSidecars(ctx, slot, hashes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, ref, err)
+		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, b, err)
 	}
 
-	apiscs := make([]*ethadapter.APIBlobSidecar, 0, len(hashes))
+	apiscs := make([]*APIBlobSidecar, 0, len(hashes))
 	// filter and order by hashes
 	for _, h := range hashes {
 		for _, apisc := range resp.Data {
@@ -268,7 +268,7 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, ref ethadapter.L1
 		return nil, fmt.Errorf("expected %v sidecars but got %v", len(hashes), len(apiscs))
 	}
 
-	bscs := make([]*ethadapter.BlobSidecar, 0, len(hashes))
+	bscs := make([]*BlobSidecar, 0, len(hashes))
 	for _, apisc := range apiscs {
 		bscs = append(bscs, apisc.BlobSidecar())
 	}
@@ -276,38 +276,38 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, ref ethadapter.L1
 	return bscs, nil
 }
 
-// GetBlobs fetches blobs that were confirmed in the specified L1 block with the given indexed
+// FetchBlobs fetches blobs that were confirmed in the specified L1 block with the given indexed
 // hashes. The order of the returned blobs will match the order of `hashes`.  Confirms each
 // blob's validity by checking its proof against the commitment, and confirming the commitment
 // hashes to the expected value. Returns error if any blob is found invalid.
-func (cl *L1BeaconClient) GetBlobs(ctx context.Context, ref ethadapter.L1BlockRef, hashes []ethadapter.IndexedBlobHash) ([]*ethadapter.Blob, error) {
-	blobSidecars, err := cl.GetBlobSidecars(ctx, ref, hashes)
+func (cl *L1BeaconClient) FetchBlobs(ctx context.Context, b *types.Header, hashes []IndexedBlobHash) ([]*Blob, error) {
+	blobSidecars, err := cl.GetBlobSidecars(ctx, b, hashes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get blob sidecars for L1BlockRef %s: %w", ref, err)
+		return nil, fmt.Errorf("failed to get blob sidecars for L1BlockRef %s: %w", b, err)
 	}
 	return blobsFromSidecars(blobSidecars, hashes)
 }
 
-func blobsFromSidecars(blobSidecars []*ethadapter.BlobSidecar, hashes []ethadapter.IndexedBlobHash) ([]*ethadapter.Blob, error) {
+func blobsFromSidecars(blobSidecars []*BlobSidecar, hashes []IndexedBlobHash) ([]*Blob, error) {
 	if len(blobSidecars) != len(hashes) {
 		return nil, fmt.Errorf("number of hashes and blobSidecars mismatch, %d != %d", len(hashes), len(blobSidecars))
 	}
 
-	out := make([]*ethadapter.Blob, len(hashes))
+	out := make([]*Blob, len(hashes))
 	for i, ih := range hashes {
 		sidecar := blobSidecars[i]
-		if sidx := uint64(sidecar.Index); sidx != ih.Index {
+		if sidx := sidecar.Index; sidx != ih.Index {
 			return nil, fmt.Errorf("expected sidecars to be ordered by hashes, but got %d != %d", sidx, ih.Index)
 		}
 
 		// make sure the blob's kzg commitment hashes to the expected value
-		hash := ethadapter.KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
+		hash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
 		if hash != ih.Hash {
 			return nil, fmt.Errorf("expected hash %s for blob at index %d but got %s", ih.Hash, ih.Index, hash)
 		}
 
 		// confirm blob data is valid by verifying its proof against the commitment
-		if err := ethadapter.VerifyBlobProof(&sidecar.Blob, kzg4844.Commitment(sidecar.KZGCommitment), kzg4844.Proof(sidecar.KZGProof)); err != nil {
+		if err := VerifyBlobProof(&sidecar.Blob, kzg4844.Commitment(sidecar.KZGCommitment), kzg4844.Proof(sidecar.KZGProof)); err != nil {
 			return nil, fmt.Errorf("blob at index %d failed verification: %w", i, err)
 		}
 		out[i] = &sidecar.Blob
