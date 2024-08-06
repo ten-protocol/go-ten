@@ -1,17 +1,19 @@
 package ethadapter
 
+import "github.com/ethereum/go-ethereum/crypto/kzg4844"
+
 type BlobSidecar struct {
-	Blob          Blob   `json:"blob"`
-	Index         uint64 `json:"index"`
-	KZGCommitment []byte `json:"kzg_commitment"`
-	KZGProof      []byte `json:"kzg_proof"`
+	Blob          Blob               `json:"blob"`
+	Index         uint64             `json:"index"`
+	KZGCommitment kzg4844.Commitment `json:"kzg_commitment"`
+	KZGProof      kzg4844.Proof      `json:"kzg_proof"`
 }
 
 type APIBlobSidecar struct {
 	Index             uint64                  `json:"index"`
 	Blob              Blob                    `json:"blob"`
-	KZGCommitment     []byte                  `json:"kzg_commitment"`
-	KZGProof          []byte                  `json:"kzg_proof"`
+	KZGCommitment     kzg4844.Commitment      `json:"kzg_commitment"`
+	KZGProof          kzg4844.Proof           `json:"kzg_proof"`
 	SignedBlockHeader SignedBeaconBlockHeader `json:"signed_block_header"`
 	// The inclusion-proof of the blob-sidecar into the beacon-block is ignored,
 	// since we verify blobs by their versioned hashes against the execution-layer block instead.
@@ -32,11 +34,11 @@ type SignedBeaconBlockHeader struct {
 }
 
 type BeaconBlockHeader struct {
-	Slot          uint64   `json:"slot"`
-	ProposerIndex uint64   `json:"proposer_index"`
-	ParentRoot    [32]byte `json:"parent_root"`
-	StateRoot     []byte   `json:"state_root"`
-	BodyRoot      []byte   `json:"body_root"`
+	Slot          uint64 `json:"slot"`
+	ProposerIndex uint64 `json:"proposer_index"`
+	ParentRoot    []byte `json:"parent_root"`
+	StateRoot     []byte `json:"state_root"`
+	BodyRoot      []byte `json:"body_root"`
 }
 
 type APIGetBlobSidecarsResponse struct {

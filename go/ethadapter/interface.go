@@ -2,6 +2,7 @@ package ethadapter
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -56,4 +57,8 @@ type L1BlockRef struct {
 	Number     uint64          `json:"number"`
 	ParentHash gethcommon.Hash `json:"parentHash"`
 	Time       uint64          `json:"timestamp"`
+}
+
+func (id L1BlockRef) String() string {
+	return fmt.Sprintf("%s:%d", id.Hash.String(), id.Number)
 }
