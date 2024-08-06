@@ -7,6 +7,7 @@
   predominantly fixes known minor issues in the network, including issues deploying and interacting 
   with contracts using ethers6. 
 * A full list of the PRs merged in this release is as below;
+    * `86418f6d` Stopped returning errors on republish (#2008)
     * `396c113d` Only configure docker autorestart on the main containers (#2007)
     * `e30e4eaa` Filter out irrelevant l1 txs, before sending into the enclave (#2006)
     * `7b62b2e4` Revert message address indexing (#2002)
