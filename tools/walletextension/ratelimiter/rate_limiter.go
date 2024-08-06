@@ -71,8 +71,8 @@ func (rl *RateLimiter) SetRequestEnd(userID common.Address, id uuid.UUID) {
 
 // CountOpenRequests counts the number of requests without an End time set.
 func (rl *RateLimiter) CountOpenRequests(userID common.Address) int {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
 
 	var count int
 	if user, exists := rl.users[userID]; exists {
@@ -109,7 +109,7 @@ func (rl *RateLimiter) SumComputeTime(userID common.Address) time.Duration {
 }
 
 type RateLimiter struct {
-	mu                    sync.Mutex
+	mu                    sync.RWMutex
 	users                 map[common.Address]*RateLimitUser
 	userComputeTime       time.Duration
 	window                time.Duration
@@ -135,15 +135,15 @@ func (rl *RateLimiter) IncrementRateLimitedRequests() {
 
 // GetMaxConcurrentRequest returns the maximum number of concurrent requests allowed.
 func (rl *RateLimiter) GetMaxConcurrentRequest() uint32 {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
 	return rl.maxConcurrentRequests
 }
 
 // GetUserComputeTime returns the user compute time
 func (rl *RateLimiter) GetUserComputeTime() time.Duration {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
 	return rl.userComputeTime
 }
 
@@ -155,8 +155,13 @@ func NewRateLimiter(rateLimitUserComputeTime time.Duration, rateLimitWindow time
 		maxConcurrentRequests: concurrentRequestsLimit,
 		logger:                logger,
 	}
-	go rl.logRateLimitedStats()
-	go rl.periodicPrune()
+
+	// If the userComputeTime is 0 (rate limiting is disabled) we don't need to prune and log rate limited stats
+	if rl.GetUserComputeTime() != 0 {
+		go rl.logRateLimitedStats()
+		go rl.periodicPrune()
+	}
+
 	return rl
 }
 
@@ -214,11 +219,6 @@ func (rl *RateLimiter) PruneRequests() {
 
 // periodically prunes the requests that have ended before the rate limiter's window every 10 * window milliseconds
 func (rl *RateLimiter) periodicPrune() {
-	// If the userComputeTime is 0, do nothing (rate limiting is disabled)
-	if rl.GetUserComputeTime() == 0 {
-		return
-	}
-
 	for {
 		time.Sleep(rl.window / 2)
 		rl.PruneRequests()
@@ -226,11 +226,6 @@ func (rl *RateLimiter) periodicPrune() {
 }
 
 func (rl *RateLimiter) logRateLimitedStats() {
-	// If the userComputeTime is 0, do nothing (rate limiting is disabled)
-	if rl.GetUserComputeTime() == 0 {
-		return
-	}
-
 	for {
 		time.Sleep(30 * time.Minute)
 		rl.mu.Lock()
