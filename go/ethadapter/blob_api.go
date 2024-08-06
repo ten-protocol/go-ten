@@ -1,16 +1,19 @@
 package ethadapter
 
-import "github.com/ethereum/go-ethereum/crypto/kzg4844"
+import (
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"strconv"
+)
 
 type BlobSidecar struct {
 	Blob          Blob               `json:"blob"`
-	Index         uint64             `json:"index"`
+	Index         Uint64String       `json:"index"`
 	KZGCommitment kzg4844.Commitment `json:"kzg_commitment"`
 	KZGProof      kzg4844.Proof      `json:"kzg_proof"`
 }
 
 type APIBlobSidecar struct {
-	Index             uint64                  `json:"index"`
+	Index             Uint64String            `json:"index"`
 	Blob              Blob                    `json:"blob"`
 	KZGCommitment     kzg4844.Commitment      `json:"kzg_commitment"`
 	KZGProof          kzg4844.Proof           `json:"kzg_proof"`
@@ -34,11 +37,11 @@ type SignedBeaconBlockHeader struct {
 }
 
 type BeaconBlockHeader struct {
-	Slot          uint64 `json:"slot"`
-	ProposerIndex uint64 `json:"proposer_index"`
-	ParentRoot    []byte `json:"parent_root"`
-	StateRoot     []byte `json:"state_root"`
-	BodyRoot      []byte `json:"body_root"`
+	Slot          Uint64String `json:"slot"`
+	ProposerIndex Uint64String `json:"proposer_index"`
+	ParentRoot    []byte       `json:"parent_root"`
+	StateRoot     []byte       `json:"state_root"`
+	BodyRoot      []byte       `json:"body_root"`
 }
 
 type APIGetBlobSidecarsResponse struct {
@@ -46,7 +49,7 @@ type APIGetBlobSidecarsResponse struct {
 }
 
 type ReducedGenesisData struct {
-	GenesisTime uint64 `json:"genesis_time"`
+	GenesisTime Uint64String `json:"genesis_time"`
 }
 
 type APIGenesisResponse struct {
@@ -54,7 +57,7 @@ type APIGenesisResponse struct {
 }
 
 type ReducedConfigData struct {
-	SecondsPerSlot uint64 `json:"SECONDS_PER_SLOT"`
+	SecondsPerSlot Uint64String `json:"SECONDS_PER_SLOT"`
 }
 
 type APIConfigResponse struct {
@@ -67,4 +70,21 @@ type APIVersionResponse struct {
 
 type VersionInformation struct {
 	Version string `json:"version"`
+}
+
+// Uint64String is a decimal string representation of an uint64, for usage in the Beacon API JSON encoding
+type Uint64String uint64
+
+func (v Uint64String) MarshalText() (out []byte, err error) {
+	out = strconv.AppendUint(out, uint64(v), 10)
+	return
+}
+
+func (v *Uint64String) UnmarshalText(b []byte) error {
+	n, err := strconv.ParseUint(string(b), 0, 64)
+	if err != nil {
+		return err
+	}
+	*v = Uint64String(n)
+	return nil
 }

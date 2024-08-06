@@ -3,8 +3,10 @@ package components
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ten-protocol/go-ten/go/common/measure"
 
@@ -115,20 +117,43 @@ func (rc *rollupConsumerImpl) extractRollups(ctx context.Context, br *common.Blo
 	b := br.Block
 
 	for _, tx := range *br.SuccessfulTransactions() {
-		blobHashes := rc.MgmtContractLib.DecodeTx(tx)
-		if blobHashes == nil {
+		decodedTx := rc.MgmtContractLib.DecodeTx(tx)
+		if decodedTx == nil {
 			continue
 		}
 
-		// call L1BeaconClient here
-		blobs, err := rc.blobResolver.FetchBlobs(ctx, br.Block.Header(), toIndexedBlobHashes(blobHashes))
+		rollupHashes, ok := decodedTx.(*ethadapter.L1RollupHashes)
+		if !ok {
+			continue
+		}
+
+		// Fetch blobs using BlobHashes
+		blobs, err := rc.blobResolver.FetchBlobs(ctx, br.Block.Header(), rollupHashes.BlobHashes)
 		if err != nil {
-			rc.logger.Crit("could retrieve rollup data from blobs.", log.ErrKey, err)
+			rc.logger.Crit("could not fetch blobs.", log.ErrKey, err)
 			return nil
+		}
+		r, err := reconstructRollup(blobs)
+		if err != nil {
+			rc.logger.Crit("could not recreate rollup from blobs.", log.ErrKey, err)
 		}
 
 		rollups = append(rollups, r)
 		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, b.Hash())
 	}
 	return rollups
+}
+
+func reconstructRollup(blobs []*ethadapter.Blob) (*common.ExtRollup, error) {
+	var serializedData []byte
+	for _, blob := range blobs {
+		serializedData = append(serializedData, blob[:]...)
+	}
+
+	var rollup common.ExtRollup
+	if err := rlp.DecodeBytes(serializedData, &rollup); err != nil {
+		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
+	}
+
+	return &rollup, nil
 }

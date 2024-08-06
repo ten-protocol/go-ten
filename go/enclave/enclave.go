@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"math/big"
+	"net/http"
 	"sync"
 	"time"
 
@@ -171,7 +172,12 @@ func NewEnclave(
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 	registry := components.NewBatchRegistry(storage, logger)
-	beaconClient := ethadapter.NewL1BeaconClient()
+	httpClient := new(http.Client)
+	//FIXME put in config
+	baseURL := "http://localhost:3500"
+	//baseURL := "http://localhost:16550"
+	//baseURL := "https://sepolia-beacon.chainstacklabs.com"
+	beaconClient := ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(httpClient, baseURL))
 	blobResolver := components.NewBeaconBlobResolver(beaconClient)
 	batchExecutor := components.NewBatchExecutor(storage, registry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
 	sigVerifier, err := components.NewSignatureValidator(storage)

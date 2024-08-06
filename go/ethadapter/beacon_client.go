@@ -24,16 +24,10 @@ const (
 	sidecarsMethodPrefix = "eth/v1/beacon/blob_sidecars/"
 )
 
-type L1BeaconClientConfig struct {
-	FetchAllSidecars bool
-}
-
 // L1BeaconClient is a high level golang client for the Beacon API.
 type L1BeaconClient struct {
-	cl   BeaconClient
-	pool *ClientPool[BlobSideCarsFetcher]
-	cfg  L1BeaconClientConfig
-
+	cl           BeaconClient
+	pool         *ClientPool[BlobSideCarsFetcher]
 	initLock     sync.Mutex
 	timeToSlotFn TimeToSlotFn
 }
@@ -43,12 +37,12 @@ type BeaconClient interface {
 	NodeVersion(ctx context.Context) (string, error)
 	ConfigSpec(ctx context.Context) (APIConfigResponse, error)
 	BeaconGenesis(ctx context.Context) (APIGenesisResponse, error)
-	BeaconBlobSideCars(ctx context.Context, fetchAllSidecars bool, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error)
+	BeaconBlobSideCars(ctx context.Context, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error)
 }
 
 // BlobSideCarsFetcher is a thin wrapper over the Beacon APIs.
 type BlobSideCarsFetcher interface {
-	BeaconBlobSideCars(ctx context.Context, fetchAllSidecars bool, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error)
+	BeaconBlobSideCars(ctx context.Context, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error)
 }
 
 // BeaconHTTPClient implements BeaconClient. It provides golang types over the basic Beacon API.
@@ -128,14 +122,12 @@ func (bc *BeaconHTTPClient) BeaconGenesis(ctx context.Context) (APIGenesisRespon
 	return genesisResp, nil
 }
 
-func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, fetchAllSidecars bool, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
+func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
 	reqPath := path.Join(sidecarsMethodPrefix, strconv.FormatUint(slot, 10))
 	var reqQuery url.Values
-	if !fetchAllSidecars {
-		reqQuery = url.Values{}
-		for i := range hashes {
-			reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))
-		}
+	reqQuery = url.Values{}
+	for i := range hashes {
+		reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))
 	}
 	var resp APIGetBlobSidecarsResponse
 	if err := bc.apiReq(ctx, &resp, reqPath, reqQuery); err != nil {
@@ -174,12 +166,11 @@ func (p *ClientPool[T]) MoveToNext() {
 // NewL1BeaconClient returns a client for making requests to an L1 consensus layer node.
 // Fallbacks are optional clients that will be used for fetching blobs. L1BeaconClient will rotate between
 // the `cl` and the fallbacks whenever a client runs into an error while fetching blobs.
-func NewL1BeaconClient(cl BeaconClient, cfg L1BeaconClientConfig, fallbacks ...BlobSideCarsFetcher) *L1BeaconClient {
+func NewL1BeaconClient(cl BeaconClient, fallbacks ...BlobSideCarsFetcher) *L1BeaconClient {
 	cs := append([]BlobSideCarsFetcher{cl}, fallbacks...)
 	return &L1BeaconClient{
 		cl:   cl,
-		pool: NewClientPool[BlobSideCarsFetcher](cs...),
-		cfg:  cfg}
+		pool: NewClientPool[BlobSideCarsFetcher](cs...)}
 }
 
 type TimeToSlotFn func(timestamp uint64) (uint64, error)
@@ -202,8 +193,8 @@ func (cl *L1BeaconClient) GetTimeToSlotFn(ctx context.Context) (TimeToSlotFn, er
 		return nil, err
 	}
 
-	genesisTime := genesis.Data.GenesisTime
-	secondsPerSlot := config.Data.SecondsPerSlot
+	genesisTime := uint64(genesis.Data.GenesisTime)
+	secondsPerSlot := uint64(config.Data.SecondsPerSlot)
 	if secondsPerSlot == 0 {
 		return nil, fmt.Errorf("got bad value for seconds per slot: %v", config.Data.SecondsPerSlot)
 	}
@@ -220,7 +211,7 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 	var errs []error
 	for i := 0; i < cl.pool.Len(); i++ {
 		f := cl.pool.Get()
-		resp, err := f.BeaconBlobSideCars(ctx, cl.cfg.FetchAllSidecars, slot, hashes)
+		resp, err := f.BeaconBlobSideCars(ctx, slot, hashes)
 		if err != nil {
 			cl.pool.MoveToNext()
 			errs = append(errs, err)
@@ -248,6 +239,11 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 		return nil, fmt.Errorf("error in converting ref.Time to slot: %w", err)
 	}
 
+	//FIXME error here
+	//FIXME error here
+	//FIXME error here
+	//FIXME error here
+	//FIXME error here
 	resp, err := cl.fetchSidecars(ctx, slot, hashes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, b, err)
@@ -296,7 +292,7 @@ func blobsFromSidecars(blobSidecars []*BlobSidecar, hashes []IndexedBlobHash) ([
 	out := make([]*Blob, len(hashes))
 	for i, ih := range hashes {
 		sidecar := blobSidecars[i]
-		if sidx := sidecar.Index; sidx != ih.Index {
+		if sidx := uint64(sidecar.Index); sidx != ih.Index {
 			return nil, fmt.Errorf("expected sidecars to be ordered by hashes, but got %d != %d", sidx, ih.Index)
 		}
 
