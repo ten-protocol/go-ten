@@ -1,4 +1,4 @@
-export const environment = process.env.NEXT_PUBLIC_BRIDGE_ENVIRONMENT;
+export const environment = process.env.NEXT_PUBLIC_BRIDGE_API_HOST_ENVIRONMENT;
 
 export const apiHost = `https://${environment}-testnet-api.tenscan.io`;
 
@@ -38,6 +38,8 @@ export const getOptions = (query: {
 
 export const GOOGLE_ANALYTICS_ID =
   process.env.NEXT_PUBLIC_BRIDGE_GOOGLE_ANALYTICS_ID;
+
+export const privateKey = process.env.NEXT_PUBLIC_BRIDGE_PRIVATE_KEY;
 
 export const L1CHAINS = [
   {
