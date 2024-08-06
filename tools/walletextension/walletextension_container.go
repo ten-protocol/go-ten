@@ -1,6 +1,7 @@
 package walletextension
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -29,10 +30,14 @@ type Container struct {
 }
 
 func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Container {
+
+	fmt.Println("NewContainerFromConfig - start") // todo @ziga - remove this line
 	// create the account manager with a single unauthenticated connection
 	hostRPCBindAddrWS := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
 	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
 	// start the database
+
+	fmt.Println("NewContainerFromConfig - before database") // todo @ziga - remove this line
 	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride)
 	if err != nil {
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
@@ -45,6 +50,8 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		version = "dev"
 	}
 
+	fmt.Println("NewContainerFromConfig - after env") // todo @ziga - remove this line
+
 	stopControl := stopcontrol.New()
 	walletExt := rpcapi.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, databaseStorage, stopControl, version, logger, &config)
 	cfg := &node.RPCConfig{
@@ -56,10 +63,14 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		HTTPPath:   wecommon.APIVersion1 + "/",
 		Host:       config.WalletExtensionHost,
 	}
+
+	fmt.Println("NewContainerFromConfig - starting server")
 	rpcServer := node.NewServer(cfg, logger)
 
+	fmt.Println("NewContainerFromConfig - registring routes")
 	rpcServer.RegisterRoutes(httpapi.NewHTTPRoutes(walletExt))
 
+	fmt.Println("NewContainerFromConfig - registring APIs")
 	// register all RPC endpoints exposed by a typical Geth node
 	rpcServer.RegisterAPIs([]gethrpc.API{
 		{
