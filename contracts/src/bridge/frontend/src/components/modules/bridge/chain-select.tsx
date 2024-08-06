@@ -18,22 +18,17 @@ export const ChainSelect = ({
   chains: Chain[];
   name: string;
 }) => {
-  console.log("🚀 ~ ChainSelect ~ ", name, form.getValues(name));
   return (
     <FormField
       control={form.control}
       name={name}
       render={({ field }) => (
         <FormItem>
-          <Select
-            defaultValue={field.value.value}
-            onValueChange={field.onChange}
-          >
+          <Select defaultValue={field.value} onValueChange={field.onChange}>
             <FormControl>
               <SelectTrigger className="h-8 bg-muted">
-                <SelectValue
-                  placeholder={field.value.value || "Select Chain"}
-                />
+                <span>{field.value || "Select Chain"}</span>
+                {/* <SelectValue placeholder={field.value || "Select Chain"}  */}
               </SelectTrigger>
             </FormControl>
             <SelectContent>

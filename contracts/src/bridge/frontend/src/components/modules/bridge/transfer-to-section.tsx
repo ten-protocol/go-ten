@@ -40,7 +40,7 @@ export const TransferToSection = ({
       </div>
       <div className="bg-muted dark:bg-[#15171D]">
         <div className="flex items-center justify-between p-2">
-          <strong className="text-lg">{form.getValues().token?.value}</strong>
+          <strong className="text-lg">{form.getValues().token}</strong>
           <div className="flex flex-col items-end">
             <p className="text-sm text-muted-foreground">You will receive:</p>
             <strong className="text-lg float-right">

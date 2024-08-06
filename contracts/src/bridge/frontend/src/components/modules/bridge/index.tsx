@@ -29,10 +29,14 @@ export default function Dashboard() {
   const { getNativeBalance, getTokenBalance, sendERC20, sendNative } =
     useContract();
 
+  const tokens = isL1ToL2 ? L1TOKENS : L2TOKENS;
+  const fromChains = isL1ToL2 ? L1CHAINS : L2CHAINS;
+  const toChains = isL1ToL2 ? L2CHAINS : L1CHAINS;
+
   const defaultValues = {
-    fromChain: isL1ToL2 ? L1CHAINS[0] : L2CHAINS[0],
-    toChain: isL1ToL2 ? L2CHAINS[0] : L1CHAINS[0],
-    token: isL1ToL2 ? L1TOKENS[0] : L2TOKENS[0],
+    fromChain: isL1ToL2 ? L1CHAINS[0].value : L2CHAINS[0].value,
+    toChain: isL1ToL2 ? L2CHAINS[0].value : L1CHAINS[0].value,
+    token: isL1ToL2 ? L1TOKENS[0].value : L2TOKENS[0].value,
     receiver: address,
     amount: "",
   };
@@ -41,49 +45,16 @@ export default function Dashboard() {
 
   const { handleSubmit, control, setValue, reset, setError, formState } = form;
 
-  const tokens = isL1ToL2 ? L1TOKENS : L2TOKENS;
-  const fromChains = isL1ToL2 ? L1CHAINS : L2CHAINS;
-  const toChains = isL1ToL2 ? L2CHAINS : L1CHAINS;
-
   const textValues = useWatch({
     control,
     name: ["fromChain", "toChain", "token", "receiver", "amount"],
   });
+
   const [fromChain, toChain, token, receiver, amount] = textValues;
 
-  const [loading, setLoading] = React.useState(false);
   const [fromTokenBalance, setFromTokenBalance] = React.useState<any>(0);
-
+  const [loading, setLoading] = React.useState(false);
   const [open, setOpen] = React.useState(false);
-
-  useEffect(() => {
-    const storedReceiver = handleStorage.get("tenBridgeReceiver");
-    if (storedReceiver) {
-      setValue("receiver", storedReceiver);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    const fetchTokenBalance = async (token: Token) => {
-      setLoading(true);
-      try {
-        const balance = token.isNative
-          ? await getNativeBalance(provider, address)
-          : await getTokenBalance(token.address, address, provider);
-        setFromTokenBalance(balance);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (token) {
-      if (token) {
-        fetchTokenBalance(token);
-      }
-    }
-  }, [fromChain, token, amount, receiver, provider, isL1ToL2]);
 
   const onSubmit = React.useCallback(
     async (data: any) => {
@@ -95,13 +66,18 @@ export default function Dashboard() {
           description: "Bridge transaction initiated",
           variant: ToastType.INFO,
         });
-        if (!token) throw new Error("Invalid token");
 
-        const sendTransaction = token.isNative ? sendNative : sendERC20;
+        const selectedToken = token
+          ? tokens.find((t: Token) => t.value === token)
+          : null;
+
+        if (!selectedToken) throw new Error("Invalid token");
+
+        const sendTransaction = selectedToken.isNative ? sendNative : sendERC20;
         const res = await sendTransaction(
           transactionData.receiver,
           transactionData.amount,
-          token.address
+          selectedToken.address
         );
 
         toast({
@@ -164,6 +140,36 @@ export default function Dashboard() {
     },
     [switchNetwork]
   );
+
+  React.useEffect(() => {
+    const storedReceiver = handleStorage.get("tenBridgeReceiver");
+    if (storedReceiver) {
+      setValue("receiver", storedReceiver);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const fetchTokenBalance = async (token: Token) => {
+      setLoading(true);
+      try {
+        const balance = token.isNative
+          ? await getNativeBalance(provider, address)
+          : await getTokenBalance(token.address, address, provider);
+        setFromTokenBalance(balance);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (token) {
+      const selectedToken = tokens.find((t: Token) => t.value === token);
+      if (selectedToken) {
+        fetchTokenBalance(selectedToken);
+      }
+    }
+  }, [fromChain, token, amount, receiver, provider, isL1ToL2]);
 
   return (
     <div className="h-full flex flex-col space-y-4 justify-center items-center">
