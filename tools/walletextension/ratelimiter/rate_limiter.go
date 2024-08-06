@@ -217,7 +217,7 @@ func (rl *RateLimiter) PruneRequests() {
 	}
 }
 
-// periodically prunes the requests that have ended before the rate limiter's window every 10 * window milliseconds
+// periodically prunes the requests that have ended before the rate limiter's window milliseconds
 func (rl *RateLimiter) periodicPrune() {
 	for {
 		time.Sleep(rl.window / 2)
