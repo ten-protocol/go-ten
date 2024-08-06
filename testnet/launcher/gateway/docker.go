@@ -35,7 +35,7 @@ func (n *DockerGateway) Start() error {
 		"--logPath", "sys_out",
 	}
 
-	_, err := docker.StartNewContainer("gateway", n.cfg.dockerImage, cmds, []int{n.cfg.gatewayHTTPPort, n.cfg.gatewayWSPort}, nil, nil, nil)
+	_, err := docker.StartNewContainer("gateway", n.cfg.dockerImage, cmds, []int{n.cfg.gatewayHTTPPort, n.cfg.gatewayWSPort}, nil, nil, nil, true)
 	return err
 }
 

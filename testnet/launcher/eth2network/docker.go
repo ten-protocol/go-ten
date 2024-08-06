@@ -48,7 +48,7 @@ func (n *Eth2Network) Start() error {
 	// keep a volume of binaries to avoid downloading
 	volume := map[string]string{"eth2_bin": "/home/obscuro/go-obscuro/integration/.build/eth2_bin/"}
 
-	_, err := docker.StartNewContainer("eth2network", "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest", cmds, exposedPorts, nil, nil, volume)
+	_, err := docker.StartNewContainer("eth2network", "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest", cmds, exposedPorts, nil, nil, volume, false)
 	return err
 }
 
