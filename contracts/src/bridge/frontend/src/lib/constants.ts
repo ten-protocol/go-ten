@@ -1,6 +1,6 @@
 export const environment = process.env.NEXT_PUBLIC_BRIDGE_API_HOST_ENVIRONMENT;
 
-export const apiHost = `https://${environment}-testnet-api.tenscan.io`;
+export const apiHost = `https://${environment}-api.tenscan.io`;
 
 export const socialLinks = {
   github: "https://github.com/ten-protocol",
