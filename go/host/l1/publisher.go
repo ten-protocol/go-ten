@@ -316,7 +316,8 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, 
 	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.LastBatchHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes, bundle.Signature, rollupNum, forkID)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrCrossChainBundleRepublished) {
-			p.logger.Error("Error with submitting cross chain bundle transaction.", log.ErrKey, err, log.BundleHashKey, bundle.LastBatchHash)
+			p.logger.Info("Cross chain bundle already published. Proceeding without publishing", log.ErrKey, err, log.BundleHashKey, bundle.LastBatchHash)
+			return nil
 		}
 		p.hostWallet.SetNonce(p.hostWallet.GetNonce() - 1)
 		return fmt.Errorf("unable to submit cross chain bundle transaction. Cause: %w", err)

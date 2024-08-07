@@ -21,8 +21,8 @@ import (
 
 const _networkName = "node_network"
 
-// volumes is a map from volume name to dir name it will have within the container. If a volume doesn't exist this will create it.
-func StartNewContainer(containerName, image string, cmds []string, ports []int, envs, devices, volumes map[string]string) (string, error) {
+// StartNewContainer - volumes is a map from volume name to dir name it will have within the container. If a volume doesn't exist this will create it.
+func StartNewContainer(containerName, image string, cmds []string, ports []int, envs, devices, volumes map[string]string, autoRestart bool) (string, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
@@ -95,21 +95,27 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 		"max-file": "3",
 	}
 
+	hc := container.HostConfig{
+		PortBindings: portBindings,
+		Mounts:       mountVolumes,
+		Resources:    container.Resources{Devices: deviceMapping},
+		LogConfig:    container.LogConfig{Type: "json-file", Config: logOptions},
+	}
+
+	if autoRestart {
+		hc.RestartPolicy = container.RestartPolicy{Name: "unless-stopped"}
+	}
+
 	// create the container
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image:        image,
-		Entrypoint:   cmds,
-		Tty:          false,
-		ExposedPorts: exposedPorts,
-		Env:          envVars,
-	},
-		&container.HostConfig{
-			PortBindings:  portBindings,
-			Mounts:        mountVolumes,
-			RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
-			Resources:     container.Resources{Devices: deviceMapping},
-			LogConfig:     container.LogConfig{Type: "json-file", Config: logOptions},
+	resp, err := cli.ContainerCreate(ctx,
+		&container.Config{
+			Image:        image,
+			Entrypoint:   cmds,
+			Tty:          false,
+			ExposedPorts: exposedPorts,
+			Env:          envVars,
 		},
+		&hc,
 		&network.NetworkingConfig{
 			EndpointsConfig: map[string]*network.EndpointSettings{
 				_networkName: {

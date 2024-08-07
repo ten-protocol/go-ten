@@ -125,7 +125,7 @@ type (
 // To work properly, all of the receipts are required, due to rlp encoding pruning some of the information.
 // The receipts must also be in the correct order.
 type BlockAndReceipts struct {
-	Block                  *types.Block
+	Block                  *L1Block
 	ReceiptsMap            map[int]*types.Receipt // sparse map with obscuro-relevant receipts in it
 	Receipts               *types.Receipts
 	successfulTransactions *types.Transactions

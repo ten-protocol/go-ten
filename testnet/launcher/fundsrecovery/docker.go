@@ -52,7 +52,7 @@ func (n *FundsRecovery) Start() error {
 `, n.cfg.l1HTTPURL, n.cfg.l1privateKey),
 	}
 
-	containerID, err := docker.StartNewContainer("recover-funds", n.cfg.dockerImage, cmds, nil, envs, nil, nil)
+	containerID, err := docker.StartNewContainer("recover-funds", n.cfg.dockerImage, cmds, nil, envs, nil, nil, false)
 	if err != nil {
 		return err
 	}
