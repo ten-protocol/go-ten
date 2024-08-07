@@ -1,22 +1,24 @@
 package ethadapter
 
 import (
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"fmt"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"reflect"
 	"strconv"
 )
 
 type BlobSidecar struct {
-	Blob          Blob               `json:"blob"`
-	Index         Uint64String       `json:"index"`
-	KZGCommitment kzg4844.Commitment `json:"kzg_commitment"`
-	KZGProof      kzg4844.Proof      `json:"kzg_proof"`
+	Blob          Blob         `json:"blob"`
+	Index         Uint64String `json:"index"`
+	KZGCommitment Bytes48      `json:"kzg_commitment"`
+	KZGProof      Bytes48      `json:"kzg_proof"`
 }
 
 type APIBlobSidecar struct {
 	Index             Uint64String            `json:"index"`
 	Blob              Blob                    `json:"blob"`
-	KZGCommitment     kzg4844.Commitment      `json:"kzg_commitment"`
-	KZGProof          kzg4844.Proof           `json:"kzg_proof"`
+	KZGCommitment     Bytes48                 `json:"kzg_commitment"`
+	KZGProof          Bytes48                 `json:"kzg_proof"`
 	SignedBlockHeader SignedBeaconBlockHeader `json:"signed_block_header"`
 	// The inclusion-proof of the blob-sidecar into the beacon-block is ignored,
 	// since we verify blobs by their versioned hashes against the execution-layer block instead.
@@ -39,9 +41,9 @@ type SignedBeaconBlockHeader struct {
 type BeaconBlockHeader struct {
 	Slot          Uint64String `json:"slot"`
 	ProposerIndex Uint64String `json:"proposer_index"`
-	ParentRoot    []byte       `json:"parent_root"`
-	StateRoot     []byte       `json:"state_root"`
-	BodyRoot      []byte       `json:"body_root"`
+	ParentRoot    Bytes32      `json:"parent_root"`
+	StateRoot     Bytes32      `json:"state_root"`
+	BodyRoot      Bytes32      `json:"body_root"`
 }
 
 type APIGetBlobSidecarsResponse struct {
@@ -87,4 +89,46 @@ func (v *Uint64String) UnmarshalText(b []byte) error {
 	}
 	*v = Uint64String(n)
 	return nil
+}
+
+type Bytes48 [48]byte
+
+func (b *Bytes48) UnmarshalJSON(text []byte) error {
+	return hexutil.UnmarshalFixedJSON(reflect.TypeOf(b), text, b[:])
+}
+
+func (b *Bytes48) UnmarshalText(text []byte) error {
+	return hexutil.UnmarshalFixedText("Bytes32", text, b[:])
+}
+
+func (b Bytes48) MarshalText() ([]byte, error) {
+	return hexutil.Bytes(b[:]).MarshalText()
+}
+
+func (b Bytes48) String() string {
+	return hexutil.Encode(b[:])
+}
+
+// TerminalString implements log.TerminalStringer, formatting a string for console
+// output during logging.
+func (b Bytes48) TerminalString() string {
+	return fmt.Sprintf("%x..%x", b[:3], b[45:])
+}
+
+type Bytes32 [32]byte
+
+func (b *Bytes32) UnmarshalJSON(text []byte) error {
+	return hexutil.UnmarshalFixedJSON(reflect.TypeOf(b), text, b[:])
+}
+
+func (b *Bytes32) UnmarshalText(text []byte) error {
+	return hexutil.UnmarshalFixedText("Bytes32", text, b[:])
+}
+
+func (b Bytes32) MarshalText() ([]byte, error) {
+	return hexutil.Bytes(b[:]).MarshalText()
+}
+
+func (b Bytes32) String() string {
+	return hexutil.Encode(b[:])
 }

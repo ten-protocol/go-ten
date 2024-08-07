@@ -55,7 +55,7 @@ func NewBeaconHTTPClient(client *http.Client, baseURL string) *BeaconHTTPClient 
 	return &BeaconHTTPClient{client: client, baseURL: baseURL}
 }
 
-func (bc *BeaconHTTPClient) apiReq(ctx context.Context, dest any, reqPath string, reqQuery url.Values) error {
+func (bc *BeaconHTTPClient) request(ctx context.Context, dest any, reqPath string, reqQuery url.Values) error {
 	baseURL, err := url.Parse(bc.baseURL)
 	if err != nil {
 		return fmt.Errorf("failed to parse base URL: %w", err)
@@ -91,7 +91,8 @@ func (bc *BeaconHTTPClient) apiReq(ctx context.Context, dest any, reqPath string
 		return fmt.Errorf("failed request with status %d: %s", resp.StatusCode, string(errMsg))
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(dest); err != nil {
+	err = json.NewDecoder(resp.Body).Decode(dest)
+	if err != nil {
 		return err
 	}
 
@@ -100,7 +101,7 @@ func (bc *BeaconHTTPClient) apiReq(ctx context.Context, dest any, reqPath string
 
 func (bc *BeaconHTTPClient) NodeVersion(ctx context.Context) (string, error) {
 	var resp APIVersionResponse
-	if err := bc.apiReq(ctx, &resp, versionMethod, nil); err != nil {
+	if err := bc.request(ctx, &resp, versionMethod, nil); err != nil {
 		return "", err
 	}
 	return resp.Data.Version, nil
@@ -108,7 +109,7 @@ func (bc *BeaconHTTPClient) NodeVersion(ctx context.Context) (string, error) {
 
 func (bc *BeaconHTTPClient) ConfigSpec(ctx context.Context) (APIConfigResponse, error) {
 	var configResp APIConfigResponse
-	if err := bc.apiReq(ctx, &configResp, specMethod, nil); err != nil {
+	if err := bc.request(ctx, &configResp, specMethod, nil); err != nil {
 		return APIConfigResponse{}, err
 	}
 	return configResp, nil
@@ -116,7 +117,7 @@ func (bc *BeaconHTTPClient) ConfigSpec(ctx context.Context) (APIConfigResponse, 
 
 func (bc *BeaconHTTPClient) BeaconGenesis(ctx context.Context) (APIGenesisResponse, error) {
 	var genesisResp APIGenesisResponse
-	if err := bc.apiReq(ctx, &genesisResp, genesisMethod, nil); err != nil {
+	if err := bc.request(ctx, &genesisResp, genesisMethod, nil); err != nil {
 		return APIGenesisResponse{}, err
 	}
 	return genesisResp, nil
@@ -125,12 +126,16 @@ func (bc *BeaconHTTPClient) BeaconGenesis(ctx context.Context) (APIGenesisRespon
 func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
 	reqPath := path.Join(sidecarsMethodPrefix, strconv.FormatUint(slot, 10))
 	var reqQuery url.Values
-	reqQuery = url.Values{}
-	for i := range hashes {
-		reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))
-	}
+	//FIXME lookup sidecars by their hash
+	//reqQuery = url.Values{}
+	//for i := range hashes {
+	//	reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))
+	//}
 	var resp APIGetBlobSidecarsResponse
-	if err := bc.apiReq(ctx, &resp, reqPath, reqQuery); err != nil {
+
+	err := bc.request(ctx, &resp, reqPath, reqQuery)
+
+	if err != nil {
 		return APIGetBlobSidecarsResponse{}, err
 	}
 	return resp, nil
@@ -279,7 +284,7 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 func (cl *L1BeaconClient) FetchBlobs(ctx context.Context, b *types.Header, hashes []IndexedBlobHash) ([]*Blob, error) {
 	blobSidecars, err := cl.GetBlobSidecars(ctx, b, hashes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get blob sidecars for L1BlockRef %s: %w", b, err)
+		return nil, fmt.Errorf("failed to get blob sidecars for Block Header %s: %w", b.Hash().Hex(), err)
 	}
 	return blobsFromSidecars(blobSidecars, hashes)
 }
