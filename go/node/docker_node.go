@@ -130,7 +130,7 @@ func (d *DockerNode) startHost() error {
 		d.cfg.hostP2PPort,
 	}
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-host", d.cfg.hostImage, cmd, exposedPorts, nil, nil, nil)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-host", d.cfg.hostImage, cmd, exposedPorts, nil, nil, nil, true)
 
 	return err
 }
@@ -195,7 +195,7 @@ func (d *DockerNode) startEnclave() error {
 
 	// we need the enclave volume to store the db credentials
 	enclaveVolume := map[string]string{d.cfg.nodeName + "-enclave-volume": _enclaveDataDir}
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, enclaveVolume)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, enclaveVolume, true)
 
 	return err
 }
@@ -222,7 +222,7 @@ func (d *DockerNode) startEdgelessDB() error {
 	//dbVolume := map[string]string{d.cfg.nodeName + "-db-volume": "/data"}
 	//_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, dbVolume)
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, nil)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, nil, true)
 
 	return err
 }
