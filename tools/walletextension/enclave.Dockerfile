@@ -4,7 +4,6 @@
 # deploy = copies over only the enclave executable without the source
 #          in a lightweight base image specialized for deployment and prepares the /data/ folder.
 
-
 # Defaults to restricted flag mode
 ARG TESTMODE=false
 
@@ -53,10 +52,13 @@ COPY --from=build-enclave \
 COPY --from=build-enclave \
     /home/ten/go-ten/tools/walletextension/storage/database /home/ten/go-ten/tools/walletextension/storage/database
 
-
 WORKDIR /home/ten/go-ten/tools/walletextension/main
 
 # simulation mode is ACTIVE by default
 ENV OE_SIMULATION=1
-# ENTRYPOINT ["/home/ten/go-ten/tools/walletextension/main/entry.sh", "ego", "run", "/home/ten/go-ten/tools/walletextension/main/main" ] #TODO: Remove this entrypoint
+
+# Enable core dumps
+RUN ulimit -c unlimited && mkdir -p /tmp/core-dump && chmod 777 /tmp/core-dump
+ENV COREDUMP_LOCATION=/tmp/core-dump/core.%e.%p
+
 EXPOSE 3000
