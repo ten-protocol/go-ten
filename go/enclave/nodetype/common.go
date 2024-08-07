@@ -20,8 +20,14 @@ func ExportCrossChainData(ctx context.Context, storage storage.Storage, fromSeqN
 		return nil, errutil.ErrCrossChainBundleNoBatches
 	}
 
-	blockHash := canonicalBatches[len(canonicalBatches)-1].Header.L1Proof
-	batchHash := canonicalBatches[len(canonicalBatches)-1].Header.Hash()
+	// todo - siliev - all those fetches need to be atomic
+	header, err := storage.FetchHeadBatchHeader(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	blockHash := header.L1Proof
+	batchHash := canonicalBatches[len(canonicalBatches)-1].Hash()
 
 	block, err := storage.FetchBlock(ctx, blockHash)
 	if err != nil {
@@ -30,8 +36,8 @@ func ExportCrossChainData(ctx context.Context, storage storage.Storage, fromSeqN
 
 	crossChainHashes := make([][]byte, 0)
 	for _, batch := range canonicalBatches {
-		if batch.Header.CrossChainRoot != gethcommon.BigToHash(gethcommon.Big0) {
-			crossChainHashes = append(crossChainHashes, batch.Header.CrossChainRoot.Bytes())
+		if batch.CrossChainRoot != gethcommon.BigToHash(gethcommon.Big0) {
+			crossChainHashes = append(crossChainHashes, batch.CrossChainRoot.Bytes())
 		}
 	}
 

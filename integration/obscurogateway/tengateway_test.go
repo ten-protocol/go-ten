@@ -64,16 +64,19 @@ func TestTenGateway(t *testing.T) {
 	createTenNetwork(t, startPort)
 
 	tenGatewayConf := wecommon.Config{
-		WalletExtensionHost:     "127.0.0.1",
-		WalletExtensionPortHTTP: startPort + integration.DefaultTenGatewayHTTPPortOffset,
-		WalletExtensionPortWS:   startPort + integration.DefaultTenGatewayWSPortOffset,
-		NodeRPCHTTPAddress:      fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
-		NodeRPCWebsocketAddress: fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
-		LogPath:                 "sys_out",
-		VerboseFlag:             false,
-		DBType:                  "sqlite",
-		TenChainID:              443,
-		StoreIncomingTxs:        true,
+		WalletExtensionHost:            "127.0.0.1",
+		WalletExtensionPortHTTP:        startPort + integration.DefaultTenGatewayHTTPPortOffset,
+		WalletExtensionPortWS:          startPort + integration.DefaultTenGatewayWSPortOffset,
+		NodeRPCHTTPAddress:             fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
+		NodeRPCWebsocketAddress:        fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
+		LogPath:                        "sys_out",
+		VerboseFlag:                    false,
+		DBType:                         "sqlite",
+		TenChainID:                     443,
+		StoreIncomingTxs:               true,
+		RateLimitUserComputeTime:       200 * time.Millisecond,
+		RateLimitWindow:                1 * time.Second,
+		RateLimitMaxConcurrentRequests: 3,
 	}
 
 	tenGwContainer := walletextension.NewContainerFromConfig(tenGatewayConf, testlog.Logger())
@@ -111,6 +114,7 @@ func TestTenGateway(t *testing.T) {
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
 		"testGetStorageAtForReturningUserID":   testGetStorageAtForReturningUserID,
+		"testRateLimiter":                      testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, httpURL, wsURL, w)
@@ -122,6 +126,45 @@ func TestTenGateway(t *testing.T) {
 	time.Sleep(20 * time.Second)
 	err = tenGwContainer.Stop()
 	assert.NoError(t, err)
+}
+
+func testRateLimiter(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
+	// register the user so we can call the endpoints that require authentication
+	err = user0.RegisterAccounts()
+	require.NoError(t, err)
+
+	// call BalanceAt - fist call should be successful
+	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+	require.NoError(t, err)
+
+	// sleep for a period of time to allow the rate limiter to reset
+	time.Sleep(1 * time.Second)
+
+	// first call after the rate limiter reset should be successful
+	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+	require.NoError(t, err)
+
+	address := user0.Wallets[0].Address()
+
+	// make 1000 requests with the same user to "spam" the gateway
+	for i := 0; i < 1000; i++ {
+		msg := ethereum.CallMsg{
+			From: address,
+			To:   &address, // Example: self-call to the user's address
+			Gas:  uint64(i),
+			Data: nil,
+		}
+
+		user0.HTTPClient.EstimateGas(context.Background(), msg)
+	}
+
+	// after 1000 requests, the rate limiter should block the user
+	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+	require.Error(t, err)
+	require.Equal(t, "rate limit exceeded", err.Error())
 }
 
 func testNewHeadsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
@@ -466,6 +509,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 		`{"jsonrpc":"2.0","method":"eth_getBalance","params":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "latest"],"id":1,"extra":"extra_field"}`,
 		`{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", "0x1234"]],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["0x0000000000000000000000000000000000000000000000000000000000000000"],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_maxPriorityFeePerGas","params":[],"id":1}`,
 	} {
 		// ensure the geth request is issued correctly (should return 200 ok with jsonRPCError)
 		_, response, err := httputil.PostDataJSON(ogClient.HTTP(), []byte(req))
@@ -723,7 +767,7 @@ func testGetStorageAtForReturningUserID(t *testing.T, httpURL, wsURL string, w w
 	var response JSONResponse
 
 	// make a request to GetStorageAt with correct parameters to get userID that exists in the database
-	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{wecommon.GetStorageAtUserIDRequestMethodName, "0", nil})
+	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{common.UserIDRequestCQMethod, "0", nil})
 	if err = json.Unmarshal(respBody, &response); err != nil {
 		t.Error("Unable to unmarshal response")
 	}
@@ -732,15 +776,22 @@ func testGetStorageAtForReturningUserID(t *testing.T, httpURL, wsURL string, w w
 	}
 
 	// make a request to GetStorageAt with correct parameters to get userID, but with wrong userID
-	respBody2 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, "0x0000000000000000000000000000000000000001", []interface{}{wecommon.GetStorageAtUserIDRequestMethodName, "0", nil})
+	respBody2 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, "0x0000000000000000000000000000000000000001", []interface{}{common.UserIDRequestCQMethod, "0", nil})
 	if !strings.Contains(string(respBody2), "not found") {
 		t.Error("eth_getStorageAt did not respond with not found error")
 	}
 
+	err = user.RegisterAccounts()
+	if err != nil {
+		t.Errorf("Failed to register accounts: %s", err)
+		return
+	}
+
 	// make a request to GetStorageAt with wrong parameters to get userID, but correct userID
-	respBody3 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{"0x0000000000000000000000000000000000000001", "0", nil})
-	if !strings.Contains(string(respBody3), "illegal access") {
-		t.Error("eth_getStorageAt did not respond with error: illegal access")
+	respBody3 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{"0x0000000000000000000000000000000000000007", "0", nil})
+	expectedErr := "not supported"
+	if !strings.Contains(string(respBody3), expectedErr) {
+		t.Errorf("eth_getStorageAt did not respond with error: %s, it was: %s", expectedErr, string(respBody3))
 	}
 }
 

@@ -21,7 +21,7 @@ type ObscuroChain interface {
 	// For Contracts - the address of the deployer.
 	// Note - this might be subject to change if we implement a more flexible mechanism
 	// todo - support BlockNumberOrHash
-	AccountOwner(ctx context.Context, address gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, error)
+	AccountOwner(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error)
 
 	// GetBalanceAtBlock - will return the balance of a specific address at the specific given block number (batch number).
 	GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error)

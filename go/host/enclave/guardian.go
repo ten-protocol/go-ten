@@ -46,6 +46,7 @@ type guardianServiceLocator interface {
 	L1Repo() host.L1BlockRepository
 	L2Repo() host.L2BatchRepository
 	LogSubs() host.LogSubscriptionManager
+	CrossChainMachine() l1.CrossChainStateMachine
 }
 
 // Guardian is a host service which monitors an enclave, it's responsibilities include:
@@ -424,6 +425,15 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
 	}
+	// only submit the relevant transactions to the enclave
+	// nullify all non-relevant transactions
+	txs := block.Transactions()
+	for i, rec := range receipts {
+		if rec == nil {
+			txs[i] = nil
+		}
+	}
+
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block, receipts, isLatest)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
@@ -462,6 +472,12 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 	// if there are any secret responses in the block we should refresh our P2P list to re-sync with the network
 	_, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(block)
 
+	// TODO (@will) this should be removed and pulled from the L1
+	err := g.storage.AddBlock(block.Header())
+	if err != nil {
+		g.logger.Error("Could not add block to host db.", log.ErrKey, err)
+	}
+
 	for _, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
@@ -480,11 +496,6 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 			} else {
 				g.logger.Error("Could not store rollup.", log.ErrKey, err)
 			}
-		}
-		// TODO (@will) this should be removed and pulled from the L1
-		err = g.storage.AddBlock(block.Header(), r.Header.Hash())
-		if err != nil {
-			g.logger.Error("Could not add block to host db.", log.ErrKey, err)
 		}
 	}
 
@@ -634,46 +645,22 @@ func (g *Guardian) periodicBundleSubmission() {
 
 	bundleSubmissionTicker := time.NewTicker(interval)
 
-	fromSequenceNumber, _, err := g.sl.L1Publisher().GetBundleRangeFromManagementContract()
-	if err != nil {
-		g.logger.Error(`Unable to get bundle range from management contract and initialize cross chain publishing`, log.ErrKey, err)
-		return
-	}
-
 	for {
 		select {
 		case <-bundleSubmissionTicker.C:
-			from, to, err := g.sl.L1Publisher().GetBundleRangeFromManagementContract()
+			err := g.sl.CrossChainMachine().Synchronize()
 			if err != nil {
-				g.logger.Error("Unable to get bundle range from management contract", log.ErrKey, err)
+				g.logger.Error("Failed to synchronize cross chain state machine", log.ErrKey, err)
 				continue
 			}
 
-			if from.Uint64() > fromSequenceNumber.Uint64() {
-				fromSequenceNumber.Set(from)
-			}
-
-			bundle, err := g.enclaveClient.ExportCrossChainData(context.Background(), fromSequenceNumber.Uint64(), to.Uint64())
+			err = g.sl.CrossChainMachine().PublishNextBundle()
 			if err != nil {
-				if !errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
-					g.logger.Error("Unable to export cross chain bundle from enclave", log.ErrKey, err)
+				if errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
+					g.logger.Debug("No batches to publish")
+				} else {
+					g.logger.Error("Failed to publish next bundle", log.ErrKey, err)
 				}
-				if errors.Is(err, context.DeadlineExceeded) {
-					g.logger.Error(`Cross chain bundle export timed out.`, log.ErrKey, err)
-					return // stop the process - if we are timing out we are not going to catch up
-				}
-				continue
-			}
-
-			if len(bundle.CrossChainRootHashes) == 0 {
-				g.logger.Debug("No cross chain data to submit")
-				fromSequenceNumber.SetUint64(to.Uint64() + 1)
-				continue
-			}
-
-			err = g.sl.L1Publisher().PublishCrossChainBundle(bundle)
-			if err != nil {
-				g.logger.Error("Unable to publish cross chain bundle", log.ErrKey, err)
 				continue
 			}
 		case <-g.hostInterrupter.Done():

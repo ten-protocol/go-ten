@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+
 	"github.com/ten-protocol/go-ten/go/config"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -64,32 +66,17 @@ func NewChain(
 	}
 }
 
-func (oc *obscuroChain) AccountOwner(ctx context.Context, address gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, error) {
-	// check if account is a contract
-	isContract, err := oc.isAccountContractAtBlock(ctx, address, blockNumber)
+func (oc *obscuroChain) AccountOwner(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error) {
+	// check if the account is a contract and return the owner
+	owner, err := oc.storage.ReadContractOwner(ctx, address)
 	if err != nil {
-		return nil, err
+		// it is not a contract, so it's an EOA
+		if errors.Is(err, errutil.ErrNotFound) {
+			return &address, nil
+		}
+		return nil, fmt.Errorf("could not read account owner. cause: %w", err)
 	}
-	if !isContract {
-		return &address, nil
-	}
-
-	// If the address is a contract, find the signer of the deploy transaction
-	txHash, err := oc.storage.GetContractCreationTx(ctx, address)
-	if err != nil {
-		return nil, err
-	}
-	transaction, _, _, _, err := oc.storage.GetTransaction(ctx, *txHash) //nolint:dogsled
-	if err != nil {
-		return nil, err
-	}
-	signer := types.NewLondonSigner(oc.chainConfig.ChainID)
-
-	sender, err := signer.Sender(transaction)
-	if err != nil {
-		return nil, err
-	}
-	return &sender, nil
+	return owner, nil
 }
 
 func (oc *obscuroChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
@@ -211,14 +198,4 @@ func (oc *obscuroChain) GetChainStateAtTransaction(ctx context.Context, batch *c
 		statedb.Finalise(vmenv.ChainConfig().IsEIP158(batch.Number()))
 	}
 	return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction index %d out of range for batch %#x", txIndex, batch.Hash())
-}
-
-// Returns whether the account is a contract
-func (oc *obscuroChain) isAccountContractAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (bool, error) {
-	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
-	if err != nil {
-		return false, fmt.Errorf("unable to get blockchain state - %w", err)
-	}
-
-	return len(chainState.GetCode(accountAddr)) > 0, nil
 }

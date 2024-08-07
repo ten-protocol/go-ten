@@ -56,7 +56,7 @@ type BatchResolver interface {
 
 type BlockResolver interface {
 	// AddBlock stores block data containing rollups in the host DB
-	AddBlock(b *types.Header, rollupHash common.L2RollupHash) error
+	AddBlock(b *types.Header) error
 	// AddRollup stores a rollup in the host DB
 	AddRollup(rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error
 	// FetchLatestRollupHeader returns the head `RollupHeader`

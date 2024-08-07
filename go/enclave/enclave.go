@@ -114,8 +114,9 @@ func NewEnclave(
 	}
 
 	// Initialise the database
+	cachingService := storage.NewCacheService(logger)
 	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.ObscuroChainID))
-	storage := storage.NewStorageFromConfig(config, chainConfig, logger)
+	storage := storage.NewStorageFromConfig(config, cachingService, chainConfig, logger)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
 	// todo (#1056) - valid block
@@ -160,7 +161,7 @@ func NewEnclave(
 
 	obscuroKey := crypto.GetObscuroKey(logger)
 
-	gethEncodingService := gethencoding.NewGethEncodingService(storage, logger)
+	gethEncodingService := gethencoding.NewGethEncodingService(storage, cachingService, logger)
 	dataEncryptionService := crypto.NewDataEncryptionService(logger)
 	dataCompressionService := compression.NewBrotliDataCompressionService()
 
@@ -510,7 +511,7 @@ func (e *enclaveImpl) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch
 	e.logger.Info("Received new p2p batch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	seqNo := extBatch.Header.SequencerOrderNo.Uint64()
 	if seqNo > common.L2GenesisSeqNo+1 {
-		_, err := e.storage.FetchBatchBySeqNo(ctx, seqNo-1)
+		_, err := e.storage.FetchBatchHeaderBySeqNo(ctx, seqNo-1)
 		if err != nil {
 			return responses.ToInternalError(fmt.Errorf("could not find previous batch with seq: %d", seqNo-1))
 		}
@@ -697,6 +698,14 @@ func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, b
 	return stateDB.GetCode(address), nil
 }
 
+func (e *enclaveImpl) GetStorageSlot(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageSlot) (*responses.EnclaveResponse, common.SystemError) {
+	if e.stopControl.IsStopping() {
+		return nil, responses.ToInternalError(fmt.Errorf("requested GetCode with the enclave stopping"))
+	}
+
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.TenStorageReadValidate, rpc.TenStorageReadExecute)
+}
+
 func (e *enclaveImpl) Subscribe(ctx context.Context, id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) common.SystemError {
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested SubscribeForExecutedBatches with the enclave stopping"))
@@ -854,13 +863,14 @@ func (e *enclaveImpl) GetTotalContractCount(ctx context.Context) (*big.Int, comm
 	return e.storage.GetContractCount(ctx)
 }
 
-func (e *enclaveImpl) GetCustomQuery(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, common.SystemError) {
+// GetPersonalTransactions returns the recent private transactions for the given account
+func (e *enclaveImpl) GetPersonalTransactions(ctx context.Context, encryptedParams common.EncryptedParamsGetPersonalTransactions) (*responses.PersonalTransactionsResponse, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested GetReceiptsByAddress with the enclave stopping"))
+		return nil, responses.ToInternalError(fmt.Errorf("requested GetPrivateTransactions with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetCustomQueryValidate, rpc.GetCustomQueryExecute)
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetPersonalTransactionsValidate, rpc.GetPersonalTransactionsExecute)
 }
 
 func (e *enclaveImpl) EnclavePublicConfig(context.Context) (*common.EnclavePublicConfig, common.SystemError) {
@@ -961,7 +971,7 @@ func replayBatchesToValidState(ctx context.Context, storage storage.Storage, reg
 		}
 
 		// calculate the stateDB after this batch and store it in the cache
-		_, err := batchExecutor.ExecuteBatch(ctx, batch)
+		_, _, err := batchExecutor.ExecuteBatch(ctx, batch)
 		if err != nil {
 			return err
 		}

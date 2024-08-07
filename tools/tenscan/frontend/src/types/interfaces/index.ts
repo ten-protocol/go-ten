@@ -79,3 +79,24 @@ export enum ToastType {
   DESTRUCTIVE = "destructive",
   DEFAULT = "default",
 }
+
+export enum BadgeType {
+  SUCCESS = "success",
+  SECONDARY = "secondary",
+  DESTRUCTIVE = "destructive",
+  DEFAULT = "default",
+  OUTLINE = "outline",
+}
+
+export interface DashboardAnalyticsData {
+  title: string;
+  value: string | number | JSX.Element;
+  change?: string;
+  icon: any;
+  loading?: boolean;
+}
+
+export enum ItemPosition {
+  FIRST = "first",
+  LAST = "last",
+}

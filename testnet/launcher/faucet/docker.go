@@ -32,7 +32,7 @@ func (n *DockerFaucet) Start() error {
 		"--serverPort", fmt.Sprintf("%d", n.cfg.faucetPort),
 	}
 
-	_, err := docker.StartNewContainer("faucet", n.cfg.dockerImage, cmds, []int{n.cfg.faucetPort}, nil, nil, nil)
+	_, err := docker.StartNewContainer("faucet", n.cfg.dockerImage, cmds, []int{n.cfg.faucetPort}, nil, nil, nil, false)
 	return err
 }
 

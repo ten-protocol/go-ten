@@ -21,7 +21,7 @@ export default function Header() {
             className="cursor-pointer dark:hidden"
           />
           <Image
-            src="/assets/images/white_logotype.png"
+            src="/static/assets/images/white_logotype.png"
             alt="Logo"
             width={150}
             height={40}

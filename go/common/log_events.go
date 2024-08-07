@@ -43,7 +43,7 @@ func CreateAuthenticatedLogSubscriptionPayload(args []interface{}, vk *viewingke
 	if !ok {
 		return nil, fmt.Errorf("invalid subscription")
 	}
-	fc := FromCriteria(filterCriteria)
+	fc := SerializableFilterCriteria(filterCriteria)
 	logSubscription.Filter = &fc
 	return logSubscription, nil
 }
@@ -59,7 +59,7 @@ type FilterCriteriaJSON struct {
 	Topics    [][]common.Hash  `json:"topics"`
 }
 
-func FromCriteria(crit FilterCriteria) FilterCriteriaJSON {
+func SerializableFilterCriteria(crit FilterCriteria) FilterCriteriaJSON {
 	var from *rpc.BlockNumber
 	if crit.FromBlock != nil {
 		f := (rpc.BlockNumber)(crit.FromBlock.Int64())
