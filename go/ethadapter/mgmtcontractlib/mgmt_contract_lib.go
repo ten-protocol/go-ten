@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/params"
 	"math/big"
 	"strings"
 
@@ -161,10 +161,10 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 		panic(err)
 	}
 
-	serialized, err := rlp.EncodeToBytes(decodedRollup)
-	if err != nil {
-		return nil, fmt.Errorf("could not serialize rollup. Cause: %w", err)
-	}
+	//serialized, err := rlp.EncodeToBytes(t.Rollup)
+	//if err != nil {
+	//	return nil, fmt.Errorf("could not serialize rollup. Cause: %w", err)
+	//}
 
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),
@@ -186,16 +186,13 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 	}
 
 	//TODO handle when blobs exceed 1Mb
-	blob, err := bytesToBlob(serialized)
+	blobs := encodeBlobs(t.Rollup)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert rollup to blobs: %w", err)
 	}
 
-	var blobs []*kzg4844.Blob
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
-
-	blobs = append(blobs, blob)
 
 	if sidecar, blobHashes, err = makeSidecar(blobs); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
@@ -506,19 +503,24 @@ func convertCrossChainMessages(messages []MessageBus.StructsCrossChainMessage) [
 	return msgs
 }
 
-// FIXME handle chunking if greater than blobsize
-func bytesToBlob(data []byte) (*kzg4844.Blob, error) {
-	// Ensure the data fits into a Blob
-	var blob kzg4844.Blob
-	if len(data) > len(blob) {
-		data = data[:len(blob)]
-	} else if len(data) < len(blob) {
-		copy(blob[:], data)
-	} else {
-		copy(blob[:], data)
+func encodeBlobs(data []byte) []kzg4844.Blob {
+	blobs := []kzg4844.Blob{{}}
+	blobIndex := 0
+	fieldIndex := -1
+	for i := 0; i < len(data); i += 31 {
+		fieldIndex++
+		if fieldIndex == params.BlobTxFieldElementsPerBlob {
+			blobs = append(blobs, kzg4844.Blob{})
+			blobIndex++
+			fieldIndex = 0
+		}
+		max := i + 31
+		if max > len(data) {
+			max = len(data)
+		}
+		copy(blobs[blobIndex][fieldIndex*32+1:], data[i:max])
 	}
-
-	return &blob, nil
+	return blobs
 }
 
 //// chunkRollup splits the rollup into blobs based on the max blob size and index's the blobs
@@ -556,18 +558,17 @@ func bytesToBlob(data []byte) (*kzg4844.Blob, error) {
 
 // MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
 // data.
-func makeSidecar(blobs []*kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
+func makeSidecar(blobs []kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
 	sidecar := &types.BlobTxSidecar{}
 	var blobHashes []gethcommon.Hash
 	for i, blob := range blobs {
-		//rawBlob := *blob.KZGBlob()
-		sidecar.Blobs = append(sidecar.Blobs, *blob)
-		commitment, err := kzg4844.BlobToCommitment(blob)
+		sidecar.Blobs = append(sidecar.Blobs, blob)
+		commitment, err := kzg4844.BlobToCommitment(&blob)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot compute KZG commitment of blob %d in tx candidate: %w", i, err)
 		}
 		sidecar.Commitments = append(sidecar.Commitments, commitment)
-		proof, err := kzg4844.ComputeBlobProof(blob, commitment)
+		proof, err := kzg4844.ComputeBlobProof(&blob, commitment)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot compute KZG proof for fast commitment verification of blob %d in tx candidate: %w", i, err)
 		}

@@ -3,10 +3,10 @@ package ethereummock
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/gob"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/integration/datagenerator"
 
@@ -67,7 +67,7 @@ func (m *mockContractLib) CreateRollup(tx *ethadapter.L1RollupTx) types.TxData {
 
 func (m *mockContractLib) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error) {
 	var err error
-	blob, err := bytesToBlob(t.Rollup)
+	blobs := encodeBlobs(t.Rollup)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert rollup to blobs: %w", err)
 	}
@@ -77,11 +77,9 @@ func (m *mockContractLib) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 	//
 	//blobs, _ := chunkRollup(encRollupData, base64ChunkSize)
 
-	var blobs []*kzg4844.Blob
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
 
-	blobs = append(blobs, blob)
 	if sidecar, blobHashes, err = makeSidecar(blobs); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
@@ -183,70 +181,39 @@ func encodeTx(tx ethadapter.L1Transaction, opType gethcommon.Address) types.TxDa
 	}
 }
 
-// chunkRollup splits the rollup into blobs based on the max blob size and index's the blobs
-func chunkRollup(data string, maxBlobSize int) ([]*kzg4844.Blob, error) {
-	const BlobSize = 131072
-	if maxBlobSize > BlobSize {
-		return nil, fmt.Errorf("maxBlobSize cannot be greater than BlobSize")
-	}
-
-	var blobs []*kzg4844.Blob
-	indexByteSize := 4 // size in bytes for the chunk index metadata
-	chunkIndex := uint32(0)
-
-	for i := 0; i < len(data); i += maxBlobSize {
-		end := i + maxBlobSize
-		if end > len(data) {
-			end = len(data)
+func encodeBlobs(data []byte) []kzg4844.Blob {
+	blobs := []kzg4844.Blob{{}}
+	blobIndex := 0
+	fieldIndex := -1
+	for i := 0; i < len(data); i += 31 {
+		fieldIndex++
+		if fieldIndex == params.BlobTxFieldElementsPerBlob {
+			blobs = append(blobs, kzg4844.Blob{})
+			blobIndex++
+			fieldIndex = 0
 		}
-
-		// Metadata is index of the chunk
-		metadata := make([]byte, indexByteSize)
-		binary.BigEndian.PutUint32(metadata, chunkIndex)
-
-		// Convert string slice to bytes and append metadata to the chunk data
-		chunkData := append(metadata, []byte(data[i:end])...)
-
-		// Ensure chunkData is exactly BlobSize
-		paddedChunkData := make([]byte, BlobSize)
-		copy(paddedChunkData, chunkData)
-
-		blob := kzg4844.Blob(paddedChunkData)
-		blobs = append(blobs, &blob)
-
-		chunkIndex++
+		max := i + 31
+		if max > len(data) {
+			max = len(data)
+		}
+		copy(blobs[blobIndex][fieldIndex*32+1:], data[i:max])
 	}
-	return blobs, nil
-}
-
-// FIXME handle chunking if greater than blobsize
-func bytesToBlob(data []byte) (*kzg4844.Blob, error) {
-	// Ensure the data fits into a Blob
-	var blob kzg4844.Blob
-	if len(data) > len(blob) {
-		data = data[:len(blob)]
-	} else if len(data) < len(blob) {
-		copy(blob[:], data)
-	} else {
-		copy(blob[:], data)
-	}
-
-	return &blob, nil
+	return blobs
 }
 
 // MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
 // data.
-func makeSidecar(blobs []*kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
+func makeSidecar(blobs []kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
 	sidecar := &types.BlobTxSidecar{}
 	blobHashes := []gethcommon.Hash{}
 	for i, blob := range blobs {
-		sidecar.Blobs = append(sidecar.Blobs, *blob)
-		commitment, err := kzg4844.BlobToCommitment(blob)
+		sidecar.Blobs = append(sidecar.Blobs, blob)
+		commitment, err := kzg4844.BlobToCommitment(&blob)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot compute KZG commitment of blob %d in tx candidate: %w", i, err)
 		}
 		sidecar.Commitments = append(sidecar.Commitments, commitment)
-		proof, err := kzg4844.ComputeBlobProof(blob, commitment)
+		proof, err := kzg4844.ComputeBlobProof(&blob, commitment)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot compute KZG proof for fast commitment verification of blob %d in tx candidate: %w", i, err)
 		}

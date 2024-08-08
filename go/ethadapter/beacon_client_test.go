@@ -1,10 +1,17 @@
 package ethadapter
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/require"
+	"github.com/ten-protocol/go-ten/go/common"
 	"testing"
 )
+
+const spareBlobBits = 6 // = math.floor(math.log2(BLS_MODULUS)) % 8
 
 func TestBlobsFromSidecars(t *testing.T) {
 	indices := []uint64{5, 7, 2}
@@ -80,6 +87,141 @@ func TestClientPoolSeveral(t *testing.T) {
 	}
 }
 
+func TestBlobEncoding(t *testing.T) {
+	// Example data
+	extRlp := createRollup(4444)
+	encRollup, err := common.EncodeRollup(&extRlp)
+
+	// Encode data into blobs
+	blobs, err := EncodeBlobs(encRollup)
+	if err != nil {
+		fmt.Println("Error encoding rollup blob:", err)
+	}
+
+	// Reconstruct rollup from blobs
+	rollup, err := reconstructRollup(blobs)
+	if err != nil {
+		fmt.Println("Error reconstructing rollup:", err)
+		return
+	}
+
+	fmt.Println("Reconstructed rollup:", rollup)
+}
+
+// Function to reconstruct rollup from blobs
+func reconstructRollup(blobs []kzg4844.Blob) (*common.ExtRollup, error) {
+	data, err := DecodeBlobs(blobs)
+	if err != nil {
+		fmt.Println("Error decoding rollup blob:", err)
+	}
+	var rollup common.ExtRollup
+	if err := rlp.DecodeBytes(data, &rollup); err != nil {
+		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
+	}
+
+	return &rollup, nil
+}
+
+//// Function to reconstruct rollup from blobs
+//func reconstructRollup(blobs []kzg4844.Blob) (*common.ExtRollup, error) {
+//	var serializedData []byte
+//	for _, blob := range blobs {
+//		for i := 0; i < len(blob); i += 32 {
+//			// We need to make sure to not go beyond the actual length of the blob
+//			if i+32 <= len(blob) {
+//				serializedData = append(serializedData, blob[i+1:i+32]...)
+//			}
+//		}
+//	}
+//
+//	var rollup common.ExtRollup
+//	if err := rlp.DecodeBytes(serializedData, &rollup); err != nil {
+//		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
+//	}
+//
+//	return &rollup, nil
+//}
+
+func EncodeBlobs(data []byte) ([]kzg4844.Blob, error) {
+	data, err := rlp.EncodeToBytes(data)
+	if err != nil {
+		return nil, err
+	}
+	var blobs []kzg4844.Blob
+	for len(data) > 0 {
+		var b kzg4844.Blob
+		data = fillBlobBytes(b[:], data)
+		data, err = fillBlobBits(b[:], data)
+		if err != nil {
+			return nil, err
+		}
+		blobs = append(blobs, b)
+	}
+	return blobs, nil
+}
+
+func fillBlobBytes(blob []byte, data []byte) []byte {
+	for fieldElement := 0; fieldElement < params.BlobTxFieldElementsPerBlob; fieldElement++ {
+		startIdx := fieldElement*32 + 1
+		copy(blob[startIdx:startIdx+31], data)
+		if len(data) <= 31 {
+			return nil
+		}
+		data = data[31:]
+	}
+	return data
+}
+
+func fillBlobBits(blob []byte, data []byte) ([]byte, error) {
+	var acc uint16
+	accBits := 0
+	for fieldElement := 0; fieldElement < params.BlobTxFieldElementsPerBlob; fieldElement++ {
+		if accBits < spareBlobBits && len(data) > 0 {
+			acc |= uint16(data[0]) << accBits
+			accBits += 8
+			data = data[1:]
+		}
+		blob[fieldElement*32] = uint8(acc & ((1 << spareBlobBits) - 1))
+		accBits -= spareBlobBits
+		if accBits < 0 {
+			// We're out of data
+			break
+		}
+		acc >>= spareBlobBits
+	}
+	if accBits > 0 {
+		return nil, fmt.Errorf("somehow ended up with %v spare accBits", accBits)
+	}
+	return data, nil
+}
+
+// DecodeBlobs decodes blobs into the batch data encoded in them.
+func DecodeBlobs(blobs []kzg4844.Blob) ([]byte, error) {
+	var rlpData []byte
+	for _, blob := range blobs {
+		for fieldIndex := 0; fieldIndex < params.BlobTxFieldElementsPerBlob; fieldIndex++ {
+			rlpData = append(rlpData, blob[fieldIndex*32+1:(fieldIndex+1)*32]...)
+		}
+		var acc uint16
+		accBits := 0
+		for fieldIndex := 0; fieldIndex < params.BlobTxFieldElementsPerBlob; fieldIndex++ {
+			acc |= uint16(blob[fieldIndex*32]) << accBits
+			accBits += spareBlobBits
+			if accBits >= 8 {
+				rlpData = append(rlpData, uint8(acc))
+				acc >>= 8
+				accBits -= 8
+			}
+		}
+		if accBits != 0 {
+			return nil, fmt.Errorf("somehow ended up with %v spare accBits", accBits)
+		}
+	}
+	var outputData []byte
+	err := rlp.Decode(bytes.NewReader(rlpData), &outputData)
+	return outputData, err
+}
+
 func makeTestBlobSidecar(index uint64) (IndexedBlobHash, *BlobSidecar) {
 	blob := kzg4844.Blob{}
 	// make first byte of test blob match its index so we can easily verify if is returned in the
@@ -94,10 +236,43 @@ func makeTestBlobSidecar(index uint64) (IndexedBlobHash, *BlobSidecar) {
 		Hash:  hash,
 	}
 	sidecar := BlobSidecar{
-		Index:         index,
-		Blob:          Blob(blob),
-		KZGCommitment: commit,
-		KZGProof:      proof,
+		Index:         Uint64String(index),
+		Blob:          blob,
+		KZGCommitment: Bytes48(commit),
+		KZGProof:      Bytes48(proof),
 	}
 	return idh, &sidecar
+}
+
+// Function to encode data into blobs
+func encodeBlobs(data []byte) []kzg4844.Blob {
+	blobs := []kzg4844.Blob{{}}
+	blobIndex := 0
+	fieldIndex := -1
+	for i := 0; i < len(data); i += 31 {
+		fieldIndex++
+		if fieldIndex == params.BlobTxFieldElementsPerBlob {
+			blobs = append(blobs, kzg4844.Blob{})
+			blobIndex++
+			fieldIndex = 0
+		}
+		max := i + 31
+		if max > len(data) {
+			max = len(data)
+		}
+		copy(blobs[blobIndex][fieldIndex*32+1:], data[i:max])
+	}
+	return blobs
+}
+
+func createRollup(lastBatch int64) common.ExtRollup {
+	header := common.RollupHeader{
+		LastBatchSeqNo: uint64(lastBatch),
+	}
+
+	rollup := common.ExtRollup{
+		Header: &header,
+	}
+
+	return rollup
 }

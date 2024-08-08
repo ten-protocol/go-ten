@@ -244,11 +244,6 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 		return nil, fmt.Errorf("error in converting ref.Time to slot: %w", err)
 	}
 
-	//FIXME error here
-	//FIXME error here
-	//FIXME error here
-	//FIXME error here
-	//FIXME error here
 	resp, err := cl.fetchSidecars(ctx, slot, hashes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, b, err)

@@ -147,7 +147,9 @@ func (rc *rollupConsumerImpl) extractRollups(ctx context.Context, br *common.Blo
 func reconstructRollup(blobs []*kzg4844.Blob) (*common.ExtRollup, error) {
 	var serializedData []byte
 	for _, blob := range blobs {
-		serializedData = append(serializedData, blob[:]...)
+		for i := 0; i < len(blob); i += 32 {
+			serializedData = append(serializedData, blob[i+1:i+32]...)
+		}
 	}
 
 	var rollup common.ExtRollup
