@@ -36,7 +36,7 @@ const (
 
 var _defaultFaucetAmount = big.NewInt(750_000_000_000_000)
 
-// InMemDevNetwork is a local dev network (L1 and L2) - the obscuro nodes are in-memory in a single go process, the L1 nodes are a docker geth network
+// InMemDevNetwork is a local dev network (L1 and L2) - the Ten nodes are in-memory in a single go process, the L1 nodes are a docker geth network
 //
 // It can play the role of node operators and network admins to reproduce complex scenarios around nodes joining/leaving/failing.
 //
@@ -50,9 +50,9 @@ type InMemDevNetwork struct {
 
 	l1Network L1Network
 
-	// When Obscuro network has been initialised on the L1 network, this will be populated
+	// When Ten network has been initialised on the L1 network, this will be populated
 	// - if reconnecting to an existing network it needs to be populated when initialising this object
-	// - if it is nil when `Start()` is called then Obscuro contracts will be deployed on the L1
+	// - if it is nil when `Start()` is called then Ten contracts will be deployed on the L1
 	l1SetupData *params.L1TenData
 
 	tenConfig           *TenConfig
@@ -148,10 +148,10 @@ func (s *InMemDevNetwork) Start() {
 	s.l1Network.Prepare()
 	if s.l1SetupData == nil {
 		// this is a new network, deploy the contracts to the L1
-		fmt.Println("Deploying obscuro contracts to L1")
-		s.deployObscuroNetworkContracts()
+		fmt.Println("Deploying Ten contracts to L1")
+		s.deployTenNetworkContracts()
 	}
-	fmt.Println("Starting obscuro nodes")
+	fmt.Println("Starting Ten nodes")
 	s.startNodes()
 
 	// sleep to allow the nodes to start
@@ -253,10 +253,10 @@ func (s *InMemDevNetwork) CleanUp() {
 	time.Sleep(3 * time.Second)
 }
 
-func (s *InMemDevNetwork) deployObscuroNetworkContracts() {
+func (s *InMemDevNetwork) deployTenNetworkContracts() {
 	client := s.l1Network.GetClient(0)
 	// note: we don't currently deploy ERC20s here, don't want to waste gas on sepolia
-	l1SetupData, err := network.DeployObscuroNetworkContracts(client, s.networkWallets, false)
+	l1SetupData, err := network.DeployTenNetworkContracts(client, s.networkWallets, false)
 	if err != nil {
 		panic(err)
 	}

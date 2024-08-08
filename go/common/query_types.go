@@ -110,7 +110,7 @@ func (p *QueryPagination) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type ObscuroNetworkInfo struct {
+type TenNetworkInfo struct {
 	ManagementContractAddress common.Address
 	L1StartHash               common.Hash
 	MessageBusAddress         common.Address
