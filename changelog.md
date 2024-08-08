@@ -2,11 +2,14 @@
 ---
 # Ten Testnet Change Log
 
-# August 2024-08-06 (v0.26.0)
+# August 2024-08-08 (v0.26.0)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network. The release
   predominantly fixes known minor issues in the network, including issues deploying and interacting
-  with contracts using ethers6, and extracting event logs from tx receipts for bridge operations. 
+  with contracts using ethers6, and extracting event logs from tx receipts for bridge operations.
 * A full list of the PRs merged in this release is as below;
+  * `db6e507e` Revert refactor event log filtering for subscriptions (#2013)
+  * `b043708a` Initiate bridge deployment (#2012)
+  * `475b7057` Disable rate limiting on local testnet (#2005)
   * `86418f6d` Stopped returning errors on republish. (#2008)
   * `396c113d` Only configure docker autorestart on the main containers (#2007)
   * `e30e4eaa` Filter out irrelevant l1 txs, before sending into the enclave (#2006)
