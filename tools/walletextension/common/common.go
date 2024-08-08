@@ -3,9 +3,6 @@ package common
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-
-	gethforklog "github.com/ten-protocol/go-ten/lib/gethfork/log"
 
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
@@ -78,14 +75,4 @@ func (r *RPCRequest) Clone() *RPCRequest {
 		Method: r.Method,
 		Params: r.Params,
 	}
-}
-
-// NewFileLogger is a logger factory function
-func NewFileLogger() gethlog.Logger {
-	// Open or create your log file
-	file, err := os.OpenFile("gateway_logs.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-	if err != nil {
-		panic(err)
-	}
-	return gethlog.NewLogger(gethlog.NewGlogHandler(gethforklog.NewTerminalHandler(file, false)))
 }

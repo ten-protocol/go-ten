@@ -41,7 +41,6 @@ type Services struct {
 	HostAddrWS   string // The WS address on which the Ten host can be reached
 	Storage      storage.Storage
 	logger       gethlog.Logger
-	FileLogger   gethlog.Logger
 	stopControl  *stopcontrol.StopControl
 	version      string
 	Cache        cache.Cache
@@ -58,7 +57,6 @@ type NewHeadNotifier interface {
 }
 
 func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, config *common.Config) *Services {
-	newFileLogger := common.NewFileLogger()
 	newGatewayCache, err := cache.NewCache(logger)
 	if err != nil {
 		logger.Error(fmt.Errorf("could not create cache. Cause: %w", err).Error())
@@ -101,7 +99,6 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		HostAddrWS:      hostAddrWS,
 		Storage:         storage,
 		logger:          logger,
-		FileLogger:      newFileLogger,
 		stopControl:     stopControl,
 		version:         version,
 		Cache:           newGatewayCache,
