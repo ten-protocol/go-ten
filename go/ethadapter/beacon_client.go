@@ -281,7 +281,7 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 // hashes. The order of the returned blobs will match the order of `hashes`.  Confirms each
 // blob's validity by checking its proof against the commitment, and confirming the commitment
 // hashes to the expected value. Returns error if any blob is found invalid.
-func (cl *L1BeaconClient) FetchBlobs(ctx context.Context, b *types.Header, hashes []IndexedBlobHash) ([]*Blob, error) {
+func (cl *L1BeaconClient) FetchBlobs(ctx context.Context, b *types.Header, hashes []IndexedBlobHash) ([]*kzg4844.Blob, error) {
 	blobSidecars, err := cl.GetBlobSidecars(ctx, b, hashes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get blob sidecars for Block Header %s: %w", b.Hash().Hex(), err)
@@ -289,12 +289,12 @@ func (cl *L1BeaconClient) FetchBlobs(ctx context.Context, b *types.Header, hashe
 	return blobsFromSidecars(blobSidecars, hashes)
 }
 
-func blobsFromSidecars(blobSidecars []*BlobSidecar, hashes []IndexedBlobHash) ([]*Blob, error) {
+func blobsFromSidecars(blobSidecars []*BlobSidecar, hashes []IndexedBlobHash) ([]*kzg4844.Blob, error) {
 	if len(blobSidecars) != len(hashes) {
 		return nil, fmt.Errorf("number of hashes and blobSidecars mismatch, %d != %d", len(hashes), len(blobSidecars))
 	}
 
-	out := make([]*Blob, len(hashes))
+	out := make([]*kzg4844.Blob, len(hashes))
 	for i, ih := range hashes {
 		sidecar := blobSidecars[i]
 		if sidx := uint64(sidecar.Index); sidx != ih.Index {

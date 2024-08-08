@@ -1,14 +1,17 @@
 package ethadapter
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"reflect"
 	"strconv"
 )
 
 type BlobSidecar struct {
-	Blob          Blob         `json:"blob"`
+	Blob          kzg4844.Blob `json:"blob"`
 	Index         Uint64String `json:"index"`
 	KZGCommitment Bytes48      `json:"kzg_commitment"`
 	KZGProof      Bytes48      `json:"kzg_proof"`
@@ -16,7 +19,7 @@ type BlobSidecar struct {
 
 type APIBlobSidecar struct {
 	Index             Uint64String            `json:"index"`
-	Blob              Blob                    `json:"blob"`
+	Blob              kzg4844.Blob            `json:"blob"`
 	KZGCommitment     Bytes48                 `json:"kzg_commitment"`
 	KZGProof          Bytes48                 `json:"kzg_proof"`
 	SignedBlockHeader SignedBeaconBlockHeader `json:"signed_block_header"`
@@ -131,4 +134,25 @@ func (b Bytes32) MarshalText() ([]byte, error) {
 
 func (b Bytes32) String() string {
 	return hexutil.Encode(b[:])
+}
+
+// IndexedBlobHash represents a blob hash that commits to a single blob confirmed in a block.  The
+// index helps us avoid unnecessary blob to blob hash conversions to find the right content in a
+// sidecar.
+type IndexedBlobHash struct {
+	Index uint64      // absolute index in the block, a.k.a. position in sidecar blobs array
+	Hash  common.Hash // hash of the blob, used for consistency checks
+}
+
+// KZGToVersionedHash computes the "blob hash" (a.k.a. versioned-hash) of a blob-commitment, as used in a blob-tx.
+// We implement it here because it is unfortunately not (currently) exposed by geth.
+func KZGToVersionedHash(commitment kzg4844.Commitment) (out common.Hash) {
+	hasher := sha256.New()
+	return kzg4844.CalcBlobHashV1(hasher, &commitment)
+}
+
+// VerifyBlobProof verifies that the given blob and proof corresponds to the given commitment,
+// returning error if the verification fails.
+func VerifyBlobProof(blob *kzg4844.Blob, commitment kzg4844.Commitment, proof kzg4844.Proof) error {
+	return kzg4844.VerifyBlobProof(blob, commitment, proof)
 }

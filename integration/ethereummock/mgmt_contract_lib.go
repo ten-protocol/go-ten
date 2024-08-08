@@ -3,15 +3,12 @@ package ethereummock
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"github.com/ten-protocol/go-ten/integration/datagenerator"
-	"math"
-
 	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -69,18 +66,22 @@ func (m *mockContractLib) CreateRollup(tx *ethadapter.L1RollupTx) types.TxData {
 }
 
 func (m *mockContractLib) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error) {
-	encRollupData := base64EncodeToString(t.Rollup)
+	var err error
+	blob, err := bytesToBlob(t.Rollup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert rollup to blobs: %w", err)
+	}
+	//maxBlobSize := 128 * 1024 // 128KB in bytes TODO move to config
+	//base64ChunkSize := int(math.Floor(float64(maxBlobSize) * 4 / 3))
+	//base64ChunkSize = base64ChunkSize - (base64ChunkSize % 4) - 4 //metadata size
+	//
+	//blobs, _ := chunkRollup(encRollupData, base64ChunkSize)
 
-	maxBlobSize := 128 * 1024 // 128KB in bytes TODO move to config
-	base64ChunkSize := int(math.Floor(float64(maxBlobSize) * 4 / 3))
-	base64ChunkSize = base64ChunkSize - (base64ChunkSize % 4) - 4 //metadata size
-
-	blobs, _ := chunkRollup(encRollupData, base64ChunkSize)
-
+	var blobs []*kzg4844.Blob
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
-	var err error
 
+	blobs = append(blobs, blob)
 	if sidecar, blobHashes, err = makeSidecar(blobs); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
@@ -218,6 +219,21 @@ func chunkRollup(data string, maxBlobSize int) ([]*kzg4844.Blob, error) {
 	return blobs, nil
 }
 
+// FIXME handle chunking if greater than blobsize
+func bytesToBlob(data []byte) (*kzg4844.Blob, error) {
+	// Ensure the data fits into a Blob
+	var blob kzg4844.Blob
+	if len(data) > len(blob) {
+		data = data[:len(blob)]
+	} else if len(data) < len(blob) {
+		copy(blob[:], data)
+	} else {
+		copy(blob[:], data)
+	}
+
+	return &blob, nil
+}
+
 // MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
 // data.
 func makeSidecar(blobs []*kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
@@ -244,9 +260,4 @@ func makeSidecar(blobs []*kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash
 func kzgToVersionedHash(commitment kzg4844.Commitment) (out gethcommon.Hash) {
 	hasher := sha256.New()
 	return kzg4844.CalcBlobHashV1(hasher, &commitment)
-}
-
-// base64EncodeToString encodes a byte array to a string
-func base64EncodeToString(bytes []byte) string {
-	return base64.StdEncoding.EncodeToString(bytes)
 }

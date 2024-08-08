@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"errors"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"math/big"
 
@@ -131,5 +132,5 @@ type RollupConsumer interface {
 
 type BlobResolver interface {
 	// FetchBlobs Fetches the blob data using beacon chain APIs
-	FetchBlobs(ctx context.Context, b *types.Header, hashes []ethadapter.IndexedBlobHash) ([]*ethadapter.Blob, error)
+	FetchBlobs(ctx context.Context, b *types.Header, hashes []ethadapter.IndexedBlobHash) ([]*kzg4844.Blob, error)
 }

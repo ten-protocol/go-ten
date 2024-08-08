@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -127,7 +128,6 @@ func (rc *rollupConsumerImpl) extractRollups(ctx context.Context, br *common.Blo
 			continue
 		}
 
-		// Fetch blobs using BlobHashes
 		blobs, err := rc.blobResolver.FetchBlobs(ctx, br.Block.Header(), rollupHashes.BlobHashes)
 		if err != nil {
 			rc.logger.Crit("could not fetch blobs.", log.ErrKey, err)
@@ -144,7 +144,7 @@ func (rc *rollupConsumerImpl) extractRollups(ctx context.Context, br *common.Blo
 	return rollups
 }
 
-func reconstructRollup(blobs []*ethadapter.Blob) (*common.ExtRollup, error) {
+func reconstructRollup(blobs []*kzg4844.Blob) (*common.ExtRollup, error) {
 	var serializedData []byte
 	for _, blob := range blobs {
 		serializedData = append(serializedData, blob[:]...)
