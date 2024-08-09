@@ -421,7 +421,6 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		}
 		p.logger.Info("Host issuing l1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
 
-		//FIXME here rlp: expected input string or byte for *uint256.Int, decoding into (types.BlobTx).ChainID
 		err = p.ethClient.SendTransaction(signedTx)
 		if err != nil {
 			println("Error sending tx: ", signedTx.Hash().Hex(), err.Error())
