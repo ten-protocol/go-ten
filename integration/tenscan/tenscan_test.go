@@ -78,6 +78,15 @@ func TestTenscan(t *testing.T) {
 		5,
 	)
 
+	//Timer for running local tests
+	countdownDuration := 20 * time.Minute
+	tickDuration := 30 * time.Second
+
+	for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
+		fmt.Printf("Shutting down in %s...\n", remaining)
+		time.Sleep(tickDuration)
+	}
+
 	// Issue tests
 	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
 	assert.NoError(t, err)

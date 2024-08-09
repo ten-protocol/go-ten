@@ -79,6 +79,7 @@ type (
 	EncodedRollup       []byte
 	EncodedBatchMsg     []byte
 	EncodedBatchRequest []byte
+	EncodedBlobHashes   []byte
 
 	EnclaveID = common.Address
 )

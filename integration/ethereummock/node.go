@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/holiman/uint256"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -88,6 +89,21 @@ type Node struct {
 }
 
 func (m *Node) PrepareTransactionToSend(_ context.Context, txData types.TxData, _ gethcommon.Address) (types.TxData, error) {
+	switch tx := txData.(type) {
+	case *types.LegacyTx:
+		return createLegacyTx(txData)
+	case *types.BlobTx:
+		return createBlobTx(txData)
+	default:
+		return nil, fmt.Errorf("unsupported transaction type: %T", tx)
+	}
+}
+
+func (m *Node) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, _ uint64, _ int) (types.TxData, error) {
+	return m.PrepareTransactionToSend(ctx, txData, from)
+}
+
+func createLegacyTx(txData types.TxData) (types.TxData, error) {
 	tx := types.NewTx(txData)
 	return &types.LegacyTx{
 		Nonce:    123,
@@ -99,8 +115,17 @@ func (m *Node) PrepareTransactionToSend(_ context.Context, txData types.TxData, 
 	}, nil
 }
 
-func (m *Node) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, _ uint64, _ int) (types.TxData, error) {
-	return m.PrepareTransactionToSend(ctx, txData, from)
+func createBlobTx(txData types.TxData) (types.TxData, error) {
+	tx := types.NewTx(txData)
+	gasTip, _ := uint256.FromBig(tx.GasTipCap())
+	return &types.BlobTx{
+		To:         *tx.To(),
+		Data:       tx.Data(),
+		Gas:        tx.Gas(),
+		GasTipCap:  gasTip,
+		BlobHashes: tx.BlobHashes(),
+		Sidecar:    tx.BlobTxSidecar(),
+	}, nil
 }
 
 func (m *Node) SendTransaction(tx *types.Transaction) error {
