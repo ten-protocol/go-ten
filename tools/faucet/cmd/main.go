@@ -29,8 +29,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("💡 Faucet started - visit http://%s/viewingkeys/ to generate an ephemeral viewing key.\n", cfg.Host)
-
+	fmt.Printf("💡 Faucet started on http://%s:%d \n", cfg.Host, cfg.HTTPPort)
+	
 	// Create a channel to receive signals
 	signalCh := make(chan os.Signal, 1)
 
