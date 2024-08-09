@@ -1,7 +1,6 @@
 package ethadapter
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/params"
@@ -98,8 +97,12 @@ func TestBlobEncoding(t *testing.T) {
 		fmt.Println("Error encoding rollup blob:", err)
 	}
 
-	// Reconstruct rollup from blobs
-	rollup, err := reconstructRollup(blobs)
+	blobsPtr := make([]*kzg4844.Blob, len(blobs))
+	for i := range blobs {
+		blobsPtr[i] = &blobs[i]
+	}
+
+	rollup, err := reconstructRollup(blobsPtr)
 	if err != nil {
 		fmt.Println("Error reconstructing rollup:", err)
 		return
@@ -109,7 +112,7 @@ func TestBlobEncoding(t *testing.T) {
 }
 
 // Function to reconstruct rollup from blobs
-func reconstructRollup(blobs []kzg4844.Blob) (*common.ExtRollup, error) {
+func reconstructRollup(blobs []*kzg4844.Blob) (*common.ExtRollup, error) {
 	data, err := DecodeBlobs(blobs)
 	if err != nil {
 		fmt.Println("Error decoding rollup blob:", err)
@@ -141,86 +144,6 @@ func reconstructRollup(blobs []kzg4844.Blob) (*common.ExtRollup, error) {
 //
 //	return &rollup, nil
 //}
-
-func EncodeBlobs(data []byte) ([]kzg4844.Blob, error) {
-	data, err := rlp.EncodeToBytes(data)
-	if err != nil {
-		return nil, err
-	}
-	var blobs []kzg4844.Blob
-	for len(data) > 0 {
-		var b kzg4844.Blob
-		data = fillBlobBytes(b[:], data)
-		data, err = fillBlobBits(b[:], data)
-		if err != nil {
-			return nil, err
-		}
-		blobs = append(blobs, b)
-	}
-	return blobs, nil
-}
-
-func fillBlobBytes(blob []byte, data []byte) []byte {
-	for fieldElement := 0; fieldElement < params.BlobTxFieldElementsPerBlob; fieldElement++ {
-		startIdx := fieldElement*32 + 1
-		copy(blob[startIdx:startIdx+31], data)
-		if len(data) <= 31 {
-			return nil
-		}
-		data = data[31:]
-	}
-	return data
-}
-
-func fillBlobBits(blob []byte, data []byte) ([]byte, error) {
-	var acc uint16
-	accBits := 0
-	for fieldElement := 0; fieldElement < params.BlobTxFieldElementsPerBlob; fieldElement++ {
-		if accBits < spareBlobBits && len(data) > 0 {
-			acc |= uint16(data[0]) << accBits
-			accBits += 8
-			data = data[1:]
-		}
-		blob[fieldElement*32] = uint8(acc & ((1 << spareBlobBits) - 1))
-		accBits -= spareBlobBits
-		if accBits < 0 {
-			// We're out of data
-			break
-		}
-		acc >>= spareBlobBits
-	}
-	if accBits > 0 {
-		return nil, fmt.Errorf("somehow ended up with %v spare accBits", accBits)
-	}
-	return data, nil
-}
-
-// DecodeBlobs decodes blobs into the batch data encoded in them.
-func DecodeBlobs(blobs []kzg4844.Blob) ([]byte, error) {
-	var rlpData []byte
-	for _, blob := range blobs {
-		for fieldIndex := 0; fieldIndex < params.BlobTxFieldElementsPerBlob; fieldIndex++ {
-			rlpData = append(rlpData, blob[fieldIndex*32+1:(fieldIndex+1)*32]...)
-		}
-		var acc uint16
-		accBits := 0
-		for fieldIndex := 0; fieldIndex < params.BlobTxFieldElementsPerBlob; fieldIndex++ {
-			acc |= uint16(blob[fieldIndex*32]) << accBits
-			accBits += spareBlobBits
-			if accBits >= 8 {
-				rlpData = append(rlpData, uint8(acc))
-				acc >>= 8
-				accBits -= 8
-			}
-		}
-		if accBits != 0 {
-			return nil, fmt.Errorf("somehow ended up with %v spare accBits", accBits)
-		}
-	}
-	var outputData []byte
-	err := rlp.Decode(bytes.NewReader(rlpData), &outputData)
-	return outputData, err
-}
 
 func makeTestBlobSidecar(index uint64) (IndexedBlobHash, *BlobSidecar) {
 	blob := kzg4844.Blob{}

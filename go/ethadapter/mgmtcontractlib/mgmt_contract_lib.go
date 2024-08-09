@@ -186,9 +186,9 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 	}
 
 	//TODO handle when blobs exceed 1Mb
-	blobs := encodeBlobs(t.Rollup)
+	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert rollup to blobs: %w", err)
+		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
 	}
 
 	var blobHashes []gethcommon.Hash

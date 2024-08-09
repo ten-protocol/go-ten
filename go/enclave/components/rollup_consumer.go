@@ -144,18 +144,17 @@ func (rc *rollupConsumerImpl) extractRollups(ctx context.Context, br *common.Blo
 	return rollups
 }
 
+// Function to reconstruct rollup from blobs
 func reconstructRollup(blobs []*kzg4844.Blob) (*common.ExtRollup, error) {
-	var serializedData []byte
-	for _, blob := range blobs {
-		for i := 0; i < len(blob); i += 32 {
-			serializedData = append(serializedData, blob[i+1:i+32]...)
-		}
+	data, err := ethadapter.DecodeBlobs(blobs)
+	if err != nil {
+		fmt.Println("Error decoding rollup blob:", err)
 	}
-
 	var rollup common.ExtRollup
-	if err := rlp.DecodeBytes(serializedData, &rollup); err != nil {
+	if err := rlp.DecodeBytes(data, &rollup); err != nil {
 		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
 	}
+	println("ROLLUP RETRIEVED FROM L1: ", rollup.Hash().Hex())
 
 	return &rollup, nil
 }
