@@ -578,6 +578,8 @@ func makeSidecar(blobs []kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash,
 	return sidecar, blobHashes, nil
 }
 
+// toIndexedBlobHashes is needed as the beacon API has an optional indices parameter that allows us to specify which blob
+// index to retrieve from a given block
 func toIndexedBlobHashes(hs ...gethcommon.Hash) []ethadapter.IndexedBlobHash {
 	hashes := make([]ethadapter.IndexedBlobHash, 0, len(hs))
 	for i, hash := range hs {

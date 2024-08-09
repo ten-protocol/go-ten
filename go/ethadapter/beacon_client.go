@@ -127,10 +127,10 @@ func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64,
 	reqPath := path.Join(sidecarsMethodPrefix, strconv.FormatUint(slot, 10))
 	var reqQuery url.Values
 	//FIXME lookup sidecars by their hash
-	//reqQuery = url.Values{}
-	//for i := range hashes {
-	//	reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))
-	//}
+	reqQuery = url.Values{}
+	for i := range hashes {
+		reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))
+	}
 	var resp APIGetBlobSidecarsResponse
 
 	err := bc.request(ctx, &resp, reqPath, reqQuery)
