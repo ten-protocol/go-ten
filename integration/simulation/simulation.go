@@ -108,7 +108,7 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 					if t == nil {
 						continue
 					}
-					if _, ok := t.(*ethadapter.L1RollupTx); ok {
+					if _, ok := t.(*ethadapter.L1RollupHashes); ok {
 						// exit at the first Ten rollup we see
 						return
 					}

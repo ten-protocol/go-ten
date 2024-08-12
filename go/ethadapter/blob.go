@@ -613,7 +613,7 @@ func fillBlobBits(blob []byte, data []byte) ([]byte, error) {
 		blob[fieldElement*32] = uint8(acc & ((1 << excessBlobBits) - 1))
 		accBits -= excessBlobBits
 		if accBits < 0 {
-			// We're out of data
+			// no more data
 			break
 		}
 		acc >>= excessBlobBits

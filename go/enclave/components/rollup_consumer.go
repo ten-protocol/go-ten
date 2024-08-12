@@ -154,7 +154,5 @@ func reconstructRollup(blobs []*kzg4844.Blob) (*common.ExtRollup, error) {
 	if err := rlp.DecodeBytes(data, &rollup); err != nil {
 		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
 	}
-	println("ROLLUP RETRIEVED FROM L1: ", rollup.Hash().Hex())
-
 	return &rollup, nil
 }

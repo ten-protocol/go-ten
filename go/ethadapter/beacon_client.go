@@ -126,7 +126,6 @@ func (bc *BeaconHTTPClient) BeaconGenesis(ctx context.Context) (APIGenesisRespon
 func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
 	reqPath := path.Join(sidecarsMethodPrefix, strconv.FormatUint(slot, 10))
 	var reqQuery url.Values
-	//FIXME lookup sidecars by their hash
 	reqQuery = url.Values{}
 	for i := range hashes {
 		reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))

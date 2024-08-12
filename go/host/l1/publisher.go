@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -398,16 +399,16 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 
 	retries := -1
 
-	// we keep trying to send the transaction with this nonce until it is included in a block
-	// note: this is only safe because of the sendingLock guaranteeing only one transaction in-flight at a time
-	nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
-	if err != nil {
-		return fmt.Errorf("could not get nonce for L1 tx: %w", err)
-	}
-
 	// while the publisher service is still alive we keep trying to get the transaction into the L1
 	for !p.hostStopper.IsStopping() {
 		retries++ // count each attempt so we can increase gas price
+
+		// moved nonce fetching within this loop to ensure its up to date
+		// note: this is only safe because of the sendingLock guaranteeing only one transaction in-flight at a time
+		nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
+		if err != nil {
+			return fmt.Errorf("could not get nonce for L1 tx: %w", err)
+		}
 
 		// update the tx gas price before each attempt
 		tx, err := p.ethClient.PrepareTransactionToRetry(p.sendingContext, tx, p.hostWallet.Address(), nonce, retries)
@@ -423,7 +424,12 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 
 		err = p.ethClient.SendTransaction(signedTx)
 		if err != nil {
-			println("Error sending tx: ", signedTx.Hash().Hex(), err.Error())
+			// if there is a nonce gap, wait and retry after a short delay with exponential backoff
+			if strings.Contains(err.Error(), "nonce too low") {
+				p.logger.Warn("Nonce too low, likely due to a gap, retrying", "nonce", nonce)
+				time.Sleep(time.Duration(retries) * time.Second)
+				continue
+			}
 			return errors.Wrap(err, "could not broadcast L1 tx")
 		}
 		p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())

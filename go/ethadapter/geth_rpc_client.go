@@ -139,9 +139,6 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor common
 }
 
 func (e *gethRPCClient) SendTransaction(signedTx *types.Transaction) error {
-	if signedTx.Type() == types.BlobTxType {
-		println("Sending signed BLOB TX with hash: ", signedTx.Hash().Hex())
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 

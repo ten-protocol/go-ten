@@ -703,8 +703,6 @@ func (s *storageImpl) GetEnclaveKey(ctx context.Context) (*crypto.EnclaveKey, er
 }
 
 func (s *storageImpl) StoreRollup(ctx context.Context, rollup *common.ExtRollup, internalHeader *common.CalldataRollupHeader) error {
-	println("Storing rollup with seq no: ", rollup.Header.LastBatchSeqNo)
-	println("Storing rollup with hash: ", rollup.Hash().Hex())
 	defer s.logDuration("StoreRollup", measure.NewStopwatch())
 
 	dbTx, err := s.db.NewDBTransaction(ctx)

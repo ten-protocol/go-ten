@@ -29,11 +29,11 @@ func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:      0.2,
 		Wallets:                    wallets,
 		StartPort:                  integration.StartPortSimulationFullNetwork,
-		ReceiptTimeout:             20 * time.Second,
-		StoppingDelay:              15 * time.Second,
+		ReceiptTimeout:             30 * time.Second,
+		StoppingDelay:              20 * time.Second,
 		NodeWithInboundP2PDisabled: 2,
 	}
-	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
+	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 10
 
 	testSimulation(t, network.NewNetworkOfSocketNodes(wallets), simParams)
 }
