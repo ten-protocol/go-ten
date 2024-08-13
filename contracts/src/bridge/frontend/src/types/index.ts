@@ -124,16 +124,7 @@ export interface ResponseDataInterface<T> {
   success: boolean;
 }
 
-export interface WalletConnectionContextType {
-  provider: any;
-  signer: any;
-  address: string;
-  walletConnected: boolean;
-  isL1ToL2: boolean;
-  connectWallet: () => void;
-  disconnectWallet: () => void;
-  switchNetwork: () => void;
-}
+export interface WalletConnectionContextType {}
 
 export interface Props {
   children: React.ReactNode;

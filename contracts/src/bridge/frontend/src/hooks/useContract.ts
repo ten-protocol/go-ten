@@ -1,22 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { ethers } from "ethers";
-import Bridge from "../../artifacts/IBridge.sol/IBridge.json";
-import ManagementContractAbi from "../../artifacts/ManagementContract.sol/ManagementContract.json";
-import IMessageBusAbi from "../../artifacts/IMessageBus.sol/IMessageBus.json";
-import { useWalletStore } from "../components/providers/wallet-provider";
+import useWalletStore from "../stores/wallet-store";
+import useContractStore from "../stores/contract-store";
 import { toast } from "../components/ui/use-toast";
-import { ContractState, ToastType } from "../types";
+import { ToastType } from "../types";
 import { useGeneralService } from "../services/useGeneralService";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 import { privateKey } from "../lib/constants";
+import Bridge from "../../artifacts/IBridge.sol/IBridge.json";
+import ManagementContractAbi from "../../artifacts/ManagementContract.sol/ManagementContract.json";
+import IMessageBusAbi from "../../artifacts/IMessageBus.sol/IMessageBus.json";
 
 export const useContract = () => {
-  const [contractState, setContractState] = useState<ContractState>({
-    messageBusAddress: "",
-  });
-
   const { signer, isL1ToL2, provider } = useWalletStore();
   const { obscuroConfig, isObscuroConfigLoading } = useGeneralService();
+  const {
+    setContractState,
+    bridgeContract,
+    managementContract,
+    messageBusContract,
+    wallet,
+    messageBusAddress,
+  } = useContractStore();
 
   const memoizedConfig = useMemo(() => {
     if (isObscuroConfigLoading || !obscuroConfig || !obscuroConfig.result) {
@@ -67,15 +72,14 @@ export const useContract = () => {
     };
 
     setupContracts();
-  }, [memoizedConfig, provider, isL1ToL2, signer]);
+  }, [memoizedConfig, provider, isL1ToL2, signer, setContractState]);
 
   const sendNative = async (receiver: string, value: string) => {
     const { bridgeContract, managementContract, messageBusContract, wallet } =
-      contractState;
+      useContractStore.getState();
 
     if (!bridgeContract || !signer || !wallet || !managementContract) {
       console.error("Contract or signer not found");
-      console.log("🚀 ~ sendNative ~ signer", signer, provider);
       throw new Error("Contract or signer not found");
     }
 
@@ -98,7 +102,6 @@ export const useContract = () => {
 
       const txResponse = await signer.sendTransaction(tx);
       console.log("Transaction response:", txResponse);
-
       toast({
         description: "Transaction sent; waiting for confirmation",
         variant: ToastType.INFO,
@@ -139,7 +142,7 @@ export const useContract = () => {
       }
 
       toast({
-        description: "ValueTransfer event data found; getting block data",
+        description: "ValueTransfer event data found; fetching block",
         variant: ToastType.INFO,
       });
 
@@ -153,7 +156,7 @@ export const useContract = () => {
       }
 
       toast({
-        description: "Block data found; processing value transfer",
+        description: "Block found; processing value transfer",
         variant: ToastType.INFO,
       });
 
@@ -177,7 +180,6 @@ export const useContract = () => {
       const leafEntries = JSON.parse(decodedCrossChainTree);
 
       if (leafEntries[0][1] === msgHash) {
-        console.log("Value transfer hash is in the xchain tree");
         toast({
           description: "Value transfer hash is in the xchain tree",
           variant: ToastType.INFO,
@@ -190,7 +192,6 @@ export const useContract = () => {
       });
 
       const tree = StandardMerkleTree.of(leafEntries, ["string", "bytes32"]);
-
       toast({
         description: "Merkle tree constructed",
         variant: ToastType.INFO,
@@ -200,7 +201,6 @@ export const useContract = () => {
       const root = tree.root;
 
       if (block.result.crossChainTreeHash === tree.root) {
-        console.log("Constructed merkle root matches block crossChainTreeHash");
         toast({
           description:
             "Constructed merkle root matches block crossChainTreeHash",
@@ -209,7 +209,6 @@ export const useContract = () => {
       }
 
       let gasLimit: ethers.BigNumber | null = null;
-
       toast({
         description: "Estimating gas",
         variant: ToastType.INFO,
@@ -245,8 +244,6 @@ export const useContract = () => {
       };
 
       gasLimit = await estimateGasWithTimeout();
-      console.log("🚀 ~ sendNative ~ gasLimit:", gasLimit);
-
       toast({
         description: "Sending value transfer to L2",
         variant: ToastType.INFO,
@@ -259,11 +256,11 @@ export const useContract = () => {
           root,
           { gasPrice, gasLimit }
         );
+
       console.log("🚀 ~ sendNative ~ txL1:", txL1);
 
       const responseL1 = await wallet.sendTransaction(txL1);
       console.log("🚀 ~ sendNative ~ responseL1:", responseL1);
-
       toast({
         description: "Value transfer sent to L2; waiting for confirmation",
         variant: ToastType.INFO,
@@ -271,7 +268,6 @@ export const useContract = () => {
 
       const receiptL1 = await responseL1.wait();
       console.log("🚀 ~ sendNative ~ receiptL1:", receiptL1);
-
       return receiptL1;
     } catch (error) {
       console.error("Error sending native currency:", error);
@@ -284,7 +280,7 @@ export const useContract = () => {
     amount: string,
     tokenContractAddress: string
   ) => {
-    const { bridgeContract } = contractState;
+    const { bridgeContract } = useContractStore.getState();
 
     if (!bridgeContract) {
       console.error("Contract not found");
@@ -338,7 +334,7 @@ export const useContract = () => {
   };
 
   const getBridgeTransactions = async (provider: any, userAddress: string) => {
-    const { messageBusAddress } = contractState;
+    const { messageBusAddress } = useContractStore.getState();
 
     if (!provider || !userAddress || !messageBusAddress) {
       console.error("Provider, user address, or message bus address not found");
@@ -365,7 +361,11 @@ export const useContract = () => {
   };
 
   return {
-    ...contractState,
+    bridgeContract,
+    managementContract,
+    messageBusContract,
+    wallet,
+    messageBusAddress,
     sendNative,
     sendERC20,
     getNativeBalance,

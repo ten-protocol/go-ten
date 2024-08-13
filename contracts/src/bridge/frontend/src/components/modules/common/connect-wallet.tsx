@@ -1,8 +1,8 @@
-import { useWalletStore } from "../../providers/wallet-provider";
 import { Button } from "../../ui/button";
 import { Link2Icon, LinkBreak2Icon } from "@radix-ui/react-icons";
 import React from "react";
 import { cn, downloadMetaMask, ethereum } from "@/src/lib/utils";
+import useWalletStore from "@/src/stores/wallet-store";
 
 const ConnectWalletButton = ({ className, text, variant }: any) => {
   const { walletConnected, connectWallet, disconnectWallet } = useWalletStore();

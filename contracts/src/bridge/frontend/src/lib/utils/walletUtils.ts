@@ -1,9 +1,7 @@
 import detectEthereumProvider from "@metamask/detect-provider";
-import { ethers } from "ethers";
-import { ethereum } from ".";
 
 export const getEthereumProvider = async () => {
-  const provider = new ethers.providers.Web3Provider(ethereum);
+  const provider = detectEthereumProvider();
   if (!provider) {
     throw new Error("No Ethereum provider detected");
   }

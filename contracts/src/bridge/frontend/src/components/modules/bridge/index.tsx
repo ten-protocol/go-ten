@@ -13,7 +13,6 @@ import { DrawerDialog } from "../common/drawer-dialog";
 import { L1CHAINS, L1TOKENS, L2CHAINS, L2TOKENS } from "@/src/lib/constants";
 import { useWatch } from "react-hook-form";
 import useCustomHookForm from "@/src/hooks/useCustomHookForm";
-import { useWalletStore } from "../../providers/wallet-provider";
 import { ToastType, Token } from "@/src/types";
 import { useContract } from "@/src/hooks/useContract";
 import { TransferFromSection } from "./transfer-from-section";
@@ -22,6 +21,7 @@ import { SwitchNetworkButton } from "./switch-network-button";
 import { TransferToSection } from "./transfer-to-section";
 import { bridgeSchema } from "@/src/schemas/bridge";
 import { handleStorage } from "@/src/lib/utils/walletUtils";
+import useWalletStore from "@/src/stores/wallet-store";
 
 export default function Dashboard() {
   const { provider, address, walletConnected, switchNetwork, isL1ToL2 } =
