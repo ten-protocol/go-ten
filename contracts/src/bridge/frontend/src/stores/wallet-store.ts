@@ -142,7 +142,7 @@ const useWalletStore = create<WalletState>((set, get) => ({
         ? WalletNetwork.L2_TEN_TESTNET
         : WalletNetwork.L1_SEPOLIA;
 
-      await provider.request({
+      await provider?.request({
         method: requestMethods.switchNetwork,
         params: [{ chainId: desiredNetwork }],
       });
