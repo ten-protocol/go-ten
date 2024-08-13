@@ -60,7 +60,7 @@ func NewHTTPRoutes(walletExt *rpcapi.Services) []node.Route {
 		},
 		{
 			Name: common.APIVersion1 + common.PathNetworkConfig,
-			Func: httpHandler(walletExt, networkHealthRequestHandler),
+			Func: httpHandler(walletExt, networkConfigRequestHandler),
 		},
 	}
 }
@@ -315,6 +315,57 @@ func networkHealthRequestHandler(walletExt *rpcapi.Services, userConn UserConn) 
 		return
 	}
 
+	err = userConn.WriteResponse(data)
+	if err != nil {
+		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+	}
+}
+
+func networkConfigRequestHandler(walletExt *rpcapi.Services, userConn UserConn) {
+	// read the request
+	_, err := userConn.ReadRequest()
+	if err != nil {
+		walletExt.Logger().Error("error reading request", log.ErrKey, err)
+		return
+	}
+
+	// Call the RPC method to get the network configuration
+	networkConfig, err := walletExt.GetTenNetworkConfig()
+	if err != nil {
+		walletExt.Logger().Error("error fetching network config", log.ErrKey, err)
+	}
+
+	// Define a struct to represent the response
+	type NetworkConfigResponse struct {
+		ManagementContractAddress string            `json:"ManagementContractAddress"`
+		L1StartHash               string            `json:"L1StartHash"`
+		MessageBusAddress         string            `json:"MessageBusAddress"`
+		L2MessageBusAddress       string            `json:"L2MessageBusAddress"`
+		ImportantContracts        map[string]string `json:"ImportantContracts"`
+	}
+
+	// Convert the TenNetworkInfo fields to strings
+	importantContracts := make(map[string]string)
+	for name, address := range networkConfig.ImportantContracts {
+		importantContracts[name] = address.Hex()
+	}
+
+	networkConfigResponse := NetworkConfigResponse{
+		ManagementContractAddress: networkConfig.ManagementContractAddress.Hex(),
+		L1StartHash:               networkConfig.L1StartHash.Hex(),
+		MessageBusAddress:         networkConfig.MessageBusAddress.Hex(),
+		L2MessageBusAddress:       networkConfig.L2MessageBusAddress.Hex(),
+		ImportantContracts:        importantContracts,
+	}
+
+	// Marshal the response into JSON format
+	data, err := json.Marshal(networkConfigResponse)
+	if err != nil {
+		walletExt.Logger().Error("error marshaling response", log.ErrKey, err)
+		return
+	}
+
+	// Write the response back to the user
 	err = userConn.WriteResponse(data)
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)

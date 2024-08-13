@@ -283,6 +283,14 @@ func (w *Services) GetTenNodeHealthStatus() (bool, error) {
 	return *res, err
 }
 
+func (w *Services) GetTenNetworkConfig() (tencommon.TenNetworkInfo, error) {
+	res, err := withPlainRPCConnection[tencommon.TenNetworkInfo](context.Background(), w, func(client *gethrpc.Client) (*tencommon.TenNetworkInfo, error) {
+		res, err := obsclient.NewObsClient(client).GetConfig()
+		return res, err
+	})
+	return *res, err
+}
+
 func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlice []string) (string, error) {
 	// Check if the formats are valid
 	for _, format := range formatsSlice {
