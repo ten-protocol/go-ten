@@ -7,6 +7,12 @@
   predominantly fixes known minor issues in the network, including issues deploying and interacting
   with contracts using ethers6, and extracting event logs from tx receipts for bridge operations.
 * A full list of the PRs merged in this release is as below;
+  * `9b870e0b` Correct print output of the faucet (#2019)
+  * `1eb7c28e` Improve deadline error (#2015)
+  * `9e72c760` Remove file logger from the gateway (#2010)
+  * `68813df6` Increase new heads timeout (#2014)
+  * `3846fa56` Upgrade local geth version to pos  (#1950)
+  * `d32dfda7` Change log for v0.26 (#2011)
   * `db6e507e` Revert refactor event log filtering for subscriptions (#2013)
   * `b043708a` Initiate bridge deployment (#2012)
   * `475b7057` Disable rate limiting on local testnet (#2005)
