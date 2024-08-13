@@ -58,6 +58,10 @@ func NewHTTPRoutes(walletExt *rpcapi.Services) []node.Route {
 			Name: common.APIVersion1 + common.PathVersion,
 			Func: httpHandler(walletExt, versionRequestHandler),
 		},
+		{
+			Name: common.APIVersion1 + common.PathNetworkConfig,
+			Func: httpHandler(walletExt, networkHealthRequestHandler),
+		},
 	}
 }
 
