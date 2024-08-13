@@ -70,6 +70,13 @@ type PosEth2Network interface {
 }
 
 func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPort, gethWSPort, gethHTTPPort, beaconRPCPort, chainID int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
+	println("STARTING GETH NET PORT: ", gethNetworkPort)
+	println("STARTING GETH RPC PORT: ", gethRPCPort)
+	println("STARTING GETH WS PORT: ", gethWSPort)
+	println("STARTING GETH HTTP PORT: ", gethHTTPPort)
+	println("STARTING BEACON PORT: ", beaconP2PPort)
+	println("STARTING BEACON RPC PORT: ", beaconRPCPort)
+
 	build, err := getBuildNumber()
 	if err != nil {
 		panic(fmt.Sprintf("could not get build number: %s", err.Error()))
@@ -177,9 +184,15 @@ func (n *PosImpl) Stop() error {
 
 func (n *PosImpl) checkExistingNetworks() error {
 	port := n.gethWSPort
+	beaconP2P := n.beaconP2PPort
 	_, err := ethclient.Dial(fmt.Sprintf("ws://127.0.0.1:%d", port))
 	if err == nil {
 		return fmt.Errorf("unexpected geth node is active before the network is started")
+	}
+
+	_, err = ethclient.Dial(fmt.Sprintf("ws://127.0.0.1:%d", beaconP2P))
+	if err == nil {
+		return fmt.Errorf("unexpected beacon node is active before the network is started")
 	}
 	return nil
 }
@@ -249,6 +262,13 @@ func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPor
 	gethWSPortStr := strconv.Itoa(gethWSPort)
 	gethRPCPortStr := strconv.Itoa(gethRPCPort)
 	chainStr := strconv.Itoa(chainID)
+
+	println("STARTING GETH NET PORT: ", gethNetworkPortStr)
+	println("STARTING GETH RPC PORT: ", gethRPCPortStr)
+	println("STARTING GETH WS PORT: ", gethWSPortStr)
+	println("STARTING GETH HTTP PORT: ", gethHTTPPortStr)
+	println("STARTING BEACON PORT: ", beaconP2PPortStr)
+	println("STARTING BEACON RPC PORT: ", beaconRPCPortStr)
 
 	cmd := exec.Command("/bin/bash", startScript,
 		"--geth-network", gethNetworkPortStr,

@@ -3,20 +3,20 @@ package integration
 // Tracks the start ports handed out to different tests, in a bid to minimise conflicts.
 // Note: the max should not exceed 30000 because the OS can use those ports and we'll get conflicts
 const (
-	StartPortEth2NetworkTests        = 10000
-	StartPortTenscanUnitTest         = 11000
-	StartPortNodeRunnerTest          = 12000
-	StartPortSimulationGethInMem     = 14000
-	StartPortSimulationInMem         = 15000
-	StartPortSimulationFullNetwork   = 16000
-	StartPortNetworkTests            = 17000
-	StartPortSmartContractTests      = 18000
-	StartPortContractDeployerTest1   = 19000
-	StartPortContractDeployerTest2   = 21000
-	StartPortFaucetUnitTest          = 22000
-	StartPortFaucetHTTPUnitTest      = 23000
-	StartPortTenGatewayUnitTest      = 24000
-	StartPortWalletExtensionUnitTest = 25000
+	StartPortEth2NetworkTests      = 10000
+	StartPortTenscanUnitTest       = 11000
+	StartPortNodeRunnerTest        = 12000
+	StartPortSimulationGethInMem   = 14000
+	StartPortSimulationInMem       = 15000
+	StartPortSimulationFullNetwork = 16000
+	DoNotUse                       = 17000 // port conflict on this address
+	StartPortSmartContractTests    = 18000
+	StartPortContractDeployerTest1 = 19000
+	StartPortContractDeployerTest2 = 21000
+	StartPortFaucetUnitTest        = 22000
+	StartPortFaucetHTTPUnitTest    = 23000
+	StartPortTenGatewayUnitTest    = 24000
+	StartPortNetworkTests          = 25000
 
 	DefaultGethWSPortOffset         = 100
 	DefaultGethAUTHPortOffset       = 200
