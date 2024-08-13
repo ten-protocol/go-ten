@@ -9,8 +9,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/src/components/ui/tabs";
-import { useWalletStore } from "@/src/components/providers/wallet-provider";
 import { useContract } from "@/src/hooks/useContract";
+import useWalletStore from "@/src/stores/wallet-store";
 
 export const metadata: Metadata = {
   title: "Transactions",

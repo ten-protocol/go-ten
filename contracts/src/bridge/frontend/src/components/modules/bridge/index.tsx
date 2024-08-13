@@ -108,7 +108,8 @@ export default function Dashboard() {
         setLoading(false);
       }
     },
-    [address, token]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [address, token, tokens, receiver, fromTokenBalance]
   );
 
   const setAmount = React.useCallback(
@@ -123,7 +124,8 @@ export default function Dashboard() {
       const amount = Math.floor(((fromTokenBalance * value) / 100) * 100) / 100;
       setValue("amount", amount.toString());
     },
-    [form, fromTokenBalance]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fromTokenBalance, token]
   );
 
   const handleSwitchNetwork = React.useCallback(
@@ -151,6 +153,7 @@ export default function Dashboard() {
   React.useEffect(() => {
     const storedReceiver = handleStorage.get("tenBridgeReceiver");
     setValue("receiver", storedReceiver ? storedReceiver : address);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address]);
 
   React.useEffect(() => {
@@ -174,12 +177,23 @@ export default function Dashboard() {
         fetchTokenBalance(selectedToken);
       }
     }
-  }, [fromChain, token, amount, receiver, provider, isL1ToL2, walletConnected]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    fromChain,
+    token,
+    amount,
+    receiver,
+    provider,
+    isL1ToL2,
+    walletConnected,
+    address,
+  ]);
 
   React.useEffect(() => {
     setValue("fromChain", isL1ToL2 ? L1CHAINS[0].value : L2CHAINS[0].value);
     setValue("toChain", isL1ToL2 ? L2CHAINS[0].value : L1CHAINS[0].value);
     setValue("token", isL1ToL2 ? L1TOKENS[0].value : L2TOKENS[0].value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isL1ToL2]);
 
   return (
