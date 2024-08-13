@@ -24,6 +24,7 @@ const (
 	PathRevoke                    = "/revoke/"
 	PathHealth                    = "/health/"
 	PathNetworkHealth             = "/network-health/"
+	PathNetworkConfig             = "/network-config/"
 	WSProtocol                    = "ws://"
 	HTTPProtocol                  = "http://"
 	EncryptedTokenQueryParameter  = "token"
