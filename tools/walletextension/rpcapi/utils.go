@@ -54,7 +54,7 @@ type ExecCfg struct {
 	tryUntilAuthorised  bool
 	adjustArgs          func(acct *GWAccount) []any
 	cacheCfg            *CacheCfg
-	deadline            time.Duration
+	timeout             time.Duration
 }
 
 type CacheStrategy uint8
@@ -139,7 +139,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 				}
 
 				// wrap the context with a timeout to prevent long executions
-				deadline := cfg.deadline
+				deadline := cfg.timeout
 				// if not set, use default
 				if deadline == 0 {
 					deadline = maximumRPCCallDuration
