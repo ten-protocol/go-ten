@@ -40,6 +40,7 @@ const useWalletStore = create<WalletState>((set, get) => ({
 
     const newSigner = initializeSigner(detectedProvider);
 
+    // @ts-ignore
     const chainId = await detectedProvider?.request({
       method: requestMethods.getChainId,
       params: [],
@@ -62,6 +63,7 @@ const useWalletStore = create<WalletState>((set, get) => ({
   connectWallet: async () => {
     try {
       const detectedProvider = await getEthereumProvider();
+      // @ts-ignore
       const accounts = await detectedProvider?.request({
         method: requestMethods.connectAccounts,
         params: [],
