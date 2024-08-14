@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/enclave/components"
+	"net/http"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -96,6 +98,11 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardians, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
+	//FIXME from config
+	baseURL := "http://localhost:3500"
+	//baseURL := "http://localhost:16550"
+	//baseURL := "https://sepolia-beacon.chainstacklabs.com"
+	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), baseURL)))
 
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
 	hostServices.RegisterService(hostcommon.P2PName, p2p)
@@ -108,6 +115,7 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		ethClient,
 		mgmtContractLib,
 		l1Repo,
+		blobResolver,
 		host.stopControl,
 		logger,
 		maxWaitForL1Receipt,

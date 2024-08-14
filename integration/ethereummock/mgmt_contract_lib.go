@@ -71,11 +71,6 @@ func (m *mockContractLib) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert rollup to blobs: %w", err)
 	}
-	//maxBlobSize := 128 * 1024 // 128KB in bytes TODO move to config
-	//base64ChunkSize := int(math.Floor(float64(maxBlobSize) * 4 / 3))
-	//base64ChunkSize = base64ChunkSize - (base64ChunkSize % 4) - 4 //metadata size
-	//
-	//blobs, _ := chunkRollup(encRollupData, base64ChunkSize)
 
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar

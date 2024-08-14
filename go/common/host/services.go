@@ -95,7 +95,7 @@ type L1BlockHandler interface {
 	HandleBlock(block *types.Block)
 }
 
-// L1Publisher provides an interface for the host to interact with Obscuro data (management contract etc.) on L1
+// L1Publisher provides an interface for the host to interact with Ten data (management contract etc.) on L1
 type L1Publisher interface {
 	// InitializeSecret will send a management contract transaction to initialize the network with the generated secret
 	InitializeSecret(attestation *common.AttestationReport, encSecret common.EncryptedSharedEnclaveSecret) error

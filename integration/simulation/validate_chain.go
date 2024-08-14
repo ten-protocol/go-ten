@@ -3,7 +3,10 @@ package simulation
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ten-protocol/go-ten/go/enclave/components"
 	"math/big"
+	"net/http"
 	"sort"
 	"strings"
 	"sync"
@@ -279,8 +282,8 @@ func ExtractDataFromEthereumChain(
 				deposits = append(deposits, tx.Hash())
 				totalDeposited.Add(totalDeposited, l1tx.Amount)
 				successfulDeposits++
-			case *ethadapter.L1RollupTx:
-				r, err := common.DecodeRollup(l1tx.Rollup)
+			case *ethadapter.L1RollupHashes:
+				r, err := getRollupFromBlobHashes(s.ctx, block, l1tx.BlobHashes)
 				if err != nil {
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
@@ -847,4 +850,23 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 	if batchByHash.Header.Hash() != batchByTx.Header.Hash() {
 		t.Errorf("node %d: retrieved batch by hash, but hash was incorrect", nodeIdx)
 	}
+}
+
+func getRollupFromBlobHashes(ctx context.Context, block *types.Block, blobHashes []ethadapter.IndexedBlobHash) (*common.ExtRollup, error) {
+	//FIXME from config
+	baseURL := "http://localhost:3500"
+	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), baseURL)))
+	blobs, err := blobResolver.FetchBlobs(ctx, block.Header(), blobHashes)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch blobs from hashes during chain validation")
+	}
+	data, err := ethadapter.DecodeBlobs(blobs)
+	if err != nil {
+		fmt.Println("Error decoding rollup blob:", err)
+	}
+	var rollup common.ExtRollup
+	if err := rlp.DecodeBytes(data, &rollup); err != nil {
+		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
+	}
+	return &rollup, nil
 }

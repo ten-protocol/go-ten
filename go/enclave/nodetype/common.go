@@ -20,7 +20,7 @@ func ExportCrossChainData(ctx context.Context, storage storage.Storage, fromSeqN
 		return nil, errutil.ErrCrossChainBundleNoBatches
 	}
 
-	// todo - siliev - all those fetches need to be atomic
+	//todo - siliev - all those fetches need to be atomic
 	header, err := storage.FetchHeadBatchHeader(ctx)
 	if err != nil {
 		return nil, err

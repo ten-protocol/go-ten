@@ -91,13 +91,12 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	switch method.Name {
 	case AddRollupMethod:
 		if tx.Type() == types.BlobTxType {
-			blobHashes := toIndexedBlobHashes(tx.BlobHashes()...)
+			blobHashes := ethadapter.ToIndexedBlobHashes(tx.BlobHashes()...)
 
 			return &ethadapter.L1RollupHashes{
 				BlobHashes: blobHashes,
 			}
 		} else {
-			println("NONE BLOB ROLLUP FOUND !!")
 			return nil
 		}
 	case RespondSecretMethod:
@@ -576,14 +575,4 @@ func makeSidecar(blobs []kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash,
 		blobHashes = append(blobHashes, ethadapter.KZGToVersionedHash(commitment))
 	}
 	return sidecar, blobHashes, nil
-}
-
-// toIndexedBlobHashes is needed as the beacon API has an optional indices parameter that allows us to specify which blob
-// index to retrieve from a given block
-func toIndexedBlobHashes(hs ...gethcommon.Hash) []ethadapter.IndexedBlobHash {
-	hashes := make([]ethadapter.IndexedBlobHash, 0, len(hs))
-	for i, hash := range hs {
-		hashes = append(hashes, ethadapter.IndexedBlobHash{Index: uint64(i), Hash: hash})
-	}
-	return hashes
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/enclave/components"
 	"math/big"
 	"strings"
 	"sync"
@@ -34,6 +35,7 @@ type Publisher struct {
 	ethClient       ethadapter.EthClient
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 	storage         storage.Storage
+	blobResolver    components.BlobResolver
 
 	// cached map of important contract addresses (updated when we see a SetImportantContractsTx)
 	importantContractAddresses map[string]gethcommon.Address
@@ -61,6 +63,7 @@ func NewL1Publisher(
 	client ethadapter.EthClient,
 	mgmtContract mgmtcontractlib.MgmtContractLib,
 	repository host.L1BlockRepository,
+	blobResolver components.BlobResolver,
 	hostStopper *stopcontrol.StopControl,
 	logger gethlog.Logger,
 	maxWaitForL1Receipt time.Duration,
@@ -74,6 +77,7 @@ func NewL1Publisher(
 		ethClient:                 client,
 		mgmtContractLib:           mgmtContract,
 		repository:                repository,
+		blobResolver:              blobResolver,
 		hostStopper:               hostStopper,
 		logger:                    logger,
 		maxWaitForL1Receipt:       maxWaitForL1Receipt,
@@ -222,7 +226,7 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 	return nil
 }
 
-// ExtractObscuroRelevantTransactions will extract any transactions from the block that are relevant to obscuro
+// ExtractObscuroRelevantTransactions will extract any transactions from the block that are relevant to Ten
 // todo (#2495) we should monitor for relevant L1 events instead of scanning every transaction in the block
 func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
 	var secretRespTxs []*ethadapter.L1RespondSecretTx
@@ -237,14 +241,29 @@ func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*e
 			secretRespTxs = append(secretRespTxs, scrtTx)
 			continue
 		}
-		if rollupTx, ok := t.(*ethadapter.L1RollupTx); ok {
-			rollupTxs = append(rollupTxs, rollupTx)
-			continue
-		}
+
 		if contractAddressTx, ok := t.(*ethadapter.L1SetImportantContractsTx); ok {
 			contractAddressTxs = append(contractAddressTxs, contractAddressTx)
 			continue
 		}
+		rollupHashes, ok := t.(*ethadapter.L1RollupHashes)
+		if !ok {
+			continue
+		}
+
+		blobs, err := p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), rollupHashes.BlobHashes)
+		if err != nil {
+			p.logger.Crit("could not fetch blobs.", log.ErrKey, err)
+			return nil, nil, nil
+		}
+		encodedRlp, err := ethadapter.DecodeBlobs(blobs)
+		if err != nil {
+			p.logger.Crit("could not decode blobs.", log.ErrKey, err)
+		}
+		rlp := &ethadapter.L1RollupTx{
+			Rollup: encodedRlp,
+		}
+		rollupTxs = append(rollupTxs, rlp)
 	}
 	return secretRespTxs, rollupTxs, contractAddressTxs
 }

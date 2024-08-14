@@ -3,9 +3,11 @@ package ethadapter
 import (
 	"bytes"
 	"fmt"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 // The number of bits in a BLS scalar that aren't part of a whole byte.
@@ -569,6 +571,16 @@ const excessBlobBits = 6 // = math.floor(math.log2(BLS_MODULUS)) % 8
 //	Hash  common.Hash // hash of the blob, used for consistency checks
 //}
 
+// ToIndexedBlobHashes is needed as the beacon API has an optional indices parameter that allows us to specify which blob
+// index to retrieve from a given block
+func ToIndexedBlobHashes(hs ...gethcommon.Hash) []IndexedBlobHash {
+	hashes := make([]IndexedBlobHash, 0, len(hs))
+	for i, hash := range hs {
+		hashes = append(hashes, IndexedBlobHash{Index: uint64(i), Hash: hash})
+	}
+	return hashes
+}
+
 // EncodeBlobs takes converts bytes into blobs used for KZG commitment EIP-4844
 // transactions on Ethereum.
 func EncodeBlobs(data []byte) ([]kzg4844.Blob, error) {
@@ -649,4 +661,17 @@ func DecodeBlobs(blobs []*kzg4844.Blob) ([]byte, error) {
 	var outputData []byte
 	err := rlp.Decode(bytes.NewReader(rlpData), &outputData)
 	return outputData, err
+}
+
+// ReconstructRollup decodes and returns the ExtRollup in the blob
+func ReconstructRollup(blobs []*kzg4844.Blob) (*common.ExtRollup, error) {
+	data, err := DecodeBlobs(blobs)
+	if err != nil {
+		fmt.Println("Error decoding rollup blob:", err)
+	}
+	var rollup common.ExtRollup
+	if err := rlp.DecodeBytes(data, &rollup); err != nil {
+		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
+	}
+	return &rollup, nil
 }
