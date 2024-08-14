@@ -19,7 +19,7 @@ export const NavLinks: NavLink[] = [
 
 export const apiRoutes = {
   getHealthStatus: `/info/health/`,
-  getObscuroConfig: `/network-config`,
+  getObscuroConfig: `/network-config/`,
 };
 
 export const requestMethods = {
