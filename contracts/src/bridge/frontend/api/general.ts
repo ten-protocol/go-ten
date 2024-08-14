@@ -16,13 +16,7 @@ export const fetchObscuroConfig = async (): Promise<
   ResponseDataInterface<ObscuroConfig>
 > => {
   return await httpRequest<ResponseDataInterface<ObscuroConfig>>({
-    method: "post",
+    method: "get",
     url: apiRoutes.getObscuroConfig,
-    data: {
-      jsonrpc: "2.0",
-      method: "obscuro_config",
-      params: [],
-      id: 1,
-    },
   });
 };
