@@ -1,28 +1,38 @@
 # Session keys on Ten
 
-EIP-4337 (Account Abstraction) has popularised the concept of "Session keys" to minimize clicks.
+EIP-4337 (Account Abstraction) has popularised the "Session keys" concept to minimize clicks.
 
 We want to offer a similar user-friendly experience to Ten dApp devs.
 
-To test the concept we will convert the Battleships game to a no-click UX.
+To test the concept, we will convert the Battleships game to a no-click UX.
 
 
 ## The Ten Gateway as a Session Key manager
 
-The TG already manages VKs on behalf of users, so adding SKs is relatively straight forward.
-The advangate of the TG managing SKs is that it can return the funds to the EOA at any time.
-Anothe advantage is that they can be reused between sessions to avoid unecessary transactions.
+*Reminder: A session key (SK) is a key that is not managed in a wallet and can be used to sign behind-the-scenes operations without user action.*
+
+Without smart contract wallets, a SK must have a balance to pay for gas.
+
+The browser can manage SKs on behalf of the user, but it can lose the gas if the browser crashes.
+
+
+The TG already manages VKs on behalf of users, so adding SKs is relatively straightforward.
+
+The advantage of the TG managing SKs is that it can return the funds to the EOA anytime.
+
+
+Another advantage is that they can be reused between sessions to avoid unnecessary transactions.
 
 
 ### The flow
 
-The logic of the game UI (javascript), will call and endpoint that will return a value transfer transaction that the user must sign in their MM, together with the address of the SK.
+The logic of the game UI (javascript) will call an endpoint on the TG that will return a value transfer transaction that the user must sign in their wallet, together with the address of the SK.
 
 The value transfer is required to prepay for the moves. 
 
-*Note: If the user authenticates with a service that is happy to prepay (a paymaster) then the signing step is not required.*
+*Note: If the user authenticates with a service that is happy to prepay (a paymaster), then the signing step is not required.*
 
-The game will create unsigned move transactions, and will submit them to the gateway. 
+The game will create unsigned move transactions and submit them to the gateway. 
 The TG will sign these transactions with the SK and submit them to the network.
 
 
