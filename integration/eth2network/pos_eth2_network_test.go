@@ -49,7 +49,7 @@ func TestStartPosEth2Network(t *testing.T) {
 		_startPort+integration.DefaultGethHTTPPortOffset,
 		_startPort+integration.DefaultPrysmRPCPortOffset,
 		integration.EthereumChainID,
-		6*time.Minute,
+		3*time.Minute,
 	)
 
 	// wait until the merge has happened

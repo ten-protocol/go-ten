@@ -30,7 +30,7 @@ func main() {
 		config.gethHTTPStartPort,
 		config.prysmBeaconRPCStartPort,
 		config.chainID,
-		6*time.Minute,
+		3*time.Minute,
 		config.prefundedAddrs...,
 	)
 

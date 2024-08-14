@@ -176,10 +176,14 @@ func (n *PosImpl) Stop() error {
 }
 
 func (n *PosImpl) checkExistingNetworks() error {
-	port := n.gethWSPort
-	_, err := ethclient.Dial(fmt.Sprintf("ws://127.0.0.1:%d", port))
+	_, err := ethclient.Dial(fmt.Sprintf("ws://127.0.0.1:%d", n.gethWSPort))
 	if err == nil {
 		return fmt.Errorf("unexpected geth node is active before the network is started")
+	}
+
+	_, err = ethclient.Dial(fmt.Sprintf("ws://127.0.0.1:%d", n.beaconP2PPort))
+	if err == nil {
+		return fmt.Errorf("unexpected beacon node is active before the network is started")
 	}
 	return nil
 }
@@ -187,16 +191,21 @@ func (n *PosImpl) checkExistingNetworks() error {
 // waitForMergeEvent connects to the geth node and waits until block 2 (the merge block) is reached
 func (n *PosImpl) waitForMergeEvent(startTime time.Time) error {
 	ctx := context.Background()
-	dial, err := ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPort))
+	gethDial, err := ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPort))
 	if err != nil {
 		return err
 	}
-	time.Sleep(2 * time.Second)
+	// wait for beacon process to start
+	time.Sleep(10 * time.Second)
 	number := uint64(0)
+	_, err = ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.beaconP2PPort))
+	if err != nil {
+		return err
+	}
 	// wait for the merge block
 	err = retry.Do(
 		func() error {
-			number, err = dial.BlockNumber(ctx)
+			number, err = gethDial.BlockNumber(ctx)
 			if err != nil {
 				return err
 			}
@@ -213,7 +222,7 @@ func (n *PosImpl) waitForMergeEvent(startTime time.Time) error {
 
 	fmt.Printf("Reached the merge block after %s\n", time.Since(startTime))
 
-	if err = n.prefundedBalanceActive(dial); err != nil {
+	if err = n.prefundedBalanceActive(gethDial); err != nil {
 		fmt.Printf("Error prefunding account %s\n", err.Error())
 		return err
 	}
