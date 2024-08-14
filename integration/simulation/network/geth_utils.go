@@ -64,12 +64,13 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.Po
 		binDir,
 		startPort+integration.DefaultGethNetworkPortOffset,
 		startPort+integration.DefaultPrysmP2PPortOffset,
-		startPort+integration.DefaultGethAUTHPortOffset, // RPC
+		startPort+integration.DefaultGethAUTHPortOffset,
 		startPort+integration.DefaultGethWSPortOffset,
 		startPort+integration.DefaultGethHTTPPortOffset,
-		startPort+integration.DefaultPrysmRPCPortOffset, // RPC
+		startPort+integration.DefaultPrysmRPCPortOffset,
+		startPort+integration.DefaultPrysmGatewayPortOffset,
 		integration.EthereumChainID,
-		6*time.Minute,
+		3*time.Minute,
 		walletAddresses...,
 	)
 

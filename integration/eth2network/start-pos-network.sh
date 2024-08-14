@@ -7,6 +7,7 @@ GETH_HTTP_PORT=8025
 GETH_WS_PORT=9000
 GETH_RPC_PORT=8552
 BEACON_RPC_PORT=4000
+BEACON_GATEWAY_PORT=3500
 CHAIN_ID=1337
 BUILD_DIR="./build"
 BASE_PATH="./"
@@ -50,6 +51,7 @@ while [[ "$#" -gt 0 ]]; do
         --geth-network) GETH_NETWORK_PORT="$2"; shift ;;
         --beacon-p2p) BEACON_P2P_PORT="$2"; shift ;;
         --beacon-rpc) BEACON_RPC_PORT="$2"; shift ;;
+        --grpc-gateway-port) BEACON_GATEWAY_PORT="$2"; shift ;;
         --geth-http) GETH_HTTP_PORT="$2"; shift ;;
         --geth-ws) GETH_WS_PORT="$2"; shift ;;
         --geth-rpc) GETH_RPC_PORT="$2"; shift ;;
@@ -106,6 +108,7 @@ ${BEACON_BINARY} --datadir="${BEACONDATA_DIR}" \
                --rpc-host=127.0.0.1 \
                --rpc-port="${BEACON_RPC_PORT}" \
                --p2p-udp-port="${BEACON_P2P_PORT}" \
+               --grpc-gateway-port=${BEACON_GATEWAY_PORT} \
                --accept-terms-of-use \
                --jwt-secret "${BASE_PATH}/jwt.hex" \
                --suggested-fee-recipient 0x123463a4B065722E99115D6c222f267d9cABb524 \
