@@ -48,6 +48,7 @@ func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 		_startPort+integration.DefaultGethWSPortOffset,
 		_startPort+integration.DefaultGethHTTPPortOffset,
 		_startPort+integration.DefaultPrysmRPCPortOffset,
+		_startPort+integration.DefaultPrysmGatewayPortOffset,
 		integration.EthereumChainID,
 		3*time.Minute,
 	)
