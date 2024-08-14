@@ -443,7 +443,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 				}
 				receipt, err = p.ethClient.TransactionReceipt(signedTx.Hash())
 				if err != nil {
-					return fmt.Errorf("could not get receipt for L1 tx=%s: %w", signedTx.Hash(), err)
+					return fmt.Errorf("could not get receipt publishing tx for L1 tx=%s: %w", signedTx.Hash(), err)
 				}
 				return err
 			},
@@ -472,7 +472,7 @@ func (p *Publisher) awaitTransaction(tx *types.Transaction) error {
 		func() error {
 			receipt, err = p.ethClient.TransactionReceipt(tx.Hash())
 			if err != nil {
-				return fmt.Errorf("could not get receipt for L1 tx=%s: %w", tx.Hash(), err)
+				return fmt.Errorf("could not get receipt for xchain L1 tx=%s: %w", tx.Hash(), err)
 			}
 			return err
 		},
