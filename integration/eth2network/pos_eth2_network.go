@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -49,6 +50,7 @@ type PosImpl struct {
 	gethRPCPort              int
 	gethHTTPPort             int
 	beaconRPCPort            int
+	beaconGatewayPort        int
 	gethLogFile              string
 	prysmBeaconLogFile       string
 	prysmValidatorLogFile    string
@@ -69,7 +71,7 @@ type PosEth2Network interface {
 	GenesisBytes() []byte
 }
 
-func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPort, gethWSPort, gethHTTPPort, beaconRPCPort, chainID int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
+func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPort, gethWSPort, gethHTTPPort, beaconRPCPort, beaconGatewayPort, chainID int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
 	build, err := getBuildNumber()
 	if err != nil {
 		panic(fmt.Sprintf("could not get build number: %s", err.Error()))
@@ -129,6 +131,7 @@ func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPor
 		gethRPCPort:              gethRPCPort,
 		gethHTTPPort:             gethHTTPPort,
 		beaconRPCPort:            beaconRPCPort,
+		beaconGatewayPort:        beaconGatewayPort,
 		gethBinaryPath:           gethBinaryPath,
 		prysmBinaryPath:          prysmBinaryPath,
 		prysmBeaconBinaryPath:    prysmBeaconBinaryPath,
@@ -155,7 +158,7 @@ func (n *PosImpl) Start() error {
 	err := eg.Wait()
 	go func() {
 		n.gethProcessID, n.beaconProcessID, n.validatorProcessID, err = startNetworkScript(n.gethNetworkPort, n.beaconP2PPort,
-			n.gethRPCPort, n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.chainID, n.buildDir, n.prysmBeaconLogFile,
+			n.gethRPCPort, n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.beaconGatewayPort, n.chainID, n.buildDir, n.prysmBeaconLogFile,
 			n.prysmValidatorLogFile, n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath,
 			n.gethBinaryPath, n.gethdataDir, n.beacondataDir, n.validatordataDir)
 		time.Sleep(time.Second)
@@ -176,10 +179,21 @@ func (n *PosImpl) Stop() error {
 }
 
 func (n *PosImpl) checkExistingNetworks() error {
-	port := n.gethWSPort
-	_, err := ethclient.Dial(fmt.Sprintf("ws://127.0.0.1:%d", port))
+	_, err := ethclient.Dial(fmt.Sprintf("ws://127.0.0.1:%d", n.gethWSPort))
 	if err == nil {
 		return fmt.Errorf("unexpected geth node is active before the network is started")
+	}
+
+	client := http.Client{
+		Timeout: 2 * time.Second,
+	}
+
+	url := fmt.Sprintf("http://127.0.0.1:%d", n.beaconGatewayPort)
+
+	resp, err := client.Get(url)
+	if err == nil {
+		defer resp.Body.Close()
+		return fmt.Errorf("unexpected beacon node is active before the network is started")
 	}
 	return nil
 }
@@ -187,16 +201,22 @@ func (n *PosImpl) checkExistingNetworks() error {
 // waitForMergeEvent connects to the geth node and waits until block 2 (the merge block) is reached
 func (n *PosImpl) waitForMergeEvent(startTime time.Time) error {
 	ctx := context.Background()
-	dial, err := ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPort))
+	gethDial, err := ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPort))
 	if err != nil {
 		return err
 	}
-	time.Sleep(2 * time.Second)
+
+	// wait for beacon process to start
+	time.Sleep(5 * time.Second)
+	_, err = ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.beaconGatewayPort))
+	if err != nil {
+		return err
+	}
 	number := uint64(0)
 	// wait for the merge block
 	err = retry.Do(
 		func() error {
-			number, err = dial.BlockNumber(ctx)
+			number, err = gethDial.BlockNumber(ctx)
 			if err != nil {
 				return err
 			}
@@ -213,7 +233,7 @@ func (n *PosImpl) waitForMergeEvent(startTime time.Time) error {
 
 	fmt.Printf("Reached the merge block after %s\n", time.Since(startTime))
 
-	if err = n.prefundedBalanceActive(dial); err != nil {
+	if err = n.prefundedBalanceActive(gethDial); err != nil {
 		fmt.Printf("Error prefunding account %s\n", err.Error())
 		return err
 	}
@@ -238,13 +258,14 @@ func (n *PosImpl) GenesisBytes() []byte {
 	return n.gethGenesisBytes
 }
 
-func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPort, gethWSPort, beaconRPCPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
+func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPort, gethWSPort, beaconRPCPort, beaconGatewayPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
 	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string,
 ) (int, int, int, error) {
 	startScript := filepath.Join(basepath, "start-pos-network.sh")
 	gethNetworkPortStr := strconv.Itoa(gethNetworkPort)
 	beaconP2PPortStr := strconv.Itoa(beaconP2PPort)
 	beaconRPCPortStr := strconv.Itoa(beaconRPCPort)
+	beaconGatewayPortStr := strconv.Itoa(beaconGatewayPort)
 	gethHTTPPortStr := strconv.Itoa(gethHTTPPort)
 	gethWSPortStr := strconv.Itoa(gethWSPort)
 	gethRPCPortStr := strconv.Itoa(gethRPCPort)
@@ -257,6 +278,7 @@ func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPor
 		"--geth-ws", gethWSPortStr,
 		"--geth-rpc", gethRPCPortStr,
 		"--beacon-rpc", beaconRPCPortStr,
+		"--grpc-gateway-port", beaconGatewayPortStr,
 		"--chainid", chainStr,
 		"--build-dir", buildDir,
 		"--base-path", basepath,
