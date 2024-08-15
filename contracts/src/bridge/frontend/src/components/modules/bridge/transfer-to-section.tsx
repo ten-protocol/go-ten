@@ -73,6 +73,7 @@ export const TransferToSection = ({
     } finally {
       setIsEstimating(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [receiver, form, estimateGas]);
 
   useEffect(() => {

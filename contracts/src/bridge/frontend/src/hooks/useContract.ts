@@ -71,6 +71,7 @@ export const useContract = () => {
 
   useEffect(() => {
     initializeContracts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoizedConfig, provider, isL1ToL2, signer, setContractState]);
 
   const sendNative = async (receiver: string, value: string) => {

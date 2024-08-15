@@ -164,33 +164,37 @@ export default function Dashboard() {
   }, [address]);
 
   React.useEffect(() => {
-    const fetchTokenBalance = async (token: Token) => {
+    const fetchTokenBalance = async () => {
+      if (!token || !address) return;
+
       setLoading(true);
       try {
-        const balance = token.isNative
+        const selectedToken = tokens.find((t: Token) => t.value === token);
+        if (!selectedToken) return;
+
+        const balance = selectedToken.isNative
           ? await getNativeBalance(address)
-          : await getTokenBalance(token.address, address);
+          : await getTokenBalance(selectedToken.address, address);
+
         setFromTokenBalance(balance);
       } catch (error) {
-        console.error(error);
+        console.error("Failed to fetch balance:", error);
       } finally {
         setLoading(false);
       }
     };
 
+    fetchTokenBalance();
+
     intervalId.current = setInterval(() => {
-      if (token) {
-        const selectedToken = tokens.find((t: Token) => t.value === token);
-        if (selectedToken) {
-          fetchTokenBalance(selectedToken);
-        }
-      }
+      fetchTokenBalance();
     }, balancePollingInterval);
 
     return () => {
-      clearInterval(intervalId.current);
+      if (intervalId.current) {
+        clearInterval(intervalId.current);
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     fromChain,
     token,
