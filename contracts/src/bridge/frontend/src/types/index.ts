@@ -160,7 +160,7 @@ export interface Token {
   address: string;
 }
 
-export interface ObscuroConfig {
+export interface INetworkConfig {
   ManagementContractAddress: string;
   L1StartHash: string;
   MessageBusAddress: string;

@@ -1,4 +1,4 @@
-import { ObscuroConfig, ResponseDataInterface } from "@/src/types";
+import { INetworkConfig, ResponseDataInterface } from "@/src/types";
 import { httpRequest } from "@/api";
 import { pathToUrl } from "@/src/routes/router";
 import { apiRoutes } from "@/src/routes";
@@ -12,11 +12,9 @@ export const fetchTestnetStatus = async (): Promise<
   });
 };
 
-export const fetchObscuroConfig = async (): Promise<
-  ResponseDataInterface<ObscuroConfig>
-> => {
-  return await httpRequest<ResponseDataInterface<ObscuroConfig>>({
+export const fetchNetworkConfig = async (): Promise<INetworkConfig> => {
+  return await httpRequest<INetworkConfig>({
     method: "get",
-    url: apiRoutes.getObscuroConfig,
+    url: apiRoutes.getNetworkConfig,
   });
 };
