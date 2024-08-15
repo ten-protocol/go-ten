@@ -20,48 +20,45 @@ The TG already manages VKs on behalf of users, so adding SKs is relatively strai
 
 The advantage of the TG managing SKs is that it can return the funds to the EOA anytime.
 
-
 Another advantage is that they can be reused between sessions to avoid unnecessary transactions.
 
 
 ### The flow
 
-The logic of the game UI (javascript) will call an endpoint on the TG that will return a value transfer transaction that the user must sign in their wallet, together with the address of the SK.
+#### Create
+The logic of the game UI (javascript) will call an `/session_key/create` endpoint on the TG, which will return the account address corresponding to the SK. 
+The game UI will create a value transfer transaction from the main account to this address with enough money to prepay for the moves. The user must sign it with their wallet.
 
-The value transfer is required to prepay for the moves. 
+The game will call `/session_key/activate/${sk_account}`
 
-*Note: If the user authenticates with a service that is happy to prepay (a paymaster), then the signing step is not required.*
+After the initialisation, the game will create unsigned move transactions and submit them to the TG. 
+The TG will sign these transactions with the active SK and submit them to the network.
 
-The game will create unsigned move transactions and submit them to the gateway. 
-The TG will sign these transactions with the SK and submit them to the network.
+#### Reuse
+
+If the user already has a session key, the game can retrieve it with `/session_key/list`. This will return a list of `address, amount`.
+The game has the option to top up the value, or activate it.
+
+#### Ending the game
+
+The game can create transactions to move the values accumulated by the Sk to the main account, and submit them to the TG.
+
+When that is finished: `/session_key/deactivate`, which returns `address, amount`.
+
+#### Deleting a SK
+
+SKs need to be stored on the TG to allow the user to query in the future 
+
+#### Exporting the SKs
+
+`/session_key/export/${sk_account}` - returns the private key
 
 
-## Data ownership
+### Implementation on the Ten Gateway
 
-The SKs are a proxy for the EOA, so we want the EOA to read all data belonging to the SKs.
-The SKs are tx signers so the platform will treat them as EOAs.
+1. Store SKs in the database and manage them via the `session_key` endpoints
+2. Sign the SK account with the vk of the user
+3. Mark a session active per user and sign transactions with the SK
+4. When the user queries data, also include the SKs as candidates. Todo: think about when the data needs concatenation 
 
-We need to introduce platform level support for SKs.
 
-### The main place will the `externally_owned_account` table:
-
-```
-create table if not exists obsdb.externally_owned_account
-(
-    id      INTEGER AUTO_INCREMENT,
-    address binary(20) NOT NULL,
-    owner   INTEGER, // this is a new field that will be populated for SKs and will point to the main account
-    primary key (id),
-    INDEX USING HASH (address)
-);
-```
-
-Todo : 
- - Query for events:
- - Query for receipts: 
- - T
-
-### RPC endpoint on Node - Register session key
-
-- Receives a session key signed by a VK signed by the EOA.
-- Stores it to the `externally_owned_account` table and points to the true EOA
