@@ -33,10 +33,6 @@ const useWalletStore = create<WalletState>((set, get) => ({
 
   initializeProvider: async () => {
     const detectedProvider = await getEthereumProvider();
-    console.log(
-      "🚀 ~ initializeProvider: ~ detectedProvider:",
-      detectedProvider
-    );
 
     const newSigner = initializeSigner(detectedProvider);
 
