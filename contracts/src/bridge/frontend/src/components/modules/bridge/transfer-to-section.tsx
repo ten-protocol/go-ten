@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from "react";
 import { PlusIcon } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Skeleton } from "../../ui/skeleton";
@@ -6,6 +7,10 @@ import { ChainSelect } from "./chain-select";
 import { Chain } from "@/src/types";
 import { isAddress } from "ethers/lib/utils";
 import useCustomHookForm from "@/src/hooks/useCustomHookForm";
+import { useContract } from "@/src/hooks/useContract";
+import { ethers } from "ethers";
+import useContractStore from "@/src/stores/contract-store";
+import { cn } from "@/src/lib/utils";
 
 export const TransferToSection = ({
   form,
@@ -22,6 +27,58 @@ export const TransferToSection = ({
   address: string;
   setOpen: (open: boolean) => void;
 }) => {
+  const { estimateGas } = useContract();
+  const { bridgeContract } = useContractStore();
+  const [gas, setGas] = useState<string | null>(null);
+  const [isEstimating, setIsEstimating] = useState(false);
+  const [message, setMessage] = useState<{
+    type: "error" | "info";
+    message: string;
+  }>({
+    type: "info",
+    message: "",
+  });
+
+  const estimateGasFee = useCallback(async () => {
+    if (!bridgeContract || !estimateGas) return;
+    const amount = form.watch("amount");
+
+    if (!receiver) {
+      return setMessage({
+        type: "info",
+        message: "Enter receiver address.",
+      });
+    }
+
+    if (!amount) {
+      return setMessage({
+        type: "info",
+        message: "Enter amount to estimate gas fee.",
+      });
+    }
+
+    try {
+      const gasEstimate = await estimateGas(receiver, amount, bridgeContract);
+      setGas(ethers.utils.formatEther(gasEstimate));
+      setMessage({
+        type: "info",
+        message: "",
+      });
+    } catch (err) {
+      console.error("Error estimating gas:", err);
+      setMessage({
+        type: "error",
+        message: "Error estimating gas.",
+      });
+    } finally {
+      setIsEstimating(false);
+    }
+  }, [receiver, form, estimateGas]);
+
+  useEffect(() => {
+    estimateGasFee();
+  }, [estimateGasFee]);
+
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -40,12 +97,25 @@ export const TransferToSection = ({
       </div>
       <div className="bg-muted dark:bg-[#15171D]">
         <div className="flex items-center justify-between p-2">
-          <strong className="text-lg">{form.getValues().token}</strong>
-          <div className="flex flex-col items-end">
-            <p className="text-sm text-muted-foreground">You will receive:</p>
-            <strong className="text-lg float-right">
-              {loading ? <Skeleton /> : form.watch("amount") || 0}
+          <div className="flex flex-col">
+            <p className="text-sm text-muted-foreground">Amount to Receive</p>
+            <strong className="text-lg">
+              {form.watch("amount") || 0} {form.getValues().token}
             </strong>
+          </div>
+          <div className="flex flex-col items-end">
+            <p className="text-sm text-muted-foreground">Est. Gas Fee</p>
+            {isEstimating ? (
+              <Skeleton />
+            ) : message?.message ? (
+              <span className={cn("text-sm", "text" + message.type)}>
+                {message.message}
+              </span>
+            ) : (
+              <span className="text-lg font-bold">
+                {gas ? `${gas}` : "0.00"} ETH
+              </span>
+            )}
           </div>
         </div>
       </div>

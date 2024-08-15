@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default function Transactions() {
-  const { provider, address } = useWalletStore();
+  const { address } = useWalletStore();
   const { getBridgeTransactions } = useContract();
   const { transactions, refetchTransactions } = {
     transactions: {
@@ -35,7 +35,7 @@ export default function Transactions() {
   };
 
   const getTransactions = async () => {
-    const transactions = await getBridgeTransactions(provider, address);
+    const transactions = await getBridgeTransactions(address);
     console.log(transactions);
   };
 
