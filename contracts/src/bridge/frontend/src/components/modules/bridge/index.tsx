@@ -10,7 +10,13 @@ import { Separator } from "../../ui/separator";
 import { Form } from "@/src/components/ui/form";
 import { toast } from "@/src/components/ui/use-toast";
 import { DrawerDialog } from "../common/drawer-dialog";
-import { L1CHAINS, L1TOKENS, L2CHAINS, L2TOKENS } from "@/src/lib/constants";
+import {
+  balancePollingInterval,
+  L1CHAINS,
+  L1TOKENS,
+  L2CHAINS,
+  L2TOKENS,
+} from "@/src/lib/constants";
 import { useWatch } from "react-hook-form";
 import useCustomHookForm from "@/src/hooks/useCustomHookForm";
 import { ToastType, Token } from "@/src/types";
@@ -28,6 +34,7 @@ export default function Dashboard() {
     useWalletStore();
   const { getNativeBalance, getTokenBalance, sendERC20, sendNative } =
     useContract();
+  const intervalId = React.useRef<any>(null);
 
   const tokens = isL1ToL2 ? L1TOKENS : L2TOKENS;
   const fromChains = isL1ToL2 ? L1CHAINS : L2CHAINS;
@@ -161,8 +168,8 @@ export default function Dashboard() {
       setLoading(true);
       try {
         const balance = token.isNative
-          ? await getNativeBalance(provider, address)
-          : await getTokenBalance(token.address, address, provider);
+          ? await getNativeBalance(address)
+          : await getTokenBalance(token.address, address);
         setFromTokenBalance(balance);
       } catch (error) {
         console.error(error);
@@ -171,12 +178,18 @@ export default function Dashboard() {
       }
     };
 
-    if (token) {
-      const selectedToken = tokens.find((t: Token) => t.value === token);
-      if (selectedToken) {
-        fetchTokenBalance(selectedToken);
+    intervalId.current = setInterval(() => {
+      if (token) {
+        const selectedToken = tokens.find((t: Token) => t.value === token);
+        if (selectedToken) {
+          fetchTokenBalance(selectedToken);
+        }
       }
-    }
+    }, balancePollingInterval);
+
+    return () => {
+      clearInterval(intervalId.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     fromChain,
