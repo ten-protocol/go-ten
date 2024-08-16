@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.6",
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
     "@openzeppelin/hardhat-upgrades": "^3.0.0",
     "@solidstate/hardhat-bytecode-exporter": "^1.1.1",
@@ -23,11 +24,12 @@
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.1",
     "@openzeppelin/contracts-upgradeable": "^5.0.1",
+    "@openzeppelin/merkle-tree": "^1.0.7",
     "ethers": "^6.6.0",
     "hardhat-ignore-warnings": "^0.2.6",
     "ten-hardhat-plugin": "^0.0.9"
   },
   "peerDependencies": {
-    "@nomicfoundation/hardhat-verify" : "2.0.8"
+    "@nomicfoundation/hardhat-verify": "2.0.8"
   }
 }

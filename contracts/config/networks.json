@@ -31,6 +31,22 @@
         "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
       ]
     },
+    "testObscuro": {
+      "chainId": 443,
+      "url": "http://127.0.0.1:11180/v1/",
+      "useGateway": true,
+      "companionNetworks" : {
+        "layer1" : "localGeth"
+      },
+      "deploy": [
+        "deployment_scripts/testing"
+       ],
+      "accounts": [
+        "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b",
+        "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682",
+        "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
+      ]
+    },
     "hardhat": {
       "deploy": [
         "deployment_scripts/core/layer1/",

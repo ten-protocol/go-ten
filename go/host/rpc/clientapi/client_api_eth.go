@@ -2,6 +2,7 @@ package clientapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -46,6 +47,33 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 		return 0
 	}
 	return hexutil.Uint64(header.Number.Uint64())
+}
+
+/*Access list object with the following fields:
+
+accessList: A list of objects with the following fields:
+address: Addresses to be accessed by the transaction.
+storageKeys: Storage keys to be accessed by the transaction.
+gasUsed: A hexadecimal string representing the approximate gas cost for the transaction if the access list is included.*/
+
+type AccessListObject struct {
+	Address     gethcommon.Address
+	StorageKeys []gethcommon.Hash
+	GasUsed     hexutil.Uint64
+}
+
+type AccessListResponse struct {
+	AccessList []AccessListObject
+}
+
+func (api *EthereumAPI) CreateAccessList(ctx context.Context, encryptedParams common.EncryptedParamsCall) (responses.EnclaveResponse, error) {
+	emptyResponse := AccessListResponse{AccessList: []AccessListObject{}}
+	jsonResponse, err := json.Marshal(emptyResponse)
+	if err != nil {
+		return *responses.AsEmptyResponse(), err
+	}
+
+	return *responses.ToEnclaveResponse(jsonResponse), nil
 }
 
 // GetBlockByNumber returns the header of the batch with the given height.
