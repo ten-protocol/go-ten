@@ -22,14 +22,8 @@ import (
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
 )
 
-const (
-	// These are the addresses that the end-to-end tests expect to be prefunded when run locally. Corresponds to
-	// private key hex "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb".
-	e2eTestPrefundedL1Addr = "0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944"
-)
-
-func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, blockDurationSeconds int) (*params.L1TenData, []ethadapter.EthClient, eth2network.Eth2Network) {
-	eth2Network, err := StartGethNetwork(wallets, startPort, blockDurationSeconds)
+func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int) (*params.L1TenData, []ethadapter.EthClient, eth2network.PosEth2Network) {
+	eth2Network, err := StartGethNetwork(wallets, startPort)
 	if err != nil {
 		panic(fmt.Errorf("error starting geth network %w", err))
 	}
@@ -40,7 +34,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, bl
 		panic(fmt.Errorf("error connecting to te first host %w", err))
 	}
 
-	l1Data, err := DeployObscuroNetworkContracts(tmpEthClient, wallets, true)
+	l1Data, err := DeployTenNetworkContracts(tmpEthClient, wallets, true)
 	if err != nil {
 		panic(fmt.Errorf("error deploying obscuro contract %w", err))
 	}
@@ -53,49 +47,42 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, bl
 	return l1Data, ethClients, eth2Network
 }
 
-func StartGethNetwork(wallets *params.SimWallets, startPort int, blockDurationSeconds int) (eth2network.Eth2Network, error) {
+func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.PosEth2Network, error) {
 	// make sure the geth network binaries exist
-	path, err := eth2network.EnsureBinariesExist()
+	binDir, err := eth2network.EnsureBinariesExist()
 	if err != nil {
 		return nil, err
 	}
 
 	// get the node wallet addresses to prefund them with Eth, so they can submit rollups, deploy contracts, deposit to the bridge, etc
-	walletAddresses := []string{e2eTestPrefundedL1Addr}
+	walletAddresses := []string{integration.GethNodeAddress}
 	for _, w := range wallets.AllEthWallets() {
 		walletAddresses = append(walletAddresses, w.Address().String())
 	}
 
-	fmt.Printf("Prefunded wallet addresses: %d\n", len(walletAddresses))
-
-	// kickoff the network with the prefunded wallet addresses
-	eth2Network := eth2network.NewEth2Network(
-		path,
-		true,
-		startPort,
-		startPort+integration.DefaultGethWSPortOffset,
-		startPort+integration.DefaultGethAUTHPortOffset,
+	network := eth2network.NewPosEth2Network(
+		binDir,
 		startPort+integration.DefaultGethNetworkPortOffset,
-		startPort+integration.DefaultPrysmHTTPPortOffset,
 		startPort+integration.DefaultPrysmP2PPortOffset,
-		1337,
-		1,
-		blockDurationSeconds,
-		2,
-		2,
-		walletAddresses,
-		2*time.Minute,
+		startPort+integration.DefaultGethAUTHPortOffset,
+		startPort+integration.DefaultGethWSPortOffset,
+		startPort+integration.DefaultGethHTTPPortOffset,
+		startPort+integration.DefaultPrysmRPCPortOffset,
+		startPort+integration.DefaultPrysmGatewayPortOffset,
+		integration.EthereumChainID,
+		3*time.Minute,
+		walletAddresses...,
 	)
 
-	err = eth2Network.Start()
+	err = network.Start()
 	if err != nil {
 		return nil, err
 	}
 
-	return eth2Network, nil
+	return network, nil
 }
 
-func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.SimWallets, deployERC20s bool) (*params.L1TenData, error) {
+func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimWallets, deployERC20s bool) (*params.L1TenData, error) {
 	bytecode, err := constants.Bytecode()
 	if err != nil {
 		return nil, err
@@ -161,7 +148,7 @@ func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.
 	}, nil
 }
 
-func StopEth2Network(clients []ethadapter.EthClient, netw eth2network.Eth2Network) {
+func StopEth2Network(clients []ethadapter.EthClient, network eth2network.PosEth2Network) {
 	// Stop the clients first
 	for _, c := range clients {
 		if c != nil {
@@ -169,8 +156,8 @@ func StopEth2Network(clients []ethadapter.EthClient, netw eth2network.Eth2Networ
 		}
 	}
 	// Stop the nodes second
-	if netw != nil { // If network creation failed, we may be attempting to tear down the Geth network before it even exists.
-		err := netw.Stop()
+	if network != nil { // If network creation failed, we may be attempting to tear down the Geth network before it even exists.
+		err := network.Stop()
 		if err != nil {
 			fmt.Println(err)
 		}

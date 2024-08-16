@@ -30,7 +30,7 @@ const _startPort = integration.StartPortSmartContractTests
 type netInfo struct {
 	ethClients  []ethadapter.EthClient
 	wallets     []wallet.Wallet
-	eth2Network eth2network.Eth2Network
+	eth2Network eth2network.PosEth2Network
 }
 
 var testLogs = "../.build/noderunner/"
@@ -47,7 +47,7 @@ func init() { //nolint:gochecknoinits
 // runGethNetwork runs a geth network with one prefunded wallet
 func runGethNetwork(t *testing.T) *netInfo {
 	// make sure the geth network binaries exist
-	path, err := eth2network.EnsureBinariesExist()
+	binDir, err := eth2network.EnsureBinariesExist()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,23 +55,18 @@ func runGethNetwork(t *testing.T) *netInfo {
 	// prefund one wallet as the worker wallet
 	workerWallet := datagenerator.RandomWallet(integration.EthereumChainID)
 
-	// define + run the network
-	eth2Network := eth2network.NewEth2Network(
-		path,
-		true,
-		_startPort,
-		_startPort+integration.DefaultGethWSPortOffset,
-		_startPort+integration.DefaultGethAUTHPortOffset,
+	eth2Network := eth2network.NewPosEth2Network(
+		binDir,
 		_startPort+integration.DefaultGethNetworkPortOffset,
-		_startPort+integration.DefaultPrysmHTTPPortOffset,
 		_startPort+integration.DefaultPrysmP2PPortOffset,
-		1337,
-		1,
-		1,
-		2,
-		2,
-		[]string{workerWallet.Address().String()},
-		2*time.Minute,
+		_startPort+integration.DefaultGethAUTHPortOffset, // RPC
+		_startPort+integration.DefaultGethWSPortOffset,
+		_startPort+integration.DefaultGethHTTPPortOffset,
+		_startPort+integration.DefaultPrysmRPCPortOffset,
+		_startPort+integration.DefaultPrysmGatewayPortOffset,
+		integration.EthereumChainID,
+		3*time.Minute,
+		workerWallet.Address().String(),
 	)
 
 	if err = eth2Network.Start(); err != nil {
@@ -79,7 +74,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 	}
 
 	// create a client that is connected to node 0 of the network
-	client, err := ethadapter.NewEthClient("127.0.0.1", integration.StartPortSmartContractTests+100, 30*time.Second, gethcommon.HexToAddress("0x0"), testlog.Logger())
+	client, err := ethadapter.NewEthClient("127.0.0.1", integration.StartPortSmartContractTests+100, 60*time.Second, gethcommon.HexToAddress("0x0"), testlog.Logger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +91,7 @@ func TestManagementContract(t *testing.T) {
 	sim := runGethNetwork(t)
 	defer sim.eth2Network.Stop() //nolint: errcheck
 
-	// setup the client and the (debug) wallet
+	// set up the client and the (debug) wallet
 	client := sim.ethClients[0]
 	w := newDebugWallet(sim.wallets[0])
 

@@ -12,7 +12,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
-var _timeout = 30 * time.Second
+var _timeout = 60 * time.Second
 
 // debugWallet is a wrapper around the wallet that simplifies commonly used functions
 type debugWallet struct {

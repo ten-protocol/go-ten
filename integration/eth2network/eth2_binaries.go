@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	_gethVersion  = "1.12.2-bed84606"
-	_prysmVersion = "v4.0.6"
+	_gethVersion  = "1.14.6"
+	_prysmVersion = "v5.0.4"
 )
 
 var (
@@ -27,6 +27,14 @@ var (
 	basepath   = filepath.Dir(b)
 
 	creationLock sync.Mutex // makes sure there isn't two creations running at the same time
+)
+
+var _gethFileNameVersion = fmt.Sprintf("geth-%s-%s-%s", runtime.GOOS, runtime.GOARCH, _gethVersion)
+
+var (
+	_prysmBeaconChainFileNameVersion = fmt.Sprintf("beacon-chain-%s-%s-%s", _prysmVersion, runtime.GOOS, runtime.GOARCH)
+	_prysmCTLFileNameVersion         = fmt.Sprintf("prysmctl-%s-%s-%s", _prysmVersion, runtime.GOOS, runtime.GOARCH)
+	_prysmValidatorFileNameVersion   = fmt.Sprintf("validator-%s-%s-%s", _prysmVersion, runtime.GOOS, runtime.GOARCH)
 )
 
 // EnsureBinariesExist makes sure node binaries exist, returns the base path where binaries exist
@@ -67,25 +75,24 @@ func EnsureBinariesExist() (string, error) {
 	}()
 	go func() {
 		defer wg.Done()
-		err := checkOrDownloadBinary(_gethFileNameVersion, fmt.Sprintf("https://gethstore.blob.core.windows.net/builds/%s.tar.gz", _gethFileNameVersion), true)
-		if err != nil {
-			// geth 1.12 is not available to download for the mac, so we have to build it
-			println("Cannot download geth binary. Compiling from source.")
-			gethScript := path.Join(basepath, "./build_geth_binary.sh")
+		expectedFilePath := path.Join(basepath, _eth2BinariesRelPath, _gethFileNameVersion)
+		if fileExists(expectedFilePath) {
+			return
+		}
+		gethScript := path.Join(basepath, "./build_geth_binary.sh")
 
-			v := strings.Split(_gethVersion, "-")
-			cmd := exec.Command(
-				"bash",
-				gethScript,
-				fmt.Sprintf("%s=%s", "--version", "v"+v[0]),
-				fmt.Sprintf("%s=%s", "--output", path.Join(basepath, _eth2BinariesRelPath, _gethFileNameVersion)),
-			)
-			cmd.Stderr = os.Stderr
+		v := strings.Split(_gethVersion, "-")
+		cmd := exec.Command(
+			"bash",
+			gethScript,
+			fmt.Sprintf("%s=%s", "--version", "v"+v[0]),
+			fmt.Sprintf("%s=%s", "--output", path.Join(basepath, _eth2BinariesRelPath, _gethFileNameVersion)),
+		)
+		cmd.Stderr = os.Stderr
 
-			if out, err := cmd.Output(); err != nil {
-				fmt.Printf("%s\n", out)
-				panic(err)
-			}
+		if out, err := cmd.Output(); err != nil {
+			fmt.Printf("%s\n", out)
+			panic(err)
 		}
 	}()
 

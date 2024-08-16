@@ -1,14 +1,12 @@
 package noderunner
 
 import (
-	"encoding/hex"
 	"fmt"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common/profiler"
 	"github.com/ten-protocol/go-ten/go/node"
 	"github.com/ten-protocol/go-ten/go/rpc"
@@ -16,7 +14,6 @@ import (
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/eth2network"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
@@ -26,8 +23,8 @@ const (
 	_startPort = integration.StartPortNodeRunnerTest
 )
 
-// A smoke test to check that we can stand up a standalone Obscuro host and enclave.
-func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
+// A smoke test to check that we can stand up a standalone Ten host and enclave.
+func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 	testlog.Setup(&testlog.Cfg{
 		LogDir:      _testLogs,
 		TestType:    "noderunner",
@@ -36,31 +33,28 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	})
 
 	// todo run the noderunner test with different obscuro node instances
-	newNode, hostAddr := createInMemoryNode(t)
+	newNode := createInMemoryNode()
 
-	binariesPath, err := eth2network.EnsureBinariesExist()
+	binDir, err := eth2network.EnsureBinariesExist()
 	if err != nil {
 		panic(err)
 	}
 
-	network := eth2network.NewEth2Network(
-		binariesPath,
-		true,
-		_startPort,
-		_startPort+integration.DefaultGethWSPortOffset,
-		_startPort+integration.DefaultGethAUTHPortOffset,
+	network := eth2network.NewPosEth2Network(
+		binDir,
 		_startPort+integration.DefaultGethNetworkPortOffset,
-		_startPort+integration.DefaultPrysmHTTPPortOffset,
 		_startPort+integration.DefaultPrysmP2PPortOffset,
-		1337,
-		1,
-		1,
-		2,
-		2,
-		[]string{hostAddr.String()},
-		2*time.Minute,
+		_startPort+integration.DefaultGethAUTHPortOffset,
+		_startPort+integration.DefaultGethWSPortOffset,
+		_startPort+integration.DefaultGethHTTPPortOffset,
+		_startPort+integration.DefaultPrysmRPCPortOffset,
+		_startPort+integration.DefaultPrysmGatewayPortOffset,
+		integration.EthereumChainID,
+		3*time.Minute,
 	)
+
 	defer network.Stop() //nolint: errcheck
+
 	err = network.Start()
 	if err != nil {
 		panic(err)
@@ -73,10 +67,10 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	// we create the node RPC client
 	wsURL := fmt.Sprintf("ws://127.0.0.1:%d", _startPort+integration.DefaultGethWSPortOffset)
-	var obscuroClient rpc.Client
+	var tenClient rpc.Client
 	wait := 30 // max wait in seconds
 	for {
-		obscuroClient, err = rpc.NewNetworkClient(wsURL)
+		tenClient, err = rpc.NewNetworkClient(wsURL)
 		if err == nil {
 			break
 		}
@@ -106,7 +100,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		time.Sleep(time.Second)
 
 		var rollupNumber hexutil.Uint64
-		err = obscuroClient.Call(&rollupNumber, rpc.BatchNumber)
+		err = tenClient.Call(&rollupNumber, rpc.BatchNumber)
 		if err == nil && rollupNumber > 0 {
 			return
 		}
@@ -115,16 +109,10 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	t.Fatalf("Zero rollups have been produced after ten seconds. Something is wrong. Latest error was: %s", err)
 }
 
-func createInMemoryNode(t *testing.T) (node.Node, gethcommon.Address) {
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	hostAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
-
+func createInMemoryNode() node.Node {
 	nodeCfg := node.NewNodeConfig(
-		node.WithPrivateKey(hex.EncodeToString(crypto.FromECDSA(privateKey))),
-		node.WithHostID(hostAddress.String()),
+		node.WithPrivateKey(integration.GethNodePK),
+		node.WithHostID(integration.GethNodeAddress),
 		node.WithEnclaveWSPort(_startPort+integration.DefaultEnclaveOffset),
 		node.WithHostHTTPPort(_startPort+integration.DefaultHostRPCHTTPOffset),
 		node.WithHostWSPort(_startPort+integration.DefaultHostRPCWSOffset),
@@ -134,5 +122,5 @@ func createInMemoryNode(t *testing.T) (node.Node, gethcommon.Address) {
 		node.WithL1BlockTime(1*time.Second),
 	)
 
-	return NewInMemNode(nodeCfg), hostAddress
+	return NewInMemNode(nodeCfg)
 }
