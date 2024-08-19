@@ -160,11 +160,6 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 		panic(err)
 	}
 
-	//serialized, err := rlp.EncodeToBytes(t.Rollup)
-	//if err != nil {
-	//	return nil, fmt.Errorf("could not serialize rollup. Cause: %w", err)
-	//}
-
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),
 		Signature:          decodedRollup.Header.Signature,
@@ -196,6 +191,9 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 	if sidecar, blobHashes, err = makeSidecar(blobs); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
+
+	println("creating rollup blob tx: ", decodedRollup.Hash().Hex())
+	println("creating rollup blob seq no: ", decodedRollup.Header.LastBatchSeqNo)
 	return &types.BlobTx{
 		To:         *c.addr,
 		Data:       data,

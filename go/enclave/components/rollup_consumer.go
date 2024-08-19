@@ -130,7 +130,7 @@ func (rc *rollupConsumerImpl) extractRollups(ctx context.Context, br *common.Blo
 
 		blobs, err := rc.blobResolver.FetchBlobs(ctx, br.Block.Header(), rollupHashes.BlobHashes)
 		if err != nil {
-			rc.logger.Crit("could not fetch blobs.", log.ErrKey, err)
+			rc.logger.Crit("could not fetch blobs consumer", log.ErrKey, err)
 			return nil
 		}
 		r, err := reconstructRollup(blobs)

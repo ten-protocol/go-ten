@@ -253,7 +253,7 @@ func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*e
 
 		blobs, err := p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), rollupHashes.BlobHashes)
 		if err != nil {
-			p.logger.Crit("could not fetch blobs.", log.ErrKey, err)
+			p.logger.Crit("could not fetch blobs publisher", log.ErrKey, err)
 			return nil, nil, nil
 		}
 		encodedRlp, err := ethadapter.DecodeBlobs(blobs)
@@ -409,6 +409,10 @@ func (p *Publisher) ResyncImportantContracts() error {
 // this method is guarded by a lock to ensure that only one transaction is attempted at a time to avoid nonce conflicts
 // todo (@matt) this method should take a context so we can try to cancel if the tx is no longer required
 func (p *Publisher) publishTransaction(tx types.TxData) error {
+	//FIXME config
+	timeout := 15 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	// this log message seems superfluous but is useful to debug deadlock issues, we expect 'Host issuing l1 tx' soon
 	// after unless we're stuck blocking.
 	p.logger.Info("Host preparing to issue L1 tx")
@@ -420,6 +424,12 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 
 	// while the publisher service is still alive we keep trying to get the transaction into the L1
 	for !p.hostStopper.IsStopping() {
+		// Check if the context has been canceled, and if so, exit early
+		if ctx.Err() != nil {
+			p.logger.Warn("Context canceled, aborting transaction publication")
+			return ctx.Err()
+		}
+
 		retries++ // count each attempt so we can increase gas price
 
 		// moved nonce fetching within this loop to ensure its up to date
@@ -430,7 +440,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		}
 
 		// update the tx gas price before each attempt
-		tx, err := p.ethClient.PrepareTransactionToRetry(p.sendingContext, tx, p.hostWallet.Address(), nonce, retries)
+		tx, err := p.ethClient.PrepareTransactionToRetry(ctx, tx, p.hostWallet.Address(), nonce, retries)
 		if err != nil {
 			return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 		}
@@ -439,9 +449,9 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		if err != nil {
 			return errors.Wrap(err, "could not sign L1 tx")
 		}
-		p.logger.Info("Host issuing l1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
+		p.logger.Info("Host issuing L1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
 
-		err = p.ethClient.SendTransaction(signedTx)
+		err = p.ethClient.SendTransactionCtx(ctx, signedTx)
 		if err != nil {
 			// if there is a nonce gap, wait and retry after a short delay with exponential backoff
 			if strings.Contains(err.Error(), "nonce too low") {
@@ -454,11 +464,11 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
 
 		var receipt *types.Receipt
-		// retry until receipt is found
+		// retry until receipt is found or context is canceled
 		err = retry.Do(
 			func() error {
-				if p.hostStopper.IsStopping() {
-					return retry.FailFast(errors.New("host is stopping"))
+				if p.hostStopper.IsStopping() || ctx.Err() != nil {
+					return retry.FailFast(errors.New("host is stopping or context canceled"))
 				}
 				receipt, err = p.ethClient.TransactionReceipt(signedTx.Hash())
 				if err != nil {
@@ -473,7 +483,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 			continue // try again with updated gas price
 		}
 
-		if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
+		if receipt.Status != types.ReceiptStatusSuccessful {
 			return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
 		}
 
