@@ -104,6 +104,9 @@ func (rl *RateLimiter) SumComputeTime(userID common.Address) time.Duration {
 
 	var totalComputeTime time.Duration
 	if user, exists := rl.users[userID]; exists {
+		user.mu.RLock() // lock the user to prevent changes while reading
+		defer user.mu.RUnlock()
+
 		cutoff := time.Now().Add(-rl.window)
 		for _, interval := range user.CurrentRequests {
 			// if the request has ended and it's within the window, add the compute time
