@@ -92,8 +92,6 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	case AddRollupMethod:
 		if tx.Type() == types.BlobTxType {
 			blobHashes := ethadapter.ToIndexedBlobHashes(tx.BlobHashes()...)
-			println("DECODE TX blob hash: ", blobHashes[0].Hash.Hex())
-
 			return &ethadapter.L1RollupHashes{
 				BlobHashes: blobHashes,
 			}
@@ -191,13 +189,6 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 
 	if sidecar, blobHashes, err = makeSidecar(blobs); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
-	}
-
-	println("creating rollup blob tx: ", decodedRollup.Hash().Hex())
-	println("creating rollup blob seq no: ", decodedRollup.Header.LastBatchSeqNo)
-
-	for _, blobH := range blobHashes {
-		println("blob hash: ", blobH.Hex())
 	}
 
 	return &types.BlobTx{

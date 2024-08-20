@@ -3,8 +3,6 @@ package components
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
@@ -128,13 +126,14 @@ func (rc *rollupConsumerImpl) extractRollups(ctx context.Context, br *common.Blo
 			continue
 		}
 
-		println("fetching blobs with block: ", br.Block.Hash().Hex(), " and blobHashes: ", rollupHashes.BlobHashes[0].Hash.Hex())
 		blobs, err := rc.blobResolver.FetchBlobs(ctx, br.Block.Header(), rollupHashes.BlobHashes)
 		if err != nil {
+			println("CONSUMER FAILED fetch blobs: ", err.Error())
 			rc.logger.Crit("could not fetch blobs consumer", log.ErrKey, err)
 			return nil
 		}
-		r, err := reconstructRollup(blobs)
+		println("CONSUMER SUCCESS fetch blobs")
+		r, err := ethadapter.ReconstructRollup(blobs)
 		if err != nil {
 			rc.logger.Crit("could not recreate rollup from blobs.", log.ErrKey, err)
 		}
@@ -143,17 +142,4 @@ func (rc *rollupConsumerImpl) extractRollups(ctx context.Context, br *common.Blo
 		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, b.Hash())
 	}
 	return rollups
-}
-
-// Function to reconstruct rollup from blobs
-func reconstructRollup(blobs []*kzg4844.Blob) (*common.ExtRollup, error) {
-	data, err := ethadapter.DecodeBlobs(blobs)
-	if err != nil {
-		fmt.Println("Error decoding rollup blob:", err)
-	}
-	var rollup common.ExtRollup
-	if err := rlp.DecodeBytes(data, &rollup); err != nil {
-		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
-	}
-	return &rollup, nil
 }

@@ -251,12 +251,13 @@ func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*e
 			continue
 		}
 
-		println("PUBLISHER fetching blobs with block: ", block.Hash().Hex(), " and blobHashes: ", rollupHashes.BlobHashes[0].Hash.Hex())
 		blobs, err := p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), rollupHashes.BlobHashes)
 		if err != nil {
+			println("PUBLISHER FAILED fetch blobs: ", err.Error())
 			p.logger.Crit("could not fetch blobs publisher", log.ErrKey, err)
 			return nil, nil, nil
 		}
+		println("PUBLISHER SUCCESS fetch blobs")
 		encodedRlp, err := ethadapter.DecodeBlobs(blobs)
 		if err != nil {
 			p.logger.Crit("could not decode blobs.", log.ErrKey, err)
