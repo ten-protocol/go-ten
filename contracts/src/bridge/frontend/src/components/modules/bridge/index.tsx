@@ -19,7 +19,7 @@ import {
 } from "@/src/lib/constants";
 import { useWatch } from "react-hook-form";
 import useCustomHookForm from "@/src/hooks/useCustomHookForm";
-import { ToastType, Token } from "@/src/types";
+import { ToastType, IToken } from "@/src/types";
 import { useContract } from "@/src/hooks/useContract";
 import { TransferFromSection } from "./transfer-from-section";
 import { SubmitButton } from "./submit-button";
@@ -82,7 +82,7 @@ export default function Dashboard() {
         });
 
         const selectedToken = token
-          ? tokens.find((t: Token) => t.value === token)
+          ? tokens.find((t: IToken) => t.value === token)
           : null;
 
         if (!selectedToken) throw new Error("Invalid token");
@@ -169,7 +169,7 @@ export default function Dashboard() {
 
       setLoading(true);
       try {
-        const selectedToken = tokens.find((t: Token) => t.value === token);
+        const selectedToken = tokens.find((t: IToken) => t.value === token);
         if (!selectedToken) return;
 
         const balance = selectedToken.isNative

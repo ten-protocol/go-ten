@@ -1,11 +1,10 @@
-import { Chain } from "@/src/types";
+import { IChain } from "@/src/types";
 import { FormField, FormItem, FormControl, FormMessage } from "../../ui/form";
 import {
   Select,
   SelectTrigger,
   SelectContent,
   SelectItem,
-  SelectValue,
 } from "../../ui/select";
 import useCustomHookForm from "@/src/hooks/useCustomHookForm";
 
@@ -15,7 +14,7 @@ export const ChainSelect = ({
   name,
 }: {
   form: ReturnType<typeof useCustomHookForm>;
-  chains: Chain[];
+  chains: IChain[];
   name: string;
 }) => {
   return (
@@ -32,7 +31,7 @@ export const ChainSelect = ({
               </SelectTrigger>
             </FormControl>
             <SelectContent>
-              {chains.map((chain: Chain) => (
+              {chains.map((chain: IChain) => (
                 <SelectItem
                   key={chain.value}
                   value={chain.value}

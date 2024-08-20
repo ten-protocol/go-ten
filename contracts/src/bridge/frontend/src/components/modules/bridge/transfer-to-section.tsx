@@ -4,7 +4,7 @@ import { Button } from "../../ui/button";
 import { Skeleton } from "../../ui/skeleton";
 import TruncatedAddress from "../common/truncated-address";
 import { ChainSelect } from "./chain-select";
-import { Chain } from "@/src/types";
+import { IChain } from "@/src/types";
 import { isAddress } from "ethers/lib/utils";
 import useCustomHookForm from "@/src/hooks/useCustomHookForm";
 import { useContract } from "@/src/hooks/useContract";
@@ -21,7 +21,7 @@ export const TransferToSection = ({
   setOpen,
 }: {
   form: ReturnType<typeof useCustomHookForm>;
-  toChains: Chain[];
+  toChains: IChain[];
   loading: boolean;
   receiver?: string;
   address: string;

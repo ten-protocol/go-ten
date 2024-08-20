@@ -1,4 +1,4 @@
-import { Chain, Token } from "@/src/types";
+import { IChain, IToken } from "@/src/types";
 import { Separator } from "../../ui/separator";
 import { Skeleton } from "../../ui/skeleton";
 import { AmountInput } from "./amount-input";
@@ -17,8 +17,8 @@ export const TransferFromSection = ({
   walletConnected,
 }: {
   form: ReturnType<typeof useCustomHookForm>;
-  fromChains: Chain[];
-  tokens: Token[];
+  fromChains: IChain[];
+  tokens: IToken[];
   fromTokenBalance: string;
   loading: boolean;
   setAmount: (value: number) => void;
