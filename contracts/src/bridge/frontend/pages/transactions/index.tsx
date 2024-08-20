@@ -10,7 +10,6 @@ import {
   TabsTrigger,
 } from "@/src/components/ui/tabs";
 import { useContract } from "@/src/hooks/useContract";
-import useWalletStore from "@/src/stores/wallet-store";
 
 export const metadata: Metadata = {
   title: "Transactions",
@@ -18,7 +17,6 @@ export const metadata: Metadata = {
 };
 
 export default function Transactions() {
-  const { address } = useWalletStore();
   const { getBridgeTransactions } = useContract();
   const { transactions, refetchTransactions } = {
     transactions: {
@@ -35,7 +33,7 @@ export default function Transactions() {
   };
 
   const getTransactions = async () => {
-    const transactions = await getBridgeTransactions(address);
+    const transactions = await getBridgeTransactions();
     console.log(transactions);
   };
 

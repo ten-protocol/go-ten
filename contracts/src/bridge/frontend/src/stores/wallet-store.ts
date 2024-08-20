@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { toast } from "@/src/components/ui/use-toast";
-import { ToastType, WalletNetwork } from "@/src/types";
+import { IWalletState, ToastType } from "@/src/types";
 import { requestMethods } from "@/src/routes";
 import {
   getEthereumProvider,
@@ -10,43 +10,34 @@ import {
   initializeSigner,
   setupEventListeners,
 } from "@/src/lib/utils/walletEvents";
+import { currentNetwork } from "../lib/utils";
 
-interface WalletState {
-  provider: any;
-  signer: any;
-  address: string;
-  walletConnected: boolean;
-  isL1ToL2: boolean;
-  initializeProvider: () => void;
-  connectWallet: () => void;
-  disconnectWallet: () => void;
-  switchNetwork: () => void;
-  restoreWalletState: () => void;
-}
-
-const useWalletStore = create<WalletState>((set, get) => ({
+const useWalletStore = create<IWalletState>((set, get) => ({
   provider: null,
   signer: null,
   address: "",
   walletConnected: false,
   isL1ToL2: true,
+  isWrongNetwork: false,
 
   initializeProvider: async () => {
     const detectedProvider = await getEthereumProvider();
-
     const newSigner = initializeSigner(detectedProvider);
 
-    // @ts-ignore
+    //@ts-ignore
     const chainId = await detectedProvider?.request({
       method: requestMethods.getChainId,
       params: [],
     });
-    const isL1 = chainId === WalletNetwork.L1_SEPOLIA;
+
+    const isL1 = chainId === currentNetwork.l1;
+    const expectedChainId = isL1 ? currentNetwork.l1 : currentNetwork.l2;
 
     set({
       provider: detectedProvider,
       signer: newSigner,
-      isL1ToL2: isL1,
+      isL1ToL2: !isL1,
+      isWrongNetwork: chainId !== expectedChainId,
     });
 
     const cleanup = setupEventListeners(detectedProvider, (address: string) => {
@@ -59,7 +50,7 @@ const useWalletStore = create<WalletState>((set, get) => ({
   connectWallet: async () => {
     try {
       const detectedProvider = await getEthereumProvider();
-      // @ts-ignore
+      //@ts-ignore
       const accounts = await detectedProvider?.request({
         method: requestMethods.connectAccounts,
         params: [],
@@ -135,28 +126,20 @@ const useWalletStore = create<WalletState>((set, get) => ({
       return;
     }
 
-    try {
-      const desiredNetwork = isL1ToL2
-        ? WalletNetwork.L2_TEN_TESTNET
-        : WalletNetwork.L1_SEPOLIA;
+    const desiredNetwork = isL1ToL2 ? currentNetwork.l2 : currentNetwork.l1;
 
+    try {
       await provider?.request({
         method: requestMethods.switchNetwork,
         params: [{ chainId: desiredNetwork }],
       });
 
-      const isL1 = desiredNetwork === WalletNetwork.L1_SEPOLIA;
-
-      set({ isL1ToL2: isL1 });
-      handleStorage.save("isL1ToL2", isL1.toString());
+      set({ isL1ToL2: !isL1ToL2 });
+      handleStorage.save("isL1ToL2", (!isL1ToL2).toString());
 
       toast({
         title: "Network Switched",
-        description: `Switched to ${
-          desiredNetwork === WalletNetwork.L2_TEN_TESTNET
-            ? "L2 TEN Testnet"
-            : "L1 Sepolia"
-        }`,
+        description: `Switched to ${isL1ToL2 ? "L1" : "L2 TEN Testnet"}`,
         variant: ToastType.SUCCESS,
       });
     } catch (error: any) {
@@ -190,6 +173,10 @@ const useWalletStore = create<WalletState>((set, get) => ({
     }
 
     get().initializeProvider();
+  },
+
+  updateNetworkStatus: (isWrongNetwork: boolean) => {
+    set({ isWrongNetwork });
   },
 }));
 

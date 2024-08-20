@@ -17,9 +17,9 @@ import {
 import { isAddress } from "ethers/lib/utils";
 
 export const useContract = () => {
-  const { signer, isL1ToL2, provider } = useWalletStore();
+  const { signer, isL1ToL2, provider, address } = useWalletStore();
   const { networkConfig, isNetworkConfigLoading } = useGeneralService();
-  const { setContractState, messageBusAddress } = useContractStore();
+  const { setContractState } = useContractStore();
 
   const memoizedConfig = useMemo(() => {
     if (isNetworkConfigLoading || !networkConfig) {
@@ -153,7 +153,7 @@ export const useContract = () => {
       }
 
       const responseL1 = await wallet.sendTransaction(txL1);
-      console.log("Transaction sent to L2:", responseL1);
+      console.log("L1 txn response:", responseL1);
 
       toast({
         description: "Value transfer sent to L2; waiting for confirmation",
@@ -161,6 +161,7 @@ export const useContract = () => {
       });
 
       const receiptL1 = await responseL1.wait();
+      console.log("L1 txn receipt:", receiptL1);
 
       toast({
         description: "Value transfer completed",
@@ -225,24 +226,29 @@ export const useContract = () => {
     }
   };
 
-  const getBridgeTransactions = async (userAddress: string) => {
-    if (!userAddress) {
-      return handleError(null, "User address not found");
-    }
+  const getBridgeTransactions = async () => {
+    const { messageBusAddress } = useContractStore.getState();
+    const { provider } = useWalletStore.getState();
 
+    if (!provider || !messageBusAddress) {
+      return handleError(null, "Provider or contract address not found");
+    }
     try {
       const topics = [
-        ethers.utils.id("ValueTransfer(address,address,uint256)"),
-        ethers.utils.hexZeroPad(userAddress, 32),
+        ethers.utils.id("ValueTransfer(address,address,uint256,uint64)"),
+        ethers.utils.hexZeroPad(address, 32),
       ];
 
       const filter = {
         address: messageBusAddress,
         topics,
-        fromBlock: 5868682,
+        fromBlock: 102317,
       };
 
-      return await provider.getLogs(filter);
+      let prov = new ethers.providers.Web3Provider(provider);
+      const logs = await prov.getLogs(filter);
+      console.log("🚀 ~ getBridgeTransactions ~ logs:", logs);
+      return logs;
     } catch (error) {
       return handleError(error, "Error fetching transactions");
     }
@@ -300,6 +306,7 @@ export const useContract = () => {
           log.topics[0] ===
           ethers.utils.id("ValueTransfer(address,address,uint256,uint64)")
       );
+      console.log("🚀 ~ useContract ~ valueTransferEvent:", valueTransferEvent);
 
       if (!valueTransferEvent) {
         throw new Error("ValueTransfer event not found in the logs");

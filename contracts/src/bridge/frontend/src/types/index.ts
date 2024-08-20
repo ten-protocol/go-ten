@@ -138,13 +138,23 @@ export interface WalletConnectionProviderProps {
   children: React.ReactNode;
 }
 
-export enum WalletNetwork {
-  L1_MAINNET = "0x1",
-  L1_SEPOLIA = "0xaa36a7",
-  L2_TEN_TESTNET = "0x1bb",
+export enum L1Network {
+  MAINNET = "0x1",
+  SEPOLIA = "0xaa36a7",
+  UAT = "0x539",
+  DEV = "0x539",
 }
 
-export interface Chain {
+export enum L2Network {
+  TEN_TESTNET = "0x1bb",
+  SEPOLIA = "0x1bb",
+  UAT = "0x1bb",
+  DEV = "0x1bb",
+}
+
+export type Environment = "uat-testnet" | "sepolia-testnet" | "dev-testnet";
+
+export interface IChain {
   name: string;
   value: string;
   isNative: boolean;
@@ -152,7 +162,7 @@ export interface Chain {
   chainId?: string;
 }
 
-export interface Token {
+export interface IToken {
   name: string;
   value: string;
   isNative: boolean;
@@ -173,10 +183,35 @@ export interface INetworkConfig {
   };
 }
 
-export interface ContractState {
-  bridgeContract?: ethers.Contract;
-  managementContract?: ethers.Contract;
-  messageBusContract?: ethers.Contract;
-  wallet?: ethers.Wallet;
+export interface IContractState {
+  bridgeContract: ethers.Contract | null;
+  managementContract: ethers.Contract | null;
+  messageBusContract: ethers.Contract | null;
+  wallet: ethers.Wallet | null;
   messageBusAddress: string;
+  setContractState: (state: Partial<IContractState>) => void;
 }
+
+export interface IWalletState {
+  provider: any;
+  signer: any;
+  address: string;
+  walletConnected: boolean;
+  isL1ToL2: boolean;
+  isWrongNetwork: boolean;
+  initializeProvider: () => void;
+  connectWallet: () => void;
+  disconnectWallet: () => void;
+  switchNetwork: () => void;
+  restoreWalletState: () => void;
+  updateNetworkStatus: (isWrongNetwork: boolean) => void;
+}
+
+export type ButtonVariants =
+  | "outline"
+  | "link"
+  | "default"
+  | "destructive"
+  | "secondary"
+  | "ghost"
+  | "clear";

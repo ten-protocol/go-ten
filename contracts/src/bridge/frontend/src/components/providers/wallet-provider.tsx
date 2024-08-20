@@ -12,6 +12,7 @@ const WalletProvider = ({ children }: WalletConnectionProviderProps) => {
 
   useEffect(() => {
     restoreWalletState();
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
