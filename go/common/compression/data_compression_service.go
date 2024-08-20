@@ -36,7 +36,8 @@ func (cs *brotliDataCompressionService) Decompress(in []byte) ([]byte, error) {
 
 func (cs *brotliDataCompressionService) compress(in []byte, level int) ([]byte, error) {
 	var buf bytes.Buffer
-	writer := brotli.NewWriterLevel(&buf, level)
+	// writer := brotli.NewWriterLevel(&buf, level)
+	writer := brotli.NewWriterV2(&buf, level)
 	_, err := writer.Write(in)
 	if closeErr := writer.Close(); err == nil {
 		err = closeErr

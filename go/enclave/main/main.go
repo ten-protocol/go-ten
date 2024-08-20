@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"runtime/pprof"
+	"time"
+
 	"github.com/ten-protocol/go-ten/go/common/container"
 	tenflag "github.com/ten-protocol/go-ten/go/common/flag"
 	"github.com/ten-protocol/go-ten/go/config"
 	enclavecontainer "github.com/ten-protocol/go-ten/go/enclave/container"
-	"os"
-	"runtime/pprof"
-	"time"
 )
 
 // Runs an Obscuro enclave as a standalone process.
