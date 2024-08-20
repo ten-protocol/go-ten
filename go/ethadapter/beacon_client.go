@@ -126,15 +126,16 @@ func (bc *BeaconHTTPClient) BeaconGenesis(ctx context.Context) (APIGenesisRespon
 func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
 	reqPath := path.Join(sidecarsMethodPrefix, strconv.FormatUint(slot, 10))
 	var reqQuery url.Values
-	reqQuery = url.Values{}
-	for i := range hashes {
-		reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))
-	}
+	//reqQuery = url.Values{}
+	//for i := range hashes {
+	//	reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))
+	//}
 	var resp APIGetBlobSidecarsResponse
 
 	err := bc.request(ctx, &resp, reqPath, reqQuery)
 
 	if err != nil {
+		println("ERROR GETTING SIDECAR with hash: ", hashes[0].Hash.Hex(), " with err: ", err.Error())
 		return APIGetBlobSidecarsResponse{}, err
 	}
 	return resp, nil
@@ -215,8 +216,10 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 	var errs []error
 	for i := 0; i < cl.pool.Len(); i++ {
 		f := cl.pool.Get()
+		println("FETCHING BeaconBlobSideCars with hashes: ", hashes[0].Hash.Hex())
 		resp, err := f.BeaconBlobSideCars(ctx, slot, hashes)
 		if err != nil {
+			println("ERROR FETCHING SIDECARS: ", err.Error())
 			cl.pool.MoveToNext()
 			errs = append(errs, err)
 		} else {
@@ -260,6 +263,7 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 	}
 
 	if len(hashes) != len(apiscs) {
+		fmt.Printf("expected %v sidecars but got %v", len(hashes), len(apiscs))
 		return nil, fmt.Errorf("expected %v sidecars but got %v", len(hashes), len(apiscs))
 	}
 
@@ -289,6 +293,8 @@ func blobsFromSidecars(blobSidecars []*BlobSidecar, hashes []IndexedBlobHash) ([
 	}
 
 	out := make([]*kzg4844.Blob, len(hashes))
+
+	println("Blob sidecase length: ", len(blobSidecars))
 	for i, ih := range hashes {
 		sidecar := blobSidecars[i]
 		if sidx := uint64(sidecar.Index); sidx != ih.Index {
@@ -298,8 +304,11 @@ func blobsFromSidecars(blobSidecars []*BlobSidecar, hashes []IndexedBlobHash) ([
 		// make sure the blob's kzg commitment hashes to the expected value
 		hash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
 		if hash != ih.Hash {
+			println("UNSUCCESSFUL blob hash to commitment hash comparison expected: ", ih.Hash.Hex(), " but got: ", hash.Hex())
 			return nil, fmt.Errorf("expected hash %s for blob at index %d but got %s", ih.Hash, ih.Index, hash)
 		}
+
+		println("SUCCESSFUL blob hash to commitment hash comparison: ", hash.Hex())
 
 		// confirm blob data is valid by verifying its proof against the commitment
 		if err := VerifyBlobProof(&sidecar.Blob, kzg4844.Commitment(sidecar.KZGCommitment), kzg4844.Proof(sidecar.KZGProof)); err != nil {

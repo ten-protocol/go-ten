@@ -1,12 +1,11 @@
 package ethadapter
 
 import (
-	"fmt"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/common"
+	"math/big"
 	"testing"
 )
 
@@ -87,14 +86,13 @@ func TestClientPoolSeveral(t *testing.T) {
 }
 
 func TestBlobEncoding(t *testing.T) {
-	// Example data
 	extRlp := createRollup(4444)
 	encRollup, err := common.EncodeRollup(&extRlp)
 
 	// Encode data into blobs
 	blobs, err := EncodeBlobs(encRollup)
 	if err != nil {
-		fmt.Println("Error encoding rollup blob:", err)
+		t.Errorf("error encoding rollup: %s", err)
 	}
 
 	blobsPtr := make([]*kzg4844.Blob, len(blobs))
@@ -102,48 +100,15 @@ func TestBlobEncoding(t *testing.T) {
 		blobsPtr[i] = &blobs[i]
 	}
 
-	rollup, err := reconstructRollup(blobsPtr)
+	rollup, err := ReconstructRollup(blobsPtr)
 	if err != nil {
-		fmt.Println("Error reconstructing rollup:", err)
-		return
+		t.Errorf("error reconstructing rollup: %s", err)
 	}
 
-	fmt.Println("Reconstructed rollup:", rollup)
+	if big.NewInt(int64(rollup.Header.LastBatchSeqNo)).Cmp(big.NewInt(4444)) != 0 {
+		t.Errorf("rollup was not decoded correctly")
+	}
 }
-
-// Function to reconstruct rollup from blobs
-func reconstructRollup(blobs []*kzg4844.Blob) (*common.ExtRollup, error) {
-	data, err := DecodeBlobs(blobs)
-	if err != nil {
-		fmt.Println("Error decoding rollup blob:", err)
-	}
-	var rollup common.ExtRollup
-	if err := rlp.DecodeBytes(data, &rollup); err != nil {
-		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
-	}
-
-	return &rollup, nil
-}
-
-//// Function to reconstruct rollup from blobs
-//func reconstructRollup(blobs []kzg4844.Blob) (*common.ExtRollup, error) {
-//	var serializedData []byte
-//	for _, blob := range blobs {
-//		for i := 0; i < len(blob); i += 32 {
-//			// We need to make sure to not go beyond the actual length of the blob
-//			if i+32 <= len(blob) {
-//				serializedData = append(serializedData, blob[i+1:i+32]...)
-//			}
-//		}
-//	}
-//
-//	var rollup common.ExtRollup
-//	if err := rlp.DecodeBytes(serializedData, &rollup); err != nil {
-//		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
-//	}
-//
-//	return &rollup, nil
-//}
 
 func makeTestBlobSidecar(index uint64) (IndexedBlobHash, *BlobSidecar) {
 	blob := kzg4844.Blob{}

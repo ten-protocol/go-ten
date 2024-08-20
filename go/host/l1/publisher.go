@@ -251,6 +251,7 @@ func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*e
 			continue
 		}
 
+		println("PUBLISHER fetching blobs with block: ", block.Hash().Hex(), " and blobHashes: ", rollupHashes.BlobHashes[0].Hash.Hex())
 		blobs, err := p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), rollupHashes.BlobHashes)
 		if err != nil {
 			p.logger.Crit("could not fetch blobs publisher", log.ErrKey, err)
@@ -459,7 +460,13 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 				time.Sleep(time.Duration(retries) * time.Second)
 				continue
 			}
-			return errors.Wrap(err, "could not broadcast L1 tx")
+			blobHashes := signedTx.BlobHashes()
+			if len(blobHashes) > 0 {
+				blobHash := blobHashes[0].Hex()
+				return errors.Wrap(err, fmt.Sprintf("could not broadcast L1 tx with blobHash: %s", blobHash))
+			} else {
+				return errors.Wrap(err, "could not broadcast L1 tx, no blobHash available")
+			}
 		}
 		p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
 
