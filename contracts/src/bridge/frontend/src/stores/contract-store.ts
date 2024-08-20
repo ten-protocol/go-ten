@@ -1,16 +1,7 @@
 import { create } from "zustand";
-import { ethers } from "ethers";
+import { IContractState } from "../types";
 
-interface ContractState {
-  bridgeContract: ethers.Contract | null;
-  managementContract: ethers.Contract | null;
-  messageBusContract: ethers.Contract | null;
-  wallet: ethers.Wallet | null;
-  messageBusAddress: string;
-  setContractState: (state: Partial<ContractState>) => void;
-}
-
-const useContractStore = create<ContractState>((set) => ({
+const useContractStore = create<IContractState>((set) => ({
   bridgeContract: null,
   managementContract: null,
   messageBusContract: null,
