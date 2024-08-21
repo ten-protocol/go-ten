@@ -3,14 +3,8 @@ import { ethers } from "ethers";
 export interface WalletConnectionContextType {
   accounts: Account[] | null;
   walletConnected: boolean;
-  connectAccount: (account: string) => Promise<void>;
-  token: string | null;
-  version: string | null;
-  revokeAccounts: () => void;
   loading: boolean;
-  provider: ethers.providers.Web3Provider;
-  fetchUserAccounts: () => Promise<void>;
-  setLoading: (loading: boolean) => void;
+  provider: ethers.providers.Web3Provider | null;
 }
 
 export interface State {
@@ -25,3 +19,18 @@ export type Account = {
   name: string;
   connected: boolean;
 };
+
+export interface IWalletState {
+  walletConnected: boolean;
+  token: string;
+  version: string | null;
+  accounts: Account[] | null;
+  provider: ethers.providers.Web3Provider | null;
+  loading: boolean;
+  initialize: (
+    providerInstance: ethers.providers.Web3Provider
+  ) => Promise<void>;
+  connectAccount: (account: string) => Promise<void>;
+  revokeAccounts: () => Promise<void>;
+  fetchUserAccounts: () => Promise<void>;
+}
