@@ -429,7 +429,8 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	// nullify all non-relevant transactions
 	txs := block.Transactions()
 	for i, rec := range receipts {
-		if rec == nil {
+		// the FetchObscuroReceipts method returns dummy receipts on non-relevant positions.
+		if rec.BlockNumber == nil {
 			txs[i] = nil
 		}
 	}
