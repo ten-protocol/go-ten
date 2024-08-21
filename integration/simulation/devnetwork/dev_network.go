@@ -150,6 +150,7 @@ func (s *InMemDevNetwork) Start() {
 		// this is a new network, deploy the contracts to the L1
 		fmt.Println("Deploying Ten contracts to L1")
 		s.deployTenNetworkContracts()
+		fmt.Printf("L1 Port - %d\n", integration.StartPortNetworkTests)
 	}
 	fmt.Println("Starting Ten nodes")
 	s.startNodes()

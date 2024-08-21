@@ -1,8 +1,9 @@
-import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {EthereumProvider, HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import { Receipt } from 'hardhat-deploy/dist/types';
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 import { keccak256 } from 'ethers';
+import { HardhatEthersProvider } from '@nomicfoundation/hardhat-ethers/internal/hardhat-ethers-provider';
 
 function process_value_transfer(ethers, value_transfer) {
     const abiTypes = ['address', 'address', 'uint256', 'uint64'];
@@ -28,14 +29,18 @@ async function sleep(ms: number) {
       setTimeout(resolve, ms);
     });
 }
-async function waitForRootPublished(management, msg, proof, root, interval = 5000, timeout = 90000) {
+async function waitForRootPublished(management, msg, proof, root, provider: EthereumProvider, interval = 5000, timeout = 90000) {
     var gas_estimate = null
+    const l1Ethers = new HardhatEthersProvider(provider, "layer1")    
+
     const startTime = Date.now();
     while (gas_estimate === null) {
         try {
-            gas_estimate = await management.estimateGas.ExtractNativeValue(msg, proof, root, {} )
+            console.log(`Extracting native value from cross chain message for root ${root}`)
+            const tx = await management.getFunction('ExtractNativeValue').populateTransaction(msg, proof, root, {} )
+            gas_estimate = await l1Ethers.estimateGas(tx)
         } catch (error) {
-            console.log(`Estimate gas threw error : ${error.reason}`)
+            console.log(`Estimate gas threw error : ${error}`)
         }
         if (Date.now() - startTime >= timeout) {
             console.log(`Timed out waiting for the estimate gas to return`)
@@ -89,8 +94,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       return
     }
 
-    var managementContract = await hre.ethers.getContractAt("ManagementContract", "0x526c84529b2b8c11f57d93d3f5537aca3aecef9b");
-  
+
+    const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
+    const mgmtContractAddress = networkConfig.ManagementContractAddress;
+    const messageBusAddress = networkConfig.MessageBusAddress;
+
+    const l1Accounts = await hre.companionNetworks.layer1.getNamedAccounts()
+    const fundTx = await hre.companionNetworks.layer1.deployments.rawTx({
+        from: l1Accounts.deployer,
+        to: messageBusAddress,
+        value: "1000",
+    })
+    console.log(`Message bus funding status = ${fundTx.status}`)
+
+    var managementContract = await hre.ethers.getContractAt("ManagementContract", mgmtContractAddress);
+    const estimation = await waitForRootPublished(managementContract, msg, proof, tree.root, hre.companionNetworks.layer1.provider)
+    console.log(`Estimation for native value extraction = ${estimation}`)
 };
 
 

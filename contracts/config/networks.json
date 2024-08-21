@@ -1,6 +1,6 @@
 {
     "localGeth": {
-      "url": "http://127.0.0.1:17000",
+      "url": "http://127.0.0.1:25400",
       "deploy": [
         "deployment_scripts/core"
       ],
@@ -62,6 +62,31 @@
           "privateKey" : "8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99",
           "balance": "174165200000000000"
         }
+      ]
+    },
+    "uatGeth": {
+      "url": "http://dev-testnet-eth2network.uksouth.cloudapp.azure.com:8025",
+      "deploy": [
+        "deployment_scripts/core"
+      ],
+      "accounts": [
+        "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f1"
+      ]
+    },
+    "testUatObscuro": {
+      "chainId": 443,
+      "url": "https://uat-testnet.ten.xyz/v1/",
+      "useGateway": true,
+      "companionNetworks" : {
+        "layer1" : "uatGeth"
+      },
+      "deploy": [
+        "deployment_scripts/testing"
+       ],
+      "accounts": [
+        "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b",
+        "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682",
+        "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
       ]
     }
   }
