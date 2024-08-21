@@ -38,8 +38,11 @@ export const useContract = () => {
       ManagementContractAddress,
     } = memoizedConfig;
 
-    let prov = new ethers.providers.Web3Provider(provider);
-    const walletInstance = new ethers.Wallet(privateKey as string, prov);
+    let ethersProvider = new ethers.providers.Web3Provider(provider);
+    const walletInstance = new ethers.Wallet(
+      privateKey as string,
+      ethersProvider
+    );
     const isL1 = isL1ToL2;
     const bridgeAddress = isL1 ? L1Bridge : L2Bridge;
     const messageBusAddress = isL1 ? MessageBusAddress : L2MessageBusAddress;
@@ -193,11 +196,6 @@ export const useContract = () => {
     }
 
     if (!signer || !provider) {
-      toast({
-        title: "Signer or provider not found",
-        description: "Confirm that your active account is connected",
-        variant: ToastType.DESTRUCTIVE,
-      });
       return handleError(null, "Signer or provider not found");
     }
 

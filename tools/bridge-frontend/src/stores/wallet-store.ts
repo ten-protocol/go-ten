@@ -10,7 +10,7 @@ import {
   initializeSigner,
   setupEventListeners,
 } from "@/src/lib/utils/walletEvents";
-import { currentNetwork } from "../lib/utils";
+import { currentNetwork } from "@/src/lib/utils";
 
 const useWalletStore = create<IWalletState>((set, get) => ({
   provider: null,
@@ -19,32 +19,43 @@ const useWalletStore = create<IWalletState>((set, get) => ({
   walletConnected: false,
   isL1ToL2: true,
   isWrongNetwork: false,
+  loading: true,
 
   initializeProvider: async () => {
-    const detectedProvider = await getEthereumProvider();
-    const newSigner = initializeSigner(detectedProvider);
+    try {
+      set({ loading: true });
+      const detectedProvider = await getEthereumProvider();
+      const newSigner = initializeSigner(detectedProvider);
 
-    //@ts-ignore
-    const chainId = await detectedProvider?.request({
-      method: requestMethods.getChainId,
-      params: [],
-    });
+      //@ts-ignore
+      const chainId = await detectedProvider?.request({
+        method: requestMethods.getChainId,
+        params: [],
+      });
 
-    const isL1 = chainId === currentNetwork.l1;
-    const expectedChainId = isL1 ? currentNetwork.l1 : currentNetwork.l2;
+      const isL1 = chainId === currentNetwork.l1;
+      const expectedChainId = isL1 ? currentNetwork.l1 : currentNetwork.l2;
 
-    set({
-      provider: detectedProvider,
-      signer: newSigner,
-      isL1ToL2: isL1,
-      isWrongNetwork: chainId !== expectedChainId,
-    });
+      set({
+        provider: detectedProvider,
+        signer: newSigner,
+        isL1ToL2: isL1,
+        isWrongNetwork: chainId !== expectedChainId,
+      });
 
-    const cleanup = setupEventListeners(detectedProvider, (address: string) => {
-      set({ address });
-    });
+      const cleanup = setupEventListeners(
+        detectedProvider,
+        (address: string) => {
+          set({ address });
+        }
+      );
 
-    return cleanup;
+      return cleanup;
+    } catch (error) {
+      console.error("Error initializing provider:", error);
+    } finally {
+      set({ loading: false });
+    }
   },
 
   connectWallet: async () => {
@@ -117,6 +128,7 @@ const useWalletStore = create<IWalletState>((set, get) => ({
 
   switchNetwork: async () => {
     const { provider, isL1ToL2 } = get();
+
     if (!provider) {
       toast({
         title: "Error",
@@ -125,6 +137,8 @@ const useWalletStore = create<IWalletState>((set, get) => ({
       });
       return;
     }
+
+    set({ loading: true });
 
     const desiredNetwork = isL1ToL2 ? currentNetwork.l2 : currentNetwork.l1;
 
@@ -146,8 +160,8 @@ const useWalletStore = create<IWalletState>((set, get) => ({
       console.error("Error switching network:", error);
       if (error.code === 4902) {
         toast({
-          title: "Network Not Found",
-          description: "Network not found in wallet",
+          title: "Network not found",
+          description: error.message || "Network not found in wallet",
           variant: ToastType.INFO,
         });
       } else {
@@ -157,6 +171,8 @@ const useWalletStore = create<IWalletState>((set, get) => ({
           variant: ToastType.DESTRUCTIVE,
         });
       }
+    } finally {
+      set({ loading: false });
     }
   },
 

@@ -3,7 +3,12 @@ import { ethers } from "ethers";
 
 const handleError = (error: any, customMessage: string) => {
   console.error(customMessage, error);
-  throw new Error(customMessage);
+  if (error?.message?.includes("unknown account")) {
+    throw new Error(
+      "Ensure your wallet is unlocked and an account is connected"
+    );
+  }
+  throw new Error(error);
 };
 
 const constructMerkleTree = (leafEntries: any[], msgHash: string) => {

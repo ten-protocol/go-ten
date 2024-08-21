@@ -30,8 +30,14 @@ import { handleStorage } from "@/src/lib/utils/walletUtils";
 import useWalletStore from "@/src/stores/wallet-store";
 
 export default function Dashboard() {
-  const { provider, address, walletConnected, switchNetwork, isL1ToL2 } =
-    useWalletStore();
+  const {
+    provider,
+    address,
+    walletConnected,
+    switchNetwork,
+    isL1ToL2,
+    loading,
+  } = useWalletStore();
   const { getNativeBalance, getTokenBalance, sendERC20, sendNative } =
     useContract();
   const intervalId = React.useRef<any>(null);
@@ -60,7 +66,6 @@ export default function Dashboard() {
   const [fromChain, toChain, token, receiver, amount] = textValues;
 
   const [fromTokenBalance, setFromTokenBalance] = React.useState<any>(0);
-  const [loading, setLoading] = React.useState(false);
   const [open, setOpen] = React.useState(false);
 
   const onSubmit = React.useCallback(
@@ -73,7 +78,6 @@ export default function Dashboard() {
         return;
       }
       try {
-        setLoading(true);
         const transactionData = { ...data, receiver: receiver || address };
         toast({
           title: "Bridge Transaction",
@@ -111,8 +115,6 @@ export default function Dashboard() {
           }`,
           variant: ToastType.DESTRUCTIVE,
         });
-      } finally {
-        setLoading(false);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -139,7 +141,6 @@ export default function Dashboard() {
     async (event: any) => {
       event.preventDefault();
       try {
-        setLoading(true);
         switchNetwork();
       } catch (error) {
         console.error("Network switch failed", error);
@@ -150,8 +151,6 @@ export default function Dashboard() {
           }`,
           variant: ToastType.DESTRUCTIVE,
         });
-      } finally {
-        setLoading(false);
       }
     },
     [switchNetwork]
@@ -167,7 +166,6 @@ export default function Dashboard() {
     const fetchTokenBalance = async () => {
       if (!token || !address) return;
 
-      setLoading(true);
       try {
         const selectedToken = tokens.find((t: IToken) => t.value === token);
         if (!selectedToken) return;
@@ -179,8 +177,6 @@ export default function Dashboard() {
         setFromTokenBalance(balance);
       } catch (error) {
         console.error("Failed to fetch balance:", error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -232,25 +228,25 @@ export default function Dashboard() {
                 fromChains={fromChains}
                 tokens={tokens}
                 fromTokenBalance={fromTokenBalance}
-                loading={loading}
+                loading={loading || formState.isSubmitting}
                 setAmount={setAmount}
                 walletConnected={walletConnected}
               />
               <SwitchNetworkButton
                 handleSwitchNetwork={handleSwitchNetwork}
-                loading={loading}
+                loading={loading || formState.isSubmitting}
               />
               <TransferToSection
                 form={form}
                 toChains={toChains}
-                loading={loading}
+                loading={loading || formState.isSubmitting}
                 receiver={receiver}
                 address={address}
                 setOpen={setOpen}
               />
               <SubmitButton
                 walletConnected={walletConnected}
-                loading={loading}
+                loading={loading || formState.isSubmitting}
                 fromTokenBalance={fromTokenBalance}
               />
             </form>

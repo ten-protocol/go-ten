@@ -199,6 +199,7 @@ export interface IWalletState {
   walletConnected: boolean;
   isL1ToL2: boolean;
   isWrongNetwork: boolean;
+  loading: boolean;
   initializeProvider: () => void;
   connectWallet: () => void;
   disconnectWallet: () => void;
