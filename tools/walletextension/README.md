@@ -7,7 +7,7 @@ For a comprehensive overview, refer to the [official documentation](https://docs
 
 ### Backend
 
-To run the backend locally, first build it using the `go build` command. Navigate to the `tools/walletextension/main` folder and use the following commands to build for your respective operating system:
+To run the backend locally, it is recommended to use **port 1443** to avoid conflicts with the frontend service, which typically runs on port 3000. First, build the backend using the `go build` command. Navigate to the `tools/walletextension/main` folder and use the following commands to build for your respective operating system:
 
 ```bash
 # macOS AMD64
@@ -23,7 +23,33 @@ env GOOS=windows GOARCH=amd64 go build -o ../bin/wallet_extension_win_amd64.exe 
 env GOOS=linux GOARCH=amd64 go build -o ../bin/wallet_extension_linux_amd64 .
 ```
 
-The binaries will be available in the `tools/walletextension/bin` directory. Run the compiled binary to start the backend.
+The binaries will be available in the `tools/walletextension/bin` directory.
+Run the compiled binary and specify the desired port.
+Example:
+
+```bash
+./wallet_extension_macos_arm64 --port 1443
+```
+
+### Additional Backend Configuration Options
+
+- **`--host`**: The host where the wallet extension should open the port. Default: `127.0.0.1`.
+- **`--port`**: The port on which to serve the wallet extension. Default: `3000`.
+- **`--portWS`**: The port on which to serve websocket JSON RPC requests. Default: `3001`.
+- **`--nodeHost`**: The host on which to connect to the Obscuro node. Default: `erpc.sepolia-testnet.ten.xyz`.
+- **`--nodePortHTTP`**: The port on which to connect to the Obscuro node via RPC over HTTP. Default: `80`.
+- **`--nodePortWS`**: The port on which to connect to the Obscuro node via RPC over websockets. Default: `81`.
+- **`--logPath`**: The path to use for the wallet extension's log file. Default: `sys_out`.
+- **`--databasePath`**: The path for the wallet extension's database file. Default: `.obscuro/gateway_database.db`.
+- **`--verbose`**: Flag to enable verbose logging of wallet extension traffic. Default: `false`.
+- **`--dbType`**: Define the database type (`sqlite` or `mariaDB`). Default: `sqlite`.
+- **`--dbConnectionURL`**: If `dbType` is set to `mariaDB`, this must be set.
+- **`--tenChainID`**: ChainID of the Ten network that the gateway is communicating with. Default: `443`.
+- **`--storeIncomingTxs`**: Flag to enable storing incoming transactions in the database for debugging purposes. Default: `true`.
+- **`--rateLimitUserComputeTime`**: Represents how much compute time a user is allowed to use within the `rateLimitWindow` time. Set to `0` to disable rate limiting. Default: `10s`.
+- **`--rateLimitWindow`**: Time window in which a user is allowed to use the defined compute time. Default: `1m`.
+- **`--maxConcurrentRequestsPerUser`**: Number of concurrent requests allowed per user. Default: `3`.
+
 
 ### Frontend
 
@@ -34,7 +60,7 @@ npm install
 npm run dev
 ```
 
-The frontend will be accessible on `http://localhost:80`.
+The frontend will be accessible on `http://localhost:3000`.
 
 ## HTTP Endpoints
 
