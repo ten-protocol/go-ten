@@ -95,17 +95,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
 
-    const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-    const mgmtContractAddress = networkConfig.ManagementContractAddress;
-    const messageBusAddress = networkConfig.MessageBusAddress;
+   // const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
+    const mgmtContractAddress = "0x946600AF6893Ee818CC7CC2dEC4D0A0bF91C9817"// networkConfig.ManagementContractAddress;
+    const messageBusAddress = "0x68e95924f22Be35386A8aE0240f8885967d452D6" //networkConfig.MessageBusAddress;
 
-    const l1Accounts = await hre.companionNetworks.layer1.getNamedAccounts()
+   /* const l1Accounts = await hre.companionNetworks.layer1.getNamedAccounts()
     const fundTx = await hre.companionNetworks.layer1.deployments.rawTx({
         from: l1Accounts.deployer,
         to: messageBusAddress,
         value: "1000",
     })
-    console.log(`Message bus funding status = ${fundTx.status}`)
+    console.log(`Message bus funding status = ${fundTx.status}`)*/
 
     var managementContract = await hre.ethers.getContractAt("ManagementContract", mgmtContractAddress);
     const estimation = await waitForRootPublished(managementContract, msg, proof, tree.root, hre.companionNetworks.layer1.provider)
