@@ -139,6 +139,6 @@ jobs:
               -e OBSCURO_GATEWAY_VERSION="${{ GITHUB.RUN_NUMBER }}-${{ GITHUB.SHA }}" \
                --log-opt max-file=3 --log-opt max-size=10m \
                ${{ vars.DOCKER_BUILD_TAG_GATEWAY }} \
-               -host=0.0.0.0 -port=8080 -portWS=81 -nodeHost=${{ vars.L2_RPC_URL_VALIDATOR }} -verbose=true \
+               -host=0.0.0.0 -port=80 -portWS=81 -nodeHost=${{ vars.L2_RPC_URL_VALIDATOR }} -verbose=true \
                -logPath=sys_out -dbType=mariaDB -dbConnectionURL="obscurouser:${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }}@tcp(obscurogateway-mariadb-${{  github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:3306)/ogdb" \
                -rateLimitUserComputeTime=${{ vars.GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME }} -rateLimitWindow=${{ vars.GATEWAY_RATE_LIMIT_WINDOW }} -maxConcurrentRequestsPerUser=${{ vars.GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER }} '
