@@ -12,10 +12,12 @@ const TruncatedAddress = ({
   address,
   prefixLength = 6,
   suffixLength = 4,
+  showCopy = true,
 }: {
   address: string;
   prefixLength?: number;
   suffixLength?: number;
+  showCopy?: boolean;
 }) => {
   const truncatedAddress =
     address &&
@@ -35,7 +37,7 @@ const TruncatedAddress = ({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <Copy value={address} />
+          {showCopy && <Copy value={address} />}
         </div>
       ) : (
         <div>N/A</div>

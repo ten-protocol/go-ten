@@ -70,7 +70,7 @@ const ConnectWalletButton = ({
     return walletConnected ? (
       <>
         <LinkBreak2Icon className="h-4 w-4 mr-1" />
-        {<TruncatedAddress address={address} />}
+        {<TruncatedAddress address={address} showCopy={false} />}
       </>
     ) : (
       <>
