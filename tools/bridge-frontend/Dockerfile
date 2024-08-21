@@ -2,10 +2,10 @@
 FROM node:22-alpine
 
 # setup container data structure
-RUN mkdir -p /home/obscuro/go-obscuro/contracts/src/bridge
-COPY ./contracts/src/bridge/frontend /home/obscuro/go-obscuro/contracts/src/bridge/frontend
+RUN mkdir -p /home/obscuro/go-obscuro/tools/bridge
+COPY ./tools/bridge-frontend /home/obscuro/go-obscuro/tools/bridge-frontend
 
-WORKDIR /home/obscuro/go-obscuro/contracts/src/bridge/frontend
+WORKDIR /home/obscuro/go-obscuro/tools/bridge-frontend
 
 # ARG for build-time variable
 ARG API_HOST
