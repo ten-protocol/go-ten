@@ -12,7 +12,7 @@ export const socialLinks = {
 export const pollingInterval = 5000;
 export const maxRetries = 3;
 export const pricePollingInterval = 60 * 1000;
-export const balancePollingInterval = 30 * 1000;
+export const balancePollingInterval = 5000;
 
 export const RESET_COPIED_TIMEOUT = 2000;
 

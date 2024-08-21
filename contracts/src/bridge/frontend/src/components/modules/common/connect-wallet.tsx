@@ -8,6 +8,7 @@ import {
 import { cn, downloadMetaMask, ethereum } from "@/src/lib/utils";
 import useWalletStore from "@/src/stores/wallet-store";
 import { ButtonVariants } from "@/src/types";
+import TruncatedAddress from "./truncated-address";
 
 interface ConnectWalletButtonProps {
   className?: string;
@@ -26,6 +27,7 @@ const ConnectWalletButton = ({
     disconnectWallet,
     isWrongNetwork,
     switchNetwork,
+    address,
   } = useWalletStore();
 
   const handleClick = () => {
@@ -68,7 +70,7 @@ const ConnectWalletButton = ({
     return walletConnected ? (
       <>
         <LinkBreak2Icon className="h-4 w-4 mr-1" />
-        Disconnect
+        {<TruncatedAddress address={address} />}
       </>
     ) : (
       <>

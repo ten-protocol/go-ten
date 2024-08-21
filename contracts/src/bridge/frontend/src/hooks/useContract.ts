@@ -192,6 +192,15 @@ export const useContract = () => {
       return handleError(null, "Invalid wallet address");
     }
 
+    if (!signer || !provider) {
+      toast({
+        title: "Signer or provider not found",
+        description: "Confirm that your active account is connected",
+        variant: ToastType.DESTRUCTIVE,
+      });
+      return handleError(null, "Signer or provider not found");
+    }
+
     try {
       const balance = await signer.provider?.getBalance(walletAddress);
       return ethers.utils.formatEther(balance);
