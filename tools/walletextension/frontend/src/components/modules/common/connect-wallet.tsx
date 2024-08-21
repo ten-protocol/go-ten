@@ -1,11 +1,11 @@
-import { useWalletConnection } from "../../providers/wallet-provider";
 import { Button } from "../../ui/button";
 import useGatewayService from "../../../services/useGatewayService";
 import { Link2Icon, LinkBreak2Icon } from "@radix-ui/react-icons";
 import React from "react";
 import { downloadMetaMask, ethereum } from "@/lib/utils";
+import { useWalletStore } from "@/stores/wallet-store";
 const ConnectWalletButton = () => {
-  const { walletConnected, revokeAccounts } = useWalletConnection();
+  const { walletConnected, revokeAccounts } = useWalletStore();
   const { connectToTenTestnet } = useGatewayService();
 
   return (

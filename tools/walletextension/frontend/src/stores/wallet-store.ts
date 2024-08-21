@@ -1,36 +1,30 @@
-// import { IWalletState } from "@/types/interfaces/WalletInterfaces";
-import { Account } from "@/types/interfaces/WalletInterfaces";
+import {
+  authenticateAccountWithTenGatewayEIP712,
+  getToken,
+} from "@/api/ethRequests";
+import { accountIsAuthenticated, revokeAccountsApi } from "@/api/gateway";
+import { showToast } from "@/components/ui/use-toast";
+import { handleError, validateToken } from "@/lib/utils/walletUtils";
+import ethService from "@/services/ethService";
+import { ToastType } from "@/types/interfaces";
+import { Account, IWalletState } from "@/types/interfaces/WalletInterfaces";
 import { ethers } from "ethers";
-import create from "zustand";
+import { create } from "zustand";
 
- interface IWalletState {
-    walletConnected: boolean;
-    token: string;
-    version: string | null;
-    accounts: Account[] | null;
-    provider: ethers.providers.Web3Provider | null;
-    loading: boolean;
-    initialize: (
-      providerInstance: ethers.providers.Web3Provider
-    ) => Promise<void>;
-    connectAccount: (account: string) => Promise<void>;
-    revokeAccounts: () => Promise<void>;
-    fetchUserAccounts: () => Promise<void>;
-  }
-
-export const useWalletStore = create<IWalletState>((set) => ({
+export const useWalletStore = create<IWalletState>((set, get) => ({
   walletConnected: false,
   token: "",
   version: null,
   accounts: null,
   provider: null,
   loading: true,
+  setLoading: (loading: boolean) => set({ loading }),
 
-  initialize: async (providerInstance) => {
+  initialize: async (providerInstance: ethers.providers.Web3Provider) => {
     try {
-      // Initialize wallet connection and update state
       const fetchedToken = await getToken(providerInstance);
       const accounts = await ethService.getAccounts(providerInstance);
+
       set({
         token: fetchedToken,
         accounts,
@@ -38,116 +32,119 @@ export const useWalletStore = create<IWalletState>((set) => ({
         provider: providerInstance,
         loading: false,
       });
-    } catch (error) {
+    } catch (error: any) {
+      handleError(error, "Failed to initialize wallet connection");
       set({ loading: false });
     }
   },
 
-  const connectAccount = async (account: string) => {
+  connectAccount: async (account: string) => {
+    const { token } = get();
+
+    if (!token) {
+      return showToast(
+        ToastType.INFO,
+        "Encryption token is required to connect an account."
+      );
+    }
+
     try {
-      if (!token) {
-        showToast(
-          ToastType.INFO,
-          "Encryption token is required to connect an account."
-        );
-        return;
-      }
       await authenticateAccountWithTenGatewayEIP712(token, account);
       const { status } = await accountIsAuthenticated(token, account);
+
+      const updateAccountStatus = (account: string, status: boolean) => {
+        set((state: IWalletState) => ({
+          accounts: state.accounts?.map((acc) =>
+            acc.name === account ? { ...acc, connected: status } : acc
+          ),
+        }));
+      };
+
       if (status) {
+        updateAccountStatus(account, true);
         showToast(ToastType.SUCCESS, "Account authenticated!");
-        setAccounts((accounts) => {
-          if (!accounts) {
-            return null;
-          }
-          return accounts.map((acc) => {
-            if (acc.name === account) {
-              return {
-                ...acc,
-                connected: status,
-              };
-            }
-            return acc;
-          });
-        });
       } else {
-        showToast(ToastType.DESTRUCTIVE, "Account authentication failed.");
+        throw new Error("Account authentication failed.");
       }
     } catch (error: any) {
-      showToast(ToastType.DESTRUCTIVE, "Account authentication failed.");
+      handleError(error, "Account authentication failed");
     }
-  };
+  },
 
-  const revokeAccounts = async () => {
+  revokeAccounts: async () => {
+    const { token } = get();
+
     if (!token) {
       showToast(
         ToastType.INFO,
         "Encryption token is required to revoke accounts"
       );
-      return;
     }
-    const revokeResponse = await revokeAccountsApi(token);
-    if (revokeResponse === ToastType.SUCCESS) {
-      showToast(ToastType.DESTRUCTIVE, "Accounts revoked!");
-      setAccounts(null);
-      setWalletConnected(false);
-      setToken("");
-    }
-  };
 
-  const fetchUserAccounts = async () => {
+    try {
+      const revokeResponse = await revokeAccountsApi(token);
+
+      if (revokeResponse === ToastType.SUCCESS) {
+        showToast(ToastType.INFO, "Accounts revoked!");
+        set({
+          accounts: null,
+          walletConnected: false,
+          token: "",
+        });
+      }
+    } catch (error: any) {
+      handleError(error, "Failed to revoke accounts");
+    }
+  },
+
+  fetchUserAccounts: async () => {
+    const { provider } = get();
+
     if (!provider) {
-      showToast(
+      return showToast(
         ToastType.INFO,
         "Provider is required to fetch user accounts. Please connect your wallet."
       );
-      return;
     }
-    const token = await getToken(provider);
-
-    if (!isValidTokenFormat(token)) {
-      showToast(
-        ToastType.INFO,
-        "Invalid token format. Please refresh the page."
-      );
-      setAccounts([]);
-      setWalletConnected(false);
-      return;
-    }
-
-    setToken(token);
 
     try {
+      const token = await getToken(provider);
+      validateToken(token);
+
       const accounts = await ethService.getAccounts(provider);
-      let updatedAccounts: Account[] = [];
 
       if (!accounts || accounts.length === 0) {
-        setAccounts([]);
-      } else {
-        updatedAccounts = await Promise.all(
-          accounts!.map(async (account) => {
+        set({ accounts: [] });
+        return;
+      }
+
+      const authenticateAccountsWithGateway = async (
+        accounts: Account[],
+        token: string
+      ) => {
+        return await Promise.all(
+          accounts.map(async (account) => {
             await ethService.authenticateWithGateway(token, account.name);
             const { status } = await accountIsAuthenticated(
               token,
               account.name
             );
-            return {
-              ...account,
-              connected: status,
-            };
+            return { ...account, connected: status };
           })
         );
-        showToast(ToastType.INFO, "Accounts authenticated with gateway!");
-        setAccounts(updatedAccounts);
-      }
-    } catch (error: any) {
-      showToast(
-        ToastType.DESTRUCTIVE,
-        `Error fetching user accounts: ${error?.message}`
+      };
+
+      const updatedAccounts = await authenticateAccountsWithGateway(
+        accounts,
+        token
       );
+
+      showToast(ToastType.INFO, "Accounts authenticated with gateway!");
+      set({ accounts: updatedAccounts });
+    } catch (error: any) {
+      handleError(error, "Error fetching user accounts");
     } finally {
-      setWalletConnected(true);
-      setLoading(false);
+      set({ walletConnected: true, loading: false });
     }
-    },
+  },
 }));

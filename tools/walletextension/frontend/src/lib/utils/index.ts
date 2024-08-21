@@ -6,7 +6,7 @@ import {
   tenGatewayAddress,
   testnetUrls,
   tokenHexLength,
-} from "./constants";
+} from "../constants";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

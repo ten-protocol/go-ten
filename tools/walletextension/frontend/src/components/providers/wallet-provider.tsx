@@ -45,6 +45,7 @@ export const WalletConnectionProvider = ({
       }
     };
   }, [initialize, fetchUserAccounts]);
+
   const walletConnectionContextValue: WalletConnectionContextType = {
     walletConnected,
     loading,
@@ -53,8 +54,8 @@ export const WalletConnectionProvider = ({
   };
 
   return (
-    <WalletConnectionProvider value={walletConnectionContextValue}>
+    <WalletConnectionContext.Provider value={walletConnectionContextValue}>
       {children}
-    </WalletConnectionProvider>
+    </WalletConnectionContext.Provider>
   );
 };

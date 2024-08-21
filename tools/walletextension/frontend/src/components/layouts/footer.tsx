@@ -5,7 +5,7 @@ import {
   TwitterLogoIcon,
   DiscordLogoIcon,
 } from "@radix-ui/react-icons";
-import { useWalletConnection } from "../providers/wallet-provider";
+import { useWalletStore } from "@/stores/wallet-store";
 
 const SOCIAL_LINKS = [
   {
@@ -26,7 +26,7 @@ const SOCIAL_LINKS = [
 ];
 
 export default function Footer() {
-  const { version } = useWalletConnection();
+  const { version } = useWalletStore();
 
   return (
     <div className="border-t p-2">

@@ -1,4 +1,3 @@
-import { useWalletConnection } from "../../providers/wallet-provider";
 import { Badge } from "../../ui/badge";
 import { Button, LinkButton } from "../../ui/button";
 import {
@@ -14,9 +13,10 @@ import React from "react";
 import TruncatedAddress from "../common/truncated-address";
 import { socialLinks } from "../../../lib/constants";
 import { Skeleton } from "../../ui/skeleton";
+import { useWalletStore } from "@/stores/wallet-store";
 
 const Connected = () => {
-  const { accounts, connectAccount, revokeAccounts } = useWalletConnection();
+  const { accounts, connectAccount, revokeAccounts } = useWalletStore();
 
   return (
     <>

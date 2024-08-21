@@ -33,4 +33,5 @@ export interface IWalletState {
   connectAccount: (account: string) => Promise<void>;
   revokeAccounts: () => Promise<void>;
   fetchUserAccounts: () => Promise<void>;
+  setLoading: (loading: boolean) => void;
 }
