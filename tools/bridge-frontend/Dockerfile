@@ -2,7 +2,7 @@
 FROM node:22-alpine
 
 # setup container data structure
-RUN mkdir -p /home/obscuro/go-obscuro/tools/bridge
+RUN mkdir -p /home/obscuro/go-obscuro/tools
 COPY ./tools/bridge-frontend /home/obscuro/go-obscuro/tools/bridge-frontend
 
 WORKDIR /home/obscuro/go-obscuro/tools/bridge-frontend
