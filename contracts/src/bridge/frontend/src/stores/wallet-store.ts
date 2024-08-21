@@ -36,7 +36,7 @@ const useWalletStore = create<IWalletState>((set, get) => ({
     set({
       provider: detectedProvider,
       signer: newSigner,
-      isL1ToL2: !isL1,
+      isL1ToL2: isL1,
       isWrongNetwork: chainId !== expectedChainId,
     });
 
@@ -173,10 +173,6 @@ const useWalletStore = create<IWalletState>((set, get) => ({
     }
 
     get().initializeProvider();
-  },
-
-  updateNetworkStatus: (isWrongNetwork: boolean) => {
-    set({ isWrongNetwork });
   },
 }));
 

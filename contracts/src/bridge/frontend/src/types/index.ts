@@ -204,7 +204,6 @@ export interface IWalletState {
   disconnectWallet: () => void;
   switchNetwork: () => void;
   restoreWalletState: () => void;
-  updateNetworkStatus: (isWrongNetwork: boolean) => void;
 }
 
 export type ButtonVariants =
