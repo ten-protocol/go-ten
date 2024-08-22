@@ -18,9 +18,6 @@ FROM system as get-dependencies
 RUN mkdir -p /home/obscuro/go-obscuro
 
 
-# Install Node.js and npm (needed for frontend)
-RUN apk add --update nodejs npm
-
 # Ensures container layer caching when dependencies are not changed
 WORKDIR /home/obscuro/go-obscuro
 COPY go.mod .
@@ -32,21 +29,6 @@ FROM get-dependencies as build-wallet
 # make sure the geth network code is available
 COPY . /home/obscuro/go-obscuro
 
-# Create .env file for frontend
-WORKDIR /home/obscuro/go-obscuro/tools/walletextension/frontend
-RUN if [ "$TESTNET_TYPE" = "dev-testnet" ]; then \
-      echo "NEXT_PUBLIC_API_GATEWAY_URL=https://dev-testnet.ten.xyz" > .env; \
-    elif [ "$TESTNET_TYPE" = "uat-testnet" ]; then \
-      echo "NEXT_PUBLIC_API_GATEWAY_URL=https://uat-testnet.ten.xyz" > .env; \
-    elif [ "$TESTNET_TYPE" = "sepolia-testnet" ]; then \
-      echo "NEXT_PUBLIC_API_GATEWAY_URL=https://testnet.ten.xyz" > .env; \
-    else \
-      echo "NEXT_PUBLIC_API_GATEWAY_URL=http://127.0.0.1:3000" > .env; \
-    fi
-# Run npm build for frontend
-RUN npm install
-RUN npm run build
-
 # build the gateway executable
 WORKDIR /home/obscuro/go-obscuro/tools/walletextension/main
 RUN --mount=type=cache,target=/root/.cache/go-build \
@@ -55,18 +37,11 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # Lightweight final build stage. Includes bare minimum to start wallet extension
 FROM alpine:3.18
 
-# Install NGINX
-RUN apk update && apk add nginx
-
 # copy over the gateway executable
 COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/bin /home/obscuro/go-obscuro/tools/walletextension/bin
 
 # copy over the .sql migration files
 COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/storage/database /home/obscuro/go-obscuro/tools/walletextension/storage/database
-
-# copy over the NGINX configuration file
-COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/nginx.conf /etc/nginx/nginx.conf
-
 
 # copy over the entrypoint script
 COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/entrypoint.sh /entrypoint.sh

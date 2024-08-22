@@ -15,7 +15,6 @@ const (
 )
 
 const (
-	PathStatic                    = "/static/"
 	PathReady                     = "/ready/"
 	PathJoin                      = "/join/"
 	PathGetMessage                = "/getmessage/"
