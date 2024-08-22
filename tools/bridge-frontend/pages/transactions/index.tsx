@@ -9,7 +9,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/src/components/ui/tabs";
-import { useContract } from "@/src/hooks/useContract";
+import { useContractService } from "@/src/services/useContractService";
 
 export const metadata: Metadata = {
   title: "Transactions",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 export default function Transactions() {
-  const { getBridgeTransactions } = useContract();
+  const { getBridgeTransactions } = useContractService();
   const { transactions, refetchTransactions } = {
     transactions: {
       result: {

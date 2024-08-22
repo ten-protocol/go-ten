@@ -4,7 +4,7 @@ import useWalletStore from "../stores/wallet-store";
 import useContractStore from "../stores/contract-store";
 import { toast } from "../components/ui/use-toast";
 import { ToastType } from "../types";
-import { useGeneralService } from "../services/useGeneralService";
+import { useGeneralService } from "./useGeneralService";
 import { privateKey } from "../lib/constants";
 import Bridge from "../../artifacts/IBridge.sol/IBridge.json";
 import ManagementContractAbi from "../../artifacts/ManagementContract.sol/ManagementContract.json";
@@ -16,7 +16,7 @@ import {
 } from "../lib/utils/contractUtils";
 import { isAddress } from "ethers/lib/utils";
 
-export const useContract = () => {
+export const useContractService = () => {
   const { signer, isL1ToL2, provider, address } = useWalletStore();
   const { networkConfig, isNetworkConfigLoading } = useGeneralService();
   const { setContractState } = useContractStore();
@@ -191,6 +191,7 @@ export const useContract = () => {
   };
 
   const getNativeBalance = async (walletAddress: string) => {
+    const { messageBusAddress } = useContractStore.getState();
     if (!walletAddress || !isAddress(walletAddress)) {
       return handleError(null, "Invalid wallet address");
     }
@@ -249,7 +250,7 @@ export const useContract = () => {
       const filter = {
         address: messageBusAddress,
         topics,
-        fromBlock: 102317,
+        fromBlock: 72548,
       };
 
       let prov = new ethers.providers.Web3Provider(provider);

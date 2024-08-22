@@ -7,7 +7,7 @@ import { ChainSelect } from "./chain-select";
 import { IChain } from "@/src/types";
 import { isAddress } from "ethers/lib/utils";
 import useCustomHookForm from "@/src/hooks/useCustomHookForm";
-import { useContract } from "@/src/hooks/useContract";
+import { useContractService } from "@/src/services/useContractService";
 import { ethers } from "ethers";
 import useContractStore from "@/src/stores/contract-store";
 import { cn } from "@/src/lib/utils";
@@ -27,7 +27,7 @@ export const TransferToSection = ({
   address: string;
   setOpen: (open: boolean) => void;
 }) => {
-  const { estimateGas } = useContract();
+  const { estimateGas } = useContractService();
   const { bridgeContract } = useContractStore();
   const [gas, setGas] = useState<string | null>(null);
   const [isEstimating, setIsEstimating] = useState(false);

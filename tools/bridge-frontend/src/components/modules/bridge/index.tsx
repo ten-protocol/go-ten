@@ -20,7 +20,7 @@ import {
 import { useWatch } from "react-hook-form";
 import useCustomHookForm from "@/src/hooks/useCustomHookForm";
 import { ToastType, IToken } from "@/src/types";
-import { useContract } from "@/src/hooks/useContract";
+import { useContractService } from "@/src/services/useContractService";
 import { TransferFromSection } from "./transfer-from-section";
 import { SubmitButton } from "./submit-button";
 import { SwitchNetworkButton } from "./switch-network-button";
@@ -39,7 +39,7 @@ export default function Dashboard() {
     loading,
   } = useWalletStore();
   const { getNativeBalance, getTokenBalance, sendERC20, sendNative } =
-    useContract();
+    useContractService();
   const intervalId = React.useRef<any>(null);
 
   const tokens = isL1ToL2 ? L1TOKENS : L2TOKENS;
