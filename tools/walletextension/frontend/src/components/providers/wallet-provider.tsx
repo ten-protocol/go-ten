@@ -37,11 +37,13 @@ export const WalletConnectionProvider = ({
       const providerInstance = new ethers.providers.Web3Provider(ethereum);
       initialize(providerInstance);
       ethereum.on("accountsChanged", fetchUserAccounts);
+      ethereum.on("chainChanged", window.location.reload);
     }
 
     return () => {
       if (ethereum && ethereum.removeListener) {
         ethereum.removeListener("accountsChanged", fetchUserAccounts);
+        ethereum.removeListener("chainChanged", window.location.reload);
       }
     };
   }, [initialize, fetchUserAccounts]);

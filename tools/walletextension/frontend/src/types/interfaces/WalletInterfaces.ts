@@ -27,6 +27,7 @@ export interface IWalletState {
   accounts: Account[] | null;
   provider: ethers.providers.Web3Provider | null;
   loading: boolean;
+  isWrongNetwork: boolean;
   initialize: (
     providerInstance: ethers.providers.Web3Provider
   ) => Promise<void>;

@@ -12,10 +12,12 @@ const TruncatedAddress = ({
   address,
   prefixLength = 6,
   suffixLength = 4,
+  showCopy = true,
 }: {
   address: string;
   prefixLength?: number;
   suffixLength?: number;
+  showCopy?: boolean;
 }) => {
   const truncatedAddress =
     address &&

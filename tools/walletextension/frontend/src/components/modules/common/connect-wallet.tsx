@@ -1,37 +1,86 @@
-import { Button } from "../../ui/button";
-import useGatewayService from "../../../services/useGatewayService";
-import { Link2Icon, LinkBreak2Icon } from "@radix-ui/react-icons";
 import React from "react";
-import { downloadMetaMask, ethereum } from "@/lib/utils";
+import { Button } from "../../ui/button";
+import {
+  Link2Icon,
+  LinkBreak2Icon,
+  ExclamationTriangleIcon,
+} from "@radix-ui/react-icons";
 import { useWalletStore } from "@/stores/wallet-store";
-const ConnectWalletButton = () => {
-  const { walletConnected, revokeAccounts } = useWalletStore();
+import { cn, downloadMetaMask, ethereum } from "@/lib/utils";
+import useGatewayService from "@/services/useGatewayService";
+
+interface ConnectWalletButtonProps {
+  className?: string;
+  text?: string;
+  variant?: any;
+}
+
+const ConnectWalletButton = ({
+  className,
+  text = "Connect Wallet",
+  variant = "outline",
+}: ConnectWalletButtonProps) => {
   const { connectToTenTestnet } = useGatewayService();
+  const { walletConnected, revokeAccounts, isWrongNetwork } = useWalletStore();
+
+  const handleClick = () => {
+    if (!ethereum) {
+      downloadMetaMask();
+      return;
+    }
+
+    if (isWrongNetwork) {
+      connectToTenTestnet();
+      return;
+    }
+
+    if (walletConnected) {
+      revokeAccounts();
+    } else {
+      connectToTenTestnet();
+    }
+  };
+
+  const renderButtonContent = () => {
+    if (!ethereum) {
+      return (
+        <>
+          <Link2Icon className="h-4 w-4 mr-1" />
+          Download MetaMask
+        </>
+      );
+    }
+
+    if (isWrongNetwork) {
+      return (
+        <>
+          <ExclamationTriangleIcon className="h-4 w-4 mr-1 text-yellow-500" />
+          Unsupported network
+        </>
+      );
+    }
+
+    return walletConnected ? (
+      <>
+        <LinkBreak2Icon className="h-4 w-4 mr-1" />
+        Disconnect
+      </>
+    ) : (
+      <>
+        <Link2Icon className="h-4 w-4 mr-1" />
+        {text}
+      </>
+    );
+  };
 
   return (
     <Button
-      className="text-sm font-medium leading-none"
-      variant={"outline"}
-      onClick={
-        ethereum
-          ? walletConnected
-            ? revokeAccounts
-            : connectToTenTestnet
-          : downloadMetaMask
-      }
+      className={cn("text-sm font-medium leading-none", className)}
+      variant={variant}
+      onClick={handleClick}
       suppressHydrationWarning
     >
-      {walletConnected ? (
-        <>
-          <LinkBreak2Icon className="h-4 w-4 mr-1" />
-          Disconnect
-        </>
-      ) : (
-        <>
-          <Link2Icon className="h-4 w-4 mr-1" />
-          {ethereum ? "Connect" : "Install"}
-        </>
-      )}
+      {renderButtonContent()}
     </Button>
   );
 };

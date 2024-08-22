@@ -4,6 +4,7 @@ import {
 } from "@/api/ethRequests";
 import { accountIsAuthenticated, revokeAccountsApi } from "@/api/gateway";
 import { showToast } from "@/components/ui/use-toast";
+import { tenChainIDDecimal } from "@/lib/constants";
 import { handleError, validateToken } from "@/lib/utils/walletUtils";
 import ethService from "@/services/ethService";
 import { ToastType } from "@/types/interfaces";
@@ -18,6 +19,7 @@ export const useWalletStore = create<IWalletState>((set, get) => ({
   accounts: null,
   provider: null,
   loading: true,
+  isWrongNetwork: false,
   setLoading: (loading: boolean) => set({ loading }),
 
   initialize: async (providerInstance: ethers.providers.Web3Provider) => {
@@ -25,12 +27,15 @@ export const useWalletStore = create<IWalletState>((set, get) => ({
       const fetchedToken = await getToken(providerInstance);
       const accounts = await ethService.getAccounts(providerInstance);
 
+      const network = await providerInstance.getNetwork();
+
       set({
         token: fetchedToken,
         accounts,
         walletConnected: true,
         provider: providerInstance,
         loading: false,
+        isWrongNetwork: network.chainId !== tenChainIDDecimal,
       });
     } catch (error: any) {
       handleError(error, "Failed to initialize wallet connection");
@@ -137,6 +142,10 @@ export const useWalletStore = create<IWalletState>((set, get) => ({
       const updatedAccounts = await authenticateAccountsWithGateway(
         accounts,
         token
+      );
+      console.log(
+        "🚀 ~ fetchUserAccounts: ~ updatedAccounts:",
+        updatedAccounts
       );
 
       showToast(ToastType.INFO, "Accounts authenticated with gateway!");
