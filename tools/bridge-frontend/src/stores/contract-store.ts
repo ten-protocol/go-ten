@@ -7,6 +7,7 @@ const useContractStore = create<IContractState>((set) => ({
   messageBusContract: null,
   wallet: null,
   messageBusAddress: "",
+  bridgeAddress: "",
   setContractState: (state) => set((prevState) => ({ ...prevState, ...state })),
 }));
 

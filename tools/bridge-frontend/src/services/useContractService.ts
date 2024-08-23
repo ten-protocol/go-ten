@@ -69,6 +69,7 @@ export const useContractService = () => {
       messageBusContract,
       wallet: walletInstance,
       messageBusAddress,
+      bridgeAddress,
     });
   };
 
@@ -191,7 +192,6 @@ export const useContractService = () => {
   };
 
   const getNativeBalance = async (walletAddress: string) => {
-    const { messageBusAddress } = useContractStore.getState();
     if (!walletAddress || !isAddress(walletAddress)) {
       return handleError(null, "Invalid wallet address");
     }
@@ -235,15 +235,22 @@ export const useContractService = () => {
   };
 
   const getBridgeTransactions = async () => {
-    const { messageBusAddress } = useContractStore.getState();
-    const { provider } = useWalletStore.getState();
+    const { messageBusAddress, bridgeAddress } = useContractStore.getState();
+    // const { provider } = useWalletStore.getState();
+    console.log(
+      "🚀 ~ getBridgeTransactions ~ provider:",
+      provider,
+      messageBusAddress,
+      bridgeAddress
+    );
 
-    if (!provider || !messageBusAddress) {
+    if (!provider || !messageBusAddress || !bridgeAddress) {
       return handleError(null, "Provider or contract address not found");
     }
     try {
       const topics = [
         ethers.utils.id("ValueTransfer(address,address,uint256,uint64)"),
+        ethers.utils.hexZeroPad(bridgeAddress, 32),
         ethers.utils.hexZeroPad(address, 32),
       ];
 
@@ -255,7 +262,7 @@ export const useContractService = () => {
 
       let prov = new ethers.providers.Web3Provider(provider);
       const logs = await prov.getLogs(filter);
-      console.log("🚀 ~ getBridgeTransactions ~ logs:", logs);
+      console.log("🚀 ~ getNativeBalance ~ logs:", logs);
       return logs;
     } catch (error) {
       return handleError(error, "Error fetching transactions");

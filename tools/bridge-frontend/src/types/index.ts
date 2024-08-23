@@ -189,6 +189,7 @@ export interface IContractState {
   messageBusContract: ethers.Contract | null;
   wallet: ethers.Wallet | null;
   messageBusAddress: string;
+  bridgeAddress: string;
   setContractState: (state: Partial<IContractState>) => void;
 }
 
