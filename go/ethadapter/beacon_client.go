@@ -124,71 +124,21 @@ func (bc *BeaconHTTPClient) BeaconGenesis(ctx context.Context) (APIGenesisRespon
 }
 
 func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
-	return testBeaconBlobSideCars(bc, ctx, slot, hashes)
-}
-
-func testBeaconBlobSideCars(bc *BeaconHTTPClient, ctx context.Context, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
 	reqPath := path.Join(sidecarsMethodPrefix, strconv.FormatUint(slot, 10))
 	var reqQuery url.Values
+	//reqQuery = url.Values{}
+	//for i := range hashes {
+	//	reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))
+	//}
 	var resp APIGetBlobSidecarsResponse
 
 	err := bc.request(ctx, &resp, reqPath, reqQuery)
 
 	if err != nil {
+		println("ERROR GETTING SIDECAR with hash: ", hashes[0].Hash.Hex(), " with err: ", err.Error())
 		return APIGetBlobSidecarsResponse{}, err
 	}
-
-	response := resp.Data
-	if len(response) < len(hashes) {
-		return APIGetBlobSidecarsResponse{}, fmt.Errorf("expected at least %d blobs for slot %d but only got %d", len(hashes), slot, len(response))
-	}
-
-	outputsFound := make([]bool, len(hashes))
-	filteredResponse := APIGetBlobSidecarsResponse{}
-
-	for _, blobItem := range response {
-		commitment := kzg4844.Commitment(blobItem.KZGCommitment)
-		proof := kzg4844.Proof(blobItem.KZGProof)
-		blobPtr := &blobItem.Blob
-		versionedHash := KZGToVersionedHash(commitment)
-
-		// Try to match the versioned hash with one of the provided hashes
-		var outputIdx int
-		var found bool
-		for outputIdx = range hashes {
-			if hashes[outputIdx].Hash == versionedHash {
-				if outputsFound[outputIdx] {
-					// Duplicate, skip this one
-					break
-				}
-				found = true
-				outputsFound[outputIdx] = true
-				break
-			}
-		}
-
-		if !found {
-			continue
-		}
-
-		// Verify the blob proof
-		err = kzg4844.VerifyBlobProof(blobPtr, commitment, proof)
-		if err != nil {
-			return APIGetBlobSidecarsResponse{}, fmt.Errorf("failed to verify blob proof for blob at slot(%d) with index(%d)", slot, blobItem.Index)
-		}
-
-		// Add the matching item to the filtered response
-		filteredResponse.Data = append(filteredResponse.Data, blobItem)
-	}
-
-	// Ensure all expected hashes were found
-	for i, found := range outputsFound {
-		if !found {
-			return APIGetBlobSidecarsResponse{}, fmt.Errorf("missing blob %v in slot %v, can't reconstruct rollup payload", hashes[i], slot)
-		}
-	}
-
-	return filteredResponse, nil
+	return resp, nil
 }
 
 type ClientPool[T any] struct {
@@ -266,7 +216,6 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 	var errs []error
 	for i := 0; i < cl.pool.Len(); i++ {
 		f := cl.pool.Get()
-		println("FETCHING BeaconBlobSideCars with hashes: ", hashes[0].Hash.Hex())
 		resp, err := f.BeaconBlobSideCars(ctx, slot, hashes)
 		if err != nil {
 			cl.pool.MoveToNext()
@@ -278,70 +227,13 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 	return APIGetBlobSidecarsResponse{}, errors.Join(errs...)
 }
 
-//// GetBlobSidecars fetches blob sidecars that were confirmed in the specified
-//// L1 block with the given indexed hashes.
-//// Order of the returned sidecars is guaranteed to be that of the hashes.
-//// Blob data is not checked for validity.
-//func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, hashes []IndexedBlobHash) ([]*BlobSidecar, error) {
-//	if len(hashes) == 0 {
-//		return []*BlobSidecar{}, nil
-//	}
-//	slotFn, err := cl.GetTimeToSlotFn(ctx)
-//	if err != nil {
-//		return nil, fmt.Errorf("failed to get time to slot function: %w", err)
-//	}
-//	slot, err := slotFn(b.Time)
-//	if err != nil {
-//		return nil, fmt.Errorf("error in converting ref.Time to slot: %w", err)
-//	}
-//
-//	resp, err := cl.fetchSidecars(ctx, slot, hashes)
-//	if err != nil {
-//		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, b, err)
-//	}
-//
-//	apiSidecar := make([]*APIBlobSidecar, 0, len(hashes))
-//	// filter and order by versioned hashes
-//	for _, h := range hashes {
-//		for _, apisc := range resp.Data {
-//			commitment := kzg4844.Commitment(apisc.KZGCommitment)
-//			versionedHash := KZGToVersionedHash(commitment)
-//
-//			if h.Hash == versionedHash {
-//				apiSidecar = append(apiSidecar, apisc)
-//				break
-//			}
-//		}
-//	}
-//
-//	if len(hashes) != len(apiSidecar) {
-//		fmt.Printf("expected %v sidecars but got %v", len(hashes), len(apiSidecar))
-//		return nil, fmt.Errorf("expected %v sidecars but got %v", len(hashes), len(apiSidecar))
-//	}
-//
-//	blobSidecars := make([]*BlobSidecar, 0, len(hashes))
-//	for _, apisc := range apiSidecar {
-//		blobSidecars = append(blobSidecars, apisc.BlobSidecar())
-//	}
-//
-//	return blobSidecars, nil
-//}
-
 // GetBlobSidecars fetches blob sidecars that were confirmed in the specified
 // L1 block with the given indexed hashes.
 // Order of the returned sidecars is guaranteed to be that of the hashes.
 // Blob data is not checked for validity.
-func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, hashes []IndexedBlobHash) ([]*kzg4844.Blob, error) {
-	return testGetBlobSidecars(cl, ctx, b, hashes)
-}
-
-// GetBlobSidecars fetches blob sidecars that were confirmed in the specified
-// L1 block with the given indexed hashes.
-// Order of the returned sidecars is guaranteed to be that of the hashes.
-// Blob data is not checked for validity.
-func testGetBlobSidecars(cl *L1BeaconClient, ctx context.Context, b *types.Header, hashes []IndexedBlobHash) ([]*kzg4844.Blob, error) {
+func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, hashes []IndexedBlobHash) ([]*BlobSidecar, error) {
 	if len(hashes) == 0 {
-		return []*kzg4844.Blob{}, nil
+		return []*BlobSidecar{}, nil
 	}
 	slotFn, err := cl.GetTimeToSlotFn(ctx)
 	if err != nil {
@@ -357,18 +249,28 @@ func testGetBlobSidecars(cl *L1BeaconClient, ctx context.Context, b *types.Heade
 		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, b, err)
 	}
 
-	response := resp.Data
-	if len(hashes) != len(response) {
-		return nil, fmt.Errorf("expected %v sidecars but got %v", len(hashes), len(response))
+	sidescars := make([]*APIBlobSidecar, 0, len(hashes))
+	// find the sidecars that match the provided versioned hashes
+	for _, h := range hashes {
+		for _, sidecar := range resp.Data {
+			versionedHash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
+			if h.Hash == versionedHash {
+				sidescars = append(sidescars, sidecar)
+				break
+			}
+		}
 	}
 
-	blobs := make([]*kzg4844.Blob, 0, len(hashes))
-	for _, sidecars := range response {
-		blobPtr := sidecars.Blob
-		blobs = append(blobs, &blobPtr)
+	if len(hashes) != len(sidescars) {
+		return nil, fmt.Errorf("expected %v sidecars but got %v", len(hashes), len(sidescars))
 	}
 
-	return blobs, nil
+	bscs := make([]*BlobSidecar, 0, len(hashes))
+	for _, apisc := range sidescars {
+		bscs = append(bscs, apisc.BlobSidecar())
+	}
+
+	return bscs, nil
 }
 
 // FetchBlobs fetches blobs that were confirmed in the specified L1 block with the given indexed
@@ -376,11 +278,11 @@ func testGetBlobSidecars(cl *L1BeaconClient, ctx context.Context, b *types.Heade
 // blob's validity by checking its proof against the commitment, and confirming the commitment
 // hashes to the expected value. Returns error if any blob is found invalid.
 func (cl *L1BeaconClient) FetchBlobs(ctx context.Context, b *types.Header, hashes []IndexedBlobHash) ([]*kzg4844.Blob, error) {
-	blobs, err := cl.GetBlobSidecars(ctx, b, hashes)
+	blobSidecars, err := cl.GetBlobSidecars(ctx, b, hashes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get blob sidecars for Block Header %s: %w", b.Hash().Hex(), err)
 	}
-	return blobs, nil
+	return blobsFromSidecars(blobSidecars, hashes)
 }
 
 func blobsFromSidecars(blobSidecars []*BlobSidecar, hashes []IndexedBlobHash) ([]*kzg4844.Blob, error) {
@@ -389,45 +291,14 @@ func blobsFromSidecars(blobSidecars []*BlobSidecar, hashes []IndexedBlobHash) ([
 	}
 
 	out := make([]*kzg4844.Blob, len(hashes))
-	matchedSidecars := make([]bool, len(hashes))
 
-	for i, ih := range hashes {
-		var matchedSidecar *BlobSidecar
-		var found bool
-
-		for _, sidecar := range blobSidecars {
-			if uint64(sidecar.Index) == ih.Index {
-				// Ensure the blob's KZG commitment hashes to the expected value
-				hash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
-				if hash == ih.Hash {
-					matchedSidecar = sidecar
-					found = true
-					break
-				}
-			}
-		}
-
-		if !found {
-			return nil, fmt.Errorf("expected sidecar for hash %s at index %d but did not find it", ih.Hash.Hex(), ih.Index)
-		}
-
-		println("SUCCESSFUL blob hash to commitment hash comparison: ", ih.Hash.Hex())
-
-		// Confirm blob data is valid by verifying its proof against the commitment
-		if err := VerifyBlobProof(&matchedSidecar.Blob, kzg4844.Commitment(matchedSidecar.KZGCommitment), kzg4844.Proof(matchedSidecar.KZGProof)); err != nil {
+	for i, sidecar := range blobSidecars {
+		// confirm blob data is valid by verifying its proof against the commitment
+		if err := VerifyBlobProof(&sidecar.Blob, kzg4844.Commitment(sidecar.KZGCommitment), kzg4844.Proof(sidecar.KZGProof)); err != nil {
 			return nil, fmt.Errorf("blob at index %d failed verification: %w", i, err)
 		}
-		out[i] = &matchedSidecar.Blob
-		matchedSidecars[i] = true
+		out[i] = &sidecar.Blob
 	}
-
-	// Ensure all sidecars have been matched
-	for i, matched := range matchedSidecars {
-		if !matched {
-			return nil, fmt.Errorf("missing blob sidecar for hash %s at index %d", hashes[i].Hash.Hex(), hashes[i].Index)
-		}
-	}
-
 	return out, nil
 }
 
