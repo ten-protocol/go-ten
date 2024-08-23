@@ -123,23 +123,6 @@ func (bc *BeaconHTTPClient) BeaconGenesis(ctx context.Context) (APIGenesisRespon
 	return genesisResp, nil
 }
 
-//func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
-//	reqPath := path.Join(sidecarsMethodPrefix, strconv.FormatUint(slot, 10))
-//	var reqQuery url.Values
-//	reqQuery = url.Values{}
-//	for i := range hashes {
-//		reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))
-//	}
-//	var resp APIGetBlobSidecarsResponse
-//
-//	err := bc.request(ctx, &resp, reqPath, reqQuery)
-//
-//	if err != nil {
-//		return APIGetBlobSidecarsResponse{}, err
-//	}
-//	return resp, nil
-//}
-
 func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
 	return testBeaconBlobSideCars(bc, ctx, slot, hashes)
 }
