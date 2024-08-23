@@ -3,11 +3,12 @@ package ethadapter
 import (
 	"crypto/sha256"
 	"fmt"
+	"reflect"
+	"strconv"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"reflect"
-	"strconv"
 )
 
 type BlobSidecar struct {

@@ -624,9 +624,9 @@ func (g *Guardian) periodicRollupProduction() {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue
 				}
-				//println("PRODUCED ROLLUP: ", producedRollup.Hash().Hex())
-				//println("PRODUCED timeExpired: ", timeExpired)
-				//println("PRODUCED sizeExceeded: ", sizeExceeded)
+				// println("PRODUCED ROLLUP: ", producedRollup.Hash().Hex())
+				// println("PRODUCED timeExpired: ", timeExpired)
+				// println("PRODUCED sizeExceeded: ", sizeExceeded)
 				// this method waits until the receipt is received
 				g.sl.L1Publisher().PublishRollup(producedRollup)
 				lastSuccessfulRollup = time.Now()
@@ -658,7 +658,7 @@ func (g *Guardian) periodicBundleSubmission() {
 			}
 
 			err = g.sl.CrossChainMachine().PublishNextBundle()
-			//FIXME error here
+			// FIXME error here
 			if err != nil {
 				if errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
 					g.logger.Debug("No batches to publish")

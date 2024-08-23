@@ -78,7 +78,7 @@ func TestTenscan(t *testing.T) {
 		5,
 	)
 
-	//Timer for running local tests
+	// Timer for running local tests
 	countdownDuration := 20 * time.Minute
 	tickDuration := 30 * time.Second
 

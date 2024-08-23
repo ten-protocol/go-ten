@@ -1,12 +1,13 @@
 package ethadapter
 
 import (
+	"math/big"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/common"
-	"math/big"
-	"testing"
 )
 
 const spareBlobBits = 6 // = math.floor(math.log2(BLS_MODULUS)) % 8
@@ -77,6 +78,7 @@ func TestClientPoolSingle(t *testing.T) {
 		p.MoveToNext()
 	}
 }
+
 func TestClientPoolSeveral(t *testing.T) {
 	p := NewClientPool[int](0, 1, 2, 3)
 	for i := 0; i < 25; i++ {

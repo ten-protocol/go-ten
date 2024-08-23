@@ -3,8 +3,6 @@ package simulation
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ten-protocol/go-ten/go/enclave/components"
 	"math/big"
 	"net/http"
 	"sort"
@@ -12,6 +10,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ten-protocol/go-ten/go/enclave/components"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 
@@ -853,8 +854,8 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 }
 
 func getRollupFromBlobHashes(ctx context.Context, block *types.Block, blobHashes []ethadapter.IndexedBlobHash) (*common.ExtRollup, error) {
-	//FIXME from config
-	//baseURL := "http://localhost:3500"
+	// FIXME from config
+	// baseURL := "http://localhost:3500"
 	baseURL := "http://localhost:16560"
 	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), baseURL)))
 	blobs, err := blobResolver.FetchBlobs(ctx, block.Header(), blobHashes)

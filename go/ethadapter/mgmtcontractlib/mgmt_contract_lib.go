@@ -3,9 +3,10 @@ package mgmtcontractlib
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -177,7 +178,7 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 		panic(err)
 	}
 
-	//TODO handle when blobs exceed 1Mb
+	// TODO handle when blobs exceed 1Mb
 	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)

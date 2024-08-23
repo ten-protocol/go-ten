@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/types"
 	"io"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -129,7 +130,6 @@ func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64,
 	var resp APIGetBlobSidecarsResponse
 
 	err := bc.request(ctx, &resp, reqPath, reqQuery)
-
 	if err != nil {
 		return APIGetBlobSidecarsResponse{}, err
 	}
@@ -170,7 +170,8 @@ func NewL1BeaconClient(cl BeaconClient, fallbacks ...BlobSideCarsFetcher) *L1Bea
 	cs := append([]BlobSideCarsFetcher{cl}, fallbacks...)
 	return &L1BeaconClient{
 		cl:   cl,
-		pool: NewClientPool[BlobSideCarsFetcher](cs...)}
+		pool: NewClientPool[BlobSideCarsFetcher](cs...),
+	}
 }
 
 type TimeToSlotFn func(timestamp uint64) (uint64, error)
