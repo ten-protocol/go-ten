@@ -128,11 +128,9 @@ func (rc *rollupConsumerImpl) extractRollups(ctx context.Context, br *common.Blo
 
 		blobs, err := rc.blobResolver.FetchBlobs(ctx, br.Block.Header(), rollupHashes.BlobHashes)
 		if err != nil {
-			println("CONSUMER FAILED fetch blobs: ", err.Error())
 			rc.logger.Crit("could not fetch blobs consumer", log.ErrKey, err)
 			return nil
 		}
-		println("CONSUMER SUCCESS fetch blobs")
 		r, err := ethadapter.ReconstructRollup(blobs)
 		if err != nil {
 			rc.logger.Crit("could not recreate rollup from blobs.", log.ErrKey, err)

@@ -123,19 +123,14 @@ func (bc *BeaconHTTPClient) BeaconGenesis(ctx context.Context) (APIGenesisRespon
 	return genesisResp, nil
 }
 
-func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
+func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64, _ []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
 	reqPath := path.Join(sidecarsMethodPrefix, strconv.FormatUint(slot, 10))
 	var reqQuery url.Values
-	//reqQuery = url.Values{}
-	//for i := range hashes {
-	//	reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))
-	//}
 	var resp APIGetBlobSidecarsResponse
 
 	err := bc.request(ctx, &resp, reqPath, reqQuery)
 
 	if err != nil {
-		println("ERROR GETTING SIDECAR with hash: ", hashes[0].Hash.Hex(), " with err: ", err.Error())
 		return APIGetBlobSidecarsResponse{}, err
 	}
 	return resp, nil
@@ -249,28 +244,28 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, b, err)
 	}
 
-	sidescars := make([]*APIBlobSidecar, 0, len(hashes))
+	sidecars := make([]*APIBlobSidecar, 0, len(hashes))
 	// find the sidecars that match the provided versioned hashes
 	for _, h := range hashes {
 		for _, sidecar := range resp.Data {
 			versionedHash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
 			if h.Hash == versionedHash {
-				sidescars = append(sidescars, sidecar)
+				sidecars = append(sidecars, sidecar)
 				break
 			}
 		}
 	}
 
-	if len(hashes) != len(sidescars) {
-		return nil, fmt.Errorf("expected %v sidecars but got %v", len(hashes), len(sidescars))
+	if len(hashes) != len(sidecars) {
+		return nil, fmt.Errorf("expected %v sidecars but got %v", len(hashes), len(sidecars))
 	}
 
-	bscs := make([]*BlobSidecar, 0, len(hashes))
-	for _, apisc := range sidescars {
-		bscs = append(bscs, apisc.BlobSidecar())
+	blobSidecars := make([]*BlobSidecar, 0, len(hashes))
+	for _, sidecar := range sidecars {
+		blobSidecars = append(blobSidecars, sidecar.BlobSidecar())
 	}
 
-	return bscs, nil
+	return blobSidecars, nil
 }
 
 // FetchBlobs fetches blobs that were confirmed in the specified L1 block with the given indexed
