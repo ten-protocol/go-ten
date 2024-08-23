@@ -29,8 +29,9 @@ func main() {
 		config.gethWSStartPort,
 		config.gethHTTPStartPort,
 		config.prysmBeaconRPCStartPort,
+		config.prysmBeaconGatewayStartPort,
 		config.chainID,
-		6*time.Minute,
+		3*time.Minute,
 		config.prefundedAddrs...,
 	)
 
