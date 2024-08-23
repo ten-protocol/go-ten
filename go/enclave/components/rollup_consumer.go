@@ -128,7 +128,6 @@ func (rc *rollupConsumerImpl) extractRollups(ctx context.Context, br *common.Blo
 			continue
 		}
 
-		println("fetching blobs with block: ", br.Block.Hash().Hex(), " and blobHashes: ", rollupHashes.BlobHashes[0].Hash.Hex())
 		blobs, err := rc.blobResolver.FetchBlobs(ctx, br.Block.Header(), rollupHashes.BlobHashes)
 		if err != nil {
 			rc.logger.Crit("could not fetch blobs consumer", log.ErrKey, err)

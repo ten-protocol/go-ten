@@ -123,22 +123,23 @@ func (bc *BeaconHTTPClient) BeaconGenesis(ctx context.Context) (APIGenesisRespon
 	return genesisResp, nil
 }
 
-func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64, hashes []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
+func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64, _ []IndexedBlobHash) (APIGetBlobSidecarsResponse, error) {
 	reqPath := path.Join(sidecarsMethodPrefix, strconv.FormatUint(slot, 10))
 	var reqQuery url.Values
 	//reqQuery = url.Values{}
 	//for i := range hashes {
 	//	reqQuery.Add("indices", strconv.FormatUint(hashes[i].Index, 10))
 	//}
-	var resp APIGetBlobSidecarsResponse
+	var allResp APIGetBlobSidecarsResponse
 
-	err := bc.request(ctx, &resp, reqPath, reqQuery)
+	err := bc.request(ctx, &allResp, reqPath, reqQuery)
 
 	if err != nil {
-		println("ERROR GETTING SIDECAR with hash: ", hashes[0].Hash.Hex(), " with err: ", err.Error())
+		println("ERROR FETCHING BLOBS: ", err.Error())
 		return APIGetBlobSidecarsResponse{}, err
 	}
-	return resp, nil
+
+	return allResp, nil
 }
 
 type ClientPool[T any] struct {
@@ -216,10 +217,8 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 	var errs []error
 	for i := 0; i < cl.pool.Len(); i++ {
 		f := cl.pool.Get()
-		println("FETCHING BeaconBlobSideCars with hashes: ", hashes[0].Hash.Hex())
 		resp, err := f.BeaconBlobSideCars(ctx, slot, hashes)
 		if err != nil {
-			println("ERROR FETCHING SIDECARS: ", err.Error())
 			cl.pool.MoveToNext()
 			errs = append(errs, err)
 		} else {
@@ -251,24 +250,24 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, b, err)
 	}
 
-	apiscs := make([]*APIBlobSidecar, 0, len(hashes))
-	// filter and order by hashes
+	sidescars := make([]*APIBlobSidecar, 0, len(hashes))
+	// find the sidecars that match the provided versioned hashes
 	for _, h := range hashes {
-		for _, apisc := range resp.Data {
-			if h.Index == uint64(apisc.Index) {
-				apiscs = append(apiscs, apisc)
+		for _, sidecar := range resp.Data {
+			versionedHash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
+			if h.Hash == versionedHash {
+				sidescars = append(sidescars, sidecar)
 				break
 			}
 		}
 	}
 
-	if len(hashes) != len(apiscs) {
-		fmt.Printf("expected %v sidecars but got %v", len(hashes), len(apiscs))
-		return nil, fmt.Errorf("expected %v sidecars but got %v", len(hashes), len(apiscs))
+	if len(hashes) != len(sidescars) {
+		return nil, fmt.Errorf("expected %v sidecars but got %v", len(hashes), len(sidescars))
 	}
 
 	bscs := make([]*BlobSidecar, 0, len(hashes))
-	for _, apisc := range apiscs {
+	for _, apisc := range sidescars {
 		bscs = append(bscs, apisc.BlobSidecar())
 	}
 
@@ -294,22 +293,7 @@ func blobsFromSidecars(blobSidecars []*BlobSidecar, hashes []IndexedBlobHash) ([
 
 	out := make([]*kzg4844.Blob, len(hashes))
 
-	println("Blob sidecase length: ", len(blobSidecars))
-	for i, ih := range hashes {
-		sidecar := blobSidecars[i]
-		if sidx := uint64(sidecar.Index); sidx != ih.Index {
-			return nil, fmt.Errorf("expected sidecars to be ordered by hashes, but got %d != %d", sidx, ih.Index)
-		}
-
-		// make sure the blob's kzg commitment hashes to the expected value
-		hash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
-		if hash != ih.Hash {
-			println("UNSUCCESSFUL blob hash to commitment hash comparison expected: ", ih.Hash.Hex(), " but got: ", hash.Hex())
-			return nil, fmt.Errorf("expected hash %s for blob at index %d but got %s", ih.Hash, ih.Index, hash)
-		}
-
-		println("SUCCESSFUL blob hash to commitment hash comparison: ", hash.Hex())
-
+	for i, sidecar := range blobSidecars {
 		// confirm blob data is valid by verifying its proof against the commitment
 		if err := VerifyBlobProof(&sidecar.Blob, kzg4844.Commitment(sidecar.KZGCommitment), kzg4844.Proof(sidecar.KZGProof)); err != nil {
 			return nil, fmt.Errorf("blob at index %d failed verification: %w", i, err)

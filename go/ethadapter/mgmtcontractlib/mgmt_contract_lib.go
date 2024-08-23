@@ -92,8 +92,6 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	case AddRollupMethod:
 		if tx.Type() == types.BlobTxType {
 			blobHashes := ethadapter.ToIndexedBlobHashes(tx.BlobHashes()...)
-			println("DECODE TX blob hash: ", blobHashes[0].Hash.Hex())
-
 			return &ethadapter.L1RollupHashes{
 				BlobHashes: blobHashes,
 			}
@@ -192,14 +190,6 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 	if sidecar, blobHashes, err = makeSidecar(blobs); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
-
-	println("creating rollup blob tx: ", decodedRollup.Hash().Hex())
-	println("creating rollup blob seq no: ", decodedRollup.Header.LastBatchSeqNo)
-
-	for _, blobH := range blobHashes {
-		println("blob hash: ", blobH.Hex())
-	}
-
 	return &types.BlobTx{
 		To:         *c.addr,
 		Data:       data,
@@ -525,39 +515,6 @@ func encodeBlobs(data []byte) []kzg4844.Blob {
 	}
 	return blobs
 }
-
-//// chunkRollup splits the rollup into blobs based on the max blob size and index's the blobs
-//func chunkRollup(blob ethadapter.Blob) ([]ethadapter.Blob, error) {
-//	maxBlobSize := 128 * 1024 // 128KB in bytes TODO move to config
-//	base64ChunkSize := int(math.Floor(float64(maxBlobSize) * 4 / 3))
-//	base64ChunkSize = base64ChunkSize - (base64ChunkSize % 4) - 4 //metadata size
-//	//indexByteSize := 4 // size in bytes for the chunk index metadata
-//	var blobs []ethadapter.Blob
-//
-//	for i := 0; i < len(blob); i += maxBlobSize {
-//		end := i + maxBlobSize
-//		if end > len(blob) {
-//			end = len(blob)
-//		}
-//
-//		chunkData := blob[i:end]
-//
-//		// ethereum expects fixed blob length so we need to pad it out
-//		actualLength := len(chunkData)
-//		if actualLength < 131072 {
-//			// Add padding
-//			padding := make([]byte, 131072-actualLength)
-//			chunkData = append(chunkData, padding...)
-//		}
-//
-//		if len(chunkData) != 131072 {
-//			return nil, fmt.Errorf("rollup blob must be 131072 in length")
-//		}
-//
-//		blobs = append(blobs, blob)
-//	}
-//	return blobs, nil
-//}
 
 // MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
 // data.
