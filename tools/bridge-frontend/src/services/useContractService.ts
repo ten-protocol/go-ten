@@ -19,7 +19,8 @@ import { isAddress } from "ethers/lib/utils";
 export const useContractService = () => {
   const { signer, isL1ToL2, provider, address } = useWalletStore();
   const { networkConfig, isNetworkConfigLoading } = useGeneralService();
-  const { setContractState } = useContractStore();
+  const { setContractState, messageBusAddress, bridgeAddress } =
+    useContractStore();
 
   const memoizedConfig = useMemo(() => {
     if (isNetworkConfigLoading || !networkConfig) {
@@ -235,15 +236,6 @@ export const useContractService = () => {
   };
 
   const getBridgeTransactions = async () => {
-    const { messageBusAddress, bridgeAddress } = useContractStore.getState();
-    // const { provider } = useWalletStore.getState();
-    console.log(
-      "🚀 ~ getBridgeTransactions ~ provider:",
-      provider,
-      messageBusAddress,
-      bridgeAddress
-    );
-
     if (!provider || !messageBusAddress || !bridgeAddress) {
       return handleError(null, "Provider or contract address not found");
     }
@@ -262,7 +254,6 @@ export const useContractService = () => {
 
       let prov = new ethers.providers.Web3Provider(provider);
       const logs = await prov.getLogs(filter);
-      console.log("🚀 ~ getNativeBalance ~ logs:", logs);
       return logs;
     } catch (error) {
       return handleError(error, "Error fetching transactions");

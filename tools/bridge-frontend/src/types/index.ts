@@ -216,3 +216,22 @@ export type ButtonVariants =
   | "secondary"
   | "ghost"
   | "clear";
+
+export enum ItemPosition {
+  FIRST = "first",
+  LAST = "last",
+}
+
+export type TransactionType = "0x0" | "0x1" | "0x2" | "0x3";
+
+export type Transactions = {
+  blockNumber: number;
+  blockHash: string;
+  transactionIndex: number;
+  removed: boolean;
+  address: string;
+  data: string;
+  topics: string[];
+  transactionHash: string;
+  logIndex: number;
+};

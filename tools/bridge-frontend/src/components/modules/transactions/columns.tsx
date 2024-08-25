@@ -3,23 +3,43 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/src/components/ui/badge";
 
-import { statuses } from "./constants";
-import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
-// import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
+import { statuses } from "@/src/components/modules/transactions/constants";
+import { DataTableColumnHeader } from "@/src/components/modules/common/data-table/data-table-column-header";
 import TruncatedAddress from "../common/truncated-address";
-import { formatTimeAgo } from "@/src/lib/utils";
+import Link from "next/link";
+import { EyeOpenIcon } from "@radix-ui/react-icons";
+import { Transactions } from "@/src/types";
 
-export const columns: ColumnDef<any>[] = [
+export const columns: ColumnDef<Transactions>[] = [
   {
-    accessorKey: "BatchHeight",
+    id: "status",
+    accessorKey: "status",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Batch" />
+      <DataTableColumnHeader column={column} title="Status" />
+    ),
+    cell: ({ row }) => {
+      const status = statuses.find((s) => s.value === "0x1");
+      const variant = "success";
+      return (
+        <Badge variant={variant}>
+          {status?.icon && <status.icon className="h-5 w-5 mr\2" />}
+          {status?.label}
+        </Badge>
+      );
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "blockNumber",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Ten Batch" />
     ),
     cell: ({ row }) => {
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {row.getValue("BatchHeight")}
+            #{Number(row.getValue("blockNumber"))}
           </span>
         </div>
       );
@@ -27,61 +47,47 @@ export const columns: ColumnDef<any>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-
   {
-    accessorKey: "BatchTimestamp",
+    accessorKey: "blockHash",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Batch Age" />
+      <DataTableColumnHeader column={column} title="Ten Batch Hash" />
     ),
     cell: ({ row }) => {
-      return (
-        <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate">
-            {formatTimeAgo(row.getValue("BatchTimestamp"))}
-          </span>
-        </div>
-      );
+      return <TruncatedAddress address={row.getValue("blockHash")} />;
     },
     enableSorting: false,
     enableHiding: false,
   },
-
   {
-    accessorKey: "TransactionHash",
+    accessorKey: "transactionHash",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Transaction Hash" />
     ),
     cell: ({ row }) => {
-      return <TruncatedAddress address={row.getValue("TransactionHash")} />;
+      return <TruncatedAddress address={row.getValue("transactionHash")} />;
     },
     enableSorting: false,
     enableHiding: false,
   },
   {
-    accessorKey: "Finality",
+    accessorKey: "address",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Finality" />
+      <DataTableColumnHeader column={column} title="Address" />
     ),
     cell: ({ row }) => {
-      const finality = statuses.find(
-        (finality) => finality.value === row.getValue("Finality")
-      );
-
-      if (!finality) {
-        return null;
-      }
-
-      return (
-        <div className="flex items-center">
-          {finality.icon && (
-            <finality.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-          )}
-          <Badge>{finality.label}</Badge>
-        </div>
-      );
+      return <TruncatedAddress address={row.getValue("address")} />;
     },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      return (
+        <Link href={`/tx/personal/${row.original.transactionHash}`}>
+          <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
+        </Link>
+      );
     },
   },
 ];

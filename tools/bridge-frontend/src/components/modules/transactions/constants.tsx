@@ -1,45 +1,39 @@
-import {
-  ArrowDownIcon,
-  ArrowRightIcon,
-  ArrowUpIcon,
-  CheckCircledIcon,
-  ClockIcon,
-} from "@radix-ui/react-icons";
-
-export const labels = [
-  {
-    value: "Final",
-    label: "Final",
-  },
-];
+import { CheckIcon, Cross2Icon } from "@radix-ui/react-icons";
 
 export const statuses = [
   {
-    value: "Final",
-    label: "Final",
-    icon: CheckCircledIcon,
+    value: "0x1",
+    label: "Success",
+    icon: CheckIcon,
+    variant: "success",
   },
   {
-    value: "Pending",
-    label: "Pending",
-    icon: ClockIcon,
+    value: "0x0",
+    label: "Failure",
+    icon: Cross2Icon,
+    variant: "destructive",
   },
 ];
 
-export const priorities = [
+export const types = [
   {
-    label: "Low",
-    value: "low",
-    icon: ArrowDownIcon,
+    value: "0x0",
+    label: "Legacy",
+    variant: "primary",
   },
   {
-    label: "Medium",
-    value: "medium",
-    icon: ArrowRightIcon,
+    value: "0x1",
+    label: "Access List",
+    variant: "secondary",
   },
   {
-    label: "High",
-    value: "high",
-    icon: ArrowUpIcon,
+    value: "0x2",
+    label: "Dynamic Fee",
+    variant: "outline",
+  },
+  {
+    value: "0x3",
+    label: "Blob",
+    variant: "outline",
   },
 ];

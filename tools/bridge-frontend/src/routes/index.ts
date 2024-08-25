@@ -1,20 +1,22 @@
-import { NavLink } from "../types";
+import { RouteIcon } from "lucide-react";
+import { NavLink } from "@/src/types";
+import { ReaderIcon } from "@radix-ui/react-icons";
 
 export const NavLinks: NavLink[] = [
-  // {
-  //   href: "/",
-  //   label: "Bridge",
-  //   isExternal: false,
-  //   isDropdown: false,
-  //   icon: RouteIcon,
-  // },
-  // {
-  //   href: "/transactions",
-  //   label: "Transactions",
-  //   isExternal: false,
-  //   isDropdown: false,
-  //   icon: ReaderIcon,
-  // },
+  {
+    href: "/",
+    label: "Bridge",
+    isExternal: false,
+    isDropdown: false,
+    icon: RouteIcon,
+  },
+  {
+    href: "/transactions",
+    label: "Transactions",
+    isExternal: false,
+    isDropdown: false,
+    icon: ReaderIcon,
+  },
 ];
 
 export const apiRoutes = {

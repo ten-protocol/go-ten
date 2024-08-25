@@ -9,7 +9,6 @@ import {
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
 import { Toaster } from "@/src/components/ui/toaster";
-import { WalletProvider } from "@/src/components/providers/wallet-provider";
 import { NetworkStatus } from "@/src/components/modules/common/network-status";
 import HeadSeo from "@/src/components/head-seo";
 import { siteMetadata } from "@/src/lib/siteMetadata";
@@ -17,6 +16,7 @@ import Script from "next/script";
 import { GOOGLE_ANALYTICS_ID } from "@/src/lib/constants";
 import { showToast } from "@/src/components/ui/use-toast";
 import { ToastType } from "@/src/types";
+import { WalletProvider } from "@/src/components/providers/wallet-provider";
 
 export default function App({ Component, pageProps }: AppProps) {
   const mutationCache = new MutationCache({
@@ -87,6 +87,7 @@ export default function App({ Component, pageProps }: AppProps) {
           sizes="16x16"
           href="/favicon/favicon-16x16.png"
         />
+        <link rel="manifest" href="/favicon/site.webmanifest" />
       </HeadSeo>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider

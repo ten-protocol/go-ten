@@ -4,6 +4,8 @@ import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
+  OnChangeFn,
+  PaginationState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -27,6 +29,8 @@ import {
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
 import { useRouter } from "next/router";
+import { Skeleton } from "@/src/components/ui/skeleton";
+import { Button } from "@/src/components/ui/button";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -39,6 +43,10 @@ interface DataTableProps<TData, TValue> {
   updateQueryParams?: (query: any) => void;
   refetch?: () => void;
   total: number;
+  isLoading?: boolean;
+  noPagination?: boolean;
+  noResultsText?: string;
+  noResultsMessage?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -47,7 +55,12 @@ export function DataTable<TData, TValue>({
   toolbar,
   refetch,
   total,
+  isLoading,
+  noPagination,
+  noResultsText,
+  noResultsMessage,
 }: DataTableProps<TData, TValue>) {
+  const { query, push, pathname } = useRouter();
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -55,10 +68,25 @@ export function DataTable<TData, TValue>({
     []
   );
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [pagination, setPagination] = React.useState({
-    pageIndex: 0,
-    pageSize: 20,
-  });
+
+  const pagination = React.useMemo(() => {
+    return {
+      pageIndex: Number(query.page) || 1,
+      pageSize: Number(query.size) || 20,
+    };
+  }, [query.page, query.size]);
+
+  const setPagination: OnChangeFn<PaginationState> = (func) => {
+    const { pageIndex, pageSize } =
+      typeof func === "function" ? func(pagination) : func;
+    const newPageIndex = pagination.pageSize !== pageSize ? 1 : pageIndex;
+    const params = {
+      ...query,
+      page: newPageIndex > 0 ? newPageIndex : 1,
+      size: pageSize <= 100 ? pageSize : 100,
+    };
+    push({ pathname, query: params });
+  };
 
   const table = useReactTable({
     data,
@@ -72,7 +100,7 @@ export function DataTable<TData, TValue>({
     },
     onPaginationChange: setPagination,
     manualPagination: true,
-    pageCount: Math.ceil(total / pagination.pageSize),
+    // pageCount: Math.ceil(total / pagination.pageSize),
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
@@ -86,18 +114,11 @@ export function DataTable<TData, TValue>({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  const { query, push, pathname } = useRouter();
-  const { pageIndex, pageSize } = table.getState().pagination;
-
-  React.useEffect(() => {
-    const params = { ...query, page: pageIndex + 1, size: pageSize };
-    push({ pathname, query: params });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageIndex, pageSize]);
-
   return (
     <div className="space-y-4">
-      <DataTableToolbar table={table} toolbar={toolbar} refetch={refetch} />
+      {data && (
+        <DataTableToolbar table={table} toolbar={toolbar} refetch={refetch} />
+      )}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -119,7 +140,18 @@ export function DataTable<TData, TValue>({
             ))}
           </TableHeader>
           <TableBody>
-            {table?.getRowModel()?.rows?.length && data ? (
+            {isLoading ? (
+              <>
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    <Skeleton className="w-full h-full" />
+                  </TableCell>
+                </TableRow>
+              </>
+            ) : data && table?.getRowModel()?.rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -141,14 +173,39 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {pagination.pageIndex > 1 ? (
+                    <p>
+                      No {noResultsText || "results"} found for the selected
+                      filters.
+                      <Button
+                        variant={"link"}
+                        onClick={() => {
+                          setPagination({ pageIndex: 1, pageSize: 20 });
+                          refetch?.();
+                        }}
+                      >
+                        Clear Filters
+                      </Button>
+                    </p>
+                  ) : (
+                    <p>
+                      {noResultsMessage ||
+                        `No ${noResultsText || "results"} found.`}
+                    </p>
+                  )}
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} />
+      {data && !isLoading && !noPagination && (
+        <DataTablePagination
+          table={table}
+          refetch={refetch}
+          setPagination={setPagination}
+        />
+      )}
     </div>
   );
 }
