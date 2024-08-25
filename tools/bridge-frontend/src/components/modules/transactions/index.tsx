@@ -72,6 +72,7 @@ export default function TransactionsComponent() {
         total={transactions?.length}
         isLoading={isTransactionsLoading}
         noResultsText="transactions"
+        noPagination={true}
       />
     </div>
   );
