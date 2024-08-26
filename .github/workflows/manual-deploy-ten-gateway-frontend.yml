@@ -56,6 +56,9 @@ jobs:
           DNS_NAME_LABEL_GATEWAY_FE="${{ github.event.inputs.testnet_type }}-ten-gateway${INSTANCE_SUFFIX}"
           IMAGE_NAME_GATEWAY_FE="${{ github.event.inputs.testnet_type }}-fe-ten-gateway${INSTANCE_SUFFIX}"
           
+          echo "DNS_NAME_LABEL_GATEWAY_FE=$DNS_NAME_LABEL_GATEWAY_FE" >> $GITHUB_ENV
+          echo "IMAGE_NAME_GATEWAY_FE=$IMAGE_NAME_GATEWAY_FE" >> $GITHUB_ENV
+          
           # Set instance-specific variables
           declare -a VAR_NAMES=(
             "DOCKER_BUILD_TAG_GATEWAY_FE"
