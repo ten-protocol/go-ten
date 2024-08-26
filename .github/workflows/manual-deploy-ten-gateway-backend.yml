@@ -1,7 +1,7 @@
 # Deploys Ten Gateway on Azure for Testnet
 # Builds the Ten Gateway image, pushes the image to dockerhub and starts the Ten Gateway on Azure VM
 
-name: '[M] Deploy Ten Gateway'
+name: '[M] Deploy Ten Gateway Backend'
 run-name: '[M] Deploy Ten Gateway Backend ( ${{ github.event.inputs.testnet_type }} )'
 on:
   workflow_dispatch:
