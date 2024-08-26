@@ -1,3 +1,4 @@
+import { IToken } from "@/src/types";
 import { FormField, FormItem, FormControl, FormMessage } from "../../ui/form";
 import {
   Select,
@@ -7,7 +8,13 @@ import {
   SelectValue,
 } from "../../ui/select";
 
-export const TokenSelect = ({ form, tokens }: any) => {
+export const TokenSelect = ({
+  form,
+  tokens,
+}: {
+  form: any;
+  tokens: IToken[];
+}) => {
   return (
     <FormField
       control={form.control}
@@ -21,7 +28,7 @@ export const TokenSelect = ({ form, tokens }: any) => {
               </SelectTrigger>
             </FormControl>
             <SelectContent side="top">
-              {tokens.map((token: any) => (
+              {tokens.map((token: IToken) => (
                 <SelectItem
                   key={token.value}
                   value={token.value}

@@ -6,7 +6,11 @@ export const SubmitButton = ({
   walletConnected,
   loading,
   fromTokenBalance,
-}: any) => {
+}: {
+  walletConnected: boolean;
+  loading: boolean;
+  fromTokenBalance: number;
+}) => {
   return (
     <div className="flex items-center justify-center mt-4">
       {walletConnected ? (

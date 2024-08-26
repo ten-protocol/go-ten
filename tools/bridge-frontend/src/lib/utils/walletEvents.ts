@@ -1,31 +1,30 @@
 import { ethers } from "ethers";
+import { ethereum } from ".";
 
-export const setupEventListeners = (
-  provider: any,
-  setAddress: (address: string) => void
-) => {
+export const setupEventListeners = (setAddress: (address: string) => void) => {
   const handleAccountsChange = (accounts: string[]) => {
     setAddress(accounts[0]);
     localStorage.setItem("walletAddress", accounts[0]);
   };
 
   const handleChainChange = () => {
+    console.log("Chain changed; reloading the page");
     window.location.reload();
   };
 
-  provider.on("accountsChanged", handleAccountsChange);
-  provider.on("chainChanged", handleChainChange);
+  ethereum.on("accountsChanged", handleAccountsChange);
+  ethereum.on("chainChanged", handleChainChange);
 
   return () => {
-    provider.removeListener("accountsChanged", handleAccountsChange);
-    provider.removeListener("chainChanged", handleChainChange);
+    ethereum.removeListener("accountsChanged", handleAccountsChange);
+    ethereum.removeListener("chainChanged", handleChainChange);
   };
 };
 
-export const initializeSigner = (provider: any) => {
+export const initializeSigner = (provider: ethers.providers.Web3Provider) => {
   if (!provider) {
     return null;
   }
 
-  return new ethers.providers.Web3Provider(provider).getSigner();
+  return provider.getSigner();
 };

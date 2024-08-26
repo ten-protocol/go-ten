@@ -87,7 +87,7 @@ export const MainNav = ({
   ...props
 }: React.HTMLAttributes<HTMLElement>) => (
   <nav className={cn("flex items-center lg:space-x-6", className)} {...props}>
-    {NavLinks.map((navLink) => (
+    {NavLinks.map((navLink: NavLink) => (
       <div key={navLink.label} className="w-full flex items-center mr-4 p-2">
         {navLink.icon && <navLink.icon className="h-5 w-5 mr-2" />}
         <NavItem navLink={navLink} />

@@ -1,7 +1,11 @@
 import { PERCENTAGES } from "@/src/lib/constants";
 import { Button } from "../../ui/button";
 
-export const PercentageButtons = ({ setAmount }: any) => {
+export const PercentageButtons = ({
+  setAmount,
+}: {
+  setAmount: (amount: number) => void;
+}) => {
   return (
     <div className="flex items-center p-2">
       <div className="flex items-center space-x-2">

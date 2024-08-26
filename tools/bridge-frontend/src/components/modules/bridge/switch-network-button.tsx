@@ -1,7 +1,13 @@
 import { ArrowDownUpIcon } from "lucide-react";
 import { Button } from "../../ui/button";
 
-export const SwitchNetworkButton = ({ handleSwitchNetwork, loading }: any) => {
+export const SwitchNetworkButton = ({
+  handleSwitchNetwork,
+  loading,
+}: {
+  handleSwitchNetwork: React.MouseEventHandler<HTMLButtonElement>;
+  loading: boolean;
+}) => {
   return (
     <div className="flex items-center justify-center">
       <Button

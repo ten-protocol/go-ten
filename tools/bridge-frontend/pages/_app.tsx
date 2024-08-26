@@ -1,11 +1,7 @@
 import { useState } from "react";
 import { ThemeProvider } from "@/src/components/providers/theme-provider";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import {
-  QueryClient,
-  MutationCache,
-  QueryClientProvider,
-} from "@tanstack/react-query";
+import { QueryClient, MutationCache } from "@tanstack/react-query";
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
 import { Toaster } from "@/src/components/ui/toaster";
@@ -17,6 +13,8 @@ import { GOOGLE_ANALYTICS_ID } from "@/src/lib/constants";
 import { showToast } from "@/src/components/ui/use-toast";
 import { ToastType } from "@/src/types";
 import { WalletProvider } from "@/src/components/providers/wallet-provider";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 
 export default function App({ Component, pageProps }: AppProps) {
   const mutationCache = new MutationCache({
@@ -39,11 +37,16 @@ export default function App({ Component, pageProps }: AppProps) {
           queries: {
             refetchOnWindowFocus: false,
             staleTime: 300000,
+            gcTime: 1000 * 60 * 60 * 24, // 24 hours
           },
         },
         mutationCache,
       })
   );
+
+  const localStoragePersister = createSyncStoragePersister({
+    storage: typeof window !== "undefined" ? window.localStorage : null,
+  });
 
   return (
     <>
@@ -89,7 +92,12 @@ export default function App({ Component, pageProps }: AppProps) {
         />
         <link rel="manifest" href="/favicon/site.webmanifest" />
       </HeadSeo>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister: localStoragePersister,
+        }}
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -103,7 +111,7 @@ export default function App({ Component, pageProps }: AppProps) {
             <ReactQueryDevtools initialIsOpen={false} />
           </WalletProvider>
         </ThemeProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </>
   );
 }

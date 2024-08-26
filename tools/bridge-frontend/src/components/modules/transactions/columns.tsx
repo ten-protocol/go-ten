@@ -6,8 +6,6 @@ import { Badge, badgeVariants } from "@/src/components/ui/badge";
 import { statuses } from "@/src/components/modules/transactions/constants";
 import { DataTableColumnHeader } from "@/src/components/modules/common/data-table/data-table-column-header";
 import TruncatedAddress from "../common/truncated-address";
-import Link from "next/link";
-import { EyeOpenIcon } from "@radix-ui/react-icons";
 import { Transactions } from "@/src/types";
 
 export const columns: ColumnDef<Transactions>[] = [
@@ -80,14 +78,4 @@ export const columns: ColumnDef<Transactions>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-  // {
-  //   id: "actions",
-  //   cell: ({ row }) => {
-  //     return (
-  //       <Link href={`/tx/personal/${row.original.transactionHash}`}>
-  //         <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
-  //       </Link>
-  //     );
-  //   },
-  // },
 ];

@@ -2,9 +2,8 @@ import { useEffect, useMemo } from "react";
 import { ethers } from "ethers";
 import useWalletStore from "../stores/wallet-store";
 import useContractStore from "../stores/contract-store";
-import { ToastType } from "../types";
+import { ToastType, TransactionStatus } from "../types";
 import { useGeneralService } from "./useGeneralService";
-import { privateKey } from "../lib/constants";
 import Bridge from "../../artifacts/IBridge.sol/IBridge.json";
 import ManagementContractAbi from "../../artifacts/ManagementContract.sol/ManagementContract.json";
 import IMessageBusAbi from "../../artifacts/IMessageBus.sol/IMessageBus.json";
@@ -21,8 +20,14 @@ import { showToast } from "../components/ui/use-toast";
 export const useContractService = () => {
   const { signer, isL1ToL2, provider, address } = useWalletStore();
   const { networkConfig, isNetworkConfigLoading } = useGeneralService();
-  const { setContractState, messageBusAddress, bridgeAddress } =
-    useContractStore();
+  const {
+    setContractState,
+    messageBusAddress,
+    bridgeAddress,
+    bridgeContract,
+    managementContract,
+    messageBusContract,
+  } = useContractStore();
 
   const memoizedConfig = useMemo(() => {
     if (isNetworkConfigLoading || !networkConfig) {
@@ -32,7 +37,7 @@ export const useContractService = () => {
   }, [networkConfig, isNetworkConfigLoading]);
 
   const initializeContracts = async () => {
-    if (!memoizedConfig || !provider || !signer) return;
+    if (!memoizedConfig || !provider) return;
 
     const {
       ImportantContracts: { L1Bridge, L2Bridge },
@@ -41,11 +46,7 @@ export const useContractService = () => {
       ManagementContractAddress,
     } = memoizedConfig;
 
-    let ethersProvider = new ethers.providers.Web3Provider(provider);
-    const walletInstance = new ethers.Wallet(
-      privateKey as string,
-      ethersProvider
-    );
+    const signer = provider.getSigner();
     const isL1 = isL1ToL2;
     const bridgeAddress = isL1 ? L1Bridge : L2Bridge;
     const messageBusAddress = isL1 ? MessageBusAddress : L2MessageBusAddress;
@@ -53,24 +54,23 @@ export const useContractService = () => {
     const bridgeContract = new ethers.Contract(
       bridgeAddress,
       Bridge.abi,
-      walletInstance
+      signer
     );
     const messageBusContract = new ethers.Contract(
       messageBusAddress,
       IMessageBusAbi,
-      walletInstance
+      signer
     );
     const managementContract = new ethers.Contract(
       ManagementContractAddress,
       ManagementContractAbi,
-      walletInstance
+      signer
     );
 
     setContractState({
       bridgeContract,
       managementContract,
       messageBusContract,
-      wallet: walletInstance,
       messageBusAddress,
       bridgeAddress,
     });
@@ -82,13 +82,9 @@ export const useContractService = () => {
   }, [memoizedConfig, provider, isL1ToL2, signer, setContractState]);
 
   const sendNative = async (receiver: string, value: string) => {
-    const { bridgeContract, managementContract, messageBusContract, wallet } =
-      useContractStore.getState();
-
     if (
       !bridgeContract ||
       !signer ||
-      !wallet ||
       !managementContract ||
       !messageBusContract ||
       !provider
@@ -102,10 +98,11 @@ export const useContractService = () => {
 
     try {
       const gasPrice = await signer.provider?.getGasPrice();
+
       const tx = await estimateAndPopulateTx(
         receiver,
         value,
-        gasPrice,
+        gasPrice as ethers.BigNumber,
         bridgeContract
       );
       const txResponse = await signer.sendTransaction(tx);
@@ -127,7 +124,7 @@ export const useContractService = () => {
         );
 
       const { tree, proof } = constructMerkleTree(
-        JSON.parse(atob(block.result.crossChainTree)),
+        JSON.parse(atob(block?.crossChainTree)),
         ethers.utils.keccak256(
           new ethers.utils.AbiCoder().encode(
             ["address", "address", "uint256", "uint64"],
@@ -143,7 +140,7 @@ export const useContractService = () => {
 
       const gasLimit = await estimateGasWithTimeout(
         managementContract,
-        valueTransferEventData?.args,
+        valueTransferEventData?.args as (string | ethers.BigNumber)[],
         proof,
         tree.root
       );
@@ -160,7 +157,7 @@ export const useContractService = () => {
         throw new Error("Failed to populate transaction");
       }
 
-      const responseL1 = await wallet.sendTransaction(txL1);
+      const responseL1 = await signer.sendTransaction(txL1);
 
       showToast(
         ToastType.INFO,
@@ -196,12 +193,12 @@ export const useContractService = () => {
       return handleError(null, "Invalid wallet address");
     }
 
-    if (!signer || !provider) {
+    if (!provider) {
       return handleError(null, "Signer or provider not found");
     }
 
     try {
-      const balance = await signer.provider?.getBalance(walletAddress);
+      const balance = await provider?.getBalance(walletAddress);
       return ethers.utils.formatEther(balance);
     } catch (error) {
       handleError(error, "Error checking Ether balance");
@@ -250,18 +247,19 @@ export const useContractService = () => {
         topics,
       };
 
-      let prov = new ethers.providers.Web3Provider(provider);
-      const logs = await prov.getLogs(filter);
+      const logs = await provider.getLogs(filter);
       const transactions = await Promise.all(
-        logs.map(async (log) => {
-          const receipt = await prov.getTransactionReceipt(log.transactionHash);
+        logs.map(async (log: ethers.providers.Log) => {
+          const receipt = await provider.getTransactionReceipt(
+            log.transactionHash
+          );
           return {
             ...log,
             status: receipt
               ? receipt.status
-                ? "Success"
-                : "Failed"
-              : "Pending",
+                ? TransactionStatus.Success
+                : TransactionStatus.Failure
+              : TransactionStatus.Pending,
           };
         })
       );

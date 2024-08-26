@@ -1,21 +1,22 @@
+import { TransactionStatus } from "@/src/types";
 import { CheckIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { HourglassIcon } from "lucide-react";
 
 export const statuses = [
   {
-    value: "Success",
+    value: TransactionStatus.Success,
     label: "Success",
     icon: CheckIcon,
     variant: "success",
   },
   {
-    value: "Failure",
+    value: TransactionStatus.Failure,
     label: "Failure",
     icon: Cross2Icon,
     variant: "destructive",
   },
   {
-    value: "Pending",
+    value: TransactionStatus.Pending,
     label: "Pending",
     icon: HourglassIcon,
     variant: "primary",

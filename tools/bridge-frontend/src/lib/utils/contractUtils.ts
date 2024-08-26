@@ -3,17 +3,21 @@ import { ToastType } from "@/src/types";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 import { ethers } from "ethers";
 
-const handleError = (error: any, customMessage: string) => {
+// add types
+const handleError = (error: Error | any, customMessage: string) => {
   console.error(customMessage, error);
   if (error?.message?.includes("unknown account")) {
     throw new Error(
       "Ensure your wallet is unlocked and an account is connected"
     );
   }
-  return error;
+  throw error;
 };
 
-const constructMerkleTree = (leafEntries: any[], msgHash: string) => {
+const constructMerkleTree = (
+  leafEntries: [string, string][],
+  msgHash: string
+) => {
   showToast(ToastType.INFO, "Constructing Merkle tree");
   const tree = StandardMerkleTree.of(leafEntries, ["string", "bytes32"]);
   const proof = tree.getProof(["v", msgHash]);
@@ -44,15 +48,15 @@ const estimateGas = async (
 const estimateAndPopulateTx = async (
   receiver: string,
   value: string,
-  gasPrice: any,
+  gasPrice: ethers.BigNumber,
   bridgeContract: ethers.Contract
 ) => {
   try {
     showToast(ToastType.INFO, "Estimating gas for the transaction");
     const estimatedGas = await estimateGas(receiver, value, bridgeContract);
 
-    showToast(ToastType.INFO, "Populating transaction");
-    const populatTxResp = await bridgeContract?.populateTransaction.sendNative(
+    showToast(ToastType.INFO, "Populating transaction with estimated gas");
+    const populatTxResp = await bridgeContract?.populateTransaction?.sendNative(
       receiver,
       {
         value: ethers.utils.parseEther(value),
@@ -62,12 +66,12 @@ const estimateAndPopulateTx = async (
     );
     return populatTxResp;
   } catch (error) {
-    return handleError(error, "Error populating transaction");
+    return handleError(error, "Error estimating and populating transaction");
   }
 };
 
 const extractAndProcessValueTransfer = async (
-  txReceipt: any,
+  txReceipt: ethers.providers.TransactionReceipt,
   messageBusContract: ethers.Contract,
   provider: ethers.providers.JsonRpcProvider
 ) => {
@@ -78,7 +82,7 @@ const extractAndProcessValueTransfer = async (
     );
 
     const valueTransferEvent = txReceipt.logs.find(
-      (log: any) =>
+      (log: ethers.providers.Log) =>
         log.topics[0] ===
         ethers.utils.id("ValueTransfer(address,address,uint256,uint64)")
     );
@@ -117,11 +121,12 @@ const extractAndProcessValueTransfer = async (
     return handleError(error, "Error processing value transfer");
   }
 };
+
 const estimateGasWithTimeout = async (
   managementContract: ethers.Contract,
-  msg: any,
-  proof: any,
-  root: any,
+  msg: (string | ethers.BigNumber)[],
+  proof: string[],
+  root: string,
   timeout = 30000,
   interval = 5000
 ) => {

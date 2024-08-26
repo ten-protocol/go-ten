@@ -5,44 +5,22 @@ import { getItem } from "@/src/lib/utils";
 import { useContractService } from "@/src/services/useContractService";
 import { ItemPosition } from "@/src/types";
 import useWalletStore from "@/src/stores/wallet-store";
+import { useQuery } from "@tanstack/react-query";
 
 export default function TransactionsComponent() {
   const { isL1ToL2 } = useWalletStore();
   const { getBridgeTransactions } = useContractService();
-  const [transactions, setTransactions] = React.useState<any[]>([]);
-  const [isTransactionsLoading, setIsTransactionsLoading] =
-    React.useState(true);
 
-  const getTransactions = async () => {
-    try {
-      const txns = await getBridgeTransactions();
-      setTransactions(txns);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const interval = React.useRef<any>();
-
-  const fetchTransactions = () => {
-    setIsTransactionsLoading(true);
-    getTransactions();
-    setIsTransactionsLoading(false);
-  };
-
-  React.useEffect(() => {
-    fetchTransactions();
-
-    interval.current = setInterval(() => {
-      getTransactions();
-    }, 10000);
-
-    return () => {
-      clearInterval(interval.current);
-    };
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const {
+    data: transactions = [],
+    isLoading: isTransactionsLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["bridgeTransactions", isL1ToL2 ? "l1" : "l2"],
+    queryFn: () => getBridgeTransactions(),
+    refetchInterval: 10000,
+    refetchOnMount: true,
+  });
 
   const firstBatchHeight = getItem(transactions, "blockNumber");
   const lastBatchHeight = getItem(
@@ -70,7 +48,7 @@ export default function TransactionsComponent() {
       <DataTable
         columns={columns}
         data={transactions}
-        refetch={fetchTransactions}
+        refetch={refetch}
         total={transactions?.length}
         isLoading={isTransactionsLoading}
         noResultsText="transactions"

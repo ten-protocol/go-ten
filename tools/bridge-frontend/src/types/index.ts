@@ -1,5 +1,4 @@
 import { ethers } from "ethers";
-import React from "react";
 
 export interface SeoProps {
   title: string;
@@ -70,7 +69,7 @@ export type NavLink = {
   isDropdown?: boolean;
   isExternal?: boolean;
   subNavLinks?: NavLink[];
-  icon?: any;
+  icon?: React.ElementType;
 };
 
 export enum ToastType {
@@ -187,15 +186,14 @@ export interface IContractState {
   bridgeContract: ethers.Contract | null;
   managementContract: ethers.Contract | null;
   messageBusContract: ethers.Contract | null;
-  wallet: ethers.Wallet | null;
   messageBusAddress: string;
   bridgeAddress: string;
   setContractState: (state: Partial<IContractState>) => void;
 }
 
 export interface IWalletState {
-  provider: any;
-  signer: any;
+  provider: ethers.providers.Web3Provider | null;
+  signer: ethers.Signer | null;
   address: string;
   walletConnected: boolean;
   isL1ToL2: boolean;
@@ -222,6 +220,12 @@ export enum ItemPosition {
   LAST = "last",
 }
 
+export enum TransactionStatus {
+  Success = "Success",
+  Failure = "Failure",
+  Pending = "Pending",
+}
+
 export type Transactions = {
   blockNumber: number;
   blockHash: string;
@@ -232,5 +236,5 @@ export type Transactions = {
   topics: string[];
   transactionHash: string;
   logIndex: number;
-  status: "Success" | "Failed" | "Pending";
+  status: TransactionStatus;
 };

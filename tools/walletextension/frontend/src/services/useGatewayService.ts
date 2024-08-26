@@ -69,7 +69,7 @@ const useGatewayService = () => {
         showToast(ToastType.SUCCESS, "Connected to Ten Testnet");
       }
       await fetchUserAccounts();
-    } catch (error: any) {
+    } catch (error: Error | any) {
       showToast(ToastType.DESTRUCTIVE, `${error?.message}`);
       throw error;
     } finally {

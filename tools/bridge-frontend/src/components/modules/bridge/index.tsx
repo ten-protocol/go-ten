@@ -138,7 +138,7 @@ export default function Dashboard() {
   );
 
   const handleSwitchNetwork = React.useCallback(
-    async (event: any) => {
+    async (event: React.MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       try {
         switchNetwork();

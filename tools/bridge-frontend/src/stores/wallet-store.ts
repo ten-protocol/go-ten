@@ -28,10 +28,7 @@ const useWalletStore = create<IWalletState>((set, get) => ({
       const newSigner = initializeSigner(detectedProvider);
 
       //@ts-ignore
-      const chainId = await detectedProvider?.request({
-        method: requestMethods.getChainId,
-        params: [],
-      });
+      const chainId = await detectedProvider?.send(requestMethods.getChainId);
 
       const isL1 = chainId === currentNetwork.l1;
       const expectedChainId = isL1 ? currentNetwork.l1 : currentNetwork.l2;
@@ -43,12 +40,9 @@ const useWalletStore = create<IWalletState>((set, get) => ({
         isWrongNetwork: chainId !== expectedChainId,
       });
 
-      const cleanup = setupEventListeners(
-        detectedProvider,
-        (address: string) => {
-          set({ address });
-        }
-      );
+      const cleanup = setupEventListeners((address: string) => {
+        set({ address });
+      });
 
       return cleanup;
     } catch (error) {
@@ -62,10 +56,9 @@ const useWalletStore = create<IWalletState>((set, get) => ({
     try {
       const detectedProvider = await getEthereumProvider();
       //@ts-ignore
-      const accounts = await detectedProvider?.request({
-        method: requestMethods.connectAccounts,
-        params: [],
-      });
+      const accounts = await detectedProvider?.send(
+        requestMethods.requestAccounts
+      );
       const newSigner = initializeSigner(detectedProvider);
 
       set({
@@ -143,10 +136,9 @@ const useWalletStore = create<IWalletState>((set, get) => ({
     const desiredNetwork = isL1ToL2 ? currentNetwork.l2 : currentNetwork.l1;
 
     try {
-      await provider?.request({
-        method: requestMethods.switchNetwork,
-        params: [{ chainId: desiredNetwork }],
-      });
+      await provider?.send(requestMethods.switchNetwork, [
+        { chainId: desiredNetwork },
+      ]);
 
       set({ isL1ToL2: !isL1ToL2 });
       handleStorage.save("isL1ToL2", (!isL1ToL2).toString());
