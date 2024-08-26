@@ -2,7 +2,6 @@ import { useEffect, useMemo } from "react";
 import { ethers } from "ethers";
 import useWalletStore from "../stores/wallet-store";
 import useContractStore from "../stores/contract-store";
-import { toast } from "../components/ui/use-toast";
 import { ToastType } from "../types";
 import { useGeneralService } from "./useGeneralService";
 import { privateKey } from "../lib/constants";
@@ -11,10 +10,13 @@ import ManagementContractAbi from "../../artifacts/ManagementContract.sol/Manage
 import IMessageBusAbi from "../../artifacts/IMessageBus.sol/IMessageBus.json";
 import {
   constructMerkleTree,
+  estimateAndPopulateTx,
   estimateGasWithTimeout,
+  extractAndProcessValueTransfer,
   handleError,
 } from "../lib/utils/contractUtils";
 import { isAddress } from "ethers/lib/utils";
+import { showToast } from "../components/ui/use-toast";
 
 export const useContractService = () => {
   const { signer, isL1ToL2, provider, address } = useWalletStore();
@@ -88,7 +90,8 @@ export const useContractService = () => {
       !signer ||
       !wallet ||
       !managementContract ||
-      !messageBusContract
+      !messageBusContract ||
+      !provider
     ) {
       return handleError(null, "Contract or signer not found");
     }
@@ -105,13 +108,11 @@ export const useContractService = () => {
         gasPrice,
         bridgeContract
       );
+      console.log("🚀 ~ sendNative ~ tx:", tx);
       const txResponse = await signer.sendTransaction(tx);
       console.log("Transaction response:", txResponse);
 
-      toast({
-        description: "Transaction sent; waiting for confirmation",
-        variant: ToastType.INFO,
-      });
+      showToast(ToastType.INFO, "Transaction sent; waiting for confirmation");
 
       const txReceipt = await txResponse.wait();
       console.log("Transaction receipt:", txReceipt);
@@ -121,7 +122,11 @@ export const useContractService = () => {
       }
 
       const { valueTransferEventData, block } =
-        await extractAndProcessValueTransfer(txReceipt, messageBusContract);
+        await extractAndProcessValueTransfer(
+          txReceipt,
+          messageBusContract,
+          provider
+        );
 
       const { tree, proof } = constructMerkleTree(
         JSON.parse(atob(block.result.crossChainTree)),
@@ -160,18 +165,15 @@ export const useContractService = () => {
       const responseL1 = await wallet.sendTransaction(txL1);
       console.log("L1 txn response:", responseL1);
 
-      toast({
-        description: "Value transfer sent to L2; waiting for confirmation",
-        variant: ToastType.INFO,
-      });
+      showToast(
+        ToastType.INFO,
+        "Transaction sent to L1; waiting for confirmation"
+      );
 
       const receiptL1 = await responseL1.wait();
       console.log("L1 txn receipt:", receiptL1);
 
-      toast({
-        description: "Value transfer completed",
-        variant: ToastType.SUCCESS,
-      });
+      showToast(ToastType.SUCCESS, "Transaction processed successfully");
 
       return receiptL1;
     } catch (error) {
@@ -205,7 +207,7 @@ export const useContractService = () => {
       const balance = await signer.provider?.getBalance(walletAddress);
       return ethers.utils.formatEther(balance);
     } catch (error) {
-      return handleError(error, "Error checking Ether balance");
+      handleError(error, "Error checking Ether balance");
     }
   };
 
@@ -260,107 +262,11 @@ export const useContractService = () => {
     }
   };
 
-  const estimateGas = async (
-    receiver: string,
-    value: string,
-    bridgeContract: ethers.Contract
-  ) => {
-    try {
-      if (!value || isNaN(Number(value))) {
-        throw new Error("Invalid value provided for gas estimation.");
-      }
-
-      const parsedValue = ethers.utils.parseEther(value);
-      return await bridgeContract?.estimateGas.sendNative(receiver, {
-        value: parsedValue,
-      });
-    } catch (error) {
-      return handleError(error, "Error estimating gas");
-    }
-  };
-
-  const estimateAndPopulateTx = async (
-    receiver: string,
-    value: string,
-    gasPrice: any,
-    bridgeContract: ethers.Contract
-  ) => {
-    try {
-      const estimatedGas = await estimateGas(receiver, value, bridgeContract);
-      return await bridgeContract?.populateTransaction.sendNative(receiver, {
-        value: ethers.utils.parseEther(value),
-        gasPrice,
-        gasLimit: estimatedGas,
-      });
-    } catch (error) {
-      return handleError(error, "Error populating transaction");
-    }
-  };
-
-  const extractAndProcessValueTransfer = async (
-    txReceipt: any,
-    messageBusContract: ethers.Contract
-  ) => {
-    try {
-      toast({
-        description: "Extracting logs from the transaction",
-        variant: ToastType.INFO,
-      });
-
-      const valueTransferEvent = txReceipt.logs.find(
-        (log: any) =>
-          log.topics[0] ===
-          ethers.utils.id("ValueTransfer(address,address,uint256,uint64)")
-      );
-      console.log("🚀 ~ useContract ~ valueTransferEvent:", valueTransferEvent);
-
-      if (!valueTransferEvent) {
-        throw new Error("ValueTransfer event not found in the logs");
-      }
-
-      toast({
-        description: "ValueTransfer event found in the logs; processing data",
-        variant: ToastType.INFO,
-      });
-
-      const valueTransferEventData =
-        messageBusContract?.interface.parseLog(valueTransferEvent);
-
-      if (!valueTransferEventData) {
-        throw new Error("ValueTransfer event data not found");
-      }
-
-      toast({
-        description: "ValueTransfer event data found; fetching block",
-        variant: ToastType.INFO,
-      });
-
-      const block = await provider.send("eth_getBlockByHash", [
-        ethers.utils.hexValue(txReceipt.blockHash),
-        true,
-      ]);
-
-      if (!block) {
-        throw new Error("Block not found");
-      }
-
-      toast({
-        description: "Block found; processing value transfer",
-        variant: ToastType.INFO,
-      });
-
-      return { valueTransferEventData, block };
-    } catch (error) {
-      return handleError(error, "Error processing value transfer");
-    }
-  };
-
   return {
     sendNative,
     getNativeBalance,
     getTokenBalance,
     sendERC20,
     getBridgeTransactions,
-    estimateGas,
   };
 };
