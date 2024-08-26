@@ -11,6 +11,7 @@ import { useContractService } from "@/src/services/useContractService";
 import { ethers } from "ethers";
 import useContractStore from "@/src/stores/contract-store";
 import { cn } from "@/src/lib/utils";
+import { estimateGas } from "@/src/lib/utils/contractUtils";
 
 export const TransferToSection = ({
   form,
@@ -27,7 +28,6 @@ export const TransferToSection = ({
   address: string;
   setOpen: (open: boolean) => void;
 }) => {
-  const { estimateGas } = useContractService();
   const { bridgeContract } = useContractStore();
   const [gas, setGas] = useState<string | null>(null);
   const [isEstimating, setIsEstimating] = useState(false);

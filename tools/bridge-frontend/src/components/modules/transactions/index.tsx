@@ -40,6 +40,8 @@ export default function TransactionsComponent() {
     return () => {
       clearInterval(interval.current);
     };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const firstBatchHeight = getItem(transactions, "blockNumber");
