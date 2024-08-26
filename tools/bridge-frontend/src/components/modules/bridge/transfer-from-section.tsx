@@ -36,7 +36,7 @@ export const TransferFromSection = ({
           <div className="pl-2">
             <p className="text-sm text-muted-foreground">Balance:</p>
             <strong className="text-lg float-right word-wrap">
-              {loading ? <Skeleton /> : fromTokenBalance || 0}
+              {loading ? <Skeleton /> : fromTokenBalance || "0.00"}
             </strong>
           </div>
         </div>
