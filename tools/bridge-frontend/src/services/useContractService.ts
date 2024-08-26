@@ -108,9 +108,7 @@ export const useContractService = () => {
         gasPrice,
         bridgeContract
       );
-      console.log("🚀 ~ sendNative ~ tx:", tx);
       const txResponse = await signer.sendTransaction(tx);
-      console.log("Transaction response:", txResponse);
 
       showToast(ToastType.INFO, "Transaction sent; waiting for confirmation");
 
@@ -163,7 +161,6 @@ export const useContractService = () => {
       }
 
       const responseL1 = await wallet.sendTransaction(txL1);
-      console.log("L1 txn response:", responseL1);
 
       showToast(
         ToastType.INFO,

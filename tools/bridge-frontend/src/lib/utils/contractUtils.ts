@@ -60,7 +60,6 @@ const estimateAndPopulateTx = async (
         gasLimit: estimatedGas,
       }
     );
-    console.log("🚀 ~ useContractService ~ populatTxResp:", populatTxResp);
     return populatTxResp;
   } catch (error) {
     return handleError(error, "Error populating transaction");
@@ -83,7 +82,6 @@ const extractAndProcessValueTransfer = async (
         log.topics[0] ===
         ethers.utils.id("ValueTransfer(address,address,uint256,uint64)")
     );
-    console.log("🚀 ~ useContract ~ valueTransferEvent:", valueTransferEvent);
 
     if (!valueTransferEvent) {
       throw new Error("ValueTransfer event not found in the logs");
@@ -138,7 +136,6 @@ const estimateGasWithTimeout = async (
         root,
         {}
       );
-      console.log("🚀 ~ gasLimit:", gasLimit);
     } catch (error: any) {
       console.error(`Estimate gas threw error: ${error.reason}`);
     }
