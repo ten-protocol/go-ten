@@ -222,8 +222,6 @@ export enum ItemPosition {
   LAST = "last",
 }
 
-export type TransactionType = "0x0" | "0x1" | "0x2" | "0x3";
-
 export type Transactions = {
   blockNumber: number;
   blockHash: string;
@@ -234,4 +232,5 @@ export type Transactions = {
   topics: string[];
   transactionHash: string;
   logIndex: number;
+  status: "Success" | "Failed" | "Pending";
 };

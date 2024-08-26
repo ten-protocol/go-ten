@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@/src/components/ui/badge";
+import { Badge, badgeVariants } from "@/src/components/ui/badge";
 
 import { statuses } from "@/src/components/modules/transactions/constants";
 import { DataTableColumnHeader } from "@/src/components/modules/common/data-table/data-table-column-header";
@@ -18,11 +18,10 @@ export const columns: ColumnDef<Transactions>[] = [
       <DataTableColumnHeader column={column} title="Status" />
     ),
     cell: ({ row }) => {
-      const status = statuses.find((s) => s.value === "0x1");
-      const variant = "success";
+      const status = statuses.find((s) => s.value === row.original.status);
       return (
-        <Badge variant={variant}>
-          {status?.icon && <status.icon className="h-5 w-5 mr\2" />}
+        <Badge variant={status?.variant as keyof typeof badgeVariants}>
+          {status?.icon && <status.icon className="h-5 w-5 mr-2" />}
           {status?.label}
         </Badge>
       );
@@ -30,6 +29,7 @@ export const columns: ColumnDef<Transactions>[] = [
     enableSorting: false,
     enableHiding: false,
   },
+
   {
     accessorKey: "blockNumber",
     header: ({ column }) => (
@@ -80,14 +80,14 @@ export const columns: ColumnDef<Transactions>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-  {
-    id: "actions",
-    cell: ({ row }) => {
-      return (
-        <Link href={`/tx/personal/${row.original.transactionHash}`}>
-          <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
-        </Link>
-      );
-    },
-  },
+  // {
+  //   id: "actions",
+  //   cell: ({ row }) => {
+  //     return (
+  //       <Link href={`/tx/personal/${row.original.transactionHash}`}>
+  //         <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
+  //       </Link>
+  //     );
+  //   },
+  // },
 ];

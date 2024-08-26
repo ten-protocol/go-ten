@@ -248,12 +248,24 @@ export const useContractService = () => {
       const filter = {
         address: messageBusAddress,
         topics,
-        fromBlock: 72548,
       };
 
       let prov = new ethers.providers.Web3Provider(provider);
       const logs = await prov.getLogs(filter);
-      return logs;
+      const transactions = await Promise.all(
+        logs.map(async (log) => {
+          const receipt = await prov.getTransactionReceipt(log.transactionHash);
+          return {
+            ...log,
+            status: receipt
+              ? receipt.status
+                ? "Success"
+                : "Failed"
+              : "Pending",
+          };
+        })
+      );
+      return transactions;
     } catch (error) {
       return handleError(error, "Error fetching transactions");
     }
