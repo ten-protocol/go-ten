@@ -117,7 +117,7 @@ jobs:
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
           dns-name-label: ${{ env.DNS_NAME_LABEL_GATEWAY_FE }}
-          image: ${{ env.DOCKER_BUILD_GATEWAY_FE }}
+          image: ${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}
           name: ${{ env.IMAGE_NAME_GATEWAY_FE }}
           location: "uksouth"
           restart-policy: "Never"
