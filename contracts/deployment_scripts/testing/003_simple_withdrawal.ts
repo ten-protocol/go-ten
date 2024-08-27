@@ -37,7 +37,8 @@ async function waitForRootPublished(management, msg, proof, root, provider: Ethe
     while (gas_estimate === null) {
         try {
             console.log(`Extracting native value from cross chain message for root ${root}`)
-            const tx = await management.getFunction('ExtractNativeValue').populateTransaction(msg, proof, root, {} )
+            const tx = await management.getFunction('ExtractNativeValue').populateTransaction(msg, proof, root, {} ) 
+            console.log(`Tx to = ${tx.to}`)
             gas_estimate = await l1Ethers.estimateGas(tx)
         } catch (error) {
             console.log(`Estimate gas threw error : ${error}`)

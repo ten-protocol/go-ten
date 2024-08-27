@@ -1,5 +1,5 @@
 export const tenGatewayAddress =
-  process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://127.0.0.1:3000";
+  process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://127.0.0.1:1443";
 
 export const tenscanLink = "https://testnet.tenscan.io";
 

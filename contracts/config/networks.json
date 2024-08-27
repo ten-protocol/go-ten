@@ -65,7 +65,7 @@
       ]
     },
     "uatGeth": {
-      "url": "http://dev-testnet-eth2network.uksouth.cloudapp.azure.com:8025",
+      "url": "http://uat-testnet-eth2network.uksouth.cloudapp.azure.com:8025",
       "deploy": [
         "deployment_scripts/core"
       ],
