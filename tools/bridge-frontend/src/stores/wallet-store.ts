@@ -11,6 +11,7 @@ import {
   setupEventListeners,
 } from "@/src/lib/utils/walletEvents";
 import { currentNetwork } from "@/src/lib/utils";
+import { ethers } from "ethers";
 
 const useWalletStore = create<IWalletState>((set, get) => ({
   provider: null,
@@ -24,40 +25,60 @@ const useWalletStore = create<IWalletState>((set, get) => ({
   initializeProvider: async () => {
     try {
       set({ loading: true });
-      const detectedProvider = await getEthereumProvider();
-      const newSigner = initializeSigner(detectedProvider);
-
-      //@ts-ignore
-      const chainId = await detectedProvider?.send(requestMethods.getChainId);
-
-      const isL1 = chainId === currentNetwork.l1;
-      const expectedChainId = isL1 ? currentNetwork.l1 : currentNetwork.l2;
-
-      set({
-        provider: detectedProvider,
-        signer: newSigner,
-        isL1ToL2: isL1,
-        isWrongNetwork: chainId !== expectedChainId,
-      });
-
-      const cleanup = setupEventListeners((address: string) => {
-        set({ address });
-      });
-
-      return cleanup;
+      let detectedProvider = await getEthereumProvider();
+      if (!detectedProvider) {
+        // retry detecting provider after 3 seconds
+        setTimeout(async () => {
+          detectedProvider = await getEthereumProvider();
+          if (!detectedProvider) {
+            toast({
+              title: "Unable to connect",
+              description:
+                "Please check if your web3 provider is installed and unlocked.",
+              variant: ToastType.INFO,
+            });
+            set({ loading: false });
+            return; // exit if provider is still not detected
+          }
+          get().proceedWithProviderInitialization(detectedProvider);
+        }, 3000); // retry after 3 seconds
+        return;
+      }
+      get().proceedWithProviderInitialization(detectedProvider);
     } catch (error) {
       console.error("Error initializing provider:", error);
-    } finally {
-      set({ loading: false });
     }
+  },
+
+  proceedWithProviderInitialization: async (
+    detectedProvider: ethers.providers.Web3Provider
+  ) => {
+    const newSigner = initializeSigner(detectedProvider);
+    const chainId = await detectedProvider.send(requestMethods.getChainId, []);
+    const isL1 = chainId === currentNetwork.l1;
+    const expectedChainId = isL1 ? currentNetwork.l1 : currentNetwork.l2;
+
+    set({
+      provider: detectedProvider,
+      signer: newSigner,
+      isL1ToL2: isL1,
+      isWrongNetwork: chainId !== expectedChainId,
+    });
+
+    const cleanup = setupEventListeners((address: string) => {
+      set({ address });
+    });
+
+    set({ loading: false });
+    return cleanup;
   },
 
   connectWallet: async () => {
     try {
       const detectedProvider = await getEthereumProvider();
-      //@ts-ignore
       const accounts = await detectedProvider?.send(
-        requestMethods.requestAccounts
+        requestMethods.requestAccounts,
+        []
       );
       const newSigner = initializeSigner(detectedProvider);
 

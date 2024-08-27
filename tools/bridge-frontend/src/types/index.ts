@@ -204,6 +204,9 @@ export interface IWalletState {
   disconnectWallet: () => void;
   switchNetwork: () => void;
   restoreWalletState: () => void;
+  proceedWithProviderInitialization: (
+    detectedProvider: ethers.providers.Web3Provider
+  ) => void;
 }
 
 export type ButtonVariants =
