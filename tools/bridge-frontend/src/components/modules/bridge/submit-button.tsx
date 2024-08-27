@@ -5,11 +5,11 @@ import ConnectWalletButton from "../common/connect-wallet";
 export const SubmitButton = ({
   walletConnected,
   loading,
-  fromTokenBalance,
+  tokenBalance,
 }: {
   walletConnected: boolean;
   loading: boolean;
-  fromTokenBalance: number;
+  tokenBalance: number;
 }) => {
   return (
     <div className="flex items-center justify-center mt-4">
@@ -18,7 +18,7 @@ export const SubmitButton = ({
           type="submit"
           className="text-sm font-bold leading-none w-full"
           size="lg"
-          disabled={loading || fromTokenBalance <= 0}
+          disabled={loading || tokenBalance <= 0}
         >
           {loading ? <Loader /> : "Initiate Bridge Transaction"}
         </Button>

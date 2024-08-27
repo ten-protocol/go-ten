@@ -28,6 +28,7 @@ import { TransferToSection } from "./transfer-to-section";
 import { bridgeSchema } from "@/src/schemas/bridge";
 import { handleStorage } from "@/src/lib/utils/walletUtils";
 import useWalletStore from "@/src/stores/wallet-store";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const {
@@ -40,7 +41,6 @@ export default function Dashboard() {
   } = useWalletStore();
   const { getNativeBalance, getTokenBalance, sendERC20, sendNative } =
     useContractService();
-  const intervalId = React.useRef<any>(null);
 
   const tokens = isL1ToL2 ? L1TOKENS : L2TOKENS;
   const fromChains = isL1ToL2 ? L1CHAINS : L2CHAINS;
@@ -65,12 +65,31 @@ export default function Dashboard() {
 
   const [fromChain, toChain, token, receiver, amount] = textValues;
 
-  const [fromTokenBalance, setFromTokenBalance] = React.useState<any>(0);
+  async function fetchTokenBalance(token: string, address: string) {
+    if (!token || !address) return null;
+
+    const selectedToken = tokens.find((t) => t.value === token);
+    if (!selectedToken) return null;
+
+    return selectedToken.isNative
+      ? await getNativeBalance(address)
+      : await getTokenBalance(selectedToken.address, address);
+  }
+
+  const { data } = useQuery({
+    queryKey: ["tokenBalance", token, address, fromChain],
+    queryFn: () => fetchTokenBalance(token, address),
+    enabled: !!token && !!address && !!fromChain && walletConnected,
+    refetchInterval: balancePollingInterval,
+  });
+
+  const tokenBalance = (data || 0.0) as number;
+
   const [open, setOpen] = React.useState(false);
 
   const onSubmit = React.useCallback(
     async (data: any) => {
-      if (amount > fromTokenBalance) {
+      if (amount > tokenBalance) {
         setError("amount", {
           type: "manual",
           message: "Amount must be less than balance",
@@ -118,7 +137,7 @@ export default function Dashboard() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [address, token, tokens, receiver, fromTokenBalance]
+    [address, token, tokens, receiver, tokenBalance]
   );
 
   const setAmount = React.useCallback(
@@ -130,11 +149,11 @@ export default function Dashboard() {
         });
         return;
       }
-      const amount = Math.floor(((fromTokenBalance * value) / 100) * 100) / 100;
+      const amount = Math.floor(((tokenBalance * value) / 100) * 100) / 100;
       setValue("amount", amount.toString());
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fromTokenBalance, token]
+    [tokenBalance, token]
   );
 
   const handleSwitchNetwork = React.useCallback(
@@ -163,48 +182,6 @@ export default function Dashboard() {
   }, [address]);
 
   React.useEffect(() => {
-    const fetchTokenBalance = async () => {
-      if (!token || !address) return;
-
-      try {
-        const selectedToken = tokens.find((t: IToken) => t.value === token);
-        if (!selectedToken) return;
-
-        const balance = selectedToken.isNative
-          ? await getNativeBalance(address)
-          : await getTokenBalance(selectedToken.address, address);
-
-        setFromTokenBalance(balance);
-      } catch (error) {
-        console.error("Failed to fetch balance:", error);
-      }
-    };
-
-    fetchTokenBalance();
-
-    intervalId.current = setInterval(() => {
-      fetchTokenBalance();
-    }, balancePollingInterval);
-
-    return () => {
-      if (intervalId.current) {
-        clearInterval(intervalId.current);
-      }
-    };
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    fromChain,
-    token,
-    amount,
-    receiver,
-    provider,
-    isL1ToL2,
-    walletConnected,
-    address,
-  ]);
-
-  React.useEffect(() => {
     setValue("fromChain", isL1ToL2 ? L1CHAINS[0].value : L2CHAINS[0].value);
     setValue("toChain", isL1ToL2 ? L2CHAINS[0].value : L1CHAINS[0].value);
     setValue("token", isL1ToL2 ? L1TOKENS[0].value : L2TOKENS[0].value);
@@ -229,7 +206,7 @@ export default function Dashboard() {
                 form={form}
                 fromChains={fromChains}
                 tokens={tokens}
-                fromTokenBalance={fromTokenBalance}
+                tokenBalance={tokenBalance}
                 loading={loading || formState.isSubmitting}
                 setAmount={setAmount}
                 walletConnected={walletConnected}
@@ -249,7 +226,7 @@ export default function Dashboard() {
               <SubmitButton
                 walletConnected={walletConnected}
                 loading={loading || formState.isSubmitting}
-                fromTokenBalance={fromTokenBalance}
+                tokenBalance={tokenBalance}
               />
             </form>
           </Form>

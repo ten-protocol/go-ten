@@ -11,7 +11,7 @@ export const TransferFromSection = ({
   form,
   fromChains,
   tokens,
-  fromTokenBalance,
+  tokenBalance,
   loading,
   setAmount,
   walletConnected,
@@ -19,7 +19,7 @@ export const TransferFromSection = ({
   form: ReturnType<typeof useCustomHookForm>;
   fromChains: IChain[];
   tokens: IToken[];
-  fromTokenBalance: string;
+  tokenBalance: number;
   loading: boolean;
   setAmount: (value: number) => void;
   walletConnected: boolean;
@@ -36,7 +36,7 @@ export const TransferFromSection = ({
           <div className="pl-2">
             <p className="text-sm text-muted-foreground">Balance:</p>
             <strong className="text-lg float-right word-wrap">
-              {loading ? <Skeleton /> : fromTokenBalance || "0.00"}
+              {loading ? <Skeleton /> : tokenBalance || "0.00"}
             </strong>
           </div>
         </div>
