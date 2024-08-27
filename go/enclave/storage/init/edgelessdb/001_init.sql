@@ -83,7 +83,8 @@ create table if not exists obsdb.batch
     INDEX USING HASH (hash),
     INDEX USING HASH (l1_proof_hash),
     INDEX (l1_proof),
-    INDEX (height)
+    INDEX (height),
+    INDEX (is_canonical, is_executed, height)
 );
 GRANT ALL ON obsdb.batch TO obscuro;
 
