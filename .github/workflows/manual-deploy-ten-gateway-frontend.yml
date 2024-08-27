@@ -15,16 +15,74 @@ on:
           - 'dev-testnet'
           - 'uat-testnet'
           - 'sepolia-testnet'
+      instance_type:
+        description: 'Instance'
+        required: true
+        default: 'primary'
+        type: choice
+        options:
+          - 'primary'
+          - 'dexynth'
 jobs:
+  validate-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Check if deployment is allowed'
+        run: |
+          if [[ "${{ github.event.inputs.instance_type }}" == "dexynth" && "${{ github.event.inputs.testnet_type }}" != "sepolia-testnet" ]]; then
+            echo "Error: Dexynth can only be deployed to sepolia-testnet."
+            exit 1
+          fi
   build-and-deploy:
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
+      - name: 'Set up environment variables'
+        id: setup_env
+        run: |
+          INSTANCE_SUFFIX=""
+          INSTANCE_PREFIX=""
+          
+          if [[ "${{ github.event.inputs.instance_type }}" != "primary" ]]; then
+            INSTANCE_SUFFIX="-${{ github.event.inputs.instance_type }}"
+            INSTANCE_PREFIX="${{ github.event.inputs.instance_type }}-"
+          fi
+          
+          echo "INSTANCE_SUFFIX=$INSTANCE_SUFFIX" >> $GITHUB_ENV
+          echo "INSTANCE_PREFIX=$INSTANCE_PREFIX" >> $GITHUB_ENV
+          
+      
+          DNS_NAME_LABEL_GATEWAY_FE="${{ github.event.inputs.testnet_type }}-ten-gateway${INSTANCE_SUFFIX}"
+          IMAGE_NAME_GATEWAY_FE="${{ github.event.inputs.testnet_type }}-fe-ten-gateway${INSTANCE_SUFFIX}"
+          
+          echo "DNS_NAME_LABEL_GATEWAY_FE=$DNS_NAME_LABEL_GATEWAY_FE" >> $GITHUB_ENV
+          echo "IMAGE_NAME_GATEWAY_FE=$IMAGE_NAME_GATEWAY_FE" >> $GITHUB_ENV
+          
+          # Set instance-specific variables
+          declare -a VAR_NAMES=(
+            "DOCKER_BUILD_TAG_GATEWAY_FE"
+            "GATEWAY_URL"
+          )
+          
+          for VAR_NAME in "${VAR_NAMES[@]}"; do
+            FULL_VAR_NAME="${INSTANCE_PREFIX}${VAR_NAME}"
+            VAR_VALUE=$(jq -r --arg key "$FULL_VAR_NAME" '.[$key] // empty' <<< '${{ toJson(vars) }}')
+            if [[ -n "$VAR_VALUE" ]]; then
+              echo "${VAR_NAME}=${VAR_VALUE}" >> $GITHUB_ENV
+            else
+              echo "Warning: ${FULL_VAR_NAME} not found in vars" >&2
+            fi
+          done
+          
       - name: 'Print GitHub variables'
         run: |
-          echo "Selected Testnet Type: ${{ matrix.testnet_type }}"
-          echo "Gateway API URL: ${{ vars.GATEWAY_URL }}"
+          echo "Selected Testnet Type: ${{ github.event.inputs.testnet_type }}"
+          echo "Selected Instance Type: ${{ github.event.inputs.instance_type }}"
+          echo "DNS_NAME_LABEL_GATEWAY_FE: $DNS_NAME_LABEL_GATEWAY_FE"
+          echo "IMAGE_NAME_GATEWAY_FE: $IMAGE_NAME_GATEWAY_FE"
+          echo "DOCKER_BUILD_TAG_GATEWAY_FE: $DOCKER_BUILD_TAG_GATEWAY_FE"
+          echo "GATEWAY_URL: $GATEWAY_URL"
 
       - uses: actions/checkout@v4
 
@@ -51,16 +109,16 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          DOCKER_BUILDKIT=1 docker build --build-arg GATEWAY_API_URL=${{ vars.GATEWAY_URL }} -t ${{ vars.DOCKER_BUILD_TAG_GATEWAY_FE }} -f ./tools/walletextension/frontend/Dockerfile .
-          docker push ${{ vars.DOCKER_BUILD_TAG_GATEWAY_FE }}
+          DOCKER_BUILDKIT=1 docker build --build-arg GATEWAY_API_URL=${{ env.GATEWAY_URL }} -t ${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }} -f ./tools/walletextension/frontend/Dockerfile .
+          docker push ${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}
 
       - name: "Deploy Gateway FE to Azure Container Instances"
         uses: "azure/aci-deploy@v1"
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
-          dns-name-label: ${{ github.event.inputs.testnet_type }}-ten-gateway
-          image: ${{ vars.DOCKER_BUILD_TAG_GATEWAY_FE }}
-          name: ${{ github.event.inputs.testnet_type }}-fe-ten-gateway
+          dns-name-label: ${{ env.DNS_NAME_LABEL_GATEWAY_FE }}
+          image: ${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}
+          name: ${{ env.IMAGE_NAME_GATEWAY_FE }}
           location: "uksouth"
           restart-policy: "Never"
           ports: "80"
