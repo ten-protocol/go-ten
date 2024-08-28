@@ -27,7 +27,7 @@ const (
 )
 
 const (
-	timeoutWait   = 80 * time.Second
+	timeoutWait   = 120 * time.Second
 	retryInterval = 2 * time.Second
 	Prealloc      = 2_050_000_000_000_000_000 // The amount preallocated to the contract deployer wallet.
 )

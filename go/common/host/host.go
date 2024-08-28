@@ -30,8 +30,8 @@ type Host interface {
 	// HealthCheck returns the health status of the host + enclave + db
 	HealthCheck(context.Context) (*HealthCheck, error)
 
-	// ObscuroConfig returns the info of the Obscuro network
-	ObscuroConfig() (*common.ObscuroNetworkInfo, error)
+	// TenConfig returns the info of the Obscuro network
+	TenConfig() (*common.TenNetworkInfo, error)
 
 	// NewHeadsChan returns live batch headers
 	// Note - do not use directly. This is meant only for the NewHeadsManager, which multiplexes the headers

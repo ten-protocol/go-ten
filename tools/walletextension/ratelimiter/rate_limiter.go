@@ -21,6 +21,7 @@ type RequestInterval struct {
 // RateLimitUser represents a user with a map of current requests.
 type RateLimitUser struct {
 	CurrentRequests map[uuid.UUID]RequestInterval
+	mu              sync.RWMutex
 }
 
 // zeroUUID is a zero UUID returned when no new request is added.
@@ -28,50 +29,69 @@ var zeroUUID uuid.UUID
 
 // AddRequest adds a new request interval to a user's current requests and returns the UUID.
 func (rl *RateLimiter) AddRequest(userID common.Address, interval RequestInterval) uuid.UUID {
+	// If the userComputeTime is 0, do nothing (rate limiting is disabled)
+	if rl.GetUserComputeTime() == 0 {
+		return zeroUUID
+	}
 	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
 	user, exists := rl.users[userID]
 	if !exists {
 		user = &RateLimitUser{
 			CurrentRequests: make(map[uuid.UUID]RequestInterval),
+			mu:              sync.RWMutex{},
 		}
 		rl.users[userID] = user
 	}
+	rl.mu.Unlock()
+
 	id := uuid.New()
+	user.mu.Lock()
 	user.CurrentRequests[id] = interval
+	user.mu.Unlock()
+
 	return id
 }
 
 // SetRequestEnd updates the end time of a request interval given its UUID.
 func (rl *RateLimiter) SetRequestEnd(userID common.Address, id uuid.UUID) {
-	if user, userExists := rl.users[userID]; userExists {
+	// If the userComputeTime is 0, do nothing (rate limiting is disabled)
+	if rl.GetUserComputeTime() == 0 {
+		return
+	}
+
+	rl.mu.RLock()
+	user, userExists := rl.users[userID]
+	rl.mu.RUnlock()
+
+	if userExists {
+		user.mu.Lock()
 		if request, requestExists := user.CurrentRequests[id]; requestExists {
-			rl.mu.Lock()
-			defer rl.mu.Unlock()
 			now := time.Now()
 			request.End = &now
 			user.CurrentRequests[id] = request
 		} else {
-			rl.logger.Info("Request with ID %s not found for user %s.", id, userID.Hex())
+			rl.logger.Info("Request with ID  not found for user.", "id", id, "user", userID)
 		}
+		user.mu.Unlock()
 	} else {
-		rl.logger.Info("User %s not found while trying to update the request.", userID.Hex())
+		rl.logger.Info("User not found while trying to update the request.", "user", userID)
 	}
 }
 
 // CountOpenRequests counts the number of requests without an End time set.
 func (rl *RateLimiter) CountOpenRequests(userID common.Address) int {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
 
 	var count int
 	if user, exists := rl.users[userID]; exists {
+		user.mu.RLock()
 		for _, interval := range user.CurrentRequests {
 			if interval.End == nil {
 				count++
 			}
 		}
+		user.mu.RUnlock()
 	}
 	return count
 }
@@ -84,6 +104,9 @@ func (rl *RateLimiter) SumComputeTime(userID common.Address) time.Duration {
 
 	var totalComputeTime time.Duration
 	if user, exists := rl.users[userID]; exists {
+		user.mu.RLock() // lock the user to prevent changes while reading
+		defer user.mu.RUnlock()
+
 		cutoff := time.Now().Add(-rl.window)
 		for _, interval := range user.CurrentRequests {
 			// if the request has ended and it's within the window, add the compute time
@@ -100,7 +123,7 @@ func (rl *RateLimiter) SumComputeTime(userID common.Address) time.Duration {
 }
 
 type RateLimiter struct {
-	mu                    sync.Mutex
+	mu                    sync.RWMutex
 	users                 map[common.Address]*RateLimitUser
 	userComputeTime       time.Duration
 	window                time.Duration
@@ -126,15 +149,15 @@ func (rl *RateLimiter) IncrementRateLimitedRequests() {
 
 // GetMaxConcurrentRequest returns the maximum number of concurrent requests allowed.
 func (rl *RateLimiter) GetMaxConcurrentRequest() uint32 {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
 	return rl.maxConcurrentRequests
 }
 
 // GetUserComputeTime returns the user compute time
 func (rl *RateLimiter) GetUserComputeTime() time.Duration {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
 	return rl.userComputeTime
 }
 
@@ -146,8 +169,13 @@ func NewRateLimiter(rateLimitUserComputeTime time.Duration, rateLimitWindow time
 		maxConcurrentRequests: concurrentRequestsLimit,
 		logger:                logger,
 	}
-	go rl.logRateLimitedStats()
-	go rl.periodicPrune()
+
+	// If the userComputeTime is 0 (rate limiting is disabled) we don't need to prune and log rate limited stats
+	if rl.GetUserComputeTime() != 0 {
+		go rl.logRateLimitedStats()
+		go rl.periodicPrune()
+	}
+
 	return rl
 }
 
@@ -188,6 +216,7 @@ func (rl *RateLimiter) PruneRequests() {
 	// delete all the requests that have
 	cutoff := time.Now().Add(-rl.window)
 	for userID, user := range rl.users {
+		user.mu.Lock()
 		for id, interval := range user.CurrentRequests {
 			if interval.End != nil && interval.End.Before(cutoff) {
 				delete(user.CurrentRequests, id)
@@ -196,6 +225,7 @@ func (rl *RateLimiter) PruneRequests() {
 		if len(user.CurrentRequests) == 0 {
 			delete(rl.users, userID)
 		}
+		user.mu.Unlock()
 	}
 	timeTaken := time.Since(startTime)
 	if timeTaken > 1*time.Second {
@@ -203,10 +233,10 @@ func (rl *RateLimiter) PruneRequests() {
 	}
 }
 
-// periodically prunes the requests that have ended before the rate limiter's window every 10 * window milliseconds
+// periodically prunes the requests that have ended before the rate limiter's window milliseconds
 func (rl *RateLimiter) periodicPrune() {
 	for {
-		time.Sleep(rl.window * 10)
+		time.Sleep(rl.window / 2)
 		rl.PruneRequests()
 	}
 }

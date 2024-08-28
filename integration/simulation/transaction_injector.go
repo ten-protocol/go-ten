@@ -176,7 +176,7 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
-		obscuroClient := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
+		tenClient := ti.rpcHandles.TenWalletRndClient(fromWallet)
 		// We avoid transfers to self, unless there is only a single L2 wallet.
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
@@ -190,7 +190,7 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 			To:       &toWalletAddr,
 		}
 
-		tx := obscuroClient.EstimateGasAndGasPrice(txData)
+		tx := tenClient.EstimateGasAndGasPrice(txData)
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -199,7 +199,7 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 
 		ti.stats.NativeTransfer()
 
-		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
+		err = tenClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
 			continue
@@ -217,13 +217,13 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
-		obscuroClient := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
+		tenClient := ti.rpcHandles.TenWalletRndClient(fromWallet)
 		// We avoid transfers to self, unless there is only a single L2 wallet.
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500), testcommon.HOC)
-		tx = obscuroClient.EstimateGasAndGasPrice(tx)
+		tx := ti.newTenTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500), testcommon.HOC)
+		tx = tenClient.EstimateGasAndGasPrice(tx)
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -232,7 +232,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 		ti.stats.Transfer()
 
-		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
+		err = tenClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
 		}
@@ -297,10 +297,10 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		}
 		fromWallet := ti.wallets.Tokens[fromWalletToken].L2Owner
 		toWallet := ti.rndObsWallet()
-		obscuroClient := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
+		tenClient := ti.rpcHandles.TenWalletRndClient(fromWallet)
 		v := testcommon.RndBtw(500, 2000)
-		txData := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), v, fromWalletToken)
-		tx := obscuroClient.EstimateGasAndGasPrice(txData)
+		txData := ti.newTenTransferTx(fromWallet, toWallet.Address(), v, fromWalletToken)
+		tx := tenClient.EstimateGasAndGasPrice(txData)
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -309,7 +309,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 
 		ti.stats.Deposit(big.NewInt(int64(v)))
 
-		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
+		err = tenClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue deposit via RPC.", log.ErrKey, err)
 		} else {
@@ -327,18 +327,18 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	err := testcommon.AwaitReceipt(ti.ctx, ti.rpcHandles.ObscuroWalletRndClient(fromWallet), tx.Hash(), 30*time.Second)
+	err := testcommon.AwaitReceipt(ti.ctx, ti.rpcHandles.TenWalletRndClient(fromWallet), tx.Hash(), 45*time.Second)
 	if err != nil {
 		ti.logger.Error("Failed to await receipt for withdrawal transaction", log.ErrKey, err)
 		return
 	}
 
-	receipt, err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).TransactionReceipt(ti.ctx, tx.Hash())
+	receipt, err := ti.rpcHandles.TenWalletRndClient(fromWallet).TransactionReceipt(ti.ctx, tx.Hash())
 	if err != nil {
 		ti.logger.Error("Failed to retrieve receipt for withdrawal transaction", log.ErrKey, err)
 		return
 	}
-	header, err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).GetBatchHeaderByHash(receipt.BlockHash)
+	header, err := ti.rpcHandles.TenWalletRndClient(fromWallet).GetBatchHeaderByHash(receipt.BlockHash)
 	if err != nil {
 		ti.logger.Error("Failed to retrieve batch header for withdrawal transaction", log.ErrKey, err)
 		return
@@ -451,7 +451,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
-		client := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
+		client := ti.rpcHandles.TenWalletRndClient(fromWallet)
 		price, err := client.GasPrice(ti.ctx)
 		if err != nil {
 			ti.logger.Error("unable to estimate gas price", log.ErrKey, err)
@@ -498,12 +498,12 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		txData := ti.newCustomObscuroWithdrawalTx(testcommon.RndBtw(1, 100))
+		txData := ti.newCustomTenWithdrawalTx(testcommon.RndBtw(1, 100))
 
-		tx := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).EstimateGasAndGasPrice(txData)
+		tx := ti.rpcHandles.TenWalletRndClient(fromWallet).EstimateGasAndGasPrice(txData)
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
 
-		err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).SendTransaction(ti.ctx, signedTx)
+		err := ti.rpcHandles.TenWalletRndClient(fromWallet).SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue withdrawal via RPC. ", log.ErrKey, err)
 		}
@@ -530,12 +530,12 @@ func (ti *TransactionInjector) rndObsWallet() wallet.Wallet {
 	return ti.wallets.SimObsWallets[rand.Intn(len(ti.wallets.SimObsWallets))] //nolint:gosec
 }
 
-func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64, ercType testcommon.ERC20) types.TxData {
+func (ti *TransactionInjector) newTenTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64, ercType testcommon.ERC20) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, common.ValueInWei(big.NewInt(int64(amount))))
 	return ti.newTx(data, from.GetNonceAndIncrement(), ercType)
 }
 
-func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types.TxData {
+func (ti *TransactionInjector) newCustomTenWithdrawalTx(amount uint64) types.TxData {
 	transferERC20data := erc20contractlib.CreateTransferTxData(testcommon.BridgeAddress, common.ValueInWei(big.NewInt(int64(amount))))
 	return ti.newTx(transferERC20data, 1, testcommon.HOC)
 }

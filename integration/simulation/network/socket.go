@@ -25,16 +25,16 @@ import (
 	"github.com/ten-protocol/go-ten/integration/simulation/stats"
 )
 
-// creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
+// creates Ten nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkOfSocketNodes struct {
 	l2Clients         []rpc.Client
 	hostWebsocketURLs []string
 
 	// geth
-	eth2Network    eth2network.Eth2Network
-	gethClients    []ethadapter.EthClient
-	wallets        *params.SimWallets
-	obscuroClients []*obsclient.ObsClient
+	eth2Network eth2network.PosEth2Network
+	gethClients []ethadapter.EthClient
+	wallets     *params.SimWallets
+	tenClients  []*obsclient.ObsClient
 }
 
 func NewNetworkOfSocketNodes(wallets *params.SimWallets) Network {
@@ -49,7 +49,6 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		n.wallets,
 		simParams.StartPort,
 		simParams.NumberOfNodes,
-		int(simParams.AvgBlockDuration.Seconds()),
 	)
 
 	simParams.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&simParams.L1TenData.MgmtContractAddress, testlog.Logger())
@@ -109,7 +108,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithLogLevel(4),
 				node.WithDebugNamespaceEnabled(true),
 				node.WithL1BlockTime(simParams.AvgBlockDuration),
-				node.WithObscuroGenesis(genesis),
+				node.WithTenGenesis(genesis),
 			),
 		)
 
@@ -120,8 +119,8 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 			if errCheck != nil {
 				testlog.Logger().Warn("no port found on error", log.ErrKey, err)
 			}
-			fmt.Printf("unable to start obscuro node: %s", err)
-			testlog.Logger().Error("unable to start obscuro node ", log.ErrKey, err)
+			fmt.Printf("unable to start Ten node: %s", err)
+			testlog.Logger().Error("unable to start Ten node ", log.ErrKey, err)
 		}
 	}
 
@@ -134,15 +133,15 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 
 	return &RPCHandles{
 		EthClients:     n.gethClients,
-		ObscuroClients: n.obscuroClients,
+		TenClients:     n.tenClients,
 		RPCClients:     n.l2Clients,
 		AuthObsClients: walletClients,
 	}, nil
 }
 
 func (n *networkOfSocketNodes) TearDown() {
-	// Stop the Obscuro nodes first (each host will attempt to shut down its enclave as part of shutdown).
-	StopObscuroNodes(n.l2Clients)
+	// Stop the Ten nodes first (each host will attempt to shut down its enclave as part of shutdown).
+	StopTenNodes(n.l2Clients)
 	StopEth2Network(n.gethClients, n.eth2Network)
 	CheckHostRPCServersStopped(n.hostWebsocketURLs)
 }
@@ -151,7 +150,7 @@ func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) er
 	// create the clients in the structs
 	n.l2Clients = make([]rpc.Client, simParams.NumberOfNodes)
 	n.hostWebsocketURLs = make([]string, simParams.NumberOfNodes)
-	n.obscuroClients = make([]*obsclient.ObsClient, simParams.NumberOfNodes)
+	n.tenClients = make([]*obsclient.ObsClient, simParams.NumberOfNodes)
 
 	for i := 0; i < simParams.NumberOfNodes; i++ {
 		var client rpc.Client
@@ -175,11 +174,11 @@ func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) er
 	}
 
 	for idx, l2Client := range n.l2Clients {
-		n.obscuroClients[idx] = obsclient.NewObsClient(l2Client)
+		n.tenClients[idx] = obsclient.NewObsClient(l2Client)
 	}
 
 	// make sure the nodes are healthy
-	for _, client := range n.obscuroClients {
+	for _, client := range n.tenClients {
 		startTime := time.Now()
 		healthy := false
 		for ; !healthy; time.Sleep(500 * time.Millisecond) {

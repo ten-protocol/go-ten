@@ -172,7 +172,7 @@ func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p
 		rpcServer.RegisterAPIs([]rpc.API{
 			{
 				Namespace: APINamespaceObscuro,
-				Service:   clientapi.NewObscuroAPI(h),
+				Service:   clientapi.NewTenAPI(h),
 			},
 			{
 				Namespace: APINamespaceEth,

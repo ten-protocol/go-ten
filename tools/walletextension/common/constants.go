@@ -15,7 +15,6 @@ const (
 )
 
 const (
-	PathStatic                    = "/static/"
 	PathReady                     = "/ready/"
 	PathJoin                      = "/join/"
 	PathGetMessage                = "/getmessage/"
@@ -24,6 +23,7 @@ const (
 	PathRevoke                    = "/revoke/"
 	PathHealth                    = "/health/"
 	PathNetworkHealth             = "/network-health/"
+	PathNetworkConfig             = "/network-config/"
 	WSProtocol                    = "ws://"
 	HTTPProtocol                  = "http://"
 	EncryptedTokenQueryParameter  = "token"
