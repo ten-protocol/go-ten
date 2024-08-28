@@ -15,6 +15,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
+	"google.golang.org/grpc/status"
 )
 
 type (
@@ -121,13 +122,13 @@ func (c *crossChainStateMachine) PublishNextBundle() error {
 	}
 
 	bundle, err := c.enclaveClient.ExportCrossChainData(context.Background(), begin.Uint64(), end.Uint64())
-	if err != nil && !errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
+	if err != nil {
+		s, ok := status.FromError(err)
+		if ok && errors.Is(s.Err(), errutil.ErrCrossChainBundleNoBatches) {
+			c.currentRollup++
+			return nil
+		}
 		return err
-	} else if err != nil && errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
-		// If there are no cannonical batches for this rollup, move to the next rollup.
-		// In case a fork happens it will be revisited under different forkID produced from the management contract.
-		c.currentRollup++
-		return nil
 	}
 
 	alreadyPublished, err := c.IsBundleAlreadyPublished(bundle)
