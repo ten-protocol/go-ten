@@ -127,13 +127,13 @@ const estimateGasWithTimeout = async (
   msg: (string | ethers.BigNumber)[],
   proof: string[],
   root: string,
-  timeout = 30000,
+  timeout = 10000,
   interval = 5000
 ) => {
   let gasLimit: ethers.BigNumber | null = null;
   const startTime = Date.now();
-  showToast(ToastType.INFO, "Estimating gas for the transaction");
   while (!gasLimit) {
+    showToast(ToastType.INFO, "Estimating gas for value transfer");
     try {
       gasLimit = await managementContract.estimateGas.ExtractNativeValue(
         msg,

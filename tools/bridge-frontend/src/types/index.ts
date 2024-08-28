@@ -138,17 +138,16 @@ export interface WalletConnectionProviderProps {
 }
 
 export enum L1Network {
-  MAINNET = "0x1",
-  SEPOLIA = "0xaa36a7",
-  UAT = "0x539",
-  DEV = "0x539",
+  MAINNET = 1,
+  SEPOLIA = 11155111,
+  UAT = 1337,
+  DEV = 1337,
 }
 
 export enum L2Network {
-  TEN_TESTNET = "0x1bb",
-  SEPOLIA = "0x1bb",
-  UAT = "0x1bb",
-  DEV = "0x1bb",
+  SEPOLIA = 443,
+  UAT = 443,
+  DEV = 443,
 }
 
 export type Environment = "uat-testnet" | "sepolia-testnet" | "dev-testnet";

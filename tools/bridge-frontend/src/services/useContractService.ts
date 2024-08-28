@@ -16,6 +16,7 @@ import {
 } from "../lib/utils/contractUtils";
 import { isAddress } from "ethers/lib/utils";
 import { showToast } from "../components/ui/use-toast";
+import { L1_NETWORK_URL } from "../lib/constants";
 
 export const useContractService = () => {
   const { signer, isL1ToL2, provider, address } = useWalletStore();
@@ -36,6 +37,7 @@ export const useContractService = () => {
     return networkConfig;
   }, [networkConfig, isNetworkConfigLoading]);
 
+  const l1Provider = new ethers.providers.JsonRpcProvider(L1_NETWORK_URL);
   const initializeContracts = async () => {
     if (!memoizedConfig || !provider) return;
 
@@ -64,7 +66,7 @@ export const useContractService = () => {
     const managementContract = new ethers.Contract(
       ManagementContractAddress,
       ManagementContractAbi,
-      signer
+      l1Provider.getSigner()
     );
 
     setContractState({
@@ -152,12 +154,13 @@ export const useContractService = () => {
           tree.root,
           { gasPrice, gasLimit }
         );
+      console.log("🚀 ~ sendNative ~ txL1:", txL1);
 
       if (!txL1) {
         throw new Error("Failed to populate transaction");
       }
-
-      const responseL1 = await signer.sendTransaction(txL1);
+      const responseL1 = await l1Provider.getSigner().sendTransaction(txL1);
+      console.log("🚀 ~ sendNative ~ responseL1:", responseL1);
 
       showToast(
         ToastType.INFO,

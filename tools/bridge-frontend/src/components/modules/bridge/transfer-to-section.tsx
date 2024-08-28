@@ -1,4 +1,3 @@
-import { useState, useEffect, useCallback } from "react";
 import { PlusIcon } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Skeleton } from "../../ui/skeleton";
@@ -7,11 +6,10 @@ import { ChainSelect } from "./chain-select";
 import { IChain } from "@/src/types";
 import { isAddress } from "ethers/lib/utils";
 import useCustomHookForm from "@/src/hooks/useCustomHookForm";
-import { useContractService } from "@/src/services/useContractService";
 import { ethers } from "ethers";
 import useContractStore from "@/src/stores/contract-store";
-import { cn } from "@/src/lib/utils";
 import { estimateGas } from "@/src/lib/utils/contractUtils";
+import { useQuery } from "@tanstack/react-query";
 
 export const TransferToSection = ({
   form,
@@ -29,56 +27,30 @@ export const TransferToSection = ({
   setOpen: (open: boolean) => void;
 }) => {
   const { bridgeContract } = useContractStore();
-  const [gas, setGas] = useState<string | null>(null);
-  const [isEstimating, setIsEstimating] = useState(false);
-  const [message, setMessage] = useState<{
-    type: "error" | "info";
-    message: string;
-  }>({
-    type: "info",
-    message: "",
-  });
 
-  const estimateGasFee = useCallback(async () => {
-    if (!bridgeContract || !estimateGas) return;
+  const fetchGasEstimate = async () => {
     const amount = form.watch("amount");
 
     if (!receiver) {
-      return setMessage({
-        type: "info",
-        message: "Enter receiver address.",
-      });
+      throw new Error("Enter receiver address.");
     }
 
     if (!amount) {
-      return setMessage({
-        type: "info",
-        message: "Enter amount to estimate gas fee.",
-      });
+      throw new Error("Enter amount to estimate gas fee.");
     }
 
-    try {
-      const gasEstimate = await estimateGas(receiver, amount, bridgeContract);
-      setGas(ethers.utils.formatEther(gasEstimate));
-      setMessage({
-        type: "info",
-        message: "",
-      });
-    } catch (err) {
-      console.error("Error estimating gas:", err);
-      setMessage({
-        type: "error",
-        message: "Error estimating gas.",
-      });
-    } finally {
-      setIsEstimating(false);
+    if (!bridgeContract) {
+      throw new Error("Bridge contract is not available.");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [receiver, form, estimateGas]);
 
-  useEffect(() => {
-    estimateGasFee();
-  }, [estimateGasFee]);
+    return await estimateGas(receiver, amount, bridgeContract);
+  };
+
+  const { data: gasEstimate, isLoading: isEstimating } = useQuery({
+    queryKey: ["gasEstimate", receiver, form.watch("amount")],
+    queryFn: fetchGasEstimate,
+    enabled: !!receiver && !!form.watch("amount"),
+  });
 
   return (
     <div>
@@ -108,13 +80,11 @@ export const TransferToSection = ({
             <p className="text-sm text-muted-foreground">Est. Gas Fee</p>
             {isEstimating ? (
               <Skeleton />
-            ) : message?.message ? (
-              <span className={cn("text-sm", "text" + message.type)}>
-                {message.message}
-              </span>
             ) : (
               <span className="text-lg font-bold">
-                {gas ? `${gas}` : "0.00"} ETH
+                {gasEstimate
+                  ? `${ethers.utils.formatEther(gasEstimate)} ETH`
+                  : "0.00 ETH"}
               </span>
             )}
           </div>

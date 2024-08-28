@@ -40,6 +40,10 @@ export const getOptions = (query: {
 export const GOOGLE_ANALYTICS_ID =
   process.env.NEXT_PUBLIC_BRIDGE_GOOGLE_ANALYTICS_ID;
 
+export const INFURA_KEY = process.env.NEXT_PUBLIC_BRIDGE_INFURA_KEY;
+
+export const L1_NETWORK_URL = `http://${environment}-eth2network.uksouth.cloudapp.azure.com:8545`;
+
 export const L1CHAINS = [
   {
     name: "Ethereum",

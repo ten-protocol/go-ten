@@ -36,14 +36,23 @@ export const networkMappings = {
   "uat-testnet": {
     l1: L1Network.UAT,
     l2: L2Network.UAT,
+    l1Rpc: "http://uat-testnet-eth2network.uksouth.cloudapp.azure.com:8045",
+    l1Explorer: "https://uat-testnet-tenscan.io",
+    l2Gateway: "https://uat-testnet.ten.xyz",
   },
   "sepolia-testnet": {
     l1: L1Network.SEPOLIA,
     l2: L2Network.SEPOLIA,
+    l1Rpc: "https://mainnet.infura.io/v3/",
+    l1Explorer: "https://sepolia.etherscan.io",
+    l2Gateway: "https://sepolia-testnet.ten.xyz",
   },
   "dev-testnet": {
     l1: L1Network.DEV,
     l2: L2Network.DEV,
+    l1Rpc: "http://dev-testnet-eth2network.uksouth.cloudapp.azure.com:8045",
+    l1Explorer: "https://dev-testnet-tenscan.io",
+    l2Gateway: "https://dev-testnet.ten.xyz",
   },
 };
 

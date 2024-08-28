@@ -12,6 +12,7 @@ import {
 } from "@/src/lib/utils/walletEvents";
 import { currentNetwork } from "@/src/lib/utils";
 import { ethers } from "ethers";
+import { environment } from "../lib/constants";
 
 const useWalletStore = create<IWalletState>((set, get) => ({
   provider: null,
@@ -54,7 +55,10 @@ const useWalletStore = create<IWalletState>((set, get) => ({
     detectedProvider: ethers.providers.Web3Provider
   ) => {
     const newSigner = initializeSigner(detectedProvider);
-    const chainId = await detectedProvider.send(requestMethods.getChainId, []);
+    const chainId = await detectedProvider
+      .getNetwork()
+      .then((network) => network.chainId);
+
     const isL1 = chainId === currentNetwork.l1;
     const expectedChainId = isL1 ? currentNetwork.l1 : currentNetwork.l2;
 
@@ -154,7 +158,9 @@ const useWalletStore = create<IWalletState>((set, get) => ({
 
     set({ loading: true });
 
-    const desiredNetwork = isL1ToL2 ? currentNetwork.l2 : currentNetwork.l1;
+    const desiredNetwork = ethers.utils.hexValue(
+      isL1ToL2 ? currentNetwork.l2 : currentNetwork.l1
+    );
 
     try {
       await provider?.send(requestMethods.switchNetwork, [
@@ -177,6 +183,29 @@ const useWalletStore = create<IWalletState>((set, get) => ({
           description: error.message || "Network not found in wallet",
           variant: ToastType.INFO,
         });
+        if (isL1ToL2) {
+          toast({
+            title: "Network not found",
+            description: "Redirecting to TEN Gateway...",
+            variant: ToastType.INFO,
+          });
+          return window.open(currentNetwork.l2Gateway, "_blank");
+        }
+
+        const networkConfig = {
+          chainId: desiredNetwork,
+          rpcUrls: [currentNetwork.l1Rpc],
+          chainName: environment,
+          nativeCurrency: {
+            name: "ETH",
+            symbol: "ETH",
+            decimals: 18,
+          },
+          blockExplorerUrls: [currentNetwork.l1Explorer],
+        };
+        console.log("🚀 ~ switchNetwork: ~ networkConfig:", networkConfig);
+
+        await provider?.send(requestMethods.addNetwork, [networkConfig]);
       } else {
         toast({
           title: "Error",
