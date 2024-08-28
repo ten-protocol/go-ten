@@ -121,8 +121,13 @@ func (c *crossChainStateMachine) PublishNextBundle() error {
 	}
 
 	bundle, err := c.enclaveClient.ExportCrossChainData(context.Background(), begin.Uint64(), end.Uint64())
-	if err != nil {
+	if err != nil && !errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
 		return err
+	} else if err != nil && errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
+		// If there are no cannonical batches for this rollup, move to the next rollup.
+		// In case a fork happens it will be revisited under different forkID produced from the management contract.
+		c.currentRollup++
+		return nil
 	}
 
 	alreadyPublished, err := c.IsBundleAlreadyPublished(bundle)
@@ -178,6 +183,7 @@ func (c *crossChainStateMachine) Synchronize() error {
 		Number:  c.latestRollup.Number + 1,
 	}
 
+	c.logger.Info("Synchronized rollup state machine", "latestRollup", c.latestRollup.Number, "forkUID", c.latestRollup.ForkUID.String())
 	return nil
 }
 

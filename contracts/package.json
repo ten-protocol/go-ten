@@ -10,7 +10,6 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@nomicfoundation/hardhat-ethers": "^3.0.6",
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
     "@openzeppelin/hardhat-upgrades": "^3.0.0",
     "@solidstate/hardhat-bytecode-exporter": "^1.1.1",
@@ -31,6 +30,6 @@
   },
   "peerDependencies": {
     "@nomicfoundation/hardhat-verify" : "2.0.8",
-    "@nomicfoundation/hardhat-ethers":"3.0.6"
+    "@nomicfoundation/hardhat-ethers":"3.0.5"
   }
 }
