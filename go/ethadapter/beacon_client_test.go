@@ -5,12 +5,9 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/common"
 )
-
-const spareBlobBits = 6 // = math.floor(math.log2(BLS_MODULUS)) % 8
 
 func TestBlobsFromSidecars(t *testing.T) {
 	indices := []uint64{5, 7, 2}
@@ -132,27 +129,6 @@ func makeTestBlobSidecar(index uint64) (IndexedBlobHash, *BlobSidecar) {
 		KZGProof:      Bytes48(proof),
 	}
 	return idh, &sidecar
-}
-
-// Function to encode data into blobs
-func encodeBlobs(data []byte) []kzg4844.Blob {
-	blobs := []kzg4844.Blob{{}}
-	blobIndex := 0
-	fieldIndex := -1
-	for i := 0; i < len(data); i += 31 {
-		fieldIndex++
-		if fieldIndex == params.BlobTxFieldElementsPerBlob {
-			blobs = append(blobs, kzg4844.Blob{})
-			blobIndex++
-			fieldIndex = 0
-		}
-		max := i + 31
-		if max > len(data) {
-			max = len(data)
-		}
-		copy(blobs[blobIndex][fieldIndex*32+1:], data[i:max])
-	}
-	return blobs
 }
 
 func createRollup(lastBatch int64) common.ExtRollup {
