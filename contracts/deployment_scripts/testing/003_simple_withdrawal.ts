@@ -29,7 +29,7 @@ async function sleep(ms: number) {
       setTimeout(resolve, ms);
     });
 }
-async function waitForRootPublished(management, msg, proof, root, provider: EthereumProvider, interval = 5000, timeout = 90000) {
+async function waitForRootPublished(management, msg, proof, root, provider: EthereumProvider, interval = 5000, timeout = 120000) {
     var gas_estimate = null
     const l1Ethers = new HardhatEthersProvider(provider, "layer1")    
 
@@ -47,7 +47,7 @@ async function waitForRootPublished(management, msg, proof, root, provider: Ethe
             console.log(`Timed out waiting for the estimate gas to return`)
             break
         }
-        await sleep(1_000)
+        await sleep(interval)
     }
     console.log(`Estimation took ${Date.now() - startTime} ms`)
     return gas_estimate
@@ -97,9 +97,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
 
-    const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-    const mgmtContractAddress = /*"0x946600AF6893Ee818CC7CC2dEC4D0A0bF91C9817"*/ networkConfig.ManagementContractAddress;
-    const messageBusAddress = /*"0x68e95924f22Be35386A8aE0240f8885967d452D6"*/ networkConfig.MessageBusAddress;
+    //const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
+    const mgmtContractAddress = "0x946600AF6893Ee818CC7CC2dEC4D0A0bF91C9817" // networkConfig.ManagementContractAddress;
+    const messageBusAddress = "0x68e95924f22Be35386A8aE0240f8885967d452D6" //networkConfig.MessageBusAddress;
 
     const l1Accounts = await hre.companionNetworks.layer1.getNamedAccounts()
     const fundTx = await hre.companionNetworks.layer1.deployments.rawTx({
