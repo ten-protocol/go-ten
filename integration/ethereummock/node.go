@@ -134,12 +134,6 @@ func (m *Node) SendTransaction(tx *types.Transaction) error {
 	return nil
 }
 
-// FIXME implement ctx
-func (m *Node) SendTransactionCtx(_ context.Context, tx *types.Transaction) error {
-	m.Network.BroadcastTx(tx)
-	return nil
-}
-
 func (m *Node) TransactionReceipt(_ gethcommon.Hash) (*types.Receipt, error) {
 	// all transactions are immediately processed
 	return &types.Receipt{

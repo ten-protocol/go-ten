@@ -175,9 +175,8 @@ func NewEnclave(
 	registry := components.NewBatchRegistry(storage, logger)
 	// FIXME put in config
 	// baseURL := "http://localhost:3500"
-	baseURL := "http://localhost:16560"
-	// baseURL := "https://sepolia-beacon.chainstacklabs.com"
-	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), baseURL)))
+	println("ENCLAVE BEACON PATH: ", config.L1BeaconUrl)
+	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), config.L1BeaconUrl)))
 	batchExecutor := components.NewBatchExecutor(storage, registry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
 	sigVerifier, err := components.NewSignatureValidator(storage)
 	rProducer := components.NewRollupProducer(enclaveKey.EnclaveID(), storage, registry, logger)

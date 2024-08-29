@@ -27,6 +27,7 @@ type Config struct {
 	hostImage                 string
 	nodeType                  string
 	l1WSURL                   string
+	l1BeaconUrl               string
 	sequencerP2PAddr          string
 	privateKey                string
 	hostP2PPort               int
@@ -91,6 +92,7 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
 	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
 	cfg.TenGenesis = c.tenGenesis
+	cfg.L1BeaconUrl = c.l1BeaconUrl
 
 	if c.nodeType == "sequencer" && c.coinbaseAddress != "" {
 		cfg.GasPaymentAddress = gethcommon.HexToAddress(c.coinbaseAddress)
@@ -128,6 +130,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.L1BlockTime = c.l1BlockTime
 	cfg.L1ChainID = int64(c.l1ChainID)
 	cfg.PostgresDBHost = c.postgresDB
+	cfg.L1BeaconUrl = c.l1BeaconUrl
 
 	return cfg
 }
@@ -347,5 +350,11 @@ func WithTenGenesis(g string) Option {
 func WithPostgresDBHost(g string) Option {
 	return func(c *Config) {
 		c.postgresDB = g
+	}
+}
+
+func WithL1BeaconUrl(g string) Option {
+	return func(c *Config) {
+		c.l1BeaconUrl = g
 	}
 }

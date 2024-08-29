@@ -109,6 +109,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithDebugNamespaceEnabled(true),
 				node.WithL1BlockTime(simParams.AvgBlockDuration),
 				node.WithTenGenesis(genesis),
+				node.WithL1BeaconUrl(fmt.Sprintf("127.0.0.1:%d", simParams.L1BeaconPort)),
 			),
 		)
 

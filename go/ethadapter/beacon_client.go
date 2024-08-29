@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"path"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -57,7 +58,11 @@ func NewBeaconHTTPClient(client *http.Client, baseURL string) *BeaconHTTPClient 
 }
 
 func (bc *BeaconHTTPClient) request(ctx context.Context, dest any, reqPath string, reqQuery url.Values) error {
-	baseURL, err := url.Parse(bc.baseURL)
+	base := bc.baseURL
+	if !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
+		base = "http://" + base
+	}
+	baseURL, err := url.Parse(base)
 	if err != nil {
 		return fmt.Errorf("failed to parse base URL: %w", err)
 	}

@@ -32,6 +32,7 @@ func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 		ReceiptTimeout:             30 * time.Second,
 		StoppingDelay:              20 * time.Second,
 		NodeWithInboundP2PDisabled: 2,
+		L1BeaconPort:               integration.StartPortSimulationFullNetwork + integration.DefaultPrysmGatewayPortOffset,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 10
 

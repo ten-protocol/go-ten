@@ -101,9 +101,8 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 	subsService := events.NewLogEventManager(hostServices, logger)
 	// FIXME from config
 	// baseURL := "http://localhost:3500"
-	baseURL := "http://localhost:16560"
-	// baseURL := "https://sepolia-beacon.chainstacklabs.com"
-	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), baseURL)))
+	println("HOST BEACON PATH: ", config.L1BeaconUrl)
+	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), config.L1BeaconUrl)))
 
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
 	hostServices.RegisterService(hostcommon.P2PName, p2p)

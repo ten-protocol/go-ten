@@ -654,7 +654,6 @@ func (g *Guardian) periodicBundleSubmission() {
 			}
 
 			err = g.sl.CrossChainMachine().PublishNextBundle()
-			// FIXME error here
 			if err != nil {
 				if errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
 					g.logger.Debug("No batches to publish")

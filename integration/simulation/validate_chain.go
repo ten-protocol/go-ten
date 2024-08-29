@@ -284,7 +284,7 @@ func ExtractDataFromEthereumChain(
 				totalDeposited.Add(totalDeposited, l1tx.Amount)
 				successfulDeposits++
 			case *ethadapter.L1RollupHashes:
-				r, err := getRollupFromBlobHashes(s.ctx, block, l1tx.BlobHashes)
+				r, err := getRollupFromBlobHashes(s.ctx, s.Params.L1BeaconPort, block, l1tx.BlobHashes)
 				if err != nil {
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
@@ -853,11 +853,11 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 	}
 }
 
-func getRollupFromBlobHashes(ctx context.Context, block *types.Block, blobHashes []ethadapter.IndexedBlobHash) (*common.ExtRollup, error) {
-	// FIXME from config
-	// baseURL := "http://localhost:3500"
-	baseURL := "http://localhost:16560"
-	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), baseURL)))
+func getRollupFromBlobHashes(ctx context.Context, beaconPort int, block *types.Block, blobHashes []ethadapter.IndexedBlobHash) (*common.ExtRollup, error) {
+	// FIXME test config
+	beaconUrl := fmt.Sprintf("127.0.0.1:%d", beaconPort)
+	println("VALIDATE BEACON PATH: ", beaconUrl)
+	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), beaconUrl)))
 	blobs, err := blobResolver.FetchBlobs(ctx, block.Header(), blobHashes)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch blobs from hashes during chain validation")

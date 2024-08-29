@@ -35,6 +35,7 @@ func TestGethSimulation(t *testing.T) {
 		IsInMem:               true,
 		ReceiptTimeout:        30 * time.Second,
 		StoppingDelay:         10 * time.Second,
+		L1BeaconPort:          integration.StartPortSimulationGethInMem + integration.DefaultPrysmGatewayPortOffset,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

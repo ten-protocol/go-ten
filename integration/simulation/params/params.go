@@ -20,6 +20,7 @@ type SimParams struct {
 	SimulationTime time.Duration // how long the simulations should run for
 
 	L1EfficiencyThreshold float64
+	L1BeaconPort          int
 
 	// MgmtContractLib allows parsing MgmtContract txs to and from the eth txs
 	MgmtContractLib mgmtcontractlib.MgmtContractLib

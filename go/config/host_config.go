@@ -65,6 +65,8 @@ type HostInputConfig struct {
 	ProfilerEnabled bool
 	// L1StartHash is the hash of the L1 block we can start streaming from for all Obscuro state (e.g. management contract deployment block)
 	L1StartHash gethcommon.Hash
+	// The http url of the beacon chain to fetch rollup data
+	L1BeaconUrl string
 
 	// MetricsEnabled defines whether the metrics are enabled or not
 	MetricsEnabled bool
@@ -144,6 +146,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		CrossChainInterval:        p.CrossChainInterval,
 		IsInboundP2PDisabled:      p.IsInboundP2PDisabled,
 		MaxRollupSize:             p.MaxRollupSize,
+		L1BeaconUrl:               p.L1BeaconUrl,
 	}
 }
 
@@ -178,6 +181,8 @@ type HostConfig struct {
 	L1BlockTime time.Duration
 	// CrossChainInterval - The interval at which the host will check for new cross chain data to submit
 	CrossChainInterval time.Duration
+	// The http url of the beacon chain to fetch rollup data
+	L1BeaconUrl string
 
 	/////
 	// NODE CONFIG
@@ -280,5 +285,6 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		IsInboundP2PDisabled: false,
 		MaxRollupSize:        1024 * 128,
 		CrossChainInterval:   6 * time.Second,
+		L1BeaconUrl:          "127.0.0.1:3500", // default port for the beacon chain if not specified
 	}
 }
