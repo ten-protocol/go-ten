@@ -137,7 +137,7 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          DOCKER_BUILDKIT=1 docker build --build-arg TESTNET_TYPE=${{ github.event.inputs.testnet_type }} -t ${{ env.DOCKER_BUILD_TAG_GATEWAY }} -f ./tools/walletextension/Dockerfile .
+          DOCKER_BUILDKIT=1 docker build --build-arg TESTNET_TYPE=${{ github.event.inputs.testnet_type }} -t ${{ env.DOCKER_BUILD_TAG_GATEWAY }} -f ./tools/walletextension/enclave.Dockerfile .
           docker push ${{ env.DOCKER_BUILD_TAG_GATEWAY }}
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
@@ -207,9 +207,11 @@ jobs:
             && docker network create --driver bridge node_network || true \
             && cd /home/obscuro/go-obscuro/ \
             && docker run -d -p 80:80 -p 81:81 --name "${{ env.VM_NAME }}" \
+              --entrypoint "/home/ten/go-ten/tools/walletextension/main/entry.sh" \
               -e OBSCURO_GATEWAY_VERSION="${{ GITHUB.RUN_NUMBER }}-${{ GITHUB.SHA }}" \
-               --log-opt max-file=3 --log-opt max-size=10m \
-               ${{ env.DOCKER_BUILD_TAG_GATEWAY }} \
-               -host=0.0.0.0 -port=80 -portWS=81 -nodeHost=${{ env.L2_RPC_URL_VALIDATOR }} -verbose=true \
-               -logPath=sys_out -dbType=mariaDB -dbConnectionURL="obscurouser:${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }}@tcp(obscurogateway-mariadb-${{  github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:3306)/ogdb" \
-               -rateLimitUserComputeTime=${{ env.GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME }} -rateLimitWindow=${{ env.GATEWAY_RATE_LIMIT_WINDOW }} -maxConcurrentRequestsPerUser=${{ env.GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER }} '
+              -e OE_SIMULATION=1 \
+              ${{ env.DOCKER_BUILD_TAG_GATEWAY }} \
+              ego run /home/ten/go-ten/tools/walletextension/main/main \
+              -host=0.0.0.0 -port=80 -portWS=81 -nodeHost=${{ env.L2_RPC_URL_VALIDATOR }} -verbose=true \
+              -logPath=sys_out -dbType=mariaDB -dbConnectionURL="obscurouser:${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }}@tcp(obscurogateway-mariadb-${{  github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:3306)/ogdb" \
+              -rateLimitUserComputeTime=${{ env.GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME }} -rateLimitWindow=${{ env.GATEWAY_RATE_LIMIT_WINDOW }} -maxConcurrentRequestsPerUser=${{ env.GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER }} '
