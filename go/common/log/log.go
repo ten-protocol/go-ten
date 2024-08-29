@@ -52,6 +52,7 @@ const (
 )
 
 // New - helper function used to create a top level logger for a component.
+// Note: this expects legacy geth log levels, you will get unexpected behaviour if you use gethlog.<LEVEL> directly.
 func New(component string, level int, out string, ctx ...interface{}) gethlog.Logger {
 	logFile := ""
 	if out != SysOut {

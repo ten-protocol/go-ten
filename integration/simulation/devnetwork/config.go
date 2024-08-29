@@ -142,6 +142,8 @@ func WithHASequencer() TenConfigOption {
 	}
 }
 
+// WithPredictableDeployer - will use a known private key for the deployer instead of generating a random one.
+// Useful for being able to run administrative functions from hardhat when debugging on the deployed network.
 func WithPredictableDeployer() TenConfigOption {
 	return func(tc *TenConfig) {
 		tc.DeployerPK = "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
