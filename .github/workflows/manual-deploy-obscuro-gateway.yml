@@ -178,7 +178,7 @@ jobs:
             --public-ip-address "${{ env.PUBLIC_IP }}" \
             --tags deploygroup="${{ env.DEPLOY_GROUP }}"  ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true \
             --vnet-name "${{ env.VNET_NAME }}" --subnet "${{ env.SUBNET_NAME }}" \
-            --size 	Standard_D4_v5 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:latest \
+            --size Standard_DC8_v2 --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
             --authentication-type password
 
       - name: 'Open Ten node-${{ matrix.host_id }} ports on Azure'
