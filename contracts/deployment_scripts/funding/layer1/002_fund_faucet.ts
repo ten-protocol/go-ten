@@ -8,8 +8,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const {deployer} = await hre.getNamedAccounts();
     const l1Accs = await layer1.getNamedAccounts();
     
-    const messageBusAddress = process.env.MESSAGE_BUS_ADDRESS!!// || "0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"
-    const prefundAmountStr = process.env.PREFUND_FAUCET_AMOUNT!!// || "1"
+    var messageBusAddress = process.env.MESSAGE_BUS_ADDRESS!!
+    if (messageBusAddress === undefined) {
+        const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
+        messageBusAddress = networkConfig.MessageBusAddress;
+        console.log(`Fallback read of message bus address = ${messageBusAddress}`);
+    }
+    
+    const prefundAmountStr = process.env.PREFUND_FAUCET_AMOUNT!! || "1"
 
     if (prefundAmountStr == "0") {
         return;
