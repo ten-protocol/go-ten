@@ -138,35 +138,6 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor common
 }
 
 func (e *gethRPCClient) SendTransaction(signedTx *types.Transaction) error {
-	//if signedTx.Type() == types.BlobTxType {
-	//	blobs := signedTx.BlobTxSidecar().Blobs
-	//	blobsPtrs := make([]*kzg4844.Blob, len(blobs))
-	//
-	//	for i := range blobs {
-	//		blobsPtrs[i] = &blobs[i]
-	//	}
-	//
-	//	rollup, _ := ReconstructRollup(blobsPtrs)
-	//	println("sending rollup blob: ", rollup.Hash().Hex())
-	//}
-	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
-	defer cancel()
-
-	return e.client.SendTransaction(ctx, signedTx)
-}
-
-func (e *gethRPCClient) SendTransactionCtx(ctx context.Context, signedTx *types.Transaction) error {
-	//if signedTx.Type() == types.BlobTxType {
-	//	blobs := signedTx.BlobTxSidecar().Blobs
-	//	blobsPtrs := make([]*kzg4844.Blob, len(blobs))
-	//
-	//	for i := range blobs {
-	//		blobsPtrs[i] = &blobs[i]
-	//	}
-	//
-	//	rollup, _ := ReconstructRollup(blobsPtrs)
-	//	println("sending rollup blob: ", rollup.Hash().Hex())
-	//}
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 

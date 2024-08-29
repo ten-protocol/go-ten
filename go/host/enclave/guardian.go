@@ -624,10 +624,6 @@ func (g *Guardian) periodicRollupProduction() {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue
 				}
-				// println("PRODUCED ROLLUP: ", producedRollup.Hash().Hex())
-				// println("PRODUCED timeExpired: ", timeExpired)
-				// println("PRODUCED sizeExceeded: ", sizeExceeded)
-				// this method waits until the receipt is received
 				g.sl.L1Publisher().PublishRollup(producedRollup)
 				lastSuccessfulRollup = time.Now()
 			}
