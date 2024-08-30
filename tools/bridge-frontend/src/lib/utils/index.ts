@@ -36,7 +36,7 @@ export const networkMappings = {
   "uat-testnet": {
     l1: L1Network.UAT,
     l2: L2Network.UAT,
-    l1Rpc: "http://uat-testnet-eth2network.uksouth.cloudapp.azure.com:8045",
+    l1Rpc: "https://uat-testnet-eth2network.ten.xyz",
     l1Explorer: "https://uat-testnet-tenscan.io",
     l2Gateway: "https://uat-testnet.ten.xyz",
   },
@@ -50,7 +50,7 @@ export const networkMappings = {
   "dev-testnet": {
     l1: L1Network.DEV,
     l2: L2Network.DEV,
-    l1Rpc: "http://dev-testnet-eth2network.uksouth.cloudapp.azure.com:8045",
+    l1Rpc: "https://dev-testnet-eth2network.ten.xyz",
     l1Explorer: "https://dev-testnet-tenscan.io",
     l2Gateway: "https://dev-testnet.ten.xyz",
   },

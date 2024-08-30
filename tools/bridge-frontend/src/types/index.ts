@@ -203,9 +203,6 @@ export interface IWalletState {
   disconnectWallet: () => void;
   switchNetwork: () => void;
   restoreWalletState: () => void;
-  proceedWithProviderInitialization: (
-    detectedProvider: ethers.providers.Web3Provider
-  ) => void;
 }
 
 export type ButtonVariants =
@@ -240,3 +237,13 @@ export type Transactions = {
   logIndex: number;
   status: TransactionStatus;
 };
+
+export type StoreSet = (
+  partial:
+    | IWalletState
+    | Partial<IWalletState>
+    | ((state: IWalletState) => IWalletState | Partial<IWalletState>),
+  replace?: boolean | undefined
+) => void;
+
+export type StoreGet = () => IWalletState;

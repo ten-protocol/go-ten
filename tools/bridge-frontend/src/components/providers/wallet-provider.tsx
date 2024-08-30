@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useEffect } from "react";
-import useWalletStore from "@/src/stores/wallet-store";
 import {
   WalletConnectionContextType,
   WalletConnectionProviderProps,
 } from "@/src/types";
+import useWalletStore from "@/src/stores/wallet-store";
 
 const WalletContext = createContext<WalletConnectionContextType | null>(null);
 
