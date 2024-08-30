@@ -60,6 +60,7 @@ func createInMemTenNode(
 	batchInterval time.Duration,
 	incomingP2PDisabled bool,
 	l1BlockTime time.Duration,
+	l1BeaconPort int,
 ) *container.HostContainer {
 	mgtContractAddress := mgmtContractLib.GetContractAddr()
 
@@ -77,6 +78,7 @@ func createInMemTenNode(
 		IsInboundP2PDisabled:      incomingP2PDisabled,
 		L1BlockTime:               l1BlockTime,
 		UseInMemoryDB:             true,
+		L1BeaconUrl:               fmt.Sprintf("127.0.0.1:%d", l1BeaconPort),
 	}
 
 	enclaveConfig := &config.EnclaveConfig{
@@ -97,6 +99,7 @@ func createInMemTenNode(
 		GasLocalExecutionCapFlag:  params.MaxGasLimit / 2,
 		GasBatchExecutionLimit:    params.MaxGasLimit / 2,
 		RPCTimeout:                5 * time.Second,
+		L1BeaconUrl:               fmt.Sprintf("127.0.0.1:%d", l1BeaconPort),
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)

@@ -68,6 +68,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			params.AvgBlockDuration/2,
 			incomingP2PDisabled,
 			params.AvgBlockDuration,
+			params.L1BeaconPort,
 		)
 		tenClient := p2p.NewInMemTenClient(agg)
 

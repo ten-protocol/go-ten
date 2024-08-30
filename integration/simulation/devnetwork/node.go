@@ -153,6 +153,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		L1BlockTime:           n.config.L1BlockTime,
 		CrossChainInterval:    n.config.CrossChainInterval,
 		MaxRollupSize:         1024 * 64,
+		L1BeaconUrl:           fmt.Sprintf("127.0.0.1:%d", n.config.L1BeaconPort),
 	}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, n.l1Wallet.Address(), log.CmpKey, log.HostCmp)
@@ -218,6 +219,7 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		GasLocalExecutionCapFlag:  defaultCfg.GasLocalExecutionCapFlag,
 		GasPaymentAddress:         defaultCfg.GasPaymentAddress,
 		RPCTimeout:                5 * time.Second,
+		L1BeaconUrl:               fmt.Sprintf("127.0.0.1:%d", n.config.L1BeaconPort),
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }

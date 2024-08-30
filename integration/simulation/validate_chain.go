@@ -854,9 +854,7 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 }
 
 func getRollupFromBlobHashes(ctx context.Context, beaconPort int, block *types.Block, blobHashes []ethadapter.IndexedBlobHash) (*common.ExtRollup, error) {
-	// FIXME test config
 	beaconUrl := fmt.Sprintf("127.0.0.1:%d", beaconPort)
-	println("VALIDATE BEACON PATH: ", beaconUrl)
 	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), beaconUrl)))
 	blobs, err := blobResolver.FetchBlobs(ctx, block.Header(), blobHashes)
 	if err != nil {

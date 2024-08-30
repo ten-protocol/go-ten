@@ -292,8 +292,18 @@ func blobsFromSidecars(blobSidecars []*BlobSidecar, hashes []IndexedBlobHash) ([
 	}
 
 	out := make([]*kzg4844.Blob, len(hashes))
+	for i, ih := range hashes {
+		sidecar := blobSidecars[i]
+		if sidx := uint64(sidecar.Index); sidx != ih.Index {
+			return nil, fmt.Errorf("expected sidecars to be ordered by hashes, but got %d != %d", sidx, ih.Index)
+		}
 
-	for i, sidecar := range blobSidecars {
+		// make sure the blob's kzg commitment hashes to the expected value
+		hash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
+		if hash != ih.Hash {
+			return nil, fmt.Errorf("expected hash %s for blob at index %d but got %s", ih.Hash, ih.Index, hash)
+		}
+
 		// confirm blob data is valid by verifying its proof against the commitment
 		if err := VerifyBlobProof(&sidecar.Blob, kzg4844.Commitment(sidecar.KZGCommitment), kzg4844.Proof(sidecar.KZGProof)); err != nil {
 			return nil, fmt.Errorf("blob at index %d failed verification: %w", i, err)

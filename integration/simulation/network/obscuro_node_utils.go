@@ -53,6 +53,7 @@ func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clien
 			params.AvgBlockDuration/3,
 			true,
 			params.AvgBlockDuration,
+			params.L1BeaconPort,
 		)
 		tenHosts[i] = tenNodes[i].Host()
 	}

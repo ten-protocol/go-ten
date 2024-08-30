@@ -173,8 +173,6 @@ func NewEnclave(
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 	registry := components.NewBatchRegistry(storage, logger)
-	// FIXME put in config
-	// baseURL := "http://localhost:3500"
 	println("ENCLAVE BEACON PATH: ", config.L1BeaconUrl)
 	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), config.L1BeaconUrl)))
 	batchExecutor := components.NewBatchExecutor(storage, registry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)

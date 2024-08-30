@@ -63,7 +63,7 @@ var EnclaveFlags = map[string]*flag.TenFlag{
 	ProfilerEnabledFlag:           flag.NewBoolFlag(ProfilerEnabledFlag, false, "Runs a profiler instance (Defaults to false)"),
 	DebugNamespaceEnabledFlag:     flag.NewBoolFlag(DebugNamespaceEnabledFlag, false, "Whether the debug namespace is enabled"),
 	GasLocalExecutionCapFlag:      flag.NewUint64Flag(GasLocalExecutionCapFlag, 4_000_000_000, "Max gas usage when executing local transactions"),
-	L1BeaconUrlFlag:               flag.NewStringFlag(L1BeaconUrlFlag, "127.0.0.1:3500", "The default beacon chain gateway endpoint"),
+	L1BeaconUrlFlag:               flag.NewStringFlag(L1BeaconUrlFlag, "127.0.0.1:12600", "The beacon chain gateway endpoint used in docker config"),
 }
 
 // enclaveRestrictedFlags are the flags that the enclave can receive ONLY over the Ego signed enclave.json
