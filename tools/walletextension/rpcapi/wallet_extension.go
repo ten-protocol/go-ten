@@ -166,6 +166,7 @@ func (w *Services) Logger() gethlog.Logger {
 
 // GenerateAndStoreNewUser generates new key-pair and userID, stores it in the database and returns hex encoded userID and error
 func (w *Services) GenerateAndStoreNewUser() ([]byte, error) {
+	audit(w, "Generating and storing new user")
 	requestStartTime := time.Now()
 	// generate new key-pair
 	viewingKeyPrivate, err := crypto.GenerateKey()
@@ -191,6 +192,7 @@ func (w *Services) GenerateAndStoreNewUser() ([]byte, error) {
 
 // AddAddressToUser checks if a message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
 func (w *Services) AddAddressToUser(userID []byte, address string, signature []byte, signatureType viewingkey.SignatureType) error {
+	audit(w, "Adding address to user: %s, address: %s", hexutils.BytesToHex(userID), address)
 	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
 	// check if a message was signed by the correct address and if the signature is valid
@@ -273,6 +275,7 @@ func (w *Services) Version() string {
 }
 
 func (w *Services) GetTenNodeHealthStatus() (bool, error) {
+	audit(w, "Getting Ten node health status")
 	res, err := withPlainRPCConnection[bool](context.Background(), w, func(client *gethrpc.Client) (*bool, error) {
 		res, err := obsclient.NewObsClient(client).Health()
 		return &res, err
@@ -281,6 +284,7 @@ func (w *Services) GetTenNodeHealthStatus() (bool, error) {
 }
 
 func (w *Services) GetTenNetworkConfig() (tencommon.TenNetworkInfo, error) {
+	audit(w, "Getting Ten network config")
 	res, err := withPlainRPCConnection[tencommon.TenNetworkInfo](context.Background(), w, func(client *gethrpc.Client) (*tencommon.TenNetworkInfo, error) {
 		res, err := obsclient.NewObsClient(client).GetConfig()
 		return res, err
@@ -289,6 +293,7 @@ func (w *Services) GetTenNetworkConfig() (tencommon.TenNetworkInfo, error) {
 }
 
 func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlice []string) (string, error) {
+	audit(w, "Generating user message to sign")
 	// Check if the formats are valid
 	for _, format := range formatsSlice {
 		if _, exists := viewingkey.SignatureTypeMap[format]; !exists {
