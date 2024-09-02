@@ -75,6 +75,7 @@ create index IDX_BATCH_HASH on batch (hash);
 create index IDX_BATCH_BLOCK on batch (l1_proof_hash);
 create index IDX_BATCH_L1 on batch (l1_proof);
 create index IDX_BATCH_HEIGHT on batch (height);
+create index IDX_BATCH_HEIGHT_COMP on batch (is_canonical, is_executed, height);
 
 create table if not exists tx
 (

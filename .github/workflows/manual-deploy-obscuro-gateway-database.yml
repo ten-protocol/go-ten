@@ -90,20 +90,6 @@ jobs:
             && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
             && docker network create --driver bridge node_network || true \
-            && docker run -d --name datadog-agent \
-               --network node_network \
-               -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
-               -e DD_LOGS_ENABLED=true \
-               -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
-               -e DD_LOGS_CONFIG_AUTO_MULTI_LINE_DETECTION=true \
-               -e DD_CONTAINER_EXCLUDE_LOGS="name:datadog-agent" \
-               -e DD_SITE="datadoghq.eu"  \
-               -v /var/run/docker.sock:/var/run/docker.sock:ro \
-               -v /proc/:/host/proc/:ro \
-               -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
-               -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
-               --log-opt max-file=3 --log-opt max-size=10m \
-               datadog/agent:latest \
             && cd /home/obscuro/go-obscuro/ \
             && docker run -d --name ${{ github.event.inputs.testnet_type }}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }} \
                 -p 3306:3306 \

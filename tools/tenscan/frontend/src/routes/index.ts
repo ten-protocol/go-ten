@@ -86,11 +86,6 @@ export const NavLinks: NavLink[] = [
     isDropdown: true,
     subNavLinks: [
       {
-        href: "/resources/decrypt",
-        label: "Decrypt",
-        isExternal: false,
-      },
-      {
         href: "/resources/verified-data",
         label: "Verified Data",
         isExternal: false,
