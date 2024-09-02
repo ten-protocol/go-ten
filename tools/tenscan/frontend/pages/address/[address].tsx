@@ -10,25 +10,15 @@ const AddressDetails = () => {
   const { push } = useRouter();
 
   return (
-    <>
-      <HeadSeo
-        title={`${siteMetadata.address.title} `}
-        description={siteMetadata.address.description}
-        canonicalUrl={`${siteMetadata.address.canonicalUrl}`}
-        ogImageUrl={siteMetadata.address.ogImageUrl}
-        ogTwitterImage={siteMetadata.address.ogTwitterImage}
-        ogType={siteMetadata.address.ogType}
-      ></HeadSeo>
-      <Layout>
-        <EmptyState
-          title="Address Details"
-          description="Coming soon..."
-          imageSrc="/assets/images/clock.png"
-          imageAlt="Clock"
-          action={<Button onClick={() => push("/")}>Go Home</Button>}
-        />
-      </Layout>
-    </>
+    <Layout>
+      <EmptyState
+        title="Address Details"
+        description="Coming soon..."
+        imageSrc="/assets/images/clock.png"
+        imageAlt="Clock"
+        action={<Button onClick={() => push("/")}>Go Home</Button>}
+      />
+    </Layout>
   );
 };
 
