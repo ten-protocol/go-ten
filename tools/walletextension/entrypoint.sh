@@ -1,8 +1,5 @@
 #!/bin/sh
 
-# Start NGINX in the background
-nginx &
-
 # Start wallet_extension_linux with parameters passed to the script
 /home/obscuro/go-obscuro/tools/walletextension/bin/wallet_extension_linux "$@"
 

@@ -35,6 +35,7 @@ type TenConfig struct {
 	NumNodes           int
 	TenGatewayEnabled  bool
 	NumSeqEnclaves     int
+	DeployerPK         string
 
 	L1BlockTime time.Duration
 }
@@ -49,6 +50,7 @@ func DefaultTenConfig() *TenConfig {
 		CrossChainInterval: 11 * time.Second,
 		TenGatewayEnabled:  false,
 		NumSeqEnclaves:     1, // increase for HA simulation
+		DeployerPK:         "",
 	}
 }
 
@@ -60,6 +62,15 @@ func LocalDevNetwork(tenConfigOpts ...TenConfigOption) *InMemDevNetwork {
 
 	// 1 wallet per node
 	nodeOpL1Wallets := params.NewSimWallets(0, tenConfig.NumNodes, integration.EthereumChainID, integration.TenChainID)
+
+	if tenConfig.DeployerPK != "" {
+		privKey, err := crypto.HexToECDSA(tenConfig.DeployerPK)
+		if err != nil {
+			panic("could not initialise deployer private key")
+		}
+		nodeOpL1Wallets.MCOwnerWallet = wallet.NewInMemoryWalletFromPK(big.NewInt(integration.EthereumChainID), privKey, testlog.Logger())
+	}
+
 	l1Config := &L1Config{
 		PortStart:        integration.StartPortNetworkTests,
 		NumNodes:         tenConfig.NumNodes, // we'll have 1 L1 node per L2 node
@@ -128,5 +139,13 @@ func WithGateway() TenConfigOption {
 func WithHASequencer() TenConfigOption {
 	return func(tc *TenConfig) {
 		tc.NumSeqEnclaves = 2
+	}
+}
+
+// WithPredictableDeployer - will use a known private key for the deployer instead of generating a random one.
+// Useful for being able to run administrative functions from hardhat when debugging on the deployed network.
+func WithPredictableDeployer() TenConfigOption {
+	return func(tc *TenConfig) {
+		tc.DeployerPK = "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
 	}
 }

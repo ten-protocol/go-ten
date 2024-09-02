@@ -11,12 +11,15 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 const (
 	tcp = "tcp"
+	// @fixme -
+	// this is a temporary fix as out forked version of log.go does not map with gethlog.Level<Level>
+	//and should be fixed as part of logging refactoring in the future
+	legacyLevelDebug = 4
+	legacyLevelError = 1
 )
 
 func main() {
@@ -53,11 +56,11 @@ func main() {
 		}
 	}
 
-	logLvl := gethlog.LevelError
+	logLvl := legacyLevelError
 	if config.VerboseFlag {
-		logLvl = gethlog.LevelDebug
+		logLvl = legacyLevelDebug
 	}
-	logger := log.New(log.WalletExtCmp, int(logLvl), config.LogPath)
+	logger := log.New(log.WalletExtCmp, logLvl, config.LogPath)
 
 	walletExtContainer := walletextension.NewContainerFromConfig(config, logger)
 
@@ -69,7 +72,7 @@ func main() {
 
 	walletExtensionAddr := fmt.Sprintf("%s:%d", common.Localhost, config.WalletExtensionPortHTTP)
 	fmt.Printf("💡 Wallet extension started \n") // Some tests rely on seeing this message. Removed in next PR.
-	fmt.Printf("💡 Obscuro Gateway started - visit http://%s/static to use it.\n", walletExtensionAddr)
+	fmt.Printf("💡 Obscuro Gateway started - visit http://%s/\n", walletExtensionAddr)
 
 	select {}
 }
