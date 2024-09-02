@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from "react";
 import { ethers } from "ethers";
-import useWalletStore from "../stores/wallet-store";
 import useContractStore from "../stores/contract-store";
 import { ToastType, TransactionStatus } from "../types";
 import { useGeneralService } from "./useGeneralService";
@@ -17,6 +16,7 @@ import {
 import { isAddress } from "ethers/lib/utils";
 import { showToast } from "../components/ui/use-toast";
 import { L1_NETWORK_URL } from "../lib/constants";
+import useWalletStore from "../stores/wallet-store";
 
 export const useContractService = () => {
   const { signer, isL1ToL2, provider, address } = useWalletStore();
@@ -107,7 +107,9 @@ export const useContractService = () => {
         gasPrice as ethers.BigNumber,
         bridgeContract
       );
-      const txResponse = await signer.sendTransaction(tx);
+      const txResponse = await signer.sendTransaction(
+        tx as ethers.providers.TransactionRequest
+      );
 
       showToast(ToastType.INFO, "Transaction sent; waiting for confirmation");
 
@@ -119,11 +121,15 @@ export const useContractService = () => {
       }
 
       const { valueTransferEventData, block } =
-        await extractAndProcessValueTransfer(
+        (await extractAndProcessValueTransfer(
           txReceipt,
           messageBusContract,
           provider
-        );
+        )) || { valueTransferEventData: null, block: null };
+
+      if (!valueTransferEventData || !block) {
+        throw new Error("Failed to extract value transfer event data");
+      }
 
       const { tree, proof } = constructMerkleTree(
         JSON.parse(atob(block?.crossChainTree)),
@@ -147,6 +153,7 @@ export const useContractService = () => {
         tree.root
       );
 
+      console.log("🚀 ~ sendNative ~ gasLimit:", gasLimit);
       const txL1 =
         await managementContract.populateTransaction.ExtractNativeValue(
           valueTransferEventData?.args,

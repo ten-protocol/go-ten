@@ -3,15 +3,39 @@ import { ToastType } from "@/src/types";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 import { ethers } from "ethers";
 
-// add types
-const handleError = (error: Error | any, customMessage: string) => {
-  console.error(customMessage, error);
-  if (error?.message?.includes("unknown account")) {
-    throw new Error(
-      "Ensure your wallet is unlocked and an account is connected"
-    );
+class WalletConnectionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "WalletConnectionError";
   }
-  throw error;
+}
+
+class UserRejectedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UserRejectedError";
+  }
+}
+
+class TransactionDeniedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TransactionDeniedError";
+  }
+}
+
+const handleError = (error: any, message: string) => {
+  if (error instanceof WalletConnectionError) {
+    showToast(ToastType.DESTRUCTIVE, "Error connecting to wallet");
+  } else if (error instanceof UserRejectedError) {
+    showToast(ToastType.DESTRUCTIVE, "User rejected the transaction");
+  } else if (error instanceof TransactionDeniedError) {
+    showToast(ToastType.DESTRUCTIVE, "Transaction denied");
+  } else {
+    showToast(ToastType.DESTRUCTIVE, message);
+  }
+  console.error(error);
+  // throw error;
 };
 
 const constructMerkleTree = (
@@ -74,7 +98,10 @@ const extractAndProcessValueTransfer = async (
   txReceipt: ethers.providers.TransactionReceipt,
   messageBusContract: ethers.Contract,
   provider: ethers.providers.JsonRpcProvider
-) => {
+): Promise<void | {
+  valueTransferEventData: ethers.utils.LogDescription;
+  block: any;
+}> => {
   try {
     showToast(
       ToastType.INFO,
@@ -118,7 +145,7 @@ const extractAndProcessValueTransfer = async (
 
     return { valueTransferEventData, block };
   } catch (error) {
-    return handleError(error, "Error processing value transfer");
+    throw handleError(error, "Error processing value transfer");
   }
 };
 
