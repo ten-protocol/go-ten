@@ -5,8 +5,8 @@ Currently, it is at the first version which is a little rough.
 ### Historical reasoning for the current design:
 
 1. Geth is implemented on top of levelDB, and so makes heavy use of the k/v mechanism.
-2. Ten uses EdglessDb in production, and sqlite in testing.
-3. Ten started out by implementing the k/v primitives on top of sql.
+2. TEN uses EdglessDb in production, and sqlite in testing.
+3. TEN started out by implementing the k/v primitives on top of sql.
 4. Then we decided to use the SQL features to simplify some business logic, which required exposing the sql primitives.
 5. Eventually, we ended up using SQL for everything, except the evm functionality.
 

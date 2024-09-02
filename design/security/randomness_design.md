@@ -1,8 +1,8 @@
-# Randomness in Ten design
+# Randomness in TEN design
 
 ## Scope
 
-The purpose of this document is to describe how randomness is generated and exposed to Ten smart contracts. 
+The purpose of this document is to describe how randomness is generated and exposed to TEN smart contracts. 
 
 ## Overview
 

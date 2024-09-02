@@ -15,21 +15,19 @@ import {
   DialogTrigger,
 } from "../../ui/dialog";
 import Copy from "../common/copy";
-import { testnetUrls, tenChainIDDecimal } from "../../../lib/constants";
+import {
+  testnetUrls,
+  tenChainIDDecimal,
+  CONNECTION_STEPS,
+} from "../../../lib/constants";
 import { downloadMetaMask, ethereum } from "@/lib/utils";
-
-const CONNECTION_STEPS = [
-  "Hit Connect to Ten and start your journey",
-  "Allow MetaMask to switch networks to the Ten Testnet",
-  "Sign the <b>Signature Request</b> (this is not a transaction)",
-];
 
 const Disconnected = () => {
   const { connectToTenTestnet } = useGatewayService();
 
   return (
     <div className="flex flex-col items-center justify-center space-y-4">
-      <h1 className="text-4xl font-bold">Welcome to the Ten Gateway!</h1>
+      <h1 className="text-4xl font-bold">Welcome to the TEN Gateway!</h1>
       <h3 className="text-sm text-muted-foreground my-4">
         Three clicks to setup encrypted communication between MetaMask and TEN.
       </h3>
@@ -52,12 +50,12 @@ const Disconnected = () => {
         </DialogTrigger>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>How does the Ten Gateway work?</DialogTitle>
+            <DialogTitle>How does the TEN Gateway work?</DialogTitle>
             <DialogDescription></DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <p>
-              By connecting your wallet to Ten and signing the signature request
+              By connecting your wallet to TEN and signing the signature request
               you will get a unique token, which is also your <b>viewing key</b>
               . It is contained in the RPC link and unique for each user.
             </p>
@@ -71,7 +69,7 @@ const Disconnected = () => {
             <p>
               Signing the Signature Request is completely secure. It’s not a
               transaction so cannot spend any of your assets and it doesn’t give
-              Ten control over your account.
+              TEN control over your account.
             </p>
             <div className="flex items-center space-x-2">
               <Badge className="h-4 w-4" />
@@ -106,7 +104,7 @@ const Disconnected = () => {
       >
         <Terminal />
         <span className="ml-2">
-          {ethereum ? "Connect to Ten Testnet" : "Install MetaMask to continue"}
+          {ethereum ? "Connect to TEN Testnet" : "Install MetaMask to continue"}
         </span>
       </Button>
     </div>

@@ -24,7 +24,7 @@ Note that there is no protocol work listed here. These are the tasks that are or
    d) Try outside of Azure?
 2. Design and implement reveleation period
 3. Finalise cryptography
-   a) key derivation (both the ten network key, and the symmetric rollup encryption keys) 
+   a) key derivation (both the TEN network key, and the symmetric rollup encryption keys) 
    b) Calculate hashes on startup
    c) Check that the rollup producer is attested
    d) Add entropy to txs

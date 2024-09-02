@@ -164,7 +164,7 @@ func FormatSlogValue(v slog.Value, tmp []byte) (result []byte) {
 		return appendU256(tmp, v)
 	case error:
 		return appendEscapeString(tmp, v.Error())
-	// case TerminalStringer: // Ten - commented out because
+	// case TerminalStringer: // TEN - commented out because
 	//	return appendEscapeString(tmp, v.TerminalString())
 	case fmt.Stringer:
 		return appendEscapeString(tmp, v.String())

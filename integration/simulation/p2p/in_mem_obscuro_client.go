@@ -118,7 +118,7 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 	}
 }
 
-// CallContext not currently supported by in-memory ten client, the context will be ignored.
+// CallContext not currently supported by in-memory TEN client, the context will be ignored.
 func (c *inMemTenClient) CallContext(_ context.Context, result interface{}, method string, args ...interface{}) error {
 	return c.Call(result, method, args...) //nolint: contextcheck
 }

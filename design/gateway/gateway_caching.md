@@ -1,8 +1,8 @@
-# Ten Gateway Caching Design
+# TEN Gateway Caching Design
 
 ## 1. Why cache requests on Gateway?
 
-Currently, all `eth_` requests that hit the gateway are forwarded to the Ten Nodes and are executed by the Ten enclave. 
+Currently, all `eth_` requests that hit the gateway are forwarded to the TEN Nodes and are executed by the TEN enclave. 
 This is not ideal since there is only one Sequencer and it can be overloaded with requests
 and there can be timeouts or errors in the sequencer.
 
