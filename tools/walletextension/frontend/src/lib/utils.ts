@@ -3,8 +3,6 @@ import { formatDistanceToNow } from "date-fns";
 import { twMerge } from "tailwind-merge";
 import {
   tenChainIDHex,
-  tenGatewayAddress,
-  testnetUrls,
   tokenHexLength,
 } from "./constants";
 
@@ -26,17 +24,6 @@ export function getRandomIntAsString(min: number, max: number) {
   max = Math.floor(max);
   const randomInt = Math.floor(Math.random() * (max - min + 1)) + min;
   return randomInt.toString();
-}
-
-export function getNetworkName() {
-  switch (tenGatewayAddress) {
-    case testnetUrls.uat.url:
-      return testnetUrls.uat.name;
-    case testnetUrls.sepolia.url:
-      return testnetUrls.sepolia.name;
-    default:
-      return testnetUrls.default.name;
-  }
 }
 
 export async function isTenChain() {
