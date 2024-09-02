@@ -1,15 +1,16 @@
 import { socialLinks } from "./constants";
 
 export const siteMetadata = {
-  companyName: "Ten Gateway",
-  metaTitle:
-    "Ten, a decentralized Layer 2 Rollup protocol designed to hyper-scale and encrypt the Ethereum blockchain.",
+  companyName: "TEN Gateway",
+  metaTitle: "Secure Blockchain Authentication - TEN Gateway",
   description:
-    "Ten, a decentralized Ethereum Layer 2 Rollup protocol designed to hyper-scale, encrypt and prevent negative MEV on Ethereum.",
-  siteUrl: "https://ten.xyz",
-  siteLogo: ``,
-  siteLogoSquare: ``,
-  email: "team@obscu.ro",
+    "Your secure entry point to the TEN ecosystem. Easily authenticate your accounts and access dApps built on TEN. Experience seamless, confidential blockchain interactions.",
+  keywords:
+    "blockchain authentication, secure login, crypto account access, dapps, l2, encryption, layer2, digital identity, TEN Gateway, blockchain security, TEN network, TEN blockchain, TEN ecosystem",
+  siteUrl: "https://testnet.ten.xyz",
+  siteLogo: `/assets/images/cover.png`,
+  siteLogoSquare: `/assets/images/cover.png`,
+  email: "team@ten.xyz",
   twitter: socialLinks.twitter,
   twitterHandle: socialLinks.twitterHandle,
   github: socialLinks.github,

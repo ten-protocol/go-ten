@@ -6,6 +6,8 @@ import { Metadata } from "next";
 import { useBatchesService } from "@/src/services/useBatchesService";
 import { getItem } from "@/src/lib/utils";
 import { ItemPosition } from "@/src/types/interfaces";
+import { siteMetadata } from "@/src/lib/siteMetadata";
+import HeadSeo from "@/src/components/head-seo";
 
 export const metadata: Metadata = {
   title: "Batches",
@@ -35,31 +37,41 @@ export default function Batches() {
   );
 
   return (
-    <Layout>
-      <div className="h-full flex-1 flex-col space-y-8 md:flex">
-        <div className="flex items-center justify-between space-y-2">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
-            {BatchesData?.length > 0 && (
-              <p className="text-sm text-muted-foreground">
-                Showing batches #{firstBatchHeight}{" "}
-                {lastBatchHeight !== firstBatchHeight &&
-                  "to #" + lastBatchHeight}
-                {/* uncomment the following line when total count feature is implemented */}
-                {/* of {formatNumber(Total)} batches. */}
-              </p>
-            )}
+    <>
+      <HeadSeo
+        title={`${siteMetadata.batches.title} `}
+        description={siteMetadata.batches.description}
+        canonicalUrl={`${siteMetadata.batches.canonicalUrl}`}
+        ogImageUrl={siteMetadata.batches.ogImageUrl}
+        ogTwitterImage={siteMetadata.batches.ogTwitterImage}
+        ogType={siteMetadata.batches.ogType}
+      ></HeadSeo>
+      <Layout>
+        <div className="h-full flex-1 flex-col space-y-8 md:flex">
+          <div className="flex items-center justify-between space-y-2">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Batches</h2>
+              {BatchesData?.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Showing batches #{firstBatchHeight}{" "}
+                  {lastBatchHeight !== firstBatchHeight &&
+                    "to #" + lastBatchHeight}
+                  {/* uncomment the following line when total count feature is implemented */}
+                  {/* of {formatNumber(Total)} batches. */}
+                </p>
+              )}
+            </div>
           </div>
+          <DataTable
+            columns={columns}
+            data={BatchesData}
+            refetch={refetchBatches}
+            total={+Total}
+            isLoading={isBatchesLoading}
+            noResultsText="batches"
+          />
         </div>
-        <DataTable
-          columns={columns}
-          data={BatchesData}
-          refetch={refetchBatches}
-          total={+Total}
-          isLoading={isBatchesLoading}
-          noResultsText="batches"
-        />
-      </div>
-    </Layout>
+      </Layout>
+    </>
   );
 }
