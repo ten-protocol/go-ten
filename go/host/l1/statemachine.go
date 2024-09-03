@@ -166,7 +166,7 @@ func (c *crossChainStateMachine) Synchronize() error {
 	forkUID, _, _, err := c.publisher.GetBundleRangeFromManagementContract(big.NewInt(0).SetUint64(c.latestRollup.Number), c.latestRollup.ForkUID)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNoNextRollup) {
-			c.logger.Info("No new rollup or fork found")
+			c.logger.Debug("No new rollup or fork found")
 			return nil
 		}
 
