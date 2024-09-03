@@ -4,7 +4,6 @@ import { Receipt } from 'hardhat-deploy/dist/types';
 
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    return;
     const l2Network = hre; 
     const {deployer} = await hre.getNamedAccounts();
 
