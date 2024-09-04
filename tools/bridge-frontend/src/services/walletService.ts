@@ -63,7 +63,9 @@ export const walletService = {
       isWrongNetwork: chainId !== expectedChainId,
     });
 
-    const cleanup = setupEventListeners((address) => set({ address }));
+    const cleanup = setupEventListeners((address) =>
+      set({ address })
+    ) as () => void;
     return cleanup;
   },
 

@@ -31,14 +31,8 @@ import useWalletStore from "@/src/stores/wallet-store";
 import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
-  const {
-    provider,
-    address,
-    walletConnected,
-    switchNetwork,
-    isL1ToL2,
-    loading,
-  } = useWalletStore();
+  const { address, walletConnected, switchNetwork, isL1ToL2, loading } =
+    useWalletStore();
   const { getNativeBalance, getTokenBalance, sendERC20, sendNative } =
     useContractService();
 
