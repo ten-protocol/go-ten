@@ -37,8 +37,8 @@ import (
 
 // Services handles the various business logic for the api endpoints
 type Services struct {
-	HostAddrHTTP string // The HTTP address on which the Ten host can be reached
-	HostAddrWS   string // The WS address on which the Ten host can be reached
+	HostAddrHTTP string // The HTTP address on which the TEN host can be reached
+	HostAddrWS   string // The WS address on which the TEN host can be reached
 	Storage      storage.Storage
 	logger       gethlog.Logger
 	stopControl  *stopcontrol.StopControl
@@ -275,7 +275,7 @@ func (w *Services) Version() string {
 }
 
 func (w *Services) GetTenNodeHealthStatus() (bool, error) {
-	audit(w, "Getting Ten node health status")
+	audit(w, "Getting TEN node health status")
 	res, err := withPlainRPCConnection[bool](context.Background(), w, func(client *gethrpc.Client) (*bool, error) {
 		res, err := obsclient.NewObsClient(client).Health()
 		return &res, err
@@ -284,7 +284,7 @@ func (w *Services) GetTenNodeHealthStatus() (bool, error) {
 }
 
 func (w *Services) GetTenNetworkConfig() (tencommon.TenNetworkInfo, error) {
-	audit(w, "Getting Ten network config")
+	audit(w, "Getting TEN network config")
 	res, err := withPlainRPCConnection[tencommon.TenNetworkInfo](context.Background(), w, func(client *gethrpc.Client) (*tencommon.TenNetworkInfo, error) {
 		res, err := obsclient.NewObsClient(client).GetConfig()
 		return res, err

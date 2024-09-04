@@ -87,7 +87,7 @@ func (t *testnetEnv) Prepare() (networktest.NetworkConnector, func(), error) {
 			go func() {
 				err := t.tenGatewayContainer.Stop()
 				if err != nil {
-					fmt.Println("failed to stop ten gateway", err.Error())
+					fmt.Println("failed to stop TEN gateway", err.Error())
 				}
 			}()
 		}
@@ -115,10 +115,10 @@ func (t *testnetEnv) startTenGateway() {
 	}
 	tenGWContainer := walletextension.NewContainerFromConfig(cfg, t.logger)
 
-	fmt.Println("Starting Ten Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
+	fmt.Println("Starting TEN Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
 	err := tenGWContainer.Start()
 	if err != nil {
-		t.logger.Error("failed to start ten gateway", "err", err)
+		t.logger.Error("failed to start TEN gateway", "err", err)
 		panic(err)
 	}
 	t.tenGatewayContainer = tenGWContainer

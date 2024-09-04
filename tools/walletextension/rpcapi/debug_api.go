@@ -48,7 +48,7 @@ func (api *DebugAPI) SetHead(number hexutil.Uint64) {
 	// not implemented
 }
 
-// EventLogRelevancy - specific to Ten - todo
+// EventLogRelevancy - specific to TEN - todo
 func (api *DebugAPI) EventLogRelevancy(_ context.Context, _ common.Hash) (interface{}, error) {
 	// todo
 	return nil, rpcNotImplemented

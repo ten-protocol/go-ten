@@ -14,14 +14,14 @@ The typical blockchain node runs multiple services in a single process. For exam
 - Mempool
 - etc 
 
-Ten uses Trusted Execution Environments (TEE), like Intel SGX, to execute transactions in a confidential environment, which means we diverge from the typical architecture. 
+TEN uses Trusted Execution Environments (TEE), like Intel SGX, to execute transactions in a confidential environment, which means we diverge from the typical architecture. 
 There are three main components of the architecture, each running as a separate process: the Enclave, the Host and the Wallet Extension.
 
 ![Architecture](design/architecture/resources/obscuro_arch.jpeg)
 
 ### I. The Enclave
 
-This is the core component of Ten which runs inside the TEE. 
+This is the core component of TEN which runs inside the TEE. 
 See [go/enclave](go/enclave)
 
 We use [EGo](https://www.edgeless.systems/products/ego/), an open source SDK for developing this confidential component.
@@ -31,7 +31,7 @@ The Enclave exposes an [interface](go/common/enclave.go) over RPC which attempts
 The Enclave component has these main responsibilities:
 
 #### 1. Execute EVM transactions
-Ten has the goal to be fully compatible with the EVM, so smart contracts can be ported freely from other EVM compatible
+TEN has the goal to be fully compatible with the EVM, so smart contracts can be ported freely from other EVM compatible
 chains. To achieve this and minimise the effort and incompatibilities, we depend on [go-ethereum](https://github.com/ethereum/go-ethereum).
 
 The dependency on go-ethereum is not straight forward, since transaction execution is coupled with Ethereum specific consensus rules,
@@ -59,7 +59,7 @@ See [go/enclave/db](go/enclave/db)
 #### 3. Consume Ethereum blocks 
 The Enclave is fed Ethereum blocks through the RPC interface. These blocks are used as the "Source of Truth", and the Enclave 
 extracts useful information from them, such as published rollups, deposits to the bridge, etc. Ethereum re-orgs have to be detected
-at this level to rollback the Ten state accordingly.
+at this level to rollback the TEN state accordingly.
 
 To avoid the risk of the Enclave being fed invalid blocks which an attacker can use to probe for information, or to shorten the 
 [revelation period](https://whitepaper.ten.xyz/ten-whitepaper/detailed-design.html#revelation-mechanism), the blocks have to be checked for validity, which includes checking that enough "work" went into them.
@@ -70,20 +70,20 @@ logic.
 #### 4. Bridge to Ethereum 
 One of the key aspects of Ethereum Layer 2 (L2) solutions is to feature a decentralised bridge that is resistant to 51% attacks.
 
-Ten features a L2 side of the bridge that is completely under the control of the platform.
+TEN features a L2 side of the bridge that is completely under the control of the platform.
 
 ##### a) Deposits
 During processing of the Ethereum blocks, the platform generates synthetic L2 transactions based on every relevant transaction found there.
-For example when Alice deposits 10ABC from her account to the L1 bridge, Ten will execute a synthetic L2 transaction (that it deterministically
+For example when Alice deposits 10ABC from her account to the L1 bridge, TEN will execute a synthetic L2 transaction (that it deterministically
 generated from the L1 transaction), which moves 10WABC from the L2 bridge to Alice's address on Ten. 
 
 This logic is part of the consensus of Ten, every node receiving the same block containing the rollup and the deposits, will generate the exact same synthetic transaction.
 
 ##### b) Withdrawals
-Ten ERC20 transactions sent to a special "Bridge" address are interpreted as withdrawals. Which means the wrapped tokens are burned
-on the Ten side of the bridge and a Withdrawal instruction is added to the rollup header, which will be later executed by the Ethereum side of the bridge.
+TEN ERC20 transactions sent to a special "Bridge" address are interpreted as withdrawals. Which means the wrapped tokens are burned
+on the TEN side of the bridge and a Withdrawal instruction is added to the rollup header, which will be later executed by the Ethereum side of the bridge.
 
-This happens deterministically in a post-processing phase, after all Ten transactions were executed by the EVM.
+This happens deterministically in a post-processing phase, after all TEN transactions were executed by the EVM.
 
 
 See [go/enclave/bridge](go/enclave/bridge)
@@ -109,7 +109,7 @@ included in a rollup.*
 #### 6. The rollups and the PoBI protocol
 
 Like in any blockchain the unit of the protocol is the batch of transactions organized in a chain. 
-The Ten blocks have an encrypted payload, which is only visible inside the secure Enclave.
+The TEN blocks have an encrypted payload, which is only visible inside the secure Enclave.
 All of the logic of maintaining the current state based on incoming data and of producing new rollups is found in the
 [go/enclave/rollupchain](go/enclave/rollupchain) package.
 
@@ -123,13 +123,13 @@ These are the main components:
 
 ##### a) RPC encryption/decryption
 
-The Ten "Wallet extension" encrypts all requests from users (transactions or smart contract method calls) with the "Ten public key", which is a key derived from the 
+The TEN "Wallet extension" encrypts all requests from users (transactions or smart contract method calls) with the "TEN public key", which is a key derived from the 
 master seed. 
 The response is in turn encrypted with the "Viewing Key" of the requesting user.
 
 This component manages viewing keys and handles the encryption and decryption.
 
-The transactions received from users are gossiped with the other aggregators encrypted with the "Ten Public Key".
+The transactions received from users are gossiped with the other aggregators encrypted with the "TEN Public Key".
 
 *Note: In the current implementation, this key is hardcoded.*
 
@@ -181,7 +181,7 @@ building blocks of the Enclave*
 
 The missing link to achieving fully private transactions while allowing end-users to continue using their favourite 
 wallets (like MetaMask). This is a very thin component that is responsible for encrypting and decrypting traffic 
-between the Ten node and its clients.
+between the TEN node and its clients.
 
 See the [docs](https://docs.ten.xyz/wallet-extension/wallet-extension/) for more information.
 
@@ -197,17 +197,17 @@ root
 │   ├── <a href="./go/enclave">enclave</a>: The component that is loaded up inside SGX.
 │   │   ├── <a href="./go/enclave/bridge">bridge</a>: The platform side of the decentralised bridge logic.
 │   │   ├── <a href="./go/enclave/core">core</a>: Base data structures used only inside the enclave. 
-│   │   ├── <a href="./go/enclave/crypto">crypto</a>: Implementation of the Ten cryptography.
+│   │   ├── <a href="./go/enclave/crypto">crypto</a>: Implementation of the TEN cryptography.
 │   │   ├── <a href="./go/enclave/db">db</a>: The database implementations. 
 │   │   ├── <a href="./go/enclave/enclaverunner">enclaverunner</a>: The entry point to the standalone enclave process. 
-│   │   ├── <a href="./go/enclave/evm">evm</a>: Ten transaction execution on top of the EVM.
+│   │   ├── <a href="./go/enclave/evm">evm</a>: TEN transaction execution on top of the EVM.
 │   │   ├── <a href="./go/enclave/main">main</a>: Main
 │   │   ├── <a href="./go/enclave/mempool">mempool</a>: The mempool living inside the enclave
 │   │   ├── <a href="./go/enclave/rollupchain">rollupchain</a>: The main logic for calculating the state and the POBI protocol.
 │   │   └── <a href="./go/enclave/rpcencryptionmanager">rpcencryptionmanager</a>: Responsible for encrypting the communication with the wallet extension.
 │   ├── <a href="./go/ethadapter">ethadapter</a>: Responsible for interpreting L1 transactions 
 │   │   ├── <a href="./go/ethadapter/erc20contractlib">erc20contractlib</a>: Understand ERC20 transactions.
-│   │   └── <a href="./go/ethadapter/mgmtcontractlib">mgmtcontractlib</a>: Understand Ten Management contrract transactions. 
+│   │   └── <a href="./go/ethadapter/mgmtcontractlib">mgmtcontractlib</a>: Understand TEN Management contrract transactions. 
 │   ├── <a href="./go/host">host</a>: The standalone host process.
 │   │   ├── <a href="go/host/storage/db">db</a>: The host's database.
 │   │   ├── <a href="./go/host/hostrunner">hostrunner</a>: The entry point.
@@ -220,28 +220,28 @@ root
 │   │       └── <a href="./go/host/enclaverpc">enclaverpc</a>: The RPC client for communications with the enclave.
 │   ├── <a href="./go/rpc">rpcclientlib</a>: Library to allow go applications to connect to a host via RPC.
 │   └── <a href="./go/wallet">wallet</a>: Logic around wallets. Used both by the node, which is an ethereum wallet, and by the tests
-├── <a href="./integration">integration</a>: Integration tests that spin up Ten networks.
+├── <a href="./integration">integration</a>: Integration tests that spin up TEN networks.
 │   ├── <a href="./integration/simulation">simulation</a>: A series of tests that simulate running networks with different setups.
 ├── <a href="./testnet">testnet</a>: Utilities for deploying a testnet.
 └── <a href="./tools">tools</a>: Peripheral tooling.
     ├── <a href="./tools/hardhatdeployer">hardhatdeployer</a>: Automates deployment of ERC20 and management contracts to the L1.
     ├── <a href="./tools/faucet">faucet</a>: Faucet for testnet.
     ├── <a href="./tools/tenscan">tenscan</a>: Tooling to monitor network transactions.
-    └── <a href="./tools/walletextension">walletextension</a>: Ensures sensitive messages to and from the Ten node are encrypted.
+    └── <a href="./tools/walletextension">walletextension</a>: Ensures sensitive messages to and from the TEN node are encrypted.
 
 </pre>
 
 
 ## Testing
 
-The Ten integration tests are found in: [integration/simulation](integration/simulation).
+The TEN integration tests are found in: [integration/simulation](integration/simulation).
 
 The main tests are "simulations", which means they spin up both an L1 network and an L2 network, and then inject random transactions.
 Due to the non-determinism of both the "mining" protocol in the L1 network and the nondeterminism of POBI, coupled with the random traffic,
 it allows the tests to capture many corner cases without having to explicitly write individual tests for them. 
 
 The first [simulation_in_mem_test](integration/simulation/simulation_in_mem_test.go) runs fully in one single process on top of a 
-mocked L1 network and with the networking components of the Ten node swapped out, and is just focused on producing 
+mocked L1 network and with the networking components of the TEN node swapped out, and is just focused on producing 
 random L1 blocks at very short intervals.  The [ethereummock](integration/ethereummock) implementation is based on the ethereum protocol with the individual nodes 
 gossiping with each other with random latencies, producing blocks at a random interval distributed 
 around a configured ``AvgBlockDuration``, and making decisions about the canonical head based on the longest chain.
@@ -255,7 +255,7 @@ The [simulation_geth_in_mem_test](integration/simulation/simulation_geth_in_mem_
 network of geth nodes started in clique mode. The lowest unit of time of producing blocks in that mode is `1 second`.
 
 The [simulation_full_network_test](integration/simulation/simulation_full_network_test.go) starts standalone local processes for
-both the enclave and the ten node connected to real geth nodes.
+both the enclave and the TEN node connected to real geth nodes.
 
 The [simulation_docker_test](integration/simulation/simulation_docker_test.go) goes a step further and runs the enclave in "Simulation mode" 
 in a docker container with the "EGo" library. 
@@ -269,8 +269,8 @@ of these setups by receiving RPC handles to the nodes.
 
 
 ## Getting Started
-The following section describes building the reference implementation of the Ten protocol, running the unit and 
-integration tests, and deploying a local testnet for end-to-end testing. The reference implementation of Ten is 
+The following section describes building the reference implementation of the TEN protocol, running the unit and 
+integration tests, and deploying a local testnet for end-to-end testing. The reference implementation of TEN is 
 written in [go](https://go.dev). Unless otherwise stated, all paths stated herein are relative to the root of the 
 `go-ten` checkout.
 
@@ -303,7 +303,7 @@ is used and the creation of the docker images automated as described in [Buildin
 
 
 ### Running the tests
-The tests require an Ten enclave to be locally running, and as such the image should first be created and added to the 
+The tests require an TEN enclave to be locally running, and as such the image should first be created and added to the 
 docker images repository. Building the image is described in [dockerfiles](dockerfiles) and can be performed using the 
 below in the root of the project;
 
@@ -329,7 +329,7 @@ go run ./testnet/launcher/cmd
 ```
 
 The network is started running both a sequencer and a validator node (SGX simulated). It will also start a faucet server 
-to fund accounts on the network, and a local instance of the Ten Gateway to mediate connections to the network. The 
+to fund accounts on the network, and a local instance of the TEN Gateway to mediate connections to the network. The 
 faucet server is started on `http://127.0.0.1:99` and the gateway on `http://127.0.0.1:3000`. To request funds for a 
 given account use the below command;
 

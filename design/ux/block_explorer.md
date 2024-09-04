@@ -2,7 +2,7 @@
 
 ## Scope
 
-The design for the Ten block explorers, tools to allow users to make sense of the contents of the Ten chain. 
+The design for the TEN block explorers, tools to allow users to make sense of the contents of the TEN chain. 
 There will be two tools - a public block explorer that only displays public information, and a private block explorer 
 that also displays private information belonging to that user.
  
@@ -75,8 +75,8 @@ BlockScout is an open-source block explorer, used by Secret Network among others
 In theory, this would give us a block explorer "for free". In practice, we'd need to customise BlockScout to a large  
 extent, even for the public block explorer, for two reasons:
 
-* It cannot handle the fact that some information about the Ten chain is returned in an encrypted form. For 
-  example, if vanilla BlockScout is connected to an Ten host, it correctly displays the number of Ten blocks, 
+* It cannot handle the fact that some information about the TEN chain is returned in an encrypted form. For 
+  example, if vanilla BlockScout is connected to an TEN host, it correctly displays the number of TEN blocks, 
   but it considers every block to have zero transactions, because it chokes on the encrypted transaction contents being 
   returned
 * Every advanced block explorer has some customised handling of standard contracts. For example, for ERC-20, it will 
@@ -92,4 +92,4 @@ of viewing keys.
 Forking BlockScout would require us to develop skills we don't have currently (e.g. it is written in Elixir).
 
 Once BlockScout was forked, we'd have to maintain the fork. Blockscout is currently c. 270k lines of code, 20% larger 
-than the Ten codebase as of this writing.
+than the TEN codebase as of this writing.

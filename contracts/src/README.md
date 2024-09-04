@@ -1,7 +1,7 @@
 ## Solidity smart contracts
 
 In this subdirectory you can find the solidity smart contracts for the platform.
-Under the `/management` subdirectory you can find the root contract of Ten - ManagementContract.sol
+Under the `/management` subdirectory you can find the root contract of TEN - ManagementContract.sol
 It dictates the possible state of the Layer 2 and drives the process. 
 
 Under `/messaging` you can find the cross chain messaging contracts. Inside of it under the `/messenger` subdirectory sits an example implementation of cross chain message relayer that utilizes the message bus.

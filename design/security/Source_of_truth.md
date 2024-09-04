@@ -1,6 +1,6 @@
-# An objective source of truth for the Ten Enclave
+# An objective source of truth for the TEN Enclave
 
-A TEE-based network like Ten needs a reliable and objective source of truth to function correctly and protect the
+A TEE-based network like TEN needs a reliable and objective source of truth to function correctly and protect the
 data privacy in the face of complex attacks by the node operator.
 
 ## Problems
@@ -12,13 +12,13 @@ The lack of reliable source-of-truths mechanisms can lead to the following types
 
 Note: we will analyse each of these attacks below.
 
-Ten is an Ethereum Layer 2, so it is natural to consider the Ethereum chain as the source of truth.
+TEN is an Ethereum Layer 2, so it is natural to consider the Ethereum chain as the source of truth.
 The transition to proof-of-stake is making the problem even more difficult because one of the tradeoffs made when
 designing that protocol was to weaken the objectivity assumption to "Weak subjectivity".
 
 ### Revelation period
 
-Ten has a built-in mechanism to reveal encryption keys for transactions after a configured amount of time.
+TEN has a built-in mechanism to reveal encryption keys for transactions after a configured amount of time.
 The difficulty is how to measure time reliably inside an enclave.
 
 When Ethereum was based on proof-of-work, we could rely on the number of Ethereum blocks that have been consumed by the enclave
@@ -33,13 +33,13 @@ challenging.
 The threat is that a hacker learns about an SGX vulnerability after there is already a patch available and wants to use
 compromised hardware on a snapshot of the network state to decrypt the historical data.
 
-Note: Ten reveals data anyway, so the impact of such an attack in real life would be reduced, but we need to make our best effort to keep
+Note: TEN reveals data anyway, so the impact of such an attack in real life would be reduced, but we need to make our best effort to keep
 the guarantee of the revelation period.
 
 
-### Transparent Ten Upgrades
+### Transparent TEN Upgrades
 
-A TEE-based system like Ten must be upgradeable.
+A TEE-based system like TEN must be upgradeable.
 During an upgrade, the new software version must be able to pick up from the old version, which means that the previous
 version must share some of its secrets with the new version.
 
@@ -100,7 +100,7 @@ an upgrade in a dark room without anyone knowing.
 In phase 2, we can decentralise by creating a more complex incentive-driven lifecycle.
 
 1. A developer proposes a new version by publishing a GitHub tag (hash) and the Attestation of an enclave built from that code,
-   together with a stake. Initially, the developer will likely be the Ten Foundation.
+   together with a stake. Initially, the developer will likely be the TEN Foundation.
 
 2. Anyone posting a stake can make a challenge to this version. The challenge period is predetermined.
 
@@ -129,7 +129,7 @@ This mechanism has several advantages:
 
 #### Transparent upgrades conclusion
 
-Ten will implement the transparent, smart-contract-driven upgrade process, starting out with the centralised approach and then decentralising in the next phase.
+TEN will implement the transparent, smart-contract-driven upgrade process, starting out with the centralised approach and then decentralising in the next phase.
 
 The design needs two key ingredients:
 1. The enclave must understand the outputs of the smart contract.
@@ -291,8 +291,8 @@ Note: These are still unreviewed draft proposals at this stage.
 
 #### Solution 1 - Batched publishing to Bitcoin
 
-The naive solution described above is inefficient because every single Ten node has to periodically publish a transaction to Bitcoin.
-One immediate improvement is for the Ten nodes to join forces and generate shared randomness (`SR`) during a cycle,
+The naive solution described above is inefficient because every single TEN node has to periodically publish a transaction to Bitcoin.
+One immediate improvement is for the TEN nodes to join forces and generate shared randomness (`SR`) during a cycle,
 and then someone publishes this `SR` to Bitcoin.
 This achieves the same result, as it convinces every enclave that participated in this cycle that its timestamp is valid.
 
@@ -322,10 +322,10 @@ Q1: why would someone aggregate these nonces? Find incentives
 Q2: what exactly is published, by whom, why? Incentives
 
 
-#### Solution 2 - Nonce validated by the Ten network
+#### Solution 2 - Nonce validated by the TEN network
 
-Another potential solution is to rely on the Ten network itself to validate the randomness.
-This is more tricky to achieve because of the subjectivity of the Ten network participants.
+Another potential solution is to rely on the TEN network itself to validate the randomness.
+This is more tricky to achieve because of the subjectivity of the TEN network participants.
 
 ##### Protocol
 
@@ -333,7 +333,7 @@ Draft:
 
 Every N Ethereum epoch started, the enclave will generate a payload containing a newly generated nonce, the last checkpoint hash,
 and the current Attestation.
-The host is responsible for collecting signatures from the other Ten nodes over this payload.
+The host is responsible for collecting signatures from the other TEN nodes over this payload.
 The rule is that an enclave receiving a request from another enclave will sign over it only if the latest checkpoint coincides,
 and the Attestation is valid.
 
@@ -350,7 +350,7 @@ sign over a payload that points to an unknown or a past epoch. After a couple of
 
 The most difficult problem with this approach is establishing the validity of the confirmation signatures themselves.
 In the hypothetical "long-range" scenario where the attacker spins up an enclave on a snapshot of a database from 6 months ago,
-the Ten nodes that this enclave considers active might no longer be.
+the TEN nodes that this enclave considers active might no longer be.
 If these nodes are decommissioned, then they will not respond, so the attack will fail quickly.
 
 The problem comes when we assume the attacker now controls these servers. To perform the attack, they must all be in synch and respond to each other.

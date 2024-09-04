@@ -30,7 +30,7 @@ const (
 )
 
 func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
-	// Create the in memory ten nodes, each connect each to a geth node
+	// Create the in memory TEN nodes, each connect each to a geth node
 	tenNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
 	tenHosts := make([]host.Host, params.NumberOfNodes)
 	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithInboundP2PDisabled)
@@ -57,7 +57,7 @@ func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clien
 		tenHosts[i] = tenNodes[i].Host()
 	}
 
-	// start each ten node
+	// start each TEN node
 	for _, m := range tenNodes {
 		t := m
 		go func() {
@@ -108,7 +108,7 @@ func CreateAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 	return authClients
 }
 
-// StopTenNodes stops the Ten nodes and their RPC clients.
+// StopTenNodes stops the TEN nodes and their RPC clients.
 func StopTenNodes(clients []rpc.Client) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -119,7 +119,7 @@ func StopTenNodes(clients []rpc.Client) {
 		eg.Go(func() error {
 			err := c.Call(nil, rpc.StopHost)
 			if err != nil {
-				testlog.Logger().Error("Could not stop Ten node.", log.ErrKey, err)
+				testlog.Logger().Error("Could not stop TEN node.", log.ErrKey, err)
 				return err
 			}
 			c.Stop()
@@ -129,10 +129,10 @@ func StopTenNodes(clients []rpc.Client) {
 
 	err := eg.Wait()
 	if err != nil {
-		testlog.Logger().Error(fmt.Sprintf("Error waiting for the Ten nodes to stop - %s", err))
+		testlog.Logger().Error(fmt.Sprintf("Error waiting for the TEN nodes to stop - %s", err))
 	}
 
-	testlog.Logger().Info("Ten nodes stopped")
+	testlog.Logger().Info("TEN nodes stopped")
 }
 
 // CheckHostRPCServersStopped checks whether the hosts' RPC server addresses have been freed up.
@@ -157,10 +157,10 @@ func CheckHostRPCServersStopped(hostWSURLS []string) {
 
 	err := eg.Wait()
 	if err != nil {
-		panic(fmt.Sprintf("Timed out waiting for the Ten host RPC addresses to become available - %s", err))
+		panic(fmt.Sprintf("Timed out waiting for the TEN host RPC addresses to become available - %s", err))
 	}
 
-	testlog.Logger().Info("Ten host RPC addresses freed")
+	testlog.Logger().Info("TEN host RPC addresses freed")
 }
 
 func isAddressAvailable(address string) bool {
