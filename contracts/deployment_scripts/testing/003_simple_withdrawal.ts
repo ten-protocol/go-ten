@@ -62,7 +62,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const mbus = mbusBase.connect(await hre.ethers.provider.getSigner(deployer)); 
     const tx = await mbus.getFunction("sendValueToL2").send(deployer, 1000, { value: 1000});
     const receipt = await tx.wait()
-    console.log(`003_simple_withdrawal: Cross Chain send receipt status = ${receipt.status}`);
+    console.log(`003_simple_withdrawal: Cross Chain send ${tx.hash} receipt status = ${receipt.status}`);
 
     const block = await hre.ethers.provider.send('eth_getBlockByHash', [receipt.blockHash, true]);
     console.log(`Block received:       ${block.number}`)

@@ -313,8 +313,6 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, 
 
 	transactor.Nonce = big.NewInt(0).SetUint64(nonce)
 
-	p.logger.Debug("Adding cross chain roots to management contract", log.BundleHashKey, bundle.CrossChainRootHashes)
-
 	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.LastBatchHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes, bundle.Signature, rollupNum, forkID)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrCrossChainBundleRepublished) {
@@ -331,7 +329,7 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, 
 		return fmt.Errorf("unable to get receipt for cross chain bundle transaction. Cause: %w", err)
 	}
 
-	p.logger.Info("Successfully submitted bundle", log.BundleHashKey, bundle.LastBatchHash)
+	p.logger.Info("Successfully submitted bundle", log.BundleHashKey, bundle.LastBatchHash, "bundleRoots", bundle.CrossChainRootHashes.ToHexString())
 	return nil
 }
 
