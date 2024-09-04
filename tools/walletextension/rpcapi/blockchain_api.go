@@ -163,10 +163,10 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Addres
 	return *resp, err
 }
 
-// GetStorageAt is not compatible with ETH RPC tooling. Ten network does not getStorageAt because it would
+// GetStorageAt is not compatible with ETH RPC tooling. TEN network does not getStorageAt because it would
 // violate the privacy guarantees of the network.
 //
-// However, we can repurpose this method to be able to route Ten-specific requests through from an ETH RPC client.
+// However, we can repurpose this method to be able to route TEN-specific requests through from an ETH RPC client.
 // We call these requests Custom Queries.
 //
 // This method signature matches eth_getStorageAt, but we use the address field to specify the custom query method,

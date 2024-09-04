@@ -55,7 +55,7 @@ const (
 
 	tenChainIDName      = "tenChainID"
 	tenChainIDDefault   = 443
-	tenChainIDFlagUsage = "ChainID of Ten network that the gateway is communicating with"
+	tenChainIDFlagUsage = "ChainID of TEN network that the gateway is communicating with"
 
 	storeIncomingTxs        = "storeIncomingTxs"
 	storeIncomingTxsDefault = true

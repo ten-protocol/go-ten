@@ -1,6 +1,6 @@
-# The Ten Gateway - Design
+# The TEN Gateway - Design
 
-The scope of this document is to design a hosted [Wallet Extension](wallet_extension.md) called the "Ten Gateway" (TG).
+The scope of this document is to design a hosted [Wallet Extension](wallet_extension.md) called the "TEN Gateway" (TG).
 
 The TG will be a superset of the WE functionality, so this document will only cover the additions.
 
@@ -12,12 +12,12 @@ The current WE is designed to be used by a single user holding multiple addresse
 
 The TG must support mutiple users, each with multiple addresses. It can be seen as offering a WE per user.
 
-The Ten node has no concept of "User". It only authenticates based on the "blockchain address". 
+The TEN node has no concept of "User". It only authenticates based on the "blockchain address". 
 It expects to be supplied with a signed viewing key per address, so that it can respond encrypted with that VK. 
 
 *Note that multiple addresses can share a VK.*
 
-The role of the current WE is to manage a list of authenticated viewing keys (AVK), which it uses behind the scenes to communicate with an Ten node. 
+The role of the current WE is to manage a list of authenticated viewing keys (AVK), which it uses behind the scenes to communicate with an TEN node. 
 The AVKs are stored on the local computer in a file.
 An AVK is a text containing the hash of the public viewing key signed with the "spending key" that controls a blockchain address.
 
@@ -28,7 +28,7 @@ The diagram below depicts the setup once the TG is implemented.
 @startuml
 'https://plantuml.com/deployment-diagram
 
-cloud "Ten Nodes"
+cloud "TEN Nodes"
 
 actor Alice
 component "Alice's Computer"{
@@ -39,29 +39,29 @@ component "Alice's Computer"{
 Alice --> "Alice's MetaMask"
 "Alice's MetaMask" --> "Alice's Wallet Extension"
 "Alice's Wallet Extension" <-> "Alice's Viewing Keys"
-"Alice's Wallet Extension" ----> "Ten Nodes" : Encrypted RPC
+"Alice's Wallet Extension" ----> "TEN Nodes" : Encrypted RPC
 
 actor Bob
 component "Bob's Computer"{
     agent "Bob's MetaMask"
 }
 component "Confidential Web Service"{
-    node "Ten Gateway"
+    node "TEN Gateway"
     database "TG Viewing Keys"
 }
-"TG Viewing Keys" <-> "Ten Gateway"
+"TG Viewing Keys" <-> "TEN Gateway"
 
 Bob --> "Bob's MetaMask"
-"Bob's MetaMask" ---> "Ten Gateway" : HTTPS
-"Ten Gateway" ----> "Ten Nodes" : Encrypted RPC
+"Bob's MetaMask" ---> "TEN Gateway" : HTTPS
+"TEN Gateway" ----> "TEN Nodes" : Encrypted RPC
 
 actor Charlie
 component "Charlie's Computer"{
     agent "Charlie's MetaMask"
 }
-node "Ten Gateway"
+node "TEN Gateway"
 Charlie --> "Charlie's MetaMask"
-"Charlie's MetaMask" ---> "Ten Gateway" : HTTPS
+"Charlie's MetaMask" ---> "TEN Gateway" : HTTPS
 
 @enduml
 ```
@@ -121,13 +121,13 @@ group Third click
     Alice -> MM : Confirm signature
 end
 
-Alice -> TG: All further Ten interactions will be to\nhttps://gateway.ten.org/v1?token=$EncryptionToken
+Alice -> TG: All further TEN interactions will be to\nhttps://gateway.ten.org/v1?token=$EncryptionToken
 
 @enduml
 ```
 
 The onboarding should be done in 3 clicks.
-1. The user goes to a website (like "ten.org"), where she clicks "Join Ten". This will add a network to their wallet.
+1. The user goes to a website (like "ten.org"), where she clicks "Join TEN". This will add a network to their wallet.
 2. User connects the wallet to the page.
 3. In the wallet popup, the user has to sign over EIP-712 formatted message.
 
@@ -160,7 +160,7 @@ types: {
 ##### Click 1
 1. Behind the scenes, a js functions calls "gateway.ten.org/v1/join" where it will generate a VK and send back the hash of the Public key. This is the "encryption token" 
 2. After receiving the Encryption token, the js function will add a new network to the wallet.
-The RPC URL of the new Ten network will include the encryption token: "https://gateway.ten.org/v1?token=$EncryptionToken". 
+The RPC URL of the new TEN network will include the encryption token: "https://gateway.ten.org/v1?token=$EncryptionToken". 
 Notice that the encryption token has to be included as a query parameter because it must be encrypted by https, as it is secret.
 
 ##### Click 2
@@ -180,7 +180,7 @@ Note: Alternative UXes that achieve the same goal are ok.
 
 ### Register subsequent addresses  
 
-User Alice is onboarded already and has the Ten network configured in her wallet with an encryption token.
+User Alice is onboarded already and has the TEN network configured in her wallet with an encryption token.
 
 She has to go to the same landing page as above and connect her wallet, instead of hitting "Join".
 When connecting, she can choose a second account.

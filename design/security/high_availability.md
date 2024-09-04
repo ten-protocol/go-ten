@@ -1,6 +1,6 @@
 # High availability
 
-The Ten Sequencer must have HA capabilities. The reasoning is covered in the "Fast finality" design docs.
+The TEN Sequencer must have HA capabilities. The reasoning is covered in the "Fast finality" design docs.
 
 The requirement is that the service must continue even if the enclave of the sequencer crashes and is corrupted.
 
@@ -12,14 +12,14 @@ between them to ensure that service goes on uninterrupted.
 
 ## MEV Protection 
 
-The Sequencer is the only Ten node capable of producing Light Batches, and thus the only node that can in theory
+The Sequencer is the only TEN node capable of producing Light Batches, and thus the only node that can in theory
 attempt to extract value via MEV. If the operator has multiple enclaves available operating in "Sequencer" mode it can both 
 provide an uninterrupted service and extract some value at the same time.
 
 Introducing startup delays does not help too much in this case, because the operator could hold key transactions for longer.
 
 
-An alternative solution is to introduce transparency into the lifecycle events of the sequencer enclaves, such that the Ten network 
+An alternative solution is to introduce transparency into the lifecycle events of the sequencer enclaves, such that the TEN network 
 can assess the likelihood of bad behaviour.  
 
 Lifecycle events:
@@ -60,7 +60,7 @@ Todo - each event points to the previous event to prevent the operator from tran
 ?
 
 Periodically (todo - how often? Every batch?), the sequencer host will request a `RestartEvent` from each of the whitelisted enclaves it controls.
-It will add these events to the `ProtocolPayload`, and broadcast them to the Ten network together with the Batch.
+It will add these events to the `ProtocolPayload`, and broadcast them to the TEN network together with the Batch.
 
 Upon restart, each enclave records the required data as a variable, and will return that variable in the right struct each time it is being asked. 
 This proof cannot be forged without a significant bug in the software or impersonation of the enclave. 

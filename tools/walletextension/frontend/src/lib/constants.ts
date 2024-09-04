@@ -14,22 +14,22 @@ export const GOOGLE_ANALYTICS_ID = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
 
 export const testnetUrls = {
   sepolia: {
-    name: "Ten Testnet",
+    name: "TEN Testnet",
     url: "https://sepolia-testnet.ten.xyz",
     rpc: "https://rpc.sepolia-testnet.ten.xyz",
   },
   uat: {
-    name: "Ten UAT-Testnet",
+    name: "TEN UAT-Testnet",
     url: "https://uat-testnet.ten.xyz",
     rpc: "https://rpc.uat-testnet.ten.xyz",
   },
   dev: {
-    name: "Ten Dev-Testnet",
+    name: "TEN Dev-Testnet",
     url: "https://dev-testnet.ten.xyz",
     rpc: "https://rpc.dev-testnet.ten.xyz",
   },
   default: {
-    name: "Ten Testnet",
+    name: "TEN Testnet",
     url: tenGatewayAddress,
   },
 };
@@ -50,3 +50,9 @@ export const nativeCurrency = {
   symbol: "ETH",
   decimals: 18,
 };
+
+export const CONNECTION_STEPS = [
+  "Hit Connect to TEN and start your journey",
+  "Allow MetaMask to switch networks to the TEN Testnet",
+  "Sign the <b>Signature Request</b> (this is not a transaction)",
+];
