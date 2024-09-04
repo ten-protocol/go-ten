@@ -4,9 +4,9 @@ export const siteMetadata = {
   companyName: "Tenscan",
   metaTitle: "Tenscan - Real-Time Blockchain Explorer",
   description:
-    "The privacy-preserving blockchain explorer for TEN. View transaction history and smart contract interactions without compromising sensitive data. Experience the future of blockchain transparency.",
+    "Tenscan allows you to explore and search the TEN blockchain. View transaction history and smart contract interactions without compromising sensitive data.",
   keywords:
-    "blockchain explorer, real-time blockchain data, dapps, l2, encryption, layer2, crypto transactions, blockchain analysis, Tenscan, block explorer, TEN network, TEN blockchain, TEN explorer",
+    "blockchain explorer, real-time blockchain data, dapps, l2, encryption, layer2, crypto transactions, blockchain analysis, Tenscan, block explorer,TEN, TEN Protocol, TEN chain, TEN network, TEN blockchain, TEN explorer",
   siteUrl: "https://tenscan.io",
   siteLogo: `/assets/images/cover.png`,
   siteLogoSquare: `/assets/images/cover.png`,
