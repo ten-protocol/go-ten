@@ -15,6 +15,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
+	"google.golang.org/grpc/status"
 )
 
 type (
@@ -122,6 +123,11 @@ func (c *crossChainStateMachine) PublishNextBundle() error {
 
 	bundle, err := c.enclaveClient.ExportCrossChainData(context.Background(), begin.Uint64(), end.Uint64())
 	if err != nil {
+		s, ok := status.FromError(err)
+		if ok && errors.Is(s.Err(), errutil.ErrCrossChainBundleNoBatches) {
+			c.currentRollup++
+			return nil
+		}
 		return err
 	}
 
@@ -178,6 +184,7 @@ func (c *crossChainStateMachine) Synchronize() error {
 		Number:  c.latestRollup.Number + 1,
 	}
 
+	c.logger.Info("Synchronized rollup state machine", "latestRollup", c.latestRollup.Number, "forkUID", c.latestRollup.ForkUID.String())
 	return nil
 }
 

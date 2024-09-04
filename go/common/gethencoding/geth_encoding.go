@@ -39,6 +39,7 @@ const (
 	callFieldGasPrice             = "gasprice"
 	callFieldMaxFeePerGas         = "maxfeepergas"
 	callFieldMaxPriorityFeePerGas = "maxpriorityfeepergas"
+	callFieldAccessList           = "accesslist"
 )
 
 // EncodingService handles conversion to Geth data structures
@@ -235,6 +236,8 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
 			}
 			maxPriorityFeePerGas = (*hexutil.Big)(maxPriorityFeePerGasVal)
+		case callFieldAccessList:
+			// ignore access list for now
 		}
 	}
 
