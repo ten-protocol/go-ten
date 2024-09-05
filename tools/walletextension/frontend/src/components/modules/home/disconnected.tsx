@@ -15,7 +15,7 @@ import {
   DialogTrigger,
 } from "../../ui/dialog";
 import Copy from "../common/copy";
-import {tenChainIDDecimal, tenGatewayAddress} from "../../../lib/constants";
+import {tenChainIDDecimal, tenGatewayAddress, CONNECTION_STEPS} from "../../../lib/constants";
 import { downloadMetaMask, ethereum } from "@/lib/utils";
 
 const Disconnected = () => {
