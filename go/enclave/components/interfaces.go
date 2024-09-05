@@ -125,10 +125,9 @@ type RollupProducer interface {
 }
 
 type RollupConsumer interface {
-	// ProcessRollupsInBlock - extracts the rollup from the block's transactions
-	// and verifies its integrity, saving and processing any batches that have
-	// not been seen previously.
-	ProcessRollupsInBlock(ctx context.Context, b *common.BlockAndReceipts) error
+	// ProcessBlobsInBlock - extracts the blob hashes from the block's transactions and builds the blob hashes from the blobs,
+	// compares this with the hashes since in the block.
+	ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts, blobs []*kzg4844.Blob) error
 }
 
 type BlobResolver interface {

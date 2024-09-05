@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/responses"
@@ -103,6 +104,8 @@ type L1Publisher interface {
 	RequestSecret(report *common.AttestationReport) (gethcommon.Hash, error)
 	// ExtractObscuroRelevantTransactions will return all Obscuro relevant tx from an L1 block
 	ExtractObscuroRelevantTransactions(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx)
+	// FIXME
+	ExtractTenTransactionsAndBlobs(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*kzg4844.Blob, []*ethadapter.L1SetImportantContractsTx)
 	// PublishRollup will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
 	// todo (#1624) - With a single sequencer, it is problematic if rollup publication fails; handle this case better
 	PublishRollup(producedRollup *common.ExtRollup)

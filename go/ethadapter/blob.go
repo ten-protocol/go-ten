@@ -3,6 +3,7 @@ package ethadapter
 import (
 	"bytes"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -24,14 +25,36 @@ func ToIndexedBlobHashes(hs ...gethcommon.Hash) []IndexedBlobHash {
 	return hashes
 }
 
+// MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
+// data.
+func MakeSidecar(blobs []*kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
+	sidecar := &types.BlobTxSidecar{}
+	var blobHashes []gethcommon.Hash
+	for i, blob := range blobs {
+		sidecar.Blobs = append(sidecar.Blobs, *blob)
+		commitment, err := kzg4844.BlobToCommitment(blob)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot compute KZG commitment of blob %d in tx candidate: %w", i, err)
+		}
+		sidecar.Commitments = append(sidecar.Commitments, commitment)
+		proof, err := kzg4844.ComputeBlobProof(blob, commitment)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot compute KZG proof for fast commitment verification of blob %d in tx candidate: %w", i, err)
+		}
+		sidecar.Proofs = append(sidecar.Proofs, proof)
+		blobHashes = append(blobHashes, KZGToVersionedHash(commitment))
+	}
+	return sidecar, blobHashes, nil
+}
+
 // EncodeBlobs takes converts bytes into blobs used for KZG commitment EIP-4844
 // transactions on Ethereum.
-func EncodeBlobs(data []byte) ([]kzg4844.Blob, error) {
+func EncodeBlobs(data []byte) ([]*kzg4844.Blob, error) {
 	data, err := rlp.EncodeToBytes(data)
 	if err != nil {
 		return nil, err
 	}
-	var blobs []kzg4844.Blob
+	var blobs []*kzg4844.Blob
 	for len(data) > 0 {
 		var b kzg4844.Blob
 		data = fillBlobBytes(b[:], data)
@@ -39,7 +62,7 @@ func EncodeBlobs(data []byte) ([]kzg4844.Blob, error) {
 		if err != nil {
 			return nil, err
 		}
-		blobs = append(blobs, b)
+		blobs = append(blobs, &b)
 	}
 	return blobs, nil
 }

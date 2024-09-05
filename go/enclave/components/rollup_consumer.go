@@ -3,6 +3,8 @@ package components
 import (
 	"context"
 	"fmt"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -21,7 +23,6 @@ type rollupConsumerImpl struct {
 
 	rollupCompression *RollupCompression
 	batchRegistry     BatchRegistry
-	blobResolver      BlobResolver
 	logger            gethlog.Logger
 
 	storage      storage.Storage
@@ -31,7 +32,6 @@ type rollupConsumerImpl struct {
 func NewRollupConsumer(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	batchRegistry BatchRegistry,
-	blobResolver BlobResolver,
 	rollupCompression *RollupCompression,
 	storage storage.Storage,
 	logger gethlog.Logger,
@@ -40,7 +40,6 @@ func NewRollupConsumer(
 	return &rollupConsumerImpl{
 		MgmtContractLib:   mgmtContractLib,
 		batchRegistry:     batchRegistry,
-		blobResolver:      blobResolver,
 		rollupCompression: rollupCompression,
 		logger:            logger,
 		storage:           storage,
@@ -48,15 +47,20 @@ func NewRollupConsumer(
 	}
 }
 
-func (rc *rollupConsumerImpl) ProcessRollupsInBlock(ctx context.Context, b *common.BlockAndReceipts) error {
+// ProcessBlobsInBlock - FIXME
+func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts, blobs []*kzg4844.Blob) error {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed block", log.BlockHashKey, b.Block.Hash())
 
-	rollups := rc.extractRollups(ctx, b)
+	rollups, err := rc.extractAndVerifyRollups(b, blobs)
+	if err != nil {
+		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, b.Block.Hash(), log.ErrKey, err)
+		return err
+	}
 	if len(rollups) == 0 {
 		return nil
 	}
 
-	rollups, err := rc.getSignedRollup(rollups)
+	rollups, err = rc.getSignedRollup(rollups)
 	if err != nil {
 		return err
 	}
@@ -110,9 +114,8 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 	return signedRollup, nil
 }
 
-// todo - when processing the rollup, instead of looking up batches one by one, compare the last sequence number from the db with the ones in the rollup
 // extractRollups - returns a list of the rollups published in this block
-func (rc *rollupConsumerImpl) extractRollups(ctx context.Context, br *common.BlockAndReceipts) []*common.ExtRollup {
+func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipts, blobs []*kzg4844.Blob) ([]*common.ExtRollup, error) {
 	rollups := make([]*common.ExtRollup, 0)
 	b := br.Block
 
@@ -127,18 +130,36 @@ func (rc *rollupConsumerImpl) extractRollups(ctx context.Context, br *common.Blo
 			continue
 		}
 
-		blobs, err := rc.blobResolver.FetchBlobs(ctx, br.Block.Header(), rollupHashes.BlobHashes)
-		if err != nil {
-			rc.logger.Crit("could not fetch blobs consumer", log.ErrKey, err)
-			return nil
+		var blobHashes []gethcommon.Hash
+		var err error
+		if _, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
+			return nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
 		}
+
+		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {
+			return nil, fmt.Errorf("failed to verify the rollup hashes with blobhashes. Cause: %w", err)
+		}
+
 		r, err := ethadapter.ReconstructRollup(blobs)
 		if err != nil {
-			rc.logger.Crit("could not recreate rollup from blobs.", log.ErrKey, err)
+			return nil, fmt.Errorf("could not recreate rollup from blobs. Cause: %w", err)
 		}
 
 		rollups = append(rollups, r)
 		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, b.Hash())
 	}
-	return rollups
+	return rollups, nil
+}
+
+func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []gethcommon.Hash) error {
+	if len(rollupHashes.BlobHashes) != len(blobHashes) {
+		return fmt.Errorf("hash count mismatch: rollupHashes (%d) and blobHashes (%d)", len(rollupHashes.BlobHashes), len(blobHashes))
+	}
+
+	for i, indexedBlobHash := range rollupHashes.BlobHashes {
+		if indexedBlobHash.Hash != blobHashes[i] {
+			return fmt.Errorf("hash mismatch at index %d: rollupHash (%s) != blobHash (%s)", i, indexedBlobHash.Hash.Hex(), blobHashes[i].Hex())
+		}
+	}
+	return nil
 }

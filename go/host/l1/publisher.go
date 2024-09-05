@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
 	"sync"
 	"time"
@@ -250,8 +251,8 @@ func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*e
 		if !ok {
 			continue
 		}
-
 		blobs, err := p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), rollupHashes.BlobHashes)
+
 		if err != nil {
 			p.logger.Crit("could not fetch blobs publisher", log.ErrKey, err)
 			return nil, nil, nil
@@ -266,6 +267,50 @@ func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*e
 		rollupTxs = append(rollupTxs, rlp)
 	}
 	return secretRespTxs, rollupTxs, contractAddressTxs
+}
+
+func (p *Publisher) ExtractTenTransactionsAndBlobs(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*kzg4844.Blob, []*ethadapter.L1SetImportantContractsTx) {
+	var secretRespTxs []*ethadapter.L1RespondSecretTx
+	var rollupTxs []*ethadapter.L1RollupTx
+	var contractAddressTxs []*ethadapter.L1SetImportantContractsTx
+	var blobs []*kzg4844.Blob
+	var err error
+
+	for _, tx := range block.Transactions() {
+		t := p.mgmtContractLib.DecodeTx(tx)
+		if t == nil {
+			continue
+		}
+		if scrtTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
+			secretRespTxs = append(secretRespTxs, scrtTx)
+			continue
+		}
+
+		if contractAddressTx, ok := t.(*ethadapter.L1SetImportantContractsTx); ok {
+			contractAddressTxs = append(contractAddressTxs, contractAddressTx)
+			continue
+		}
+		rollupHashes, ok := t.(*ethadapter.L1RollupHashes)
+		if !ok {
+			continue
+		}
+		blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), rollupHashes.BlobHashes)
+
+		if err != nil {
+			p.logger.Crit("could not fetch blobs publisher", log.ErrKey, err)
+			return nil, nil, nil, nil
+		}
+
+		encodedRlp, err := ethadapter.DecodeBlobs(blobs)
+		if err != nil {
+			p.logger.Crit("could not decode blobs.", log.ErrKey, err)
+		}
+		rlp := &ethadapter.L1RollupTx{
+			Rollup: encodedRlp,
+		}
+		rollupTxs = append(rollupTxs, rlp)
+	}
+	return secretRespTxs, rollupTxs, blobs, contractAddressTxs
 }
 
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {

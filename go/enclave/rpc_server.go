@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
 	"net"
 
@@ -129,7 +130,14 @@ func (s *RPCServer) SubmitL1Block(ctx context.Context, request *generated.Submit
 		s.logger.Error("Error decoding receipts", log.ErrKey, err)
 		return nil, err
 	}
-	blockSubmissionResponse, err := s.enclave.SubmitL1Block(ctx, bl, receipts, request.IsLatest)
+
+	blobs, err := s.decodeBlobs(request.EncodedBlobs)
+	if err != nil {
+		s.logger.Error("Error decoding blobs", log.ErrKey, err)
+		return nil, err
+	}
+
+	blockSubmissionResponse, err := s.enclave.SubmitL1BlockWithBlobs(ctx, bl, blobs, receipts, request.IsLatest)
 	if err != nil {
 		var rejErr *errutil.BlockRejectError
 		isReject := errors.As(err, &rejErr)
@@ -497,6 +505,15 @@ func (s *RPCServer) decodeReceipts(encodedReceipts []byte) (types.Receipts, erro
 	}
 
 	return receipts, nil
+}
+
+func (s *RPCServer) decodeBlobs(encodedBlobs []byte) ([]*kzg4844.Blob, error) {
+	var blobs []*kzg4844.Blob
+	err := rlp.DecodeBytes(encodedBlobs, &blobs)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode blobs, bytes=%x, err=%w", encodedBlobs, err)
+	}
+	return blobs, nil
 }
 
 func toRPCError(err common.SystemError) *generated.SystemError {

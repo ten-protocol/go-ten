@@ -99,7 +99,6 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardians, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
-	println("HOST BEACON PATH: ", config.L1BeaconUrl)
 	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), config.L1BeaconUrl)))
 
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})

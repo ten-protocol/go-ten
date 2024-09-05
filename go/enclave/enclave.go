@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
-	"net/http"
 	"sync"
 	"time"
-
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ten-protocol/go-ten/go/common/compression"
 	"github.com/ten-protocol/go-ten/go/common/measure"
@@ -173,8 +171,6 @@ func NewEnclave(
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 	registry := components.NewBatchRegistry(storage, logger)
-	println("ENCLAVE BEACON PATH: ", config.L1BeaconUrl)
-	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), config.L1BeaconUrl)))
 	batchExecutor := components.NewBatchExecutor(storage, registry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
 	sigVerifier, err := components.NewSignatureValidator(storage)
 	rProducer := components.NewRollupProducer(enclaveKey.EnclaveID(), storage, registry, logger)
@@ -182,7 +178,7 @@ func NewEnclave(
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
 	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
-	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, blobResolver, rollupCompression, storage, logger, sigVerifier)
+	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKey.EnclaveID(), storage, logger)
 
 	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, gethEncodingService, *config, logger)
@@ -436,7 +432,8 @@ func (e *enclaveImpl) SubmitL1Block(ctx context.Context, block *common.L1Block, 
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	result, err := e.ingestL1Block(ctx, br)
+	var blobs []*kzg4844.Blob
+	result, err := e.ingestL1Block(ctx, br, blobs)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
@@ -454,7 +451,41 @@ func (e *enclaveImpl) SubmitL1Block(ctx context.Context, block *common.L1Block, 
 	return bsr, nil
 }
 
-func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndReceipts) (*components.BlockIngestionType, error) {
+// SubmitL1BlockWithBlobs FIXME
+func (e *enclaveImpl) SubmitL1BlockWithBlobs(ctx context.Context, block *common.L1Block, blobs []*kzg4844.Blob, receipts common.L1Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
+	if e.stopControl.IsStopping() {
+		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitL1Block with the enclave stopping"))
+	}
+
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
+
+	e.logger.Info("SubmitL1Block", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
+
+	// If the block and receipts do not match, reject the block.
+	br, err := common.ParseBlockAndReceipts(block, &receipts)
+	if err != nil {
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
+	}
+	result, err := e.ingestL1Block(ctx, br, blobs)
+	if err != nil {
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
+	}
+
+	if result.IsFork() {
+		e.logger.Info(fmt.Sprintf("Detected fork at block %s with height %d", block.Hash(), block.Number()))
+	}
+
+	err = e.service.OnL1Block(ctx, block, result)
+	if err != nil {
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
+	}
+
+	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, br)}
+	return bsr, nil
+}
+
+func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndReceipts, blobs []*kzg4844.Blob) (*components.BlockIngestionType, error) {
 	e.logger.Info("Start ingesting block", log.BlockHashKey, br.Block.Hash())
 	ingestion, err := e.l1BlockProcessor.Process(ctx, br)
 	if err != nil {
@@ -467,7 +498,7 @@ func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndRece
 		return nil, err
 	}
 
-	err = e.rollupConsumer.ProcessRollupsInBlock(ctx, br)
+	err = e.rollupConsumer.ProcessBlobsInBlock(ctx, br, blobs)
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored

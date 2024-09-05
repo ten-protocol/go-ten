@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
 	"time"
 
@@ -207,6 +208,35 @@ func (c *Client) SubmitL1Block(ctx context.Context, block *common.L1Block, recei
 	}
 
 	response, err := c.protoClient.SubmitL1Block(ctx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedReceipts: serialized, IsLatest: isLatest})
+	if err != nil {
+		return nil, fmt.Errorf("could not submit block. Cause: %w", err)
+	}
+
+	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
+	if err != nil {
+		return nil, err
+	}
+	return blockSubmissionResponse, nil
+}
+
+// SubmitL1BlockWithBlobs FIXME
+func (c *Client) SubmitL1BlockWithBlobs(ctx context.Context, block *common.L1Block, blobs []*kzg4844.Blob, receipts common.L1Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
+	var buffer bytes.Buffer
+	if err := block.EncodeRLP(&buffer); err != nil {
+		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
+	}
+
+	serializedReceipts, err := rlp.EncodeToBytes(receipts)
+	if err != nil {
+		return nil, fmt.Errorf("could not encode receipts. Cause: %w", err)
+	}
+
+	serializedBlobs, err := rlp.EncodeToBytes(blobs)
+	if err != nil {
+		return nil, fmt.Errorf("could not encode blobs. Cause: %w", err)
+	}
+
+	response, err := c.protoClient.SubmitL1Block(ctx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedReceipts: serializedReceipts, EncodedBlobs: serializedBlobs, IsLatest: isLatest})
 	if err != nil {
 		return nil, fmt.Errorf("could not submit block. Cause: %w", err)
 	}

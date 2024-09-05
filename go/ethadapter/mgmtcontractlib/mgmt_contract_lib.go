@@ -6,8 +6,6 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -187,7 +185,7 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
 
-	if sidecar, blobHashes, err = makeSidecar(blobs); err != nil {
+	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
 
@@ -495,26 +493,4 @@ func convertCrossChainMessages(messages []MessageBus.StructsCrossChainMessage) [
 	}
 
 	return msgs
-}
-
-// MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
-// data.
-func makeSidecar(blobs []kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
-	sidecar := &types.BlobTxSidecar{}
-	var blobHashes []gethcommon.Hash
-	for i, blob := range blobs {
-		sidecar.Blobs = append(sidecar.Blobs, blob)
-		commitment, err := kzg4844.BlobToCommitment(&blob)
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot compute KZG commitment of blob %d in tx candidate: %w", i, err)
-		}
-		sidecar.Commitments = append(sidecar.Commitments, commitment)
-		proof, err := kzg4844.ComputeBlobProof(&blob, commitment)
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot compute KZG proof for fast commitment verification of blob %d in tx candidate: %w", i, err)
-		}
-		sidecar.Proofs = append(sidecar.Proofs, proof)
-		blobHashes = append(blobHashes, ethadapter.KZGToVersionedHash(commitment))
-	}
-	return sidecar, blobHashes, nil
 }

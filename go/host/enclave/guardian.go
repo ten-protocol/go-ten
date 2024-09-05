@@ -3,6 +3,7 @@ package enclave
 import (
 	"context"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"math/big"
 	"strings"
 	"sync"
@@ -434,7 +435,8 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		}
 	}
 
-	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block, receipts, isLatest)
+	_, rollupTxs, blobsAndHashes, _ := g.sl.L1Publisher().ExtractTenTransactionsAndBlobs(block)
+	resp, err := g.enclaveClient.SubmitL1BlockWithBlobs(context.Background(), block, blobsAndHashes, receipts, isLatest)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
@@ -454,7 +456,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	}
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
-	g.processL1BlockTransactions(block)
+	g.processL1BlockTransactions(block, rollupTxs)
 
 	if err != nil {
 		return false, fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
@@ -468,9 +470,9 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
+func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*ethadapter.L1RollupTx) {
 	// if there are any secret responses in the block we should refresh our P2P list to re-sync with the network
-	_, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(block)
+	_, _, contractAddressTxs := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(block)
 
 	// TODO (@will) this should be removed and pulled from the L1
 	err := g.storage.AddBlock(block.Header())
