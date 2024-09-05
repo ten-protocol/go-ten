@@ -82,12 +82,12 @@ const (
 	edbSignatureEndpoint = "/signature"
 
 	dataDir         = "/data"
-	certIssuer      = "obscuroCA"
-	certSubject     = "obscuroUser"
+	certIssuer      = "tenCA"
+	certSubject     = "tenUser"
 	enclaveHostName = "enclave"
 
-	dbUser = "obscuro"
-	dbName = "obsdb"
+	dbUser = "ten"
+	dbName = "tendb"
 
 	// change this flag to true to debug issues with edgeless DB (and start EDB process with -e EDG_EDB_DEBUG=1
 	//   this will give you:
