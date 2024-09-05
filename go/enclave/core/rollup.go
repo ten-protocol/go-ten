@@ -12,7 +12,7 @@ import (
 type Rollup struct {
 	Header  *common.RollupHeader
 	Batches []*Batch
-	Blocks  map[common.L1BlockHash]*types.Block // these are the blocks required during compression. The key is the hash
+	Blocks  map[common.L1BlockHash]*types.Header // these are the blocks required during compression. The key is the hash
 	hash    atomic.Value
 }
 

@@ -20,21 +20,21 @@ import (
 
 // BlockResolver stores new blocks and returns information on existing blocks
 type BlockResolver interface {
-	// FetchBlock returns the L1 Block with the given hash.
-	FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Block, error)
+	// FetchBlock returns the L1 BlockHeader with the given hash.
+	FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Header, error)
 	IsBlockCanonical(ctx context.Context, blockHash common.L1BlockHash) (bool, error)
 	// FetchCanonicaBlockByHeight - self explanatory
-	FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Block, error)
+	FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Header, error)
 	// FetchHeadBlock - returns the head of the current chain.
-	FetchHeadBlock(ctx context.Context) (*types.Block, error)
-	// StoreBlock persists the L1 Block and updates the canonical ancestors if there was a fork
-	StoreBlock(ctx context.Context, block *types.Block, fork *common.ChainFork) error
-	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
-	IsAncestor(ctx context.Context, block *types.Block, maybeAncestor *types.Block) bool
-	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
-	// Takes into consideration that the Block to verify might be on a branch we haven't received yet
+	FetchHeadBlock(ctx context.Context) (*types.Header, error)
+	// StoreBlock persists the L1 BlockHeader and updates the canonical ancestors if there was a fork
+	StoreBlock(ctx context.Context, block *types.Header, fork *common.ChainFork) error
+	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 BlockHeader, and false otherwise
+	IsAncestor(ctx context.Context, block *types.Header, maybeAncestor *types.Header) bool
+	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 BlockHeader, and false otherwise
+	// Takes into consideration that the BlockHeader to verify might be on a branch we haven't received yet
 	// todo (low priority) - this is super confusing, analyze the usage
-	IsBlockAncestor(ctx context.Context, block *types.Block, maybeAncestor common.L1BlockHash) bool
+	IsBlockAncestor(ctx context.Context, block *types.Header, maybeAncestor common.L1BlockHash) bool
 }
 
 type BatchResolver interface {

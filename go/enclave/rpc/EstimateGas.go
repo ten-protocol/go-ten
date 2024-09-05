@@ -23,7 +23,7 @@ import (
 )
 
 func EstimateGasValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64], _ *EncryptionManager) error {
-	// Parameters are [callMsg, Block number (optional)]
+	// Parameters are [callMsg, BlockHeader number (optional)]
 	if len(reqParams) < 1 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
 		return nil
@@ -40,10 +40,10 @@ func EstimateGasValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlo
 		return nil
 	}
 
-	// extract optional Block number - defaults to the latest Block if not avail
+	// extract optional BlockHeader number - defaults to the latest BlockHeader if not avail
 	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(reqParams, 1)
 	if err != nil {
-		builder.Err = fmt.Errorf("unable to extract requested Block number - %w", err)
+		builder.Err = fmt.Errorf("unable to extract requested BlockHeader number - %w", err)
 		return nil
 	}
 
@@ -68,7 +68,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	}
 
 	// The message is run through the l1 publishing cost estimation for the current
-	// known head Block.
+	// known head BlockHeader.
 	l1Cost, err := rpc.gasOracle.EstimateL1CostForMsg(txArgs, block)
 	if err != nil {
 		return err

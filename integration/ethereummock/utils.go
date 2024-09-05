@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/go/enclave/storage"
-
 	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -13,12 +11,12 @@ import (
 
 // findNotIncludedTxs - given a list of transactions, it keeps only the ones that were not included in the block
 // todo (#1491) - inefficient
-func findNotIncludedTxs(head *types.Block, txs []*types.Transaction, r storage.BlockResolver, db TxDB) []*types.Transaction {
+func findNotIncludedTxs(head *types.Block, txs []*types.Transaction, r *blockResolverInMem, db TxDB) []*types.Transaction {
 	included := allIncludedTransactions(head, r, db)
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(b *types.Block, r storage.BlockResolver, db TxDB) map[common.TxHash]*types.Transaction {
+func allIncludedTransactions(b *types.Block, r *blockResolverInMem, db TxDB) map[common.TxHash]*types.Transaction {
 	val, found := db.Txs(b)
 	if found {
 		return val
