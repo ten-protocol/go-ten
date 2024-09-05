@@ -32,3 +32,9 @@ export const nativeCurrency = {
   symbol: "ETH",
   decimals: 18,
 };
+
+export const CONNECTION_STEPS = [
+  "Hit Connect to TEN and start your journey",
+  "Allow MetaMask to switch networks to the TEN Testnet",
+  "Sign the <b>Signature Request</b> (this is not a transaction)",
+];

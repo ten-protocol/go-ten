@@ -1,5 +1,5 @@
-# Deploys Ten Gateway on Azure for Testnet
-# Builds the Ten Gateway image, pushes the image to dockerhub and starts the Ten Gateway on Azure VM
+# Deploys TEN Gateway on Azure for Testnet
+# Builds the TEN Gateway image, pushes the image to dockerhub and starts the TEN Gateway on Azure VM
 
 # This action requires the following environment variables to be set:
 #  - DOCKER_BUILD_TAG_GATEWAY
@@ -19,28 +19,28 @@ on:
   workflow_dispatch:
     inputs:
       testnet_type:
-        description: 'Environment'
+        description: "Environment"
         required: true
-        default: 'dev-testnet'
+        default: "dev-testnet"
         type: choice
         options:
-          - 'dev-testnet'
-          - 'uat-testnet'
-          - 'sepolia-testnet'
+          - "dev-testnet"
+          - "uat-testnet"
+          - "sepolia-testnet"
       instance_type:
-        description: 'Instance'
+        description: "Instance"
         required: true
-        default: 'primary'
+        default: "primary"
         type: choice
         options:
-          - 'primary'
-          - 'dexynth'
+          - "primary"
+          - "dexynth"
 
 jobs:
   validate-inputs:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Check if deployment is allowed'
+      - name: "Check if deployment is allowed"
         run: |
           if [[ "${{ github.event.inputs.instance_type }}" == "Dexynth" && "${{ github.event.inputs.testnet_type }}" != "sepolia-testnet" ]]; then
             echo "Error: Dexynth can only be deployed to sepolia-testnet."
@@ -52,20 +52,20 @@ jobs:
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
-      - name: 'Set up environment variables'
+      - name: "Set up environment variables"
         id: setup_env
         run: |
           INSTANCE_SUFFIX=""
           INSTANCE_PREFIX=""
-          
+
           if [[ "${{ github.event.inputs.instance_type }}" != "primary" ]]; then
             INSTANCE_SUFFIX="-${{ github.event.inputs.instance_type }}"
             INSTANCE_PREFIX="${{ github.event.inputs.instance_type }}-"
           fi
-          
+
           echo "INSTANCE_SUFFIX=$INSTANCE_SUFFIX" >> $GITHUB_ENV
           echo "INSTANCE_PREFIX=$INSTANCE_PREFIX" >> $GITHUB_ENV
-          
+
           # Set infrastructure variables
           PUBLIC_IP="${{ github.event.inputs.testnet_type }}-OG-static${INSTANCE_SUFFIX}"
           DNS_NAME="obscurogateway-${{ github.event.inputs.testnet_type }}${INSTANCE_SUFFIX}"
@@ -73,14 +73,14 @@ jobs:
           DEPLOY_GROUP="ObscuroGateway-${{ github.event.inputs.testnet_type }}-${{ github.run_number }}${INSTANCE_SUFFIX}"
           VNET_NAME="ObscuroGateway-${{ github.event.inputs.testnet_type }}-01VNET${INSTANCE_SUFFIX}"
           SUBNET_NAME="ObscuroGateway-${{ github.event.inputs.testnet_type }}-01Subnet${INSTANCE_SUFFIX}"
-          
+
           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
           echo "DNS_NAME=$DNS_NAME" >> $GITHUB_ENV
           echo "VM_NAME=$VM_NAME" >> $GITHUB_ENV
           echo "DEPLOY_GROUP=$DEPLOY_GROUP" >> $GITHUB_ENV
           echo "VNET_NAME=$VNET_NAME" >> $GITHUB_ENV
           echo "SUBNET_NAME=$SUBNET_NAME" >> $GITHUB_ENV
-          
+
           # Set instance-specific variables
           declare -a VAR_NAMES=(
             "DOCKER_BUILD_TAG_GATEWAY"
@@ -90,7 +90,7 @@ jobs:
             "GATEWAY_RATE_LIMIT_WINDOW"
             "GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER"
           )
-          
+
           for VAR_NAME in "${VAR_NAMES[@]}"; do
             FULL_VAR_NAME="${INSTANCE_PREFIX}${VAR_NAME}"
             VAR_VALUE=$(jq -r --arg key "$FULL_VAR_NAME" '.[$key] // empty' <<< '${{ toJson(vars) }}')
@@ -101,7 +101,7 @@ jobs:
             fi
           done
 
-      - name: 'Print environment variables'
+      - name: "Print environment variables"
         # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
         run: |
           echo "INSTANCE_SUFFIX: $INSTANCE_SUFFIX"
@@ -119,30 +119,30 @@ jobs:
           echo "GATEWAY_RATE_LIMIT_WINDOW: $GATEWAY_RATE_LIMIT_WINDOW"
           echo "GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER: $GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER"
 
-      - name: 'Print GitHub variables'
+      - name: "Print GitHub variables"
         # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
         run: |
           echo "GitHub Variables = ${{ toJSON(vars) }}"
 
       - uses: actions/checkout@v4
 
-      - name: 'Extract branch name'
+      - name: "Extract branch name"
         shell: bash
         run: |
           echo "Branch Name: ${GITHUB_REF_NAME}"
           echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
-      - name: 'Set up Docker'
+      - name: "Set up Docker"
         uses: docker/setup-buildx-action@v1
 
-      - name: 'Login to Azure docker registry'
+      - name: "Login to Azure docker registry"
         uses: azure/docker-login@v1
         with:
           login-server: testnetobscuronet.azurecr.io
           username: testnetobscuronet
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: 'Login via Azure CLI'
+      - name: "Login via Azure CLI"
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -153,26 +153,26 @@ jobs:
           docker push ${{ env.DOCKER_BUILD_TAG_GATEWAY }}
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
-      - name: 'Delete deployed VMs'
+      - name: "Delete deployed VMs"
         uses: azure/CLI@v1
         with:
           inlineScript: |
             $(az resource list --tag ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
       # This will clean up any lingering dependencies - might fail if there are no resources to cleanup
-      - name: 'Delete VMs dependencies'
+      - name: "Delete VMs dependencies"
         uses: azure/CLI@v1
         with:
           inlineScript: |
             $(az resource list --tag ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
-      - name: 'Ensure VM Static Public IP Exists'
+      - name: "Ensure VM Static Public IP Exists"
         uses: azure/CLI@v1
         with:
           inlineScript: |
             az network public-ip show -g Testnet -n "${{ env.PUBLIC_IP }}" || az network public-ip create -g Testnet -n "${{ env.PUBLIC_IP }}" --allocation-method Static --sku Standard
 
-      - name: 'Assign/Update DNS Name for Public IP'
+      - name: "Assign/Update DNS Name for Public IP"
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -181,7 +181,7 @@ jobs:
               az network public-ip update -g Testnet -n "${{ env.PUBLIC_IP }}" --dns-name "${{ env.DNS_NAME }}"
             fi
 
-      - name: 'Create VM for Gateway node on Azure'
+      - name: "Create VM for Gateway node on Azure"
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -193,18 +193,18 @@ jobs:
             --size 	Standard_D4_v5 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:latest \
             --authentication-type password
 
-      - name: 'Open Ten node-${{ matrix.host_id }} ports on Azure'
+      - name: "Open TEN node-${{ matrix.host_id }} ports on Azure"
         uses: azure/CLI@v1
         with:
           inlineScript: |
             az vm open-port -g Testnet -n "${{ env.VM_NAME }}"  --port 80,81
 
         # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
-      - name: 'Allow time for VM initialization'
+      - name: "Allow time for VM initialization"
         shell: bash
         run: sleep 30
 
-      - name: 'Start Ten Gateway on Azure'
+      - name: "Start TEN Gateway on Azure"
         uses: azure/CLI@v1
         with:
           inlineScript: |

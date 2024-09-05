@@ -4,6 +4,7 @@ import { Receipt } from 'hardhat-deploy/dist/types';
 
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+    return;
     const l2Network = hre; 
     const {deployer} = await hre.getNamedAccounts();
 
@@ -12,17 +13,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true
     })
     
-    
+    const signer = await hre.ethers.getSigner(deployer);
+
     const gasConsumerBalance = await hre.ethers.getContractAt("GasConsumerBalance", gcb.address)
-    const gasEstimation = await gasConsumerBalance.getFunction('get_balance').estimateGas({
-        from: deployer,
-    });
-    
-    await hre.deployments.execute("GasConsumerBalance", {
-        from: deployer,
-        gasLimit: gasEstimation.toString(),
-        log: true
-    }, "get_balance");
+    const gasConsumer = await gasConsumerBalance.connect(signer)
+
+
+    const tx = await gasConsumer.getFunction("resetOwner").populateTransaction(deployer);
+    tx.accessList = [
+        { 
+            address: gcb.address,
+            storageKeys: []
+        },
+    ];
+    const resp = await signer.sendTransaction(tx);
+    const receipt = await resp.wait();
+    console.log(`Receipt.Status=${receipt.status}`);
 };
 
 

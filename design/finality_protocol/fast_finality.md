@@ -14,7 +14,7 @@ described in the [Bootstrapping Strategy design doc](./sequencer_bootstrapping_s
 
 * Enclaves can be hacked; a signature from an attested enclave cannot be taken as an absolute proof that an attacker 
   does not have control over the enclave's execution
-* The market does not sufficiently trust the Ten foundation to allow it to run the sequencer unchecked; we 
+* The market does not sufficiently trust the TEN foundation to allow it to run the sequencer unchecked; we 
   therefore need some validation of its execution to provide assurance
 * The adoption of the sequencer model may be long-lived, and must therefore be fully production ready
 * The enclave has a start-up delay that exceeds the production time for batches (see below)
@@ -59,7 +59,7 @@ described in the [Bootstrapping Strategy design doc](./sequencer_bootstrapping_s
 
 * Censorship resistance
   * If censorship-resistance is achieved through an L1 inbox mechanism, it is acceptable for the costs of the 
-    associated L1 transactions (which will be greater than the Ten costs) to fall on the transaction submitter
+    associated L1 transactions (which will be greater than the TEN costs) to fall on the transaction submitter
 * Resilience
   * During failover, upgrade or planned maintenance of the sequencer, it is acceptable to break the one-second 
     soft-finality guarantee, and drop transactions that have not been soft-finalised (see e.g. 
@@ -267,7 +267,7 @@ identify value-extraction opportunities.
 #### Do nothing
 
 In this approach, we rely on trust in the sequencer and the fact that value-extraction opportunities are reduced in
-Ten due to its data-visibility rules.
+TEN due to its data-visibility rules.
 
 #### Disable `eth_call` on sequencer enclaves
 

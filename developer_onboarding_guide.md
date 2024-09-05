@@ -50,6 +50,6 @@ To do so, follow these steps:
 - Click on the `Run local tests` [link](https://github.com/ten-protocol/ten-test/actions/workflows/run_local_tests.yml)
 - Click `Run workflow`, enter the name of your branch, and then click `Run workflow`
 
-## Ten smart contracts
+## TEN smart contracts
 
-Documentation for Ten smart contracts is available [here](https://github.com/ten-protocol/go-ten/blob/main/contracts/README.md).
+Documentation for TEN smart contracts is available [here](https://github.com/ten-protocol/go-ten/blob/main/contracts/README.md).
