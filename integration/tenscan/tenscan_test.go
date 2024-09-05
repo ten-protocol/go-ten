@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ten-protocol/go-ten/tools/walletextension"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"math/big"
 	"net/http"
 	"strings"
@@ -64,8 +66,42 @@ func TestTenscan(t *testing.T) {
 	err = tenScanContainer.Start()
 	require.NoError(t, err)
 
+	tenGatewayConf := wecommon.Config{
+		WalletExtensionHost:            "127.0.0.1",
+		WalletExtensionPortHTTP:        startPort + integration.DefaultTenGatewayHTTPPortOffset,
+		WalletExtensionPortWS:          startPort + integration.DefaultTenGatewayWSPortOffset,
+		NodeRPCHTTPAddress:             fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
+		NodeRPCWebsocketAddress:        fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
+		LogPath:                        "sys_out",
+		VerboseFlag:                    false,
+		DBType:                         "sqlite",
+		TenChainID:                     443,
+		StoreIncomingTxs:               true,
+		RateLimitUserComputeTime:       200 * time.Millisecond,
+		RateLimitWindow:                1 * time.Second,
+		RateLimitMaxConcurrentRequests: 3,
+	}
+
+	tenGwContainer := walletextension.NewContainerFromConfig(tenGatewayConf, testlog.Logger())
+	go func() {
+		err := tenGwContainer.Start()
+		if err != nil {
+			fmt.Printf("error stopping WE - %s", err)
+		}
+	}()
+
+	gatewayUrl := fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultTenGatewayHTTPPortOffset)
+	tenscanURl := fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultTenscanHTTPPortOffset)
+	println("Gateway started on: ", gatewayUrl)
+	println("Tenscan started on: ", tenscanURl)
+
 	// wait for the msg bus contract to be deployed
-	time.Sleep(30 * time.Second)
+	time.Sleep(10 * time.Second)
+
+	// make sure the server is ready to receive requests
+	httpURL := fmt.Sprintf("http://%s:%d", tenGatewayConf.WalletExtensionHost, tenGatewayConf.WalletExtensionPortHTTP)
+	err = waitGatewayServerIsReady(httpURL)
+	require.NoError(t, err)
 
 	// make sure the server is ready to receive requests
 	err = waitServerIsReady(serverAddress)
@@ -77,6 +113,15 @@ func TestTenscan(t *testing.T) {
 		wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.TenChainID, testlog.Logger()),
 		5,
 	)
+
+	//Timer for running local tests
+	countdownDuration := 60 * time.Minute
+	tickDuration := 1 * time.Minute
+
+	for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
+		fmt.Printf("Shutting down in %s...\n", remaining)
+		time.Sleep(tickDuration)
+	}
 
 	// Issue tests
 	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
@@ -377,4 +422,22 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 			t.Fatalf("Tx Failed")
 		}
 	}
+}
+
+func waitGatewayServerIsReady(serverAddr string) error {
+	for now := time.Now(); time.Since(now) < 30*time.Second; time.Sleep(500 * time.Millisecond) {
+		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("%s/v1/health/", serverAddr))
+		if err != nil {
+			// give it time to boot up
+			if strings.Contains(err.Error(), "connection") {
+				continue
+			}
+			return err
+		}
+
+		if statusCode == http.StatusOK {
+			return nil
+		}
+	}
+	return fmt.Errorf("timed out before server was ready")
 }
