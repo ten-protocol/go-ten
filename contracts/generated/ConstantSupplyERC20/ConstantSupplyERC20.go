@@ -539,7 +539,6 @@ func (_ConstantSupplyERC20 *ConstantSupplyERC20Filterer) FilterApproval(opts *bi
 	for _, spenderItem := range spender {
 		spenderRule = append(spenderRule, spenderItem)
 	}
-
 	logs, sub, err := _ConstantSupplyERC20.contract.FilterLogs(opts, "Approval", ownerRule, spenderRule)
 	if err != nil {
 		return nil, err

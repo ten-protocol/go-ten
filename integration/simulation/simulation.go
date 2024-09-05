@@ -62,7 +62,7 @@ func (s *Simulation) Start() {
 	s.trackLogs()          // Create log subscriptions, to validate that they're working correctly later.
 	s.prefundTenAccounts() // Prefund every L2 wallet
 
-	s.deployTenERC20s()   // Deploy the Ten HOC and POC ERC20 contracts
+	s.deployTenERC20s()   // Deploy the TEN HOC and POC ERC20 contracts
 	s.prefundL1Accounts() // Prefund every L1 wallet
 	s.checkHealthStatus() // Checks the nodes health status
 
