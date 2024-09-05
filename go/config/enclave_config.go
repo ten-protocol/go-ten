@@ -56,7 +56,7 @@ type EnclaveConfig struct {
 	MessageBusAddress gethcommon.Address
 	// P2P address for validators to connect to the sequencer for live batch data
 	SequencerP2PAddress string
-	// A json string that specifies the prefunded addresses at the genesis of the Ten network
+	// A json string that specifies the prefunded addresses at the genesis of the TEN network
 	TenGenesis string
 	// Whether debug calls are available
 	DebugNamespaceEnabled bool

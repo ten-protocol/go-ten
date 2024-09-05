@@ -53,7 +53,7 @@ const (
 	GetPersonalTransactions = "scan_getPersonalTransactions"
 )
 
-// Client is used by client applications to interact with the Ten node
+// Client is used by client applications to interact with the TEN node
 type Client interface {
 	// Call executes the named method via RPC.
 	Call(result interface{}, method string, args ...interface{}) error

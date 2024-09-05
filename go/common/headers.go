@@ -37,7 +37,7 @@ type BatchHeader struct {
 	BaseFee          *big.Int       `json:"baseFee"`
 	Coinbase         common.Address `json:"coinbase"`
 
-	// The custom Ten fields.
+	// The custom TEN fields.
 	L1Proof                       L1BlockHash                           `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
 	Signature                     []byte                                `json:"signature"`
 	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`

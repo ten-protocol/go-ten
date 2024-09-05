@@ -43,7 +43,7 @@ type SimParams struct {
 }
 
 type L1TenData struct {
-	// TenStartBlock is the L1 block hash where the Ten network activity begins (e.g. mgmt contract deployment)
+	// TenStartBlock is the L1 block hash where the TEN network activity begins (e.g. mgmt contract deployment)
 	TenStartBlock common.Hash
 	// MgmtContractAddr defines the management contract address
 	MgmtContractAddress common.Address

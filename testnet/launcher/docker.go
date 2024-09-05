@@ -75,14 +75,14 @@ func (t *Testnet) Start() error {
 
 	err = sequencerNode.Start()
 	if err != nil {
-		return fmt.Errorf("unable to start the Ten node - %w", err)
+		return fmt.Errorf("unable to start the TEN node - %w", err)
 	}
-	fmt.Println("Ten node was successfully started...")
+	fmt.Println("TEN node was successfully started...")
 
 	// wait until the node is healthy
 	err = waitForHealthyNode(80)
 	if err != nil {
-		return fmt.Errorf("sequencer Ten node not healthy - %w", err)
+		return fmt.Errorf("sequencer TEN node not healthy - %w", err)
 	}
 
 	validatorNodeConfig := node.NewNodeConfig(
@@ -121,7 +121,7 @@ func (t *Testnet) Start() error {
 	if err != nil {
 		return fmt.Errorf("unable to start the obscuro node - %w", err)
 	}
-	fmt.Println("Ten validator node was successfully started...")
+	fmt.Println("TEN validator node was successfully started...")
 
 	// wait until the node it healthy
 	err = waitForHealthyNode(13010)

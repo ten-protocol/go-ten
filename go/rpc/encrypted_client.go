@@ -233,7 +233,7 @@ func (c *EncRPCClient) decryptResponse(encryptedBytes []byte) ([]byte, error) {
 	return decryptedResult, nil
 }
 
-// creates a subscription to the Ten node, but decrypts the messages from that channel and forwards them to the `ch`
+// creates a subscription to the TEN node, but decrypts the messages from that channel and forwards them to the `ch`
 func (c *EncRPCClient) logSubscription(ctx context.Context, namespace string, ch interface{}, args ...any) (*gethrpc.ClientSubscription, error) {
 	outboundChannel, ok := ch.(chan types.Log)
 	if !ok {

@@ -3,7 +3,7 @@
 ## Scope
 
 The design for the wallet extension, a component that is responsible for handling RPC requests from traditional 
-Ethereum wallets (e.g. MetaMask, hardware wallets), tooling (e.g. Remix) and webapps to the Ten host.
+Ethereum wallets (e.g. MetaMask, hardware wallets), tooling (e.g. Remix) and webapps to the TEN host.
 
 ## Requirements
 
@@ -44,7 +44,7 @@ Ethereum wallets (e.g. MetaMask, hardware wallets), tooling (e.g. Remix) and web
 
 ## Design
 
-The wallet extension is a local server application that maintains an RPC connection to one or more Ten hosts. It 
+The wallet extension is a local server application that maintains an RPC connection to one or more TEN hosts. It 
 serves two endpoints:
 
 * An endpoint for managing viewing keys
@@ -68,9 +68,9 @@ event, the following steps are taken:
 * The wallet extension stores the private key locally, tagged with the address it is associated with
 * The end user signs a payload containing the public key and some metadata using an account key in their wallet (e.g. 
   MetaMask), proving that the viewing key is "authorised" by the account in question
-* The wallet extension sends the public key and signature to the Ten enclave via the Ten host over RPC
-* The Ten enclave checks the signature
-* The Ten enclave stores the public key locally, tagged with the address it is associated with
+* The wallet extension sends the public key and signature to the TEN enclave via the TEN host over RPC
+* The TEN enclave checks the signature
+* The TEN enclave stores the public key locally, tagged with the address it is associated with
 
 Whenever an enclave needs to send sensitive information to the end user (e.g. a transaction result or account balance), 
 it encrypts the sensitive information with the viewing key associated with the account. This ensures that the sensitive 
@@ -88,14 +88,14 @@ viewing keys for the configured host (as identified by the URL and port) are loa
 The wallet extension serves a standard implementation of the Ethereum JSON-RPC specification, except in the following 
 respects:
 
-* The wallet extension encrypts any request containing sensitive information with the Ten enclave public key before 
-  forwarding it to the Ten host
+* The wallet extension encrypts any request containing sensitive information with the TEN enclave public key before 
+  forwarding it to the TEN host
 * The enclave encrypts any response containing sensitive information with the viewing public key for the address 
   *associated* with that request (see below)
 * The wallet extension decrypts any encrypted responses with the viewing private key before forwarding them on to the 
   user
 
-This ensures that the encryption and decryption involved in the Ten protocol is transparent to the end user, and 
+This ensures that the encryption and decryption involved in the TEN protocol is transparent to the end user, and 
 that we are not relying on decryption capabilities being available in the wallet.
 
 How do we determine which address is associated with a given request?
@@ -157,7 +157,7 @@ Snaps are an experimental MetaMask capability.
 
 Snaps have several downsides:
 
-* Snaps need to be installed per-page, requiring a code change in every webapp to prompt the user to install the Ten 
+* Snaps need to be installed per-page, requiring a code change in every webapp to prompt the user to install the TEN 
   snap
 * Snaps are only compatible with MetaMask
 * Snaps are marked as experimental and require users to switch from MetaMask to the experimental MetaMask Flask

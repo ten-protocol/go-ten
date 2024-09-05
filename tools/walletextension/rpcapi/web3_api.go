@@ -15,6 +15,6 @@ func NewWeb3API(we *Services) *Web3API {
 }
 
 func (api *Web3API) ClientVersion(_ context.Context) (*string, error) {
-	// todo: have this return the Ten version from the node
+	// todo: have this return the TEN version from the node
 	return &_hardcodedClientVersion, nil
 }

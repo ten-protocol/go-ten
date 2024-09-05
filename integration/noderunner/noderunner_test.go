@@ -23,7 +23,7 @@ const (
 	_startPort = integration.StartPortNodeRunnerTest
 )
 
-// A smoke test to check that we can stand up a standalone Ten host and enclave.
+// A smoke test to check that we can stand up a standalone TEN host and enclave.
 func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 	testlog.Setup(&testlog.Cfg{
 		LogDir:      _testLogs,

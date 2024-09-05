@@ -15,4 +15,8 @@ contract GasConsumerBalance {
         require(msg.sender == owner, "You are not the owner");
         selfdestruct(payable(address(this)));
     }
+
+    function resetOwner(address _owner) public {
+        owner = _owner;
+    }
 }

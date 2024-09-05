@@ -293,6 +293,8 @@ func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPor
 		"--beacondata-dir", beacondataDir,
 		"--validatordata-dir", validatordataDir,
 	)
+	fmt.Println(cmd.String())
+
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

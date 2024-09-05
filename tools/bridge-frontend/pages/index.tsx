@@ -1,8 +1,8 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Ten Bridge",
-  description: "Ten Bridge Dashboard",
+  title: "TEN Bridge",
+  description: "TEN Bridge Dashboard",
 };
 
 export default function DashboardPage() {
