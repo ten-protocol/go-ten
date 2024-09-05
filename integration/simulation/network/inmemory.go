@@ -88,7 +88,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	// Here we first start the mock layer 1 nodes, with a pause between them of a fraction of a block duration.
 	// The reason is to make sure that they catch up correctly.
 	// Then we pause for a while, to give the L1 network enough time to create a number of blocks, which will have to be ingested by the en nodes
-	// Then, we begin the starting sequence of the Ten nodes, again with a delay between them, to test that they are able to cach up correctly.
+	// Then, we begin the starting sequence of the TEN nodes, again with a delay between them, to test that they are able to cach up correctly.
 	// Note: Other simulations might test variations of this pattern.
 	for _, m := range n.ethNodes {
 		t := m

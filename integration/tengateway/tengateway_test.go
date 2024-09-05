@@ -859,9 +859,9 @@ func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet)
 	return signedTx.Hash()
 }
 
-// Creates a single-node Ten network for testing.
+// Creates a single-node TEN network for testing.
 func createTenNetwork(t *testing.T, startPort int) {
-	// Create the Ten network.
+	// Create the TEN network.
 	numberOfNodes := 1
 	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
@@ -879,7 +879,7 @@ func createTenNetwork(t *testing.T, startPort int) {
 	t.Cleanup(tenNetwork.TearDown)
 	_, err := tenNetwork.Create(&simParams, nil)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create test Ten network. Cause: %s", err))
+		panic(fmt.Sprintf("failed to create test TEN network. Cause: %s", err))
 	}
 }
 

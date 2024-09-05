@@ -6,20 +6,20 @@ As we are getting closer to production and have already designed implemented the
 
 The POBI protocol described in the whitepaper assumes a network with significant traction. 
 
-To get there, we estimate Ten will need at least one year, most likely more.
+To get there, we estimate TEN will need at least one year, most likely more.
 
 Other things we have to take into consideration during bootstrapping is code maturity and security. In the industry, this is called a period where the "training wheels" are on.
 
 The other major L2 networks (Arbitrum and Optimism), opted for a pragmatic approach where they started out with a centralised sequencer.
 
-We propose that Ten starts out similarly to the L2s. Centralised block production and decentralised validation.
+We propose that TEN starts out similarly to the L2s. Centralised block production and decentralised validation.
 
 
 ## Single block producer
 
 This is in essence a very simplified "POBI" with a single aggregator (SA).
 
-The SA is operated by the Ten Foundation, and is configured as a variable in the Ten Management Contract (MC) on Ethereum. 
+The SA is operated by the TEN Foundation, and is configured as a variable in the TEN Management Contract (MC) on Ethereum. 
 Only the foundation has the power to set the designated SA.
 
 Note that this means that the "Consensus problem" becomes relatively simple in this first stage. 
@@ -107,7 +107,7 @@ In the first stage we'll rely on trust that the SA will operate correctly, mostl
 
 ### Requirements of a Protocol for fast finality
 
-If we wouldn't have to worry about scalability, or if Ten functioned like transparent chains, then the SA could just emit events and receipts when it processes a tx, 
+If we wouldn't have to worry about scalability, or if TEN functioned like transparent chains, then the SA could just emit events and receipts when it processes a tx, 
 and send them to a caching layer to be consumed by clients.
 Also, the state could be cached, so that "eth_call" requests could be handled from the caching layer.
 

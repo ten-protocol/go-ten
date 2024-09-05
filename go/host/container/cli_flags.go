@@ -51,7 +51,7 @@ func getFlagUsageMap() map[string]string {
 		clientRPCPortHTTPName:        "The port on which to listen for client application RPC requests over HTTP",
 		clientRPCPortWSName:          "The port on which to listen for client application RPC requests over websockets",
 		clientRPCHostName:            "The host on which to handle client application RPC requests",
-		enclaveRPCAddressesName:      "The comma-separated addresses to use to connect to the Ten enclaves",
+		enclaveRPCAddressesName:      "The comma-separated addresses to use to connect to the TEN enclaves",
 		p2pBindAddressName:           "The address where the p2p server is bound to. Defaults to 0.0.0.0:10000",
 		p2pPublicAddressName:         "The P2P address where the other servers should connect to. Defaults to 127.0.0.1:10000",
 		l1WebsocketURLName:           "The websocket RPC address the host can use for L1 requests",

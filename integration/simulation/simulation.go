@@ -109,14 +109,14 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 						continue
 					}
 					if _, ok := t.(*ethadapter.L1RollupHashes); ok {
-						// exit at the first Ten rollup we see
+						// exit at the first TEN rollup we see
 						return
 					}
 				}
 			}
 		}
 		time.Sleep(s.Params.AvgBlockDuration)
-		testlog.Logger().Trace("Waiting for the Ten genesis rollup...")
+		testlog.Logger().Trace("Waiting for the TEN genesis rollup...")
 	}
 }
 

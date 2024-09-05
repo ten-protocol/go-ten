@@ -1,6 +1,6 @@
-# Ten design documents
+# TEN design documents
 
-Ten started based on a (whitepaper)[https://whitepaper.ten.xyz/] published in Nov. 2021.
+TEN started based on a (whitepaper)[https://whitepaper.ten.xyz/] published in Nov. 2021.
 
 As we started development, we started thinking more deeply about some aspects and also getting feedback from the community
 and the users.
@@ -25,7 +25,7 @@ Note: the wallet extension and the data relevancy rules are already implemented.
 
 ## Bridge
 
-Ten needs a decentralised bridge infrastructure to Ethereum.
+TEN needs a decentralised bridge infrastructure to Ethereum.
 
 Note: this design is approved and mostly implemented (there are some dependencies on the fast-finality work). 
 
@@ -40,7 +40,7 @@ Note: the design is approved, and currently it is being implemented.
 
 ## Security, Privacy and Cryptography
 
-Ten is a decentralised Ethereum Layer 2 that aims to maintain privacy.
+TEN is a decentralised Ethereum Layer 2 that aims to maintain privacy.
 We need to design the cryptography that keeps data private.
 Like any software system, it needs to be upgradeable, which is more difficult with our constraints.
 
