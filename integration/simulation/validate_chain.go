@@ -255,7 +255,7 @@ func ExtractDataFromEthereumChain(
 	rollupReceipts := make(types.Receipts, 0)
 	totalDeposited := big.NewInt(0)
 
-	blockchain := node.BlocksBetween(startBlock, endBlock)
+	blockchain := node.BlocksBetween(startBlock.Header(), endBlock)
 	successfulDeposits := uint64(0)
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions() {

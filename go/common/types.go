@@ -125,61 +125,52 @@ type (
 // To work properly, all of the receipts are required, due to rlp encoding pruning some of the information.
 // The receipts must also be in the correct order.
 type BlockAndReceipts struct {
-	Block                  *L1Block
-	ReceiptsMap            map[int]*types.Receipt // sparse map with obscuro-relevant receipts in it
-	Receipts               *types.Receipts
+	BlockHeader            *types.Header
+	TxsWithReceipts        []*TxAndReceipt
 	successfulTransactions *types.Transactions
 }
 
 // ParseBlockAndReceipts - will create a container struct that has preprocessed the receipts
 // and verified if they indeed match the receipt root hash in the block.
-func ParseBlockAndReceipts(block *L1Block, receipts *L1Receipts) (*BlockAndReceipts, error) {
-	if len(block.Transactions()) != len(*receipts) {
-		// the receipts list is currently a *sparse* list of relevant receipts, it needs to have the same length as the
-		// transactions list even though some of the entries may be nil
-		return nil, fmt.Errorf("transactions and receipts are not the same length")
-	}
-
+func ParseBlockAndReceipts(block *types.Header, receipts []*TxAndReceipt) (*BlockAndReceipts, error) {
 	br := BlockAndReceipts{
-		Block:                  block,
-		Receipts:               receipts,
-		ReceiptsMap:            make(map[int]*types.Receipt, len(block.Transactions())),
-		successfulTransactions: nil,
-	}
-
-	for idx, receipt := range *receipts {
-		br.ReceiptsMap[idx] = receipt
+		BlockHeader:     block,
+		TxsWithReceipts: receipts,
 	}
 
 	return &br, nil
 }
 
-// SuccessfulTransactions - returns slice containing only the transactions that have receipts with successful status.
-func (br *BlockAndReceipts) SuccessfulTransactions() *types.Transactions {
+func (br *BlockAndReceipts) Receipts() L1Receipts {
+	rec := make(L1Receipts, 0)
+	for _, txsWithReceipt := range br.TxsWithReceipts {
+		rec = append(rec, txsWithReceipt.Receipt)
+	}
+	return rec
+}
+
+// RelevantTransactions - returns slice containing only the transactions that have receipts with successful status.
+func (br *BlockAndReceipts) RelevantTransactions() *types.Transactions {
 	if br.successfulTransactions != nil {
 		return br.successfulTransactions
 	}
 
-	txs := br.Block.Transactions()
 	st := make(types.Transactions, 0)
-
-	for idx, tx := range txs {
-		receipt, ok := br.ReceiptsMap[idx]
-		if ok && receipt.Status == types.ReceiptStatusSuccessful {
-			st = append(st, tx)
+	for _, tx := range br.TxsWithReceipts {
+		if tx.Receipt.Status == types.ReceiptStatusSuccessful {
+			st = append(st, tx.Tx)
 		}
 	}
-
 	br.successfulTransactions = &st
 	return br.successfulTransactions
 }
 
 // ChainFork - represents the result of walking the chain when processing a fork
 type ChainFork struct {
-	NewCanonical *types.Block
-	OldCanonical *types.Block
+	NewCanonical *types.Header
+	OldCanonical *types.Header
 
-	CommonAncestor   *types.Block
+	CommonAncestor   *types.Header
 	CanonicalPath    []L1BlockHash
 	NonCanonicalPath []L1BlockHash
 }

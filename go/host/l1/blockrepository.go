@@ -131,6 +131,9 @@ func (r *Repository) latestCanonAncestor(blkHash gethcommon.Hash) (*types.Block,
 // FetchObscuroReceipts returns all obscuro-relevant receipts for an L1 block
 func (r *Repository) FetchObscuroReceipts(block *common.L1Block) (types.Receipts, error) {
 	receipts := make([]*types.Receipt, len(block.Transactions()))
+	if len(block.Transactions()) == 0 {
+		return receipts, nil
+	}
 
 	blkHash := block.Hash()
 	// we want to send receipts for any transactions that produced obscuro-relevant log events
