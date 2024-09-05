@@ -59,8 +59,8 @@ jobs:
           INSTANCE_PREFIX=""
 
           if [[ "${{ github.event.inputs.instance_type }}" != "primary" ]]; then
-            INSTANCE_SUFFIX="-${{ github.event.inputs.instance_type }}"
-            INSTANCE_PREFIX="${{ github.event.inputs.instance_type }}-"
+            INSTANCE_SUFFIX="_${{ github.event.inputs.instance_type }}"
+            INSTANCE_PREFIX="${{ github.event.inputs.instance_type }}_"
           fi
 
           echo "INSTANCE_SUFFIX=$INSTANCE_SUFFIX" >> $GITHUB_ENV
