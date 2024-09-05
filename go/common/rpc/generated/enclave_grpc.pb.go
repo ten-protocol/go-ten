@@ -52,7 +52,6 @@ const (
 	EnclaveProto_GetTotalContractCount_FullMethodName  = "/generated.EnclaveProto/GetTotalContractCount"
 	EnclaveProto_GetReceiptsByAddress_FullMethodName   = "/generated.EnclaveProto/GetReceiptsByAddress"
 	EnclaveProto_EnclavePublicConfig_FullMethodName    = "/generated.EnclaveProto/EnclavePublicConfig"
-	EnclaveProto_FetchBlobs_FullMethodName             = "/generated.EnclaveProto/FetchBlobs"
 )
 
 // EnclaveProtoClient is the client API for EnclaveProto service.
@@ -123,7 +122,6 @@ type EnclaveProtoClient interface {
 	GetReceiptsByAddress(ctx context.Context, in *GetReceiptsByAddressRequest, opts ...grpc.CallOption) (*GetReceiptsByAddressResponse, error)
 	// EnclavePublicConfig returns public network data that is known to the enclave but may not be known to the host
 	EnclavePublicConfig(ctx context.Context, in *EnclavePublicConfigRequest, opts ...grpc.CallOption) (*EnclavePublicConfigResponse, error)
-	FetchBlobs(ctx context.Context, in *FetchBlobsMsg, opts ...grpc.CallOption) (*FetchBlobsResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -454,15 +452,6 @@ func (c *enclaveProtoClient) EnclavePublicConfig(ctx context.Context, in *Enclav
 	return out, nil
 }
 
-func (c *enclaveProtoClient) FetchBlobs(ctx context.Context, in *FetchBlobsMsg, opts ...grpc.CallOption) (*FetchBlobsResponse, error) {
-	out := new(FetchBlobsResponse)
-	err := c.cc.Invoke(ctx, EnclaveProto_FetchBlobs_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
@@ -531,7 +520,6 @@ type EnclaveProtoServer interface {
 	GetReceiptsByAddress(context.Context, *GetReceiptsByAddressRequest) (*GetReceiptsByAddressResponse, error)
 	// EnclavePublicConfig returns public network data that is known to the enclave but may not be known to the host
 	EnclavePublicConfig(context.Context, *EnclavePublicConfigRequest) (*EnclavePublicConfigResponse, error)
-	FetchBlobs(context.Context, *FetchBlobsMsg) (*FetchBlobsResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -637,9 +625,6 @@ func (UnimplementedEnclaveProtoServer) GetReceiptsByAddress(context.Context, *Ge
 }
 func (UnimplementedEnclaveProtoServer) EnclavePublicConfig(context.Context, *EnclavePublicConfigRequest) (*EnclavePublicConfigResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EnclavePublicConfig not implemented")
-}
-func (UnimplementedEnclaveProtoServer) FetchBlobs(context.Context, *FetchBlobsMsg) (*FetchBlobsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FetchBlobs not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -1251,24 +1236,6 @@ func _EnclaveProto_EnclavePublicConfig_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveProto_FetchBlobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FetchBlobsMsg)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EnclaveProtoServer).FetchBlobs(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: EnclaveProto_FetchBlobs_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).FetchBlobs(ctx, req.(*FetchBlobsMsg))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1403,10 +1370,6 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "EnclavePublicConfig",
 			Handler:    _EnclaveProto_EnclavePublicConfig_Handler,
-		},
-		{
-			MethodName: "FetchBlobs",
-			Handler:    _EnclaveProto_FetchBlobs_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

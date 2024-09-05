@@ -101,8 +101,6 @@ service EnclaveProto {
 
   // EnclavePublicConfig returns public network data that is known to the enclave but may not be known to the host
   rpc EnclavePublicConfig(EnclavePublicConfigRequest) returns (EnclavePublicConfigResponse) {}
-
-  rpc FetchBlobs(FetchBlobsMsg) returns (FetchBlobsResponse) {}
 }
 
 message EnclavePublicConfigRequest {}
@@ -470,23 +468,3 @@ message WithdrawalMsg {
   bytes recipient = 2;
   bytes contract = 3;
 }
-
-message FetchBlobsMsg {
-  uint64 Time = 1;
-  repeated IndexedBlobHashMsg Hashes = 2;
-}
-
-message IndexedBlobHashMsg {
-  int32 index = 1;
-  bytes hash = 2;
-}
-
-message FetchBlobsResponse {
-  repeated BlobMsg blobs = 1;
-  SystemError systemError = 2;
-}
-
-message BlobMsg {
-  bytes data = 1;
-}
-
