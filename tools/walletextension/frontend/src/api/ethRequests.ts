@@ -1,12 +1,11 @@
 import {
   nativeCurrency,
   tenChainIDDecimal,
-  tenChainIDHex,
-  tenscanLink,
+  tenChainIDHex, tenNetworkName,
+  tenscanAddress,
   userStorageAddress,
 } from "@/lib/constants";
 import {
-  getNetworkName,
   getRandomIntAsString,
   isTenChain,
   ethereum,
@@ -114,10 +113,10 @@ export async function addNetworkToMetaMask(rpcUrls: string[]) {
       params: [
         {
           chainId: tenChainIDHex,
-          chainName: getNetworkName(),
+          chainName: tenNetworkName,
           nativeCurrency,
           rpcUrls,
-          blockExplorerUrls: [tenscanLink],
+          blockExplorerUrls: [tenscanAddress],
         },
       ],
     });

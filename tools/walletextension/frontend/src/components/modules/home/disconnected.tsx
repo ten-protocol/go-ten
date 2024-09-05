@@ -15,11 +15,7 @@ import {
   DialogTrigger,
 } from "../../ui/dialog";
 import Copy from "../common/copy";
-import {
-  testnetUrls,
-  tenChainIDDecimal,
-  CONNECTION_STEPS,
-} from "../../../lib/constants";
+import {tenChainIDDecimal, tenGatewayAddress, CONNECTION_STEPS} from "../../../lib/constants";
 import { downloadMetaMask, ethereum } from "@/lib/utils";
 
 const Disconnected = () => {
@@ -73,7 +69,7 @@ const Disconnected = () => {
             </p>
             <div className="flex items-center space-x-2">
               <Badge className="h-4 w-4" />
-              <p className="text-sm">RPC URL: {testnetUrls.default.url}</p>
+              <p className="text-sm">RPC URL: {tenGatewayAddress}</p>
             </div>
             <Alert variant={"warning"} className="flex items-center space-x-2">
               <Terminal className="h-4 w-4" />
