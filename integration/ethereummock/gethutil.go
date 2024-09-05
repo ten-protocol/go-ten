@@ -38,7 +38,7 @@ func internalLCA(ctx context.Context, newCanonical *types.Block, oldCanonical *t
 	if newCanonical.NumberU64() > oldCanonical.NumberU64() {
 		p, err := resolver.FetchBlock(ctx, newCanonical.ParentHash())
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("could not retrieve parent block %s. Cause: %w", newCanonical.ParentHash, err)
+			return nil, nil, nil, fmt.Errorf("could not retrieve parent block %s. Cause: %w", newCanonical.ParentHash(), err)
 		}
 
 		return internalLCA(ctx, p, oldCanonical, resolver, append(canonicalPath, newCanonical.Hash()), nonCanonicalPath)
@@ -46,18 +46,18 @@ func internalLCA(ctx context.Context, newCanonical *types.Block, oldCanonical *t
 	if oldCanonical.NumberU64() > newCanonical.NumberU64() {
 		p, err := resolver.FetchBlock(ctx, oldCanonical.ParentHash())
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("could not retrieve parent block %s. Cause: %w", oldCanonical.ParentHash, err)
+			return nil, nil, nil, fmt.Errorf("could not retrieve parent block %s. Cause: %w", oldCanonical.ParentHash(), err)
 		}
 
 		return internalLCA(ctx, newCanonical, p, resolver, canonicalPath, append(nonCanonicalPath, oldCanonical.Hash()))
 	}
 	parentBlockA, err := resolver.FetchBlock(ctx, newCanonical.ParentHash())
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("could not retrieve parent block %s. Cause: %w", newCanonical.ParentHash, err)
+		return nil, nil, nil, fmt.Errorf("could not retrieve parent block %s. Cause: %w", newCanonical.ParentHash(), err)
 	}
 	parentBlockB, err := resolver.FetchBlock(ctx, oldCanonical.ParentHash())
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("could not retrieve parent block %s. Cause: %w", oldCanonical.ParentHash, err)
+		return nil, nil, nil, fmt.Errorf("could not retrieve parent block %s. Cause: %w", oldCanonical.ParentHash(), err)
 	}
 
 	return internalLCA(ctx, parentBlockA, parentBlockB, resolver, append(canonicalPath, newCanonical.Hash()), append(nonCanonicalPath, oldCanonical.Hash()))
