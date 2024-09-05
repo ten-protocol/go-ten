@@ -1,33 +1,33 @@
-# Deploys Ten Gateway Frontend on Azure for Testnet
-# Builds the Ten Gateway image, pushes the image to dockerhub and starts the Ten Gateway on Azure VM
+# Deploys TEN Gateway Frontend on Azure for Testnet
+# Builds the TEN Gateway image, pushes the image to dockerhub and starts the TEN Gateway on Azure VM
 
-name: '[M] Deploy Ten Gateway Frontend'
-run-name: '[M] Deploy Ten Gateway Frontend ( ${{ github.event.inputs.testnet_type }} )'
+name: "[M] Deploy TEN Gateway Frontend"
+run-name: "[M] Deploy TEN Gateway Frontend ( ${{ github.event.inputs.testnet_type }} )"
 on:
   workflow_dispatch:
     inputs:
       testnet_type:
-        description: 'Testnet Type'
+        description: "Testnet Type"
         required: true
-        default: 'dev-testnet'
+        default: "dev-testnet"
         type: choice
         options:
-          - 'dev-testnet'
-          - 'uat-testnet'
-          - 'sepolia-testnet'
+          - "dev-testnet"
+          - "uat-testnet"
+          - "sepolia-testnet"
       instance_type:
-        description: 'Instance'
+        description: "Instance"
         required: true
-        default: 'primary'
+        default: "primary"
         type: choice
         options:
-          - 'primary'
-          - 'dexynth'
+          - "primary"
+          - "dexynth"
 jobs:
   validate-inputs:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Check if deployment is allowed'
+      - name: "Check if deployment is allowed"
         run: |
           if [[ "${{ github.event.inputs.instance_type }}" == "dexynth" && "${{ github.event.inputs.testnet_type }}" != "sepolia-testnet" ]]; then
             echo "Error: Dexynth can only be deployed to sepolia-testnet."
@@ -38,33 +38,33 @@ jobs:
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
-      - name: 'Set up environment variables'
+      - name: "Set up environment variables"
         id: setup_env
         run: |
           INSTANCE_SUFFIX=""
           INSTANCE_PREFIX=""
-          
+
           if [[ "${{ github.event.inputs.instance_type }}" != "primary" ]]; then
             INSTANCE_SUFFIX="-${{ github.event.inputs.instance_type }}"
             INSTANCE_PREFIX="${{ github.event.inputs.instance_type }}-"
           fi
-          
+
           echo "INSTANCE_SUFFIX=$INSTANCE_SUFFIX" >> $GITHUB_ENV
           echo "INSTANCE_PREFIX=$INSTANCE_PREFIX" >> $GITHUB_ENV
-          
-      
+
+
           DNS_NAME_LABEL_GATEWAY_FE="${{ github.event.inputs.testnet_type }}-ten-gateway${INSTANCE_SUFFIX}"
           IMAGE_NAME_GATEWAY_FE="${{ github.event.inputs.testnet_type }}-fe-ten-gateway${INSTANCE_SUFFIX}"
-          
+
           echo "DNS_NAME_LABEL_GATEWAY_FE=$DNS_NAME_LABEL_GATEWAY_FE" >> $GITHUB_ENV
           echo "IMAGE_NAME_GATEWAY_FE=$IMAGE_NAME_GATEWAY_FE" >> $GITHUB_ENV
-          
+
           # Set instance-specific variables
           declare -a VAR_NAMES=(
             "DOCKER_BUILD_TAG_GATEWAY_FE"
             "GATEWAY_URL"
           )
-          
+
           for VAR_NAME in "${VAR_NAMES[@]}"; do
             FULL_VAR_NAME="${INSTANCE_PREFIX}${VAR_NAME}"
             VAR_VALUE=$(jq -r --arg key "$FULL_VAR_NAME" '.[$key] // empty' <<< '${{ toJson(vars) }}')
@@ -74,8 +74,8 @@ jobs:
               echo "Warning: ${FULL_VAR_NAME} not found in vars" >&2
             fi
           done
-          
-      - name: 'Print GitHub variables'
+
+      - name: "Print GitHub variables"
         run: |
           echo "Selected Testnet Type: ${{ github.event.inputs.testnet_type }}"
           echo "Selected Instance Type: ${{ github.event.inputs.instance_type }}"
@@ -86,23 +86,23 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: 'Extract branch name'
+      - name: "Extract branch name"
         shell: bash
         run: |
           echo "Branch Name: ${GITHUB_REF_NAME}"
           echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
-      - name: 'Set up Docker'
+      - name: "Set up Docker"
         uses: docker/setup-buildx-action@v3.6.1
 
-      - name: 'Login to Azure docker registry'
+      - name: "Login to Azure docker registry"
         uses: azure/docker-login@v1
         with:
           login-server: testnetobscuronet.azurecr.io
           username: testnetobscuronet
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: 'Login via Azure CLI'
+      - name: "Login via Azure CLI"
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}

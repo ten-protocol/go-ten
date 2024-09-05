@@ -19,12 +19,12 @@ func NewTenAPI(host host.Host) *TenAPI {
 	}
 }
 
-// Health returns the health status of Ten host + enclave + db
+// Health returns the health status of TEN host + enclave + db
 func (api *TenAPI) Health(ctx context.Context) (*host.HealthCheck, error) {
 	return api.host.HealthCheck(ctx)
 }
 
-// Config returns the config status of Ten host + enclave + db
+// Config returns the config status of TEN host + enclave + db
 func (api *TenAPI) Config() (*ChecksumFormattedTenNetworkConfig, error) {
 	config, err := api.host.TenConfig()
 	if err != nil {

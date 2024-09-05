@@ -41,7 +41,7 @@ const (
 	// more than this, but this is a sanity check to ensure the simulation doesn't stop after a single transaction of each
 	// type, for example.
 	txThreshold = 5
-	// The maximum number of blocks an Ten node can fall behind
+	// The maximum number of blocks an TEN node can fall behind
 	maxBlockDelay = 5
 	// The leading zero bytes in a hash indicating that it is possibly an address, since it only has 20 bytes of data.
 	zeroBytesHex = "000000000000000000000000"
@@ -49,7 +49,7 @@ const (
 
 // After a simulation has run, check as much as possible that the outputs of the simulation are expected.
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
-// time of the simulation and the average block duration, that all Ten nodes are roughly in sync, etc
+// time of the simulation and the average block duration, that all TEN nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
 	time.Sleep(2 * time.Second)
 	checkTransactionsInjected(t, s)
@@ -123,7 +123,7 @@ func checkTenBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uint64)
 	// This checks that all the nodes are in sync. When a node falls behind with processing blocks it might highlight a problem.
 	// since there is one node that only listens to rollups it will be naturally behind.
 	if max-min > max/3 {
-		t.Errorf("There is a problem with the Ten chain. Nodes fell out of sync. Max height: %d. Min height: %d -> %+v", max, min, heights)
+		t.Errorf("There is a problem with the TEN chain. Nodes fell out of sync. Max height: %d. Min height: %d -> %+v", max, min, heights)
 	}
 }
 
@@ -335,7 +335,7 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 		t.Errorf("Node %d: Could not retrieve L1 height. Cause: %s", nodeIdx, err)
 	}
 	if int(maxEthereumHeight)-int(l1Height) > maxBlockDelay {
-		t.Errorf("Node %d: Ten node fell behind by %d blocks.", nodeIdx, maxEthereumHeight-l1Height)
+		t.Errorf("Node %d: TEN node fell behind by %d blocks.", nodeIdx, maxEthereumHeight-l1Height)
 	}
 
 	// check that the height of the l2 chain is higher than a minimum expected value.

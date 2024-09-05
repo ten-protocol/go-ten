@@ -41,7 +41,7 @@ import (
 )
 
 /*
-   The Ten Enclave (TE) needs a way to persist data into a trusted database. Trusted not to reveal that data to anyone but that particular enclave.
+   The TEN Enclave (TE) needs a way to persist data into a trusted database. Trusted not to reveal that data to anyone but that particular enclave.
 
    To achieve this, the TE must first perform Remote Attestation (RA), which gives it confidence that it is connected to
 	a trusted version of software running on trusted hardware. The result of this process is a Certificate which can be
@@ -130,7 +130,7 @@ type Credentials struct {
 	UserKeyPEM   string // db user private key, generated in our enclave
 }
 
-// Connector (re-)establishes a connection to the Edgeless DB for the Ten enclave
+// Connector (re-)establishes a connection to the Edgeless DB for the TEN enclave
 func Connector(edbCfg *Config, config config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	// rather than fail immediately if EdgelessDB is not available yet we wait up for `edgelessDBStartTimeout` for it to be available
 	err := waitForEdgelessDBToStart(edbCfg.Host, logger)
@@ -228,8 +228,8 @@ func performHandshake(enclaveConfig config.EnclaveConfig, edbCfg *Config, logger
 	// the RA will ensure that we are connecting to a database that will not leak any data.
 	// The RA will return a Certificate which we'll use for the TLS mutual authentication when we connect to the database.
 	// The trust path is as follows:
-	// 1. The Ten Enclave performs RA on the database enclave, and the RA object contains a certificate which only the database enclave controls.
-	// 2. Connecting to the database via mutually authenticated TLS using the above certificate, will give the Ten enclave confidence that it is only giving data away to some code and hardware it trusts.
+	// 1. The TEN Enclave performs RA on the database enclave, and the RA object contains a certificate which only the database enclave controls.
+	// 2. Connecting to the database via mutually authenticated TLS using the above certificate, will give the TEN enclave confidence that it is only giving data away to some code and hardware it trusts.
 	edbPEM, err := performEDBRemoteAttestation(enclaveConfig, edbCfg.Host, defaultEDBConstraints, logger)
 	if err != nil {
 		return nil, err
