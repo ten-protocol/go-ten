@@ -1,8 +1,20 @@
 # Deploys TEN Gateway on Azure for Testnet
 # Builds the TEN Gateway image, pushes the image to dockerhub and starts the TEN Gateway on Azure VM
 
-name: "[M] Deploy TEN Gateway Backend"
-run-name: "[M] Deploy TEN Gateway Backend ( ${{ github.event.inputs.testnet_type }} )"
+# This action requires the following environment variables to be set:
+#  - DOCKER_BUILD_TAG_GATEWAY
+#  - AZURE_DEPLOY_GROUP_GATEWAY
+#  - L2_RPC_URL_VALIDATOR
+#  - GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME
+#  - GATEWAY_RATE_LIMIT_WINDOW
+#  - GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER
+
+# If we are deploying to a non primary instance all those variables should be prefixed with the instance name
+# example: dexynth-DOCKER_BUILD_TAG_GATEWAY
+
+
+name: '[M] Deploy Ten Gateway Backend'
+run-name: '[M] Deploy Ten Gateway Backend ( ${{ github.event.inputs.testnet_type }} )'
 on:
   workflow_dispatch:
     inputs:

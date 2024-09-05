@@ -1,7 +1,11 @@
 export const tenGatewayAddress =
-  process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://127.0.0.1:1443";
+  process.env.NEXT_PUBLIC_GATEWAY_URL || "http://127.0.0.1:1443";
 
-export const tenscanLink = "https://testnet.tenscan.io";
+export const tenNetworkName =
+    process.env.NEXT_PUBLIC_NETWORK_NAME || "Ten Testnet";
+
+export const tenscanAddress =
+    process.env.NEXT_PUBLIC_TENSCAN_URL || "https://tenscan.io";
 
 export const socialLinks = {
   github: "https://github.com/ten-protocol",
@@ -11,28 +15,6 @@ export const socialLinks = {
 };
 
 export const GOOGLE_ANALYTICS_ID = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
-
-export const testnetUrls = {
-  sepolia: {
-    name: "TEN Testnet",
-    url: "https://sepolia-testnet.ten.xyz",
-    rpc: "https://rpc.sepolia-testnet.ten.xyz",
-  },
-  uat: {
-    name: "TEN UAT-Testnet",
-    url: "https://uat-testnet.ten.xyz",
-    rpc: "https://rpc.uat-testnet.ten.xyz",
-  },
-  dev: {
-    name: "TEN Dev-Testnet",
-    url: "https://dev-testnet.ten.xyz",
-    rpc: "https://rpc.dev-testnet.ten.xyz",
-  },
-  default: {
-    name: "TEN Testnet",
-    url: tenGatewayAddress,
-  },
-};
 
 export const SWITCHED_CODE = 4902;
 export const tokenHexLength = 42;
