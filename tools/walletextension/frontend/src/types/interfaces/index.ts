@@ -8,7 +8,7 @@ export interface SeoProps {
   ogImageUrl: string;
   ogType: string;
   includeDefaultKeywords?: boolean;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export interface ErrorType {
