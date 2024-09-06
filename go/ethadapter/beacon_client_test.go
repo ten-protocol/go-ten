@@ -94,12 +94,7 @@ func TestBlobEncoding(t *testing.T) {
 		t.Errorf("error encoding rollup: %s", err)
 	}
 
-	blobsPtr := make([]*kzg4844.Blob, len(blobs))
-	for i := range blobs {
-		blobsPtr[i] = &blobs[i]
-	}
-
-	rollup, err := ReconstructRollup(blobsPtr)
+	rollup, err := ReconstructRollup(blobs)
 	if err != nil {
 		t.Errorf("error reconstructing rollup: %s", err)
 	}
