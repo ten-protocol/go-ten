@@ -39,6 +39,7 @@ const (
 	callFieldGasPrice             = "gasprice"
 	callFieldMaxFeePerGas         = "maxfeepergas"
 	callFieldMaxPriorityFeePerGas = "maxpriorityfeepergas"
+	callFieldAccessList           = "accesslist"
 )
 
 // EncodingService handles conversion to Geth data structures
@@ -235,6 +236,8 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
 			}
 			maxPriorityFeePerGas = (*hexutil.Big)(maxPriorityFeePerGasVal)
+		case callFieldAccessList:
+			// ignore access list for now
 		}
 	}
 
@@ -345,7 +348,7 @@ func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(ctx context.Context,
 	return (*types.Block)(unsafe.Pointer(&lb)), nil
 }
 
-// ExtractPrivateTransactionsQuery is designed to support a wide range of custom Ten queries.
+// ExtractPrivateTransactionsQuery is designed to support a wide range of custom TEN queries.
 // The first parameter here is the method name, which is used to determine the query type.
 // The second parameter is the query parameters.
 func ExtractPrivateTransactionsQuery(queryParams any) (*common.ListPrivateTransactionsQueryParams, error) {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -37,8 +39,8 @@ func (m *blockMessageExtractor) Enabled() bool {
 	return m.GetBusAddress().Big().Cmp(gethcommon.Big0) != 0
 }
 
-func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Context, block *common.L1Block, receipts common.L1Receipts) error {
-	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "Block value transfer messages processed", log.BlockHashKey, block.Hash())
+func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, receipts common.L1Receipts) error {
+	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "BlockHeader value transfer messages processed", log.BlockHashKey, block.Hash())
 
 	/*areReceiptsValid := common.VerifyReceiptHash(block, receipts)
 
@@ -76,8 +78,8 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 // The messages will be stored in DB storage for later usage.
 // block - the L1 block for which events are extracted.
 // receipts - all of the receipts for the corresponding block. This is validated.
-func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, block *common.L1Block, receipts common.L1Receipts) error {
-	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "Block cross chain messages processed", log.BlockHashKey, block.Hash())
+func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, block *types.Header, receipts common.L1Receipts) error {
+	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "BlockHeader cross chain messages processed", log.BlockHashKey, block.Hash())
 
 	if len(receipts) == 0 {
 		return nil
@@ -108,7 +110,7 @@ func (m *blockMessageExtractor) GetBusAddress() *common.L1Address {
 }
 
 // getCrossChainMessages - Converts the relevant logs from the appropriate message bus address to synthetic transactions and returns them
-func (m *blockMessageExtractor) getCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) (common.CrossChainMessages, error) {
+func (m *blockMessageExtractor) getCrossChainMessages(block *types.Header, receipts common.L1Receipts) (common.CrossChainMessages, error) {
 	if len(receipts) == 0 {
 		return make(common.CrossChainMessages, 0), nil
 	}

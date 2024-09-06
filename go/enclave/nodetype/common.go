@@ -44,7 +44,7 @@ func ExportCrossChainData(ctx context.Context, storage storage.Storage, fromSeqN
 	bundle := &common.ExtCrossChainBundle{
 		LastBatchHash:        batchHash, // unused for now.
 		L1BlockHash:          block.Hash(),
-		L1BlockNum:           big.NewInt(0).Set(block.Header().Number),
+		L1BlockNum:           big.NewInt(0).Set(block.Number),
 		CrossChainRootHashes: crossChainHashes,
 	} // todo: check fromSeqNo
 	return bundle, nil

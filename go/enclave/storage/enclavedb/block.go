@@ -83,12 +83,11 @@ func HandleBlockArrivedAfterBatches(ctx context.Context, dbtx *sql.Tx, blockId i
 	return err
 }
 
-// todo - remove this. For now creates a "block" but without a body.
-func FetchBlock(ctx context.Context, db *sql.DB, hash common.L1BlockHash) (*types.Block, error) {
+func FetchBlockHeader(ctx context.Context, db *sql.DB, hash common.L1BlockHash) (*types.Header, error) {
 	return fetchBlock(ctx, db, " where hash=?", hash.Bytes())
 }
 
-func FetchHeadBlock(ctx context.Context, db *sql.DB) (*types.Block, error) {
+func FetchHeadBlock(ctx context.Context, db *sql.DB) (*types.Header, error) {
 	return fetchBlock(ctx, db, "order by id desc limit 1")
 }
 
@@ -242,10 +241,6 @@ func fetchBlockHeader(ctx context.Context, db *sql.DB, whereQuery string, args .
 	return h, nil
 }
 
-func fetchBlock(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*types.Block, error) {
-	h, err := fetchBlockHeader(ctx, db, whereQuery, args...)
-	if err != nil {
-		return nil, err
-	}
-	return types.NewBlockWithHeader(h), nil
+func fetchBlock(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*types.Header, error) {
+	return fetchBlockHeader(ctx, db, whereQuery, args...)
 }

@@ -30,7 +30,7 @@ var (
 	ValueTransferEventID   = MessageBusABI.Events["ValueTransfer"].ID
 )
 
-func lazilyLogReceiptChecksum(block *common.L1Block, receipts types.Receipts, logger gethlog.Logger) {
+func lazilyLogReceiptChecksum(block *types.Header, receipts types.Receipts, logger gethlog.Logger) {
 	if logger.Enabled(context.Background(), gethlog.LevelTrace) {
 		logger.Trace("Processing block", log.BlockHashKey, block.Hash(), "nr_rec", len(receipts), "Hash", receiptsHash(receipts))
 	}

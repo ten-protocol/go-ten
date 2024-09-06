@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ten-protocol/go-ten/go/common/async"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
@@ -58,7 +60,7 @@ func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, gasOr
 }
 
 func (bp *l1BlockProcessor) Process(ctx context.Context, br *common.BlockAndReceipts) (*BlockIngestionType, error) {
-	defer core.LogMethodDuration(bp.logger, measure.NewStopwatch(), "L1 block processed", log.BlockHashKey, br.Block.Hash())
+	defer core.LogMethodDuration(bp.logger, measure.NewStopwatch(), "L1 block processed", log.BlockHashKey, br.BlockHeader.Hash())
 
 	ingestion, err := bp.tryAndInsertBlock(ctx, br)
 	if err != nil {
@@ -67,21 +69,21 @@ func (bp *l1BlockProcessor) Process(ctx context.Context, br *common.BlockAndRece
 
 	if !ingestion.PreGenesis {
 		// This requires block to be stored first ... but can permanently fail a block
-		err = bp.crossChainProcessors.Remote.StoreCrossChainMessages(ctx, br.Block, *br.Receipts)
+		err = bp.crossChainProcessors.Remote.StoreCrossChainMessages(ctx, br.BlockHeader, br.Receipts())
 		if err != nil {
 			return nil, errors.New("failed to process cross chain messages")
 		}
 
-		err = bp.crossChainProcessors.Remote.StoreCrossChainValueTransfers(ctx, br.Block, *br.Receipts)
+		err = bp.crossChainProcessors.Remote.StoreCrossChainValueTransfers(ctx, br.BlockHeader, br.Receipts())
 		if err != nil {
 			return nil, fmt.Errorf("failed to process cross chain transfers. Cause: %w", err)
 		}
 	}
 
 	// todo @siliev - not sure if this is the best way to update the price, will pick up random stale blocks from forks?
-	bp.gasOracle.ProcessL1Block(br.Block)
+	bp.gasOracle.ProcessL1Block(br.BlockHeader)
 
-	h := br.Block.Hash()
+	h := br.BlockHeader.Hash()
 	bp.currentL1Head = &h
 	bp.lastIngestedBlock.Mark()
 	return ingestion, nil
@@ -98,7 +100,7 @@ func (bp *l1BlockProcessor) HealthCheck() (bool, error) {
 }
 
 func (bp *l1BlockProcessor) tryAndInsertBlock(ctx context.Context, br *common.BlockAndReceipts) (*BlockIngestionType, error) {
-	block := br.Block
+	block := br.BlockHeader
 
 	// We insert the block into the L1 chain and store it.
 	// in case the block already exists in the database, this will be treated like a fork, because the head changes to
@@ -118,13 +120,13 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(ctx context.Context, br *common.Bl
 		return nil, fmt.Errorf("1. could not store block. Cause: %w", err)
 	}
 
-	bp.logger.Trace("Block inserted successfully",
-		log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash(), "ingestionType", ingestionType)
+	bp.logger.Trace("BlockHeader inserted successfully",
+		log.BlockHeightKey, block.Number, log.BlockHashKey, block.Hash(), "ingestionType", ingestionType)
 
 	return ingestionType, nil
 }
 
-func (bp *l1BlockProcessor) ingestBlock(ctx context.Context, block *common.L1Block) (*BlockIngestionType, error) {
+func (bp *l1BlockProcessor) ingestBlock(ctx context.Context, block *types.Header) (*BlockIngestionType, error) {
 	// todo (#1056) - this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
 	prevL1Head, err := bp.GetHead(ctx)
 	if err != nil {
@@ -135,7 +137,7 @@ func (bp *l1BlockProcessor) ingestBlock(ctx context.Context, block *common.L1Blo
 		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
 	// we do a basic sanity check, comparing the received block to the head block on the chain
-	if block.ParentHash() != prevL1Head.Hash() {
+	if block.ParentHash != prevL1Head.Hash() {
 		isCanon, err := bp.storage.IsBlockCanonical(ctx, block.Hash())
 		if err != nil {
 			return nil, fmt.Errorf("could not check if block is canonical. Cause: %w", err)
@@ -147,8 +149,8 @@ func (bp *l1BlockProcessor) ingestBlock(ctx context.Context, block *common.L1Blo
 		chainFork, err := gethutil.LCA(ctx, block, prevL1Head, bp.storage)
 		if err != nil {
 			bp.logger.Trace("cannot calculate the fork for received block",
-				"blkHeight", block.NumberU64(), log.BlockHashKey, block.Hash(),
-				"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
+				"blkHeight", block.Number.Uint64(), log.BlockHashKey, block.Hash(),
+				"l1HeadHeight", prevL1Head.Number.Uint64(), "l1HeadHash", prevL1Head.Hash(),
 				log.ErrKey, err,
 			)
 			return nil, errutil.ErrBlockAncestorNotFound
@@ -163,7 +165,7 @@ func (bp *l1BlockProcessor) ingestBlock(ctx context.Context, block *common.L1Blo
 	return &BlockIngestionType{ChainFork: nil, PreGenesis: false}, nil
 }
 
-func (bp *l1BlockProcessor) GetHead(ctx context.Context) (*common.L1Block, error) {
+func (bp *l1BlockProcessor) GetHead(ctx context.Context) (*types.Header, error) {
 	if bp.currentL1Head == nil {
 		return nil, errutil.ErrNotFound
 	}

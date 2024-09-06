@@ -36,14 +36,14 @@ func NewSharedSecretProcessor(mgmtcontractlib mgmtcontractlib.MgmtContractLib, a
 // ProcessNetworkSecretMsgs we watch for all messages that are requesting or receiving the secret and we store the nodes attested keys
 func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, br *common.BlockAndReceipts) []*common.ProducedSecretResponse {
 	var responses []*common.ProducedSecretResponse
-	transactions := br.SuccessfulTransactions()
-	block := br.Block
+	transactions := br.RelevantTransactions()
+	block := br.BlockHeader
 	for _, tx := range *transactions {
 		t := ssp.mgmtContractLib.DecodeTx(tx)
 
 		// this transaction is for a node that has joined the network and needs to be sent the network secret
 		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
-			ssp.logger.Info("Process shared secret request.", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.TxKey, tx.Hash())
+			ssp.logger.Info("Process shared secret request.", log.BlockHeightKey, block.Number, log.BlockHashKey, block.Hash(), log.TxKey, tx.Hash())
 			resp, err := ssp.processSecretRequest(ctx, scrtReqTx)
 			if err != nil {
 				ssp.logger.Error("Failed to process shared secret request.", log.ErrKey, err)
