@@ -3,6 +3,7 @@ package ethadapter
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"

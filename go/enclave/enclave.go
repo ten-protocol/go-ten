@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	"github.com/ten-protocol/go-ten/go/common/compression"
 	"github.com/ten-protocol/go-ten/go/common/measure"

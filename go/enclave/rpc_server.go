@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
 	"net"
+
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"

@@ -3,8 +3,9 @@ package common
 import (
 	"context"
 	"encoding/json"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 

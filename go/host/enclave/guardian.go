@@ -3,11 +3,12 @@ package enclave
 import (
 	"context"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ten-protocol/go-ten/go/host/storage"
 

@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	"github.com/ten-protocol/go-ten/go/enclave/components"
 
@@ -252,7 +253,6 @@ func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*e
 			continue
 		}
 		blobs, err := p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), rollupHashes.BlobHashes)
-
 		if err != nil {
 			p.logger.Crit("could not fetch blobs publisher", log.ErrKey, err)
 			return nil, nil, nil
@@ -295,7 +295,6 @@ func (p *Publisher) ExtractTenTransactionsAndBlobs(block *types.Block) ([]*ethad
 			continue
 		}
 		blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), rollupHashes.BlobHashes)
-
 		if err != nil {
 			p.logger.Crit("could not fetch blobs publisher", log.ErrKey, err)
 			return nil, nil, nil, nil

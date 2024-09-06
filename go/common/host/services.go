@@ -2,8 +2,9 @@ package host
 
 import (
 	"context"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
