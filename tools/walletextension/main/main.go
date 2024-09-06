@@ -17,7 +17,7 @@ const (
 	tcp = "tcp"
 	// @fixme -
 	// this is a temporary fix as out forked version of log.go does not map with gethlog.Level<Level>
-	//and should be fixed as part of logging refactoring in the future
+	// and should be fixed as part of logging refactoring in the future
 	legacyLevelDebug = 4
 	legacyLevelError = 1
 )

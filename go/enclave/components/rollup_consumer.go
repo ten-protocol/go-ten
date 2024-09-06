@@ -48,7 +48,7 @@ func NewRollupConsumer(
 }
 
 func (rc *rollupConsumerImpl) ProcessRollupsInBlock(ctx context.Context, b *common.BlockAndReceipts) error {
-	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed block", log.BlockHashKey, b.Block.Hash())
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed block", log.BlockHashKey, b.BlockHeader.Hash())
 
 	rollups := rc.extractRollups(b)
 	if len(rollups) == 0 {
@@ -62,7 +62,7 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(ctx context.Context, b *comm
 
 	if len(rollups) > 1 {
 		// todo - we need to sort this out
-		rc.logger.Warn(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), b.Block.Hash()))
+		rc.logger.Warn(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), b.BlockHeader.Hash()))
 	}
 
 	for _, rollup := range rollups {
@@ -71,7 +71,7 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(ctx context.Context, b *comm
 			rc.logger.Warn("Can't process rollup because the l1 block used for compression is not available", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			continue
 		}
-		canonicalBlockByHeight, err := rc.storage.FetchCanonicaBlockByHeight(ctx, l1CompressionBlock.Number())
+		canonicalBlockByHeight, err := rc.storage.FetchCanonicaBlockByHeight(ctx, l1CompressionBlock.Number)
 		if err != nil {
 			return err
 		}
@@ -113,9 +113,9 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 // extractRollups - returns a list of the rollups published in this block
 func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*common.ExtRollup {
 	rollups := make([]*common.ExtRollup, 0)
-	b := br.Block
+	b := br.BlockHeader
 
-	for _, tx := range *br.SuccessfulTransactions() {
+	for _, tx := range *br.RelevantTransactions() {
 		// go through all rollup transactions
 		t := rc.MgmtContractLib.DecodeTx(tx)
 		if t == nil {

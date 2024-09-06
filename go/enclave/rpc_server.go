@@ -478,8 +478,8 @@ func (s *RPCServer) EnclavePublicConfig(ctx context.Context, _ *generated.Enclav
 	return &generated.EnclavePublicConfigResponse{L2MessageBusAddress: enclaveCfg.L2MessageBusAddress.Bytes()}, nil
 }
 
-func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Block, error) {
-	block := types.Block{}
+func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Header, error) {
+	block := types.Header{}
 	err := rlp.DecodeBytes(encodedBlock, &block)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode block, bytes=%x, err=%w", encodedBlock, err)
@@ -488,8 +488,8 @@ func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Block, error) {
 }
 
 // decodeReceipts - converts the rlp encoded bytes to receipts if possible.
-func (s *RPCServer) decodeReceipts(encodedReceipts []byte) (types.Receipts, error) {
-	receipts := make(types.Receipts, 0)
+func (s *RPCServer) decodeReceipts(encodedReceipts []byte) ([]*common.TxAndReceipt, error) {
+	receipts := make([]*common.TxAndReceipt, 0)
 
 	err := rlp.DecodeBytes(encodedReceipts, &receipts)
 	if err != nil {

@@ -3,6 +3,8 @@ package crosschain
 import (
 	"context"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -16,9 +18,9 @@ type (
 
 type BlockMessageExtractor interface {
 	// StoreCrossChainMessages - Verifies receipts belong to block and saves the relevant cross chain messages from the receipts
-	StoreCrossChainMessages(ctx context.Context, block *common.L1Block, receipts common.L1Receipts) error
+	StoreCrossChainMessages(ctx context.Context, block *types.Header, receipts common.L1Receipts) error
 
-	StoreCrossChainValueTransfers(ctx context.Context, block *common.L1Block, receipts common.L1Receipts) error
+	StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, receipts common.L1Receipts) error
 
 	// GetBusAddress - Returns the L1 message bus address.
 	GetBusAddress() *common.L1Address
@@ -53,5 +55,5 @@ type Manager interface {
 
 	ExecuteValueTransfers(ctx context.Context, transfers common.ValueTransferEvents, rollupState *state.StateDB)
 
-	RetrieveInboundMessages(ctx context.Context, fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents)
+	RetrieveInboundMessages(ctx context.Context, fromBlock *types.Header, toBlock *types.Header, rollupState *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents)
 }

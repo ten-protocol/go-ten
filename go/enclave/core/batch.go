@@ -96,7 +96,7 @@ func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.DataEncrypt
 
 func DeterministicEmptyBatch(
 	parent *common.BatchHeader,
-	block *types.Block,
+	block *types.Header,
 	time uint64,
 	sequencerNo *big.Int,
 	baseFee *big.Int,

@@ -425,16 +425,21 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
 	}
+	txWithReceipts := make([]*common.TxAndReceipt, 0)
 	// only submit the relevant transactions to the enclave
 	// nullify all non-relevant transactions
 	txs := block.Transactions()
 	for i, rec := range receipts {
-		if rec == nil {
-			txs[i] = nil
+		// the FetchObscuroReceipts method returns dummy receipts on non-relevant positions.
+		if rec.BlockNumber != nil {
+			txWithReceipts = append(txWithReceipts, &common.TxAndReceipt{
+				Tx:      txs[i],
+				Receipt: rec,
+			})
 		}
 	}
 
-	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block, receipts, isLatest)
+	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txWithReceipts, isLatest)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {

@@ -30,7 +30,7 @@ const (
 type CacheService struct {
 	// cache for the immutable blocks and batches.
 	// this avoids a trip to the database.
-	blockCache *cache.Cache[*types.Block]
+	blockCache *cache.Cache[*types.Header]
 
 	// stores batches using the sequence number as key
 	batchCacheBySeqNo *cache.Cache[*common.BatchHeader]
@@ -71,7 +71,7 @@ func NewCacheService(logger gethlog.Logger) *CacheService {
 	}
 	ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
 	return &CacheService{
-		blockCache:               cache.New[*types.Block](ristrettoStore),
+		blockCache:               cache.New[*types.Header](ristrettoStore),
 		batchCacheBySeqNo:        cache.New[*common.BatchHeader](ristrettoStore),
 		seqCacheByHash:           cache.New[*big.Int](ristrettoStore),
 		seqCacheByHeight:         cache.New[*big.Int](ristrettoStore),
@@ -84,7 +84,7 @@ func NewCacheService(logger gethlog.Logger) *CacheService {
 	}
 }
 
-func (cs *CacheService) CacheBlock(ctx context.Context, b *types.Block) {
+func (cs *CacheService) CacheBlock(ctx context.Context, b *types.Header) {
 	cacheValue(ctx, cs.blockCache, cs.logger, b.Hash(), b, blockCost)
 }
 
@@ -96,7 +96,7 @@ func (cs *CacheService) CacheBatch(ctx context.Context, batch *core.Batch) {
 	cacheValue(ctx, cs.seqCacheByHeight, cs.logger, batch.NumberU64()+1, batch.SeqNo(), idCost)
 }
 
-func (cs *CacheService) ReadBlock(ctx context.Context, key gethcommon.Hash, onCacheMiss func(any) (*types.Block, error)) (*types.Block, error) {
+func (cs *CacheService) ReadBlock(ctx context.Context, key gethcommon.Hash, onCacheMiss func(any) (*types.Header, error)) (*types.Header, error) {
 	return getCachedValue(ctx, cs.blockCache, cs.logger, key, blockCost, onCacheMiss)
 }
 
