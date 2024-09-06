@@ -199,7 +199,7 @@ func (c *Client) EnclaveID(ctx context.Context) (common.EnclaveID, common.System
 	return common.EnclaveID(response.EnclaveID), nil
 }
 
-func (c *Client) SubmitL1BlockWithBlobs(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceipt,  blobs []*kzg4844.Blob,isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
+func (c *Client) SubmitL1BlockWithBlobs(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceipt, blobs []*kzg4844.Blob, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
 	var buffer bytes.Buffer
 	if err := blockHeader.EncodeRLP(&buffer); err != nil {
 		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
@@ -214,7 +214,6 @@ func (c *Client) SubmitL1BlockWithBlobs(ctx context.Context, blockHeader *types.
 	if err != nil {
 		return nil, fmt.Errorf("could not encode blobs. Cause: %w", err)
 	}
-
 
 	response, err := c.protoClient.SubmitL1Block(ctx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedReceipts: serializedReceipts, EncodedBlobs: serializedBlobs, IsLatest: isLatest})
 	if err != nil {
