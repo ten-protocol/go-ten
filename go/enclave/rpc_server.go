@@ -138,7 +138,7 @@ func (s *RPCServer) SubmitL1Block(ctx context.Context, request *generated.Submit
 		return nil, err
 	}
 
-	blockSubmissionResponse, err := s.enclave.SubmitL1BlockWithBlobs(ctx, bl, blobs, receipts, request.IsLatest)
+	blockSubmissionResponse, err := s.enclave.SubmitL1Block(ctx, bl, receipts, blobs)
 	if err != nil {
 		var rejErr *errutil.BlockRejectError
 		isReject := errors.As(err, &rejErr)

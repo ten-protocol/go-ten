@@ -442,7 +442,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	}
 
 	_, rollupTxs, blobsAndHashes, _ := g.sl.L1Publisher().ExtractTenTransactionsAndBlobs(block)
-	resp, err := g.enclaveClient.SubmitL1BlockWithBlobs(context.Background(), block.Header(), txWithReceipts, blobsAndHashes, isLatest)
+	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txWithReceipts, blobsAndHashes)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
