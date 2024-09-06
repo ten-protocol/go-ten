@@ -2,14 +2,14 @@ import React from "react";
 import { columns } from "@/src/components/modules/transactions/columns";
 import { DataTable } from "@/src/components/modules/common/data-table/data-table";
 import { getItem } from "@/src/lib/utils";
-import { useContractService } from "@/src/services/useContractService";
+import { useContractsService } from "@/src/services/useContractsService";
 import { ItemPosition } from "@/src/types";
 import useWalletStore from "@/src/stores/wallet-store";
 import { useQuery } from "@tanstack/react-query";
 
 export default function TransactionsComponent() {
   const { isL1ToL2 } = useWalletStore();
-  const { getBridgeTransactions } = useContractService();
+  const { getBridgeTransactions } = useContractsService();
 
   const {
     data: transactions = [],

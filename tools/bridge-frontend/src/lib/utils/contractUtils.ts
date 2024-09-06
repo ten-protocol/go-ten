@@ -154,7 +154,7 @@ const estimateGasWithTimeout = async (
   msg: (string | ethers.BigNumber)[],
   proof: string[],
   root: string,
-  timeout = 10000,
+  timeout = 60000 * 60,
   interval = 5000
 ) => {
   let gasLimit: ethers.BigNumber | null = null;
@@ -171,7 +171,8 @@ const estimateGasWithTimeout = async (
     } catch (error: any) {
       console.error(`Estimate gas threw error: ${error.reason}`);
     }
-    if (Date.now() - startTime >= timeout) {
+    const currentTime = Date.now();
+    if (currentTime - startTime >= timeout) {
       console.log("Timed out waiting for gas estimate, using default");
       showToast(
         ToastType.INFO,

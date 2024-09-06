@@ -1,6 +1,7 @@
 export const environment = process.env.NEXT_PUBLIC_BRIDGE_API_HOST_ENVIRONMENT;
 
 export const apiHost = process.env.NEXT_PUBLIC_BRIDGE_API_HOST;
+export const apiVersion = "v1";
 
 export const socialLinks = {
   github: "https://github.com/ten-protocol",
@@ -41,8 +42,6 @@ export const GOOGLE_ANALYTICS_ID =
   process.env.NEXT_PUBLIC_BRIDGE_GOOGLE_ANALYTICS_ID;
 
 export const INFURA_KEY = process.env.NEXT_PUBLIC_BRIDGE_INFURA_KEY;
-
-export const L1_NETWORK_URL = `http://${environment}-eth2network.uksouth.cloudapp.azure.com:8545`;
 
 export const L1CHAINS = [
   {

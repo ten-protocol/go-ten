@@ -36,7 +36,8 @@ export const TransferFromSection = ({
           <div className="pl-2">
             <p className="text-sm text-muted-foreground">Balance:</p>
             <strong className="text-lg float-right word-wrap">
-              {loading ? <Skeleton /> : tokenBalance || "0.00"}
+              {loading ? <Skeleton /> : tokenBalance || "0.00"}{" "}
+              {form.watch("token")}
             </strong>
           </div>
         </div>

@@ -15,10 +15,10 @@ import {
 } from "../lib/utils/contractUtils";
 import { isAddress } from "ethers/lib/utils";
 import { showToast } from "../components/ui/use-toast";
-import { L1_NETWORK_URL } from "../lib/constants";
 import useWalletStore from "../stores/wallet-store";
+import { currentNetwork } from "../lib/utils";
 
-export const useContractService = () => {
+export const useContractsService = () => {
   const { signer, isL1ToL2, provider, address } = useWalletStore();
   const { networkConfig, isNetworkConfigLoading } = useGeneralService();
   const {
@@ -37,7 +37,7 @@ export const useContractService = () => {
     return networkConfig;
   }, [networkConfig, isNetworkConfigLoading]);
 
-  const l1Provider = new ethers.providers.JsonRpcProvider(L1_NETWORK_URL);
+  const l1Provider = new ethers.providers.JsonRpcProvider(currentNetwork.l1Rpc);
   const initializeContracts = async () => {
     if (!memoizedConfig || !provider) return;
 
