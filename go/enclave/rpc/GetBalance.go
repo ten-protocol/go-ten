@@ -32,7 +32,7 @@ func GetBalanceValidate(reqParams []any, builder *CallBuilder[BalanceReq, hexuti
 
 	blockNumber, err := gethencoding.ExtractBlockNumber(reqParams[1])
 	if err != nil {
-		builder.Err = fmt.Errorf("unable to extract requested Block number - %w", err)
+		builder.Err = fmt.Errorf("unable to extract requested BlockHeader number - %w", err)
 		return nil
 	}
 	builder.Param = &BalanceReq{

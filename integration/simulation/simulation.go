@@ -102,7 +102,7 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 			panic(fmt.Errorf("could not fetch head block. Cause: %w", err))
 		}
 		if err == nil {
-			for _, b := range client.BlocksBetween(ethereummock.MockGenesisBlock, head) {
+			for _, b := range client.BlocksBetween(ethereummock.MockGenesisBlock.Header(), head) {
 				for _, tx := range b.Transactions() {
 					t := s.Params.MgmtContractLib.DecodeTx(tx)
 					if t == nil {

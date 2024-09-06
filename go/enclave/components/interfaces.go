@@ -29,7 +29,7 @@ type BlockIngestionType struct {
 	// ChainFork contains information about the status of the new block in the chain
 	ChainFork *common.ChainFork
 
-	// Block that is already on the canonical chain
+	// BlockHeader that is already on the canonical chain
 	OldCanonicalBlock bool
 }
 
@@ -42,14 +42,14 @@ func (bit *BlockIngestionType) IsFork() bool {
 
 type L1BlockProcessor interface {
 	Process(ctx context.Context, br *common.BlockAndReceipts) (*BlockIngestionType, error)
-	GetHead(context.Context) (*common.L1Block, error)
+	GetHead(context.Context) (*types.Header, error)
 	GetCrossChainContractAddress() *gethcommon.Address
 	HealthCheck() (bool, error)
 }
 
 // BatchExecutionContext - Contains all of the data that each batch depends on
 type BatchExecutionContext struct {
-	BlockPtr     common.L1BlockHash // Block is needed for the cross chain messages
+	BlockPtr     common.L1BlockHash // BlockHeader is needed for the cross chain messages
 	ParentPtr    common.L2BatchHash
 	Transactions common.L2Transactions
 	AtTime       uint64
@@ -91,7 +91,7 @@ type BatchExecutor interface {
 
 type BatchRegistry interface {
 	// BatchesAfter - Given a hash, will return batches following it until the head batch and the l1 blocks referenced by those batches
-	BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error)
+	BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Header, error)
 
 	// GetBatchStateAtHeight - creates a stateDB for the block number
 	GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error)

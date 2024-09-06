@@ -10,7 +10,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
-
 	"github.com/ten-protocol/go-ten/go/common/measure"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -24,7 +23,8 @@ type rollupConsumerImpl struct {
 
 	rollupCompression *RollupCompression
 	batchRegistry     BatchRegistry
-	logger            gethlog.Logger
+
+	logger gethlog.Logger
 
 	storage      storage.Storage
 	sigValidator *SignatureValidator
@@ -50,11 +50,11 @@ func NewRollupConsumer(
 
 // ProcessBlobsInBlock - FIXME
 func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts, blobs []*kzg4844.Blob) error {
-	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed block", log.BlockHashKey, b.Block.Hash())
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed block", log.BlockHashKey, b.BlockHeader.Hash())
 
 	rollups, err := rc.extractAndVerifyRollups(b, blobs)
 	if err != nil {
-		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, b.Block.Hash(), log.ErrKey, err)
+		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, b.BlockHeader.Hash(), log.ErrKey, err)
 		return err
 	}
 	if len(rollups) == 0 {
@@ -68,7 +68,7 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 
 	if len(rollups) > 1 {
 		// todo - we need to sort this out
-		rc.logger.Warn(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), b.Block.Hash()))
+		rc.logger.Warn(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), b.BlockHeader.Hash()))
 	}
 
 	for _, rollup := range rollups {
@@ -77,7 +77,7 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 			rc.logger.Warn("Can't process rollup because the l1 block used for compression is not available", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			continue
 		}
-		canonicalBlockByHeight, err := rc.storage.FetchCanonicaBlockByHeight(ctx, l1CompressionBlock.Number())
+		canonicalBlockByHeight, err := rc.storage.FetchCanonicaBlockByHeight(ctx, l1CompressionBlock.Number)
 		if err != nil {
 			return err
 		}
@@ -115,18 +115,20 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 	return signedRollup, nil
 }
 
+// todo - when processing the rollup, instead of looking up batches one by one, compare the last sequence number from the db with the ones in the rollup
 // extractRollups - returns a list of the rollups published in this block
 func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipts, blobs []*kzg4844.Blob) ([]*common.ExtRollup, error) {
 	rollups := make([]*common.ExtRollup, 0)
-	b := br.Block
+	b := br.BlockHeader
 
-	for _, tx := range *br.SuccessfulTransactions() {
-		decodedTx := rc.MgmtContractLib.DecodeTx(tx)
-		if decodedTx == nil {
+	for _, tx := range *br.RelevantTransactions() {
+		// go through all rollup transactions
+		t := rc.MgmtContractLib.DecodeTx(tx)
+		if t == nil {
 			continue
 		}
 
-		rollupHashes, ok := decodedTx.(*ethadapter.L1RollupHashes)
+		rollupHashes, ok := t.(*ethadapter.L1RollupHashes)
 		if !ok {
 			continue
 		}

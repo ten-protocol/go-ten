@@ -427,17 +427,22 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
 	}
+	txWithReceipts := make([]*common.TxAndReceipt, 0)
 	// only submit the relevant transactions to the enclave
 	// nullify all non-relevant transactions
 	txs := block.Transactions()
 	for i, rec := range receipts {
-		if rec == nil {
-			txs[i] = nil
+		// the FetchObscuroReceipts method returns dummy receipts on non-relevant positions.
+		if rec.BlockNumber != nil {
+			txWithReceipts = append(txWithReceipts, &common.TxAndReceipt{
+				Tx:      txs[i],
+				Receipt: rec,
+			})
 		}
 	}
 
 	_, rollupTxs, blobsAndHashes, _ := g.sl.L1Publisher().ExtractTenTransactionsAndBlobs(block)
-	resp, err := g.enclaveClient.SubmitL1BlockWithBlobs(context.Background(), block, blobsAndHashes, receipts, isLatest)
+	resp, err := g.enclaveClient.SubmitL1BlockWithBlobs(context.Background(), block.Header(), txWithReceipts, blobsAndHashes, isLatest)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
@@ -472,6 +477,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 }
 
 func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*ethadapter.L1RollupTx) {
+	// FIXME
 	// if there are any secret responses in the block we should refresh our P2P list to re-sync with the network
 	_, _, contractAddressTxs := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(block)
 
@@ -627,6 +633,7 @@ func (g *Guardian) periodicRollupProduction() {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue
 				}
+				// this method waits until the receipt is received
 				g.sl.L1Publisher().PublishRollup(producedRollup)
 				lastSuccessfulRollup = time.Now()
 			}

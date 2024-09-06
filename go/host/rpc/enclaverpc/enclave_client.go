@@ -10,6 +10,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -197,33 +199,9 @@ func (c *Client) EnclaveID(ctx context.Context) (common.EnclaveID, common.System
 	return common.EnclaveID(response.EnclaveID), nil
 }
 
-func (c *Client) SubmitL1Block(ctx context.Context, block *common.L1Block, receipts common.L1Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
+func (c *Client) SubmitL1BlockWithBlobs(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceipt,  blobs []*kzg4844.Blob,isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
 	var buffer bytes.Buffer
-	if err := block.EncodeRLP(&buffer); err != nil {
-		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
-	}
-
-	serialized, err := rlp.EncodeToBytes(receipts)
-	if err != nil {
-		return nil, fmt.Errorf("could not encode receipts. Cause: %w", err)
-	}
-
-	response, err := c.protoClient.SubmitL1Block(ctx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedReceipts: serialized, IsLatest: isLatest})
-	if err != nil {
-		return nil, fmt.Errorf("could not submit block. Cause: %w", err)
-	}
-
-	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
-	if err != nil {
-		return nil, err
-	}
-	return blockSubmissionResponse, nil
-}
-
-// SubmitL1BlockWithBlobs FIXME
-func (c *Client) SubmitL1BlockWithBlobs(ctx context.Context, block *common.L1Block, blobs []*kzg4844.Blob, receipts common.L1Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
-	var buffer bytes.Buffer
-	if err := block.EncodeRLP(&buffer); err != nil {
+	if err := blockHeader.EncodeRLP(&buffer); err != nil {
 		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
 	}
 
@@ -236,6 +214,7 @@ func (c *Client) SubmitL1BlockWithBlobs(ctx context.Context, block *common.L1Blo
 	if err != nil {
 		return nil, fmt.Errorf("could not encode blobs. Cause: %w", err)
 	}
+
 
 	response, err := c.protoClient.SubmitL1Block(ctx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedReceipts: serializedReceipts, EncodedBlobs: serializedBlobs, IsLatest: isLatest})
 	if err != nil {

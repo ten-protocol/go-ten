@@ -417,7 +417,7 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitL1Block(ctx context.Context, block *common.L1Block, receipts common.L1Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveImpl) SubmitL1BlockWithBlobs(ctx context.Context,  blockHeader *types.Header, receipts []*common.TxAndReceipt, blobs []*kzg4844.Blob, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitL1Block with the enclave stopping"))
 	}
@@ -425,25 +425,24 @@ func (e *enclaveImpl) SubmitL1Block(ctx context.Context, block *common.L1Block, 
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	e.logger.Info("SubmitL1Block", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
+	e.logger.Info("SubmitL1Block", log.BlockHeightKey, blockHeader.Number, log.BlockHashKey, blockHeader.Hash())
 
 	// If the block and receipts do not match, reject the block.
-	br, err := common.ParseBlockAndReceipts(block, &receipts)
+	br, err := common.ParseBlockAndReceipts(blockHeader, receipts)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	var blobs []*kzg4844.Blob
 	result, err := e.ingestL1Block(ctx, br, blobs)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
 	if result.IsFork() {
-		e.logger.Info(fmt.Sprintf("Detected fork at block %s with height %d", block.Hash(), block.Number()))
+		e.logger.Info(fmt.Sprintf("Detected fork at block %s with height %d", blockHeader.Hash(), blockHeader.Number))
 	}
 
-	err = e.service.OnL1Block(ctx, block, result)
+	err = e.service.OnL1Block(ctx, blockHeader, result)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
@@ -452,49 +451,15 @@ func (e *enclaveImpl) SubmitL1Block(ctx context.Context, block *common.L1Block, 
 	return bsr, nil
 }
 
-// SubmitL1BlockWithBlobs FIXME
-func (e *enclaveImpl) SubmitL1BlockWithBlobs(ctx context.Context, block *common.L1Block, blobs []*kzg4844.Blob, receipts common.L1Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
-	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitL1Block with the enclave stopping"))
-	}
-
-	e.mainMutex.Lock()
-	defer e.mainMutex.Unlock()
-
-	e.logger.Info("SubmitL1Block", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
-
-	// If the block and receipts do not match, reject the block.
-	br, err := common.ParseBlockAndReceipts(block, &receipts)
-	if err != nil {
-		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
-	}
-	result, err := e.ingestL1Block(ctx, br, blobs)
-	if err != nil {
-		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
-	}
-
-	if result.IsFork() {
-		e.logger.Info(fmt.Sprintf("Detected fork at block %s with height %d", block.Hash(), block.Number()))
-	}
-
-	err = e.service.OnL1Block(ctx, block, result)
-	if err != nil {
-		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
-	}
-
-	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, br)}
-	return bsr, nil
-}
-
-func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndReceipts, blobs []*kzg4844.Blob) (*components.BlockIngestionType, error) {
-	e.logger.Info("Start ingesting block", log.BlockHashKey, br.Block.Hash())
+func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndReceipts) (*components.BlockIngestionType, error) {
+	e.logger.Info("Start ingesting block", log.BlockHashKey, br.BlockHeader.Hash())
 	ingestion, err := e.l1BlockProcessor.Process(ctx, br)
 	if err != nil {
 		// only warn for unexpected errors
 		if errors.Is(err, errutil.ErrBlockAncestorNotFound) || errors.Is(err, errutil.ErrBlockAlreadyProcessed) {
-			e.logger.Debug("Did not ingest block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
+			e.logger.Debug("Did not ingest block", log.ErrKey, err, log.BlockHashKey, br.BlockHeader.Hash())
 		} else {
-			e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
+			e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.BlockHeader.Hash())
 		}
 		return nil, err
 	}

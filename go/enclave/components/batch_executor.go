@@ -343,7 +343,7 @@ func (executor *batchExecutor) CreateGenesisState(
 	return genesisBatch, deployTx, nil
 }
 
-func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Context, batch *core.Batch, block *types.Block, receipts types.Receipts) error {
+func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Context, batch *core.Batch, block *types.Header, receipts types.Receipts) error {
 	crossChainMessages, err := executor.crossChainProcessors.Local.ExtractOutboundMessages(ctx, receipts)
 	if err != nil {
 		executor.logger.Error("Failed extracting L2->L1 messages", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
@@ -395,7 +395,7 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)
 
 	batch.Header.LatestInboundCrossChainHash = block.Hash()
-	batch.Header.LatestInboundCrossChainHeight = block.Number()
+	batch.Header.LatestInboundCrossChainHeight = block.Number
 
 	return nil
 }

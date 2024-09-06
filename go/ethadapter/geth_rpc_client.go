@@ -92,7 +92,7 @@ func (e *gethRPCClient) Info() Info {
 	}
 }
 
-func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *types.Block) []*types.Block {
+func (e *gethRPCClient) BlocksBetween(startingBlock *types.Header, lastBlock *types.Block) []*types.Block {
 	var blocksBetween []*types.Block
 	var err error
 
