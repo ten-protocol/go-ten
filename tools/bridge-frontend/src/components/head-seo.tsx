@@ -1,6 +1,6 @@
 import Head from "next/head";
-import { SeoProps } from "../types/interfaces";
 import { siteMetadata } from "../lib/siteMetadata";
+import { SeoProps } from "../types";
 
 const HeadSeo = ({
   title,
@@ -22,6 +22,14 @@ const HeadSeo = ({
       {includeDefaultKeywords && (
         <meta name="keywords" content={siteMetadata.keywords} />
       )}
+      {/* Beagle Security */}
+      <meta
+        name="_vgeujvlkxz15hyr8vbuvqxnfmzlkm059"
+        // @ts-ignore
+        signature="_vd3udx2g2hfn9zclob5cat43b94q7fyk"
+      ></meta>
+      {/* to indicate the browser shouldn't interpret the response as something other than the specified content type */}
+      <meta http-equiv="X-Content-Type-Options" content="nosniff"></meta>
       {/* twitter metadata */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:site" content={siteMetadata.twitterHandle} />
@@ -46,25 +54,6 @@ const HeadSeo = ({
         key="og-image"
       />
       <meta property="og:url" content={canonicalUrl} key="og-url" />
-      <link rel="icon" href="/favicon/favicon.ico" />
-      <link
-        rel="apple-touch-icon"
-        sizes="180x180"
-        href="/favicon/apple-touch-icon.png"
-      />
-      <link
-        rel="icon"
-        type="image/png"
-        sizes="32x32"
-        href="/favicon/favicon-32x32.png"
-      />
-      <link
-        rel="icon"
-        type="image/png"
-        sizes="16x16"
-        href="/favicon/favicon-16x16.png"
-      />
-      <link rel="manifest" href="/favicon/site.webmanifest" />
       {children}
     </Head>
   );
