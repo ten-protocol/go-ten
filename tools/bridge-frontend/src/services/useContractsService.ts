@@ -1,22 +1,33 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ethers } from "ethers";
 import useContractStore from "../stores/contract-store";
-import { ToastType, TransactionStatus } from "../types";
+import {
+  IPendingTx,
+  ToastType,
+  TransactionStatus,
+  TransactionStep,
+} from "../types";
 import { useGeneralService } from "./useGeneralService";
 import Bridge from "../../artifacts/IBridge.sol/IBridge.json";
 import ManagementContractAbi from "../../artifacts/ManagementContract.sol/ManagementContract.json";
 import IMessageBusAbi from "../../artifacts/IMessageBus.sol/IMessageBus.json";
-import {
-  constructMerkleTree,
-  estimateAndPopulateTx,
-  estimateGasWithTimeout,
-  extractAndProcessValueTransfer,
-  handleError,
-} from "../lib/utils/contractUtils";
 import { isAddress } from "ethers/lib/utils";
-import { showToast } from "../components/ui/use-toast";
 import useWalletStore from "../stores/wallet-store";
 import { currentNetwork } from "../lib/utils";
+import {
+  confirmTransactionStep,
+  constructMerkleTreeStep,
+  estimateGasStep,
+  extractEventDataStep,
+  sendTransactionStep,
+  submitRelayTransactionStep,
+} from "../lib/utils/contractUtils";
+import { handleError } from "../lib/utils/walletUtils";
+import {
+  getPendingBridgeTransactions,
+  removePendingBridgeTransaction,
+} from "../lib/utils/txnUtils";
+import { showToast } from "../components/ui/use-toast";
 
 export const useContractsService = () => {
   const { signer, isL1ToL2, provider, address } = useWalletStore();
@@ -29,6 +40,9 @@ export const useContractsService = () => {
     managementContract,
     messageBusContract,
   } = useContractStore();
+  const [finalisingTxHashes, setFinalisingTxHashes] = useState<Set<string>>(
+    new Set()
+  );
 
   const memoizedConfig = useMemo(() => {
     if (isNetworkConfigLoading || !networkConfig) {
@@ -49,9 +63,10 @@ export const useContractsService = () => {
     } = memoizedConfig;
 
     const signer = provider.getSigner();
-    const isL1 = isL1ToL2;
-    const bridgeAddress = isL1 ? L1Bridge : L2Bridge;
-    const messageBusAddress = isL1 ? MessageBusAddress : L2MessageBusAddress;
+    const bridgeAddress = isL1ToL2 ? L1Bridge : L2Bridge;
+    const messageBusAddress = isL1ToL2
+      ? MessageBusAddress
+      : L2MessageBusAddress;
 
     const bridgeContract = new ethers.Contract(
       bridgeAddress,
@@ -77,13 +92,13 @@ export const useContractsService = () => {
       bridgeAddress,
     });
   };
-
   useEffect(() => {
     initializeContracts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoizedConfig, provider, isL1ToL2, signer, setContractState]);
 
-  const sendNative = async (receiver: string, value: string) => {
+  // Main entry function that calls each step, either from the beginning or resuming
+  const sendNative = async (tx: IPendingTx) => {
     if (
       !bridgeContract ||
       !signer ||
@@ -94,92 +109,166 @@ export const useContractsService = () => {
       return handleError(null, "Contract or signer not found");
     }
 
+    const { receiver, value } = tx;
+
+    if (!receiver) {
+      return handleError(null, "Receiver address not found");
+    }
+
+    if (!value) {
+      return handleError(null, "Value not found");
+    }
+
     if (!ethers.utils.isAddress(receiver)) {
       return handleError(null, "Invalid receiver address");
     }
 
     try {
-      const gasPrice = await signer.provider?.getGasPrice();
-
-      const tx = await estimateAndPopulateTx(
-        receiver,
-        value,
-        gasPrice as ethers.BigNumber,
-        bridgeContract
-      );
-      const txResponse = await signer.sendTransaction(
-        tx as ethers.providers.TransactionRequest
-      );
-
-      showToast(ToastType.INFO, "Transaction sent; waiting for confirmation");
-
-      const txReceipt = await txResponse.wait();
-      console.log("Transaction receipt:", txReceipt);
-
-      if (isL1ToL2) {
-        return txReceipt;
-      }
-
-      const { valueTransferEventData, block } =
-        (await extractAndProcessValueTransfer(
-          txReceipt,
-          messageBusContract,
-          provider
-        )) || { valueTransferEventData: null, block: null };
-
-      if (!valueTransferEventData || !block) {
-        throw new Error("Failed to extract value transfer event data");
-      }
-
-      const { tree, proof } = constructMerkleTree(
-        JSON.parse(atob(block?.crossChainTree)),
-        ethers.utils.keccak256(
-          new ethers.utils.AbiCoder().encode(
-            ["address", "address", "uint256", "uint64"],
-            [
-              valueTransferEventData?.args.sender,
-              valueTransferEventData?.args.receiver,
-              valueTransferEventData?.args.amount.toString(),
-              valueTransferEventData?.args.sequence.toString(),
-            ]
-          )
-        )
-      );
-
-      const gasLimit = await estimateGasWithTimeout(
-        managementContract,
-        valueTransferEventData?.args as (string | ethers.BigNumber)[],
+      let {
+        txHash,
+        resumeStep,
+        txResponse,
+        txReceipt,
+        valueTransferEventData,
+        block,
+        tree,
         proof,
-        tree.root
-      );
+        gasLimit,
+      } = tx;
 
-      console.log("🚀 ~ sendNative ~ gasLimit:", gasLimit);
-      const txL1 =
-        await managementContract.populateTransaction.ExtractNativeValue(
-          valueTransferEventData?.args,
-          proof,
-          tree.root,
-          { gasPrice, gasLimit }
-        );
-      console.log("🚀 ~ sendNative ~ txL1:", txL1);
+      let currentStep = resumeStep || TransactionStep.TransactionSubmission;
+      console.log("🚀 ~ useContractsService ~ currentStep:", currentStep);
 
-      if (!txL1) {
-        throw new Error("Failed to populate transaction");
+      while (true) {
+        switch (currentStep) {
+          case TransactionStep.TransactionSubmission:
+            if (!txHash) {
+              txResponse = await sendTransactionStep(
+                bridgeContract,
+                signer,
+                receiver,
+                value
+              );
+              if (!txResponse) {
+                return handleError(null, "Error sending transaction");
+              }
+              txHash = txResponse.hash;
+            } else {
+              txResponse = await provider.getTransaction(txHash);
+              if (!txResponse) {
+                return handleError(
+                  null,
+                  "Transaction not found on the network"
+                );
+              }
+            }
+            currentStep = TransactionStep.TransactionConfirmation;
+            showToast(ToastType.INFO, "Transaction submitted");
+            break;
+
+          case TransactionStep.TransactionConfirmation:
+            if (!txReceipt) {
+              if (txResponse) {
+                txReceipt = await confirmTransactionStep(txResponse!);
+              }
+
+              // ...if we still don't have a txReceipt, fetch it w txHash
+              if (!txReceipt && txHash) {
+                txReceipt = await provider.getTransactionReceipt(txHash);
+                if (!txReceipt) {
+                  // if the receipt is still not confirmed, we can retry later or throw an error
+                  return handleError(
+                    null,
+                    "Transaction is not yet confirmed. Please retry later."
+                  );
+                }
+              }
+
+              // if no receipt is found at all
+              if (!txReceipt) {
+                return handleError(null, "Error confirming transaction");
+              }
+            }
+
+            // for L1 > L2, we can skip the rest of the steps
+            if (isL1ToL2) {
+              txHash && removePendingBridgeTransaction(txHash);
+              return txReceipt;
+            }
+
+            currentStep = TransactionStep.EventDataExtraction;
+            showToast(ToastType.INFO, "Transaction confirmed");
+            break;
+
+          case TransactionStep.EventDataExtraction:
+            if (!txReceipt && txHash) {
+              txReceipt = await provider.getTransactionReceipt(txHash);
+              if (!txReceipt) {
+                return handleError(null, "Transaction is not yet confirmed");
+              }
+            }
+            const result = await extractEventDataStep(
+              messageBusContract,
+              provider,
+              txReceipt!
+            );
+            valueTransferEventData = result.valueTransferEventData;
+            block = result.block;
+
+            if (!valueTransferEventData || !block) {
+              return handleError(null, "Error extracting event data");
+            }
+            currentStep = TransactionStep.MerkleTreeConstruction;
+            showToast(ToastType.INFO, "Event data extracted");
+            break;
+
+          case TransactionStep.MerkleTreeConstruction:
+            ({ tree, proof } = await constructMerkleTreeStep(
+              txHash!,
+              valueTransferEventData!,
+              block
+            ));
+
+            if (!tree || !proof) {
+              return handleError(null, "Error constructing Merkle tree");
+            }
+            currentStep = TransactionStep.GasEstimation;
+            showToast(ToastType.INFO, "Merkle tree constructed");
+            break;
+
+          case TransactionStep.GasEstimation:
+            console.log("🚀 ~ useContractsService ~  tree.root:", tree.root);
+            gasLimit = await estimateGasStep(
+              managementContract,
+              txHash!,
+              valueTransferEventData!,
+              proof,
+              tree.root
+            );
+            if (!gasLimit) {
+              return handleError(null, "Error estimating gas");
+            }
+            currentStep = TransactionStep.RelaySubmission;
+            showToast(ToastType.INFO, "Gas estimated for relay");
+            break;
+
+          case TransactionStep.RelaySubmission:
+            txReceipt = (await submitRelayTransactionStep(
+              txHash!,
+              txResponse!,
+              l1Provider,
+              managementContract,
+              valueTransferEventData,
+              tree,
+              proof,
+              gasLimit!
+            )) as ethers.providers.TransactionReceipt;
+            return txReceipt;
+
+          default:
+            return handleError(null, "Invalid transaction step");
+        }
       }
-      const responseL1 = await l1Provider.getSigner().sendTransaction(txL1);
-      console.log("🚀 ~ sendNative ~ responseL1:", responseL1);
-
-      showToast(
-        ToastType.INFO,
-        "Transaction sent to L1; waiting for confirmation"
-      );
-
-      const receiptL1 = await responseL1.wait();
-      console.log("L1 txn receipt:", receiptL1);
-
-      showToast(ToastType.SUCCESS, "Transaction processed successfully");
-
-      return receiptL1;
     } catch (error) {
       return handleError(error, "Error sending native currency");
     }
@@ -279,11 +368,49 @@ export const useContractsService = () => {
     }
   };
 
+  const resumePendingTransactions = () => {
+    const pendingTransactions = getPendingBridgeTransactions();
+
+    pendingTransactions.forEach(async (tx: IPendingTx) => {
+      try {
+        await finaliseTransaction(tx);
+      } catch (error) {
+        handleError(error, `Error resuming transaction ${tx.txHash}:`);
+      }
+    });
+  };
+
+  const finaliseTransaction = async (tx: IPendingTx) => {
+    console.log("🚀 ~ finalizeTransaction ~ tx:", tx);
+    try {
+      setFinalisingTxHashes((prevSet) =>
+        new Set(prevSet).add(tx?.txHash || "")
+      );
+      showToast(ToastType.INFO, "Resuming transaction...");
+      await sendNative({ ...tx });
+      setFinalisingTxHashes((prevSet) => {
+        const newSet = new Set(prevSet);
+        newSet.delete(tx?.txHash || "");
+        return newSet;
+      });
+    } catch (error) {
+      handleError(error, `Error resuming transaction ${tx.txHash}:`);
+      setFinalisingTxHashes((prevSet) => {
+        const newSet = new Set(prevSet);
+        newSet.delete(tx?.txHash || "");
+        return newSet;
+      });
+    }
+  };
+
   return {
     sendNative,
     getNativeBalance,
     getTokenBalance,
     sendERC20,
     getBridgeTransactions,
+    finaliseTransaction,
+    resumePendingTransactions,
+    finalisingTxHashes,
   };
 };

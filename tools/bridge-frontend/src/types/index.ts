@@ -249,3 +249,37 @@ export type StoreSet = (
 ) => void;
 
 export type StoreGet = () => IWalletState;
+
+export enum TransactionStep {
+  TransactionSubmission = "transactionSubmission",
+  TransactionConfirmation = "transactionConfirmation",
+  EventDataExtraction = "eventDataExtraction",
+  MerkleTreeConstruction = "merkleTreeConstruction",
+  GasEstimation = "gasEstimation",
+  RelaySubmission = "relaySubmission",
+}
+
+export enum IErrorMessages {
+  UnknownAccount = "unknown account",
+  InsufficientFunds = "insufficient funds",
+  UserDeniedTransactionSignature = "User denied transaction signature",
+  UserRejectedTheRequest = "User rejected the request",
+  ExecutionReverted = "execution reverted",
+  RateLimitExceeded = "rate limit exceeded",
+}
+
+export interface IPendingTx {
+  receiver?: string;
+  value?: string;
+  token?: string;
+  txHash?: string;
+  resumeStep?: TransactionStep;
+  txResponse?: ethers.providers.TransactionResponse;
+  txReceipt?: ethers.providers.TransactionReceipt;
+  valueTransferEventData?: ethers.utils.LogDescription;
+  block?: any;
+  tree?: any;
+  proof?: any;
+  gasLimit?: ethers.BigNumber | null;
+  timestamp?: number;
+}

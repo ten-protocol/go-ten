@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Metadata } from "next";
 import Layout from "@/src/components/layouts/default-layout";
 import Dashboard from "@/src/components/modules/bridge";

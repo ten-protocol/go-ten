@@ -6,7 +6,7 @@ import { Button } from "../../ui/button";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import useCustomHookForm from "@/src/hooks/useCustomHookForm";
-import { handleStorage } from "@/src/lib/utils/walletUtils";
+import { handleStorage } from "@/src/lib/utils";
 
 export default function FormComponent({
   form,

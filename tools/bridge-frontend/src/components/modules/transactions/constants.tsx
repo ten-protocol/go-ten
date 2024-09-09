@@ -19,7 +19,7 @@ export const statuses = [
     value: TransactionStatus.Pending,
     label: "Pending",
     icon: HourglassIcon,
-    variant: "primary",
+    variant: "warning",
   },
 ];
 

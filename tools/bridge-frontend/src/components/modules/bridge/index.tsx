@@ -26,7 +26,7 @@ import { SubmitButton } from "./submit-button";
 import { SwitchNetworkButton } from "./switch-network-button";
 import { TransferToSection } from "./transfer-to-section";
 import { bridgeSchema } from "@/src/schemas/bridge";
-import { handleStorage } from "@/src/lib/utils/walletUtils";
+import { handleStorage } from "@/src/lib/utils";
 import useWalletStore from "@/src/stores/wallet-store";
 import { useQuery } from "@tanstack/react-query";
 
@@ -104,16 +104,23 @@ export default function Dashboard() {
 
         if (!selectedToken) throw new Error("Invalid token");
 
-        const sendTransaction = selectedToken.isNative ? sendNative : sendERC20;
-        const res = await sendTransaction(
-          transactionData.receiver,
-          transactionData.amount,
-          selectedToken.address
-        );
+        let res;
+        if (selectedToken.isNative) {
+          res = await sendNative({
+            receiver: transactionData.receiver,
+            value: transactionData.amount,
+          });
+        } else {
+          res = await sendERC20(
+            transactionData.receiver,
+            transactionData.amount,
+            selectedToken.address
+          );
+        }
 
         toast({
           title: "Bridge Transaction",
-          description: `Bridge transaction completed: ${res.transactionHash}`,
+          description: `Completed: ${res.transactionHash}`,
           variant: ToastType.SUCCESS,
         });
         reset();

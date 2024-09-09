@@ -3,6 +3,10 @@ export const environment = process.env.NEXT_PUBLIC_BRIDGE_API_HOST_ENVIRONMENT;
 export const apiHost = process.env.NEXT_PUBLIC_BRIDGE_API_HOST;
 export const apiVersion = "v1";
 
+export const pendingTransactionSessionKey = "pendingTransaction";
+
+export const PENDING_TRANSACTIONS_KEY = "pendingBridgeTransactions";
+
 export const socialLinks = {
   github: "https://github.com/ten-protocol",
   discord: "https://discord.gg/tenprotocol",

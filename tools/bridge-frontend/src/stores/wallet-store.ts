@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { walletService } from "../services/walletService";
-import { handleStorage } from "../lib/utils/walletUtils";
+import { handleStorage } from "../lib/utils";
 import { IWalletState } from "../types";
 
 const useWalletStore = create<IWalletState>((set, get) => ({

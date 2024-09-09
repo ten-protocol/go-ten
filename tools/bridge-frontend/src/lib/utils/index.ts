@@ -54,6 +54,13 @@ export const networkMappings = {
     l1Explorer: "https://dev-testnet-tenscan.io",
     l2Gateway: "https://dev-testnet.ten.xyz",
   },
+  "local-testnet": {
+    l1: L1Network.LOCAL,
+    l2: L2Network.LOCAL,
+    l1Rpc: `${process.env.NEXT_PUBLIC_L1NodeHostHTTP}:${process.env.NEXT_PUBLIC_L1NodePortHTTP}`,
+    l1Explorer: `${process.env.NEXT_PUBLIC_TENSCAN_URL}`,
+    l2Gateway: `${process.env.NEXT_PUBLIC_GATEWAY_URL}`,
+  },
 };
 
 export const currentNetwork = networkMappings[environment as Environment];
@@ -84,4 +91,10 @@ export const getItem = <T>(
   }
 
   return value;
+};
+
+export const handleStorage = {
+  save: (key: string, value: string) => localStorage.setItem(key, value),
+  get: (key: string) => localStorage.getItem(key),
+  remove: (key: string) => localStorage.removeItem(key),
 };

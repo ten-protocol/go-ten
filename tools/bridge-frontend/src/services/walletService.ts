@@ -1,18 +1,14 @@
 import { ethers } from "ethers";
 import { toast } from "@/src/components/ui/use-toast";
-import {
-  getEthereumProvider,
-  handleStorage,
-} from "@/src/lib/utils/walletUtils";
+import { getEthereumProvider, handleError } from "@/src/lib/utils/walletUtils";
 import {
   initializeSigner,
   setupEventListeners,
 } from "@/src/lib/utils/walletEvents";
 import { StoreGet, StoreSet, ToastType } from "../types";
-import { currentNetwork } from "../lib/utils";
+import { currentNetwork, handleStorage } from "../lib/utils";
 import { requestMethods } from "../routes";
 import { environment } from "../lib/constants";
-import { handleError } from "../lib/utils/contractUtils";
 
 export const walletService = {
   initializeProvider: async (set: StoreSet, get: StoreGet) => {
@@ -171,7 +167,6 @@ export const walletService = {
         variant: ToastType.SUCCESS,
       });
     } catch (error: any) {
-      handleError(error, "Error switching network");
       if (error.code === 4902) {
         toast({
           title: "Network not found",
@@ -207,6 +202,7 @@ export const walletService = {
           variant: ToastType.DESTRUCTIVE,
         });
       }
+      handleError(error, "Error switching network");
     } finally {
       set({ loading: false });
     }
