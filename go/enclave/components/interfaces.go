@@ -5,12 +5,10 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -132,5 +130,5 @@ type RollupConsumer interface {
 
 type BlobResolver interface {
 	// FetchBlobs Fetches the blob data using beacon chain APIs
-	FetchBlobs(ctx context.Context, b *types.Header, hashes []ethadapter.IndexedBlobHash) ([]*kzg4844.Blob, error)
+	FetchBlobs(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error)
 }

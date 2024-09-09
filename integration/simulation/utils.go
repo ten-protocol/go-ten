@@ -107,7 +107,6 @@ func findRollupDups(list []*common.ExtRollup) map[common.L2BatchHash]int {
 	elementCount := make(map[common.L2BatchHash]int)
 
 	for _, item := range list {
-
 		// check if the item/element exist in the duplicate_frequency map
 		_, exist := elementCount[item.Hash()]
 		if exist {

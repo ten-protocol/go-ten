@@ -16,16 +16,6 @@ import (
 // The number of bits in a BLS scalar that aren't part of a whole byte.
 const excessBlobBits = 6 // = math.floor(math.log2(BLS_MODULUS)) % 8
 
-// ToIndexedBlobHashes is needed as the beacon API has an optional indices parameter that allows us to specify which blob
-// index to retrieve from a given block
-func ToIndexedBlobHashes(hs ...gethcommon.Hash) []IndexedBlobHash {
-	hashes := make([]IndexedBlobHash, 0, len(hs))
-	for i, hash := range hs {
-		hashes = append(hashes, IndexedBlobHash{Index: uint64(i), Hash: hash})
-	}
-	return hashes
-}
-
 // MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
 // data.
 func MakeSidecar(blobs []*kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {

@@ -19,7 +19,7 @@ type L1RollupTx struct {
 }
 
 type L1RollupHashes struct {
-	BlobHashes []IndexedBlobHash
+	BlobHashes []gethcommon.Hash
 }
 
 type L1DepositTx struct {

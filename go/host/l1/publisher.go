@@ -471,7 +471,6 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 
 	// while the publisher service is still alive we keep trying to get the transaction into the L1
 	for !p.hostStopper.IsStopping() {
-
 		retries++ // count each attempt so we can increase gas price
 
 		// update the tx gas price before each attempt

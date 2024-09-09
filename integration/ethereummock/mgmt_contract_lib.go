@@ -2,12 +2,9 @@ package ethereummock
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/gob"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/integration/datagenerator"
 
@@ -68,19 +65,28 @@ func (m *mockContractLib) CreateRollup(tx *ethadapter.L1RollupTx) types.TxData {
 
 func (m *mockContractLib) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error) {
 	var err error
-	blobs := encodeBlobs(t.Rollup)
+	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert rollup to blobs: %w", err)
 	}
 
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
-
-	if sidecar, blobHashes, err = makeSidecar(blobs); err != nil {
+	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+
+	l1rh := ethadapter.L1RollupHashes{BlobHashes: blobHashes}
+	if err = enc.Encode(l1rh); err != nil {
+		panic(err)
+	}
+
 	return &types.BlobTx{
 		To:         rollupTxAddr,
+		Data:       buf.Bytes(),
 		BlobHashes: blobHashes,
 		Sidecar:    sidecar,
 	}, nil
@@ -141,7 +147,7 @@ func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	var t ethadapter.L1Transaction
 	switch tx.To().Hex() {
 	case rollupTxAddr.Hex():
-		t = &ethadapter.L1RollupTx{}
+		t = &ethadapter.L1RollupHashes{}
 	case storeSecretTxAddr.Hex():
 		t = &ethadapter.L1RespondSecretTx{}
 	case depositTxAddr.Hex():
@@ -158,6 +164,7 @@ func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	if err := dec.Decode(t); err != nil {
 		panic(err)
 	}
+
 	return t
 }
 
@@ -175,52 +182,4 @@ func encodeTx(tx ethadapter.L1Transaction, opType gethcommon.Address) types.TxDa
 		Data: buf.Bytes(),
 		To:   &opType,
 	}
-}
-
-func encodeBlobs(data []byte) []kzg4844.Blob {
-	blobs := []kzg4844.Blob{{}}
-	blobIndex := 0
-	fieldIndex := -1
-	for i := 0; i < len(data); i += 31 {
-		fieldIndex++
-		if fieldIndex == params.BlobTxFieldElementsPerBlob {
-			blobs = append(blobs, kzg4844.Blob{})
-			blobIndex++
-			fieldIndex = 0
-		}
-		max := i + 31
-		if max > len(data) {
-			max = len(data)
-		}
-		copy(blobs[blobIndex][fieldIndex*32+1:], data[i:max])
-	}
-	return blobs
-}
-
-// MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
-// data.
-func makeSidecar(blobs []kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
-	sidecar := &types.BlobTxSidecar{}
-	blobHashes := []gethcommon.Hash{}
-	for i, blob := range blobs {
-		sidecar.Blobs = append(sidecar.Blobs, blob)
-		commitment, err := kzg4844.BlobToCommitment(&blob)
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot compute KZG commitment of blob %d in tx candidate: %w", i, err)
-		}
-		sidecar.Commitments = append(sidecar.Commitments, commitment)
-		proof, err := kzg4844.ComputeBlobProof(&blob, commitment)
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot compute KZG proof for fast commitment verification of blob %d in tx candidate: %w", i, err)
-		}
-		sidecar.Proofs = append(sidecar.Proofs, proof)
-		blobHashes = append(blobHashes, kzgToVersionedHash(commitment))
-	}
-	return sidecar, blobHashes, nil
-}
-
-// kzgToVersionedHash computes the versioned hash of a blob-commitment. Implemented here as it's not exposed by geth.
-func kzgToVersionedHash(commitment kzg4844.Commitment) (out gethcommon.Hash) {
-	hasher := sha256.New()
-	return kzg4844.CalcBlobHashV1(hasher, &commitment)
 }

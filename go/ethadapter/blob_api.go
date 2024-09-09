@@ -28,20 +28,6 @@ type APIBlobSidecar struct {
 	// since we verify blobs by their versioned hashes against the execution-layer block instead.
 }
 
-// IndexedBlobHash represents a blob hash that commits to a single blob confirmed in a block.  The
-// index helps us avoid unnecessary blob to blob hash conversions to find the right content in a
-// sidecar.
-type IndexedBlobHash struct {
-	Index uint64      // absolute index in the block, a.k.a. position in sidecar blobs array
-	Hash  common.Hash // hash of the blob, used for consistency checks
-}
-
-// FIXME
-type BlobsAndHashes struct {
-	VersionedHash common.Hash
-	Blob          kzg4844.Blob
-}
-
 func (sc *APIBlobSidecar) BlobSidecar() *BlobSidecar {
 	return &BlobSidecar{
 		Blob:          sc.Blob,

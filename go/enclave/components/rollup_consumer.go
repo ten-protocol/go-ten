@@ -159,9 +159,9 @@ func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []geth
 		return fmt.Errorf("hash count mismatch: rollupHashes (%d) and blobHashes (%d)", len(rollupHashes.BlobHashes), len(blobHashes))
 	}
 
-	for i, indexedBlobHash := range rollupHashes.BlobHashes {
-		if indexedBlobHash.Hash != blobHashes[i] {
-			return fmt.Errorf("hash mismatch at index %d: rollupHash (%s) != blobHash (%s)", i, indexedBlobHash.Hash.Hex(), blobHashes[i].Hex())
+	for i, hash := range rollupHashes.BlobHashes {
+		if hash != blobHashes[i] {
+			return fmt.Errorf("hash mismatch at index %d: rollupHash (%s) != blobHash (%s)", i, hash.Hex(), blobHashes[i].Hex())
 		}
 	}
 	return nil
