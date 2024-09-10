@@ -1,0 +1,10 @@
+network:
+  management-contract: "0x1234567890123456789012345678901234567890"
+  bridge-contract: "0x1234567890123456789012345678901234567890"
+  chain-id: 1337
+
+host:
+  rpc-server:
+    http-port: 8080
+    ws-port: 8081
+

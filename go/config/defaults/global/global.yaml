@@ -1,0 +1,5 @@
+host:
+  l1:
+    chain-id: 1337
+  network:
+    chain-id: 443
