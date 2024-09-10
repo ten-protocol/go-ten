@@ -164,10 +164,6 @@ func (n *PosImpl) Start() error {
 		time.Sleep(time.Second)
 	}()
 
-	println("Geth process ID: ", n.gethProcessID)
-	println("Beacon process ID: ", n.gethProcessID)
-	println("Validator process ID: ", n.validatorProcessID)
-
 	if err != nil {
 		return fmt.Errorf("could not run the script to start l1 pos network. Cause: %s", err.Error())
 	}
