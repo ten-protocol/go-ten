@@ -151,7 +151,4 @@ ${GETH_BINARY} --http \
        --password "${BASE_PATH}/password.txt" > "${GETH_LOG_FILE}" 2>&1 &
 geth_pid=$!
 
-## attach the geth ipc
-#${GETH_BINARY} attach "${GETHDATA_DIR}/geth.ipc"
-
 echo "GETH PID $geth_pid"
