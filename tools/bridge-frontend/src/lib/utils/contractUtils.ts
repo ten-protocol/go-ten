@@ -1,5 +1,5 @@
 import { showToast } from "@/src/components/ui/use-toast";
-import { ToastType, TransactionStep } from "@/src/types";
+import { IErrorMessages, ToastType, TransactionStep } from "@/src/types";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 import { ethers } from "ethers";
 import { handleStorage } from "../utils";
@@ -141,6 +141,10 @@ const estimateGasStep = async (
     root
   );
 
+  if (!gasLimit) {
+    throw new Error("Failed to estimate gas");
+  }
+
   // update pending txn after gas estimation
   updatePendingBridgeTransaction(txHash, {
     resumeStep: TransactionStep.GasEstimation,
@@ -199,7 +203,7 @@ const submitRelayTransactionStep = async (
   // finalize and rm txn after L1 confirmation
   removePendingBridgeTransaction(txHash);
 
-  showToast(ToastType.SUCCESS, "Transaction processed successfully");
+  showToast(ToastType.SUCCESS, "Transaction confirmed on L1");
 
   return receiptL1;
 };
@@ -339,11 +343,15 @@ const estimateGasWithTimeout = async (
   msg: ethers.utils.Result,
   proof: string[],
   root: string,
-  timeout = 60000 * 60, // 1 hour
-  interval = 5000
+  timeout = 60000 * 60, // 1 hour wait time for gas estimation on mgt contract
+  interval = 5000,
+  defaultGasLimit = 2000000
 ): Promise<ethers.BigNumber> => {
   let gasLimit: ethers.BigNumber | null = null;
   const startTime = Date.now();
+  // setting a max retry count to avoid infinite loop when the withdrawal is already spent
+  let retryCount = 0;
+  const maxRetries = 3;
 
   while (!gasLimit) {
     showToast(ToastType.INFO, "Estimating gas for value transfer");
@@ -356,7 +364,21 @@ const estimateGasWithTimeout = async (
         {}
       );
     } catch (error: any) {
-      console.error(`Estimate gas threw error: ${error?.reason}`);
+      if (error?.reason.includes(IErrorMessages.WithdrawalSpent) && !gasLimit) {
+        retryCount++;
+        console.log(
+          `Retry ${retryCount}: Withdrawal already spent, retrying...`
+        );
+
+        if (retryCount >= maxRetries) {
+          handleError(error, "Max retries reached: Withdrawal already spent.");
+        }
+
+        showToast(ToastType.INFO, "Withdrawal already spent; retrying");
+        gasLimit = null; // resetting for retry
+      } else {
+        console.error(`Estimate gas threw error: ${error?.reason}`);
+      }
     }
 
     const currentTime = Date.now();
@@ -366,9 +388,10 @@ const estimateGasWithTimeout = async (
         ToastType.INFO,
         "Timed out waiting for gas estimate; using default"
       );
-      return ethers.BigNumber.from(2000000);
+      return ethers.BigNumber.from(defaultGasLimit);
     }
 
+    // waiting for the interval before retrying estimation
     await new Promise((resolve) => setTimeout(resolve, interval));
   }
 

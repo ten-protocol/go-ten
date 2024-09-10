@@ -28,8 +28,10 @@ import {
   removePendingBridgeTransaction,
 } from "../lib/utils/txnUtils";
 import { showToast } from "../components/ui/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const useContractsService = () => {
+  const queryClient = useQueryClient();
   const { signer, isL1ToL2, provider, address } = useWalletStore();
   const { networkConfig, isNetworkConfigLoading } = useGeneralService();
   const {
@@ -263,6 +265,9 @@ export const useContractsService = () => {
               proof,
               gasLimit!
             )) as ethers.providers.TransactionReceipt;
+            queryClient.invalidateQueries({
+              queryKey: ["bridgePendingTransactions", isL1ToL2 ? "l1" : "l2"],
+            });
             return txReceipt;
 
           default:

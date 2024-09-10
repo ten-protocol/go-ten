@@ -123,6 +123,7 @@ export default function Dashboard() {
           );
         }
 
+        console.log("🚀 ~ res:", res);
         toast({
           title: "Bridge Transaction",
           description: `Completed: ${res.transactionHash}`,

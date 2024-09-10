@@ -258,6 +258,7 @@ export enum IErrorMessages {
   UserRejectedTheRequest = "User rejected the request",
   ExecutionReverted = "execution reverted",
   RateLimitExceeded = "rate limit exceeded",
+  WithdrawalSpent = "withdrawal already spent",
 }
 
 export interface IPendingTx {

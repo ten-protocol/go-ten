@@ -24,6 +24,8 @@ const errorMessages: Record<IErrorMessages, string> = {
     "Transaction reverted. Please check the transaction details and try again",
   [IErrorMessages.RateLimitExceeded]:
     "Rate limit exceeded. Please try again later",
+  [IErrorMessages.WithdrawalSpent]:
+    "Withdrawal already spent. Please check the transaction details",
 };
 
 export const handleError = (error: any, message: string) => {
