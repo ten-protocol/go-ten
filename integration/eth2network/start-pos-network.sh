@@ -115,7 +115,8 @@ ${BEACON_BINARY} --datadir="${BEACONDATA_DIR}" \
                --minimum-peers-per-subnet 0 \
                --enable-debug-rpc-endpoints \
                --verbosity=debug \
-               --execution-endpoint "http://127.0.0.1:${GETH_RPC_PORT}/ " > "${BEACON_LOG_FILE}" 2>&1 &
+                --execution-endpoint "${GETHDATA_DIR}/geth.ipc" > "${BEACON_LOG_FILE}" 2>&1 &
+#               --execution-endpoint "http://127.0.0.1:${GETH_RPC_PORT}/ " > "${BEACON_LOG_FILE}" 2>&1 &
 beacon_pid=$!
 echo "BEACON PID $beacon_pid"
 
@@ -148,9 +149,8 @@ ${GETH_BINARY} --http \
        --nodiscover \
        --syncmode full \
        --allow-insecure-unlock \
-       --ipcdisable \
+#       --ipcdisable \
        --unlock 0x123463a4b065722e99115d6c222f267d9cabb524 \
        --password "${BASE_PATH}/password.txt" > "${GETH_LOG_FILE}" 2>&1 &
 geth_pid=$!
-
 echo "GETH PID $geth_pid"
