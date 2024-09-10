@@ -78,7 +78,9 @@ func TestTenscan(t *testing.T) {
 		5,
 	)
 
-	// Issue tests
+	// wait for rollups to be added to host
+	time.Sleep(30 * time.Second)
+
 	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)

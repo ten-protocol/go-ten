@@ -275,8 +275,8 @@ func (p *Publisher) ExtractTenTransactionsAndBlobs(block *types.Block) ([]*ethad
 	var contractAddressTxs []*ethadapter.L1SetImportantContractsTx
 	var blobs []*kzg4844.Blob
 	var err error
-
 	for _, tx := range block.Transactions() {
+		println("extracting txs from block with type: ", tx.Type())
 		t := p.mgmtContractLib.DecodeTx(tx)
 		if t == nil {
 			continue
@@ -484,7 +484,9 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 			return errors.Wrap(err, "could not sign L1 tx")
 		}
 		p.logger.Info("Host issuing L1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
-
+		if signedTx.Type() == types.BlobTxType {
+			println("Sending TX with blobs: ", signedTx.BlobHashes())
+		}
 		err = p.ethClient.SendTransaction(signedTx)
 		if err != nil {
 			return errors.Wrap(err, "could not broadcast L1 tx")

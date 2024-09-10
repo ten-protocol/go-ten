@@ -23,6 +23,7 @@ const (
 
 // AddRollup adds a rollup to the DB
 func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
+	println("ADDING ROLLUP TO HOST: ", rollup.Hash().Hex())
 	extRollup, err := rlp.EncodeToBytes(rollup)
 	if err != nil {
 		return fmt.Errorf("could not encode rollup: %w", err)

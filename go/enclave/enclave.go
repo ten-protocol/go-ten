@@ -433,6 +433,9 @@ func (e *enclaveImpl) SubmitL1Block(ctx context.Context, blockHeader *types.Head
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
+	if len(blobs) > 0 {
+		println("ingesting L1 block with blobs: ", blobs[0])
+	}
 	result, err := e.ingestL1Block(ctx, br, blobs)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
