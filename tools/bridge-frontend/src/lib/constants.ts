@@ -7,6 +7,8 @@ export const pendingTransactionSessionKey = "pendingTransaction";
 
 export const PENDING_TRANSACTIONS_KEY = "pendingBridgeTransactions";
 
+export const FINALISING_TX_HASHES_KEY = "finalisingTxHashes";
+
 export const socialLinks = {
   github: "https://github.com/ten-protocol",
   discord: "https://discord.gg/tenprotocol",

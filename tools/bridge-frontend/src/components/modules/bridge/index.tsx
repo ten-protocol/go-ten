@@ -70,7 +70,12 @@ export default function Dashboard() {
       : await getTokenBalance(selectedToken.address, address);
   }
 
-  const { data } = useQuery({
+  const {
+    data,
+    isLoading: isBalanceLoading,
+    isFetching: isBalanceFetching,
+    refetch: refreshBalance,
+  } = useQuery({
     queryKey: ["tokenBalance", token, address, fromChain],
     queryFn: () => fetchTokenBalance(token, address),
     enabled: !!token && !!address && !!fromChain && walletConnected,
@@ -208,9 +213,11 @@ export default function Dashboard() {
                 fromChains={fromChains}
                 tokens={tokens}
                 tokenBalance={tokenBalance}
-                loading={loading || formState.isSubmitting}
+                balanceLoading={isBalanceLoading}
+                balanceFetching={isBalanceFetching}
                 setAmount={setAmount}
                 walletConnected={walletConnected}
+                refreshBalance={refreshBalance}
               />
               <SwitchNetworkButton
                 handleSwitchNetwork={handleSwitchNetwork}

@@ -132,6 +132,7 @@ export const useContractsService = () => {
         valueTransferEventData,
         block,
         tree,
+        root,
         proof,
         gasLimit,
       } = tx;
@@ -237,13 +238,12 @@ export const useContractsService = () => {
             break;
 
           case TransactionStep.GasEstimation:
-            console.log("🚀 ~ useContractsService ~  tree.root:", tree.root);
             gasLimit = await estimateGasStep(
               managementContract,
               txHash!,
               valueTransferEventData!,
               proof,
-              tree.root
+              root || tree!.root
             );
             if (!gasLimit) {
               return handleError(null, "Error estimating gas");
@@ -259,7 +259,7 @@ export const useContractsService = () => {
               l1Provider,
               managementContract,
               valueTransferEventData,
-              tree,
+              root || tree!.root,
               proof,
               gasLimit!
             )) as ethers.providers.TransactionReceipt;

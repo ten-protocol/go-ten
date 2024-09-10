@@ -100,7 +100,7 @@ const constructMerkleTreeStep = async (
   // update pending txn after tree construction
   updatePendingBridgeTransaction(txHash, {
     resumeStep: TransactionStep.GasEstimation,
-    tree,
+    root: tree.root,
     proof,
   });
 
@@ -121,7 +121,7 @@ const estimateGasStep = async (
 
   const currentTimestamp = Date.now();
 
-  // Retrieve and parse last gas estimate time from storage
+  // retrieve and parse last gas estimate time from storage
   const lastGasEstimateTimeString = handleStorage.get("lastGasEstimateTime");
   const lastGasEstimateTime = lastGasEstimateTimeString
     ? parseInt(lastGasEstimateTimeString, 10)
@@ -129,7 +129,7 @@ const estimateGasStep = async (
 
   console.log("🚀 ~ lastGasEstimateTime:", lastGasEstimateTime);
 
-  // If the gas estimate was done more than a minute ago, re-estimate it
+  // ...if the gas estimate was done more than a minute ago, re-estimate it
   if (lastGasEstimateTime && currentTimestamp - lastGasEstimateTime > 60000) {
     console.log("Re-estimating gas after timeout");
   }
@@ -141,26 +141,26 @@ const estimateGasStep = async (
     root
   );
 
-  // Update pending transaction after gas estimation
+  // update pending txn after gas estimation
   updatePendingBridgeTransaction(txHash, {
     resumeStep: TransactionStep.GasEstimation,
     gasLimit,
   });
 
-  // Store the new timestamp for the gas estimate
+  // store the new timestamp for the gas estimate
   handleStorage.save("lastGasEstimateTime", currentTimestamp.toString());
 
   return gasLimit;
 };
 
-// L1 Relay txn submission
+// l1 relay txn submission
 const submitRelayTransactionStep = async (
   txHash: string,
   txResponse: ethers.providers.TransactionResponse,
   l1Provider: ethers.providers.JsonRpcProvider,
   managementContract: ethers.Contract,
   valueTransferEventData: any,
-  tree: any,
+  root: string,
   proof: any,
   gasLimit: ethers.BigNumber
 ) => {
@@ -171,7 +171,7 @@ const submitRelayTransactionStep = async (
       await managementContract.populateTransaction.ExtractNativeValue(
         valueTransferEventData?.args,
         proof,
-        tree.root,
+        root,
         { gasPrice, gasLimit }
       );
 
@@ -212,7 +212,7 @@ const getTransactionReceipt = async (
     new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         reject(new Error("Transaction confirmation timed out"));
-      }, 60000 * 2); // 2 minutes
+      }, 60000 * 2); // 2 mins might be a lot of time, we can reduce it, if needed
 
       txResponse
         .wait()

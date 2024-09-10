@@ -6,23 +6,29 @@ import { ChainSelect } from "./chain-select";
 import { PercentageButtons } from "./percentage-buttons";
 import { TokenSelect } from "./token-select";
 import useCustomHookForm from "@/src/hooks/useCustomHookForm";
+import { RefreshCcwDotIcon } from "lucide-react";
+import Spinner from "../../ui/spinner";
 
 export const TransferFromSection = ({
   form,
   fromChains,
   tokens,
   tokenBalance,
-  loading,
+  balanceLoading,
+  balanceFetching,
   setAmount,
   walletConnected,
+  refreshBalance,
 }: {
   form: ReturnType<typeof useCustomHookForm>;
   fromChains: IChain[];
   tokens: IToken[];
   tokenBalance: number;
-  loading: boolean;
+  balanceLoading: boolean;
+  balanceFetching: boolean;
   setAmount: (value: number) => void;
   walletConnected: boolean;
+  refreshBalance: () => void;
 }) => {
   return (
     <div>
@@ -36,8 +42,18 @@ export const TransferFromSection = ({
           <div className="pl-2">
             <p className="text-sm text-muted-foreground">Balance:</p>
             <strong className="text-lg float-right word-wrap">
-              {loading ? <Skeleton /> : tokenBalance || "0.00"}{" "}
-              {form.watch("token")}
+              {balanceLoading ? <Skeleton /> : tokenBalance || "0.00"}{" "}
+              {balanceLoading || balanceFetching ? (
+                <Spinner
+                  size="sm"
+                  className="h-4 w-4 inline-block cursor-pointer"
+                />
+              ) : (
+                <RefreshCcwDotIcon
+                  className="h-4 w-4 inline-block cursor-pointer"
+                  onClick={refreshBalance}
+                />
+              )}
             </strong>
           </div>
         </div>

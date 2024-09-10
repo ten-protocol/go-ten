@@ -278,6 +278,7 @@ export interface IPendingTx {
   txReceipt?: ethers.providers.TransactionReceipt;
   valueTransferEventData?: ethers.utils.LogDescription;
   block?: any;
+  root?: string;
   tree?: any;
   proof?: any;
   gasLimit?: ethers.BigNumber | null;
