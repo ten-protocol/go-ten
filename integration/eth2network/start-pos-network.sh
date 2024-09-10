@@ -149,7 +149,6 @@ ${GETH_BINARY} --http \
        --nodiscover \
        --syncmode full \
        --allow-insecure-unlock \
-#       --ipcdisable \
        --unlock 0x123463a4b065722e99115d6c222f267d9cabb524 \
        --password "${BASE_PATH}/password.txt" > "${GETH_LOG_FILE}" 2>&1 &
 geth_pid=$!
