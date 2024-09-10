@@ -13,7 +13,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/metrics"
-	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/host"
@@ -25,6 +24,7 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	hostcommon "github.com/ten-protocol/go-ten/go/common/host"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 )
 
 const (
@@ -95,10 +95,8 @@ func (h *HostContainer) Host() hostcommon.Host {
 
 // NewHostContainerFromConfig uses config to create all HostContainer dependencies and inject them into a new HostContainer
 // (Note: it does not start the HostContainer process, `Start()` must be called on the container)
-func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger gethlog.Logger) *HostContainer {
-	cfg := parsedConfig.ToHostConfig()
-
-	addr, err := wallet.RetrieveAddress(parsedConfig.PrivateKeyString)
+func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) *HostContainer {
+	addr, err := wallet.RetrieveAddress(cfg.PrivateKeyString)
 	if err != nil {
 		panic("unable to retrieve the Node ID")
 	}
@@ -132,15 +130,19 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 
 	fmt.Println("Connecting to the enclave...")
 	services := host.NewServicesRegistry(logger)
+	fmt.Println("1")
 	enclaveClients := make([]common.Enclave, len(cfg.EnclaveRPCAddresses))
+	fmt.Println("2")
 	for i, addr := range cfg.EnclaveRPCAddresses {
 		enclaveClients[i] = enclaverpc.NewClient(addr, cfg.EnclaveRPCTimeout, logger)
 	}
+	fmt.Println("3")
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
 	metricsService := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
+	fmt.Println("4")
 
 	aggP2P := p2p.NewSocketP2PLayer(cfg, services, p2pLogger, metricsService.Registry())
-
+	fmt.Println("5")
 	rpcServer := node.NewServer(&node.RPCConfig{
 		EnableHTTP: cfg.HasClientRPCHTTP,
 		HTTPPort:   int(cfg.ClientRPCPortHTTP),
@@ -161,8 +163,8 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
-func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service, blobResolver l1.BlobResolver) *HostContainer {
-	h := host.NewHost(cfg, services, p2p, l1Client, l1Repo, enclaveClients, hostWallet, contractLib, logger, metricsService.Registry(), blobResolver)
+func NewHostContainer(cfg *hostconfig.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service) *HostContainer {
+	h := host.NewHost(cfg, services, p2p, l1Client, l1Repo, enclaveClients, hostWallet, contractLib, logger, metricsService.Registry())
 
 	hostContainer := &HostContainer{
 		host:           h,

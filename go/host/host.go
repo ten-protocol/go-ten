@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/host/l2"
 
 	"github.com/ten-protocol/go-ten/go/host/enclave"
@@ -16,7 +17,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/profiler"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
-	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/host/events"
@@ -32,7 +32,7 @@ import (
 
 // Implementation of host.Host.
 type host struct {
-	config   *config.HostConfig
+	config   *hostconfig.HostConfig
 	shortID  uint64
 	services *ServicesRegistry // registry of services that the host manages and makes available
 
@@ -58,7 +58,7 @@ func (bl batchListener) HandleBatch(batch *common.ExtBatch) {
 	bl.newHeads <- batch.Header
 }
 
-func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry, blobResolver l1.BlobResolver) hostcommon.Host {
+func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry, blobResolver l1.BlobResolver) hostcommon.Host {
 	hostStorage := storage.NewHostStorageFromConfig(config, logger)
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
@@ -161,7 +161,7 @@ func (h *host) Start() error {
 	return nil
 }
 
-func (h *host) Config() *config.HostConfig {
+func (h *host) Config() *hostconfig.HostConfig {
 	return h.config
 }
 

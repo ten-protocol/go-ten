@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/config2"
 )
 
 var (
@@ -144,4 +149,56 @@ func validateNodeAction(action string) bool {
 		}
 	}
 	return false
+}
+
+func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config2.TenConfig {
+	nodeType, err := common.ToNodeType(cliCfg.nodeType)
+	if err != nil {
+		fmt.Printf("Error converting node type: %v\n", err)
+		os.Exit(1)
+	}
+
+	tenCfg, err := config2.DefaultTenConfig()
+	if err != nil {
+		fmt.Printf("Error loading default Ten config: %v\n", err)
+		os.Exit(1)
+	}
+
+	tenCfg.Network.L1.ChainID = int64(cliCfg.l1ChainID)
+	tenCfg.Network.L1.L1Contracts.ManagementContract = gethcommon.HexToAddress(cliCfg.managementContractAddr)
+	tenCfg.Network.L1.L1Contracts.MessageBusContract = gethcommon.HexToAddress(cliCfg.messageBusContractAddr)
+	tenCfg.Network.L1.StartHash = gethcommon.HexToHash(cliCfg.l1Start)
+	tenCfg.Network.Batch.Interval, err = time.ParseDuration(cliCfg.batchInterval)
+	if err != nil {
+		fmt.Printf("Error parsing batch interval '%s': %v\n", cliCfg.batchInterval, err)
+		os.Exit(1)
+	}
+	tenCfg.Network.Batch.MaxInterval, err = time.ParseDuration(cliCfg.maxBatchInterval)
+	if err != nil {
+		fmt.Printf("Error parsing max batch interval '%s': %v\n", cliCfg.maxBatchInterval, err)
+		os.Exit(1)
+	}
+	tenCfg.Network.Rollup.Interval, err = time.ParseDuration(cliCfg.rollupInterval)
+	if err != nil {
+		fmt.Printf("Error parsing rollup interval '%s': %v\n", cliCfg.rollupInterval, err)
+		os.Exit(1)
+	}
+
+	tenCfg.Node.ID = gethcommon.HexToAddress(cliCfg.hostID)
+	tenCfg.Node.Name = cliCfg.nodeName
+	tenCfg.Node.NodeType = nodeType
+	tenCfg.Node.IsGenesis = cliCfg.isGenesis
+	tenCfg.Node.HostAddress = cliCfg.hostP2PPublicAddr
+
+	tenCfg.Host.L1.WebsocketURL = cliCfg.l1WebsocketURL
+	tenCfg.Host.P2P.BindAddress = fmt.Sprintf("%s:%d", cliCfg.hostP2PHost, cliCfg.hostP2PPort)
+	tenCfg.Host.P2P.IsDisabled = cliCfg.isInboundP2PDisabled
+	tenCfg.Host.DB.PostgresHost = cliCfg.postgresDBHost
+	tenCfg.Host.Log.Level = cliCfg.logLevel
+
+	tenCfg.Enclave.EnableAttestation = cliCfg.isSGXEnabled
+	tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("0.0.0.0:%d", cliCfg.enclaveWSPort)
+	tenCfg.Enclave.Log.Level = cliCfg.logLevel
+
+	return tenCfg
 }

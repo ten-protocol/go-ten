@@ -1,0 +1,4 @@
+network.CHaINID: 5678
+network.l1Contracts:
+  managementContract: "0x1111111111111111111111111111111111111111"
+host.rpc.httpsPort: 9001

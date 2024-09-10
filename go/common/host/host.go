@@ -5,7 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/config"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -13,7 +13,7 @@ import (
 
 // Host is the half of the Obscuro node that lives outside the enclave.
 type Host interface {
-	Config() *config.HostConfig
+	Config() *hostconfig.HostConfig
 	EnclaveClient() common.Enclave
 	Storage() storage.Storage
 	// Start initializes the main loop of the host.

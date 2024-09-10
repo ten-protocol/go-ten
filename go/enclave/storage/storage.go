@@ -11,16 +11,14 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/common/errutil"
-
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/triedb/hashdb"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
 	"github.com/ethereum/go-ethereum/triedb"
 
 	"github.com/ten-protocol/go-ten/go/common/measure"
-
-	"github.com/ten-protocol/go-ten/go/config"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 
@@ -57,7 +55,7 @@ type storageImpl struct {
 	logger      gethlog.Logger
 }
 
-func NewStorageFromConfig(config *config.EnclaveConfig, cachingService *CacheService, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
+func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *CacheService, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	backingDB, err := CreateDBFromConfig(config, logger)
 	if err != nil {
 		logger.Crit("Failed to connect to backing database", log.ErrKey, err)

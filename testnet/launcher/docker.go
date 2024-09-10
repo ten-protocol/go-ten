@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/config2"
 	"github.com/ten-protocol/go-ten/go/node"
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
@@ -40,37 +42,21 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to deploy l1 contracts - %w", err)
 	}
 
-	sequencerNodeConfig := node.NewNodeConfig(
-		node.WithNodeName("sequencer"),
-		node.WithNodeType("sequencer"),
-		node.WithGenesis(true),
-		node.WithSGXEnabled(t.cfg.isSGXEnabled),
-		node.WithEnclaveImage(t.cfg.sequencerEnclaveDockerImage),
-		node.WithEnclaveDebug(t.cfg.sequencerEnclaveDebug),
-		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),
-		node.WithL1WebsocketURL("ws://eth2network:9000"),
-		node.WithEnclaveWSPort(11000),
-		node.WithHostHTTPPort(80),
-		node.WithHostWSPort(81),
-		node.WithHostP2PPort(15000),
-		node.WithHostPublicP2PAddr("sequencer-host:15000"),
-		node.WithPrivateKey("8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"),
-		node.WithHostID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
-		node.WithSequencerP2PAddr("sequencer-host:15000"),
-		node.WithManagementContractAddress(networkConfig.ManagementContractAddress),
-		node.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
-		node.WithL1Start(networkConfig.L1StartHash),
-		node.WithInMemoryHostDB(true),
-		node.WithDebugNamespaceEnabled(true),
-		node.WithLogLevel(t.cfg.logLevel),
-		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
-		node.WithL1BeaconUrl("eth2network:12600"),
-	)
-	if !t.cfg.isSGXEnabled {
-		sequencerNodeConfig.UpdateNodeConfig(node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"))
+	sequencerCfg, err := config2.LoadTenConfigForEnv("local", "default/2-node-local-sequencer.yaml")
+	if err != nil {
+		return fmt.Errorf("unable to load sequencer config - %w", err)
 	}
+	sequencerCfg.Network.L1.StartHash = common.HexToHash(networkConfig.L1StartHash)
+	sequencerCfg.Network.L1.L1Contracts.ManagementContract = common.HexToAddress(networkConfig.ManagementContractAddress)
+	sequencerCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkConfig.MessageBusAddress)
 
-	sequencerNode := node.NewDockerNode(sequencerNodeConfig)
+	sequencerNode := node.NewDockerNode(sequencerCfg,
+		"testnetobscuronet.azurecr.io/obscuronet/host:latest",
+		"testnetobscuronet.azurecr.io/obscuronet/enclave:latest",
+		"ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2",
+		false,
+		"", // no PCCS override
+	)
 
 	err = sequencerNode.Start()
 	if err != nil {
@@ -84,39 +70,21 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("sequencer TEN node not healthy - %w", err)
 	}
 
-	validatorNodeConfig := node.NewNodeConfig(
-		node.WithNodeName("validator"),
-		node.WithNodeType("validator"),
-		node.WithGenesis(false),
-		node.WithSGXEnabled(t.cfg.isSGXEnabled),
-		node.WithEnclaveImage(t.cfg.validatorEnclaveDockerImage),
-		node.WithEnclaveDebug(t.cfg.validatorEnclaveDebug),
-		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),
-		node.WithL1WebsocketURL("ws://eth2network:9000"),
-		node.WithEnclaveWSPort(11010),
-		node.WithHostHTTPPort(13010),
-		node.WithHostWSPort(13011),
-		node.WithHostP2PPort(15010),
-		node.WithHostPublicP2PAddr("validator-host:15010"),
-		node.WithPrivateKey("ebca545772d6438bbbe1a16afbed455733eccf96157b52384f1722ea65ccfa89"),
-		node.WithHostID("0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A"),
-		node.WithSequencerP2PAddr("sequencer-host:15000"),
-		node.WithManagementContractAddress(networkConfig.ManagementContractAddress),
-		node.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
-		node.WithL1Start(networkConfig.L1StartHash),
-		node.WithInMemoryHostDB(true),
-		node.WithDebugNamespaceEnabled(true),
-		node.WithLogLevel(t.cfg.logLevel),
-		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
-		node.WithL1BeaconUrl("eth2network:12600"),
-	)
-
-	if !t.cfg.isSGXEnabled {
-		validatorNodeConfig.UpdateNodeConfig(node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"))
+	validatorNodeCfg, err := config2.LoadTenConfigForEnv("local", "default/2-node-local-validator.yaml")
+	if err != nil {
+		return fmt.Errorf("unable to load validator config - %w", err)
 	}
+	validatorNodeCfg.Network.L1.StartHash = common.HexToHash(networkConfig.L1StartHash)
+	validatorNodeCfg.Network.L1.L1Contracts.ManagementContract = common.HexToAddress(networkConfig.ManagementContractAddress)
+	validatorNodeCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkConfig.MessageBusAddress)
 
-	validatorNode := node.NewDockerNode(validatorNodeConfig)
-
+	validatorNode := node.NewDockerNode(validatorNodeCfg,
+		"testnetobscuronet.azurecr.io/obscuronet/host:latest",
+		"testnetobscuronet.azurecr.io/obscuronet/enclave:latest",
+		"ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2",
+		false,
+		"", // no PCCS override
+	)
 	err = validatorNode.Start()
 	if err != nil {
 		return fmt.Errorf("unable to start the obscuro node - %w", err)
@@ -298,6 +266,7 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 			}
 
 			return fmt.Errorf("node OverallHealth is not good yet")
+
 		}, retry.NewTimeoutStrategy(7*time.Minute, 1*time.Second),
 	)
 	if err != nil {

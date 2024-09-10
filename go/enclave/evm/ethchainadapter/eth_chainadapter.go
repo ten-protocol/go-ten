@@ -11,8 +11,8 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/enclave/components"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -27,13 +27,13 @@ type EthChainAdapter struct {
 	batchRegistry components.BatchRegistry
 	gethEncoding  gethencoding.EncodingService
 	storage       storage.Storage
-	config        config.EnclaveConfig
+	config        enclaveconfig.EnclaveConfig
 	chainID       *big.Int
 	logger        gethlog.Logger
 }
 
 // NewEthChainAdapter returns a new instance
-func NewEthChainAdapter(chainID *big.Int, batchRegistry components.BatchRegistry, storage storage.Storage, gethEncoding gethencoding.EncodingService, config config.EnclaveConfig, logger gethlog.Logger) *EthChainAdapter {
+func NewEthChainAdapter(chainID *big.Int, batchRegistry components.BatchRegistry, storage storage.Storage, gethEncoding gethencoding.EncodingService, config enclaveconfig.EnclaveConfig, logger gethlog.Logger) *EthChainAdapter {
 	return &EthChainAdapter{
 		newHeadChan:   make(chan gethcore.ChainHeadEvent),
 		batchRegistry: batchRegistry,

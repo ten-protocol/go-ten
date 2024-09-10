@@ -39,7 +39,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	// Return early if the network was not created
 	if err != nil {
 		fmt.Printf("Could not run test: %s\n", err)
-		return
+		t.Fatal()
 	}
 
 	txInjector := NewTransactionInjector(

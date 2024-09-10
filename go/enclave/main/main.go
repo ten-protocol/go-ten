@@ -2,28 +2,23 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ten-protocol/go-ten/go/common/container"
-	tenflag "github.com/ten-protocol/go-ten/go/common/flag"
-	"github.com/ten-protocol/go-ten/go/config"
+	"github.com/ten-protocol/go-ten/go/config2"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	enclavecontainer "github.com/ten-protocol/go-ten/go/enclave/container"
 )
 
 // Runs an Obscuro enclave as a standalone process.
 func main() {
-	// fetch and parse flags
-	flags := config.EnclaveFlags                       // fetch the flags that enclave requires
-	err := tenflag.CreateCLIFlags(config.EnclaveFlags) // using tenflag convert those flags into the golang flags package ( go flags is a singlen )
+	tenCfg, err := config2.LoadTenConfigForEnv("local")
 	if err != nil {
-		panic(fmt.Errorf("could not create CLI flags. Cause: %w", err))
+		fmt.Println("Error loading ten config:", err)
+		os.Exit(1)
 	}
 
-	tenflag.Parse() // parse the golang flags package defined flags from CLI
-
-	enclaveConfig, err := config.NewConfigFromFlags(flags)
-	if err != nil {
-		panic(fmt.Errorf("unable to create config from flags - %w", err))
-	}
+	enclaveConfig := enclaveconfig.EnclaveConfigFromTenConfig(tenCfg)
 
 	enclaveContainer := enclavecontainer.NewEnclaveContainerFromConfig(enclaveConfig)
 	container.Serve(enclaveContainer)

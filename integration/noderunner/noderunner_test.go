@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/profiler"
+	"github.com/ten-protocol/go-ten/go/config2"
 	"github.com/ten-protocol/go-ten/go/node"
 	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/integration"
@@ -108,18 +110,19 @@ func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 	t.Fatalf("Zero rollups have been produced after ten seconds. Something is wrong. Latest error was: %s", err)
 }
 
-func createInMemoryNode(startPort int) node.Node {
-	nodeCfg := node.NewNodeConfig(
-		node.WithPrivateKey(integration.GethNodePK),
-		node.WithHostID(integration.GethNodeAddress),
-		node.WithEnclaveWSPort(startPort+integration.DefaultEnclaveOffset),
-		node.WithHostHTTPPort(startPort+integration.DefaultHostRPCHTTPOffset),
-		node.WithHostWSPort(startPort+integration.DefaultHostRPCWSOffset),
-		node.WithL1WebsocketURL(fmt.Sprintf("ws://%s:%d", _localhost, startPort+integration.DefaultGethWSPortOffset)),
-		node.WithGenesis(true),
-		node.WithProfiler(true),
-		node.WithL1BlockTime(1*time.Second),
-	)
+func createInMemoryNode() node.Node {
+	tenCfg, err := config2.DefaultTenConfig()
+	if err != nil {
+		panic(err)
+	}
 
-	return NewInMemNode(nodeCfg)
+	tenCfg.Node.PrivateKeyString = integration.GethNodePK
+	tenCfg.Node.ID = common.HexToAddress(integration.GethNodeAddress)
+	tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("0.0.0.0:%d", _startPort+integration.DefaultEnclaveOffset)
+	tenCfg.Host.RPC.HTTPPort = _startPort + integration.DefaultHostRPCHTTPOffset
+	tenCfg.Host.RPC.WSPort = _startPort + integration.DefaultHostRPCWSOffset
+	tenCfg.Host.L1.WebsocketURL = fmt.Sprintf("ws://%s:%d", _localhost, _startPort+integration.DefaultGethWSPortOffset)
+	tenCfg.Node.IsGenesis = true
+
+	return NewInMemNode(tenCfg)
 }
