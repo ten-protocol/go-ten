@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import React from "react";
 
 export interface SeoProps {
   title: string;
@@ -7,7 +8,8 @@ export interface SeoProps {
   ogTwitterImage: string;
   ogImageUrl: string;
   ogType: string;
-  children: React.ReactNode;
+  includeDefaultKeywords?: boolean;
+  children?: React.ReactNode;
 }
 
 export interface ErrorType {
@@ -78,16 +80,6 @@ export enum ToastType {
   WARNING = "warning",
   DESTRUCTIVE = "destructive",
   DEFAULT = "default",
-}
-
-export interface SeoProps {
-  title: string;
-  description: string;
-  canonicalUrl: string;
-  ogTwitterImage: string;
-  ogImageUrl: string;
-  ogType: string;
-  children: React.ReactNode;
 }
 
 export interface IconProps {

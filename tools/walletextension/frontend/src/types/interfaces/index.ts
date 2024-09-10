@@ -7,7 +7,8 @@ export interface SeoProps {
   ogTwitterImage: string;
   ogImageUrl: string;
   ogType: string;
-  children: React.ReactNode;
+  includeDefaultKeywords?: boolean;
+  children?: React.ReactNode;
 }
 
 export interface ErrorType {
