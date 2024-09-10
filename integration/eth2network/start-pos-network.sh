@@ -141,6 +141,7 @@ ${GETH_BINARY} --http \
        --ws.origins "*" \
        --authrpc.jwtsecret "${BASE_PATH}/jwt.hex" \
        --authrpc.port "${GETH_RPC_PORT}" \
+       --authrpc.vhosts "*" \
        --port="${GETH_NETWORK_PORT}" \
        --datadir="${GETHDATA_DIR}" \
        --networkid="${CHAIN_ID}" \
