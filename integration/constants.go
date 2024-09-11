@@ -34,22 +34,6 @@ const (
 	DefaultTenGatewayWSPortOffset   = 952
 )
 
-var PortToTestName = map[int]string{
-	10000: "TestStartPosEth2Network",
-	11000: "TestTenscan",
-	12000: "TestCanStartStandaloneTenHostAndEnclave",
-	14000: "TestGethSimulation",
-	15000: "TestInMemoryMonteCarloSimulation",
-	16000: "TestFullNetworkMonteCarloSimulation",
-	17000: "DoNotUse",
-	18000: "TestManagementContract",
-	19000: "TestCanDeployLayer2ERC20Contract",
-	21000: "TestFaucetSendsFundsOnlyIfNeeded",
-	22000: "TestFaucet",
-	24000: "TestTenGateway",
-	25000: "NetworkTests",
-}
-
 const (
 	EthereumChainID = 1337
 	TenChainID      = 443
