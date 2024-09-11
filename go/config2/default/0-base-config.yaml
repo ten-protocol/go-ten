@@ -22,21 +22,21 @@ network:
   l1:
     chainId: 1337
     blockTime: 15s
-    startHash: "" # hash of the L1 block that Ten can safely start processing from to get entire L2 history
+    startHash: 0x0 # hash of the L1 block that Ten can safely start processing from to get entire L2 history
     contracts:
-      management: "" # L1 address of the Ten management contract
-      messageBus: "" # L1 address of the Ten message bus contract
-      bridge: "" # L1 address of the Ten bridge contract
+      management: 0x0 # L1 address of the Ten management contract
+      messageBus: 0x0 # L1 address of the Ten message bus contract
+      bridge: 0x0 # L1 address of the Ten bridge contract
   sequencer:
-    p2pAddress: "" # address of the sequencer's p2p server
+    p2pAddress: 0x0 # address of the sequencer's p2p server
   crossChain:
     interval: 6s
 
 node:
   nodeType: sequencer # sequencer or validator
-  id: "" # unique identifier for this node (currently based on its wallet eth address)
-  hostAddress: "" # address of the node's p2p server
-  privateKey: "" # private key for this node's eth account
+  id: 0x0 # unique identifier for this node (currently based on its wallet eth address)
+  hostAddress: 0x0 # address of the node's p2p server
+  privateKey: 0x0 # private key for this node's eth account
   isGenesis: false # true only for the first sequencer on a fresh chain
 
 host:
@@ -61,12 +61,13 @@ host:
   p2p:
     disableP2P: false
     bindAddress: 0.0.0.0:10000
+    timeout: 10s
   rpc:
     hostAddress: 127.0.0.1
     enableHTTP: true
-    HTTPPort: 80
+    httpPort: 80
     enableWS: true
-    WSPort: 81
+    wsPort: 81
 
 enclave:
   enableAttestation: false
@@ -83,3 +84,5 @@ enclave:
   log:
     level: 0 # -4 is DEBUG, 0 is INFO, 4 is WARN, 8 is ERROR (according to geth/slog lib)
     path: "" # path to log file, will log to stdout when empty
+  rpc:
+    timeout: 15s

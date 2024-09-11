@@ -2,6 +2,8 @@ package config2
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -41,8 +43,13 @@ type TenConfig struct {
 	Network *NetworkConfig `mapstructure:"network"`
 	Node    *NodeConfig    `mapstructure:"node"`
 	Host    *HostConfig    `mapstructure:"host"`
-	Other   *HostConfig    `mapstructure:"other"`
+	Enclave *EnclaveConfig `mapstructure:"enclave"`
 }
+
+//
+// Note: Just TenConfig utility functions below here.
+// All the top-level nested config structs are defined in their own files.
+//
 
 func (t *TenConfig) PrettyPrint() {
 	output, err := yaml.Marshal(t)
@@ -51,4 +58,62 @@ func (t *TenConfig) PrettyPrint() {
 		return
 	}
 	fmt.Println(string(output))
+}
+
+// ToEnvironmentVariables converts the config structure into environment variables map
+func (t *TenConfig) ToEnvironmentVariables() map[string]string {
+	return structToEnvMap("", t)
+}
+
+// ToEnvironmentVariablesRecursive recursively converts the config structure into environment variables map
+func structToEnvMap(prefix string, cfg interface{}) map[string]string {
+	envMap := make(map[string]string)
+	value := reflect.ValueOf(cfg)
+
+	if value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
+
+	if value.Kind() != reflect.Struct {
+		return envMap
+	}
+
+	valType := value.Type()
+
+	for i := 0; i < value.NumField(); i++ {
+		field := value.Field(i)
+		fieldType := valType.Field(i)
+		mapKey := fieldType.Tag.Get("mapstructure")
+
+		if mapKey == "" {
+			mapKey = fieldType.Name
+		}
+
+		// Convert mapstructure key to uppercase with underscores
+		envKey := strings.ToUpper(mapKey)
+		if prefix != "" {
+			envKey = prefix + "_" + envKey
+		}
+
+		switch field.Kind() {
+		case reflect.Struct:
+			// Recursively handle nested structures
+			nestedMap := structToEnvMap(envKey, field.Interface())
+			for k, v := range nestedMap {
+				envMap[k] = v
+			}
+		case reflect.Ptr:
+			if !field.IsNil() {
+				// Handle pointer types
+				nestedMap := structToEnvMap(envKey, field.Interface())
+				for k, v := range nestedMap {
+					envMap[k] = v
+				}
+			}
+		default:
+			// Handle basic types
+			envMap[envKey] = fmt.Sprintf("%v", field.Interface())
+		}
+	}
+	return envMap
 }

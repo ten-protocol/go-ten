@@ -10,6 +10,8 @@ import (
 //	yaml: `node`
 type NodeConfig struct {
 	NodeType common.NodeType `mapstructure:"nodeType"`
+	// Name of the node, used by orchestrator to name the containers etc., mostly useful for local testnets
+	Name string `mapstructure:"name"`
 	// The host's identity derived from the L1 Private Key
 	// todo: does node ID still need to exist? Look to remove in favour of enclave IDs
 	ID gethcommon.Address `mapstructure:"id"`

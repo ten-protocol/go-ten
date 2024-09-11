@@ -7,18 +7,19 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/params"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/host"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
+	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/metrics"
-	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/enclave"
 	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
-	"github.com/ten-protocol/go-ten/go/host/container"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
@@ -60,10 +61,10 @@ func createInMemTenNode(
 	batchInterval time.Duration,
 	incomingP2PDisabled bool,
 	l1BlockTime time.Duration,
-) *container.HostContainer {
+) *hostcontainer.HostContainer {
 	mgtContractAddress := mgmtContractLib.GetContractAddr()
 
-	hostConfig := &config.HostConfig{
+	hostConfig := &hostconfig.HostConfig{
 		ID:                        gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:                 isGenesis,
 		NodeType:                  nodeType,
@@ -73,13 +74,13 @@ func createInMemTenNode(
 		ManagementContractAddress: *mgtContractAddress,
 		MessageBusAddress:         l1BusAddress,
 		BatchInterval:             batchInterval,
-		CrossChainInterval:        config.DefaultHostParsedConfig().CrossChainInterval,
+		CrossChainInterval:        11 * time.Second, // todo @matt fix where this default comes from
 		IsInboundP2PDisabled:      incomingP2PDisabled,
 		L1BlockTime:               l1BlockTime,
 		UseInMemoryDB:             true,
 	}
 
-	enclaveConfig := &config.EnclaveConfig{
+	enclaveConfig := &enclaveconfig.EnclaveConfig{
 		HostID:                    hostConfig.ID,
 		NodeType:                  nodeType,
 		L1ChainID:                 integration.EthereumChainID,
@@ -106,7 +107,7 @@ func createInMemTenNode(
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 	l1Repo := l1.NewL1Repository(ethClient, ethereummock.MgmtContractAddresses, hostLogger)
-	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Repo, enclaveClients, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
+	currentContainer := hostcontainer.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Repo, enclaveClients, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
 
 	return currentContainer
 }

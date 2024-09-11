@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
@@ -24,7 +25,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
-	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 )
 
@@ -78,7 +78,7 @@ type Guardian struct {
 	enclaveID        *common.EnclaveID
 }
 
-func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, storage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
+func NewGuardian(cfg *hostconfig.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, storage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
 	return &Guardian{
 		hostData:           hostData,
 		state:              NewStateTracker(logger),
@@ -369,7 +369,9 @@ func (g *Guardian) catchupWithL1() error {
 			enclaveHead = g.l1StartHash
 		}
 
+		fmt.Println("enclaveHead is at", enclaveHead)
 		l1Block, isLatest, err := g.sl.L1Repo().FetchNextBlock(enclaveHead)
+
 		if err != nil {
 			if errors.Is(err, l1.ErrNoNextBlock) {
 				if g.state.hostL1Head == gethutil.EmptyHash {

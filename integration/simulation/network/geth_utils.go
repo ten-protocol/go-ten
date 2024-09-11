@@ -74,6 +74,7 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.Po
 		walletAddresses...,
 	)
 
+	fmt.Println("Starting Geth network with WS port", startPort+integration.DefaultGethWSPortOffset)
 	err = network.Start()
 	if err != nil {
 		return nil, err

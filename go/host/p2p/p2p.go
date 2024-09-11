@@ -9,22 +9,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
-	"github.com/ten-protocol/go-ten/go/enclave/core"
-
 	"github.com/pkg/errors"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/common/subscription"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/config"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 )
 
 const (
@@ -61,7 +59,7 @@ type p2pServiceLocator interface {
 }
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
-func NewSocketP2PLayer(config *config.HostConfig, serviceLocator p2pServiceLocator, logger gethlog.Logger, metricReg gethmetrics.Registry) *Service {
+func NewSocketP2PLayer(config *hostconfig.HostConfig, serviceLocator p2pServiceLocator, logger gethlog.Logger, metricReg gethmetrics.Registry) *Service {
 	return &Service{
 		batchSubscribers: subscription.NewManager[host.P2PBatchHandler](),
 		txSubscribers:    subscription.NewManager[host.P2PTxHandler](),

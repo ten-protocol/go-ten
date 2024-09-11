@@ -10,10 +10,8 @@ import (
 	"sync"
 
 	"github.com/holiman/uint256"
-
-	"github.com/ten-protocol/go-ten/go/config"
-
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -42,7 +40,7 @@ var ErrNoTransactionsToProcess = fmt.Errorf("no transactions to process")
 type batchExecutor struct {
 	storage              storage.Storage
 	batchRegistry        BatchRegistry
-	config               config.EnclaveConfig
+	config               enclaveconfig.EnclaveConfig
 	gethEncodingService  gethencoding.EncodingService
 	crossChainProcessors *crosschain.Processors
 	genesis              *genesis.Genesis
@@ -59,7 +57,7 @@ type batchExecutor struct {
 func NewBatchExecutor(
 	storage storage.Storage,
 	batchRegistry BatchRegistry,
-	config config.EnclaveConfig,
+	config enclaveconfig.EnclaveConfig,
 	gethEncodingService gethencoding.EncodingService,
 	cc *crosschain.Processors,
 	genesis *genesis.Genesis,

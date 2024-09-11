@@ -12,13 +12,13 @@ import (
 //	yaml: `network`
 type NetworkConfig struct {
 	// ChainID is the chainID for the Ten network
-	ChainID int `mapstructure:"chainId"`
+	ChainID int64 `mapstructure:"chainId"`
 	// GenesisJSON is a json string that specifies the prefunded addresses at the genesis of the Ten network
 	GenesisJSON string `mapstructure:"genesis"`
 
 	Batch      *BatchConfig      `mapstructure:"batch"`
 	Gas        *GasConfig        `mapstructure:"gas"`
-	L1Config   *L1Config         `mapstructure:"l1"`
+	L1         *L1Config         `mapstructure:"l1"`
 	Rollup     *RollupConfig     `mapstructure:"rollup"`
 	Sequencer  *Sequencer        `mapstructure:"sequencer"`
 	CrossChain *CrossChainConfig `mapstructure:"crossChain"`
@@ -53,7 +53,7 @@ type GasConfig struct {
 //
 //	yaml: `network.l1`
 type L1Config struct {
-	ChainID   int             `mapstructure:"chainId"`   // chainID for the L1 network
+	ChainID   int64           `mapstructure:"chainId"`   // chainID for the L1 network
 	BlockTime time.Duration   `mapstructure:"blockTime"` // average expected block time for the L1 network
 	StartHash gethcommon.Hash `mapstructure:"startHash"` // hash of the first block on the L1 network relevant to the Ten network
 

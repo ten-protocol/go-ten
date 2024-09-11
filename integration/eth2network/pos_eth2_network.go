@@ -162,6 +162,7 @@ func (n *PosImpl) Start() error {
 
 	err := eg.Wait()
 	go func() {
+		fmt.Println("starting with ws port:", n.gethWSPort)
 		n.gethProcessID, n.beaconProcessID, n.validatorProcessID, err = startNetworkScript(n.gethNetworkPort, n.beaconP2PPort,
 			n.gethRPCPort, n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.beaconGatewayPort, n.chainID, n.buildDir, n.prysmBeaconLogFile,
 			n.prysmValidatorLogFile, n.gethLogFile, n.testNameLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath,

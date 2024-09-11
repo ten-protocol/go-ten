@@ -20,13 +20,11 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/ten-protocol/go-ten/go/config"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-
 	"github.com/edgelesssys/ego/attestation"
 	"github.com/edgelesssys/ego/attestation/tcbstatus"
 	"github.com/edgelesssys/ego/enclave"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/tidwall/gjson"
 )
 
@@ -62,7 +60,7 @@ var defaultEDBConstraints = &EdgelessAttestationConstraints{
 }
 
 // performEDBRemoteAttestation perform the SGX enclave attestation to verify edb running in a legit enclave and with expected edb version etc.
-func performEDBRemoteAttestation(config config.EnclaveConfig, edbHost string, constraints *EdgelessAttestationConstraints, logger gethlog.Logger) (string, error) {
+func performEDBRemoteAttestation(config enclaveconfig.EnclaveConfig, edbHost string, constraints *EdgelessAttestationConstraints, logger gethlog.Logger) (string, error) {
 	logger.Info("Verifying attestation from edgeless DB...")
 	edbHTTPAddr := fmt.Sprintf("%s:%s", edbHost, edbHTTPPort)
 	certs, tcbStatus, err := performRAAndFetchTLSCert(config, edbHTTPAddr, constraints)
@@ -82,7 +80,7 @@ func performEDBRemoteAttestation(config config.EnclaveConfig, edbHost string, co
 
 // performRAAndFetchTLSCert gets the TLS certificate from the Edgeless DB server in PEM format. It performs remote attestation
 // to verify the certificate. Attestation constraints must be provided to validate against.
-func performRAAndFetchTLSCert(enclaveConfig config.EnclaveConfig, host string, constraints *EdgelessAttestationConstraints) ([]*pem.Block, tcbstatus.Status, error) {
+func performRAAndFetchTLSCert(enclaveConfig enclaveconfig.EnclaveConfig, host string, constraints *EdgelessAttestationConstraints) ([]*pem.Block, tcbstatus.Status, error) {
 	// we don't need to verify the TLS because we will be verifying the attestation report and that can't be faked
 	cert, quote, err := httpGetCertQuote(&tls.Config{InsecureSkipVerify: true}, host, quoteEndpoint) //nolint:gosec
 	if err != nil {

@@ -42,9 +42,9 @@ type HostLog struct {
 type HostRPC struct {
 	HostAddress string `mapstructure:"hostAddress"`
 	EnableHTTP  bool   `mapstructure:"enableHTTP"`
-	HTTPPort    int    `mapstructure:"httpPort"`
-	enableWS    bool   `mapstructure:"enableWS"`
-	WSPort      int    `mapstructure:"wsPort"`
+	HTTPPort    uint64 `mapstructure:"httpPort"`
+	EnableWS    bool   `mapstructure:"enableWS"`
+	WSPort      uint64 `mapstructure:"wsPort"`
 }
 
 // HostP2P contains the configuration for the host P2P server.
@@ -55,7 +55,8 @@ type HostP2P struct {
 	IsDisabled bool `mapstructure:"disabled"`
 	// BindAddress is the address to bind the P2P server to
 	// (note: this is not the publicly advertised host address, which is currently on node config).
-	BindAddress string `mapstructure:"bindAddress"`
+	BindAddress string        `mapstructure:"bindAddress"`
+	Timeout     time.Duration `mapstructure:"timeout"`
 }
 
 // HostL1 contains the configuration for the host's L1 client and interactions.
@@ -81,7 +82,7 @@ type HostEnclave struct {
 //	yaml: `host.debug`
 type HostDebug struct {
 	EnableMetrics        bool `mapstructure:"enableMetrics"`
-	MetricsHTTPPort      int  `mapstructure:"metricsHTTPPort"`
+	MetricsHTTPPort      uint `mapstructure:"metricsHTTPPort"`
 	EnableProfiler       bool `mapstructure:"enableProfiler"`
 	EnableDebugNamespace bool `mapstructure:"enableDebugNamespace"`
 }

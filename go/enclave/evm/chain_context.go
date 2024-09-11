@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ten-protocol/go-ten/go/config"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -19,13 +19,13 @@ import (
 // ObscuroChainContext - basic implementation of the ChainContext needed for the EVM integration
 type ObscuroChainContext struct {
 	storage             storage.Storage
-	config              config.EnclaveConfig
+	config              enclaveconfig.EnclaveConfig
 	gethEncodingService gethencoding.EncodingService
 	logger              gethlog.Logger
 }
 
 // NewObscuroChainContext returns a new instance of the ObscuroChainContext given a storage ( and logger )
-func NewObscuroChainContext(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config config.EnclaveConfig, logger gethlog.Logger) *ObscuroChainContext {
+func NewObscuroChainContext(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config enclaveconfig.EnclaveConfig, logger gethlog.Logger) *ObscuroChainContext {
 	return &ObscuroChainContext{
 		storage:             storage,
 		config:              config,
