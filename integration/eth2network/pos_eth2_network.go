@@ -99,7 +99,7 @@ func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPor
 		panic(err)
 	}
 
-	testName := reverseLookupTestName(gethNetworkPort)
+	testName := integration.GetTestName(gethNetworkPort)
 
 	gethLogFile := path.Join(buildDir, "geth.log")
 	prysmBeaconLogFile := path.Join(buildDir, "beacon-chain.log")
@@ -415,13 +415,4 @@ func kill(pid int) {
 	if err != nil {
 		fmt.Printf("Error releasing process with PID %d: %v\n", pid, err)
 	}
-}
-
-// Lookup test name from the port so geth/ beacon logs are easier to cross reference
-func reverseLookupTestName(port int) string {
-	startPort := port - integration.DefaultGethNetworkPortOffset
-	if testName, exists := integration.PortToTestName[startPort]; exists {
-		return testName
-	}
-	return "UnknownTest"
 }
