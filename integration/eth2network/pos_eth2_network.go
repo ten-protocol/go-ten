@@ -54,6 +54,7 @@ type PosImpl struct {
 	gethLogFile              string
 	prysmBeaconLogFile       string
 	prysmValidatorLogFile    string
+	testNameLogFile          string
 	gethdataDir              string
 	beacondataDir            string
 	validatordataDir         string
@@ -98,9 +99,12 @@ func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPor
 		panic(err)
 	}
 
+	testName := reverseLookupTestName(gethNetworkPort)
+
 	gethLogFile := path.Join(buildDir, "geth.log")
 	prysmBeaconLogFile := path.Join(buildDir, "beacon-chain.log")
 	prysmValidatorLogFile := path.Join(buildDir, "validator.log")
+	testNameLogFile := path.Join(buildDir, fmt.Sprintf("%s.log", testName))
 
 	gethdataDir := path.Join(buildDir, "/gethdata")
 	beacondataDir := path.Join(buildDir, "/beacondata")
@@ -139,6 +143,7 @@ func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPor
 		gethLogFile:              gethLogFile,
 		prysmBeaconLogFile:       prysmBeaconLogFile,
 		prysmValidatorLogFile:    prysmValidatorLogFile,
+		testNameLogFile:          testNameLogFile,
 		gethdataDir:              gethdataDir,
 		beacondataDir:            beacondataDir,
 		validatordataDir:         validatordataDir,
@@ -159,7 +164,7 @@ func (n *PosImpl) Start() error {
 	go func() {
 		n.gethProcessID, n.beaconProcessID, n.validatorProcessID, err = startNetworkScript(n.gethNetworkPort, n.beaconP2PPort,
 			n.gethRPCPort, n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.beaconGatewayPort, n.chainID, n.buildDir, n.prysmBeaconLogFile,
-			n.prysmValidatorLogFile, n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath,
+			n.prysmValidatorLogFile, n.gethLogFile, n.testNameLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath,
 			n.gethBinaryPath, n.gethdataDir, n.beacondataDir, n.validatordataDir)
 		time.Sleep(time.Second)
 	}()
@@ -258,7 +263,7 @@ func (n *PosImpl) GenesisBytes() []byte {
 	return n.gethGenesisBytes
 }
 
-func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPort, gethWSPort, beaconRPCPort, beaconGatewayPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
+func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPort, gethWSPort, beaconRPCPort, beaconGatewayPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile, testLogFile,
 	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string,
 ) (int, int, int, error) {
 	startScript := filepath.Join(basepath, "start-pos-network.sh")
@@ -292,6 +297,7 @@ func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPor
 		"--gethdata-dir", gethdataDir,
 		"--beacondata-dir", beacondataDir,
 		"--validatordata-dir", validatordataDir,
+		"--test-log", testLogFile,
 	)
 	fmt.Println(cmd.String())
 
@@ -409,4 +415,13 @@ func kill(pid int) {
 	if err != nil {
 		fmt.Printf("Error releasing process with PID %d: %v\n", pid, err)
 	}
+}
+
+// Lookup test name from the port so geth/ beacon logs are easier to cross reference
+func reverseLookupTestName(port int) string {
+	startPort := port - integration.DefaultGethNetworkPortOffset
+	if testName, exists := integration.PortToTestName[startPort]; exists {
+		return testName
+	}
+	return "UnknownTest"
 }
