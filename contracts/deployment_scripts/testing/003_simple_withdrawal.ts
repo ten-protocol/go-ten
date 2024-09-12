@@ -29,7 +29,7 @@ async function sleep(ms: number) {
       setTimeout(resolve, ms);
     });
 }
-async function waitForRootPublished(management, msg, proof, root, provider: EthereumProvider, interval = 5000, timeout = 120000) {
+async function waitForRootPublished(management, msg, proof, root, provider: EthereumProvider, interval = 20000, timeout = 12000000) {
     var gas_estimate = null
     const l1Ethers = new HardhatEthersProvider(provider, "layer1")    
 
@@ -38,10 +38,9 @@ async function waitForRootPublished(management, msg, proof, root, provider: Ethe
         try {
             console.log(`Extracting native value from cross chain message for root ${root}`)
             const tx = await management.getFunction('ExtractNativeValue').populateTransaction(msg, proof, root, {} ) 
-            console.log(`Tx to = ${tx.to}`)
             gas_estimate = await l1Ethers.estimateGas(tx)
         } catch (error) {
-            console.log(`Estimate gas threw error : ${error}`)
+            console.log(`Elapsed: ${Date.now() - startTime}ms Estimate gas threw error : ${error}`)
         }
         if (Date.now() - startTime >= timeout) {
             console.log(`Timed out waiting for the estimate gas to return`)
@@ -65,7 +64,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`003_simple_withdrawal: Cross Chain send ${tx.hash} receipt status = ${receipt.status}`);
 
     const block = await hre.ethers.provider.send('eth_getBlockByHash', [receipt.blockHash, true]);
-    console.log(`Block received:       ${block.number}`)
+    console.log(`Block received:       ${block.number.toString(10)}`);
   
 
     const value_transfer = mbus.interface.parseLog(receipt.logs[0]);
@@ -97,9 +96,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
 
-    //const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-    const mgmtContractAddress = "0x946600AF6893Ee818CC7CC2dEC4D0A0bF91C9817" // networkConfig.ManagementContractAddress;
-    const messageBusAddress = "0x68e95924f22Be35386A8aE0240f8885967d452D6" //networkConfig.MessageBusAddress;
+    const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
+    console.log(`Network config = ${JSON.stringify(networkConfig, null, 2)}`);
+
+    const mgmtContractAddress = networkConfig.ManagementContractAddress;
+    const messageBusAddress = networkConfig.MessageBusAddress;
 
     const l1Accounts = await hre.companionNetworks.layer1.getNamedAccounts()
     const fundTx = await hre.companionNetworks.layer1.deployments.rawTx({
@@ -108,6 +109,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         value: "1000",
     })
     console.log(`Message bus funding status = ${fundTx.status}`)
+
+    const code = await hre.companionNetworks.layer1.provider.request({method: 'eth_getCode', params: [mgmtContractAddress, 'latest']});
+    console.log(`Management contract code = ${(code as string).length}`);
 
     var managementContract = await hre.ethers.getContractAt("ManagementContract", mgmtContractAddress);
     const estimation = await waitForRootPublished(managementContract, msg, proof, tree.root, hre.companionNetworks.layer1.provider)
