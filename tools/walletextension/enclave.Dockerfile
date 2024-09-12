@@ -2,12 +2,10 @@
 # build-base = downloads modules and prepares the directory for compilation. Based on the ego-dev image
 # build-enclave = copies over the actual source code of the project and builds it using a compiler cache
 # deploy = copies over only the enclave executable without the source
-#          in a lightweight base image specialized for deployment and prepares the /data/ folder.
+#          in a lightweight base image specialized for deployment
 
 # Final container folder structure:
-#   /home/obscuro/data                          contains working files for the enclave
-#   /home/obscuro/go-obscuro/go/enclave/main    contains the executable for the enclave
-#
+#   /home/ten/go-ten/tools/walletextension/main    contains the executable for the enclave
 
 
 FROM ghcr.io/edgelesssys/ego-dev:v1.5.3 AS build-base
