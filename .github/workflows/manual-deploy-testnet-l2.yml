@@ -228,6 +228,7 @@ jobs:
             && chown obscurouser:obscurouser /home/obscurouser/edb-connect.sh \
             && chmod u+x /home/obscurouser/edb-connect.sh \
             && docker network create --driver bridge node_network || true \
+            && mkdir -p /home/obscuro/promtail \
             && echo "
             server:
               http_listen_port: 9080
