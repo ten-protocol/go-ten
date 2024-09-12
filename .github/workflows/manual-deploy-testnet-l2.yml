@@ -260,12 +260,11 @@ jobs:
                       target_label: 'logstream'
                     - source_labels: ['__meta_docker_container_label_logging_jobname']
                       target_label: 'job'
-                    - replacement: ${HOSTNAME}
-                      target_label: node_name
+                    - replacement: ${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}
                 " > /home/obscuro/promtail/promtail-config.yaml \
             && docker run -d --name promtail \
               --network ten_node \
-              -e HOSTNAME=${HOSTNAME} \
+              -e HOSTNAME=${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }} \
               -v /var/log:/var/log \
               -v /home/obscuro/promtail:/etc/promtail \
               -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
