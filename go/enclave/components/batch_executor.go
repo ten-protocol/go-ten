@@ -386,12 +386,12 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 
 		batch.Header.CrossChainTree = encodedTree
 		xchainHash = gethcommon.BytesToHash(tree.GetRoot())
-		executor.logger.Info("[CrossChain] adding messages to batch")
+		executor.logger.Debug("[CrossChain] adding messages to batch", "encodedTree", encodedTree)
 	}
 	batch.Header.CrossChainMessages = crossChainMessages
 	batch.Header.CrossChainRoot = xchainHash
 
-	executor.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch.",
+	executor.logger.Debug(fmt.Sprintf("Added %d cross chain messages to batch.",
 		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)
 
 	batch.Header.LatestInboundCrossChainHash = block.Hash()
