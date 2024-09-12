@@ -26,10 +26,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-const (
-	_startPort = integration.StartPortEth2NetworkTests
-)
-
 func TestEnsureBinariesAreAvail(t *testing.T) {
 	path, err := EnsureBinariesExist()
 	assert.Nil(t, err)
@@ -40,15 +36,16 @@ func TestStartPosEth2Network(t *testing.T) {
 	binDir, err := EnsureBinariesExist()
 	assert.Nil(t, err)
 
+	startPort := integration.TestPorts.TestStartPosEth2NetworkPort
 	network := NewPosEth2Network(
 		binDir,
-		_startPort+integration.DefaultGethNetworkPortOffset,
-		_startPort+integration.DefaultPrysmP2PPortOffset,
-		_startPort+integration.DefaultGethAUTHPortOffset,
-		_startPort+integration.DefaultGethWSPortOffset,
-		_startPort+integration.DefaultGethHTTPPortOffset,
-		_startPort+integration.DefaultPrysmRPCPortOffset,
-		_startPort+integration.DefaultPrysmGatewayPortOffset,
+		startPort+integration.DefaultGethNetworkPortOffset,
+		startPort+integration.DefaultPrysmP2PPortOffset,
+		startPort+integration.DefaultGethAUTHPortOffset,
+		startPort+integration.DefaultGethWSPortOffset,
+		startPort+integration.DefaultGethHTTPPortOffset,
+		startPort+integration.DefaultPrysmRPCPortOffset,
+		startPort+integration.DefaultPrysmGatewayPortOffset,
 		integration.EthereumChainID,
 		3*time.Minute,
 	)
@@ -60,12 +57,12 @@ func TestStartPosEth2Network(t *testing.T) {
 
 	// test input configurations
 	t.Run("areConfigsUphold", func(t *testing.T) {
-		areConfigsUphold(t, gethcommon.HexToAddress(integration.GethNodeAddress), integration.EthereumChainID)
+		areConfigsUphold(t, startPort, gethcommon.HexToAddress(integration.GethNodeAddress), integration.EthereumChainID)
 	})
 
 	// test number of nodes
 	t.Run("numberOfNodes", func(t *testing.T) {
-		numberOfNodes(t)
+		numberOfNodes(t, startPort)
 	})
 
 	minerWallet := wallet.NewInMemoryWalletFromConfig(
@@ -74,12 +71,12 @@ func TestStartPosEth2Network(t *testing.T) {
 		gethlog.New())
 
 	t.Run("txsAreMinted", func(t *testing.T) {
-		txsAreMinted(t, minerWallet)
+		txsAreMinted(t, startPort, minerWallet)
 	})
 }
 
-func areConfigsUphold(t *testing.T, addr gethcommon.Address, chainID int) {
-	url := fmt.Sprintf("http://127.0.0.1:%d", _startPort+integration.DefaultGethHTTPPortOffset)
+func areConfigsUphold(t *testing.T, startPort int, addr gethcommon.Address, chainID int) {
+	url := fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultGethHTTPPortOffset)
 	conn, err := ethclient.Dial(url)
 	assert.Nil(t, err)
 
@@ -92,8 +89,8 @@ func areConfigsUphold(t *testing.T, addr gethcommon.Address, chainID int) {
 	assert.Equal(t, int64(chainID), id.Int64())
 }
 
-func numberOfNodes(t *testing.T) {
-	url := fmt.Sprintf("http://127.0.0.1:%d", _startPort+integration.DefaultGethHTTPPortOffset)
+func numberOfNodes(t *testing.T, startPort int) {
+	url := fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultGethHTTPPortOffset)
 
 	req, err := http.NewRequestWithContext(
 		context.Background(),
@@ -122,10 +119,10 @@ func numberOfNodes(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("0x%x", 0), res["result"])
 }
 
-func txsAreMinted(t *testing.T, w wallet.Wallet) {
+func txsAreMinted(t *testing.T, startPort int, w wallet.Wallet) {
 	var err error
 
-	ethClient, err := ethadapter.NewEthClient("127.0.0.1", uint(_startPort+integration.DefaultGethWSPortOffset), 30*time.Second, common.L2Address{}, gethlog.New())
+	ethClient, err := ethadapter.NewEthClient("127.0.0.1", uint(startPort+integration.DefaultGethWSPortOffset), 30*time.Second, common.L2Address{}, gethlog.New())
 	assert.Nil(t, err)
 
 	toAddr := datagenerator.RandomAddress()

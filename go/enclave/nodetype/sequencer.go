@@ -523,6 +523,7 @@ func (s *sequencer) Close() error {
 }
 
 func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
+	defer core.LogMethodDuration(s.logger, measure.NewStopwatch(), "ExportCrossChainData()", "fromSeqNo", fromSeqNo, "toSeqNo", toSeqNo)
 	bundle, err := ExportCrossChainData(ctx, s.storage, fromSeqNo, toSeqNo)
 	if err != nil {
 		return nil, err

@@ -48,8 +48,8 @@ const (
 )
 
 func TestTenscan(t *testing.T) {
-	startPort := integration.StartPortTenscanUnitTest
-	createTenNetwork(t, startPort)
+	startPort := integration.TestPorts.TestTenscanPort
+	createTenNetwork(t, integration.TestPorts.TestTenscanPort)
 
 	tenScanConfig := &config.Config{
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
@@ -304,7 +304,7 @@ func createTenNetwork(t *testing.T, startPort int) {
 		Wallets:          wallets,
 		StartPort:        startPort,
 		WithPrefunding:   true,
-		L1BeaconPort:     integration.StartPortTenscanUnitTest + integration.DefaultPrysmGatewayPortOffset,
+		L1BeaconPort:     integration.TestPorts.TestFaucetPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 
 	tenNetwork := network.NewNetworkOfSocketNodes(wallets)

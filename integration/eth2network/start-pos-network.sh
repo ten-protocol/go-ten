@@ -21,6 +21,7 @@ GETH_LOG_FILE="./geth.log"
 GETHDATA_DIR="/gethdata"
 BEACONDATA_DIR="/beacondata"
 VALIDATORDATA_DIR="/validatordata"
+TEST_LOG_FILE="./test.log"
 
 # Function to display usage
 usage() {
@@ -68,6 +69,7 @@ while [[ "$#" -gt 0 ]]; do
         --gethdata-dir) GETHDATA_DIR="$2"; shift ;;
         --beacondata-dir) BEACONDATA_DIR="$2"; shift ;;
         --validatordata-dir) VALIDATORDATA_DIR="$2"; shift ;;
+        --test-log) TEST_LOG_FILE="$2"; shift ;;
         *) usage ;;
     esac
     shift
@@ -76,6 +78,9 @@ done
 mkdir -p "$(dirname "${BEACON_LOG_FILE}")"
 mkdir -p "$(dirname "${VALIDATOR_LOG_FILE}")"
 mkdir -p "$(dirname "${GETH_LOG_FILE}")"
+mkdir -p "$(dirname "${TEST_LOG_FILE}")"
+
+echo "Test" > "${TEST_LOG_FILE}" 2>&1 &
 
 ${PRYSMCTL_BINARY} testnet generate-genesis \
            --fork deneb \
@@ -141,6 +146,7 @@ ${GETH_BINARY} --http \
        --ws.origins "*" \
        --authrpc.jwtsecret "${BASE_PATH}/jwt.hex" \
        --authrpc.port "${GETH_RPC_PORT}" \
+       --authrpc.vhosts "*" \
        --port="${GETH_NETWORK_PORT}" \
        --datadir="${GETHDATA_DIR}" \
        --networkid="${CHAIN_ID}" \

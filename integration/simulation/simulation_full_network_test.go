@@ -28,13 +28,13 @@ func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 		SimulationTime:             120 * time.Second,
 		L1EfficiencyThreshold:      0.2,
 		Wallets:                    wallets,
-		StartPort:                  integration.StartPortSimulationFullNetwork,
-		ReceiptTimeout:             30 * time.Second,
-		StoppingDelay:              20 * time.Second,
+		StartPort:                  integration.TestPorts.TestFullNetworkMonteCarloSimulationPort,
+		ReceiptTimeout:             20 * time.Second,
+		StoppingDelay:              15 * time.Second,
 		NodeWithInboundP2PDisabled: 2,
-		L1BeaconPort:               integration.StartPortSimulationFullNetwork + integration.DefaultPrysmGatewayPortOffset,
+		L1BeaconPort:               integration.TestPorts.TestFullNetworkMonteCarloSimulationPort + integration.DefaultPrysmGatewayPortOffset,
 	}
-	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 10
+	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 
 	testSimulation(t, network.NewNetworkOfSocketNodes(wallets), simParams)
 }

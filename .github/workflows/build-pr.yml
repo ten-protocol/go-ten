@@ -36,9 +36,9 @@ jobs:
       # Close specified ports using lsof before testing / local port list compiled from ./integration/constants.go
       - name: Close Integration Test Ports
         run: |
-          killall -9 geth || true
-          killall -9 beacon || true
-          killall -9 validator || true
+          pkill -9 geth || true
+          pkill -9 beacon-chain || true
+          pkill -9 validator || true
           
           lowest_port=8000  # Lowest starting port
           highest_port=58000 # Highest port considering the offset
@@ -77,6 +77,7 @@ jobs:
             integration/.build/noderunner/noderunner-*.txt
             integration/.build/wallet_extension/wal-ext-*.txt
             integration/.build/eth2/*
+            !integration/.build/eth2/**/geth.ipc
             integration/.build/faucet/*
             integration/.build/tenscan/*
             integration/.build/tengateway/*

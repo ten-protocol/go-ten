@@ -2,6 +2,29 @@
 ---
 # Ten Testnet Change Log
 
+# September 2024-09-07
+* This is an L2 deployment release meaning state will be lost in order to upgrade the network. 
+* A full list of the PRs merged in this release is as below;
+    * `a40b73b1` Remove the body of the l1 blocks from the payload sent into the enclave (#2046)
+    * `b2f1211a` Edb: rename user to ten and grant full db permissions (#2045)
+    * `6e135eb9` Fix metamask url in the gateway (#2042)
+    * `c44d3898` Update naming conventions (#2040)
+    * `56fee0ee` Cross chain testing scripts (#2033)
+    * `99254089` Remove decryption feature from tenscan frontend (#2039)
+    * `56f0ee1b` Deployment scripts rework to work locally (#2001)
+    * `89647844` Fix gateway logging and remove datadog agents from gateway (#2038)
+    * `aaa489f9` Enclave db: add composite index for canonical batch height (#2037)
+    * `cc056c4e` Refactor gateway deployment (#2036)
+    * `de8de300` Lock down dependency (#2035)
+    * `cb418170` Separate deployment of gateway frontend and backend (#2032)
+    * `78639928` Initiate bridge deployment (#2034)
+    * `f453a640` Fix concurrency issue in sumcomputetime (#2029)
+    * `0f0cdced` Fix concurrent rw error (#2027) (#2028)
+    * `8558a2c2` Create on_tx_hook.md (#2023)
+    * `0d195475` Disable rate limiting for dexynth gateway (#2025)
+    * `76ad606e` Beacon health check (#2021)
+    * `2081f6f1` Update environment variables for network config (#2022)
+
 # August 2024-08-08 (v0.26.0)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network. The release adds in
   rate limiting to the TEN gateway, support for using proxy deployments, and for using the ethers6 web3 library. 
