@@ -207,6 +207,7 @@ jobs:
             && docker network create --driver bridge node_network || true \
             && cd /home/obscuro/go-obscuro/ \
             && docker run -d -p 80:80 -p 81:81 --name "${{ env.VM_NAME }}" \
+              --device /dev/sgx_enclave --device /dev/sgx_provision \
               --entrypoint "/home/ten/go-ten/tools/walletextension/main/entry.sh" \
               -e OBSCURO_GATEWAY_VERSION="${{ GITHUB.RUN_NUMBER }}-${{ GITHUB.SHA }}" \
               -e OE_SIMULATION=1 \
