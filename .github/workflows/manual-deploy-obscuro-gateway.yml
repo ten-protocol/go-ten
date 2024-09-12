@@ -209,7 +209,7 @@ jobs:
             && docker run -d -p 80:80 -p 81:81 --name "${{ env.VM_NAME }}" \
               --entrypoint "/home/ten/go-ten/tools/walletextension/main/entry.sh" \
               -e OBSCURO_GATEWAY_VERSION="${{ GITHUB.RUN_NUMBER }}-${{ GITHUB.SHA }}" \
-              -e OE_SIMULATION=1 \
+              -e OE_SIMULATION=0 \
               ${{ env.DOCKER_BUILD_TAG_GATEWAY }} \
               ego run /home/ten/go-ten/tools/walletextension/main/main \
               -host=0.0.0.0 -port=80 -portWS=81 -nodeHost=${{ env.L2_RPC_URL_VALIDATOR }} -verbose=true \
