@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/status-im/keycard-go/hexutils"
+	"reflect"
+	"strings"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/measure"
@@ -21,8 +24,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-
-	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
@@ -166,8 +167,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		}
 		return nil, rpcErr
 	})
-
-	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(userID), method, args, res, err, time.Since(requestStartTime).Milliseconds())
+	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(userID), method, args, SafeGenericToString(res), err, time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
@@ -339,4 +339,59 @@ func withPlainRPCConnection[R any](ctx context.Context, w *Services, execute fun
 	rpcClient := connectionObj.(*rpc.Client)
 	defer returnConn(w.rpcHTTPConnPool, rpcClient, w.logger)
 	return execute(rpcClient)
+}
+
+func SafeGenericToString[R any](r *R) string {
+	if r == nil {
+		return "nil"
+	}
+
+	v := reflect.ValueOf(r).Elem()
+	t := v.Type()
+
+	switch v.Kind() {
+	case reflect.Struct:
+		return structToString(v, t)
+	default:
+		return fmt.Sprintf("%v", v.Interface())
+	}
+}
+
+func structToString(v reflect.Value, t reflect.Type) string {
+	var parts []string
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		fieldType := t.Field(i)
+		fieldName := fieldType.Name
+
+		if !fieldType.IsExported() {
+			parts = append(parts, fmt.Sprintf("%s: <unexported>", fieldName))
+			continue
+		}
+
+		fieldStr := fmt.Sprintf("%s: ", fieldName)
+
+		switch field.Kind() {
+		case reflect.Ptr:
+			if field.IsNil() {
+				fieldStr += "nil"
+			} else {
+				fieldStr += fmt.Sprintf("%v", field.Elem().Interface())
+			}
+		case reflect.Slice, reflect.Array:
+			if field.Len() > 10 {
+				fieldStr += fmt.Sprintf("%v (length: %d)", field.Slice(0, 10).Interface(), field.Len())
+			} else {
+				fieldStr += fmt.Sprintf("%v", field.Interface())
+			}
+		case reflect.Struct:
+			fieldStr += "{...}" // Avoid recursive calls for nested structs
+		default:
+			fieldStr += fmt.Sprintf("%v", field.Interface())
+		}
+
+		parts = append(parts, fieldStr)
+	}
+
+	return fmt.Sprintf("%s{%s}", t.Name(), strings.Join(parts, ", "))
 }
