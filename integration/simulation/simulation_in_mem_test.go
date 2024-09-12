@@ -38,8 +38,8 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		ReceiptTimeout:             5 * time.Second,
 		StoppingDelay:              15 * time.Second,
 		NodeWithInboundP2PDisabled: 2,
-		//FIXME Create beacon chain mock ffs
-		L1BeaconPort: integration.StartPortSimulationInMem + integration.DefaultPrysmGatewayPortOffset,
+		// FIXME Create beacon chain mock ffs
+		L1BeaconPort: integration.TestPorts.TestInMemoryMonteCarloSimulationPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"fmt"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
