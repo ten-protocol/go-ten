@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/status-im/keycard-go/hexutils"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
