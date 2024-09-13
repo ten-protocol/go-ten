@@ -347,46 +347,6 @@ func ReadContractCreator(ctx context.Context, db *sql.DB, address gethcommon.Add
 	return &eoaAddress, nil
 }
 
-//func ReadContractCfg(ctx context.Context, dbTX *sql.Tx, contractAddress gethcommon.Address) (*core.ContractVisibilityConfig, error) {
-//	stmt := `SELECT c.auto_visibility, c.transparent, et.auto_visibility, et.public, et.topic1_can_view, et.topic2_can_view, et.topic3_can_view,et.sender_can_view
-//			FROM contract c join event_type et on et.contract=c.id WHERE c.address = ?`
-//
-//	rows, err := dbTX.QueryContext(ctx, stmt, contractAddress.Bytes())
-//	if err != nil {
-//		return nil, err
-//	}
-//	defer rows.Close()
-//
-//	config := core.ContractVisibilityConfig{
-//		EventConfigs: make(map[gethcommon.Hash]*core.EventVisibilityConfig),
-//	}
-//
-//	for rows.Next() {
-//		l := core.EventVisibilityConfig{}
-//		var t0, t1, t2, t3 []byte
-//		err = rows.Scan(&t0, &t1, &t2, &t3, &l.Data, &l.BlockHash, &l.BlockNumber, &l.TxHash, &l.TxIndex, &l.Index, &l.Address)
-//		if err != nil {
-//			return nil, fmt.Errorf("could not load log entry from db: %w", err)
-//		}
-//
-//		for _, topic := range [][]byte{t0, t1, t2, t3} {
-//			if len(topic) > 0 {
-//				l.Topics = append(l.Topics, byteArrayToHash(topic))
-//			}
-//		}
-//
-//		result = append(result, &l)
-//	}
-//
-//	if rows.Err() != nil {
-//		return nil, rows.Err()
-//	}
-//
-//	return result, nil
-//
-//	return config, nil
-//}
-
 func stringToHash(ns sql.NullString) gethcommon.Hash {
 	value, err := ns.Value()
 	if err != nil {

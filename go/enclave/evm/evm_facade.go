@@ -241,6 +241,8 @@ func executeTransaction(
 		return &core.TxExecResult{Receipt: receipt, Err: err}
 	}
 
+	// todo - placeholder for calling the visibility config function on the newly created contracts
+	// this is step 1 of the transition to configured visibility rules. The auto-detection of the visibility rules
 	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
 	for _, contractAddress := range createdContracts {
 		contractsWithVisibility[*contractAddress] = &core.ContractVisibilityConfig{AutoConfig: true}
