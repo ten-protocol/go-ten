@@ -129,7 +129,7 @@ create table if not exists tendb.event_type
     id              INTEGER AUTO_INCREMENT,
     contract        int        NOT NULL,
     event_sig       binary(32) NOT NULL,
-    lifecycle_event boolean    NOT NULL,
+    public boolean    NOT NULL,
     primary key (id),
     INDEX USING HASH (contract, event_sig)
 );

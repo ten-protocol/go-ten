@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/ethereum/go-ethereum/ethdb"
 )
 
@@ -15,4 +17,23 @@ type EnclaveDB interface {
 	ethdb.Database
 	GetSQLDB() *sql.DB
 	NewDBTransaction(ctx context.Context) (*sql.Tx, error)
+}
+
+// Contract - maps to the “contract“ table
+type Contract struct {
+	Id             uint64
+	Address        gethcommon.Address
+	AutoVisibility bool
+	Transparent    *bool
+}
+
+// EventType - maps to the “event_type“ table
+type EventType struct {
+	Id                                          uint64
+	ContractId                                  uint64
+	EventSignature                              gethcommon.Hash
+	AutoVisibility                              bool
+	Public                                      bool
+	Topic1CanView, Topic2CanView, Topic3CanView *bool
+	SenderCanView                               *bool
 }

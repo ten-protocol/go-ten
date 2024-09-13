@@ -132,11 +132,11 @@ func (val *obsValidator) ExecuteStoredBatches(ctx context.Context) error {
 				Transactions: txs,
 			}
 
-			receipts, contracts, err := val.batchExecutor.ExecuteBatch(ctx, batch)
+			txResults, err := val.batchExecutor.ExecuteBatch(ctx, batch)
 			if err != nil {
 				return fmt.Errorf("could not execute batchHeader %s. Cause: %w", batchHeader.Hash(), err)
 			}
-			err = val.storage.StoreExecutedBatch(ctx, batchHeader, receipts, contracts)
+			err = val.storage.StoreExecutedBatch(ctx, batchHeader, txResults)
 			if err != nil {
 				return fmt.Errorf("could not store executed batchHeader %s. Cause: %w", batchHeader.Hash(), err)
 			}
@@ -144,7 +144,7 @@ func (val *obsValidator) ExecuteStoredBatches(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("failed to feed batchHeader into the virtual eth chain- %w", err)
 			}
-			val.batchRegistry.OnBatchExecuted(batchHeader, receipts)
+			val.batchRegistry.OnBatchExecuted(batchHeader, txResults)
 		}
 	}
 	return nil
@@ -179,7 +179,7 @@ func (val *obsValidator) handleGenesis(ctx context.Context, batch *common.BatchH
 		return fmt.Errorf("received invalid genesis batch")
 	}
 
-	err = val.storage.StoreExecutedBatch(ctx, genBatch.Header, nil, nil)
+	err = val.storage.StoreExecutedBatch(ctx, genBatch.Header, nil)
 	if err != nil {
 		return err
 	}

@@ -470,7 +470,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 			if err != nil {
 				return err
 			}
-			err = rc.storage.StoreExecutedBatch(ctx, genBatch.Header, nil, nil)
+			err = rc.storage.StoreExecutedBatch(ctx, genBatch.Header, nil)
 			if err != nil {
 				return err
 			}
@@ -514,7 +514,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 			if err != nil {
 				return err
 			}
-			err = rc.storage.StoreExecutedBatch(ctx, computedBatch.Batch.Header, computedBatch.Receipts, computedBatch.CreatedContracts)
+			err = rc.storage.StoreExecutedBatch(ctx, computedBatch.Batch.Header, computedBatch.TxExecResults)
 			if err != nil {
 				return err
 			}

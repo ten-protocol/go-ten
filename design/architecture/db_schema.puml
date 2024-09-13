@@ -53,7 +53,7 @@ class event_topic {
 class event_type {
    contract: integer
    event_sig: binary(32)
-   lifecycle_event: boolean
+   public: boolean
    id: integer
 }
 class externally_owned_account {

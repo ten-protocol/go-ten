@@ -2,6 +2,7 @@ package hostdb
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -23,7 +24,7 @@ func AddBlock(dbtx *dbTransaction, statements *SQLStatements, b *types.Header) e
 		b.Hash().Bytes(), // hash
 		header,           // l1 block header
 	)
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), " UNIQUE constraint failed") {
 		return fmt.Errorf("could not insert block. Cause: %w", err)
 	}
 
