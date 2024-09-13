@@ -220,7 +220,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
+            az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
@@ -253,18 +253,18 @@ jobs:
                   - host: unix:///var/run/docker.sock
                     refresh_interval: 5s
                 relabel_configs:
-                  - source_labels: ['__meta_docker_container_name']
+                  - source_labels: ["__meta_docker_container_name"]
                     regex: '/(.*)' 
-                    target_label: 'container'
-                  - source_labels: ['__meta_docker_container_log_stream']
-                    target_label: 'logstream'
-                  - source_labels: ['__meta_docker_container_label_logging_jobname']
-                    target_label: 'job'
+                    target_label: "container"
+                  - source_labels: ["__meta_docker_container_log_stream"]
+                    target_label: "logstream"
+                  - source_labels: ["__meta_docker_container_label_logging_jobname"]
+                    target_label: "job"
                   - replacement: ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
-                    target_label: node_name
+                    target_label: "node_name"
             " > /home/obscuro/promtail/promtail-config.yaml \
             && docker run -d --name promtail \
-              --network ten_node  \
+              --network ten_node \
               -e HOSTNAME=${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }} \
               -v /var/log:/var/log \
               -v /home/obscuro/promtail:/etc/promtail \
@@ -273,7 +273,7 @@ jobs:
               grafana/promtail:latest \
               -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true \
             && cd /home/obscuro/go-obscuro/ \
-            && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
+            && sudo go run /home/obscuro/go-obscuro/go/node/cmd \
               -is_genesis=${{ matrix.is_genesis }} \
               -node_type=${{ matrix.node_type }} \
               -is_sgx_enabled=true \
@@ -294,8 +294,9 @@ jobs:
               -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
               -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
               -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
-              -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{  github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/ \
+              -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{ github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/ \
               start'
+
 
 
   check-obscuro-is-healthy:
