@@ -1,6 +1,7 @@
 package ethereummock
 
 import (
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -8,9 +9,9 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 )
 
-var MockGenesisBlock = NewBlock(nil, common.HexToAddress("0x0"), []*types.Transaction{})
+var MockGenesisBlock, _ = NewBlock(nil, common.HexToAddress("0x0"), []*types.Transaction{})
 
-func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transaction) *types.Block {
+func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transaction) (*types.Block, []kzg4844.Blob) {
 	var parentHash common.Hash
 	var height uint64
 	if parent != nil {
@@ -36,6 +37,13 @@ func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transacti
 		Nonce:       types.BlockNonce{},
 		BaseFee:     nil,
 	}
+	var blobs []kzg4844.Blob
 
-	return types.NewBlock(&header, &types.Body{Transactions: txs}, nil, trie.NewStackTrie(nil))
+	for _, tx := range txs {
+		if tx.BlobHashes() != nil {
+			blobs = append(blobs, tx.BlobTxSidecar().Blobs...)
+		}
+	}
+
+	return types.NewBlock(&header, &types.Body{Transactions: txs}, nil, trie.NewStackTrie(nil)), blobs
 }

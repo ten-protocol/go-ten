@@ -78,9 +78,6 @@ func TestTenscan(t *testing.T) {
 		5,
 	)
 
-	// wait for rollups to be added to host
-	time.Sleep(30 * time.Second)
-
 	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
@@ -304,7 +301,7 @@ func createTenNetwork(t *testing.T, startPort int) {
 		Wallets:          wallets,
 		StartPort:        startPort,
 		WithPrefunding:   true,
-		L1BeaconPort:     integration.TestPorts.TestFaucetPort + integration.DefaultPrysmGatewayPortOffset,
+		L1BeaconPort:     integration.TestPorts.TestTenscanPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 
 	tenNetwork := network.NewNetworkOfSocketNodes(wallets)

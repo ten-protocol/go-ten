@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -19,8 +20,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -55,16 +54,22 @@ type StatsCollector interface {
 	L1Reorg(id gethcommon.Address)
 }
 
+type BlockWithBlobs struct {
+	Block *types.Block
+	Blobs []*kzg4844.Blob
+}
+
 type Node struct {
-	l2ID     gethcommon.Address // the address of the Obscuro node this client is dedicated to
-	cfg      MiningConfig
-	Network  L1Network
-	mining   bool
-	stats    StatsCollector
-	Resolver *blockResolverInMem
-	db       TxDB
-	subs     map[uuid.UUID]*mockSubscription // active subscription for mock blocks
-	subMu    sync.Mutex
+	l2ID         gethcommon.Address // the address of the Obscuro node this client is dedicated to
+	cfg          MiningConfig
+	Network      L1Network
+	mining       bool
+	stats        StatsCollector
+	Resolver     *blockResolverInMem
+	BeaconClient *BeaconMock
+	db           TxDB
+	subs         map[uuid.UUID]*mockSubscription // active subscription for mock blocks
+	subMu        sync.Mutex
 
 	// Channels
 	exitCh       chan bool // the Node stops
@@ -72,7 +77,7 @@ type Node struct {
 	interrupt    *int32
 
 	p2pCh       chan *types.Block       // this is where blocks received from peers are dropped
-	miningCh    chan *types.Block       // this is where blocks created by the mining setup of the current node are dropped
+	miningCh    chan *BlockWithBlobs    // this is where blocks created by the mining setup of the current node are dropped
 	canonicalCh chan *types.Block       // this is where the main processing routine drops blocks that are canonical
 	mempoolCh   chan *types.Transaction // where l1 transactions to be published in the next block are added
 
@@ -149,11 +154,20 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 			continue
 		}
 		switch l1tx := decodedTx.(type) {
-		case *ethadapter.L1RollupTx:
-			r, err := common.DecodeRollup(l1tx.Rollup)
-			if err == nil {
-				return r
+		case *ethadapter.L1RollupHashes:
+			blobHashes := l1tx.BlobHashes
+			println("HERE: ", blobHashes)
+			blobsBundle, err := m.BeaconClient.LoadBlobsBundle(block.NumberU64())
+			println("BLOBS BUNDLE: ", blobsBundle)
+			if err != nil {
+
 			}
+			//encodedRlp, err := ethadapter.DecodeBlobs(blobsBundle.Blobs)
+			//r, err := common.DecodeRollup(encodedRlp)
+			//if err != nil {
+			//	println("Could not decode rollup.", err)
+			//}
+			//return r
 		}
 	}
 	return nil
@@ -282,8 +296,12 @@ func (m *Node) Start() {
 		// This starts the mining
 		go m.startMining()
 	}
+	err := m.BeaconClient.Start("127.0.0.1")
+	if err != nil {
+		m.logger.Crit("Failed to start beacon client")
+	}
 
-	err := m.Resolver.StoreBlock(context.Background(), MockGenesisBlock, nil)
+	err = m.Resolver.StoreBlock(context.Background(), MockGenesisBlock, nil)
 	if err != nil {
 		m.logger.Crit("Failed to store block")
 	}
@@ -302,8 +320,8 @@ func (m *Node) Start() {
 				}
 			}
 
-		case mb := <-m.miningCh: // Received from the local mining
-			head = m.processBlock(mb, head)
+		case blockWithBlobs := <-m.miningCh: // Received from the local mining
+			head = m.processBlock(blockWithBlobs.Block, head, blockWithBlobs.Blobs)
 			if bytes.Equal(head.Hash().Bytes(), mb.Hash().Bytes()) { // Ignore the locally produced block if someone else found one already
 				p, err := m.Resolver.FetchBlock(context.Background(), mb.ParentHash())
 				if err != nil {
@@ -327,11 +345,13 @@ func (m *Node) Start() {
 	}
 }
 
-func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
+func (m *Node) processBlock(b *types.Block, head *types.Block, blobs []*kzg4844.Blob) *types.Block {
 	err := m.Resolver.StoreBlock(context.Background(), b, nil)
 	if err != nil {
 		m.logger.Crit("Failed to store block. Cause: %w", err)
 	}
+	slot := (b.Time() - MockGenesisBlock.Time()) / b.Time()
+	err := m.BeaconClient.StoreBlobsBundle(slot, blobs)
 	_, err = m.Resolver.FetchBlock(context.Background(), b.Header().ParentHash)
 	// only proceed if the parent is available
 	if err != nil {
@@ -455,8 +475,14 @@ func (m *Node) startMining() {
 				if atomic.LoadInt32(m.interrupt) == 1 {
 					return
 				}
-
-				m.miningCh <- NewBlock(canonicalBlock, m.l2ID, toInclude)
+				// Generate the new block and the associated blobs
+				block, blobs := NewBlock(canonicalBlock, m.l2ID, toInclude)
+				blobPointers := make([]*kzg4844.Blob, len(blobs))
+				for i := range blobs {
+					blobPointers[i] = &blobs[i] // Assign the address of each blob
+				}
+				// Push the block and blobs into the mining channel
+				m.miningCh <- &BlockWithBlobs{Block: block, Blobs: blobPointers}
 			})
 		}
 	}
@@ -473,13 +499,14 @@ func (m *Node) P2PGossipTx(tx *types.Transaction) {
 
 func (m *Node) BroadcastTx(tx types.TxData) {
 	m.Network.BroadcastTx(types.NewTx(tx))
+
 }
 
 func (m *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(m.interrupt, 1)
 	time.Sleep(time.Millisecond * 100)
-
+	_ = m.BeaconClient.Close()
 	m.exitMiningCh <- true
 	m.exitCh <- true
 }
@@ -536,6 +563,8 @@ func NewMiner(
 	cfg MiningConfig,
 	network L1Network,
 	statsCollector StatsCollector,
+	mockBeaconClient *BeaconMock,
+	logger gethlog.Logger,
 ) *Node {
 	return &Node{
 		l2ID:             id,
@@ -543,20 +572,21 @@ func NewMiner(
 		cfg:              cfg,
 		stats:            statsCollector,
 		Resolver:         NewResolver(),
+		BeaconClient:     mockBeaconClient,
 		db:               NewTxDB(),
 		Network:          network,
 		exitCh:           make(chan bool),
 		exitMiningCh:     make(chan bool),
 		interrupt:        new(int32),
 		p2pCh:            make(chan *types.Block),
-		miningCh:         make(chan *types.Block),
+		miningCh:         make(chan *BlockWithBlobs),
 		canonicalCh:      make(chan *types.Block),
 		mempoolCh:        make(chan *types.Transaction),
 		headInCh:         make(chan bool),
 		headOutCh:        make(chan *types.Block),
 		erc20ContractLib: NewERC20ContractLibMock(),
 		mgmtContractLib:  NewMgmtContractLibMock(),
-		logger:           log.New(log.EthereumL1Cmp, int(gethlog.LvlInfo), cfg.LogFile, log.NodeIDKey, id),
+		logger:           logger,
 		subs:             map[uuid.UUID]*mockSubscription{},
 		subMu:            sync.Mutex{},
 	}

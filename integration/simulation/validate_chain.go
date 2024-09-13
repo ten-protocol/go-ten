@@ -3,6 +3,7 @@ package simulation
 import (
 	"context"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/host/l1"
 	"math/big"
 	"net/http"
 	"sort"
@@ -12,8 +13,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ten-protocol/go-ten/go/enclave/components"
-
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
@@ -855,7 +854,7 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 
 func getRollupFromBlobHashes(ctx context.Context, beaconPort int, block *types.Block, blobHashes []gethcommon.Hash) (*common.ExtRollup, error) {
 	beaconUrl := fmt.Sprintf("127.0.0.1:%d", beaconPort)
-	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), beaconUrl)))
+	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), beaconUrl)))
 	blobs, err := blobResolver.FetchBlobs(ctx, block.Header(), blobHashes)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch blobs from hashes during chain validation")

@@ -10,8 +10,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
-	"github.com/ten-protocol/go-ten/go/enclave/components"
-
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
@@ -37,7 +35,7 @@ type Publisher struct {
 	ethClient       ethadapter.EthClient
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 	storage         storage.Storage
-	blobResolver    components.BlobResolver
+	blobResolver    BlobResolver
 
 	// cached map of important contract addresses (updated when we see a SetImportantContractsTx)
 	importantContractAddresses map[string]gethcommon.Address
@@ -65,7 +63,7 @@ func NewL1Publisher(
 	client ethadapter.EthClient,
 	mgmtContract mgmtcontractlib.MgmtContractLib,
 	repository host.L1BlockRepository,
-	blobResolver components.BlobResolver,
+	blobResolver BlobResolver,
 	hostStopper *stopcontrol.StopControl,
 	logger gethlog.Logger,
 	maxWaitForL1Receipt time.Duration,
@@ -482,9 +480,6 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 			return errors.Wrap(err, "could not sign L1 tx")
 		}
 		p.logger.Info("Host issuing L1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
-		if signedTx.Type() == types.BlobTxType {
-			println("Sending TX with blobs: ", signedTx.BlobHashes())
-		}
 		err = p.ethClient.SendTransaction(signedTx)
 		if err != nil {
 			return errors.Wrap(err, "could not broadcast L1 tx")
@@ -504,7 +499,8 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 				}
 				return err
 			},
-			retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
+			//FIXME
+			retry.NewTimeoutStrategy(30*time.Second, p.retryIntervalForL1Receipt),
 		)
 		if err != nil {
 			p.logger.Info("Receipt not found for transaction, we will re-attempt", log.ErrKey, err)

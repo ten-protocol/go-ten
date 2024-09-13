@@ -127,8 +127,3 @@ type RollupConsumer interface {
 	// compares this with the hashes since in the block.
 	ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts, blobs []*kzg4844.Blob) error
 }
-
-type BlobResolver interface {
-	// FetchBlobs Fetches the blob data using beacon chain APIs
-	FetchBlobs(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error)
-}

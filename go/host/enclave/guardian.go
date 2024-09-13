@@ -443,6 +443,11 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	}
 
 	_, rollupTxs, blobsAndHashes, _ := g.sl.L1Publisher().ExtractTenTransactionsAndBlobs(block)
+
+	if len(rollupTxs) < 0 {
+		println("ExtractTenTransactionsAndBlobs ROLLUPS FOUND")
+	}
+
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txWithReceipts, blobsAndHashes)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
@@ -484,6 +489,10 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs [
 
 	// TODO (@will) this should be removed and pulled from the L1
 	err := g.storage.AddBlock(block.Header())
+
+	if len(rollupTxs) > 0 {
+		println("ROLLUP TX FOUND IN L1")
+	}
 	if err != nil {
 		g.logger.Error("Could not add block to host db.", log.ErrKey, err)
 	}

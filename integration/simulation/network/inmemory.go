@@ -1,6 +1,7 @@
 package network
 
 import (
+	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -27,7 +28,7 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
+func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats, t *testing.T) (*RPCHandles, error) {
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereummock.Node, params.NumberOfNodes)
 	tenNodes := make([]*container.HostContainer, params.NumberOfNodes)
@@ -51,8 +52,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		incomingP2PDisabled := !isGenesis && i == params.NodeWithInboundP2PDisabled
 
 		// create the in memory l1 and l2 node
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-
+		miner := createMockEthNode(i, params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats, t, params.L1BeaconPort)
 		agg := createInMemTenNode(
 			int64(i),
 			isGenesis,

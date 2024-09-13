@@ -4,11 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-
-	"github.com/ten-protocol/go-ten/go/enclave/components"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"net/http"
 
 	"github.com/ten-protocol/go-ten/go/host/l2"
 
@@ -48,7 +45,6 @@ type host struct {
 	logger gethlog.Logger
 
 	metricRegistry gethmetrics.Registry
-
 	// l2MessageBusAddress is fetched from the enclave but cache it here because it never changes
 	l2MessageBusAddress *gethcommon.Address
 	newHeads            chan *common.BatchHeader
@@ -99,7 +95,8 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardians, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
-	blobResolver := components.NewBeaconBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), config.L1BeaconUrl)))
+	//FIXME
+	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), config.L1BeaconUrl)))
 
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
 	hostServices.RegisterService(hostcommon.P2PName, p2p)
@@ -239,7 +236,7 @@ func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error)
 	}, nil
 }
 
-// ObscuroConfig returns info on the Obscuro network
+// TenConfig returns info on the TEN network
 func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 	if h.l2MessageBusAddress == nil {
 		publicCfg, err := h.EnclaveClient().EnclavePublicConfig(context.Background())

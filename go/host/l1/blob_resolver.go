@@ -1,4 +1,4 @@
-package components
+package l1
 
 import (
 	"context"
@@ -12,11 +12,16 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
+type BlobResolver interface {
+	// FetchBlobs Fetches the blob data using beacon chain APIs
+	FetchBlobs(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error)
+}
+
 type beaconBlobResolver struct {
 	beaconClient *ethadapter.L1BeaconClient
 }
 
-func NewBeaconBlobResolver(beaconClient *ethadapter.L1BeaconClient) BlobResolver {
+func NewBlobResolver(beaconClient *ethadapter.L1BeaconClient) BlobResolver {
 	return &beaconBlobResolver{beaconClient: beaconClient}
 }
 

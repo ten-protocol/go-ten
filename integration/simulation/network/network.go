@@ -2,6 +2,7 @@ package network
 
 import (
 	"math/rand"
+	"testing"
 
 	"github.com/ten-protocol/go-ten/go/rpc"
 
@@ -24,7 +25,7 @@ type Network interface {
 	// Create - returns the started Ethereum nodes and the started TEN node clients.
 	// Responsible with spinning up all resources required for the test
 	// Return an error in case it cannot start for an expected reason, otherwise it panics.
-	Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error)
+	Create(params *params.SimParams, stats *stats.Stats, t *testing.T) (*RPCHandles, error)
 	TearDown()
 }
 
