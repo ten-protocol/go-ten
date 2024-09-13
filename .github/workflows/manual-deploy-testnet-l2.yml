@@ -254,7 +254,7 @@ jobs:
                       refresh_interval: 5s
                   relabel_configs:
                     - source_labels: ['__meta_docker_container_name']
-                      regex: '/(.*)'
+                      regex: '/\(.*\)' 
                       target_label: 'container'
                     - source_labels: ['__meta_docker_container_log_stream']
                       target_label: 'logstream'
