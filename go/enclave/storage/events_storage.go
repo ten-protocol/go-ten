@@ -200,13 +200,13 @@ func (es *eventsStorage) storeTopics(ctx context.Context, dbTX *sql.Tx, l *types
 	for i := 1; i < len(l.Topics); i++ {
 		topic := l.Topics[i]
 		// first check if there is an entry already for this topic
-		eventTopicId, relAddressId, err := es.findEventTopic(ctx, dbTX, topic.Bytes())
+		eventTopicId, _, err := es.findEventTopic(ctx, dbTX, topic.Bytes())
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not read the event topic. Cause: %w", err)
 		}
 		if errors.Is(err, errutil.ErrNotFound) {
 			// check whether the topic is an EOA
-			relAddressId, err = es.findRelevantAddress(ctx, dbTX, topic)
+			relAddressId, err := es.findRelevantAddress(ctx, dbTX, topic)
 			if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 				return nil, fmt.Errorf("could not read relevant address. Cause %w", err)
 			}

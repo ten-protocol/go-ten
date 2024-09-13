@@ -131,7 +131,7 @@ func executeTransaction(
 	rules := cc.Rules(big.NewInt(0), true, 0)
 	from, err := types.Sender(types.LatestSigner(cc), t.Tx)
 	if err != nil {
-		return &core.TxExecResult{nil, nil, err}
+		return &core.TxExecResult{Err: err}
 	}
 	s.Prepare(rules, from, gethcommon.Address{}, t.Tx.To(), nil, nil)
 	snap := s.Snapshot()
@@ -238,7 +238,7 @@ func executeTransaction(
 	header.MixDigest = before
 	if err != nil {
 		s.RevertToSnapshot(snap)
-		return &core.TxExecResult{receipt, nil, err}
+		return &core.TxExecResult{Receipt: receipt, Err: err}
 	}
 
 	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
@@ -246,7 +246,7 @@ func executeTransaction(
 		contractsWithVisibility[*contractAddress] = &core.ContractVisibilityConfig{AutoConfig: true}
 	}
 
-	return &core.TxExecResult{receipt, contractsWithVisibility, nil}
+	return &core.TxExecResult{Receipt: receipt, CreatedContracts: contractsWithVisibility}
 }
 
 func logReceipt(r *types.Receipt, logger gethlog.Logger) {

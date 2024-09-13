@@ -110,7 +110,7 @@ create table if not exists contract
     auto_visibility boolean    NOT NULL,
     transparent     boolean
 );
-create index IDX_CONTRACT_AD on contract (address, creator);
+create index IDX_CONTRACT_AD on contract (address);
 
 create table if not exists externally_owned_account
 (
