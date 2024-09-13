@@ -92,23 +92,25 @@ create index IDX_TX_BATCH_HEIGHT on tx (batch_height, idx);
 
 create table if not exists receipt
 (
-    id                       INTEGER PRIMARY KEY AUTOINCREMENT,
-    content                  mediumblob,
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    content mediumblob,
     --     commenting out the fk until synthetic transactions are also stored
-    tx                       INTEGER,
-    batch                    INTEGER NOT NULL REFERENCES batch
+    tx      INTEGER,
+    batch   INTEGER NOT NULL REFERENCES batch
 );
 create index IDX_EX_TX_BATCH on receipt (batch);
 create index IDX_EX_TX_CCA on receipt (tx);
 
 create table if not exists contract
 (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    address binary(20) NOT NULL,
---     denormalised for ease of access during balance checks
-    owner   int        NOT NULL REFERENCES externally_owned_account
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    address         binary(20) NOT NULL,
+    --     the tx signer that created the contract
+    creator         int        NOT NULL REFERENCES externally_owned_account,
+    auto_visibility boolean    NOT NULL,
+    transparent     boolean
 );
-create index IDX_CONTRACT_AD on contract (address, owner);
+create index IDX_CONTRACT_AD on contract (address);
 
 create table if not exists externally_owned_account
 (
@@ -123,7 +125,12 @@ create table if not exists event_type
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     contract        INTEGER    NOT NULL references contract,
     event_sig       binary(32) NOT NULL, -- no need to index because there are only a few events for an address
-    lifecycle_event boolean    NOT NULL  -- set based on the first event, and then updated to false if it turns out it is true
+    auto_visibility boolean    NOT NULL, -- the visibility of this event type was not configured by the contract dev.
+    public          boolean    NOT NULL, -- set based on the first event, and then updated to false if it turns out it is true
+    topic1_can_view boolean,
+    topic2_can_view boolean,
+    topic3_can_view boolean,
+    sender_can_view boolean
 );
 create index IDX_EV_CONTRACT on event_type (contract, event_sig);
 
@@ -135,7 +142,6 @@ create table if not exists event_topic
     rel_address INTEGER references externally_owned_account
 --    pos         INTEGER    NOT NULL -- todo
 );
--- create index IDX_TOP on event_topic (topic, pos);
 create index IDX_TOP on event_topic (topic);
 
 create table if not exists event_log
@@ -149,35 +155,5 @@ create table if not exists event_log
     log_idx    INTEGER NOT NULL,
     receipt    INTEGER NOT NULL references receipt
 );
--- create index IDX_BATCH_TX on event_log (receipt);
 create index IDX_EV on event_log (receipt, event_type, topic1, topic2, topic3);
 
--- requester - address
--- receipt - range of batch heights or a single batch
--- address []list of contract addresses
--- topic0 - event sig   []list
--- topic1    []list
--- topic2    []list
--- topic3    []list
-
-
--- select * from event_log
---          join receipt on receipt
---              join batch on receipt.batch -- to get the batch height range
---          join event_type ec on event_type
---              join contract c  on
---          left join event_topic t1 on topic1
---              left join externally_owned_account eoa1 on t1.rel_address
---          left join event_topic t2 on topic2
---              left join externally_owned_account eoa2 on t2.rel_address
---          left join event_topic t3 on topic3
---              left join externally_owned_account eoa3 on t3.rel_address
--- where
---  receipt.
---  c.address in [address..] AND
---  ec.event_sig in [topic0..] AND
---  t1.topic in [topic1..] AND
---  t2.topic in [topic2..] AND
---  t3.topic in [topic3..] AND
---  b.height in [] and b.is_canonical=true
---  (ec.lifecycle_event OR eoa1.address=requester OR eoa2.address=requester OR eoa3.address=requester)

@@ -71,7 +71,7 @@ type BatchResolver interface {
 	// StoreBatch stores an un-executed batch.
 	StoreBatch(ctx context.Context, batch *core.Batch, convertedHash gethcommon.Hash) error
 	// StoreExecutedBatch - store the batch after it was executed
-	StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, receipts []*types.Receipt, contracts map[gethcommon.Hash][]*gethcommon.Address) error
+	StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, results []*core.TxExecResult) error
 
 	// StoreRollup
 	StoreRollup(ctx context.Context, rollup *common.ExtRollup, header *common.CalldataRollupHeader) error
@@ -150,7 +150,7 @@ type Storage interface {
 	// StateDB - return the underlying state database
 	StateDB() state.Database
 
-	ReadContractOwner(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error)
+	ReadContractCreator(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error)
 }
 
 type ScanStorage interface {

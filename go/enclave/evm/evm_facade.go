@@ -38,12 +38,6 @@ import (
 
 var ErrGasNotEnoughForL1 = errors.New("gas limit too low to pay for execution and l1 fees")
 
-type TxExecResult struct {
-	Receipt          *types.Receipt
-	CreatedContracts []*gethcommon.Address
-	Err              error
-}
-
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
@@ -60,12 +54,12 @@ func ExecuteTransactions(
 	noBaseFee bool,
 	batchGasLimit uint64,
 	logger gethlog.Logger,
-) (map[common.TxHash]*TxExecResult, error) {
+) (map[common.TxHash]*core.TxExecResult, error) {
 	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, logger)
 	gp := gethcore.GasPool(batchGasLimit)
 	zero := uint64(0)
 	usedGas := &zero
-	result := map[common.TxHash]*TxExecResult{}
+	result := map[common.TxHash]*core.TxExecResult{}
 
 	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
@@ -83,9 +77,7 @@ func ExecuteTransactions(
 	// this should not open up any attack vectors on the randomness.
 	tCountRollback := 0
 	for i, t := range txs {
-		txResult := &TxExecResult{}
-		result[t.Tx.Hash()] = txResult
-		r, createdContracts, err := executeTransaction(
+		txResult := executeTransaction(
 			s,
 			chainConfig,
 			chain,
@@ -98,21 +90,18 @@ func ExecuteTransactions(
 			hash,
 			header.Number.Uint64(),
 		)
-		if err != nil {
+		result[t.Tx.Hash()] = txResult
+		if txResult.Err != nil {
 			tCountRollback++
-			txResult.Err = err
 			// only log tx execution errors if they are unexpected
 			logFailedTx := logger.Info
-			if errors.Is(err, gethcore.ErrNonceTooHigh) || errors.Is(err, gethcore.ErrNonceTooLow) || errors.Is(err, gethcore.ErrFeeCapTooLow) || errors.Is(err, ErrGasNotEnoughForL1) {
+			if errors.Is(txResult.Err, gethcore.ErrNonceTooHigh) || errors.Is(txResult.Err, gethcore.ErrNonceTooLow) || errors.Is(txResult.Err, gethcore.ErrFeeCapTooLow) || errors.Is(txResult.Err, ErrGasNotEnoughForL1) {
 				logFailedTx = logger.Debug
 			}
 			logFailedTx("Failed to execute tx:", log.TxKey, t.Tx.Hash(), log.CtrErrKey, err)
 			continue
 		}
-
-		logReceipt(r, logger)
-		txResult.Receipt = r
-		txResult.CreatedContracts = createdContracts
+		logReceipt(txResult.Receipt, logger)
 	}
 	s.Finalise(true)
 	return result, nil
@@ -137,12 +126,12 @@ func executeTransaction(
 	tCount int,
 	batchHash common.L2BatchHash,
 	batchHeight uint64,
-) (*types.Receipt, []*gethcommon.Address, error) {
+) *core.TxExecResult {
 	var createdContracts []*gethcommon.Address
 	rules := cc.Rules(big.NewInt(0), true, 0)
 	from, err := types.Sender(types.LatestSigner(cc), t.Tx)
 	if err != nil {
-		return nil, nil, err
+		return &core.TxExecResult{Err: err}
 	}
 	s.Prepare(rules, from, gethcommon.Address{}, t.Tx.To(), nil, nil)
 	snap := s.Snapshot()
@@ -249,10 +238,17 @@ func executeTransaction(
 	header.MixDigest = before
 	if err != nil {
 		s.RevertToSnapshot(snap)
-		return receipt, nil, err
+		return &core.TxExecResult{Receipt: receipt, Err: err}
 	}
 
-	return receipt, createdContracts, nil
+	// todo - placeholder for calling the visibility config function on the newly created contracts
+	// this is step 1 of the transition to configured visibility rules. The auto-detection of the visibility rules
+	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
+	for _, contractAddress := range createdContracts {
+		contractsWithVisibility[*contractAddress] = &core.ContractVisibilityConfig{AutoConfig: true}
+	}
+
+	return &core.TxExecResult{Receipt: receipt, CreatedContracts: contractsWithVisibility}
 }
 
 func logReceipt(r *types.Receipt, logger gethlog.Logger) {
