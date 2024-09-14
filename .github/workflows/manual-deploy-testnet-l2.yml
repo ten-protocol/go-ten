@@ -215,12 +215,12 @@ jobs:
       - name: 'Allow time for VM initialization'
         shell: bash
         run: sleep 60
-
+      
       - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
@@ -273,31 +273,29 @@ jobs:
               grafana/promtail:latest \
               -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true \
             && cd /home/obscuro/go-obscuro/ \
-            && sudo go run /home/obscuro/go-obscuro/go/node/cmd \
-              -is_genesis=${{ matrix.is_genesis }} \
-              -node_type=${{ matrix.node_type }} \
-              -is_sgx_enabled=true \
-              -host_id=${{ vars[matrix.node_addr_lookup] }} \
-              -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \
-              -management_contract_addr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
-              -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
-              -l1_start=${{needs.build.outputs.L1_START_HASH}} \
-              -private_key=${{ secrets[matrix.node_pk_lookup] }} \
-              -sequencer_addr=obscuronode-0-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
-              -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
-              -host_p2p_port=10000 \
-              -enclave_docker_image=${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} \
-              -host_docker_image=${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
-              -is_debug_namespace_enabled=true \
-              -log_level=${{ github.event.inputs.log_level }} \
-              -batch_interval=${{ vars.L2_BATCH_INTERVAL }} \
-              -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
-              -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
-              -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
-              -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{ github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/ \
-              start'
-
-
+            && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
+               -is_genesis=${{ matrix.is_genesis }} \
+               -node_type=${{ matrix.node_type }} \
+               -is_sgx_enabled=true \
+               -host_id=${{ vars[matrix.node_addr_lookup] }} \
+               -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \
+               -management_contract_addr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
+               -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
+               -l1_start=${{needs.build.outputs.L1_START_HASH}} \
+               -private_key=${{ secrets[matrix.node_pk_lookup] }} \
+               -sequencer_addr=obscuronode-0-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
+               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
+               -host_p2p_port=10000 \
+               -enclave_docker_image=${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} \
+               -host_docker_image=${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
+               -is_debug_namespace_enabled=true \
+               -log_level=${{ github.event.inputs.log_level }} \
+               -batch_interval=${{ vars.L2_BATCH_INTERVAL }} \
+               -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
+               -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
+               -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
+               -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{  github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/ \
+               start'
 
   check-obscuro-is-healthy:
     needs:
