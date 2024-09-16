@@ -111,7 +111,7 @@ func CreateAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 
 // StopTenNodes stops the TEN nodes and their RPC clients.
 func StopTenNodes(clients []rpc.Client) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	eg, _ := errgroup.WithContext(ctx)
 

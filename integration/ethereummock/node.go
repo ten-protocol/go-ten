@@ -151,23 +151,38 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 	for _, tx := range block.Transactions() {
 		decodedTx := m.mgmtContractLib.DecodeTx(tx)
 		if decodedTx == nil {
+			m.logger.Warn("Decoded transaction is nil", "txHash", tx.Hash())
 			continue
 		}
 		switch l1tx := decodedTx.(type) {
 		case *ethadapter.L1RollupHashes:
 			blobHashes := l1tx.BlobHashes
-			println("HERE: ", blobHashes)
-			blobsBundle, err := m.BeaconClient.LoadBlobsBundle(block.NumberU64())
-			println("BLOBS BUNDLE: ", blobsBundle)
+			println("Blob hashes: ", blobHashes)
+			println("MockGenesisBlock.Time()", MockGenesisBlock.Time())
+			slot, err := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), uint64(12))
 			if err != nil {
-
+				m.logger.Error("Failed to calculate slot", "error", err)
+				return nil
 			}
-			//encodedRlp, err := ethadapter.DecodeBlobs(blobsBundle.Blobs)
-			//r, err := common.DecodeRollup(encodedRlp)
-			//if err != nil {
-			//	println("Could not decode rollup.", err)
-			//}
-			//return r
+
+			blobs, err := m.BeaconClient.LoadBlobs(slot)
+			if err != nil {
+				m.logger.Error("Error loading blobs", "error", err)
+				return nil
+			}
+
+			encodedRlp, err := ethadapter.DecodeBlobs(blobs)
+			if err != nil {
+				m.logger.Error("Error decoding blobs", "error", err)
+				return nil
+			}
+
+			r, err := common.DecodeRollup(encodedRlp)
+			if err != nil {
+				m.logger.Error("Could not decode rollup", "error", err)
+				return nil
+			}
+			return r
 		}
 	}
 	return nil
@@ -179,7 +194,12 @@ func (m *Node) FetchLastBatchSeqNo(gethcommon.Address) (*big.Int, error) {
 		return nil, err
 	}
 
-	for currentBlock := startingBlock; currentBlock.NumberU64() != 0; currentBlock, _ = m.BlockByHash(currentBlock.Header().ParentHash) {
+	for currentBlock := startingBlock; currentBlock.NumberU64() != 0; {
+		currentBlock, err = m.BlockByHash(currentBlock.Header().ParentHash)
+		if err != nil {
+			m.logger.Error("Error fetching block by hash", "error", err)
+			break
+		}
 		rollup := m.getRollupFromBlock(currentBlock)
 		if rollup != nil {
 			return big.NewInt(int64(rollup.Header.LastBatchSeqNo)), nil
@@ -290,18 +310,13 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 	return logs, nil
 }
 
-// Start runs an infinite loop that listens to the two block producing channels and processes them.
 func (m *Node) Start() {
 	if m.mining {
 		// This starts the mining
 		go m.startMining()
 	}
-	err := m.BeaconClient.Start("127.0.0.1")
-	if err != nil {
-		m.logger.Crit("Failed to start beacon client")
-	}
 
-	err = m.Resolver.StoreBlock(context.Background(), MockGenesisBlock, nil)
+	err := m.Resolver.StoreBlock(context.Background(), MockGenesisBlock, nil)
 	if err != nil {
 		m.logger.Crit("Failed to store block")
 	}
@@ -314,15 +329,25 @@ func (m *Node) Start() {
 			// only process blocks if they haven't been processed before
 			if err != nil {
 				if errors.Is(err, errutil.ErrNotFound) {
-					head = m.processBlock(p2pb, head)
+					// Fetch blobs for the block
+					slot, err := ethadapter.TimeToSlot(p2pb.Time(), MockGenesisBlock.Time(), uint64(12))
+					if err != nil {
+						println("Failed to calculate slot. Cause: %w", err)
+					}
+					blobs, _ := m.BeaconClient.LoadBlobs(slot)
+					//if err.Error() ethereum.NotFound{
+					//	continue
+					//}
+					head = m.processBlock(p2pb, head, blobs)
 				} else {
 					panic(fmt.Errorf("could not retrieve parent block. Cause: %w", err))
 				}
 			}
 
 		case blockWithBlobs := <-m.miningCh: // Received from the local mining
-			head = m.processBlock(blockWithBlobs.Block, head, blockWithBlobs.Blobs)
-			if bytes.Equal(head.Hash().Bytes(), mb.Hash().Bytes()) { // Ignore the locally produced block if someone else found one already
+			mb := blockWithBlobs.Block
+			head = m.processBlock(mb, head, blockWithBlobs.Blobs)
+			if bytes.Equal(head.Hash().Bytes(), mb.Hash().Bytes()) { // Only broadcast if it's the new head
 				p, err := m.Resolver.FetchBlock(context.Background(), mb.ParentHash())
 				if err != nil {
 					panic(fmt.Errorf("could not retrieve parent. Cause: %w", err))
@@ -350,8 +375,18 @@ func (m *Node) processBlock(b *types.Block, head *types.Block, blobs []*kzg4844.
 	if err != nil {
 		m.logger.Crit("Failed to store block. Cause: %w", err)
 	}
-	slot := (b.Time() - MockGenesisBlock.Time()) / b.Time()
-	err := m.BeaconClient.StoreBlobsBundle(slot, blobs)
+
+	// only store the blobs if they exist
+	if len(blobs) > 0 {
+		slot, err := ethadapter.TimeToSlot(b.Time(), MockGenesisBlock.Time(), uint64(12))
+		if err != nil {
+			println("Failed to calculate slot. Cause: %w", err)
+		}
+		err = m.BeaconClient.StoreBlobs(slot, blobs)
+		if err != nil {
+			println("Failed to store blobs. Cause: %w", err)
+		}
+	}
 	_, err = m.Resolver.FetchBlock(context.Background(), b.Header().ParentHash)
 	// only proceed if the parent is available
 	if err != nil {

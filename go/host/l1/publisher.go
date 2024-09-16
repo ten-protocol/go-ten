@@ -274,7 +274,6 @@ func (p *Publisher) ExtractTenTransactionsAndBlobs(block *types.Block) ([]*ethad
 	var blobs []*kzg4844.Blob
 	var err error
 	for _, tx := range block.Transactions() {
-		println("extracting txs from block with type: ", tx.Type())
 		t := p.mgmtContractLib.DecodeTx(tx)
 		if t == nil {
 			continue

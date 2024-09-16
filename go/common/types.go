@@ -153,8 +153,6 @@ func (br *BlockAndReceipts) Receipts() L1Receipts {
 // RelevantTransactions - returns slice containing only the transactions that have receipts with successful status.
 func (br *BlockAndReceipts) RelevantTransactions() *types.Transactions {
 	if br.successfulTransactions != nil {
-		println("Successful txs")
-
 		stx := br.successfulTransactions
 		for _, tx := range *stx {
 			if tx.Type() == 0x03 {

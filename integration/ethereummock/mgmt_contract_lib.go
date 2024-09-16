@@ -147,7 +147,10 @@ func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	var t ethadapter.L1Transaction
 	switch tx.To().Hex() {
 	case rollupTxAddr.Hex():
-		t = &ethadapter.L1RollupHashes{}
+		{
+			t = &ethadapter.L1RollupHashes{}
+			println("FOUND L1ROLLUPHASHES")
+		}
 	case storeSecretTxAddr.Hex():
 		t = &ethadapter.L1RespondSecretTx{}
 	case depositTxAddr.Hex():

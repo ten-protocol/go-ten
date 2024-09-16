@@ -65,6 +65,7 @@ func (bc *BeaconHTTPClient) request(ctx context.Context, dest any, reqPath strin
 		base = "http://" + base
 	}
 	baseURL, err := url.Parse(base)
+
 	if err != nil {
 		return fmt.Errorf("failed to parse base URL: %w", err)
 	}
@@ -247,6 +248,7 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 		return nil, fmt.Errorf("error in converting ref.Time to slot: %w", err)
 	}
 
+	println("Fetching sidecar at slot: ", slot)
 	resp, err := cl.fetchSidecars(ctx, slot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, b, err)

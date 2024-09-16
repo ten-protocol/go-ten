@@ -19,7 +19,7 @@ import (
 func TestGetVersion(t *testing.T) {
 	l := testlog.Logger()
 
-	beaconApi := NewBeaconMock(l, t.TempDir(), uint64(1), uint64(1), 8000)
+	beaconApi := NewBeaconMock(l, uint64(1), uint64(1), 8000)
 	t.Cleanup(func() {
 		_ = beaconApi.Close()
 	})
@@ -29,7 +29,7 @@ func TestGetVersion(t *testing.T) {
 func Test404NotFound(t *testing.T) {
 	l := testlog.Logger()
 
-	beaconApi := NewBeaconMock(l, t.TempDir(), uint64(1), uint64(12), 8000)
+	beaconApi := NewBeaconMock(l, uint64(1), uint64(12), 8000)
 	t.Cleanup(func() {
 		_ = beaconApi.Close()
 	})

@@ -27,7 +27,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		NumberOfNodes: numberOfNodes,
 		//  todo (#718) - try reducing this back to 50 milliseconds once faster-finality model is optimised
 		AvgBlockDuration:           180 * time.Millisecond,
-		SimulationTime:             45 * time.Second,
+		SimulationTime:             60 * time.Second,
 		L1EfficiencyThreshold:      0.2,
 		MgmtContractLib:            ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib:           ethereummock.NewERC20ContractLibMock(),
@@ -35,7 +35,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		StartPort:                  integration.TestPorts.TestInMemoryMonteCarloSimulationPort,
 		IsInMem:                    true,
 		L1TenData:                  &params.L1TenData{},
-		ReceiptTimeout:             5 * time.Second,
+		ReceiptTimeout:             10 * time.Second,
 		StoppingDelay:              15 * time.Second,
 		NodeWithInboundP2PDisabled: 2,
 		L1BeaconPort:               integration.TestPorts.TestInMemoryMonteCarloSimulationPort + integration.DefaultPrysmGatewayPortOffset,
