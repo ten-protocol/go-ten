@@ -92,12 +92,9 @@ func printBlock(b *types.Block, m *Node) string {
 		}
 
 		switch l1Tx := t.(type) {
-		case *ethadapter.L1RollupTx:
-			r, err := common.DecodeRollup(l1Tx.Rollup)
-			if err != nil {
-				testlog.Logger().Crit("failed to decode rollup")
-			}
-			txs = append(txs, fmt.Sprintf("r_%d(nonce=%d)", common.ShortHash(r.Hash()), tx.Nonce()))
+		case *ethadapter.L1RollupHashes:
+			blobHashes := l1Tx.BlobHashes
+			txs = append(txs, fmt.Sprintf("r_%d(nonce=%d)", common.ShortHash(blobHashes[0]), tx.Nonce()))
 
 		case *ethadapter.L1DepositTx:
 			var to uint64

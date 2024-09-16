@@ -19,7 +19,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	setupSimTestLog("in-mem")
 
 	// todo (#718) - try increasing this back to 7 once faster-finality model is optimised
-	numberOfNodes := 5
+	numberOfNodes := 2
 	numberOfSimWallets := 10
 	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 

@@ -135,7 +135,8 @@ func (m *Node) SendTransaction(tx *types.Transaction) error {
 	return nil
 }
 
-func (m *Node) TransactionReceipt(_ gethcommon.Hash) (*types.Receipt, error) {
+func (m *Node) TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error) {
+	println("TransactionReceipt: ", hash.Hex())
 	// all transactions are immediately processed
 	return &types.Receipt{
 		BlockNumber: big.NewInt(1),
@@ -156,9 +157,7 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 		}
 		switch l1tx := decodedTx.(type) {
 		case *ethadapter.L1RollupHashes:
-			blobHashes := l1tx.BlobHashes
-			println("Blob hashes: ", blobHashes)
-			println("MockGenesisBlock.Time()", MockGenesisBlock.Time())
+			println(l1tx)
 			slot, err := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), uint64(12))
 			if err != nil {
 				m.logger.Error("Failed to calculate slot", "error", err)
