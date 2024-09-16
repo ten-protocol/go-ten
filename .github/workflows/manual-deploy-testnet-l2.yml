@@ -243,9 +243,6 @@ jobs:
                 batchsize: 1048576
                 tls_config:
                   insecure_skip_verify: true
-                basic_auth:
-                  username: ${{ secrets.LOKI_USER }}
-                  password: ${{ secrets.LOKI_PASSWORD }}
 
             scrape_configs:
             - job_name: flog_scrape
