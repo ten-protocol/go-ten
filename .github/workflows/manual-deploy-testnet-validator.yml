@@ -148,20 +148,50 @@ jobs:
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
             && docker network create --driver bridge node_network || true \
-            && docker run -d --name datadog-agent \
-               --network node_network \
-               -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
-               -e DD_LOGS_ENABLED=true \
-               -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
-               -e DD_LOGS_CONFIG_AUTO_MULTI_LINE_DETECTION=true \
-               -e DD_CONTAINER_EXCLUDE_LOGS="name:datadog-agent" \
-               -e DD_SITE="datadoghq.eu"  \
-               -v /var/run/docker.sock:/var/run/docker.sock:ro \
-               -v /proc/:/host/proc/:ro \
-               -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
-               -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
-               --log-opt max-file=3 --log-opt max-size=10m \
-               datadog/agent:latest \
+            && mkdir -p /home/obscuro/promtail \
+            && echo "
+            server:
+              http_listen_port: 9080
+              grpc_listen_port: 0
+
+            positions:
+              filename: /tmp/positions.yaml
+
+            clients:
+              - url: ${{ vars.METRICS_URI }}
+                batchwait: 3s
+                batchsize: 1048576
+                tls_config:
+                  insecure_skip_verify: true
+                basic_auth:
+                  username: ${{ secrets.LOKI_USER }}
+                  password: ${{ secrets.LOKI_PASSWORD }}
+
+            scrape_configs:
+            - job_name: flog_scrape
+              docker_sd_configs:
+                - host: unix:///var/run/docker.sock
+                  refresh_interval: 5s
+              relabel_configs:
+                - source_labels: [\"__meta_docker_container_name\"]
+                  regex: \"/(.*)\"
+                  target_label: \"container\"
+                - source_labels: [\"__meta_docker_container_log_stream\"]
+                  target_label: \"logstream\"
+                - source_labels: [\"__meta_docker_container_label_logging_jobname\"]
+                  target_label: \"job\"
+                - replacement: ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+                  target_label: "node_name"
+            " > /home/obscuro/promtail/promtail-config.yaml \
+            && docker run -d --name promtail \
+              --network node_network \
+              -e HOSTNAME=${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }} \
+              -v /var/log:/var/log \
+              -v /home/obscuro/promtail:/etc/promtail \
+              -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              grafana/promtail:latest \
+              -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true \
             && cd /home/obscuro/go-obscuro/ \
             && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
                -is_genesis=false \
