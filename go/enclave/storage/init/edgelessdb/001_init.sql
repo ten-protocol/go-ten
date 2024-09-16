@@ -109,9 +109,11 @@ create table if not exists tendb.receipt
 
 create table if not exists tendb.contract
 (
-    id      INTEGER AUTO_INCREMENT,
-    address binary(20) NOT NULL,
-    owner   int        NOT NULL,
+    id              INTEGER AUTO_INCREMENT,
+    address         binary(20) NOT NULL,
+    creator         int        NOT NULL,
+    auto_visibility boolean    NOT NULL,
+    transparent     boolean,
     primary key (id),
     INDEX USING HASH (address)
 );
@@ -129,7 +131,12 @@ create table if not exists tendb.event_type
     id              INTEGER AUTO_INCREMENT,
     contract        int        NOT NULL,
     event_sig       binary(32) NOT NULL,
-    lifecycle_event boolean    NOT NULL,
+    auto_visibility boolean    NOT NULL,
+    public          boolean    NOT NULL,
+    topic1_can_view boolean,
+    topic2_can_view boolean,
+    topic3_can_view boolean,
+    sender_can_view boolean,
     primary key (id),
     INDEX USING HASH (contract, event_sig)
 );

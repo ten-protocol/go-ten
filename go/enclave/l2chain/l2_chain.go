@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ten-protocol/go-ten/go/common/errutil"
-
 	"github.com/ten-protocol/go-ten/go/config"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -64,19 +62,6 @@ func NewChain(
 		Registry:            registry,
 		gasEstimationCap:    gasEstimationCap,
 	}
-}
-
-func (oc *obscuroChain) AccountOwner(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error) {
-	// check if the account is a contract and return the owner
-	owner, err := oc.storage.ReadContractOwner(ctx, address)
-	if err != nil {
-		// it is not a contract, so it's an EOA
-		if errors.Is(err, errutil.ErrNotFound) {
-			return &address, nil
-		}
-		return nil, fmt.Errorf("could not read account owner. cause: %w", err)
-	}
-	return owner, nil
 }
 
 func (oc *obscuroChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {

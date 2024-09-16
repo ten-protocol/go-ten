@@ -3,8 +3,6 @@ package rpc
 import (
 	"fmt"
 
-	"github.com/status-im/keycard-go/hexutils"
-
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -43,18 +41,8 @@ func GetBalanceValidate(reqParams []any, builder *CallBuilder[BalanceReq, hexuti
 }
 
 func GetBalanceExecute(builder *CallBuilder[BalanceReq, hexutil.Big], rpc *EncryptionManager) error {
-	acctOwner, err := rpc.chain.AccountOwner(builder.ctx, *builder.Param.Addr)
-	if err != nil {
-		return fmt.Errorf("cannot determine account owner. Cause: %w", err)
-	}
-
-	// authorise the call
-	if acctOwner.Hex() != builder.VK.AccountAddress.Hex() {
-		rpc.logger.Debug("Unauthorised call", "address", acctOwner, "vk", builder.VK.AccountAddress, "userId", hexutils.BytesToHex(builder.VK.UserID))
-		builder.Status = NotAuthorised
-		return nil
-	}
-
+	// anybody can query for the native balance of any address.
+	// even if we added a check, it could be bypassed easily
 	balance, err := rpc.chain.GetBalanceAtBlock(builder.ctx, *builder.Param.Addr, builder.Param.Block.BlockNumber)
 	if err != nil {
 		return fmt.Errorf("unable to get balance - %w", err)

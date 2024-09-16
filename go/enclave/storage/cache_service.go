@@ -4,6 +4,8 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
+
 	"github.com/eko/gocache/lib/v4/store"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -48,10 +50,10 @@ type CacheService struct {
 
 	// from address ( either eoa or contract) to the id of the db entry
 	eoaCache             *cache.Cache[*uint64]
-	contractAddressCache *cache.Cache[*uint64]
+	contractAddressCache *cache.Cache[*enclavedb.Contract]
 
 	// from contract_address||event_sig to the event_type (id, isLifecycle) object
-	eventTypeCache *cache.Cache[*EventType]
+	eventTypeCache *cache.Cache[*enclavedb.EventType]
 
 	// store the converted ethereum header which is passed to the evm
 	convertedGethHeaderCache *cache.Cache[*types.Header]
@@ -77,8 +79,8 @@ func NewCacheService(logger gethlog.Logger) *CacheService {
 		seqCacheByHeight:         cache.New[*big.Int](ristrettoStore),
 		convertedHashCache:       cache.New[*gethcommon.Hash](ristrettoStore),
 		eoaCache:                 cache.New[*uint64](ristrettoStore),
-		contractAddressCache:     cache.New[*uint64](ristrettoStore),
-		eventTypeCache:           cache.New[*EventType](ristrettoStore),
+		contractAddressCache:     cache.New[*enclavedb.Contract](ristrettoStore),
+		eventTypeCache:           cache.New[*enclavedb.EventType](ristrettoStore),
 		convertedGethHeaderCache: cache.New[*types.Header](ristrettoStore),
 		logger:                   logger,
 	}
@@ -121,11 +123,11 @@ func (cs *CacheService) ReadEOA(ctx context.Context, addr gethcommon.Address, on
 	return getCachedValue(ctx, cs.eoaCache, cs.logger, addr, idCost, onCacheMiss)
 }
 
-func (cs *CacheService) ReadContractAddr(ctx context.Context, addr gethcommon.Address, onCacheMiss func(any) (*uint64, error)) (*uint64, error) {
+func (cs *CacheService) ReadContractAddr(ctx context.Context, addr gethcommon.Address, onCacheMiss func(any) (*enclavedb.Contract, error)) (*enclavedb.Contract, error) {
 	return getCachedValue(ctx, cs.contractAddressCache, cs.logger, addr, idCost, onCacheMiss)
 }
 
-func (cs *CacheService) ReadEventType(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash, onCacheMiss func(any) (*EventType, error)) (*EventType, error) {
+func (cs *CacheService) ReadEventType(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash, onCacheMiss func(any) (*enclavedb.EventType, error)) (*enclavedb.EventType, error) {
 	key := make([]byte, 0)
 	key = append(key, contractAddress.Bytes()...)
 	key = append(key, eventSignature.Bytes()...)

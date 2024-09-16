@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	"math/big"
 	"sort"
 	"sync"
@@ -195,25 +194,36 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	syntheticTransactions := append(xchainTxs, freeTransactions...)
 
 	// fromTxIndex - Here we start from the 0 index. This will be the same for a validator.
-	successfulTxs, excludedTxs, txReceipts, createdContracts, err := executor.processTransactions(ctx, batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
+	successfulTxs, excludedTxs, txResults, err := executor.processTransactions(ctx, batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not process transactions. Cause: %w", err)
+	}
+	txReceipts := make(types.Receipts, 0)
+	for _, txResult := range txResults {
+		txReceipts = append(txReceipts, txResult.Receipt)
 	}
 
 	// fromTxIndex - Here we start from the len of the successful transactions; As long as we have the exact same successful transactions in a batch,
 	// we will start from the same place.
-	ccSuccessfulTxs, _, ccReceipts, createdContractsSyn, err := executor.processTransactions(ctx, batch, len(successfulTxs), syntheticTransactions, stateDB, context.ChainConfig, true)
+	ccSuccessfulTxs, _, ccTxResults, err := executor.processTransactions(ctx, batch, len(successfulTxs), syntheticTransactions, stateDB, context.ChainConfig, true)
 	if err != nil {
 		return nil, err
 	}
+	if len(ccSuccessfulTxs) != len(syntheticTransactions) {
+		return nil, fmt.Errorf("failed cross chain transactions")
+	}
 
+	ccReceipts := make(types.Receipts, 0)
+	for _, txResult := range ccTxResults {
+		ccReceipts = append(ccReceipts, txResult.Receipt)
+	}
 	if err = executor.verifyInboundCrossChainTransactions(syntheticTransactions, ccSuccessfulTxs, ccReceipts); err != nil {
 		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
 	}
 
 	if failForEmptyBatch &&
-		len(txReceipts) == 0 &&
-		len(ccReceipts) == 0 &&
+		len(txResults) == 0 &&
+		len(ccTxResults) == 0 &&
 		len(transactionsToProcess)-len(excludedTxs) == 0 &&
 		len(crossChainTransactions) == 0 &&
 		len(messages) == 0 &&
@@ -245,11 +255,10 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 			l.BlockHash = copyBatch.Hash()
 		}
 	}
-	maps.Copy(createdContracts, createdContractsSyn)
+
 	return &ComputedBatch{
-		Batch:            &copyBatch,
-		Receipts:         allReceipts,
-		CreatedContracts: createdContracts,
+		Batch:         &copyBatch,
+		TxExecResults: append(txResults, ccTxResults...),
 		Commit: func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
 			executor.stateDBMutex.Lock()
 			defer executor.stateDBMutex.Unlock()
@@ -264,7 +273,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}, nil
 }
 
-func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Batch) (types.Receipts, map[gethcommon.Hash][]*gethcommon.Address, error) {
+func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Batch) ([]*core.TxExecResult, error) {
 	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Executed batch", log.BatchHashKey, batch.Hash())
 
 	// Validators recompute the entire batch using the same batch context
@@ -283,20 +292,20 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 		BaseFee:      batch.Header.BaseFee,
 	}, false) // this execution is not used when first producing a batch, we never want to fail for empty batches
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
+		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
 	}
 
 	if cb.Batch.Hash() != batch.Hash() {
 		// todo @stefan - generate a validator challenge here and return it
 		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v", cb.Batch.Header, batch.Header))
-		return nil, nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
+		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
 	}
 
 	if _, err := cb.Commit(true); err != nil {
-		return nil, nil, fmt.Errorf("cannot commit stateDB for incoming valid batch %s. Cause: %w", batch.Hash(), err)
+		return nil, fmt.Errorf("cannot commit stateDB for incoming valid batch %s. Cause: %w", batch.Hash(), err)
 	}
 
-	return cb.Receipts, cb.CreatedContracts, nil
+	return cb.TxExecResults, nil
 }
 
 func (executor *batchExecutor) CreateGenesisState(
@@ -436,12 +445,10 @@ func (executor *batchExecutor) processTransactions(
 	stateDB *state.StateDB,
 	cc *params.ChainConfig,
 	noBaseFee bool,
-) ([]*common.L2Tx, []*common.L2Tx, []*types.Receipt, map[gethcommon.Hash][]*gethcommon.Address, error) {
+) ([]*common.L2Tx, []*common.L2Tx, []*core.TxExecResult, error) {
 	var executedTransactions []*common.L2Tx
 	var excludedTransactions []*common.L2Tx
-	var txReceipts []*types.Receipt
-	createdContracts := make(map[gethcommon.Hash][]*gethcommon.Address)
-	txResults, err := evm.ExecuteTransactions(
+	txResultsMap, err := evm.ExecuteTransactions(
 		ctx,
 		txs,
 		stateDB,
@@ -456,30 +463,32 @@ func (executor *batchExecutor) processTransactions(
 		executor.logger,
 	)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
+	txResults := make([]*core.TxExecResult, 0)
 	for _, tx := range txs {
-		result, f := txResults[tx.Tx.Hash()]
+		result, f := txResultsMap[tx.Tx.Hash()]
 		if !f {
-			return nil, nil, nil, nil, fmt.Errorf("there should be an entry for each transaction")
+			return nil, nil, nil, fmt.Errorf("there should be an entry for each transaction")
 		}
 		if result.Receipt != nil {
 			executedTransactions = append(executedTransactions, tx.Tx)
-			txReceipts = append(txReceipts, result.Receipt)
-			createdContracts[tx.Tx.Hash()] = result.CreatedContracts
+			txResults = append(txResults, result)
 		} else {
 			// Exclude failed transactions
 			excludedTransactions = append(excludedTransactions, tx.Tx)
 			executor.logger.Debug("Excluding transaction from batch", log.TxKey, tx.Tx.Hash(), log.BatchHashKey, batch.Hash(), "cause", result.Err)
 		}
 	}
-	sort.Sort(sortByTxIndex(txReceipts))
+	sort.Sort(sortByTxIndex(txResults))
 
-	return executedTransactions, excludedTransactions, txReceipts, createdContracts, nil
+	return executedTransactions, excludedTransactions, txResults, nil
 }
 
-type sortByTxIndex []*types.Receipt
+type sortByTxIndex []*core.TxExecResult
 
-func (c sortByTxIndex) Len() int           { return len(c) }
-func (c sortByTxIndex) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
-func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j].TransactionIndex }
+func (c sortByTxIndex) Len() int      { return len(c) }
+func (c sortByTxIndex) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
+func (c sortByTxIndex) Less(i, j int) bool {
+	return c[i].Receipt.TransactionIndex < c[j].Receipt.TransactionIndex
+}
