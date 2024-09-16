@@ -36,7 +36,7 @@ const (
 
 func WriteEventType(ctx context.Context, dbTX *sql.Tx, et *EventType) (uint64, error) {
 	res, err := dbTX.ExecContext(ctx, "insert into event_type (contract, event_sig, auto_visibility, public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view) values (?, ?, ?, ?, ?, ?, ?, ?)",
-		et.ContractId, et.EventSignature.Bytes(), et.AutoVisibility, et.Public, et.Topic1CanView, et.Topic2CanView, et.Topic3CanView, et.SenderCanView)
+		et.Contract.Id, et.EventSignature.Bytes(), et.AutoVisibility, et.Public, et.Topic1CanView, et.Topic2CanView, et.Topic3CanView, et.SenderCanView)
 	if err != nil {
 		return 0, err
 	}
@@ -47,10 +47,12 @@ func WriteEventType(ctx context.Context, dbTX *sql.Tx, et *EventType) (uint64, e
 	return uint64(id), nil
 }
 
-func ReadEventType(ctx context.Context, dbTX *sql.Tx, contractId uint64, eventSignature gethcommon.Hash) (*EventType, error) {
-	var et EventType
-	err := dbTX.QueryRowContext(ctx, "select id, contract, event_sig, auto_visibility, public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view from event_type where contract=? and event_sig=?",
-		contractId, eventSignature.Bytes()).Scan(&et.Id, &et.ContractId, &et.EventSignature, &et.AutoVisibility, &et.Public, &et.Topic1CanView, &et.Topic2CanView, &et.Topic3CanView, &et.SenderCanView)
+func ReadEventType(ctx context.Context, dbTX *sql.Tx, contract *Contract, eventSignature gethcommon.Hash) (*EventType, error) {
+	var et EventType = EventType{Contract: contract}
+	err := dbTX.QueryRowContext(ctx,
+		"select id, event_sig, auto_visibility, public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view from event_type where contract=? and event_sig=?",
+		contract.Id, eventSignature.Bytes(),
+	).Scan(&et.Id, &et.EventSignature, &et.AutoVisibility, &et.Public, &et.Topic1CanView, &et.Topic2CanView, &et.Topic3CanView, &et.SenderCanView)
 	if errors.Is(err, sql.ErrNoRows) {
 		// make sure the error is converted to obscuro-wide not found error
 		return nil, errutil.ErrNotFound
@@ -229,13 +231,11 @@ func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Add
 	query := "select et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address" + " " + baseEventsJoin
 	var queryParams []any
 
-	// Add relevancy rules
-	//  An event is considered relevant to all account owners whose addresses are used as topics in the event.
-	//	In case there are no account addresses in an event's topics, then the event is considered relevant to everyone (known as a "lifecycle event").
-	query += " AND (et.public=true OR eoa1.address=? OR eoa2.address=? OR eoa3.address=?) "
-	queryParams = append(queryParams, requestingAccount.Bytes())
-	queryParams = append(queryParams, requestingAccount.Bytes())
-	queryParams = append(queryParams, requestingAccount.Bytes())
+	// Add visibility rules
+	visibQuery, visibParams := visibilityQuery(requestingAccount)
+
+	query += visibQuery
+	queryParams = append(queryParams, visibParams...)
 
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
@@ -270,6 +270,37 @@ func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Add
 	}
 
 	return result, nil
+}
+
+func visibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
+	acc := requestingAccount.Bytes()
+
+	visibQuery := "AND ("
+	visibParams := make([]any, 0)
+
+	visibQuery += " et.public=true "
+
+	// For auto configs, an event is considered relevant to all account owners whose addresses are used as topics in the event.
+	visibQuery += " OR (et.auto_visibility=true AND (eoa1.address=? OR eoa2.address=? OR eoa3.address=?))"
+	visibParams = append(visibParams, acc)
+	visibParams = append(visibParams, acc)
+	visibParams = append(visibParams, acc)
+
+	// Configured events
+	visibQuery += " OR (" +
+		"et.auto_visibility=false AND et.public=false AND " +
+		"  (" +
+		"       (et.topic1_can_view AND eoa1.address=?) " +
+		"    OR (et.topic2_can_view AND eoa2.address=?) " +
+		"    OR (et.topic3_can_view AND eoa3.address=?)" +
+		"  )" +
+		")"
+	visibParams = append(visibParams, acc)
+	visibParams = append(visibParams, acc)
+	visibParams = append(visibParams, acc)
+
+	visibQuery += ") "
+	return visibQuery, visibParams
 }
 
 func WriteEoa(ctx context.Context, dbTX *sql.Tx, sender gethcommon.Address) (uint64, error) {
