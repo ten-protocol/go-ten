@@ -132,6 +132,7 @@ create table if not exists tendb.event_type
     contract        int        NOT NULL,
     event_sig       binary(32) NOT NULL,
     auto_visibility boolean    NOT NULL,
+    auto_public     boolean,
     public          boolean    NOT NULL,
     topic1_can_view boolean,
     topic2_can_view boolean,

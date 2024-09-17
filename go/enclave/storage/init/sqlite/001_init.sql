@@ -124,9 +124,10 @@ create table if not exists event_type
 (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     contract        INTEGER    NOT NULL references contract,
-    event_sig       binary(32) NOT NULL, -- no need to index because there are only a few events for an address
-    auto_visibility boolean    NOT NULL, -- the visibility of this event type was not configured by the contract dev.
-    public          boolean    NOT NULL, -- set based on the first event, and then updated to false if it turns out it is true
+    event_sig       binary(32) NOT NULL,
+    auto_visibility boolean    NOT NULL,
+    auto_public     boolean,
+    public          boolean    NOT NULL,
     topic1_can_view boolean,
     topic2_can_view boolean,
     topic3_can_view boolean,

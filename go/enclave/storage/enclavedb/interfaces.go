@@ -38,6 +38,7 @@ type EventType struct {
 	Contract                                    *Contract
 	EventSignature                              gethcommon.Hash
 	AutoVisibility                              bool
+	AutoPublic                                  *bool // true -when the event is autodetected as public
 	Public                                      bool
 	Topic1CanView, Topic2CanView, Topic3CanView *bool
 	SenderCanView                               *bool

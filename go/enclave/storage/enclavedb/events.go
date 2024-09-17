@@ -35,8 +35,8 @@ const (
 )
 
 func WriteEventType(ctx context.Context, dbTX *sql.Tx, et *EventType) (uint64, error) {
-	res, err := dbTX.ExecContext(ctx, "insert into event_type (contract, event_sig, auto_visibility, public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view) values (?, ?, ?, ?, ?, ?, ?, ?)",
-		et.Contract.Id, et.EventSignature.Bytes(), et.AutoVisibility, et.Public, et.Topic1CanView, et.Topic2CanView, et.Topic3CanView, et.SenderCanView)
+	res, err := dbTX.ExecContext(ctx, "insert into event_type (contract, event_sig, auto_visibility,auto_public, public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view) values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		et.Contract.Id, et.EventSignature.Bytes(), et.AutoVisibility, et.AutoPublic, et.Public, et.Topic1CanView, et.Topic2CanView, et.Topic3CanView, et.SenderCanView)
 	if err != nil {
 		return 0, err
 	}
@@ -50,9 +50,9 @@ func WriteEventType(ctx context.Context, dbTX *sql.Tx, et *EventType) (uint64, e
 func ReadEventType(ctx context.Context, dbTX *sql.Tx, contract *Contract, eventSignature gethcommon.Hash) (*EventType, error) {
 	var et EventType = EventType{Contract: contract}
 	err := dbTX.QueryRowContext(ctx,
-		"select id, event_sig, auto_visibility, public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view from event_type where contract=? and event_sig=?",
+		"select id, event_sig, auto_visibility, auto_public, public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view from event_type where contract=? and event_sig=?",
 		contract.Id, eventSignature.Bytes(),
-	).Scan(&et.Id, &et.EventSignature, &et.AutoVisibility, &et.Public, &et.Topic1CanView, &et.Topic2CanView, &et.Topic3CanView, &et.SenderCanView)
+	).Scan(&et.Id, &et.EventSignature, &et.AutoVisibility, &et.AutoPublic, &et.Public, &et.Topic1CanView, &et.Topic2CanView, &et.Topic3CanView, &et.SenderCanView)
 	if errors.Is(err, sql.ErrNoRows) {
 		// make sure the error is converted to obscuro-wide not found error
 		return nil, errutil.ErrNotFound
@@ -72,8 +72,8 @@ func WriteEventTopic(ctx context.Context, dbTX *sql.Tx, topic *gethcommon.Hash, 
 	return uint64(id), nil
 }
 
-func UpdateEventTypeLifecycle(ctx context.Context, dbTx *sql.Tx, etId uint64, isLifecycle bool) error {
-	_, err := dbTx.ExecContext(ctx, "update event_type set public=? where id=?", isLifecycle, etId)
+func UpdateEventTypeAutoPublic(ctx context.Context, dbTx *sql.Tx, etId uint64, isPublic bool) error {
+	_, err := dbTx.ExecContext(ctx, "update event_type set auto_public=? where id=?", isPublic, etId)
 	return err
 }
 
@@ -87,6 +87,17 @@ func ReadEventTopic(ctx context.Context, dbTX *sql.Tx, topic []byte, eventTypeId
 		return 0, nil, errutil.ErrNotFound
 	}
 	return id, address, err
+}
+
+func ReadRelevantAddressFromEventTopic(ctx context.Context, dbTX *sql.Tx, id uint64) (*uint64, error) {
+	var address *uint64
+	err := dbTX.QueryRowContext(ctx,
+		"select rel_address from event_topic where id=?", id).Scan(&address)
+	if errors.Is(err, sql.ErrNoRows) {
+		// make sure the error is converted to obscuro-wide not found error
+		return nil, errutil.ErrNotFound
+	}
+	return address, err
 }
 
 func WriteEventLog(ctx context.Context, dbTX *sql.Tx, eventTypeId uint64, userTopics []*uint64, data []byte, logIdx uint, execTx uint64) error {
@@ -273,21 +284,23 @@ func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Add
 	return result, nil
 }
 
+// this function encodes the event log visibility rules
 func visibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
 	acc := requestingAccount.Bytes()
 
 	visibQuery := "AND ("
 	visibParams := make([]any, 0)
 
+	// everyone can query public events
 	visibQuery += " et.public=true "
 
-	// For auto configs, an event is considered relevant to all account owners whose addresses are used as topics in the event.
-	visibQuery += " OR (et.auto_visibility=true AND (eoa1.address=? OR eoa2.address=? OR eoa3.address=?))"
+	// For event logs that have no explicit configuration, an event is visible be all account owners whose addresses are used in any topic
+	visibQuery += " OR (et.auto_visibility=true AND (et.auto_public=true OR (eoa1.address=? OR eoa2.address=? OR eoa3.address=?))) "
 	visibParams = append(visibParams, acc)
 	visibParams = append(visibParams, acc)
 	visibParams = append(visibParams, acc)
 
-	// Configured events
+	// Configured events that are not public specify explicitly which event topics are addresses empowered to view that event
 	visibQuery += " OR (" +
 		"et.auto_visibility=false AND et.public=false AND " +
 		"  (" +
