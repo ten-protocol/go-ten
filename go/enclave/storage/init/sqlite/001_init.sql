@@ -138,11 +138,13 @@ create index IDX_EV_CONTRACT on event_type (contract, event_sig);
 create table if not exists event_topic
 (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type  INTEGER references event_type,
     topic       binary(32) NOT NULL,
     rel_address INTEGER references externally_owned_account
 --    pos         INTEGER    NOT NULL -- todo
 );
 create index IDX_TOP on event_topic (topic);
+create index IDX_REL_A on event_topic (rel_address);
 
 create table if not exists event_log
 (

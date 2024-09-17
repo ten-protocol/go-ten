@@ -144,6 +144,7 @@ create table if not exists tendb.event_type
 create table if not exists tendb.event_topic
 (
     id          INTEGER AUTO_INCREMENT,
+    event_type  INTEGER,
     topic       binary(32) NOT NULL,
     rel_address INTEGER,
     primary key (id),

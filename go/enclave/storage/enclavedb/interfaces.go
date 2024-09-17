@@ -43,10 +43,6 @@ type EventType struct {
 	SenderCanView                               *bool
 }
 
-func (et EventType) Auto() bool {
-	return et.Contract.AutoVisibility && et.AutoVisibility
-}
-
 func (et EventType) IsPublic() bool {
 	return (et.Contract.Transparent != nil && *et.Contract.Transparent) || et.Public
 }

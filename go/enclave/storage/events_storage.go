@@ -142,7 +142,8 @@ func (es *eventsStorage) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTx
 	return nil
 }
 
-// handles the visibility config detection
+// stores an event type the first time it is emitted
+// since it wasn't saved on contract deployment, it means that there is no explicit configuration for it
 func (es *eventsStorage) storeAutoConfigEventType(ctx context.Context, dbTX *sql.Tx, contract *enclavedb.Contract, l *types.Log) (*enclavedb.EventType, error) {
 	eventType := enclavedb.EventType{
 		Contract:       contract,
@@ -171,7 +172,7 @@ func (es *eventsStorage) storeTopics(ctx context.Context, dbTX *sql.Tx, eventTyp
 	for i := 1; i < len(l.Topics); i++ {
 		topic := l.Topics[i]
 		// first check if there is an entry already for this topic
-		eventTopicId, _, err := es.findEventTopic(ctx, dbTX, topic.Bytes())
+		eventTopicId, _, err := es.findEventTopic(ctx, dbTX, topic.Bytes(), eventType.Id)
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not read the event topic. Cause: %w", err)
 		}
@@ -189,7 +190,7 @@ func (es *eventsStorage) storeTopics(ctx context.Context, dbTX *sql.Tx, eventTyp
 
 // this function contains visibility logic
 func (es *eventsStorage) storeEventTopic(ctx context.Context, dbTX *sql.Tx, eventType *enclavedb.EventType, i int, topic gethcommon.Hash) (uint64, error) {
-	relevantAddress, err := es.visibililty(ctx, dbTX, eventType, i, topic)
+	relevantAddress, err := es.determineRelevantAddressForTopic(ctx, dbTX, eventType, i, topic)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return 0, fmt.Errorf("could not determine visibility rules. cause: %w", err)
 	}
@@ -202,14 +203,15 @@ func (es *eventsStorage) storeEventTopic(ctx context.Context, dbTX *sql.Tx, even
 			return 0, err
 		}
 	}
-	eventTopicId, err := enclavedb.WriteEventTopic(ctx, dbTX, &topic, relAddressId)
+	eventTopicId, err := enclavedb.WriteEventTopic(ctx, dbTX, &topic, relAddressId, eventType.Id)
 	if err != nil {
 		return 0, fmt.Errorf("could not write event topic. Cause: %w", err)
 	}
 	return eventTopicId, nil
 }
 
-func (es *eventsStorage) visibililty(ctx context.Context, dbTX *sql.Tx, eventType *enclavedb.EventType, i int, topic gethcommon.Hash) (*gethcommon.Address, error) {
+// based on the eventType configuration, this function determines the address that can view events logs containing this topic
+func (es *eventsStorage) determineRelevantAddressForTopic(ctx context.Context, dbTX *sql.Tx, eventType *enclavedb.EventType, i int, topic gethcommon.Hash) (*gethcommon.Address, error) {
 	var relevantAddress *gethcommon.Address
 	switch {
 	case eventType.AutoVisibility:
@@ -298,9 +300,9 @@ func (es *eventsStorage) readContract(ctx context.Context, dbTX *sql.Tx, addr ge
 	})
 }
 
-func (es *eventsStorage) findEventTopic(ctx context.Context, dbTX *sql.Tx, topic []byte) (uint64, *uint64, error) {
+func (es *eventsStorage) findEventTopic(ctx context.Context, dbTX *sql.Tx, topic []byte, eventTypeId uint64) (uint64, *uint64, error) {
 	defer es.logDuration("findEventTopic", measure.NewStopwatch())
-	return enclavedb.ReadEventTopic(ctx, dbTX, topic)
+	return enclavedb.ReadEventTopic(ctx, dbTX, topic, eventTypeId)
 }
 
 func (es *eventsStorage) readEOA(ctx context.Context, dbTX *sql.Tx, addr gethcommon.Address) (*uint64, error) {

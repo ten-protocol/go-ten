@@ -25,11 +25,11 @@ const (
 		"	join batch b on rec.batch=b.sequence " +
 		"join event_type et on e.event_type=et.id " +
 		"	join contract c on et.contract=c.id " +
-		"left join event_topic t1 on e.topic1=t1.id " +
+		"left join event_topic t1 on e.topic1=t1.id and et.id=t1.event_type " +
 		"   left join externally_owned_account eoa1 on t1.rel_address=eoa1.id " +
-		"left join event_topic t2 on e.topic2=t2.id " +
+		"left join event_topic t2 on e.topic2=t2.id and et.id=t2.event_type " +
 		"   left join externally_owned_account eoa2 on t2.rel_address=eoa2.id " +
-		"left join event_topic t3 on e.topic3=t3.id" +
+		"left join event_topic t3 on e.topic3=t3.id and et.id=t1.event_type " +
 		"   left join externally_owned_account eoa3 on t3.rel_address=eoa3.id " +
 		"where b.is_canonical=true "
 )
@@ -60,8 +60,8 @@ func ReadEventType(ctx context.Context, dbTX *sql.Tx, contract *Contract, eventS
 	return &et, err
 }
 
-func WriteEventTopic(ctx context.Context, dbTX *sql.Tx, topic *gethcommon.Hash, addressId *uint64) (uint64, error) {
-	res, err := dbTX.ExecContext(ctx, "insert into event_topic (topic, rel_address) values (?, ?)", topic.Bytes(), addressId)
+func WriteEventTopic(ctx context.Context, dbTX *sql.Tx, topic *gethcommon.Hash, addressId *uint64, eventTypeId uint64) (uint64, error) {
+	res, err := dbTX.ExecContext(ctx, "insert into event_topic (event_type, topic, rel_address) values (?, ?, ?)", eventTypeId, topic.Bytes(), addressId)
 	if err != nil {
 		return 0, err
 	}
@@ -77,10 +77,11 @@ func UpdateEventTypeLifecycle(ctx context.Context, dbTx *sql.Tx, etId uint64, is
 	return err
 }
 
-func ReadEventTopic(ctx context.Context, dbTX *sql.Tx, topic []byte) (uint64, *uint64, error) {
+func ReadEventTopic(ctx context.Context, dbTX *sql.Tx, topic []byte, eventTypeId uint64) (uint64, *uint64, error) {
 	var id uint64
 	var address *uint64
-	err := dbTX.QueryRowContext(ctx, "select id, rel_address from event_topic where topic=? ", topic).Scan(&id, &address)
+	err := dbTX.QueryRowContext(ctx,
+		"select id, rel_address from event_topic where topic=? and event_type=?", topic, eventTypeId).Scan(&id, &address)
 	if errors.Is(err, sql.ErrNoRows) {
 		// make sure the error is converted to obscuro-wide not found error
 		return 0, nil, errutil.ErrNotFound
