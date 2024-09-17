@@ -86,7 +86,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		n.ethNodes[i].Network.(*ethereummock.MockEthNetwork).AllNodes = n.ethNodes
 	}
 
-	err := n.beaconClient.Start("127.0.0.1")
+	err := n.beaconClient.Start(Localhost)
 	if err != nil {
 		panic("couldn't start beacon client")
 	}

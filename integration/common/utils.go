@@ -49,6 +49,7 @@ func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash g
 	var receipt *types.Receipt
 	var err error
 	err = retry.Do(func() error {
+		println("Trying receipt for hash: ", txHash.Hex())
 		receipt, err = client.TransactionReceipt(ctx, txHash)
 		if err != nil && !errors.Is(err, ethereum.NotFound) {
 			return retry.FailFast(err)
