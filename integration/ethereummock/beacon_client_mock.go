@@ -54,6 +54,11 @@ func (f *BeaconMock) Start(host string) error {
 	f.beaconAPIListener = listener
 
 	mux := new(http.ServeMux)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		f.log.Warn("Unhandled request", "method", r.Method, "url", r.URL.String())
+		println("Unhandled request", "method", r.Method, "url", r.URL.String())
+		w.WriteHeader(http.StatusNotFound)
+	})
 	mux.HandleFunc("/eth/v1/beacon/genesis", func(w http.ResponseWriter, r *http.Request) {
 		err := json.NewEncoder(w).Encode(&ethadapter.APIGenesisResponse{
 			Data: ethadapter.ReducedGenesisData{
@@ -61,6 +66,7 @@ func (f *BeaconMock) Start(host string) error {
 			},
 		})
 		if err != nil {
+			println("ERROR GETTING GENESIS: ", f.genesisTime)
 			f.log.Error("genesis handler err", "err", err)
 		}
 	})
@@ -175,6 +181,7 @@ func (f *BeaconMock) LoadBlobs(slot uint64) ([]*kzg4844.Blob, error) {
 	f.blobsLock.Lock()
 	defer f.blobsLock.Unlock()
 
+	println("Loadning blobs at slot: ", slot)
 	blobs, exists := f.blobs[slot]
 	if !exists {
 		return nil, fmt.Errorf("no blobs found for slot %d: %w", slot, ethereum.NotFound)

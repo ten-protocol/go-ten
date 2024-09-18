@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"fmt"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
@@ -21,7 +20,13 @@ func GetTransactionCountValidate(reqParams []any, builder *CallBuilder[uint64, s
 	}
 
 	address := gethcommon.HexToAddress(addressStr)
-
+	//var seqNo uint64
+	//seqNoInt := rpc.registry.HeadBatchSeq()
+	//if seqNoInt == nil {
+	//	seqNo = uint64(0)
+	//} else {
+	//	seqNo = seqNoInt.Uint64()
+	//}
 	seqNo := rpc.registry.HeadBatchSeq().Uint64()
 	if len(reqParams) == 2 {
 		tag, err := gethencoding.ExtractBlockNumber(reqParams[1])

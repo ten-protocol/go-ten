@@ -3,6 +3,7 @@ package enclave
 import (
 	"context"
 	"fmt"
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
 	"math/big"
 	"strings"
 	"sync"
@@ -441,6 +442,8 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		}
 	}
 
+	slot, err := ethadapter.TimeToSlot(block.Time(), ethereummock.MockGenesisBlock.Time(), uint64(1))
+	println("Trying to extract rollups at slot: ", slot)
 	_, rollupTxs, blobsAndHashes, _ := g.sl.L1Publisher().ExtractTenTransactionsAndBlobs(block)
 
 	if len(rollupTxs) < 0 {
@@ -448,6 +451,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	}
 
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txWithReceipts, blobsAndHashes)
+
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {

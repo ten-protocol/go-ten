@@ -10,7 +10,6 @@ import (
 	"github.com/ten-protocol/go-ten/integration/eth2network"
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
 	"github.com/ten-protocol/go-ten/integration/simulation/stats"
-	"testing"
 )
 
 type networkInMemGeth struct {
@@ -29,7 +28,7 @@ func NewNetworkInMemoryGeth(wallets *params.SimWallets) Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *networkInMemGeth) Create(params *params.SimParams, _ *stats.Stats, _ *testing.T) (*RPCHandles, error) {
+func (n *networkInMemGeth) Create(params *params.SimParams, _ *stats.Stats) (*RPCHandles, error) {
 	// kickoff the network with the prefunded wallet addresses
 	params.L1TenData, n.gethClients, n.eth2Network = SetUpGethNetwork(
 		n.wallets,

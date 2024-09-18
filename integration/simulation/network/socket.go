@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/ten-protocol/go-ten/integration/noderunner"
@@ -44,7 +43,7 @@ func NewNetworkOfSocketNodes(wallets *params.SimWallets) Network {
 	}
 }
 
-func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stats, _ *testing.T) (*RPCHandles, error) {
+func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stats) (*RPCHandles, error) {
 	// kickoff the network with the prefunded wallet addresses
 	simParams.L1TenData, n.gethClients, n.eth2Network = SetUpGethNetwork(
 		n.wallets,

@@ -84,6 +84,7 @@ func (br *batchRegistry) OnL1Reorg(_ *BlockIngestionType) {
 		return
 	}
 	br.headBatchSeq = headBatch.SequencerOrderNo
+	println("OnL1ReorgL: ", br.headBatchSeq.Uint64())
 }
 
 func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, txExecResults []*core.TxExecResult) {

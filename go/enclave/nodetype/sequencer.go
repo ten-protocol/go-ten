@@ -342,7 +342,6 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, t
 	}
 
 	s.batchRegistry.OnBatchExecuted(batch.Header, txResults)
-
 	return nil
 }
 
@@ -369,6 +368,7 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 		return nil, fmt.Errorf("failed to sign created rollup: %w", err)
 	}
 
+	println("Created rollup at batch: ", extRollup.Header.LastBatchSeqNo)
 	return extRollup, nil
 }
 

@@ -28,7 +28,7 @@ func setupSimTestLog(simType string) {
 		LogDir:      testLogs,
 		TestType:    "sim-log",
 		TestSubtype: simType,
-		LogLevel:    log.LvlInfo,
+		LogLevel:    log.LvlTrace,
 	})
 }
 

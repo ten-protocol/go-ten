@@ -37,19 +37,19 @@ const (
 	DefaultL1RPCTimeout     = 15 * time.Second
 )
 
-func createMockEthNode(id int, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats, beaconClient *ethereummock.BeaconMock) *ethereummock.Node {
+func createMockEthNode(id int, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats, beaconServer *ethereummock.BeaconMock) *ethereummock.Node {
 	mockEthNetwork := ethereummock.NewMockEthNetwork(avgBlockDuration, avgNetworkLatency, stats)
 	ethereumMockCfg := defaultMockEthNodeCfg(nrNodes, avgBlockDuration)
 	logger := log.New(log.EthereumL1Cmp, int(gethlog.LvlInfo), ethereumMockCfg.LogFile, log.NodeIDKey, id)
 	// create an in memory mock ethereum node responsible with notifying the layer 2 node about blocks
-	miner := ethereummock.NewMiner(gethcommon.BigToAddress(big.NewInt(int64(id))), ethereumMockCfg, mockEthNetwork, stats, beaconClient, logger)
+	miner := ethereummock.NewMiner(gethcommon.BigToAddress(big.NewInt(int64(id))), ethereumMockCfg, mockEthNetwork, stats, beaconServer, logger)
 	mockEthNetwork.CurrentNode = miner
 	return miner
 }
 
-func createBeaconClient(beaconPort int) *ethereummock.BeaconMock {
+func createBeaconServer(beaconPort int) *ethereummock.BeaconMock {
 	logger := log.New(log.EthereumL1Cmp, int(gethlog.LvlInfo), log.NodeIDKey)
-	return ethereummock.NewBeaconMock(logger, uint64(time.Now().Unix()), uint64(12), beaconPort)
+	return ethereummock.NewBeaconMock(logger, uint64(time.Now().Unix()), uint64(1), beaconPort)
 }
 
 func createInMemTenNode(

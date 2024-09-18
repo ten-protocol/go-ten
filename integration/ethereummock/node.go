@@ -66,7 +66,7 @@ type Node struct {
 	mining       bool
 	stats        StatsCollector
 	Resolver     *blockResolverInMem
-	BeaconClient *BeaconMock
+	BeaconServer *BeaconMock
 	db           TxDB
 	subs         map[uuid.UUID]*mockSubscription // active subscription for mock blocks
 	subMu        sync.Mutex
@@ -77,7 +77,7 @@ type Node struct {
 	interrupt    *int32
 
 	p2pCh       chan *types.Block       // this is where blocks received from peers are dropped
-	miningCh    chan *BlockWithBlobs    // this is where blocks created by the mining setup of the current node are dropped
+	miningCh    chan *types.Block       // this is where blocks created by the mining setup of the current node are dropped
 	canonicalCh chan *types.Block       // this is where the main processing routine drops blocks that are canonical
 	mempoolCh   chan *types.Transaction // where l1 transactions to be published in the next block are added
 
@@ -135,8 +135,7 @@ func (m *Node) SendTransaction(tx *types.Transaction) error {
 	return nil
 }
 
-func (m *Node) TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error) {
-	println("TransactionReceipt: ", hash.Hex())
+func (m *Node) TransactionReceipt(_ gethcommon.Hash) (*types.Receipt, error) {
 	// all transactions are immediately processed
 	return &types.Receipt{
 		BlockNumber: big.NewInt(1),
@@ -158,16 +157,19 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 		switch l1tx := decodedTx.(type) {
 		case *ethadapter.L1RollupHashes:
 			println(l1tx)
-			slot, err := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), uint64(12))
+			slot, err := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), uint64(1))
 			if err != nil {
 				m.logger.Error("Failed to calculate slot", "error", err)
 				return nil
 			}
 
-			blobs, err := m.BeaconClient.LoadBlobs(slot)
+			blobs, err := m.BeaconServer.LoadBlobs(slot)
 			if err != nil {
 				m.logger.Error("Error loading blobs", "error", err)
 				return nil
+			}
+			if len(blobs) > 0 {
+				println("blobs loaded from cache")
 			}
 
 			encodedRlp, err := ethadapter.DecodeBlobs(blobs)
@@ -328,24 +330,31 @@ func (m *Node) Start() {
 			// only process blocks if they haven't been processed before
 			if err != nil {
 				if errors.Is(err, errutil.ErrNotFound) {
-					// Fetch blobs for the block
-					slot, err := ethadapter.TimeToSlot(p2pb.Time(), MockGenesisBlock.Time(), uint64(12))
-					if err != nil {
-						println("Failed to calculate slot. Cause: %w", err)
-					}
-					blobs, _ := m.BeaconClient.LoadBlobs(slot)
-					//if err.Error() ethereum.NotFound{
-					//	continue
+					//// Fetch blobs for the block
+					//slot, err := ethadapter.TimeToSlot(p2pb.Time(), MockGenesisBlock.Time(), uint64(1))
+					//if err != nil {
+					//	println("Failed to calculate slot. Cause: %w", err)
 					//}
-					head = m.processBlock(p2pb, head, blobs)
+					//blobs, _ := m.BeaconServer.LoadBlobs(slot)
+					//if len(blobs) > 0 {
+					//	//println("p2pch, blobs found at slot: ", slot)
+					//}
+					head = m.processBlock(p2pb, head)
 				} else {
 					panic(fmt.Errorf("could not retrieve parent block. Cause: %w", err))
 				}
 			}
 
-		case blockWithBlobs := <-m.miningCh: // Received from the local mining
-			mb := blockWithBlobs.Block
-			head = m.processBlock(mb, head, blockWithBlobs.Blobs)
+		case mb := <-m.miningCh: // Received from the local mining
+			//slot, err := ethadapter.TimeToSlot(mb.Time(), MockGenesisBlock.Time(), uint64(1))
+			//if err != nil {
+			//	println("Failed to calculate slot. Cause: %w", err)
+			//}
+			//blobs, _ := m.BeaconServer.LoadBlobs(slot)
+			//if len(blobs) > 0 {
+			//	//println("miningCh, blobs found at slot: ", slot)
+			//}
+			head = m.processBlock(mb, head)
 			if bytes.Equal(head.Hash().Bytes(), mb.Hash().Bytes()) { // Only broadcast if it's the new head
 				p, err := m.Resolver.FetchBlock(context.Background(), mb.ParentHash())
 				if err != nil {
@@ -369,23 +378,12 @@ func (m *Node) Start() {
 	}
 }
 
-func (m *Node) processBlock(b *types.Block, head *types.Block, blobs []*kzg4844.Blob) *types.Block {
+func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	err := m.Resolver.StoreBlock(context.Background(), b, nil)
 	if err != nil {
 		m.logger.Crit("Failed to store block. Cause: %w", err)
 	}
 
-	// only store the blobs if they exist
-	if len(blobs) > 0 {
-		slot, err := ethadapter.TimeToSlot(b.Time(), MockGenesisBlock.Time(), uint64(12))
-		if err != nil {
-			println("Failed to calculate slot. Cause: %w", err)
-		}
-		err = m.BeaconClient.StoreBlobs(slot, blobs)
-		if err != nil {
-			println("Failed to store blobs. Cause: %w", err)
-		}
-	}
 	_, err = m.Resolver.FetchBlock(context.Background(), b.Header().ParentHash)
 	// only proceed if the parent is available
 	if err != nil {
@@ -513,10 +511,18 @@ func (m *Node) startMining() {
 				block, blobs := NewBlock(canonicalBlock, m.l2ID, toInclude)
 				blobPointers := make([]*kzg4844.Blob, len(blobs))
 				for i := range blobs {
-					blobPointers[i] = &blobs[i] // Assign the address of each blob
+					blobPointers[i] = blobs[i] // Assign the address of each blob
 				}
-				// Push the block and blobs into the mining channel
-				m.miningCh <- &BlockWithBlobs{Block: block, Blobs: blobPointers}
+				// Fetch blobs for the block
+				slot, _ := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), uint64(1))
+				if len(blobs) > 0 {
+					println("mining Storing blobs at slot: ", slot)
+					_ = m.BeaconServer.StoreBlobs(slot, blobs)
+					//if err != nil {
+					//	println("Error storing blobs after creating new block", err.Error())
+					//}
+				}
+				m.miningCh <- block
 			})
 		}
 	}
@@ -533,14 +539,13 @@ func (m *Node) P2PGossipTx(tx *types.Transaction) {
 
 func (m *Node) BroadcastTx(tx types.TxData) {
 	m.Network.BroadcastTx(types.NewTx(tx))
-
 }
 
 func (m *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(m.interrupt, 1)
 	time.Sleep(time.Millisecond * 100)
-	_ = m.BeaconClient.Close()
+	_ = m.BeaconServer.Close()
 	m.exitMiningCh <- true
 	m.exitCh <- true
 }
@@ -597,23 +602,24 @@ func NewMiner(
 	cfg MiningConfig,
 	network L1Network,
 	statsCollector StatsCollector,
-	mockBeaconClient *BeaconMock,
+	mockBeaconServer *BeaconMock,
 	logger gethlog.Logger,
 ) *Node {
 	return &Node{
-		l2ID:             id,
-		mining:           true,
-		cfg:              cfg,
-		stats:            statsCollector,
-		Resolver:         NewResolver(),
-		BeaconClient:     mockBeaconClient,
-		db:               NewTxDB(),
-		Network:          network,
-		exitCh:           make(chan bool),
-		exitMiningCh:     make(chan bool),
-		interrupt:        new(int32),
-		p2pCh:            make(chan *types.Block),
-		miningCh:         make(chan *BlockWithBlobs),
+		l2ID:         id,
+		mining:       true,
+		cfg:          cfg,
+		stats:        statsCollector,
+		Resolver:     NewResolver(),
+		BeaconServer: mockBeaconServer,
+		db:           NewTxDB(),
+		Network:      network,
+		exitCh:       make(chan bool),
+		exitMiningCh: make(chan bool),
+		interrupt:    new(int32),
+		p2pCh:        make(chan *types.Block),
+		miningCh:     make(chan *types.Block),
+		//miningCh:         make(chan *BlockWithBlobs),
 		canonicalCh:      make(chan *types.Block),
 		mempoolCh:        make(chan *types.Transaction),
 		headInCh:         make(chan bool),

@@ -29,7 +29,7 @@ func TestGetVersion(t *testing.T) {
 func Test404NotFound(t *testing.T) {
 	l := testlog.Logger()
 
-	beaconApi := NewBeaconMock(l, uint64(1), uint64(12), 8000)
+	beaconApi := NewBeaconMock(l, uint64(1), uint64(1), 8000)
 	t.Cleanup(func() {
 		_ = beaconApi.Close()
 	})
@@ -38,6 +38,8 @@ func Test404NotFound(t *testing.T) {
 	cl := ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), beaconApi.BeaconAddr()))
 
 	var hashes []gethcommon.Hash
+	mockHash := gethcommon.BytesToHash([]byte{1})
+	hashes = append(hashes, mockHash)
 	_, err := cl.FetchBlobs(context.Background(), &types.Header{Number: big.NewInt(10), Time: 120}, hashes)
 	require.ErrorIs(t, err, ethereum.NotFound)
 }

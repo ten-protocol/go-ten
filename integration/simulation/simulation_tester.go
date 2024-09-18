@@ -35,7 +35,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	fmt.Printf("Creating network\n")
 	testlog.Logger().Info("Creating network")
 	defer netw.TearDown()
-	networkClients, err := netw.Create(params, stats, t)
+	networkClients, err := netw.Create(params, stats)
 	// Return early if the network was not created
 	if err != nil {
 		fmt.Printf("Could not run test: %s\n", err)

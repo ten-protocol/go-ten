@@ -154,5 +154,7 @@ func TimeToSlot(timestamp uint64, genesisTime uint64, secondsPerSlot uint64) (ui
 	if timestamp < genesisTime {
 		return 0, fmt.Errorf("provided timestamp (%v) precedes genesis time (%v)", timestamp, genesisTime)
 	}
+	//slot := (timestamp - genesisTime) / secondsPerSlot
+	//println("TimeToSlot timestamp: ", timestamp, " genesis: ", genesisTime, " slot: ", slot)
 	return (timestamp - genesisTime) / secondsPerSlot, nil
 }

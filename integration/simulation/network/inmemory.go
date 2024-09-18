@@ -1,7 +1,6 @@
 package network
 
 import (
-	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -21,7 +20,7 @@ import (
 type basicNetworkOfInMemoryNodes struct {
 	ethNodes     []*ethereummock.Node
 	l2Clients    []rpc.Client
-	beaconClient *ethereummock.BeaconMock
+	beaconServer *ethereummock.BeaconMock
 }
 
 func NewBasicNetworkOfInMemoryNodes() Network {
@@ -29,7 +28,7 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats, t *testing.T) (*RPCHandles, error) {
+func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereummock.Node, params.NumberOfNodes)
 	tenNodes := make([]*container.HostContainer, params.NumberOfNodes)
@@ -47,14 +46,14 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	// dummyMgmtContractAddress := datagenerator.RandomAddress()
 	// params.MgmtContractLib
 
-	n.beaconClient = createBeaconClient(params.L1BeaconPort)
+	n.beaconServer = createBeaconServer(params.L1BeaconPort)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
 		incomingP2PDisabled := !isGenesis && i == params.NodeWithInboundP2PDisabled
 
 		// create the in memory l1 and l2 node
-		miner := createMockEthNode(i, params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats, n.beaconClient)
+		miner := createMockEthNode(i, params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats, n.beaconServer)
 		agg := createInMemTenNode(
 			int64(i),
 			isGenesis,
@@ -86,10 +85,6 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		n.ethNodes[i].Network.(*ethereummock.MockEthNetwork).AllNodes = n.ethNodes
 	}
 
-	err := n.beaconClient.Start(Localhost)
-	if err != nil {
-		panic("couldn't start beacon client")
-	}
 	// The sequence of starting the nodes is important to catch various edge cases.
 	// Here we first start the mock layer 1 nodes, with a pause between them of a fraction of a block duration.
 	// The reason is to make sure that they catch up correctly.
@@ -119,6 +114,10 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
 
+	err := n.beaconServer.Start(Localhost)
+	if err != nil {
+		panic("couldn't start beacon server")
+	}
 	return &RPCHandles{
 		EthClients:     l1Clients,
 		TenClients:     tenClients,
@@ -129,7 +128,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	StopTenNodes(n.l2Clients)
-	_ = n.beaconClient.Close()
+	_ = n.beaconServer.Close()
 	for _, node := range n.ethNodes {
 		temp := node
 		go temp.Stop()
