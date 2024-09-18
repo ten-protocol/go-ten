@@ -5,8 +5,8 @@ import (
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
-	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"math/big"
 	"net/http"
 	"testing"
@@ -17,7 +17,7 @@ import (
 )
 
 func TestGetVersion(t *testing.T) {
-	l := testlog.Logger()
+	l := gethlog.New()
 
 	beaconApi := NewBeaconMock(l, uint64(1), uint64(1), 8000)
 	t.Cleanup(func() {
@@ -26,8 +26,48 @@ func TestGetVersion(t *testing.T) {
 	require.NoError(t, beaconApi.Start("127.0.0.1"))
 }
 
+func TestFetchBlobs(t *testing.T) {
+	l := gethlog.New()
+
+	beaconApi := NewBeaconMock(l, uint64(1), uint64(1), 8000)
+	t.Cleanup(func() {
+		_ = beaconApi.Close()
+	})
+	require.NoError(t, beaconApi.Start("127.0.0.1"))
+
+	indices := []uint64{5, 7, 2}
+
+	hash0, sidecar0 := makeTestBlobSidecar(indices[0])
+	hash1, sidecar1 := makeTestBlobSidecar(indices[1])
+	hash2, sidecar2 := makeTestBlobSidecar(indices[2])
+
+	// store the blobs for 2 sidecars in slot 0
+	blobs0 := []*kzg4844.Blob{&sidecar0.Blob, &sidecar1.Blob}
+	hashes0 := []gethcommon.Hash{hash0, hash1}
+	err := beaconApi.StoreBlobs(0, blobs0)
+	if err != nil {
+		t.Errorf("error storing blobs at slot 1: %s", err)
+	}
+
+	// store the blob in slot 2
+	blobs1 := []*kzg4844.Blob{&sidecar2.Blob}
+	hashes1 := []gethcommon.Hash{hash2}
+	err = beaconApi.StoreBlobs(4, blobs1)
+	if err != nil {
+		t.Errorf("error storing blobs at slot 2: %s", err)
+	}
+
+	cl := ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), beaconApi.BeaconAddr()))
+
+	foundBlobs0, err := cl.FetchBlobs(context.Background(), &types.Header{Time: 1}, hashes0)
+	foundBlobs1, err := cl.FetchBlobs(context.Background(), &types.Header{Time: 5}, hashes1)
+
+	require.Equal(t, blobs0, foundBlobs0)
+	require.Equal(t, blobs1, foundBlobs1)
+}
+
 func Test404NotFound(t *testing.T) {
-	l := testlog.Logger()
+	l := gethlog.New()
 
 	beaconApi := NewBeaconMock(l, uint64(1), uint64(1), 8000)
 	t.Cleanup(func() {

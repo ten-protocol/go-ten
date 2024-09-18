@@ -137,7 +137,6 @@ func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64)
 	var reqQuery url.Values
 	var resp APIGetBlobSidecarsResponse
 
-	println("BEACON FUCKIN BLOB SIDE CARS SLOT: ", slot)
 	err := bc.request(ctx, &resp, reqPath, reqQuery)
 	if err != nil {
 		return APIGetBlobSidecarsResponse{}, err
@@ -194,13 +193,11 @@ func (cl *L1BeaconClient) GetTimeToSlotFn(ctx context.Context) (TimeToSlotFn, er
 	}
 
 	genesis, err := cl.cl.BeaconGenesis(ctx)
-	println("GENESIS: ", genesis.Data.GenesisTime)
 	if err != nil {
 		return nil, err
 	}
 
 	config, err := cl.cl.ConfigSpec(ctx)
-	println("CONFIG: ", config.Data.SecondsPerSlot)
 	if err != nil {
 		return nil, err
 	}
@@ -247,12 +244,10 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 		return nil, fmt.Errorf("failed to get time to slot function: %w", err)
 	}
 	slot, err := slotFn(b.Time)
-	println("GetBlobSidecars: slotFn", slot)
 	if err != nil {
-		return nil, fmt.Errorf("error in converting ref.Time to slot: %w", err)
+		return nil, fmt.Errorf("error in converting b.Time to slot: %w", err)
 	}
 
-	println("Fetching sidecar at slot: ", slot)
 	resp, err := cl.fetchSidecars(ctx, slot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, b, err)
@@ -263,6 +258,9 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 	for _, h := range hashes {
 		for _, sidecar := range resp.Data {
 			versionedHash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
+			println("Looking for versioned hash: ", h.Hex())
+			println("Sidecars with versioned hash: ", versionedHash.Hex())
+			println("")
 			if h == versionedHash {
 				sidecars = append(sidecars, sidecar)
 				break
@@ -287,8 +285,6 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 // blob's validity by checking its proof against the commitment, and confirming the commitment
 // hashes to the expected value. Returns error if any blob is found invalid.
 func (cl *L1BeaconClient) FetchBlobs(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
-	slot, err := TimeToSlot(b.Time, 0, uint64(1))
-	println("FETCHING BLOBS AT SLOT: ", slot)
 	blobSidecars, err := cl.GetBlobSidecars(ctx, b, hashes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get blob sidecars for Block Header %s: %w", b.Hash().Hex(), err)

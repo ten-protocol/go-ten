@@ -153,21 +153,12 @@ func (br *BlockAndReceipts) Receipts() L1Receipts {
 // RelevantTransactions - returns slice containing only the transactions that have receipts with successful status.
 func (br *BlockAndReceipts) RelevantTransactions() *types.Transactions {
 	if br.successfulTransactions != nil {
-		stx := br.successfulTransactions
-		for _, tx := range *stx {
-			if tx.Type() == 0x03 {
-				println("SUCCESSFUL BLOB TX 1")
-			}
-		}
 		return br.successfulTransactions
 	}
 
 	st := make(types.Transactions, 0)
 	for _, tx := range br.TxsWithReceipts {
 		if tx.Receipt.Status == types.ReceiptStatusSuccessful {
-			if tx.Tx.Type() == 0x03 {
-				println("SUCCESSFUL BLOB TX 2")
-			}
 			st = append(st, tx.Tx)
 		}
 	}

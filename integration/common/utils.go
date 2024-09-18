@@ -48,7 +48,6 @@ func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
 func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash gethcommon.Hash, timeout time.Duration) error {
 	var receipt *types.Receipt
 	var err error
-	println("Trying receipt for hash: ", txHash.Hex())
 	err = retry.Do(func() error {
 		receipt, err = client.TransactionReceipt(ctx, txHash)
 		if err != nil && !errors.Is(err, ethereum.NotFound) {
@@ -116,7 +115,6 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 		}
 
 		err = faucetClient.SendTransaction(ctx, signedTx)
-		println("Sent tx hash: ", signedTx.Hash().Hex())
 		if err != nil {
 			var txJSON []byte
 			txJSON, _ = signedTx.MarshalJSON()
@@ -126,7 +124,7 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 		txHashes[idx] = signedTx.Hash()
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(15 * time.Second)
 	// Then we await the receipts in parallel.
 	wg := sync.WaitGroup{}
 	for _, txHash := range txHashes {
@@ -135,7 +133,6 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 			defer wg.Done()
 			err := AwaitReceipt(ctx, faucetClient, txHash, timeout)
 			if err != nil {
-				println("RECEIPT TIMED OUT")
 				panic(fmt.Sprintf("faucet transfer transaction %s unsuccessful. Cause: %s", txHash, err))
 			}
 		}(txHash)

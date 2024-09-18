@@ -33,6 +33,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
+const SecondsPerSlot = uint64(12)
+
 type L1Network interface {
 	// BroadcastBlock - send the block and the parent to make sure there are no gaps
 	BroadcastBlock(b common.EncodedL1Block, p common.EncodedL1Block)
@@ -157,7 +159,9 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 		switch l1tx := decodedTx.(type) {
 		case *ethadapter.L1RollupHashes:
 			println(l1tx)
-			slot, err := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), uint64(1))
+			slot, err := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), uint64(12))
+			println("block time: ", block.Time())
+			println("genesis time: ", MockGenesisBlock.Time())
 			if err != nil {
 				m.logger.Error("Failed to calculate slot", "error", err)
 				return nil
@@ -330,15 +334,6 @@ func (m *Node) Start() {
 			// only process blocks if they haven't been processed before
 			if err != nil {
 				if errors.Is(err, errutil.ErrNotFound) {
-					//// Fetch blobs for the block
-					//slot, err := ethadapter.TimeToSlot(p2pb.Time(), MockGenesisBlock.Time(), uint64(1))
-					//if err != nil {
-					//	println("Failed to calculate slot. Cause: %w", err)
-					//}
-					//blobs, _ := m.BeaconServer.LoadBlobs(slot)
-					//if len(blobs) > 0 {
-					//	//println("p2pch, blobs found at slot: ", slot)
-					//}
 					head = m.processBlock(p2pb, head)
 				} else {
 					panic(fmt.Errorf("could not retrieve parent block. Cause: %w", err))
@@ -346,14 +341,6 @@ func (m *Node) Start() {
 			}
 
 		case mb := <-m.miningCh: // Received from the local mining
-			//slot, err := ethadapter.TimeToSlot(mb.Time(), MockGenesisBlock.Time(), uint64(1))
-			//if err != nil {
-			//	println("Failed to calculate slot. Cause: %w", err)
-			//}
-			//blobs, _ := m.BeaconServer.LoadBlobs(slot)
-			//if len(blobs) > 0 {
-			//	//println("miningCh, blobs found at slot: ", slot)
-			//}
 			head = m.processBlock(mb, head)
 			if bytes.Equal(head.Hash().Bytes(), mb.Hash().Bytes()) { // Only broadcast if it's the new head
 				p, err := m.Resolver.FetchBlock(context.Background(), mb.ParentHash())
@@ -508,19 +495,15 @@ func (m *Node) startMining() {
 					return
 				}
 				// Generate the new block and the associated blobs
-				block, blobs := NewBlock(canonicalBlock, m.l2ID, toInclude)
+				block, blobs := NewBlock(canonicalBlock, m.l2ID, toInclude, uint64(time.Now().Unix()))
 				blobPointers := make([]*kzg4844.Blob, len(blobs))
 				for i := range blobs {
 					blobPointers[i] = blobs[i] // Assign the address of each blob
 				}
 				// Fetch blobs for the block
-				slot, _ := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), uint64(1))
+				slot, _ := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), SecondsPerSlot)
 				if len(blobs) > 0 {
-					println("mining Storing blobs at slot: ", slot)
 					_ = m.BeaconServer.StoreBlobs(slot, blobs)
-					//if err != nil {
-					//	println("Error storing blobs after creating new block", err.Error())
-					//}
 				}
 				m.miningCh <- block
 			})

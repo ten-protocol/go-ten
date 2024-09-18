@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 const kzgBlobSize = 131072
@@ -30,18 +31,18 @@ type BeaconMock struct {
 	beaconSrv         *http.Server
 	beaconAPIListener net.Listener
 
-	genesisTime uint64
-	blockTime   uint64
-	port        int
+	genesisTime    uint64
+	secondsPerSlot uint64
+	port           int
 }
 
-func NewBeaconMock(log log.Logger, genesisTime uint64, blockTime uint64, port int) *BeaconMock {
+func NewBeaconMock(log log.Logger, genesisTime uint64, secondsPerSlot uint64, port int) *BeaconMock {
 	return &BeaconMock{
-		log:         log,
-		genesisTime: genesisTime,
-		blockTime:   blockTime,
-		port:        port,
-		blobs:       make(map[uint64][]*kzg4844.Blob),
+		log:            log,
+		genesisTime:    genesisTime,
+		secondsPerSlot: secondsPerSlot,
+		port:           port,
+		blobs:          make(map[uint64][]*kzg4844.Blob),
 	}
 }
 
@@ -55,8 +56,6 @@ func (f *BeaconMock) Start(host string) error {
 
 	mux := new(http.ServeMux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		f.log.Warn("Unhandled request", "method", r.Method, "url", r.URL.String())
-		println("Unhandled request", "method", r.Method, "url", r.URL.String())
 		w.WriteHeader(http.StatusNotFound)
 	})
 	mux.HandleFunc("/eth/v1/beacon/genesis", func(w http.ResponseWriter, r *http.Request) {
@@ -66,14 +65,13 @@ func (f *BeaconMock) Start(host string) error {
 			},
 		})
 		if err != nil {
-			println("ERROR GETTING GENESIS: ", f.genesisTime)
 			f.log.Error("genesis handler err", "err", err)
 		}
 	})
 	mux.HandleFunc("/eth/v1/config/spec", func(w http.ResponseWriter, r *http.Request) {
 		err := json.NewEncoder(w).Encode(&ethadapter.APIConfigResponse{
 			Data: ethadapter.ReducedConfigData{
-				SecondsPerSlot: ethadapter.Uint64String(f.blockTime),
+				SecondsPerSlot: ethadapter.Uint64String(f.secondsPerSlot),
 			},
 		})
 		if err != nil {
@@ -162,16 +160,33 @@ func (f *BeaconMock) Start(host string) error {
 			f.log.Error("blobs handler err", "err", err)
 		}
 	})
+	f.beaconSrv = &http.Server{
+		Handler:           mux,
+		ReadTimeout:       time.Second * 20,
+		ReadHeaderTimeout: time.Second * 20,
+		WriteTimeout:      time.Second * 20,
+		IdleTimeout:       time.Second * 20,
+	}
+	go func() {
+		if err := f.beaconSrv.Serve(f.beaconAPIListener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			f.log.Error("failed to start fake-pos beacon server for blobs testing", "err", err)
+		}
+	}()
 	return nil
 }
 
 // StoreBlobs stores the array of blobs against the slot number.
 func (f *BeaconMock) StoreBlobs(slot uint64, blobs []*kzg4844.Blob) error {
+	for _, blob := range blobs {
+		commitment, _ := kzg4844.BlobToCommitment(blob)
+		versionedHash := ethadapter.KZGToVersionedHash(commitment)
+		println("Storing Blob wth versioned hash: ", versionedHash.Hex(), " at slot: ", slot)
+	}
 	f.blobsLock.Lock()
 	defer f.blobsLock.Unlock()
 
 	if len(blobs) > 0 {
-		f.blobs[slot] = blobs
+		f.blobs[slot] = append(f.blobs[slot], blobs...)
 	}
 	return nil
 }
@@ -181,11 +196,11 @@ func (f *BeaconMock) LoadBlobs(slot uint64) ([]*kzg4844.Blob, error) {
 	f.blobsLock.Lock()
 	defer f.blobsLock.Unlock()
 
-	println("Loadning blobs at slot: ", slot)
 	blobs, exists := f.blobs[slot]
 	if !exists {
 		return nil, fmt.Errorf("no blobs found for slot %d: %w", slot, ethereum.NotFound)
 	}
+	//for _, blob := ras
 	return blobs, nil
 }
 

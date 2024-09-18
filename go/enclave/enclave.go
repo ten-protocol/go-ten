@@ -429,17 +429,10 @@ func (e *enclaveImpl) SubmitL1Block(ctx context.Context, blockHeader *types.Head
 
 	// If the block and receipts do not match, reject the block.
 	br, err := common.ParseBlockAndReceipts(blockHeader, receipts)
-	//if len(receipts) > 0 {
-	//	println("Enclave: SubmitL1Block, tx: ", receipts[0].Tx.Hash().Hex())
-	//	println("Enclave: SubmitL1Block, block hash: ", blockHeader.Hash().Hex())
-	//}
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	if len(blobs) > 0 {
-		println("ingesting L1 block with blobs: ", blobs[0])
-	}
 	result, err := e.ingestL1Block(ctx, br, blobs)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
@@ -514,7 +507,6 @@ func (e *enclaveImpl) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested SubmitBatch with the enclave stopping"))
 	}
-	//println("submitting enclave l2 batch")
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "SubmitBatch call completed.", log.BatchHashKey, extBatch.Hash())
 
 	e.logger.Info("Received new p2p batch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)

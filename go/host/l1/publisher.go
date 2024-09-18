@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -148,9 +147,7 @@ func (p *Publisher) GetBundleRangeFromManagementContract(lastRollupNumber *big.I
 }
 
 func (p *Publisher) Stop() error {
-	p.logger.Info("Publisher Stop called")
-	println("Publisher Stop called")
-	p.cancelSendingCtx()
+	p.sendingCtxCancel()
 	return nil
 }
 
@@ -294,7 +291,6 @@ func (p *Publisher) ExtractTenTransactionsAndBlobs(block *types.Block) ([]*ethad
 		if !ok {
 			continue
 		}
-		println("trying to fetch blobs")
 		blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), rollupHashes.BlobHashes)
 		if err != nil {
 			p.logger.Crit("could not fetch blobs publisher", log.ErrKey, err)
@@ -543,10 +539,4 @@ func (p *Publisher) awaitTransaction(tx *types.Transaction) error {
 		return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
 	}
 	return nil
-}
-
-func (p *Publisher) cancelSendingCtx() {
-	p.logger.Info("Canceling sending context", "stack", string(debug.Stack()))
-	println("Canceling sending context", "stack", string(debug.Stack()))
-	p.sendingCtxCancel()
 }

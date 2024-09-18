@@ -49,7 +49,7 @@ func createMockEthNode(id int, nrNodes int, avgBlockDuration time.Duration, avgN
 
 func createBeaconServer(beaconPort int) *ethereummock.BeaconMock {
 	logger := log.New(log.EthereumL1Cmp, int(gethlog.LvlInfo), log.NodeIDKey)
-	return ethereummock.NewBeaconMock(logger, uint64(time.Now().Unix()), uint64(1), beaconPort)
+	return ethereummock.NewBeaconMock(logger, uint64(0), ethereummock.SecondsPerSlot, beaconPort)
 }
 
 func createInMemTenNode(
