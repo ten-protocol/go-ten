@@ -39,13 +39,13 @@ type EventType struct {
 	EventSignature                              gethcommon.Hash
 	AutoVisibility                              bool
 	AutoPublic                                  *bool // true -when the event is autodetected as public
-	Public                                      bool
+	ConfigPublic                                bool
 	Topic1CanView, Topic2CanView, Topic3CanView *bool
 	SenderCanView                               *bool
 }
 
 func (et EventType) IsPublic() bool {
-	return (et.Contract.Transparent != nil && *et.Contract.Transparent) || et.Public
+	return (et.Contract.Transparent != nil && *et.Contract.Transparent) || et.ConfigPublic
 }
 
 func (et EventType) IsTopicRelevant(topicNo int) bool {

@@ -73,7 +73,7 @@ func (es *eventsStorage) storeNewContractWithEventTypeConfigs(ctx context.Contex
 			Contract:       c,
 			EventSignature: eventSig,
 			AutoVisibility: eventCfg.AutoConfig,
-			Public:         eventCfg.Public,
+			ConfigPublic:   eventCfg.Public,
 			Topic1CanView:  eventCfg.Topic1CanView,
 			Topic2CanView:  eventCfg.Topic2CanView,
 			Topic3CanView:  eventCfg.Topic3CanView,
@@ -139,7 +139,7 @@ func (es *eventsStorage) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTx
 		return fmt.Errorf("could not write event log. Cause: %w", err)
 	}
 
-	if !eventType.Public && eventType.AutoVisibility && eventType.AutoPublic == nil {
+	if !eventType.ConfigPublic && eventType.AutoVisibility && eventType.AutoPublic == nil {
 		isPublic := true
 		for _, topicId := range topicIds {
 			if topicId != nil {
@@ -169,11 +169,11 @@ func (es *eventsStorage) storeAutoConfigEventType(ctx context.Context, dbTX *sql
 	eventType := enclavedb.EventType{
 		Contract:       contract,
 		EventSignature: l.Topics[0],
-		Public:         contract.IsTransparent(),
+		ConfigPublic:   contract.IsTransparent(),
 	}
 
 	// event types that are not public - will have the default rules
-	if !eventType.Public {
+	if !eventType.ConfigPublic {
 		eventType.AutoVisibility = true
 	}
 

@@ -133,7 +133,7 @@ create table if not exists tendb.event_type
     event_sig       binary(32) NOT NULL,
     auto_visibility boolean    NOT NULL,
     auto_public     boolean,
-    public          boolean    NOT NULL,
+    config_public   boolean    NOT NULL,
     topic1_can_view boolean,
     topic2_can_view boolean,
     topic3_can_view boolean,

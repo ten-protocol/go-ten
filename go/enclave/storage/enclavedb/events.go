@@ -35,8 +35,8 @@ const (
 )
 
 func WriteEventType(ctx context.Context, dbTX *sql.Tx, et *EventType) (uint64, error) {
-	res, err := dbTX.ExecContext(ctx, "insert into event_type (contract, event_sig, auto_visibility,auto_public, public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view) values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		et.Contract.Id, et.EventSignature.Bytes(), et.AutoVisibility, et.AutoPublic, et.Public, et.Topic1CanView, et.Topic2CanView, et.Topic3CanView, et.SenderCanView)
+	res, err := dbTX.ExecContext(ctx, "insert into event_type (contract, event_sig, auto_visibility,auto_public, config_public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view) values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		et.Contract.Id, et.EventSignature.Bytes(), et.AutoVisibility, et.AutoPublic, et.ConfigPublic, et.Topic1CanView, et.Topic2CanView, et.Topic3CanView, et.SenderCanView)
 	if err != nil {
 		return 0, err
 	}
@@ -50,9 +50,9 @@ func WriteEventType(ctx context.Context, dbTX *sql.Tx, et *EventType) (uint64, e
 func ReadEventType(ctx context.Context, dbTX *sql.Tx, contract *Contract, eventSignature gethcommon.Hash) (*EventType, error) {
 	var et EventType = EventType{Contract: contract}
 	err := dbTX.QueryRowContext(ctx,
-		"select id, event_sig, auto_visibility, auto_public, public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view from event_type where contract=? and event_sig=?",
+		"select id, event_sig, auto_visibility, auto_public, config_public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view from event_type where contract=? and event_sig=?",
 		contract.Id, eventSignature.Bytes(),
-	).Scan(&et.Id, &et.EventSignature, &et.AutoVisibility, &et.AutoPublic, &et.Public, &et.Topic1CanView, &et.Topic2CanView, &et.Topic3CanView, &et.SenderCanView)
+	).Scan(&et.Id, &et.EventSignature, &et.AutoVisibility, &et.AutoPublic, &et.ConfigPublic, &et.Topic1CanView, &et.Topic2CanView, &et.Topic3CanView, &et.SenderCanView)
 	if errors.Is(err, sql.ErrNoRows) {
 		// make sure the error is converted to obscuro-wide not found error
 		return nil, errutil.ErrNotFound
@@ -163,7 +163,7 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 	var queryParams []any
 
 	// todo - should we return the config here?
-	query := "select eoa1.address, eoa2.address, eoa3.address, et.public, et.auto_public, et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address " +
+	query := "select eoa1.address, eoa2.address, eoa3.address, et.config_public, et.auto_public, et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address " +
 		baseEventsJoin +
 		" AND tx.hash = ? "
 
@@ -187,12 +187,12 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 
 		var t0, t1, t2, t3 sql.NullString
 		var relAddress1, relAddress2, relAddress3 []byte
-		var public, autoPublic bool
+		var config_public, autoPublic bool
 		err = rows.Scan(
 			&relAddress1,
 			&relAddress2,
 			&relAddress3,
-			&public,
+			&config_public,
 			&autoPublic,
 			&t0, &t1, &t2, &t3,
 			&l.Data,
@@ -203,7 +203,7 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 			&l.Index,
 			&l.Address,
 		)
-		l.LifecycleEvent = public || autoPublic
+		l.LifecycleEvent = config_public || autoPublic
 		if err != nil {
 			return nil, fmt.Errorf("could not load log entry from db: %w", err)
 		}
@@ -295,8 +295,8 @@ func visibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
 	visibQuery := "AND ("
 	visibParams := make([]any, 0)
 
-	// everyone can query public events
-	visibQuery += " et.public=true "
+	// everyone can query config_public events
+	visibQuery += " et.config_public=true "
 
 	// For event logs that have no explicit configuration, an event is visible be all account owners whose addresses are used in any topic
 	visibQuery += " OR (et.auto_visibility=true AND (et.auto_public=true OR (eoa1.address=? OR eoa2.address=? OR eoa3.address=?))) "
@@ -306,7 +306,7 @@ func visibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
 
 	// Configured events that are not public specify explicitly which event topics are addresses empowered to view that event
 	visibQuery += " OR (" +
-		"et.auto_visibility=false AND et.public=false AND " +
+		"et.auto_visibility=false AND et.config_public=false AND " +
 		"  (" +
 		"       (et.topic1_can_view AND eoa1.address=?) " +
 		"    OR (et.topic2_can_view AND eoa2.address=?) " +
