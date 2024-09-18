@@ -192,7 +192,7 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 	return (*big.Int)(&result), err
 }
 
-func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria common.FilterCriteria, ch chan types.Log) (ethereum.Subscription, error) {
+func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
 	return ac.rpcClient.Subscribe(ctx, rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeLogs, filterCriteria)
 }
 
@@ -248,6 +248,46 @@ func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxDat
 		Value:    unEstimatedTx.Value(),
 		Data:     unEstimatedTx.Data(),
 	}
+}
+
+func (ac *AuthObsClient) CodeAt(context.Context, gethcommon.Address, *big.Int) ([]byte, error) {
+	panic("not implemented")
+
+	return nil, errors.New("not implemented")
+}
+
+func (ac *AuthObsClient) FilterLogs(context.Context, ethereum.FilterQuery) ([]types.Log, error) {
+	panic("not implemented")
+
+	return nil, errors.New("not implemented")
+}
+
+func (ac *AuthObsClient) HeaderByNumber(context.Context, *big.Int) (*types.Header, error) {
+	panic("not implemented")
+
+	return nil, errors.New("not implemented")
+}
+
+func (ac *AuthObsClient) PendingCodeAt(context.Context, gethcommon.Address) ([]byte, error) {
+	panic("not implemented")
+
+	return nil, errors.New("not implemented")
+}
+
+func (ac *AuthObsClient) PendingNonceAt(context.Context, gethcommon.Address) (uint64, error) {
+	panic("not implemented")
+
+	return 0, errors.New("not implemented")
+}
+
+func (ac *AuthObsClient) SuggestGasPrice(context.Context) (*big.Int, error) {
+	panic("not implemented")
+	return nil, errors.New("not implemented")
+}
+
+// SuggestGasTipCap implements bind.ContractBackend.
+func (ac *AuthObsClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	panic("unimplemented")
 }
 
 // GetPrivateTransactions retrieves the receipts for the specified account (must be registered on this client), returns requested range of receipts and the total number of receipts for that acc

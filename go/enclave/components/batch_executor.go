@@ -18,6 +18,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/system"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -50,6 +51,7 @@ type batchExecutor struct {
 	logger               gethlog.Logger
 	gasOracle            gas.Oracle
 	chainConfig          *params.ChainConfig
+	systemContracts      system.SystemContractCallbacks
 
 	// stateDBMutex - used to protect calls to stateDB.Commit as it is not safe for async access.
 	stateDBMutex sync.Mutex
@@ -67,6 +69,7 @@ func NewBatchExecutor(
 	gasOracle gas.Oracle,
 	chainConfig *params.ChainConfig,
 	batchGasLimit uint64,
+	systemContracts system.SystemContractCallbacks,
 	logger gethlog.Logger,
 ) BatchExecutor {
 	return &batchExecutor{
@@ -81,6 +84,7 @@ func NewBatchExecutor(
 		gasOracle:            gasOracle,
 		stateDBMutex:         sync.Mutex{},
 		batchGasLimit:        batchGasLimit,
+		systemContracts:      systemContracts,
 	}
 }
 
@@ -200,14 +204,45 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 		return nil, fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
 
+	onBlockTx, err := executor.systemContracts.CreateOnBatchEndTransaction(ctx, stateDB, batch, txReceipts)
+	if err != nil {
+		return nil, fmt.Errorf("could not create on block end transaction. Cause: %w", err)
+	}
+	if onBlockTx != nil {
+		onBlockPricedTxes := common.L2PricedTransactions{
+			common.L2PricedTransaction{
+				Tx:             onBlockTx,
+				PublishingCost: big.NewInt(0),
+			},
+		}
+		onBlockSuccessfulTx, _, onBlockReceipt, _, err := executor.processTransactions(ctx, batch, len(successfulTxs), onBlockPricedTxes, stateDB, context.ChainConfig, true)
+		if err != nil {
+			// todo: remove once feature finished
+			panic(err)
+			return nil, fmt.Errorf("could not process on block end transaction hook. Cause: %w", err)
+		}
+		if err = executor.verifySyntheticTransactionsSuccess(onBlockPricedTxes, onBlockSuccessfulTx, onBlockReceipt); err != nil {
+			// todo: remove once feature finished
+			panic(err)
+			return nil, fmt.Errorf("batch computation failed due to onBlock hook reverting. Cause: %w", err)
+		}
+	} else if batch.Header.SequencerOrderNo.Uint64() > 2 {
+		executor.logger.Crit("Bootstrapping of network failed! System contract hooks have not been initialised after genesis.")
+	}
+
 	// fromTxIndex - Here we start from the len of the successful transactions; As long as we have the exact same successful transactions in a batch,
 	// we will start from the same place.
-	ccSuccessfulTxs, _, ccReceipts, createdContractsSyn, err := executor.processTransactions(ctx, batch, len(successfulTxs), syntheticTransactions, stateDB, context.ChainConfig, true)
+	onBatchTxOffset := 0
+	if onBlockTx != nil {
+		onBatchTxOffset = 1
+	}
+
+	ccSuccessfulTxs, _, ccReceipts, createdContractsSyn, err := executor.processTransactions(ctx, batch, len(successfulTxs)+onBatchTxOffset, syntheticTransactions, stateDB, context.ChainConfig, true)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = executor.verifyInboundCrossChainTransactions(syntheticTransactions, ccSuccessfulTxs, ccReceipts); err != nil {
+	if err = executor.verifySyntheticTransactionsSuccess(syntheticTransactions, ccSuccessfulTxs, ccReceipts); err != nil {
 		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
 	}
 
@@ -245,23 +280,38 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 			l.BlockHash = copyBatch.Hash()
 		}
 	}
+
+	commitFunc := func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
+		executor.stateDBMutex.Lock()
+		defer executor.stateDBMutex.Unlock()
+		h, err := stateDB.Commit(copyBatch.Number().Uint64(), deleteEmptyObjects)
+		if err != nil {
+			return gethcommon.Hash{}, fmt.Errorf("commit failure for batch %d. Cause: %w", batch.SeqNo(), err)
+		}
+		trieDB := executor.storage.TrieDB()
+		err = trieDB.Commit(h, false)
+
+		// When system contract deployment genesis batch is commited, initialize executor's addresses for the hooks.
+		// Further restarts will call into Load() which will take the receipts for batch number 2 (which should never be deleted)
+		// and reinitialize them.
+		if err == nil && batch.Header.SequencerOrderNo.Uint64() == 2 {
+			return h, executor.initializeSystemContracts(ctx, batch, allReceipts)
+		}
+
+		return h, err
+	}
+
 	maps.Copy(createdContracts, createdContractsSyn)
 	return &ComputedBatch{
 		Batch:            &copyBatch,
 		Receipts:         allReceipts,
 		CreatedContracts: createdContracts,
-		Commit: func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
-			executor.stateDBMutex.Lock()
-			defer executor.stateDBMutex.Unlock()
-			h, err := stateDB.Commit(copyBatch.Number().Uint64(), deleteEmptyObjects)
-			if err != nil {
-				return gethcommon.Hash{}, fmt.Errorf("commit failure for batch %d. Cause: %w", batch.SeqNo(), err)
-			}
-			trieDB := executor.storage.TrieDB()
-			err = trieDB.Commit(h, false)
-			return h, err
-		},
+		Commit:           commitFunc,
 	}, nil
+}
+
+func (executor *batchExecutor) initializeSystemContracts(_ context.Context, batch *core.Batch, receipts types.Receipts) error {
+	return executor.systemContracts.Initialize(batch, receipts)
 }
 
 func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Batch) (types.Receipts, map[gethcommon.Hash][]*gethcommon.Address, error) {
@@ -414,7 +464,7 @@ func (executor *batchExecutor) populateHeader(batch *core.Batch, receipts types.
 	}
 }
 
-func (executor *batchExecutor) verifyInboundCrossChainTransactions(transactions common.L2PricedTransactions, executedTxs types.Transactions, receipts types.Receipts) error {
+func (executor *batchExecutor) verifySyntheticTransactionsSuccess(transactions common.L2PricedTransactions, executedTxs types.Transactions, receipts types.Receipts) error {
 	if len(transactions) != executedTxs.Len() {
 		return fmt.Errorf("some synthetic transactions have not been executed")
 	}

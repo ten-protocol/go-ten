@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	gethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -190,7 +191,7 @@ func (s *Simulation) trackLogs() {
 			channel := make(chan types.Log, 1000)
 
 			// To exercise the filtering mechanism, we subscribe for HOC events only, ignoring POC events.
-			hocFilter := common.FilterCriteria{
+			hocFilter := ethereum.FilterQuery{
 				Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + testcommon.HOCAddr)},
 			}
 			sub, err := client.SubscribeFilterLogs(context.Background(), hocFilter, channel)
@@ -215,6 +216,27 @@ func (s *Simulation) prefundTenAccounts() {
 	allocObsWallets := big.NewInt(0).Mul(big.NewInt(1000), big.NewInt(gethparams.Ether))
 
 	testcommon.PrefundWallets(s.ctx, faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), allocObsWallets, s.Params.ReceiptTimeout)
+}
+
+func (s *Simulation) deployTenZen() {
+	auth, err := bind.NewKeyedTransactorWithChainID(s.Params.Wallets.L2FaucetWallet.PrivateKey(), s.Params.Wallets.L2FaucetWallet.ChainID())
+	if err != nil {
+		panic(fmt.Errorf("failed to create transactor in order to bootstrap sim test: %w", err))
+	}
+
+	cfg, err := s.RPCHandles.TenWalletRndClient(s.Params.Wallets.L2FaucetWallet).GetConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	_, tx, _, err := ZenBase.DeployZenBase(auth, s.RPCHandles.TenWalletRndClient(s.Params.Wallets.L2FaucetWallet), cfg.TransactionAnalyzerAddress, "zen", "zen")
+	if err != nil {
+		panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
+	}
+
+	if err = testcommon.AwaitReceipt(s.ctx, s.RPCHandles.TenWalletRndClient(s.Params.Wallets.L2FaucetWallet), tx.Hash(), s.Params.ReceiptTimeout); err != nil {
+		panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
+	}
 }
 
 // This deploys an ERC20 contract on Ten, which is used for token arithmetic.

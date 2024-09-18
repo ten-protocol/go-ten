@@ -172,5 +172,6 @@ type ProducedSecretResponse struct {
 }
 
 type EnclavePublicConfig struct {
-	L2MessageBusAddress gethcommon.Address
+	L2MessageBusAddress        gethcommon.Address
+	TransactionAnalyzerAddress gethcommon.Address
 }

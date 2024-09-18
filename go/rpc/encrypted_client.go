@@ -235,7 +235,7 @@ func (c *EncRPCClient) decryptResponse(encryptedBytes []byte) ([]byte, error) {
 
 // creates a subscription to the TEN node, but decrypts the messages from that channel and forwards them to the `ch`
 func (c *EncRPCClient) logSubscription(ctx context.Context, namespace string, ch interface{}, args ...any) (*gethrpc.ClientSubscription, error) {
-	outboundChannel, ok := ch.(chan types.Log)
+	outboundChannel, ok := ch.(chan<- types.Log)
 	if !ok {
 		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
 	}
@@ -281,7 +281,7 @@ func (c *EncRPCClient) logSubscription(ctx context.Context, namespace string, ch
 	return backendSub, nil
 }
 
-func (c *EncRPCClient) onMessage(encLog []byte, outboundChannel chan types.Log) error {
+func (c *EncRPCClient) onMessage(encLog []byte, outboundChannel chan<- types.Log) error {
 	jsonLogs, err := c.decryptResponse(encLog)
 	if err != nil {
 		c.logger.Error("could not decrypt logs received from subscription.", log.ErrKey, err)

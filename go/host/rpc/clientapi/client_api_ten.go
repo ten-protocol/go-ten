@@ -40,6 +40,7 @@ type ChecksumFormattedTenNetworkConfig struct {
 	MessageBusAddress         gethcommon.AddressEIP55
 	L2MessageBusAddress       gethcommon.AddressEIP55
 	ImportantContracts        map[string]gethcommon.AddressEIP55 // map of contract name to address
+	TransactionAnalyzer       gethcommon.AddressEIP55
 }
 
 func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetworkConfig {
@@ -53,5 +54,6 @@ func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetwork
 		MessageBusAddress:         gethcommon.AddressEIP55(info.MessageBusAddress),
 		L2MessageBusAddress:       gethcommon.AddressEIP55(info.L2MessageBusAddress),
 		ImportantContracts:        importantContracts,
+		TransactionAnalyzer:       gethcommon.AddressEIP55(info.TransactionAnalyzerAddress),
 	}
 }
