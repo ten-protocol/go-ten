@@ -14,7 +14,6 @@ type DebugLogs struct {
 	RelAddress1    *gethcommon.Address `json:"relAddress1"`
 	RelAddress2    *gethcommon.Address `json:"relAddress2"`
 	RelAddress3    *gethcommon.Address `json:"relAddress3"`
-	RelAddress4    *gethcommon.Address `json:"relAddress4"`
 	LifecycleEvent bool                `json:"lifecycleEvent"`
 
 	gethtypes.Log
@@ -37,7 +36,6 @@ func (l DebugLogs) MarshalJSON() ([]byte, error) {
 		RelAddress1    *gethcommon.Address `json:"relAddress1"`
 		RelAddress2    *gethcommon.Address `json:"relAddress2"`
 		RelAddress3    *gethcommon.Address `json:"relAddress3"`
-		RelAddress4    *gethcommon.Address `json:"relAddress4"`
 	}{
 		l.Address.Hex(),
 		l.Topics,
@@ -52,6 +50,5 @@ func (l DebugLogs) MarshalJSON() ([]byte, error) {
 		l.RelAddress1,
 		l.RelAddress2,
 		l.RelAddress3,
-		l.RelAddress4,
 	})
 }

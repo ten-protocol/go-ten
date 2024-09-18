@@ -5,7 +5,12 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-// EventVisibilityConfig - configuration per event by the dApp developer
+// EventVisibilityConfig - configuration per event by the dApp developer(DD)
+// There are 4 cases:
+// 1. DD doesn't configure anything. - ContractVisibilityConfig.AutoConfig=true
+// 2. DD configures and  specifies the contract as transparent - ContractVisibilityConfig.Transparent=true
+// 3. DD configures and specify the contract as non-transparent, but doesn't configure the event - Contract: false/false , EventVisibilityConfig.AutoConfig=true
+// DD configures the contract as non-transparent, and also configures the topics for the event
 type EventVisibilityConfig struct {
 	AutoConfig                                  bool  // true for events that have no explicit configuration
 	Public                                      bool  // everyone can see and query for this event
