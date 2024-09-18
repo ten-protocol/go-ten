@@ -28,9 +28,10 @@ import { TransferToSection } from "./transfer-to-section";
 import { bridgeSchema } from "@/src/schemas/bridge";
 import { handleStorage } from "@/src/lib/utils";
 import useWalletStore from "@/src/stores/wallet-store";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function Dashboard() {
+  const queryClient = useQueryClient();
   const { address, walletConnected, switchNetwork, isL1ToL2, loading } =
     useWalletStore();
   const { getNativeBalance, getTokenBalance, sendERC20, sendNative } =
@@ -128,6 +129,9 @@ export default function Dashboard() {
           title: "Bridge Transaction",
           description: `Completed: ${res.transactionHash}`,
           variant: ToastType.SUCCESS,
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["bridgeTransactions", isL1ToL2 ? "l1" : "l2"],
         });
         reset();
       } catch (error) {

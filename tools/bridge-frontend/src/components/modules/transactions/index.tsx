@@ -54,7 +54,7 @@ export default function TransactionsComponent() {
   } = useQuery({
     queryKey: ["bridgeTransactions", isL1ToL2 ? "l1" : "l2"],
     queryFn: () => getBridgeTransactions(),
-    refetchInterval: 10000,
+    refetchInterval: 30000,
     refetchOnMount: true,
   });
 
@@ -65,7 +65,7 @@ export default function TransactionsComponent() {
   } = useQuery({
     queryKey: ["bridgePendingTransactions", isL1ToL2 ? "l1" : "l2"],
     queryFn: () => getPendingBridgeTransactions(),
-    refetchInterval: 10000,
+    refetchInterval: 30000,
     refetchOnMount: true,
   });
 
