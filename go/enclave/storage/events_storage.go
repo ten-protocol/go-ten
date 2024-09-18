@@ -236,23 +236,37 @@ func (es *eventsStorage) determineRelevantAddressForTopic(ctx context.Context, d
 	var relevantAddress *gethcommon.Address
 	switch {
 	case eventType.AutoVisibility:
-		var err error
-		// if there is no configuration, we have to autodetect the address
-		relevantAddress, err = es.autoDetectRelevantAddress(ctx, dbTX, topic)
-		if err != nil {
-			return nil, err
+		extractedAddr := common.ExtractPotentialAddress(topic)
+		if extractedAddr == nil {
+			break
 		}
 
-		// when autodetecting, we assume that any address that is not a contract is an EOA
-		_, err = es.readEOA(ctx, dbTX, *relevantAddress)
+		// first check whether there is already an entry in the EOA table
+		_, err := es.readEOA(ctx, dbTX, *extractedAddr)
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return nil, err
 		}
-		if errors.Is(err, errutil.ErrNotFound) {
-			_, err := enclavedb.WriteEoa(ctx, dbTX, *relevantAddress)
-			if err != nil {
-				return nil, err
-			}
+		if err == nil {
+			relevantAddress = extractedAddr
+			break
+		}
+
+		// if the address is a contract then it's clearly not an EOA
+		_, err = es.readContract(ctx, dbTX, *extractedAddr)
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			return nil, err
+		}
+		if err == nil {
+			// the extracted address is a contract
+			relevantAddress = nil
+			break
+		}
+
+		// save the extracted address to the EOA table
+		relevantAddress = extractedAddr
+		_, err = enclavedb.WriteEoa(ctx, dbTX, *relevantAddress)
+		if err != nil {
+			return nil, err
 		}
 
 	case eventType.IsPublic():
@@ -265,41 +279,15 @@ func (es *eventsStorage) determineRelevantAddressForTopic(ctx context.Context, d
 			return nil, fmt.Errorf("invalid configuration. expected address in topic %d : %s", topicNumber, topic.String())
 		}
 
+	case !eventType.IsTopicRelevant(topicNumber):
+		// no need to do anything because this topic was not configured to be an address
+		relevantAddress = nil
+
 	default:
 		es.logger.Crit("impossible case. Should not get here")
 	}
 
 	return relevantAddress, nil
-}
-
-// Of the log's topics, returns those that are (potentially) user addresses. A topic is considered a user address if:
-//   - It has at least 12 leading zero bytes (since addresses are 20 bytes long, while hashes are 32) and at most 22 leading zero bytes
-//   - It is not a smart contract address
-func (es *eventsStorage) autoDetectRelevantAddress(ctx context.Context, dbTX *sql.Tx, topic gethcommon.Hash) (*gethcommon.Address, error) {
-	potentialAddr := common.ExtractPotentialAddress(topic)
-	if potentialAddr == nil {
-		return nil, errutil.ErrNotFound
-	}
-
-	// first check whether there is already an entry in the EOA table
-	_, err := es.readEOA(ctx, dbTX, *potentialAddr)
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return nil, err
-	}
-	if err == nil {
-		return potentialAddr, nil
-	}
-
-	// if the address is a contract then it's clearly not an EOA
-	_, err = es.readContract(ctx, dbTX, *potentialAddr)
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return nil, err
-	}
-	if err == nil {
-		return nil, errutil.ErrNotFound
-	}
-
-	return potentialAddr, nil
 }
 
 func (es *eventsStorage) readEventType(ctx context.Context, dbTX *sql.Tx, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error) {
