@@ -162,7 +162,8 @@ func FilterLogs(
 func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
 	var queryParams []any
 
-	query := "select eoa1.address, eoa2.address, eoa3.address, et.public, et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address " +
+	// todo - should we return the config here?
+	query := "select eoa1.address, eoa2.address, eoa3.address, et.public, et.auto_public, et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address " +
 		baseEventsJoin +
 		" AND tx.hash = ? "
 
@@ -186,11 +187,13 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 
 		var t0, t1, t2, t3 sql.NullString
 		var relAddress1, relAddress2, relAddress3 []byte
+		var public, autoPublic bool
 		err = rows.Scan(
 			&relAddress1,
 			&relAddress2,
 			&relAddress3,
-			&l.LifecycleEvent,
+			&public,
+			&autoPublic,
 			&t0, &t1, &t2, &t3,
 			&l.Data,
 			&l.BlockHash,
@@ -200,6 +203,7 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 			&l.Index,
 			&l.Address,
 		)
+		l.LifecycleEvent = public || autoPublic
 		if err != nil {
 			return nil, fmt.Errorf("could not load log entry from db: %w", err)
 		}
