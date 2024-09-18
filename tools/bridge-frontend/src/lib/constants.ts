@@ -2,7 +2,6 @@ export const environment =
   process.env.NEXT_PUBLIC_BRIDGE_API_HOST_ENVIRONMENT || "uat-testnet";
 
 export const apiHost = process.env.NEXT_PUBLIC_BRIDGE_API_HOST;
-export const apiVersion = "v1";
 
 export const pendingTransactionSessionKey = "pendingTransaction";
 

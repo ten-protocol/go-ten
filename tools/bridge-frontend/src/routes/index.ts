@@ -1,7 +1,6 @@
 import { RouteIcon } from "lucide-react";
 import { NavLink } from "@/src/types";
 import { ReaderIcon } from "@radix-ui/react-icons";
-import { apiVersion } from "../lib/constants";
 
 export const NavLinks: NavLink[] = [
   {
@@ -21,8 +20,8 @@ export const NavLinks: NavLink[] = [
 ];
 
 export const apiRoutes = {
-  getHealthStatus: `/${apiVersion}/network-health/`,
-  getNetworkConfig: `/${apiVersion}/network-config/`,
+  getHealthStatus: `/network-health/`,
+  getNetworkConfig: `/network-config/`,
 };
 
 export const requestMethods = {
