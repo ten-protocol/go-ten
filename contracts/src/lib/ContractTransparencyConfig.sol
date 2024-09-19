@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache 2
+pragma solidity ^0.8.20;
 
 // implement this interface if you want to configure the visibility rules of your smart contract
 // the TEN platform will interpret this information
