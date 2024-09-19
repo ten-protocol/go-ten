@@ -210,8 +210,8 @@ func (es *eventsStorage) storeTopics(ctx context.Context, dbTX *sql.Tx, eventTyp
 }
 
 // this function contains visibility logic
-func (es *eventsStorage) storeTopic(ctx context.Context, dbTX *sql.Tx, eventType *enclavedb.EventType, i int, topic gethcommon.Hash) (uint64, error) {
-	relevantAddress, err := es.determineRelevantAddressForTopic(ctx, dbTX, eventType, i, topic)
+func (es *eventsStorage) storeTopic(ctx context.Context, dbTX *sql.Tx, eventType *enclavedb.EventType, topicNo int, topic gethcommon.Hash) (uint64, error) {
+	relevantAddress, err := es.determineRelevantAddressForTopic(ctx, dbTX, eventType, topicNo, topic)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return 0, fmt.Errorf("could not determine visibility rules. cause: %w", err)
 	}
@@ -275,8 +275,11 @@ func (es *eventsStorage) determineRelevantAddressForTopic(ctx context.Context, d
 
 	case eventType.IsTopicRelevant(topicNumber):
 		relevantAddress = common.ExtractPotentialAddress(topic)
+		// it is possible for contracts to emit events without an actual address.
+		// for example. ERC20.mint emits a transfer event from a "0" address
 		if relevantAddress == nil {
-			return nil, fmt.Errorf("invalid configuration. expected address in topic %d : %s", topicNumber, topic.String())
+			es.logger.Debug(fmt.Sprintf("invalid configuration. expected address in topic %d : %s", topicNumber, topic.String()))
+			return nil, errutil.ErrNotFound
 		}
 
 	case !eventType.IsTopicRelevant(topicNumber):
