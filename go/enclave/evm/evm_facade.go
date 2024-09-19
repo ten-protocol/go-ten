@@ -7,6 +7,8 @@ import (
 	"math/big"
 	_ "unsafe"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"
 
@@ -153,6 +155,7 @@ func executeTransaction(
 	// calculate a random value per transaction
 	header.MixDigest = crypto.CalculateTxRnd(before.Bytes(), tCount)
 
+	var vmenv *vm.EVM
 	applyTx := func(
 		config *params.ChainConfig,
 		bc gethcore.ChainContext,
@@ -196,7 +199,7 @@ func executeTransaction(
 
 		// Create a new context to be used in the EVM environment
 		blockContext := gethcore.NewEVMBlockContext(header, bc, author)
-		vmenv := vm.NewEVM(blockContext, vm.TxContext{BlobHashes: tx.Tx.BlobHashes(), GasPrice: header.BaseFee}, statedb, config, cfg)
+		vmenv = vm.NewEVM(blockContext, vm.TxContext{BlobHashes: tx.Tx.BlobHashes(), GasPrice: header.BaseFee}, statedb, config, cfg)
 		var receipt *types.Receipt
 		receipt, err = gethcore.ApplyTransactionWithEVM(msg, config, gp, statedb, header.Number, header.Hash(), tx.Tx, usedGas, vmenv)
 		if err != nil {
@@ -241,14 +244,62 @@ func executeTransaction(
 		return &core.TxExecResult{Receipt: receipt, Err: err}
 	}
 
-	// todo - placeholder for calling the visibility config function on the newly created contracts
-	// this is step 1 of the transition to configured visibility rules. The auto-detection of the visibility rules
 	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
 	for _, contractAddress := range createdContracts {
-		contractsWithVisibility[*contractAddress] = &core.ContractVisibilityConfig{AutoConfig: true}
+		visibCfg, err := readVisibilityConfig(vmenv, contractAddress)
+		if err != nil {
+			return &core.TxExecResult{Receipt: receipt, Err: err}
+		}
+		contractsWithVisibility[*contractAddress] = visibCfg
 	}
 
 	return &core.TxExecResult{Receipt: receipt, CreatedContracts: contractsWithVisibility}
+}
+
+// hardcode at 1 million gas.
+const (
+	maxGasForVisibility = 1_000_000
+	execRevertedErr     = "execution reverted"
+)
+
+func readVisibilityConfig(vmenv *vm.EVM, contractAddress *gethcommon.Address) (*core.ContractVisibilityConfig, error) {
+	cc, err := NewTransparencyConfigCaller(*contractAddress, &localContractCaller{evm: vmenv, maxGasForVisibility: maxGasForVisibility})
+	if err != nil {
+		return nil, fmt.Errorf("could not create transparency config caller: %w", err)
+	}
+	visibilityRules, err := cc.VisibilityRules(nil)
+	if err != nil && err.Error() == execRevertedErr {
+		// there is no visibility defined, so we return auto
+		return &core.ContractVisibilityConfig{AutoConfig: true}, nil
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("could not get visibility rules: %w", err)
+	}
+
+	cfg := &core.ContractVisibilityConfig{
+		AutoConfig:   false,
+		Transparent:  &visibilityRules.IsTransparent,
+		EventConfigs: make(map[gethcommon.Hash]*core.EventVisibilityConfig),
+	}
+
+	for i := range visibilityRules.EventLogConfigs {
+		logConfig := visibilityRules.EventLogConfigs[i]
+
+		sig := gethcommon.Hash{}
+		sig.SetBytes(logConfig.EventSignature)
+
+		cfg.EventConfigs[sig] = &core.EventVisibilityConfig{
+			AutoConfig:    false,
+			Public:        logConfig.IsPublic,
+			Topic1CanView: &logConfig.Topic1CanView,
+			Topic2CanView: &logConfig.Topic2CanView,
+			Topic3CanView: &logConfig.Topic3CanView,
+			SenderCanView: &logConfig.VisibleToSender,
+		}
+	}
+
+	return cfg, nil
 }
 
 func logReceipt(r *types.Receipt, logger gethlog.Logger) {
@@ -366,4 +417,20 @@ func newRevertError(result *gethcore.ExecutionResult) error {
 		Reason: hexutil.Encode(result.Revert()),
 		Code:   3, // todo - magic number, really needs thought around the value and made a constant
 	}
+}
+
+// used as a wrapper around the vm.EVM to allow for easier calling of smart contract view functions
+type localContractCaller struct {
+	evm                 *vm.EVM
+	maxGasForVisibility uint64
+}
+
+// CodeAt - not implemented because it's not needed for our use case. It just has to return something non-nil
+func (cc *localContractCaller) CodeAt(_ context.Context, _ gethcommon.Address, _ *big.Int) ([]byte, error) {
+	return []byte{0}, nil
+}
+
+func (cc *localContractCaller) CallContract(_ context.Context, call ethereum.CallMsg, _ *big.Int) ([]byte, error) {
+	ret, _, err := cc.evm.Call(vm.AccountRef(call.From), *call.To, call.Data, cc.maxGasForVisibility, uint256.NewInt(0))
+	return ret, err
 }
