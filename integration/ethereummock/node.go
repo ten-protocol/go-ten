@@ -179,7 +179,6 @@ func (m *Node) FetchLastBatchSeqNo(gethcommon.Address) (*big.Int, error) {
 		}
 		rollup := m.getRollupFromBlock(currentBlock)
 		if rollup != nil {
-			println("Last batch number from rollup: ", rollup.Header.LastBatchSeqNo)
 			return big.NewInt(int64(rollup.Header.LastBatchSeqNo)), nil
 		}
 	}
@@ -460,6 +459,7 @@ func (m *Node) startMining() {
 
 			// Generate a random number, and wait for that number of ms. Equivalent to PoW
 			// Include all rollups received during this period.
+			blockTime := uint64(time.Now().Unix())
 			async.Schedule(m.cfg.PowTime(), func() {
 				toInclude := findNotIncludedTxs(canonicalBlock, mempool, m.Resolver, m.db)
 				// todo - iterate through the rollup transactions and include only the ones with the proof on the canonical chain
@@ -467,18 +467,13 @@ func (m *Node) startMining() {
 					return
 				}
 
-				block, blobs := NewBlock(canonicalBlock, m.l2ID, toInclude, uint64(time.Now().Unix()))
+				block, blobs := NewBlock(canonicalBlock, m.l2ID, toInclude, blockTime)
 				blobPointers := make([]*kzg4844.Blob, len(blobs))
 				for i := range blobs {
 					blobPointers[i] = blobs[i] // Assign the address of each blob
 				}
 				slot, _ := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), SecondsPerSlot)
 				if len(blobs) > 0 {
-					//println("rollup blobs: ", len(blobs))
-					//for _, blob := range blobs {
-					//	commitment, _ := kzg4844.BlobToCommitment(blob)
-					//	println("blob hash: ", ethadapter.KZGToVersionedHash(commitment).Hex())
-					//}
 					_ = m.BeaconServer.StoreBlobs(slot, blobs)
 				}
 				m.miningCh <- block

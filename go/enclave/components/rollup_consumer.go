@@ -99,10 +99,8 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 		}
 		if err := rc.storage.StoreRollup(ctx, rollup, internalHeader); err != nil {
 			rc.logger.Error("Failed storing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
-			println("ENCLAVE FAILED STORING ROLLUP at batch: ", rollup.Header.LastBatchSeqNo)
 			return err
 		}
-		println("ENCLAVE STORED ROLLUP at batch: ", rollup.Header.LastBatchSeqNo)
 	}
 
 	return nil
@@ -144,10 +142,6 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 		var err error
 		if _, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
 			return nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
-		}
-
-		for i, rollupHash := range rollupHashes.BlobHashes {
-			println("rollup hash: ", i, " ", rollupHash.Hex())
 		}
 
 		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {

@@ -54,7 +54,7 @@ const (
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
 // time of the simulation and the average block duration, that all TEN nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 	checkTransactionsInjected(t, s)
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
 	checkTenBlockchainValidity(t, s, l1MaxHeight)
