@@ -147,7 +147,7 @@ func (m *Node) Nonce(gethcommon.Address) (uint64, error) {
 	return 0, nil
 }
 
-func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
+func (m *Node) getRollupFromBlock(block *types.Block) (*common.ExtRollup, error) {
 	for _, tx := range block.Transactions() {
 		decodedTx := m.mgmtContractLib.DecodeTx(tx)
 		if decodedTx == nil {
@@ -157,16 +157,16 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 		switch l1tx := decodedTx.(type) {
 		case *ethadapter.L1RollupHashes:
 			println(l1tx)
-			slot, err := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), uint64(12))
+			slot, err := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), SecondsPerSlot)
 			if err != nil {
 				m.logger.Error("Failed to calculate slot", "error", err)
-				return nil
+				return nil, err
 			}
 
 			blobs, err := m.BeaconServer.LoadBlobs(slot)
 			if err != nil {
 				m.logger.Error("Error loading blobs", "error", err)
-				return nil
+				return nil, err
 			}
 			if len(blobs) > 0 {
 				println("blobs loaded from cache")
@@ -175,18 +175,18 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 			encodedRlp, err := ethadapter.DecodeBlobs(blobs)
 			if err != nil {
 				m.logger.Error("Error decoding blobs", "error", err)
-				return nil
+				return nil, err
 			}
 
 			r, err := common.DecodeRollup(encodedRlp)
 			if err != nil {
 				m.logger.Error("Could not decode rollup", "error", err)
-				return nil
+				return nil, err
 			}
-			return r
+			return r, nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (m *Node) FetchLastBatchSeqNo(gethcommon.Address) (*big.Int, error) {
@@ -201,7 +201,10 @@ func (m *Node) FetchLastBatchSeqNo(gethcommon.Address) (*big.Int, error) {
 			m.logger.Error("Error fetching block by hash", "error", err)
 			break
 		}
-		rollup := m.getRollupFromBlock(currentBlock)
+		rollup, err := m.getRollupFromBlock(currentBlock)
+		if err != nil {
+			return nil, fmt.Errorf("Error getting rollups from blocks: ", err.Error())
+		}
 		if rollup != nil {
 			return big.NewInt(int64(rollup.Header.LastBatchSeqNo)), nil
 		}
@@ -500,7 +503,12 @@ func (m *Node) startMining() {
 				}
 				// Fetch blobs for the block
 				slot, _ := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), SecondsPerSlot)
-				if len(blobs) > 0 {
+				if len(blobs) > 1 {
+					println("rollup blobs: ", len(blobs))
+					for _, blob := range blobs {
+						commitment, _ := kzg4844.BlobToCommitment(blob)
+						println("blob hash: ", ethadapter.KZGToVersionedHash(commitment).Hex())
+					}
 					_ = m.BeaconServer.StoreBlobs(slot, blobs)
 				}
 				blockSlot++

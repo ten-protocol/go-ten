@@ -180,7 +180,7 @@ func (f *BeaconMock) StoreBlobs(slot uint64, blobs []*kzg4844.Blob) error {
 	for _, blob := range blobs {
 		commitment, _ := kzg4844.BlobToCommitment(blob)
 		versionedHash := ethadapter.KZGToVersionedHash(commitment)
-		println("Storing Blob wth versioned hash: ", versionedHash.Hex(), " at slot: ", slot)
+		println("MockBeacon storing blob hash: ", versionedHash.Hex(), " at slot: ", slot)
 	}
 	f.blobsLock.Lock()
 	defer f.blobsLock.Unlock()
