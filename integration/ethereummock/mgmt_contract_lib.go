@@ -72,15 +72,16 @@ func (m *mockContractLib) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
-	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs, "MockMgmtContract"); err != nil {
+	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
+
+	//hashesTx := ethadapter.L1RollupHashes{BlobHashes: blobHashes}
 
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 
-	l1rh := ethadapter.L1RollupHashes{BlobHashes: blobHashes}
-	if err = enc.Encode(l1rh); err != nil {
+	if err := enc.Encode(t); err != nil {
 		panic(err)
 	}
 
@@ -147,7 +148,7 @@ func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	var t ethadapter.L1Transaction
 	switch tx.To().Hex() {
 	case rollupTxAddr.Hex():
-		t = &ethadapter.L1RollupHashes{}
+		t = &ethadapter.L1RollupTx{}
 	case storeSecretTxAddr.Hex():
 		t = &ethadapter.L1RespondSecretTx{}
 	case depositTxAddr.Hex():

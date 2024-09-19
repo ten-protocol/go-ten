@@ -611,6 +611,7 @@ func (g *Guardian) periodicRollupProduction() {
 			}
 
 			fromBatch, err := g.getLatestBatchNo()
+			println("GUARDIAN framBatch: ", fromBatch)
 			if err != nil {
 				g.logger.Error("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
 				continue

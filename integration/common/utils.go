@@ -124,7 +124,6 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 		txHashes[idx] = signedTx.Hash()
 	}
 
-	time.Sleep(15 * time.Second)
 	// Then we await the receipts in parallel.
 	wg := sync.WaitGroup{}
 	for _, txHash := range txHashes {

@@ -177,11 +177,11 @@ func (f *BeaconMock) Start(host string) error {
 
 // StoreBlobs stores the array of blobs against the slot number.
 func (f *BeaconMock) StoreBlobs(slot uint64, blobs []*kzg4844.Blob) error {
-	for _, blob := range blobs {
-		commitment, _ := kzg4844.BlobToCommitment(blob)
-		versionedHash := ethadapter.KZGToVersionedHash(commitment)
-		println("MockBeacon storing blob hash: ", versionedHash.Hex(), " at slot: ", slot)
-	}
+	//for _, blob := range blobs {
+	//	commitment, _ := kzg4844.BlobToCommitment(blob)
+	//	versionedHash := ethadapter.KZGToVersionedHash(commitment)
+	//	println("MockBeacon storing blob hash: ", versionedHash.Hex(), " at slot: ", slot)
+	//}
 	f.blobsLock.Lock()
 	defer f.blobsLock.Unlock()
 

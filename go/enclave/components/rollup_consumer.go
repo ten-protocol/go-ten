@@ -142,7 +142,7 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 
 		var blobHashes []gethcommon.Hash
 		var err error
-		if _, blobHashes, err = ethadapter.MakeSidecar(blobs, " rollupConsumer: "); err != nil {
+		if _, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
 			return nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
 		}
 

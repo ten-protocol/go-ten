@@ -18,7 +18,7 @@ const excessBlobBits = 6 // = math.floor(math.log2(BLS_MODULUS)) % 8
 
 // MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
 // data.
-func MakeSidecar(blobs []*kzg4844.Blob, call string) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
+func MakeSidecar(blobs []*kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
 	sidecar := &types.BlobTxSidecar{}
 	var blobHashes []gethcommon.Hash
 	for i, blob := range blobs {
@@ -33,8 +33,8 @@ func MakeSidecar(blobs []*kzg4844.Blob, call string) (*types.BlobTxSidecar, []ge
 			return nil, nil, fmt.Errorf("cannot compute KZG proof for fast commitment verification of blob %d in tx candidate: %w", i, err)
 		}
 		sidecar.Proofs = append(sidecar.Proofs, proof)
-		blobHash := KZGToVersionedHash(commitment)
-		println("created blob hash at ", call, blobHash.Hex())
+		//blobHash := KZGToVersionedHash(commitment)
+		//println("created blob hash at ", call, blobHash.Hex())
 		blobHashes = append(blobHashes, KZGToVersionedHash(commitment))
 	}
 	return sidecar, blobHashes, nil
