@@ -32,8 +32,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
-  const { address, walletConnected, switchNetwork, isL1ToL2, loading } =
-    useWalletStore();
+  const {
+    address,
+    walletConnected,
+    switchNetwork,
+    isL1ToL2,
+    loading,
+    provider,
+  } = useWalletStore();
   const { getNativeBalance, getTokenBalance, sendERC20, sendNative } =
     useContractsService();
 
@@ -240,6 +246,7 @@ export default function Dashboard() {
                 walletConnected={walletConnected}
                 loading={loading || formState.isSubmitting}
                 tokenBalance={tokenBalance}
+                provider={provider}
               />
             </form>
           </Form>

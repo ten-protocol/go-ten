@@ -32,7 +32,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 export const useContractsService = () => {
   const queryClient = useQueryClient();
-  const { signer, isL1ToL2, provider, address } = useWalletStore();
+  const { isL1ToL2, signer, provider, address } = useWalletStore();
   const { networkConfig, isNetworkConfigLoading } = useGeneralService();
   const {
     setContractState,
@@ -99,16 +99,15 @@ export const useContractsService = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoizedConfig, provider, isL1ToL2, signer, setContractState]);
 
-  // Main entry function that calls each step, either from the beginning or resuming
+  // main entry function that calls each step, either from the beginning or resuming
   const sendNative = async (tx: IPendingTx) => {
-    if (
-      !bridgeContract ||
-      !signer ||
-      !managementContract ||
-      !messageBusContract ||
-      !provider
-    ) {
-      return handleError(null, "Contract or signer not found");
+    if (!provider) {
+      return handleError(null, "Provider not found");
+    }
+    const signer = provider.getSigner();
+
+    if (!bridgeContract || !managementContract || !messageBusContract) {
+      return handleError(null, "Contract not found");
     }
 
     const { receiver, value } = tx;
@@ -140,7 +139,6 @@ export const useContractsService = () => {
       } = tx;
 
       let currentStep = resumeStep || TransactionStep.TransactionSubmission;
-      console.log("🚀 ~ useContractsService ~ currentStep:", currentStep);
 
       while (true) {
         switch (currentStep) {
@@ -152,12 +150,15 @@ export const useContractsService = () => {
                 receiver,
                 value
               );
+
               if (!txResponse) {
                 return handleError(null, "Error sending transaction");
               }
+
               txHash = txResponse.hash;
             } else {
               txResponse = await provider.getTransaction(txHash);
+
               if (!txResponse) {
                 return handleError(
                   null,
@@ -165,6 +166,7 @@ export const useContractsService = () => {
                 );
               }
             }
+
             currentStep = TransactionStep.TransactionConfirmation;
             showToast(ToastType.INFO, "Transaction submitted");
             break;
@@ -178,6 +180,7 @@ export const useContractsService = () => {
               // ...if we still don't have a txReceipt, fetch it w txHash
               if (!txReceipt && txHash) {
                 txReceipt = await provider.getTransactionReceipt(txHash);
+
                 if (!txReceipt) {
                   // if the receipt is still not confirmed, we can retry later or throw an error
                   return handleError(
@@ -196,6 +199,9 @@ export const useContractsService = () => {
             // for L1 > L2, we can skip the rest of the steps
             if (isL1ToL2) {
               txHash && removePendingBridgeTransaction(txHash);
+              queryClient.invalidateQueries({
+                queryKey: ["bridgePendingTransactions", isL1ToL2 ? "l1" : "l2"],
+              });
               return txReceipt;
             }
 
@@ -206,6 +212,7 @@ export const useContractsService = () => {
           case TransactionStep.EventDataExtraction:
             if (!txReceipt && txHash) {
               txReceipt = await provider.getTransactionReceipt(txHash);
+
               if (!txReceipt) {
                 return handleError(null, "Transaction is not yet confirmed");
               }
@@ -235,6 +242,7 @@ export const useContractsService = () => {
             if (!tree || !proof) {
               return handleError(null, "Error constructing Merkle tree");
             }
+
             currentStep = TransactionStep.GasEstimation;
             showToast(ToastType.INFO, "Merkle tree constructed");
             break;
@@ -247,9 +255,11 @@ export const useContractsService = () => {
               proof,
               root || tree!.root
             );
+
             if (!gasLimit) {
               return handleError(null, "Error estimating gas");
             }
+
             currentStep = TransactionStep.RelaySubmission;
             showToast(ToastType.INFO, "Gas estimated for relay");
             break;
@@ -265,9 +275,11 @@ export const useContractsService = () => {
               proof,
               gasLimit!
             )) as ethers.providers.TransactionReceipt;
+
             queryClient.invalidateQueries({
               queryKey: ["bridgePendingTransactions", isL1ToL2 ? "l1" : "l2"],
             });
+
             return txReceipt;
 
           default:

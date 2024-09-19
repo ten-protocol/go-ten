@@ -15,54 +15,60 @@ export const walletService = {
     try {
       let detectedProvider = await getEthereumProvider();
       if (!detectedProvider) {
-        setTimeout(async () => {
-          detectedProvider = await getEthereumProvider();
-          if (!detectedProvider) {
-            toast({
-              title: "Unable to connect",
-              description:
-                "Please check if your web3 provider is installed and unlocked.",
-              variant: ToastType.INFO,
-            });
-            return; // exit if provider is still not detected
+        let attempts = 0;
+        const maxAttempts = 5;
+        const intervalId = setInterval(async () => {
+          attempts++;
+          try {
+            detectedProvider = await getEthereumProvider();
+            if (detectedProvider) {
+              clearInterval(intervalId);
+              set({ provider: detectedProvider, loading: false });
+              await walletService.proceedWithProviderInitialization(set, get);
+            } else if (attempts >= maxAttempts) {
+              clearInterval(intervalId);
+              toast({
+                title: "Unable to connect",
+                description:
+                  "Please check if your web3 provider is installed and unlocked.",
+                variant: ToastType.INFO,
+              });
+            }
+          } catch (error) {
+            console.error("Error detecting provider:", error);
           }
-          set({ provider: detectedProvider, loading: false });
-          walletService.proceedWithProviderInitialization(set, get);
         }, 3000);
         return;
       }
       set({ provider: detectedProvider, loading: false });
-      walletService.proceedWithProviderInitialization(set, get);
+      await walletService.proceedWithProviderInitialization(set, get);
     } catch (error) {
       console.error("Error initializing provider:", error);
     }
   },
 
   proceedWithProviderInitialization: async (set: StoreSet, get: StoreGet) => {
-    const { provider: detectedProvider } = get() as { provider: any };
-    const signer = initializeSigner(detectedProvider);
-    const chainId = await detectedProvider
-      .getNetwork()
-      .then(
-        (network: {
-          chainId: string | number;
-          name: string;
-          network: string;
-        }) => network.chainId
-      );
-    const isL1 = chainId === currentNetwork.l1;
-    const expectedChainId = isL1 ? currentNetwork.l1 : currentNetwork.l2;
+    try {
+      const { provider: detectedProvider } = get();
+      await detectedProvider?.send("eth_requestAccounts", []);
+      const signer = await initializeSigner(detectedProvider!);
 
-    set({
-      signer: signer,
-      isL1ToL2: isL1,
-      isWrongNetwork: chainId !== expectedChainId,
-    });
+      const network = await detectedProvider?.getNetwork();
+      const chainId = network?.chainId;
+      const isL1 = chainId === currentNetwork.l1;
+      const expectedChainId = isL1 ? currentNetwork.l1 : currentNetwork.l2;
 
-    const cleanup = setupEventListeners((address) =>
-      set({ address })
-    ) as () => void;
-    return cleanup;
+      set({
+        signer: signer,
+        isL1ToL2: isL1,
+        isWrongNetwork: chainId !== expectedChainId,
+      });
+
+      const cleanup = setupEventListeners((address) => set({ address }));
+      return cleanup;
+    } catch (error) {
+      console.error("Error during provider initialization:", error);
+    }
   },
 
   connectWallet: async (set: StoreSet, get: StoreGet) => {
@@ -73,7 +79,7 @@ export const walletService = {
         requestMethods.requestAccounts,
         []
       );
-      const newSigner = initializeSigner(detectedProvider);
+      const newSigner = await initializeSigner(detectedProvider);
 
       set({
         provider: detectedProvider,

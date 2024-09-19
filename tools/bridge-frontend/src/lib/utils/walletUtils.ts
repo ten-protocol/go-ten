@@ -4,10 +4,10 @@ import { showToast } from "@/src/components/ui/use-toast";
 import { IErrorMessages, ToastType } from "@/src/types";
 
 export const getEthereumProvider = async () => {
-  const provider = new ethers.providers.Web3Provider(ethereum);
-  if (!provider) {
+  if (!ethereum) {
     throw new Error("No Ethereum provider detected");
   }
+  const provider = new ethers.providers.Web3Provider(ethereum);
   return provider;
 };
 

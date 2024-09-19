@@ -21,10 +21,8 @@ export const setupEventListeners = (setAddress: (address: string) => void) => {
   };
 };
 
-export const initializeSigner = (provider: ethers.providers.Web3Provider) => {
-  if (!provider) {
-    return null;
-  }
-
-  return provider.getSigner();
+export const initializeSigner = async (
+  provider: ethers.providers.Web3Provider
+) => {
+  return provider.getSigner() as ethers.Signer;
 };
