@@ -246,35 +246,26 @@ func executeTransaction(
 
 	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
 	for _, contractAddress := range createdContracts {
-		visibCfg, err := readVisibilityConfig(vmenv, contractAddress)
-		if err != nil {
-			return &core.TxExecResult{Receipt: receipt, Err: err}
-		}
-		contractsWithVisibility[*contractAddress] = visibCfg
+		contractsWithVisibility[*contractAddress] = readVisibilityConfig(vmenv, contractAddress)
 	}
 
 	return &core.TxExecResult{Receipt: receipt, CreatedContracts: contractsWithVisibility}
 }
 
-// hardcode at 1 million gas.
 const (
-	maxGasForVisibility = 1_000_000
-	execRevertedErr     = "execution reverted"
+	maxGasForVisibility = 30_000 // hardcode at 30k gas.
 )
 
-func readVisibilityConfig(vmenv *vm.EVM, contractAddress *gethcommon.Address) (*core.ContractVisibilityConfig, error) {
+func readVisibilityConfig(vmenv *vm.EVM, contractAddress *gethcommon.Address) *core.ContractVisibilityConfig {
 	cc, err := NewTransparencyConfigCaller(*contractAddress, &localContractCaller{evm: vmenv, maxGasForVisibility: maxGasForVisibility})
 	if err != nil {
-		return nil, fmt.Errorf("could not create transparency config caller: %w", err)
+		// unrecoverable error. should not happen
+		panic(fmt.Sprintf("could not create transparency config caller. %v", err))
 	}
 	visibilityRules, err := cc.VisibilityRules(nil)
-	if err != nil && err.Error() == execRevertedErr {
-		// there is no visibility defined, so we return auto
-		return &core.ContractVisibilityConfig{AutoConfig: true}, nil
-	}
-
 	if err != nil {
-		return nil, fmt.Errorf("could not get visibility rules: %w", err)
+		// there is no visibility defined, so we return auto
+		return &core.ContractVisibilityConfig{AutoConfig: true}
 	}
 
 	cfg := &core.ContractVisibilityConfig{
@@ -299,7 +290,7 @@ func readVisibilityConfig(vmenv *vm.EVM, contractAddress *gethcommon.Address) (*
 		}
 	}
 
-	return cfg, nil
+	return cfg
 }
 
 func logReceipt(r *types.Receipt, logger gethlog.Logger) {
