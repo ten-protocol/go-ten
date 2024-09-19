@@ -11,8 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/holiman/uint256"
-
 	"github.com/ten-protocol/go-ten/go/common/async"
 
 	"github.com/google/uuid"
@@ -121,12 +119,12 @@ func createLegacyTx(txData types.TxData) (types.TxData, error) {
 
 func createBlobTx(txData types.TxData) (types.TxData, error) {
 	tx := types.NewTx(txData)
-	gasTip, _ := uint256.FromBig(tx.GasTipCap())
+	//gasTip, _ := uint256.FromBig(tx.GasTipCap())
 	return &types.BlobTx{
-		To:         *tx.To(),
-		Data:       tx.Data(),
-		Gas:        tx.Gas(),
-		GasTipCap:  gasTip,
+		To:   *tx.To(),
+		Data: tx.Data(),
+		//Gas:        tx.Gas(),
+		//GasTipCap:  gasTip,
 		BlobHashes: tx.BlobHashes(),
 		Sidecar:    tx.BlobTxSidecar(),
 	}, nil
@@ -160,8 +158,6 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 		case *ethadapter.L1RollupHashes:
 			println(l1tx)
 			slot, err := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), uint64(12))
-			println("block time: ", block.Time())
-			println("genesis time: ", MockGenesisBlock.Time())
 			if err != nil {
 				m.logger.Error("Failed to calculate slot", "error", err)
 				return nil
@@ -467,7 +463,7 @@ func (m *Node) startMining() {
 	mempool := make([]*types.Transaction, 0)
 	z := int32(0)
 	interrupt := &z
-
+	blockSlot := 1
 	for {
 		select {
 		case <-m.exitMiningCh:
@@ -485,6 +481,8 @@ func (m *Node) startMining() {
 			atomic.StoreInt32(interrupt, 1)
 			c := int32(0)
 			interrupt = &c
+			currentBlockSlot := blockSlot
+			blockSlot++
 
 			// Generate a random number, and wait for that number of ms. Equivalent to PoW
 			// Include all rollups received during this period.
@@ -494,8 +492,8 @@ func (m *Node) startMining() {
 				if atomic.LoadInt32(m.interrupt) == 1 {
 					return
 				}
-				// Generate the new block and the associated blobs
-				block, blobs := NewBlock(canonicalBlock, m.l2ID, toInclude, uint64(time.Now().Unix()))
+
+				block, blobs := NewBlock(canonicalBlock, m.l2ID, toInclude, uint64(currentBlockSlot))
 				blobPointers := make([]*kzg4844.Blob, len(blobs))
 				for i := range blobs {
 					blobPointers[i] = blobs[i] // Assign the address of each blob
@@ -505,6 +503,7 @@ func (m *Node) startMining() {
 				if len(blobs) > 0 {
 					_ = m.BeaconServer.StoreBlobs(slot, blobs)
 				}
+				blockSlot++
 				m.miningCh <- block
 			})
 		}

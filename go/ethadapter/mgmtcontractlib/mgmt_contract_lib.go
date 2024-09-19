@@ -184,7 +184,7 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
 
-	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
+	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs, "MgmtContract"); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
 

@@ -30,7 +30,7 @@ func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transacti
 		Number:      big.NewInt(int64(height)),
 		GasLimit:    0,
 		GasUsed:     0,
-		Time:        blockTime, // Set the block time here
+		Time:        0, // Set the block time here
 		Extra:       nil,
 		MixDigest:   common.Hash{},
 		Nonce:       types.BlockNonce{},

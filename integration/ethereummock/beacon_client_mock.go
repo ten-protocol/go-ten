@@ -200,7 +200,6 @@ func (f *BeaconMock) LoadBlobs(slot uint64) ([]*kzg4844.Blob, error) {
 	if !exists {
 		return nil, fmt.Errorf("no blobs found for slot %d: %w", slot, ethereum.NotFound)
 	}
-	//for _, blob := ras
 	return blobs, nil
 }
 

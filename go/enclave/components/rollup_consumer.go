@@ -50,10 +50,11 @@ func NewRollupConsumer(
 
 // ProcessBlobsInBlock - FIXME
 func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts, blobs []*kzg4844.Blob) error {
-	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed block", log.BlockHashKey, b.BlockHeader.Hash())
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", log.BlockHashKey, b.BlockHeader.Hash())
 
 	rollups, err := rc.extractAndVerifyRollups(b, blobs)
 	if err != nil {
+		println("ERROR HERE: ", err.Error())
 		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, b.BlockHeader.Hash(), log.ErrKey, err)
 		return err
 	}
@@ -63,6 +64,7 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 
 	rollups, err = rc.getSignedRollup(rollups)
 	if err != nil {
+		println("ERROR HERE 1")
 		return err
 	}
 
@@ -74,11 +76,13 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 	for _, rollup := range rollups {
 		l1CompressionBlock, err := rc.storage.FetchBlock(ctx, rollup.Header.CompressionL1Head)
 		if err != nil {
+			println("ERROR HERE 2")
 			rc.logger.Warn("Can't process rollup because the l1 block used for compression is not available", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			continue
 		}
 		canonicalBlockByHeight, err := rc.storage.FetchCanonicaBlockByHeight(ctx, l1CompressionBlock.Number)
 		if err != nil {
+			println("ERROR HERE 3")
 			return err
 		}
 		if canonicalBlockByHeight.Hash() != l1CompressionBlock.Hash() {
@@ -88,14 +92,17 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 		// read batch data from rollup, verify and store it
 		internalHeader, err := rc.rollupCompression.ProcessExtRollup(ctx, rollup)
 		if err != nil {
+			println("ERROR HERE 4")
 			rc.logger.Error("Failed processing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			// todo - issue challenge as a validator
 			return err
 		}
 		if err := rc.storage.StoreRollup(ctx, rollup, internalHeader); err != nil {
 			rc.logger.Error("Failed storing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+			println("ENCLAVE FAILED STORING ROLLUP at batch: ", rollup.Header.LastBatchSeqNo)
 			return err
 		}
+		println("ENCLAVE STORED ROLLUP at batch: ", rollup.Header.LastBatchSeqNo)
 	}
 
 	return nil
@@ -135,8 +142,12 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 
 		var blobHashes []gethcommon.Hash
 		var err error
-		if _, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
+		if _, blobHashes, err = ethadapter.MakeSidecar(blobs, " rollupConsumer: "); err != nil {
 			return nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
+		}
+
+		for i, rollupHash := range rollupHashes.BlobHashes {
+			println("rollup hash: ", i, " ", rollupHash.Hex())
 		}
 
 		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {

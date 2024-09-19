@@ -443,7 +443,8 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 
 	_, rollupTxs, blobsAndHashes, _ := g.sl.L1Publisher().ExtractTenTransactionsAndBlobs(block)
 	if len(rollupTxs) > 0 {
-		println("Successfully decoded rollup")
+		println("Successfully decoded rollup with txReceipts: ", len(txWithReceipts))
+		println("Successfully decoded rollup with blobsAndHashes: ", len(blobsAndHashes))
 	}
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txWithReceipts, blobsAndHashes)
 
