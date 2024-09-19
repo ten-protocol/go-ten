@@ -606,14 +606,13 @@ func (g *Guardian) periodicRollupProduction() {
 		case <-rollupCheckTicker.C:
 			if !g.state.IsUpToDate() {
 				// if we're behind the L1, we don't want to produce rollups
-				g.logger.Debug("skipping rollup production because L1 is not up to date", "state", g.state)
+				g.logger.Debug("Skipping rollup production because L1 is not up to date", "state", g.state)
 				continue
 			}
 
 			fromBatch, err := g.getLatestBatchNo()
-			println("GUARDIAN framBatch: ", fromBatch)
 			if err != nil {
-				g.logger.Error("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
+				g.logger.Error("Encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
 				continue
 			}
 

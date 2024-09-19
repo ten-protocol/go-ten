@@ -883,6 +883,7 @@ func (e *enclaveImpl) EnclavePublicConfig(context.Context) (*common.EnclavePubli
 }
 
 func (e *enclaveImpl) rejectBlockErr(ctx context.Context, cause error) *errutil.BlockRejectError {
+	println("REJECTING L1 BLOCK: ", cause.Error())
 	var hash common.L1BlockHash
 	l1Head, err := e.l1BlockProcessor.GetHead(ctx)
 	// todo - handle error

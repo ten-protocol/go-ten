@@ -347,6 +347,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 		p.logger.Error("Could not issue rollup tx", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	} else {
 		p.logger.Info("Rollup included in L1", log.RollupHashKey, producedRollup.Hash())
+		time.Sleep(500 * time.Millisecond)
 	}
 }
 

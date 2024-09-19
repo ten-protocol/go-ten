@@ -56,6 +56,11 @@ func (m *mockContractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 		return nil
 	}
 
+	if tx.To().Hex() == rollupTxAddr.Hex() {
+		return &ethadapter.L1RollupHashes{
+			BlobHashes: tx.BlobHashes(),
+		}
+	}
 	return decodeTx(tx)
 }
 
@@ -76,12 +81,12 @@ func (m *mockContractLib) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
 
-	//hashesTx := ethadapter.L1RollupHashes{BlobHashes: blobHashes}
+	hashesTx := ethadapter.L1RollupHashes{BlobHashes: blobHashes}
 
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 
-	if err := enc.Encode(t); err != nil {
+	if err := enc.Encode(hashesTx); err != nil {
 		panic(err)
 	}
 
@@ -147,8 +152,6 @@ func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	// so this is a way that we can differentiate different contract calls
 	var t ethadapter.L1Transaction
 	switch tx.To().Hex() {
-	case rollupTxAddr.Hex():
-		t = &ethadapter.L1RollupTx{}
 	case storeSecretTxAddr.Hex():
 		t = &ethadapter.L1RespondSecretTx{}
 	case depositTxAddr.Hex():

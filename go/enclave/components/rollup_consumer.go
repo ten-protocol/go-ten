@@ -172,6 +172,13 @@ func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []geth
 
 	for i, hash := range rollupHashes.BlobHashes {
 		if hash != blobHashes[i] {
+			println("Are they indexed incorrectly?")
+			for _, h := range rollupHashes.BlobHashes {
+				for _, b := range blobHashes {
+					println("Blob hashes: ", b.Hex())
+				}
+				println("Rollup Blob hashes: ", h.Hex())
+			}
 			return fmt.Errorf("hash mismatch at index %d: rollupHash (%s) != blobHash (%s)", i, hash.Hex(), blobHashes[i].Hex())
 		}
 	}

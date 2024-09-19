@@ -119,12 +119,9 @@ func createLegacyTx(txData types.TxData) (types.TxData, error) {
 
 func createBlobTx(txData types.TxData) (types.TxData, error) {
 	tx := types.NewTx(txData)
-	//gasTip, _ := uint256.FromBig(tx.GasTipCap())
 	return &types.BlobTx{
-		To:   *tx.To(),
-		Data: tx.Data(),
-		//Gas:        tx.Gas(),
-		//GasTipCap:  gasTip,
+		To:         *tx.To(),
+		Data:       tx.Data(),
 		BlobHashes: tx.BlobHashes(),
 		Sidecar:    tx.BlobTxSidecar(),
 	}, nil
@@ -154,11 +151,15 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 			continue
 		}
 		switch l1tx := decodedTx.(type) {
-		case *ethadapter.L1RollupTx:
-			r, err := common.DecodeRollup(l1tx.Rollup)
-			if err == nil {
-				return r
+		case *ethadapter.L1RollupHashes:
+			slot, err := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), SecondsPerSlot)
+			blobs, _ := m.BeaconServer.LoadBlobs(slot, l1tx.BlobHashes...)
+			r, err := ethadapter.ReconstructRollup(blobs)
+			if err != nil {
+				m.logger.Error("could not recreate rollup from blobs. Cause: %w", err)
+				return nil
 			}
+			return r
 		}
 	}
 	return nil
