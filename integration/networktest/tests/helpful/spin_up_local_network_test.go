@@ -32,7 +32,7 @@ const (
 // Spins up a local network with a gateway, with all processes debuggable. The network will run until the test is stopped.
 // Note: If you want to access the gateway frontend you need to `npm run build` its frontend with NEXT_PUBLIC_API_GATEWAY_URL=http://localhost:11180
 func TestRunLocalNetwork(t *testing.T) {
-	// networktest.TestOnlyRunsInIDE(t)
+	networktest.TestOnlyRunsInIDE(t)
 	networktest.EnsureTestLogsSetUp("local-geth-network")
 	networkConnector, cleanUp, err := env.LocalDevNetwork(devnetwork.WithGateway(), devnetwork.WithPredictableDeployer()).Prepare()
 	if err != nil {
