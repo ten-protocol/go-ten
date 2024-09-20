@@ -39,7 +39,7 @@ func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWit
 
 	contract, err := rpc.storage.ReadContract(builder.ctx, *address)
 	if err != nil {
-		builder.Err = fmt.Errorf("invalid contract %s - %w", address.Hex(), err)
+		builder.Err = fmt.Errorf("eth_getStorageAt is not supported for this contract")
 		return nil
 	}
 
