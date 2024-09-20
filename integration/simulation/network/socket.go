@@ -3,12 +3,13 @@ package network
 import (
 	"bufio"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/host/l1"
 	"net/http"
 	"os/exec"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ten-protocol/go-ten/integration/noderunner"
 

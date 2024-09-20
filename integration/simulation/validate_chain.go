@@ -3,13 +3,14 @@ package simulation
 import (
 	"context"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/host/l1"
 	"math/big"
 	"sort"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"

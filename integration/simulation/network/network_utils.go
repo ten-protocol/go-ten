@@ -2,10 +2,11 @@ package network
 
 import (
 	"fmt"
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"math"
 	"math/big"
 	"time"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/host"

@@ -484,7 +484,6 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs [
 
 	// TODO (@will) this should be removed and pulled from the L1
 	err := g.storage.AddBlock(block.Header())
-
 	if err != nil {
 		g.logger.Error("Could not add block to host db.", log.ErrKey, err)
 	}

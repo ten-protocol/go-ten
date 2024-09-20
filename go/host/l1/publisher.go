@@ -309,8 +309,8 @@ func (p *Publisher) ExtractTenTransactionsAndBlobs(block *types.Block) ([]*ethad
 }
 
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
-	//hash := *p.mgmtContractLib.GetContractAddr()
-	//println("contract address: ", hash.Hex())
+	// hash := *p.mgmtContractLib.GetContractAddr()
+	// println("contract address: ", hash.Hex())
 	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
 }
 

@@ -5,12 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"github.com/ten-protocol/go-ten/go/host/l1"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ten-protocol/go-ten/go/common/async"
 
@@ -574,7 +575,7 @@ func NewMiner(
 		interrupt:    new(int32),
 		p2pCh:        make(chan *types.Block),
 		miningCh:     make(chan *types.Block),
-		//miningCh:         make(chan *BlockWithBlobs),
+		// miningCh:         make(chan *BlockWithBlobs),
 		canonicalCh:      make(chan *types.Block),
 		mempoolCh:        make(chan *types.Transaction),
 		headInCh:         make(chan bool),

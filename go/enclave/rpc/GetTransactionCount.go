@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"fmt"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"

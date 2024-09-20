@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 const (

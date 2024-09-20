@@ -1,9 +1,10 @@
 package ethadapter
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"testing"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/stretchr/testify/require"

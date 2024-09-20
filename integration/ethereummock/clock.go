@@ -76,8 +76,7 @@ type Timer interface {
 // SystemClock provides an instance of Clock that uses the system clock via methods in the time package.
 var SystemClock Clock = systemClock{}
 
-type systemClock struct {
-}
+type systemClock struct{}
 
 func (s systemClock) Now() time.Time {
 	return time.Now()

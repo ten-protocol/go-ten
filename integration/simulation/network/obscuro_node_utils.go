@@ -3,10 +3,11 @@ package network
 import (
 	"context"
 	"fmt"
-	"github.com/ten-protocol/go-ten/integration/ethereummock"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
 
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/ethadapter"

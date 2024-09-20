@@ -65,7 +65,6 @@ func (bc *BeaconHTTPClient) request(ctx context.Context, dest any, reqPath strin
 		base = "http://" + base
 	}
 	baseURL, err := url.Parse(base)
-
 	if err != nil {
 		return fmt.Errorf("failed to parse base URL: %w", err)
 	}
@@ -258,9 +257,9 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 	for _, h := range hashes {
 		for _, sidecar := range resp.Data {
 			versionedHash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
-			//println("Looking for versioned hash: ", h.Hex())
-			//println("Sidecars with versioned hash: ", versionedHash.Hex())
-			//println("")
+			// println("Looking for versioned hash: ", h.Hex())
+			// println("Sidecars with versioned hash: ", versionedHash.Hex())
+			// println("")
 			if h == versionedHash {
 				sidecars = append(sidecars, sidecar)
 				break

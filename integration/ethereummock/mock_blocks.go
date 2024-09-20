@@ -1,12 +1,13 @@
 package ethereummock
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
-	"math/big"
 )
 
 var MockGenesisBlock, _ = NewBlock(nil, common.HexToAddress("0x0"), []*types.Transaction{}, 0)

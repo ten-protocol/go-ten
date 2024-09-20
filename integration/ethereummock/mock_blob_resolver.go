@@ -3,13 +3,14 @@ package ethereummock
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/host/l1"
-	"sync"
 )
 
 type BlobResolverInMem struct {

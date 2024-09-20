@@ -1,8 +1,9 @@
 package params
 
 import (
-	"github.com/ten-protocol/go-ten/go/host/l1"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ethereum/go-ethereum/common"
 

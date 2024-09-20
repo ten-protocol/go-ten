@@ -24,7 +24,6 @@ const (
 
 func WriteBatchHeader(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, convertedHash gethcommon.Hash, blockId int64, isCanonical bool) error {
 	header, err := rlp.EncodeToBytes(batch.Header)
-
 	if err != nil {
 		return fmt.Errorf("could not encode batch header. Cause: %w", err)
 	}
