@@ -6,6 +6,8 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
+
 	"github.com/ethereum/go-ethereum/triedb"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -150,7 +152,7 @@ type Storage interface {
 	// StateDB - return the underlying state database
 	StateDB() state.Database
 
-	ReadContractCreator(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error)
+	ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error)
 }
 
 type ScanStorage interface {
