@@ -37,8 +37,15 @@ func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWit
 		return nil
 	}
 
-	if !rpc.whitelist.AllowedStorageSlots[slot] {
-		builder.Err = fmt.Errorf("eth_getStorageAt is not supported on TEN")
+	contract, err := rpc.storage.ReadContract(builder.ctx, *address)
+	if err != nil {
+		builder.Err = fmt.Errorf("invalid contract %s - %w", address.Hex(), err)
+		return nil
+	}
+
+	// block the call for un-transparent contracts and non-whitelisted slots
+	if !rpc.whitelist.AllowedStorageSlots[slot] && !contract.IsTransparent() {
+		builder.Err = fmt.Errorf("eth_getStorageAt is not supported for this contract")
 		return nil
 	}
 
