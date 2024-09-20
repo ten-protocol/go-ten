@@ -276,18 +276,14 @@ func (p *Publisher) ExtractTenTransactionsAndBlobs(block *types.Block) ([]*ethad
 	for _, tx := range block.Transactions() {
 		t := p.mgmtContractLib.DecodeTx(tx)
 		if t == nil {
-			println("T IS NIL")
 			continue
 		}
-		println("T IS NOT NIL", t)
 		if scrtTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
-			println("Found L1RespondSecretTx")
 			secretRespTxs = append(secretRespTxs, scrtTx)
 			continue
 		}
 
 		if contractAddressTx, ok := t.(*ethadapter.L1SetImportantContractsTx); ok {
-			println("Found L1SetImportantContractsTx")
 			contractAddressTxs = append(contractAddressTxs, contractAddressTx)
 			continue
 		}
@@ -295,15 +291,11 @@ func (p *Publisher) ExtractTenTransactionsAndBlobs(block *types.Block) ([]*ethad
 		if !ok {
 			continue
 		}
-		println("Rollup hashes found")
-		println("About to fetch blobs")
 		blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), rollupHashes.BlobHashes)
 		if err != nil {
-			println("FAILED to fetch blobs")
 			p.logger.Crit("could not fetch blobs publisher", log.ErrKey, err)
 			return nil, nil, nil, nil
 		}
-		println("SUCCESS fetching blobs: ", len(blobs))
 		encodedRlp, err := ethadapter.DecodeBlobs(blobs)
 		if err != nil {
 			p.logger.Crit("could not decode blobs.", log.ErrKey, err)
@@ -349,13 +341,11 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	}
 
-	println("Publishing RollupTx")
 	err = p.publishTransaction(rollupBlobTx)
 	if err != nil {
 		p.logger.Error("Could not issue rollup tx", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	} else {
 		p.logger.Info("Rollup included in L1", log.RollupHashKey, producedRollup.Hash())
-		println("Published RollupTx")
 	}
 }
 

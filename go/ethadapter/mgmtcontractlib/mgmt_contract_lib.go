@@ -188,8 +188,6 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
 
-	println("Creating blob tx with hash")
-
 	return &types.BlobTx{
 		To:         *c.addr,
 		Data:       data,
