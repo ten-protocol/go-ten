@@ -2,6 +2,7 @@ package container
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
@@ -151,13 +152,14 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.ManagementContractAddress, logger)
 	obscuroRelevantContracts := []gethcommon.Address{cfg.ManagementContractAddress, cfg.MessageBusAddress}
 	l1Repo := l1.NewL1Repository(l1Client, obscuroRelevantContracts, logger)
-	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Repo, enclaveClients, mgmtContractLib, ethWallet, rpcServer, logger, metricsService)
+	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BeaconUrl)))
+	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Repo, enclaveClients, mgmtContractLib, ethWallet, rpcServer, logger, metricsService, blobResolver)
 }
 
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
-func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service) *HostContainer {
-	h := host.NewHost(cfg, services, p2p, l1Client, l1Repo, enclaveClients, hostWallet, contractLib, logger, metricsService.Registry())
+func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service, blobResolver l1.BlobResolver) *HostContainer {
+	h := host.NewHost(cfg, services, p2p, l1Client, l1Repo, enclaveClients, hostWallet, contractLib, logger, metricsService.Registry(), blobResolver)
 
 	hostContainer := &HostContainer{
 		host:           h,

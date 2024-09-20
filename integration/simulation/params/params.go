@@ -1,6 +1,7 @@
 package params
 
 import (
+	"github.com/ten-protocol/go-ten/go/host/l1"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -27,7 +28,8 @@ type SimParams struct {
 	// ERC20ContractLib allows parsing ERC20Contract txs to and from the eth txs
 	ERC20ContractLib erc20contractlib.ERC20ContractLib
 
-	L1TenData *L1TenData
+	BlobResolver l1.BlobResolver
+	L1TenData    *L1TenData
 
 	// Contains all the wallets required by the simulation
 	Wallets *SimWallets

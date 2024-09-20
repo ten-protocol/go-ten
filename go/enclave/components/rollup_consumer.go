@@ -54,7 +54,6 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 
 	rollups, err := rc.extractAndVerifyRollups(b, blobs)
 	if err != nil {
-		println("ERROR HERE: ", err.Error())
 		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, b.BlockHeader.Hash(), log.ErrKey, err)
 		return err
 	}
@@ -64,7 +63,6 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 
 	rollups, err = rc.getSignedRollup(rollups)
 	if err != nil {
-		println("ERROR HERE 1")
 		return err
 	}
 
@@ -76,13 +74,11 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 	for _, rollup := range rollups {
 		l1CompressionBlock, err := rc.storage.FetchBlock(ctx, rollup.Header.CompressionL1Head)
 		if err != nil {
-			println("ERROR HERE 2")
 			rc.logger.Warn("Can't process rollup because the l1 block used for compression is not available", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			continue
 		}
 		canonicalBlockByHeight, err := rc.storage.FetchCanonicaBlockByHeight(ctx, l1CompressionBlock.Number)
 		if err != nil {
-			println("ERROR HERE 3")
 			return err
 		}
 		if canonicalBlockByHeight.Hash() != l1CompressionBlock.Hash() {
@@ -92,7 +88,6 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 		// read batch data from rollup, verify and store it
 		internalHeader, err := rc.rollupCompression.ProcessExtRollup(ctx, rollup)
 		if err != nil {
-			println("ERROR HERE 4")
 			rc.logger.Error("Failed processing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			// todo - issue challenge as a validator
 			return err
@@ -166,13 +161,6 @@ func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []geth
 
 	for i, hash := range rollupHashes.BlobHashes {
 		if hash != blobHashes[i] {
-			println("Are they indexed incorrectly?")
-			for _, h := range rollupHashes.BlobHashes {
-				for _, b := range blobHashes {
-					println("Blob hashes: ", b.Hex())
-				}
-				println("Rollup Blob hashes: ", h.Hex())
-			}
 			return fmt.Errorf("hash mismatch at index %d: rollupHash (%s) != blobHash (%s)", i, hash.Hex(), blobHashes[i].Hex())
 		}
 	}

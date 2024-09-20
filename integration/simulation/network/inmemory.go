@@ -18,9 +18,9 @@ import (
 )
 
 type basicNetworkOfInMemoryNodes struct {
-	ethNodes     []*ethereummock.Node
-	l2Clients    []rpc.Client
-	beaconServer *ethereummock.BeaconMock
+	ethNodes  []*ethereummock.Node
+	l2Clients []rpc.Client
+	//blobResolver *l1.BlobResolver
 }
 
 func NewBasicNetworkOfInMemoryNodes() Network {
@@ -46,14 +46,13 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	// dummyMgmtContractAddress := datagenerator.RandomAddress()
 	// params.MgmtContractLib
 
-	n.beaconServer = createBeaconServer(params.L1BeaconPort)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
 		incomingP2PDisabled := !isGenesis && i == params.NodeWithInboundP2PDisabled
 
 		// create the in memory l1 and l2 node
-		miner := createMockEthNode(i, params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats, n.beaconServer)
+		miner := createMockEthNode(i, params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats, params.BlobResolver)
 		agg := createInMemTenNode(
 			int64(i),
 			isGenesis,
@@ -69,7 +68,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			params.AvgBlockDuration/2,
 			incomingP2PDisabled,
 			params.AvgBlockDuration,
-			params.L1BeaconPort,
+			params.BlobResolver,
 		)
 		tenClient := p2p.NewInMemTenClient(agg)
 
@@ -114,10 +113,6 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
 
-	err := n.beaconServer.Start(Localhost)
-	if err != nil {
-		panic("couldn't start beacon server")
-	}
 	return &RPCHandles{
 		EthClients:     l1Clients,
 		TenClients:     tenClients,
@@ -128,7 +123,6 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	StopTenNodes(n.l2Clients)
-	_ = n.beaconServer.Close()
 	for _, node := range n.ethNodes {
 		temp := node
 		go temp.Stop()

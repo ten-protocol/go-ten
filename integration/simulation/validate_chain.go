@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 	"math/big"
-	"net/http"
 	"sort"
 	"strings"
 	"sync"
@@ -283,7 +282,7 @@ func ExtractDataFromEthereumChain(
 				totalDeposited.Add(totalDeposited, l1tx.Amount)
 				successfulDeposits++
 			case *ethadapter.L1RollupHashes:
-				r, err := getRollupFromBlobHashes(s.ctx, s.Params.L1BeaconPort, block, l1tx.BlobHashes)
+				r, err := getRollupFromBlobHashes(s.ctx, s.Params.BlobResolver, block, l1tx.BlobHashes)
 				if err != nil {
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
@@ -852,9 +851,7 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 	}
 }
 
-func getRollupFromBlobHashes(ctx context.Context, beaconPort int, block *types.Block, blobHashes []gethcommon.Hash) (*common.ExtRollup, error) {
-	beaconUrl := fmt.Sprintf("127.0.0.1:%d", beaconPort)
-	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), beaconUrl)))
+func getRollupFromBlobHashes(ctx context.Context, blobResolver l1.BlobResolver, block *types.Block, blobHashes []gethcommon.Hash) (*common.ExtRollup, error) {
 	blobs, err := blobResolver.FetchBlobs(ctx, block.Header(), blobHashes)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch blobs from hashes during chain validation")

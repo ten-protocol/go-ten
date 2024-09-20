@@ -2,6 +2,7 @@ package devnetwork
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
@@ -179,7 +180,8 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	rpcServer := node.NewServer(&rpcConfig, n.logger)
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&hostConfig.ManagementContractAddress, n.logger)
 	l1Repo := l1.NewL1Repository(n.l1Client, []gethcommon.Address{hostConfig.ManagementContractAddress, hostConfig.MessageBusAddress}, n.logger)
-	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, l1Repo, enclaveClients, mgmtContractLib, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger))
+	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), fmt.Sprintf("127.0.0.1:%d", n.config.L1BeaconPort))))
+	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, l1Repo, enclaveClients, mgmtContractLib, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger), blobResolver)
 }
 
 func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.EnclaveContainer {
@@ -219,7 +221,6 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		GasLocalExecutionCapFlag:  defaultCfg.GasLocalExecutionCapFlag,
 		GasPaymentAddress:         defaultCfg.GasPaymentAddress,
 		RPCTimeout:                5 * time.Second,
-		L1BeaconUrl:               fmt.Sprintf("127.0.0.1:%d", n.config.L1BeaconPort),
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }

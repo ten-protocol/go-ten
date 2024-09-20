@@ -155,10 +155,7 @@ func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmt
 	if err != nil {
 		t.Error(err)
 	}
-	txData, err := mgmtContractLib.CreateBlobRollup(&ethadapter.L1RollupTx{Rollup: encodedRollup})
-	if err != nil {
-		t.Error(err)
-	}
+	txData := mgmtContractLib.CreateRollup(&ethadapter.L1RollupTx{Rollup: encodedRollup})
 
 	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {

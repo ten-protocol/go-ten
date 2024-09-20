@@ -3,6 +3,7 @@ package network
 import (
 	"context"
 	"fmt"
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
 	"net"
 	"strings"
 	"time"
@@ -34,7 +35,7 @@ func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clien
 	tenNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
 	tenHosts := make([]host.Host, params.NumberOfNodes)
 	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithInboundP2PDisabled)
-
+	blobResolver := ethereummock.NewBlobResolver(0, ethereummock.SecondsPerSlot)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
@@ -53,7 +54,7 @@ func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clien
 			params.AvgBlockDuration/3,
 			true,
 			params.AvgBlockDuration,
-			params.L1BeaconPort,
+			blobResolver,
 		)
 		tenHosts[i] = tenNodes[i].Host()
 	}

@@ -27,8 +27,6 @@ type EnclaveConfig struct {
 	L1ChainID int64
 	// The ID of the Obscuro chain
 	ObscuroChainID int64
-	// The http url of the beacon chain to fetch rollup data
-	L1BeaconUrl string
 	// Whether to produce a verified attestation report
 	WillAttest bool
 	// Whether to validate incoming L1 blocks
@@ -197,7 +195,6 @@ func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 	cfg.GasPaymentAddress = gethcommon.HexToAddress(flags[L2CoinbaseFlag].String())
 	cfg.GasBatchExecutionLimit = flags[GasBatchExecutionLimit].Uint64()
 	cfg.GasLocalExecutionCapFlag = flags[GasLocalExecutionCapFlag].Uint64()
-	cfg.L1BeaconUrl = flags[L1BeaconUrlFlag].String()
 
 	return cfg, nil
 }

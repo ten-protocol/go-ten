@@ -92,7 +92,6 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
 	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
 	cfg.TenGenesis = c.tenGenesis
-	cfg.L1BeaconUrl = c.l1BeaconUrl
 
 	if c.nodeType == "sequencer" && c.coinbaseAddress != "" {
 		cfg.GasPaymentAddress = gethcommon.HexToAddress(c.coinbaseAddress)

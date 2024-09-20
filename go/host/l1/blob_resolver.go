@@ -15,6 +15,7 @@ import (
 type BlobResolver interface {
 	// FetchBlobs Fetches the blob data using beacon chain APIs
 	FetchBlobs(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error)
+	StoreBlobs(slot uint64, blobs []*kzg4844.Blob) error
 }
 
 type beaconBlobResolver struct {
@@ -31,4 +32,9 @@ func (r *beaconBlobResolver) FetchBlobs(ctx context.Context, b *types.Header, ha
 		return nil, fmt.Errorf("failed to fetch blobs from beacon client: %w", err)
 	}
 	return blobs, nil
+}
+
+func (r *beaconBlobResolver) StoreBlobs(_ uint64, _ []*kzg4844.Blob) error {
+	// This only needed for the inmemory version, this happens on the beacon chain in the real world
+	panic("not implemented")
 }

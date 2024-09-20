@@ -37,19 +37,14 @@ const (
 	DefaultL1RPCTimeout     = 15 * time.Second
 )
 
-func createMockEthNode(id int, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats, beaconServer *ethereummock.BeaconMock) *ethereummock.Node {
+func createMockEthNode(id int, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats, blobResolver l1.BlobResolver) *ethereummock.Node {
 	mockEthNetwork := ethereummock.NewMockEthNetwork(avgBlockDuration, avgNetworkLatency, stats)
 	ethereumMockCfg := defaultMockEthNodeCfg(nrNodes, avgBlockDuration)
 	logger := log.New(log.EthereumL1Cmp, int(gethlog.LvlInfo), ethereumMockCfg.LogFile, log.NodeIDKey, id)
 	// create an in memory mock ethereum node responsible with notifying the layer 2 node about blocks
-	miner := ethereummock.NewMiner(gethcommon.BigToAddress(big.NewInt(int64(id))), ethereumMockCfg, mockEthNetwork, stats, beaconServer, logger)
+	miner := ethereummock.NewMiner(gethcommon.BigToAddress(big.NewInt(int64(id))), ethereumMockCfg, mockEthNetwork, stats, blobResolver, logger)
 	mockEthNetwork.CurrentNode = miner
 	return miner
-}
-
-func createBeaconServer(beaconPort int) *ethereummock.BeaconMock {
-	logger := log.New(log.EthereumL1Cmp, int(gethlog.LvlInfo), log.NodeIDKey)
-	return ethereummock.NewBeaconMock(logger, uint64(0), ethereummock.SecondsPerSlot, beaconPort)
 }
 
 func createInMemTenNode(
@@ -67,7 +62,7 @@ func createInMemTenNode(
 	batchInterval time.Duration,
 	incomingP2PDisabled bool,
 	l1BlockTime time.Duration,
-	l1BeaconPort int,
+	blobResolver l1.BlobResolver,
 ) *container.HostContainer {
 	mgtContractAddress := mgmtContractLib.GetContractAddr()
 
@@ -85,7 +80,6 @@ func createInMemTenNode(
 		IsInboundP2PDisabled:      incomingP2PDisabled,
 		L1BlockTime:               l1BlockTime,
 		UseInMemoryDB:             true,
-		L1BeaconUrl:               fmt.Sprintf("127.0.0.1:%d", l1BeaconPort),
 	}
 
 	enclaveConfig := &config.EnclaveConfig{
@@ -106,7 +100,6 @@ func createInMemTenNode(
 		GasLocalExecutionCapFlag:  params.MaxGasLimit / 2,
 		GasBatchExecutionLimit:    params.MaxGasLimit / 2,
 		RPCTimeout:                5 * time.Second,
-		L1BeaconUrl:               fmt.Sprintf("127.0.0.1:%d", l1BeaconPort),
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
@@ -116,7 +109,7 @@ func createInMemTenNode(
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 	l1Repo := l1.NewL1Repository(ethClient, ethereummock.MgmtContractAddresses, hostLogger)
-	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Repo, enclaveClients, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
+	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Repo, enclaveClients, mgmtContractLib, ethWallet, nil, hostLogger, metricsService, blobResolver)
 
 	return currentContainer
 }

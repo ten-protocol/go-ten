@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"net/http"
-
 	"github.com/ten-protocol/go-ten/go/host/l2"
 
 	"github.com/ten-protocol/go-ten/go/host/enclave"
@@ -58,7 +56,7 @@ func (bl batchListener) HandleBatch(batch *common.ExtBatch) {
 	bl.newHeads <- batch.Header
 }
 
-func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
+func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry, blobResolver l1.BlobResolver) hostcommon.Host {
 	hostStorage := storage.NewHostStorageFromConfig(config, logger)
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
@@ -95,9 +93,6 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardians, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
-	//FIXME
-	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), config.L1BeaconUrl)))
-
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
 	hostServices.RegisterService(hostcommon.P2PName, p2p)
 	hostServices.RegisterService(hostcommon.L1BlockRepositoryName, l1Repo)

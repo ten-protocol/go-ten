@@ -3,6 +3,8 @@ package network
 import (
 	"bufio"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/host/l1"
+	"net/http"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -57,6 +59,9 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		&simParams.L1TenData.ObxErc20Address,
 		&simParams.L1TenData.EthErc20Address,
 	)
+	beaconURL := fmt.Sprintf("127.0.0.1:%d", simParams.L1BeaconPort)
+	simParams.BlobResolver = l1.NewBlobResolver(ethadapter.NewL1BeaconClient(
+		ethadapter.NewBeaconHTTPClient(new(http.Client), beaconURL)))
 
 	// get the sequencer Address
 	seqPrivateKey := n.wallets.NodeWallets[0].PrivateKey()
@@ -109,7 +114,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithDebugNamespaceEnabled(true),
 				node.WithL1BlockTime(simParams.AvgBlockDuration),
 				node.WithTenGenesis(genesis),
-				node.WithL1BeaconUrl(fmt.Sprintf("127.0.0.1:%d", simParams.L1BeaconPort)),
+				node.WithL1BeaconUrl(beaconURL),
 			),
 		)
 
@@ -167,7 +172,7 @@ func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) er
 				return fmt.Errorf("failed to create a connect to node after 2 minute - %w", err)
 			}
 
-			testlog.Logger().Info(fmt.Sprintf("Could not create client %d. Retrying...", i), log.ErrKey, err)
+			testlog.Logger().Info(fmt.Sprintf("Could not create client %d at port %d. Retrying...", i, port), log.ErrKey, err)
 		}
 
 		n.l2Clients[i] = client

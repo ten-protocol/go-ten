@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"github.com/ten-protocol/go-ten/go/host/l1"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -40,8 +41,9 @@ type L1Network interface {
 }
 
 type MiningConfig struct {
-	PowTime common.Latency
-	LogFile string
+	PowTime      common.Latency
+	LogFile      string
+	L1BeaconPort int
 }
 
 type TxDB interface {
@@ -66,7 +68,7 @@ type Node struct {
 	mining       bool
 	stats        StatsCollector
 	Resolver     *blockResolverInMem
-	BeaconServer *BeaconMock
+	BlobResolver l1.BlobResolver
 	db           TxDB
 	subs         map[uuid.UUID]*mockSubscription // active subscription for mock blocks
 	subMu        sync.Mutex
@@ -152,8 +154,8 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 		}
 		switch l1tx := decodedTx.(type) {
 		case *ethadapter.L1RollupHashes:
-			slot, err := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), SecondsPerSlot)
-			blobs, _ := m.BeaconServer.LoadBlobs(slot, l1tx.BlobHashes...)
+			ctx := context.TODO()
+			blobs, _ := m.BlobResolver.FetchBlobs(ctx, block.Header(), l1tx.BlobHashes)
 			r, err := ethadapter.ReconstructRollup(blobs)
 			if err != nil {
 				m.logger.Error("could not recreate rollup from blobs. Cause: %w", err)
@@ -474,7 +476,7 @@ func (m *Node) startMining() {
 				}
 				slot, _ := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), SecondsPerSlot)
 				if len(blobs) > 0 {
-					_ = m.BeaconServer.StoreBlobs(slot, blobs)
+					_ = m.BlobResolver.StoreBlobs(slot, blobs)
 				}
 				m.miningCh <- block
 			})
@@ -499,7 +501,6 @@ func (m *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(m.interrupt, 1)
 	time.Sleep(time.Millisecond * 100)
-	_ = m.BeaconServer.Close()
 	m.exitMiningCh <- true
 	m.exitCh <- true
 }
@@ -556,7 +557,7 @@ func NewMiner(
 	cfg MiningConfig,
 	network L1Network,
 	statsCollector StatsCollector,
-	mockBeaconServer *BeaconMock,
+	blobResolver l1.BlobResolver,
 	logger gethlog.Logger,
 ) *Node {
 	return &Node{
@@ -565,7 +566,7 @@ func NewMiner(
 		cfg:          cfg,
 		stats:        statsCollector,
 		Resolver:     NewResolver(),
-		BeaconServer: mockBeaconServer,
+		BlobResolver: blobResolver,
 		db:           NewTxDB(),
 		Network:      network,
 		exitCh:       make(chan bool),
