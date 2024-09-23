@@ -1,5 +1,5 @@
 import React from "react";
-import { Badge, badgeVariants } from "./ui/badge";
+import { Badge, badgeVariants } from "@repo/ui/shared/badge";
 import { useGeneralService } from "../services/useGeneralService";
 
 const HealthIndicator = () => {

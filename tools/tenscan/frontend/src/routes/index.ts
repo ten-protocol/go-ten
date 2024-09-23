@@ -3,8 +3,11 @@ import { NavLink } from "../types/interfaces";
 export const apiRoutes = {
   // **** BATCHES ****
   getLatestBatch: "/items/batch/latest/",
-  getBatches: "/items/batches/",
+  getBatches: "/items/v2/batches/",
   getBatchByHash: "/items/batch/:hash",
+  getBatchByHeight: "/items/batch/height/:height",
+  getBatchTransactions: "/items/batch/:fullHash/transactions",
+  getBatchesInRollup: "/items/rollup/:hash/batches",
 
   // **** BLOCKS ****
   getBlocks: "/items/blocks/",
@@ -16,6 +19,7 @@ export const apiRoutes = {
   // **** TRANSACTIONS ****
   getTransactions: "/items/transactions/",
   getTransactionCount: "/count/transactions/",
+  getTransactionByHash: "/items/transaction/:hash",
 
   getEtherPrice:
     "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
@@ -23,6 +27,9 @@ export const apiRoutes = {
   // **** ROLLUPS ****
   getLatestRollup: "/items/rollup/latest/",
   decryptEncryptedRollup: "/actions/decryptTxBlob/",
+  getRollups: "/items/rollups/",
+  getRollupByHash: "/items/rollup/:hash",
+  getRollupByBatchSequence: "/items/rollup/batch/:seq",
 
   // **** INFO ****
   getHealthStatus: "/info/health/",
@@ -63,6 +70,11 @@ export const NavLinks: NavLink[] = [
       {
         href: "/batches",
         label: "Batches",
+        isExternal: false,
+      },
+      {
+        href: "/rollups",
+        label: "Rollups",
         isExternal: false,
       },
     ],

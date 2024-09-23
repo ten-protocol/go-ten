@@ -5,15 +5,11 @@ import {
   CaretSortIcon,
   CheckIcon,
   PlusCircledIcon,
-} from "@radix-ui/react-icons";
+} from "@repo/ui/shared/react-icons";
 
-import { cn } from "@/src/lib/utils";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/src/components/ui/avatar";
-import { Button } from "@/src/components/ui/button";
+import { cn } from "@repo/ui/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@repo/ui/shared/avatar";
+import { Button } from "@repo/ui/shared/button";
 import {
   Command,
   CommandEmpty,
@@ -22,7 +18,7 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from "@/src/components/ui/command";
+} from "@repo/ui/shared/command";
 import {
   Dialog,
   DialogContent,
@@ -31,21 +27,21 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/src/components/ui/dialog";
-import { Input } from "@/src/components/ui/input";
-import { Label } from "@/src/components/ui/label";
+} from "@repo/ui/shared/dialog";
+import { Input } from "@repo/ui/shared/input";
+import { Label } from "@repo/ui/shared/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/src/components/ui/popover";
+} from "@repo/ui/shared/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/src/components/ui/select";
+} from "@repo/ui/shared/select";
 
 const groups = [
   {

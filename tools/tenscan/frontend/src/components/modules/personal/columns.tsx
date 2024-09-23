@@ -1,13 +1,15 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Badge, badgeVariants } from "@/src/components/ui/badge";
+import { Badge, badgeVariants } from "@repo/ui/shared/badge";
 
 import { statuses, types } from "./data";
-import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
+import { DataTableColumnHeader } from "@repo/ui/common/data-table/data-table-column-header";
 import { PersonalTransactions } from "@/src/types/interfaces/TransactionInterfaces";
-import TruncatedAddress from "../common/truncated-address";
-import { formatNumber } from "@/src/lib/utils";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { formatNumber } from "@repo/ui/lib/utils";
+import Link from "next/link";
+import { EyeOpenIcon } from "@repo/ui/shared/react-icons";
 
 export const columns: ColumnDef<PersonalTransactions>[] = [
   {
@@ -123,14 +125,14 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
       return value.includes(row.getValue(id));
     },
   },
-  // {
-  //   id: "actions",
-  //   cell: ({ row }) => {
-  //     return (
-  //       <Link href={`/batches/${row.original.hash}`}>
-  //         <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
-  //       </Link>
-  //     );
-  //   },
-  // },
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      return (
+        <Link href={`/tx/${row.original.transactionHash}`}>
+          <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
+        </Link>
+      );
+    },
+  },
 ];

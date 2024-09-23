@@ -1,10 +1,5 @@
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/src/components/ui/card";
-import { Skeleton } from "@/src/components/ui/skeleton";
+import { Card, CardHeader, CardTitle, CardContent } from "@repo/ui/shared/card";
+import { Skeleton } from "@repo/ui/shared/skeleton";
 import React from "react";
 
 export default function AnalyticsCard({

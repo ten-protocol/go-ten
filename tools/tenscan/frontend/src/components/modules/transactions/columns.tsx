@@ -1,13 +1,14 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@/src/components/ui/badge";
+import { Badge } from "@repo/ui/shared/badge";
 
 import { statuses } from "./constants";
-import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
+import { DataTableColumnHeader } from "@repo/ui/common/data-table/data-table-column-header";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
-import TruncatedAddress from "../common/truncated-address";
-import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { formatTimeAgo } from "@repo/ui/lib/utils";
+import Link from "next/link";
 
 export const columns: ColumnDef<Transaction>[] = [
   {
@@ -19,7 +20,7 @@ export const columns: ColumnDef<Transaction>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            #{formatNumber(row.getValue("BatchHeight"))}
+            #{row.getValue("BatchHeight")}
           </span>
         </div>
       );
@@ -52,7 +53,14 @@ export const columns: ColumnDef<Transaction>[] = [
       <DataTableColumnHeader column={column} title="Transaction Hash" />
     ),
     cell: ({ row }) => {
-      return <TruncatedAddress address={row.getValue("TransactionHash")} />;
+      return (
+        <Link
+          href={`/tx/${row.original.TransactionHash}`}
+          className="text-primary"
+        >
+          <TruncatedAddress address={row.getValue("TransactionHash")} />
+        </Link>
+      );
     },
     enableSorting: false,
     enableHiding: false,

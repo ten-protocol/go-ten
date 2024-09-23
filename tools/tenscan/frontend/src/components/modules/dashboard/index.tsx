@@ -1,34 +1,28 @@
 import React from "react";
-import { CalendarDateRangePicker } from "@/src/components/date-range-picker";
-import {
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Card,
-} from "@/src/components/ui/card";
+import { CardHeader, CardTitle, CardContent, Card } from "@repo/ui/shared/card";
 import {
   LayersIcon,
   FileTextIcon,
   ReaderIcon,
   CubeIcon,
   RocketIcon,
-} from "@radix-ui/react-icons";
+} from "@repo/ui/shared/react-icons";
 
 import { RecentBatches } from "./recent-batches";
 import { RecentTransactions } from "./recent-transactions";
-import { Button } from "@/src/components/ui/button";
+import { Button } from "@repo/ui/shared/button";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { useBatchesService } from "@/src/services/useBatchesService";
-import TruncatedAddress from "../common/truncated-address";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
 import { useContractsService } from "@/src/services/useContractsService";
-import { Skeleton } from "@/src/components/ui/skeleton";
+import { Skeleton } from "@repo/ui/shared/skeleton";
 import { RecentBlocks } from "./recent-blocks";
 import { useBlocksService } from "@/src/services/useBlocksService";
 import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
-import { cn, formatNumber } from "@/src/lib/utils";
-import { Badge } from "../../ui/badge";
-import { BlocksIcon } from "lucide-react";
+import { cn, formatNumber } from "@repo/ui/lib/utils";
+import { Badge } from "@repo/ui/shared/badge";
+import { BlocksIcon } from "@repo/ui/shared/react-icons";
 
 export default function Dashboard() {
   const { price, transactions, transactionCount } = useTransactionsService();
@@ -48,8 +42,8 @@ export default function Dashboard() {
     },
     {
       title: "Latest L2 Batch",
-      value: latestBatch?.item?.number
-        ? Number(latestBatch.item.number)
+      value: latestBatch?.item?.height
+        ? Number(latestBatch.item.height)
         : "N/A",
       // TODO: add change
       // change: "+20.1%",
@@ -57,9 +51,9 @@ export default function Dashboard() {
     },
     {
       title: "Latest L1 Rollup",
-      value: latestBatch?.item?.l1Proof ? (
+      value: latestBatch?.item?.header?.l1Proof ? (
         <TruncatedAddress
-          address={latestBatch?.item?.l1Proof}
+          address={latestBatch?.item?.header?.l1Proof}
           prefixLength={6}
           suffixLength={4}
         />

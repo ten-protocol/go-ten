@@ -1,10 +1,10 @@
 import React from "react";
 import { columns } from "@/src/components/modules/transactions/columns";
-import { DataTable } from "@/src/components/modules/common/data-table/data-table";
+import { DataTable } from "@repo/ui/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { Metadata } from "next";
-import { formatNumber } from "@/src/lib/utils";
+import { formatNumber } from "@repo/ui/lib/utils";
 
 export const metadata: Metadata = {
   title: "Transactions",
@@ -12,8 +12,12 @@ export const metadata: Metadata = {
 };
 
 export default function Transactions() {
-  const { transactions, refetchTransactions, setNoPolling } =
-    useTransactionsService();
+  const {
+    transactions,
+    refetchTransactions,
+    setNoPolling,
+    isTransactionsLoading,
+  } = useTransactionsService();
   const { TransactionsData, Total } = transactions?.result || {
     TransactionsData: [],
     Total: 0,
@@ -21,6 +25,10 @@ export default function Transactions() {
 
   React.useEffect(() => {
     setNoPolling(true);
+
+    return () => {
+      setNoPolling(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -41,9 +49,10 @@ export default function Transactions() {
             data={TransactionsData}
             refetch={refetchTransactions}
             total={+Total}
+            isLoading={isTransactionsLoading}
           />
         ) : (
-          <p>Loading...</p>
+          <div>No rollups found.</div>
         )}
       </div>
     </Layout>

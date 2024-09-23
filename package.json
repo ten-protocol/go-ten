@@ -1,0 +1,26 @@
+{
+  "name": "go-ten",
+  "version": "1.0.0",
+  "description": "go-ten",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ten-protocol/go-ten.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ten-protocol/go-ten/issues"
+  },
+  "homepage": "https://github.com/ten-protocol/go-ten#readme",
+  "dependencies": {
+    "turbo": "^1.13.3",
+    "eslint-config-custom": "workspace:*"
+  }
+}

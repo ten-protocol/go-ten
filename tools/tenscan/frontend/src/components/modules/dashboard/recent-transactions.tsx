@@ -1,8 +1,9 @@
-import TruncatedAddress from "../common/truncated-address";
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { Avatar, AvatarFallback } from "@repo/ui/shared/avatar";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
-import { Badge } from "../../ui/badge";
-import { formatTimeAgo } from "@/src/lib/utils";
+import { Badge } from "@repo/ui/shared/badge";
+import { formatTimeAgo } from "@repo/ui/lib/utils";
+import Link from "next/link";
 
 export function RecentTransactions({ transactions }: { transactions: any }) {
   return (
@@ -15,14 +16,25 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
             </Avatar>
             <div className="ml-4 space-y-1">
               <p className="text-sm font-medium leading-none">
-                #{Number(transaction?.BatchHeight)}
+                <Link
+                  href={`/batch/height/${transaction?.BatchHeight}`}
+                  className="text-primary"
+                >
+                  #{Number(transaction?.BatchHeight)}
+                </Link>
               </p>
               <p className="text-sm text-muted-foreground word-break-all">
                 {formatTimeAgo(transaction?.BatchTimestamp)}
               </p>
             </div>
             <div className="ml-auto font-medium">
-              <TruncatedAddress address={transaction?.TransactionHash} />
+              <Link
+                href={`/tx/${transaction?.TransactionHash}`}
+                className="text-primary"
+              >
+                {" "}
+                <TruncatedAddress address={transaction?.TransactionHash} />
+              </Link>
             </div>
             <div className="ml-auto">
               <Badge>{transaction?.Finality}</Badge>

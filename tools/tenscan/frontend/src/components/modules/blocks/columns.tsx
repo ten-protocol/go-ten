@@ -1,15 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
+import { DataTableColumnHeader } from "@repo/ui/common/data-table/data-table-column-header";
 import { Block, BlockHeader } from "@/src/types/interfaces/BlockInterfaces";
-import TruncatedAddress from "../common/truncated-address";
-import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
-import { Badge } from "../../ui/badge";
-import ExternalLink from "../../ui/external-link";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { formatNumber, formatTimeAgo } from "@repo/ui/lib/utils";
+import { Badge } from "@repo/ui/shared/badge";
+import ExternalLink from "@repo/ui/shared/external-link";
 import { externalLinks } from "@/src/routes";
-import { EyeOpenIcon } from "@radix-ui/react-icons";
+import { EyeOpenIcon } from "@repo/ui/shared/react-icons";
 
 export const columns: ColumnDef<Block>[] = [
   {
@@ -60,7 +61,12 @@ export const columns: ColumnDef<Block>[] = [
       return Number(row.original.rollupHash) === 0 ? (
         <Badge>No rollup</Badge>
       ) : (
-        <TruncatedAddress address={row.original.rollupHash} />
+        <Link
+          href={`/rollup/${row.original.rollupHash}`}
+          className="text-primary"
+        >
+          <TruncatedAddress address={row.original.rollupHash} />
+        </Link>
       );
     },
     enableSorting: false,

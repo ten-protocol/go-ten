@@ -8,14 +8,14 @@ import {
 } from "@tanstack/react-query";
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
-import { Toaster } from "@/src/components/ui/toaster";
+import { Toaster } from "@repo/ui/shared/toaster";
 import { WalletConnectionProvider } from "@/src/components/providers/wallet-provider";
-import { NetworkStatus } from "@/src/components/modules/common/network-status";
+import { NetworkStatus } from "@repo/ui/common/network-status";
 import HeadSeo from "@/src/components/head-seo";
 import { siteMetadata } from "@/src/lib/siteMetadata";
 import Script from "next/script";
 import { GOOGLE_ANALYTICS_ID } from "@/src/lib/constants";
-import { showToast } from "@/src/components/ui/use-toast";
+import { showToast } from "@repo/ui/shared/use-toast";
 import { ToastType } from "@/src/types/interfaces";
 
 export default function App({ Component, pageProps }: AppProps) {

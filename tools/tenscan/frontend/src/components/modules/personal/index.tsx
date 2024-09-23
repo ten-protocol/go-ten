@@ -1,9 +1,9 @@
 import React from "react";
 import { columns } from "@/src/components/modules/personal/columns";
-import { DataTable } from "@/src/components/modules/common/data-table/data-table";
+import { DataTable } from "@repo/ui/common/data-table/data-table";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
-import { Skeleton } from "@/src/components/ui/skeleton";
-import { formatNumber } from "@/src/lib/utils";
+import { Skeleton } from "@repo/ui/shared/skeleton";
+import { formatNumber } from "@repo/ui/lib/utils";
 
 export default function PersonalTransactions() {
   const { personalTxns, setNoPolling, personalTxnsLoading } =
@@ -15,7 +15,10 @@ export default function PersonalTransactions() {
 
   React.useEffect(() => {
     setNoPolling(true);
-    return () => setNoPolling(false);
+
+    return () => {
+      setNoPolling(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

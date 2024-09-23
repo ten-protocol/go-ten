@@ -36,3 +36,23 @@ export const fetchBatchByHash = async (
     url: pathToUrl(apiRoutes.getBatchByHash, { hash }),
   });
 };
+
+export const fetchBatchByHeight = async (
+  height: string
+): Promise<ResponseDataInterface<Batch>> => {
+  return await httpRequest<ResponseDataInterface<Batch>>({
+    method: "get",
+    url: pathToUrl(apiRoutes.getBatchByHeight, { height }),
+  });
+};
+
+export const fetchBatchTransactions = async (
+  fullHash: string,
+  options?: Record<string, any>
+): Promise<ResponseDataInterface<any>> => {
+  return await httpRequest<ResponseDataInterface<any>>({
+    method: "get",
+    url: pathToUrl(apiRoutes.getBatchTransactions, { fullHash }),
+    searchParams: options,
+  });
+};

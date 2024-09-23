@@ -1,7 +1,6 @@
 import React from "react";
 import NextErrorComponent from "next/error";
 import Link from "next/link";
-import Image from "next/image";
 import { ErrorType } from "@/src/types/interfaces";
 
 function ErrorMessage({

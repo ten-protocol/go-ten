@@ -5,18 +5,13 @@ import {
   TableHead,
   TableBody,
   TableCell,
-} from "@/src/components/ui/table";
-import { Table } from "@/src/components/ui/table";
+} from "@repo/ui/shared/table";
+import { Table } from "@repo/ui/shared/table";
 import { useContractsService } from "@/src/services/useContractsService";
-import TruncatedAddress from "../../common/truncated-address";
-import { Badge } from "@/src/components/ui/badge";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/src/components/ui/card";
-import { Separator } from "@/src/components/ui/separator";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { Badge } from "@repo/ui/shared/badge";
+import { Card, CardHeader, CardTitle, CardContent } from "@repo/ui/shared/card";
+import { Separator } from "@repo/ui/shared/separator";
 
 export default function VerifiedSequencerData() {
   const { sequencerData } = useContractsService();

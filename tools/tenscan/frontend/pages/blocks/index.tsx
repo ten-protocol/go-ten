@@ -1,10 +1,10 @@
 import React from "react";
 import { columns } from "@/src/components/modules/blocks/columns";
-import { DataTable } from "@/src/components/modules/common/data-table/data-table";
+import { DataTable } from "@repo/ui/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBlocksService } from "@/src/services/useBlocksService";
-import { formatNumber } from "@/src/lib/utils";
+import { formatNumber } from "@repo/ui/lib/utils";
 
 export const metadata: Metadata = {
   title: "Blocks",
@@ -12,7 +12,8 @@ export const metadata: Metadata = {
 };
 
 export default function Blocks() {
-  const { blocks, setNoPolling, refetchBlocks } = useBlocksService();
+  const { blocks, setNoPolling, refetchBlocks, isBlocksLoading } =
+    useBlocksService();
   const { BlocksData, Total } = blocks?.result || {
     BlocksData: [],
     Total: 0,
@@ -41,6 +42,7 @@ export default function Blocks() {
             data={BlocksData}
             total={+Total}
             refetch={refetchBlocks}
+            isLoading={isBlocksLoading}
           />
         ) : (
           <p>Loading...</p>

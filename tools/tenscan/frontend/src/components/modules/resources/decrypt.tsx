@@ -1,26 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { Alert, AlertTitle, AlertDescription } from "@/src/components/ui/alert";
-import { Badge } from "@/src/components/ui/badge";
-import { Button } from "@/src/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/src/components/ui/card";
-import { Textarea } from "@/src/components/ui/textarea";
+import { Alert, AlertTitle, AlertDescription } from "@repo/ui/shared/alert";
+import { Badge } from "@repo/ui/shared/badge";
+import { Button } from "@repo/ui/shared/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@repo/ui/shared/card";
+import { Textarea } from "@repo/ui/shared/textarea";
 import { currentEncryptedKey } from "@/src/lib/constants";
-import { CopyIcon } from "@radix-ui/react-icons";
-import { Terminal } from "lucide-react";
+import { CopyIcon } from "@repo/ui/shared/react-icons";
+import { Terminal } from "@repo/ui/shared/react-icons";
 import { useRouter } from "next/router";
 import JSONPretty from "react-json-pretty";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import {
   Tooltip,
+  TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-  TooltipContent,
-} from "@radix-ui/react-tooltip";
+} from "@repo/ui/shared/tooltip";
 
 export default function Decrypt() {
   const router = useRouter();

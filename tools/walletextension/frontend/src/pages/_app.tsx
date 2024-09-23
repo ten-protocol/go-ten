@@ -8,8 +8,11 @@ import HeadSeo from "@/components/head-seo";
 import Script from "next/script";
 import { GOOGLE_ANALYTICS_ID } from "@/lib/constants";
 import { siteMetadata } from "@/lib/siteMetadata";
+import { useRouter } from "next/router";
 
 export default function App({ Component, pageProps }: AppProps) {
+  const router = useRouter();
+
   return (
     <>
       <Script
@@ -45,7 +48,7 @@ export default function App({ Component, pageProps }: AppProps) {
         disableTransitionOnChange
       >
         <WalletConnectionProvider>
-          <Component {...pageProps} />
+          <Component {...pageProps} key={router.asPath} />
           <Toaster />
           <NetworkStatus />
         </WalletConnectionProvider>

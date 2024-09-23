@@ -4,9 +4,9 @@ import {
   WalletConnectionContextType,
   WalletConnectionProviderProps,
 } from "@/src/types/interfaces/WalletInterfaces";
-import { showToast } from "../ui/use-toast";
+import { showToast } from "@repo/ui/shared/use-toast";
 import { ToastType } from "@/src/types/interfaces";
-import { ethereum } from "@/src/lib/utils";
+import { ethereum } from "@repo/ui/lib/utils";
 
 const WalletConnectionContext =
   createContext<WalletConnectionContextType | null>(null);
