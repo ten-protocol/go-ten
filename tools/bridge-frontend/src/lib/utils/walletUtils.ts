@@ -39,7 +39,7 @@ export const handleError = (error: any, message: string) => {
       errorMessages[errorReason as IErrorMessages]
     );
   } else {
-    showToast(ToastType.DESTRUCTIVE, message);
+    showToast(ToastType.DESTRUCTIVE, errorReason);
   }
 
   throw new Error(message);
