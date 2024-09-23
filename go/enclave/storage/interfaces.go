@@ -20,21 +20,21 @@ import (
 
 // BlockResolver stores new blocks and returns information on existing blocks
 type BlockResolver interface {
-	// FetchBlock returns the L1 Block with the given hash.
-	FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Block, error)
+	// FetchBlock returns the L1 BlockHeader with the given hash.
+	FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Header, error)
 	IsBlockCanonical(ctx context.Context, blockHash common.L1BlockHash) (bool, error)
 	// FetchCanonicaBlockByHeight - self explanatory
-	FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Block, error)
+	FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Header, error)
 	// FetchHeadBlock - returns the head of the current chain.
-	FetchHeadBlock(ctx context.Context) (*types.Block, error)
-	// StoreBlock persists the L1 Block and updates the canonical ancestors if there was a fork
-	StoreBlock(ctx context.Context, block *types.Block, fork *common.ChainFork) error
-	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
-	IsAncestor(ctx context.Context, block *types.Block, maybeAncestor *types.Block) bool
-	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
-	// Takes into consideration that the Block to verify might be on a branch we haven't received yet
+	FetchHeadBlock(ctx context.Context) (*types.Header, error)
+	// StoreBlock persists the L1 BlockHeader and updates the canonical ancestors if there was a fork
+	StoreBlock(ctx context.Context, block *types.Header, fork *common.ChainFork) error
+	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 BlockHeader, and false otherwise
+	IsAncestor(ctx context.Context, block *types.Header, maybeAncestor *types.Header) bool
+	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 BlockHeader, and false otherwise
+	// Takes into consideration that the BlockHeader to verify might be on a branch we haven't received yet
 	// todo (low priority) - this is super confusing, analyze the usage
-	IsBlockAncestor(ctx context.Context, block *types.Block, maybeAncestor common.L1BlockHash) bool
+	IsBlockAncestor(ctx context.Context, block *types.Header, maybeAncestor common.L1BlockHash) bool
 }
 
 type BatchResolver interface {
@@ -42,24 +42,26 @@ type BatchResolver interface {
 	FetchBatch(ctx context.Context, hash common.L2BatchHash) (*core.Batch, error)
 	// FetchBatchHeader returns the batch header with the given hash.
 	FetchBatchHeader(ctx context.Context, hash common.L2BatchHash) (*common.BatchHeader, error)
+	FetchBatchTransactionsBySeq(ctx context.Context, seqNo uint64) ([]*common.L2Tx, error)
 	// FetchBatchByHeight returns the batch on the canonical chain with the given height.
 	FetchBatchByHeight(ctx context.Context, height uint64) (*core.Batch, error)
 	// FetchBatchBySeqNo returns the batch with the given seq number.
 	FetchBatchBySeqNo(ctx context.Context, seqNum uint64) (*core.Batch, error)
-	// FetchHeadBatch returns the current head batch of the canonical chain.
-	FetchHeadBatch(ctx context.Context) (*core.Batch, error)
+	// FetchBatchHeaderBySeqNo returns the batch header with the given seq number.
+	FetchBatchHeaderBySeqNo(ctx context.Context, seqNum uint64) (*common.BatchHeader, error)
+	FetchHeadBatchHeader(ctx context.Context) (*common.BatchHeader, error)
 	// FetchCurrentSequencerNo returns the sequencer number
 	FetchCurrentSequencerNo(ctx context.Context) (*big.Int, error)
 	// FetchBatchesByBlock returns all batches with the block hash as the L1 proof
-	FetchBatchesByBlock(ctx context.Context, hash common.L1BlockHash) ([]*core.Batch, error)
+	FetchBatchesByBlock(ctx context.Context, hash common.L1BlockHash) ([]*common.BatchHeader, error)
 	// FetchNonCanonicalBatchesBetween - returns all reorged batches between the sequences
-	FetchNonCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error)
+	FetchNonCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*common.BatchHeader, error)
 	// FetchCanonicalBatchesBetween - returns all canon batches between the sequences
-	FetchCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*core.Batch, error)
+	FetchCanonicalBatchesBetween(ctx context.Context, startSeq uint64, endSeq uint64) ([]*common.BatchHeader, error)
 	// IsBatchCanonical - true if the batch is canonical
 	IsBatchCanonical(ctx context.Context, seq uint64) (bool, error)
 	// FetchCanonicalUnexecutedBatches - return the list of the unexecuted batches that are canonical
-	FetchCanonicalUnexecutedBatches(context.Context, *big.Int) ([]*core.Batch, error)
+	FetchCanonicalUnexecutedBatches(context.Context, *big.Int) ([]*common.BatchHeader, error)
 
 	FetchConvertedHash(ctx context.Context, hash common.L2BatchHash) (gethcommon.Hash, error)
 
@@ -69,7 +71,7 @@ type BatchResolver interface {
 	// StoreBatch stores an un-executed batch.
 	StoreBatch(ctx context.Context, batch *core.Batch, convertedHash gethcommon.Hash) error
 	// StoreExecutedBatch - store the batch after it was executed
-	StoreExecutedBatch(ctx context.Context, batch *core.Batch, receipts []*types.Receipt) error
+	StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, receipts []*types.Receipt, contracts map[gethcommon.Hash][]*gethcommon.Address) error
 
 	// StoreRollup
 	StoreRollup(ctx context.Context, rollup *common.ExtRollup, header *common.CalldataRollupHeader) error
@@ -96,10 +98,6 @@ type TransactionStorage interface {
 	GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error)
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
 	GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (*types.Receipt, error)
-	// GetReceiptsByBatchHash retrieves the receipts for all transactions in a given rollup.
-	GetReceiptsByBatchHash(ctx context.Context, hash common.L2BatchHash) (types.Receipts, error)
-	// GetContractCreationTx returns the hash of the tx that created a contract
-	GetContractCreationTx(ctx context.Context, address gethcommon.Address) (*gethcommon.Hash, error)
 }
 
 type AttestationStorage interface {
@@ -151,6 +149,8 @@ type Storage interface {
 
 	// StateDB - return the underlying state database
 	StateDB() state.Database
+
+	ReadContractOwner(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error)
 }
 
 type ScanStorage interface {

@@ -99,43 +99,46 @@ func (p *Publisher) Start() error {
 	return nil
 }
 
-func (p *Publisher) GetBundleRangeFromManagementContract() (*big.Int, *big.Int, error) {
+func (p *Publisher) GetBundleRangeFromManagementContract(lastRollupNumber *big.Int, lastRollupUID gethcommon.Hash) (*gethcommon.Hash, *big.Int, *big.Int, error) {
 	if p.mgmtContractLib.IsMock() {
-		return nil, nil, fmt.Errorf("bundle publishing unavailable for mocked environments")
+		return nil, nil, nil, fmt.Errorf("bundle publishing unavailable for mocked environments")
 	}
 
 	managementCtr, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
 	if err != nil {
 		p.logger.Error("Unable to instantiate management contract client")
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	lastBatchHash, err := managementCtr.LastBatchHash(&bind.CallOpts{})
+	hashBytes, rollup, err := managementCtr.GetUniqueForkID(&bind.CallOpts{}, lastRollupNumber)
 	if err != nil {
-		p.logger.Error("Unable to fetch last batch hash from management contract", log.ErrKey, err)
-		return nil, nil, err
+		p.logger.Error("Unable to get unique fork ID from management contract")
+		return nil, nil, nil, err
 	}
 
-	var fromSeqNo *big.Int
-	if lastBatchHash == [32]byte{} {
-		fromSeqNo = big.NewInt(0)
-	} else {
-		batch, err := p.storage.FetchBatch(lastBatchHash)
-		if err != nil {
-			p.logger.Error("Unable to fetch last batch from host db", log.ErrKey, err)
-			return nil, nil, err
-		}
-		fromSeqNo = batch.SeqNo()
-		fromSeqNo = batch.SeqNo().Add(fromSeqNo, big.NewInt(1))
+	rollupUid := gethcommon.BytesToHash(hashBytes[:])
+	if rollupUid != lastRollupUID {
+		return nil, nil, nil, errutil.ErrRollupForkMismatch
 	}
 
-	lastBatchRolledUpSeqNo, err := managementCtr.LastBatchSeqNo(&bind.CallOpts{})
+	fromSeqNo := big.NewInt(0)
+	if lastRollupNumber.Cmp(big.NewInt(0)) != 0 {
+		fromSeqNo = big.NewInt(0).SetUint64(rollup.LastSequenceNumber.Uint64() + 1)
+	}
+
+	nextRollupNumber := big.NewInt(0).SetUint64(lastRollupNumber.Uint64() + 1)
+	nextHashBytes, nextRollup, err := managementCtr.GetUniqueForkID(&bind.CallOpts{}, nextRollupNumber)
 	if err != nil {
-		p.logger.Error("Unable to fetch last batch seq no from management contract", log.ErrKey, err)
-		return nil, nil, err
+		p.logger.Error("Unable to get unique fork ID from management contract")
+		return nil, nil, nil, err
 	}
 
-	return fromSeqNo, lastBatchRolledUpSeqNo, nil
+	nextRollupUID := gethcommon.BytesToHash(nextHashBytes[:])
+	if nextRollupUID.Big().Cmp(gethcommon.Big0) == 0 {
+		return nil, nil, nil, errutil.ErrNoNextRollup
+	}
+
+	return &nextRollupUID, fromSeqNo, nextRollup.LastSequenceNumber, nil
 }
 
 func (p *Publisher) Stop() error {
@@ -281,7 +284,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	}
 }
 
-func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle) error {
+func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, rollupNum *big.Int, forkID gethcommon.Hash) error {
 	if p.mgmtContractLib.IsMock() {
 		return nil
 	}
@@ -310,10 +313,13 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle) 
 
 	transactor.Nonce = big.NewInt(0).SetUint64(nonce)
 
-	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.LastBatchHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes, bundle.Signature)
+	p.logger.Debug("Adding cross chain roots to management contract", log.BundleHashKey, bundle.CrossChainRootHashes)
+
+	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.LastBatchHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes, bundle.Signature, rollupNum, forkID)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrCrossChainBundleRepublished) {
-			p.logger.Error("Error with submitting cross chain bundle transaction.", log.ErrKey, err, log.BundleHashKey, bundle.LastBatchHash)
+			p.logger.Info("Cross chain bundle already published. Proceeding without publishing", log.ErrKey, err, log.BundleHashKey, bundle.LastBatchHash)
+			return nil
 		}
 		p.hostWallet.SetNonce(p.hostWallet.GetNonce() - 1)
 		return fmt.Errorf("unable to submit cross chain bundle transaction. Cause: %w", err)
@@ -391,12 +397,19 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 
 	retries := -1
 
+	// we keep trying to send the transaction with this nonce until it is included in a block
+	// note: this is only safe because of the sendingLock guaranteeing only one transaction in-flight at a time
+	nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
+	if err != nil {
+		return fmt.Errorf("could not get nonce for L1 tx: %w", err)
+	}
+
 	// while the publisher service is still alive we keep trying to get the transaction into the L1
 	for !p.hostStopper.IsStopping() {
 		retries++ // count each attempt so we can increase gas price
 
 		// update the tx gas price before each attempt
-		tx, err := p.ethClient.PrepareTransactionToRetry(p.sendingContext, tx, p.hostWallet.Address(), retries)
+		tx, err := p.ethClient.PrepareTransactionToRetry(p.sendingContext, tx, p.hostWallet.Address(), nonce, retries)
 		if err != nil {
 			return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 		}

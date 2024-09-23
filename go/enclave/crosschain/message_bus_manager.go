@@ -146,12 +146,12 @@ func (m *MessageBusManager) ExtractOutboundTransfers(_ context.Context, receipts
 // todo (@stefan) - fix ordering of messages, currently it is irrelevant.
 // todo (@stefan) - do not extract messages below their consistency level. Irrelevant security wise.
 // todo (@stefan) - surface errors
-func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlock *common.L1Block, toBlock *common.L1Block, _ *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents) {
+func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlock *types.Header, toBlock *types.Header, rollupState *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents) {
 	messages := make(common.CrossChainMessages, 0)
 	transfers := make(common.ValueTransferEvents, 0)
 
 	from := fromBlock.Hash()
-	height := fromBlock.NumberU64()
+	height := fromBlock.Number.Uint64()
 	if !m.storage.IsAncestor(ctx, toBlock, fromBlock) {
 		m.logger.Crit("Synthetic transactions can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
 	}
@@ -178,10 +178,10 @@ func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlo
 		transfers = append(transfers, transfersForBlock...)
 
 		// No deposits before genesis.
-		if b.NumberU64() < height {
+		if b.Number.Uint64() < height {
 			m.logger.Crit("block height is less than genesis height")
 		}
-		p, err := m.storage.FetchBlock(ctx, b.ParentHash())
+		p, err := m.storage.FetchBlock(ctx, b.ParentHash)
 		if err != nil {
 			m.logger.Crit("Synthetic transactions can't be processed because the rollups are not on the same Ethereum fork")
 		}
@@ -192,7 +192,7 @@ func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlo
 	if len(messages)+len(transfers) == 0 {
 		logf = m.logger.Debug
 	}
-	logf(fmt.Sprintf("Extracted cross chain messages for block height %d ->%d", fromBlock.NumberU64(), toBlock.NumberU64()), "no_msgs", len(messages), "no_value_transfers", len(transfers))
+	logf(fmt.Sprintf("Extracted cross chain messages for block height %d ->%d", fromBlock.Number.Uint64(), toBlock.Number.Uint64()), "no_msgs", len(messages), "no_value_transfers", len(transfers))
 
 	return messages, transfers
 }
@@ -202,6 +202,7 @@ const BalanceIncreaseXChainValueTransfer tracing.BalanceChangeReason = 110
 func (m *MessageBusManager) ExecuteValueTransfers(ctx context.Context, transfers common.ValueTransferEvents, rollupState *state.StateDB) {
 	for _, transfer := range transfers {
 		rollupState.AddBalance(transfer.Receiver, uint256.MustFromBig(transfer.Amount), BalanceIncreaseXChainValueTransfer)
+		m.logger.Debug(fmt.Sprintf("Executed cross chain value transfer from %s to %s with amount %s", transfer.Sender.Hex(), transfer.Receiver.Hex(), transfer.Amount.String()))
 	}
 }
 

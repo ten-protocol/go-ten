@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ColumnDef } from "@tanstack/react-table";
 
 import { DataTableColumnHeader } from "@repo/ui/common/data-table/data-table-column-header";
@@ -23,7 +22,7 @@ export const columns: ColumnDef<Block>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {Number(blockHeader?.number)}
+            #{Number(blockHeader?.number)}
           </span>
         </div>
       );
@@ -61,12 +60,10 @@ export const columns: ColumnDef<Block>[] = [
       return Number(row.original.rollupHash) === 0 ? (
         <Badge>No rollup</Badge>
       ) : (
-        <Link
-          href={`/rollup/${row.original.rollupHash}`}
-          className="text-primary"
-        >
-          <TruncatedAddress address={row.original.rollupHash} />
-        </Link>
+        <TruncatedAddress
+          address={row.original.rollupHash}
+          link={`/rollup/${row.original.rollupHash}`}
+        />
       );
     },
     enableSorting: false,
@@ -75,7 +72,7 @@ export const columns: ColumnDef<Block>[] = [
   {
     accessorKey: "blockHeader.gasUsed",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Rollup Gas Used" />
+      <DataTableColumnHeader column={column} title="Gas Used" />
     ),
     cell: ({ row }) => {
       const blockHeader = row.original.blockHeader as BlockHeader;
@@ -102,7 +99,9 @@ export const columns: ColumnDef<Block>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {formatNumber(blockHeader?.gasLimit)}
+            <Badge variant={"outline"}>
+              {formatNumber(blockHeader?.gasLimit)}
+            </Badge>
           </span>
         </div>
       );

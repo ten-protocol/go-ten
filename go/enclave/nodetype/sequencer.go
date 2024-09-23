@@ -133,7 +133,7 @@ func (s *sequencer) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) erro
 // should only create batches and stateDBs but not commit them to the database,
 // this is the responsibility of the sequencer. Refactor the code so genesis state
 // won't be committed by the producer.
-func (s *sequencer) createGenesisBatch(ctx context.Context, block *common.L1Block) error {
+func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header) error {
 	s.logger.Info("Initializing genesis state", log.BlockHashKey, block.Hash())
 	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(
 		ctx,
@@ -150,7 +150,7 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *common.L1Bloc
 		return fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.StoreExecutedBatch(ctx, batch, nil); err != nil {
+	if err := s.StoreExecutedBatch(ctx, batch, nil, nil); err != nil {
 		return fmt.Errorf("1. failed storing batch. Cause: %w", err)
 	}
 
@@ -200,12 +200,12 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *common.L1Bloc
 	return nil
 }
 
-func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *common.L1Block, skipBatchIfEmpty bool) error {
+func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *types.Header, skipBatchIfEmpty bool) error {
 	headBatchSeq := s.batchRegistry.HeadBatchSeq()
 	if headBatchSeq == nil {
 		headBatchSeq = big.NewInt(int64(common.L2GenesisSeqNo))
 	}
-	headBatch, err := s.storage.FetchBatchBySeqNo(ctx, headBatchSeq.Uint64())
+	headBatch, err := s.storage.FetchBatchHeaderBySeqNo(ctx, headBatchSeq.Uint64())
 	if err != nil {
 		return err
 	}
@@ -220,7 +220,7 @@ func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *common.
 	}
 
 	// sanity check that the headBatch.Header.L1Proof is an ancestor of the l1HeadBlock
-	b, err := s.storage.FetchBlock(ctx, headBatch.Header.L1Proof)
+	b, err := s.storage.FetchBlock(ctx, headBatch.L1Proof)
 	if err != nil {
 		return err
 	}
@@ -301,7 +301,7 @@ func (s *sequencer) produceBatch(
 		return nil, fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.StoreExecutedBatch(ctx, cb.Batch, cb.Receipts); err != nil {
+	if err := s.StoreExecutedBatch(ctx, cb.Batch, cb.Receipts, cb.CreatedContracts); err != nil {
 		return nil, fmt.Errorf("2. failed storing batch. Cause: %w", err)
 	}
 
@@ -319,7 +319,7 @@ func (s *sequencer) produceBatch(
 
 // StoreExecutedBatch - stores an executed batch in one go. This can be done for the sequencer because it is guaranteed
 // that all dependencies are in place for the execution to be successful.
-func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, receipts types.Receipts) error {
+func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, receipts types.Receipts, newContracts map[gethcommon.Hash][]*gethcommon.Address) error {
 	defer core.LogMethodDuration(s.logger, measure.NewStopwatch(), "Registry StoreBatch() exit", log.BatchHashKey, batch.Hash())
 
 	// Check if this batch is already stored.
@@ -337,11 +337,11 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, r
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	if err := s.storage.StoreExecutedBatch(ctx, batch, receipts); err != nil {
+	if err := s.storage.StoreExecutedBatch(ctx, batch.Header, receipts, newContracts); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	s.batchRegistry.OnBatchExecuted(batch, receipts)
+	s.batchRegistry.OnBatchExecuted(batch.Header, receipts)
 
 	return nil
 }
@@ -353,7 +353,7 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	if err != nil {
 		return nil, err
 	}
-	upToL1Height := currentL1Head.NumberU64() - RollupDelay
+	upToL1Height := currentL1Head.Number.Uint64() - RollupDelay
 	rollup, err := s.rollupProducer.CreateInternalRollup(ctx, lastBatchNo, upToL1Height, rollupLimiter)
 	if err != nil {
 		return nil, err
@@ -372,9 +372,9 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	return extRollup, nil
 }
 
-func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash, canonicalL1Path []common.L1BlockHash) error {
-	batchesToDuplicate := make([]*core.Batch, 0)
-	batchesToExclude := make(map[uint64]*core.Batch, 0)
+func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Header, nonCanonicalL1Path []common.L1BlockHash, canonicalL1Path []common.L1BlockHash) error {
+	batchesToDuplicate := make([]*common.BatchHeader, 0)
+	batchesToExclude := make(map[uint64]*common.BatchHeader, 0)
 
 	// read the batches attached to these blocks
 	for _, l1BlockHash := range nonCanonicalL1Path {
@@ -399,7 +399,7 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 			return fmt.Errorf("could not FetchBatchesByBlock %s. Cause %w", l1BlockHash, err)
 		}
 		for _, batch := range batches {
-			batchesToExclude[batch.NumberU64()] = batch
+			batchesToExclude[batch.Number.Uint64()] = batch
 		}
 	}
 
@@ -409,20 +409,20 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 
 	// sort by height
 	sort.Slice(batchesToDuplicate, func(i, j int) bool {
-		return batchesToDuplicate[i].Number().Cmp(batchesToDuplicate[j].Number()) == -1
+		return batchesToDuplicate[i].Number.Cmp(batchesToDuplicate[j].Number) == -1
 	})
 
-	currentHead := batchesToDuplicate[0].Header.ParentHash
+	currentHead := batchesToDuplicate[0].ParentHash
 
 	// find all batches for that path
 	for i, orphanBatch := range batchesToDuplicate {
 		// sanity check that all these batches are consecutive
-		if i > 0 && batchesToDuplicate[i].Header.ParentHash != batchesToDuplicate[i-1].Hash() {
+		if i > 0 && batchesToDuplicate[i].ParentHash != batchesToDuplicate[i-1].Hash() {
 			s.logger.Crit("the batches that must be duplicated are invalid")
 		}
-		if batchesToExclude[orphanBatch.NumberU64()] != nil {
-			s.logger.Info("Not duplicating batch because there is already a canonical batch on that height", log.BatchSeqNoKey, orphanBatch.SeqNo())
-			currentHead = batchesToExclude[orphanBatch.NumberU64()].Hash()
+		if batchesToExclude[orphanBatch.Number.Uint64()] != nil {
+			s.logger.Info("Not duplicating batch because there is already a canonical batch on that height", log.BatchSeqNoKey, orphanBatch.SequencerOrderNo)
+			currentHead = batchesToExclude[orphanBatch.Number.Uint64()].Hash()
 			continue
 		}
 		sequencerNo, err := s.storage.FetchCurrentSequencerNo(ctx)
@@ -430,8 +430,12 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 			return fmt.Errorf("could not fetch sequencer no. Cause %w", err)
 		}
 		sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))
+		transactions, err := s.storage.FetchBatchTransactionsBySeq(ctx, orphanBatch.SequencerOrderNo.Uint64())
+		if err != nil {
+			return fmt.Errorf("could not fetch transactions to duplicate. Cause %w", err)
+		}
 		// create the duplicate and store/broadcast it, recreate batch even if it was empty
-		cb, err := s.produceBatch(ctx, sequencerNo, l1Head.Hash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time, false)
+		cb, err := s.produceBatch(ctx, sequencerNo, l1Head.Hash(), currentHead, transactions, orphanBatch.Time, false)
 		if err != nil {
 			return fmt.Errorf("could not produce batch. Cause %w", err)
 		}
@@ -509,7 +513,7 @@ func (s *sequencer) signCrossChainBundle(bundle *common.ExtCrossChainBundle) err
 	return nil
 }
 
-func (s *sequencer) OnL1Block(ctx context.Context, block *types.Block, result *components.BlockIngestionType) error {
+func (s *sequencer) OnL1Block(ctx context.Context, block *types.Header, result *components.BlockIngestionType) error {
 	// nothing to do
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -29,7 +30,7 @@ var (
 	ValueTransferEventID   = MessageBusABI.Events["ValueTransfer"].ID
 )
 
-func lazilyLogReceiptChecksum(block *common.L1Block, receipts types.Receipts, logger gethlog.Logger) {
+func lazilyLogReceiptChecksum(block *types.Header, receipts types.Receipts, logger gethlog.Logger) {
 	if logger.Enabled(context.Background(), gethlog.LevelTrace) {
 		logger.Trace("Processing block", log.BlockHashKey, block.Hash(), "nr_rec", len(receipts), "Hash", receiptsHash(receipts))
 	}
@@ -137,6 +138,10 @@ func ConvertLogsToValueTransfers(logs []types.Log, eventName string, messageBusA
 	messages := make(common.ValueTransferEvents, 0)
 
 	for _, log := range logs {
+		if len(log.Topics) != 3 {
+			return nil, fmt.Errorf("invalid number of topics in log: %d", len(log.Topics))
+		}
+
 		var event MessageBus.MessageBusValueTransfer
 		err := messageBusABI.UnpackIntoInterface(&event, eventName, log.Data)
 		if err != nil {
@@ -144,8 +149,8 @@ func ConvertLogsToValueTransfers(logs []types.Log, eventName string, messageBusA
 		}
 
 		messages = append(messages, common.ValueTransferEvent{
-			Sender:   event.Sender,
-			Receiver: event.Receiver,
+			Sender:   gethcommon.BytesToAddress(log.Topics[1].Bytes()),
+			Receiver: gethcommon.BytesToAddress(log.Topics[2].Bytes()),
 			Amount:   event.Amount,
 			Sequence: event.Sequence,
 		})
@@ -211,7 +216,7 @@ func (ms MessageStructs) HashPacked(index int) gethcommon.Hash {
 	addrType, _ := abi.NewType("address", "", nil)
 	uint64Type, _ := abi.NewType("uint64", "", nil)
 	uint32Type, _ := abi.NewType("uint32", "", nil)
-	uint8Type, _ := abi.NewType("uint32", "", nil)
+	uint8Type, _ := abi.NewType("uint8", "", nil)
 	bytesType, _ := abi.NewType("bytes", "", nil)
 	args := abi.Arguments{
 		{
@@ -235,7 +240,10 @@ func (ms MessageStructs) HashPacked(index int) gethcommon.Hash {
 	}
 
 	// todo @siliev: err
-	packed, _ := args.Pack(messageStruct.Sender, messageStruct.Sequence, messageStruct.Nonce, messageStruct.Topic, messageStruct.Payload, messageStruct.ConsistencyLevel)
+	packed, err := args.Pack(messageStruct.Sender, messageStruct.Sequence, messageStruct.Nonce, messageStruct.Topic, messageStruct.Payload, messageStruct.ConsistencyLevel)
+	if err != nil {
+		panic(err)
+	}
 	hash := crypto.Keccak256Hash(packed)
 	return hash
 }
@@ -258,7 +266,7 @@ func (vt ValueTransfers) ForMerkleTree() [][]interface{} {
 	for idx := range vt {
 		hashedVal := vt.HashPacked(idx)
 		val := []interface{}{
-			"v",
+			"v", // [v, "0xblabla"]
 			hashedVal,
 		}
 		values = append(values, val)
@@ -288,7 +296,10 @@ func (vt ValueTransfers) HashPacked(index int) gethcommon.Hash {
 		},
 	}
 
-	bytes, _ := args.Pack(valueTransfer.Sender, valueTransfer.Receiver, valueTransfer.Amount, valueTransfer.Sequence)
+	bytes, err := args.Pack(valueTransfer.Sender, valueTransfer.Receiver, valueTransfer.Amount, valueTransfer.Sequence)
+	if err != nil {
+		panic(err)
+	}
 
 	hash := crypto.Keccak256Hash(bytes)
 	return hash

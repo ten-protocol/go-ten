@@ -35,8 +35,10 @@ type RPCServer struct {
 // NewEnclaveRPCServer prepares an enclave RPCServer (doesn't start listening until `StartServer` is called
 func NewEnclaveRPCServer(listenAddress string, enclave common.Enclave, logger gethlog.Logger) *RPCServer {
 	return &RPCServer{
-		enclave:       enclave,
-		grpcServer:    grpc.NewServer(),
+		enclave: enclave,
+		grpcServer: grpc.NewServer(
+			grpc.MaxRecvMsgSize(1024 * 1024 * 50),
+		),
 		logger:        logger,
 		listenAddress: listenAddress,
 	}
@@ -210,6 +212,15 @@ func (s *RPCServer) GetTransactionReceipt(ctx context.Context, request *generate
 		return &generated.GetTransactionReceiptResponse{SystemError: toRPCError(sysError)}, nil
 	}
 	return &generated.GetTransactionReceiptResponse{EncodedEnclaveResponse: enclaveResponse.Encode()}, nil
+}
+
+func (s *RPCServer) GetStorageSlot(ctx context.Context, request *generated.GetStorageSlotRequest) (*generated.GetStorageSlotResponse, error) {
+	enclaveResp, sysError := s.enclave.GetStorageSlot(ctx, request.EncryptedParams)
+	if sysError != nil {
+		s.logger.Error("Error getting storage slot", log.ErrKey, sysError)
+		return &generated.GetStorageSlotResponse{SystemError: toRPCError(sysError)}, nil
+	}
+	return &generated.GetStorageSlotResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetBalance(ctx context.Context, request *generated.GetBalanceRequest) (*generated.GetBalanceResponse, error) {
@@ -450,7 +461,7 @@ func (s *RPCServer) GetTotalContractCount(ctx context.Context, _ *generated.GetT
 }
 
 func (s *RPCServer) GetReceiptsByAddress(ctx context.Context, req *generated.GetReceiptsByAddressRequest) (*generated.GetReceiptsByAddressResponse, error) {
-	enclaveResp, sysError := s.enclave.GetCustomQuery(ctx, req.EncryptedParams)
+	enclaveResp, sysError := s.enclave.GetPersonalTransactions(ctx, req.EncryptedParams)
 	if sysError != nil {
 		s.logger.Error("Error getting receipt", log.ErrKey, sysError)
 		return &generated.GetReceiptsByAddressResponse{SystemError: toRPCError(sysError)}, nil
@@ -467,8 +478,8 @@ func (s *RPCServer) EnclavePublicConfig(ctx context.Context, _ *generated.Enclav
 	return &generated.EnclavePublicConfigResponse{L2MessageBusAddress: enclaveCfg.L2MessageBusAddress.Bytes()}, nil
 }
 
-func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Block, error) {
-	block := types.Block{}
+func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Header, error) {
+	block := types.Header{}
 	err := rlp.DecodeBytes(encodedBlock, &block)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode block, bytes=%x, err=%w", encodedBlock, err)
@@ -477,8 +488,8 @@ func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Block, error) {
 }
 
 // decodeReceipts - converts the rlp encoded bytes to receipts if possible.
-func (s *RPCServer) decodeReceipts(encodedReceipts []byte) (types.Receipts, error) {
-	receipts := make(types.Receipts, 0)
+func (s *RPCServer) decodeReceipts(encodedReceipts []byte) ([]*common.TxAndReceipt, error) {
+	receipts := make([]*common.TxAndReceipt, 0)
 
 	err := rlp.DecodeBytes(encodedReceipts, &receipts)
 	if err != nil {

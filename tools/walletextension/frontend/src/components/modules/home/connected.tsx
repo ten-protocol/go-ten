@@ -23,9 +23,9 @@ const Connected = () => {
       <div>
         <h1 className="text-4xl font-bold">Connected Accounts</h1>
         <h3 className="text-sm text-muted-foreground my-4">
-          Manage the accounts you have connected to the Ten Gateway. You can
+          Manage the accounts you have connected to the TEN Gateway. You can
           revoke access to your accounts at any time and request new tokens from
-          the Ten Discord.
+          the TEN Discord.
         </h3>
         <div className="flex justify-end space-x-2 my-4">
           <LinkButton size={"sm"} href={socialLinks.discord} target="_blank">

@@ -26,9 +26,10 @@ export function RecentBatches({ batches }: { batches: any }) {
             </p>
           </div>
           <div className="ml-auto font-medium min-w-[140px]">
-            <Link href={`/batch/${batch?.hash}`} className="text-primary">
-              <TruncatedAddress address={batch?.hash} />
-            </Link>
+            <TruncatedAddress
+              address={batch?.header?.hash}
+              link={`/batch/${batch?.header?.hash}`}
+            />
           </div>
         </div>
       ))}

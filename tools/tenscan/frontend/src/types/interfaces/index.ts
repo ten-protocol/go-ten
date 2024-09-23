@@ -7,7 +7,8 @@ export interface SeoProps {
   ogTwitterImage: string;
   ogImageUrl: string;
   ogType: string;
-  children: React.ReactNode;
+  includeDefaultKeywords?: boolean;
+  children?: React.ReactNode;
 }
 
 export interface ErrorType {
@@ -86,4 +87,17 @@ export enum BadgeType {
   DESTRUCTIVE = "destructive",
   DEFAULT = "default",
   OUTLINE = "outline",
+}
+
+export interface DashboardAnalyticsData {
+  title: string;
+  value: string | number | JSX.Element;
+  change?: string;
+  icon: any;
+  loading?: boolean;
+}
+
+export enum ItemPosition {
+  FIRST = "first",
+  LAST = "last",
 }

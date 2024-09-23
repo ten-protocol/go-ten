@@ -57,12 +57,6 @@ create table if not exists rollup
 create index ROLLUP_COMPRESSION_BLOCK_IDX on rollup (compression_block);
 create index ROLLUP_COMPRESSION_HASH_IDX on rollup (hash);
 
-create table if not exists batch_body
-(
-    id      int        NOT NULL primary key,
-    content mediumblob NOT NULL
-);
-
 create table if not exists batch
 (
     sequence       int primary key,
@@ -71,7 +65,6 @@ create table if not exists batch
     height         int        NOT NULL,
     is_canonical   boolean    NOT NULL,
     header         blob       NOT NULL,
-    body           int        NOT NULL REFERENCES batch_body,
     l1_proof_hash  binary(32) NOT NULL,
     l1_proof       INTEGER, -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
     is_executed    boolean    NOT NULL
@@ -80,63 +73,111 @@ create table if not exists batch
 );
 create index IDX_BATCH_HASH on batch (hash);
 create index IDX_BATCH_BLOCK on batch (l1_proof_hash);
-create index IDX_BATCH_BODY on batch (body);
 create index IDX_BATCH_L1 on batch (l1_proof);
 create index IDX_BATCH_HEIGHT on batch (height);
+create index IDX_BATCH_HEIGHT_COMP on batch (is_canonical, is_executed, height);
 
 create table if not exists tx
 (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
-    sender_address binary(20) NOT NULL,
-    nonce          int        NOT NULL,
+    sender_address int        NOT NULL REFERENCES externally_owned_account,
     idx            int        NOT NULL,
-    body           int        NOT NULL REFERENCES batch_body
+    batch_height   int        NOT NULL
 );
 create index IDX_TX_HASH on tx (hash);
 create index IDX_TX_SENDER_ADDRESS on tx (sender_address);
+create index IDX_TX_BATCH_HEIGHT on tx (batch_height, idx);
 
-create table if not exists exec_tx
+create table if not exists receipt
 (
     id                       INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_contract_address binary(20),
-    receipt                  mediumblob,
+    content                  mediumblob,
     --     commenting out the fk until synthetic transactions are also stored
     tx                       INTEGER,
     batch                    INTEGER NOT NULL REFERENCES batch
 );
-create index IDX_EX_TX_BATCH on exec_tx (batch);
-create index IDX_EX_TX_CCA on exec_tx (tx, created_contract_address);
+create index IDX_EX_TX_BATCH on receipt (batch);
+create index IDX_EX_TX_CCA on receipt (tx);
 
--- todo denormalize. Extract contract and user table and point topic0 and rel_addreses to it
-create table if not exists events
+create table if not exists contract
+(
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    address binary(20) NOT NULL,
+--     denormalised for ease of access during balance checks
+    owner   int        NOT NULL REFERENCES externally_owned_account
+);
+create index IDX_CONTRACT_AD on contract (address, owner);
+
+create table if not exists externally_owned_account
+(
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    address binary(20) NOT NULL
+);
+create index IDX_EOA on externally_owned_account (address);
+
+-- not very large. An entry for every event_type
+create table if not exists event_type
 (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    topic0          binary(32) NOT NULL,
-    topic1          binary(32),
-    topic2          binary(32),
-    topic3          binary(32),
-    topic4          binary(32),
-    datablob        mediumblob,
-    log_idx         int        NOT NULL,
-    address         binary(20) NOT NULL,
-    lifecycle_event boolean    NOT NULL,
-    rel_address1    binary(20),
-    rel_address2    binary(20),
-    rel_address3    binary(20),
-    rel_address4    binary(20),
-    tx              INTEGER    NOT NULL references tx,
-    batch           INTEGER    NOT NULL REFERENCES batch
+    contract        INTEGER    NOT NULL references contract,
+    event_sig       binary(32) NOT NULL, -- no need to index because there are only a few events for an address
+    lifecycle_event boolean    NOT NULL  -- set based on the first event, and then updated to false if it turns out it is true
 );
-create index IDX_BATCH_TX on events (tx, batch);
-create index IDX_AD on events (address);
-create index IDX_RAD1 on events (rel_address1);
-create index IDX_RAD2 on events (rel_address2);
-create index IDX_RAD3 on events (rel_address3);
-create index IDX_RAD4 on events (rel_address4);
-create index IDX_T0 on events (topic0);
-create index IDX_T1 on events (topic1);
-create index IDX_T2 on events (topic2);
-create index IDX_T3 on events (topic3);
-create index IDX_T4 on events (topic4);
+create index IDX_EV_CONTRACT on event_type (contract, event_sig);
+
+--  very large table with user values
+create table if not exists event_topic
+(
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic       binary(32) NOT NULL,
+    rel_address INTEGER references externally_owned_account
+--    pos         INTEGER    NOT NULL -- todo
+);
+-- create index IDX_TOP on event_topic (topic, pos);
+create index IDX_TOP on event_topic (topic);
+
+create table if not exists event_log
+(
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type INTEGER NOT NULL references event_type,
+    topic1     INTEGER references event_topic,
+    topic2     INTEGER references event_topic,
+    topic3     INTEGER references event_topic,
+    datablob   mediumblob,
+    log_idx    INTEGER NOT NULL,
+    receipt    INTEGER NOT NULL references receipt
+);
+-- create index IDX_BATCH_TX on event_log (receipt);
+create index IDX_EV on event_log (receipt, event_type, topic1, topic2, topic3);
+
+-- requester - address
+-- receipt - range of batch heights or a single batch
+-- address []list of contract addresses
+-- topic0 - event sig   []list
+-- topic1    []list
+-- topic2    []list
+-- topic3    []list
+
+
+-- select * from event_log
+--          join receipt on receipt
+--              join batch on receipt.batch -- to get the batch height range
+--          join event_type ec on event_type
+--              join contract c  on
+--          left join event_topic t1 on topic1
+--              left join externally_owned_account eoa1 on t1.rel_address
+--          left join event_topic t2 on topic2
+--              left join externally_owned_account eoa2 on t2.rel_address
+--          left join event_topic t3 on topic3
+--              left join externally_owned_account eoa3 on t3.rel_address
+-- where
+--  receipt.
+--  c.address in [address..] AND
+--  ec.event_sig in [topic0..] AND
+--  t1.topic in [topic1..] AND
+--  t2.topic in [topic2..] AND
+--  t3.topic in [topic3..] AND
+--  b.height in [] and b.is_canonical=true
+--  (ec.lifecycle_event OR eoa1.address=requester OR eoa2.address=requester OR eoa3.address=requester)

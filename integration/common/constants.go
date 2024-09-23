@@ -78,7 +78,7 @@ func DefaultEnclaveConfig() *config.EnclaveConfig {
 		SqliteDBPath:              "",
 		ProfilerEnabled:           false,
 		MinGasPrice:               big.NewInt(params.InitialBaseFee),
-		ObscuroGenesis:            "",
+		TenGenesis:                "",
 		DebugNamespaceEnabled:     false,
 		MaxBatchSize:              1024 * 55,
 		MaxRollupSize:             1024 * 64,

@@ -178,9 +178,25 @@ func (api *EthereumAPI) GetTransactionByHash(ctx context.Context, encryptedParam
 	return *enclaveResponse, nil
 }
 
-// GetStorageAt is a reused method for listing the users transactions
-func (api *EthereumAPI) GetStorageAt(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, error) {
-	return api.host.EnclaveClient().GetCustomQuery(ctx, encryptedParams)
+// GetStorageAt is not currently supported (some narrow version of it may be supported in the future for proxy contracts).
+func (api *EthereumAPI) GetStorageAt(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageSlot) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.EnclaveClient().GetStorageSlot(ctx, encryptedParams)
+	if sysError != nil {
+		return api.handleSysError("GetStorageAt", sysError)
+	}
+	return *enclaveResponse, nil
+}
+
+func (api *EthereumAPI) MaxPriorityFeePerGas(_ context.Context) (*hexutil.Big, error) {
+	// todo - implement with the gas mechanics
+	header, err := api.host.Storage().FetchHeadBatchHeader()
+	if err != nil {
+		api.logger.Error("Unable to retrieve header for fee history.", log.ErrKey, err)
+		return nil, fmt.Errorf("unable to retrieve MaxPriorityFeePerGas")
+	}
+
+	// just return the base fee?
+	return (*hexutil.Big)(header.BaseFee), err
 }
 
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.

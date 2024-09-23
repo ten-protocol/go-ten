@@ -54,7 +54,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const topic = hre.ethers.id(eventSignature)
 
     // Get the interface for the event in order to convert it to cross chain message.
-    let eventIface = new hre.ethers.Interface([ `event ${eventSignature}`]);
+    let eventIface = new hre.ethers.Interface([ `event LogMessagePublished(address,uint64,uint32,uint32,bytes,uint8)`]);
 
     // This function converts the logs from transaction receipts into cross chain messages
     function getXChainMessages(result: Receipt) {
@@ -117,6 +117,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     });
     
     // Perform message relay. This will forward the whitelist command to the L2 subordinate bridge.
+    // Get the balance of l2Accounts.deployer using provider
+    const provider = l2Network.ethers.provider;
+    const balance = await provider.getBalance(l2Accounts.deployer);
+    console.log(`Balance of l2Accounts.deployer: ${balance}`);
+
     console.log(`Relaying messages using account ${l2Accounts.deployer}`);
     const relayMsg = async (msg: any) => {
         return l2Network.deployments.execute("CrossChainMessenger", {

@@ -75,13 +75,13 @@ func (s *storageImpl) AddRollup(rollup *common.ExtRollup, metadata *common.Publi
 	return nil
 }
 
-func (s *storageImpl) AddBlock(b *types.Header, rollupHash common.L2RollupHash) error {
+func (s *storageImpl) AddBlock(b *types.Header) error {
 	dbtx, err := s.db.NewDBTransaction()
 	if err != nil {
 		return err
 	}
 
-	if err := hostdb.AddBlock(dbtx, s.db.GetSQLStatement(), b, rollupHash); err != nil {
+	if err := hostdb.AddBlock(dbtx, s.db.GetSQLStatement(), b); err != nil {
 		if err := dbtx.Rollback(); err != nil {
 			return err
 		}

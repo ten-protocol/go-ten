@@ -114,10 +114,13 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		retryIntervalForL1Receipt,
 		hostStorage,
 	)
+
 	hostServices.RegisterService(hostcommon.L1PublisherName, l1Publisher)
 	hostServices.RegisterService(hostcommon.L2BatchRepositoryName, l2Repo)
 	hostServices.RegisterService(hostcommon.EnclaveServiceName, enclService)
 	hostServices.RegisterService(hostcommon.LogSubscriptionServiceName, subsService)
+	l1StateMachine := l1.NewCrossChainStateMachine(l1Publisher, mgmtContractLib, ethClient, hostServices.Enclaves().GetEnclaveClient(), logger, host.stopControl)
+	hostServices.RegisterService(hostcommon.CrossChainServiceName, l1StateMachine)
 
 	var prof *profiler.Profiler
 	if config.ProfilerEnabled {
@@ -232,7 +235,7 @@ func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error)
 }
 
 // ObscuroConfig returns info on the Obscuro network
-func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
+func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 	if h.l2MessageBusAddress == nil {
 		publicCfg, err := h.EnclaveClient().EnclavePublicConfig(context.Background())
 		if err != nil {
@@ -240,7 +243,7 @@ func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
 		}
 		h.l2MessageBusAddress = &publicCfg.L2MessageBusAddress
 	}
-	return &common.ObscuroNetworkInfo{
+	return &common.TenNetworkInfo{
 		ManagementContractAddress: h.config.ManagementContractAddress,
 		L1StartHash:               h.config.L1StartHash,
 

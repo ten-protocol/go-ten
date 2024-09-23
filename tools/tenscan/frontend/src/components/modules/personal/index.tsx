@@ -2,8 +2,6 @@ import React from "react";
 import { columns } from "@/src/components/modules/personal/columns";
 import { DataTable } from "@repo/ui/common/data-table/data-table";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
-import { Skeleton } from "@repo/ui/shared/skeleton";
-import { formatNumber } from "@repo/ui/lib/utils";
 
 export default function PersonalTransactions() {
   const { personalTxns, setNoPolling, personalTxnsLoading } =
@@ -29,18 +27,19 @@ export default function PersonalTransactions() {
           <h2 className="text-2xl font-bold tracking-tight">
             Personal Transactions
           </h2>
-          <p className="text-muted-foreground">
+          {/* uncomment the following line when total count feature is implemented */}
+          {/* <p className="text-muted-foreground">
             {formatNumber(Total)} personal transaction(s).
-          </p>
+          </p> */}
         </div>
       </div>
-      {personalTxnsLoading ? (
-        <Skeleton className="h-96" />
-      ) : Receipts ? (
-        <DataTable columns={columns} data={Receipts} total={Total} />
-      ) : (
-        <p>No transactions found.</p>
-      )}
+      <DataTable
+        columns={columns}
+        data={Receipts}
+        total={Total}
+        isLoading={personalTxnsLoading}
+        noResultsText="personal transactions"
+      />
     </>
   );
 }

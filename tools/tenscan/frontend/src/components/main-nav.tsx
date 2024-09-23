@@ -42,7 +42,7 @@ const NavItem = ({ navLink }: { navLink: NavLink }) => {
             {navLink.label} <ChevronDownIcon className="ml-1 h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuContent className="w-56" align="start" forceMount>
           <DropdownMenuGroup>
             {navLink.subNavLinks &&
               navLink.subNavLinks.map((subNavLink: NavLink) => (

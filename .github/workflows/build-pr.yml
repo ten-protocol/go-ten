@@ -14,11 +14,16 @@ jobs:
   build:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: 1.21.8
+
+      # Set the initial build number environment variable
+      - name: Set Build Number
+        run: |
+          echo "BUILD_NUMBER=1" >> $GITHUB_ENV
 
       # Makes sure the artifacts are built correctly
       - name: Build
@@ -31,16 +36,22 @@ jobs:
       # Close specified ports using lsof before testing / local port list compiled from ./integration/constants.go
       - name: Close Integration Test Ports
         run: |
-          killall -9 geth-v1.12.2 || true
-          killall -9 beacon-chain-v4.0.6 || true
-          killall -9 validator-v4.0.6 || true
+          killall -9 geth || true
+          killall -9 beacon || true
+          killall -9 validator || true
           
           lowest_port=8000  # Lowest starting port
           highest_port=58000 # Highest port considering the offset
           additional_ports=(80 81 99)  # Additional specific ports
-
+          
           # Find processes listening on ports within the range and kill them
           for pid in $(lsof -iTCP:$lowest_port-$highest_port -sTCP:LISTEN -t); do
+            echo "Killing process $pid on one of the ports from $lowest_port to $highest_port"
+            kill $pid || true
+          done
+          
+          # Find processes listening on ports within the range and kill them
+          for pid in $(lsof -iUDP:$lowest_port-$highest_port -t); do
             echo "Killing process $pid on one of the ports from $lowest_port to $highest_port"
             kill $pid || true
           done
@@ -54,10 +65,10 @@ jobs:
           done
 
       - name: Test
-        run: go test --failfast -v ./... -count=1 -timeout 5m
+        run: go test --failfast -v ./... -count=1 -timeout 10m
 
       - name: Store simulation logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: ci-logs

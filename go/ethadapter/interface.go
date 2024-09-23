@@ -25,17 +25,17 @@ type EthClient interface {
 	BalanceAt(account gethcommon.Address, blockNumber *big.Int) (*big.Int, error) // fetches the balance of the account
 	GetLogs(q ethereum.FilterQuery) ([]types.Log, error)                          // fetches the logs for a given query
 
-	Info() Info                                                         // retrieves the node Info
-	FetchHeadBlock() (*types.Block, error)                              // retrieves the block at head height
-	BlocksBetween(block *types.Block, head *types.Block) []*types.Block // returns the blocks between two blocks
-	IsBlockAncestor(block *types.Block, proof common.L1BlockHash) bool  // returns if the node considers a block the ancestor
-	BlockListener() (chan *types.Header, ethereum.Subscription)         // subscribes to new blocks and returns a listener with the blocks heads and the subscription handler
+	Info() Info                                                          // retrieves the node Info
+	FetchHeadBlock() (*types.Block, error)                               // retrieves the block at head height
+	BlocksBetween(block *types.Header, head *types.Block) []*types.Block // returns the blocks between two blocks
+	IsBlockAncestor(block *types.Block, proof common.L1BlockHash) bool   // returns if the node considers a block the ancestor
+	BlockListener() (chan *types.Header, ethereum.Subscription)          // subscribes to new blocks and returns a listener with the blocks heads and the subscription handler
 
 	CallContract(msg ethereum.CallMsg) ([]byte, error) // Runs the provided call message on the latest block.
 
 	// PrepareTransactionToSend updates the tx with from address, current nonce and current estimates for the gas and the gas price
 	PrepareTransactionToSend(ctx context.Context, txData types.TxData, from gethcommon.Address) (types.TxData, error)
-	PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, retries int) (types.TxData, error)
+	PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, nonce uint64, retries int) (types.TxData, error)
 
 	FetchLastBatchSeqNo(address gethcommon.Address) (*big.Int, error)
 

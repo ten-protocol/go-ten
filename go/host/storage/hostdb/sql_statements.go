@@ -1,23 +1,32 @@
 package hostdb
 
+import "strconv"
+
 // SQLStatements struct holds SQL statements for a specific database type
 type SQLStatements struct {
 	InsertBatch        string
 	InsertTransactions string
-	InsertTxCount      string
+	UpdateTxCount      string
 	InsertRollup       string
 	InsertBlock        string
 	Pagination         string
 	Placeholder        string
 }
 
+func (s SQLStatements) GetPlaceHolder(pos int) string {
+	if s.Placeholder == "?" {
+		return s.Placeholder
+	}
+	return "$" + strconv.Itoa(pos)
+}
+
 func SQLiteSQLStatements() *SQLStatements {
 	return &SQLStatements{
-		InsertBatch:        "INSERT INTO batch_host (sequence, full_hash, hash, height, ext_batch) VALUES (?, ?, ?, ?, ?)",
-		InsertTransactions: "REPLACE INTO transaction_host (hash, full_hash, b_sequence) VALUES (?, ?, ?)",
-		InsertTxCount:      "INSERT INTO transaction_count (id, total) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET total = EXCLUDED.total",
+		InsertBatch:        "INSERT INTO batch_host (sequence, hash, height, ext_batch) VALUES (?, ?, ?, ?)",
+		InsertTransactions: "INSERT INTO transaction_host (hash, b_sequence) VALUES ",
+		UpdateTxCount:      "UPDATE transaction_count SET total=? WHERE id=1",
 		InsertRollup:       "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) values (?,?,?,?,?,?)",
-		InsertBlock:        "REPLACE INTO block_host (hash, header, rollup_hash) values (?,?,?)",
+		InsertBlock:        "INSERT INTO block_host (hash, header) values (?,?)",
 		Pagination:         "LIMIT ? OFFSET ?",
 		Placeholder:        "?",
 	}
@@ -25,11 +34,11 @@ func SQLiteSQLStatements() *SQLStatements {
 
 func PostgresSQLStatements() *SQLStatements {
 	return &SQLStatements{
-		InsertBatch:        "INSERT INTO batch_host (sequence, full_hash, hash, height, ext_batch) VALUES ($1, $2, $3, $4, $5)",
-		InsertTransactions: "INSERT INTO transaction_host (hash, full_hash, b_sequence) VALUES ($1, $2, $3) ON CONFLICT (hash) DO NOTHING",
-		InsertTxCount:      "INSERT INTO transaction_count (id, total) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET total = EXCLUDED.total",
+		InsertBatch:        "INSERT INTO batch_host (sequence, hash, height, ext_batch) VALUES ($1, $2, $3, $4)",
+		InsertTransactions: "INSERT INTO transaction_host (hash, b_sequence) VALUES ",
+		UpdateTxCount:      "UPDATE transaction_count SET total=$1 WHERE id=1",
 		InsertRollup:       "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) values ($1, $2, $3, $4, $5, $6)",
-		InsertBlock:        "INSERT INTO block_host (hash, header, rollup_hash) VALUES ($1, $2, $3) ON CONFLICT (hash) DO NOTHING",
+		InsertBlock:        "INSERT INTO block_host (hash, header) VALUES ($1, $2)",
 		Pagination:         "LIMIT $1 OFFSET $2",
 		Placeholder:        "$1",
 	}

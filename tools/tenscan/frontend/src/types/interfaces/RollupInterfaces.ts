@@ -22,7 +22,7 @@ export interface Header {
   hash: string;
 }
 
-type CrossChainMessage = {
+export type CrossChainMessage = {
   Sender: string;
   Sequence: number;
   Nonce: number;

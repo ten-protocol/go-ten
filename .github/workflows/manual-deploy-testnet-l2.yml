@@ -47,9 +47,9 @@ jobs:
         run: |
           echo "GitHub Variables = ${{ toJSON(vars) }}"
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.21.8
 
@@ -124,7 +124,7 @@ jobs:
             done
 
       - name: 'Upload L1 deployer container logs'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deploy-l1-artifacts
           path: |
@@ -224,6 +224,9 @@ jobs:
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
+            && cp /home/obscuro/go-obscuro/tools/edbconnect/edb-connect.sh /home/obscurouser/edb-connect.sh \
+            && chown obscurouser:obscurouser /home/obscurouser/edb-connect.sh \
+            && chmod u+x /home/obscurouser/edb-connect.sh \
             && docker network create --driver bridge node_network || true \
             && docker run -d --name datadog-agent \
                --network node_network \
@@ -237,6 +240,7 @@ jobs:
                -v /proc/:/host/proc/:ro \
                -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+               --log-opt max-file=3 --log-opt max-size=10m \
                datadog/agent:latest \
             && cd /home/obscuro/go-obscuro/ \
             && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
@@ -271,7 +275,7 @@ jobs:
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: "Wait until obscuro node is healthy"
         shell: bash
@@ -288,7 +292,7 @@ jobs:
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: 'Deploy L2 contracts'
         id: deployL2Contracts
@@ -312,7 +316,7 @@ jobs:
           docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
 
       - name: 'Upload L2 deployer container logs'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deploy-l2-artifacts
           path: |
@@ -326,7 +330,7 @@ jobs:
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1

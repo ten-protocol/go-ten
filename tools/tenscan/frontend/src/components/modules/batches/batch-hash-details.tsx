@@ -7,6 +7,7 @@ import { BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
 import { EyeClosedIcon, EyeOpenIcon } from "@repo/ui/shared/react-icons";
 import { Button } from "@repo/ui/shared/button";
+import Copy from "@repo/ui/common/copy";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import JSONPretty from "react-json-pretty";
 import { useState } from "react";
@@ -32,7 +33,7 @@ export function BatchHashDetailsComponent({
           label="Batch Height"
           value={
             <Link
-              href={`/batch/height/${batchDetails?.Header?.number}`}
+              href={`/batch/height/${Number(batchDetails?.Header?.number)}`}
               className="text-primary"
             >
               {"#" + Number(batchDetails?.Header?.number)}
@@ -104,12 +105,6 @@ export function BatchHashDetailsComponent({
           value={Number(batchDetails?.Header?.inboundCrossChainHeight)}
         />
         <KeyValueItem
-          label="Transfers Tree"
-          value={
-            <TruncatedAddress address={batchDetails?.Header?.TransfersTree} />
-          }
-        />
-        <KeyValueItem
           label="Miner"
           value={<TruncatedAddress address={batchDetails?.Header?.miner} />}
         />
@@ -128,9 +123,7 @@ export function BatchHashDetailsComponent({
               <ul>
                 {batchDetails?.TxHashes?.map((txHash, index) => (
                   <li key={index} className="text-sm">
-                    <Link href={`/tx/${txHash}`} className="text-primary">
-                      <TruncatedAddress address={txHash} />
-                    </Link>
+                    <TruncatedAddress address={txHash} link={`/tx/${txHash}`} />
                   </li>
                 ))}
               </ul>
@@ -179,14 +172,23 @@ export function BatchHashDetailsComponent({
                     </TooltipProvider>
                   )}
                 </Button>
+                {showDecryptedData && decryptedRollup ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Copy value={decryptedRollup} />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Copy Decrypted Data to Clipboard
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : null}
               </div>
               {decryptedRollup && showDecryptedData ? (
                 <>
                   <Separator className="my-4" />
-                  <JSONPretty
-                    id="json-pretty"
-                    data={decryptedRollup}
-                  ></JSONPretty>
+                  <JSONPretty id="json-pretty" data={decryptedRollup} />
                 </>
               ) : null}
             </>

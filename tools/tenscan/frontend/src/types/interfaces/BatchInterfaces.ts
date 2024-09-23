@@ -1,3 +1,5 @@
+import { CrossChainMessage } from "./RollupInterfaces";
+
 export type Batch = {
   sequence: number;
   hash: string;
@@ -61,6 +63,29 @@ export type BatchDetails = {
   TxHashes: string[];
   EncryptedTxBlob: string;
 };
+
+export interface LatestBatch {
+  hash: string;
+  parentHash: string;
+  stateRoot: string;
+  transactionsRoot: string;
+  receiptsRoot: string;
+  number: string;
+  sequencerOrderNo: string;
+  gasLimit: string;
+  gasUsed: string;
+  timestamp: string;
+  extraData: string;
+  baseFeePerGas: string;
+  miner: string;
+  l1Proof: string;
+  signature: string;
+  crossChainMessages: CrossChainMessage[];
+  inboundCrossChainHash: string;
+  inboundCrossChainHeight: string;
+  TransfersTree: string;
+  crossChainTree: string;
+}
 
 export type BatchResponse = {
   BatchesData: Batch[];

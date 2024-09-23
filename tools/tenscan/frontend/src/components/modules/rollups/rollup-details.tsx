@@ -20,23 +20,19 @@ export function RollupDetailsComponent({
         <KeyValueItem
           label="Full Hash"
           value={
-            <Link
-              href={`/rollup/${rollupDetails?.Hash}`}
-              className="text-primary"
-            >
-              <TruncatedAddress address={rollupDetails?.Hash} />
-            </Link>
+            <TruncatedAddress
+              address={rollupDetails?.Hash}
+              link={`/rollup/${rollupDetails?.Hash}`}
+            />
           }
         />
         <KeyValueItem
           label="Rollup Header Hash"
           value={
-            <Link
-              href={`/rollup/${rollupDetails?.Header?.hash}`}
-              className="text-primary"
-            >
-              <TruncatedAddress address={rollupDetails?.Header?.hash} />
-            </Link>
+            <TruncatedAddress
+              address={rollupDetails?.Header?.hash}
+              link={`/rollup/${rollupDetails?.Header?.hash}`}
+            />
           }
         />
         <KeyValueItem
@@ -44,7 +40,7 @@ export function RollupDetailsComponent({
           value={<TruncatedAddress address={rollupDetails?.L1Hash} />}
         />
         <KeyValueItem
-          label="First Sequencer"
+          label="First Batch Seq No."
           value={
             <Link
               href={`/rollup/batch/sequence/${rollupDetails?.FirstSeq}`}
@@ -55,7 +51,7 @@ export function RollupDetailsComponent({
           }
         />
         <KeyValueItem
-          label="Last Sequencer"
+          label="Last Batch Seq No."
           value={
             <Link
               href={`/rollup/batch/sequence/${rollupDetails?.LastSeq}`}
@@ -83,17 +79,6 @@ export function RollupDetailsComponent({
           label="Signature"
           value={
             <TruncatedAddress address={rollupDetails?.Header?.Signature} />
-          }
-        />
-        <KeyValueItem
-          label="Last Batch Sequence No"
-          value={
-            <Link
-              href={`/rollup/batch/sequence/${rollupDetails?.Header?.LastBatchSeqNo}`}
-              className="text-primary"
-            >
-              {"#" + rollupDetails?.Header?.LastBatchSeqNo}
-            </Link>
           }
         />
         <KeyValueItem

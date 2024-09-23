@@ -175,8 +175,8 @@ func (rc *RollupCompression) createRollupHeader(ctx context.Context, rollup *cor
 	}
 	reorgMap := make(map[uint64]bool)
 	for _, batch := range reorgedBatches {
-		rc.logger.Info("Reorg batch", log.BatchSeqNoKey, batch.SeqNo().Uint64())
-		reorgMap[batch.SeqNo().Uint64()] = true
+		rc.logger.Info("Reorg batch", log.BatchSeqNoKey, batch.SequencerOrderNo.Uint64())
+		reorgMap[batch.SequencerOrderNo.Uint64()] = true
 	}
 
 	for i, batch := range batches {
@@ -201,11 +201,11 @@ func (rc *RollupCompression) createRollupHeader(ctx context.Context, rollup *cor
 
 		// the first element is the actual height
 		if i == 0 {
-			l1HeightDeltas[i] = block.Number()
+			l1HeightDeltas[i] = block.Number
 		} else {
-			l1HeightDeltas[i] = big.NewInt(block.Number().Int64() - prevL1Height.Int64())
+			l1HeightDeltas[i] = big.NewInt(block.Number.Int64() - prevL1Height.Int64())
 		}
-		prevL1Height = block.Number()
+		prevL1Height = block.Number
 	}
 
 	l1DeltasBA := make([][]byte, len(l1HeightDeltas))
@@ -284,7 +284,7 @@ func (rc *RollupCompression) createIncompleteBatches(ctx context.Context, callda
 	}
 
 	// a cache of the l1 blocks used by the current rollup, indexed by their height
-	l1BlocksAtHeight := make(map[uint64]*types.Block)
+	l1BlocksAtHeight := make(map[uint64]*types.Header)
 	err = rc.calcL1AncestorsOfHeight(ctx, big.NewInt(int64(slices.Min(l1Heights))), rollupL1Block, l1BlocksAtHeight)
 	if err != nil {
 		return nil, err
@@ -353,7 +353,7 @@ func (rc *RollupCompression) createIncompleteBatches(ctx context.Context, callda
 			baseFee:      calldataRollupHeader.BaseFee,
 			gasLimit:     calldataRollupHeader.GasLimit,
 		}
-		rc.logger.Info("Rollup decompressed batch", log.BatchSeqNoKey, currentSeqNo, log.BatchHeightKey, currentHeight, "rollup_idx", currentBatchIdx, "l1_height", block.Number(), "l1_hash", block.Hash())
+		rc.logger.Info("Rollup decompressed batch", log.BatchSeqNoKey, currentSeqNo, log.BatchHeightKey, currentHeight, "rollup_idx", currentBatchIdx, "l1_height", block.Number, "l1_hash", block.Hash())
 	}
 	return incompleteBatches, nil
 }
@@ -388,12 +388,12 @@ func (rc *RollupCompression) calculateL1HeightsFromDeltas(calldataRollupHeader *
 	return l1Heights, nil
 }
 
-func (rc *RollupCompression) calcL1AncestorsOfHeight(ctx context.Context, fromHeight *big.Int, toBlock *types.Block, path map[uint64]*types.Block) error {
-	path[toBlock.NumberU64()] = toBlock
-	if toBlock.NumberU64() == fromHeight.Uint64() {
+func (rc *RollupCompression) calcL1AncestorsOfHeight(ctx context.Context, fromHeight *big.Int, toBlock *types.Header, path map[uint64]*types.Header) error {
+	path[toBlock.Number.Uint64()] = toBlock
+	if toBlock.Number.Uint64() == fromHeight.Uint64() {
 		return nil
 	}
-	p, err := rc.storage.FetchBlock(ctx, toBlock.ParentHash())
+	p, err := rc.storage.FetchBlock(ctx, toBlock.ParentHash)
 	if err != nil {
 		return err
 	}
@@ -404,7 +404,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 	parentHash := calldataRollupHeader.FirstCanonParentHash
 
 	if calldataRollupHeader.FirstBatchSequence.Uint64() != common.L2GenesisSeqNo {
-		_, err := rc.storage.FetchBatch(ctx, parentHash)
+		_, err := rc.storage.FetchBatchHeader(ctx, parentHash)
 		if err != nil {
 			rc.logger.Error("Could not find batch mentioned in the rollup. This should not happen.", log.ErrKey, err)
 			return err
@@ -470,11 +470,11 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 			if err != nil {
 				return err
 			}
-			err = rc.storage.StoreExecutedBatch(ctx, genBatch, nil)
+			err = rc.storage.StoreExecutedBatch(ctx, genBatch.Header, nil, nil)
 			if err != nil {
 				return err
 			}
-			rc.batchRegistry.OnBatchExecuted(genBatch, nil)
+			rc.batchRegistry.OnBatchExecuted(genBatch.Header, nil)
 
 			rc.logger.Info("Stored genesis", log.BatchHashKey, genBatch.Hash())
 			parentHash = genBatch.Hash()
@@ -514,11 +514,11 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 			if err != nil {
 				return err
 			}
-			err = rc.storage.StoreExecutedBatch(ctx, computedBatch.Batch, computedBatch.Receipts)
+			err = rc.storage.StoreExecutedBatch(ctx, computedBatch.Batch.Header, computedBatch.Receipts, computedBatch.CreatedContracts)
 			if err != nil {
 				return err
 			}
-			rc.batchRegistry.OnBatchExecuted(computedBatch.Batch, nil)
+			rc.batchRegistry.OnBatchExecuted(computedBatch.Batch.Header, nil)
 
 			parentHash = computedBatch.Batch.Hash()
 		}

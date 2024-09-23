@@ -51,12 +51,12 @@ func GetLogsExecute(builder *CallBuilder[filters.FilterCriteria, []*types.Log], 
 
 	from := filter.FromBlock
 	if from != nil && from.Int64() < 0 {
-		batch, err := rpc.storage.FetchBatchBySeqNo(builder.ctx, rpc.registry.HeadBatchSeq().Uint64())
+		batch, err := rpc.storage.FetchBatchHeaderBySeqNo(builder.ctx, rpc.registry.HeadBatchSeq().Uint64())
 		if err != nil {
 			// system error
 			return fmt.Errorf("could not retrieve head batch. Cause: %w", err)
 		}
-		from = batch.Number()
+		from = batch.Number
 	}
 
 	// Set from to the height of the block hash

@@ -16,19 +16,35 @@ import { useBatchesService } from "@/src/services/useBatchesService";
 import TruncatedAddress from "@repo/ui/common/truncated-address";
 import { useContractsService } from "@/src/services/useContractsService";
 import { Skeleton } from "@repo/ui/shared/skeleton";
-import { RecentBlocks } from "./recent-blocks";
-import { useBlocksService } from "@/src/services/useBlocksService";
 import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
 import { cn, formatNumber } from "@repo/ui/lib/utils";
 import { Badge } from "@repo/ui/shared/badge";
 import { BlocksIcon } from "@repo/ui/shared/react-icons";
 
+import { useRollupsService } from "@/src/services/useRollupsService";
+import { RecentRollups } from "./recent-rollups";
+import { DashboardAnalyticsData } from "@/src/types/interfaces";
+
+interface RecentData {
+  title: string;
+  data: any;
+  component: JSX.Element;
+  goTo: string;
+  className: string;
+}
+
 export default function Dashboard() {
-  const { price, transactions, transactionCount } = useTransactionsService();
-  const { contractCount } = useContractsService();
-  const { batches, latestBatch } = useBatchesService();
-  const { blocks } = useBlocksService();
+  const {
+    price,
+    isPriceLoading,
+    transactions,
+    transactionCount,
+    isTransactionCountLoading,
+  } = useTransactionsService();
+  const { contractCount, isContractCountLoading } = useContractsService();
+  const { batches, latestBatch, isLatestBatchLoading } = useBatchesService();
+  const { rollups } = useRollupsService();
 
   const DASHBOARD_DATA = [
     {
@@ -39,21 +55,23 @@ export default function Dashboard() {
       // TODO: add change
       // change: "+20.1%",
       icon: RocketIcon,
+      loading: isPriceLoading,
     },
     {
       title: "Latest L2 Batch",
-      value: latestBatch?.item?.height
-        ? Number(latestBatch.item.height)
+      value: latestBatch?.item?.number
+        ? Number(latestBatch.item.number)
         : "N/A",
       // TODO: add change
       // change: "+20.1%",
       icon: LayersIcon,
+      loading: isLatestBatchLoading,
     },
     {
       title: "Latest L1 Rollup",
-      value: latestBatch?.item?.header?.l1Proof ? (
+      value: latestBatch?.item?.l1Proof ? (
         <TruncatedAddress
-          address={latestBatch?.item?.header?.l1Proof}
+          address={latestBatch?.item?.l1Proof}
           prefixLength={6}
           suffixLength={4}
         />
@@ -63,6 +81,7 @@ export default function Dashboard() {
       // TODO: add change
       // change: "+20.1%",
       icon: CubeIcon,
+      loading: isLatestBatchLoading,
     },
     {
       title: "Transactions",
@@ -72,6 +91,7 @@ export default function Dashboard() {
       // TODO: add change
       // change: "+20.1%",
       icon: ReaderIcon,
+      loading: isTransactionCountLoading,
     },
     {
       title: "Contracts",
@@ -79,6 +99,7 @@ export default function Dashboard() {
       // TODO: add change
       // change: "+20.1%",
       icon: FileTextIcon,
+      loading: isContractCountLoading,
     },
     {
       title: "Nodes",
@@ -89,10 +110,10 @@ export default function Dashboard() {
 
   const RECENT_DATA = [
     {
-      title: "Recent Blocks",
-      data: blocks,
-      component: <RecentBlocks blocks={blocks} />,
-      goTo: "/blocks",
+      title: "Recent Rollups",
+      data: rollups,
+      component: <RecentRollups rollups={rollups} />,
+      goTo: "/rollups",
       className: "col-span-1 md:col-span-2 lg:col-span-3",
     },
     {
@@ -117,17 +138,17 @@ export default function Dashboard() {
         <h2 className="text-3xl font-bold tracking-tight">Tenscan</h2>
       </div>
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-4">
-        {DASHBOARD_DATA.map((item: any, index) => (
+        {DASHBOARD_DATA.map((item: DashboardAnalyticsData, index: number) => (
           <AnalyticsCard key={index} item={item} />
         ))}
       </div>
       <div className="grid gap-4 grid-cols-1 md:grid-cols-6 lg:grid-cols-9">
-        {RECENT_DATA.map((item: any, index) => (
+        {RECENT_DATA.map((item: RecentData, index) => (
           <Card
             key={index}
-            className={cn(item.className, "h-[450px] overflow-y-auto")}
+            className={cn(item.className, "h-[450px] overflow-y-auto relative")}
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sticky top-0 left-0 right-0 bg-background z-10">
               <CardTitle>{item.title}</CardTitle>
               <Link
                 href={{

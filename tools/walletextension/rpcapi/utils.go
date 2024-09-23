@@ -34,13 +34,15 @@ const (
 	ethCallAddrPadding  = "000000000000000000000000"
 
 	notAuthorised = "not authorised"
+	serverBusy    = "server busy. please retry later"
 
 	longCacheTTL  = 5 * time.Hour
 	shortCacheTTL = 1 * time.Minute
 
 	// hardcoding the maximum time for an RPC request
 	// this value will be propagated to the node and enclave and all the operations
-	maximumRPCCallDuration = 5 * time.Second
+	maximumRPCCallDuration  = 5 * time.Second
+	sendTransactionDuration = 20 * time.Second
 )
 
 var rpcNotImplemented = fmt.Errorf("rpc endpoint not implemented")
@@ -52,6 +54,7 @@ type ExecCfg struct {
 	tryUntilAuthorised  bool
 	adjustArgs          func(acct *GWAccount) []any
 	cacheCfg            *CacheCfg
+	timeout             time.Duration
 }
 
 type CacheStrategy uint8
@@ -101,15 +104,21 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		return nil, err
 	}
 
-	user, err := getUser(userID, w)
-	if err != nil {
-		return nil, err
+	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(userID))
+	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(userID), requestUUID)
+	if !rateLimitAllowed {
+		return nil, fmt.Errorf("rate limit exceeded")
 	}
 
 	cacheArgs := []any{userID, method}
 	cacheArgs = append(cacheArgs, args...)
 
 	res, err := withCache(w.Cache, cfg.cacheCfg, generateCacheKey(cacheArgs), func() (*R, error) {
+		user, err := getUser(userID, w)
+		if err != nil {
+			return nil, err
+		}
+
 		// determine candidate "from"
 		candidateAccts, err := getCandidateAccounts(user, w, cfg)
 		if err != nil {
@@ -130,10 +139,19 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 				}
 
 				// wrap the context with a timeout to prevent long executions
-				timeoutContext, cancelCtx := context.WithTimeout(ctx, maximumRPCCallDuration)
+				deadline := cfg.timeout
+				// if not set, use default
+				if deadline == 0 {
+					deadline = maximumRPCCallDuration
+				}
+				timeoutContext, cancelCtx := context.WithTimeout(ctx, deadline)
 				defer cancelCtx()
 
 				err := rpcClient.CallContext(timeoutContext, &result, method, adjustedArgs...)
+				// return a friendly error to the user
+				if err != nil && errors.Is(err, context.DeadlineExceeded) {
+					return nil, fmt.Errorf(serverBusy)
+				}
 				return result, err
 			})
 			if err != nil {
@@ -259,7 +277,7 @@ func withCache[R any](cache cache.Cache, cfg *CacheCfg, cacheKey []byte, onCache
 
 func audit(services *Services, msg string, params ...any) {
 	if services.Config.VerboseFlag {
-		services.FileLogger.Info(fmt.Sprintf(msg, params...))
+		services.logger.Info(fmt.Sprintf(msg, params...))
 	}
 }
 

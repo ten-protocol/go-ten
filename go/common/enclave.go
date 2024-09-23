@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ten-protocol/go-ten/go/common/tracers"
@@ -22,6 +24,11 @@ type Status struct {
 	StatusCode StatusCode
 	L1Head     gethcommon.Hash
 	L2Head     *big.Int
+}
+
+type TxAndReceipt struct {
+	Tx      *types.Transaction
+	Receipt *types.Receipt
 }
 
 const (
@@ -55,7 +62,7 @@ type Enclave interface {
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitL1Block(ctx context.Context, block *L1Block, receipts L1Receipts, isLatest bool) (*BlockSubmissionResponse, SystemError)
+	SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*TxAndReceipt, isLatest bool) (*BlockSubmissionResponse, SystemError)
 
 	// SubmitTx - user transactions
 	SubmitTx(ctx context.Context, tx EncryptedTx) (*responses.RawTx, SystemError)
@@ -85,6 +92,8 @@ type Enclave interface {
 
 	// GetCode returns the code stored at the given address in the state for the given rollup hash.
 	GetCode(ctx context.Context, address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, SystemError)
+
+	GetStorageSlot(ctx context.Context, encryptedParams EncryptedParamsGetStorageSlot) (*responses.EnclaveResponse, SystemError)
 
 	// Subscribe adds a log subscription to the enclave under the given ID, provided the request is authenticated
 	// correctly. The events will be populated in the BlockSubmissionResponse. If there is an existing subscription
@@ -141,9 +150,8 @@ type EnclaveScan interface {
 	// GetTotalContractCount returns the total number of contracts that have been deployed
 	GetTotalContractCount(context.Context) (*big.Int, SystemError)
 
-	// GetCustomQuery returns the data of a custom query
-	// todo - better name and description
-	GetCustomQuery(ctx context.Context, encryptedParams EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, SystemError)
+	// GetPersonalTransactions returns the user's recent transactions according to specified pagination
+	GetPersonalTransactions(ctx context.Context, encryptedParams EncryptedParamsGetPersonalTransactions) (*responses.PersonalTransactionsResponse, SystemError)
 
 	// EnclavePublicConfig returns network data that is known to the enclave but can be shared publicly
 	EnclavePublicConfig(context.Context) (*EnclavePublicConfig, SystemError)

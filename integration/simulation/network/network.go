@@ -15,15 +15,15 @@ import (
 	"github.com/ten-protocol/go-ten/integration/simulation/stats"
 )
 
-// Network is responsible with knowing how to manage the lifecycle of networks of Ethereum or Obscuro nodes.
+// Network is responsible with knowing how to manage the lifecycle of networks of Ethereum or TEN nodes.
 // These networks can be composed of in-memory go-routines or of fully fledged existing nodes like Ropsten.
 // Implementation notes:
 // - This is a work in progress, so there is a lot of code duplication in the implementations
 // - Once we implement a few more versions: for example using Geth, we'll revisit and create better abstractions.
 type Network interface {
-	// Create - returns the started Ethereum nodes and the started Obscuro node clients.
+	// Create - returns the started Ethereum nodes and the started TEN node clients.
 	// Responsible with spinning up all resources required for the test
-	// Return an error in case it cannot start for an expected reason. Otherwise it panics.
+	// Return an error in case it cannot start for an expected reason, otherwise it panics.
 	Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error)
 	TearDown()
 }
@@ -32,9 +32,9 @@ type RPCHandles struct {
 	// an eth client per eth node in the network
 	EthClients []ethadapter.EthClient
 
-	// An Obscuro client per Obscuro node in the network.
-	ObscuroClients []*obsclient.ObsClient
-	// An RPC client per Obscuro node in the network (used for APIs that don't have methods on `ObsClient`.
+	// A TEN client per TEN node in the network.
+	TenClients []*obsclient.ObsClient
+	// An RPC client per TEN node in the network (used for APIs that don't have methods on `ObsClient`.
 	RPCClients []rpc.Client
 
 	// an RPC client per node per wallet, with a viewing key set up (on the client and registered on its corresponding host enclave),
@@ -48,15 +48,15 @@ func (n *RPCHandles) RndEthClient() ethadapter.EthClient {
 	return n.EthClients[rand.Intn(len(n.EthClients))] //nolint:gosec
 }
 
-// ObscuroWalletRndClient fetches an RPC client connected to a random L2 node for a given wallet
-func (n *RPCHandles) ObscuroWalletRndClient(wallet wallet.Wallet) *obsclient.AuthObsClient {
+// TenWalletRndClient fetches an RPC client connected to a random L2 node for a given wallet
+func (n *RPCHandles) TenWalletRndClient(wallet wallet.Wallet) *obsclient.AuthObsClient {
 	addr := wallet.Address().String()
 	clients := n.AuthObsClients[addr]
 	return clients[rand.Intn(len(clients))] //nolint:gosec
 }
 
-// ObscuroWalletClient fetches a client for a given wallet address, for a specific node
-func (n *RPCHandles) ObscuroWalletClient(walletAddress common.Address, nodeIdx int) *obsclient.AuthObsClient {
+// TenWalletClient fetches a client for a given wallet address, for a specific node
+func (n *RPCHandles) TenWalletClient(walletAddress common.Address, nodeIdx int) *obsclient.AuthObsClient {
 	clients := n.AuthObsClients[walletAddress.String()]
 	return clients[nodeIdx]
 }

@@ -4,7 +4,10 @@ import { DataTable } from "@repo/ui/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { Metadata } from "next";
-import { formatNumber } from "@repo/ui/lib/utils";
+import { getItem } from "@repo/ui/lib/utils";
+import { ItemPosition } from "@repo/ui/lib/types";
+import HeadSeo from "@/src/components/head-seo";
+import { siteMetadata } from "@/src/lib/siteMetadata";
 
 export const metadata: Metadata = {
   title: "Transactions",
@@ -32,29 +35,53 @@ export default function Transactions() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const firstBatchHeight = getItem(TransactionsData, "BatchHeight");
+  const lastBatchHeight = getItem(
+    TransactionsData,
+    "BatchHeight",
+    ItemPosition.LAST
+  );
+
   return (
-    <Layout>
-      <div className="h-full flex-1 flex-col space-y-8 md:flex">
-        <div className="flex items-center justify-between space-y-2">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Transactions</h2>
-            <p className="text-sm text-muted-foreground">
-              {formatNumber(Total)} Transactions found.
-            </p>
+    <>
+      <HeadSeo
+        title={`${siteMetadata.transactions.title} `}
+        description={siteMetadata.transactions.description}
+        canonicalUrl={`${siteMetadata.transactions.canonicalUrl}`}
+        ogImageUrl={siteMetadata.transactions.ogImageUrl}
+        ogTwitterImage={siteMetadata.transactions.ogTwitterImage}
+        ogType={siteMetadata.transactions.ogType}
+      ></HeadSeo>
+      <Layout>
+        <div className="h-full flex-1 flex-col space-y-8 md:flex">
+          <div className="flex items-center justify-between space-y-2">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">
+                Transactions
+              </h2>
+              {TransactionsData?.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Showing transactions in batch
+                  {firstBatchHeight !== lastBatchHeight && "es"} #
+                  {firstBatchHeight}{" "}
+                  {firstBatchHeight !== lastBatchHeight &&
+                    "to #" + lastBatchHeight}
+                  {/* uncomment the following line when total count feature is implemented */}
+                  {/* of {formatNumber(Total)} transactions. */}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-        {TransactionsData ? (
           <DataTable
             columns={columns}
             data={TransactionsData}
             refetch={refetchTransactions}
             total={+Total}
             isLoading={isTransactionsLoading}
+            noResultsText="transactions"
           />
-        ) : (
-          <div>No rollups found.</div>
-        )}
-      </div>
-    </Layout>
+        </div>
+      </Layout>
+    </>
   );
 }

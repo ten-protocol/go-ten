@@ -31,19 +31,20 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/ratelimiter"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
 
 // Services handles the various business logic for the api endpoints
 type Services struct {
-	HostAddrHTTP string // The HTTP address on which the Ten host can be reached
-	HostAddrWS   string // The WS address on which the Ten host can be reached
+	HostAddrHTTP string // The HTTP address on which the TEN host can be reached
+	HostAddrWS   string // The WS address on which the TEN host can be reached
 	Storage      storage.Storage
 	logger       gethlog.Logger
-	FileLogger   gethlog.Logger
 	stopControl  *stopcontrol.StopControl
 	version      string
 	Cache        cache.Cache
+	RateLimiter  *ratelimiter.RateLimiter
 	// the OG maintains a connection pool of rpc connections to underlying nodes
 	rpcHTTPConnPool *pool.ObjectPool
 	rpcWSConnPool   *pool.ObjectPool
@@ -56,7 +57,6 @@ type NewHeadNotifier interface {
 }
 
 func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, config *common.Config) *Services {
-	newFileLogger := common.NewFileLogger()
 	newGatewayCache, err := cache.NewCache(logger)
 	if err != nil {
 		logger.Error(fmt.Errorf("could not create cache. Cause: %w", err).Error())
@@ -92,15 +92,17 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 	cfg := pool.NewDefaultPoolConfig()
 	cfg.MaxTotal = 200 // todo - what is the right number
 
+	rateLimiter := ratelimiter.NewRateLimiter(config.RateLimitUserComputeTime, config.RateLimitWindow, uint32(config.RateLimitMaxConcurrentRequests), logger)
+
 	services := Services{
 		HostAddrHTTP:    hostAddrHTTP,
 		HostAddrWS:      hostAddrWS,
 		Storage:         storage,
 		logger:          logger,
-		FileLogger:      newFileLogger,
 		stopControl:     stopControl,
 		version:         version,
 		Cache:           newGatewayCache,
+		RateLimiter:     rateLimiter,
 		rpcHTTPConnPool: pool.NewObjectPool(context.Background(), factoryHTTP, cfg),
 		rpcWSConnPool:   pool.NewObjectPool(context.Background(), factoryWS, cfg),
 		Config:          config,
@@ -142,7 +144,7 @@ func subscribeToNewHeadsWithRetry(ch chan *tencommon.BatchHeader, services Servi
 			}
 			return err
 		},
-		retry.NewTimeoutStrategy(10*time.Minute, 1*time.Second),
+		retry.NewTimeoutStrategy(20*time.Minute, 1*time.Second),
 	)
 	if err != nil {
 		logger.Error("could not subscribe for new head blocks.", log.ErrKey, err)
@@ -164,6 +166,7 @@ func (w *Services) Logger() gethlog.Logger {
 
 // GenerateAndStoreNewUser generates new key-pair and userID, stores it in the database and returns hex encoded userID and error
 func (w *Services) GenerateAndStoreNewUser() ([]byte, error) {
+	audit(w, "Generating and storing new user")
 	requestStartTime := time.Now()
 	// generate new key-pair
 	viewingKeyPrivate, err := crypto.GenerateKey()
@@ -189,6 +192,7 @@ func (w *Services) GenerateAndStoreNewUser() ([]byte, error) {
 
 // AddAddressToUser checks if a message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
 func (w *Services) AddAddressToUser(userID []byte, address string, signature []byte, signatureType viewingkey.SignatureType) error {
+	audit(w, "Adding address to user: %s, address: %s", hexutils.BytesToHex(userID), address)
 	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
 	// check if a message was signed by the correct address and if the signature is valid
@@ -271,6 +275,7 @@ func (w *Services) Version() string {
 }
 
 func (w *Services) GetTenNodeHealthStatus() (bool, error) {
+	audit(w, "Getting TEN node health status")
 	res, err := withPlainRPCConnection[bool](context.Background(), w, func(client *gethrpc.Client) (*bool, error) {
 		res, err := obsclient.NewObsClient(client).Health()
 		return &res, err
@@ -278,7 +283,17 @@ func (w *Services) GetTenNodeHealthStatus() (bool, error) {
 	return *res, err
 }
 
+func (w *Services) GetTenNetworkConfig() (tencommon.TenNetworkInfo, error) {
+	audit(w, "Getting TEN network config")
+	res, err := withPlainRPCConnection[tencommon.TenNetworkInfo](context.Background(), w, func(client *gethrpc.Client) (*tencommon.TenNetworkInfo, error) {
+		res, err := obsclient.NewObsClient(client).GetConfig()
+		return res, err
+	})
+	return *res, err
+}
+
 func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlice []string) (string, error) {
+	audit(w, "Generating user message to sign")
 	// Check if the formats are valid
 	for _, format := range formatsSlice {
 		if _, exists := viewingkey.SignatureTypeMap[format]; !exists {

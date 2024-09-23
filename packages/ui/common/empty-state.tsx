@@ -1,3 +1,4 @@
+import { cn } from "@/src/lib/utils";
 import Image from "next/image";
 import React from "react";
 
@@ -8,6 +9,7 @@ const EmptyState = ({
   imageSrc,
   imageAlt,
   action,
+  className,
 }: {
   title?: string;
   description?: string;
@@ -15,9 +17,15 @@ const EmptyState = ({
   imageSrc?: string;
   imageAlt?: string;
   action?: React.ReactNode;
+  className?: string;
 }) => {
   return (
-    <div className="flex flex-col items-center justify-center h-full">
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center space-y-4",
+        className
+      )}
+    >
       <div className="flex flex-col items-center justify-center space-y-4">
         {icon && <div className="w-24 h-24">{icon}</div>}
         {imageSrc && (
@@ -25,6 +33,8 @@ const EmptyState = ({
             src={imageSrc}
             alt={imageAlt || "Empty state"}
             className="w-24 h-24 rounded-full"
+            width={96}
+            height={96}
           />
         )}
         {title && (

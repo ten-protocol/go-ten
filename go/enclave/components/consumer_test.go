@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/trie"
 )
 
 func TestInvalidBlocksAreRejected(t *testing.T) {
@@ -25,7 +24,7 @@ func TestInvalidBlocksAreRejected(t *testing.T) {
 
 	for _, header := range invalidHeaders {
 		loopHeader := header
-		_, err := blockConsumer.ingestBlock(context.Background(), types.NewBlock(&loopHeader, nil, nil, nil, &trie.StackTrie{}))
+		_, err := blockConsumer.ingestBlock(context.Background(), &loopHeader)
 		if err == nil {
 			t.Errorf("expected block with invalid header to be rejected but was accepted")
 		}

@@ -39,7 +39,7 @@ jobs:
         run: |
           echo "GitHub Variables = ${{ toJSON(vars) }}"
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: 'Set up Docker'
         uses: docker/setup-buildx-action@v1
@@ -125,11 +125,10 @@ jobs:
                -v /proc/:/host/proc/:ro \
                -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+               --log-opt max-file=3 --log-opt max-size=10m \
                datadog/agent:latest \
             && docker run -d \
             -p 8025:8025 -p 8026:8026 -p 9000:9000 -p 9001:9001 \
             --entrypoint /home/obscuro/go-obscuro/integration/eth2network/main/main ${{ vars.DOCKER_BUILD_TAG_ETH2NETWORK }} \
-            --blockTimeSecs=15 --slotsPerEpoch=2 --slotsPerSecond=15 \
-            --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
-            --logToFile=false \
+            --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
             --prefundedAddrs="${{ vars.ACCOUNT_ADDR_WORKER }},${{ vars.ACCOUNT_ADDR_NODE_0 }},${{ vars.ACCOUNT_ADDR_NODE_1 }},${{ vars.ACCOUNT_ADDR_NODE_2 }},${{ vars.ACCOUNT_ADDR_L1_BRIDGE_TEST }}"'

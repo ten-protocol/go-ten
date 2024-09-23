@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-type PrivateQueryResponse struct {
+type PrivateTransactionsQueryResponse struct {
 	Receipts types.Receipts
 	Total    uint64
 }
@@ -49,7 +49,6 @@ type PublicTransaction struct {
 
 type PublicBatch struct {
 	SequencerOrderNo *big.Int              `json:"sequence"`
-	Hash             string                `json:"hash"`
 	FullHash         common.Hash           `json:"fullHash"`
 	Height           *big.Int              `json:"height"`
 	TxCount          *big.Int              `json:"txCount"`
@@ -111,12 +110,7 @@ func (p *QueryPagination) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type PrivateCustomQueryListTransactions struct {
-	Address    common.Address  `json:"address"`
-	Pagination QueryPagination `json:"pagination"`
-}
-
-type ObscuroNetworkInfo struct {
+type TenNetworkInfo struct {
 	ManagementContractAddress common.Address
 	L1StartHash               common.Hash
 	MessageBusAddress         common.Address

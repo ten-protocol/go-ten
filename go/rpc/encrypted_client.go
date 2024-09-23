@@ -41,6 +41,7 @@ var SensitiveMethods = []string{
 	EstimateGas,
 	GetLogs,
 	GetStorageAt,
+	GetPersonalTransactions,
 }
 
 // EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
@@ -166,6 +167,12 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 	// and never error.
 	resultBytes, _ := decodedResult.MarshalJSON()
 
+	// if expected result type is bytes, we return the bytes
+	if _, ok := result.(*[]byte); ok {
+		*result.(*[]byte) = resultBytes
+		return nil
+	}
+
 	// We put the raw json in the passed result object.
 	// This works for structs, strings, integers and interface types.
 	err = json.Unmarshal(resultBytes, result)
@@ -226,7 +233,7 @@ func (c *EncRPCClient) decryptResponse(encryptedBytes []byte) ([]byte, error) {
 	return decryptedResult, nil
 }
 
-// creates a subscription to the Ten node, but decrypts the messages from that channel and forwards them to the `ch`
+// creates a subscription to the TEN node, but decrypts the messages from that channel and forwards them to the `ch`
 func (c *EncRPCClient) logSubscription(ctx context.Context, namespace string, ch interface{}, args ...any) (*gethrpc.ClientSubscription, error) {
 	outboundChannel, ok := ch.(chan types.Log)
 	if !ok {

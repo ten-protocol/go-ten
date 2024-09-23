@@ -1,3 +1,4 @@
+import HeadSeo from "@/src/components/head-seo";
 import Layout from "@/src/components/layouts/default-layout";
 import EmptyState from "@repo/ui/common/empty-state";
 import { Button } from "@repo/ui/shared/button";

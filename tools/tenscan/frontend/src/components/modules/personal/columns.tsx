@@ -15,7 +15,7 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
   {
     accessorKey: "blockNumber",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Ten Batch" />
+      <DataTableColumnHeader column={column} title="TEN Batch" />
     ),
     cell: ({ row }) => {
       return (
@@ -32,7 +32,7 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
   {
     accessorKey: "blockHash",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Ten Batch Hash" />
+      <DataTableColumnHeader column={column} title="TEN Batch Hash" />
     ),
     cell: ({ row }) => {
       return <TruncatedAddress address={row.getValue("blockHash")} />;
@@ -129,7 +129,7 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
     id: "actions",
     cell: ({ row }) => {
       return (
-        <Link href={`/tx/${row.original.transactionHash}`}>
+        <Link href={`/tx/personal/${row.original.transactionHash}`}>
           <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
         </Link>
       );

@@ -16,6 +16,7 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
             </Avatar>
             <div className="ml-4 space-y-1">
               <p className="text-sm font-medium leading-none">
+                <span className="text-muted-foreground">Batch </span>
                 <Link
                   href={`/batch/height/${transaction?.BatchHeight}`}
                   className="text-primary"
@@ -28,13 +29,10 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
               </p>
             </div>
             <div className="ml-auto font-medium">
-              <Link
-                href={`/tx/${transaction?.TransactionHash}`}
-                className="text-primary"
-              >
-                {" "}
-                <TruncatedAddress address={transaction?.TransactionHash} />
-              </Link>
+              <TruncatedAddress
+                address={transaction?.TransactionHash}
+                link={`/tx/${transaction?.TransactionHash}`}
+              />
             </div>
             <div className="ml-auto">
               <Badge>{transaction?.Finality}</Badge>

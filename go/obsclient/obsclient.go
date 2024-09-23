@@ -252,8 +252,8 @@ func (oc *ObsClient) GetBatchTransactions(hash gethcommon.Hash) (*common.Transac
 }
 
 // GetConfig returns the network config for obscuro
-func (oc *ObsClient) GetConfig() (*common.ObscuroNetworkInfo, error) {
-	var result common.ObscuroNetworkInfo
+func (oc *ObsClient) GetConfig() (*common.TenNetworkInfo, error) {
+	var result common.TenNetworkInfo
 	err := oc.rpcClient.Call(&result, rpc.Config)
 	if err != nil {
 		return nil, err

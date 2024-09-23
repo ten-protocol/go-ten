@@ -1,6 +1,13 @@
 import React from "react";
 import { Badge, badgeVariants } from "@repo/ui/shared/badge";
 import { useGeneralService } from "../services/useGeneralService";
+import { BarChart } from "lucide-react";
+import {
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipContent,
+  Tooltip,
+} from "./ui/tooltip";
 
 const HealthIndicator = () => {
   const [status, setStatus] = React.useState<boolean>(false);
@@ -20,16 +27,30 @@ const HealthIndicator = () => {
   }, [testnetStatus]);
 
   return (
-    <div className="flex items-center space-x-2 border rounded-lg p-2">
-      <h3 className="text-sm">Testnet Status: </h3>
-      <Badge
-        variant={
-          (status ? "success" : "destructive") as keyof typeof badgeVariants
-        }
-      >
-        {status ? "Live" : "Down"}
-      </Badge>
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger>
+          <div className="flex items-center space-x-1 border rounded-lg p-2">
+            <span className="text-sm hidden lg:block">Testnet Status</span>
+            <BarChart
+              className={`h-4 w-4 ${status ? "text-success" : "text-destructive"}`}
+            />
+            <Badge
+              variant={
+                (status
+                  ? "success"
+                  : "destructive") as keyof typeof badgeVariants
+              }
+            >
+              {status ? "Live" : "Down"}
+            </Badge>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          {status ? "Testnet status: Live" : "Testnet status: Down"}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 

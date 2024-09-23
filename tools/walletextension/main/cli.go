@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"time"
 
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
@@ -54,11 +55,23 @@ const (
 
 	tenChainIDName      = "tenChainID"
 	tenChainIDDefault   = 443
-	tenChainIDFlagUsage = "ChainID of Ten network that the gateway is communicating with"
+	tenChainIDFlagUsage = "ChainID of TEN network that the gateway is communicating with"
 
 	storeIncomingTxs        = "storeIncomingTxs"
 	storeIncomingTxsDefault = true
 	storeIncomingTxsUsage   = "Flag to enable storing incoming transactions in the database for debugging purposes. Default: true"
+
+	rateLimitUserComputeTimeName    = "rateLimitUserComputeTime"
+	rateLimitUserComputeTimeDefault = 10 * time.Second
+	rateLimitUserComputeTimeUsage   = "rateLimitUserComputeTime represents how much compute time is user allowed to used in rateLimitWindow time. If rateLimitUserComputeTime is set to 0, rate limiting is turned off. Default: 10s."
+
+	rateLimitWindowName    = "rateLimitWindow"
+	rateLimitWindowDefault = 1 * time.Minute
+	rateLimitWindowUsage   = "rateLimitWindow represents time window in which we allow one user to use compute time defined with rateLimitUserComputeTimeMs  Default: 1m"
+
+	rateLimitMaxConcurrentRequestsName    = "maxConcurrentRequestsPerUser"
+	rateLimitMaxConcurrentRequestsDefault = 3
+	rateLimitMaxConcurrentRequestsUsage   = "Number of concurrent requests allowed per user. Default: 3"
 )
 
 func parseCLIArgs() wecommon.Config {
@@ -75,20 +88,26 @@ func parseCLIArgs() wecommon.Config {
 	dbConnectionURL := flag.String(dbConnectionURLFlagName, dbConnectionURLFlagDefault, dbConnectionURLFlagUsage)
 	tenChainID := flag.Int(tenChainIDName, tenChainIDDefault, tenChainIDFlagUsage)
 	storeIncomingTransactions := flag.Bool(storeIncomingTxs, storeIncomingTxsDefault, storeIncomingTxsUsage)
+	rateLimitUserComputeTime := flag.Duration(rateLimitUserComputeTimeName, rateLimitUserComputeTimeDefault, rateLimitUserComputeTimeUsage)
+	rateLimitWindow := flag.Duration(rateLimitWindowName, rateLimitWindowDefault, rateLimitWindowUsage)
+	rateLimitMaxConcurrentRequests := flag.Int(rateLimitMaxConcurrentRequestsName, rateLimitMaxConcurrentRequestsDefault, rateLimitMaxConcurrentRequestsUsage)
 	flag.Parse()
 
 	return wecommon.Config{
-		WalletExtensionHost:     *walletExtensionHost,
-		WalletExtensionPortHTTP: *walletExtensionPort,
-		WalletExtensionPortWS:   *walletExtensionPortWS,
-		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", *nodeHost, *nodeHTTPPort),
-		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),
-		LogPath:                 *logPath,
-		DBPathOverride:          *databasePath,
-		VerboseFlag:             *verboseFlag,
-		DBType:                  *dbType,
-		DBConnectionURL:         *dbConnectionURL,
-		TenChainID:              *tenChainID,
-		StoreIncomingTxs:        *storeIncomingTransactions,
+		WalletExtensionHost:            *walletExtensionHost,
+		WalletExtensionPortHTTP:        *walletExtensionPort,
+		WalletExtensionPortWS:          *walletExtensionPortWS,
+		NodeRPCHTTPAddress:             fmt.Sprintf("%s:%d", *nodeHost, *nodeHTTPPort),
+		NodeRPCWebsocketAddress:        fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),
+		LogPath:                        *logPath,
+		DBPathOverride:                 *databasePath,
+		VerboseFlag:                    *verboseFlag,
+		DBType:                         *dbType,
+		DBConnectionURL:                *dbConnectionURL,
+		TenChainID:                     *tenChainID,
+		StoreIncomingTxs:               *storeIncomingTransactions,
+		RateLimitUserComputeTime:       *rateLimitUserComputeTime,
+		RateLimitWindow:                *rateLimitWindow,
+		RateLimitMaxConcurrentRequests: *rateLimitMaxConcurrentRequests,
 	}
 }

@@ -14,7 +14,7 @@ export default function Header() {
       <div className="flex h-16 justify-between items-center px-4">
         <Link href="/">
           <Image
-            src="/static/assets/images/black_logotype.png"
+            src="/assets/images/black_logotype.png"
             alt="Logo"
             width={150}
             height={40}

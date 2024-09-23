@@ -29,16 +29,16 @@ const (
 	networkTCP        = "tcp"
 )
 
-func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
-	// Create the in memory obscuro nodes, each connect each to a geth node
-	obscuroNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
-	obscuroHosts := make([]host.Host, params.NumberOfNodes)
+func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
+	// Create the in memory TEN nodes, each connect each to a geth node
+	tenNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
+	tenHosts := make([]host.Host, params.NumberOfNodes)
 	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithInboundP2PDisabled)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
-		obscuroNodes[i] = createInMemObscuroNode(
+		tenNodes[i] = createInMemTenNode(
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
@@ -54,11 +54,11 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			true,
 			params.AvgBlockDuration,
 		)
-		obscuroHosts[i] = obscuroNodes[i].Host()
+		tenHosts[i] = tenNodes[i].Host()
 	}
 
-	// start each obscuro node
-	for _, m := range obscuroNodes {
+	// start each TEN node
+	for _, m := range tenNodes {
 		t := m
 		go func() {
 			err := t.Start()
@@ -69,13 +69,13 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 	}
 
 	// Create a handle to each node
-	obscuroClients := make([]rpc.Client, params.NumberOfNodes)
-	for i, node := range obscuroNodes {
-		obscuroClients[i] = p2p.NewInMemObscuroClient(node)
+	tenClients := make([]rpc.Client, params.NumberOfNodes)
+	for i, node := range tenNodes {
+		tenClients[i] = p2p.NewInMemTenClient(node)
 	}
 	time.Sleep(100 * time.Millisecond)
 
-	return obscuroClients
+	return tenClients
 }
 
 func createAuthClientsPerWallet(clients []rpc.Client, wallets *params.SimWallets) map[string][]*obsclient.AuthObsClient {
@@ -108,8 +108,8 @@ func CreateAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 	return authClients
 }
 
-// StopObscuroNodes stops the Obscuro nodes and their RPC clients.
-func StopObscuroNodes(clients []rpc.Client) {
+// StopTenNodes stops the TEN nodes and their RPC clients.
+func StopTenNodes(clients []rpc.Client) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	eg, _ := errgroup.WithContext(ctx)
@@ -119,7 +119,7 @@ func StopObscuroNodes(clients []rpc.Client) {
 		eg.Go(func() error {
 			err := c.Call(nil, rpc.StopHost)
 			if err != nil {
-				testlog.Logger().Error("Could not stop Obscuro node.", log.ErrKey, err)
+				testlog.Logger().Error("Could not stop TEN node.", log.ErrKey, err)
 				return err
 			}
 			c.Stop()
@@ -129,10 +129,10 @@ func StopObscuroNodes(clients []rpc.Client) {
 
 	err := eg.Wait()
 	if err != nil {
-		testlog.Logger().Error(fmt.Sprintf("Error waiting for the Obscuro nodes to stop - %s", err))
+		testlog.Logger().Error(fmt.Sprintf("Error waiting for the TEN nodes to stop - %s", err))
 	}
 
-	testlog.Logger().Info("Obscuro nodes stopped")
+	testlog.Logger().Info("TEN nodes stopped")
 }
 
 // CheckHostRPCServersStopped checks whether the hosts' RPC server addresses have been freed up.
@@ -157,10 +157,10 @@ func CheckHostRPCServersStopped(hostWSURLS []string) {
 
 	err := eg.Wait()
 	if err != nil {
-		panic(fmt.Sprintf("Timed out waiting for the Obscuro host RPC addresses to become available - %s", err))
+		panic(fmt.Sprintf("Timed out waiting for the TEN host RPC addresses to become available - %s", err))
 	}
 
-	testlog.Logger().Info("Obscuro host RPC addresses freed")
+	testlog.Logger().Info("TEN host RPC addresses freed")
 }
 
 func isAddressAvailable(address string) bool {

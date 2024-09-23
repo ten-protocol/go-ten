@@ -31,15 +31,13 @@ export const columns: ColumnDef<Rollup>[] = [
     ),
     cell: ({ row }) => {
       return (
-        <Link
-          href={{
+        <TruncatedAddress
+          address={row.getValue("Hash")}
+          link={{
             pathname: "/rollup/[hash]/batches",
             query: { hash: row.getValue("Hash") },
           }}
-          className="text-primary"
-        >
-          <TruncatedAddress address={row.getValue("Hash")} />
-        </Link>
+        />
       );
     },
     enableSorting: false,
@@ -76,7 +74,7 @@ export const columns: ColumnDef<Rollup>[] = [
   {
     accessorKey: "FirstSeq",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="First Sequencer" />
+      <DataTableColumnHeader column={column} title="First Batch Seq. No." />
     ),
     cell: ({ row }) => {
       return (
@@ -98,7 +96,7 @@ export const columns: ColumnDef<Rollup>[] = [
   {
     accessorKey: "LastSeq",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Last Sequencer" />
+      <DataTableColumnHeader column={column} title="Last Batch Seq. No." />
     ),
     cell: ({ row }) => {
       return (

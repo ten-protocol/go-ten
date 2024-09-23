@@ -18,12 +18,13 @@ export const fetchLatestRollups = async (
   });
 };
 
-export const fetchRollups = async (): Promise<
-  ResponseDataInterface<RollupsResponse>
-> => {
+export const fetchRollups = async (
+  payload?: Record<string, any>
+): Promise<ResponseDataInterface<RollupsResponse>> => {
   return await httpRequest<ResponseDataInterface<RollupsResponse>>({
     method: "get",
     url: pathToUrl(apiRoutes.getRollups),
+    searchParams: payload,
   });
 };
 
@@ -51,12 +52,10 @@ export const fetchRollupByHash = async (
 export const fetchRollupByBatchSequence = async (
   seq: string
 ): Promise<ResponseDataInterface<Rollup>> => {
-  const res = await httpRequest<ResponseDataInterface<Rollup>>({
+  return await httpRequest<ResponseDataInterface<Rollup>>({
     method: "get",
     url: pathToUrl(apiRoutes.getRollupByBatchSequence, { seq }),
   });
-  console.log(res);
-  return res;
 };
 
 export const fetchBatchesInRollups = async (

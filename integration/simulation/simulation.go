@@ -51,20 +51,20 @@ func (s *Simulation) Start() {
 	testlog.Logger().Info(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(ethereummock.MockGenesisBlock.Hash())))
 	s.ctx = context.Background() // use injected context for graceful shutdowns
 
-	s.waitForObscuroGenesisOnL1()
+	s.waitForTenGenesisOnL1()
 
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	// and for all l2 nodes to receive the genesis l2 batch
 	// todo - instead of sleeping, it would be better to poll
 	time.Sleep(10 * time.Second)
 
-	s.bridgeFundingToObscuro()
-	s.trackLogs()              // Create log subscriptions, to validate that they're working correctly later.
-	s.prefundObscuroAccounts() // Prefund every L2 wallet
+	s.bridgeFundingToTen()
+	s.trackLogs()          // Create log subscriptions, to validate that they're working correctly later.
+	s.prefundTenAccounts() // Prefund every L2 wallet
 
-	s.deployObscuroERC20s() // Deploy the Obscuro HOC and POC ERC20 contracts
-	s.prefundL1Accounts()   // Prefund every L1 wallet
-	s.checkHealthStatus()   // Checks the nodes health status
+	s.deployTenERC20s()   // Deploy the TEN HOC and POC ERC20 contracts
+	s.prefundL1Accounts() // Prefund every L1 wallet
+	s.checkHealthStatus() // Checks the nodes health status
 
 	timer := time.Now()
 	fmt.Printf("Starting injection\n")
@@ -91,7 +91,7 @@ func (s *Simulation) Stop() {
 	// nothing to do for now
 }
 
-func (s *Simulation) waitForObscuroGenesisOnL1() {
+func (s *Simulation) waitForTenGenesisOnL1() {
 	// grab an L1 client
 	client := s.RPCHandles.EthClients[0]
 
@@ -102,25 +102,25 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 			panic(fmt.Errorf("could not fetch head block. Cause: %w", err))
 		}
 		if err == nil {
-			for _, b := range client.BlocksBetween(ethereummock.MockGenesisBlock, head) {
+			for _, b := range client.BlocksBetween(ethereummock.MockGenesisBlock.Header(), head) {
 				for _, tx := range b.Transactions() {
 					t := s.Params.MgmtContractLib.DecodeTx(tx)
 					if t == nil {
 						continue
 					}
 					if _, ok := t.(*ethadapter.L1RollupTx); ok {
-						// exit at the first obscuro rollup we see
+						// exit at the first TEN rollup we see
 						return
 					}
 				}
 			}
 		}
 		time.Sleep(s.Params.AvgBlockDuration)
-		testlog.Logger().Trace("Waiting for the Obscuro genesis rollup...")
+		testlog.Logger().Trace("Waiting for the TEN genesis rollup...")
 	}
 }
 
-func (s *Simulation) bridgeFundingToObscuro() {
+func (s *Simulation) bridgeFundingToTen() {
 	if s.Params.IsInMem {
 		return
 	}
@@ -205,9 +205,9 @@ func (s *Simulation) trackLogs() {
 }
 
 // Prefunds the L2 wallets with `allocObsWallets` each.
-func (s *Simulation) prefundObscuroAccounts() {
+func (s *Simulation) prefundTenAccounts() {
 	faucetWallet := s.Params.Wallets.L2FaucetWallet
-	faucetClient := s.RPCHandles.ObscuroWalletClient(faucetWallet.Address(), 0) // get sequencer, else errors on submission get swallowed
+	faucetClient := s.RPCHandles.TenWalletClient(faucetWallet.Address(), 0) // get sequencer, else errors on submission get swallowed
 	nonce := NextNonce(s.ctx, s.RPCHandles, faucetWallet)
 
 	// Give 1000 ether per account - ether is 1e18 so best convert it by code
@@ -217,8 +217,8 @@ func (s *Simulation) prefundObscuroAccounts() {
 	testcommon.PrefundWallets(s.ctx, faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), allocObsWallets, s.Params.ReceiptTimeout)
 }
 
-// This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
-func (s *Simulation) deployObscuroERC20s() {
+// This deploys an ERC20 contract on Ten, which is used for token arithmetic.
+func (s *Simulation) deployTenERC20s() {
 	tokens := []testcommon.ERC20{testcommon.HOC, testcommon.POC}
 
 	wg := sync.WaitGroup{}
@@ -239,13 +239,13 @@ func (s *Simulation) deployObscuroERC20s() {
 				GasTipCap: gethcommon.Big1,
 			}
 
-			deployContractTx := s.RPCHandles.ObscuroWalletRndClient(owner).EstimateGasAndGasPrice(&deployContractTxData)
+			deployContractTx := s.RPCHandles.TenWalletRndClient(owner).EstimateGasAndGasPrice(&deployContractTxData)
 			signedTx, err := owner.SignTransaction(deployContractTx)
 			if err != nil {
 				panic(err)
 			}
 
-			rpc := s.RPCHandles.ObscuroWalletClient(owner.Address(), 1)
+			rpc := s.RPCHandles.TenWalletClient(owner.Address(), 1)
 			err = rpc.SendTransaction(s.ctx, signedTx)
 			if err != nil {
 				panic(err)
@@ -295,7 +295,7 @@ func (s *Simulation) prefundL1Accounts() {
 }
 
 func (s *Simulation) checkHealthStatus() {
-	for _, client := range s.RPCHandles.ObscuroClients {
+	for _, client := range s.RPCHandles.TenClients {
 		err := retry.Do(func() error {
 			healthy, err := client.Health()
 			if !healthy || err != nil {
@@ -314,7 +314,7 @@ func NextNonce(ctx context.Context, clients *network.RPCHandles, w wallet.Wallet
 
 	// only returns the nonce when the previous transaction was recorded
 	for {
-		remoteNonce, err := clients.ObscuroWalletRndClient(w).NonceAt(ctx, nil)
+		remoteNonce, err := clients.TenWalletRndClient(w).NonceAt(ctx, nil)
 		if err != nil {
 			panic(err)
 		}

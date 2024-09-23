@@ -1,0 +1,65 @@
+# Deploys TEN Bridge on Azure for Testnet
+# Builds the TEN Bridge image, pushes the image to dockerhub and starts the TEN Bridge on Azure
+
+name: "[M] Deploy Bridge Testnet"
+run-name: "[M] Deploy Bridge Testnet ( ${{ github.event.inputs.testnet_type }} )"
+on:
+  workflow_dispatch:
+    inputs:
+      testnet_type:
+        description: "Testnet Type"
+        required: true
+        default: "dev-testnet"
+        type: choice
+        options:
+          - "dev-testnet"
+          - "uat-testnet"
+          - "sepolia-testnet"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - name: "Print GitHub variables"
+        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
+        run: |
+          echo "GitHub Variables = ${{ toJSON(vars) }}"
+
+      - uses: actions/checkout@v3
+
+      - name: "Set up Docker"
+        uses: docker/setup-buildx-action@v1
+
+      - name: "Login to Azure docker registry"
+        uses: azure/docker-login@v1
+        with:
+          login-server: testnetobscuronet.azurecr.io
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: "Login via Azure CLI"
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build and Push Docker FE Image
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_BRIDGE_FE }} -f ./tools/bridge-frontend/Dockerfile . 
+          docker push ${{ vars.DOCKER_BUILD_TAG_BRIDGE_FE }}
+
+      - name: "Deploy FE to Azure Container Instances"
+        uses: "azure/aci-deploy@v1"
+        with:
+          resource-group: ${{ secrets.RESOURCE_GROUP }}
+          dns-name-label: ${{ github.event.inputs.testnet_type }}-ten-bridge
+          image: ${{ vars.DOCKER_BUILD_TAG_BRIDGE_FE }}
+          name: ${{ github.event.inputs.testnet_type }}-fe-ten-bridge
+          location: "uksouth"
+          restart-policy: "Never"
+          environment-variables: NEXT_PUBLIC_BRIDGE_API_HOST=https://${{ github.event.inputs.testnet_type }}.ten.xyz/v1 NEXT_PUBLIC_FE_VERSION=${{ GITHUB.RUN_NUMBER }}-${{ GITHUB.SHA }}
+          command-line: npm run start-prod
+          ports: "80"
+          cpu: 2
+          memory: 2

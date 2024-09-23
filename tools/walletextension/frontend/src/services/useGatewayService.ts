@@ -34,42 +34,42 @@ const useGatewayService = () => {
   };
 
   const connectToTenTestnet = async () => {
-    showToast(ToastType.INFO, "Connecting to Ten Testnet...");
+    showToast(ToastType.INFO, "Connecting to TEN Testnet...");
     setLoading(true);
     try {
       if (await isTenChain()) {
         if (!token || !isValidTokenFormat(token)) {
           showToast(
             ToastType.DESTRUCTIVE,
-            "Existing Ten Testnet detected in MetaMask. Please remove before hitting begin"
+            "Existing TEN Testnet detected in MetaMask. Please remove before hitting begin"
           );
           return;
         }
       }
-      showToast(ToastType.INFO, "Switching to Ten Testnet...");
+      showToast(ToastType.INFO, "Switching to TEN Testnet...");
       const switched = await switchToTenNetwork();
-      showToast(ToastType.SUCCESS, `Switched to Ten Testnet: ${switched}`);
+      showToast(ToastType.SUCCESS, `Switched to TEN Testnet`);
       // SWITCHED_CODE=4902; error 4902 means that the chain does not exist
       if (
         switched === SWITCHED_CODE ||
         !isValidTokenFormat(await getToken(provider))
       ) {
-        showToast(ToastType.INFO, "Adding Ten Testnet...");
+        showToast(ToastType.INFO, "Adding TEN Testnet...");
         const user = await joinTestnet();
         const rpcUrls = [
           `${tenGatewayAddress}/${tenGatewayVersion}/?token=${user}`,
         ];
         await addNetworkToMetaMask(rpcUrls);
-        showToast(ToastType.SUCCESS, "Added Ten Testnet");
+        showToast(ToastType.SUCCESS, "Added TEN Testnet");
       }
 
       if (!(await isMetamaskConnected())) {
         showToast(ToastType.INFO, "No accounts found, connecting...");
         await connectAccounts();
-        showToast(ToastType.SUCCESS, "Connected to Ten Testnet");
+        showToast(ToastType.SUCCESS, "Connected to TEN Testnet");
       }
       await fetchUserAccounts();
-    } catch (error: any) {
+    } catch (error: Error | any) {
       showToast(ToastType.DESTRUCTIVE, `${error?.message}`);
       throw error;
     } finally {
@@ -81,7 +81,7 @@ const useGatewayService = () => {
     try {
       return await fetchTestnetStatus();
     } catch (error) {
-      showToast(ToastType.DESTRUCTIVE, "Unable to connect to Ten Testnet");
+      showToast(ToastType.DESTRUCTIVE, "Unable to connect to TEN Testnet");
       throw error;
     }
   };

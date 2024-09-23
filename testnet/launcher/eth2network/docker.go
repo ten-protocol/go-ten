@@ -27,7 +27,6 @@ func (n *Eth2Network) Start() error {
 
 	cmds := []string{
 		"/home/obscuro/go-obscuro/integration/eth2network/main/main",
-		"--numNodes", "1",
 	}
 
 	if len(n.cfg.prefundedAddrs) > 1 {
@@ -48,12 +47,12 @@ func (n *Eth2Network) Start() error {
 	// keep a volume of binaries to avoid downloading
 	volume := map[string]string{"eth2_bin": "/home/obscuro/go-obscuro/integration/.build/eth2_bin/"}
 
-	_, err := docker.StartNewContainer("eth2network", "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest", cmds, exposedPorts, nil, nil, volume)
+	_, err := docker.StartNewContainer("eth2network", "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest", cmds, exposedPorts, nil, nil, volume, false)
 	return err
 }
 
 func (n *Eth2Network) IsReady() error {
-	timeout := 20 * time.Minute // this can be reduced when we no longer download the ethereum binaries
+	timeout := 10 * time.Minute // this can be reduced when we no longer download the ethereum binaries
 	interval := 2 * time.Second
 	var dial *ethclient.Client
 	var err error

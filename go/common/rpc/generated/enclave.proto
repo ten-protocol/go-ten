@@ -59,6 +59,9 @@ service EnclaveProto {
   // GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash
   rpc GetCode(GetCodeRequest) returns (GetCodeResponse) {}
 
+  rpc GetStorageSlot(GetStorageSlotRequest) returns (GetStorageSlotResponse) {}
+
+
   rpc Subscribe(SubscribeRequest) returns (SubscribeResponse) {}
 
   rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse) {}
@@ -316,6 +319,14 @@ message GetBalanceRequest {
   bytes encryptedParams = 1;
 }
 message GetBalanceResponse {
+  bytes encodedEnclaveResponse = 1;
+  SystemError systemError = 2;
+}
+
+message GetStorageSlotRequest {
+  bytes encryptedParams = 1;
+}
+message GetStorageSlotResponse {
   bytes encodedEnclaveResponse = 1;
   SystemError systemError = 2;
 }

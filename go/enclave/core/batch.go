@@ -49,12 +49,6 @@ func (b *Batch) NumberU64() uint64 { return b.Header.Number.Uint64() }
 func (b *Batch) Number() *big.Int  { return new(big.Int).Set(b.Header.Number) }
 func (b *Batch) SeqNo() *big.Int   { return new(big.Int).Set(b.Header.SequencerOrderNo) }
 
-// IsGenesis indicates whether the batch is the genesis batch.
-// todo (#718) - Change this to a check against a hardcoded genesis hash.
-func (b *Batch) IsGenesis() bool {
-	return b.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
-}
-
 func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.DataEncryptionService, compression compression.DataCompressionService) (*common.ExtBatch, error) {
 	txHashes := make([]gethcommon.Hash, len(b.Transactions))
 	for idx, tx := range b.Transactions {
@@ -102,7 +96,7 @@ func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.DataEncrypt
 
 func DeterministicEmptyBatch(
 	parent *common.BatchHeader,
-	block *types.Block,
+	block *types.Header,
 	time uint64,
 	sequencerNo *big.Int,
 	baseFee *big.Int,

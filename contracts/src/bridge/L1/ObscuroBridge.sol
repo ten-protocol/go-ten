@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-
 // This is the Ethereum side of the Obscuro Bridge.
 // End-users can interact with it to transfer ERC20 tokens and native eth to the Layer 2 Obscuro.
 contract ObscuroBridge is
@@ -32,8 +31,8 @@ contract ObscuroBridge is
 
     address remoteBridgeAddress;
 
-    function initialize(address messenger) public initializer() {
-         CrossChainEnabledObscuro.configure(messenger);
+    function initialize(address messenger) public initializer {
+        CrossChainEnabledObscuro.configure(messenger);
         _grantRole(ADMIN_ROLE, msg.sender);
         _grantRole(NATIVE_TOKEN_ROLE, address(0x0));
     }
@@ -73,7 +72,7 @@ contract ObscuroBridge is
     }
 
     // This cross chain message is specialized and will result in automatic increase
-    // of balance on the other side. 
+    // of balance on the other side.
     // NOTE: If sent to a contract, there will be no fallback function executed.
     // Instead after the contract receives it, one can relay the cross chain message to
     // verify ETH deposit.
@@ -94,7 +93,7 @@ contract ObscuroBridge is
             hasRole(ERC20_TOKEN_ROLE, asset),
             "This address has not been given a type and is thus considered not whitelisted."
         );
-        
+
         // ensures the token is correctly transferred to the contract - tx reverts on failure
         SafeERC20.safeTransferFrom(
             IERC20(asset),

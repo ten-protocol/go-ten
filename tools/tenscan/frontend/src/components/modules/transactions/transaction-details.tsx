@@ -28,12 +28,10 @@ export function TransactionDetailsComponent({
         <KeyValueItem
           label="Transaction Hash"
           value={
-            <Link
-              href={`/tx/${transactionDetails?.TransactionHash}`}
-              className="text-primary"
-            >
-              <TruncatedAddress address={transactionDetails?.TransactionHash} />
-            </Link>
+            <TruncatedAddress
+              address={transactionDetails?.TransactionHash}
+              link={`/tx/${transactionDetails?.TransactionHash}`}
+            />
           }
         />
         <KeyValueItem

@@ -39,12 +39,10 @@ export function BatchHeightDetailsComponent({
         <KeyValueItem
           label="Hash"
           value={
-            <Link
-              href={`/batch/${batchDetails?.header?.hash}`}
-              className="text-primary"
-            >
-              <TruncatedAddress address={batchDetails?.header?.hash} />
-            </Link>
+            <TruncatedAddress
+              address={batchDetails?.header?.hash}
+              link={`/batch/${batchDetails?.header?.hash}`}
+            />
           }
         />
         <KeyValueItem
@@ -85,11 +83,19 @@ export function BatchHeightDetailsComponent({
         />
         <KeyValueItem
           label="Gas Limit"
-          value={formatNumber(batchDetails?.header?.gasLimit)}
+          value={
+            <Badge variant={"outline"}>
+              {formatNumber(batchDetails?.header?.gasLimit)}
+            </Badge>
+          }
         />
         <KeyValueItem
           label="Gas Used"
-          value={formatNumber(batchDetails?.header?.gasUsed)}
+          value={
+            <Badge variant={"outline"}>
+              {formatNumber(batchDetails?.header?.gasUsed)}
+            </Badge>
+          }
         />
         <KeyValueItem
           label="Base Fee Per Gas"
@@ -106,12 +112,6 @@ export function BatchHeightDetailsComponent({
         <KeyValueItem
           label="Inbound Cross Chain Height"
           value={Number(batchDetails?.header?.inboundCrossChainHeight)}
-        />
-        <KeyValueItem
-          label="Transfers Tree"
-          value={
-            <TruncatedAddress address={batchDetails?.header?.TransfersTree} />
-          }
         />
         <KeyValueItem
           label="Miner"

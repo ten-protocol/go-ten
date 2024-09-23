@@ -2,33 +2,21 @@ import {
   fetchEtherPrice,
   fetchTransactions,
   fetchTransactionCount,
+  personalTransactionsData,
 } from "@/api/transactions";
 import { useWalletConnection } from "@/src/components/providers/wallet-provider";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   getOptions,
   pollingInterval,
   pricePollingInterval,
 } from "../lib/constants";
-import { PersonalTransactionsResponse } from "../types/interfaces/TransactionInterfaces";
 import { useRouter } from "next/router";
-import { showToast } from "@repo/ui/shared/use-toast";
-import { ToastType } from "../types/interfaces";
-import { ethMethods } from "../routes";
 
 export const useTransactionsService = () => {
   const { query } = useRouter();
   const { walletAddress, provider } = useWalletConnection();
-
-  const [personalTxnsLoading, setPersonalTxnsLoading] = useState(false);
-  const [personalTxns, setPersonalTxns] =
-    useState<PersonalTransactionsResponse>();
-
-  useEffect(() => {
-    personalTransactions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walletAddress]);
 
   const [noPolling, setNoPolling] = useState(false);
 
@@ -51,32 +39,11 @@ export const useTransactionsService = () => {
       refetchInterval: noPolling ? false : pollingInterval,
     });
 
-  const personalTransactions = async () => {
-    try {
-      setPersonalTxnsLoading(true);
-      if (provider) {
-        const requestPayload = {
-          address: walletAddress,
-          pagination: {
-            ...options,
-          },
-        };
-        const personalTxData = await provider.send(ethMethods.getStorageAt, [
-          "listPersonalTransactions",
-          requestPayload,
-          null,
-        ]);
-        setPersonalTxns(personalTxData);
-      }
-    } catch (error) {
-      console.error("Error fetching personal transactions:", error);
-      setPersonalTxns(undefined);
-      showToast(ToastType.DESTRUCTIVE, "Error fetching personal transactions");
-      throw error;
-    } finally {
-      setPersonalTxnsLoading(false);
-    }
-  };
+  const { data: personalTxns, isLoading: personalTxnsLoading } = useQuery({
+    queryKey: ["personalTxns", options],
+    queryFn: () => personalTransactionsData(provider, walletAddress, options),
+    enabled: !!walletAddress && !!provider,
+  });
 
   const { data: price, isLoading: isPriceLoading } = useQuery({
     queryKey: ["price"],
@@ -94,5 +61,6 @@ export const useTransactionsService = () => {
     personalTxns,
     personalTxnsLoading,
     price,
+    isPriceLoading,
   };
 };

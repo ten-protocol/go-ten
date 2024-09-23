@@ -1,36 +1,33 @@
-CREATE USER "obscuro" REQUIRE ISSUER "/CN=obscuroCA" SUBJECT "/CN=obscuroUser";
-CREATE DATABASE obsdb;
+CREATE USER "ten" REQUIRE ISSUER "/CN=tenCA" SUBJECT "/CN=tenUser";
+CREATE DATABASE tendb;
+GRANT ALL ON tendb.* TO ten;
 
-create table if not exists obsdb.keyvalue
+create table if not exists tendb.keyvalue
 (
     id  INTEGER AUTO_INCREMENT,
     ky  varbinary(64) NOT NULL,
     val mediumblob    NOT NULL,
     primary key (id),
-    UNIQUE (ky),
     INDEX USING HASH (ky)
 );
-GRANT ALL ON obsdb.keyvalue TO obscuro;
 
-create table if not exists obsdb.config
+create table if not exists tendb.config
 (
     ky  varchar(64),
     val mediumblob NOT NULL,
     primary key (ky)
 );
-GRANT ALL ON obsdb.config TO obscuro;
 
-insert into obsdb.config
+insert into tendb.config
 values ('CURRENT_SEQ', -1);
 
-create table if not exists obsdb.attestation_key
+create table if not exists tendb.attestation_key
 (
     party binary(20),
     ky    binary(33) NOT NULL
 );
-GRANT ALL ON obsdb.attestation_key TO obscuro;
 
-create table if not exists obsdb.block
+create table if not exists tendb.block
 (
     id           INTEGER AUTO_INCREMENT,
     hash         binary(32) NOT NULL,
@@ -39,11 +36,10 @@ create table if not exists obsdb.block
     height       int        NOT NULL,
     primary key (id),
     INDEX (height),
-    INDEX USING HASH (hash(8))
+    INDEX USING HASH (hash)
 );
-GRANT ALL ON obsdb.block TO obscuro;
 
-create table if not exists obsdb.l1_msg
+create table if not exists tendb.l1_msg
 (
     id          INTEGER AUTO_INCREMENT,
     message     varbinary(1024) NOT NULL,
@@ -52,9 +48,8 @@ create table if not exists obsdb.l1_msg
     INDEX (block),
     primary key (id)
 );
-GRANT ALL ON obsdb.l1_msg TO obscuro;
 
-create table if not exists obsdb.rollup
+create table if not exists tendb.rollup
 (
     id                INTEGER AUTO_INCREMENT,
     hash              binary(32) NOT NULL,
@@ -64,20 +59,11 @@ create table if not exists obsdb.rollup
     header            blob       NOT NULL,
     compression_block INTEGER    NOT NULL,
     INDEX (compression_block),
-    INDEX USING HASH (hash(8)),
+    INDEX USING HASH (hash),
     primary key (id)
 );
-GRANT ALL ON obsdb.rollup TO obscuro;
 
-create table if not exists obsdb.batch_body
-(
-    id      INTEGER,
-    content mediumblob NOT NULL,
-    primary key (id)
-);
-GRANT ALL ON obsdb.batch_body TO obscuro;
-
-create table if not exists obsdb.batch
+create table if not exists tendb.batch
 (
     sequence       INTEGER,
     converted_hash binary(32) NOT NULL,
@@ -85,76 +71,90 @@ create table if not exists obsdb.batch
     height         int        NOT NULL,
     is_canonical   boolean    NOT NULL,
     header         blob       NOT NULL,
-    body           int        NOT NULL,
     l1_proof_hash  binary(32) NOT NULL,
     l1_proof       INTEGER,
     is_executed    boolean    NOT NULL,
     primary key (sequence),
-    INDEX USING HASH (hash(8)),
-    INDEX USING HASH (l1_proof_hash(8)),
-    INDEX (body),
+    INDEX USING HASH (hash),
+    INDEX USING HASH (l1_proof_hash),
     INDEX (l1_proof),
-    INDEX (height)
+    INDEX (height),
+    INDEX (is_canonical, is_executed, height)
 );
-GRANT ALL ON obsdb.batch TO obscuro;
 
-create table if not exists obsdb.tx
+create table if not exists tendb.tx
 (
     id             INTEGER AUTO_INCREMENT,
     hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
-    sender_address binary(20) NOT NULL,
-    nonce          int        NOT NULL,
+    sender_address int        NOT NULL,
     idx            int        NOT NULL,
-    body           int        NOT NULL,
-    INDEX USING HASH (hash(8)),
-    INDEX USING HASH (sender_address),
+    batch_height   int        NOT NULL,
+    INDEX USING HASH (hash),
+    INDEX (sender_address),
+    INDEX (batch_height, idx),
     primary key (id)
 );
-GRANT ALL ON obsdb.tx TO obscuro;
 
-create table if not exists obsdb.exec_tx
+create table if not exists tendb.receipt
 (
-    id                       INTEGER AUTO_INCREMENT,
-    created_contract_address binary(20),
-    receipt                  mediumblob,
-    tx                       int,
-    batch                    int NOT NULL,
+    id      INTEGER AUTO_INCREMENT,
+    content mediumblob,
+    tx      int,
+    batch   int NOT NULL,
     INDEX (batch),
-    INDEX (tx, created_contract_address(4)),
+    INDEX (tx, batch),
     primary key (id)
 );
-GRANT ALL ON obsdb.exec_tx TO obscuro;
 
-create table if not exists obsdb.events
+create table if not exists tendb.contract
+(
+    id      INTEGER AUTO_INCREMENT,
+    address binary(20) NOT NULL,
+    owner   int        NOT NULL,
+    primary key (id),
+    INDEX USING HASH (address)
+);
+
+create table if not exists tendb.externally_owned_account
+(
+    id      INTEGER AUTO_INCREMENT,
+    address binary(20) NOT NULL,
+    primary key (id),
+    INDEX USING HASH (address)
+);
+
+create table if not exists tendb.event_type
 (
     id              INTEGER AUTO_INCREMENT,
-    topic0          binary(32) NOT NULL,
-    topic1          binary(32),
-    topic2          binary(32),
-    topic3          binary(32),
-    topic4          binary(32),
-    datablob        mediumblob,
-    log_idx         int        NOT NULL,
-    address         binary(20) NOT NULL,
+    contract        int        NOT NULL,
+    event_sig       binary(32) NOT NULL,
     lifecycle_event boolean    NOT NULL,
-    rel_address1    binary(20),
-    rel_address2    binary(20),
-    rel_address3    binary(20),
-    rel_address4    binary(20),
-    tx              int        NOT NULL,
-    batch           int        NOT NULL,
     primary key (id),
-    INDEX (tx, batch),
-    INDEX USING HASH (address(8)),
-    INDEX USING HASH (rel_address1(8)),
-    INDEX USING HASH (rel_address2(8)),
-    INDEX USING HASH (rel_address3(8)),
-    INDEX USING HASH (rel_address4(8)),
-    INDEX USING HASH (topic0(8)),
-    INDEX USING HASH (topic1(8)),
-    INDEX USING HASH (topic2(8)),
-    INDEX USING HASH (topic3(8)),
-    INDEX USING HASH (topic4(8))
+    INDEX USING HASH (contract, event_sig)
 );
-GRANT ALL ON obsdb.events TO obscuro;
+
+create table if not exists tendb.event_topic
+(
+    id          INTEGER AUTO_INCREMENT,
+    topic       binary(32) NOT NULL,
+    rel_address INTEGER,
+    primary key (id),
+    INDEX USING HASH (topic),
+    INDEX (rel_address)
+);
+
+create table if not exists tendb.event_log
+(
+    id         INTEGER AUTO_INCREMENT,
+    event_type INTEGER NOT NULL,
+    topic1     INTEGER,
+    topic2     INTEGER,
+    topic3     INTEGER,
+    datablob   mediumblob,
+    log_idx    INTEGER NOT NULL,
+    receipt    INTEGER NOT NULL,
+    primary key (id),
+    INDEX (receipt, event_type, topic1, topic2, topic3),
+    INDEX (event_type, topic1, topic2, topic3)
+);

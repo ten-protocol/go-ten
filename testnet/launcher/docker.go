@@ -73,14 +73,14 @@ func (t *Testnet) Start() error {
 
 	err = sequencerNode.Start()
 	if err != nil {
-		return fmt.Errorf("unable to start the obscuro node - %w", err)
+		return fmt.Errorf("unable to start the TEN node - %w", err)
 	}
-	fmt.Println("Obscuro node was successfully started...")
+	fmt.Println("TEN node was successfully started...")
 
 	// wait until the node is healthy
 	err = waitForHealthyNode(80)
 	if err != nil {
-		return fmt.Errorf("sequencer obscuro node not healthy - %w", err)
+		return fmt.Errorf("sequencer TEN node not healthy - %w", err)
 	}
 
 	validatorNodeConfig := node.NewNodeConfig(
@@ -119,7 +119,7 @@ func (t *Testnet) Start() error {
 	if err != nil {
 		return fmt.Errorf("unable to start the obscuro node - %w", err)
 	}
-	fmt.Println("Obscuro node was successfully started...")
+	fmt.Println("TEN validator node was successfully started...")
 
 	// wait until the node it healthy
 	err = waitForHealthyNode(13010)
@@ -191,6 +191,7 @@ func (t *Testnet) Start() error {
 			gateway.WithTenNodeHTTPPort(13010),
 			gateway.WithTenNodeWSPort(13011),
 			gateway.WithTenNodeHost("validator-host"),
+			gateway.WithRateLimitUserComputeTime(0), // disable rate limiting for local network
 			gateway.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway:latest"),
 		),
 	)

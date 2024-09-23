@@ -68,11 +68,7 @@ export default function App({ Component, pageProps }: AppProps) {
         ogImageUrl={siteMetadata.siteLogo}
         ogTwitterImage={siteMetadata.siteLogo}
         ogType={"website"}
-      >
-        <link rel="icon" href="/static/favicon.ico" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-        <link rel="manifest" href="/manifest.json" />
-      </HeadSeo>
+      ></HeadSeo>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
           attribute="class"

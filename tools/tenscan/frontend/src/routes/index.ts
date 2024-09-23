@@ -37,6 +37,13 @@ export const apiRoutes = {
 
 export const ethMethods = {
   getStorageAt: "eth_getStorageAt",
+  getTransactionReceipt: "eth_getTransactionReceipt",
+  switchNetwork: "wallet_switchEthereumChain",
+};
+// to send TEN Custom Queries (CQ) through the provider we call eth_getStorageAt and use these addresses to identify the TEN CQ method
+export const tenCustomQueryMethods = {
+  getUserID: "0x0000000000000000000000000000000000000001",
+  listPersonalTransactions: "0x0000000000000000000000000000000000000002",
 };
 
 export const NavLinks: NavLink[] = [
@@ -63,11 +70,6 @@ export const NavLinks: NavLink[] = [
         isExternal: false,
       },
       {
-        href: "/blocks",
-        label: "Blocks",
-        isExternal: false,
-      },
-      {
         href: "/batches",
         label: "Batches",
         isExternal: false,
@@ -84,11 +86,6 @@ export const NavLinks: NavLink[] = [
     isExternal: false,
     isDropdown: true,
     subNavLinks: [
-      {
-        href: "/resources/decrypt",
-        label: "Decrypt",
-        isExternal: false,
-      },
       {
         href: "/resources/verified-data",
         label: "Verified Data",

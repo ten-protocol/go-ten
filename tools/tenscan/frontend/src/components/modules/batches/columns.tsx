@@ -79,7 +79,9 @@ export const columns: ColumnDef<Batch>[] = [
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate">
-            {formatNumber(row.original?.header?.gasUsed) || "N/A"}
+            <Badge variant={"outline"}>
+              {formatNumber(row.original?.header?.gasUsed) || "N/A"}
+            </Badge>
           </span>
         </div>
       );
@@ -94,9 +96,10 @@ export const columns: ColumnDef<Batch>[] = [
     ),
     cell: ({ row }) => {
       return (
-        <Link href={`/batch/${row.original.fullHash}`} className="text-primary">
-          <TruncatedAddress address={row.getValue("hash")} />
-        </Link>
+        <TruncatedAddress
+          address={row.original.header.hash}
+          link={`/batch/${row.original.fullHash}`}
+        />
       );
     },
     enableSorting: false,

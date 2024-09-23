@@ -41,15 +41,15 @@ import (
 )
 
 /*
-   The Obscuro Enclave (OE) needs a way to persist data into a trusted database. Trusted not to reveal that data to anyone but that particular enclave.
+   The TEN Enclave (TE) needs a way to persist data into a trusted database. Trusted not to reveal that data to anyone but that particular enclave.
 
-   To achieve this, the OE must first perform Remote Attestation (RA), which gives it confidence that it is connected to
+   To achieve this, the TE must first perform Remote Attestation (RA), which gives it confidence that it is connected to
 	a trusted version of software running on trusted hardware. The result of this process is a Certificate which can be
 	used to set up a trusted TLS connection into the database.
 
-   The next step is to configure the database schema and users in such a way that the OE knows that the db engine will
+   The next step is to configure the database schema and users in such a way that the TE knows that the db engine will
 	only allow itself access to it. This is achieved by creating a "Manifest" file that contains the SQL init code and a
-	DBClient Certificate that is known only to the OE.
+	DBClient Certificate that is known only to the TE.
 
 	This "DBClient" Cert is used by the database to authenticate that it is communicating to the entity that has initialised that schema.
 
@@ -82,12 +82,12 @@ const (
 	edbSignatureEndpoint = "/signature"
 
 	dataDir         = "/data"
-	certIssuer      = "obscuroCA"
-	certSubject     = "obscuroUser"
+	certIssuer      = "tenCA"
+	certSubject     = "tenUser"
 	enclaveHostName = "enclave"
 
-	dbUser = "obscuro"
-	dbName = "obsdb"
+	dbUser = "ten"
+	dbName = "tendb"
 
 	// change this flag to true to debug issues with edgeless DB (and start EDB process with -e EDG_EDB_DEBUG=1
 	//   this will give you:
@@ -130,6 +130,7 @@ type Credentials struct {
 	UserKeyPEM   string // db user private key, generated in our enclave
 }
 
+// Connector (re-)establishes a connection to the Edgeless DB for the TEN enclave
 func Connector(edbCfg *Config, config config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	// rather than fail immediately if EdgelessDB is not available yet we wait up for `edgelessDBStartTimeout` for it to be available
 	err := waitForEdgelessDBToStart(edbCfg.Host, logger)
@@ -143,12 +144,12 @@ func Connector(edbCfg *Config, config config.EnclaveConfig, logger gethlog.Logge
 		return nil, err
 	}
 
-	tlsCfg, err := createTLSCfg(edbCredentials)
+	tlsCfg, err := CreateTLSCfg(edbCredentials)
 	if err != nil {
 		return nil, err
 	}
 
-	sqlDB, err := connectToEdgelessDB(edbCfg.Host, tlsCfg, logger)
+	sqlDB, err := ConnectToEdgelessDB(edbCfg.Host, tlsCfg, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +184,7 @@ func waitForEdgelessDBToStart(edbHost string, logger gethlog.Logger) error {
 
 func getHandshakeCredentials(enclaveConfig config.EnclaveConfig, edbCfg *Config, logger gethlog.Logger) (*Credentials, error) {
 	// if we have previously performed the handshake we can retrieve the creds from disk and proceed
-	edbCreds, found, err := loadCredentialsFromFile()
+	edbCreds, found, err := LoadCredentialsFromFile()
 	if err != nil {
 		return nil, err
 	}
@@ -198,8 +199,8 @@ func getHandshakeCredentials(enclaveConfig config.EnclaveConfig, edbCfg *Config,
 	return edbCreds, nil
 }
 
-// loadCredentialsFromFile returns (credentials object, found flag, error), if file not found it will return nil error but found=false
-func loadCredentialsFromFile() (*Credentials, bool, error) {
+// LoadCredentialsFromFile returns (credentials object, found flag, error), if file not found it will return nil error but found=false
+func LoadCredentialsFromFile() (*Credentials, bool, error) {
 	b, err := egoutils.ReadAndUnseal(edbCredentialsFilepath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -227,8 +228,8 @@ func performHandshake(enclaveConfig config.EnclaveConfig, edbCfg *Config, logger
 	// the RA will ensure that we are connecting to a database that will not leak any data.
 	// The RA will return a Certificate which we'll use for the TLS mutual authentication when we connect to the database.
 	// The trust path is as follows:
-	// 1. The Obscuro Enclave performs RA on the database enclave, and the RA object contains a certificate which only the database enclave controls.
-	// 2. Connecting to the database via mutually authenticated TLS using the above certificate, will give the Obscuro enclave confidence that it is only giving data away to some code and hardware it trusts.
+	// 1. The TEN Enclave performs RA on the database enclave, and the RA object contains a certificate which only the database enclave controls.
+	// 2. Connecting to the database via mutually authenticated TLS using the above certificate, will give the TEN enclave confidence that it is only giving data away to some code and hardware it trusts.
 	edbPEM, err := performEDBRemoteAttestation(enclaveConfig, edbCfg.Host, defaultEDBConstraints, logger)
 	if err != nil {
 		return nil, err
@@ -304,7 +305,7 @@ func createManifestFormat(content string) (result []string) {
 	return
 }
 
-func createTLSCfg(creds *Credentials) (*tls.Config, error) {
+func CreateTLSCfg(creds *Credentials) (*tls.Config, error) {
 	caCertPool := x509.NewCertPool()
 
 	if ok := caCertPool.AppendCertsFromPEM([]byte(creds.EDBCACertPEM)); !ok {
@@ -458,7 +459,7 @@ func verifyEdgelessDB(edbHost string, m *manifest, httpClient *http.Client, logg
 	return nil
 }
 
-func connectToEdgelessDB(edbHost string, tlsCfg *tls.Config, logger gethlog.Logger) (*sql.DB, error) {
+func ConnectToEdgelessDB(edbHost string, tlsCfg *tls.Config, logger gethlog.Logger) (*sql.DB, error) {
 	err := mysql.RegisterTLSConfig("custom", tlsCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register tls config for mysql connection - %w", err)

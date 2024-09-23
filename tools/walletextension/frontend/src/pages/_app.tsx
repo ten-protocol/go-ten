@@ -8,11 +8,8 @@ import HeadSeo from "@/components/head-seo";
 import Script from "next/script";
 import { GOOGLE_ANALYTICS_ID } from "@/lib/constants";
 import { siteMetadata } from "@/lib/siteMetadata";
-import { useRouter } from "next/router";
 
 export default function App({ Component, pageProps }: AppProps) {
-  const router = useRouter();
-
   return (
     <>
       <Script
@@ -36,11 +33,7 @@ export default function App({ Component, pageProps }: AppProps) {
         ogImageUrl={siteMetadata.siteLogo}
         ogTwitterImage={siteMetadata.siteLogo}
         ogType={"website"}
-      >
-        <link rel="icon" href="/static/favicon.ico" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-        <link rel="manifest" href="/manifest.json" />
-      </HeadSeo>
+      ></HeadSeo>
       <ThemeProvider
         attribute="class"
         defaultTheme="system"
@@ -48,7 +41,7 @@ export default function App({ Component, pageProps }: AppProps) {
         disableTransitionOnChange
       >
         <WalletConnectionProvider>
-          <Component {...pageProps} key={router.asPath} />
+          <Component {...pageProps} />
           <Toaster />
           <NetworkStatus />
         </WalletConnectionProvider>
