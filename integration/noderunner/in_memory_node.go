@@ -92,6 +92,7 @@ func (d *InMemNode) startHost() error {
 func (d *InMemNode) startEnclave() error {
 	enclaveCfg := enclaveconfig.EnclaveConfigFromTenConfig(d.tenCfg)
 	logger := testlog.Logger().New(log.CmpKey, log.EnclaveCmp, log.NodeIDKey, d.tenCfg.Node.ID)
+	enclaveCfg.LogPath = testlog.LogFile()
 
 	// if not nil, the node will use the testlog.Logger - NewEnclaveContainerWithLogger will create one otherwise
 	d.enclave = enclavecontainer.NewEnclaveContainerWithLogger(enclaveCfg, logger)

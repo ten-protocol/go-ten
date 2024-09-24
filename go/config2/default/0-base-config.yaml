@@ -17,8 +17,8 @@ network:
     baseFee: 1000000000 # using geth's initial base fee for EIP-1559 blocks.
     minGasPrice: 1000000000 # using geth's initial base fee for EIP-1559 blocks.
     paymentAddress: 0xd6C9230053f45F873Cb66D8A02439380a37A4fbF
-    batchExecutionLimit: 56320 # 55kb
-    localExecutionCap: 56320 # 55kb
+    batchExecutionLimit: 300000000000 # 300 gwei
+    localExecutionCap: 300000000000 # 300 gwei
   l1:
     chainId: 1337
     blockTime: 15s
@@ -80,9 +80,9 @@ enclave:
     enableProfiler: false
   l1:
     enableBlockValidation: false
-    genesisJSON: "" # json string of L1 genesis block, used for expectation todo: still needed?
+    #genesisJSON:  # json string of L1 genesis block, used for expectation todo: still needed?
   log:
-    level: 0 # -4 is DEBUG, 0 is INFO, 4 is WARN, 8 is ERROR (according to geth/slog lib)
+    level: 4
     path: "" # path to log file, will log to stdout when empty
   rpc:
-    timeout: 15s
+    timeout: 5s

@@ -1,0 +1,3 @@
+enclave:
+   debug:
+      enableDebugNamespace: true

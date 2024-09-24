@@ -63,14 +63,12 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	// get the sequencer Address
 	seqPrivateKey := n.wallets.NodeWallets[0].PrivateKey()
 	seqPrivKey := fmt.Sprintf("%x", crypto.FromECDSA(seqPrivateKey))
-	seqHostAddress := crypto.PubkeyToAddress(seqPrivateKey.PublicKey)
 
 	// create the nodes
 	nodes := make([]node.Node, simParams.NumberOfNodes)
 	var err error
 	for i := 0; i < simParams.NumberOfNodes; i++ {
 		privateKey := seqPrivKey
-		hostAddress := seqHostAddress
 		nodeTypeStr := "sequencer"
 		isInboundP2PDisabled := false
 
@@ -78,7 +76,6 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		if i != 0 {
 			nodeTypeStr = "validator"
 			privateKey = fmt.Sprintf("%x", crypto.FromECDSA(n.wallets.NodeWallets[i].PrivateKey()))
-			hostAddress = crypto.PubkeyToAddress(n.wallets.NodeWallets[i].PrivateKey().PublicKey)
 
 			// only the validators can have the incoming p2p disabled
 			isInboundP2PDisabled = i == simParams.NodeWithInboundP2PDisabled
@@ -92,6 +89,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		if err != nil {
 			return nil, fmt.Errorf("unable to convert node type (%s): %w", nodeTypeStr, err)
 		}
+		hostP2PAddress := fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset+i)
 
 		tenCfg, err := config2.LoadTenConfigForEnv("sim")
 		if err != nil {
@@ -102,18 +100,21 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		tenCfg.Network.L1.BlockTime = simParams.AvgBlockDuration
 		tenCfg.Network.L1.L1Contracts.ManagementContract = simParams.L1TenData.MgmtContractAddress
 		tenCfg.Network.L1.L1Contracts.MessageBusContract = simParams.L1TenData.MessageBusAddr
+		tenCfg.Network.Gas.PaymentAddress = simParams.Wallets.L2FeesWallet.Address()
 
 		tenCfg.Node.PrivateKeyString = privateKey
-		tenCfg.Node.HostAddress = hostAddress.Hex()
+		tenCfg.Node.HostAddress = hostP2PAddress
 		tenCfg.Node.NodeType = nodeType
 		tenCfg.Node.IsGenesis = i == 0
 		tenCfg.Host.P2P.IsDisabled = isInboundP2PDisabled
-		tenCfg.Host.P2P.BindAddress = fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset+i)
+		tenCfg.Host.P2P.BindAddress = hostP2PAddress
 		tenCfg.Host.RPC.HTTPPort = uint64(simParams.StartPort + integration.DefaultHostRPCHTTPOffset + i)
 		tenCfg.Host.RPC.WSPort = uint64(simParams.StartPort + integration.DefaultHostRPCWSOffset + i)
-		tenCfg.Host.Enclave.RPCAddresses = []string{fmt.Sprintf("0.0.0.0:%d", simParams.StartPort+integration.DefaultEnclaveOffset+i)}
+		tenCfg.Host.Enclave.RPCAddresses = []string{fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultEnclaveOffset+i)}
 		tenCfg.Host.L1.WebsocketURL = fmt.Sprintf("ws://127.0.0.1:%d", simParams.StartPort+100)
-		tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("0.0.0.0:%d", simParams.StartPort+integration.DefaultEnclaveOffset+i)
+		tenCfg.Host.Log.Level = 4
+		tenCfg.Enclave.Log.Level = 4
+		tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultEnclaveOffset+i)
 
 		// create the nodes
 		nodes[i] = noderunner.NewInMemNode(tenCfg)
