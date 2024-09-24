@@ -103,7 +103,7 @@
       "url": "https://dev-testnet.ten.xyz/v1/",
       "useGateway": true,
       "companionNetworks" : {
-        "layer1" : "uatGeth"
+        "layer1" : "devGeth"
       },
       "deploy": [
         "deployment_scripts/testing"

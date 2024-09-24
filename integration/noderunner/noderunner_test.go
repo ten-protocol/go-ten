@@ -20,7 +20,6 @@ import (
 const (
 	_testLogs  = "../.build/noderunner/"
 	_localhost = "127.0.0.1"
-	_startPort = integration.StartPortNodeRunnerTest
 )
 
 // A smoke test to check that we can stand up a standalone TEN host and enclave.
@@ -31,9 +30,9 @@ func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 		TestSubtype: "test",
 		LogLevel:    gethlog.LvlInfo,
 	})
-
-	// todo run the noderunner test with different obscuro node instances
-	newNode := createInMemoryNode()
+	startPort := integration.TestPorts.TestCanStartStandaloneTenHostAndEnclavePort
+	// todo run the noderunner test with different TEN node instances
+	newNode := createInMemoryNode(startPort)
 
 	binDir, err := eth2network.EnsureBinariesExist()
 	if err != nil {
@@ -42,13 +41,13 @@ func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 
 	network := eth2network.NewPosEth2Network(
 		binDir,
-		_startPort+integration.DefaultGethNetworkPortOffset,
-		_startPort+integration.DefaultPrysmP2PPortOffset,
-		_startPort+integration.DefaultGethAUTHPortOffset,
-		_startPort+integration.DefaultGethWSPortOffset,
-		_startPort+integration.DefaultGethHTTPPortOffset,
-		_startPort+integration.DefaultPrysmRPCPortOffset,
-		_startPort+integration.DefaultPrysmGatewayPortOffset,
+		startPort+integration.DefaultGethNetworkPortOffset,
+		startPort+integration.DefaultPrysmP2PPortOffset,
+		startPort+integration.DefaultGethAUTHPortOffset,
+		startPort+integration.DefaultGethWSPortOffset,
+		startPort+integration.DefaultGethHTTPPortOffset,
+		startPort+integration.DefaultPrysmRPCPortOffset,
+		startPort+integration.DefaultPrysmGatewayPortOffset,
 		integration.EthereumChainID,
 		3*time.Minute,
 	)
@@ -66,7 +65,7 @@ func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 	}
 
 	// we create the node RPC client
-	wsURL := fmt.Sprintf("ws://127.0.0.1:%d", _startPort+integration.DefaultGethWSPortOffset)
+	wsURL := fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultGethWSPortOffset)
 	var tenClient rpc.Client
 	wait := 30 // max wait in seconds
 	for {
@@ -109,14 +108,14 @@ func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 	t.Fatalf("Zero rollups have been produced after ten seconds. Something is wrong. Latest error was: %s", err)
 }
 
-func createInMemoryNode() node.Node {
+func createInMemoryNode(startPort int) node.Node {
 	nodeCfg := node.NewNodeConfig(
 		node.WithPrivateKey(integration.GethNodePK),
 		node.WithHostID(integration.GethNodeAddress),
-		node.WithEnclaveWSPort(_startPort+integration.DefaultEnclaveOffset),
-		node.WithHostHTTPPort(_startPort+integration.DefaultHostRPCHTTPOffset),
-		node.WithHostWSPort(_startPort+integration.DefaultHostRPCWSOffset),
-		node.WithL1WebsocketURL(fmt.Sprintf("ws://%s:%d", _localhost, _startPort+integration.DefaultGethWSPortOffset)),
+		node.WithEnclaveWSPort(startPort+integration.DefaultEnclaveOffset),
+		node.WithHostHTTPPort(startPort+integration.DefaultHostRPCHTTPOffset),
+		node.WithHostWSPort(startPort+integration.DefaultHostRPCWSOffset),
+		node.WithL1WebsocketURL(fmt.Sprintf("ws://%s:%d", _localhost, startPort+integration.DefaultGethWSPortOffset)),
 		node.WithGenesis(true),
 		node.WithProfiler(true),
 		node.WithL1BlockTime(1*time.Second),
