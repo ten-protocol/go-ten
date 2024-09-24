@@ -229,7 +229,7 @@ jobs:
             && chmod u+x /home/obscurouser/edb-connect.sh \
             && docker network create --driver bridge node_network || true \
             && mkdir -p /home/obscuro/metrics \
-            && export AZURE_METRICS_PROMETHEUS_ENDPOINT=http://localhost:9090/metrics \ 
+            && export \"AZURE_METRICS_PROMETHEUS_ENDPOINT\"=\"http://localhost:9090/metrics\" \ 
             && echo "
             server:
               http_listen_port: 9080
