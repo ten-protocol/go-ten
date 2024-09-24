@@ -198,15 +198,27 @@ jobs:
           inlineScript: |
             az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}"  \
             --command-id RunShellScript \
-            --scripts 'mkdir -p /home/obscuro \
-            && sudo apt-get update \
-            && sudo apt-get install -y gcc \
-            && sudo snap refresh && sudo snap install --channel=1.18 go --classic \
-            && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
-            && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
-            && docker network create --driver bridge node_network || true \
-            && cd /home/obscuro/go-obscuro/ \
-            && docker run -d -p 80:80 -p 81:81 --name "${{ env.VM_NAME }}" \
+            --scripts '
+            mkdir -p /home/obscuro
+            # Wait for dpkg lock to be released
+            while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+              echo "Waiting for dpkg lock to be released..."
+              sleep 1
+            done
+            # Proceed with package installations
+            sudo apt-get update
+            sudo apt-get install -y gcc
+            sudo snap refresh && sudo snap install --channel=1.18 go --classic
+            # Wait again before running get-docker.sh
+            while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+              echo "Waiting for dpkg lock to be released before installing Docker..."
+              sleep 1
+            done
+            curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh
+            git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro
+            docker network create --driver bridge node_network || true
+            cd /home/obscuro/go-obscuro/
+            docker run -d -p 80:80 -p 81:81 --name "${{ env.VM_NAME }}" \
               --device /dev/sgx_enclave --device /dev/sgx_provision \
               --entrypoint "/home/ten/go-ten/tools/walletextension/main/entry.sh" \
               -e OBSCURO_GATEWAY_VERSION="${{ GITHUB.RUN_NUMBER }}-${{ GITHUB.SHA }}" \
