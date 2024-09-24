@@ -885,6 +885,9 @@ func (e *enclaveImpl) EnclavePublicConfig(context.Context) (*common.EnclavePubli
 		return nil, systemError
 	}
 	analyzerAddress := e.scb.TransactionAnalyzerAddress()
+	if analyzerAddress == nil {
+		analyzerAddress = &gethcommon.Address{}
+	}
 
 	return &common.EnclavePublicConfig{
 		L2MessageBusAddress:        address,

@@ -229,7 +229,6 @@ func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxDat
 		Data:  unEstimatedTx.Data(),
 	})
 	if err != nil {
-		fmt.Println(err)
 		gasLimit = unEstimatedTx.Gas()
 	}
 
@@ -253,7 +252,7 @@ func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxDat
 
 func (ac *AuthObsClient) CodeAt(ctx context.Context, address gethcommon.Address, number *big.Int) ([]byte, error) {
 	result := hexutil.Bytes{}
-	err := ac.rpcClient.CallContext(ctx, result, rpc.GetCode, address, toBlockNumArg(number))
+	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetCode, address, toBlockNumArg(number))
 	if err != nil {
 		return nil, err
 	}

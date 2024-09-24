@@ -5,11 +5,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "./TransactionDecoder.sol";
-
-
-interface OnBlockEndCallback {
-    function onBlockEnd(TransactionDecoder.Transaction[] calldata transactions) external;
-}
+import "./OnBlockEndCallback.sol";
 
 //TODO: @PR Review - Pick appropriate name
 contract TransactionsAnalyzer is Initializable, AccessControl{
@@ -50,7 +46,7 @@ contract TransactionsAnalyzer is Initializable, AccessControl{
         _grantRole(HOOK_CALLER_ROLE, authorizedCaller);
     }
 
-    function addOnBlockEndCallback(address callbackAddress) public onlyRole(EOA_ADMIN_ROLE) {
+    function addOnBlockEndCallback(address callbackAddress) public {
         onBlockEndListeners.push(OnBlockEndCallback(callbackAddress));
     }
 
@@ -59,7 +55,7 @@ contract TransactionsAnalyzer is Initializable, AccessControl{
             return;
         }
 
-        TransactionDecoder.Transaction[] memory transactions = new TransactionDecoder.Transaction[](_block.transactions.length);
+        Structs.Transaction[] memory transactions = new Structs.Transaction[](_block.transactions.length);
         
         for (uint256 i = 0; i < _block.transactions.length; ++i) {
             transactions[i] = (TransactionDecoder.decode(_block.transactions[i]));            

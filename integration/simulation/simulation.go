@@ -13,6 +13,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	gethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/contracts/generated/Structs"
+	"github.com/ten-protocol/go-ten/contracts/generated/TransactionsAnalyzer"
 	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -257,64 +259,46 @@ func (s *Simulation) deployTenZen() {
 			time.Sleep(2 * time.Second)
 		}
 
-		//auth.GasLimit = 5_000_000
-
-		/*abi, err := ZenBase.ZenBaseMetaData.GetAbi()
-		if err != nil {
-			panic(err)
-		}
-
-		packedParams, err := abi.Constructor.Inputs.Pack(cfg.TransactionAnalyzerAddress, "zen", "zen")
-		if err != nil {
-			panic(err)
-		}
-
-		initCode := make([]byte, 0)
-		initCode = append(initCode, gethcommon.FromHex(ZenBase.ZenBaseMetaData.Bin)...)
-		initCode = append(initCode, packedParams...)
-
-		owner := s.Params.Wallets.L2FaucetWallet
-
-		deployContractTxData := types.DynamicFeeTx{
-			Nonce:     NextNonce(s.ctx, s.RPCHandles, owner),
-			Gas:       5_000_000,
-			GasFeeCap: gethcommon.Big1, // This field is used to derive the gas price for dynamic fee transactions.
-			Data:      initCode,
-			GasTipCap: gethcommon.Big1,
-		}
-
-		deployContractTx := s.RPCHandles.TenWalletRndClient(owner).EstimateGasAndGasPrice(&deployContractTxData)
-		signedTx, err := owner.SignTransaction(deployContractTx)
-		if err != nil {
-			panic(err)
-		}
-
-		err = rpc.SendTransaction(s.ctx, signedTx)
-		if err != nil {
-			panic(err)
-		} */
-
 		owner := s.Params.Wallets.L2FaucetWallet
 		auth.GasPrice = big.NewInt(0).SetUint64(gethparams.InitialBaseFee)
 		auth.Context = context.Background()
+		auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
 
-		_, signedTx, _, err := ZenBase.DeployZenBase(auth, s.RPCHandles.TenWalletRndClient(owner), cfg.TransactionAnalyzerAddress, "zen", "zen")
+		address, stx, _, err := Structs.DeployStructs(auth, s.RPCHandles.TenWalletRndClient(owner))
+		if err != nil {
+			panic(fmt.Errorf("failed to deploy transaction decoder: %w", err))
+		}
+
+		receipt, err := bind.WaitMined(s.ctx, s.RPCHandles.TenWalletRndClient(owner), stx)
+		if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
+			panic("failed to deploy transaction decoder")
+		}
+
+		auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
+
+		zenBaseAddress, signedTx, _, err := ZenBase.DeployZenBase(auth, s.RPCHandles.TenWalletRndClient(owner), cfg.TransactionAnalyzerAddress, address) //, "ZenBase", "ZEN")
 		if err != nil {
 			panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
 		}
-
-		if err = testcommon.AwaitReceipt(s.ctx, s.RPCHandles.TenWalletRndClient(owner), signedTx.Hash(), s.Params.ReceiptTimeout); err != nil {
-			panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
+		if receipt, err = bind.WaitMined(s.ctx, s.RPCHandles.TenWalletRndClient(owner), signedTx); err != nil || receipt.Status != types.ReceiptStatusSuccessful {
+			panic(fmt.Errorf("failed to deploy zen base contract"))
 		}
+		s.ZenBaseAddress = zenBaseAddress
 
-		//
-		rpc := s.RPCHandles.TenWalletClient(owner.Address(), 1)
-		_, err = rpc.TransactionReceipt(s.ctx, signedTx.Hash())
+		transactionsAnalyzer, err := TransactionsAnalyzer.NewTransactionsAnalyzer(cfg.TransactionAnalyzerAddress, s.RPCHandles.TenWalletRndClient(owner))
 		if err != nil {
-			panic(err)
+			panic(fmt.Errorf("failed to deploy transactions analyzer contract: %w", err))
 		}
 
-		//		s.ZenBaseAddress = address
+		auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
+		tx, err := transactionsAnalyzer.AddOnBlockEndCallback(auth, zenBaseAddress)
+		if err != nil {
+			panic(fmt.Errorf("failed to add on block end callback: %w", err))
+		}
+		receipt, err = bind.WaitMined(s.ctx, s.RPCHandles.TenWalletRndClient(owner), tx)
+		if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
+			panic(fmt.Errorf("failed to add on block end callback"))
+		}
 	}()
 	wg.Wait()
 }
