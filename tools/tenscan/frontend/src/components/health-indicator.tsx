@@ -7,7 +7,7 @@ import {
   TooltipTrigger,
   TooltipContent,
   Tooltip,
-} from "./ui/tooltip";
+} from "@repo/ui/shared/tooltip";
 
 const HealthIndicator = () => {
   const [status, setStatus] = React.useState<boolean>(false);

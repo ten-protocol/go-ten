@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Tooltip,
   TooltipContent,
@@ -5,7 +6,6 @@ import {
   TooltipTrigger,
 } from "../shared/tooltip";
 import Copy from "./copy";
-import Link from "next/link";
 
 const TruncatedAddress = ({
   address,

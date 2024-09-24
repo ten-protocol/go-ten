@@ -1,15 +1,15 @@
-import { jsonHexToObj } from "@/src/lib/utils";
+import { jsonHexToObj } from "@repo/ui/lib/utils";
 import { httpRequest } from ".";
 import { apiRoutes, ethMethods, tenCustomQueryMethods } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
-import { ResponseDataInterface, ToastType } from "@/src/types/interfaces";
+import { ResponseDataInterface, ToastType } from "@repo/ui/lib/types";
 import {
   TransactionCount,
   Price,
   TransactionResponse,
   Transaction,
 } from "@/src/types/interfaces/TransactionInterfaces";
-import { showToast } from "@/src/components/ui/use-toast";
+import { showToast } from "@repo/ui/shared/use-toast";
 
 export const fetchTransactions = async (
   payload?: Record<string, any>

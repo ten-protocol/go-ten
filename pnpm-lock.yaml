@@ -159,6 +159,9 @@ importers:
       cmdk:
         specifier: ^0.2.0
         version: 0.2.1(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      ethers:
+        specifier: ^5.7.2
+        version: 5.7.2
       lucide-react:
         specifier: ^0.292.0
         version: 0.292.0(react@18.3.1)
@@ -251,13 +254,13 @@ importers:
         specifier: ^6.2.1
         version: 6.2.2
       react:
-        specifier: ^18
+        specifier: ^18.2.0
         version: 18.3.1
       react-day-picker:
         specifier: ^8.9.1
         version: 8.10.1(date-fns@2.30.0)(react@18.3.1)
       react-dom:
-        specifier: ^18
+        specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       react-json-pretty:
         specifier: ^2.2.0

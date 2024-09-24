@@ -40,6 +40,7 @@ export const ethMethods = {
   getTransactionReceipt: "eth_getTransactionReceipt",
   switchNetwork: "wallet_switchEthereumChain",
 };
+
 // to send TEN Custom Queries (CQ) through the provider we call eth_getStorageAt and use these addresses to identify the TEN CQ method
 export const tenCustomQueryMethods = {
   getUserID: "0x0000000000000000000000000000000000000001",
@@ -98,4 +99,8 @@ export const NavLinks: NavLink[] = [
 export const externalLinks = {
   // Dev and UAT environments don't have etherscan, hence, we're hardcoding this to just Sepolia
   etherscanBlock: "https://sepolia.etherscan.io/block/",
+};
+
+export const pageLinks = {
+  // home:
 };

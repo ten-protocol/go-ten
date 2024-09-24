@@ -1,6 +1,6 @@
-import { cn } from "@/src/lib/utils";
 import Image from "next/image";
 import React from "react";
+import { cn } from "../lib/utils";
 
 const EmptyState = ({
   title,

@@ -5,9 +5,9 @@ import {
   WalletConnectionProviderProps,
 } from "@/src/types/interfaces/WalletInterfaces";
 import { showToast } from "@repo/ui/shared/use-toast";
-import { ToastType } from "@repo/ui/lib/types/interfaces";
+import { ToastType } from "@repo/ui/lib/types";
 import { ethereum, currentNetwork } from "@repo/ui/lib/utils";
-import { handleError } from "@repo/ui/lib/walletUtils";
+import { handleError } from "@repo/ui/lib/utils/walletUtils";
 import { ethMethods } from "@/src/routes";
 
 const WalletConnectionContext =
@@ -103,14 +103,14 @@ export const WalletConnectionProvider = ({
         { chainId: desiredNetwork },
       ]);
 
-      showToast("Switched to TEN Testnet", ToastType.SUCCESS);
+      showToast(ToastType.SUCCESS, "Switched to TEN Testnet");
     } catch (error: any) {
       if (error.code === 4902) {
         showToast(
           error.message || "Network not found in wallet",
           ToastType.INFO
         );
-        showToast("Redirecting to TEN Gateway...", ToastType.INFO);
+        showToast(ToastType.INFO, "Redirecting to TEN Gateway...");
         return window.open(currentNetwork.l2Gateway, "_blank");
       } else {
         showToast(

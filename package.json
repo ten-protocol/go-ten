@@ -20,7 +20,6 @@
   },
   "homepage": "https://github.com/ten-protocol/go-ten#readme",
   "dependencies": {
-    "turbo": "^1.13.3",
-    "eslint-config-custom": "workspace:*"
+    "turbo": "^1.13.3"
   }
 }

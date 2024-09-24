@@ -1,3 +1,19 @@
+export interface ResponseDataInterface<T> {
+  result: T;
+  errors?: string[] | string;
+  item: T;
+  message: string;
+  pagination?: PaginationInterface;
+  success: string;
+}
+
+export interface PaginationInterface {
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+}
+
 export type ButtonVariants =
   | "outline"
   | "link"
