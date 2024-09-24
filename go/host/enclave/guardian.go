@@ -369,7 +369,6 @@ func (g *Guardian) catchupWithL1() error {
 			enclaveHead = g.l1StartHash
 		}
 
-		fmt.Println("enclaveHead is at", enclaveHead)
 		l1Block, isLatest, err := g.sl.L1Repo().FetchNextBlock(enclaveHead)
 
 		if err != nil {
