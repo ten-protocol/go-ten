@@ -139,6 +139,18 @@ func (es *eventsStorage) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTx
 		return fmt.Errorf("could not write event log. Cause: %w", err)
 	}
 
+	// event types that were not configured explicitly can be "Public events" as well.
+	// based on the topics, this logic determines whether the event type has any relevant addresses
+	// this is called only the first time an event is emitted
+	err = es.setAutoVisibilityWhenEventFirstEmitted(ctx, dbTX, eventType, topicIds)
+	if err != nil {
+		return fmt.Errorf("could not update the auto visibility. Cause: %w", err)
+	}
+
+	return nil
+}
+
+func (es *eventsStorage) setAutoVisibilityWhenEventFirstEmitted(ctx context.Context, dbTX *sql.Tx, eventType *enclavedb.EventType, topicIds []*uint64) error {
 	if !eventType.ConfigPublic && eventType.AutoVisibility && eventType.AutoPublic == nil {
 		isPublic := true
 		for _, topicId := range topicIds {
@@ -154,12 +166,11 @@ func (es *eventsStorage) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTx
 			}
 		}
 		// for private events with autovisibility, the first time we need to determine whether they are public
-		err = enclavedb.UpdateEventTypeAutoPublic(ctx, dbTX, eventType.Id, isPublic)
+		err := enclavedb.UpdateEventTypeAutoPublic(ctx, dbTX, eventType.Id, isPublic)
 		if err != nil {
 			return fmt.Errorf("could not update event type. cause: %w", err)
 		}
 	}
-
 	return nil
 }
 

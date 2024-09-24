@@ -163,7 +163,7 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 	var queryParams []any
 
 	// todo - should we return the config here?
-	query := "select eoa1.address, eoa2.address, eoa3.address, et.config_public, et.auto_public, et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address " +
+	query := "select eoa1.address, eoa2.address, eoa3.address, et.config_public, et.auto_public, et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address, c.auto_visibility, c.transparent " +
 		baseEventsJoin +
 		" AND tx.hash = ? "
 
@@ -182,18 +182,16 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 			Log: types.Log{
 				Topics: []gethcommon.Hash{},
 			},
-			LifecycleEvent: false,
 		}
 
 		var t0, t1, t2, t3 sql.NullString
 		var relAddress1, relAddress2, relAddress3 []byte
-		var config_public, autoPublic bool
 		err = rows.Scan(
 			&relAddress1,
 			&relAddress2,
 			&relAddress3,
-			&config_public,
-			&autoPublic,
+			&l.ConfigPublic,
+			&l.AutoPublic,
 			&t0, &t1, &t2, &t3,
 			&l.Data,
 			&l.BlockHash,
@@ -202,8 +200,9 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 			&l.TxIndex,
 			&l.Index,
 			&l.Address,
+			&l.AutoContract,
+			&l.TransparentContract,
 		)
-		l.LifecycleEvent = config_public || autoPublic
 		if err != nil {
 			return nil, fmt.Errorf("could not load log entry from db: %w", err)
 		}
