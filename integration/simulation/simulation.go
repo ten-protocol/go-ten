@@ -42,6 +42,7 @@ type Simulation struct {
 	SimulationTime   time.Duration
 	Stats            *stats.Stats
 	Params           *params.SimParams
+	ZenBaseAddress   gethcommon.Address
 	LogChannels      map[string][]chan types.Log // Maps an owner to the channels on which they receive logs for each client.
 	Subscriptions    []ethereum.Subscription     // A slice of all created event subscriptions.
 	ctx              context.Context
@@ -57,9 +58,10 @@ func (s *Simulation) Start() {
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	// and for all l2 nodes to receive the genesis l2 batch
 	// todo - instead of sleeping, it would be better to poll
-	time.Sleep(10 * time.Second)
+	//time.Sleep(10 * time.Second) //todo - determine if this is till necessary?
 
 	s.bridgeFundingToTen()
+	s.deployTenZen()       // Deploy the ZenBase contract
 	s.trackLogs()          // Create log subscriptions, to validate that they're working correctly later.
 	s.prefundTenAccounts() // Prefund every L2 wallet
 
@@ -126,6 +128,8 @@ func (s *Simulation) bridgeFundingToTen() {
 		return
 	}
 
+	testlog.Logger().Info("Funding the bridge to TEN")
+
 	destAddr := s.Params.L1TenData.MessageBusAddr
 	value, _ := big.NewInt(0).SetString("7400000000000000000000000000000", 10)
 
@@ -183,6 +187,8 @@ func (s *Simulation) trackLogs() {
 		return
 	}
 
+	testlog.Logger().Info("Subscribing to logs")
+
 	for owner, clients := range s.RPCHandles.AuthObsClients {
 		// There is a subscription, and corresponding log channel, per owner per client.
 		s.LogChannels[owner] = []chan types.Log{}
@@ -207,6 +213,8 @@ func (s *Simulation) trackLogs() {
 
 // Prefunds the L2 wallets with `allocObsWallets` each.
 func (s *Simulation) prefundTenAccounts() {
+	testlog.Logger().Info("Prefunding L2 wallets")
+
 	faucetWallet := s.Params.Wallets.L2FaucetWallet
 	faucetClient := s.RPCHandles.TenWalletClient(faucetWallet.Address(), 0) // get sequencer, else errors on submission get swallowed
 	nonce := NextNonce(s.ctx, s.RPCHandles, faucetWallet)
@@ -219,28 +227,101 @@ func (s *Simulation) prefundTenAccounts() {
 }
 
 func (s *Simulation) deployTenZen() {
-	auth, err := bind.NewKeyedTransactorWithChainID(s.Params.Wallets.L2FaucetWallet.PrivateKey(), s.Params.Wallets.L2FaucetWallet.ChainID())
-	if err != nil {
-		panic(fmt.Errorf("failed to create transactor in order to bootstrap sim test: %w", err))
-	}
+	testlog.Logger().Info("Deploying ZenBase contract")
 
-	cfg, err := s.RPCHandles.TenWalletRndClient(s.Params.Wallets.L2FaucetWallet).GetConfig()
-	if err != nil {
-		panic(err)
-	}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		auth, err := bind.NewKeyedTransactorWithChainID(s.Params.Wallets.L2FaucetWallet.PrivateKey(), s.Params.Wallets.L2FaucetWallet.ChainID())
+		if err != nil {
+			panic(fmt.Errorf("failed to create transactor in order to bootstrap sim test: %w", err))
+		}
+		var cfg *common.TenNetworkInfo
+		for cfg == nil || cfg.TransactionAnalyzerAddress.Cmp(gethcommon.Address{}) == 0 {
+			cfg, err = s.RPCHandles.TenWalletRndClient(s.Params.Wallets.L2FaucetWallet).GetConfig()
+			if err != nil {
+				s.TxInjector.logger.Info("failed to get config", log.ErrKey, err)
+			}
+			time.Sleep(2 * time.Second)
+		}
 
-	_, tx, _, err := ZenBase.DeployZenBase(auth, s.RPCHandles.TenWalletRndClient(s.Params.Wallets.L2FaucetWallet), cfg.TransactionAnalyzerAddress, "zen", "zen")
-	if err != nil {
-		panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
-	}
+		for {
+			balance, err := s.RPCHandles.TenWalletRndClient(s.Params.Wallets.L2FaucetWallet).BalanceAt(context.Background(), nil)
+			if err != nil {
+				panic(fmt.Errorf("failed to get balance: %w", err))
+			}
+			if balance.Cmp(big.NewInt(0)) > 0 {
+				break
+			}
+			time.Sleep(2 * time.Second)
+		}
 
-	if err = testcommon.AwaitReceipt(s.ctx, s.RPCHandles.TenWalletRndClient(s.Params.Wallets.L2FaucetWallet), tx.Hash(), s.Params.ReceiptTimeout); err != nil {
-		panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
-	}
+		//auth.GasLimit = 5_000_000
+
+		/*abi, err := ZenBase.ZenBaseMetaData.GetAbi()
+		if err != nil {
+			panic(err)
+		}
+
+		packedParams, err := abi.Constructor.Inputs.Pack(cfg.TransactionAnalyzerAddress, "zen", "zen")
+		if err != nil {
+			panic(err)
+		}
+
+		initCode := make([]byte, 0)
+		initCode = append(initCode, gethcommon.FromHex(ZenBase.ZenBaseMetaData.Bin)...)
+		initCode = append(initCode, packedParams...)
+
+		owner := s.Params.Wallets.L2FaucetWallet
+
+		deployContractTxData := types.DynamicFeeTx{
+			Nonce:     NextNonce(s.ctx, s.RPCHandles, owner),
+			Gas:       5_000_000,
+			GasFeeCap: gethcommon.Big1, // This field is used to derive the gas price for dynamic fee transactions.
+			Data:      initCode,
+			GasTipCap: gethcommon.Big1,
+		}
+
+		deployContractTx := s.RPCHandles.TenWalletRndClient(owner).EstimateGasAndGasPrice(&deployContractTxData)
+		signedTx, err := owner.SignTransaction(deployContractTx)
+		if err != nil {
+			panic(err)
+		}
+
+		err = rpc.SendTransaction(s.ctx, signedTx)
+		if err != nil {
+			panic(err)
+		} */
+
+		owner := s.Params.Wallets.L2FaucetWallet
+		auth.GasPrice = big.NewInt(0).SetUint64(gethparams.InitialBaseFee)
+		auth.Context = context.Background()
+
+		_, signedTx, _, err := ZenBase.DeployZenBase(auth, s.RPCHandles.TenWalletRndClient(owner), cfg.TransactionAnalyzerAddress, "zen", "zen")
+		if err != nil {
+			panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
+		}
+
+		if err = testcommon.AwaitReceipt(s.ctx, s.RPCHandles.TenWalletRndClient(owner), signedTx.Hash(), s.Params.ReceiptTimeout); err != nil {
+			panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
+		}
+
+		//
+		rpc := s.RPCHandles.TenWalletClient(owner.Address(), 1)
+		_, err = rpc.TransactionReceipt(s.ctx, signedTx.Hash())
+		if err != nil {
+			panic(err)
+		}
+
+		//		s.ZenBaseAddress = address
+	}()
+	wg.Wait()
 }
 
 // This deploys an ERC20 contract on Ten, which is used for token arithmetic.
 func (s *Simulation) deployTenERC20s() {
+	testlog.Logger().Info("Deploying TEN ERC20 contracts")
 	tokens := []testcommon.ERC20{testcommon.HOC, testcommon.POC}
 
 	wg := sync.WaitGroup{}
@@ -284,6 +365,8 @@ func (s *Simulation) deployTenERC20s() {
 
 // Sends an amount from the faucet to each L1 account, to pay for transactions.
 func (s *Simulation) prefundL1Accounts() {
+	testlog.Logger().Info("Prefunding L1 wallets")
+
 	for _, w := range s.Params.Wallets.SimEthWallets {
 		ethClient := s.RPCHandles.RndEthClient()
 		receiver := w.Address()
@@ -317,6 +400,8 @@ func (s *Simulation) prefundL1Accounts() {
 }
 
 func (s *Simulation) checkHealthStatus() {
+	testlog.Logger().Info("Checking health status")
+
 	for _, client := range s.RPCHandles.TenClients {
 		err := retry.Do(func() error {
 			healthy, err := client.Health()

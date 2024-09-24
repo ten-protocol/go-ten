@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -45,6 +46,42 @@ type BatchHeader struct {
 	LatestInboundCrossChainHeight *big.Int                              `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
 	CrossChainRoot                common.Hash                           `json:"crossChainTreeHash"`      // This is the root hash of a merkle tree, built from all the cross chain messages and transfers that need to go on MainNet.
 	CrossChainTree                SerializedCrossChainTree              `json:"crossChainTree"`          // Those are the leafs of the merkle tree hashed for privacy. Necessary for clients to be able to build proofs as they have no access to all transactions in a batch or their receipts.
+}
+
+func ConvertBatchHeaderToHeader(batchHeader *BatchHeader) *types.Header {
+	var header types.Header
+
+	// Convert ParentHash if necessary
+	header.ParentHash = common.Hash(batchHeader.ParentHash)
+
+	// Convert Root if necessary
+	header.Root = common.Hash(batchHeader.Root)
+
+	// Directly assign fields that have the same type
+	header.TxHash = batchHeader.TxHash
+	header.ReceiptHash = batchHeader.ReceiptHash
+	header.Number = batchHeader.Number
+	header.GasLimit = batchHeader.GasLimit
+	header.GasUsed = batchHeader.GasUsed
+	header.Time = batchHeader.Time
+	header.Extra = batchHeader.Extra
+	header.BaseFee = batchHeader.BaseFee
+	header.Coinbase = batchHeader.Coinbase
+
+	// Set default values for fields not present in BatchHeader
+	header.UncleHash = common.Hash{}  // Default to zero hash
+	header.Bloom = types.Bloom{}      // Default to zero bloom filter
+	header.Difficulty = big.NewInt(0) // Default difficulty
+	header.MixDigest = common.Hash{}  // Default mix digest
+	header.Nonce = types.BlockNonce{} // Default nonce
+
+	// Set optional fields to nil or default values
+	header.WithdrawalsHash = nil
+	header.BlobGasUsed = nil
+	header.ExcessBlobGas = nil
+	header.ParentBeaconRoot = nil
+
+	return &header
 }
 
 // IsGenesis indicates whether the batch is the genesis batch.

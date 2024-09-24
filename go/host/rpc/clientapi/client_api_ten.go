@@ -35,12 +35,12 @@ func (api *TenAPI) Config() (*ChecksumFormattedTenNetworkConfig, error) {
 
 // ChecksumFormattedTenNetworkConfig serialises the addresses as EIP55 checksum addresses.
 type ChecksumFormattedTenNetworkConfig struct {
-	ManagementContractAddress gethcommon.AddressEIP55
-	L1StartHash               gethcommon.Hash
-	MessageBusAddress         gethcommon.AddressEIP55
-	L2MessageBusAddress       gethcommon.AddressEIP55
-	ImportantContracts        map[string]gethcommon.AddressEIP55 // map of contract name to address
-	TransactionAnalyzer       gethcommon.AddressEIP55
+	ManagementContractAddress  gethcommon.AddressEIP55
+	L1StartHash                gethcommon.Hash
+	MessageBusAddress          gethcommon.AddressEIP55
+	L2MessageBusAddress        gethcommon.AddressEIP55
+	ImportantContracts         map[string]gethcommon.AddressEIP55 // map of contract name to address
+	TransactionAnalyzerAddress gethcommon.AddressEIP55
 }
 
 func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetworkConfig {
@@ -49,11 +49,11 @@ func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetwork
 		importantContracts[name] = gethcommon.AddressEIP55(addr)
 	}
 	return &ChecksumFormattedTenNetworkConfig{
-		ManagementContractAddress: gethcommon.AddressEIP55(info.ManagementContractAddress),
-		L1StartHash:               info.L1StartHash,
-		MessageBusAddress:         gethcommon.AddressEIP55(info.MessageBusAddress),
-		L2MessageBusAddress:       gethcommon.AddressEIP55(info.L2MessageBusAddress),
-		ImportantContracts:        importantContracts,
-		TransactionAnalyzer:       gethcommon.AddressEIP55(info.TransactionAnalyzerAddress),
+		ManagementContractAddress:  gethcommon.AddressEIP55(info.ManagementContractAddress),
+		L1StartHash:                info.L1StartHash,
+		MessageBusAddress:          gethcommon.AddressEIP55(info.MessageBusAddress),
+		L2MessageBusAddress:        gethcommon.AddressEIP55(info.L2MessageBusAddress),
+		ImportantContracts:         importantContracts,
+		TransactionAnalyzerAddress: gethcommon.AddressEIP55(info.TransactionAnalyzerAddress),
 	}
 }

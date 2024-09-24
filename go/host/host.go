@@ -48,7 +48,7 @@ type host struct {
 
 	// l2MessageBusAddress is fetched from the enclave but cache it here because it never changes
 	l2MessageBusAddress        *gethcommon.Address
-	transactionAnalyzerAddress *gethcommon.Address
+	transactionAnalyzerAddress gethcommon.Address
 	newHeads                   chan *common.BatchHeader
 }
 
@@ -237,13 +237,13 @@ func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error)
 
 // ObscuroConfig returns info on the Obscuro network
 func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
-	if h.l2MessageBusAddress == nil || h.transactionAnalyzerAddress == nil {
+	if h.l2MessageBusAddress == nil || h.transactionAnalyzerAddress.Cmp(gethcommon.Address{}) == 0 {
 		publicCfg, err := h.EnclaveClient().EnclavePublicConfig(context.Background())
 		if err != nil {
 			return nil, responses.ToInternalError(fmt.Errorf("unable to get L2 message bus address - %w", err))
 		}
 		h.l2MessageBusAddress = &publicCfg.L2MessageBusAddress
-		h.transactionAnalyzerAddress = &publicCfg.TransactionAnalyzerAddress
+		h.transactionAnalyzerAddress = publicCfg.TransactionAnalyzerAddress
 	}
 
 	return &common.TenNetworkInfo{
@@ -253,7 +253,7 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		MessageBusAddress:          h.config.MessageBusAddress,
 		L2MessageBusAddress:        *h.l2MessageBusAddress,
 		ImportantContracts:         h.services.L1Publisher().GetImportantContracts(),
-		TransactionAnalyzerAddress: *h.transactionAnalyzerAddress,
+		TransactionAnalyzerAddress: h.transactionAnalyzerAddress,
 	}, nil
 }
 

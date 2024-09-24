@@ -96,6 +96,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 
 	executionGasEstimate, gasPrice, err := rpc.doEstimateGas(builder.ctx, txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
 	if err != nil {
+		fmt.Println(fmt.Errorf("enclave err: %w", err).Error())
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
 		if errors.Is(err, syserr.InternalError{}) {

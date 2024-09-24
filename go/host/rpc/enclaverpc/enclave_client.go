@@ -633,6 +633,7 @@ func (c *Client) EnclavePublicConfig(ctx context.Context) (*common.EnclavePublic
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 	return &common.EnclavePublicConfig{
-		L2MessageBusAddress: gethcommon.BytesToAddress(response.L2MessageBusAddress),
+		L2MessageBusAddress:        gethcommon.BytesToAddress(response.L2MessageBusAddress),
+		TransactionAnalyzerAddress: gethcommon.BytesToAddress(response.TransactionAnalyzerAddress),
 	}, nil
 }

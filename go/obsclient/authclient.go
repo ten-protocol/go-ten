@@ -229,6 +229,7 @@ func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxDat
 		Data:  unEstimatedTx.Data(),
 	})
 	if err != nil {
+		fmt.Println(err)
 		gasLimit = unEstimatedTx.Gas()
 	}
 
@@ -250,10 +251,14 @@ func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxDat
 	}
 }
 
-func (ac *AuthObsClient) CodeAt(context.Context, gethcommon.Address, *big.Int) ([]byte, error) {
-	panic("not implemented")
+func (ac *AuthObsClient) CodeAt(ctx context.Context, address gethcommon.Address, number *big.Int) ([]byte, error) {
+	result := hexutil.Bytes{}
+	err := ac.rpcClient.CallContext(ctx, result, rpc.GetCode, address, toBlockNumArg(number))
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, errors.New("not implemented")
+	return result, nil
 }
 
 func (ac *AuthObsClient) FilterLogs(context.Context, ethereum.FilterQuery) ([]types.Log, error) {
@@ -262,32 +267,30 @@ func (ac *AuthObsClient) FilterLogs(context.Context, ethereum.FilterQuery) ([]ty
 	return nil, errors.New("not implemented")
 }
 
-func (ac *AuthObsClient) HeaderByNumber(context.Context, *big.Int) (*types.Header, error) {
-	panic("not implemented")
+func (ac *AuthObsClient) HeaderByNumber(_ context.Context, number *big.Int) (*types.Header, error) {
+	header, err := ac.GetBatchHeaderByNumber(number)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, errors.New("not implemented")
+	return common.ConvertBatchHeaderToHeader(header), nil
 }
 
-func (ac *AuthObsClient) PendingCodeAt(context.Context, gethcommon.Address) ([]byte, error) {
-	panic("not implemented")
-
-	return nil, errors.New("not implemented")
+func (ac *AuthObsClient) PendingCodeAt(ctx context.Context, address gethcommon.Address) ([]byte, error) {
+	return ac.CodeAt(ctx, address, nil)
 }
 
-func (ac *AuthObsClient) PendingNonceAt(context.Context, gethcommon.Address) (uint64, error) {
-	panic("not implemented")
-
-	return 0, errors.New("not implemented")
+func (ac *AuthObsClient) PendingNonceAt(ctx context.Context, address gethcommon.Address) (uint64, error) {
+	return ac.NonceAt(ctx, nil)
 }
 
-func (ac *AuthObsClient) SuggestGasPrice(context.Context) (*big.Int, error) {
-	panic("not implemented")
-	return nil, errors.New("not implemented")
+func (ac *AuthObsClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
+	return ac.GasPrice(ctx)
 }
 
 // SuggestGasTipCap implements bind.ContractBackend.
 func (ac *AuthObsClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
-	panic("unimplemented")
+	return ac.GasPrice(ctx)
 }
 
 // GetPrivateTransactions retrieves the receipts for the specified account (must be registered on this client), returns requested range of receipts and the total number of receipts for that acc

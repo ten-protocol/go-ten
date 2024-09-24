@@ -15,12 +15,12 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * @title ZenBase
  * @dev ERC20 Token with minting functionality.
  */
-contract ZenBase is ERC20, Ownable, OnBlockEndCallback {
+contract ZenBase {
     /**
      * @dev Constructor that gives msg.sender all of existing tokens.
      * You can customize the initial supply as needed.
      */
-    constructor(address transactionsAnalyzer, string memory name, string memory symbol) ERC20(name, symbol) Ownable(msg.sender) {
+    constructor(address transactionsAnalyzer, string memory , string memory) {
         _caller = transactionsAnalyzer;
     }
 
@@ -32,12 +32,12 @@ contract ZenBase is ERC20, Ownable, OnBlockEndCallback {
         _;
     }
 
-    function onBlockEnd(TransactionDecoder.Transaction[] calldata transactions) external override onlyCaller {
+    function onBlockEnd(TransactionDecoder.Transaction[] calldata transactions) external view onlyCaller {
         // Implement custom logic here
         for (uint256 i=0; i<transactions.length; i++) {
             // Process transactions
-            address sender = TransactionDecoder.recoverSender(transactions[i]);
-            _mint(sender, 1);
+            TransactionDecoder.recoverSender(transactions[i]);
+          //  _mint(sender, 1);
         }
     }
 
@@ -49,8 +49,8 @@ contract ZenBase is ERC20, Ownable, OnBlockEndCallback {
      * Requirements:
      * - Only the contract owner can call this function.
      */
-    function mint(address to, uint256 amount) external onlyOwner {
-        _mint(to, amount);
+    function mint(address to, uint256 amount) external {
+       // _mint(to, amount);
     }
 
     /**
