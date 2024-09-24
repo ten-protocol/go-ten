@@ -21,7 +21,6 @@ type BlobResolverInMem struct {
 	mu                  sync.RWMutex
 	genesisTime         uint64
 	secondsPerSlot      uint64
-	port                int
 }
 
 func NewBlobResolver(genesisTime uint64, secondsPerSlot uint64) l1.BlobResolver {

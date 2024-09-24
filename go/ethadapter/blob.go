@@ -14,7 +14,10 @@ import (
 )
 
 // The number of bits in a BLS scalar that aren't part of a whole byte.
-const excessBlobBits = 6 // = math.floor(math.log2(BLS_MODULUS)) % 8
+const (
+	excessBlobBits = 6 // = math.floor(math.log2(BLS_MODULUS)) % 8
+	MaxBlobBytes   = 32 * 4096
+)
 
 // MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
 // data.
@@ -46,6 +49,11 @@ func EncodeBlobs(data []byte) ([]*kzg4844.Blob, error) {
 	data, err := rlp.EncodeToBytes(data)
 	if err != nil {
 		return nil, err
+	}
+
+	// limit size of rollup for now to 128kb
+	if len(data) >= MaxBlobBytes {
+		return nil, fmt.Errorf("data too large to encode in blobs")
 	}
 	var blobs []*kzg4844.Blob
 	for len(data) > 0 {

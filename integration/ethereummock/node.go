@@ -472,9 +472,8 @@ func (m *Node) startMining() {
 
 				block, blobs := NewBlock(canonicalBlock, m.l2ID, toInclude, blockTime)
 				blobPointers := make([]*kzg4844.Blob, len(blobs))
-				for i := range blobs {
-					blobPointers[i] = blobs[i] // Assign the address of each blob
-				}
+				copy(blobPointers, blobs)
+
 				slot, _ := ethadapter.TimeToSlot(block.Time(), MockGenesisBlock.Time(), SecondsPerSlot)
 				if len(blobs) > 0 {
 					_ = m.BlobResolver.StoreBlobs(slot, blobs)

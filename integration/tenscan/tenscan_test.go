@@ -80,15 +80,7 @@ func TestTenscan(t *testing.T) {
 	)
 
 	err = waitForFirstRollup(serverAddress)
-
-	////Timer for running local tests
-	//countdownDuration := 3 * time.Minute
-	//tickDuration := 5 * time.Second
-	//
-	//for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
-	//	fmt.Printf("Shutting down in %s...\n", remaining)
-	//	time.Sleep(tickDuration)
-	//}
+	require.NoError(t, err)
 
 	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
 	assert.NoError(t, err)
@@ -393,10 +385,8 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 
 func waitForFirstRollup(serverAddress string) error {
 	for now := time.Now(); time.Since(now) < 3*time.Minute; time.Sleep(5 * time.Second) {
-
 		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/latest/", serverAddress))
 		if err != nil {
-			// give it time to boot up
 			if strings.Contains(err.Error(), "connection") {
 				continue
 			}
@@ -406,9 +396,6 @@ func waitForFirstRollup(serverAddress string) error {
 		if statusCode == http.StatusOK {
 			return nil
 		}
-		//// wait for this to return a value
-		//assert.NoError(t, err)
-		//assert.Equal(t, 200, statusCode)
 	}
 	return fmt.Errorf("timed out before rollup was found")
 }

@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/rlp"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -11,57 +13,51 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
-//FIXME
-//func TestBlobsFromSidecars(t *testing.T) {
-//	indices := []uint64{5, 7, 2}
-//
-//	// blobs should be returned in order of their indices in the hashes array regardless
-//	// of the sidecar ordering
-//	hash0, sidecar0 := makeTestBlobSidecar(indices[0])
-//	hash1, sidecar1 := makeTestBlobSidecar(indices[1])
-//	hash2, sidecar2 := makeTestBlobSidecar(indices[2])
-//
-//	hashes := []gethcommon.Hash{hash0, hash1, hash2}
-//
-//	// put the sidecars in scrambled order to confirm error
-//	sidecars := []*BlobSidecar{sidecar2, sidecar0, sidecar1}
-//	_, err := BlobsFromSidecars(sidecars, hashes)
-//	require.Error(t, err)
-//
-//	// too few sidecars should error
-//	sidecars = []*BlobSidecar{sidecar0, sidecar1}
-//	_, err = BlobsFromSidecars(sidecars, hashes)
-//	require.Error(t, err)
-//
-//	// correct order should work
-//	sidecars = []*BlobSidecar{sidecar0, sidecar1, sidecar2}
-//	blobs, err := BlobsFromSidecars(sidecars, hashes)
-//	require.NoError(t, err)
-//	// confirm order by checking first blob byte against expected index
-//	for i := range blobs {
-//		require.Equal(t, byte(indices[i]), blobs[i][0])
-//	}
-//
-//	// mangle a proof to make sure it's detected
-//	badProof := *sidecar0
-//	badProof.KZGProof[11]++
-//	sidecars[1] = &badProof
-//	_, err = BlobsFromSidecars(sidecars, hashes)
-//	require.Error(t, err)
-//
-//	// mangle a commitment to make sure it's detected
-//	badCommitment := *sidecar0
-//	badCommitment.KZGCommitment[13]++
-//	sidecars[1] = &badCommitment
-//	_, err = BlobsFromSidecars(sidecars, hashes)
-//	require.Error(t, err)
-//
-//	// mangle a hash to make sure it's detected
-//	sidecars[1] = sidecar0
-//	hashes[2][17]++
-//	_, err = BlobsFromSidecars(sidecars, hashes)
-//	require.Error(t, err)
-//}
+func TestBlobsFromSidecars(t *testing.T) {
+	indices := []uint64{5, 7, 2}
+
+	// blobs should be returned in order of their indices in the hashes array regardless
+	// of the sidecar ordering
+	hash0, sidecar0 := makeTestBlobSidecar(indices[0])
+	hash1, sidecar1 := makeTestBlobSidecar(indices[1])
+	hash2, sidecar2 := makeTestBlobSidecar(indices[2])
+
+	hashes := []gethcommon.Hash{hash0, hash1, hash2}
+
+	// too few sidecars should error
+	sidecars := []*BlobSidecar{sidecar0, sidecar1}
+	_, err := BlobsFromSidecars(sidecars, hashes)
+	require.Error(t, err)
+
+	// correct order should work
+	sidecars = []*BlobSidecar{sidecar0, sidecar1, sidecar2}
+	blobs, err := BlobsFromSidecars(sidecars, hashes)
+	require.NoError(t, err)
+	// confirm order by checking first blob byte against expected index
+	for i := range blobs {
+		require.Equal(t, byte(indices[i]), blobs[i][0])
+	}
+
+	// mangle a proof to make sure it's detected
+	badProof := *sidecar0
+	badProof.KZGProof[11]++
+	sidecars[1] = &badProof
+	_, err = BlobsFromSidecars(sidecars, hashes)
+	require.Error(t, err)
+
+	// mangle a commitment to make sure it's detected
+	badCommitment := *sidecar0
+	badCommitment.KZGCommitment[13]++
+	sidecars[1] = &badCommitment
+	_, err = BlobsFromSidecars(sidecars, hashes)
+	require.Error(t, err)
+
+	// mangle a hash to make sure it's detected
+	sidecars[1] = sidecar0
+	hashes[2][17]++
+	_, err = BlobsFromSidecars(sidecars, hashes)
+	require.Error(t, err)
+}
 
 func TestBlobsFromSidecars_EmptySidecarList(t *testing.T) {
 	var hashes []gethcommon.Hash
@@ -110,6 +106,16 @@ func TestBlobEncoding(t *testing.T) {
 	}
 }
 
+// Write a test that will create a rollup that exceeds 128kb and ensure that it is split into multiple blobs
+// and then reassembled correctly
+func TestBlobEncodingLarge(t *testing.T) {
+	// make this rollup larger than 128kb
+	extRlp := createLargeRollup(4445)
+	encRollup, _ := common.EncodeRollup(&extRlp)
+	_, err := EncodeBlobs(encRollup)
+	require.Error(t, err)
+}
+
 func makeTestBlobSidecar(index uint64) (gethcommon.Hash, *BlobSidecar) {
 	blob := kzg4844.Blob{}
 	// make first byte of test blob match its index so we can easily verify if is returned in the
@@ -137,5 +143,22 @@ func createRollup(lastBatch int64) common.ExtRollup {
 		Header: &header,
 	}
 
+	return rollup
+}
+
+func createLargeRollup(seqNo int64) common.ExtRollup {
+	header := common.RollupHeader{
+		LastBatchSeqNo: uint64(seqNo),
+	}
+	largeData := make([]byte, 130*1024) // 130KB
+	for i := range largeData {
+		largeData[i] = byte(i % 256)
+	}
+
+	bytes, _ := rlp.EncodeToBytes(largeData)
+	rollup := common.ExtRollup{
+		Header:        &header,
+		BatchPayloads: bytes,
+	}
 	return rollup
 }

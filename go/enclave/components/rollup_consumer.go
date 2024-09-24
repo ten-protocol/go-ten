@@ -58,6 +58,7 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 		return err
 	}
 	if len(rollups) == 0 {
+		rc.logger.Info("No rollups found in block", log.BlockHashKey, b.BlockHeader.Hash(), log.ErrKey, err)
 		return nil
 	}
 
@@ -121,7 +122,7 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 	rollups := make([]*common.ExtRollup, 0)
 	b := br.BlockHeader
 
-	for _, tx := range *br.RelevantTransactions() {
+	for i, tx := range *br.RelevantTransactions() {
 		// go through all rollup transactions
 		t := rc.MgmtContractLib.DecodeTx(tx)
 		if t == nil {
@@ -140,7 +141,8 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 		}
 
 		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {
-			return nil, fmt.Errorf("failed to verify the rollup hashes with blobhashes. Cause: %w", err)
+			rc.logger.Info(fmt.Sprintf("blob hashes in rollup at index %d do not match the rollup blob hashes", i), err)
+			continue
 		}
 
 		r, err := ethadapter.ReconstructRollup(blobs)
@@ -151,6 +153,7 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 		rollups = append(rollups, r)
 		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, b.Hash())
 	}
+
 	return rollups, nil
 }
 
