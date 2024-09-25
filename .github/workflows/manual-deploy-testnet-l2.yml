@@ -290,7 +290,7 @@ jobs:
               -v /var/run/docker.sock:/var/run/docker.sock \
               grafana/promtail:latest \
               -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true \
-            && docker run -d --name=prometheus -p 9090:9090 -v /home/obscuro/metrics/prometheus.yml/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
+            && docker run -d --name=prometheus -p 9090:9090 -v /home/obscuro/metrics/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
             &&  docker run --volume=/:/rootfs:ro --volume=/var/run:/var/run:rw --volume=/sys:/sys:ro --volume=/var/lib/docker/:/var/lib/docker:ro --publish=8080:8080 --detach=true --name=cadvisor google/cadvisor:latest \
             && cd /home/obscuro/go-obscuro/ \
             && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
