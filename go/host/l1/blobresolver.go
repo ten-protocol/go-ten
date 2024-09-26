@@ -34,7 +34,6 @@ func (r *beaconBlobResolver) FetchBlobs(ctx context.Context, b *types.Header, ha
 	return blobs, nil
 }
 
-func (r *beaconBlobResolver) StoreBlobs(_ uint64, _ []*kzg4844.Blob) error {
-	// This only needed for the inmemory version, this happens on the beacon chain in the real world
-	panic("not implemented")
+func (r *beaconBlobResolver) StoreBlobs(slot uint64, blobs_ []*kzg4844.Blob) error {
+
 }

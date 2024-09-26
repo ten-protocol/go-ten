@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
 	"math/big"
 	"sync"
 	"time"
@@ -226,48 +227,9 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 	return nil
 }
 
-// ExtractObscuroRelevantTransactions will extract any transactions from the block that are relevant to Ten
+// ExtractRelevantTenTransactions will extract any transactions from the block that are relevant to TEN
 // todo (#2495) we should monitor for relevant L1 events instead of scanning every transaction in the block
-func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
-	var secretRespTxs []*ethadapter.L1RespondSecretTx
-	var rollupTxs []*ethadapter.L1RollupTx
-	var contractAddressTxs []*ethadapter.L1SetImportantContractsTx
-	for _, tx := range block.Transactions() {
-		t := p.mgmtContractLib.DecodeTx(tx)
-		if t == nil {
-			continue
-		}
-		if scrtTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
-			secretRespTxs = append(secretRespTxs, scrtTx)
-			continue
-		}
-
-		if contractAddressTx, ok := t.(*ethadapter.L1SetImportantContractsTx); ok {
-			contractAddressTxs = append(contractAddressTxs, contractAddressTx)
-			continue
-		}
-		rollupHashes, ok := t.(*ethadapter.L1RollupHashes)
-		if !ok {
-			continue
-		}
-		blobs, err := p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), rollupHashes.BlobHashes)
-		if err != nil {
-			p.logger.Crit("could not fetch blobs publisher", log.ErrKey, err)
-			return nil, nil, nil
-		}
-		encodedRlp, err := ethadapter.DecodeBlobs(blobs)
-		if err != nil {
-			p.logger.Crit("could not decode blobs.", log.ErrKey, err)
-		}
-		rlp := &ethadapter.L1RollupTx{
-			Rollup: encodedRlp,
-		}
-		rollupTxs = append(rollupTxs, rlp)
-	}
-	return secretRespTxs, rollupTxs, contractAddressTxs
-}
-
-func (p *Publisher) ExtractTenTransactionsAndBlobs(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*kzg4844.Blob, []*ethadapter.L1SetImportantContractsTx) {
+func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*kzg4844.Blob, []*ethadapter.L1SetImportantContractsTx) {
 	var secretRespTxs []*ethadapter.L1RespondSecretTx
 	var rollupTxs []*ethadapter.L1RollupTx
 	var contractAddressTxs []*ethadapter.L1SetImportantContractsTx
@@ -293,7 +255,13 @@ func (p *Publisher) ExtractTenTransactionsAndBlobs(block *types.Block) ([]*ethad
 		}
 		blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), rollupHashes.BlobHashes)
 		if err != nil {
-			p.logger.Crit("could not fetch blobs publisher", log.ErrKey, err)
+			if errors.Is(err, ethereum.NotFound) {
+				p.logger.Warn("Blobs have expired for block, fetching from archive", "block", block.Hash(), "error", err)
+				// FIXME
+				// Fetch from archive service
+				return nil, nil, nil, nil
+			}
+			p.logger.Crit("could not fetch blobs", log.ErrKey, err)
 			return nil, nil, nil, nil
 		}
 		encodedRlp, err := ethadapter.DecodeBlobs(blobs)
@@ -309,8 +277,6 @@ func (p *Publisher) ExtractTenTransactionsAndBlobs(block *types.Block) ([]*ethad
 }
 
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
-	// hash := *p.mgmtContractLib.GetContractAddr()
-	// println("contract address: ", hash.Hex())
 	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
 }
 
@@ -347,6 +313,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	} else {
 		p.logger.Info("Rollup included in L1", log.RollupHashKey, producedRollup.Hash())
 	}
+	//TODO publish rollup to archive service if not already done
 }
 
 func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, rollupNum *big.Int, forkID gethcommon.Hash) error {

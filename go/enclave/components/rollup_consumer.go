@@ -58,7 +58,7 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 		return err
 	}
 	if len(rollups) == 0 {
-		rc.logger.Info("No rollups found in block", log.BlockHashKey, b.BlockHeader.Hash(), log.ErrKey, err)
+		rc.logger.Info("No rollups found in block", log.BlockHashKey, b.BlockHeader.Hash())
 		return nil
 	}
 
@@ -123,7 +123,6 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 	b := br.BlockHeader
 
 	for i, tx := range *br.RelevantTransactions() {
-		// go through all rollup transactions
 		t := rc.MgmtContractLib.DecodeTx(tx)
 		if t == nil {
 			continue

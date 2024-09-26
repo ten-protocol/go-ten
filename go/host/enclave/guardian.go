@@ -311,7 +311,8 @@ func (g *Guardian) provideSecret() error {
 		if err != nil {
 			return fmt.Errorf("next block after block=%s not found - %w", awaitFromBlock, err)
 		}
-		secretRespTxs, _, _ := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(nextBlock)
+		//FIXME clean this up
+		secretRespTxs, _, _, _ := g.sl.L1Publisher().ExtractRelevantTenTransactions(nextBlock)
 		for _, scrt := range secretRespTxs {
 			if scrt.RequesterID.Hex() == g.enclaveID.Hex() {
 				err = g.enclaveClient.InitEnclave(context.Background(), scrt.Secret)
@@ -441,7 +442,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		}
 	}
 
-	_, rollupTxs, blobsAndHashes, _ := g.sl.L1Publisher().ExtractTenTransactionsAndBlobs(block)
+	_, rollupTxs, blobsAndHashes, contractAddressTxs := g.sl.L1Publisher().ExtractRelevantTenTransactions(block)
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txWithReceipts, blobsAndHashes)
 
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
@@ -463,7 +464,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	}
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
-	g.processL1BlockTransactions(block, rollupTxs)
+	g.processL1BlockTransactions(block, rollupTxs, contractAddressTxs)
 
 	if err != nil {
 		return false, fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
@@ -477,11 +478,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*ethadapter.L1RollupTx) {
-	// FIXME
-	// if there are any secret responses in the block we should refresh our P2P list to re-sync with the network
-	_, _, contractAddressTxs := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(block)
-
+func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*ethadapter.L1RollupTx, contractAddressTxs []*ethadapter.L1SetImportantContractsTx) {
 	// TODO (@will) this should be removed and pulled from the L1
 	err := g.storage.AddBlock(block.Header())
 	if err != nil {
