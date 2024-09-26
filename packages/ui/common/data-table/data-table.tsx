@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/router";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -28,7 +29,6 @@ import {
 } from "../../shared/table";
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
-import { useRouter } from "next/router";
 import { Skeleton } from "../../shared/skeleton";
 import { Button } from "../../shared/button";
 

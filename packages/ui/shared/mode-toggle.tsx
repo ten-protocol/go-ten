@@ -1,16 +1,15 @@
 "use client";
 
-import * as React from "react";
-import { Moon, Sun } from "@repo/ui/shared/react-icons";
+import { Moon, Sun } from "./react-icons";
 import { useTheme } from "next-themes";
 
-import { Button } from "@repo/ui/shared/button";
+import { Button } from "./button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@repo/ui/shared/dropdown-menu";
+} from "./dropdown-menu";
 
 export function ModeToggle() {
   const { setTheme } = useTheme();

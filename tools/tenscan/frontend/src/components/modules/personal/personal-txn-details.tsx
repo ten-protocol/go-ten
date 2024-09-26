@@ -1,13 +1,14 @@
-import TruncatedAddress from "../common/truncated-address";
-import KeyValueItem, { KeyValueList } from "@/src/components/ui/key-value";
-import { Badge } from "@/src/components/ui/badge";
+import React from "react";
+import KeyValueItem, { KeyValueList } from "@repo/ui/shared/key-value";
 import {
   PersonalTransactionType,
   TransactionReceipt,
   TransactionType,
-} from "@/src/types/interfaces/TransactionInterfaces";
-import { BadgeType } from "@/src/types/interfaces";
+} from "../../../types/interfaces/TransactionInterfaces";
+import { BadgeType } from "../../../types/interfaces";
 import Link from "next/link";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { Badge } from "@repo/ui/shared/badge";
 
 export function PersonalTxnDetailsComponent({
   transactionDetails,

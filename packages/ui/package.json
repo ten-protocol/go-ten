@@ -30,6 +30,8 @@
     "clsx": "^2.0.0",
     "cmdk": "^0.2.0",
     "lucide-react": "^0.292.0",
+    "next": "14.0.1",
+    "next-themes": "^0.2.1",
     "react-day-picker": "^8.9.1",
     "react-json-pretty": "^2.2.0",
     "recharts": "^2.9.3",

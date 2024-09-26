@@ -1,24 +1,28 @@
-import Layout from "@/src/components/layouts/default-layout";
-import EmptyState from "@/src/components/modules/common/empty-state";
-import { Button } from "@/src/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/src/components/ui/card";
-import { Skeleton } from "@/src/components/ui/skeleton";
+import React from "react";
+import Layout from "../../../src/components/layouts/default-layout";
+import EmptyState from "@repo/ui/common/empty-state";
+import { Button } from "@repo/ui/shared/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@repo/ui/shared/card";
+import { Skeleton } from "@repo/ui/shared/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
-import { fetchPersonalTxnByHash } from "@/api/transactions";
-import { useWalletConnection } from "@/src/components/providers/wallet-provider";
-import { PersonalTxnDetailsComponent } from "@/src/components/modules/personal/personal-txn-details";
-import ConnectWalletButton from "@/src/components/modules/common/connect-wallet";
-import { ethereum } from "@/src/lib/utils";
+import { fetchPersonalTxnByHash } from "../../../api/transactions";
+import { useWalletConnection } from "../../../src/components/providers/wallet-provider";
+import { PersonalTxnDetailsComponent } from "../../../src/components/modules/personal/personal-txn-details";
+import { ethereum } from "@repo/ui/lib/utils";
+import ConnectWalletButton from "@repo/ui/common/connect-wallet";
 
 export default function TransactionDetails() {
   const router = useRouter();
-  const { provider, walletConnected } = useWalletConnection();
+  const {
+    provider,
+    walletConnected,
+    walletAddress,
+    connectWallet,
+    disconnectWallet,
+    switchNetwork,
+    isWrongNetwork,
+  } = useWalletConnection();
   const { hash } = router.query;
 
   const { data: transactionDetails, isLoading } = useQuery({
@@ -64,6 +68,12 @@ export default function TransactionDetails() {
                     ? "Connect Wallet to continue"
                     : "Install MetaMask to continue"
                 }
+                walletConnected={walletConnected}
+                walletAddress={walletAddress}
+                connectWallet={connectWallet}
+                disconnectWallet={disconnectWallet}
+                switchNetwork={switchNetwork}
+                isWrongNetwork={isWrongNetwork}
               />
               <Button variant={"link"} onClick={() => router.push("/personal")}>
                 Go back

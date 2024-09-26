@@ -1,7 +1,9 @@
-import { fetchBatchTransactions } from "@/api/batches";
-import Layout from "@/src/components/layouts/default-layout";
+import React from "react";
+import { fetchBatchTransactions } from "../../../api/batches";
+import Layout from "../../../src/components/layouts/default-layout";
 import { DataTable } from "@repo/ui/common/data-table/data-table";
-import { columns } from "@/src/components/modules/batches/transaction-columns";
+import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { columns } from "../../../src/components/modules/batches/transaction-columns";
 import {
   Card,
   CardHeader,
@@ -11,8 +13,7 @@ import {
 } from "@repo/ui/shared/card";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
-import { getOptions } from "@/src/lib/constants";
-import TruncatedAddress from "@repo/ui/shared/truncated-address";
+import { getOptions } from "../../../src/lib/constants";
 
 export default function BatchTransactions() {
   const router = useRouter();
