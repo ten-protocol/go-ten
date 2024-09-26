@@ -313,7 +313,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 
 	return &ComputedBatch{
 		Batch:         &copyBatch,
-		TxExecResults: append(txResults),
+		TxExecResults: append(txResults, ccTxResults...),
 		Commit:        commitFunc,
 	}, nil
 }

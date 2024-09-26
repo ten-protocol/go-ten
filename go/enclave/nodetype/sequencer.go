@@ -174,13 +174,13 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 	wallet := system.GetPlaceholderWallet(s.chainConfig.ChainID, s.logger)
 	msgBusTx, err := system.MessageBusInitTransaction(wallet, s.logger)
 	if err != nil {
-		s.logger.Error("[SystemContracts] Failed to create message bus contract", log.ErrKey, err)
+		s.logger.Crit("[SystemContracts] Failed to create message bus contract", log.ErrKey, err)
 		return err
 	}
 
 	systemDeployerTx, err := system.SystemDeployerInitTransaction(wallet, s.logger, wallet.Address())
 	if err != nil {
-		s.logger.Error("[SystemContracts] Failed to create system deployer contract", log.ErrKey, err)
+		s.logger.Crit("[SystemContracts] Failed to create system deployer contract", log.ErrKey, err)
 		return err
 	}
 
@@ -208,14 +208,13 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 	}
 
 	if len(cb.TxExecResults) == 0 || cb.TxExecResults[0].Receipt.TxHash.Hex() != msgBusTx.Hash().Hex() {
-		err = fmt.Errorf("message Bus contract not minted - no receipts in batch")
-		s.logger.Error(err.Error())
-		return err
+		err = fmt.Errorf("failed to mint Message Bus contract: expected receipt for transaction %s, but no receipts found in batch", msgBusTx.Hash().Hex())
+		s.logger.Crit(err.Error()) // Fatal error, the node cannot be started.
 	}
 
 	systemAddresses, err := system.DeriveAddresses(cb.TxExecResults[1].Receipt)
 	if err != nil {
-		s.logger.Error("Failed to derive system contract addresses", log.ErrKey, err)
+		s.logger.Crit("Failed to derive system contract addresses", log.ErrKey, err)
 		return err
 	}
 	s.logger.Info("[SystemContracts] Deployer initialized", "transactionAnalyzer", systemAddresses.ToString())

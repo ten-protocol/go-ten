@@ -56,26 +56,35 @@ func (s *systemContractCallbacks) GetOwner() gethcommon.Address {
 }
 
 func (s *systemContractCallbacks) Load() error {
+	s.logger.Info("Load: Initializing system contracts")
+
 	if s.storage == nil {
+		s.logger.Error("Load: Storage is not set")
 		return fmt.Errorf("storage is not set")
 	}
 
-	batch, err := s.storage.FetchBatchBySeqNo(context.Background(), 1)
+	batchSeqNo := uint64(1)
+	s.logger.Debug("Load: Fetching batch", "batchSeqNo", batchSeqNo)
+	batch, err := s.storage.FetchBatchBySeqNo(context.Background(), batchSeqNo)
 	if err != nil {
+		s.logger.Error("Load: Failed fetching batch", "batchSeqNo", batchSeqNo, "error", err)
 		return fmt.Errorf("failed fetching batch %w", err)
 	}
 
 	if len(batch.Transactions) < 2 {
+		s.logger.Error("Load: Genesis batch does not have enough transactions", "batchSeqNo", batchSeqNo, "transactionCount", len(batch.Transactions))
 		return fmt.Errorf("genesis batch does not have enough transactions")
 	}
 
 	receipt, err := s.storage.GetTransactionReceipt(context.Background(), batch.Transactions[1].Hash())
 	if err != nil {
+		s.logger.Error("Load: Failed fetching receipt", "transactionHash", batch.Transactions[1].Hash().Hex(), "error", err)
 		return fmt.Errorf("failed fetching receipt %w", err)
 	}
 
 	addresses, err := DeriveAddresses(receipt)
 	if err != nil {
+		s.logger.Error("Load: Failed deriving addresses", "error", err, "receiptHash", receipt.TxHash.Hex())
 		return fmt.Errorf("failed deriving addresses %w", err)
 	}
 
@@ -93,40 +102,53 @@ func (s *systemContractCallbacks) initializeRequiredAddresses(addresses SystemCo
 }
 
 func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipts types.Receipts) error {
+	s.logger.Info("Initialize: Starting initialization of system contracts", "batchSeqNo", batch.SeqNo)
+
 	if len(receipts) < 2 {
+		s.logger.Error("Initialize: Genesis batch does not have enough receipts", "expected", 2, "got", len(receipts))
 		return fmt.Errorf("genesis batch does not have enough receipts")
 	}
 
-	addresses, err := DeriveAddresses(receipts[1])
+	receiptIndex := 1
+	s.logger.Debug("Initialize: Deriving addresses from receipt", "receiptIndex", receiptIndex, "transactionHash", receipts[receiptIndex].TxHash.Hex())
+	addresses, err := DeriveAddresses(receipts[receiptIndex])
 	if err != nil {
+		s.logger.Error("Initialize: Failed deriving addresses", "error", err, "receiptHash", receipts[receiptIndex].TxHash.Hex())
 		return fmt.Errorf("failed deriving addresses %w", err)
 	}
 
+	s.logger.Info("Initialize: Initializing required addresses", "addresses", addresses)
 	return s.initializeRequiredAddresses(addresses)
 }
 
 func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Context, l2State *state.StateDB, batch *core.Batch, receipts common.L2Receipts) (*common.L2Tx, error) {
 	if s.transactionsAnalyzerAddress == nil {
+		s.logger.Debug("CreateOnBatchEndTransaction: TransactionsAnalyzerAddress is nil, skipping transaction creation")
 		return nil, nil
 	}
 
+	s.logger.Info("CreateOnBatchEndTransaction: Creating transaction on batch end", "batchSeqNo", batch.SeqNo)
+
 	nonceForSyntheticTx := l2State.GetNonce(s.GetOwner())
+	s.logger.Debug("CreateOnBatchEndTransaction: Retrieved nonce for synthetic transaction", "nonce", nonceForSyntheticTx)
 
 	blockTransactions := TransactionsAnalyzer.TransactionsAnalyzerBlockTransactions{
 		Transactions: make([][]byte, 0),
 	}
 	for _, tx := range batch.Transactions {
-
 		encodedBytes, err := rlp.EncodeToBytes(tx)
 		if err != nil {
+			s.logger.Error("CreateOnBatchEndTransaction: Failed encoding transaction", "transactionHash", tx.Hash().Hex(), "error", err)
 			return nil, fmt.Errorf("failed encoding transaction for onBlock %w", err)
 		}
 
 		blockTransactions.Transactions = append(blockTransactions.Transactions, encodedBytes)
+		s.logger.Debug("CreateOnBatchEndTransaction: Encoded transaction", "transactionHash", tx.Hash().Hex())
 	}
 
 	data, err := transactionsAnalyzerABI.Pack("onBlock", blockTransactions)
 	if err != nil {
+		s.logger.Error("CreateOnBatchEndTransaction: Failed packing onBlock data", "error", err)
 		return nil, fmt.Errorf("failed packing onBlock() %w", err)
 	}
 
@@ -139,10 +161,13 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 		To:       s.transactionsAnalyzerAddress,
 	}
 
+	s.logger.Debug("CreateOnBatchEndTransaction: Signing transaction", "to", s.transactionsAnalyzerAddress.Hex(), "nonce", nonceForSyntheticTx)
 	signedTx, err := s.ownerWallet.SignTransaction(tx)
 	if err != nil {
+		s.logger.Error("CreateOnBatchEndTransaction: Failed signing transaction", "error", err)
 		return nil, fmt.Errorf("failed signing transaction %w", err)
 	}
 
+	s.logger.Info("CreateOnBatchEndTransaction: Successfully created signed transaction", "transactionHash", signedTx.Hash().Hex())
 	return signedTx, nil
 }
