@@ -74,19 +74,19 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 		stateDb, err = rpc.registry.GetBatchStateAtHeight(builder.ctx, number)
 	}
 	if err != nil {
-		builder.Err = fmt.Errorf("unable to read block number -%w", err)
+		builder.Err = fmt.Errorf("unable to read block number - %w", err)
 		return nil
 	}
 
 	storageSlot, err := common.ParseHexOrString(builder.Param.storageSlot)
 	if err != nil {
-		builder.Err = fmt.Errorf("unable to parse storage slot -%w", err)
+		builder.Err = fmt.Errorf("unable to parse storage slot (%s) - %w", builder.Param.storageSlot, err)
 		return nil
 	}
 
 	account, err := stateDb.GetTrie().GetAccount(*builder.Param.address)
 	if err != nil {
-		builder.Err = fmt.Errorf("unable to get acct address -%w", err)
+		builder.Err = fmt.Errorf("unable to get acct address - %w", err)
 		return nil
 	}
 
@@ -102,7 +102,7 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 
 		// return system errors to the host
 		if errors.Is(err, syserr.InternalError{}) {
-			return fmt.Errorf("unable to get acct address -%w", err)
+			return fmt.Errorf("unable to get acct address - %w", err)
 		}
 
 		builder.Err = fmt.Errorf("unable to get storage slot - %w", err)
