@@ -1,7 +1,7 @@
 import { httpRequest } from ".";
 import { apiRoutes } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
-import { ResponseDataInterface } from "@/src/types/interfaces";
+import { ResponseDataInterface } from "@repo/ui/lib/types/common";
 import { BatchResponse } from "@/src/types/interfaces/BatchInterfaces";
 import {
   Rollup,

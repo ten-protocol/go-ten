@@ -1,5 +1,5 @@
-import { ErrorType } from "@/src/types/interfaces";
-import Error from "./_error";
+import { ErrorType } from "../../lib/interfaces/ui";
+import CustomError from "./error";
 
 function Custom500Error({
   customPageTitle,
@@ -11,7 +11,7 @@ function Custom500Error({
   children,
 }: ErrorType) {
   return (
-    <Error
+    <CustomError
       heading={"Oops! Something went wrong."}
       message={
         message ||
@@ -25,7 +25,7 @@ function Custom500Error({
       redirectLink={redirectLink}
     >
       {children}
-    </Error>
+    </CustomError>
   );
 }
 

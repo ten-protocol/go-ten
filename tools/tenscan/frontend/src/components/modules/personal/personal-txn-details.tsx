@@ -7,10 +7,10 @@ import {
   TransactionReceipt,
   TransactionType,
 } from "../../../types/interfaces/TransactionInterfaces";
-import { BadgeType } from "../../../types/interfaces";
 import Link from "next/link";
 import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { Badge } from "@repo/ui/components/shared/badge";
+import { BadgeType } from "@repo/ui/lib/enums/badge";
 
 export function PersonalTxnDetailsComponent({
   transactionDetails,

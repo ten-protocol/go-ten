@@ -1,5 +1,5 @@
-import { ErrorType } from "@/src/types/interfaces";
-import Error from "./_error";
+import { ErrorType } from "../../lib/interfaces/ui";
+import CustomError from "./error";
 
 export function Custom404Error({
   customPageTitle,
@@ -12,7 +12,7 @@ export function Custom404Error({
   children,
 }: ErrorType) {
   return (
-    <Error
+    <CustomError
       heading={` ${customPageTitle || "Oops! Page"} Not Found`}
       statusText={`We can't seem to find the ${
         customPageTitle || "page"
@@ -31,7 +31,7 @@ export function Custom404Error({
       redirectLink={redirectLink}
     >
       {children}
-    </Error>
+    </CustomError>
   );
 }
 
