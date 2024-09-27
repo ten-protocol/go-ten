@@ -30,7 +30,7 @@ func getBuildNumber() (int, error) {
 			break
 		}
 		buildNumber++
-		if buildNumber > 9999 {
+		if buildNumber > 99 {
 			buildNumber = 1
 		}
 	}

@@ -45,7 +45,7 @@ func init() { //nolint:gochecknoinits
 }
 
 func TestCanDeployLayer2ERC20Contract(t *testing.T) {
-	startPort := integration.StartPortContractDeployerTest1
+	startPort := integration.TestPorts.TestCanDeployLayer2ERC20ContractPort
 	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
 	creatTenNetwork(t, startPort)
 	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
@@ -81,7 +81,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 }
 
 func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
-	startPort := integration.StartPortContractDeployerTest2
+	startPort := integration.TestPorts.TestFaucetSendsFundsOnlyIfNeededPort
 	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
 	creatTenNetwork(t, startPort)
 

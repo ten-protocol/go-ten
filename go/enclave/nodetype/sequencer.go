@@ -150,7 +150,7 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 		return fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.StoreExecutedBatch(ctx, batch, nil, nil); err != nil {
+	if err := s.StoreExecutedBatch(ctx, batch, nil); err != nil {
 		return fmt.Errorf("1. failed storing batch. Cause: %w", err)
 	}
 
@@ -189,13 +189,13 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 		return fmt.Errorf(" failed producing batch. Cause: %w", err)
 	}
 
-	if len(cb.Receipts) == 0 || cb.Receipts[0].TxHash.Hex() != msgBusTx.Hash().Hex() {
+	if len(cb.TxExecResults) == 0 || cb.TxExecResults[0].Receipt.TxHash.Hex() != msgBusTx.Hash().Hex() {
 		err = fmt.Errorf("message Bus contract not minted - no receipts in batch")
 		s.logger.Error(err.Error())
 		return err
 	}
 
-	s.logger.Info("Message Bus Contract minted successfully", "address", cb.Receipts[0].ContractAddress.Hex())
+	s.logger.Info("Message Bus Contract minted successfully", "address", cb.TxExecResults[0].Receipt.ContractAddress.Hex())
 
 	return nil
 }
@@ -301,7 +301,7 @@ func (s *sequencer) produceBatch(
 		return nil, fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.StoreExecutedBatch(ctx, cb.Batch, cb.Receipts, cb.CreatedContracts); err != nil {
+	if err := s.StoreExecutedBatch(ctx, cb.Batch, cb.TxExecResults); err != nil {
 		return nil, fmt.Errorf("2. failed storing batch. Cause: %w", err)
 	}
 
@@ -319,7 +319,7 @@ func (s *sequencer) produceBatch(
 
 // StoreExecutedBatch - stores an executed batch in one go. This can be done for the sequencer because it is guaranteed
 // that all dependencies are in place for the execution to be successful.
-func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, receipts types.Receipts, newContracts map[gethcommon.Hash][]*gethcommon.Address) error {
+func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, txResults []*core.TxExecResult) error {
 	defer core.LogMethodDuration(s.logger, measure.NewStopwatch(), "Registry StoreBatch() exit", log.BatchHashKey, batch.Hash())
 
 	// Check if this batch is already stored.
@@ -337,11 +337,11 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, r
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	if err := s.storage.StoreExecutedBatch(ctx, batch.Header, receipts, newContracts); err != nil {
+	if err := s.storage.StoreExecutedBatch(ctx, batch.Header, txResults); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	s.batchRegistry.OnBatchExecuted(batch.Header, receipts)
+	s.batchRegistry.OnBatchExecuted(batch.Header, txResults)
 
 	return nil
 }
@@ -523,6 +523,7 @@ func (s *sequencer) Close() error {
 }
 
 func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
+	defer core.LogMethodDuration(s.logger, measure.NewStopwatch(), "ExportCrossChainData()", "fromSeqNo", fromSeqNo, "toSeqNo", toSeqNo)
 	bundle, err := ExportCrossChainData(ctx, s.storage, fromSeqNo, toSeqNo)
 	if err != nil {
 		return nil, err
