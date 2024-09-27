@@ -3,6 +3,7 @@ package rpc
 import (
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -78,11 +79,13 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 		return nil
 	}
 
-	storageSlot, err := common.ParseHexOrString(builder.Param.storageSlot)
-	if err != nil {
-		builder.Err = fmt.Errorf("unable to parse storage slot (%s) - %w", builder.Param.storageSlot, err)
+	sl := new(big.Int)
+	sl, ok := sl.SetString(builder.Param.storageSlot, 16)
+	if !ok {
+		builder.Err = fmt.Errorf("unable to parse storage slot (%s)", builder.Param.storageSlot)
 		return nil
 	}
+	storageSlot := sl.Bytes()
 
 	account, err := stateDb.GetTrie().GetAccount(*builder.Param.address)
 	if err != nil {
@@ -90,6 +93,7 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 		return nil
 	}
 
+	// todo need another step to get the storage key from the slot?
 	trie, err := stateDb.Database().OpenTrie(account.Root)
 	if err != nil {
 		builder.Err = err
