@@ -28,7 +28,7 @@ export function CustomError({
   isFullWidth,
   err,
   showMessage = true,
-  showStatusText,
+  showStatusText = true,
   statusCode,
   isModal,
   redirectLink = "/",
@@ -60,11 +60,7 @@ export function CustomError({
                 className="text-primary pointer underline"
               >
                 {redirectText}
-              </Link>{" "}
-              {/* <div>
-                Looks like you&apos;re on the wrong side of town, buddy.
-                Let&apos;s get you back on the <Link href="/">right side</Link>.
-              </div> */}
+              </Link>
             </div>
           )}
           {children}
@@ -74,6 +70,7 @@ export function CustomError({
   );
 }
 
+// server-side error handling logic
 CustomError.getInitialProps = async ({ res, err }: any) => {
   const statusCode = res ? res.statusCode : err?.statusCode || 404;
   const errorInitialProps = await NextErrorComponent.getInitialProps({
@@ -82,6 +79,7 @@ CustomError.getInitialProps = async ({ res, err }: any) => {
   } as any);
   errorInitialProps.statusCode = statusCode;
 
+  // custom server-side error handling logic
   return statusCode < 500
     ? errorInitialProps
     : { ...errorInitialProps, statusCode };
