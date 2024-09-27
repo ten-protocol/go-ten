@@ -80,7 +80,7 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 	}
 
 	sl := new(big.Int)
-	sl, ok := sl.SetString(builder.Param.storageSlot, 16)
+	sl, ok := sl.SetString(builder.Param.storageSlot, 0)
 	if !ok {
 		builder.Err = fmt.Errorf("unable to parse storage slot (%s)", builder.Param.storageSlot)
 		return nil
