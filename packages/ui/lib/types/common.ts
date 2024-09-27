@@ -27,13 +27,13 @@ export interface PaginationInterface {
   totalPages: number;
 }
 
+export interface DocumentContentInterface {
+  heading: string;
+  content: string[];
+}
+
 export interface DocumentInterface {
   title: string;
   subHeading: string;
-  content: {
-    heading: "string";
-    content: "string";
-  };
+  content: DocumentContentInterface[];
 }
-
-// export interface

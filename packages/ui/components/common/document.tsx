@@ -1,7 +1,10 @@
 import React from "react";
 import Custom404Error from "./404";
 import Spinner from "../shared/spinner";
-import { DocumentInterface } from "../../lib/types/common";
+import {
+  DocumentContentInterface,
+  DocumentInterface,
+} from "../../lib/types/common";
 
 type DocumentProps = {
   document: DocumentInterface;
@@ -25,18 +28,20 @@ const DocumentComponent = ({ document, isLoading }: DocumentProps) => {
       </div>
       <div className="prose prose-lg prose-primary">
         {document.content &&
-          document.content.map((section, index) => (
-            <div key={index} className="mb-8">
-              <h2 className="mb-2">{section.heading}</h2>
-              {section.content &&
-                section.content.map((paragraph, index) => (
-                  <div
-                    key={index}
-                    dangerouslySetInnerHTML={{ __html: paragraph }}
-                  ></div>
-                ))}
-            </div>
-          ))}
+          document.content.map(
+            (section: DocumentContentInterface, index: number) => (
+              <div key={index} className="mb-8">
+                <h2 className="mb-2">{section.heading}</h2>
+                {section.content &&
+                  section.content.map((paragraph: string, index: number) => (
+                    <div
+                      key={index}
+                      dangerouslySetInnerHTML={{ __html: paragraph }}
+                    ></div>
+                  ))}
+              </div>
+            )
+          )}
       </div>
     </>
   );
