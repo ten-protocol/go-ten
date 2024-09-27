@@ -10,9 +10,9 @@ import {
   CardContent,
   CardDescription,
 } from "@repo/ui/components/shared/card";
-import { Skeleton } from "@repo/ui/components/shared/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
+import LoadingState from "@repo/ui/components/common/loading-state";
 
 export default function RollupBatchSequenceDetails() {
   const router = useRouter();
@@ -28,7 +28,7 @@ export default function RollupBatchSequenceDetails() {
   return (
     <Layout>
       {isLoading ? (
-        <Skeleton className="h-full w-full" />
+        <LoadingState numberOfItems={10} />
       ) : rollupDetails ? (
         <Card className="col-span-3">
           <CardHeader>
