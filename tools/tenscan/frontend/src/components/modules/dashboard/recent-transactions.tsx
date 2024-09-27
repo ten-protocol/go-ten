@@ -1,7 +1,7 @@
-import TruncatedAddress from "@repo/ui/common/truncated-address";
-import { Avatar, AvatarFallback } from "@repo/ui/shared/avatar";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
+import { Avatar, AvatarFallback } from "@repo/ui/components/shared/avatar";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
-import { Badge } from "@repo/ui/shared/badge";
+import { Badge } from "@repo/ui/components/shared/badge";
 import { formatTimeAgo } from "@repo/ui/lib/utils";
 import Link from "next/link";
 

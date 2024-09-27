@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import { ethereum } from ".";
-import { showToast } from "../../shared/use-toast";
+import { showToast } from "../../components/shared/use-toast";
 import { IErrorMessages } from "../enums/error";
 import { ToastType } from "../enums/toast";
 

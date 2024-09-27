@@ -1,11 +1,11 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "@repo/ui/common/data-table/data-table-column-header";
-import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { DataTableColumnHeader } from "@repo/ui/components/common/data-table/data-table-column-header";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { formatTimeAgo } from "@repo/ui/lib/utils";
 import Link from "next/link";
-import { EyeOpenIcon } from "@repo/ui/shared/react-icons";
+import { EyeOpenIcon } from "@repo/ui/components/shared/react-icons";
 import { Rollup } from "@/src/types/interfaces/RollupInterfaces";
 
 export const columns: ColumnDef<Rollup>[] = [

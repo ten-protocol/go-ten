@@ -1,26 +1,31 @@
 import React from "react";
-import { CardHeader, CardTitle, CardContent, Card } from "@repo/ui/shared/card";
+import {
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Card,
+} from "@repo/ui/components/shared/card";
 import {
   LayersIcon,
   FileTextIcon,
   ReaderIcon,
   CubeIcon,
   RocketIcon,
-} from "@repo/ui/shared/react-icons";
+} from "@repo/ui/components/shared/react-icons";
 
 import { RecentBatches } from "./recent-batches";
 import { RecentTransactions } from "./recent-transactions";
-import { Button } from "@repo/ui/shared/button";
+import { Button } from "@repo/ui/components/shared/button";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { useBatchesService } from "@/src/services/useBatchesService";
-import TruncatedAddress from "@repo/ui/common/truncated-address";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { useContractsService } from "@/src/services/useContractsService";
-import { Skeleton } from "@repo/ui/shared/skeleton";
+import { Skeleton } from "@repo/ui/components/shared/skeleton";
 import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
 import { cn, formatNumber } from "@repo/ui/lib/utils";
-import { Badge } from "@repo/ui/shared/badge";
-import { BlocksIcon } from "@repo/ui/shared/react-icons";
+import { Badge } from "@repo/ui/components/shared/badge";
+import { BlocksIcon } from "@repo/ui/components/shared/react-icons";
 
 import { useRollupsService } from "@/src/services/useRollupsService";
 import { RecentRollups } from "./recent-rollups";

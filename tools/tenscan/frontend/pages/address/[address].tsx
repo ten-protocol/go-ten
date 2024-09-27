@@ -1,7 +1,7 @@
 import React from "react";
 import Layout from "@/src/components/layouts/default-layout";
-import EmptyState from "@repo/ui/common/empty-state";
-import { Button } from "@repo/ui/shared/button";
+import EmptyState from "@repo/ui/components/common/empty-state";
+import { Button } from "@repo/ui/components/shared/button";
 import { useRouter } from "next/router";
 
 const AddressDetails = () => {

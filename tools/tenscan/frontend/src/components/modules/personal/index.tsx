@@ -1,6 +1,6 @@
 import React from "react";
 import { columns } from "@/src/components/modules/personal/columns";
-import { DataTable } from "@repo/ui/common/data-table/data-table";
+import { DataTable } from "@repo/ui/components/common/data-table/data-table";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 
 export default function PersonalTransactions() {

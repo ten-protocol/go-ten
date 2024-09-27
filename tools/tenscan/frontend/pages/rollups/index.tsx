@@ -1,5 +1,5 @@
 import React from "react";
-import { DataTable } from "@repo/ui/common/data-table/data-table";
+import { DataTable } from "@repo/ui/components/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import { Metadata } from "next";

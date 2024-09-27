@@ -1,7 +1,7 @@
-import TruncatedAddress from "@repo/ui/common/truncated-address";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { formatTimeAgo } from "@repo/ui/lib/utils";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
-import { Avatar, AvatarFallback } from "@repo/ui/shared/avatar";
+import { Avatar, AvatarFallback } from "@repo/ui/components/shared/avatar";
 import Link from "next/link";
 
 export function RecentBatches({ batches }: { batches: any }) {

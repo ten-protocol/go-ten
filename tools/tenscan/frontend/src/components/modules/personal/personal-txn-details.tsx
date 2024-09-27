@@ -1,5 +1,7 @@
 import React from "react";
-import KeyValueItem, { KeyValueList } from "@repo/ui/shared/key-value";
+import KeyValueItem, {
+  KeyValueList,
+} from "@repo/ui/components/shared/key-value";
 import {
   PersonalTransactionType,
   TransactionReceipt,
@@ -7,8 +9,8 @@ import {
 } from "../../../types/interfaces/TransactionInterfaces";
 import { BadgeType } from "../../../types/interfaces";
 import Link from "next/link";
-import TruncatedAddress from "@repo/ui/common/truncated-address";
-import { Badge } from "@repo/ui/shared/badge";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
+import { Badge } from "@repo/ui/components/shared/badge";
 
 export function PersonalTxnDetailsComponent({
   transactionDetails,

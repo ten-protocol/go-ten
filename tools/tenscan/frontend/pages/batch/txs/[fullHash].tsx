@@ -1,8 +1,8 @@
 import React from "react";
 import { fetchBatchTransactions } from "../../../api/batches";
 import Layout from "../../../src/components/layouts/default-layout";
-import { DataTable } from "@repo/ui/common/data-table/data-table";
-import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { DataTable } from "@repo/ui/components/common/data-table/data-table";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { columns } from "../../../src/components/modules/batches/transaction-columns";
 import {
   Card,
@@ -10,7 +10,7 @@ import {
   CardTitle,
   CardContent,
   CardDescription,
-} from "@repo/ui/shared/card";
+} from "@repo/ui/components/shared/card";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import { getOptions } from "../../../src/lib/constants";

@@ -5,7 +5,7 @@ import {
   setupEventListeners,
 } from "../lib/utils/walletEvents";
 import { getEthereumProvider, handleError } from "../lib/utils/walletUtils";
-import { toast } from "../shared/use-toast";
+import { toast } from "../components/shared/use-toast";
 import { requestMethods } from "../routes";
 import { ToastType } from "../lib/enums/toast";
 import { StoreSet, StoreGet } from "../lib/types/common";
@@ -40,7 +40,6 @@ export const walletService = {
         }, 3000);
         return;
       }
-      console.log(">>>>>>>>");
       set({ provider: detectedProvider, loading: false });
       await walletService.proceedWithProviderInitialization(set, get);
     } catch (error) {

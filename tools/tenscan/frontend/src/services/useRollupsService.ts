@@ -4,7 +4,7 @@ import {
   fetchLatestRollups,
   fetchRollups,
 } from "@/api/rollups";
-import { toast } from "@repo/ui/shared/use-toast";
+import { toast } from "@repo/ui/components/shared/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { getOptions, pollingInterval } from "../lib/constants";

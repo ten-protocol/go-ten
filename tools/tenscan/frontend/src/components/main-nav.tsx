@@ -3,16 +3,16 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 
 import { cn } from "@repo/ui/lib/utils";
-import { Button } from "@repo/ui/shared/button";
+import { Button } from "@repo/ui/components/shared/button";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-} from "@repo/ui/shared/dropdown-menu";
+} from "@repo/ui/components/shared/dropdown-menu";
 
-import { ChevronDownIcon } from "@repo/ui/shared/react-icons";
+import { ChevronDownIcon } from "@repo/ui/components/shared/react-icons";
 import { NavLink } from "@/src/types/interfaces";
 import { NavLinks } from "../routes";
 

@@ -2,10 +2,10 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { MainNav } from "../main-nav";
-import { ModeToggle } from "@repo/ui/shared/mode-toggle";
-import ConnectWalletButton from "@repo/ui/common/connect-wallet";
-import { HamburgerMenuIcon, X } from "@repo/ui/shared/react-icons";
-import { Button } from "@repo/ui/shared/button";
+import { ModeToggle } from "@repo/ui/components/shared/mode-toggle";
+import ConnectWalletButton from "@repo/ui/components/common/connect-wallet";
+import { HamburgerMenuIcon, X } from "@repo/ui/components/shared/react-icons";
+import { Button } from "@repo/ui/components/shared/button";
 import HealthIndicator from "../health-indicator";
 
 export default function Header() {

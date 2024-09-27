@@ -1,4 +1,4 @@
-import { showToast } from "../shared/use-toast";
+import { showToast } from "../components/shared/use-toast";
 import { ToastType } from "../../../tools/tenscan/frontend/src/types/interfaces";
 import { RESET_COPIED_TIMEOUT } from "../lib/constants";
 import React from "react";

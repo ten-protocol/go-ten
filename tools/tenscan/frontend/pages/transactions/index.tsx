@@ -1,13 +1,13 @@
 import React from "react";
 import { columns } from "@/src/components/modules/transactions/columns";
-import { DataTable } from "@repo/ui/common/data-table/data-table";
+import { DataTable } from "@repo/ui/components/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { Metadata } from "next";
 import { getItem } from "@repo/ui/lib/utils";
-import { ItemPosition } from "@repo/ui/lib/types";
 import HeadSeo from "@/src/components/head-seo";
 import { siteMetadata } from "@/src/lib/siteMetadata";
+import { ItemPosition } from "@repo/ui/lib/enums/ui";
 
 export const metadata: Metadata = {
   title: "Transactions",

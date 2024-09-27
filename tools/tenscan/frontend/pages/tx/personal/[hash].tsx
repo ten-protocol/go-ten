@@ -1,16 +1,21 @@
 import React from "react";
 import Layout from "../../../src/components/layouts/default-layout";
-import EmptyState from "@repo/ui/common/empty-state";
-import { Button } from "@repo/ui/shared/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@repo/ui/shared/card";
-import { Skeleton } from "@repo/ui/shared/skeleton";
+import EmptyState from "@repo/ui/components/common/empty-state";
+import { Button } from "@repo/ui/components/shared/button";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@repo/ui/components/shared/card";
+import { Skeleton } from "@repo/ui/components/shared/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import { fetchPersonalTxnByHash } from "../../../api/transactions";
 import { PersonalTxnDetailsComponent } from "../../../src/components/modules/personal/personal-txn-details";
 import { ethereum } from "@repo/ui/lib/utils";
 import useWalletStore from "@repo/ui/stores/wallet-store";
-import ConnectWalletButton from "@repo/ui/common/connect-wallet";
+import ConnectWalletButton from "@repo/ui/components/common/connect-wallet";
 
 export default function TransactionDetails() {
   const router = useRouter();

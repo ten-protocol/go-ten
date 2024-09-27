@@ -1,12 +1,12 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@repo/ui/shared/badge";
+import { Badge } from "@repo/ui/components/shared/badge";
 
 import { statuses } from "./constants";
-import { DataTableColumnHeader } from "@repo/ui/common/data-table/data-table-column-header";
+import { DataTableColumnHeader } from "@repo/ui/components/common/data-table/data-table-column-header";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
-import TruncatedAddress from "@repo/ui/common/truncated-address";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { formatTimeAgo } from "@repo/ui/lib/utils";
 import Link from "next/link";
 

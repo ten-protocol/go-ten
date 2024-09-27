@@ -1,15 +1,15 @@
 "use client";
 import React from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { Badge, badgeVariants } from "@repo/ui/shared/badge";
+import { Badge, badgeVariants } from "@repo/ui/components/shared/badge";
 
 import { statuses, types } from "./data";
-import { DataTableColumnHeader } from "@repo/ui/common/data-table/data-table-column-header";
+import { DataTableColumnHeader } from "@repo/ui/components/common/data-table/data-table-column-header";
 import { PersonalTransactions } from "../../..//types/interfaces/TransactionInterfaces";
-import TruncatedAddress from "@repo/ui/common/truncated-address";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { formatNumber } from "@repo/ui/lib/utils";
 import Link from "next/link";
-import { EyeOpenIcon } from "@repo/ui/shared/react-icons";
+import { EyeOpenIcon } from "@repo/ui/components/shared/react-icons";
 
 export const columns: ColumnDef<PersonalTransactions>[] = [
   {

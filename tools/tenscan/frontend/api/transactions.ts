@@ -8,7 +8,7 @@ import {
   TransactionResponse,
   Transaction,
 } from "@/src/types/interfaces/TransactionInterfaces";
-import { showToast } from "@repo/ui/shared/use-toast";
+import { showToast } from "@repo/ui/components/shared/use-toast";
 import { ResponseDataInterface } from "@repo/ui/lib/types/common";
 import { ToastType } from "@repo/ui/lib/enums/toast";
 

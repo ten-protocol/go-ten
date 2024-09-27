@@ -2,14 +2,14 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 
-import { DataTableColumnHeader } from "@repo/ui/common/data-table/data-table-column-header";
+import { DataTableColumnHeader } from "@repo/ui/components/common/data-table/data-table-column-header";
 import { Block, BlockHeader } from "@/src/types/interfaces/BlockInterfaces";
-import TruncatedAddress from "@repo/ui/common/truncated-address";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { formatNumber, formatTimeAgo } from "@repo/ui/lib/utils";
-import { Badge } from "@repo/ui/shared/badge";
-import ExternalLink from "@repo/ui/shared/external-link";
+import { Badge } from "@repo/ui/components/shared/badge";
+import ExternalLink from "@repo/ui/components/shared/external-link";
 import { externalLinks } from "@/src/routes";
-import { EyeOpenIcon } from "@repo/ui/shared/react-icons";
+import { EyeOpenIcon } from "@repo/ui/components/shared/react-icons";
 
 export const columns: ColumnDef<Block>[] = [
   {

@@ -1,13 +1,13 @@
 import React from "react";
 import { columns } from "@/src/components/modules/batches/columns";
-import { DataTable } from "@repo/ui/common/data-table/data-table";
+import { DataTable } from "@repo/ui/components/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBatchesService } from "@/src/services/useBatchesService";
 import { getItem } from "@repo/ui/lib/utils";
-import { ItemPosition } from "@/src/types/interfaces";
 import { siteMetadata } from "@/src/lib/siteMetadata";
 import HeadSeo from "@/src/components/head-seo";
+import { ItemPosition } from "@repo/ui/lib/enums/ui";
 
 export const metadata: Metadata = {
   title: "Batches",

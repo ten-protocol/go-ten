@@ -3,7 +3,7 @@ import {
   ArrowRightIcon,
   ArrowUpIcon,
   CheckCircledIcon,
-} from "@repo/ui/shared/react-icons";
+} from "@repo/ui/components/shared/react-icons";
 
 export const labels = [
   {

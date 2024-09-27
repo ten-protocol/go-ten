@@ -1,12 +1,17 @@
-import { Separator } from "@repo/ui/shared/separator";
-import TruncatedAddress from "@repo/ui/common/truncated-address";
-import KeyValueItem, { KeyValueList } from "@repo/ui/shared/key-value";
+import { Separator } from "@repo/ui/components/shared/separator";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
+import KeyValueItem, {
+  KeyValueList,
+} from "@repo/ui/components/shared/key-value";
 import { formatNumber, formatTimeAgo } from "@repo/ui/lib/utils";
-import { Badge } from "@repo/ui/shared/badge";
+import { Badge } from "@repo/ui/components/shared/badge";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
-import { EyeClosedIcon, EyeOpenIcon } from "@repo/ui/shared/react-icons";
-import { Button } from "@repo/ui/shared/button";
+import {
+  EyeClosedIcon,
+  EyeOpenIcon,
+} from "@repo/ui/components/shared/react-icons";
+import { Button } from "@repo/ui/components/shared/button";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import JSONPretty from "react-json-pretty";
 import { useState } from "react";
@@ -15,7 +20,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@repo/ui/shared/tooltip";
+} from "@repo/ui/components/shared/tooltip";
 
 export function BatchHeightDetailsComponent({
   batchDetails,

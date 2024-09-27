@@ -14,6 +14,7 @@ export interface ResponseDataInterface<T> {
   result: T;
   errors?: string[] | string;
   item: T;
+
   message: string;
   pagination?: PaginationInterface;
   success: string;
@@ -25,3 +26,14 @@ export interface PaginationInterface {
   total: number;
   totalPages: number;
 }
+
+export interface DocumentInterface {
+  title: string;
+  subHeading: string;
+  content: {
+    heading: "string";
+    content: "string";
+  };
+}
+
+// export interface

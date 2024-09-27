@@ -4,7 +4,7 @@ import {
   ArrowUpIcon,
   CheckCircledIcon,
   ClockIcon,
-} from "@repo/ui/shared/react-icons";
+} from "@repo/ui/components/shared/react-icons";
 
 export const labels = [
   {

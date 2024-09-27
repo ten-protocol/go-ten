@@ -1,4 +1,4 @@
-import { Input } from "@repo/ui/shared/input";
+import { Input } from "@repo/ui/components/shared/input";
 
 export function Search() {
   return (

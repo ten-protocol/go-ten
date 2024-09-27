@@ -2,12 +2,12 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 
-import { DataTableColumnHeader } from "@repo/ui/common/data-table/data-table-column-header";
-import TruncatedAddress from "@repo/ui/common/truncated-address";
+import { DataTableColumnHeader } from "@repo/ui/components/common/data-table/data-table-column-header";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { formatNumber, formatTimeAgo } from "@repo/ui/lib/utils";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
-import { Badge } from "@repo/ui/shared/badge";
+import { Badge } from "@repo/ui/components/shared/badge";
 
 export const columns: ColumnDef<Batch>[] = [
   {

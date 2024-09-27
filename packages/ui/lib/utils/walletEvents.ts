@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import { currentNetwork, ethereum, handleStorage } from ".";
-import { toast } from "../../shared/use-toast";
+import { toast } from "../../components/shared/use-toast";
 import { ToastType } from "../enums/toast";
 
 export const setupEventListeners = (

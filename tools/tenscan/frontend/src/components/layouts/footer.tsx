@@ -4,7 +4,7 @@ import {
   GitHubLogoIcon,
   TwitterLogoIcon,
   DiscordLogoIcon,
-} from "@repo/ui/shared/react-icons";
+} from "@repo/ui/components/shared/react-icons";
 import { version } from "@/src/lib/constants";
 
 const SOCIAL_LINKS = [

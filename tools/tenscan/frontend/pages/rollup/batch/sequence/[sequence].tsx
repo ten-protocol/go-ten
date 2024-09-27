@@ -1,16 +1,16 @@
 import { fetchRollupByBatchSequence } from "@/api/rollups";
 import Layout from "@/src/components/layouts/default-layout";
-import EmptyState from "@repo/ui/common/empty-state";
+import EmptyState from "@repo/ui/components/common/empty-state";
 import { RollupDetailsComponent } from "@/src/components/modules/rollups/rollup-details";
-import { Button } from "@repo/ui/shared/button";
+import { Button } from "@repo/ui/components/shared/button";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
   CardDescription,
-} from "@repo/ui/shared/card";
-import { Skeleton } from "@repo/ui/shared/skeleton";
+} from "@repo/ui/components/shared/card";
+import { Skeleton } from "@repo/ui/components/shared/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 

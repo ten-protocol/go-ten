@@ -1,6 +1,6 @@
-import TruncatedAddress from "@repo/ui/common/truncated-address";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { formatTimeAgo } from "@repo/ui/lib/utils";
-import { Avatar, AvatarFallback } from "@repo/ui/shared/avatar";
+import { Avatar, AvatarFallback } from "@repo/ui/components/shared/avatar";
 import { Rollup } from "@/src/types/interfaces/RollupInterfaces";
 
 export function RecentRollups({ rollups }: { rollups: any }) {

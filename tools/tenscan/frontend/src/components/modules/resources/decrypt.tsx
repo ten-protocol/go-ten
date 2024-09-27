@@ -1,12 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { Alert, AlertTitle, AlertDescription } from "@repo/ui/shared/alert";
-import { Badge } from "@repo/ui/shared/badge";
-import { Button } from "@repo/ui/shared/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@repo/ui/shared/card";
-import { Textarea } from "@repo/ui/shared/textarea";
+import {
+  Alert,
+  AlertTitle,
+  AlertDescription,
+} from "@repo/ui/components/shared/alert";
+import { Badge } from "@repo/ui/components/shared/badge";
+import { Button } from "@repo/ui/components/shared/button";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@repo/ui/components/shared/card";
+import { Textarea } from "@repo/ui/components/shared/textarea";
 import { currentEncryptedKey } from "@/src/lib/constants";
-import { CopyIcon } from "@repo/ui/shared/react-icons";
-import { Terminal } from "@repo/ui/shared/react-icons";
+import { CopyIcon } from "@repo/ui/components/shared/react-icons";
+import { Terminal } from "@repo/ui/components/shared/react-icons";
 import { useRouter } from "next/router";
 import JSONPretty from "react-json-pretty";
 import { useRollupsService } from "@/src/services/useRollupsService";
@@ -15,7 +24,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@repo/ui/shared/tooltip";
+} from "@repo/ui/components/shared/tooltip";
 
 export default function Decrypt() {
   const router = useRouter();
