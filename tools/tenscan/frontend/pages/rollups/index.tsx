@@ -5,9 +5,9 @@ import { useRollupsService } from "@/src/services/useRollupsService";
 import { Metadata } from "next";
 import { columns } from "@/src/components/modules/rollups/columns";
 import { getItem } from "@repo/ui/lib/utils";
-import { ItemPosition } from "@repo/ui/lib/types";
 import HeadSeo from "@/src/components/head-seo";
 import { siteMetadata } from "@/src/lib/siteMetadata";
+import { ItemPosition } from "@repo/ui/lib/enums/ui";
 
 export const metadata: Metadata = {
   title: "Rollups",

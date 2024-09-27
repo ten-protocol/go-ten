@@ -1,8 +1,10 @@
 import { type ClassValue, clsx } from "clsx";
 import { formatDistanceToNow } from "date-fns";
 import { twMerge } from "tailwind-merge";
-import { Environment, ItemPosition, L1Network, L2Network } from "../types";
 import { environment } from "../constants";
+import { L1Network, L2Network } from "../enums/network";
+import { Environment } from "../types/ui";
+import { ItemPosition } from "../enums/ui";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

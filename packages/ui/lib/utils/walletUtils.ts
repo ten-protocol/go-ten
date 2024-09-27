@@ -1,7 +1,8 @@
 import { ethers } from "ethers";
 import { ethereum } from ".";
-import { IErrorMessages, ToastType } from "../types";
 import { showToast } from "../../shared/use-toast";
+import { IErrorMessages } from "../enums/error";
+import { ToastType } from "../enums/toast";
 
 export const getEthereumProvider = async () => {
   if (!ethereum) {

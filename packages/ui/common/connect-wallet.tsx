@@ -4,33 +4,31 @@ import {
   ExclamationTriangleIcon,
 } from "@radix-ui/react-icons";
 import { cn, downloadMetaMask, ethereum } from "../lib/utils";
-import { ButtonVariants } from "../lib/types";
+import useWalletStore from "../stores/wallet-store";
 import TruncatedAddress from "./truncated-address";
 import { Button } from "../shared/button";
+import { ButtonVariants } from "../lib/types/ui";
 
 interface ConnectWalletButtonProps {
   className?: string;
   variant?: ButtonVariants;
   text?: string;
-  walletConnected: boolean;
-  walletAddress: string | null;
-  connectWallet: () => void;
-  disconnectWallet: () => void;
-  switchNetwork: () => void;
-  isWrongNetwork: boolean;
 }
 
 const ConnectWalletButton = ({
   className,
   text = "Connect Wallet",
   variant = "outline",
-  walletConnected,
-  connectWallet,
-  disconnectWallet,
-  switchNetwork,
-  isWrongNetwork,
-  walletAddress,
 }: ConnectWalletButtonProps) => {
+  const {
+    walletConnected,
+    connectWallet,
+    disconnectWallet,
+    isWrongNetwork,
+    switchNetwork,
+    address,
+  } = useWalletStore();
+
   const handleClick = () => {
     if (!ethereum) {
       downloadMetaMask();
@@ -71,12 +69,7 @@ const ConnectWalletButton = ({
     return walletConnected ? (
       <>
         <LinkBreak2Icon className="h-4 w-4 mr-1" />
-        {
-          <TruncatedAddress
-            address={walletAddress as string}
-            showCopy={false}
-          />
-        }
+        {<TruncatedAddress address={address as string} showCopy={false} />}
       </>
     ) : (
       <>

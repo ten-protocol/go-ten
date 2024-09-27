@@ -2,7 +2,7 @@ import React from "react";
 import Layout from "../../src/components/layouts/default-layout";
 import { Metadata } from "next";
 import PersonalTransactions from "../../src/components/modules/personal";
-import { useWalletConnection } from "../../src/components/providers/wallet-provider";
+import useWalletStore from "@repo/ui/stores/wallet-store";
 import ConnectWalletButton from "@repo/ui/common/connect-wallet";
 import EmptyState from "@repo/ui/common/empty-state";
 import { ethereum } from "@repo/ui/lib/utils";
@@ -15,14 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default function PersonalPage() {
-  const {
-    walletConnected,
-    walletAddress,
-    connectWallet,
-    disconnectWallet,
-    switchNetwork,
-    isWrongNetwork,
-  } = useWalletConnection();
+  const { walletConnected } = useWalletStore();
 
   return (
     <>
@@ -48,12 +41,6 @@ export default function PersonalPage() {
                     ? "Connect Wallet to continue"
                     : "Install MetaMask to continue"
                 }
-                walletConnected={walletConnected}
-                walletAddress={walletAddress}
-                connectWallet={connectWallet}
-                disconnectWallet={disconnectWallet}
-                switchNetwork={switchNetwork}
-                isWrongNetwork={isWrongNetwork}
               />
             }
           />

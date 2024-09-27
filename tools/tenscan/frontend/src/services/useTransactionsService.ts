@@ -4,7 +4,6 @@ import {
   fetchTransactionCount,
   personalTransactionsData,
 } from "@/api/transactions";
-import { useWalletConnection } from "@/src/components/providers/wallet-provider";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
@@ -13,10 +12,11 @@ import {
   pricePollingInterval,
 } from "../lib/constants";
 import { useRouter } from "next/router";
+import useWalletStore from "@repo/ui/stores/wallet-store";
 
 export const useTransactionsService = () => {
   const { query } = useRouter();
-  const { walletAddress, provider } = useWalletConnection();
+  const { address, provider } = useWalletStore();
 
   const [noPolling, setNoPolling] = useState(false);
 
@@ -41,8 +41,8 @@ export const useTransactionsService = () => {
 
   const { data: personalTxns, isLoading: personalTxnsLoading } = useQuery({
     queryKey: ["personalTxns", options],
-    queryFn: () => personalTransactionsData(provider, walletAddress, options),
-    enabled: !!walletAddress && !!provider,
+    queryFn: () => personalTransactionsData(provider, address, options),
+    enabled: !!address && !!provider,
   });
 
   const { data: price, isLoading: isPriceLoading } = useQuery({

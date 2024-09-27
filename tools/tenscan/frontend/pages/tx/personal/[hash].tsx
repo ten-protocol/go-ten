@@ -7,22 +7,14 @@ import { Skeleton } from "@repo/ui/shared/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import { fetchPersonalTxnByHash } from "../../../api/transactions";
-import { useWalletConnection } from "../../../src/components/providers/wallet-provider";
 import { PersonalTxnDetailsComponent } from "../../../src/components/modules/personal/personal-txn-details";
 import { ethereum } from "@repo/ui/lib/utils";
+import useWalletStore from "@repo/ui/stores/wallet-store";
 import ConnectWalletButton from "@repo/ui/common/connect-wallet";
 
 export default function TransactionDetails() {
   const router = useRouter();
-  const {
-    provider,
-    walletConnected,
-    walletAddress,
-    connectWallet,
-    disconnectWallet,
-    switchNetwork,
-    isWrongNetwork,
-  } = useWalletConnection();
+  const { provider, walletConnected } = useWalletStore();
   const { hash } = router.query;
 
   const { data: transactionDetails, isLoading } = useQuery({
@@ -68,12 +60,6 @@ export default function TransactionDetails() {
                     ? "Connect Wallet to continue"
                     : "Install MetaMask to continue"
                 }
-                walletConnected={walletConnected}
-                walletAddress={walletAddress}
-                connectWallet={connectWallet}
-                disconnectWallet={disconnectWallet}
-                switchNetwork={switchNetwork}
-                isWrongNetwork={isWrongNetwork}
               />
               <Button variant={"link"} onClick={() => router.push("/personal")}>
                 Go back

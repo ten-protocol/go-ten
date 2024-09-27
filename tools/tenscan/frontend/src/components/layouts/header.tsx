@@ -7,18 +7,8 @@ import ConnectWalletButton from "@repo/ui/common/connect-wallet";
 import { HamburgerMenuIcon, X } from "@repo/ui/shared/react-icons";
 import { Button } from "@repo/ui/shared/button";
 import HealthIndicator from "../health-indicator";
-import { useWalletConnection } from "../providers/wallet-provider";
 
 export default function Header() {
-  const {
-    walletConnected,
-    walletAddress,
-    connectWallet,
-    disconnectWallet,
-    switchNetwork,
-    isWrongNetwork,
-  } = useWalletConnection();
-
   return (
     <div className="border-b">
       <div className="flex h-16 justify-between items-center px-4">
@@ -45,14 +35,7 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             <HealthIndicator />
             <ModeToggle />
-            <ConnectWalletButton
-              walletConnected={walletConnected}
-              walletAddress={walletAddress}
-              connectWallet={connectWallet}
-              disconnectWallet={disconnectWallet}
-              switchNetwork={switchNetwork}
-              isWrongNetwork={isWrongNetwork}
-            />
+            <ConnectWalletButton />
           </div>
         </div>
         <div className="flex items-center space-x-4 md:hidden">
@@ -65,14 +48,6 @@ export default function Header() {
 
 const MobileMenu = () => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const {
-    walletConnected,
-    walletAddress,
-    connectWallet,
-    disconnectWallet,
-    switchNetwork,
-    isWrongNetwork,
-  } = useWalletConnection();
 
   return (
     <div className="relative flex items-center space-x-">
@@ -89,14 +64,7 @@ const MobileMenu = () => {
           <div className="bg-background border rounded-lg shadow-lg">
             <div className="flex flex-col p-4 space-y-2">
               <MainNav className="flex flex-col" />
-              <ConnectWalletButton
-                walletConnected={walletConnected}
-                walletAddress={walletAddress}
-                connectWallet={connectWallet}
-                disconnectWallet={disconnectWallet}
-                switchNetwork={switchNetwork}
-                isWrongNetwork={isWrongNetwork}
-              />
+              <ConnectWalletButton />
               <ModeToggle />
             </div>
           </div>
