@@ -1,7 +1,7 @@
 import React from "react";
-import { columns } from "../../modules/personal/columns";
+import { columns } from "@/src/components/modules/personal/columns";
 import { DataTable } from "@repo/ui/common/data-table/data-table";
-import { useTransactionsService } from "../../../services/useTransactionsService";
+import { useTransactionsService } from "@/src/services/useTransactionsService";
 
 export default function PersonalTransactions() {
   const { personalTxns, setNoPolling, personalTxnsLoading } =
