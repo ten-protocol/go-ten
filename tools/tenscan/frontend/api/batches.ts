@@ -1,13 +1,13 @@
 import { httpRequest } from ".";
 import { apiRoutes } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
+import { ResponseDataInterface } from "@/src/types/interfaces";
 import {
   Batch,
   BatchDetails,
   BatchResponse,
   LatestBatch,
 } from "@/src/types/interfaces/BatchInterfaces";
-import { ResponseDataInterface } from "@repo/ui/lib/types/common";
 
 export const fetchBatches = async (
   payload?: Record<string, any>
