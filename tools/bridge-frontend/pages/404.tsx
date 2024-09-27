@@ -3,12 +3,12 @@ import Error from "./_error";
 
 export function Custom404Error({
   customPageTitle,
-  showRedirectText = true,
-  redirectText = "Home Page",
+  showRedirectText,
+  redirectText,
   isFullWidth,
   message,
   showMessage = true,
-  redirectLink = "/",
+  redirectLink,
   children,
 }: ErrorType) {
   return (
@@ -19,7 +19,7 @@ export function Custom404Error({
       } you're looking for.`}
       statusCode={404}
       showRedirectText={showRedirectText}
-      redirectText={redirectText}
+      redirectText={redirectText || "Home Page"}
       message={
         message ||
         `The ${

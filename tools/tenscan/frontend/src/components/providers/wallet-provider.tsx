@@ -43,7 +43,7 @@ export const WalletConnectionProvider = ({
       } catch (error: any) {
         showToast(
           ToastType.DESTRUCTIVE,
-          "Error connecting to wallet:" + error.message
+          "Error connecting to wallet:" + error?.message
         );
       }
     } else {
