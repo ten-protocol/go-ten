@@ -11,6 +11,7 @@ import {
   ReaderIcon,
   CubeIcon,
   RocketIcon,
+  BlocksIcon,
 } from "@repo/ui/components/shared/react-icons";
 
 import { RecentBatches } from "./recent-batches";
@@ -25,7 +26,6 @@ import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
 import { cn, formatNumber } from "@repo/ui/lib/utils";
 import { Badge } from "@repo/ui/components/shared/badge";
-import { BlocksIcon } from "@repo/ui/components/shared/react-icons";
 
 import { useRollupsService } from "@/src/services/useRollupsService";
 import { RecentRollups } from "./recent-rollups";
