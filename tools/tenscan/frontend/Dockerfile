@@ -4,6 +4,6 @@ RUN mkdir -p /home/obscuro/go-obscuro/tools/tenscan/
 COPY ./tools/tenscan/frontend /home/obscuro/go-obscuro/tools/tenscan/frontend
 
 WORKDIR /home/obscuro/go-obscuro/tools/tenscan/frontend
-RUN npm install
+RUN pnpm install
 
 EXPOSE 80
