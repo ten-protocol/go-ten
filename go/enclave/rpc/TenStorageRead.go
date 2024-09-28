@@ -85,7 +85,10 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 		builder.Err = fmt.Errorf("unable to parse storage slot (%s)", builder.Param.storageSlot)
 		return nil
 	}
-	storageSlot := sl.Bytes()
+	// the storage slot needs to be 32 bytes padded with 0s
+	// the storage slot needs to be 32 bytes padded with 0s
+	storageSlot := common.Hash{}
+	storageSlot.SetBytes(sl.Bytes())
 
 	account, err := stateDb.GetTrie().GetAccount(*builder.Param.address)
 	if err != nil {
@@ -93,14 +96,13 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 		return nil
 	}
 
-	// todo need another step to get the storage key from the slot?
 	trie, err := stateDb.Database().OpenTrie(account.Root)
 	if err != nil {
 		builder.Err = err
 		return nil
 	}
 
-	value, err := trie.GetStorage(*builder.Param.address, storageSlot)
+	value, err := trie.GetStorage(*builder.Param.address, storageSlot.Bytes())
 	if err != nil {
 		rpc.logger.Debug("Failed eth_getStorageAt.", log.ErrKey, err)
 
