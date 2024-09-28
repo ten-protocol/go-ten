@@ -1,17 +1,6 @@
-import { httpRequest } from ".";
 import { siteMetadata } from "../../../tools/bridge-frontend/src/lib/siteMetadata";
-import { DocumentInterface, ResponseDataInterface } from "../lib/types/common";
-import { apiRoutes } from "../routes";
-import { pathToUrl } from "../routes/router";
+import { DocumentInterface } from "../lib/types/common";
 
-export const fetchTestnetStatus = async (): Promise<
-  ResponseDataInterface<boolean>
-> => {
-  return await httpRequest<ResponseDataInterface<boolean>>({
-    method: "get",
-    url: pathToUrl(apiRoutes.getHealthStatus),
-  });
-};
 export const fetchDocument = async (id: string): Promise<DocumentInterface> => {
   const response = await fetch(`/docs/${id}.json`);
   const data = await response.json();
