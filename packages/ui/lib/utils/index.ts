@@ -18,6 +18,14 @@ export function formatTimeAgo(unixTimestampSeconds: string | number) {
   return formatDistanceToNow(date, { addSuffix: true });
 }
 
+export function formatTimestampToDate(unixTimestampSeconds: string | number) {
+  if (!unixTimestampSeconds) {
+    return "Unknown";
+  }
+  const date = new Date(Number(unixTimestampSeconds) * 1000);
+  return date.toString();
+}
+
 export const { ethereum } =
   typeof window !== "undefined" ? window : ({} as any);
 

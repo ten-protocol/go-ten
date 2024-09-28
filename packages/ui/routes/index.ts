@@ -1,7 +1,3 @@
-export const apiRoutes = {
-  getHealthStatus: `/network-health/`,
-};
-
 export const requestMethods = {
   requestAccounts: "eth_requestAccounts",
   switchNetwork: "wallet_switchEthereumChain",
