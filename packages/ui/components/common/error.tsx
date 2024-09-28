@@ -37,13 +37,15 @@ export function CustomError({
 }: ErrorType) {
   return (
     <section
-      className="h-full flex flex-col justify-center items-center"
+      className="flex flex-col justify-center items-center min-h-screen p-4"
       {...props}
     >
-      <main className={isFullWidth ? "max-w-full" : ""}>
+      <main
+        className={`w-full ${isFullWidth ? "max-w-full" : "max-w-2xl"} p-6`}
+      >
         <div className="text-center">
-          <h1 className="text-4xl font-extrabold mb-6">{heading}</h1>
-          <div className={isFullWidth ? "w-full" : ""}>
+          <h1 className="text-5xl font-bold mb-6">{heading}</h1>
+          <div className={isFullWidth ? "w-full" : "mx-auto"}>
             <ErrorMessage
               showStatusText={showStatusText}
               showMessage={showMessage}
@@ -52,25 +54,26 @@ export function CustomError({
             />
           </div>
           {showRedirectText && (
-            <div>
-              Go to{" "}
-              <Link
-                href={redirectLink}
-                passHref
-                className="text-primary pointer underline"
-              >
-                {redirectText}
-              </Link>
+            <div className="mt-6">
+              <p className="text-lg">
+                Go to{" "}
+                <Link
+                  href={redirectLink}
+                  className="text-primary pointer underline"
+                >
+                  {redirectText}
+                </Link>
+              </p>
             </div>
           )}
-          {children}
+          {children && <div className="mt-8">{children}</div>}
         </div>
       </main>
     </section>
   );
 }
 
-// server-side error handling logic
+// server-side error
 CustomError.getInitialProps = async ({ res, err }: any) => {
   const statusCode = res ? res.statusCode : err?.statusCode || 404;
   const errorInitialProps = await NextErrorComponent.getInitialProps({
@@ -79,7 +82,7 @@ CustomError.getInitialProps = async ({ res, err }: any) => {
   } as any);
   errorInitialProps.statusCode = statusCode;
 
-  // custom server-side error handling logic
+  // custom server-side error
   return statusCode < 500
     ? errorInitialProps
     : { ...errorInitialProps, statusCode };

@@ -6,6 +6,7 @@ import {
   TooltipTrigger,
 } from "../shared/tooltip";
 import Copy from "./copy";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 const TruncatedAddress = ({
   address,
@@ -13,6 +14,7 @@ const TruncatedAddress = ({
   suffixLength,
   showCopy = true,
   link,
+  showFullLength = false,
 }: {
   address: string;
   prefixLength?: number;
@@ -24,7 +26,17 @@ const TruncatedAddress = ({
         pathname: string;
         query: { [key: string]: string | number };
       };
+  showFullLength?: boolean;
 }) => {
+  if (!address) {
+    return <span>-</span>;
+  }
+
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+
+  // should show full address only on desktop if showFullLength is true; otherwise show truncated version
+  const shouldShowFullAddress = isDesktop && showFullLength;
+
   const truncatedAddress = `${address?.substring(
     0,
     prefixLength || 6
@@ -32,36 +44,25 @@ const TruncatedAddress = ({
 
   return (
     <>
-      {address ? (
-        <div className="flex items-center">
-          {link ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Link href={link} className="text-primary hover:underline">
-                    {truncatedAddress}
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-primary">{address}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>{truncatedAddress}</TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-primary">{address}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          {showCopy && <Copy value={address} />}
-        </div>
-      ) : (
-        <div>N/A</div>
-      )}
+      <div className="flex items-center">
+        {link ? (
+          <Link href={link} className="text-primary hover:underline">
+            {shouldShowFullAddress ? address : truncatedAddress}
+          </Link>
+        ) : shouldShowFullAddress ? (
+          <span>{address}</span>
+        ) : (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>{truncatedAddress}</TooltipTrigger>
+              <TooltipContent>
+                <p className="text-primary">{address}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        {showCopy && <Copy value={address} />}
+      </div>
     </>
   );
 };
