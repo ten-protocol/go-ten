@@ -38,7 +38,6 @@ export const apiRoutes = {
 export const ethMethods = {
   getStorageAt: "eth_getStorageAt",
   getTransactionReceipt: "eth_getTransactionReceipt",
-  switchNetwork: "wallet_switchEthereumChain",
 };
 
 // to send TEN Custom Queries (CQ) through the provider we call eth_getStorageAt and use these addresses to identify the TEN CQ method
@@ -47,15 +46,54 @@ export const tenCustomQueryMethods = {
   listPersonalTransactions: "0x0000000000000000000000000000000000000002",
 };
 
+export const externalPageLinks = {
+  // Dev and UAT environments don't have etherscan, hence, we're hardcoding this to just Sepolia
+  etherscanBlock: "https://sepolia.etherscan.io/block/:hash",
+};
+
+export const pageLinks = {
+  home: "/",
+  address: "/address/:address",
+
+  // **** TRANSACTIONS ****
+  personalTransactions: "/personal",
+  transactions: "/transactions",
+  txByHash: "/tx/:hash",
+  personalTxByHash: "/personal/tx/:hash",
+
+  // **** BATCHES ****
+  batches: "/batches",
+  batchByHash: "/batch/:hash",
+  batchByHeight: "/batch/height/:height",
+  batchTransactions: "/batch/txs/:hash",
+
+  // **** ROLLUPS ****
+  rollups: "/rollups",
+  rollupByHash: "/rollup/:hash",
+  rollupByBatchSequence: "/rollup/batch/sequence/:sequence",
+  rollupBatches: "/rollup/:hash/batches",
+
+  // **** BLOCKS ****
+  blocks: "/blocks",
+
+  // **** CONTRACTS ****
+  verifiedData: "/resources/verified-data",
+  decrypt: "/resources/decrypt",
+
+  // **** INFO ****
+  privacyPolicy: "/docs/privacy-policy",
+  termsOfService: "/docs/terms",
+};
+
 export const NavLinks: NavLink[] = [
   {
-    href: "/",
+    href: pageLinks.home,
     label: "Home",
     isExternal: false,
     isDropdown: false,
   },
   {
-    href: "/personal",
+    href: pageLinks.personalTransactions,
     label: "Personal",
     isExternal: false,
     isDropdown: false,
@@ -66,17 +104,17 @@ export const NavLinks: NavLink[] = [
     isDropdown: true,
     subNavLinks: [
       {
-        href: "/transactions",
+        href: pageLinks.transactions,
         label: "Transactions",
         isExternal: false,
       },
       {
-        href: "/batches",
+        href: pageLinks.batches,
         label: "Batches",
         isExternal: false,
       },
       {
-        href: "/rollups",
+        href: pageLinks.rollups,
         label: "Rollups",
         isExternal: false,
       },
@@ -88,19 +126,10 @@ export const NavLinks: NavLink[] = [
     isDropdown: true,
     subNavLinks: [
       {
-        href: "/resources/verified-data",
+        href: pageLinks.verifiedData,
         label: "Verified Data",
         isExternal: false,
       },
     ],
   },
 ];
-
-export const externalLinks = {
-  // Dev and UAT environments don't have etherscan, hence, we're hardcoding this to just Sepolia
-  etherscanBlock: "https://sepolia.etherscan.io/block/",
-};
-
-export const pageLinks = {
-  // home:
-};

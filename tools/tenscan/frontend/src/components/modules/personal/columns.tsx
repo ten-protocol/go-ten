@@ -8,8 +8,9 @@ import { DataTableColumnHeader } from "@repo/ui/components/common/data-table/dat
 import { PersonalTransactions } from "../../..//types/interfaces/TransactionInterfaces";
 import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { formatNumber } from "@repo/ui/lib/utils";
+import { pathToUrl } from "@/src/routes/router";
+import { pageLinks } from "@/src/routes";
 import Link from "next/link";
-import { EyeOpenIcon } from "@repo/ui/components/shared/react-icons";
 
 export const columns: ColumnDef<PersonalTransactions>[] = [
   {
@@ -19,11 +20,16 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
     ),
     cell: ({ row }) => {
       return (
-        <div className="flex space-x-2">
+        <Link
+          href={pathToUrl(pageLinks.batchByHeight, {
+            height: Number(row.getValue("blockNumber")),
+          })}
+          className="text-primary"
+        >
           <span className="max-w-[500px] truncate">
             #{Number(row.getValue("blockNumber"))}
           </span>
-        </div>
+        </Link>
       );
     },
     enableSorting: false,
@@ -35,7 +41,14 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
       <DataTableColumnHeader column={column} title="TEN Batch Hash" />
     ),
     cell: ({ row }) => {
-      return <TruncatedAddress address={row.getValue("blockHash")} />;
+      return (
+        <TruncatedAddress
+          address={row.getValue("blockHash")}
+          link={pathToUrl(pageLinks.batchByHash, {
+            hash: row.original.blockHash,
+          })}
+        />
+      );
     },
     enableSorting: false,
     enableHiding: false,
@@ -46,7 +59,14 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
       <DataTableColumnHeader column={column} title="Transaction Hash" />
     ),
     cell: ({ row }) => {
-      return <TruncatedAddress address={row.getValue("transactionHash")} />;
+      return (
+        <TruncatedAddress
+          address={row.getValue("transactionHash")}
+          link={pathToUrl(pageLinks.personalTxByHash, {
+            hash: row.original.transactionHash,
+          })}
+        />
+      );
     },
     enableSorting: false,
     enableHiding: false,
@@ -123,16 +143,6 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
     },
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id));
-    },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => {
-      return (
-        <Link href={`/tx/personal/${row.original.transactionHash}`}>
-          <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
-        </Link>
-      );
     },
   },
 ];

@@ -15,21 +15,11 @@ export const metadata: Metadata = {
 };
 
 export default function Batches() {
-  const { batches, refetchBatches, isBatchesLoading, setNoPolling } =
-    useBatchesService();
+  const { batches, refetchBatches, isBatchesLoading } = useBatchesService();
   const { BatchesData, Total } = batches?.result || {
     BatchesData: [],
     Total: 0,
   };
-
-  React.useEffect(() => {
-    setNoPolling(true);
-
-    return () => {
-      setNoPolling(false);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const firstBatchHeight = Number(getItem(BatchesData, "height"));
   const lastBatchHeight = Number(

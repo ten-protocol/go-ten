@@ -9,6 +9,8 @@ import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
 import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { formatTimeAgo } from "@repo/ui/lib/utils";
 import Link from "next/link";
+import { pathToUrl } from "@/src/routes/router";
+import { pageLinks } from "@/src/routes";
 
 export const columns: ColumnDef<Transaction>[] = [
   {
@@ -60,7 +62,9 @@ export const columns: ColumnDef<Transaction>[] = [
       return (
         <TruncatedAddress
           address={row.getValue("TransactionHash")}
-          link={`/tx/${row.original.TransactionHash}`}
+          link={pathToUrl(pageLinks.txByHash, {
+            hash: row.original.TransactionHash,
+          })}
         />
       );
     },

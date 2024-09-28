@@ -13,7 +13,7 @@ import { useRouter } from "next/router";
 export const useRollupsService = () => {
   const { query } = useRouter();
 
-  const [noPolling, setNoPolling] = useState(false);
+  const [noPolling, setNoPolling] = useState(true);
   const [decryptedRollup, setDecryptedRollup] = useState<any>();
 
   const options = getOptions(query);

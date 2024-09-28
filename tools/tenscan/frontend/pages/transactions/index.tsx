@@ -15,25 +15,12 @@ export const metadata: Metadata = {
 };
 
 export default function Transactions() {
-  const {
-    transactions,
-    refetchTransactions,
-    setNoPolling,
-    isTransactionsLoading,
-  } = useTransactionsService();
+  const { transactions, refetchTransactions, isTransactionsLoading } =
+    useTransactionsService();
   const { TransactionsData, Total } = transactions?.result || {
     TransactionsData: [],
     Total: 0,
   };
-
-  React.useEffect(() => {
-    setNoPolling(true);
-
-    return () => {
-      setNoPolling(false);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const firstBatchHeight = getItem(TransactionsData, "BatchHeight");
   const lastBatchHeight = getItem(

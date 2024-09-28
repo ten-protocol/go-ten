@@ -30,6 +30,7 @@ import { BlocksIcon } from "@repo/ui/components/shared/react-icons";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import { RecentRollups } from "./recent-rollups";
 import { DashboardAnalyticsData } from "@/src/types/interfaces";
+import { pageLinks } from "@/src/routes";
 
 interface RecentData {
   title: string;
@@ -46,10 +47,29 @@ export default function Dashboard() {
     transactions,
     transactionCount,
     isTransactionCountLoading,
+    setNoPolling: setNoPollingTransactions,
   } = useTransactionsService();
   const { contractCount, isContractCountLoading } = useContractsService();
-  const { batches, latestBatch, isLatestBatchLoading } = useBatchesService();
-  const { rollups } = useRollupsService();
+  const {
+    batches,
+    latestBatch,
+    isLatestBatchLoading,
+    setNoPolling: setNoPollingBatches,
+  } = useBatchesService();
+  const { rollups, setNoPolling: setNoPollingRollups } = useRollupsService();
+
+  React.useEffect(() => {
+    setNoPollingTransactions(false);
+    setNoPollingBatches(false);
+    setNoPollingRollups(false);
+
+    return () => {
+      setNoPollingTransactions(true);
+      setNoPollingBatches(true);
+      setNoPollingRollups(true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const DASHBOARD_DATA = [
     {
@@ -118,21 +138,21 @@ export default function Dashboard() {
       title: "Recent Rollups",
       data: rollups,
       component: <RecentRollups rollups={rollups} />,
-      goTo: "/rollups",
+      goTo: pageLinks.rollups,
       className: "col-span-1 md:col-span-2 lg:col-span-3",
     },
     {
       title: "Recent Batches",
       data: batches,
       component: <RecentBatches batches={batches} />,
-      goTo: "/batches",
+      goTo: pageLinks.batches,
       className: "col-span-1 md:col-span-2 lg:col-span-3",
     },
     {
       title: "Recent Transactions",
       data: transactions,
       component: <RecentTransactions transactions={transactions} />,
-      goTo: "/transactions",
+      goTo: pageLinks.transactions,
       className: "col-span-1 md:col-span-2 lg:col-span-3",
     },
   ];

@@ -7,6 +7,8 @@ import { formatTimeAgo } from "@repo/ui/lib/utils";
 import Link from "next/link";
 import { EyeOpenIcon } from "@repo/ui/components/shared/react-icons";
 import { Rollup } from "@/src/types/interfaces/RollupInterfaces";
+import { pathToUrl } from "@/src/routes/router";
+import { pageLinks } from "@/src/routes";
 
 export const columns: ColumnDef<Rollup>[] = [
   {
@@ -33,10 +35,9 @@ export const columns: ColumnDef<Rollup>[] = [
       return (
         <TruncatedAddress
           address={row.getValue("Hash")}
-          link={{
-            pathname: "/rollup/[hash]/batches",
-            query: { hash: row.getValue("Hash") },
-          }}
+          link={pathToUrl(pageLinks.rollupBatches, {
+            hash: row.getValue("Hash"),
+          })}
         />
       );
     },
@@ -80,7 +81,9 @@ export const columns: ColumnDef<Rollup>[] = [
       return (
         <div className="flex space-x-2">
           <Link
-            href={`/rollup/batch/sequence/${row.original.FirstSeq}`}
+            href={pathToUrl(pageLinks.rollupByBatchSequence, {
+              sequence: row.original.FirstSeq,
+            })}
             className="text-primary"
           >
             <span className="max-w-[500px] truncate">
@@ -102,7 +105,9 @@ export const columns: ColumnDef<Rollup>[] = [
       return (
         <div className="flex space-x-2">
           <Link
-            href={`/rollup/batch/sequence/${row.original.LastSeq}`}
+            href={pathToUrl(pageLinks.rollupByBatchSequence, {
+              sequence: row.original.LastSeq,
+            })}
             className="text-primary"
           >
             <span className="max-w-[500px] truncate">
@@ -119,7 +124,9 @@ export const columns: ColumnDef<Rollup>[] = [
     id: "actions",
     cell: ({ row }) => {
       return (
-        <Link href={`/rollup/${row.original.Hash}`}>
+        <Link
+          href={pathToUrl(pageLinks.rollupByHash, { hash: row.original.Hash })}
+        >
           <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
         </Link>
       );

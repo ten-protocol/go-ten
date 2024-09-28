@@ -1,7 +1,7 @@
 import React from "react";
 import { Badge, badgeVariants } from "@repo/ui/components/shared/badge";
 import { useGeneralService } from "../services/useGeneralService";
-import { BarChart } from "lucide-react";
+import { BarChart } from "@repo/ui/components/shared/react-icons";
 import {
   TooltipProvider,
   TooltipTrigger,

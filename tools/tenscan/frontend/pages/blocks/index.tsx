@@ -15,18 +15,11 @@ export const metadata: Metadata = {
 };
 
 export default function Blocks() {
-  const { blocks, setNoPolling, refetchBlocks, isBlocksLoading } =
-    useBlocksService();
+  const { blocks, refetchBlocks, isBlocksLoading } = useBlocksService();
   const { BlocksData, Total } = blocks?.result || {
     BlocksData: [],
     Total: 0,
   };
-
-  React.useEffect(() => {
-    setNoPolling(true);
-    return () => setNoPolling(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const firstBlockNumber = Number(getItem(BlocksData, "blockHeader.number"));
   const lastBlockNumber = Number(

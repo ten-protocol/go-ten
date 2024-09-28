@@ -4,21 +4,11 @@ import { DataTable } from "@repo/ui/components/common/data-table/data-table";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 
 export default function PersonalTransactions() {
-  const { personalTxns, setNoPolling, personalTxnsLoading } =
-    useTransactionsService();
+  const { personalTxns, personalTxnsLoading } = useTransactionsService();
   const { Receipts, Total } = personalTxns || {
     Receipts: [],
     Total: 0,
   };
-
-  React.useEffect(() => {
-    setNoPolling(true);
-
-    return () => {
-      setNoPolling(false);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <>

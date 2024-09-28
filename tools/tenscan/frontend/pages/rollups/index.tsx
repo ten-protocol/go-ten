@@ -15,21 +15,11 @@ export const metadata: Metadata = {
 };
 
 export default function Rollups() {
-  const { rollups, setNoPolling, isRollupsLoading, refetchRollups } =
-    useRollupsService();
+  const { rollups, isRollupsLoading, refetchRollups } = useRollupsService();
   const { RollupsData, Total } = rollups?.result || {
     RollupsData: [],
     Total: 0,
   };
-
-  React.useEffect(() => {
-    setNoPolling(true);
-
-    return () => {
-      setNoPolling(false);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const firstRollupID = Number(getItem(RollupsData, "ID"));
   const lastRollupID = Number(getItem(RollupsData, "ID", ItemPosition.LAST));

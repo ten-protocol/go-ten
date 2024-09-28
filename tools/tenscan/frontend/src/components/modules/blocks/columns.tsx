@@ -8,8 +8,9 @@ import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { formatNumber, formatTimeAgo } from "@repo/ui/lib/utils";
 import { Badge } from "@repo/ui/components/shared/badge";
 import ExternalLink from "@repo/ui/components/shared/external-link";
-import { externalLinks } from "@/src/routes";
+import { externalPageLinks, pageLinks } from "@/src/routes";
 import { EyeOpenIcon } from "@repo/ui/components/shared/react-icons";
+import { pathToUrl } from "@/src/routes/router";
 
 export const columns: ColumnDef<Block>[] = [
   {
@@ -62,7 +63,9 @@ export const columns: ColumnDef<Block>[] = [
       ) : (
         <TruncatedAddress
           address={row.original.rollupHash}
-          link={`/rollup/${row.original.rollupHash}`}
+          link={pathToUrl(pageLinks.rollupByHash, {
+            hash: row.original.rollupHash,
+          })}
         />
       );
     },
@@ -152,7 +155,9 @@ export const columns: ColumnDef<Block>[] = [
       const blockHeader = row.original.blockHeader as BlockHeader;
       return (
         <ExternalLink
-          href={`${externalLinks.etherscanBlock}${blockHeader?.hash}`}
+          href={pathToUrl(externalPageLinks.etherscanBlock, {
+            hash: blockHeader?.hash,
+          })}
         >
           <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer mr-2" />
         </ExternalLink>

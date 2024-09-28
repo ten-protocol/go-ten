@@ -18,7 +18,7 @@ export const useTransactionsService = () => {
   const { query } = useRouter();
   const { address, provider } = useWalletStore();
 
-  const [noPolling, setNoPolling] = useState(false);
+  const [noPolling, setNoPolling] = useState(true);
 
   const options = getOptions(query);
 

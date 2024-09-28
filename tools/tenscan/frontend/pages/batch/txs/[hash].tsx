@@ -14,15 +14,17 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import { getOptions } from "../../../src/lib/constants";
+import { pathToUrl } from "@/src/routes/router";
+import { pageLinks } from "@/src/routes";
 
 export default function BatchTransactions() {
   const router = useRouter();
-  const { fullHash } = router.query;
+  const { hash } = router.query;
   const options = getOptions(router.query);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["batchTransactions", { fullHash, options }],
-    queryFn: () => fetchBatchTransactions(fullHash as string, options),
+    queryKey: ["batchTransactions", { hash, options }],
+    queryFn: () => fetchBatchTransactions(hash as string, options),
   });
 
   const { TransactionsData, Total } = data?.result || {
@@ -35,14 +37,20 @@ export default function BatchTransactions() {
       <Card className="col-span-3">
         <CardHeader>
           <CardTitle>Transactions</CardTitle>
-          <CardDescription className="flex items-center space-x-2">
-            <p>Overview of all transactions in this batch:</p>
-            <TruncatedAddress
-              address={fullHash as string}
-              showCopy={false}
-              link={"/batch/" + fullHash}
-            />
-          </CardDescription>
+          <div className="flex space-x-2 wrap">
+            <CardDescription className="flex items-center space-x-2">
+              <span>
+                Overview of all transactions in this batch:
+                <TruncatedAddress
+                  address={hash as string}
+                  showCopy={false}
+                  link={pathToUrl(pageLinks.batchByHash, {
+                    hash: hash as string,
+                  })}
+                />
+              </span>
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <DataTable

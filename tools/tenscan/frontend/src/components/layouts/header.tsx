@@ -19,7 +19,6 @@ export default function Header() {
             width={150}
             height={40}
             className="cursor-pointer dark:hidden"
-            fetchPriority="auto"
           />
           <Image
             src="/assets/images/white_logotype.png"
@@ -27,7 +26,6 @@ export default function Header() {
             width={150}
             height={40}
             className="cursor-pointer hidden dark:block"
-            fetchPriority="auto"
           />
         </Link>
         <div className="hidden md:flex items-center space-x-2">
