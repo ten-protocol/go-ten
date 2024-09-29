@@ -3,6 +3,7 @@ package rpc
 import (
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -74,19 +75,24 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 		stateDb, err = rpc.registry.GetBatchStateAtHeight(builder.ctx, number)
 	}
 	if err != nil {
-		builder.Err = err
+		builder.Err = fmt.Errorf("unable to read block number - %w", err)
 		return nil
 	}
 
-	storageSlot, err := common.ParseHexOrString(builder.Param.storageSlot)
-	if err != nil {
-		builder.Err = err
+	sl := new(big.Int)
+	sl, ok := sl.SetString(builder.Param.storageSlot, 0)
+	if !ok {
+		builder.Err = fmt.Errorf("unable to parse storage slot (%s)", builder.Param.storageSlot)
 		return nil
 	}
+
+	// the storage slot needs to be 32 bytes padded with 0s
+	storageSlot := common.Hash{}
+	storageSlot.SetBytes(sl.Bytes())
 
 	account, err := stateDb.GetTrie().GetAccount(*builder.Param.address)
 	if err != nil {
-		builder.Err = err
+		builder.Err = fmt.Errorf("unable to get acct address - %w", err)
 		return nil
 	}
 
@@ -96,16 +102,16 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 		return nil
 	}
 
-	value, err := trie.GetStorage(*builder.Param.address, storageSlot)
+	value, err := trie.GetStorage(*builder.Param.address, storageSlot.Bytes())
 	if err != nil {
 		rpc.logger.Debug("Failed eth_getStorageAt.", log.ErrKey, err)
 
 		// return system errors to the host
 		if errors.Is(err, syserr.InternalError{}) {
-			return err
+			return fmt.Errorf("unable to get storage slot - %w", err)
 		}
 
-		builder.Err = err
+		builder.Err = fmt.Errorf("unable to get storage slot - %w", err)
 		return nil
 	}
 
