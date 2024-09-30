@@ -803,8 +803,13 @@ func (s *storageImpl) readOrWriteEOA(ctx context.Context, dbTX *sql.Tx, addr get
 	})
 }
 
-func (s *storageImpl) ReadContractCreator(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error) {
-	return enclavedb.ReadContractCreator(ctx, s.db.GetSQLDB(), address)
+func (s *storageImpl) ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error) {
+	dbtx, err := s.db.GetSQLDB().BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer dbtx.Rollback()
+	return enclavedb.ReadContractByAddress(ctx, dbtx, address)
 }
 
 func (s *storageImpl) logDuration(method string, stopWatch *measure.Stopwatch) {

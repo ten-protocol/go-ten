@@ -3,6 +3,7 @@ package enclavedb
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -27,13 +28,35 @@ type Contract struct {
 	Transparent    *bool
 }
 
+func (contract Contract) IsTransparent() bool {
+	return contract.Transparent != nil && *contract.Transparent
+}
+
 // EventType - maps to the “event_type“ table
 type EventType struct {
 	Id                                          uint64
-	ContractId                                  uint64
+	Contract                                    *Contract
 	EventSignature                              gethcommon.Hash
 	AutoVisibility                              bool
-	Public                                      bool
+	AutoPublic                                  *bool // true -when the event is autodetected as public
+	ConfigPublic                                bool
 	Topic1CanView, Topic2CanView, Topic3CanView *bool
 	SenderCanView                               *bool
+}
+
+func (et EventType) IsPublic() bool {
+	return (et.Contract.Transparent != nil && *et.Contract.Transparent) || et.ConfigPublic
+}
+
+func (et EventType) IsTopicRelevant(topicNo int) bool {
+	switch topicNo {
+	case 1:
+		return et.Topic1CanView != nil && *et.Topic1CanView
+	case 2:
+		return et.Topic2CanView != nil && *et.Topic2CanView
+	case 3:
+		return et.Topic3CanView != nil && *et.Topic3CanView
+	}
+	// this should not happen under any circumstance
+	panic(fmt.Sprintf("unknown topic no: %d", topicNo))
 }

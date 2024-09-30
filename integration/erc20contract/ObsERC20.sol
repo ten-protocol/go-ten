@@ -4,14 +4,38 @@ pragma solidity ^0.8.4;
 import "libs/openzeppelin/contracts/token/ERC20/ERC20.sol";
 //import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+// todo - can't import from the /contracts folder
+// implement this interface if you want to configure the visibility rules of your smart contract
+// the TEN platform will interpret this information
+interface ContractTransparencyConfig {
+    // configuration per event log type
+    struct EventLogConfig {
+        bytes eventSignature;
+        bool isPublic;  // everyone can see and query for this event
+        bool topic1CanView;    // If the event is private, and this is true, it means that the address from topic1 is an EOA that can view this event
+        bool topic2CanView;    // same
+        bool topic3CanView;    // same
+        bool visibleToSender; // if true, the tx signer will see this event. Default false
+    }
+
+    struct VisibilityConfig {
+        bool isTransparent; // If true - the internal state via getStorageAt will be accessible to everyone. All events will be public. Default false
+        EventLogConfig[] eventLogConfigs;  // mapping from event signature to visibility configs per event
+    }
+
+    // keep the logic independent of the environment
+    // max gas: 1 Million
+    function visibilityRules() external pure returns (VisibilityConfig memory);
+}
+
 interface Structs {
     struct CrossChainMessage {
         address sender;
-        uint64  sequence;
-        uint32  nonce;
-        bytes   topic;
-        bytes   payload;
-        uint8   consistencyLevel;
+        uint64 sequence;
+        uint32 nonce;
+        bytes topic;
+        bytes payload;
+        uint8 consistencyLevel;
     }
 }
 
@@ -19,23 +43,24 @@ interface IMessageBus {
     function publishMessage(
         uint32 nonce,
         uint32 topic,
-        bytes calldata payload, 
+        bytes calldata payload,
         uint8 consistencyLevel
     ) external payable returns (uint64 sequence);
 }
+
 // This is an implementation of a canonical ERC20 as used in the Obscuro network
 // where access to data has to be restricted.
-contract ObsERC20 is ERC20 {
+contract ObsERC20 is ERC20, ContractTransparencyConfig {
 
     address bridge = 0xdeB34A740ECa1eC42C8b8204CBEC0bA34FDD27f3;
 
     IMessageBus bus;
 
-    enum Topics{ 
-        MINT, 
-        TRANSFER 
+    enum Topics{
+        MINT,
+        TRANSFER
     }
-    
+
     struct AssetTransferMessage {
         address sender;
         address receiver;
@@ -52,6 +77,13 @@ contract ObsERC20 is ERC20 {
         bus = IMessageBus(busAddress);
     }
 
+    function visibilityRules() public override pure returns (VisibilityConfig memory){
+        EventLogConfig[]  memory configs = new EventLogConfig[](1);
+        // erc20 transfer
+        configs[0] = EventLogConfig(hex"ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", false, true, true, false, false);
+        return VisibilityConfig(false, configs);
+    }
+
     function _beforeTokenTransfer(address from, address to, uint256 amount)
     internal virtual override {
         //Only deposit messages.
@@ -59,7 +91,7 @@ contract ObsERC20 is ERC20 {
             return;
         }
 
-        if (to == bridge) { 
+        if (to == bridge) {
             AssetTransferMessage memory message = AssetTransferMessage(from, to, amount);
             uint64 sequence = bus.publishMessage(uint32(block.number), uint32(Topics.TRANSFER), abi.encode(message), 0);
         }
