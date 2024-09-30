@@ -1,3 +1,5 @@
+import { ButtonVariants } from "../types/ui";
+
 export interface SeoProps {
   title: string;
   description: string;
@@ -38,4 +40,10 @@ export interface ErrorType {
   redirectLink?: string;
   children?: React.ReactNode;
   [key: string]: any;
+}
+
+export interface ConnectWalletButtonProps {
+  className?: string;
+  variant?: ButtonVariants;
+  text?: string;
 }

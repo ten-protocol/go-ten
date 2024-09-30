@@ -2,7 +2,7 @@ import React from "react";
 import { useWalletConnection } from "../../providers/wallet-provider";
 import Connected from "./connected";
 import Disconnected from "./disconnected";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@repo/ui/components/shared/skeleton";
 
 const Home = () => {
   const { walletConnected, loading } = useWalletConnection();

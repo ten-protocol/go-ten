@@ -4,7 +4,7 @@ import {
   GitHubLogoIcon,
   TwitterLogoIcon,
   DiscordLogoIcon,
-} from "@radix-ui/react-icons";
+} from "@repo/ui/components/shared/react-icons";
 import { useWalletConnection } from "../providers/wallet-provider";
 
 const SOCIAL_LINKS = [

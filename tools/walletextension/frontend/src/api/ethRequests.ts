@@ -1,20 +1,18 @@
 import {
   nativeCurrency,
   tenChainIDDecimal,
-  tenChainIDHex, tenNetworkName,
+  tenChainIDHex,
+  tenNetworkName,
   tenscanAddress,
   userStorageAddress,
 } from "@/lib/constants";
-import {
-  getRandomIntAsString,
-  isTenChain,
-  ethereum,
-} from "@/lib/utils";
+import { getRandomIntAsString, isTenChain } from "@/lib/utils";
 import { requestMethods } from "@/routes";
 import { ethers } from "ethers";
 import { accountIsAuthenticated, authenticateUser } from "./gateway";
-import { showToast } from "@/components/ui/use-toast";
-import { ToastType } from "@/types/interfaces";
+import { ToastType } from "@repo/ui/lib/enums/toast";
+import { showToast } from "@repo/ui/components/shared/use-toast";
+import { ethereum } from "@repo/ui/lib/utils";
 
 const typedData = {
   types: {
@@ -150,7 +148,7 @@ export async function authenticateAccountWithTenGatewayEIP712(
       ...typedData,
       message: {
         ...typedData.message,
-        "Encryption Token":  token,
+        "Encryption Token": token,
       },
     };
     const signature = await getSignature(account, data);

@@ -1,4 +1,4 @@
-import { ErrorType } from "@/types/interfaces";
+import { ErrorType } from "@repo/ui/lib/interfaces/ui";
 import Error from "./_error";
 
 export function Custom404Error({
