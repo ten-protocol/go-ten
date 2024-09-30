@@ -2,10 +2,10 @@ import Layout from "@/components/layouts/default-layout";
 import { siteMetadata } from "@/lib/siteMetadata";
 import { useRouter } from "next/router";
 import React from "react";
-import Custom404Error from "../404";
 import { ToastType } from "@repo/ui/lib/enums/toast";
 import { showToast } from "@repo/ui/components/shared/use-toast";
 import Spinner from "@repo/ui/components/shared/spinner";
+import Custom404Error from "@repo/ui/components/common/404";
 
 type Document = {
   title: string;
