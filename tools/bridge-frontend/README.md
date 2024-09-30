@@ -32,12 +32,12 @@ For more information on the TEN bridge, please refer to the [TEN Bridge Document
 
 2. **Install Dependencies:**
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. **Run the Development Server:**
    ```bash
-   npm run dev
+   pnpm run dev
    ```
 
    The application will be accessible at [http://localhost:3000](http://localhost:3000).

@@ -29,7 +29,7 @@ Ten Gateway is a Next.js and Tailwind CSS-powered application.
 
 2. **Install Dependencies:**
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. **Configure Environment Variables:**
@@ -40,13 +40,13 @@ Create a `.env.local` file in the root directory of the project and add the foll
    ```
    
    Possible values for `NEXT_PUBLIC_API_GATEWAY_URL` are:
-   - `https://https://uat-testnet.ten.xyz`
-   - `https://https://sepolia-testnet.ten.xyz`
-   - `https://https://dev-testnet.ten.xyz`
+   - `https://uat-testnet.ten.xyz`
+   - `https://sepolia-testnet.ten.xyz`
+   - `https://dev-testnet.ten.xyz`
 
 4. **Run the Development Server:**
    ```bash
-   npm run dev
+   pnpm run dev
    ```
 
    The application will be accessible at [http://localhost:3000](http://localhost:3000).
