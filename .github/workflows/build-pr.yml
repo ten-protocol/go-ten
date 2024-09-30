@@ -65,7 +65,7 @@ jobs:
           done
 
       - name: Test
-        run: go test --failfast -v ./... -count=1 -timeout 10m
+        run: go test --failfast -v ./... -count=1 -timeout 5m
 
       - name: Store simulation logs
         uses: actions/upload-artifact@v4

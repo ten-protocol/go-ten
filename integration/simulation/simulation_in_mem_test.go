@@ -36,7 +36,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		StartPort:                  integration.TestPorts.TestInMemoryMonteCarloSimulationPort,
 		IsInMem:                    true,
 		L1TenData:                  &params.L1TenData{},
-		ReceiptTimeout:             30 * time.Second,
+		ReceiptTimeout:             5 * time.Second,
 		StoppingDelay:              15 * time.Second,
 		NodeWithInboundP2PDisabled: 2,
 		L1BeaconPort:               integration.TestPorts.TestInMemoryMonteCarloSimulationPort + integration.DefaultPrysmGatewayPortOffset,
