@@ -54,13 +54,12 @@ func (b *BlobResolverInMem) FetchBlobs(_ context.Context, block *types.Header, h
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	slot, _ := ethadapter.TimeToSlot(block.Time, MockGenesisBlock.Time(), b.secondsPerSlot)
-	// Retrieve the list of versioned hashes stored for the slot.
 	storedHashes, exists := b.slotToVersionedHashes[slot]
 	if !exists {
 		return nil, fmt.Errorf("no blobs found for slot %d: %w", slot, ethereum.NotFound)
 	}
 
-	// If no specific versionedHashes are provided, return all blobs for the slot.
+	// if no specific versionedHashes are provided, return all blobs for the slot.
 	if len(hashes) == 0 {
 		var allBlobs []*kzg4844.Blob
 		for _, vh := range storedHashes {
@@ -73,13 +72,12 @@ func (b *BlobResolverInMem) FetchBlobs(_ context.Context, block *types.Header, h
 		return allBlobs, nil
 	}
 
-	// Create a map for quick lookup of stored hashes.
 	hashSet := make(map[gethcommon.Hash]struct{}, len(storedHashes))
 	for _, h := range storedHashes {
 		hashSet[h] = struct{}{}
 	}
 
-	// Retrieve the blobs that match the provided versioned hashes.
+	// retrieve the blobs that match the provided versioned hashes.
 	var blobs []*kzg4844.Blob
 	for _, vh := range hashes {
 		if _, found := hashSet[vh]; found {

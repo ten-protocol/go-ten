@@ -31,7 +31,7 @@ const (
 // L1BeaconClient is a high level golang client for the Beacon API.
 type L1BeaconClient struct {
 	cl           BeaconClient
-	pool         *ClientPool[BlobSideCarsFetcher]
+	pool         *ClientPool[BlobRetrievalService]
 	initLock     sync.Mutex
 	timeToSlotFn TimeToSlotFn
 }
@@ -41,12 +41,12 @@ type BeaconClient interface {
 	NodeVersion(ctx context.Context) (string, error)
 	ConfigSpec(ctx context.Context) (APIConfigResponse, error)
 	BeaconGenesis(ctx context.Context) (APIGenesisResponse, error)
-	BeaconBlobSideCars(ctx context.Context, slot uint64) (APIGetBlobSidecarsResponse, error)
+	BeaconBlobSidecars(ctx context.Context, slot uint64, hashes []gethcommon.Hash) (APIGetBlobSidecarsResponse, error)
 }
 
-// BlobSideCarsFetcher is a thin wrapper over the Beacon APIs.
-type BlobSideCarsFetcher interface {
-	BeaconBlobSideCars(ctx context.Context, slot uint64) (APIGetBlobSidecarsResponse, error)
+// BlobRetrievalService is a thin wrapper over the Beacon APIs.
+type BlobRetrievalService interface {
+	BeaconBlobSidecars(ctx context.Context, slot uint64, hashes []gethcommon.Hash) (APIGetBlobSidecarsResponse, error)
 }
 
 // BeaconHTTPClient implements BeaconClient. It provides golang types over the basic Beacon API.
@@ -131,7 +131,7 @@ func (bc *BeaconHTTPClient) BeaconGenesis(ctx context.Context) (APIGenesisRespon
 	return genesisResp, nil
 }
 
-func (bc *BeaconHTTPClient) BeaconBlobSideCars(ctx context.Context, slot uint64) (APIGetBlobSidecarsResponse, error) {
+func (bc *BeaconHTTPClient) BeaconBlobSidecars(ctx context.Context, slot uint64, _ []gethcommon.Hash) (APIGetBlobSidecarsResponse, error) {
 	reqPath := path.Join(sidecarsMethodPrefix, strconv.FormatUint(slot, 10))
 	var reqQuery url.Values
 	var resp APIGetBlobSidecarsResponse
@@ -173,11 +173,11 @@ func (p *ClientPool[T]) MoveToNext() {
 // NewL1BeaconClient returns a client for making requests to an L1 consensus layer node.
 // Fallbacks are optional clients that will be used for fetching blobs. L1BeaconClient will rotate between
 // the `cl` and the fallbacks whenever a client runs into an error while fetching blobs.
-func NewL1BeaconClient(cl BeaconClient, fallbacks ...BlobSideCarsFetcher) *L1BeaconClient {
-	cs := append([]BlobSideCarsFetcher{cl}, fallbacks...)
+func NewL1BeaconClient(cl BeaconClient, fallbacks ...BlobRetrievalService) *L1BeaconClient {
+	cs := append([]BlobRetrievalService{cl}, fallbacks...)
 	return &L1BeaconClient{
 		cl:   cl,
-		pool: NewClientPool[BlobSideCarsFetcher](cs...),
+		pool: NewClientPool[BlobRetrievalService](cs...),
 	}
 }
 
@@ -215,11 +215,11 @@ func (cl *L1BeaconClient) GetTimeToSlotFn(ctx context.Context) (TimeToSlotFn, er
 	return cl.timeToSlotFn, nil
 }
 
-func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64) (APIGetBlobSidecarsResponse, error) {
+func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes []gethcommon.Hash) (APIGetBlobSidecarsResponse, error) {
 	var errs []error
 	for i := 0; i < cl.pool.Len(); i++ {
 		f := cl.pool.Get()
-		resp, err := f.BeaconBlobSideCars(ctx, slot)
+		resp, err := f.BeaconBlobSidecars(ctx, slot, hashes)
 		if err != nil {
 			cl.pool.MoveToNext()
 			errs = append(errs, err)
@@ -247,7 +247,7 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 		return nil, fmt.Errorf("error in converting b.Time to slot: %w", err)
 	}
 
-	resp, err := cl.fetchSidecars(ctx, slot)
+	resp, err := cl.fetchSidecars(ctx, slot, hashes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, b, err)
 	}
@@ -257,9 +257,6 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 	for _, h := range hashes {
 		for _, sidecar := range resp.Data {
 			versionedHash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
-			// println("Looking for versioned hash: ", h.Hex())
-			// println("Sidecars with versioned hash: ", versionedHash.Hex())
-			// println("")
 			if h == versionedHash {
 				sidecars = append(sidecars, sidecar)
 				break

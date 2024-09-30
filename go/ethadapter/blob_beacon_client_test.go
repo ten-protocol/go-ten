@@ -1,6 +1,10 @@
 package ethadapter
 
 import (
+	"context"
+	"errors"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/stretchr/testify/mock"
 	"math/big"
 	"testing"
 
@@ -59,7 +63,7 @@ func TestBlobsFromSidecars(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestBlobsFromSidecars_EmptySidecarList(t *testing.T) {
+func TestEmptyBlobSidecars(t *testing.T) {
 	var hashes []gethcommon.Hash
 	var sidecars []*BlobSidecar
 	blobs, err := BlobsFromSidecars(sidecars, hashes)
@@ -161,4 +165,91 @@ func createLargeRollup(seqNo int64) common.ExtRollup {
 		BatchPayloads: bytes,
 	}
 	return rollup
+}
+
+func TestBeaconClientFallback(t *testing.T) {
+	indices := []uint64{5, 7, 2}
+	hash0, sidecar0 := makeTestBlobSidecar(indices[0])
+	hash1, sidecar1 := makeTestBlobSidecar(indices[1])
+	hash2, sidecar2 := makeTestBlobSidecar(indices[2])
+
+	hashes := []gethcommon.Hash{hash0, hash1, hash2}
+	sidecars := []*BlobSidecar{sidecar0, sidecar1, sidecar2}
+
+	ctx := context.Background()
+
+	mockPrimary := &MockBeaconClient{}
+	mockFallback := &MockBlobRetrievalService{}
+
+	client := NewL1BeaconClient(mockPrimary, mockFallback)
+
+	mockPrimary.On("BeaconGenesis", ctx).Return(APIGenesisResponse{Data: ReducedGenesisData{GenesisTime: 10}}, nil)
+	mockPrimary.On("ConfigSpec", ctx).Return(APIConfigResponse{Data: ReducedConfigData{SecondsPerSlot: 2}}, nil)
+	mockPrimary.On("BeaconBlobSidecars", ctx, uint64(1), hashes).Return(APIGetBlobSidecarsResponse{}, errors.New("404 not found"))
+	mockFallback.On("BeaconBlobSidecars", ctx, uint64(1), hashes).Return(APIGetBlobSidecarsResponse{Data: toAPISidecars(sidecars)}, nil)
+
+	header := &types.Header{Time: 12}
+	resp, err := client.GetBlobSidecars(ctx, header, hashes)
+	require.NoError(t, err)
+	require.Equal(t, sidecars, resp)
+
+	mockFallback.On("BeaconBlobSidecars", ctx, uint64(2), hashes).Return(APIGetBlobSidecarsResponse{}, errors.New("404 not found"))
+	mockPrimary.On("BeaconBlobSidecars", ctx, uint64(2), hashes).Return(APIGetBlobSidecarsResponse{Data: toAPISidecars(sidecars)}, nil)
+
+	header = &types.Header{Time: 14}
+	resp, err = client.GetBlobSidecars(ctx, header, hashes)
+	require.NoError(t, err)
+	require.Equal(t, sidecars, resp)
+
+	mockPrimary.AssertExpectations(t)
+	mockFallback.AssertExpectations(t)
+}
+
+// Helper function to convert BlobSidecar to APIBlobSidecar
+func toAPISidecars(sidecars []*BlobSidecar) []*APIBlobSidecar {
+	apiSidecars := make([]*APIBlobSidecar, len(sidecars))
+	for i, sidecar := range sidecars {
+		apiSidecars[i] = &APIBlobSidecar{
+			Index:         sidecar.Index,
+			Blob:          sidecar.Blob,
+			KZGCommitment: sidecar.KZGCommitment,
+			KZGProof:      sidecar.KZGProof,
+		}
+	}
+	return apiSidecars
+}
+
+// MockBeaconClient is a mock implementation used only in these tests
+type MockBeaconClient struct {
+	mock.Mock
+}
+
+func (m *MockBeaconClient) NodeVersion(ctx context.Context) (string, error) {
+	args := m.Called(ctx)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockBeaconClient) ConfigSpec(ctx context.Context) (APIConfigResponse, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(APIConfigResponse), args.Error(1)
+}
+
+func (m *MockBeaconClient) BeaconGenesis(ctx context.Context) (APIGenesisResponse, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(APIGenesisResponse), args.Error(1)
+}
+
+func (m *MockBeaconClient) BeaconBlobSidecars(ctx context.Context, slot uint64, hashes []gethcommon.Hash) (APIGetBlobSidecarsResponse, error) {
+	args := m.Called(ctx, slot, hashes)
+	return args.Get(0).(APIGetBlobSidecarsResponse), args.Error(1)
+}
+
+// MockBlobRetrievalService is a mock implementation of the BlobRetrievalService interface
+type MockBlobRetrievalService struct {
+	mock.Mock
+}
+
+func (m *MockBlobRetrievalService) BeaconBlobSidecars(ctx context.Context, slot uint64, hashes []gethcommon.Hash) (APIGetBlobSidecarsResponse, error) {
+	args := m.Called(ctx, slot, hashes)
+	return args.Get(0).(APIGetBlobSidecarsResponse), args.Error(1)
 }

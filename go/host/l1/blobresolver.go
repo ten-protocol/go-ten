@@ -35,5 +35,5 @@ func (r *beaconBlobResolver) FetchBlobs(ctx context.Context, b *types.Header, ha
 }
 
 func (r *beaconBlobResolver) StoreBlobs(slot uint64, blobs_ []*kzg4844.Blob) error {
-
+	panic("not implemented")
 }
