@@ -53,7 +53,7 @@ func (b *BlobResolverInMem) StoreBlobs(slot uint64, blobs []*kzg4844.Blob) error
 func (b *BlobResolverInMem) FetchBlobs(_ context.Context, block *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	slot, _ := ethadapter.TimeToSlot(block.Time, MockGenesisBlock.Time(), b.secondsPerSlot)
+	slot, _ := ethadapter.CalculateSlot(block.Time, MockGenesisBlock.Time(), b.secondsPerSlot)
 	storedHashes, exists := b.slotToVersionedHashes[slot]
 	if !exists {
 		return nil, fmt.Errorf("no blobs found for slot %d: %w", slot, ethereum.NotFound)

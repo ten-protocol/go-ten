@@ -150,7 +150,7 @@ func VerifyBlobProof(blob *kzg4844.Blob, commitment kzg4844.Commitment, proof kz
 	return kzg4844.VerifyBlobProof(blob, commitment, proof)
 }
 
-func TimeToSlot(timestamp uint64, genesisTime uint64, secondsPerSlot uint64) (uint64, error) {
+func CalculateSlot(timestamp uint64, genesisTime uint64, secondsPerSlot uint64) (uint64, error) {
 	if timestamp < genesisTime {
 		return 0, fmt.Errorf("provided timestamp (%v) precedes genesis time (%v)", timestamp, genesisTime)
 	}

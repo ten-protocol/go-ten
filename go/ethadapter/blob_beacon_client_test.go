@@ -78,7 +78,7 @@ func TestClientPoolSingle(t *testing.T) {
 	p := NewClientPool[int](1)
 	for i := 0; i < 10; i++ {
 		require.Equal(t, 1, p.Get())
-		p.MoveToNext()
+		p.Next()
 	}
 }
 
@@ -86,7 +86,7 @@ func TestClientPoolSeveral(t *testing.T) {
 	p := NewClientPool[int](0, 1, 2, 3)
 	for i := 0; i < 25; i++ {
 		require.Equal(t, i%4, p.Get())
-		p.MoveToNext()
+		p.Next()
 	}
 }
 

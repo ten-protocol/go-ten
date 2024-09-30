@@ -33,7 +33,7 @@ type L1BeaconClient struct {
 	cl           BeaconClient
 	pool         *ClientPool[BlobRetrievalService]
 	initLock     sync.Mutex
-	timeToSlotFn TimeToSlotFn
+	timeToSlotFn TimeToSlot
 }
 
 // BeaconClient is a thin wrapper over the Beacon APIs.
@@ -163,7 +163,7 @@ func (p *ClientPool[T]) Get() T {
 	return p.clients[p.index]
 }
 
-func (p *ClientPool[T]) MoveToNext() {
+func (p *ClientPool[T]) Next() {
 	p.index += 1
 	if p.index == len(p.clients) {
 		p.index = 0
@@ -181,10 +181,10 @@ func NewL1BeaconClient(cl BeaconClient, fallbacks ...BlobRetrievalService) *L1Be
 	}
 }
 
-type TimeToSlotFn func(timestamp uint64) (uint64, error)
+type TimeToSlot func(timestamp uint64) (uint64, error)
 
-// GetTimeToSlotFn returns a function that converts a timestamp to a slot number.
-func (cl *L1BeaconClient) GetTimeToSlotFn(ctx context.Context) (TimeToSlotFn, error) {
+// GetTimeToSlot returns a function that converts a timestamp to a slot number.
+func (cl *L1BeaconClient) GetTimeToSlot(ctx context.Context) (TimeToSlot, error) {
 	cl.initLock.Lock()
 	defer cl.initLock.Unlock()
 	if cl.timeToSlotFn != nil {
@@ -221,7 +221,7 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 		f := cl.pool.Get()
 		resp, err := f.BeaconBlobSidecars(ctx, slot, hashes)
 		if err != nil {
-			cl.pool.MoveToNext()
+			cl.pool.Next()
 			errs = append(errs, err)
 		} else {
 			return resp, nil
@@ -231,14 +231,12 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 }
 
 // GetBlobSidecars fetches blob sidecars that were confirmed in the specified
-// L1 block with the given indexed hashes.
-// Order of the returned sidecars is guaranteed to be that of the hashes.
-// Blob data is not checked for validity.
+// L1 block with the given hashes.
 func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*BlobSidecar, error) {
 	if len(hashes) == 0 {
 		return []*BlobSidecar{}, nil
 	}
-	slotFn, err := cl.GetTimeToSlotFn(ctx)
+	slotFn, err := cl.GetTimeToSlot(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get time to slot function: %w", err)
 	}
@@ -276,9 +274,8 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 	return blobSidecars, nil
 }
 
-// FetchBlobs fetches blobs that were confirmed in the specified L1 block with the given indexed
-// hashes. The order of the returned blobs will match the order of `hashes`.  Confirms each
-// blob's validity by checking its proof against the commitment, and confirming the commitment
+// FetchBlobs fetches blobs that were confirmed in the specified L1 block with the
+// hashes. Confirms each blob's validity by checking its proof against the commitment, and confirming the commitment
 // hashes to the expected value. Returns error if any blob is found invalid.
 func (cl *L1BeaconClient) FetchBlobs(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
 	blobSidecars, err := cl.GetBlobSidecars(ctx, b, hashes)
@@ -309,7 +306,6 @@ func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([
 			return nil, fmt.Errorf("no matching BlobSidecar found for hash %s", hash.Hex())
 		}
 
-		// confirm blob data is valid by verifying its proof against the commitment
 		if err := VerifyBlobProof(&matchedSidecar.Blob, kzg4844.Commitment(matchedSidecar.KZGCommitment), kzg4844.Proof(matchedSidecar.KZGProof)); err != nil {
 			return nil, fmt.Errorf("blob for hash %s failed verification: %w", hash.Hex(), err)
 		}
