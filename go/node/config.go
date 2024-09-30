@@ -28,6 +28,7 @@ type Config struct {
 	nodeType                  string
 	l1WSURL                   string
 	l1BeaconUrl               string
+	l1BlobArchiveUrl          string
 	sequencerP2PAddr          string
 	privateKey                string
 	hostP2PPort               int
@@ -130,6 +131,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.L1ChainID = int64(c.l1ChainID)
 	cfg.PostgresDBHost = c.postgresDB
 	cfg.L1BeaconUrl = c.l1BeaconUrl
+	cfg.L1BlobArchiveUrl = c.l1BlobArchiveUrl
 
 	return cfg
 }

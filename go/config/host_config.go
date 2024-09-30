@@ -65,8 +65,10 @@ type HostInputConfig struct {
 	ProfilerEnabled bool
 	// L1StartHash is the hash of the L1 block we can start streaming from for all Obscuro state (e.g. management contract deployment block)
 	L1StartHash gethcommon.Hash
-	// The http url of the beacon chain to fetch rollup data
+	// L1BeaconUrl of the beacon chain to fetch blob data
 	L1BeaconUrl string
+	// L1BlobArchiveUrl of the blob archive to fetch expired blob data
+	L1BlobArchiveUrl string
 
 	// MetricsEnabled defines whether the metrics are enabled or not
 	MetricsEnabled bool
@@ -181,8 +183,10 @@ type HostConfig struct {
 	L1BlockTime time.Duration
 	// CrossChainInterval - The interval at which the host will check for new cross chain data to submit
 	CrossChainInterval time.Duration
-	// The http url of the beacon chain to fetch rollup data
+	// L1BeaconUrl of the beacon chain to fetch blob data
 	L1BeaconUrl string
+	// L1BlobArchiveUrl of the blob archive to fetch expired blob data
+	L1BlobArchiveUrl string
 
 	/////
 	// NODE CONFIG

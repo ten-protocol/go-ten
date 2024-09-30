@@ -294,6 +294,7 @@ jobs:
                -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
                -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
                -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
+               -l1_beacon_url=${{ vars.L1_BEACON_URL }} \
                -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{  github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/ \
                start'
 

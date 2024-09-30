@@ -98,6 +98,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	isInboundP2PDisabled := flag.Bool(isInboundP2PDisabledName, cfg.IsInboundP2PDisabled, flagUsageMap[isInboundP2PDisabledName])
 	maxRollupSize := flag.Uint64(maxRollupSizeFlagName, cfg.MaxRollupSize, flagUsageMap[maxRollupSizeFlagName])
 	l1BeaconUrl := flag.String(l1BeaconUrlName, cfg.L1BeaconUrl, flagUsageMap[l1BeaconUrlName])
+	l1BlobArchiveUrl := flag.String(l1BlobArchiveUrlName, cfg.L1BlobArchiveUrl, flagUsageMap[l1BlobArchiveUrlName])
 
 	flag.Parse()
 
@@ -158,6 +159,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.IsInboundP2PDisabled = *isInboundP2PDisabled
 	cfg.MaxRollupSize = *maxRollupSize
 	cfg.L1BeaconUrl = *l1BeaconUrl
+	cfg.L1BlobArchiveUrl = *l1BlobArchiveUrl
 
 	return cfg, nil
 }

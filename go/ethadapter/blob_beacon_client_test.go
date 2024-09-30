@@ -3,10 +3,12 @@ package ethadapter
 import (
 	"context"
 	"errors"
+	"math/big"
+	"net/http"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/mock"
-	"math/big"
-	"testing"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -15,6 +17,11 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/common"
+)
+
+const (
+	vHash1 = "0x012b7a6a22399aa9eecd8eda6ec658679e81be21af6ff296116aee205e2218f2"
+	vHash2 = "0x012374e04a848591844b75bc2f500318cf640552379b5e3a1a77bb828620690e"
 )
 
 func TestBlobsFromSidecars(t *testing.T) {
@@ -37,26 +44,22 @@ func TestBlobsFromSidecars(t *testing.T) {
 	sidecars = []*BlobSidecar{sidecar0, sidecar1, sidecar2}
 	blobs, err := BlobsFromSidecars(sidecars, hashes)
 	require.NoError(t, err)
-	// confirm order by checking first blob byte against expected index
 	for i := range blobs {
 		require.Equal(t, byte(indices[i]), blobs[i][0])
 	}
 
-	// mangle a proof to make sure it's detected
 	badProof := *sidecar0
 	badProof.KZGProof[11]++
 	sidecars[1] = &badProof
 	_, err = BlobsFromSidecars(sidecars, hashes)
 	require.Error(t, err)
 
-	// mangle a commitment to make sure it's detected
 	badCommitment := *sidecar0
 	badCommitment.KZGCommitment[13]++
 	sidecars[1] = &badCommitment
 	_, err = BlobsFromSidecars(sidecars, hashes)
 	require.Error(t, err)
 
-	// mangle a hash to make sure it's detected
 	sidecars[1] = sidecar0
 	hashes[2][17]++
 	_, err = BlobsFromSidecars(sidecars, hashes)
@@ -120,51 +123,16 @@ func TestBlobEncodingLarge(t *testing.T) {
 	require.Error(t, err)
 }
 
-func makeTestBlobSidecar(index uint64) (gethcommon.Hash, *BlobSidecar) {
-	blob := kzg4844.Blob{}
-	// make first byte of test blob match its index so we can easily verify if is returned in the
-	// expected order
-	blob[0] = byte(index)
-	commit, _ := kzg4844.BlobToCommitment(&blob)
-	proof, _ := kzg4844.ComputeBlobProof(&blob, commit)
-	hash := KZGToVersionedHash(commit)
+func TestBlobArchiveClient(t *testing.T) {
+	client := NewArchivalHTTPClient(new(http.Client), "https://api.ethernow.xyz")
+	vHashes := []gethcommon.Hash{gethcommon.HexToHash(vHash1), gethcommon.HexToHash(vHash2)}
+	ctx := context.Background()
 
-	sidecar := BlobSidecar{
-		Index:         Uint64String(index),
-		Blob:          blob,
-		KZGCommitment: Bytes48(commit),
-		KZGProof:      Bytes48(proof),
-	}
-	return hash, &sidecar
-}
+	resp, err := client.BeaconBlobSidecars(ctx, 1, vHashes)
+	require.NoError(t, err)
 
-func createRollup(lastBatch int64) common.ExtRollup {
-	header := common.RollupHeader{
-		LastBatchSeqNo: uint64(lastBatch),
-	}
-
-	rollup := common.ExtRollup{
-		Header: &header,
-	}
-
-	return rollup
-}
-
-func createLargeRollup(seqNo int64) common.ExtRollup {
-	header := common.RollupHeader{
-		LastBatchSeqNo: uint64(seqNo),
-	}
-	largeData := make([]byte, 130*1024) // 130KB
-	for i := range largeData {
-		largeData[i] = byte(i % 256)
-	}
-
-	bytes, _ := rlp.EncodeToBytes(largeData)
-	rollup := common.ExtRollup{
-		Header:        &header,
-		BatchPayloads: bytes,
-	}
-	return rollup
+	require.Len(t, resp.Data, 2)
+	require.NotNil(t, client)
 }
 
 func TestBeaconClientFallback(t *testing.T) {
@@ -252,4 +220,51 @@ type MockBlobRetrievalService struct {
 func (m *MockBlobRetrievalService) BeaconBlobSidecars(ctx context.Context, slot uint64, hashes []gethcommon.Hash) (APIGetBlobSidecarsResponse, error) {
 	args := m.Called(ctx, slot, hashes)
 	return args.Get(0).(APIGetBlobSidecarsResponse), args.Error(1)
+}
+
+func makeTestBlobSidecar(index uint64) (gethcommon.Hash, *BlobSidecar) {
+	blob := kzg4844.Blob{}
+	// make first byte of test blob match its index so we can easily verify if is returned in the
+	// expected order
+	blob[0] = byte(index)
+	commit, _ := kzg4844.BlobToCommitment(&blob)
+	proof, _ := kzg4844.ComputeBlobProof(&blob, commit)
+	hash := KZGToVersionedHash(commit)
+
+	sidecar := BlobSidecar{
+		Index:         Uint64String(index),
+		Blob:          blob,
+		KZGCommitment: Bytes48(commit),
+		KZGProof:      Bytes48(proof),
+	}
+	return hash, &sidecar
+}
+
+func createRollup(lastBatch int64) common.ExtRollup {
+	header := common.RollupHeader{
+		LastBatchSeqNo: uint64(lastBatch),
+	}
+
+	rollup := common.ExtRollup{
+		Header: &header,
+	}
+
+	return rollup
+}
+
+func createLargeRollup(seqNo int64) common.ExtRollup {
+	header := common.RollupHeader{
+		LastBatchSeqNo: uint64(seqNo),
+	}
+	largeData := make([]byte, 130*1024) // 130KB
+	for i := range largeData {
+		largeData[i] = byte(i % 256)
+	}
+
+	bytes, _ := rlp.EncodeToBytes(largeData)
+	rollup := common.ExtRollup{
+		Header:        &header,
+		BatchPayloads: bytes,
+	}
+	return rollup
 }

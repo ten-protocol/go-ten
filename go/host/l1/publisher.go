@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum"
 
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
@@ -313,7 +314,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	} else {
 		p.logger.Info("Rollup included in L1", log.RollupHashKey, producedRollup.Hash())
 	}
-	//TODO publish rollup to archive service if not already done
+	// TODO publish rollup to archive service if not already done
 }
 
 func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, rollupNum *big.Int, forkID gethcommon.Hash) error {

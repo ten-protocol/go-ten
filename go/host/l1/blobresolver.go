@@ -15,6 +15,7 @@ import (
 type BlobResolver interface {
 	// FetchBlobs Fetches the blob data using beacon chain APIs
 	FetchBlobs(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error)
+	// StoreBlobs is used to store blobs for the in-memory testing nodes
 	StoreBlobs(slot uint64, blobs []*kzg4844.Blob) error
 }
 
@@ -34,6 +35,6 @@ func (r *beaconBlobResolver) FetchBlobs(ctx context.Context, b *types.Header, ha
 	return blobs, nil
 }
 
-func (r *beaconBlobResolver) StoreBlobs(slot uint64, blobs_ []*kzg4844.Blob) error {
-	panic("not implemented")
+func (r *beaconBlobResolver) StoreBlobs(_ uint64, _ []*kzg4844.Blob) error {
+	panic("provided by the ethereum consensus layer")
 }
