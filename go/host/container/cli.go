@@ -55,6 +55,7 @@ type HostConfigToml struct {
 	L1BlockTime               int
 	MaxRollupSize             int
 	L1BeaconUrl               string
+	L1BlobArchiveUrl          string
 }
 
 // ParseConfig returns a config.HostInputConfig based on either the file identified by the `config` flag, or the flags with
