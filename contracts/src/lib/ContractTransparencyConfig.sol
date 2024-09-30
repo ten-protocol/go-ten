@@ -5,17 +5,25 @@ pragma solidity ^0.8.20;
 // the TEN platform will interpret this information
 interface ContractTransparencyConfig {
     // configuration per event log type
+    enum Field{
+        TOPIC1, TOPIC2, TOPIC3,
+        SENDER, // tx.origin - msg.sender
+        EVERYONE // the event is public - visible to everyone
+    }
+
+    enum ContractCfg{
+        TRANSPARENT, //the internal state via getStorageAt will be accessible to everyone. All events will be public. This is the strongest setting.
+        PRIVATE // internal state is hidden, and events can be configured.
+    }
+
+    // configuration per event log type
     struct EventLogConfig {
-        bytes eventSignature;
-        bool isPublic;  // everyone can see and query for this event
-        bool topic1CanView;    // If the event is private, and this is true, it means that the address from topic1 is an EOA that can view this event
-        bool topic2CanView;    // same
-        bool topic3CanView;    // same
-        bool visibleToSender; // if true, the tx signer will see this event. Default false
+        uint256 eventSignature;
+        Field[] visibleTo;
     }
 
     struct VisibilityConfig {
-        bool isTransparent; // If true - the internal state via getStorageAt will be accessible to everyone. All events will be public. Default false
+        ContractCfg contractCfg;
         EventLogConfig[] eventLogConfigs;  // mapping from event signature to visibility configs per event
     }
 
