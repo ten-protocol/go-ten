@@ -1,3 +1,4 @@
+import React from "react";
 import Custom404Error from "@repo/ui/components/common/404";
 
 export function Custom404ErrorPage() {
