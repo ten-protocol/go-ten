@@ -47,8 +47,6 @@ export const getOptions = (query: {
 export const GOOGLE_ANALYTICS_ID =
   process.env.NEXT_PUBLIC_BRIDGE_GOOGLE_ANALYTICS_ID;
 
-export const INFURA_KEY = process.env.NEXT_PUBLIC_BRIDGE_INFURA_KEY;
-
 export const CHAINS = {
   L1: [
     {
