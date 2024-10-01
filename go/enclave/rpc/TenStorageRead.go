@@ -85,10 +85,6 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 		builder.Err = fmt.Errorf("unable to parse storage slot (%s)", builder.Param.storageSlot)
 		return nil
 	}
-	// the storage slot needs to be 32 bytes padded with 0s
-	// the storage slot needs to be 32 bytes padded with 0s
-	storageSlot := common.Hash{}
-	storageSlot.SetBytes(sl.Bytes())
 
 	// the storage slot needs to be 32 bytes padded with 0s
 	storageSlot := common.Hash{}
