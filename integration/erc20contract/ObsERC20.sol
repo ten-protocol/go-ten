@@ -9,17 +9,25 @@ import "libs/openzeppelin/contracts/token/ERC20/ERC20.sol";
 // the TEN platform will interpret this information
 interface ContractTransparencyConfig {
     // configuration per event log type
+    enum Field{
+        TOPIC1, TOPIC2, TOPIC3,
+        SENDER, // tx.origin - msg.sender
+        EVERYONE // the event is public - visible to everyone
+    }
+
+    enum ContractCfg{
+        TRANSPARENT, //the internal state via getStorageAt will be accessible to everyone. All events will be public. This is the strongest setting.
+        PRIVATE // internal state is hidden, and events can be configured.
+    }
+
+    // configuration per event log type
     struct EventLogConfig {
-        bytes eventSignature;
-        bool isPublic;  // everyone can see and query for this event
-        bool topic1CanView;    // If the event is private, and this is true, it means that the address from topic1 is an EOA that can view this event
-        bool topic2CanView;    // same
-        bool topic3CanView;    // same
-        bool visibleToSender; // if true, the tx signer will see this event. Default false
+        bytes32 eventSignature;
+        Field[] visibleTo;
     }
 
     struct VisibilityConfig {
-        bool isTransparent; // If true - the internal state via getStorageAt will be accessible to everyone. All events will be public. Default false
+        ContractCfg contractCfg;
         EventLogConfig[] eventLogConfigs;  // mapping from event signature to visibility configs per event
     }
 
@@ -78,11 +86,19 @@ contract ObsERC20 is ERC20, ContractTransparencyConfig {
     }
 
     function visibilityRules() public override pure returns (VisibilityConfig memory){
-        EventLogConfig[]  memory configs = new EventLogConfig[](1);
-        // erc20 transfer
-        configs[0] = EventLogConfig(hex"ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", false, true, true, false, false);
-        return VisibilityConfig(false, configs);
+        bytes32 eventSig = hex"ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+        Field[]  memory relevantTo = new Field[](3);
+        relevantTo[0] = Field.TOPIC1;
+        relevantTo[1] = Field.TOPIC2;
+        relevantTo[2] = Field.SENDER;
+        EventLogConfig[]  memory eventLogConfigs = new EventLogConfig[](1);
+        eventLogConfigs[0] = EventLogConfig(eventSig, relevantTo);
+        return VisibilityConfig(ContractCfg.PRIVATE, eventLogConfigs);
     }
+
+//    function visibilityRules() public override pure returns (VisibilityConfig memory){
+//        return VisibilityConfig(ContractCfg.TRANSPARENT, EventLogConfig[]);
+//    }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount)
     internal virtual override {
