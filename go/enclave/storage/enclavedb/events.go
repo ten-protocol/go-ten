@@ -22,6 +22,7 @@ const (
 	baseEventsJoin = "from event_log e " +
 		"join receipt rec on e.receipt=rec.id" +
 		"	join tx on rec.tx=tx.id " +
+		"      left join externally_owned_account eoatx on tx.sender_address=eoatx.id " +
 		"	join batch b on rec.batch=b.sequence " +
 		"join event_type et on e.event_type=et.id " +
 		"	join contract c on et.contract=c.id " +
@@ -308,8 +309,10 @@ func visibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
 		"       (et.topic1_can_view AND eoa1.address=?) " +
 		"    OR (et.topic2_can_view AND eoa2.address=?) " +
 		"    OR (et.topic3_can_view AND eoa3.address=?)" +
+		"    OR (et.sender_can_view AND eoatx.address=?)" +
 		"  )" +
 		")"
+	visibParams = append(visibParams, acc)
 	visibParams = append(visibParams, acc)
 	visibParams = append(visibParams, acc)
 	visibParams = append(visibParams, acc)

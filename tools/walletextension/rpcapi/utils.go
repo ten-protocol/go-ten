@@ -48,13 +48,15 @@ const (
 var rpcNotImplemented = fmt.Errorf("rpc endpoint not implemented")
 
 type ExecCfg struct {
+	// these 4 fields specify the account(s) that should make the backend call
 	account             *gethcommon.Address
 	computeFromCallback func(user *GWUser) *gethcommon.Address
 	tryAll              bool
 	tryUntilAuthorised  bool
-	adjustArgs          func(acct *GWAccount) []any
-	cacheCfg            *CacheCfg
-	timeout             time.Duration
+
+	adjustArgs func(acct *GWAccount) []any
+	cacheCfg   *CacheCfg
+	timeout    time.Duration
 }
 
 type CacheStrategy uint8
