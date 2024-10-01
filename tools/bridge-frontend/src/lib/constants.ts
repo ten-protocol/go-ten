@@ -33,11 +33,7 @@ export const getOptions = (query: {
 };
 
 export const apiHost = process.env.NEXT_PUBLIC_BRIDGE_API_HOST;
-export const environment = process.env.NEXT_PUBLIC_BRIDGE_API_HOST_ENVIRONMENT;
-
-export const l1Bridge = process.env.NEXT_PUBLIC_BRIDGE_L1;
-export const l2Bridge = process.env.NEXT_PUBLIC_BRIDGE_L2;
-export const messageBusAddress = process.env.NEXT_PUBLIC_BRIDGE_MESSAGE_BUS;
+export const environment = process.env.NEXT_PUBLIC_API_HOST_ENVIRONMENT;
 
 export const GOOGLE_ANALYTICS_ID =
   process.env.NEXT_PUBLIC_BRIDGE_GOOGLE_ANALYTICS_ID;
