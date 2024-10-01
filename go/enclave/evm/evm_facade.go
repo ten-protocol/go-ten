@@ -279,27 +279,42 @@ func readVisibilityConfig(vmenv *vm.EVM, contractAddress *gethcommon.Address) *c
 		EventConfigs: make(map[gethcommon.Hash]*core.EventVisibilityConfig),
 	}
 
+	if transp {
+		return cfg
+	}
+
+	// only check the config for non-transparent contracts
 	for i := range visibilityRules.EventLogConfigs {
 		logConfig := visibilityRules.EventLogConfigs[i]
-		relevantToMap := make(map[uint8]bool)
-		for _, field := range logConfig.VisibleTo {
-			relevantToMap[field] = true
-		}
-		t1 := relevantToMap[topic1]
-		t2 := relevantToMap[topic2]
-		t3 := relevantToMap[topic3]
-		s := relevantToMap[sender]
-		cfg.EventConfigs[logConfig.EventSignature] = &core.EventVisibilityConfig{
-			AutoConfig:    false,
-			Public:        relevantToMap[everyone],
-			Topic1CanView: &t1,
-			Topic2CanView: &t2,
-			Topic3CanView: &t3,
-			SenderCanView: &s,
-		}
+		cfg.EventConfigs[logConfig.EventSignature] = eventCfg(logConfig)
 	}
 
 	return cfg
+}
+
+func eventCfg(logConfig ContractTransparencyConfigEventLogConfig) *core.EventVisibilityConfig {
+	relevantToMap := make(map[uint8]bool)
+	for _, field := range logConfig.VisibleTo {
+		relevantToMap[field] = true
+	}
+	isPublic := relevantToMap[everyone]
+
+	if isPublic {
+		return &core.EventVisibilityConfig{AutoConfig: false, Public: true}
+	}
+
+	t1 := relevantToMap[topic1]
+	t2 := relevantToMap[topic2]
+	t3 := relevantToMap[topic3]
+	s := relevantToMap[sender]
+	return &core.EventVisibilityConfig{
+		AutoConfig:    false,
+		Public:        false,
+		Topic1CanView: &t1,
+		Topic2CanView: &t2,
+		Topic3CanView: &t3,
+		SenderCanView: &s,
+	}
 }
 
 func logReceipt(r *types.Receipt, logger gethlog.Logger) {
