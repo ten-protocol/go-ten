@@ -15,9 +15,9 @@ import (
 
 type BlobResolverInMem struct {
 	// map of slots to versioned hashes to match the beacon APIs
-	slotToVersionedHashes map[uint64][]gethcommon.Hash
+	slotToVersionedHashes sync.Map
 	// map of versioned hash to blob for efficient lookup
-	versionedHashToBlob map[gethcommon.Hash]*kzg4844.Blob
+	versionedHashToBlob   sync.Map
 	mu                  sync.RWMutex
 	genesisTime         uint64
 	secondsPerSlot      uint64
@@ -25,8 +25,8 @@ type BlobResolverInMem struct {
 
 func NewBlobResolver(genesisTime uint64, secondsPerSlot uint64) l1.BlobResolver {
 	return &BlobResolverInMem{
-		slotToVersionedHashes: make(map[uint64][]gethcommon.Hash),
-		versionedHashToBlob:   make(map[gethcommon.Hash]*kzg4844.Blob),
+		slotToVersionedHashes: sync.Map{},
+		versionedHashToBlob:   sync.Map{},
 		mu:                    sync.RWMutex{},
 		genesisTime:           genesisTime,
 		secondsPerSlot:        secondsPerSlot,
@@ -34,9 +34,6 @@ func NewBlobResolver(genesisTime uint64, secondsPerSlot uint64) l1.BlobResolver 
 }
 
 func (b *BlobResolverInMem) StoreBlobs(slot uint64, blobs []*kzg4844.Blob) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
 	for _, blob := range blobs {
 		commitment, err := kzg4844.BlobToCommitment(blob)
 		if err != nil {
@@ -44,48 +41,42 @@ func (b *BlobResolverInMem) StoreBlobs(slot uint64, blobs []*kzg4844.Blob) error
 		}
 
 		versionedHash := ethadapter.KZGToVersionedHash(commitment)
-		b.slotToVersionedHashes[slot] = append(b.slotToVersionedHashes[slot], versionedHash)
-		b.versionedHashToBlob[versionedHash] = blob
+		
+		hashes, _ := b.slotToVersionedHashes.LoadOrStore(slot, &sync.Map{})
+		hashes.(*sync.Map).Store(versionedHash, struct{}{})
+		
+		b.versionedHashToBlob.Store(versionedHash, blob)
 	}
 	return nil
 }
 
 func (b *BlobResolverInMem) FetchBlobs(_ context.Context, block *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	slot, _ := ethadapter.CalculateSlot(block.Time, MockGenesisBlock.Time(), b.secondsPerSlot)
-	storedHashes, exists := b.slotToVersionedHashes[slot]
+	
+	storedHashes, exists := b.slotToVersionedHashes.Load(slot)
 	if !exists {
 		return nil, fmt.Errorf("no blobs found for slot %d: %w", slot, ethereum.NotFound)
 	}
 
-	// if no specific versionedHashes are provided, return all blobs for the slot.
 	if len(hashes) == 0 {
 		var allBlobs []*kzg4844.Blob
-		for _, vh := range storedHashes {
-			blob, exists := b.versionedHashToBlob[vh]
-			if !exists {
-				return nil, fmt.Errorf("blob for hash %s not found", vh.Hex())
+		storedHashes.(*sync.Map).Range(func(key, _ interface{}) bool {
+			if blob, exists := b.versionedHashToBlob.Load(key); exists {
+				allBlobs = append(allBlobs, blob.(*kzg4844.Blob))
 			}
-			allBlobs = append(allBlobs, blob)
-		}
+			return true
+		})
 		return allBlobs, nil
 	}
 
-	hashSet := make(map[gethcommon.Hash]struct{}, len(storedHashes))
-	for _, h := range storedHashes {
-		hashSet[h] = struct{}{}
-	}
-
-	// retrieve the blobs that match the provided versioned hashes.
 	var blobs []*kzg4844.Blob
 	for _, vh := range hashes {
-		if _, found := hashSet[vh]; found {
-			blob, exists := b.versionedHashToBlob[vh]
-			if !exists {
+		if _, found := storedHashes.(*sync.Map).Load(vh); found {
+			if blob, exists := b.versionedHashToBlob.Load(vh); exists {
+				blobs = append(blobs, blob.(*kzg4844.Blob))
+			} else {
 				return nil, fmt.Errorf("blob for hash %s not found", vh.Hex())
 			}
-			blobs = append(blobs, blob)
 		} else {
 			return nil, fmt.Errorf("versioned hash %s not found in slot %d", vh.Hex(), slot)
 		}

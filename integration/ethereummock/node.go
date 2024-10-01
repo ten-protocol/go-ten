@@ -33,7 +33,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
-const SecondsPerSlot = uint64(20)
+const SecondsPerSlot = uint64(12)
 
 type L1Network interface {
 	// BroadcastBlock - send the block and the parent to make sure there are no gaps
