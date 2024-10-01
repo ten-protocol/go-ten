@@ -491,6 +491,7 @@ func getLoggedWithdrawals(minTenHeight uint64, tenClient *obsclient.ObsClient, c
 func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) (int, int, int) {
 	transfers, withdrawals, nativeTransfers := txInjector.TxTracker.GetL2Transactions()
 
+	println("FindNotIncludedL2Txs 1")
 	notFoundTransfers := 0
 	for _, tx := range transfers {
 		sender := getSender(tx)
@@ -500,6 +501,7 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 			notFoundTransfers++
 		}
 	}
+	println("FindNotIncludedL2Txs 2")
 
 	notFoundWithdrawals := 0
 	for _, tx := range withdrawals {
@@ -510,6 +512,7 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 			notFoundWithdrawals++
 		}
 	}
+	println("FindNotIncludedL2Txs 3")
 
 	notFoundNativeTransfers := 0
 	for _, tx := range nativeTransfers {
@@ -520,6 +523,7 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 			notFoundNativeTransfers++
 		}
 	}
+	println("FindNotIncludedL2Txs 4")
 
 	return notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers
 }
