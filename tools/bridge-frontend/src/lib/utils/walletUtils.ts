@@ -31,15 +31,22 @@ const errorMessages: Record<IErrorMessages, string> = {
 export const handleError = (error: any, message: string) => {
   console.error(`Error: ${message}`, error);
 
-  const errorReason = error?.reason || error?.message;
+  const errorReason = error?.reason || error?.data?.message || error?.message;
 
-  if (errorReason in errorMessages) {
+  const errorReasonLowercase = errorReason?.toLowerCase() || "";
+
+  const errorMessage = Object.keys(errorMessages).find((key) =>
+    errorReasonLowercase.includes(key.toLowerCase())
+  );
+
+  if (errorMessage) {
     showToast(
       ToastType.DESTRUCTIVE,
-      errorMessages[errorReason as IErrorMessages]
+      errorMessages[errorMessage as IErrorMessages]
     );
+    return;
   } else {
-    showToast(ToastType.DESTRUCTIVE, errorReason);
+    showToast(ToastType.DESTRUCTIVE, message);
   }
 
   throw new Error(message);

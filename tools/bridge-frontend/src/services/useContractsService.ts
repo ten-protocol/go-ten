@@ -99,7 +99,17 @@ export const useContractsService = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoizedConfig, provider, isL1ToL2, signer, setContractState]);
 
-  // main entry function that calls each step, either from the beginning or resuming
+  const updateBridgePendingTransactions = () =>
+    queryClient.invalidateQueries({
+      queryKey: ["bridgePendingTransactions", isL1ToL2 ? "l1" : "l2"],
+    });
+
+  const updateBridgeTransactions = () =>
+    queryClient.invalidateQueries({
+      queryKey: ["bridgeTransactions", isL1ToL2 ? "l1" : "l2"],
+    });
+
+  // this is the main entry fn that calls each step, either from the beginning or resuming
   const sendNative = async (tx: IPendingTx) => {
     if (!provider) {
       return handleError(null, "Provider not found");
@@ -168,7 +178,11 @@ export const useContractsService = () => {
             }
 
             currentStep = TransactionStep.TransactionConfirmation;
-            showToast(ToastType.INFO, "Transaction submitted");
+            showToast(
+              ToastType.INFO,
+              "Transaction submitted; awaiting confirmation..."
+            );
+            updateBridgePendingTransactions();
             break;
 
           case TransactionStep.TransactionConfirmation:
@@ -199,14 +213,13 @@ export const useContractsService = () => {
             // for L1 > L2, we can skip the rest of the steps
             if (isL1ToL2) {
               txHash && removePendingBridgeTransaction(txHash);
-              queryClient.invalidateQueries({
-                queryKey: ["bridgePendingTransactions", isL1ToL2 ? "l1" : "l2"],
-              });
+              updateBridgeTransactions();
               return txReceipt;
             }
 
             currentStep = TransactionStep.EventDataExtraction;
             showToast(ToastType.INFO, "Transaction confirmed");
+            updateBridgePendingTransactions();
             break;
 
           case TransactionStep.EventDataExtraction:
@@ -230,6 +243,7 @@ export const useContractsService = () => {
             }
             currentStep = TransactionStep.MerkleTreeConstruction;
             showToast(ToastType.INFO, "Event data extracted");
+            updateBridgePendingTransactions();
             break;
 
           case TransactionStep.MerkleTreeConstruction:
@@ -245,6 +259,7 @@ export const useContractsService = () => {
 
             currentStep = TransactionStep.GasEstimation;
             showToast(ToastType.INFO, "Merkle tree constructed");
+            updateBridgePendingTransactions();
             break;
 
           case TransactionStep.GasEstimation:
@@ -262,6 +277,7 @@ export const useContractsService = () => {
 
             currentStep = TransactionStep.RelaySubmission;
             showToast(ToastType.INFO, "Gas estimated for relay");
+            updateBridgePendingTransactions();
             break;
 
           case TransactionStep.RelaySubmission:
@@ -275,10 +291,6 @@ export const useContractsService = () => {
               proof,
               gasLimit!
             )) as ethers.providers.TransactionReceipt;
-
-            queryClient.invalidateQueries({
-              queryKey: ["bridgePendingTransactions", isL1ToL2 ? "l1" : "l2"],
-            });
 
             return txReceipt;
 
@@ -398,7 +410,6 @@ export const useContractsService = () => {
   };
 
   const finaliseTransaction = async (tx: IPendingTx) => {
-    console.log("🚀 ~ finalizeTransaction ~ tx:", tx);
     try {
       setFinalisingTxHashes((prevSet) =>
         new Set(prevSet).add(tx?.txHash || "")
