@@ -1,4 +1,0 @@
-packages:
-  - "tools/tenscan/frontend"
-  - "tools/walletextension/frontend"
-  - "packages/*"
