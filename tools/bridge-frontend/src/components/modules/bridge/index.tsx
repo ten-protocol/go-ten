@@ -22,6 +22,8 @@ import { SwitchNetworkButton } from "./switch-network-button";
 import { TransferFromSection } from "./transfer-from-section";
 import { CHAINS, TOKENS } from "@/src/lib/constants";
 import { handleStorage } from "@/src/lib/utils";
+import { showToast } from "../../ui/use-toast";
+import { ToastType } from "@/src/types";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -72,6 +74,7 @@ export default function Dashboard() {
   const { mutate, isPending } = useMutation({
     mutationFn: initiateBridgeTransaction,
     onSuccess: () => {
+      showToast(ToastType.SUCCESS, "Transaction completed successfully");
       queryClient.invalidateQueries({
         queryKey: ["bridgeTransactions", isL1ToL2 ? "l1" : "l2"],
       });

@@ -9,6 +9,7 @@ import useWalletStore from "../stores/wallet-store";
 export const useBridgeUtils = () => {
   const { getNativeBalance, getTokenBalance, sendERC20, sendNative } =
     useContractsService();
+
   const { switchNetwork } = useWalletStore();
 
   const useTokenBalance = (
@@ -63,54 +64,69 @@ export const useBridgeUtils = () => {
   ) => {
     const initiateBridgeTransaction = React.useCallback(
       async (data: any) => {
-        if (data.amount > tokenBalance) {
+        const amount = Number(data.amount);
+        if (isNaN(amount) || amount <= 0) {
           setError("amount", {
             type: "manual",
-            message: "Amount must be less than balance",
+            message: "Please enter a valid amount.",
+          });
+          return;
+        }
+        if (amount > tokenBalance) {
+          setError("amount", {
+            type: "manual",
+            message: "Amount must be less than or equal to your balance.",
           });
           return;
         }
         try {
           const transactionData = { ...data, receiver: receiver || address };
+          if (!transactionData.receiver) {
+            throw new Error("Receiver address is required.");
+          }
+
+          const selectedToken = tokens.find((t: IToken) => t.value === token);
+
+          if (!selectedToken) {
+            setError("token", {
+              type: "manual",
+              message: "Selected token is invalid.",
+            });
+            return;
+          }
+
           toast({
-            title: "Bridge Transaction",
-            description: "Bridge transaction initiated",
+            description: "Bridge transaction initiated.",
             variant: ToastType.INFO,
           });
-
-          const selectedToken = token
-            ? tokens.find((t: IToken) => t.value === token)
-            : null;
-
-          if (!selectedToken) throw new Error("Invalid token");
 
           if (selectedToken.isNative) {
             await sendNative({
               receiver: transactionData.receiver,
-              value: transactionData.amount,
+              value: amount.toString(),
             });
           } else {
             await sendERC20(
               transactionData.receiver,
-              transactionData.amount,
+              amount,
               selectedToken.address
             );
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error(error);
-          throw error;
+          setError("submit", {
+            type: "manual",
+            message: error.message || "An unexpected error occurred.",
+          });
+          toast({
+            title: "Transaction Failed",
+            description:
+              error.message || "An error occurred during the transaction.",
+            variant: ToastType.DESTRUCTIVE,
+          });
         }
       },
-      [
-        address,
-        token,
-        tokens,
-        receiver,
-        tokenBalance,
-        sendERC20,
-        sendNative,
-        setError,
-      ]
+      [address, token, tokens, receiver, tokenBalance]
     );
 
     return { initiateBridgeTransaction };

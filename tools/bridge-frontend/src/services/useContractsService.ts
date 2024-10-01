@@ -305,7 +305,7 @@ export const useContractsService = () => {
 
   const sendERC20 = async (
     receiver: string,
-    amount: string,
+    amount: number,
     tokenContractAddress: string
   ) => {
     const { bridgeContract } = useContractStore.getState();
