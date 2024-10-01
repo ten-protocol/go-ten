@@ -6,8 +6,8 @@ pragma solidity ^0.8.20;
 interface ContractTransparencyConfig {
     // configuration per event log type
     enum Field{
-        TOPIC1, TOPIC2, TOPIC3,
-        SENDER, // tx.origin - msg.sender
+        TOPIC1, TOPIC2, TOPIC3, // if any of these fields is in the relevantTo array, then the address in that topic will be able to query for that event
+        SENDER, // the tx.origin will be able to query for the event
         EVERYONE // the event is public - visible to everyone
     }
 
@@ -18,7 +18,7 @@ interface ContractTransparencyConfig {
 
     // configuration per event log type
     struct EventLogConfig {
-        uint256 eventSignature;
+        bytes32 eventSignature;
         Field[] visibleTo;
     }
 
