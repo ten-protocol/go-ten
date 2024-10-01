@@ -317,6 +317,7 @@ func visibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
 	visibParams = append(visibParams, acc)
 	visibParams = append(visibParams, acc)
 	visibParams = append(visibParams, acc)
+	visibParams = append(visibParams, acc)
 
 	visibQuery += ") "
 	return visibQuery, visibParams
