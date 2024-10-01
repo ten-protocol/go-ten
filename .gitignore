@@ -5,7 +5,6 @@
 *.so
 *.dylib
 
-
 # Test binary, built with `go test -c`
 *.test
 
@@ -84,7 +83,3 @@ yalc.lock
 contracts/typechain-types/
 contracts/tsconfig.json
 contracts/package-lock.json
-
-# Next.js build output
-.turbo/
-*.next/
