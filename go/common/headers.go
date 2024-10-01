@@ -133,13 +133,6 @@ func (b *BatchHeader) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Blob is the EIP-4844 blob
-type Blob struct {
-	Commitment common.Hash // The commitment hash of the blob
-	BlobSize   uint64      // The size of the blob in bytes
-	Data       []byte      // The actual blob data
-}
-
 // RollupHeader is a public / plaintext struct that holds common properties of rollups.
 // All these fields are processed by the Management contract
 type RollupHeader struct {

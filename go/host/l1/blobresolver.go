@@ -12,6 +12,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
+// BlobResolver is an interface for fetching blobs
 type BlobResolver interface {
 	// FetchBlobs Fetches the blob data using beacon chain APIs
 	FetchBlobs(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error)

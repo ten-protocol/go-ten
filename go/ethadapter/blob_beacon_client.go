@@ -2,22 +2,18 @@ package ethadapter
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
-	"strings"
 	"sync"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 )
 
@@ -28,14 +24,6 @@ const (
 	sidecarsMethodPrefix = "eth/v1/beacon/blob_sidecars/"
 )
 
-// L1BeaconClient is a high level golang client for the Beacon API.
-type L1BeaconClient struct {
-	cl           BeaconClient
-	pool         *ClientPool[BlobRetrievalService]
-	initLock     sync.Mutex
-	timeToSlotFn TimeToSlot
-}
-
 // BeaconClient is a thin wrapper over the Beacon APIs.
 type BeaconClient interface {
 	NodeVersion(ctx context.Context) (string, error)
@@ -44,67 +32,34 @@ type BeaconClient interface {
 	BeaconBlobSidecars(ctx context.Context, slot uint64, hashes []gethcommon.Hash) (APIGetBlobSidecarsResponse, error)
 }
 
-// BlobRetrievalService is a thin wrapper over the Beacon APIs.
+// BlobRetrievalService is a wrapper for clients that can fetch blobs from different sources.
 type BlobRetrievalService interface {
 	BeaconBlobSidecars(ctx context.Context, slot uint64, hashes []gethcommon.Hash) (APIGetBlobSidecarsResponse, error)
 }
 
+type L1BeaconClient struct {
+	cl           BeaconClient
+	pool         *ClientPool[BlobRetrievalService]
+	initLock     sync.Mutex
+	timeToSlotFn TimeToSlot
+}
+
+// TimeToSlot cache the function to avoid recomputing it for every block.
+type TimeToSlot func(timestamp uint64) (uint64, error)
+
 // BeaconHTTPClient implements BeaconClient. It provides golang types over the basic Beacon API.
 type BeaconHTTPClient struct {
-	client  *http.Client
-	baseURL string
+	httpClient *BaseHTTPClient
 }
 
 func NewBeaconHTTPClient(client *http.Client, baseURL string) *BeaconHTTPClient {
-	return &BeaconHTTPClient{client: client, baseURL: baseURL}
+	return &BeaconHTTPClient{
+		httpClient: NewBaseHTTPClient(client, baseURL),
+	}
 }
 
 func (bc *BeaconHTTPClient) request(ctx context.Context, dest any, reqPath string, reqQuery url.Values) error {
-	base := bc.baseURL
-	if !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
-		base = "http://" + base
-	}
-	baseURL, err := url.Parse(base)
-	if err != nil {
-		return fmt.Errorf("failed to parse base URL: %w", err)
-	}
-
-	reqURL, err := baseURL.Parse(reqPath)
-	if err != nil {
-		return fmt.Errorf("failed to parse request path: %w", err)
-	}
-
-	reqURL.RawQuery = reqQuery.Encode()
-
-	headers := http.Header{}
-	headers.Add("Accept", "application/json")
-
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL.String(), nil)
-	if err != nil {
-		return fmt.Errorf("failed to create HTTP request: %w", err)
-	}
-	req.Header = headers
-
-	resp, err := bc.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("http Get failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		errMsg, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed request with status %d: %s: %w", resp.StatusCode, string(errMsg), ethereum.NotFound)
-	} else if resp.StatusCode != http.StatusOK {
-		errMsg, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed request with status %d: %s", resp.StatusCode, string(errMsg))
-	}
-
-	err = json.NewDecoder(resp.Body).Decode(dest)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return bc.httpClient.Request(ctx, dest, reqPath, reqQuery)
 }
 
 func (bc *BeaconHTTPClient) NodeVersion(ctx context.Context) (string, error) {
@@ -143,6 +98,7 @@ func (bc *BeaconHTTPClient) BeaconBlobSidecars(ctx context.Context, slot uint64,
 	return resp, nil
 }
 
+// ClientPool is a simple round-robin client pool
 type ClientPool[T any] struct {
 	clients []T
 	index   int
@@ -180,8 +136,6 @@ func NewL1BeaconClient(cl BeaconClient, fallbacks ...BlobRetrievalService) *L1Be
 		pool: NewClientPool[BlobRetrievalService](cs...),
 	}
 }
-
-type TimeToSlot func(timestamp uint64) (uint64, error)
 
 // GetTimeToSlot returns a function that converts a timestamp to a slot number.
 func (cl *L1BeaconClient) GetTimeToSlot(ctx context.Context) (TimeToSlot, error) {
@@ -250,28 +204,12 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, b, err)
 	}
 
-	sidecars := make([]*APIBlobSidecar, 0, len(hashes))
-	// find the sidecars that match the provided versioned hashes
-	for _, h := range hashes {
-		for _, sidecar := range resp.Data {
-			versionedHash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
-			if h == versionedHash {
-				sidecars = append(sidecars, sidecar)
-				break
-			}
-		}
+	sidecars, err := MatchSidecarsWithHashes(resp.Data, hashes)
+	if err != nil {
+		return nil, err
 	}
 
-	if len(hashes) != len(sidecars) {
-		return nil, fmt.Errorf("expected %v sidecars but got %v", len(hashes), len(sidecars))
-	}
-
-	blobSidecars := make([]*BlobSidecar, 0, len(hashes))
-	for _, sidecar := range sidecars {
-		blobSidecars = append(blobSidecars, sidecar.BlobSidecar())
-	}
-
-	return blobSidecars, nil
+	return sidecars, nil
 }
 
 // FetchBlobs fetches blobs that were confirmed in the specified L1 block with the
@@ -314,4 +252,28 @@ func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([
 	}
 
 	return out, nil
+}
+
+// MatchSidecarsWithHashes matches the fetched sidecars with the provided hashes.
+func MatchSidecarsWithHashes(fetchedSidecars []*APIBlobSidecar, hashes []gethcommon.Hash) ([]*BlobSidecar, error) {
+	if len(hashes) != len(fetchedSidecars) {
+		return nil, fmt.Errorf("expected %v sidecars but got %v", len(hashes), len(fetchedSidecars))
+	}
+
+	sidecarMap := make(map[gethcommon.Hash]*BlobSidecar)
+	for _, sidecar := range fetchedSidecars {
+		versionedHash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
+		sidecarMap[versionedHash] = sidecar.BlobSidecar()
+	}
+
+	blobSidecars := make([]*BlobSidecar, len(hashes))
+	for i, h := range hashes {
+		sidecar, exists := sidecarMap[h]
+		if !exists {
+			return nil, fmt.Errorf("no matching BlobSidecar found for hash %s", h.Hex())
+		}
+		blobSidecars[i] = sidecar
+	}
+
+	return blobSidecars, nil
 }

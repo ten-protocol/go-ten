@@ -2,92 +2,70 @@ package ethadapter
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
-	"time"
+	"strings"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum"
 )
 
-const (
-	DefaultTimeoutSeconds = 30
-)
-
-var _ HTTP = (*BasicHTTPClient)(nil)
-
-type HTTP interface {
-	Get(ctx context.Context, path string, query url.Values, headers http.Header) (*http.Response, error)
+// BaseHTTPClient provides common HTTP functionality for different clients
+type BaseHTTPClient struct {
+	client  *http.Client
+	baseURL string
 }
 
-type BasicHTTPClient struct {
-	endpoint string
-	header   http.Header
-
-	log    log.Logger
-	client *http.Client
+func NewBaseHTTPClient(client *http.Client, baseURL string) *BaseHTTPClient {
+	return &BaseHTTPClient{client: client, baseURL: baseURL}
 }
 
-func NewBasicHTTPClient(endpoint string, log log.Logger, opts ...BasicHTTPClientOption) *BasicHTTPClient {
-	c := &BasicHTTPClient{
-		endpoint: endpoint,
-		log:      log,
-		client:   &http.Client{Timeout: DefaultTimeoutSeconds * time.Second},
+func (chc *BaseHTTPClient) Request(ctx context.Context, dest any, reqPath string, reqQuery url.Values) error {
+	base := chc.baseURL
+	if !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
+		base = "http://" + base
 	}
-
-	for _, opt := range opts {
-		opt.Apply(c)
-	}
-
-	return c
-}
-
-type BasicHTTPClientOption interface {
-	Apply(c *BasicHTTPClient)
-}
-
-type BasicHTTPClientOptionFn func(*BasicHTTPClient)
-
-func (fn BasicHTTPClientOptionFn) Apply(c *BasicHTTPClient) {
-	fn(c)
-}
-
-func WithHeader(h http.Header) BasicHTTPClientOption {
-	return BasicHTTPClientOptionFn(func(c *BasicHTTPClient) {
-		c.header = h
-	})
-}
-
-var ErrNoEndpoint = errors.New("no endpoint is configured")
-
-func (cl *BasicHTTPClient) Get(ctx context.Context, p string, query url.Values, headers http.Header) (*http.Response, error) {
-	if cl.endpoint == "" {
-		return nil, ErrNoEndpoint
-	}
-	target, err := url.Parse(cl.endpoint)
+	baseURL, err := url.Parse(base)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse endpoint URL: %w", err)
+		return fmt.Errorf("failed to parse base URL: %w", err)
 	}
-	// If we include the raw query in the path-join, it gets url-encoded,
-	// and fails to parse as query, and ends up in the url.URL.Path part on the server side.
-	// We want to avoid that, and insert the query manually. Real footgun in the url package.
-	target = target.JoinPath(p)
-	target.RawQuery = query.Encode()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("%w: failed to construct request", err)
-	}
-	addHTTPHeaders(req.Header, cl.header, headers)
-	return cl.client.Do(req)
-}
 
-func addHTTPHeaders(header http.Header, hs ...http.Header) {
-	for _, h := range hs {
-		for key, values := range h {
-			for _, value := range values {
-				header.Add(key, value)
-			}
-		}
+	reqURL, err := baseURL.Parse(reqPath)
+	if err != nil {
+		return fmt.Errorf("failed to parse request path: %w", err)
 	}
+
+	reqURL.RawQuery = reqQuery.Encode()
+
+	headers := http.Header{}
+	headers.Add("Accept", "application/json")
+
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL.String(), nil)
+	if err != nil {
+		return fmt.Errorf("failed to create HTTP request: %w", err)
+	}
+	req.Header = headers
+
+	resp, err := chc.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("http Get failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		errMsg, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("failed request with status %d: %s: %w", resp.StatusCode, string(errMsg), ethereum.NotFound)
+	} else if resp.StatusCode != http.StatusOK {
+		errMsg, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("failed request with status %d: %s", resp.StatusCode, string(errMsg))
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(dest)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

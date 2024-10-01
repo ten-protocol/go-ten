@@ -64,10 +64,6 @@ func (m *mockContractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	return decodeTx(tx)
 }
 
-func (m *mockContractLib) CreateRollup(tx *ethadapter.L1RollupTx) types.TxData {
-	return encodeTx(tx, rollupTxAddr)
-}
-
 func (m *mockContractLib) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error) {
 	var err error
 	blobs, err := ethadapter.EncodeBlobs(t.Rollup)

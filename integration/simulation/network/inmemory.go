@@ -20,7 +20,6 @@ import (
 type basicNetworkOfInMemoryNodes struct {
 	ethNodes  []*ethereummock.Node
 	l2Clients []rpc.Client
-	// blobResolver *l1.BlobResolver
 }
 
 func NewBasicNetworkOfInMemoryNodes() Network {

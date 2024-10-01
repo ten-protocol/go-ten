@@ -18,14 +18,15 @@ type BlobSidecar struct {
 	KZGProof      Bytes48      `json:"kzg_proof"`
 }
 
+// APIBlobSidecar ignores inclusion-proof of the blob-sidecar, since we verify blobs by their versioned hashes against
+//
+//	the execution-layer block instead.
 type APIBlobSidecar struct {
 	Index             Uint64String            `json:"index"`
 	Blob              kzg4844.Blob            `json:"blob"`
 	KZGCommitment     Bytes48                 `json:"kzg_commitment"`
 	KZGProof          Bytes48                 `json:"kzg_proof"`
 	SignedBlockHeader SignedBeaconBlockHeader `json:"signed_block_header"`
-	// The inclusion-proof of the blob-sidecar into the beacon-block is ignored,
-	// since we verify blobs by their versioned hashes against the execution-layer block instead.
 }
 
 func (sc *APIBlobSidecar) BlobSidecar() *BlobSidecar {
@@ -39,7 +40,6 @@ func (sc *APIBlobSidecar) BlobSidecar() *BlobSidecar {
 
 type SignedBeaconBlockHeader struct {
 	Message BeaconBlockHeader `json:"message"`
-	// signature is ignored, since we verify blobs against EL versioned-hashes
 }
 
 type BeaconBlockHeader struct {
@@ -137,19 +137,18 @@ func (b Bytes32) String() string {
 	return hexutil.Encode(b[:])
 }
 
-// KZGToVersionedHash computes the "blob hash" (a.k.a. versioned-hash) of a blob-commitment, as used in a blob-tx.
-// We implement it here because it is unfortunately not (currently) exposed by geth.
+// KZGToVersionedHash computes the versioned hash of a blob-commitment, as used in a blob-tx.
 func KZGToVersionedHash(commitment kzg4844.Commitment) (out common.Hash) {
 	hasher := sha256.New()
 	return kzg4844.CalcBlobHashV1(hasher, &commitment)
 }
 
-// VerifyBlobProof verifies that the given blob and proof corresponds to the given commitment,
-// returning error if the verification fails.
+// VerifyBlobProof verifies that the given blob and proof corresponds to the given commitment
 func VerifyBlobProof(blob *kzg4844.Blob, commitment kzg4844.Commitment, proof kzg4844.Proof) error {
 	return kzg4844.VerifyBlobProof(blob, commitment, proof)
 }
 
+// CalculateSlot calculates the slot number from a given timestamp, genesis time and seconds per slot.
 func CalculateSlot(timestamp uint64, genesisTime uint64, secondsPerSlot uint64) (uint64, error) {
 	if timestamp < genesisTime {
 		return 0, fmt.Errorf("provided timestamp (%v) precedes genesis time (%v)", timestamp, genesisTime)

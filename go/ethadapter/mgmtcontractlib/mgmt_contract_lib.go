@@ -25,7 +25,6 @@ const methodBytesLen = 4
 // messages for call requests, and converting ethereum transactions into L1Transactions.
 type MgmtContractLib interface {
 	IsMock() bool
-	CreateRollup(t *ethadapter.L1RollupTx) types.TxData
 	CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error)
 	CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData
 	CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, verifyAttester bool) types.TxData
@@ -116,40 +115,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	return nil
 }
 
-func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx) types.TxData {
-	decodedRollup, err := common.DecodeRollup(t.Rollup)
-	if err != nil {
-		panic(err)
-	}
-
-	encRollupData := base64EncodeToString(t.Rollup)
-
-	metaRollup := ManagementContract.StructsMetaRollup{
-		Hash:               decodedRollup.Hash(),
-		Signature:          decodedRollup.Header.Signature,
-		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
-	}
-
-	crossChain := ManagementContract.StructsHeaderCrossChainData{
-		Messages: convertCrossChainMessages(decodedRollup.Header.CrossChainMessages),
-	}
-
-	data, err := c.contractABI.Pack(
-		AddRollupMethod,
-		metaRollup,
-		encRollupData,
-		crossChain,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	return &types.LegacyTx{
-		To:   c.addr,
-		Data: data,
-	}
-}
-
+// CreateBlobRollup creates a BlobTx, encoding the rollup data into blobs.
 func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error) {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
@@ -175,7 +141,6 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 		panic(err)
 	}
 
-	// TODO handle when blobs exceed 1Mb
 	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)

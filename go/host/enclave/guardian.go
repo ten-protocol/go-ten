@@ -311,7 +311,6 @@ func (g *Guardian) provideSecret() error {
 		if err != nil {
 			return fmt.Errorf("next block after block=%s not found - %w", awaitFromBlock, err)
 		}
-		// FIXME clean this up
 		secretRespTxs, _, _, _ := g.sl.L1Publisher().ExtractRelevantTenTransactions(nextBlock)
 		for _, scrt := range secretRespTxs {
 			if scrt.RequesterID.Hex() == g.enclaveID.Hex() {

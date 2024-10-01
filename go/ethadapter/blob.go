@@ -13,9 +13,12 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
-// The number of bits in a BLS scalar that aren't part of a whole byte.
 const (
-	excessBlobBits = 6 // = math.floor(math.log2(BLS_MODULUS)) % 8
+	// excessBlobBits represents the number of bits in the last byte of a BLS scalar
+	// that are not fully utilized due to the BLS modulus not being a power of 2.
+	// This allows for more efficient packing of data into blobs by utilizing these
+	// otherwise unused bits.
+	excessBlobBits = 6
 	MaxBlobBytes   = 32 * 4096
 )
 
@@ -36,14 +39,12 @@ func MakeSidecar(blobs []*kzg4844.Blob) (*types.BlobTxSidecar, []gethcommon.Hash
 			return nil, nil, fmt.Errorf("cannot compute KZG proof for fast commitment verification of blob %d in tx candidate: %w", i, err)
 		}
 		sidecar.Proofs = append(sidecar.Proofs, proof)
-		// blobHash := KZGToVersionedHash(commitment)
-		// println("created blob hash at ", call, blobHash.Hex())
 		blobHashes = append(blobHashes, KZGToVersionedHash(commitment))
 	}
 	return sidecar, blobHashes, nil
 }
 
-// EncodeBlobs takes converts bytes into blobs used for KZG commitment EIP-4844
+// EncodeBlobs converts bytes into blobs used for KZG commitment EIP-4844
 // transactions on Ethereum.
 func EncodeBlobs(data []byte) ([]*kzg4844.Blob, error) {
 	data, err := rlp.EncodeToBytes(data)
@@ -51,14 +52,16 @@ func EncodeBlobs(data []byte) ([]*kzg4844.Blob, error) {
 		return nil, err
 	}
 
-	// limit size of rollup for now to 128kb
 	if len(data) >= MaxBlobBytes {
 		return nil, fmt.Errorf("data too large to encode in blobs")
 	}
+
 	var blobs []*kzg4844.Blob
 	for len(data) > 0 {
 		var b kzg4844.Blob
+		// fill blob with full bytes first
 		data = fillBlobBytes(b[:], data)
+		// fill the remaining bits
 		data, err = fillBlobBits(b[:], data)
 		if err != nil {
 			return nil, err
@@ -81,25 +84,33 @@ func fillBlobBytes(blob []byte, data []byte) []byte {
 }
 
 func fillBlobBits(blob []byte, data []byte) ([]byte, error) {
-	var acc uint16
-	accBits := 0
+	var acc uint16 // accumulator for bits
+	accBits := 0   // number of bits currently in the accumulator
+
 	for fieldElement := 0; fieldElement < params.BlobTxFieldElementsPerBlob; fieldElement++ {
+		// if we need more bits and have more data, add a byte to the accumulator
 		if accBits < excessBlobBits && len(data) > 0 {
 			acc |= uint16(data[0]) << accBits
 			accBits += 8
 			data = data[1:]
 		}
+
+		// fill the excess bits of the current field element
 		blob[fieldElement*32] = uint8(acc & ((1 << excessBlobBits) - 1))
 		accBits -= excessBlobBits
+
 		if accBits < 0 {
-			// no more data
 			break
 		}
+
+		// shift the used bits out of the accumulator
 		acc >>= excessBlobBits
 	}
+
 	if accBits > 0 {
-		return nil, fmt.Errorf("somehow ended up with %v spare accBits", accBits)
+		return nil, fmt.Errorf("unexpected %v spare accBits remaining", accBits)
 	}
+
 	return data, nil
 }
 

@@ -2,7 +2,6 @@ package ethadapter
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -50,15 +49,4 @@ type EthClient interface {
 // Info forces the RPC EthClient to return the data in the same format (independently of its implementation)
 type Info struct {
 	L2ID gethcommon.Address // the address of the Obscuro node this client is dedicated to
-}
-
-type L1BlockRef struct {
-	Hash       gethcommon.Hash `json:"hash"`
-	Number     uint64          `json:"number"`
-	ParentHash gethcommon.Hash `json:"parentHash"`
-	Time       uint64          `json:"timestamp"`
-}
-
-func (id L1BlockRef) String() string {
-	return fmt.Sprintf("%s:%d", id.Hash.String(), id.Number)
 }

@@ -3,15 +3,11 @@ package ethadapter
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"path"
 	"strings"
 
-	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 )
@@ -30,12 +26,13 @@ type ArchivalBlobResponse struct {
 }
 
 type ArchivalHTTPClient struct {
-	client  *http.Client
-	baseURL string
+	httpClient *BaseHTTPClient
 }
 
 func NewArchivalHTTPClient(client *http.Client, baseURL string) *ArchivalHTTPClient {
-	return &ArchivalHTTPClient{client: client, baseURL: baseURL}
+	return &ArchivalHTTPClient{
+		httpClient: NewBaseHTTPClient(client, baseURL),
+	}
 }
 
 func (ac *ArchivalHTTPClient) BeaconBlobSidecars(ctx context.Context, _ uint64, hashes []gethcommon.Hash) (APIGetBlobSidecarsResponse, error) {
@@ -62,49 +59,7 @@ func (ac *ArchivalHTTPClient) BeaconBlobSidecars(ctx context.Context, _ uint64, 
 }
 
 func (ac *ArchivalHTTPClient) request(ctx context.Context, dest any, reqPath string) error {
-	base := ac.baseURL
-	if !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
-		base = "http://" + base
-	}
-	baseURL, err := url.Parse(base)
-	if err != nil {
-		return fmt.Errorf("failed to parse base URL: %w", err)
-	}
-
-	reqURL, err := baseURL.Parse(reqPath)
-	if err != nil {
-		return fmt.Errorf("failed to parse request path: %w", err)
-	}
-
-	headers := http.Header{}
-	headers.Add("Accept", "application/json")
-
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL.String(), nil)
-	if err != nil {
-		return fmt.Errorf("failed to create HTTP request: %w", err)
-	}
-	req.Header = headers
-
-	resp, err := ac.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("http Get failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		errMsg, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed request with status %d: %s: %w", resp.StatusCode, string(errMsg), ethereum.NotFound)
-	} else if resp.StatusCode != http.StatusOK {
-		errMsg, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed request with status %d: %s", resp.StatusCode, string(errMsg))
-	}
-
-	err = json.NewDecoder(resp.Body).Decode(dest)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ac.httpClient.Request(ctx, dest, reqPath, nil)
 }
 
 func convertToAPIBlobSidecar(archivalResp *ArchivalBlobResponse, index int) (*APIBlobSidecar, error) {

@@ -257,9 +257,7 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block) ([]*ethad
 		blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), rollupHashes.BlobHashes)
 		if err != nil {
 			if errors.Is(err, ethereum.NotFound) {
-				p.logger.Warn("Blobs have expired for block, fetching from archive", "block", block.Hash(), "error", err)
-				// FIXME
-				// Fetch from archive service
+				p.logger.Crit("Blobs were not found on beacon chain or archive service", "block", block.Hash(), "error", err)
 				return nil, nil, nil, nil
 			}
 			p.logger.Crit("could not fetch blobs", log.ErrKey, err)
