@@ -393,8 +393,9 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 			nodeIdx, notFoundNativeTransfers, len(s.TxInjector.TxTracker.NativeValueTransferL2Transactions))
 	}
 
-	checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
 	println("HERE HERE HERE 4")
+	checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
+	println("HERE HERE HERE 4.5")
 	totalSuccessfullyWithdrawn := extractWithdrawals(t, tenClient, nodeIdx)
 
 	totalAmountLogged := getLoggedWithdrawals(minTenHeight, tenClient, headBatchHeader)
