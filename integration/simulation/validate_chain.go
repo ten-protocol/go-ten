@@ -539,7 +539,7 @@ func getSender(tx *common.L2Tx) gethcommon.Address {
 // Checks that there is a receipt available for each L2 transaction.
 func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
 	l2Txs := append(txInjector.TxTracker.TransferL2Transactions, txInjector.TxTracker.WithdrawalL2Transactions...)
-
+	println("checkTransactionReceipts 1")
 	nrSuccessful := 0
 	for _, tx := range l2Txs {
 		sender := getSender(tx)
@@ -550,20 +550,23 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 			t.Errorf("node %d: could not retrieve receipt for transaction %s. Cause: %s", nodeIdx, tx.Hash().Hex(), err)
 			continue
 		}
+		println("checkTransactionReceipts 2")
 
 		// We check that the receipt's logs are relevant to the sender.
 		for _, retrievedLog := range receipt.Logs {
 			assertRelevantLogsOnly(t, sender.Hex(), *retrievedLog)
 		}
+		println("checkTransactionReceipts 3")
 
 		if receipt.Status == types.ReceiptStatusFailed {
 			testlog.Logger().Info("Transaction receipt had failed status.", log.TxKey, tx.Hash())
 		} else {
 			nrSuccessful++
+			println("checkTransactionReceipts 4")
 		}
 	}
 
-	println("checkTransactionReceipts 1")
+	println("checkTransactionReceipts 5")
 
 	if nrSuccessful < len(l2Txs)/2 {
 		t.Errorf("node %d: More than half the transactions failed. Successful number: %d", nodeIdx, nrSuccessful)
@@ -601,7 +604,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 
 		testlog.Logger().Info("[CrossChain] successful withdrawal")
 	}
-	println("checkTransactionReceipts 2")
+	println("checkTransactionReceipts 6")
 }
 
 func extractWithdrawals(t *testing.T, tenClient *obsclient.ObsClient, nodeIdx int) (totalSuccessfullyWithdrawn *big.Int) {
