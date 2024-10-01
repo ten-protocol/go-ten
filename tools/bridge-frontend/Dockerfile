@@ -1,6 +1,9 @@
 # Use an official Node.js 22 as a parent image
 FROM node:22-alpine
 
+# Install pnpm
+RUN npm install -g pnpm
+
 # setup container data structure
 RUN mkdir -p /home/obscuro/go-obscuro/tools
 COPY ./tools/bridge-frontend /home/obscuro/go-obscuro/tools/bridge-frontend

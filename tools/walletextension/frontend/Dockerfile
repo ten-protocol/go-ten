@@ -1,5 +1,7 @@
 # Use an official Node.js LTS version as a base image
 FROM node:20-alpine AS base
+# Install pnpm
+RUN npm install -g pnpm
 
 
 ARG NEXT_PUBLIC_NETWORK_NAME
