@@ -26,7 +26,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	simParams := params.SimParams{
 		NumberOfNodes:              5,
 		AvgBlockDuration:           250 * time.Millisecond, // Increased from 180ms
-		SimulationTime:             45 * time.Second,       // Increased from 45s
+		SimulationTime:             45 * time.Second,
 		L1EfficiencyThreshold:      0.2,
 		MgmtContractLib:            ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib:           ethereummock.NewERC20ContractLibMock(),
