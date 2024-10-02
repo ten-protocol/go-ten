@@ -15,7 +15,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/common/tracers"
 )
 
 const (
@@ -160,17 +159,28 @@ func FilterLogs(
 	return loadLogs(ctx, db, requestingAccount, query, queryParams)
 }
 
-func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
+func DebugGetLogs(ctx context.Context, db *sql.DB, fromBlock *big.Int, toBlock *big.Int, address gethcommon.Address, eventSig gethcommon.Hash) ([]*common.DebugLogVisibility, error) {
 	var queryParams []any
+	query := "select c.transparent, c.auto_visibility, et.config_public, et.topic1_can_view, et.topic2_can_view, et.topic3_can_view, et.sender_can_view, et.auto_visibility, et.auto_public, eoa1.address, eoa2.address, eoa3.address, b.height, tx.hash, tx.idx, b.hash, log_idx " +
+		baseEventsJoin
 
-	// todo - should we return the config here?
-	query := "select eoa1.address, eoa2.address, eoa3.address, et.config_public, et.auto_public, et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address, c.auto_visibility, c.transparent " +
-		baseEventsJoin +
-		" AND tx.hash = ? "
+	// ignore negative numbers
+	if fromBlock != nil && fromBlock.Sign() > 0 {
+		query += " AND b.height >= ?"
+		queryParams = append(queryParams, fromBlock.Int64())
+	}
+	if toBlock != nil && toBlock.Sign() > 0 {
+		query += " AND b.height <= ?"
+		queryParams = append(queryParams, toBlock.Int64())
+	}
 
-	queryParams = append(queryParams, txHash.Bytes())
+	query += " AND c.address = ? "
+	queryParams = append(queryParams, address.Bytes())
 
-	result := make([]*tracers.DebugLogs, 0)
+	query += " AND et.event_sig = ? "
+	queryParams = append(queryParams, eventSig.Bytes())
+
+	result := make([]*common.DebugLogVisibility, 0)
 
 	rows, err := db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
@@ -179,44 +189,41 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 	defer rows.Close()
 
 	for rows.Next() {
-		l := tracers.DebugLogs{
-			Log: types.Log{
-				Topics: []gethcommon.Hash{},
-			},
-		}
+		l := common.DebugLogVisibility{EventSig: &eventSig, Address: &address}
 
-		var t0, t1, t2, t3 sql.NullString
 		var relAddress1, relAddress2, relAddress3 []byte
 		err = rows.Scan(
+			&l.TransparentContract,
+			&l.AutoContract,
+
+			&l.EventConfigPublic,
+			&l.Topic1,
+			&l.Topic2,
+			&l.Topic3,
+			&l.Sender,
+
+			&l.AutoVisibility,
+			&l.AutoPublic,
 			&relAddress1,
 			&relAddress2,
 			&relAddress3,
-			&l.ConfigPublic,
-			&l.AutoPublic,
-			&t0, &t1, &t2, &t3,
-			&l.Data,
-			&l.BlockHash,
+
 			&l.BlockNumber,
 			&l.TxHash,
 			&l.TxIndex,
+			&l.BlockHash,
 			&l.Index,
-			&l.Address,
-			&l.AutoContract,
-			&l.TransparentContract,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("could not load log entry from db: %w", err)
+			return nil, fmt.Errorf("could not debug load log entry from db: %w", err)
 		}
 
-		for _, topic := range []sql.NullString{t0, t1, t2, t3} {
-			if topic.Valid {
-				l.Topics = append(l.Topics, stringToHash(topic))
-			}
-		}
-
-		l.RelAddress1 = bytesToAddress(relAddress1)
-		l.RelAddress2 = bytesToAddress(relAddress2)
-		l.RelAddress3 = bytesToAddress(relAddress3)
+		r1 := relAddress1 != nil
+		r2 := relAddress2 != nil
+		r3 := relAddress3 != nil
+		l.RelAddress1 = &r1
+		l.RelAddress2 = &r2
+		l.RelAddress3 = &r3
 
 		result = append(result, &l)
 	}
@@ -226,14 +233,6 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 	}
 
 	return result, nil
-}
-
-func bytesToAddress(b []byte) *gethcommon.Address {
-	if b != nil {
-		addr := gethcommon.BytesToAddress(b)
-		return &addr
-	}
-	return nil
 }
 
 // utility function that knows how to load relevant logs from the database
@@ -367,10 +366,10 @@ func WriteContractConfig(ctx context.Context, dbTX *sql.Tx, contractAddress geth
 }
 
 func ReadContractByAddress(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (*Contract, error) {
-	row := dbTx.QueryRowContext(ctx, "select id, address, auto_visibility, transparent from contract where address = ?", addr.Bytes())
+	row := dbTx.QueryRowContext(ctx, "select id, address, auto_visibility, transparent, creator from contract where address = ?", addr.Bytes())
 
 	var c Contract
-	err := row.Scan(&c.Id, &c.Address, &c.AutoVisibility, &c.Transparent)
+	err := row.Scan(&c.Id, &c.Address, &c.AutoVisibility, &c.Transparent, &c.Creator)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -381,37 +380,6 @@ func ReadContractByAddress(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Ad
 
 	return &c, nil
 }
-
-func ReadContractCreator(ctx context.Context, db *sql.DB, address gethcommon.Address) (*gethcommon.Address, error) {
-	row := db.QueryRowContext(ctx, "select eoa.address from contract c join externally_owned_account eoa on c.creator=eoa.id  where c.address = ?", address.Bytes())
-
-	var eoaAddress gethcommon.Address
-	err := row.Scan(&eoaAddress)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// make sure the error is converted to obscuro-wide not found error
-			return nil, errutil.ErrNotFound
-		}
-		return nil, err
-	}
-
-	return &eoaAddress, nil
-}
-
-func stringToHash(ns sql.NullString) gethcommon.Hash {
-	value, err := ns.Value()
-	if err != nil {
-		return [32]byte{}
-	}
-	s, ok := value.(string)
-	if !ok {
-		return [32]byte{}
-	}
-	result := gethcommon.Hash{}
-	result.SetBytes([]byte(s))
-	return result
-}
-
 func byteArrayToHash(b []byte) gethcommon.Hash {
 	result := gethcommon.Hash{}
 	result.SetBytes(b)
