@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useContractsService } from "@/src/services/useContractsService";
 import { balancePollingInterval, CHAINS, TOKENS } from "@/src/lib/constants";
 import { IToken, ToastType } from "../types";
-import { toast } from "../components/ui/use-toast";
+import { showToast, toast } from "../components/ui/use-toast";
 import React from "react";
 import useWalletStore from "../stores/wallet-store";
 
@@ -100,17 +100,22 @@ export const useBridgeUtils = () => {
             variant: ToastType.INFO,
           });
 
+          let res;
           if (selectedToken.isNative) {
-            await sendNative({
+            res = await sendNative({
               receiver: transactionData.receiver,
               value: amount.toString(),
             });
           } else {
-            await sendERC20(
+            res = await sendERC20(
               transactionData.receiver,
               amount,
               selectedToken.address
             );
+          }
+
+          if (res?.transactionHash) {
+            showToast(ToastType.SUCCESS, "Transaction completed successfully");
           }
         } catch (error: any) {
           console.error(error);

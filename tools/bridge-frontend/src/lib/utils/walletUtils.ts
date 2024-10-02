@@ -20,6 +20,8 @@ const errorMessages: Record<IErrorMessages, string> = {
     "Transaction rejected. Please sign the transaction to proceed",
   [IErrorMessages.UserRejectedTheRequest]:
     "Request rejected. Please try again with the correct permissions",
+  [IErrorMessages.UserRejectedTransaction]:
+    "Transaction rejected. Please try again",
   [IErrorMessages.ExecutionReverted]:
     "Transaction reverted. Please check the transaction details and try again",
   [IErrorMessages.RateLimitExceeded]:

@@ -74,7 +74,6 @@ export default function Dashboard() {
   const { mutate, isPending } = useMutation({
     mutationFn: initiateBridgeTransaction,
     onSuccess: () => {
-      showToast(ToastType.SUCCESS, "Transaction completed successfully");
       queryClient.invalidateQueries({
         queryKey: ["bridgeTransactions", isL1ToL2 ? "l1" : "l2"],
       });
