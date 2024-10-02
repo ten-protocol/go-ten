@@ -104,17 +104,17 @@ func TestTenGateway(t *testing.T) {
 	// run the tests against the exis
 	for name, test := range map[string]func(*testing.T, int, string, string, wallet.Wallet){
 		//"testAreTxsMinted":            testAreTxsMinted, this breaks the other tests bc, enable once concurrency issues are fixed
-		"testErrorHandling": testErrorHandling,
-		//"testMultipleAccountsSubscription":     testMultipleAccountsSubscription,
-		//"testNewHeadsSubscription":             testNewHeadsSubscription,
-		//"testErrorsRevertedArePassed":          testErrorsRevertedArePassed,
-		//"testUnsubscribe":                      testUnsubscribe,
-		//"testClosingConnectionWhileSubscribed": testClosingConnectionWhileSubscribed,
-		//"testSubscriptionTopics":               testSubscriptionTopics,
-		//"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
-		//"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
-		//"testGetStorageAtForReturningUserID":   testGetStorageAtForReturningUserID,
-		//"testRateLimiter":                      testRateLimiter,
+		"testErrorHandling":                    testErrorHandling,
+		"testMultipleAccountsSubscription":     testMultipleAccountsSubscription,
+		"testNewHeadsSubscription":             testNewHeadsSubscription,
+		"testErrorsRevertedArePassed":          testErrorsRevertedArePassed,
+		"testUnsubscribe":                      testUnsubscribe,
+		"testClosingConnectionWhileSubscribed": testClosingConnectionWhileSubscribed,
+		"testSubscriptionTopics":               testSubscriptionTopics,
+		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
+		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
+		"testGetStorageAtForReturningUserID":   testGetStorageAtForReturningUserID,
+		"testRateLimiter":                      testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, startPort, httpURL, wsURL, w)
@@ -490,12 +490,10 @@ func testErrorHandling(t *testing.T, startPort int, httpURL, wsURL string, w wal
 
 	// make requests to geth for comparison
 	for _, req := range []string{
-		//`{"jsonrpc":"2.0","method":"eth_getLogs","params":[[]],"id":1}`,
-		//`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"topics":[]}],"id":1}`,
-		//`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock":"0x387","topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
-		`{"jsonrpc":"2.0","method":"debug_eventLogRelevancy","params":[{ "address":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"],"topics":[["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]]}],"id":1}`,
-		`{"jsonrpc":"2.0","method":"debug_eventLogRelevancy","params":[{"fromBlock":"0x387", "address":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"],"topics":[["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]]}],"id":1}`,
-		`{"jsonrpc":"2.0","method":"debug_eventLogRelevancy","params":[{"fromBlock":"0x387", "address":["0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"],"topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[[]],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"topics":[]}],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock":"0x387","topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
+		`{"jsonrpc":"2.0","method":"debug_eventLogRelevancy","params":[{"fromBlock":"0x387","topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
 		//`{"jsonrpc":"2.0","method":"eth_subscribe","params":["logs"],"id":1}`,
 		//`{"jsonrpc":"2.0","method":"eth_subscribe","params":["logs",{"topics":[]}],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`,
