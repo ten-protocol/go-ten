@@ -43,7 +43,7 @@ type Client struct {
 
 func NewClient(enclaveRPCAddress string, enclaveRPCTimeout time.Duration, logger gethlog.Logger) common.Enclave {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	connection, err := grpc.Dial(enclaveRPCAddress, opts...)
+	connection, err := grpc.NewClient(enclaveRPCAddress, opts...)
 	if err != nil {
 		logger.Crit("Failed to connect to enclave RPC service.", log.ErrKey, err)
 	}
