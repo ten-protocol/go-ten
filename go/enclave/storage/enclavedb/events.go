@@ -380,6 +380,7 @@ func ReadContractByAddress(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Ad
 
 	return &c, nil
 }
+
 func byteArrayToHash(b []byte) gethcommon.Hash {
 	result := gethcommon.Hash{}
 	result.SetBytes(b)

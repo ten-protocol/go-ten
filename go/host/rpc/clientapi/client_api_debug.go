@@ -2,6 +2,7 @@ package clientapi
 
 import (
 	"context"
+
 	"github.com/ten-protocol/go-ten/go/responses"
 
 	"github.com/ten-protocol/go-ten/go/common"
