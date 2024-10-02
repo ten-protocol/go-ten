@@ -46,6 +46,8 @@ type NodeConfigCLI struct {
 	rollupInterval          string // format like 500ms or 2s (any time parsable by time.ParseDuration())
 	l1ChainID               int
 	postgresDBHost          string
+	l1beaconUrl             string
+	l1BlobArchiveUrl        string
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
@@ -83,6 +85,8 @@ func ParseConfigCLI() *NodeConfigCLI {
 	rollupInterval := flag.String(rollupIntervalFlag, "3s", flagUsageMap[rollupIntervalFlag])
 	l1ChainID := flag.Int(l1ChainIDFlag, 1337, flagUsageMap[l1ChainIDFlag])
 	postgresDBHost := flag.String(postgresDBHostFlag, "dd", flagUsageMap[postgresDBHostFlag])
+	l1BeaconUrl := flag.String(l1BeaconUrlFlag, "eth2network:126000", flagUsageMap[l1BeaconUrlFlag])
+	l1BlobArchiveUrl := flag.String(l1BlobArchiveUrlFlag, "", flagUsageMap[l1BlobArchiveUrlFlag])
 
 	flag.Parse()
 	cfg.nodeName = *nodeName
@@ -115,6 +119,8 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.rollupInterval = *rollupInterval
 	cfg.l1ChainID = *l1ChainID
 	cfg.postgresDBHost = *postgresDBHost
+	cfg.l1beaconUrl = *l1BeaconUrl
+	cfg.l1BlobArchiveUrl = *l1BlobArchiveUrl
 
 	cfg.nodeAction = flag.Arg(0)
 	if !validateNodeAction(cfg.nodeAction) {

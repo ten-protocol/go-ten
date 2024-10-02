@@ -64,8 +64,7 @@ func (t *Testnet) Start() error {
 		node.WithDebugNamespaceEnabled(true),
 		node.WithLogLevel(t.cfg.logLevel),
 		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
-		// TODO test the testnet launcher
-		node.WithL1BeaconUrl("127.0.0.1:12600"),
+		node.WithL1BeaconUrl("eth2network:12600"),
 	)
 	if !t.cfg.isSGXEnabled {
 		sequencerNodeConfig.UpdateNodeConfig(node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"))

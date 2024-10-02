@@ -289,6 +289,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		IsInboundP2PDisabled: false,
 		MaxRollupSize:        1024 * 128,
 		CrossChainInterval:   6 * time.Second,
-		L1BeaconUrl:          "127.0.0.1:12600", // default port for the beacon chain if not specified
+		//L1BeaconUrl:          "127.0.0.1:12600", // default port for the beacon chain if not specified
+		L1BeaconUrl: "eth2network:12600", // local testnet defaults here
 	}
 }
