@@ -366,7 +366,7 @@ func WriteContractConfig(ctx context.Context, dbTX *sql.Tx, contractAddress geth
 }
 
 func ReadContractByAddress(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (*Contract, error) {
-	row := dbTx.QueryRowContext(ctx, "select id, address, auto_visibility, transparent, creator from contract where address = ?", addr.Bytes())
+	row := dbTx.QueryRowContext(ctx, "select c.id, c.address, c.auto_visibility, c.transparent, eoa.address from contract c join externally_owned_account eoa on c.creator=eoa.id where c.address = ?", addr.Bytes())
 
 	var c Contract
 	err := row.Scan(&c.Id, &c.Address, &c.AutoVisibility, &c.Transparent, &c.Creator)
