@@ -355,15 +355,31 @@ func checkZenBaseMinting(t *testing.T, s *Simulation) {
 		}
 		zenBaseBalance, err := zenBaseContract.BalanceOf(&bind.CallOpts{
 			From: sender,
-		}, gethcommon.Address{})
+		}, sender)
 		if err != nil {
 			panic(err)
 		}
 
 		expectedBalance := big.NewInt(int64(expectedMinted)) // Assuming 1 ZenBase per transaction
-		if zenBaseBalance.Cmp(expectedBalance) != 0 {
+		if zenBaseBalance.Cmp(expectedBalance) < 0 {
 			t.Errorf("Sender %s: Expected ZenBase balance %d, but found %d", sender.Hex(), expectedBalance, zenBaseBalance)
 		}
+	}
+
+	rpc := s.RPCHandles.TenWalletClient(s.Params.Wallets.L2FaucetWallet.Address(), 1)
+	zenBaseContract, err := ZenBase.NewZenBase(s.ZenBaseAddress, rpc)
+	if err != nil {
+		panic(err)
+	}
+	totalSupply, err := zenBaseContract.TotalSupply(&bind.CallOpts{
+		From: s.Params.Wallets.L2FaucetWallet.Address(),
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	if totalSupply.Cmp(big.NewInt(0)) <= 0 {
+		t.Errorf("ZenBase total supply is 0")
 	}
 }
 

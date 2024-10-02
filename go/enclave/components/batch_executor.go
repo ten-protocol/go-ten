@@ -11,6 +11,7 @@ import (
 
 	"github.com/holiman/uint256"
 
+	"github.com/ten-protocol/go-ten/contracts/generated/TransactionsAnalyzer"
 	"github.com/ten-protocol/go-ten/go/config"
 
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
@@ -207,8 +208,8 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 		txReceipts = append(txReceipts, txResult.Receipt)
 	}
 
-	onBlockTx, err := executor.systemContracts.CreateOnBatchEndTransaction(ctx, stateDB, batch, txReceipts)
-	if err != nil {
+	onBlockTx, err := executor.systemContracts.CreateOnBatchEndTransaction(ctx, stateDB, successfulTxs, txReceipts)
+	if err != nil && !errors.Is(err, system.ErrNoTransactions) {
 		return nil, fmt.Errorf("could not create on block end transaction. Cause: %w", err)
 	}
 	if onBlockTx != nil {
@@ -218,18 +219,51 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 				PublishingCost: big.NewInt(0),
 			},
 		}
-		onBlockSuccessfulTx, _, onBlockReceipt, err := executor.processTransactions(ctx, batch, len(successfulTxs), onBlockPricedTxes, stateDB, context.ChainConfig, true)
+		onBlockSuccessfulTx, _, onBlockTxResult, err := executor.processTransactions(ctx, batch, len(successfulTxs), onBlockPricedTxes, stateDB, context.ChainConfig, true)
 		if err != nil {
 			// todo: remove once feature finished
 			panic(err)
 			return nil, fmt.Errorf("could not process on block end transaction hook. Cause: %w", err)
 		}
-		if err = executor.verifySyntheticTransactionsSuccess(onBlockPricedTxes, onBlockSuccessfulTx, onBlockReceipt); err != nil {
+		if err = executor.verifySyntheticTransactionsSuccess(onBlockPricedTxes, onBlockSuccessfulTx, onBlockTxResult); err != nil {
 			// todo: remove once feature finished
 			panic(err)
 			return nil, fmt.Errorf("batch computation failed due to onBlock hook reverting. Cause: %w", err)
 		}
-	} else if batch.Header.SequencerOrderNo.Uint64() > 2 {
+		// Parse onBlockReceipt for the TransactionsConverted event
+		abi, err := TransactionsAnalyzer.TransactionsAnalyzerMetaData.GetAbi()
+		if err != nil {
+			panic(err)
+			return nil, err
+		}
+		result := onBlockTxResult[0]
+		if ok, err := executor.systemContracts.VerifyOnBlockReceipt(successfulTxs, result.Receipt); !ok || err != nil {
+			executor.logger.Error("VerifyOnBlockReceipt failed", "error", err, "ok", ok)
+			panic("VerifyOnBlockReceipt failed")
+			return nil, fmt.Errorf("VerifyOnBlockReceipt failed")
+		}
+
+		if len(result.Receipt.Logs) == 0 {
+			panic(fmt.Errorf("no logs in onBlockReceipt"))
+			return nil, fmt.Errorf("no logs in onBlockReceipt")
+		}
+
+		for _, log := range result.Receipt.Logs {
+			if len(log.Topics) > 0 && log.Topics[0] == abi.Events["TransactionsConverted"].ID { // TransactionsConverted event signature
+				if len(log.Data) == 32 { // uint256 is 32 bytes
+					transactionsConverted := new(big.Int).SetBytes(log.Data)
+					if transactionsConverted.Uint64() != uint64(len(context.Transactions)) {
+						panic(fmt.Errorf("mismatch in TransactionsConverted event: expected %d, got %d", len(context.Transactions), transactionsConverted.Uint64()))
+						return nil, fmt.Errorf("mismatch in TransactionsConverted event: expected %d, got %d", len(context.Transactions), transactionsConverted.Uint64())
+					}
+				} else {
+					return nil, fmt.Errorf("invalid data length for TransactionsConverted event")
+				}
+				break
+			}
+		}
+
+	} else if err == nil && batch.Header.SequencerOrderNo.Uint64() > 2 {
 		executor.logger.Crit("Bootstrapping of network failed! System contract hooks have not been initialised after genesis.")
 	}
 

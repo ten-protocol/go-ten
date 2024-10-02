@@ -3,6 +3,7 @@ package system
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -10,8 +11,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/contracts/generated/TransactionsAnalyzer"
+	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -20,14 +21,16 @@ import (
 
 var (
 	transactionsAnalyzerABI, _ = abi.JSON(strings.NewReader(TransactionsAnalyzer.TransactionsAnalyzerMetaData.ABI))
+	ErrNoTransactions          = fmt.Errorf("no transactions")
 )
 
 type SystemContractCallbacks interface {
 	GetOwner() gethcommon.Address
 	Initialize(batch *core.Batch, receipts types.Receipts) error
 	Load() error
-	CreateOnBatchEndTransaction(ctx context.Context, l2State *state.StateDB, batch *core.Batch, receipts common.L2Receipts) (*common.L2Tx, error)
+	CreateOnBatchEndTransaction(ctx context.Context, stateDB *state.StateDB, transactions common.L2Transactions, receipts types.Receipts) (*types.Transaction, error)
 	TransactionAnalyzerAddress() *gethcommon.Address
+	VerifyOnBlockReceipt(transactions common.L2Transactions, receipt *types.Receipt) (bool, error)
 }
 
 type systemContractCallbacks struct {
@@ -121,32 +124,49 @@ func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipts types.R
 	return s.initializeRequiredAddresses(addresses)
 }
 
-func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Context, l2State *state.StateDB, batch *core.Batch, receipts common.L2Receipts) (*common.L2Tx, error) {
+func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Context, l2State *state.StateDB, transactions common.L2Transactions, receipts types.Receipts) (*types.Transaction, error) {
 	if s.transactionsAnalyzerAddress == nil {
 		s.logger.Debug("CreateOnBatchEndTransaction: TransactionsAnalyzerAddress is nil, skipping transaction creation")
 		return nil, nil
 	}
 
-	s.logger.Info("CreateOnBatchEndTransaction: Creating transaction on batch end", "batchSeqNo", batch.SeqNo)
+	if len(transactions) == 0 {
+		s.logger.Debug("CreateOnBatchEndTransaction: Batch has no transactions, skipping transaction creation")
+		return nil, ErrNoTransactions
+	}
 
 	nonceForSyntheticTx := l2State.GetNonce(s.GetOwner())
 	s.logger.Debug("CreateOnBatchEndTransaction: Retrieved nonce for synthetic transaction", "nonce", nonceForSyntheticTx)
 
-	blockTransactions := TransactionsAnalyzer.TransactionsAnalyzerBlockTransactions{
-		Transactions: make([][]byte, 0),
-	}
-	for _, tx := range batch.Transactions {
-		encodedBytes, err := rlp.EncodeToBytes(tx)
-		if err != nil {
-			s.logger.Error("CreateOnBatchEndTransaction: Failed encoding transaction", "transactionHash", tx.Hash().Hex(), "error", err)
-			return nil, fmt.Errorf("failed encoding transaction for onBlock %w", err)
+	solidityTransactions := make([]TransactionsAnalyzer.StructsTransaction, 0)
+
+	for _, tx := range transactions {
+		// Start of Selection
+		transaction := TransactionsAnalyzer.StructsTransaction{
+			Nonce:    big.NewInt(int64(tx.Nonce())),
+			GasPrice: tx.GasPrice(),
+			GasLimit: big.NewInt(int64(tx.Gas())),
+			Value:    tx.Value(),
+			Data:     tx.Data(),
+		}
+		if tx.To() != nil {
+			transaction.To = *tx.To()
+		} else {
+			transaction.To = gethcommon.Address{} // Zero address - contract deployment
 		}
 
-		blockTransactions.Transactions = append(blockTransactions.Transactions, encodedBytes)
-		s.logger.Debug("CreateOnBatchEndTransaction: Encoded transaction", "transactionHash", tx.Hash().Hex())
+		sender, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+		if err != nil {
+			s.logger.Error("CreateOnBatchEndTransaction: Failed to recover sender address", "error", err, "transactionHash", tx.Hash().Hex())
+			return nil, fmt.Errorf("failed to recover sender address: %w", err)
+		}
+		transaction.From = sender
+
+		solidityTransactions = append(solidityTransactions, transaction)
+		s.logger.Debug("CreateOnBatchEndTransaction: Encoded transaction", "transactionHash", tx.Hash().Hex(), "sender", sender.Hex())
 	}
 
-	data, err := transactionsAnalyzerABI.Pack("onBlock", blockTransactions)
+	data, err := transactionsAnalyzerABI.Pack("onBlock", solidityTransactions)
 	if err != nil {
 		s.logger.Error("CreateOnBatchEndTransaction: Failed packing onBlock data", "error", err)
 		return nil, fmt.Errorf("failed packing onBlock() %w", err)
@@ -170,4 +190,38 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 
 	s.logger.Info("CreateOnBatchEndTransaction: Successfully created signed transaction", "transactionHash", signedTx.Hash().Hex())
 	return signedTx, nil
+}
+
+func (s *systemContractCallbacks) VerifyOnBlockReceipt(transactions common.L2Transactions, receipt *types.Receipt) (bool, error) {
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		s.logger.Error("VerifyOnBlockReceipt: Transaction failed", "transactionHash", receipt.TxHash.Hex())
+		return false, fmt.Errorf("transaction failed")
+	}
+
+	if len(receipt.Logs) == 0 {
+		s.logger.Error("VerifyOnBlockReceipt: Transaction has no logs", "transactionHash", receipt.TxHash.Hex())
+		return false, fmt.Errorf("transaction has no logs")
+	}
+
+	abi, err := ZenBase.ZenBaseMetaData.GetAbi()
+	if err != nil {
+		s.logger.Error("VerifyOnBlockReceipt: Failed to get ABI", "error", err)
+		return false, fmt.Errorf("failed to get ABI %w", err)
+	}
+
+	for _, log := range receipt.Logs {
+		if log.Topics[0] != abi.Events["TransactionProcessed"].ID {
+			continue
+		}
+
+		decodedLog, err := abi.Unpack("TransactionProcessed", log.Data)
+		if err != nil {
+			s.logger.Error("VerifyOnBlockReceipt: Failed to unpack log", "error", err, "log", log)
+			return false, fmt.Errorf("failed to unpack log %w", err)
+		}
+		s.logger.Debug("VerifyOnBlockReceipt: Decoded log", "log", decodedLog)
+	}
+
+	s.logger.Debug("VerifyOnBlockReceipt: Transaction successful", "transactionHash", receipt.TxHash.Hex())
+	return true, nil
 }

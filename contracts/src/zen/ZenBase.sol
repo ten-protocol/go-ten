@@ -25,6 +25,8 @@ interface ITransactionDecoder {
  */
 contract ZenBase is OnBlockEndCallback, ERC20, Ownable {
     using Structs for Structs.Transaction;
+
+    event TransactionProcessed(address sender, uint256 amount);
     /**
      * @dev Constructor that gives msg.sender all of existing tokens.
      * You can customize the initial supply as needed.
@@ -46,28 +48,14 @@ contract ZenBase is OnBlockEndCallback, ERC20, Ownable {
     }
 
     function onBlockEnd(Structs.Transaction[] calldata transactions) external onlyCaller {
+        if (transactions.length == 0) {
+            revert("No transactions to convert");
+        }
         // Implement custom logic here
         for (uint256 i=0; i<transactions.length; i++) {
             // Process transactions
-            address sender = ITransactionDecoder(_transactionDecoder).recoverSender(transactions[i]);
-            _mint(sender, 1);
+            _mint(transactions[i].from, 1);
+            emit TransactionProcessed(transactions[i].from, 1);
         }
     }
-
-    /**
-     * @dev Override _beforeTokenTransfer hook if needed.
-     * This can be used to implement additional restrictions or features.
-     */
-    // function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
-    //     super._beforeTokenTransfer(from, to, amount);
-    //     // Add custom logic here
-    // }
-
-    /**
-     * @dev Additional functions and features can be added below.
-     * Examples:
-     * - Burn functionality
-     * - Pausable transfers
-     * - Access control for different roles
-     */
 }

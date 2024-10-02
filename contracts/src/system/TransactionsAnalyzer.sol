@@ -4,38 +4,22 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "./TransactionDecoder.sol";
 import "./OnBlockEndCallback.sol";
+import "./Transaction.sol";
 
 //TODO: @PR Review - Pick appropriate name
 contract TransactionsAnalyzer is Initializable, AccessControl{
+    using Structs for Structs.Transaction;
+
     bytes32 public constant EOA_ADMIN_ROLE = keccak256("EOA_ADMIN_ROLE");
     bytes32 public constant HOOK_CALLER_ROLE = keccak256("HOOK_CALLER_ROLE");
+
+    event TransactionsConverted(uint256 transactionsLength);
 
     struct Receipt {
         uint8 _type;
         bytes postState;
         uint64 Status;        
-        /*
-        CumulativeGasUsed uint64
-        Bloom             Bloom 
-        Logs              []*Log
-
-        TxHash            common.Hash    
-        ContractAddress   common.Address 
-        GasUsed           uint64         
-        EffectiveGasPrice *big.In
-        BlobGasUsed       uint64  
-        BlobGasPrice      *big.Int
-
-        BlockHash        common.Ha
-        BlockNumber      *big.Int 
-        TransactionIndex uint  
-        */  
-    }
-
-    struct BlockTransactions {
-        bytes[] transactions;
     }
 
     OnBlockEndCallback[] onBlockEndListeners;
@@ -50,18 +34,13 @@ contract TransactionsAnalyzer is Initializable, AccessControl{
         onBlockEndListeners.push(OnBlockEndCallback(callbackAddress));
     }
 
-    function onBlock(BlockTransactions calldata _block) public onlyRole(HOOK_CALLER_ROLE) {
-        if (_block.transactions.length == 0) {
-            return;
+    function onBlock(Structs.Transaction[] calldata transactions) public onlyRole(HOOK_CALLER_ROLE) {
+        if (transactions.length == 0) {
+            revert("No transactions to convert");
         }
-
-        Structs.Transaction[] memory transactions = new Structs.Transaction[](_block.transactions.length);
         
-        for (uint256 i = 0; i < _block.transactions.length; ++i) {
-            transactions[i] = (TransactionDecoder.decode(_block.transactions[i]));            
-        }
-
-
+        emit TransactionsConverted(transactions.length);
+        
         for (uint256 i = 0; i < onBlockEndListeners.length; ++i) {
             OnBlockEndCallback callback = onBlockEndListeners[i];
             callback.onBlockEnd(transactions);
