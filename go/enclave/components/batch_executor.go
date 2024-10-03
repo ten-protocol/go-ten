@@ -222,29 +222,24 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 		onBlockSuccessfulTx, _, onBlockTxResult, err := executor.processTransactions(ctx, batch, len(successfulTxs), onBlockPricedTxes, stateDB, context.ChainConfig, true)
 		if err != nil {
 			// todo: remove once feature finished
-			panic(err)
 			return nil, fmt.Errorf("could not process on block end transaction hook. Cause: %w", err)
 		}
 		if err = executor.verifySyntheticTransactionsSuccess(onBlockPricedTxes, onBlockSuccessfulTx, onBlockTxResult); err != nil {
 			// todo: remove once feature finished
-			panic(err)
 			return nil, fmt.Errorf("batch computation failed due to onBlock hook reverting. Cause: %w", err)
 		}
 		// Parse onBlockReceipt for the TransactionsConverted event
 		abi, err := TransactionsAnalyzer.TransactionsAnalyzerMetaData.GetAbi()
 		if err != nil {
-			panic(err)
 			return nil, err
 		}
 		result := onBlockTxResult[0]
 		if ok, err := executor.systemContracts.VerifyOnBlockReceipt(successfulTxs, result.Receipt); !ok || err != nil {
 			executor.logger.Error("VerifyOnBlockReceipt failed", "error", err, "ok", ok)
-			panic("VerifyOnBlockReceipt failed")
 			return nil, fmt.Errorf("VerifyOnBlockReceipt failed")
 		}
 
 		if len(result.Receipt.Logs) == 0 {
-			panic(fmt.Errorf("no logs in onBlockReceipt"))
 			return nil, fmt.Errorf("no logs in onBlockReceipt")
 		}
 
@@ -253,7 +248,6 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 				if len(log.Data) == 32 { // uint256 is 32 bytes
 					transactionsConverted := new(big.Int).SetBytes(log.Data)
 					if transactionsConverted.Uint64() != uint64(len(context.Transactions)) {
-						panic(fmt.Errorf("mismatch in TransactionsConverted event: expected %d, got %d", len(context.Transactions), transactionsConverted.Uint64()))
 						return nil, fmt.Errorf("mismatch in TransactionsConverted event: expected %d, got %d", len(context.Transactions), transactionsConverted.Uint64())
 					}
 				} else {
@@ -262,7 +256,6 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 				break
 			}
 		}
-
 	} else if err == nil && batch.Header.SequencerOrderNo.Uint64() > 2 {
 		executor.logger.Crit("Bootstrapping of network failed! System contract hooks have not been initialised after genesis.")
 	}
@@ -335,7 +328,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 		trieDB := executor.storage.TrieDB()
 		err = trieDB.Commit(h, false)
 
-		// When system contract deployment genesis batch is commited, initialize executor's addresses for the hooks.
+		// When system contract deployment genesis batch is committed, initialize executor's addresses for the hooks.
 		// Further restarts will call into Load() which will take the receipts for batch number 2 (which should never be deleted)
 		// and reinitialize them.
 		if err == nil && batch.Header.SequencerOrderNo.Uint64() == 2 {

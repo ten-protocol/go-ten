@@ -52,10 +52,10 @@ func ConvertBatchHeaderToHeader(batchHeader *BatchHeader) *types.Header {
 	var header types.Header
 
 	// Convert ParentHash if necessary
-	header.ParentHash = common.Hash(batchHeader.ParentHash)
+	header.ParentHash = batchHeader.ParentHash
 
 	// Convert Root if necessary
-	header.Root = common.Hash(batchHeader.Root)
+	header.Root = batchHeader.Root
 
 	// Directly assign fields that have the same type
 	header.TxHash = batchHeader.TxHash

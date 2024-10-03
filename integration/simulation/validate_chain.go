@@ -347,7 +347,6 @@ func checkZenBaseMinting(t *testing.T, s *Simulation) {
 
 	// Iterate through each sender and verify ZenBase balance
 	for sender, expectedMinted := range txCountPerSender {
-
 		senderRpc := s.RPCHandles.TenWalletClient(sender, 1)
 		zenBaseContract, err := ZenBase.NewZenBase(s.ZenBaseAddress, senderRpc)
 		if err != nil {
