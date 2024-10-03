@@ -27,3 +27,4 @@ found [here](https://eips.ethereum.org/EIPS/eip-4844).
 * Update the `g.maxRollupSize` to support up to 128kb blobs
 * Update to enclave creation of rollup to check for blob size when adding batches `sequencer.CreateRollup`
 
+![blob_diagram](./resources/rollup_process.png)
