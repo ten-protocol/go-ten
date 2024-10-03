@@ -43,7 +43,7 @@ export const networkMappings = {
   "sepolia-testnet": {
     l1: L1Network.SEPOLIA,
     l2: L2Network.SEPOLIA,
-    l1Rpc: "https://mainnet.infura.io/v3/",
+    l1Rpc: "https://rpc.sepolia.org",
     l1Explorer: "https://sepolia.etherscan.io",
     l2Gateway: "https://sepolia-testnet.ten.xyz",
   },
