@@ -57,11 +57,8 @@ func checkNetworkValidity(t *testing.T, s *Simulation) {
 	checkTransactionsInjected(t, s)
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
 	checkTenBlockchainValidity(t, s, l1MaxHeight)
-	println("SIMULATION RAN TO HERE 4")
 	checkReceivedLogs(t, s)
-	println("SIMULATION RAN TO HERE 5")
 	checkTenscan(t, s)
-	println("SIMULATION RAN TO HERE 6")
 }
 
 // Ensures that L1 and L2 txs were actually issued.
@@ -371,7 +368,6 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 	}
 
 	verifyGasBridgeTransactions(t, s, nodeIdx)
-	println("HERE HERE HERE 3")
 	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {
 		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave",
@@ -386,9 +382,7 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 			nodeIdx, notFoundNativeTransfers, len(s.TxInjector.TxTracker.NativeValueTransferL2Transactions))
 	}
 
-	println("HERE HERE HERE 4")
 	checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
-	println("HERE HERE HERE 4.5")
 	totalSuccessfullyWithdrawn := extractWithdrawals(t, tenClient, nodeIdx)
 
 	totalAmountLogged := getLoggedWithdrawals(minTenHeight, tenClient, headBatchHeader)
@@ -396,7 +390,6 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 		t.Errorf("Node %d: Logged withdrawals do not match!", nodeIdx)
 	}
 
-	println("HERE HERE HERE 5")
 	injectorDepositedAmt := big.NewInt(0)
 	for _, tx := range s.TxInjector.TxTracker.GetL1Transactions() {
 		if depTx, ok := tx.(*ethadapter.L1DepositTx); ok {
@@ -411,8 +404,6 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 		t.Errorf("Node %d: The amount withdrawn %d exceeds the actual amount requested %d", nodeIdx, totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
 	}
 
-	println("HERE HERE HERE 6")
-
 	// As withdrawals are highly random, here we check that some at least are successful.
 	if totalSuccessfullyWithdrawn.Cmp(gethcommon.Big0) < 0 {
 		t.Errorf("Node %d: The amount withdrawn %d is far smaller than the amount requested %d", nodeIdx, totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
@@ -426,8 +417,6 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 		bal := balance(s.ctx, client, wallet.Address(), s.Params.Wallets.Tokens[testcommon.HOC].L2ContractAddress, nodeIdx)
 		total.Add(total, bal)
 	}
-
-	println("HERE HERE HERE 7")
 
 	/* todo (@stefan) - reenable following check once old contract deployer is phased out.
 	if total.Cmp(totalAmountInSystem) != 0 {
@@ -447,7 +436,6 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 		t.Errorf("could not retrieve parent of head batch")
 		return
 	}
-	println("HERE HERE HERE 8")
 	if parentHeader.Hash() != headBatchHeader.ParentHash {
 		t.Errorf("mismatch in hash of retrieved header. Parent: %+v\nCurrent: %+v", parentHeader, headBatchHeader)
 	}

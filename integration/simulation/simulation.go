@@ -214,7 +214,7 @@ func (s *Simulation) prefundTenAccounts() {
 
 	// Give 1000 ether per account - ether is 1e18 so best convert it by code
 	// as a lot of the hardcodes were giving way too little and choking the gas payments
-	allocObsWallets := big.NewInt(0).Mul(big.NewInt(1000), big.NewInt(gethparams.Ether))
+	allocObsWallets := big.NewInt(0).Mul(big.NewInt(1000000), big.NewInt(gethparams.Ether))
 	testcommon.PrefundWallets(s.ctx, faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), allocObsWallets, s.Params.ReceiptTimeout)
 }
 
