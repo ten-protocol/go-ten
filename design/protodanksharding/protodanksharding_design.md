@@ -21,13 +21,9 @@ found [here](https://eips.ethereum.org/EIPS/eip-4844).
 * Additional fields required:
     * `BlobTxSidecar` - Contains the blobs, the commitments and proofs
     * `BlobHashes` - represents a list of hash outputs including the `blob_kzgs` and `blobs`
-* Remove encoded rollup from calldata  
-
-* `RollupHeader` needs to store the blob data:
-    * `Blobs` - this is needed so we can construct the blobs based on size limits at the point of rollup production
-      * This will include `Commitement`, `BlobSize` and the `Data` 
-
+* Remove encoded rollup from calldata
 * Update `PrepareTransactionToRetry` to return `BlobTx` with necessary fields. 
 * New functions to calculate the `KZGCommitment` and `KZGProof` from a blob
 * Update the `g.maxRollupSize` to support up to 128kb blobs
 * Update to enclave creation of rollup to check for blob size when adding batches `sequencer.CreateRollup`
+
