@@ -256,10 +256,6 @@ func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([
 
 // MatchSidecarsWithHashes matches the fetched sidecars with the provided hashes.
 func MatchSidecarsWithHashes(fetchedSidecars []*APIBlobSidecar, hashes []gethcommon.Hash) ([]*BlobSidecar, error) {
-	if len(hashes) != len(fetchedSidecars) {
-		return nil, fmt.Errorf("expected %v sidecars but got %v", len(hashes), len(fetchedSidecars))
-	}
-
 	sidecarMap := make(map[gethcommon.Hash]*BlobSidecar)
 	for _, sidecar := range fetchedSidecars {
 		versionedHash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
