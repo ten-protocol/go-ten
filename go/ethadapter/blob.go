@@ -145,11 +145,11 @@ func DecodeBlobs(blobs []*kzg4844.Blob) ([]byte, error) {
 func ReconstructRollup(blobs []*kzg4844.Blob) (*common.ExtRollup, error) {
 	data, err := DecodeBlobs(blobs)
 	if err != nil {
-		fmt.Println("Error decoding rollup blob:", err)
+		return nil, fmt.Errorf("could not decode rollup blob. Cause: %w ", err)
 	}
 	var rollup common.ExtRollup
 	if err := rlp.DecodeBytes(data, &rollup); err != nil {
-		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
+		return nil, fmt.Errorf("could not decode rollup bytes. Cause: %w", err)
 	}
 	return &rollup, nil
 }

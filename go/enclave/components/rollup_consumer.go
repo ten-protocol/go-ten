@@ -58,7 +58,7 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 		return err
 	}
 	if len(rollups) == 0 {
-		rc.logger.Info("No rollups found in block", log.BlockHashKey, b.BlockHeader.Hash())
+		rc.logger.Trace("No rollups found in block", log.BlockHashKey, b.BlockHeader.Hash())
 		return nil
 	}
 
@@ -117,7 +117,10 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 }
 
 // todo - when processing the rollup, instead of looking up batches one by one, compare the last sequence number from the db with the ones in the rollup
-// extractAndVerifyRollups - returns a list of the rollups published in this block
+// extractAndVerifyRollups returns a list of the rollups published in this block
+// It processes each transaction, attempting to extract and verify rollups
+// If a transaction is not a rollup or fails verification, it's skipped
+// The function only returns an error if there's a critical failure in rollup reconstruction
 func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipts, blobs []*kzg4844.Blob) ([]*common.ExtRollup, error) {
 	rollups := make([]*common.ExtRollup, 0)
 	b := br.BlockHeader
@@ -140,12 +143,14 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 		}
 
 		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {
-			rc.logger.Info(fmt.Sprintf("blob hashes in rollup at index %d do not match the rollup blob hashes", i))
-			continue
+			rc.logger.Warn(fmt.Sprintf("blob hashes in rollup at index %d do not match the rollup blob hashes. Cause: %s", i, err))
+			continue // Blob hashes don't match, skip this rollup
 		}
 
 		r, err := ethadapter.ReconstructRollup(blobs)
 		if err != nil {
+			// This is a critical error because we've already verified the blob hashes
+			// If we can't reconstruct the rollup at this point, something is seriously wrong
 			return nil, fmt.Errorf("could not recreate rollup from blobs. Cause: %w", err)
 		}
 

@@ -26,5 +26,13 @@ found [here](https://eips.ethereum.org/EIPS/eip-4844).
 * New functions to calculate the `KZGCommitment` and `KZGProof` from a blob
 * Update the `g.maxRollupSize` to support up to 128kb blobs
 * Update to enclave creation of rollup to check for blob size when adding batches `sequencer.CreateRollup`
-
+* Host submits a block with blobs if they're relevant to us to the enclave. The enclave calculates the commitments and proofs and verfies they match those seen in the rollup transaction
+ 
 ![blob_diagram](./resources/rollup_process.png)
+
+## Future Work
+
+The next iteration of this work will be to implement an event subscription model to notify on new rollups being added to the L1. 
+
+![rollup_future](./resources/rollup_future.png)
+```

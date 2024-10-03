@@ -582,7 +582,7 @@ func (e *enclaveImpl) CreateRollup(ctx context.Context, fromSeqNo uint64) (*comm
 	}
 
 	rollup, err := e.Sequencer().CreateRollup(ctx, fromSeqNo)
-	//TODO do we need to store the blob hashes here so we can check them against our records?
+	// TODO do we need to store the blob hashes here so we can check them against our records?
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}

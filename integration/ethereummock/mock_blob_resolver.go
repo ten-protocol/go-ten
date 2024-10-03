@@ -17,7 +17,7 @@ type BlobResolverInMem struct {
 	// map of slots to versioned hashes to match the beacon APIs
 	slotToVersionedHashes sync.Map
 	// map of versioned hash to blob for efficient lookup
-	versionedHashToBlob   sync.Map
+	versionedHashToBlob sync.Map
 	mu                  sync.RWMutex
 	genesisTime         uint64
 	secondsPerSlot      uint64
@@ -41,10 +41,10 @@ func (b *BlobResolverInMem) StoreBlobs(slot uint64, blobs []*kzg4844.Blob) error
 		}
 
 		versionedHash := ethadapter.KZGToVersionedHash(commitment)
-		
+
 		hashes, _ := b.slotToVersionedHashes.LoadOrStore(slot, &sync.Map{})
 		hashes.(*sync.Map).Store(versionedHash, struct{}{})
-		
+
 		b.versionedHashToBlob.Store(versionedHash, blob)
 	}
 	return nil
@@ -52,7 +52,7 @@ func (b *BlobResolverInMem) StoreBlobs(slot uint64, blobs []*kzg4844.Blob) error
 
 func (b *BlobResolverInMem) FetchBlobs(_ context.Context, block *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
 	slot, _ := ethadapter.CalculateSlot(block.Time, MockGenesisBlock.Time(), b.secondsPerSlot)
-	
+
 	storedHashes, exists := b.slotToVersionedHashes.Load(slot)
 	if !exists {
 		return nil, fmt.Errorf("no blobs found for slot %d: %w", slot, ethereum.NotFound)
