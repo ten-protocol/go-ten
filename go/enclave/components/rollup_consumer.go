@@ -48,7 +48,7 @@ func NewRollupConsumer(
 	}
 }
 
-// ProcessBlobsInBlock - FIXME
+// ProcessBlobsInBlock - processes the blobs in a block, extracts the rollups, verifies the rollups and stores them
 func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts, blobs []*kzg4844.Blob) error {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", log.BlockHashKey, b.BlockHeader.Hash())
 
@@ -117,7 +117,7 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 }
 
 // todo - when processing the rollup, instead of looking up batches one by one, compare the last sequence number from the db with the ones in the rollup
-// extractRollups - returns a list of the rollups published in this block
+// extractAndVerifyRollups - returns a list of the rollups published in this block
 func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipts, blobs []*kzg4844.Blob) ([]*common.ExtRollup, error) {
 	rollups := make([]*common.ExtRollup, 0)
 	b := br.BlockHeader

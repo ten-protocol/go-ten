@@ -108,6 +108,7 @@ func (t *Testnet) Start() error {
 		node.WithDebugNamespaceEnabled(true),
 		node.WithLogLevel(t.cfg.logLevel),
 		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
+		node.WithL1BeaconUrl("eth2network:12600"),
 	)
 
 	if !t.cfg.isSGXEnabled {
@@ -297,7 +298,7 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 			}
 
 			return fmt.Errorf("node OverallHealth is not good yet")
-		}, retry.NewTimeoutStrategy(5*time.Minute, 1*time.Second),
+		}, retry.NewTimeoutStrategy(7*time.Minute, 1*time.Second),
 	)
 	if err != nil {
 		return err

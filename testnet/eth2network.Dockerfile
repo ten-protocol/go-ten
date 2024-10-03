@@ -34,5 +34,5 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # RUN ./main --onlyDownload=true
 
 # expose the http and the ws ports to the host
-EXPOSE 12000 12100 12200 12300 12400 12500
+EXPOSE 12000 12100 12200 12300 12400 12500 12600
 ENTRYPOINT ["/home/obscuro/go-obscuro/integration/eth2network/main/main"]

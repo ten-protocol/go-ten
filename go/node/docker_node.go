@@ -119,6 +119,7 @@ func (d *DockerNode) startHost() error {
 		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
 		fmt.Sprintf("-isInboundP2PDisabled=%t", d.cfg.isInboundP2PDisabled),
 		fmt.Sprintf("-l1ChainID=%d", d.cfg.l1ChainID),
+		fmt.Sprintf("-l1BeaconUrl=%s", d.cfg.l1BeaconUrl),
 	}
 	if !d.cfg.hostInMemDB {
 		cmd = append(cmd, "-postgresDBHost", d.cfg.postgresDB)
@@ -177,7 +178,6 @@ func (d *DockerNode) startEnclave() error {
 		"-maxRollupSize=131072",
 		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
 		"-tenGenesis", "{}",
-		"-l1BeaconUrl", d.cfg.l1BeaconUrl,
 		"-edgelessDBHost", d.cfg.nodeName+"-edgelessdb",
 	)
 

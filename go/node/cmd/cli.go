@@ -46,7 +46,7 @@ type NodeConfigCLI struct {
 	rollupInterval          string // format like 500ms or 2s (any time parsable by time.ParseDuration())
 	l1ChainID               int
 	postgresDBHost          string
-	l1beaconUrl             string
+	l1BeaconUrl             string
 	l1BlobArchiveUrl        string
 }
 
@@ -119,7 +119,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.rollupInterval = *rollupInterval
 	cfg.l1ChainID = *l1ChainID
 	cfg.postgresDBHost = *postgresDBHost
-	cfg.l1beaconUrl = *l1BeaconUrl
+	cfg.l1BeaconUrl = *l1BeaconUrl
 	cfg.l1BlobArchiveUrl = *l1BlobArchiveUrl
 
 	cfg.nodeAction = flag.Arg(0)
