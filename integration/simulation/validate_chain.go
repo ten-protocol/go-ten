@@ -484,7 +484,6 @@ func getLoggedWithdrawals(minTenHeight uint64, tenClient *obsclient.ObsClient, c
 func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) (int, int, int) {
 	transfers, withdrawals, nativeTransfers := txInjector.TxTracker.GetL2Transactions()
 
-	println("FindNotIncludedL2Txs 1")
 	notFoundTransfers := 0
 	for _, tx := range transfers {
 		sender := getSender(tx)
@@ -494,7 +493,6 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 			notFoundTransfers++
 		}
 	}
-	println("FindNotIncludedL2Txs 2")
 
 	notFoundWithdrawals := 0
 	for _, tx := range withdrawals {
@@ -505,7 +503,6 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 			notFoundWithdrawals++
 		}
 	}
-	println("FindNotIncludedL2Txs 3")
 
 	notFoundNativeTransfers := 0
 	for _, tx := range nativeTransfers {
@@ -516,7 +513,6 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 			notFoundNativeTransfers++
 		}
 	}
-	println("FindNotIncludedL2Txs 4")
 
 	return notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers
 }
@@ -552,11 +548,8 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 			testlog.Logger().Info("Transaction receipt had failed status.", log.TxKey, tx.Hash())
 		} else {
 			nrSuccessful++
-			println("checkTransactionReceipts 4")
 		}
 	}
-
-	println("checkTransactionReceipts 5")
 
 	if nrSuccessful < len(l2Txs)/2 {
 		t.Errorf("node %d: More than half the transactions failed. Successful number: %d", nodeIdx, nrSuccessful)
@@ -594,7 +587,6 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 
 		testlog.Logger().Info("[CrossChain] successful withdrawal")
 	}
-	println("checkTransactionReceipts 6")
 }
 
 func extractWithdrawals(t *testing.T, tenClient *obsclient.ObsClient, nodeIdx int) (totalSuccessfullyWithdrawn *big.Int) {
@@ -871,12 +863,13 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 func getRollupFromBlobHashes(ctx context.Context, blobResolver l1.BlobResolver, block *types.Block, blobHashes []gethcommon.Hash) (*common.ExtRollup, error) {
 	blobs, err := blobResolver.FetchBlobs(ctx, block.Header(), blobHashes)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch blobs from hashes during chain validation")
+		return nil, fmt.Errorf("could not fetch blobs from hashes during chain validation. Cause: %w", err)
 	}
 	data, err := ethadapter.DecodeBlobs(blobs)
 	if err != nil {
-		fmt.Println("Error decoding rollup blob:", err)
+		return nil, fmt.Errorf("error decoding rollup blob. Cause: %w", err)
 	}
+
 	var rollup common.ExtRollup
 	if err := rlp.DecodeBytes(data, &rollup); err != nil {
 		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
