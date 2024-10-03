@@ -1,14 +1,18 @@
 # Use an official Node.js LTS version as a base image
 FROM node:20-alpine AS base
+# Install pnpm
+RUN npm install -g pnpm
 
 
 ARG NEXT_PUBLIC_NETWORK_NAME
 ARG NEXT_PUBLIC_TENSCAN_URL
 ARG NEXT_PUBLIC_GATEWAY_URL
+ARG NEXT_PUBLIC_API_HOST_ENVIRONMENT
 
 ENV NEXT_PUBLIC_NETWORK_NAME=$NEXT_PUBLIC_NETWORK_NAME
 ENV NEXT_PUBLIC_TENSCAN_URL=$NEXT_PUBLIC_TENSCAN_URL
 ENV NEXT_PUBLIC_GATEWAY_URL=$NEXT_PUBLIC_GATEWAY_URL
+ENV NEXT_PUBLIC_API_HOST_ENVIRONMENT=${NEXT_PUBLIC_API_HOST_ENVIRONMENT}
 
 # Set the working directory
 WORKDIR /usr/src/app
@@ -17,10 +21,10 @@ WORKDIR /usr/src/app
 COPY tools/walletextension/frontend/ .
 
 # Install dependencies
-RUN npm ci
+RUN pnpm ci
 
 # Build the Next.js app
-RUN npm run build
+RUN pnpm run build
 
 # Reduce the size of the final image by using a lighter base image
 FROM node:20-alpine AS runner
@@ -34,7 +38,7 @@ COPY --from=base /usr/src/app/public ./public
 COPY --from=base /usr/src/app/package*.json ./
 
 # Install production dependencies
-RUN npm ci --production
+RUN pnpm ci --production
 
 
 # Set the environment variables
@@ -44,4 +48,4 @@ ENV PORT=80
 EXPOSE 80
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["pnpm", "start"]

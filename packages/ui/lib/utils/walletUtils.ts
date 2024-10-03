@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import { ethereum } from ".";
-import { showToast } from "../../components/shared/use-toast";
 import { IErrorMessages } from "../enums/error";
+import { showToast } from "../../components/shared/use-toast";
 import { ToastType } from "../enums/toast";
 
 export const getEthereumProvider = async () => {
@@ -21,6 +21,8 @@ const errorMessages: Record<IErrorMessages, string> = {
     "Transaction rejected. Please sign the transaction to proceed",
   [IErrorMessages.UserRejectedTheRequest]:
     "Request rejected. Please try again with the correct permissions",
+  [IErrorMessages.UserRejectedTransaction]:
+    "Transaction rejected. Please try again",
   [IErrorMessages.ExecutionReverted]:
     "Transaction reverted. Please check the transaction details and try again",
   [IErrorMessages.RateLimitExceeded]:
@@ -32,16 +34,22 @@ const errorMessages: Record<IErrorMessages, string> = {
 export const handleError = (error: any, message: string) => {
   console.error(`Error: ${message}`, error);
 
-  const errorReason = error?.reason || error?.message;
+  const errorReason = error?.reason || error?.data?.message || error?.message;
 
-  if (errorReason in errorMessages) {
+  const errorReasonLowercase = errorReason?.toLowerCase() || "";
+
+  const errorMessage = Object.keys(errorMessages).find((key) =>
+    errorReasonLowercase.includes(key.toLowerCase())
+  );
+
+  if (errorMessage) {
     showToast(
       ToastType.DESTRUCTIVE,
-      errorMessages[errorReason as IErrorMessages] ||
-        "Something went wrong. Please try again later"
+      errorMessages[errorMessage as IErrorMessages]
     );
+    return;
   } else {
-    showToast(ToastType.DESTRUCTIVE, errorReason);
+    showToast(ToastType.DESTRUCTIVE, message);
   }
 
   throw new Error(message);

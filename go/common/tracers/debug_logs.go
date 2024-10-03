@@ -11,11 +11,13 @@ import (
 
 // DebugLogs are the logs returned when using the DebugGetLogs endpoint
 type DebugLogs struct {
-	RelAddress1    *gethcommon.Address `json:"relAddress1"`
-	RelAddress2    *gethcommon.Address `json:"relAddress2"`
-	RelAddress3    *gethcommon.Address `json:"relAddress3"`
-	RelAddress4    *gethcommon.Address `json:"relAddress4"`
-	LifecycleEvent bool                `json:"lifecycleEvent"`
+	RelAddress1         *gethcommon.Address `json:"relAddress1"`
+	RelAddress2         *gethcommon.Address `json:"relAddress2"`
+	RelAddress3         *gethcommon.Address `json:"relAddress3"`
+	ConfigPublic        bool                `json:"configPublic"`
+	AutoPublic          bool                `json:"autoPublic"`
+	AutoContract        bool                `json:"autoContract"`
+	TransparentContract bool                `json:"transparentContract"`
 
 	gethtypes.Log
 }
@@ -24,20 +26,22 @@ type DebugLogs struct {
 // this holds a copy of the gethtypes.Log log marshaller
 func (l DebugLogs) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Address        string              `json:"address" gencodec:"required"`
-		Topics         []gethcommon.Hash   `json:"topics" gencodec:"required"`
-		Data           hexutil.Bytes       `json:"data" gencodec:"required"`
-		BlockNumber    uint64              `json:"blockNumber"`
-		TxHash         gethcommon.Hash     `json:"transactionHash" gencodec:"required"`
-		TxIndex        uint                `json:"transactionIndex"`
-		BlockHash      gethcommon.Hash     `json:"blockHash"`
-		Index          uint                `json:"logIndex"`
-		Removed        bool                `json:"removed"`
-		LifecycleEvent bool                `json:"lifecycleEvent"`
-		RelAddress1    *gethcommon.Address `json:"relAddress1"`
-		RelAddress2    *gethcommon.Address `json:"relAddress2"`
-		RelAddress3    *gethcommon.Address `json:"relAddress3"`
-		RelAddress4    *gethcommon.Address `json:"relAddress4"`
+		Address             string              `json:"address" gencodec:"required"`
+		Topics              []gethcommon.Hash   `json:"topics" gencodec:"required"`
+		Data                hexutil.Bytes       `json:"data" gencodec:"required"`
+		BlockNumber         uint64              `json:"blockNumber"`
+		TxHash              gethcommon.Hash     `json:"transactionHash" gencodec:"required"`
+		TxIndex             uint                `json:"transactionIndex"`
+		BlockHash           gethcommon.Hash     `json:"blockHash"`
+		Index               uint                `json:"logIndex"`
+		Removed             bool                `json:"removed"`
+		ConfigPublic        bool                `json:"configPublic"`
+		AutoPublic          bool                `json:"autoPublic"`
+		AutoContract        bool                `json:"autoContract"`
+		TransparentContract bool                `json:"transparentContract"`
+		RelAddress1         *gethcommon.Address `json:"relAddress1"`
+		RelAddress2         *gethcommon.Address `json:"relAddress2"`
+		RelAddress3         *gethcommon.Address `json:"relAddress3"`
 	}{
 		l.Address.Hex(),
 		l.Topics,
@@ -48,10 +52,12 @@ func (l DebugLogs) MarshalJSON() ([]byte, error) {
 		l.BlockHash,
 		l.Index,
 		l.Removed,
-		l.LifecycleEvent,
+		l.ConfigPublic,
+		l.AutoPublic,
+		l.AutoContract,
+		l.TransparentContract,
 		l.RelAddress1,
 		l.RelAddress2,
 		l.RelAddress3,
-		l.RelAddress4,
 	})
 }

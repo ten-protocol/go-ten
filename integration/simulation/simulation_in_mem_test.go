@@ -32,7 +32,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		MgmtContractLib:            ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib:           ethereummock.NewERC20ContractLibMock(),
 		Wallets:                    wallets,
-		StartPort:                  integration.StartPortSimulationInMem,
+		StartPort:                  integration.TestPorts.TestInMemoryMonteCarloSimulationPort,
 		IsInMem:                    true,
 		L1TenData:                  &params.L1TenData{},
 		ReceiptTimeout:             5 * time.Second,

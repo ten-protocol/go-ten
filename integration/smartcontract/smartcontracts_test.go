@@ -24,8 +24,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
-const _startPort = integration.StartPortSmartContractTests
-
 // netInfo is a bag holder struct for output data from the execution/run of a network
 type netInfo struct {
 	ethClients  []ethadapter.EthClient
@@ -55,15 +53,16 @@ func runGethNetwork(t *testing.T) *netInfo {
 	// prefund one wallet as the worker wallet
 	workerWallet := datagenerator.RandomWallet(integration.EthereumChainID)
 
+	startPort := integration.TestPorts.TestManagementContractPort
 	eth2Network := eth2network.NewPosEth2Network(
 		binDir,
-		_startPort+integration.DefaultGethNetworkPortOffset,
-		_startPort+integration.DefaultPrysmP2PPortOffset,
-		_startPort+integration.DefaultGethAUTHPortOffset, // RPC
-		_startPort+integration.DefaultGethWSPortOffset,
-		_startPort+integration.DefaultGethHTTPPortOffset,
-		_startPort+integration.DefaultPrysmRPCPortOffset,
-		_startPort+integration.DefaultPrysmGatewayPortOffset,
+		startPort+integration.DefaultGethNetworkPortOffset,
+		startPort+integration.DefaultPrysmP2PPortOffset,
+		startPort+integration.DefaultGethAUTHPortOffset, // RPC
+		startPort+integration.DefaultGethWSPortOffset,
+		startPort+integration.DefaultGethHTTPPortOffset,
+		startPort+integration.DefaultPrysmRPCPortOffset,
+		startPort+integration.DefaultPrysmGatewayPortOffset,
 		integration.EthereumChainID,
 		3*time.Minute,
 		workerWallet.Address().String(),
@@ -74,7 +73,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 	}
 
 	// create a client that is connected to node 0 of the network
-	client, err := ethadapter.NewEthClient("127.0.0.1", integration.StartPortSmartContractTests+100, 60*time.Second, gethcommon.HexToAddress("0x0"), testlog.Logger())
+	client, err := ethadapter.NewEthClient("127.0.0.1", uint(startPort+100), 60*time.Second, gethcommon.HexToAddress("0x0"), testlog.Logger())
 	if err != nil {
 		t.Fatal(err)
 	}

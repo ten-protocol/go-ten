@@ -29,12 +29,12 @@ Tenscan is a Next.js and Tailwind CSS-powered application that serves as a Block
 
 2. **Install Dependencies:**
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. **Run the Development Server:**
    ```bash
-   npm run dev
+   pnpm run dev
    ```
 
    The application will be accessible at [http://localhost:3000](http://localhost:3000).

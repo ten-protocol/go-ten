@@ -46,11 +46,6 @@ const (
 	masterSeedCfg = "MASTER_SEED"
 )
 
-type EventType struct {
-	id          uint64
-	isLifecycle bool
-}
-
 // todo - this file needs splitting up based on concerns
 type storageImpl struct {
 	db                 enclavedb.EnclaveDB
@@ -582,7 +577,7 @@ func (s *storageImpl) handleTxSenders(ctx context.Context, batch *core.Batch, db
 	return senders, nil
 }
 
-func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, receipts []*types.Receipt, newContracts map[gethcommon.Hash][]*gethcommon.Address) error {
+func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, results []*core.TxExecResult) error {
 	defer s.logDuration("StoreExecutedBatch", measure.NewStopwatch())
 	executed, err := enclavedb.BatchWasExecuted(ctx, s.db.GetSQLDB(), batch.Hash())
 	if err != nil {
@@ -593,7 +588,7 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.Batc
 		return nil
 	}
 
-	s.logger.Trace("storing executed batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SequencerOrderNo, "receipts", len(receipts))
+	s.logger.Trace("storing executed batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SequencerOrderNo, "receipts", len(results))
 
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
@@ -605,8 +600,8 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.Batc
 		return fmt.Errorf("could not set the executed flag. Cause: %w", err)
 	}
 
-	for _, receipt := range receipts {
-		err = s.eventsStorage.storeReceiptAndEventLogs(ctx, dbTx, batch, receipt, newContracts[receipt.TxHash])
+	for _, txExecResult := range results {
+		err = s.eventsStorage.storeReceiptAndEventLogs(ctx, dbTx, batch, txExecResult)
 		if err != nil {
 			return fmt.Errorf("could not store receipt. Cause: %w", err)
 		}
@@ -808,8 +803,13 @@ func (s *storageImpl) readOrWriteEOA(ctx context.Context, dbTX *sql.Tx, addr get
 	})
 }
 
-func (s *storageImpl) ReadContractOwner(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error) {
-	return enclavedb.ReadContractOwner(ctx, s.db.GetSQLDB(), address)
+func (s *storageImpl) ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error) {
+	dbtx, err := s.db.GetSQLDB().BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer dbtx.Rollback()
+	return enclavedb.ReadContractByAddress(ctx, dbtx, address)
 }
 
 func (s *storageImpl) logDuration(method string, stopWatch *measure.Stopwatch) {

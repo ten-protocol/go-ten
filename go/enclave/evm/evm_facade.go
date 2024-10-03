@@ -7,6 +7,8 @@ import (
 	"math/big"
 	_ "unsafe"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"
 
@@ -38,12 +40,6 @@ import (
 
 var ErrGasNotEnoughForL1 = errors.New("gas limit too low to pay for execution and l1 fees")
 
-type TxExecResult struct {
-	Receipt          *types.Receipt
-	CreatedContracts []*gethcommon.Address
-	Err              error
-}
-
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
@@ -60,12 +56,12 @@ func ExecuteTransactions(
 	noBaseFee bool,
 	batchGasLimit uint64,
 	logger gethlog.Logger,
-) (map[common.TxHash]*TxExecResult, error) {
+) (map[common.TxHash]*core.TxExecResult, error) {
 	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, logger)
 	gp := gethcore.GasPool(batchGasLimit)
 	zero := uint64(0)
 	usedGas := &zero
-	result := map[common.TxHash]*TxExecResult{}
+	result := map[common.TxHash]*core.TxExecResult{}
 
 	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
@@ -83,9 +79,7 @@ func ExecuteTransactions(
 	// this should not open up any attack vectors on the randomness.
 	tCountRollback := 0
 	for i, t := range txs {
-		txResult := &TxExecResult{}
-		result[t.Tx.Hash()] = txResult
-		r, createdContracts, err := executeTransaction(
+		txResult := executeTransaction(
 			s,
 			chainConfig,
 			chain,
@@ -98,21 +92,18 @@ func ExecuteTransactions(
 			hash,
 			header.Number.Uint64(),
 		)
-		if err != nil {
+		result[t.Tx.Hash()] = txResult
+		if txResult.Err != nil {
 			tCountRollback++
-			txResult.Err = err
 			// only log tx execution errors if they are unexpected
 			logFailedTx := logger.Info
-			if errors.Is(err, gethcore.ErrNonceTooHigh) || errors.Is(err, gethcore.ErrNonceTooLow) || errors.Is(err, gethcore.ErrFeeCapTooLow) || errors.Is(err, ErrGasNotEnoughForL1) {
+			if errors.Is(txResult.Err, gethcore.ErrNonceTooHigh) || errors.Is(txResult.Err, gethcore.ErrNonceTooLow) || errors.Is(txResult.Err, gethcore.ErrFeeCapTooLow) || errors.Is(txResult.Err, ErrGasNotEnoughForL1) {
 				logFailedTx = logger.Debug
 			}
 			logFailedTx("Failed to execute tx:", log.TxKey, t.Tx.Hash(), log.CtrErrKey, err)
 			continue
 		}
-
-		logReceipt(r, logger)
-		txResult.Receipt = r
-		txResult.CreatedContracts = createdContracts
+		logReceipt(txResult.Receipt, logger)
 	}
 	s.Finalise(true)
 	return result, nil
@@ -137,12 +128,12 @@ func executeTransaction(
 	tCount int,
 	batchHash common.L2BatchHash,
 	batchHeight uint64,
-) (*types.Receipt, []*gethcommon.Address, error) {
+) *core.TxExecResult {
 	var createdContracts []*gethcommon.Address
 	rules := cc.Rules(big.NewInt(0), true, 0)
 	from, err := types.Sender(types.LatestSigner(cc), t.Tx)
 	if err != nil {
-		return nil, nil, err
+		return &core.TxExecResult{Err: err}
 	}
 	s.Prepare(rules, from, gethcommon.Address{}, t.Tx.To(), nil, nil)
 	snap := s.Snapshot()
@@ -164,6 +155,7 @@ func executeTransaction(
 	// calculate a random value per transaction
 	header.MixDigest = crypto.CalculateTxRnd(before.Bytes(), tCount)
 
+	var vmenv *vm.EVM
 	applyTx := func(
 		config *params.ChainConfig,
 		bc gethcore.ChainContext,
@@ -207,7 +199,7 @@ func executeTransaction(
 
 		// Create a new context to be used in the EVM environment
 		blockContext := gethcore.NewEVMBlockContext(header, bc, author)
-		vmenv := vm.NewEVM(blockContext, vm.TxContext{BlobHashes: tx.Tx.BlobHashes(), GasPrice: header.BaseFee}, statedb, config, cfg)
+		vmenv = vm.NewEVM(blockContext, vm.TxContext{BlobHashes: tx.Tx.BlobHashes(), GasPrice: header.BaseFee}, statedb, config, cfg)
 		var receipt *types.Receipt
 		receipt, err = gethcore.ApplyTransactionWithEVM(msg, config, gp, statedb, header.Number, header.Hash(), tx.Tx, usedGas, vmenv)
 		if err != nil {
@@ -249,10 +241,80 @@ func executeTransaction(
 	header.MixDigest = before
 	if err != nil {
 		s.RevertToSnapshot(snap)
-		return receipt, nil, err
+		return &core.TxExecResult{Receipt: receipt, Err: err}
 	}
 
-	return receipt, createdContracts, nil
+	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
+	for _, contractAddress := range createdContracts {
+		contractsWithVisibility[*contractAddress] = readVisibilityConfig(vmenv, contractAddress)
+	}
+
+	return &core.TxExecResult{Receipt: receipt, CreatedContracts: contractsWithVisibility}
+}
+
+const (
+	maxGasForVisibility = 30_000 // hardcode at 30k gas.
+)
+
+func readVisibilityConfig(vmenv *vm.EVM, contractAddress *gethcommon.Address) *core.ContractVisibilityConfig {
+	cc, err := NewTransparencyConfigCaller(*contractAddress, &localContractCaller{evm: vmenv, maxGasForVisibility: maxGasForVisibility})
+	if err != nil {
+		// unrecoverable error. should not happen
+		panic(fmt.Sprintf("could not create transparency config caller. %v", err))
+	}
+	visibilityRules, err := cc.VisibilityRules(nil)
+	if err != nil {
+		// there is no visibility defined, so we return auto
+		return &core.ContractVisibilityConfig{AutoConfig: true}
+	}
+
+	transp := false
+	if visibilityRules.ContractCfg == transparent {
+		transp = true
+	}
+
+	cfg := &core.ContractVisibilityConfig{
+		AutoConfig:   false,
+		Transparent:  &transp,
+		EventConfigs: make(map[gethcommon.Hash]*core.EventVisibilityConfig),
+	}
+
+	if transp {
+		return cfg
+	}
+
+	// only check the config for non-transparent contracts
+	for i := range visibilityRules.EventLogConfigs {
+		logConfig := visibilityRules.EventLogConfigs[i]
+		cfg.EventConfigs[logConfig.EventSignature] = eventCfg(logConfig)
+	}
+
+	return cfg
+}
+
+func eventCfg(logConfig ContractTransparencyConfigEventLogConfig) *core.EventVisibilityConfig {
+	relevantToMap := make(map[uint8]bool)
+	for _, field := range logConfig.VisibleTo {
+		relevantToMap[field] = true
+	}
+	isPublic := relevantToMap[everyone]
+
+	if isPublic {
+		return &core.EventVisibilityConfig{AutoConfig: false, Public: true}
+	}
+
+	t1 := relevantToMap[topic1]
+	t2 := relevantToMap[topic2]
+	t3 := relevantToMap[topic3]
+	s := relevantToMap[sender]
+	return &core.EventVisibilityConfig{
+		AutoConfig:    false,
+		Public:        false,
+		Topic1CanView: &t1,
+		Topic2CanView: &t2,
+		Topic3CanView: &t3,
+		SenderCanView: &s,
+	}
 }
 
 func logReceipt(r *types.Receipt, logger gethlog.Logger) {
@@ -370,4 +432,20 @@ func newRevertError(result *gethcore.ExecutionResult) error {
 		Reason: hexutil.Encode(result.Revert()),
 		Code:   3, // todo - magic number, really needs thought around the value and made a constant
 	}
+}
+
+// used as a wrapper around the vm.EVM to allow for easier calling of smart contract view functions
+type localContractCaller struct {
+	evm                 *vm.EVM
+	maxGasForVisibility uint64
+}
+
+// CodeAt - not implemented because it's not needed for our use case. It just has to return something non-nil
+func (cc *localContractCaller) CodeAt(_ context.Context, _ gethcommon.Address, _ *big.Int) ([]byte, error) {
+	return []byte{0}, nil
+}
+
+func (cc *localContractCaller) CallContract(_ context.Context, call ethereum.CallMsg, _ *big.Int) ([]byte, error) {
+	ret, _, err := cc.evm.Call(vm.AccountRef(call.From), *call.To, call.Data, cc.maxGasForVisibility, uint256.NewInt(0))
+	return ret, err
 }
