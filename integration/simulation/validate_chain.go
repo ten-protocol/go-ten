@@ -54,11 +54,8 @@ const (
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
 // time of the simulation and the average block duration, that all TEN nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
-	println("SIMULATION RAN TO HERE 1")
 	checkTransactionsInjected(t, s)
-	println("SIMULATION RAN TO HERE 2")
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
-	println("SIMULATION RAN TO HERE 3")
 	checkTenBlockchainValidity(t, s, l1MaxHeight)
 	println("SIMULATION RAN TO HERE 4")
 	checkReceivedLogs(t, s)
@@ -346,8 +343,6 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 		t.Errorf("Node %d: TEN node fell behind by %d blocks.", nodeIdx, maxEthereumHeight-l1Height)
 	}
 
-	println("HERE HERE HERE 1")
-
 	// check that the height of the l2 chain is higher than a minimum expected value.
 	headBatchHeader, err := getHeadBatchHeader(tenClient)
 	if err != nil {
@@ -362,8 +357,6 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 	if l2Height.Uint64() < minTenHeight {
 		t.Errorf("Node %d: Node only mined %d rollups. Expected at least: %d.", nodeIdx, l2Height, minTenHeight)
 	}
-
-	println("HERE HERE HERE 2")
 
 	// check that the height from the head batch header is consistent with the height returned by eth_blockNumber.
 	l2HeightFromBatchNumber, err := tenClient.BatchNumber()
@@ -539,7 +532,6 @@ func getSender(tx *common.L2Tx) gethcommon.Address {
 // Checks that there is a receipt available for each L2 transaction.
 func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
 	l2Txs := append(txInjector.TxTracker.TransferL2Transactions, txInjector.TxTracker.WithdrawalL2Transactions...)
-	println("checkTransactionReceipts 1")
 	nrSuccessful := 0
 	for _, tx := range l2Txs {
 		sender := getSender(tx)
@@ -550,13 +542,11 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 			t.Errorf("node %d: could not retrieve receipt for transaction %s. Cause: %s", nodeIdx, tx.Hash().Hex(), err)
 			continue
 		}
-		println("checkTransactionReceipts 2")
 
 		// We check that the receipt's logs are relevant to the sender.
 		for _, retrievedLog := range receipt.Logs {
 			assertRelevantLogsOnly(t, sender.Hex(), *retrievedLog)
 		}
-		println("checkTransactionReceipts 3")
 
 		if receipt.Status == types.ReceiptStatusFailed {
 			testlog.Logger().Info("Transaction receipt had failed status.", log.TxKey, tx.Hash())
