@@ -350,13 +350,13 @@ func checkZenBaseMinting(t *testing.T, s *Simulation) {
 		senderRpc := s.RPCHandles.TenWalletClient(sender, 1)
 		zenBaseContract, err := ZenBase.NewZenBase(s.ZenBaseAddress, senderRpc)
 		if err != nil {
-			panic(err)
+			t.Errorf("Sender %s: Failed to create ZenBase contract. Cause: %s", sender.Hex(), err)
 		}
 		zenBaseBalance, err := zenBaseContract.BalanceOf(&bind.CallOpts{
 			From: sender,
 		}, sender)
 		if err != nil {
-			panic(err)
+			t.Errorf("Sender %s: Failed to get ZenBase balance. Cause: %s", sender.Hex(), err)
 		}
 
 		expectedBalance := big.NewInt(int64(expectedMinted)) // Assuming 1 ZenBase per transaction
@@ -368,7 +368,7 @@ func checkZenBaseMinting(t *testing.T, s *Simulation) {
 	rpc := s.RPCHandles.TenWalletClient(s.Params.Wallets.L2FaucetWallet.Address(), 1)
 	zenBaseContract, err := ZenBase.NewZenBase(s.ZenBaseAddress, rpc)
 	if err != nil {
-		panic(err)
+		t.Errorf("Failed to create ZenBase contract. Cause: %s", err)
 	}
 	totalSupply, err := zenBaseContract.TotalSupply(&bind.CallOpts{
 		From: s.Params.Wallets.L2FaucetWallet.Address(),
