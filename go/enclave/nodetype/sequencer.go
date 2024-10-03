@@ -418,9 +418,11 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Header, 
 		// sanity check that all these batches are consecutive
 		if i > 0 && batchesToDuplicate[i].ParentHash != batchesToDuplicate[i-1].Hash() {
 			s.logger.Info("Batch duplication issue detected",
-				"current_batch", batchesToDuplicate[i].Hash().Hex(), batchesToDuplicate[i].Number.Uint64(),
+				"current_batch", batchesToDuplicate[i].Hash().Hex(),
+				"current_batch_number", batchesToDuplicate[i].Number.Uint64(),
 				"current_parent", batchesToDuplicate[i].ParentHash.Hex(),
-				"previous_batch", batchesToDuplicate[i-1].Hash().Hex(), batchesToDuplicate[i-1].Number.Uint64())
+				"previous_batch", batchesToDuplicate[i-1].Hash().Hex(),
+				"previous_batch_number", batchesToDuplicate[i-1].Number.Uint64())
 			s.logger.Crit("the batches that must be duplicated are invalid")
 		}
 		if batchesToExclude[orphanBatch.Number.Uint64()] != nil {

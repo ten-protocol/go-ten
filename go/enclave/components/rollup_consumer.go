@@ -122,8 +122,15 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 // If a transaction is not a rollup or fails verification, it's skipped
 // The function only returns an error if there's a critical failure in rollup reconstruction
 func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipts, blobs []*kzg4844.Blob) ([]*common.ExtRollup, error) {
-	rollups := make([]*common.ExtRollup, 0)
+	rollups := make([]*common.ExtRollup, 0, len(*br.RelevantTransactions()))
 	b := br.BlockHeader
+
+	// precompute the blob hashes
+	var blobHashes []gethcommon.Hash
+	var err error
+	if _, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
+		return nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
+	}
 
 	for i, tx := range *br.RelevantTransactions() {
 		t := rc.MgmtContractLib.DecodeTx(tx)
@@ -134,12 +141,6 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 		rollupHashes, ok := t.(*ethadapter.L1RollupHashes)
 		if !ok {
 			continue
-		}
-
-		var blobHashes []gethcommon.Hash
-		var err error
-		if _, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
-			return nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
 		}
 
 		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {
