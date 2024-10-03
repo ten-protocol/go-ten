@@ -261,8 +261,6 @@ func (ac *AuthObsClient) CodeAt(ctx context.Context, address gethcommon.Address,
 }
 
 func (ac *AuthObsClient) FilterLogs(context.Context, ethereum.FilterQuery) ([]types.Log, error) {
-	panic("not implemented")
-
 	return nil, errors.New("not implemented")
 }
 
