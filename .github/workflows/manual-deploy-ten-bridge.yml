@@ -58,7 +58,7 @@ jobs:
           name: ${{ github.event.inputs.testnet_type }}-fe-ten-bridge
           location: "uksouth"
           restart-policy: "Never"
-          environment-variables: NEXT_PUBLIC_BRIDGE_API_HOST=${{ env.NEXT_PUBLIC_BRIDGE_API_HOST }} NEXT_PUBLIC_FE_VERSION=${{ GITHUB.RUN_NUMBER }}-${{ GITHUB.SHA }}
+          environment-variables: NEXT_PUBLIC_BRIDGE_API_HOST=${{ vars.NEXT_PUBLIC_BRIDGE_API_HOST }} NEXT_PUBLIC_FE_VERSION=${{ GITHUB.RUN_NUMBER }}-${{ GITHUB.SHA }}
           command-line: pnpm run start-prod
           ports: "80"
           cpu: 2
