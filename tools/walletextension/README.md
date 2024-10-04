@@ -1,5 +1,5 @@
 
-# Ten Gateway Documentation
+# TEN Gateway Documentation
 
 For a comprehensive overview, refer to the [official documentation](https://docs.ten.xyz/docs/tools-infrastructure/hosted-gateway).
 
@@ -44,7 +44,7 @@ Example:
 - **`--verbose`**: Flag to enable verbose logging of wallet extension traffic. Default: `false`.
 - **`--dbType`**: Define the database type (`sqlite` or `mariaDB`). Default: `sqlite`.
 - **`--dbConnectionURL`**: If `dbType` is set to `mariaDB`, this must be set.
-- **`--tenChainID`**: ChainID of the Ten network that the gateway is communicating with. Default: `443`.
+- **`--tenChainID`**: ChainID of the TEN network that the gateway is communicating with. Default: `443`.
 - **`--storeIncomingTxs`**: Flag to enable storing incoming transactions in the database for debugging purposes. Default: `true`.
 - **`--rateLimitUserComputeTime`**: Represents how much compute time a user is allowed to use within the `rateLimitWindow` time. Set to `0` to disable rate limiting. Default: `10s`.
 - **`--rateLimitWindow`**: Time window in which a user is allowed to use the defined compute time. Default: `1m`.
@@ -56,15 +56,15 @@ Example:
 Once the backend is running, navigate to the `tools/walletextension/frontend` directory and execute the following commands:
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 The frontend will be accessible on `http://localhost:3000`.
 
 ## HTTP Endpoints
 
-Ten Gateway exposes several HTTP endpoints for interaction:
+TEN Gateway exposes several HTTP endpoints for interaction:
 
 - **`GET /v1/join`**  
   Generates and returns a `userID`, which needs to be added as a query parameter `u` in your Metamask (or another provider) URL to identify you.

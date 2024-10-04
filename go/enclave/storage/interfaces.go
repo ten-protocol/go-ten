@@ -6,6 +6,8 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
+
 	"github.com/ethereum/go-ethereum/triedb"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -20,21 +22,21 @@ import (
 
 // BlockResolver stores new blocks and returns information on existing blocks
 type BlockResolver interface {
-	// FetchBlock returns the L1 Block with the given hash.
-	FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Block, error)
+	// FetchBlock returns the L1 BlockHeader with the given hash.
+	FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Header, error)
 	IsBlockCanonical(ctx context.Context, blockHash common.L1BlockHash) (bool, error)
 	// FetchCanonicaBlockByHeight - self explanatory
-	FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Block, error)
+	FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Header, error)
 	// FetchHeadBlock - returns the head of the current chain.
-	FetchHeadBlock(ctx context.Context) (*types.Block, error)
-	// StoreBlock persists the L1 Block and updates the canonical ancestors if there was a fork
-	StoreBlock(ctx context.Context, block *types.Block, fork *common.ChainFork) error
-	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
-	IsAncestor(ctx context.Context, block *types.Block, maybeAncestor *types.Block) bool
-	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
-	// Takes into consideration that the Block to verify might be on a branch we haven't received yet
+	FetchHeadBlock(ctx context.Context) (*types.Header, error)
+	// StoreBlock persists the L1 BlockHeader and updates the canonical ancestors if there was a fork
+	StoreBlock(ctx context.Context, block *types.Header, fork *common.ChainFork) error
+	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 BlockHeader, and false otherwise
+	IsAncestor(ctx context.Context, block *types.Header, maybeAncestor *types.Header) bool
+	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 BlockHeader, and false otherwise
+	// Takes into consideration that the BlockHeader to verify might be on a branch we haven't received yet
 	// todo (low priority) - this is super confusing, analyze the usage
-	IsBlockAncestor(ctx context.Context, block *types.Block, maybeAncestor common.L1BlockHash) bool
+	IsBlockAncestor(ctx context.Context, block *types.Header, maybeAncestor common.L1BlockHash) bool
 }
 
 type BatchResolver interface {
@@ -71,7 +73,7 @@ type BatchResolver interface {
 	// StoreBatch stores an un-executed batch.
 	StoreBatch(ctx context.Context, batch *core.Batch, convertedHash gethcommon.Hash) error
 	// StoreExecutedBatch - store the batch after it was executed
-	StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, receipts []*types.Receipt, contracts map[gethcommon.Hash][]*gethcommon.Address) error
+	StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, results []*core.TxExecResult) error
 
 	// StoreRollup
 	StoreRollup(ctx context.Context, rollup *common.ExtRollup, header *common.CalldataRollupHeader) error
@@ -150,7 +152,7 @@ type Storage interface {
 	// StateDB - return the underlying state database
 	StateDB() state.Database
 
-	ReadContractOwner(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error)
+	ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error)
 }
 
 type ScanStorage interface {

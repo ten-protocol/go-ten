@@ -1,7 +1,7 @@
-# Ten Faucet
+# TEN Faucet
 
-This tools contains a Faucet to allow allocation of ETH tokens within an Ten network. For more information 
-on Ten see the [Ten repo](https://github.com/ten-protocol/go-ten) and [documentation](https://docs.ten.xyz/).
+This tools contains a Faucet to allow allocation of ETH tokens within an TEN network. For more information 
+on TEN see the [TEN repo](https://github.com/ten-protocol/go-ten) and [documentation](https://docs.ten.xyz/).
 
 ## Repository Structure
 The top level structure of the tool is as below;
@@ -24,9 +24,9 @@ To run a local container and run the Faucet use the below;
 $ ./container_run.sh 
 ```
 
-By default, when running locally the Faucet will connect to a local testnet started as described in the go-ten 
+By default, when running locally the Faucet will connect to a local testnet started as described in the go-TEN 
 project repo [readme](https://github.com/ten-protocol/go-ten#building-and-running-a-local-testnet). It will connect 
-to the Ten node running within the local testnet on host `validator-host` and port `13010`. The Faucet opens 
+to the TEN node running within the local testnet on host `validator-host` and port `13010`. The Faucet opens 
 on port `80` within the container, but maps port `8080` on the host machine to this.
 
 

@@ -1,1 +1,1 @@
-A golang based library to use the ten gateway programmatically.
+A golang based library to use the TEN gateway programmatically.

@@ -329,7 +329,7 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, 
 		return fmt.Errorf("unable to get receipt for cross chain bundle transaction. Cause: %w", err)
 	}
 
-	p.logger.Info("Successfully submitted bundle", log.BundleHashKey, bundle.LastBatchHash)
+	p.logger.Info("Successfully submitted bundle", log.BundleHashKey, bundle.LastBatchHash, "bundleRoots", bundle.CrossChainRootHashes.ToHexString(), "managementContract", *p.mgmtContractLib.GetContractAddr())
 	return nil
 }
 

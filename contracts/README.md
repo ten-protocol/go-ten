@@ -1,6 +1,6 @@
-# Ten smart contracts
+# TEN smart contracts
 
-This hardhat project contains the relevant smart contracts for the Ten L2 platform.
+This hardhat project contains the relevant smart contracts for the TEN L2 platform.
 
 ## Dependencies
 
@@ -32,13 +32,13 @@ Additionally you can pass the `noCompile` flag which will disable running the co
 
 ### Deployment Scripts folder structure
 
- * core - Scripts required to be predeployed for Ten to start.
+ * core - Scripts required to be predeployed for TEN to start.
  * bridge - Scripts that deploy/upgrade ONLY the bridge.
  * messenger - Scripts that enable the relayer functionality. Can contain predeployed libraries too in the future.
  * testnet - Scripts that should only be deployed on the testnet. Tokens, "dev tooling" scripts, etc.
 
 For deployments, we use the hardhat-deploy plugin. It provides the `deploy` task, which determines what folders with deployment scripts need to be executed for the current selected network. Additionally there is the `ten:deploy` task that will launch a wallet extension.
-For the wallet extension to work, the network needs to have configured the `url` to 127.0.0.1:3000 and the additional `tenEncRpcUrl` property to the rpc endpoint of the ten node the wallet will connect to.
+For the wallet extension to work, the network needs to have configured the `url` to 127.0.0.1:3000 and the additional `tenEncRpcUrl` property to the rpc endpoint of the TEN node the wallet will connect to.
 
 Scripts are taken from `deployment_scripts` and executed in alphabetic order. Each folder, as ordered in the network config and then inside of it alphabetically. Notice that `func.dependencies = []` defined in deployment functions has the ability to escape the default ordering. If such a deployment function/script is reached, the deploy plugin will first deploy its dependency if it hasn't already.
 

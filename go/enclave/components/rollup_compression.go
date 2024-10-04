@@ -201,11 +201,11 @@ func (rc *RollupCompression) createRollupHeader(ctx context.Context, rollup *cor
 
 		// the first element is the actual height
 		if i == 0 {
-			l1HeightDeltas[i] = block.Number()
+			l1HeightDeltas[i] = block.Number
 		} else {
-			l1HeightDeltas[i] = big.NewInt(block.Number().Int64() - prevL1Height.Int64())
+			l1HeightDeltas[i] = big.NewInt(block.Number.Int64() - prevL1Height.Int64())
 		}
-		prevL1Height = block.Number()
+		prevL1Height = block.Number
 	}
 
 	l1DeltasBA := make([][]byte, len(l1HeightDeltas))
@@ -284,7 +284,7 @@ func (rc *RollupCompression) createIncompleteBatches(ctx context.Context, callda
 	}
 
 	// a cache of the l1 blocks used by the current rollup, indexed by their height
-	l1BlocksAtHeight := make(map[uint64]*types.Block)
+	l1BlocksAtHeight := make(map[uint64]*types.Header)
 	err = rc.calcL1AncestorsOfHeight(ctx, big.NewInt(int64(slices.Min(l1Heights))), rollupL1Block, l1BlocksAtHeight)
 	if err != nil {
 		return nil, err
@@ -353,7 +353,7 @@ func (rc *RollupCompression) createIncompleteBatches(ctx context.Context, callda
 			baseFee:      calldataRollupHeader.BaseFee,
 			gasLimit:     calldataRollupHeader.GasLimit,
 		}
-		rc.logger.Info("Rollup decompressed batch", log.BatchSeqNoKey, currentSeqNo, log.BatchHeightKey, currentHeight, "rollup_idx", currentBatchIdx, "l1_height", block.Number(), "l1_hash", block.Hash())
+		rc.logger.Info("Rollup decompressed batch", log.BatchSeqNoKey, currentSeqNo, log.BatchHeightKey, currentHeight, "rollup_idx", currentBatchIdx, "l1_height", block.Number, "l1_hash", block.Hash())
 	}
 	return incompleteBatches, nil
 }
@@ -388,12 +388,12 @@ func (rc *RollupCompression) calculateL1HeightsFromDeltas(calldataRollupHeader *
 	return l1Heights, nil
 }
 
-func (rc *RollupCompression) calcL1AncestorsOfHeight(ctx context.Context, fromHeight *big.Int, toBlock *types.Block, path map[uint64]*types.Block) error {
-	path[toBlock.NumberU64()] = toBlock
-	if toBlock.NumberU64() == fromHeight.Uint64() {
+func (rc *RollupCompression) calcL1AncestorsOfHeight(ctx context.Context, fromHeight *big.Int, toBlock *types.Header, path map[uint64]*types.Header) error {
+	path[toBlock.Number.Uint64()] = toBlock
+	if toBlock.Number.Uint64() == fromHeight.Uint64() {
 		return nil
 	}
-	p, err := rc.storage.FetchBlock(ctx, toBlock.ParentHash())
+	p, err := rc.storage.FetchBlock(ctx, toBlock.ParentHash)
 	if err != nil {
 		return err
 	}
@@ -470,7 +470,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 			if err != nil {
 				return err
 			}
-			err = rc.storage.StoreExecutedBatch(ctx, genBatch.Header, nil, nil)
+			err = rc.storage.StoreExecutedBatch(ctx, genBatch.Header, nil)
 			if err != nil {
 				return err
 			}
@@ -514,7 +514,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 			if err != nil {
 				return err
 			}
-			err = rc.storage.StoreExecutedBatch(ctx, computedBatch.Batch.Header, computedBatch.Receipts, computedBatch.CreatedContracts)
+			err = rc.storage.StoreExecutedBatch(ctx, computedBatch.Batch.Header, computedBatch.TxExecResults)
 			if err != nil {
 				return err
 			}

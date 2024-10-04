@@ -36,7 +36,7 @@ const (
 
 var _defaultFaucetAmount = big.NewInt(750_000_000_000_000)
 
-// InMemDevNetwork is a local dev network (L1 and L2) - the Ten nodes are in-memory in a single go process, the L1 nodes are a docker geth network
+// InMemDevNetwork is a local dev network (L1 and L2) - the TEN nodes are in-memory in a single go process, the L1 nodes are a docker geth network
 //
 // It can play the role of node operators and network admins to reproduce complex scenarios around nodes joining/leaving/failing.
 //
@@ -50,9 +50,9 @@ type InMemDevNetwork struct {
 
 	l1Network L1Network
 
-	// When Ten network has been initialised on the L1 network, this will be populated
+	// When TEN network has been initialised on the L1 network, this will be populated
 	// - if reconnecting to an existing network it needs to be populated when initialising this object
-	// - if it is nil when `Start()` is called then Ten contracts will be deployed on the L1
+	// - if it is nil when `Start()` is called then TEN contracts will be deployed on the L1
 	l1SetupData *params.L1TenData
 
 	tenConfig           *TenConfig
@@ -66,14 +66,14 @@ type InMemDevNetwork struct {
 
 func (s *InMemDevNetwork) GetGatewayURL() (string, error) {
 	if !s.tenConfig.TenGatewayEnabled {
-		return "", fmt.Errorf("ten gateway not enabled")
+		return "", fmt.Errorf("TEN gateway not enabled")
 	}
 	return fmt.Sprintf("http://localhost:%d", _gwHTTPPort), nil
 }
 
 func (s *InMemDevNetwork) GetGatewayWSURL() (string, error) {
 	if !s.tenConfig.TenGatewayEnabled {
-		return "", fmt.Errorf("ten gateway not enabled")
+		return "", fmt.Errorf("TEN gateway not enabled")
 	}
 	return fmt.Sprintf("ws://localhost:%d", _gwWSPort), nil
 }
@@ -148,10 +148,11 @@ func (s *InMemDevNetwork) Start() {
 	s.l1Network.Prepare()
 	if s.l1SetupData == nil {
 		// this is a new network, deploy the contracts to the L1
-		fmt.Println("Deploying Ten contracts to L1")
+		fmt.Println("Deploying TEN contracts to L1")
 		s.deployTenNetworkContracts()
+		fmt.Printf("L1 Port - %d\n", integration.TestPorts.NetworkTestsPort)
 	}
-	fmt.Println("Starting Ten nodes")
+	fmt.Println("Starting TEN nodes")
 	s.startNodes()
 
 	// sleep to allow the nodes to start
@@ -214,10 +215,10 @@ func (s *InMemDevNetwork) startTenGateway() {
 	}
 	tenGWContainer := walletextension.NewContainerFromConfig(cfg, s.logger)
 	go func() {
-		fmt.Println("Starting Ten Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
+		fmt.Println("Starting TEN Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
 		err := tenGWContainer.Start()
 		if err != nil {
-			s.logger.Error("failed to start ten gateway", "err", err)
+			s.logger.Error("failed to start TEN gateway", "err", err)
 			panic(err)
 		}
 		s.tenGatewayContainer = tenGWContainer
@@ -244,7 +245,7 @@ func (s *InMemDevNetwork) CleanUp() {
 		go func() {
 			err := s.tenGatewayContainer.Stop()
 			if err != nil {
-				fmt.Println("failed to stop ten gateway", err.Error())
+				fmt.Println("failed to stop TEN gateway", err.Error())
 			}
 		}()
 	}

@@ -2,7 +2,7 @@
 <!-- ut essentially for us, he want to support the moving of assets (any) between Ethereum and TEN -->
 <!-- Not yet, but we should support ETH, TEN, USDT, USDC at least to begin with -->
 
-The Ten Bridge is a decentralized bridge that allows users to move assets between the Ethereum network and the TEN network. The bridge is a critical component of the TEN ecosystem, enabling users to move assets between the two networks seamlessly.
+The TEN Bridge is a decentralized bridge that allows users to move assets between the Ethereum network and the TEN network. The bridge is a critical component of the TEN ecosystem, enabling users to move assets between the two networks seamlessly.
 
 For more information on the TEN bridge, please refer to the [TEN Bridge Documentation](https://docs.ten.xyz/bridge).
 
@@ -32,12 +32,12 @@ For more information on the TEN bridge, please refer to the [TEN Bridge Document
 
 2. **Install Dependencies:**
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. **Run the Development Server:**
    ```bash
-   npm run dev
+   pnpm run dev
    ```
 
    The application will be accessible at [http://localhost:3000](http://localhost:3000).

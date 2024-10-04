@@ -46,11 +46,6 @@ const (
 	masterSeedCfg = "MASTER_SEED"
 )
 
-type EventType struct {
-	id          uint64
-	isLifecycle bool
-}
-
 // todo - this file needs splitting up based on concerns
 type storageImpl struct {
 	db                 enclavedb.EnclaveDB
@@ -219,7 +214,7 @@ func (s *storageImpl) IsBatchCanonical(ctx context.Context, seq uint64) (bool, e
 	return enclavedb.IsCanonicalBatchSeq(ctx, s.db.GetSQLDB(), seq)
 }
 
-func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Block, chainFork *common.ChainFork) error {
+func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Header, chainFork *common.ChainFork) error {
 	defer s.logDuration("StoreBlock", measure.NewStopwatch())
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
@@ -230,7 +225,7 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Block, chainF
 	// only insert the block if it doesn't exist already
 	blockId, err := enclavedb.GetBlockId(ctx, dbTx, block.Hash())
 	if errors.Is(err, sql.ErrNoRows) {
-		if err := enclavedb.WriteBlock(ctx, dbTx, block.Header()); err != nil {
+		if err := enclavedb.WriteBlock(ctx, dbTx, block); err != nil {
 			return fmt.Errorf("2. could not store block %s. Cause: %w", block.Hash(), err)
 		}
 
@@ -282,10 +277,10 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Block, chainF
 	return nil
 }
 
-func (s *storageImpl) FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Block, error) {
-	defer s.logDuration("FetchBlock", measure.NewStopwatch())
-	return s.cachingService.ReadBlock(ctx, blockHash, func(hash any) (*types.Block, error) {
-		return enclavedb.FetchBlock(ctx, s.db.GetSQLDB(), hash.(common.L1BlockHash))
+func (s *storageImpl) FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Header, error) {
+	defer s.logDuration("FetchBlockHeader", measure.NewStopwatch())
+	return s.cachingService.ReadBlock(ctx, blockHash, func(hash any) (*types.Header, error) {
+		return enclavedb.FetchBlockHeader(ctx, s.db.GetSQLDB(), hash.(common.L1BlockHash))
 	})
 }
 
@@ -299,7 +294,7 @@ func (s *storageImpl) IsBlockCanonical(ctx context.Context, blockHash common.L1B
 	return enclavedb.IsCanonicalBlock(ctx, dbtx, &blockHash)
 }
 
-func (s *storageImpl) FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Block, error) {
+func (s *storageImpl) FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Header, error) {
 	defer s.logDuration("FetchCanonicaBlockByHeight", measure.NewStopwatch())
 	header, err := enclavedb.FetchBlockHeaderByHeight(ctx, s.db.GetSQLDB(), height)
 	if err != nil {
@@ -308,7 +303,7 @@ func (s *storageImpl) FetchCanonicaBlockByHeight(ctx context.Context, height *bi
 	return s.FetchBlock(ctx, header.Hash())
 }
 
-func (s *storageImpl) FetchHeadBlock(ctx context.Context) (*types.Block, error) {
+func (s *storageImpl) FetchHeadBlock(ctx context.Context) (*types.Header, error) {
 	defer s.logDuration("FetchHeadBlock", measure.NewStopwatch())
 	return enclavedb.FetchHeadBlock(ctx, s.db.GetSQLDB())
 }
@@ -356,26 +351,26 @@ func (s *storageImpl) FetchSecret(ctx context.Context) (*crypto.SharedEnclaveSec
 	return s.cachedSharedSecret, nil
 }
 
-func (s *storageImpl) IsAncestor(ctx context.Context, block *types.Block, maybeAncestor *types.Block) bool {
+func (s *storageImpl) IsAncestor(ctx context.Context, block *types.Header, maybeAncestor *types.Header) bool {
 	defer s.logDuration("IsAncestor", measure.NewStopwatch())
 	if bytes.Equal(maybeAncestor.Hash().Bytes(), block.Hash().Bytes()) {
 		return true
 	}
 
-	if maybeAncestor.NumberU64() >= block.NumberU64() {
+	if maybeAncestor.Number.Uint64() >= block.Number.Uint64() {
 		return false
 	}
 
-	p, err := s.FetchBlock(ctx, block.ParentHash())
+	p, err := s.FetchBlock(ctx, block.ParentHash)
 	if err != nil {
-		s.logger.Debug("Could not find block with hash", log.BlockHashKey, block.ParentHash(), log.ErrKey, err)
+		s.logger.Debug("Could not find block with hash", log.BlockHashKey, block.ParentHash, log.ErrKey, err)
 		return false
 	}
 
 	return s.IsAncestor(ctx, p, maybeAncestor)
 }
 
-func (s *storageImpl) IsBlockAncestor(ctx context.Context, block *types.Block, maybeAncestor common.L1BlockHash) bool {
+func (s *storageImpl) IsBlockAncestor(ctx context.Context, block *types.Header, maybeAncestor common.L1BlockHash) bool {
 	defer s.logDuration("IsBlockAncestor", measure.NewStopwatch())
 	resolvedBlock, err := s.FetchBlock(ctx, maybeAncestor)
 	if err != nil {
@@ -582,7 +577,7 @@ func (s *storageImpl) handleTxSenders(ctx context.Context, batch *core.Batch, db
 	return senders, nil
 }
 
-func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, receipts []*types.Receipt, newContracts map[gethcommon.Hash][]*gethcommon.Address) error {
+func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, results []*core.TxExecResult) error {
 	defer s.logDuration("StoreExecutedBatch", measure.NewStopwatch())
 	executed, err := enclavedb.BatchWasExecuted(ctx, s.db.GetSQLDB(), batch.Hash())
 	if err != nil {
@@ -593,7 +588,7 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.Batc
 		return nil
 	}
 
-	s.logger.Trace("storing executed batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SequencerOrderNo, "receipts", len(receipts))
+	s.logger.Trace("storing executed batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SequencerOrderNo, "receipts", len(results))
 
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
@@ -605,8 +600,8 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.Batc
 		return fmt.Errorf("could not set the executed flag. Cause: %w", err)
 	}
 
-	for _, receipt := range receipts {
-		err = s.eventsStorage.storeReceiptAndEventLogs(ctx, dbTx, batch, receipt, newContracts[receipt.TxHash])
+	for _, txExecResult := range results {
+		err = s.eventsStorage.storeReceiptAndEventLogs(ctx, dbTx, batch, txExecResult)
 		if err != nil {
 			return fmt.Errorf("could not store receipt. Cause: %w", err)
 		}
@@ -808,8 +803,13 @@ func (s *storageImpl) readOrWriteEOA(ctx context.Context, dbTX *sql.Tx, addr get
 	})
 }
 
-func (s *storageImpl) ReadContractOwner(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error) {
-	return enclavedb.ReadContractOwner(ctx, s.db.GetSQLDB(), address)
+func (s *storageImpl) ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error) {
+	dbtx, err := s.db.GetSQLDB().BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer dbtx.Rollback()
+	return enclavedb.ReadContractByAddress(ctx, dbtx, address)
 }
 
 func (s *storageImpl) logDuration(method string, stopWatch *measure.Stopwatch) {

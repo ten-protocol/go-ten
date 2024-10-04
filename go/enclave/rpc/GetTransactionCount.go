@@ -9,7 +9,7 @@ import (
 )
 
 func GetTransactionCountValidate(reqParams []any, builder *CallBuilder[uint64, string], rpc *EncryptionManager) error {
-	// Parameters are [Address, Block?]
+	// Parameters are [Address, BlockHeader?]
 	if len(reqParams) < 1 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
 		return nil

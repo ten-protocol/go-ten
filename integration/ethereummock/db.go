@@ -6,8 +6,6 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ten-protocol/go-ten/go/enclave/storage"
-
 	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -37,7 +35,7 @@ func (n *blockResolverInMem) Proof(_ context.Context, _ *core.Rollup) (*types.Bl
 	panic("implement me")
 }
 
-func NewResolver() storage.BlockResolver {
+func NewResolver() *blockResolverInMem {
 	return &blockResolverInMem{
 		blockCache: map[common.L1BlockHash]*types.Block{},
 		m:          sync.RWMutex{},
@@ -161,7 +159,7 @@ func (m *Node) removeCommittedTransactions(
 	ctx context.Context,
 	cb *types.Block,
 	mempool []*types.Transaction,
-	resolver storage.BlockResolver,
+	resolver *blockResolverInMem,
 	db TxDB,
 ) []*types.Transaction {
 	if cb.NumberU64() <= common.HeightCommittedBlocks {

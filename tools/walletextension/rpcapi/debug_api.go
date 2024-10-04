@@ -3,7 +3,10 @@ package rpcapi
 import (
 	"context"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/tracers"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
@@ -28,7 +31,7 @@ func (api *DebugAPI) GetRawReceipts(ctx context.Context, blockNrOrHash rpc.Block
 	return nil, rpcNotImplemented
 }
 
-func (s *DebugAPI) GetRawTransaction(ctx context.Context, hash common.Hash) (hexutil.Bytes, error) {
+func (s *DebugAPI) GetRawTransaction(ctx context.Context, hash gethcommon.Hash) (hexutil.Bytes, error) {
 	return nil, rpcNotImplemented
 }
 
@@ -48,8 +51,22 @@ func (api *DebugAPI) SetHead(number hexutil.Uint64) {
 	// not implemented
 }
 
-// EventLogRelevancy - specific to Ten - todo
-func (api *DebugAPI) EventLogRelevancy(_ context.Context, _ common.Hash) (interface{}, error) {
-	// todo
-	return nil, rpcNotImplemented
+// EventLogRelevancy - specific to TEN
+func (api *DebugAPI) EventLogRelevancy(ctx context.Context, crit common.FilterCriteria) ([]*tracers.DebugLogs, error) {
+	l, err := ExecAuthRPC[[]*tracers.DebugLogs](
+		ctx,
+		api.we,
+		&ExecCfg{
+			cacheCfg: &CacheCfg{
+				CacheType: NoCache,
+			},
+			tryUntilAuthorised: true,
+		},
+		"debug_eventLogRelevancy",
+		crit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return *l, nil
 }

@@ -4,6 +4,7 @@ import { Receipt } from 'hardhat-deploy/dist/types';
 
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+    return;
     const l2Network = hre; 
     const {deployer} = await hre.getNamedAccounts();
 
@@ -16,7 +17,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const gasConsumerBalance = await hre.ethers.getContractAt("GasConsumerBalance", gcb.address)
     const gasEstimation = await gasConsumerBalance.getFunction('get_balance').estimateGas({
         from: deployer,
-        gasPrice: 2,
     });
     
     await hre.deployments.execute("GasConsumerBalance", {

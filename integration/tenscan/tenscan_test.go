@@ -48,8 +48,8 @@ const (
 )
 
 func TestTenscan(t *testing.T) {
-	startPort := integration.StartPortTenscanUnitTest
-	createTenNetwork(t, startPort)
+	startPort := integration.TestPorts.TestTenscanPort
+	createTenNetwork(t, integration.TestPorts.TestTenscanPort)
 
 	tenScanConfig := &config.Config{
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
@@ -290,9 +290,9 @@ func waitServerIsReady(serverAddr string) error {
 	return fmt.Errorf("timed out before server was ready")
 }
 
-// Creates a single-node Ten network for testing.
+// Creates a single-node TEN network for testing.
 func createTenNetwork(t *testing.T, startPort int) {
-	// Create the Ten network.
+	// Create the TEN network.
 	wallets := params.NewSimWallets(1, 1, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
 		NumberOfNodes:    1,
@@ -308,7 +308,7 @@ func createTenNetwork(t *testing.T, startPort int) {
 	t.Cleanup(tenNetwork.TearDown)
 	_, err := tenNetwork.Create(&simParams, nil)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create test Ten network. Cause: %s", err))
+		panic(fmt.Sprintf("failed to create test TEN network. Cause: %s", err))
 	}
 }
 

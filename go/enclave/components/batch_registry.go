@@ -86,7 +86,7 @@ func (br *batchRegistry) OnL1Reorg(_ *BlockIngestionType) {
 	br.headBatchSeq = headBatch.SequencerOrderNo
 }
 
-func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, receipts types.Receipts) {
+func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, txExecResults []*core.TxExecResult) {
 	defer core.LogMethodDuration(br.logger, measure.NewStopwatch(), "OnBatchExecuted", log.BatchHashKey, batchHeader.Hash())
 	br.callbackMutex.RLock()
 	defer br.callbackMutex.RUnlock()
@@ -102,7 +102,11 @@ func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, receip
 			Header:       batchHeader,
 			Transactions: txs,
 		}
-		br.batchesCallback(batch, receipts)
+		txReceipts := make([]*types.Receipt, len(txExecResults))
+		for i, txExecResult := range txExecResults {
+			txReceipts[i] = txExecResult.Receipt
+		}
+		br.batchesCallback(batch, txReceipts)
 	}
 
 	br.lastExecutedBatch.Mark()
@@ -112,7 +116,7 @@ func (br *batchRegistry) HasGenesisBatch() (bool, error) {
 	return br.HeadBatchSeq() != nil, nil
 }
 
-func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error) {
+func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Header, error) {
 	// sanity check
 	headBatch, err := br.storage.FetchBatchHeaderBySeqNo(ctx, br.HeadBatchSeq().Uint64())
 	if err != nil {
@@ -124,10 +128,10 @@ func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, up
 	}
 
 	resultBatches := make([]*core.Batch, 0)
-	resultBlocks := make([]*types.Block, 0)
+	resultBlocks := make([]*types.Header, 0)
 
 	currentBatchSeq := batchSeqNo
-	var currentBlock *types.Block
+	var currentBlock *types.Header
 	for currentBatchSeq <= headBatch.SequencerOrderNo.Uint64() {
 		batch, err := br.storage.FetchBatchBySeqNo(ctx, currentBatchSeq)
 		if err != nil {
@@ -142,7 +146,7 @@ func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, up
 				return nil, nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 			}
 			currentBlock = block
-			if block.NumberU64() > upToL1Height {
+			if block.Number.Uint64() > upToL1Height {
 				break
 			}
 			resultBlocks = append(resultBlocks, block)

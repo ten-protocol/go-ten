@@ -10,15 +10,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/enclave/storage"
-
 	"github.com/ten-protocol/go-ten/go/common/async"
 
 	"github.com/google/uuid"
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
-
-	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -63,7 +59,7 @@ type Node struct {
 	Network  L1Network
 	mining   bool
 	stats    StatsCollector
-	Resolver storage.BlockResolver
+	Resolver *blockResolverInMem
 	db       TxDB
 	subs     map[uuid.UUID]*mockSubscription // active subscription for mock blocks
 	subMu    sync.Mutex
@@ -111,7 +107,8 @@ func (m *Node) SendTransaction(tx *types.Transaction) error {
 func (m *Node) TransactionReceipt(_ gethcommon.Hash) (*types.Receipt, error) {
 	// all transactions are immediately processed
 	return &types.Receipt{
-		Status: types.ReceiptStatusSuccessful,
+		BlockNumber: big.NewInt(1),
+		Status:      types.ReceiptStatusSuccessful,
 	}, nil
 }
 
@@ -327,15 +324,14 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	// Check for Reorgs
 	if !m.Resolver.IsAncestor(context.Background(), b, head) {
 		m.stats.L1Reorg(m.l2ID)
-		fork, err := gethutil.LCA(context.Background(), head, b, m.Resolver)
+		fork, err := LCA(context.Background(), head, b, m.Resolver)
 		if err != nil {
 			panic(err)
 		}
 		m.logger.Info(
-			fmt.Sprintf("L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.CommonAncestor.Hash()), fork.CommonAncestor.NumberU64()))
+			fmt.Sprintf("L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.CommonAncestor.Hash()), fork.CommonAncestor.Number.Uint64()))
 		return m.setFork(m.BlocksBetween(fork.CommonAncestor, b))
 	}
-
 	if b.NumberU64() > (head.NumberU64() + 1) {
 		m.logger.Crit("Should not happen")
 	}
@@ -462,9 +458,9 @@ func (m *Node) Stop() {
 	m.exitCh <- true
 }
 
-func (m *Node) BlocksBetween(blockA *types.Block, blockB *types.Block) []*types.Block {
+func (m *Node) BlocksBetween(blockA *types.Header, blockB *types.Block) []*types.Block {
 	if bytes.Equal(blockA.Hash().Bytes(), blockB.Hash().Bytes()) {
-		return []*types.Block{blockA}
+		return []*types.Block{blockB}
 	}
 	blocks := make([]*types.Block, 0)
 	tempBlock := blockB

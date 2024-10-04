@@ -15,13 +15,13 @@ import (
 	"github.com/ten-protocol/go-ten/integration/simulation/stats"
 )
 
-// Network is responsible with knowing how to manage the lifecycle of networks of Ethereum or Ten nodes.
+// Network is responsible with knowing how to manage the lifecycle of networks of Ethereum or TEN nodes.
 // These networks can be composed of in-memory go-routines or of fully fledged existing nodes like Ropsten.
 // Implementation notes:
 // - This is a work in progress, so there is a lot of code duplication in the implementations
 // - Once we implement a few more versions: for example using Geth, we'll revisit and create better abstractions.
 type Network interface {
-	// Create - returns the started Ethereum nodes and the started Ten node clients.
+	// Create - returns the started Ethereum nodes and the started TEN node clients.
 	// Responsible with spinning up all resources required for the test
 	// Return an error in case it cannot start for an expected reason, otherwise it panics.
 	Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error)
@@ -32,9 +32,9 @@ type RPCHandles struct {
 	// an eth client per eth node in the network
 	EthClients []ethadapter.EthClient
 
-	// A Ten client per Ten node in the network.
+	// A TEN client per TEN node in the network.
 	TenClients []*obsclient.ObsClient
-	// An RPC client per Ten node in the network (used for APIs that don't have methods on `ObsClient`.
+	// An RPC client per TEN node in the network (used for APIs that don't have methods on `ObsClient`.
 	RPCClients []rpc.Client
 
 	// an RPC client per node per wallet, with a viewing key set up (on the client and registered on its corresponding host enclave),
