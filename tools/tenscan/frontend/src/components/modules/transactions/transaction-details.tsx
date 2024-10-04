@@ -36,9 +36,7 @@ export function TransactionDetailsComponent({
           value={
             <TruncatedAddress
               address={transactionDetails?.TransactionHash}
-              link={pathToUrl(pageLinks.txByHash, {
-                hash: transactionDetails?.TransactionHash,
-              })}
+              showFullLength
             />
           }
         />
