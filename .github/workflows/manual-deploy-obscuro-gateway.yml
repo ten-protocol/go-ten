@@ -199,28 +199,36 @@ jobs:
             az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}"  \
             --command-id RunShellScript \
             --scripts '
+            set -e
+
             mkdir -p /home/obscuro
+
             # Wait for dpkg lock to be released
             while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
               echo "Waiting for dpkg lock to be released..."
               sleep 1
             done
+
             # Proceed with package installations
             sudo apt-get update
             sudo apt-get install -y gcc
             sudo snap refresh && sudo snap install --channel=1.18 go --classic
+
             # Wait again before running get-docker.sh
             while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
               echo "Waiting for dpkg lock to be released before installing Docker..."
               sleep 1
             done
+
             curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh
-            git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro
+            git clone --depth 1 -b "${{ env.BRANCH_NAME }}" https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro
             docker network create --driver bridge node_network || true
-            
+            cd /home/obscuro/go-obscuro/
+
             # Promtail Integration Start
             mkdir -p /home/obscuro/promtail
-            echo "
+
+            cat <<EOF > /home/obscuro/promtail/promtail-config.yaml
             server:
               http_listen_port: 9080
               grpc_listen_port: 0
@@ -229,14 +237,14 @@ jobs:
               filename: /tmp/positions.yaml
 
             clients:
-              - url: ${{ vars.METRICS_URI }}
+              - url: "${{ vars.METRICS_URI }}"
                 batchwait: 3s
                 batchsize: 1048576
                 tls_config:
                   insecure_skip_verify: true
                 basic_auth:
-                  username: ${{ secrets.LOKI_USER }}
-                  password: ${{ secrets.LOKI_PASSWORD }}
+                  username: "${{ secrets.LOKI_USER }}"
+                  password: "${{ secrets.LOKI_PASSWORD }}"
 
             scrape_configs:
             - job_name: flog_scrape
@@ -251,29 +259,28 @@ jobs:
                   target_label: "logstream"
                 - source_labels: ["__meta_docker_container_label_logging_jobname"]
                   target_label: "job"
-                - replacement: ${{ env.VM_NAME }}
+                - replacement: "${{ env.VM_NAME }}"
                   target_label: "node_name"
-            " > /home/obscuro/promtail/promtail-config.yaml
-
+            EOF
+            
             docker run -d --name promtail \
-              --network node_network \
-              -e HOSTNAME=${{ env.VM_NAME }} \
-              -v /var/log:/var/log \
-              -v /home/obscuro/promtail:/etc/promtail \
-              -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
-              -v /var/run/docker.sock:/var/run/docker.sock \
-              grafana/promtail:latest \
-              -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true
+            --network node_network \
+            -e HOSTNAME="${{ env.VM_NAME }}" \
+            -v /var/log:/var/log \
+            -v /home/obscuro/promtail:/etc/promtail \
+            -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            grafana/promtail:latest \
+            -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true
             # Promtail Integration End
             
-            cd /home/obscuro/go-obscuro/
+            # Start Ten Gateway Container
             docker run -d -p 80:80 -p 81:81 --name "${{ env.VM_NAME }}" \
-              --device /dev/sgx_enclave --device /dev/sgx_provision \
-              --entrypoint "/home/ten/go-ten/tools/walletextension/main/entry.sh" \
-              -e OBSCURO_GATEWAY_VERSION="${{ GITHUB.RUN_NUMBER }}-${{ GITHUB.SHA }}" \
-              -e OE_SIMULATION=0 \
-              ${{ env.DOCKER_BUILD_TAG_GATEWAY }} \
-              ego run /home/ten/go-ten/tools/walletextension/main/main \
-              -host=0.0.0.0 -port=80 -portWS=81 -nodeHost=${{ env.L2_RPC_URL_VALIDATOR }} -verbose=true \
-              -logPath=sys_out -dbType=mariaDB -dbConnectionURL="obscurouser:${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }}@tcp(obscurogateway-mariadb-${{  github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:3306)/ogdb" \
-              -rateLimitUserComputeTime=${{ env.GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME }} -rateLimitWindow=${{ env.GATEWAY_RATE_LIMIT_WINDOW }} -maxConcurrentRequestsPerUser=${{ env.GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER }} '
+            --device /dev/sgx_enclave --device /dev/sgx_provision \
+            -e OBSCURO_GATEWAY_VERSION="${{ github.run_number }}-${{ github.sha }}" \
+            -e OE_SIMULATION=0 \
+            "${{ env.DOCKER_BUILD_TAG_GATEWAY }}" \
+            ego run /home/ten/go-ten/tools/walletextension/main/main \
+            -host=0.0.0.0 -port=80 -portWS=81 -nodeHost="${{ env.L2_RPC_URL_VALIDATOR }}" -verbose=true \
+            -logPath=sys_out -dbType=mariaDB -dbConnectionURL="obscurouser:${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }}@tcp(obscurogateway-mariadb-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:3306)/ogdb" \
+            -rateLimitUserComputeTime="${{ env.GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME }}" -rateLimitWindow="${{ env.GATEWAY_RATE_LIMIT_WINDOW }}" -maxConcurrentRequestsPerUser="${{ env.GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER }}" '
