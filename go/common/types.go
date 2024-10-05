@@ -68,6 +68,7 @@ type (
 	EncryptedParamsGetTxByHash             []byte // As above, but for an RPC getTransactionByHash request.
 	EncryptedParamsGetTxReceipt            []byte // As above, but for an RPC getTransactionReceipt request.
 	EncryptedParamsLogSubscription         []byte // As above, but for an RPC logs subscription request.
+	EncryptedParamsDebugLogRelevancy       []byte // As above, but for an RPC the relevancy call.
 	EncryptedParamsSendRawTx               []byte // As above, but for an RPC sendRawTransaction request.
 	EncryptedParamsGetTxCount              []byte // As above, but for an RPC getTransactionCount request.
 	EncryptedParamsEstimateGas             []byte // As above, but for an RPC estimateGas request.

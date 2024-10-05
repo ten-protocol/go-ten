@@ -20,6 +20,7 @@ const (
 	SendRawTransaction    = "eth_sendRawTransaction"
 	EstimateGas           = "eth_estimateGas"
 	GetLogs               = "eth_getLogs"
+	DebugLogs             = "debug_eventLogRelevancy"
 	GetStorageAt          = "eth_getStorageAt"
 	GasPrice              = "eth_gasPrice"
 

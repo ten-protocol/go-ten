@@ -40,6 +40,7 @@ var SensitiveMethods = []string{
 	SendRawTransaction,
 	EstimateGas,
 	GetLogs,
+	DebugLogs,
 	GetStorageAt,
 	GetPersonalTransactions,
 }

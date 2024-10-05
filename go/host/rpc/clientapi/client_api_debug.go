@@ -3,6 +3,10 @@ package clientapi
 import (
 	"context"
 
+	"github.com/ten-protocol/go-ten/go/responses"
+
+	"github.com/ten-protocol/go-ten/go/common"
+
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/tracers"
 
@@ -30,11 +34,12 @@ func (api *NetworkDebug) TraceTransaction(ctx context.Context, hash gethcommon.H
 	return response, nil
 }
 
-// EventLogRelevancy returns the events for a given transactions and the revelancy params
-func (api *NetworkDebug) EventLogRelevancy(ctx context.Context, hash gethcommon.Hash) (interface{}, error) {
-	response, err := api.host.EnclaveClient().DebugEventLogRelevancy(ctx, hash)
-	if err != nil {
-		return "", err
+func (api *NetworkDebug) EventLogRelevancy(ctx context.Context, encryptedParams common.EncryptedParamsDebugLogRelevancy) (responses.DebugLogs, error) {
+	enclaveResponse, sysError := api.host.EnclaveClient().DebugEventLogRelevancy(ctx, encryptedParams)
+	if sysError != nil {
+		return responses.EnclaveResponse{
+			Err: &responses.InternalErrMsg,
+		}, nil
 	}
-	return response, nil
+	return *enclaveResponse, nil
 }

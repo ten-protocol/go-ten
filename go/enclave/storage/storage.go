@@ -33,7 +33,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/common/tracers"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 
@@ -731,9 +730,9 @@ func (s *storageImpl) FetchRollupMetadata(ctx context.Context, hash common.L2Rol
 	return enclavedb.FetchRollupMetadata(ctx, s.db.GetSQLDB(), hash)
 }
 
-func (s *storageImpl) DebugGetLogs(ctx context.Context, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
+func (s *storageImpl) DebugGetLogs(ctx context.Context, from *big.Int, to *big.Int, address gethcommon.Address, eventSig gethcommon.Hash) ([]*common.DebugLogVisibility, error) {
 	defer s.logDuration("DebugGetLogs", measure.NewStopwatch())
-	return enclavedb.DebugGetLogs(ctx, s.db.GetSQLDB(), txHash)
+	return enclavedb.DebugGetLogs(ctx, s.db.GetSQLDB(), from, to, address, eventSig)
 }
 
 func (s *storageImpl) FilterLogs(

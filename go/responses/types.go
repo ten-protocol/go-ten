@@ -32,6 +32,7 @@ type (
 	TxCount                      = EnclaveResponse // As above, but for an RPC getTransactionCount request.
 	Gas                          = EnclaveResponse // As above, but for an RPC estimateGas response.
 	Logs                         = EnclaveResponse
+	DebugLogs                    = EnclaveResponse
 	Receipts                     = EnclaveResponse
 	PersonalTransactionsResponse = EnclaveResponse
 	StorageSlotResponse          = EnclaveResponse

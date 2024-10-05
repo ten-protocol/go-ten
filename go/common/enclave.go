@@ -140,7 +140,7 @@ type Enclave interface {
 	// All will be queued in the channel that has been returned.
 	StreamL2Updates() (chan StreamL2UpdatesResponse, func())
 	// DebugEventLogRelevancy returns the logs of a transaction
-	DebugEventLogRelevancy(ctx context.Context, hash gethcommon.Hash) (json.RawMessage, SystemError)
+	DebugEventLogRelevancy(ctx context.Context, params EncryptedParamsDebugLogRelevancy) (*responses.DebugLogs, SystemError)
 
 	ExportCrossChainData(context.Context, uint64, uint64) (*ExtCrossChainBundle, SystemError)
 }
