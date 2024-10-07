@@ -60,7 +60,7 @@ func (s *Simulation) Start() {
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	// and for all l2 nodes to receive the genesis l2 batch
 	// todo - instead of sleeping, it would be better to poll
-	//time.Sleep(10 * time.Second) //todo - determine if this is till necessary?
+	time.Sleep(10 * time.Second)
 
 	s.bridgeFundingToTen()
 	s.deployTenZen()       // Deploy the ZenBase contract
