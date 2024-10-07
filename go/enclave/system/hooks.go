@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ten-protocol/go-ten/contracts/generated/TransactionsAnalyzer"
+	"github.com/ten-protocol/go-ten/contracts/generated/TransactionPostProcessor"
 	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -20,8 +20,8 @@ import (
 )
 
 var (
-	transactionsAnalyzerABI, _ = abi.JSON(strings.NewReader(TransactionsAnalyzer.TransactionsAnalyzerMetaData.ABI))
-	ErrNoTransactions          = fmt.Errorf("no transactions")
+	transactionPostProcessorABI, _ = abi.JSON(strings.NewReader(TransactionPostProcessor.TransactionPostProcessorMetaData.ABI))
+	ErrNoTransactions              = fmt.Errorf("no transactions")
 )
 
 type SystemContractCallbacks interface {
@@ -29,7 +29,7 @@ type SystemContractCallbacks interface {
 	Initialize(batch *core.Batch, receipts types.Receipts) error
 	Load() error
 	CreateOnBatchEndTransaction(ctx context.Context, stateDB *state.StateDB, transactions common.L2Transactions, receipts types.Receipts) (*types.Transaction, error)
-	TransactionAnalyzerAddress() *gethcommon.Address
+	TransactionPostProcessor() *gethcommon.Address
 	VerifyOnBlockReceipt(transactions common.L2Transactions, receipt *types.Receipt) (bool, error)
 }
 
@@ -50,7 +50,7 @@ func NewSystemContractCallbacks(ownerWallet wallet.Wallet, logger gethlog.Logger
 	}
 }
 
-func (s *systemContractCallbacks) TransactionAnalyzerAddress() *gethcommon.Address {
+func (s *systemContractCallbacks) TransactionPostProcessor() *gethcommon.Address {
 	return s.transactionsAnalyzerAddress
 }
 
@@ -138,7 +138,7 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 	nonceForSyntheticTx := l2State.GetNonce(s.GetOwner())
 	s.logger.Debug("CreateOnBatchEndTransaction: Retrieved nonce for synthetic transaction", "nonce", nonceForSyntheticTx)
 
-	solidityTransactions := make([]TransactionsAnalyzer.StructsTransaction, 0)
+	solidityTransactions := make([]TransactionPostProcessor.StructsTransaction, 0)
 
 	txSuccessMap := map[gethcommon.Hash]bool{}
 	for _, receipt := range receipts {
@@ -147,7 +147,7 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 
 	for _, tx := range transactions {
 		// Start of Selection
-		transaction := TransactionsAnalyzer.StructsTransaction{
+		transaction := TransactionPostProcessor.StructsTransaction{
 			Nonce:      big.NewInt(int64(tx.Nonce())),
 			GasPrice:   tx.GasPrice(),
 			GasLimit:   big.NewInt(int64(tx.Gas())),
@@ -172,7 +172,7 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 		s.logger.Debug("CreateOnBatchEndTransaction: Encoded transaction", "transactionHash", tx.Hash().Hex(), "sender", sender.Hex())
 	}
 
-	data, err := transactionsAnalyzerABI.Pack("onBlock", solidityTransactions)
+	data, err := transactionPostProcessorABI.Pack("onBlock", solidityTransactions)
 	if err != nil {
 		s.logger.Error("CreateOnBatchEndTransaction: Failed packing onBlock data", "error", err)
 		return nil, fmt.Errorf("failed packing onBlock() %w", err)

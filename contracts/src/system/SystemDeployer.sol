@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "./TransactionsAnalyzer.sol";
+import "./TransactionPostProcessor.sol";
 
 contract SystemDeployer {
     event SystemContractDeployed(string name, address contractAddress);
@@ -12,7 +12,7 @@ contract SystemDeployer {
     }
 
     function deployAnalyzer(address eoaAdmin) internal {
-        TransactionsAnalyzer transactionsAnalyzer = new TransactionsAnalyzer();
+        TransactionPostProcessor transactionsAnalyzer = new TransactionPostProcessor();
         bytes memory callData = abi.encodeWithSelector(transactionsAnalyzer.initialize.selector, eoaAdmin, msg.sender);
         address transactionsAnalyzerProxy = deployProxy(address(transactionsAnalyzer), eoaAdmin, callData);
         

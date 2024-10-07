@@ -12,6 +12,7 @@ library Structs {
         uint256 value;
         bytes data;
         address from;
-        bool successful; 
+        bool successful;
+        uint256 gasUsed;
     }
 }

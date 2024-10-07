@@ -243,7 +243,7 @@ func (s *Simulation) deployTenZen() {
 		// Node one, because random client might yield the no p2p node, which breaks the timings
 		rpcClient := s.RPCHandles.TenWalletClient(s.Params.Wallets.L2FaucetWallet.Address(), 1)
 		var cfg *common.TenNetworkInfo
-		for cfg == nil || cfg.TransactionAnalyzerAddress.Cmp(gethcommon.Address{}) == 0 {
+		for cfg == nil || cfg.TransactionPostProcessorAddress.Cmp(gethcommon.Address{}) == 0 {
 			cfg, err = rpcClient.GetConfig()
 			if err != nil {
 				s.TxInjector.logger.Info("failed to get config", log.ErrKey, err)
@@ -280,7 +280,7 @@ func (s *Simulation) deployTenZen() {
 
 		auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
 
-		zenBaseAddress, signedTx, _, err := ZenBase.DeployZenBase(auth, ownerRpc, cfg.TransactionAnalyzerAddress, address) //, "ZenBase", "ZEN")
+		zenBaseAddress, signedTx, _, err := ZenBase.DeployZenBase(auth, ownerRpc, cfg.TransactionPostProcessorAddress, address) //, "ZenBase", "ZEN")
 		if err != nil {
 			panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
 		}
@@ -289,7 +289,7 @@ func (s *Simulation) deployTenZen() {
 		}
 		s.ZenBaseAddress = zenBaseAddress
 
-		transactionsAnalyzer, err := TransactionsAnalyzer.NewTransactionsAnalyzer(cfg.TransactionAnalyzerAddress, ownerRpc)
+		transactionsAnalyzer, err := TransactionsAnalyzer.NewTransactionsAnalyzer(cfg.TransactionPostProcessorAddress, ownerRpc)
 		if err != nil {
 			panic(fmt.Errorf("failed to deploy transactions analyzer contract: %w", err))
 		}

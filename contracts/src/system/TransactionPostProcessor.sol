@@ -8,7 +8,7 @@ import "./OnBlockEndCallback.sol";
 import "./Transaction.sol";
 
 //TODO: @PR Review - Pick appropriate name
-contract TransactionsAnalyzer is Initializable, AccessControl{
+contract TransactionPostProcessor is Initializable, AccessControl{
     using Structs for Structs.Transaction;
 
     bytes32 public constant EOA_ADMIN_ROLE = keccak256("EOA_ADMIN_ROLE");

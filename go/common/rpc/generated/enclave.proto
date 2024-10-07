@@ -107,7 +107,7 @@ message EnclavePublicConfigRequest {}
 
 message EnclavePublicConfigResponse{
   bytes l2MessageBusAddress = 1;
-  bytes transactionAnalyzerAddress = 2;
+  bytes transactionPostProcessorAddress = 2;
   SystemError systemError = 3;
 }
 

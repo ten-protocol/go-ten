@@ -476,8 +476,8 @@ func (s *RPCServer) EnclavePublicConfig(ctx context.Context, _ *generated.Enclav
 		return &generated.EnclavePublicConfigResponse{SystemError: toRPCError(sysError)}, nil
 	}
 	return &generated.EnclavePublicConfigResponse{
-		L2MessageBusAddress:        enclaveCfg.L2MessageBusAddress.Bytes(),
-		TransactionAnalyzerAddress: enclaveCfg.TransactionAnalyzerAddress.Bytes(),
+		L2MessageBusAddress:             enclaveCfg.L2MessageBusAddress.Bytes(),
+		TransactionPostProcessorAddress: enclaveCfg.TransactionPostProcessorAddress.Bytes(),
 	}, nil
 }
 

@@ -31,10 +31,10 @@ contract ZenBase is OnBlockEndCallback, ERC20, Ownable {
      * @dev Constructor that gives msg.sender all of existing tokens.
      * You can customize the initial supply as needed.
      */
-    constructor(address transactionAnalyzer, address transactionDecoder) ERC20("Zen", "ZEN") Ownable(msg.sender) {
-        require(transactionAnalyzer != address(0), "Invalid transaction analyzer address");
+    constructor(address transactionPostProcessor, address transactionDecoder) ERC20("Zen", "ZEN") Ownable(msg.sender) {
+        require(transactionPostProcessor != address(0), "Invalid transaction analyzer address");
         require(transactionDecoder != address(0), "Invalid transaction decoder address");
-        _caller = transactionAnalyzer;
+        _caller = transactionPostProcessor;
         _transactionDecoder = transactionDecoder;
     }
     

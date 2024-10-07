@@ -217,7 +217,7 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 		s.logger.Crit("Failed to derive system contract addresses", log.ErrKey, err)
 		return err
 	}
-	s.logger.Info("[SystemContracts] Deployer initialized", "transactionAnalyzer", systemAddresses.ToString())
+	s.logger.Info("[SystemContracts] Deployer initialized", "transactionPostProcessor", systemAddresses.ToString())
 	s.logger.Info("[SystemContracts] Message Bus Contract minted successfully", "address", cb.TxExecResults[0].Receipt.ContractAddress.Hex())
 
 	return nil
