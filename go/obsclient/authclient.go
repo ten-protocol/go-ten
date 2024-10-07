@@ -192,7 +192,14 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 	return (*big.Int)(&result), err
 }
 
+// Workaround for creating a ETH client interface to be used in generated contracts interacting.
+// Obviously any usage should avoid subscriptions as it will not work.
 func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
+	panic("not implemented")
+}
+
+// Real method that we have used in TEN for subscription
+func (ac *AuthObsClient) SubscribeFilterLogsTEN(ctx context.Context, filterCriteria ethereum.FilterQuery, ch chan types.Log) (ethereum.Subscription, error) {
 	return ac.rpcClient.Subscribe(ctx, rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeLogs, filterCriteria)
 }
 

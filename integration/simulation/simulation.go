@@ -202,7 +202,7 @@ func (s *Simulation) trackLogs() {
 			hocFilter := ethereum.FilterQuery{
 				Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + testcommon.HOCAddr)},
 			}
-			sub, err := client.SubscribeFilterLogs(context.Background(), hocFilter, channel)
+			sub, err := client.SubscribeFilterLogsTEN(context.Background(), hocFilter, channel)
 			if err != nil {
 				panic(fmt.Errorf("subscription failed. Cause: %w", err))
 			}
