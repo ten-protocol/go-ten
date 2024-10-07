@@ -311,7 +311,7 @@ func (g *Guardian) provideSecret() error {
 		if err != nil {
 			return fmt.Errorf("next block after block=%s not found - %w", awaitFromBlock, err)
 		}
-		secretRespTxs, _, _, _ := g.sl.L1Publisher().ExtractRelevantTenTransactions(nextBlock)
+		_, _, _, secretRespTxs := g.sl.L1Publisher().ExtractRelevantTenTransactions(nextBlock, nil)
 		for _, scrt := range secretRespTxs {
 			if scrt.RequesterID.Hex() == g.enclaveID.Hex() {
 				err = g.enclaveClient.InitEnclave(context.Background(), scrt.Secret)
@@ -419,7 +419,6 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
 	if !g.submitDataLock.TryLock() {
 		g.logger.Debug("Unable to submit block, enclave is busy processing data")
-		// we are waiting for the enclave to process other data, and we don't want to leak goroutines, we wil catch up with the block later
 		return false, nil
 	}
 	receipts, err := g.sl.L1Repo().FetchObscuroReceipts(block)
@@ -427,23 +426,8 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
 	}
-	txWithReceipts := make([]*common.TxAndReceipt, 0)
-	// only submit the relevant transactions to the enclave
-	// nullify all non-relevant transactions
-	txs := block.Transactions()
-	for i, rec := range receipts {
-		// the FetchObscuroReceipts method returns dummy receipts on non-relevant positions.
-		if rec.BlockNumber != nil {
-			txWithReceipts = append(txWithReceipts, &common.TxAndReceipt{
-				Tx:      txs[i],
-				Receipt: rec,
-			})
-		}
-	}
-
-	_, rollupTxs, blobsAndHashes, contractAddressTxs := g.sl.L1Publisher().ExtractRelevantTenTransactions(block)
-	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txWithReceipts, blobsAndHashes)
-
+	txsReceiptsAndBlobs, rollupTxs, contractAddressTxs, _ := g.sl.L1Publisher().ExtractRelevantTenTransactions(block, &receipts)
+	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txsReceiptsAndBlobs)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {

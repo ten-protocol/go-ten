@@ -174,10 +174,10 @@ func TestBeaconClientFallback(t *testing.T) {
 }
 
 // Helper function to convert BlobSidecar to APIBlobSidecar
-func toAPISidecars(sidecars []*BlobSidecar) []*APIBlobSidecar {
-	apiSidecars := make([]*APIBlobSidecar, len(sidecars))
+func toAPISidecars(sidecars []*BlobSidecar) []*BlobSidecar {
+	apiSidecars := make([]*BlobSidecar, len(sidecars))
 	for i, sidecar := range sidecars {
-		apiSidecars[i] = &APIBlobSidecar{
+		apiSidecars[i] = &BlobSidecar{
 			Index:         sidecar.Index,
 			Blob:          sidecar.Blob,
 			KZGCommitment: sidecar.KZGCommitment,

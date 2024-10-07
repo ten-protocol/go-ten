@@ -127,16 +127,16 @@ type (
 // The receipts must also be in the correct order.
 type BlockAndReceipts struct {
 	BlockHeader            *types.Header
-	TxsWithReceipts        []*TxAndReceipt
+	TxsWithReceipts        []*TxAndReceiptAndBlobs
 	successfulTransactions *types.Transactions
 }
 
 // ParseBlockAndReceipts - will create a container struct that has preprocessed the receipts
 // and verified if they indeed match the receipt root hash in the block.
-func ParseBlockAndReceipts(block *types.Header, receipts []*TxAndReceipt) (*BlockAndReceipts, error) {
+func ParseBlockAndReceipts(block *types.Header, receiptsAndBlobs []*TxAndReceiptAndBlobs) (*BlockAndReceipts, error) {
 	br := BlockAndReceipts{
 		BlockHeader:     block,
-		TxsWithReceipts: receipts,
+		TxsWithReceipts: receiptsAndBlobs,
 	}
 
 	return &br, nil

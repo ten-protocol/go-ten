@@ -8,7 +8,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -124,5 +123,5 @@ type RollupProducer interface {
 type RollupConsumer interface {
 	// ProcessBlobsInBlock - extracts the blob hashes from the block's transactions and builds the blob hashes from the blobs,
 	// compares this with the hashes since in the block.
-	ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts, blobs []*kzg4844.Blob) error
+	ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts) error
 }

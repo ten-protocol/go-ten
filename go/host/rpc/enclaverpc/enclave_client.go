@@ -8,8 +8,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -199,23 +197,18 @@ func (c *Client) EnclaveID(ctx context.Context) (common.EnclaveID, common.System
 	return common.EnclaveID(response.EnclaveID), nil
 }
 
-func (c *Client) SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceipt, blobs []*kzg4844.Blob) (*common.BlockSubmissionResponse, common.SystemError) {
+func (c *Client) SubmitL1Block(ctx context.Context, blockHeader *types.Header, txsReceiptsAndBlobs []*common.TxAndReceiptAndBlobs) (*common.BlockSubmissionResponse, common.SystemError) {
 	var buffer bytes.Buffer
 	if err := blockHeader.EncodeRLP(&buffer); err != nil {
 		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
 	}
 
-	serializedReceipts, err := rlp.EncodeToBytes(receipts)
+	serializedTxsReceiptsAndBlobs, err := rlp.EncodeToBytes(txsReceiptsAndBlobs)
 	if err != nil {
 		return nil, fmt.Errorf("could not encode receipts. Cause: %w", err)
 	}
 
-	serializedBlobs, err := rlp.EncodeToBytes(blobs)
-	if err != nil {
-		return nil, fmt.Errorf("could not encode blobs. Cause: %w", err)
-	}
-
-	response, err := c.protoClient.SubmitL1Block(ctx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedReceipts: serializedReceipts, EncodedBlobs: serializedBlobs})
+	response, err := c.protoClient.SubmitL1Block(ctx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedReceipts: serializedTxsReceiptsAndBlobs})
 	if err != nil {
 		return nil, fmt.Errorf("could not submit block. Cause: %w", err)
 	}

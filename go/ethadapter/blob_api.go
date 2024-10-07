@@ -12,34 +12,22 @@ import (
 )
 
 type BlobSidecar struct {
-	Blob          kzg4844.Blob `json:"blob"`
-	Index         Uint64String `json:"index"`
-	KZGCommitment Bytes48      `json:"kzg_commitment"`
-	KZGProof      Bytes48      `json:"kzg_proof"`
-}
+	// Blob is the actual blob data, a large byte array (up to 128 KB) that contains the off-chain data
+	Blob kzg4844.Blob `json:"blob"`
 
-// APIBlobSidecar ignores inclusion-proof of the blob-sidecar, since we verify blobs by their versioned hashes against
-//
-//	the execution-layer block instead.
-type APIBlobSidecar struct {
-	Index             Uint64String            `json:"index"`
-	Blob              kzg4844.Blob            `json:"blob"`
-	KZGCommitment     Bytes48                 `json:"kzg_commitment"`
-	KZGProof          Bytes48                 `json:"kzg_proof"`
-	SignedBlockHeader SignedBeaconBlockHeader `json:"signed_block_header"`
-}
+	// Index is the position of this blob within the transaction's blob array
+	// It's represented as a string to accommodate uint64 values in JSON
+	Index Uint64String `json:"index"`
 
-func (sc *APIBlobSidecar) BlobSidecar() *BlobSidecar {
-	return &BlobSidecar{
-		Blob:          sc.Blob,
-		Index:         sc.Index,
-		KZGCommitment: sc.KZGCommitment,
-		KZGProof:      sc.KZGProof,
-	}
-}
+	// KZGCommitment is a cryptographic commitment to the blob content
+	// This is what the EVM sees and uses to verify blob availability without accessing the full blob data
+	// It's significantly smaller than the blob itself, reducing on-chain storage requirements
+	KZGCommitment Bytes48 `json:"kzg_commitment"`
 
-type SignedBeaconBlockHeader struct {
-	Message BeaconBlockHeader `json:"message"`
+	// KZGProof is a zero-knowledge proof that allows verification of small portions of the blob
+	// without needing the entire blob data
+	// It's used to prove that the commitment corresponds to the actual blob data
+	KZGProof Bytes48 `json:"kzg_proof"`
 }
 
 type BeaconBlockHeader struct {
@@ -51,7 +39,7 @@ type BeaconBlockHeader struct {
 }
 
 type APIGetBlobSidecarsResponse struct {
-	Data []*APIBlobSidecar `json:"data"`
+	Data []*BlobSidecar `json:"data"`
 }
 
 type ReducedGenesisData struct {

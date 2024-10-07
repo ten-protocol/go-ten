@@ -17,12 +17,10 @@ const (
 )
 
 type ArchivalBlobResponse struct {
-	Blob struct {
-		VersionedHash string `json:"versionedHash"`
-		Commitment    string `json:"commitment"`
-		Proof         string `json:"proof"`
-		Data          string `json:"data"`
-	} `json:"blob"`
+	VersionedHash string `json:"versionedHash"`
+	Commitment    string `json:"commitment"`
+	Proof         string `json:"proof"`
+	Data          string `json:"data"`
 }
 
 type ArchivalHTTPClient struct {
@@ -37,7 +35,7 @@ func NewArchivalHTTPClient(client *http.Client, baseURL string) *ArchivalHTTPCli
 
 func (ac *ArchivalHTTPClient) BeaconBlobSidecars(ctx context.Context, _ uint64, hashes []gethcommon.Hash) (APIGetBlobSidecarsResponse, error) {
 	var resp APIGetBlobSidecarsResponse
-	resp.Data = make([]*APIBlobSidecar, 0, len(hashes))
+	resp.Data = make([]*BlobSidecar, 0, len(hashes))
 
 	for i, hash := range hashes {
 		var archivalResp ArchivalBlobResponse
@@ -62,8 +60,8 @@ func (ac *ArchivalHTTPClient) request(ctx context.Context, dest any, reqPath str
 	return ac.httpClient.Request(ctx, dest, reqPath, nil)
 }
 
-func convertToAPIBlobSidecar(archivalResp *ArchivalBlobResponse, index int) (*APIBlobSidecar, error) {
-	blobData, err := hex.DecodeString(strings.TrimPrefix(archivalResp.Blob.Data, "0x"))
+func convertToAPIBlobSidecar(archivalResp *ArchivalBlobResponse, index int) (*BlobSidecar, error) {
+	blobData, err := hex.DecodeString(strings.TrimPrefix(archivalResp.Data, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode blob data: %w", err)
 	}
@@ -71,17 +69,17 @@ func convertToAPIBlobSidecar(archivalResp *ArchivalBlobResponse, index int) (*AP
 	var blob kzg4844.Blob
 	copy(blob[:], blobData)
 
-	commitment, err := hexToBytes48(archivalResp.Blob.Commitment)
+	commitment, err := hexToBytes48(archivalResp.Commitment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode commitment: %w", err)
 	}
 
-	proof, err := hexToBytes48(archivalResp.Blob.Proof)
+	proof, err := hexToBytes48(archivalResp.Proof)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode proof: %w", err)
 	}
 
-	return &APIBlobSidecar{
+	return &BlobSidecar{
 		Blob:          blob,
 		KZGCommitment: commitment,
 		KZGProof:      proof,
