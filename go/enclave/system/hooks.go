@@ -34,24 +34,24 @@ type SystemContractCallbacks interface {
 }
 
 type systemContractCallbacks struct {
-	transactionsAnalyzerAddress *gethcommon.Address
-	ownerWallet                 wallet.Wallet
-	storage                     storage.Storage
+	transactionsPostProcessorAddress *gethcommon.Address
+	ownerWallet                      wallet.Wallet
+	storage                          storage.Storage
 
 	logger gethlog.Logger
 }
 
 func NewSystemContractCallbacks(ownerWallet wallet.Wallet, logger gethlog.Logger) SystemContractCallbacks {
 	return &systemContractCallbacks{
-		transactionsAnalyzerAddress: nil,
-		ownerWallet:                 ownerWallet,
-		logger:                      logger,
-		storage:                     nil,
+		transactionsPostProcessorAddress: nil,
+		ownerWallet:                      ownerWallet,
+		logger:                           logger,
+		storage:                          nil,
 	}
 }
 
 func (s *systemContractCallbacks) TransactionPostProcessor() *gethcommon.Address {
-	return s.transactionsAnalyzerAddress
+	return s.transactionsPostProcessorAddress
 }
 
 func (s *systemContractCallbacks) GetOwner() gethcommon.Address {
@@ -95,11 +95,11 @@ func (s *systemContractCallbacks) Load() error {
 }
 
 func (s *systemContractCallbacks) initializeRequiredAddresses(addresses SystemContractAddresses) error {
-	if addresses["TransactionsAnalyzer"] == nil {
-		return fmt.Errorf("required contract address TransactionsAnalyzer is nil")
+	if addresses["TransactionsPostProcessor"] == nil {
+		return fmt.Errorf("required contract address TransactionsPostProcessor is nil")
 	}
 
-	s.transactionsAnalyzerAddress = addresses["TransactionsAnalyzer"]
+	s.transactionsPostProcessorAddress = addresses["TransactionsPostProcessor"]
 
 	return nil
 }
@@ -125,8 +125,8 @@ func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipts types.R
 }
 
 func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Context, l2State *state.StateDB, transactions common.L2Transactions, receipts types.Receipts) (*types.Transaction, error) {
-	if s.transactionsAnalyzerAddress == nil {
-		s.logger.Debug("CreateOnBatchEndTransaction: TransactionsAnalyzerAddress is nil, skipping transaction creation")
+	if s.transactionsPostProcessorAddress == nil {
+		s.logger.Debug("CreateOnBatchEndTransaction: TransactionsPostProcessorAddress is nil, skipping transaction creation")
 		return nil, nil
 	}
 
@@ -193,10 +193,10 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 		Gas:      500_000_000,
 		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 		Data:     data,
-		To:       s.transactionsAnalyzerAddress,
+		To:       s.transactionsPostProcessorAddress,
 	}
 
-	s.logger.Debug("CreateOnBatchEndTransaction: Signing transaction", "to", s.transactionsAnalyzerAddress.Hex(), "nonce", nonceForSyntheticTx)
+	s.logger.Debug("CreateOnBatchEndTransaction: Signing transaction", "to", s.transactionsPostProcessorAddress.Hex(), "nonce", nonceForSyntheticTx)
 	signedTx, err := s.ownerWallet.SignTransaction(tx)
 	if err != nil {
 		s.logger.Error("CreateOnBatchEndTransaction: Failed signing transaction", "error", err)

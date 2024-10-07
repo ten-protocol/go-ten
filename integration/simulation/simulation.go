@@ -13,8 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	gethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
-	"github.com/ten-protocol/go-ten/contracts/generated/Structs"
-	"github.com/ten-protocol/go-ten/contracts/generated/TransactionsAnalyzer"
+	"github.com/ten-protocol/go-ten/contracts/generated/TransactionPostProcessor"
 	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -289,13 +288,13 @@ func (s *Simulation) deployTenZen() {
 		}
 		s.ZenBaseAddress = zenBaseAddress
 
-		transactionsAnalyzer, err := TransactionsAnalyzer.NewTransactionsAnalyzer(cfg.TransactionPostProcessorAddress, ownerRpc)
+		transactionPostProcessor, err := TransactionPostProcessor.NewTransactionPostProcessor(cfg.TransactionPostProcessorAddress, ownerRpc)
 		if err != nil {
 			panic(fmt.Errorf("failed to deploy transactions analyzer contract: %w", err))
 		}
 
 		auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
-		tx, err := transactionsAnalyzer.AddOnBlockEndCallback(auth, zenBaseAddress)
+		tx, err := transactionPostProcessor.AddOnBlockEndCallback(auth, zenBaseAddress)
 		if err != nil {
 			panic(fmt.Errorf("failed to add on block end callback: %w", err))
 		}

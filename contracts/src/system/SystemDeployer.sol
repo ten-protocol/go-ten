@@ -12,11 +12,11 @@ contract SystemDeployer {
     }
 
     function deployAnalyzer(address eoaAdmin) internal {
-        TransactionPostProcessor transactionsAnalyzer = new TransactionPostProcessor();
-        bytes memory callData = abi.encodeWithSelector(transactionsAnalyzer.initialize.selector, eoaAdmin, msg.sender);
-        address transactionsAnalyzerProxy = deployProxy(address(transactionsAnalyzer), eoaAdmin, callData);
+        TransactionPostProcessor transactionsPostProcessor = new TransactionPostProcessor();
+        bytes memory callData = abi.encodeWithSelector(transactionsPostProcessor.initialize.selector, eoaAdmin, msg.sender);
+        address transactionsPostProcessorProxy = deployProxy(address(transactionsPostProcessor), eoaAdmin, callData);
         
-        emit SystemContractDeployed("TransactionsAnalyzer", transactionsAnalyzerProxy);
+        emit SystemContractDeployed("TransactionsPostProcessor", transactionsPostProcessorProxy);
     }
 
     function deployProxy(address _logic, address _admin, bytes memory _data) internal returns (address proxyAddress) {
