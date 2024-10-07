@@ -255,7 +255,6 @@ message StartResponse {
 message SubmitBlockRequest {
   bytes encodedBlock = 1;
   bytes encodedReceipts = 2;
-  bytes encodedBlobs = 3;
 }
 
 message SubmitBlockResponse {
