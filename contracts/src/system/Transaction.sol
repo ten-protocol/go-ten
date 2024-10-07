@@ -1,15 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-
-
-
+// Structs is a library that contains the structs used to represent a TEN transaction in the system contracts.
 library Structs {
-    using MessageHashUtils for bytes32;
-    using ECDSA for bytes32;
-
     struct Transaction {
         uint8 txType;
         uint256 nonce;
