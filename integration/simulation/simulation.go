@@ -267,23 +267,11 @@ func (s *Simulation) deployTenZen() {
 		auth.Context = context.Background()
 		auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
 
-		address, stx, _, err := Structs.DeployStructs(auth, ownerRpc)
-		if err != nil {
-			panic(fmt.Errorf("failed to deploy transaction decoder: %w", err))
-		}
-
-		receipt, err := bind.WaitMined(s.ctx, ownerRpc, stx)
-		if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
-			panic("failed to deploy transaction decoder")
-		}
-
-		auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
-
-		zenBaseAddress, signedTx, _, err := ZenBase.DeployZenBase(auth, ownerRpc, cfg.TransactionPostProcessorAddress, address) //, "ZenBase", "ZEN")
+		zenBaseAddress, signedTx, _, err := ZenBase.DeployZenBase(auth, ownerRpc, cfg.TransactionPostProcessorAddress) //, "ZenBase", "ZEN")
 		if err != nil {
 			panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
 		}
-		if receipt, err = bind.WaitMined(s.ctx, s.RPCHandles.TenWalletRndClient(owner), signedTx); err != nil || receipt.Status != types.ReceiptStatusSuccessful {
+		if receipt, err := bind.WaitMined(s.ctx, s.RPCHandles.TenWalletRndClient(owner), signedTx); err != nil || receipt.Status != types.ReceiptStatusSuccessful {
 			panic(fmt.Errorf("failed to deploy zen base contract"))
 		}
 		s.ZenBaseAddress = zenBaseAddress
@@ -298,7 +286,7 @@ func (s *Simulation) deployTenZen() {
 		if err != nil {
 			panic(fmt.Errorf("failed to add on block end callback: %w", err))
 		}
-		receipt, err = bind.WaitMined(s.ctx, ownerRpc, tx)
+		receipt, err := bind.WaitMined(s.ctx, ownerRpc, tx)
 		if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
 			panic(fmt.Errorf("failed to add on block end callback"))
 		}
