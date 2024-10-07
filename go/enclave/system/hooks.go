@@ -140,9 +140,17 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 
 	solidityTransactions := make([]TransactionPostProcessor.StructsTransaction, 0)
 
-	txSuccessMap := map[gethcommon.Hash]bool{}
+	type statusWithGasUsed struct {
+		status  bool
+		gasUsed uint64
+	}
+
+	txSuccessMap := map[gethcommon.Hash]statusWithGasUsed{}
 	for _, receipt := range receipts {
-		txSuccessMap[receipt.TxHash] = receipt.Status == types.ReceiptStatusSuccessful
+		txSuccessMap[receipt.TxHash] = statusWithGasUsed{
+			status:  receipt.Status == types.ReceiptStatusSuccessful,
+			gasUsed: receipt.GasUsed,
+		}
 	}
 
 	for _, tx := range transactions {
@@ -153,7 +161,8 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 			GasLimit:   big.NewInt(int64(tx.Gas())),
 			Value:      tx.Value(),
 			Data:       tx.Data(),
-			Successful: txSuccessMap[tx.Hash()],
+			Successful: txSuccessMap[tx.Hash()].status,
+			GasUsed:    txSuccessMap[tx.Hash()].gasUsed,
 		}
 		if tx.To() != nil {
 			transaction.To = *tx.To()
