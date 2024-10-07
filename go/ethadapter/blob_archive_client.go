@@ -45,7 +45,7 @@ func (ac *ArchivalHTTPClient) BeaconBlobSidecars(ctx context.Context, _ uint64, 
 			return APIGetBlobSidecarsResponse{}, fmt.Errorf("failed to fetch blob for hash %s: %w", hash.Hex(), err)
 		}
 
-		blobSidecar, err := convertToAPIBlobSidecar(&archivalResp, i)
+		blobSidecar, err := convertToSidecar(&archivalResp, i)
 		if err != nil {
 			return APIGetBlobSidecarsResponse{}, fmt.Errorf("failed to convert blob for hash %s: %w", hash.Hex(), err)
 		}
@@ -60,7 +60,7 @@ func (ac *ArchivalHTTPClient) request(ctx context.Context, dest any, reqPath str
 	return ac.httpClient.Request(ctx, dest, reqPath, nil)
 }
 
-func convertToAPIBlobSidecar(archivalResp *ArchivalBlobResponse, index int) (*BlobSidecar, error) {
+func convertToSidecar(archivalResp *ArchivalBlobResponse, index int) (*BlobSidecar, error) {
 	blobData, err := hex.DecodeString(strings.TrimPrefix(archivalResp.Data, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode blob data: %w", err)

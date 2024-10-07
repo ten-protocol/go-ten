@@ -154,7 +154,7 @@ func TestBeaconClientFallback(t *testing.T) {
 	mockPrimary.On("BeaconGenesis", ctx).Return(APIGenesisResponse{Data: ReducedGenesisData{GenesisTime: 10}}, nil)
 	mockPrimary.On("ConfigSpec", ctx).Return(APIConfigResponse{Data: ReducedConfigData{SecondsPerSlot: 2}}, nil)
 	mockPrimary.On("BeaconBlobSidecars", ctx, uint64(1), hashes).Return(APIGetBlobSidecarsResponse{}, errors.New("404 not found"))
-	mockFallback.On("BeaconBlobSidecars", ctx, uint64(1), hashes).Return(APIGetBlobSidecarsResponse{Data: toAPISidecars(sidecars)}, nil)
+	mockFallback.On("BeaconBlobSidecars", ctx, uint64(1), hashes).Return(APIGetBlobSidecarsResponse{Data: sidecars}, nil)
 
 	header := &types.Header{Time: 12}
 	resp, err := client.GetBlobSidecars(ctx, header, hashes)
@@ -162,7 +162,7 @@ func TestBeaconClientFallback(t *testing.T) {
 	require.Equal(t, sidecars, resp)
 
 	mockFallback.On("BeaconBlobSidecars", ctx, uint64(2), hashes).Return(APIGetBlobSidecarsResponse{}, errors.New("404 not found"))
-	mockPrimary.On("BeaconBlobSidecars", ctx, uint64(2), hashes).Return(APIGetBlobSidecarsResponse{Data: toAPISidecars(sidecars)}, nil)
+	mockPrimary.On("BeaconBlobSidecars", ctx, uint64(2), hashes).Return(APIGetBlobSidecarsResponse{Data: sidecars}, nil)
 
 	header = &types.Header{Time: 14}
 	resp, err = client.GetBlobSidecars(ctx, header, hashes)
@@ -171,20 +171,6 @@ func TestBeaconClientFallback(t *testing.T) {
 
 	mockPrimary.AssertExpectations(t)
 	mockFallback.AssertExpectations(t)
-}
-
-// Helper function to convert BlobSidecar to APIBlobSidecar
-func toAPISidecars(sidecars []*BlobSidecar) []*BlobSidecar {
-	apiSidecars := make([]*BlobSidecar, len(sidecars))
-	for i, sidecar := range sidecars {
-		apiSidecars[i] = &BlobSidecar{
-			Index:         sidecar.Index,
-			Blob:          sidecar.Blob,
-			KZGCommitment: sidecar.KZGCommitment,
-			KZGProof:      sidecar.KZGProof,
-		}
-	}
-	return apiSidecars
 }
 
 // MockBeaconClient is a mock implementation used only in these tests
