@@ -199,7 +199,7 @@ func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria
 }
 
 // Real method that we have used in TEN for subscription
-func (ac *AuthObsClient) SubscribeFilterLogsTEN(ctx context.Context, filterCriteria ethereum.FilterQuery, ch chan types.Log) (ethereum.Subscription, error) {
+func (ac *AuthObsClient) SubscribeFilterLogsTEN(ctx context.Context, filterCriteria common.FilterCriteria, ch chan types.Log) (ethereum.Subscription, error) {
 	return ac.rpcClient.Subscribe(ctx, rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeLogs, filterCriteria)
 }
 

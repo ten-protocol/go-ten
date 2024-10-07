@@ -199,7 +199,7 @@ func (s *Simulation) trackLogs() {
 			channel := make(chan types.Log, 1000)
 
 			// To exercise the filtering mechanism, we subscribe for HOC events only, ignoring POC events.
-			hocFilter := ethereum.FilterQuery{
+			hocFilter := common.FilterCriteria{
 				Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + testcommon.HOCAddr)},
 			}
 			sub, err := client.SubscribeFilterLogsTEN(context.Background(), hocFilter, channel)

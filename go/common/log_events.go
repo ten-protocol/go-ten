@@ -39,7 +39,7 @@ func CreateAuthenticatedLogSubscriptionPayload(args []interface{}, vk *viewingke
 		return logSubscription, nil
 	}
 
-	filterCriteria, ok := args[1].(ethereum.FilterQuery)
+	filterCriteria, ok := args[1].(FilterCriteria)
 	if !ok {
 		return nil, fmt.Errorf("invalid subscription")
 	}
