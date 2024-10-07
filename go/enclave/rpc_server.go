@@ -8,8 +8,6 @@ import (
 	"math/big"
 	"net"
 
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -127,7 +125,7 @@ func (s *RPCServer) SubmitL1Block(ctx context.Context, request *generated.Submit
 		return nil, err
 	}
 
-	txReceiptsAndBlobs, err := s.decodeReceipts(request.EncodedReceipts)
+	txReceiptsAndBlobs, err := s.decodeReceiptsAndBlobs(request.EncodedReceipts)
 	if err != nil {
 		s.logger.Error("Error decoding receipts", log.ErrKey, err)
 		return nil, err
@@ -491,8 +489,8 @@ func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Header, error) {
 	return &block, nil
 }
 
-// decodeReceipts - converts the rlp encoded bytes to receipts if possible.
-func (s *RPCServer) decodeReceipts(encodedReceipts []byte) ([]*common.TxAndReceiptAndBlobs, error) {
+// decodeReceiptsAndBlobs - converts the rlp encoded bytes to receipts if possible.
+func (s *RPCServer) decodeReceiptsAndBlobs(encodedReceipts []byte) ([]*common.TxAndReceiptAndBlobs, error) {
 	receipts := make([]*common.TxAndReceiptAndBlobs, 0)
 
 	err := rlp.DecodeBytes(encodedReceipts, &receipts)
@@ -501,15 +499,6 @@ func (s *RPCServer) decodeReceipts(encodedReceipts []byte) ([]*common.TxAndRecei
 	}
 
 	return receipts, nil
-}
-
-func (s *RPCServer) decodeBlobs(encodedBlobs []byte) ([]*kzg4844.Blob, error) {
-	var blobs []*kzg4844.Blob
-	err := rlp.DecodeBytes(encodedBlobs, &blobs)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decode blobs, bytes=%x, err=%w", encodedBlobs, err)
-	}
-	return blobs, nil
 }
 
 func toRPCError(err common.SystemError) *generated.SystemError {

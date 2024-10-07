@@ -426,7 +426,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
 	}
-	txsReceiptsAndBlobs, rollupTxs, contractAddressTxs, _ := g.sl.L1Publisher().ExtractRelevantTenTransactions(block, &receipts)
+	txsReceiptsAndBlobs, rollupTxs, contractAddressTxs, _ := g.sl.L1Publisher().ExtractRelevantTenTransactions(block, receipts)
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txsReceiptsAndBlobs)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
