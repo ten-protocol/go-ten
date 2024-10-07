@@ -140,14 +140,20 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 
 	solidityTransactions := make([]TransactionsAnalyzer.StructsTransaction, 0)
 
+	txSuccessMap := map[gethcommon.Hash]bool{}
+	for _, receipt := range receipts {
+		txSuccessMap[receipt.TxHash] = receipt.Status == types.ReceiptStatusSuccessful
+	}
+
 	for _, tx := range transactions {
 		// Start of Selection
 		transaction := TransactionsAnalyzer.StructsTransaction{
-			Nonce:    big.NewInt(int64(tx.Nonce())),
-			GasPrice: tx.GasPrice(),
-			GasLimit: big.NewInt(int64(tx.Gas())),
-			Value:    tx.Value(),
-			Data:     tx.Data(),
+			Nonce:      big.NewInt(int64(tx.Nonce())),
+			GasPrice:   tx.GasPrice(),
+			GasLimit:   big.NewInt(int64(tx.Gas())),
+			Value:      tx.Value(),
+			Data:       tx.Data(),
+			Successful: txSuccessMap[tx.Hash()],
 		}
 		if tx.To() != nil {
 			transaction.To = *tx.To()
@@ -207,6 +213,28 @@ func (s *systemContractCallbacks) VerifyOnBlockReceipt(transactions common.L2Tra
 	if err != nil {
 		s.logger.Error("VerifyOnBlockReceipt: Failed to get ABI", "error", err)
 		return false, fmt.Errorf("failed to get ABI %w", err)
+	}
+
+	if len(receipt.Logs) == 0 {
+		s.logger.Error("VerifyOnBlockReceipt: Synthetic transaction has no logs", "transactionHash", receipt.TxHash.Hex())
+		return false, fmt.Errorf("no logs in onBlockReceipt")
+	}
+
+	// Find the TransactionsConverted event in the onBlockReceipt and verify the number of transactions converted
+	// matches the number of transactions in the batch. Mostly paranoia code.
+	for _, log := range receipt.Logs {
+		if len(log.Topics) > 0 && log.Topics[0] == abi.Events["TransactionsConverted"].ID { // TransactionsConverted event signature
+			if len(log.Data) != 32 {
+				s.logger.Error("VerifyOnBlockReceipt: Invalid data length for TransactionsConverted event", "expected", 32, "got", len(log.Data))
+				return false, fmt.Errorf("invalid data length for TransactionsConverted event")
+			}
+			transactionsConverted := new(big.Int).SetBytes(log.Data)
+			if transactionsConverted.Uint64() != uint64(len(transactions)) {
+				s.logger.Error("VerifyOnBlockReceipt: Mismatch in TransactionsConverted event", "expected", len(transactions), "got", transactionsConverted.Uint64())
+				return false, fmt.Errorf("mismatch in TransactionsConverted event: expected %d, got %d", len(transactions), transactionsConverted.Uint64())
+			}
+			break
+		}
 	}
 
 	for _, log := range receipt.Logs {
