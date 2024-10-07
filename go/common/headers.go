@@ -48,6 +48,7 @@ type BatchHeader struct {
 	CrossChainTree                SerializedCrossChainTree              `json:"crossChainTree"`          // Those are the leafs of the merkle tree hashed for privacy. Necessary for clients to be able to build proofs as they have no access to all transactions in a batch or their receipts.
 }
 
+// TODO - use exposed headers once #3987 is completed.
 func ConvertBatchHeaderToHeader(batchHeader *BatchHeader) *types.Header {
 	var header types.Header
 
