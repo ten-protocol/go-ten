@@ -43,7 +43,7 @@ func CreateAuthenticatedLogSubscriptionPayload(args []interface{}, vk *viewingke
 	if !ok {
 		return nil, fmt.Errorf("invalid subscription")
 	}
-	fc := SerializableFilterCriteria(FilterCriteria(filterCriteria))
+	fc := SerializableFilterCriteria(filterCriteria)
 	logSubscription.Filter = &fc
 	return logSubscription, nil
 }
