@@ -48,7 +48,7 @@ const useGatewayService = () => {
       }
       showToast(ToastType.INFO, "Switching to TEN Testnet...");
       const switched = await switchToTenNetwork();
-      showToast(ToastType.SUCCESS, `Switched to TEN Testnet: ${switched}`);
+      showToast(ToastType.SUCCESS, `Switched to TEN Testnet`);
       // SWITCHED_CODE=4902; error 4902 means that the chain does not exist
       if (
         switched === SWITCHED_CODE ||
@@ -69,7 +69,7 @@ const useGatewayService = () => {
         showToast(ToastType.SUCCESS, "Connected to TEN Testnet");
       }
       await fetchUserAccounts();
-    } catch (error: any) {
+    } catch (error: Error | any) {
       showToast(ToastType.DESTRUCTIVE, `${error?.message}`);
       throw error;
     } finally {

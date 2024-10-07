@@ -28,24 +28,33 @@ var (
 	_ = abi.ConvertType
 )
 
+const (
+	topic1 uint8 = iota
+	topic2
+	topic3
+	sender
+	everyone
+)
+
+const (
+	transparent uint8 = iota
+	private
+)
+
 // ContractTranspMetaData contains all meta data concerning the TransparencyConfig contract.
 var ContractTranspMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[],\"name\":\"visibilityRules\",\"outputs\":[{\"components\":[{\"internalType\":\"bool\",\"name\":\"isTransparent\",\"type\":\"bool\"},{\"components\":[{\"internalType\":\"bytes\",\"name\":\"eventSignature\",\"type\":\"bytes\"},{\"internalType\":\"bool\",\"name\":\"isPublic\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"topic1CanView\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"topic2CanView\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"topic3CanView\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"visibleToSender\",\"type\":\"bool\"}],\"internalType\":\"structContractTransparencyConfig.EventLogConfig[]\",\"name\":\"eventLogConfigs\",\"type\":\"tuple[]\"}],\"internalType\":\"structContractTransparencyConfig.VisibilityConfig\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[],\"name\":\"visibilityRules\",\"outputs\":[{\"components\":[{\"internalType\":\"enumContractTransparencyConfig.ContractCfg\",\"name\":\"contractCfg\",\"type\":\"uint8\"},{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"eventSignature\",\"type\":\"bytes32\"},{\"internalType\":\"enumContractTransparencyConfig.Field[]\",\"name\":\"visibleTo\",\"type\":\"uint8[]\"}],\"internalType\":\"structContractTransparencyConfig.EventLogConfig[]\",\"name\":\"eventLogConfigs\",\"type\":\"tuple[]\"}],\"internalType\":\"structContractTransparencyConfig.VisibilityConfig\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}]",
 }
 
 // ContractTransparencyConfigEventLogConfig is an auto generated low-level Go binding around an user-defined struct.
 type ContractTransparencyConfigEventLogConfig struct {
-	EventSignature  []byte
-	IsPublic        bool
-	Topic1CanView   bool
-	Topic2CanView   bool
-	Topic3CanView   bool
-	VisibleToSender bool
+	EventSignature common.Hash
+	VisibleTo      []uint8
 }
 
 // ContractTransparencyConfigVisibilityConfig is an auto generated low-level Go binding around an user-defined struct.
 type ContractTransparencyConfigVisibilityConfig struct {
-	IsTransparent   bool
+	ContractCfg     uint8
 	EventLogConfigs []ContractTransparencyConfigEventLogConfig
 }
 

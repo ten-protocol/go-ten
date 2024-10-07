@@ -493,6 +493,7 @@ func testErrorHandling(t *testing.T, startPort int, httpURL, wsURL string, w wal
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[[]],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"topics":[]}],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock":"0x387","topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
+		`{"jsonrpc":"2.0","method":"debug_eventLogRelevancy","params":[{"fromBlock":"0x387","topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
 		//`{"jsonrpc":"2.0","method":"eth_subscribe","params":["logs"],"id":1}`,
 		//`{"jsonrpc":"2.0","method":"eth_subscribe","params":["logs",{"topics":[]}],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`,
