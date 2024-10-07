@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"

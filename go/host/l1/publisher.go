@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	"github.com/ethereum/go-ethereum"
 
