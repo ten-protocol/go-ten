@@ -82,6 +82,8 @@ create table if not exists tx
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
+    to_address     binary(20),
+    type           int8       NOT NULL,
     sender_address int        NOT NULL REFERENCES externally_owned_account,
     idx            int        NOT NULL,
     batch_height   int        NOT NULL
@@ -92,11 +94,15 @@ create index IDX_TX_BATCH_HEIGHT on tx (batch_height, idx);
 
 create table if not exists receipt
 (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    content mediumblob,
+    id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_state               binary(32),
+    status                   int     not null,
+    cumulative_gas_used      int     not null,
+    effective_gas_price      int,
+    created_contract_address binary(20),
     --     commenting out the fk until synthetic transactions are also stored
-    tx      INTEGER,
-    batch   INTEGER NOT NULL REFERENCES batch
+    tx                       INTEGER,
+    batch                    INTEGER NOT NULL REFERENCES batch
 );
 create index IDX_EX_TX_BATCH on receipt (batch);
 create index IDX_EX_TX_CCA on receipt (tx);
@@ -108,7 +114,8 @@ create table if not exists contract
     --     the tx signer that created the contract
     creator         int        NOT NULL REFERENCES externally_owned_account,
     auto_visibility boolean    NOT NULL,
-    transparent     boolean
+    transparent     boolean,
+    tx              INTEGER    NOT NULL REFERENCES tx
 );
 create index IDX_CONTRACT_AD on contract (address);
 

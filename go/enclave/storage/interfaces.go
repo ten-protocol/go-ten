@@ -99,7 +99,7 @@ type TransactionStorage interface {
 	// GetTransaction - returns the positional metadata of the tx by hash
 	GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error)
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
-	GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (*types.Receipt, error)
+	GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address) (*enclavedb.BareReceipt, []*types.Log, error)
 }
 
 type AttestationStorage interface {

@@ -421,9 +421,9 @@ func (s *storageImpl) GetTransaction(ctx context.Context, txHash gethcommon.Hash
 	return enclavedb.ReadTransaction(ctx, s.db.GetSQLDB(), txHash)
 }
 
-func (s *storageImpl) GetTransactionReceipt(ctx context.Context, txHash gethcommon.Hash) (*types.Receipt, error) {
+func (s *storageImpl) GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address) (*enclavedb.BareReceipt, []*types.Log, error) {
 	defer s.logDuration("GetTransactionReceipt", measure.NewStopwatch())
-	return enclavedb.ReadReceipt(ctx, s.db.GetSQLDB(), txHash, s.chainConfig)
+	return enclavedb.ReadReceipt(ctx, s.db.GetSQLDB(), txHash, requester)
 }
 
 func (s *storageImpl) FetchAttestedKey(ctx context.Context, address gethcommon.Address) (*ecdsa.PublicKey, error) {

@@ -5,16 +5,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
-
-	"github.com/ten-protocol/go-ten/go/enclave/core"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/enclave/events"
+	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 )
 
 func GetTransactionReceiptValidate(reqParams []any, builder *CallBuilder[gethcommon.Hash, map[string]interface{}], _ *EncryptionManager) error {
@@ -36,33 +32,11 @@ func GetTransactionReceiptValidate(reqParams []any, builder *CallBuilder[gethcom
 
 func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[string]interface{}], rpc *EncryptionManager) error {
 	txHash := *builder.Param
-	// todo - optimise these calls. This can be done with a single sql
 	rpc.logger.Trace("Get receipt for ", log.TxKey, txHash)
-	// We retrieve the transaction.
-	tx, blockHash, number, txIndex, err := rpc.storage.GetTransaction(builder.ctx, txHash) //nolint:dogsled
-	if err != nil {
-		rpc.logger.Trace("error getting tx ", log.TxKey, txHash, log.ErrKey, err)
-		if errors.Is(err, errutil.ErrNotFound) {
-			builder.Status = NotFound
-			return nil
-		}
-		return err
-	}
-
-	// We retrieve the txSigner's address.
-	txSigner, err := core.GetTxSigner(tx)
-	if err != nil {
-		builder.Err = err
-		return nil //nolint:nilerr
-	}
-
-	if txSigner.Hex() != builder.VK.AccountAddress.Hex() {
-		builder.Status = NotAuthorised
-		return nil
-	}
+	requester := builder.VK.AccountAddress
 
 	// We retrieve the transaction receipt.
-	txReceipt, err := rpc.storage.GetTransactionReceipt(builder.ctx, txHash)
+	bareReceipt, logs, err := rpc.storage.GetTransactionReceipt(builder.ctx, txHash, requester)
 	if err != nil {
 		rpc.logger.Trace("error getting tx receipt", log.TxKey, txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -73,40 +47,34 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 		return fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 
-	// We filter out irrelevant logs.
-	txReceipt.Logs, err = events.FilterLogsForReceipt(builder.ctx, txReceipt, &txSigner, rpc.registry)
-	if err != nil {
-		rpc.logger.Error("error filter logs ", log.TxKey, txHash, log.ErrKey, err)
-		// this is a system error
-		return err
-	}
-
-	rpc.logger.Trace("Successfully retrieved receipt for ", log.TxKey, txHash, "rec", txReceipt)
-	signer := types.MakeSigner(ethchainadapter.ChainParams(big.NewInt(rpc.config.ObscuroChainID)), big.NewInt(int64(number)), 0)
-	r := marshalReceipt(txReceipt, blockHash, number, signer, tx, int(txIndex))
+	rpc.logger.Trace("Successfully retrieved receipt for ", log.TxKey, txHash, "rec", bareReceipt)
+	r := marshalReceipt(bareReceipt, logs)
 	builder.ReturnValue = &r
 	return nil
 }
 
 // marshalReceipt marshals a transaction receipt into a JSON object.
 // taken from geth
-func marshalReceipt(receipt *types.Receipt, blockHash gethcommon.Hash, blockNumber uint64, signer types.Signer, tx *types.Transaction, txIndex int) map[string]interface{} {
-	from, _ := types.Sender(signer, tx)
+func marshalReceipt(receipt *enclavedb.BareReceipt, logs []*types.Log) map[string]interface{} {
+	var effGasPrice *hexutil.Big
+	if receipt.EffectiveGasPrice != nil {
+		effGasPrice = (*hexutil.Big)(big.NewInt(int64(*receipt.EffectiveGasPrice)))
+	}
 
 	fields := map[string]interface{}{
-		"blockHash":         blockHash,
-		"blockNumber":       hexutil.Uint64(blockNumber),
-		"transactionHash":   tx.Hash(),
-		"transactionIndex":  hexutil.Uint64(txIndex),
-		"from":              from,
-		"to":                tx.To(),
-		"gasUsed":           hexutil.Uint64(receipt.GasUsed),
+		"blockHash":         receipt.BlockHash,
+		"blockNumber":       hexutil.Uint64(receipt.BlockNumber.Uint64()),
+		"transactionHash":   receipt.TxHash,
+		"transactionIndex":  hexutil.Uint64(receipt.TransactionIndex),
+		"from":              receipt.From,
+		"to":                receipt.To,
+		"gasUsed":           hexutil.Uint64(receipt.CumulativeGasUsed),
 		"cumulativeGasUsed": hexutil.Uint64(receipt.CumulativeGasUsed),
-		"contractAddress":   nil,
-		"logs":              receipt.Logs,
-		"logsBloom":         receipt.Bloom,
-		"type":              hexutil.Uint(tx.Type()),
-		"effectiveGasPrice": (*hexutil.Big)(receipt.EffectiveGasPrice),
+		"contractAddress":   receipt.CreatedContract,
+		"logs":              logs,
+		"logsBloom":         types.Bloom{},
+		"type":              hexutil.Uint(receipt.TxType),
+		"effectiveGasPrice": effGasPrice,
 	}
 
 	// Assign receipt status or post state.
@@ -115,18 +83,9 @@ func marshalReceipt(receipt *types.Receipt, blockHash gethcommon.Hash, blockNumb
 	} else {
 		fields["status"] = hexutil.Uint(receipt.Status)
 	}
-	if receipt.Logs == nil {
+	if logs == nil {
 		fields["logs"] = []*types.Log{}
 	}
 
-	if tx.Type() == types.BlobTxType {
-		fields["blobGasUsed"] = hexutil.Uint64(receipt.BlobGasUsed)
-		fields["blobGasPrice"] = (*hexutil.Big)(receipt.BlobGasPrice)
-	}
-
-	// If the ContractAddress is 20 0x0 bytes, assume it is not a contract creation
-	if receipt.ContractAddress != (gethcommon.Address{}) {
-		fields["contractAddress"] = receipt.ContractAddress
-	}
 	return fields
 }
