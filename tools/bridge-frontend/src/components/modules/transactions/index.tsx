@@ -94,7 +94,7 @@ export default function TransactionsComponent() {
       </div>
       <Tabs defaultValue="all">
         <TabsList className="flex justify-start bg-background border-b">
-          <TabsTrigger value="all">All Transactions</TabsTrigger>
+          <TabsTrigger value="all">Completed Transactions</TabsTrigger>
           <TabsTrigger value="pending">Pending</TabsTrigger>
         </TabsList>
         <TabsContent value="all">

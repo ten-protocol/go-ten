@@ -336,10 +336,10 @@ importers:
         version: 4.5.5(@types/react@18.3.3)(react@18.3.1)
     devDependencies:
       '@types/node':
-        specifier: ^20
+        specifier: ^20.12.12
         version: 20.12.12
       '@types/react':
-        specifier: ^18
+        specifier: ^18.3.3
         version: 18.3.3
       '@types/react-dom':
         specifier: ^18
@@ -360,7 +360,7 @@ importers:
         specifier: ^3.3.0
         version: 3.4.3(ts-node@10.9.2(@types/node@20.12.12)(typescript@5.4.5))
       typescript:
-        specifier: ^5
+        specifier: ^5.4.5
         version: 5.4.5
 
   tools/walletextension/frontend:

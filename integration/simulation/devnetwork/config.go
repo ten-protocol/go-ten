@@ -42,7 +42,7 @@ type TenConfig struct {
 
 func DefaultTenConfig() *TenConfig {
 	return &TenConfig{
-		PortStart:          integration.StartPortNetworkTests,
+		PortStart:          integration.TestPorts.NetworkTestsPort,
 		NumNodes:           4,
 		InitNumValidators:  3,
 		BatchInterval:      1 * time.Second,
@@ -72,7 +72,7 @@ func LocalDevNetwork(tenConfigOpts ...TenConfigOption) *InMemDevNetwork {
 	}
 
 	l1Config := &L1Config{
-		PortStart:        integration.StartPortNetworkTests,
+		PortStart:        integration.TestPorts.NetworkTestsPort,
 		NumNodes:         tenConfig.NumNodes, // we'll have 1 L1 node per L2 node
 		AvgBlockDuration: 1 * time.Second,
 	}

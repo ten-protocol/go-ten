@@ -63,11 +63,9 @@ type BatchExecutionContext struct {
 // the computation of the batch. One might not want to commit in case the
 // resulting batch differs than what is being validated for example.
 type ComputedBatch struct {
-	Batch    *core.Batch
-	Receipts types.Receipts
-	// while executing the batch, we collect the newly created contracts mapped by the transaction that created them
-	CreatedContracts map[gethcommon.Hash][]*gethcommon.Address
-	Commit           func(bool) (gethcommon.Hash, error)
+	Batch         *core.Batch
+	TxExecResults []*core.TxExecResult
+	Commit        func(bool) (gethcommon.Hash, error)
 }
 
 type BatchExecutor interface {
@@ -77,8 +75,9 @@ type BatchExecutor interface {
 	// failForEmptyBatch bool is used to skip batch production
 	ComputeBatch(ctx context.Context, batchContext *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error)
 
-	// ExecuteBatch - executes the transactions and xchain messages, returns the receipts, and updates the stateDB
-	ExecuteBatch(context.Context, *core.Batch) (types.Receipts, map[gethcommon.Hash][]*gethcommon.Address, error)
+	// ExecuteBatch - executes the transactions and xchain messages, returns the receipts and a list of newly deployed contracts
+	//, and updates the stateDB
+	ExecuteBatch(context.Context, *core.Batch) ([]*core.TxExecResult, error)
 
 	// CreateGenesisState - will create and commit the genesis state in the stateDB for the given block hash,
 	// and uint64 timestamp representing the time now. In this genesis state is where one can
@@ -104,7 +103,7 @@ type BatchRegistry interface {
 	SubscribeForExecutedBatches(func(*core.Batch, types.Receipts))
 	UnsubscribeFromBatches()
 
-	OnBatchExecuted(batch *common.BatchHeader, receipts types.Receipts)
+	OnBatchExecuted(batch *common.BatchHeader, txExecResults []*core.TxExecResult)
 	OnL1Reorg(*BlockIngestionType)
 
 	// HasGenesisBatch - returns if genesis batch is available yet or not, or error in case

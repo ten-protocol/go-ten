@@ -56,19 +56,19 @@ func init() { //nolint:gochecknoinits
 }
 
 const (
-	testLogs   = "../.build/tengateway/"
-	_startPort = integration.StartPortTenGatewayUnitTest
+	testLogs = "../.build/tengateway/"
 )
 
 func TestTenGateway(t *testing.T) {
-	createTenNetwork(t, _startPort)
+	startPort := integration.TestPorts.TestTenGatewayPort
+	createTenNetwork(t, startPort)
 
 	tenGatewayConf := wecommon.Config{
 		WalletExtensionHost:            "127.0.0.1",
-		WalletExtensionPortHTTP:        _startPort + integration.DefaultTenGatewayHTTPPortOffset,
-		WalletExtensionPortWS:          _startPort + integration.DefaultTenGatewayWSPortOffset,
-		NodeRPCHTTPAddress:             fmt.Sprintf("127.0.0.1:%d", _startPort+integration.DefaultHostRPCHTTPOffset),
-		NodeRPCWebsocketAddress:        fmt.Sprintf("127.0.0.1:%d", _startPort+integration.DefaultHostRPCWSOffset),
+		WalletExtensionPortHTTP:        startPort + integration.DefaultTenGatewayHTTPPortOffset,
+		WalletExtensionPortWS:          startPort + integration.DefaultTenGatewayWSPortOffset,
+		NodeRPCHTTPAddress:             fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
+		NodeRPCWebsocketAddress:        fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
 		LogPath:                        "sys_out",
 		VerboseFlag:                    false,
 		DBType:                         "sqlite",
@@ -102,7 +102,7 @@ func TestTenGateway(t *testing.T) {
 	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.TenChainID, testlog.Logger())
 
 	// run the tests against the exis
-	for name, test := range map[string]func(*testing.T, string, string, wallet.Wallet){
+	for name, test := range map[string]func(*testing.T, int, string, string, wallet.Wallet){
 		//"testAreTxsMinted":            testAreTxsMinted, this breaks the other tests bc, enable once concurrency issues are fixed
 		"testErrorHandling":                    testErrorHandling,
 		"testMultipleAccountsSubscription":     testMultipleAccountsSubscription,
@@ -117,7 +117,7 @@ func TestTenGateway(t *testing.T) {
 		"testRateLimiter":                      testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
-			test(t, httpURL, wsURL, w)
+			test(t, startPort, httpURL, wsURL, w)
 		})
 	}
 
@@ -128,7 +128,7 @@ func TestTenGateway(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func testRateLimiter(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testRateLimiter(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
@@ -167,7 +167,7 @@ func testRateLimiter(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	require.Equal(t, "rate limit exceeded", err.Error())
 }
 
-func testNewHeadsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testNewHeadsSubscription(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 
@@ -198,7 +198,7 @@ func testNewHeadsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wall
 	require.True(t, len(receivedHeads) > 1)
 }
 
-func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testMultipleAccountsSubscription(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
@@ -356,7 +356,7 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	require.NoError(t, err)
 }
 
-func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testSubscriptionTopics(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
 
@@ -476,7 +476,7 @@ func testAreTxsMinted(t *testing.T, httpURL, wsURL string, w wallet.Wallet) { //
 	require.True(t, receipt.Status == 1)
 }
 
-func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testErrorHandling(t *testing.T, startPort int, httpURL, wsURL string, w wallet.Wallet) {
 	// set up the tgClient
 	ogClient := lib.NewTenGatewayLibrary(httpURL, wsURL)
 
@@ -493,6 +493,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[[]],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"topics":[]}],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock":"0x387","topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
+		`{"jsonrpc":"2.0","method":"debug_eventLogRelevancy","params":[{"fromBlock":"0x387","topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
 		//`{"jsonrpc":"2.0","method":"eth_subscribe","params":["logs"],"id":1}`,
 		//`{"jsonrpc":"2.0","method":"eth_subscribe","params":["logs",{"topics":[]}],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`,
@@ -521,7 +522,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 		require.NoError(t, err, req, response)
 
 		// repeat the process for geth
-		_, response, err = httputil.PostDataJSON(fmt.Sprintf("http://localhost:%d", _startPort+integration.DefaultGethHTTPPortOffset), []byte(req))
+		_, response, err = httputil.PostDataJSON(fmt.Sprintf("http://localhost:%d", startPort+integration.DefaultGethHTTPPortOffset), []byte(req))
 		require.NoError(t, err)
 
 		// we only care about format
@@ -531,7 +532,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	}
 }
 
-func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testErrorsRevertedArePassed(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	// set up the tgClient
 	ogClient := lib.NewTenGatewayLibrary(httpURL, wsURL)
 
@@ -610,7 +611,7 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.W
 	require.Equal(t, "execution reverted: assert(false)", err.Error())
 }
 
-func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testUnsubscribe(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	// create a user with multiple accounts
 	user, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
@@ -666,7 +667,7 @@ func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	assert.Equal(t, 1, len(userLogs))
 }
 
-func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testClosingConnectionWhileSubscribed(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	// create a user with multiple accounts
 	user, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
@@ -730,7 +731,7 @@ func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w
 	subscription.Unsubscribe()
 }
 
-func testDifferentMessagesOnRegister(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testDifferentMessagesOnRegister(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token: %s\n", user.tgClient.UserID())
@@ -744,7 +745,7 @@ func testDifferentMessagesOnRegister(t *testing.T, httpURL, wsURL string, w wall
 	require.NoError(t, err)
 }
 
-func testInvokeNonSensitiveMethod(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testInvokeNonSensitiveMethod(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
 
@@ -756,7 +757,7 @@ func testInvokeNonSensitiveMethod(t *testing.T, httpURL, wsURL string, w wallet.
 	}
 }
 
-func testGetStorageAtForReturningUserID(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testGetStorageAtForReturningUserID(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
 

@@ -48,8 +48,8 @@ const (
 )
 
 func TestTenscan(t *testing.T) {
-	startPort := integration.StartPortTenscanUnitTest
-	createTenNetwork(t, startPort)
+	startPort := integration.TestPorts.TestTenscanPort
+	createTenNetwork(t, integration.TestPorts.TestTenscanPort)
 
 	tenScanConfig := &config.Config{
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),

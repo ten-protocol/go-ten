@@ -1,4 +1,3 @@
-import { Loader } from "lucide-react";
 import { Button } from "../../ui/button";
 import ConnectWalletButton from "../common/connect-wallet";
 import { ethers } from "ethers";
@@ -8,11 +7,15 @@ export const SubmitButton = ({
   loading,
   tokenBalance,
   provider,
+  hasValue,
+  isSubmitting,
 }: {
   walletConnected: boolean;
   loading: boolean;
   tokenBalance: number;
   provider: ethers.providers.Web3Provider | null;
+  hasValue: boolean;
+  isSubmitting: boolean;
 }) => {
   return (
     <div className="flex items-center justify-center mt-4">
@@ -21,9 +24,17 @@ export const SubmitButton = ({
           type="submit"
           className="text-sm font-bold leading-none w-full"
           size="lg"
-          disabled={loading || tokenBalance <= 0 || !provider}
+          disabled={
+            loading ||
+            tokenBalance <= 0 ||
+            !provider ||
+            !hasValue ||
+            isSubmitting
+          }
+          loading={isSubmitting}
+          loadingText="Initiating..."
         >
-          {loading ? <Loader /> : "Initiate Bridge Transaction"}
+          Initiate Bridge Transaction
         </Button>
       ) : (
         <ConnectWalletButton
