@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "./OnBlockEndCallback.sol";
 import "./Transaction.sol";
 
-//TODO: @PR Review - Pick appropriate name
 contract TransactionPostProcessor is Initializable, AccessControl{
     using Structs for Structs.Transaction;
 

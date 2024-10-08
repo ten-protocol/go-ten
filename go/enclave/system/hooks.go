@@ -155,14 +155,17 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 
 	for _, tx := range transactions {
 		// Start of Selection
+
+		txMetadata := txSuccessMap[tx.Hash()]
+
 		transaction := TransactionPostProcessor.StructsTransaction{
 			Nonce:      big.NewInt(int64(tx.Nonce())),
 			GasPrice:   tx.GasPrice(),
 			GasLimit:   big.NewInt(int64(tx.Gas())),
 			Value:      tx.Value(),
 			Data:       tx.Data(),
-			Successful: txSuccessMap[tx.Hash()].status,
-			GasUsed:    txSuccessMap[tx.Hash()].gasUsed,
+			Successful: txMetadata.status,
+			GasUsed:    txMetadata.gasUsed,
 		}
 		if tx.To() != nil {
 			transaction.To = *tx.To()
