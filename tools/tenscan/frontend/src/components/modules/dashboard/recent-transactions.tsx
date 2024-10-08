@@ -41,7 +41,7 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
               />
             </div>
             <div className="ml-auto">
-              <Badge>{transaction?.Finality}</Badge>
+              <Badge variant={"static-default"}>{transaction?.Finality}</Badge>
             </div>
           </div>
         )

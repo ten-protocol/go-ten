@@ -128,7 +128,7 @@ export default function Dashboard() {
     },
     {
       title: "Nodes",
-      value: <Badge>Coming Soon</Badge>,
+      value: <Badge variant={"static-default"}>Coming Soon</Badge>,
       icon: BlocksIcon,
     },
   ];
