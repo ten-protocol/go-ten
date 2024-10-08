@@ -1,11 +1,11 @@
-import { DashboardAnalyticsData } from "@/src/types/interfaces";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-} from "@repo/ui/components/shared/card";
-import { Skeleton } from "@repo/ui/components/shared/skeleton";
+} from "@/src/components/ui/card";
+import { Skeleton } from "@/src/components/ui/skeleton";
+import { DashboardAnalyticsData } from "@/src/types/interfaces";
 import React from "react";
 
 export default function AnalyticsCard({

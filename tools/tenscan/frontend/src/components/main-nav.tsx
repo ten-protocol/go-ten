@@ -2,17 +2,17 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 
-import { cn } from "@repo/ui/lib/utils";
-import { Button } from "@repo/ui/components/shared/button";
+import { cn } from "@/src/lib/utils";
+import { Button } from "./ui/button";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-} from "@repo/ui/components/shared/dropdown-menu";
+} from "./ui/dropdown-menu";
 
-import { ChevronDownIcon } from "@repo/ui/components/shared/react-icons";
+import { ChevronDownIcon } from "@radix-ui/react-icons";
 import { NavLink } from "@/src/types/interfaces";
 import { NavLinks } from "../routes";
 

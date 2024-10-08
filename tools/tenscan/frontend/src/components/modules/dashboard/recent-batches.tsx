@@ -1,10 +1,8 @@
-import TruncatedAddress from "@repo/ui/components/common/truncated-address";
-import { formatTimeAgo } from "@repo/ui/lib/utils";
+import TruncatedAddress from "../common/truncated-address";
+import { formatTimeAgo } from "@/src/lib/utils";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
-import { Avatar, AvatarFallback } from "@repo/ui/components/shared/avatar";
+import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
 import Link from "next/link";
-import { pathToUrl } from "@/src/routes/router";
-import { pageLinks } from "@/src/routes";
 
 export function RecentBatches({ batches }: { batches: any }) {
   return (
@@ -17,9 +15,7 @@ export function RecentBatches({ batches }: { batches: any }) {
           <div className="ml-4 space-y-1">
             <p className="text-sm font-medium leading-none">
               <Link
-                href={pathToUrl(pageLinks.batchByHeight, {
-                  height: batch?.height.toString(),
-                })}
+                href={`/batch/height/${batch?.height}`}
                 className="text-primary"
               >
                 #{Number(batch?.height)}
@@ -32,9 +28,7 @@ export function RecentBatches({ batches }: { batches: any }) {
           <div className="ml-auto font-medium min-w-[140px]">
             <TruncatedAddress
               address={batch?.header?.hash}
-              link={pathToUrl(pageLinks.batchByHash, {
-                hash: batch?.header?.hash,
-              })}
+              link={`/batch/${batch?.header?.hash}`}
             />
           </div>
         </div>

@@ -1,9 +1,11 @@
-import TruncatedAddress from "@repo/ui/components/common/truncated-address";
-import { formatTimeAgo } from "@repo/ui/lib/utils";
-import { Avatar, AvatarFallback } from "@repo/ui/components/shared/avatar";
-import { Rollup } from "@/src/types/interfaces/RollupInterfaces";
-import { pathToUrl } from "@/src/routes/router";
-import { pageLinks } from "@/src/routes";
+import TruncatedAddress from "../common/truncated-address";
+import { formatTimeAgo } from "@/src/lib/utils";
+import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import {
+  Rollup,
+  RollupsResponse,
+} from "@/src/types/interfaces/RollupInterfaces";
+import Link from "next/link";
 
 export function RecentRollups({ rollups }: { rollups: any }) {
   return (
@@ -24,7 +26,7 @@ export function RecentRollups({ rollups }: { rollups: any }) {
           <div className="ml-auto font-medium min-w-[140px]">
             <TruncatedAddress
               address={rollup?.Hash}
-              link={pathToUrl(pageLinks.rollupByHash, { hash: rollup?.Hash })}
+              link={`/rollup/${rollup?.Hash}`}
             />
           </div>
         </div>

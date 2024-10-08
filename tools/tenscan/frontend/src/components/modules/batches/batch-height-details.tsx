@@ -1,32 +1,21 @@
-import { Separator } from "@repo/ui/components/shared/separator";
-import TruncatedAddress from "@repo/ui/components/common/truncated-address";
-import KeyValueItem, {
-  KeyValueList,
-} from "@repo/ui/components/shared/key-value";
-import {
-  formatNumber,
-  formatTimeAgo,
-  formatTimestampToDate,
-} from "@repo/ui/lib/utils";
-import { Badge } from "@repo/ui/components/shared/badge";
-import { Batch } from "@/src/types/interfaces/BatchInterfaces";
+import { Separator } from "@/src/components/ui/separator";
+import TruncatedAddress from "../common/truncated-address";
+import KeyValueItem, { KeyValueList } from "@/src/components/ui/key-value";
+import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
+import { Badge } from "@/src/components/ui/badge";
+import { Batch, BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
-import {
-  EyeClosedIcon,
-  EyeOpenIcon,
-} from "@repo/ui/components/shared/react-icons";
-import { Button } from "@repo/ui/components/shared/button";
+import { EyeClosedIcon, EyeOpenIcon } from "@radix-ui/react-icons";
+import { Button } from "../../ui/button";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import JSONPretty from "react-json-pretty";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@repo/ui/components/shared/tooltip";
-import { pageLinks } from "@/src/routes";
-import { pathToUrl } from "@/src/routes/router";
+} from "../../ui/tooltip";
 
 export function BatchHeightDetailsComponent({
   batchDetails,
@@ -52,67 +41,45 @@ export function BatchHeightDetailsComponent({
           value={
             <TruncatedAddress
               address={batchDetails?.header?.hash}
-              link={pathToUrl(pageLinks.batchByHash, {
-                hash: batchDetails?.header?.hash,
-              })}
-              showFullLength
+              link={`/batch/${batchDetails?.header?.hash}`}
             />
           }
         />
         <KeyValueItem
           label="Parent Hash"
           value={
-            <TruncatedAddress
-              address={batchDetails?.header?.parentHash}
-              showFullLength
-            />
+            <TruncatedAddress address={batchDetails?.header?.parentHash} />
           }
         />
         <KeyValueItem
           label="State Root"
-          value={
-            <TruncatedAddress
-              address={batchDetails?.header?.stateRoot}
-              showFullLength
-            />
-          }
+          value={<TruncatedAddress address={batchDetails?.header?.stateRoot} />}
         />
         <KeyValueItem
           label="Transactions Root"
           value={
             <TruncatedAddress
               address={batchDetails?.header?.transactionsRoot}
-              showFullLength
             />
           }
         />
         <KeyValueItem
           label="Receipts Root"
           value={
-            <TruncatedAddress
-              address={batchDetails?.header?.receiptsRoot}
-              showFullLength
-            />
+            <TruncatedAddress address={batchDetails?.header?.receiptsRoot} />
           }
         />
         <KeyValueItem
           label="Timestamp"
           value={
             <Badge variant={"secondary"}>
-              {formatTimeAgo(batchDetails?.header?.timestamp) +
-                " - " +
-                formatTimestampToDate(batchDetails?.header?.timestamp)}
+              {formatTimeAgo(batchDetails?.header?.timestamp)}
             </Badge>
           }
         />
         <KeyValueItem
           label="L1 Proof"
-          value={
-            <TruncatedAddress
-              address={batchDetails?.header?.l1Proof}
-              showFullLength
-            />
-          }
+          value={<TruncatedAddress address={batchDetails?.header?.l1Proof} />}
         />
         <KeyValueItem
           label="Gas Limit"
@@ -139,7 +106,6 @@ export function BatchHeightDetailsComponent({
           value={
             <TruncatedAddress
               address={batchDetails?.header?.inboundCrossChainHash}
-              showFullLength
             />
           }
         />
@@ -149,12 +115,7 @@ export function BatchHeightDetailsComponent({
         />
         <KeyValueItem
           label="Miner"
-          value={
-            <TruncatedAddress
-              address={batchDetails?.header?.miner}
-              showFullLength
-            />
-          }
+          value={<TruncatedAddress address={batchDetails?.header?.miner} />}
         />
         <KeyValueItem
           label="Base Fee Per Gas"
@@ -167,21 +128,12 @@ export function BatchHeightDetailsComponent({
         <KeyValueItem
           label="No. of Transactions"
           value={
-            batchDetails?.txCount > 0 ? (
-              <span>
-                {batchDetails?.txCount}{" "}
-                <Link
-                  href={pathToUrl(pageLinks.batchTransactions, {
-                    hash: batchDetails?.header?.hash,
-                  })}
-                  className="underline text-primary"
-                >
-                  View
-                </Link>
-              </span>
-            ) : (
-              batchDetails?.txCount || "-"
-            )
+            <Link
+              href={`/batch/txs/${batchDetails?.header?.hash}`}
+              className="text-primary"
+            >
+              {batchDetails?.txCount || "-"}
+            </Link>
           }
           isLastItem
         />

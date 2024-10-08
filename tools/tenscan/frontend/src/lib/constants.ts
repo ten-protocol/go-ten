@@ -1,3 +1,10 @@
+export const socialLinks = {
+  github: "https://github.com/ten-protocol",
+  discord: "https://discord.gg/tenprotocol",
+  twitter: "https://twitter.com/tenprotocol",
+  twitterHandle: "@tenprotocol",
+};
+
 export const pollingInterval = 5000;
 export const maxRetries = 3;
 export const pricePollingInterval = 60 * 1000;

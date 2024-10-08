@@ -1,13 +1,12 @@
 import { httpRequest } from ".";
 import { apiRoutes } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
-import { BlockResponse } from "@/src/types/interfaces/BlockInterfaces";
-import { ResponseDataInterface } from "@repo/ui/lib/types/common";
+import { ResponseDataInterface } from "@/src/types/interfaces";
 
 export const fetchBlocks = async (
   payload?: Record<string, any>
-): Promise<ResponseDataInterface<BlockResponse>> => {
-  return await httpRequest<ResponseDataInterface<BlockResponse>>({
+): Promise<ResponseDataInterface<any>> => {
+  return await httpRequest<ResponseDataInterface<any>>({
     method: "get",
     url: pathToUrl(apiRoutes.getBlocks),
     searchParams: payload,

@@ -4,33 +4,31 @@ import {
   CardTitle,
   CardContent,
   Card,
-} from "@repo/ui/components/shared/card";
+} from "@/src/components/ui/card";
 import {
   LayersIcon,
   FileTextIcon,
   ReaderIcon,
   CubeIcon,
   RocketIcon,
-  BlocksIcon,
-} from "@repo/ui/components/shared/react-icons";
+} from "@radix-ui/react-icons";
 
 import { RecentBatches } from "./recent-batches";
 import { RecentTransactions } from "./recent-transactions";
-import { Button } from "@repo/ui/components/shared/button";
+import { Button } from "@/src/components/ui/button";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { useBatchesService } from "@/src/services/useBatchesService";
-import TruncatedAddress from "@repo/ui/components/common/truncated-address";
+import TruncatedAddress from "../common/truncated-address";
 import { useContractsService } from "@/src/services/useContractsService";
-import { Skeleton } from "@repo/ui/components/shared/skeleton";
+import { Skeleton } from "@/src/components/ui/skeleton";
 import AnalyticsCard from "./analytics-card";
 import Link from "next/link";
-import { cn, formatNumber } from "@repo/ui/lib/utils";
-import { Badge } from "@repo/ui/components/shared/badge";
-
+import { cn, formatNumber } from "@/src/lib/utils";
+import { Badge } from "../../ui/badge";
+import { BlocksIcon } from "lucide-react";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import { RecentRollups } from "./recent-rollups";
 import { DashboardAnalyticsData } from "@/src/types/interfaces";
-import { pageLinks } from "@/src/routes";
 
 interface RecentData {
   title: string;
@@ -47,29 +45,10 @@ export default function Dashboard() {
     transactions,
     transactionCount,
     isTransactionCountLoading,
-    setNoPolling: setNoPollingTransactions,
   } = useTransactionsService();
   const { contractCount, isContractCountLoading } = useContractsService();
-  const {
-    batches,
-    latestBatch,
-    isLatestBatchLoading,
-    setNoPolling: setNoPollingBatches,
-  } = useBatchesService();
-  const { rollups, setNoPolling: setNoPollingRollups } = useRollupsService();
-
-  React.useEffect(() => {
-    setNoPollingTransactions(false);
-    setNoPollingBatches(false);
-    setNoPollingRollups(false);
-
-    return () => {
-      setNoPollingTransactions(true);
-      setNoPollingBatches(true);
-      setNoPollingRollups(true);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const { batches, latestBatch, isLatestBatchLoading } = useBatchesService();
+  const { rollups } = useRollupsService();
 
   const DASHBOARD_DATA = [
     {
@@ -138,21 +117,21 @@ export default function Dashboard() {
       title: "Recent Rollups",
       data: rollups,
       component: <RecentRollups rollups={rollups} />,
-      goTo: pageLinks.rollups,
+      goTo: "/rollups",
       className: "col-span-1 md:col-span-2 lg:col-span-3",
     },
     {
       title: "Recent Batches",
       data: batches,
       component: <RecentBatches batches={batches} />,
-      goTo: pageLinks.batches,
+      goTo: "/batches",
       className: "col-span-1 md:col-span-2 lg:col-span-3",
     },
     {
       title: "Recent Transactions",
       data: transactions,
       component: <RecentTransactions transactions={transactions} />,
-      goTo: pageLinks.transactions,
+      goTo: "/transactions",
       className: "col-span-1 md:col-span-2 lg:col-span-3",
     },
   ];

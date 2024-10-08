@@ -1,8 +1,3 @@
-export type BlockResponse = {
-  BlocksData: Block[];
-  Total: number;
-};
-
 export type Block = {
   blockHeader: BlockHeader;
   rollupHash: string;

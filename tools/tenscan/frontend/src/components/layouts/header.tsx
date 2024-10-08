@@ -1,12 +1,13 @@
-import { useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import { MainNav } from "../main-nav";
-import { ModeToggle } from "@repo/ui/components/shared/mode-toggle";
-import ConnectWalletButton from "@repo/ui/components/common/connect-wallet";
-import { HamburgerMenuIcon, X } from "@repo/ui/components/shared/react-icons";
-import { Button } from "@repo/ui/components/shared/button";
+import { ModeToggle } from "../mode-toggle";
+import ConnectWalletButton from "../modules/common/connect-wallet";
+import Link from "next/link";
+import { HamburgerMenuIcon } from "@radix-ui/react-icons";
+import { X } from "lucide-react";
+import { useState } from "react";
+import { Button } from "../ui/button";
 import HealthIndicator from "../health-indicator";
+import Image from "next/image";
 
 export default function Header() {
   return (

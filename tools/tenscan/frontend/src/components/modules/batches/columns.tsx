@@ -2,14 +2,12 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 
-import { DataTableColumnHeader } from "@repo/ui/components/common/data-table/data-table-column-header";
-import TruncatedAddress from "@repo/ui/components/common/truncated-address";
-import { formatNumber, formatTimeAgo } from "@repo/ui/lib/utils";
+import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
+import TruncatedAddress from "../common/truncated-address";
+import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
-import { Badge } from "@repo/ui/components/shared/badge";
-import { pathToUrl } from "@/src/routes/router";
-import { pageLinks } from "@/src/routes";
+import { Badge } from "../../ui/badge";
 
 export const columns: ColumnDef<Batch>[] = [
   {
@@ -21,9 +19,7 @@ export const columns: ColumnDef<Batch>[] = [
       return (
         <div className="flex space-x-2">
           <Link
-            href={pathToUrl(pageLinks.batchByHeight, {
-              height: row.original.height,
-            })}
+            href={`/batch/height/${row.original.height}`}
             className="text-primary"
           >
             <span className="max-w-[500px] truncate">
@@ -102,9 +98,7 @@ export const columns: ColumnDef<Batch>[] = [
       return (
         <TruncatedAddress
           address={row.original.header.hash}
-          link={pathToUrl(pageLinks.batchByHash, {
-            hash: row.original.header.hash,
-          })}
+          link={`/batch/${row.original.fullHash}`}
         />
       );
     },
@@ -130,9 +124,7 @@ export const columns: ColumnDef<Batch>[] = [
     cell: ({ row }) => {
       return (
         <Link
-          href={pathToUrl(pageLinks.rollupByBatchSequence, {
-            sequence: row.original.sequence,
-          })}
+          href={`/rollup/batch/sequence/${row.original.sequence}`}
           className="text-primary"
         >
           {row.original.sequence}
@@ -148,17 +140,13 @@ export const columns: ColumnDef<Batch>[] = [
       <DataTableColumnHeader column={column} title="Tx Count" />
     ),
     cell: ({ row }) => {
-      return row.original.txCount > 0 ? (
+      return (
         <Link
-          href={pathToUrl(pageLinks.batchTransactions, {
-            hash: row.original.fullHash,
-          })}
+          href={`/batch/txs/${row.original.fullHash}`}
           className="text-primary"
         >
           {row.original.txCount}
         </Link>
-      ) : (
-        <span>{row.original.txCount}</span>
       );
     },
     enableSorting: false,
