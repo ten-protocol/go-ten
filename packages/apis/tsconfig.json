@@ -1,0 +1,16 @@
+{
+  "extends": "@repo/typescript-config/base.json",
+  "compilerOptions": {
+    "types": ["vite/client", "@types/node"],
+    "target": "es5",
+    "outDir": "dist",
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "strict": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
