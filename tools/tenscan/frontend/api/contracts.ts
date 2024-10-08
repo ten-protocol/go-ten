@@ -1,8 +1,8 @@
 import { httpRequest } from ".";
 import { apiRoutes } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
-import { ResponseDataInterface } from "@/src/types/interfaces";
 import { ContractCount } from "@/src/types/interfaces/ContractInterface";
+import { ResponseDataInterface } from "@repo/ui/lib/types/common";
 
 export const fetchContractCount = async (
   payload?: Record<string, any>

@@ -1,13 +1,13 @@
 import React from "react";
 import { columns } from "@/src/components/modules/batches/columns";
-import { DataTable } from "@/src/components/modules/common/data-table/data-table";
+import { DataTable } from "@repo/ui/components/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { Metadata } from "next";
 import { useBatchesService } from "@/src/services/useBatchesService";
-import { getItem } from "@/src/lib/utils";
-import { ItemPosition } from "@/src/types/interfaces";
+import { getItem } from "@repo/ui/lib/utils";
 import { siteMetadata } from "@/src/lib/siteMetadata";
 import HeadSeo from "@/src/components/head-seo";
+import { ItemPosition } from "@repo/ui/lib/enums/ui";
 
 export const metadata: Metadata = {
   title: "Batches",
@@ -15,21 +15,11 @@ export const metadata: Metadata = {
 };
 
 export default function Batches() {
-  const { batches, refetchBatches, isBatchesLoading, setNoPolling } =
-    useBatchesService();
+  const { batches, refetchBatches, isBatchesLoading } = useBatchesService();
   const { BatchesData, Total } = batches?.result || {
     BatchesData: [],
     Total: 0,
   };
-
-  React.useEffect(() => {
-    setNoPolling(true);
-
-    return () => {
-      setNoPolling(false);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const firstBatchHeight = Number(getItem(BatchesData, "height"));
   const lastBatchHeight = Number(
