@@ -1,13 +1,13 @@
 import React from "react";
-import { Badge, badgeVariants } from "./ui/badge";
+import { Badge, badgeVariants } from "@repo/ui/components/shared/badge";
 import { useGeneralService } from "../services/useGeneralService";
-import { BarChart } from "lucide-react";
+import { BarChart } from "@repo/ui/components/shared/react-icons";
 import {
   TooltipProvider,
   TooltipTrigger,
   TooltipContent,
   Tooltip,
-} from "./ui/tooltip";
+} from "@repo/ui/components/shared/tooltip";
 
 const HealthIndicator = () => {
   const [status, setStatus] = React.useState<boolean>(false);

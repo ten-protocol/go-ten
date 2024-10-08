@@ -1,9 +1,11 @@
-import TruncatedAddress from "../common/truncated-address";
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
+import { Avatar, AvatarFallback } from "@repo/ui/components/shared/avatar";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
-import { Badge } from "../../ui/badge";
-import { formatTimeAgo } from "@/src/lib/utils";
+import { Badge } from "@repo/ui/components/shared/badge";
+import { formatTimeAgo } from "@repo/ui/lib/utils";
 import Link from "next/link";
+import { pathToUrl } from "@/src/routes/router";
+import { pageLinks } from "@/src/routes";
 
 export function RecentTransactions({ transactions }: { transactions: any }) {
   return (
@@ -18,7 +20,9 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
               <p className="text-sm font-medium leading-none">
                 <span className="text-muted-foreground">Batch </span>
                 <Link
-                  href={`/batch/height/${transaction?.BatchHeight}`}
+                  href={pathToUrl(pageLinks.batchByHeight, {
+                    height: transaction?.BatchHeight,
+                  })}
                   className="text-primary"
                 >
                   #{Number(transaction?.BatchHeight)}
@@ -31,7 +35,9 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
             <div className="ml-auto font-medium">
               <TruncatedAddress
                 address={transaction?.TransactionHash}
-                link={`/tx/${transaction?.TransactionHash}`}
+                link={pathToUrl(pageLinks.txByHash, {
+                  hash: transaction?.TransactionHash,
+                })}
               />
             </div>
             <div className="ml-auto">

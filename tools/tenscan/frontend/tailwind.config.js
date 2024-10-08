@@ -6,6 +6,7 @@ module.exports = {
     "./src/components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
+    "../../../packages/ui/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     container: {
@@ -37,6 +38,10 @@ module.exports = {
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
