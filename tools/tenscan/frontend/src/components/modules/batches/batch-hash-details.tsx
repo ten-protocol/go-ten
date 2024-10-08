@@ -1,22 +1,33 @@
-import { Separator } from "@/src/components/ui/separator";
-import TruncatedAddress from "../common/truncated-address";
-import KeyValueItem, { KeyValueList } from "@/src/components/ui/key-value";
-import { formatNumber, formatTimeAgo } from "@/src/lib/utils";
-import { Badge } from "@/src/components/ui/badge";
-import { Batch, BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
+import { useMemo, useState } from "react";
+import { Separator } from "@repo/ui/components/shared/separator";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
+import KeyValueItem, {
+  KeyValueList,
+} from "@repo/ui/components/shared/key-value";
+import {
+  formatNumber,
+  formatTimeAgo,
+  formatTimestampToDate,
+} from "@repo/ui/lib/utils";
+import { Badge } from "@repo/ui/components/shared/badge";
 import Link from "next/link";
-import { EyeClosedIcon, EyeOpenIcon } from "@radix-ui/react-icons";
-import { Button } from "../../ui/button";
+import {
+  EyeClosedIcon,
+  EyeOpenIcon,
+} from "@repo/ui/components/shared/react-icons";
+import { Button } from "@repo/ui/components/shared/button";
+import Copy from "@repo/ui/components/common/copy";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import JSONPretty from "react-json-pretty";
-import { useState } from "react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "../../ui/tooltip";
-import Copy from "../common/copy";
+} from "@repo/ui/components/shared/tooltip";
+import { pathToUrl } from "@/src/routes/router";
+import { pageLinks } from "@/src/routes";
+import { BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
 
 export function BatchHashDetailsComponent({
   batchDetails,
@@ -26,6 +37,31 @@ export function BatchHashDetailsComponent({
   const { decryptedRollup, decryptEncryptedData } = useRollupsService();
   const [showDecryptedData, setShowDecryptedData] = useState(false);
 
+  const transactionHashes = useMemo(
+    () =>
+      batchDetails?.TxHashes.length > 0 ? (
+        <ul>
+          {batchDetails.TxHashes.map((txHash, index) => (
+            <li key={index} className="text-sm">
+              <TruncatedAddress
+                address={txHash}
+                link={pathToUrl(pageLinks.txByHash, { hash: txHash })}
+                showFullLength
+              />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        "-"
+      ),
+    [batchDetails?.TxHashes]
+  );
+
+  const handleDecryptToggle = () => {
+    decryptEncryptedData({ StrData: batchDetails?.EncryptedTxBlob });
+    setShowDecryptedData(!showDecryptedData);
+  };
+
   return (
     <div className="space-y-8">
       <KeyValueList>
@@ -33,7 +69,9 @@ export function BatchHashDetailsComponent({
           label="Batch Height"
           value={
             <Link
-              href={`/batch/height/${Number(batchDetails?.Header?.number)}`}
+              href={pathToUrl(pageLinks.batchByHeight, {
+                height: +batchDetails?.Header?.number,
+              })}
               className="text-primary"
             >
               {"#" + Number(batchDetails?.Header?.number)}
@@ -42,47 +80,75 @@ export function BatchHashDetailsComponent({
         />
         <KeyValueItem
           label="Hash"
-          value={<TruncatedAddress address={batchDetails?.Header?.hash} />}
+          value={
+            <TruncatedAddress
+              address={batchDetails?.Header?.hash}
+              showFullLength
+            />
+          }
         />
         <KeyValueItem
           label="Parent Hash"
           value={
-            <TruncatedAddress address={batchDetails?.Header?.parentHash} />
+            <TruncatedAddress
+              address={batchDetails?.Header?.parentHash}
+              showFullLength
+            />
           }
         />
         <KeyValueItem
           label="State Root"
-          value={<TruncatedAddress address={batchDetails?.Header?.stateRoot} />}
+          value={
+            <TruncatedAddress
+              address={batchDetails?.Header?.stateRoot}
+              showFullLength
+            />
+          }
         />
         <KeyValueItem
           label="Transactions Root"
           value={
             <TruncatedAddress
               address={batchDetails?.Header?.transactionsRoot}
+              showFullLength
             />
           }
         />
         <KeyValueItem
           label="Receipts Root"
           value={
-            <TruncatedAddress address={batchDetails?.Header?.receiptsRoot} />
+            <TruncatedAddress
+              address={batchDetails?.Header?.receiptsRoot}
+              showFullLength
+            />
           }
         />
         <KeyValueItem
           label="Timestamp"
           value={
-            <Badge variant={"secondary"}>
-              {formatTimeAgo(batchDetails?.Header?.timestamp)}
+            <Badge variant="secondary">
+              {formatTimeAgo(batchDetails?.Header?.timestamp) +
+                " - " +
+                formatTimestampToDate(batchDetails?.Header?.timestamp)}
             </Badge>
           }
         />
         <KeyValueItem
           label="L1 Proof"
-          value={<TruncatedAddress address={batchDetails?.Header?.l1Proof} />}
+          value={
+            <TruncatedAddress
+              address={batchDetails?.Header?.l1Proof}
+              showFullLength
+            />
+          }
         />
         <KeyValueItem
           label="Gas Limit"
-          value={formatNumber(batchDetails?.Header?.gasLimit)}
+          value={
+            <Badge variant="secondary">
+              {formatNumber(batchDetails?.Header?.gasLimit)}
+            </Badge>
+          }
         />
         <KeyValueItem
           label="Gas Used"
@@ -90,13 +156,18 @@ export function BatchHashDetailsComponent({
         />
         <KeyValueItem
           label="Base Fee Per Gas"
-          value={batchDetails?.Header?.baseFeePerGas || "-"}
+          value={
+            <Badge variant="secondary">
+              {formatNumber(batchDetails?.Header?.baseFeePerGas)}
+            </Badge>
+          }
         />
         <KeyValueItem
           label="Inbound Cross Chain Hash"
           value={
             <TruncatedAddress
               address={batchDetails?.Header?.inboundCrossChainHash}
+              showFullLength
             />
           }
         />
@@ -106,73 +177,54 @@ export function BatchHashDetailsComponent({
         />
         <KeyValueItem
           label="Miner"
-          value={<TruncatedAddress address={batchDetails?.Header?.miner} />}
+          value={
+            <TruncatedAddress
+              address={batchDetails?.Header?.miner}
+              showFullLength
+            />
+          }
         />
-        <KeyValueItem
-          label="Base Fee Per Gas"
-          value={formatNumber(batchDetails?.Header?.baseFeePerGas)}
-          isLastItem
-        />
-      </KeyValueList>
-      <Separator />
-      <KeyValueList>
+
         <KeyValueItem
           label="Transaction Hashes"
-          value={
-            batchDetails?.TxHashes ? (
-              <ul>
-                {batchDetails?.TxHashes?.map((txHash, index) => (
-                  <li key={index} className="text-sm">
-                    <TruncatedAddress address={txHash} link={`/tx/${txHash}`} />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              "-"
-            )
-          }
+          value={transactionHashes}
           isLastItem
         />
       </KeyValueList>
+
       <Separator />
+
       <KeyValueList>
         <KeyValueItem
           label="Encrypted Tx Blob"
           value={
             <>
               <div className="flex items-center space-x-2">
-                <TruncatedAddress address={batchDetails?.EncryptedTxBlob} />{" "}
+                <TruncatedAddress address={batchDetails?.EncryptedTxBlob} />
                 <Button
                   className="text-sm font-bold leading-none hover:text-primary hover:bg-transparent"
                   variant="ghost"
-                  onClick={() => {
-                    decryptEncryptedData({
-                      StrData: batchDetails?.EncryptedTxBlob,
-                    });
-                    setShowDecryptedData(!showDecryptedData);
-                  }}
+                  onClick={handleDecryptToggle}
                 >
-                  {showDecryptedData && decryptedRollup ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        {showDecryptedData ? (
                           <EyeClosedIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer ml-2" />
-                        </TooltipTrigger>
-                        <TooltipContent>Hide Encrypted Data</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
+                        ) : (
                           <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer ml-2" />
-                        </TooltipTrigger>
-                        <TooltipContent>Show Encrypted Data</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
+                        )}
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {showDecryptedData
+                          ? "Hide Encrypted Data"
+                          : "Show Encrypted Data"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </Button>
-                {showDecryptedData && decryptedRollup ? (
+
+                {showDecryptedData && decryptedRollup && (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger>
@@ -183,14 +235,14 @@ export function BatchHashDetailsComponent({
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                ) : null}
+                )}
               </div>
-              {decryptedRollup && showDecryptedData ? (
+              {showDecryptedData && decryptedRollup && (
                 <>
                   <Separator className="my-4" />
                   <JSONPretty id="json-pretty" data={decryptedRollup} />
                 </>
-              ) : null}
+              )}
             </>
           }
           isLastItem

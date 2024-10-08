@@ -2,7 +2,7 @@ import {
   ArrowDownIcon,
   ArrowRightIcon,
   ArrowUpIcon,
-} from "@radix-ui/react-icons";
+} from "@repo/ui/components/shared/react-icons";
 
 export const priorities = [
   {

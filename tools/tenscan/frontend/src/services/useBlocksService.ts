@@ -7,7 +7,7 @@ import { useState } from "react";
 export const useBlocksService = () => {
   const { query } = useRouter();
 
-  const [noPolling, setNoPolling] = useState(false);
+  const [noPolling, setNoPolling] = useState(true);
 
   const options = getOptions(query);
 

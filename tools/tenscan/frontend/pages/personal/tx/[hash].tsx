@@ -1,24 +1,25 @@
-import Layout from "@/src/components/layouts/default-layout";
-import EmptyState from "@/src/components/modules/common/empty-state";
-import { Button } from "@/src/components/ui/button";
+import React from "react";
+import Layout from "../../../src/components/layouts/default-layout";
+import EmptyState from "@repo/ui/components/common/empty-state";
+import { Button } from "@repo/ui/components/shared/button";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-} from "@/src/components/ui/card";
-import { Skeleton } from "@/src/components/ui/skeleton";
+} from "@repo/ui/components/shared/card";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
-import { fetchPersonalTxnByHash } from "@/api/transactions";
-import { useWalletConnection } from "@/src/components/providers/wallet-provider";
-import { PersonalTxnDetailsComponent } from "@/src/components/modules/personal/personal-txn-details";
-import ConnectWalletButton from "@/src/components/modules/common/connect-wallet";
-import { ethereum } from "@/src/lib/utils";
+import { fetchPersonalTxnByHash } from "../../../api/transactions";
+import { PersonalTxnDetailsComponent } from "../../../src/components/modules/personal/personal-txn-details";
+import { ethereum } from "@repo/ui/lib/utils";
+import useWalletStore from "@repo/ui/stores/wallet-store";
+import ConnectWalletButton from "@repo/ui/components/common/connect-wallet";
+import LoadingState from "@repo/ui/components/common/loading-state";
 
 export default function TransactionDetails() {
   const router = useRouter();
-  const { provider, walletConnected } = useWalletConnection();
+  const { provider, walletConnected } = useWalletStore();
   const { hash } = router.query;
 
   const { data: transactionDetails, isLoading } = useQuery({
@@ -31,7 +32,7 @@ export default function TransactionDetails() {
     <Layout>
       {walletConnected ? (
         isLoading ? (
-          <Skeleton className="h-full w-full" />
+          <LoadingState numberOfItems={10} />
         ) : transactionDetails ? (
           <Card className="col-span-3">
             <CardHeader>

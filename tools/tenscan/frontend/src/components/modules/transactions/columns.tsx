@@ -1,14 +1,16 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@/src/components/ui/badge";
+import { Badge } from "@repo/ui/components/shared/badge";
 
 import { statuses } from "./constants";
-import { DataTableColumnHeader } from "../common/data-table/data-table-column-header";
+import { DataTableColumnHeader } from "@repo/ui/components/common/data-table/data-table-column-header";
 import { Transaction } from "@/src/types/interfaces/TransactionInterfaces";
-import TruncatedAddress from "../common/truncated-address";
-import { formatTimeAgo } from "@/src/lib/utils";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
+import { formatTimeAgo } from "@repo/ui/lib/utils";
 import Link from "next/link";
+import { pathToUrl } from "@/src/routes/router";
+import { pageLinks } from "@/src/routes";
 
 export const columns: ColumnDef<Transaction>[] = [
   {
@@ -60,7 +62,9 @@ export const columns: ColumnDef<Transaction>[] = [
       return (
         <TruncatedAddress
           address={row.getValue("TransactionHash")}
-          link={`/tx/${row.original.TransactionHash}`}
+          link={pathToUrl(pageLinks.txByHash, {
+            hash: row.original.TransactionHash,
+          })}
         />
       );
     },
