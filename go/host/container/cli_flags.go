@@ -37,6 +37,8 @@ const (
 	crossChainIntervalName       = "crossChainInterval"
 	isInboundP2PDisabledName     = "isInboundP2PDisabled"
 	maxRollupSizeFlagName        = "maxRollupSize"
+	l1BeaconUrlName              = "l1BeaconUrl"
+	l1BlobArchiveUrlName         = "l1BlobArchiveUrl"
 )
 
 // Returns a map of the flag usages.
@@ -78,5 +80,7 @@ func getFlagUsageMap() map[string]string {
 		isInboundP2PDisabledName:     "Whether inbound p2p is enabled",
 		maxRollupSizeFlagName:        "Max size of a rollup",
 		crossChainIntervalName:       "Duration between each cross chain bundle. Can be put down as 1.0s",
+		l1BeaconUrlName:              "Gateway endpoint url for the beacon chain",
+		l1BlobArchiveUrlName:         "Url for the blob archive endpoint",
 	}
 }

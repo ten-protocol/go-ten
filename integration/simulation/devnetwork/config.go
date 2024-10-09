@@ -35,9 +35,9 @@ type TenConfig struct {
 	NumNodes           int
 	TenGatewayEnabled  bool
 	NumSeqEnclaves     int
+	L1BeaconPort       int
+	L1BlockTime        time.Duration
 	DeployerPK         string
-
-	L1BlockTime time.Duration
 }
 
 func DefaultTenConfig() *TenConfig {
@@ -50,6 +50,7 @@ func DefaultTenConfig() *TenConfig {
 		CrossChainInterval: 11 * time.Second,
 		TenGatewayEnabled:  false,
 		NumSeqEnclaves:     1, // increase for HA simulation
+		L1BeaconPort:       integration.TestPorts.NetworkTestsPort + integration.DefaultPrysmGatewayPortOffset,
 		DeployerPK:         "",
 	}
 }
