@@ -230,8 +230,7 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 
 // ExtractRelevantTenTransactions will extract any transactions from the block that are relevant to TEN
 // todo (#2495) we should monitor for relevant L1 events instead of scanning every transaction in the block
-func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts types.Receipts) ([]*common.TxAndReceiptAndBlobs, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx, []*ethadapter.L1RespondSecretTx) {
-	secretRespTxs := make([]*ethadapter.L1RespondSecretTx, 0)
+func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts types.Receipts) ([]*common.TxAndReceiptAndBlobs, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
 	txWithReceiptsAndBlobs := make([]*common.TxAndReceiptAndBlobs, 0)
 	rollupTxs := make([]*ethadapter.L1RollupTx, 0)
 	contractAddressTxs := make([]*ethadapter.L1SetImportantContractsTx, 0)
@@ -247,8 +246,6 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 		var err error
 
 		switch typedTx := decodedTx.(type) {
-		case *ethadapter.L1RespondSecretTx:
-			secretRespTxs = append(secretRespTxs, typedTx)
 		case *ethadapter.L1SetImportantContractsTx:
 			contractAddressTxs = append(contractAddressTxs, typedTx)
 		case *ethadapter.L1RollupHashes:
@@ -274,7 +271,7 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 			rollupTxs = append(rollupTxs, rlp)
 		}
 
-		// Add all relevant transactions to txWithReceiptsAndBlobs
+		// compile the tx, receipt and blobs into a single struct for submission to the enclave
 		txWithReceiptsAndBlobs = append(txWithReceiptsAndBlobs, &common.TxAndReceiptAndBlobs{
 			Tx:      txs[i],
 			Receipt: rec,
@@ -282,7 +279,25 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 		})
 	}
 
-	return txWithReceiptsAndBlobs, rollupTxs, contractAddressTxs, secretRespTxs
+	return txWithReceiptsAndBlobs, rollupTxs, contractAddressTxs
+}
+
+// FindSecretResponseTx will scan the block for any secret response transactions. This is separate from the above method
+// as we do not require the receipts for these transactions.
+func (p *Publisher) FindSecretResponseTx(block *types.Block) []*ethadapter.L1RespondSecretTx {
+	secretRespTxs := make([]*ethadapter.L1RespondSecretTx, 0)
+
+	for _, tx := range block.Transactions() {
+		t := p.mgmtContractLib.DecodeTx(tx)
+		if t == nil {
+			continue
+		}
+		if scrtTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
+			secretRespTxs = append(secretRespTxs, scrtTx)
+			continue
+		}
+	}
+	return secretRespTxs
 }
 
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
