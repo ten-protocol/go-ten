@@ -15,8 +15,12 @@ type CosmosDB struct {
 func NewCosmosDB(connectionString string) (*CosmosDB, error) {
 	client, err := azcosmos.NewClientFromConnectionString(connectionString, nil)
 	if err != nil {
+		// fmt.Println("Error creating CosmosDB client:", err)
 		return nil, err
 	}
+
+	// fmt.Println("CosmosDB connection string:", connectionString)
+	// fmt.Println("CosmosDB client:", client)
 	return &CosmosDB{
 		client: client,
 	}, nil

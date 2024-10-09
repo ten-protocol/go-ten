@@ -29,8 +29,7 @@ func New(dbType string, dbConnectionURL, dbPath string) (Storage, error) {
 	case "sqlite":
 		return sqlite.NewSqliteDatabase(dbPath)
 	case "cosmosDB":
-		connectionString := "your_cosmos_db_uri_here"
-		return cosmosdb.NewCosmosDB(connectionString)
+		return cosmosdb.NewCosmosDB(dbConnectionURL)
 	}
 	return nil, fmt.Errorf("unknown db %s", dbType)
 }
