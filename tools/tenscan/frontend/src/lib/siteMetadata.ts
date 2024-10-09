@@ -1,4 +1,4 @@
-import { socialLinks } from "./constants";
+import { socialLinks } from "@repo/ui/lib/constants";
 
 export const siteMetadata = {
   companyName: "Tenscan",
@@ -10,7 +10,7 @@ export const siteMetadata = {
   siteUrl: "https://tenscan.io",
   siteLogo: `/assets/images/cover.png`,
   siteLogoSquare: `/assets/images/cover.png`,
-  email: "team@ten.xyz",
+  email: socialLinks.email,
   twitter: socialLinks.twitter,
   twitterHandle: socialLinks.twitterHandle,
   github: socialLinks.github,
