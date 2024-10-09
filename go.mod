@@ -5,6 +5,7 @@ go 1.21.11
 replace github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220224222438-c78f6963a1c0+incompatible
 
 require (
+	github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos v1.1.0
 	github.com/FantasyJony/openzeppelin-merkle-tree-go v1.1.2
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/andybalholm/brotli v1.1.0
@@ -45,7 +46,7 @@ require (
 	github.com/urfave/cli/v2 v2.27.1
 	github.com/valyala/fasthttp v1.52.0
 	gitlab.com/NebulousLabs/fastrand v0.0.0-20181126182046-603482d69e40
-	golang.org/x/crypto v0.24.0
+	golang.org/x/crypto v0.25.0
 	golang.org/x/exp v0.0.0-20240318143956-a85f2c67cd81
 	golang.org/x/sync v0.7.0
 	google.golang.org/grpc v1.62.1
@@ -55,6 +56,9 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.14.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/DataDog/zstd v1.5.5 // indirect
 	github.com/VictoriaMetrics/fastcache v1.12.2 // indirect
@@ -157,8 +161,8 @@ require (
 	github.com/xrash/smetrics v0.0.0-20240312152122-5f08fbb34913 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/arch v0.7.0 // indirect
-	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/net v0.27.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
