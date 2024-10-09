@@ -2,7 +2,9 @@ package storage
 
 import (
 	"bytes"
+	"crypto/rand"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
@@ -19,11 +21,12 @@ var tests = map[string]func(storage Storage, t *testing.T){
 	"testStoringNewTx":      testStoringNewTx,
 }
 
-func TestSQLiteGatewayDB(t *testing.T) {
+func TestGatewayStorage(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			// storage, err := New("mariaDB", "obscurouser:password@tcp(127.0.0.1:3306)/ogdb", "") allows to run tests against a local instance of MariaDB
-			storage, err := New("sqlite", "", "")
+			//storage, err := New("sqlite", "", "")
+			storage, err := New("cosmosDB", "", "dev-testnet-gateway")
 			require.NoError(t, err)
 
 			test(storage, t)
@@ -32,10 +35,18 @@ func TestSQLiteGatewayDB(t *testing.T) {
 }
 
 func testAddAndGetUser(storage Storage, t *testing.T) {
-	userID := []byte("userID")
-	privateKey := []byte("privateKey")
+	userID := make([]byte, 20)
+	_, err := rand.Read(userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	privateKey := make([]byte, 32)
+	_, err = rand.Read(privateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	err := storage.AddUser(userID, privateKey)
+	err = storage.AddUser(userID, privateKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,10 +62,14 @@ func testAddAndGetUser(storage Storage, t *testing.T) {
 }
 
 func testAddAndGetAccounts(storage Storage, t *testing.T) {
-	userID := []byte("userID")
-	privateKey := []byte("privateKey")
-	accountAddress1 := []byte("accountAddress1")
-	signature1 := []byte("signature1")
+	userID := make([]byte, 20)
+	rand.Read(userID)
+	privateKey := make([]byte, 32)
+	rand.Read(privateKey)
+	accountAddress1 := make([]byte, 20)
+	rand.Read(accountAddress1)
+	signature1 := make([]byte, 65)
+	rand.Read(signature1)
 
 	err := storage.AddUser(userID, privateKey)
 	if err != nil {
@@ -66,8 +81,10 @@ func testAddAndGetAccounts(storage Storage, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	accountAddress2 := []byte("accountAddress2")
-	signature2 := []byte("signature2")
+	accountAddress2 := make([]byte, 20)
+	rand.Read(accountAddress2)
+	signature2 := make([]byte, 65)
+	rand.Read(signature2)
 
 	err = storage.AddAccount(userID, accountAddress2, signature2, viewingkey.EIP712Signature)
 	if err != nil {
@@ -105,8 +122,10 @@ func testAddAndGetAccounts(storage Storage, t *testing.T) {
 }
 
 func testDeleteUser(storage Storage, t *testing.T) {
-	userID := []byte("testDeleteUserID")
-	privateKey := []byte("testDeleteUserPrivateKey")
+	userID := make([]byte, 20)
+	rand.Read(userID)
+	privateKey := make([]byte, 32)
+	rand.Read(privateKey)
 
 	err := storage.AddUser(userID, privateKey)
 	if err != nil {
@@ -119,6 +138,7 @@ func testDeleteUser(storage Storage, t *testing.T) {
 	}
 
 	_, err = storage.GetUserPrivateKey(userID)
+	fmt.Println("err:", err)
 	if err == nil || !errors.Is(err, errutil.ErrNotFound) {
 		t.Fatal("Expected error when getting deleted user, but got none")
 	}
@@ -130,8 +150,10 @@ func testGetAllUsers(storage Storage, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	userID := []byte("getAllUsersTestID")
-	privateKey := []byte("getAllUsersTestPrivateKey")
+	userID := make([]byte, 20)
+	rand.Read(userID)
+	privateKey := make([]byte, 32)
+	rand.Read(privateKey)
 
 	err = storage.AddUser(userID, privateKey)
 	if err != nil {

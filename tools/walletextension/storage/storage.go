@@ -5,6 +5,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/cosmosdb"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/mariadb"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/sqlite"
 
@@ -27,6 +28,8 @@ func New(dbType string, dbConnectionURL, dbPath string) (Storage, error) {
 		return mariadb.NewMariaDB(dbConnectionURL)
 	case "sqlite":
 		return sqlite.NewSqliteDatabase(dbPath)
+	case "cosmosDB":
+		return cosmosdb.NewCosmosDB(dbConnectionURL)
 	}
 	return nil, fmt.Errorf("unknown db %s", dbType)
 }
