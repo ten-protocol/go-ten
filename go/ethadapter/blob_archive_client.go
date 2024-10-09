@@ -16,13 +16,17 @@ const (
 	versionedHashPrefix = "/v1/blob/"
 )
 
-type ArchivalBlobResponse struct {
+type APIBlobData struct {
 	VersionedHash string `json:"versionedHash"`
 	Commitment    string `json:"commitment"`
 	Proof         string `json:"proof"`
 	Data          string `json:"data"`
 }
 
+// ArchivalBlobResponse nested struct is needed to match the structure of the API response
+type ArchivalBlobResponse struct {
+	Blob APIBlobData `json:"blob"`
+}
 type ArchivalHTTPClient struct {
 	httpClient *BaseHTTPClient
 }
@@ -61,7 +65,7 @@ func (ac *ArchivalHTTPClient) request(ctx context.Context, dest any, reqPath str
 }
 
 func convertToSidecar(archivalResp *ArchivalBlobResponse, index int) (*BlobSidecar, error) {
-	blobData, err := hex.DecodeString(strings.TrimPrefix(archivalResp.Data, "0x"))
+	blobData, err := hex.DecodeString(strings.TrimPrefix(archivalResp.Blob.Data, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode blob data: %w", err)
 	}
@@ -69,12 +73,12 @@ func convertToSidecar(archivalResp *ArchivalBlobResponse, index int) (*BlobSidec
 	var blob kzg4844.Blob
 	copy(blob[:], blobData)
 
-	commitment, err := hexToBytes48(archivalResp.Commitment)
+	commitment, err := hexToBytes48(archivalResp.Blob.Commitment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode commitment: %w", err)
 	}
 
-	proof, err := hexToBytes48(archivalResp.Proof)
+	proof, err := hexToBytes48(archivalResp.Blob.Proof)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode proof: %w", err)
 	}

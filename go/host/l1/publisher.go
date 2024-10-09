@@ -244,6 +244,7 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 
 		decodedTx := p.mgmtContractLib.DecodeTx(txs[i])
 		var blobs []*kzg4844.Blob
+		var err error
 
 		switch typedTx := decodedTx.(type) {
 		case *ethadapter.L1RespondSecretTx:
@@ -251,7 +252,6 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 		case *ethadapter.L1SetImportantContractsTx:
 			contractAddressTxs = append(contractAddressTxs, typedTx)
 		case *ethadapter.L1RollupHashes:
-			var err error
 			blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), typedTx.BlobHashes)
 			if err != nil {
 				if errors.Is(err, ethereum.NotFound) {
