@@ -32,7 +32,7 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	requester := builder.VK.AccountAddress
 
 	// We retrieve the transaction receipt.
-	bareReceipt, err := rpc.storage.GetTransactionReceipt(builder.ctx, txHash, requester)
+	bareReceipt, err := rpc.storage.GetTransactionReceipt(builder.ctx, txHash, requester, false)
 	if err != nil {
 		rpc.logger.Trace("error getting tx receipt", log.TxKey, txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {

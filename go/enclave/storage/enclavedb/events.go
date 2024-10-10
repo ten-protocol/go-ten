@@ -244,10 +244,6 @@ func bytesToAddress(b []byte) *gethcommon.Address {
 // this complexity is necessary to avoid executing multiple queries.
 // todo always pass in the actual batch hashes because of reorgs, or make sure to clean up log entries from discarded batches
 func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, orderBy string, orderByParams []any, withReceipts bool) ([]*core.BareReceipt, []*types.Log, error) {
-	if requestingAccount == nil { // todo - only restrict to lifecycle events if requesting==nil
-		return nil, nil, fmt.Errorf("logs can only be requested for an account")
-	}
-
 	logsQuery := " et.event_sig, t1.topic, t2.topic, t3.topic, datablob, log_idx, b.hash, b.height, curr_tx.hash, curr_tx.idx, c.address "
 	receiptQuery := " rec.post_state, rec.status, rec.cumulative_gas_used, rec.effective_gas_price, rec.created_contract_address, curr_tx.content, eoatx.address, tx_contr.address, curr_tx.type "
 
@@ -259,19 +255,21 @@ func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount
 
 	var queryParams []any
 
-	// Add log visibility rules
-	logsVisibQuery, logsVisibParams := logsVisibilityQuery(requestingAccount)
-	query += logsVisibQuery
-	queryParams = append(queryParams, logsVisibParams...)
+	if requestingAccount != nil {
+		// Add log visibility rules
+		logsVisibQuery, logsVisibParams := logsVisibilityQuery(requestingAccount)
+		query += logsVisibQuery
+		queryParams = append(queryParams, logsVisibParams...)
 
-	query += whereCondition
-	queryParams = append(queryParams, whereParams...)
+		query += whereCondition
+		queryParams = append(queryParams, whereParams...)
 
-	// add receipt visibility rules
-	if withReceipts {
-		receiptsVisibQuery, receiptsVisibParams := receiptsVisibilityQuery(requestingAccount)
-		query += receiptsVisibQuery
-		queryParams = append(queryParams, receiptsVisibParams...)
+		// add receipt visibility rules
+		if withReceipts {
+			receiptsVisibQuery, receiptsVisibParams := receiptsVisibilityQuery(requestingAccount)
+			query += receiptsVisibQuery
+			queryParams = append(queryParams, receiptsVisibParams...)
+		}
 	}
 
 	if len(orderBy) > 0 {

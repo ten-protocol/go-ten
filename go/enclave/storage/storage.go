@@ -421,8 +421,11 @@ func (s *storageImpl) GetTransaction(ctx context.Context, txHash gethcommon.Hash
 	return enclavedb.ReadTransaction(ctx, s.db.GetSQLDB(), txHash)
 }
 
-func (s *storageImpl) GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address) (*core.BareReceipt, error) {
+func (s *storageImpl) GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.BareReceipt, error) {
 	defer s.logDuration("GetTransactionReceipt", measure.NewStopwatch())
+	if !syntheticTx && requester == nil {
+		return nil, errors.New("requester address is required for non-synthetic transactions")
+	}
 	return enclavedb.ReadReceipt(ctx, s.db.GetSQLDB(), txHash, requester)
 }
 
