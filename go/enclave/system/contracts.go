@@ -26,7 +26,7 @@ func GenerateDeploymentTransaction(initCode []byte, wallet wallet.Wallet, logger
 		Value:    gethcommon.Big0,
 		Gas:      500_000_000,     // It's quite the expensive contract.
 		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
-		Data:     initCode,        //gethcommon.FromHex(SystemDeployer.SystemDeployerMetaData.Bin),
+		Data:     initCode,        // gethcommon.FromHex(SystemDeployer.SystemDeployerMetaData.Bin),
 		To:       nil,             // Geth requires nil instead of gethcommon.Address{} which equates to zero address in order to return receipt.
 	}
 

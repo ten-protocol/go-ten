@@ -19,13 +19,15 @@ import (
 )
 
 const (
-	baseEventsJoin = "from event_log e " +
-		"join receipt rec on e.receipt=rec.id" +
-		"	join tx on rec.tx=tx.id " +
-		"      left join externally_owned_account eoatx on tx.sender_address=eoatx.id " +
-		"	join batch b on rec.batch=b.sequence " +
-		"join event_type et on e.event_type=et.id " +
-		"	join contract c on et.contract=c.id " +
+	baseEventsJoin = " from receipt rec " +
+		"join tx curr_tx on rec.tx=curr_tx.id " +
+		"   left join externally_owned_account eoatx on curr_tx.sender_address=eoatx.id " +
+		"   left join contract tx_contr on tx_contr.id=curr_tx.to_address " +
+		"join batch b on rec.batch=b.sequence " +
+		"left join event_log e on e.receipt=rec.id " +
+		"left join event_type et on e.event_type=et.id " +
+		"	left join contract c on et.contract=c.id " +
+		//"		left join tx creator_tx on c.tx=creator_tx.id " +
 		"left join event_topic t1 on e.topic1=t1.id and et.id=t1.event_type " +
 		"   left join externally_owned_account eoa1 on t1.rel_address=eoa1.id " +
 		"left join event_topic t2 on e.topic2=t2.id and et.id=t2.event_type " +
@@ -157,16 +159,17 @@ func FilterLogs(
 		}
 	}
 
-	return loadLogs(ctx, db, requestingAccount, query, queryParams)
+	_, logs, err := loadReceiptsAndEventLogs(ctx, db, requestingAccount, query, queryParams, "", nil, false)
+	return logs, err
 }
 
 func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
 	var queryParams []any
 
 	// todo - should we return the config here?
-	query := "select eoa1.address, eoa2.address, eoa3.address, et.config_public, et.auto_public, et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address, c.auto_visibility, c.transparent " +
+	query := "select eoa1.address, eoa2.address, eoa3.address, et.config_public, et.auto_public, et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, curr_tx.hash, curr_tx.idx, log_idx, c.address, c.auto_visibility, c.transparent " +
 		baseEventsJoin +
-		" AND tx.hash = ? "
+		" AND curr_tx.hash = ? "
 
 	queryParams = append(queryParams, txHash.Bytes())
 
@@ -236,66 +239,167 @@ func bytesToAddress(b []byte) *gethcommon.Address {
 	return nil
 }
 
-// utility function that knows how to load relevant logs from the database
+// utility function that knows how to load relevant logs from the database together with a receipt
+// returns either receipts with logs, or only logs
+// this complexity is necessary to avoid executing multiple queries.
 // todo always pass in the actual batch hashes because of reorgs, or make sure to clean up log entries from discarded batches
-func loadLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any) ([]*types.Log, error) {
-	if requestingAccount == nil { // todo - only restrict to lifecycle events if requesting==nil
-		return nil, fmt.Errorf("logs can only be requested for an account")
-	}
+func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, orderBy string, orderByParams []any, withReceipts bool) ([]*core.InternalReceipt, []*types.Log, error) {
+	logsQuery := " et.event_sig, t1.topic, t2.topic, t3.topic, datablob, log_idx, b.hash, b.height, curr_tx.hash, curr_tx.idx, c.address "
+	receiptQuery := " rec.post_state, rec.status, rec.cumulative_gas_used, rec.effective_gas_price, rec.created_contract_address, curr_tx.content, eoatx.address, tx_contr.address, curr_tx.type "
 
-	result := make([]*types.Log, 0)
-	query := "select et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address" + " " + baseEventsJoin
+	query := "select " + logsQuery
+	if withReceipts {
+		query += "," + receiptQuery
+	}
+	query += baseEventsJoin
+
 	var queryParams []any
 
-	// Add visibility rules
-	visibQuery, visibParams := visibilityQuery(requestingAccount)
+	if requestingAccount != nil {
+		// Add log visibility rules
+		logsVisibQuery, logsVisibParams := logsVisibilityQuery(requestingAccount)
+		query += logsVisibQuery
+		queryParams = append(queryParams, logsVisibParams...)
 
-	query += visibQuery
-	queryParams = append(queryParams, visibParams...)
+		query += whereCondition
+		queryParams = append(queryParams, whereParams...)
 
-	query += whereCondition
-	queryParams = append(queryParams, whereParams...)
+		// add receipt visibility rules
+		if withReceipts {
+			receiptsVisibQuery, receiptsVisibParams := receiptsVisibilityQuery(requestingAccount)
+			query += receiptsVisibQuery
+			queryParams = append(queryParams, receiptsVisibParams...)
+		}
+	}
+
+	if len(orderBy) > 0 {
+		query += orderBy
+		queryParams = append(queryParams, orderByParams...)
+	}
 
 	rows, err := db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
-	for rows.Next() {
-		l := types.Log{
-			Topics: make([]gethcommon.Hash, 0),
-		}
-		var t0, t1, t2, t3 []byte
-		err = rows.Scan(&t0, &t1, &t2, &t3, &l.Data, &l.BlockHash, &l.BlockNumber, &l.TxHash, &l.TxIndex, &l.Index, &l.Address)
-		if err != nil {
-			return nil, fmt.Errorf("could not load log entry from db: %w", err)
-		}
+	receipts := make([]*core.InternalReceipt, 0)
+	logList := make([]*types.Log, 0)
 
+	empty := true
+	for rows.Next() {
+		empty = false
+		r, l, err := onRow(rows, withReceipts)
+		if err != nil {
+			return nil, nil, err
+		}
+		receipts = append(receipts, r)
+		logList = append(logList, l)
+	}
+	if rows.Err() != nil {
+		return nil, nil, rows.Err()
+	}
+
+	if withReceipts {
+		if empty {
+			return nil, nil, errutil.ErrNotFound
+		}
+		// group the logs manually to avoid complicating the db indexes
+		result := groupReceiptAndLogs(receipts, logList)
+		return result, nil, nil
+	}
+	return nil, logList, nil
+}
+
+func groupReceiptAndLogs(receipts []*core.InternalReceipt, logs []*types.Log) []*core.InternalReceipt {
+	recMap := make(map[gethcommon.Hash]*core.InternalReceipt)
+	logMap := make(map[gethcommon.Hash][]*types.Log)
+	for _, r := range receipts {
+		recMap[r.TxHash] = r
+	}
+	for _, log := range logs {
+		logList := logMap[log.TxHash]
+		if logList == nil {
+			logList = make([]*types.Log, 0)
+			logMap[log.TxHash] = logList
+		}
+		logMap[log.TxHash] = append(logList, log)
+	}
+	result := make([]*core.InternalReceipt, 0)
+	for txHash, receipt := range recMap {
+		receipt.Logs = logMap[txHash]
+		result = append(result, receipt)
+	}
+	return result
+}
+
+func onRow(rows *sql.Rows, withReceipts bool) (*core.InternalReceipt, *types.Log, error) {
+	l := types.Log{
+		Topics: make([]gethcommon.Hash, 0),
+	}
+	r := core.InternalReceipt{}
+
+	var t0, t1, t2, t3 []byte
+	var logIndex, txIndex *uint
+	var blockHash, transactionHash *gethcommon.Hash
+	var address *gethcommon.Address
+	var blockNumber *uint64
+	res := []any{&t0, &t1, &t2, &t3, &l.Data, &logIndex, &blockHash, &blockNumber, &transactionHash, &txIndex, &address}
+
+	if withReceipts {
+		// when loading receipts, add the extra fields
+		res = append(res, &r.PostState, &r.Status, &r.CumulativeGasUsed, &r.EffectiveGasPrice, &r.CreatedContract, &r.TxContent, &r.From, &r.To, &r.TxType)
+	}
+
+	err := rows.Scan(res...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not load log entry from db: %w", err)
+	}
+
+	if withReceipts {
+		r.BlockHash = *blockHash
+		r.BlockNumber = big.NewInt(int64(*blockNumber))
+		r.TxHash = *transactionHash
+		r.TransactionIndex = *txIndex
+	}
+
+	if logIndex != nil {
+		l.Index, l.BlockHash, l.BlockNumber, l.TxHash, l.TxIndex = *logIndex, *blockHash, *blockNumber, *transactionHash, *txIndex
+		if address != nil {
+			l.Address = *address
+		}
 		for _, topic := range [][]byte{t0, t1, t2, t3} {
 			if len(topic) > 0 {
 				l.Topics = append(l.Topics, byteArrayToHash(topic))
 			}
 		}
-
-		result = append(result, &l)
 	}
 
-	if rows.Err() != nil {
-		return nil, rows.Err()
+	if withReceipts {
+		return &r, &l, nil
 	}
+	return nil, &l, nil
+}
 
-	return result, nil
+func receiptsVisibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
+	// the visibility rules for the receipt:
+	// - the sender can query
+	// - anyone can query if the contract is transparent
+	// - anyone who can view an event log should also be able to view the receipt
+	query := " AND (eoatx.address = ? OR tx_contr.transparent=true OR et.id IS NOT NULL)"
+	queryParams := []any{requestingAccount.Bytes()}
+	return query, queryParams
 }
 
 // this function encodes the event log visibility rules
-func visibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
+func logsVisibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
 	acc := requestingAccount.Bytes()
 
 	visibQuery := "AND ("
 	visibParams := make([]any, 0)
 
 	// everyone can query config_public events
+	visibQuery += " et.id is NULL OR "
 	visibQuery += " et.config_public=true "
 
 	// For event logs that have no explicit configuration, an event is visible be all account owners whose addresses are used in any topic
@@ -352,9 +456,9 @@ func ReadEoa(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (uint64
 	return id, nil
 }
 
-func WriteContractConfig(ctx context.Context, dbTX *sql.Tx, contractAddress gethcommon.Address, eoaId uint64, cfg *core.ContractVisibilityConfig) (*uint64, error) {
-	insert := "insert into contract (address, creator, auto_visibility, transparent) values (?,?,?,?)"
-	res, err := dbTX.ExecContext(ctx, insert, contractAddress.Bytes(), eoaId, cfg.AutoConfig, cfg.Transparent)
+func WriteContractConfig(ctx context.Context, dbTX *sql.Tx, contractAddress gethcommon.Address, eoaId uint64, cfg *core.ContractVisibilityConfig, txId uint64) (*uint64, error) {
+	insert := "insert into contract (address, creator, auto_visibility, transparent, tx) values (?,?,?,?,?)"
+	res, err := dbTX.ExecContext(ctx, insert, contractAddress.Bytes(), eoaId, cfg.AutoConfig, cfg.Transparent, txId)
 	if err != nil {
 		return nil, err
 	}

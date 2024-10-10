@@ -9,7 +9,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/measure"
@@ -35,7 +34,7 @@ func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql
 
 	// store the contracts created by this tx
 	for createdContract, cfg := range txExecResult.CreatedContracts {
-		err := es.storeNewContractWithEventTypeConfigs(ctx, dbTX, createdContract, senderId, cfg)
+		err := es.storeNewContractWithEventTypeConfigs(ctx, dbTX, createdContract, senderId, cfg, *txId)
 		if err != nil {
 			return err
 		}
@@ -56,8 +55,8 @@ func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql
 	return nil
 }
 
-func (es *eventsStorage) storeNewContractWithEventTypeConfigs(ctx context.Context, dbTX *sql.Tx, contractAddr gethcommon.Address, senderId *uint64, cfg *core.ContractVisibilityConfig) error {
-	_, err := enclavedb.WriteContractConfig(ctx, dbTX, contractAddr, *senderId, cfg)
+func (es *eventsStorage) storeNewContractWithEventTypeConfigs(ctx context.Context, dbTX *sql.Tx, contractAddr gethcommon.Address, senderId *uint64, cfg *core.ContractVisibilityConfig, txId uint64) error {
+	_, err := enclavedb.WriteContractConfig(ctx, dbTX, contractAddr, *senderId, cfg, txId)
 	if err != nil {
 		return fmt.Errorf("could not write contract address. cause %w", err)
 	}
@@ -86,17 +85,8 @@ func (es *eventsStorage) storeNewContractWithEventTypeConfigs(ctx context.Contex
 	return nil
 }
 
-// Convert the receipt into its storage form and serialize
-// this removes information that can be recreated
-// todo - in a future iteration, this can be slimmed down further because we already store the logs separately
 func (es *eventsStorage) storeReceipt(ctx context.Context, dbTX *sql.Tx, batch *common.BatchHeader, txExecResult *core.TxExecResult, txId *uint64) (uint64, error) {
-	storageReceipt := (*types.ReceiptForStorage)(txExecResult.Receipt)
-	receiptBytes, err := rlp.EncodeToBytes(storageReceipt)
-	if err != nil {
-		return 0, fmt.Errorf("failed to encode block receipts. Cause: %w", err)
-	}
-
-	execTxId, err := enclavedb.WriteReceipt(ctx, dbTX, batch.SequencerOrderNo.Uint64(), txId, receiptBytes)
+	execTxId, err := enclavedb.WriteReceipt(ctx, dbTX, batch.SequencerOrderNo.Uint64(), txId, txExecResult.Receipt)
 	if err != nil {
 		return 0, fmt.Errorf("could not write receipt. Cause: %w", err)
 	}

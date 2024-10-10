@@ -126,6 +126,7 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
 }
+
 func (c *inMemTenClient) getCode(result interface{}, args []interface{}) error {
 	address, ok := args[0].(gethcommon.Address)
 	if !ok {
