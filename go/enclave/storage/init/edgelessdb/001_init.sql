@@ -87,7 +87,7 @@ create table if not exists tendb.tx
     id             INTEGER AUTO_INCREMENT,
     hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
-    to_address     binary(20),
+    to_address     int,
     type           int8       NOT NULL,
     sender_address int        NOT NULL,
     idx            int        NOT NULL,

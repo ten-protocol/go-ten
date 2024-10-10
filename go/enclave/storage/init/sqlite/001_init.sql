@@ -82,7 +82,7 @@ create table if not exists tx
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
-    to_address     binary(20),
+    to_address     int,
     type           int8       NOT NULL,
     sender_address int        NOT NULL REFERENCES externally_owned_account,
     idx            int        NOT NULL,

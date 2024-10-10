@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/params"
-
 	"github.com/ethereum/go-ethereum/core/types"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -16,10 +14,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
-)
-
-const (
-	queryReceipts = "select receipt.post_state, receipt.status, receipt.cumulative_gas_used, receipt.effective_gas_price, receipt.created_contract_address, tx.content, batch.hash, batch.height from receipt join tx on tx.id=receipt.tx join batch on batch.sequence=receipt.batch "
 )
 
 func WriteBatchHeader(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, convertedHash gethcommon.Hash, blockId int64, isCanonical bool) error {
@@ -68,7 +62,7 @@ func ExistsBatchAtHeight(ctx context.Context, dbTx *sql.Tx, height *big.Int) (bo
 }
 
 // WriteTransactions - persists the batch and the transactions
-func WriteTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, senders []*uint64) error {
+func WriteTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, senders []*uint64, toContracts []*uint64) error {
 	// creates a batch insert statement for all entries
 	if len(batch.Transactions) > 0 {
 		insert := "insert into tx (hash, content, to_address, type, sender_address, idx, batch_height) values " + repeat("(?,?,?,?,?,?,?)", ",", len(batch.Transactions))
@@ -80,15 +74,9 @@ func WriteTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, sen
 				return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 			}
 
-			to := transaction.To()
-			var toBytes []byte = nil
-			if to != nil {
-				toBytes = transaction.To().Bytes()
-			}
-
 			args = append(args, transaction.Hash())           // tx_hash
 			args = append(args, txBytes)                      // content
-			args = append(args, toBytes)                      // To
+			args = append(args, toContracts[i])               // To
 			args = append(args, transaction.Type())           // Type
 			args = append(args, senders[i])                   // sender_address
 			args = append(args, i)                            // idx
@@ -263,58 +251,13 @@ func fetchBatches(ctx context.Context, db *sql.DB, whereQuery string, args ...an
 	return result, nil
 }
 
-// todo - change
-func selectReceipts(ctx context.Context, db *sql.DB, config *params.ChainConfig, query string, args ...any) (types.Receipts, error) {
-	var allReceipts types.Receipts
-
-	// where batch=?
-	rows, err := db.QueryContext(ctx, queryReceipts+" "+query, args...)
+func ReadReceipt(ctx context.Context, db *sql.DB, txHash common.L2TxHash, requester *gethcommon.Address) (*core.BareReceipt, error) {
+	rec, _, err := loadReceiptsAndEventLogs(ctx, db, requester, " AND curr_tx.hash=?", []any{txHash.Bytes()}, "", nil, true)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// make sure the error is converted to obscuro-wide not found error
-			return nil, errutil.ErrNotFound
-		}
 		return nil, err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		// receipt, tx, batch, height
-		var receiptData []byte
-		var txData []byte
-		var batchHash []byte
-		var height uint64
-		err := rows.Scan(&receiptData, &txData, &batchHash, &height)
-		if err != nil {
-			return nil, err
-		}
-		tx := new(common.L2Tx)
-		if err := rlp.DecodeBytes(txData, tx); err != nil {
-			return nil, fmt.Errorf("could not decode L2 transaction. Cause: %w", err)
-		}
-		transactions := []*common.L2Tx{tx}
-
-		storageReceipt := new(types.ReceiptForStorage)
-		if err := rlp.DecodeBytes(receiptData, storageReceipt); err != nil {
-			return nil, fmt.Errorf("unable to decode receipt. Cause : %w", err)
-		}
-		receipts := (types.Receipts)([]*types.Receipt{(*types.Receipt)(storageReceipt)})
-
-		hash := common.L2BatchHash{}
-		hash.SetBytes(batchHash)
-		if err = receipts.DeriveFields(config, hash, height, 0, big.NewInt(0), big.NewInt(0), transactions); err != nil {
-			return nil, fmt.Errorf("failed to derive block receipts fields. hash = %s; number = %d; err = %w", hash, height, err)
-		}
-		allReceipts = append(allReceipts, receipts[0])
-	}
-	if rows.Err() != nil {
-		return nil, rows.Err()
-	}
-
-	return allReceipts, nil
-}
-
-func ReadReceipt(ctx context.Context, db *sql.DB, txHash common.L2TxHash, requester *gethcommon.Address) (*BareReceipt, []*types.Log, error) {
-	return loadLogs(ctx, db, requester, "", nil, true, &txHash)
+	// there should be only a single receipt
+	return rec[0], nil
 }
 
 func ReadTransaction(ctx context.Context, db *sql.DB, txHash gethcommon.Hash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error) {
@@ -408,8 +351,12 @@ func BatchWasExecuted(ctx context.Context, db *sql.DB, hash common.L2BatchHash) 
 	return result, nil
 }
 
-func GetTransactionsPerAddress(ctx context.Context, db *sql.DB, config *params.ChainConfig, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
-	return selectReceipts(ctx, db, config, "join externally_owned_account eoa on tx.sender_address = eoa.id where eoa.address = ? ORDER BY height DESC LIMIT ? OFFSET ? ", address.Bytes(), pagination.Size, pagination.Offset)
+func GetTransactionsPerAddress(ctx context.Context, db *sql.DB, address *gethcommon.Address, pagination *common.QueryPagination) ([]*core.BareReceipt, error) {
+	receipts, _, err := loadReceiptsAndEventLogs(ctx, db, address, " AND eoatx.address = ? ", []any{address.Bytes()}, " ORDER BY b.height DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset}, true)
+	if err != nil {
+		return nil, err
+	}
+	return receipts, nil
 }
 
 func CountTransactionsPerAddress(ctx context.Context, db *sql.DB, address *gethcommon.Address) (uint64, error) {
