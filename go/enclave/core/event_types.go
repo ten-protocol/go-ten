@@ -35,8 +35,8 @@ type TxExecResult struct {
 	Err              error
 }
 
-// BareReceipt - receipt data stored in the database
-type BareReceipt struct {
+// InternalReceipt - Equivalent to the geth types.Receipt, but without weird quirks
+type InternalReceipt struct {
 	PostState         []byte
 	Status            uint64
 	CumulativeGasUsed uint64
@@ -55,7 +55,7 @@ type BareReceipt struct {
 
 // MarshalToJson marshals a transaction receipt into a JSON object.
 // taken from geth
-func (receipt *BareReceipt) MarshalToJson() map[string]interface{} {
+func (receipt *InternalReceipt) MarshalToJson() map[string]interface{} {
 	var effGasPrice *hexutil.Big
 	if receipt.EffectiveGasPrice != nil {
 		effGasPrice = (*hexutil.Big)(big.NewInt(int64(*receipt.EffectiveGasPrice)))
@@ -90,10 +90,10 @@ func (receipt *BareReceipt) MarshalToJson() map[string]interface{} {
 	return fields
 }
 
-func (receipt *BareReceipt) ToReceipt() *types.Receipt {
+func (receipt *InternalReceipt) ToReceipt() *types.Receipt {
 	var effGasPrice *big.Int
 	if receipt.EffectiveGasPrice != nil {
-		effGasPrice = (big.NewInt(int64(*receipt.EffectiveGasPrice)))
+		effGasPrice = big.NewInt(int64(*receipt.EffectiveGasPrice))
 	}
 
 	return &types.Receipt{

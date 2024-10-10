@@ -243,7 +243,7 @@ func bytesToAddress(b []byte) *gethcommon.Address {
 // returns either receipts with logs, or only logs
 // this complexity is necessary to avoid executing multiple queries.
 // todo always pass in the actual batch hashes because of reorgs, or make sure to clean up log entries from discarded batches
-func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, orderBy string, orderByParams []any, withReceipts bool) ([]*core.BareReceipt, []*types.Log, error) {
+func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, orderBy string, orderByParams []any, withReceipts bool) ([]*core.InternalReceipt, []*types.Log, error) {
 	logsQuery := " et.event_sig, t1.topic, t2.topic, t3.topic, datablob, log_idx, b.hash, b.height, curr_tx.hash, curr_tx.idx, c.address "
 	receiptQuery := " rec.post_state, rec.status, rec.cumulative_gas_used, rec.effective_gas_price, rec.created_contract_address, curr_tx.content, eoatx.address, tx_contr.address, curr_tx.type "
 
@@ -283,7 +283,7 @@ func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount
 	}
 	defer rows.Close()
 
-	receipts := make([]*core.BareReceipt, 0)
+	receipts := make([]*core.InternalReceipt, 0)
 	logList := make([]*types.Log, 0)
 
 	empty := true
@@ -311,8 +311,8 @@ func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount
 	return nil, logList, nil
 }
 
-func groupReceiptAndLogs(receipts []*core.BareReceipt, logs []*types.Log) []*core.BareReceipt {
-	recMap := make(map[gethcommon.Hash]*core.BareReceipt)
+func groupReceiptAndLogs(receipts []*core.InternalReceipt, logs []*types.Log) []*core.InternalReceipt {
+	recMap := make(map[gethcommon.Hash]*core.InternalReceipt)
 	logMap := make(map[gethcommon.Hash][]*types.Log)
 	for _, r := range receipts {
 		recMap[r.TxHash] = r
@@ -325,7 +325,7 @@ func groupReceiptAndLogs(receipts []*core.BareReceipt, logs []*types.Log) []*cor
 		}
 		logMap[log.TxHash] = append(logList, log)
 	}
-	result := make([]*core.BareReceipt, 0)
+	result := make([]*core.InternalReceipt, 0)
 	for txHash, receipt := range recMap {
 		receipt.Logs = logMap[txHash]
 		result = append(result, receipt)
@@ -333,11 +333,11 @@ func groupReceiptAndLogs(receipts []*core.BareReceipt, logs []*types.Log) []*cor
 	return result
 }
 
-func onRow(rows *sql.Rows, withReceipts bool) (*core.BareReceipt, *types.Log, error) {
+func onRow(rows *sql.Rows, withReceipts bool) (*core.InternalReceipt, *types.Log, error) {
 	l := types.Log{
 		Topics: make([]gethcommon.Hash, 0),
 	}
-	r := core.BareReceipt{}
+	r := core.InternalReceipt{}
 
 	var t0, t1, t2, t3 []byte
 	var logIndex, txIndex *uint

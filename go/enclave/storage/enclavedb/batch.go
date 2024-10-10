@@ -251,7 +251,7 @@ func fetchBatches(ctx context.Context, db *sql.DB, whereQuery string, args ...an
 	return result, nil
 }
 
-func ReadReceipt(ctx context.Context, db *sql.DB, txHash common.L2TxHash, requester *gethcommon.Address) (*core.BareReceipt, error) {
+func ReadReceipt(ctx context.Context, db *sql.DB, txHash common.L2TxHash, requester *gethcommon.Address) (*core.InternalReceipt, error) {
 	rec, _, err := loadReceiptsAndEventLogs(ctx, db, requester, " AND curr_tx.hash=?", []any{txHash.Bytes()}, "", nil, true)
 	if err != nil {
 		return nil, err
@@ -351,7 +351,7 @@ func BatchWasExecuted(ctx context.Context, db *sql.DB, hash common.L2BatchHash) 
 	return result, nil
 }
 
-func GetTransactionsPerAddress(ctx context.Context, db *sql.DB, address *gethcommon.Address, pagination *common.QueryPagination) ([]*core.BareReceipt, error) {
+func GetTransactionsPerAddress(ctx context.Context, db *sql.DB, address *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
 	receipts, _, err := loadReceiptsAndEventLogs(ctx, db, address, " AND eoatx.address = ? ", []any{address.Bytes()}, " ORDER BY b.height DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset}, true)
 	if err != nil {
 		return nil, err
