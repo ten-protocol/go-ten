@@ -26,7 +26,7 @@ func SQLiteSQLStatements() *SQLStatements {
 		InsertTransactions: "INSERT INTO transaction_host (hash, b_sequence) VALUES ",
 		UpdateTxCount:      "UPDATE transaction_count SET total=? WHERE id=1",
 		InsertRollup:       "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) values (?,?,?,?,?,?)",
-		InsertBlock:        "INSERT INTO block_host (hash, header) values (?,?)",
+		InsertBlock:        "INSERT OR REPLACE INTO block_host (hash, header) values (?,?)",
 		Pagination:         "LIMIT ? OFFSET ?",
 		Placeholder:        "?",
 	}

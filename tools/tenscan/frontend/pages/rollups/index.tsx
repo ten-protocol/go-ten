@@ -1,13 +1,13 @@
 import React from "react";
-import { DataTable } from "@/src/components/modules/common/data-table/data-table";
+import { DataTable } from "@repo/ui/components/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import { Metadata } from "next";
 import { columns } from "@/src/components/modules/rollups/columns";
-import { getItem } from "@/src/lib/utils";
-import { ItemPosition } from "@/src/types/interfaces";
+import { getItem } from "@repo/ui/lib/utils";
 import HeadSeo from "@/src/components/head-seo";
 import { siteMetadata } from "@/src/lib/siteMetadata";
+import { ItemPosition } from "@repo/ui/lib/enums/ui";
 
 export const metadata: Metadata = {
   title: "Rollups",
@@ -15,21 +15,11 @@ export const metadata: Metadata = {
 };
 
 export default function Rollups() {
-  const { rollups, setNoPolling, isRollupsLoading, refetchRollups } =
-    useRollupsService();
+  const { rollups, isRollupsLoading, refetchRollups } = useRollupsService();
   const { RollupsData, Total } = rollups?.result || {
     RollupsData: [],
     Total: 0,
   };
-
-  React.useEffect(() => {
-    setNoPolling(true);
-
-    return () => {
-      setNoPolling(false);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const firstRollupID = Number(getItem(RollupsData, "ID"));
   const lastRollupID = Number(getItem(RollupsData, "ID", ItemPosition.LAST));

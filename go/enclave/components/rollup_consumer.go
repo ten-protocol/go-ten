@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -49,10 +49,10 @@ func NewRollupConsumer(
 }
 
 // ProcessBlobsInBlock - processes the blobs in a block, extracts the rollups, verifies the rollups and stores them
-func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts, blobs []*kzg4844.Blob) error {
+func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts) error {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", log.BlockHashKey, b.BlockHeader.Hash())
 
-	rollups, err := rc.extractAndVerifyRollups(b, blobs)
+	rollups, err := rc.extractAndVerifyRollups(b)
 	if err != nil {
 		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, b.BlockHeader.Hash(), log.ErrKey, err)
 		return err
@@ -121,15 +121,12 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 // It processes each transaction, attempting to extract and verify rollups
 // If a transaction is not a rollup or fails verification, it's skipped
 // The function only returns an error if there's a critical failure in rollup reconstruction
-func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipts, blobs []*kzg4844.Blob) ([]*common.ExtRollup, error) {
+func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipts) ([]*common.ExtRollup, error) {
 	rollups := make([]*common.ExtRollup, 0, len(*br.RelevantTransactions()))
 	b := br.BlockHeader
-
-	// precompute the blob hashes
-	var blobHashes []gethcommon.Hash
-	var err error
-	if _, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
-		return nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
+	blobs, blobHashes, err := rc.extractBlobsAndHashes(br)
+	if err != nil {
+		return nil, err
 	}
 
 	for i, tx := range *br.RelevantTransactions() {
@@ -173,4 +170,20 @@ func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []geth
 		}
 	}
 	return nil
+}
+
+func (rc *rollupConsumerImpl) extractBlobsAndHashes(br *common.BlockAndReceipts) ([]*kzg4844.Blob, []gethcommon.Hash, error) {
+	blobs := make([]*kzg4844.Blob, 0)
+	for _, txWithReceipt := range br.TxsWithReceipts {
+		if txWithReceipt.Blobs != nil {
+			blobs = append(blobs, txWithReceipt.Blobs...)
+		}
+	}
+
+	_, blobHashes, err := ethadapter.MakeSidecar(blobs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
+	}
+
+	return blobs, blobHashes, nil
 }

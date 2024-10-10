@@ -28,9 +28,10 @@ type Status struct {
 	L2Head     *big.Int
 }
 
-type TxAndReceipt struct {
+type TxAndReceiptAndBlobs struct {
 	Tx      *types.Transaction
 	Receipt *types.Receipt
+	Blobs   []*kzg4844.Blob
 }
 
 const (
@@ -64,7 +65,7 @@ type Enclave interface {
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*TxAndReceipt, blobs []*kzg4844.Blob) (*BlockSubmissionResponse, SystemError)
+	SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*TxAndReceiptAndBlobs) (*BlockSubmissionResponse, SystemError)
 
 	// SubmitTx - user transactions
 	SubmitTx(ctx context.Context, tx EncryptedTx) (*responses.RawTx, SystemError)

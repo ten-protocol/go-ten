@@ -4,7 +4,7 @@ import {
   fetchLatestRollups,
   fetchRollups,
 } from "@/api/rollups";
-import { toast } from "@/src/components/ui/use-toast";
+import { toast } from "@repo/ui/components/shared/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { getOptions, pollingInterval } from "../lib/constants";
@@ -13,7 +13,7 @@ import { useRouter } from "next/router";
 export const useRollupsService = () => {
   const { query } = useRouter();
 
-  const [noPolling, setNoPolling] = useState(false);
+  const [noPolling, setNoPolling] = useState(true);
   const [decryptedRollup, setDecryptedRollup] = useState<any>();
 
   const options = getOptions(query);

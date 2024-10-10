@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-
 	"github.com/ten-protocol/go-ten/go/common/compression"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
@@ -417,7 +415,7 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceipt, blobs []*kzg4844.Blob) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveImpl) SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceiptAndBlobs) (*common.BlockSubmissionResponse, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitL1Block with the enclave stopping"))
 	}
@@ -433,7 +431,7 @@ func (e *enclaveImpl) SubmitL1Block(ctx context.Context, blockHeader *types.Head
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	result, err := e.ingestL1Block(ctx, br, blobs)
+	result, err := e.ingestL1Block(ctx, br)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
@@ -451,7 +449,7 @@ func (e *enclaveImpl) SubmitL1Block(ctx context.Context, blockHeader *types.Head
 	return bsr, nil
 }
 
-func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndReceipts, blobs []*kzg4844.Blob) (*components.BlockIngestionType, error) {
+func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndReceipts) (*components.BlockIngestionType, error) {
 	e.logger.Info("Start ingesting block", log.BlockHashKey, br.BlockHeader.Hash())
 	ingestion, err := e.l1BlockProcessor.Process(ctx, br)
 	if err != nil {
@@ -464,7 +462,7 @@ func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndRece
 		return nil, err
 	}
 
-	err = e.rollupConsumer.ProcessBlobsInBlock(ctx, br, blobs)
+	err = e.rollupConsumer.ProcessBlobsInBlock(ctx, br)
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored

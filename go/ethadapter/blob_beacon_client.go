@@ -38,10 +38,12 @@ type BlobRetrievalService interface {
 }
 
 type L1BeaconClient struct {
-	cl           BeaconClient
-	pool         *ClientPool[BlobRetrievalService]
-	initLock     sync.Mutex
-	timeToSlotFn TimeToSlot
+	cl             BeaconClient
+	pool           *ClientPool[BlobRetrievalService]
+	initLock       sync.Mutex
+	genesisTime    uint64
+	secondsPerSlot uint64
+	timeToSlotFn   TimeToSlot
 }
 
 // TimeToSlot cache the function to avoid recomputing it for every block.
@@ -137,34 +139,45 @@ func NewL1BeaconClient(cl BeaconClient, fallbacks ...BlobRetrievalService) *L1Be
 	}
 }
 
-// GetTimeToSlot returns a function that converts a timestamp to a slot number.
-func (cl *L1BeaconClient) GetTimeToSlot(ctx context.Context) (TimeToSlot, error) {
-	cl.initLock.Lock()
-	defer cl.initLock.Unlock()
-	if cl.timeToSlotFn != nil {
-		return cl.timeToSlotFn, nil
-	}
-
+func (cl *L1BeaconClient) Init(ctx context.Context) error {
 	genesis, err := cl.cl.BeaconGenesis(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	config, err := cl.cl.ConfigSpec(ctx)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	secondsPerSlot := config.Data.SecondsPerSlot
+	if secondsPerSlot == 0 {
+		return fmt.Errorf("bad value for seconds per slot: %v", config.Data.SecondsPerSlot)
+	}
+	cl.genesisTime = uint64(genesis.Data.GenesisTime)
+	cl.secondsPerSlot = uint64(secondsPerSlot)
+	return nil
+}
+
+// GetTimeToSlot returns a function that converts a timestamp to a slot number.
+func (cl *L1BeaconClient) GetTimeToSlot(ctx context.Context) (TimeToSlot, error) {
+	cl.initLock.Lock()
+	defer cl.initLock.Unlock()
+
+	if cl.genesisTime == 0 || cl.secondsPerSlot == 0 {
+		if err := cl.Init(ctx); err != nil {
+			return nil, fmt.Errorf("failed to initialize beacon client: %w", err)
+		}
 	}
 
-	genesisTime := uint64(genesis.Data.GenesisTime)
-	secondsPerSlot := uint64(config.Data.SecondsPerSlot)
-	if secondsPerSlot == 0 {
-		return nil, fmt.Errorf("got bad value for seconds per slot: %v", config.Data.SecondsPerSlot)
+	if cl.timeToSlotFn != nil {
+		return cl.timeToSlotFn, nil
 	}
+
 	cl.timeToSlotFn = func(timestamp uint64) (uint64, error) {
-		if timestamp < genesisTime {
-			return 0, fmt.Errorf("provided timestamp (%v) precedes genesis time (%v)", timestamp, genesisTime)
+		if timestamp < cl.genesisTime {
+			return 0, fmt.Errorf("provided timestamp (%v) precedes genesis time (%v)", timestamp, cl.genesisTime)
 		}
-		return (timestamp - genesisTime) / secondsPerSlot, nil
+		return (timestamp - cl.genesisTime) / cl.secondsPerSlot, nil
 	}
 	return cl.timeToSlotFn, nil
 }
@@ -255,11 +268,11 @@ func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([
 }
 
 // MatchSidecarsWithHashes matches the fetched sidecars with the provided hashes.
-func MatchSidecarsWithHashes(fetchedSidecars []*APIBlobSidecar, hashes []gethcommon.Hash) ([]*BlobSidecar, error) {
+func MatchSidecarsWithHashes(fetchedSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([]*BlobSidecar, error) {
 	sidecarMap := make(map[gethcommon.Hash]*BlobSidecar)
 	for _, sidecar := range fetchedSidecars {
 		versionedHash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
-		sidecarMap[versionedHash] = sidecar.BlobSidecar()
+		sidecarMap[versionedHash] = sidecar
 	}
 
 	blobSidecars := make([]*BlobSidecar, len(hashes))

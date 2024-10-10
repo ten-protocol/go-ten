@@ -4,8 +4,6 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
@@ -104,7 +102,9 @@ type L1Publisher interface {
 	// RequestSecret will send a management contract transaction to request a secret from the enclave, returning the L1 head at time of sending
 	RequestSecret(report *common.AttestationReport) (gethcommon.Hash, error)
 	// ExtractRelevantTenTransactions will return all TEN relevant tx from an L1 block
-	ExtractRelevantTenTransactions(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*kzg4844.Blob, []*ethadapter.L1SetImportantContractsTx)
+	ExtractRelevantTenTransactions(block *types.Block, receipts types.Receipts) ([]*common.TxAndReceiptAndBlobs, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx)
+	// FindSecretResponseTx will return the secret response tx from an L1 block
+	FindSecretResponseTx(block *types.Block) []*ethadapter.L1RespondSecretTx
 	// PublishRollup will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
 	// todo (#1624) - With a single sequencer, it is problematic if rollup publication fails; handle this case better
 	PublishRollup(producedRollup *common.ExtRollup)

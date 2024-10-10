@@ -16,15 +16,17 @@ const (
 	versionedHashPrefix = "/v1/blob/"
 )
 
-type ArchivalBlobResponse struct {
-	Blob struct {
-		VersionedHash string `json:"versionedHash"`
-		Commitment    string `json:"commitment"`
-		Proof         string `json:"proof"`
-		Data          string `json:"data"`
-	} `json:"blob"`
+type APIBlobData struct {
+	VersionedHash string `json:"versionedHash"`
+	Commitment    string `json:"commitment"`
+	Proof         string `json:"proof"`
+	Data          string `json:"data"`
 }
 
+// ArchivalBlobResponse nested struct is needed to match the structure of the API response
+type ArchivalBlobResponse struct {
+	Blob APIBlobData `json:"blob"`
+}
 type ArchivalHTTPClient struct {
 	httpClient *BaseHTTPClient
 }
@@ -37,7 +39,7 @@ func NewArchivalHTTPClient(client *http.Client, baseURL string) *ArchivalHTTPCli
 
 func (ac *ArchivalHTTPClient) BeaconBlobSidecars(ctx context.Context, _ uint64, hashes []gethcommon.Hash) (APIGetBlobSidecarsResponse, error) {
 	var resp APIGetBlobSidecarsResponse
-	resp.Data = make([]*APIBlobSidecar, 0, len(hashes))
+	resp.Data = make([]*BlobSidecar, 0, len(hashes))
 
 	for i, hash := range hashes {
 		var archivalResp ArchivalBlobResponse
@@ -47,7 +49,7 @@ func (ac *ArchivalHTTPClient) BeaconBlobSidecars(ctx context.Context, _ uint64, 
 			return APIGetBlobSidecarsResponse{}, fmt.Errorf("failed to fetch blob for hash %s: %w", hash.Hex(), err)
 		}
 
-		blobSidecar, err := convertToAPIBlobSidecar(&archivalResp, i)
+		blobSidecar, err := convertToSidecar(&archivalResp, i)
 		if err != nil {
 			return APIGetBlobSidecarsResponse{}, fmt.Errorf("failed to convert blob for hash %s: %w", hash.Hex(), err)
 		}
@@ -62,7 +64,7 @@ func (ac *ArchivalHTTPClient) request(ctx context.Context, dest any, reqPath str
 	return ac.httpClient.Request(ctx, dest, reqPath, nil)
 }
 
-func convertToAPIBlobSidecar(archivalResp *ArchivalBlobResponse, index int) (*APIBlobSidecar, error) {
+func convertToSidecar(archivalResp *ArchivalBlobResponse, index int) (*BlobSidecar, error) {
 	blobData, err := hex.DecodeString(strings.TrimPrefix(archivalResp.Blob.Data, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode blob data: %w", err)
@@ -81,7 +83,7 @@ func convertToAPIBlobSidecar(archivalResp *ArchivalBlobResponse, index int) (*AP
 		return nil, fmt.Errorf("failed to decode proof: %w", err)
 	}
 
-	return &APIBlobSidecar{
+	return &BlobSidecar{
 		Blob:          blob,
 		KZGCommitment: commitment,
 		KZGProof:      proof,
