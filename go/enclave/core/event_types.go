@@ -114,3 +114,5 @@ func (receipt *BareReceipt) ToReceipt() *types.Receipt {
 		TransactionIndex:  receipt.TransactionIndex,
 	}
 }
+
+type TxExecResults []*TxExecResult

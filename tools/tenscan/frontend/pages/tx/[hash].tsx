@@ -1,15 +1,15 @@
 import { fetchTransactionByHash } from "@/api/transactions";
 import Layout from "@/src/components/layouts/default-layout";
 import { TransactionDetailsComponent } from "@/src/components/modules/transactions/transaction-details";
-import EmptyState from "@/src/components/modules/common/empty-state";
-import { Button } from "@/src/components/ui/button";
+import EmptyState from "@repo/ui/components/common/empty-state";
+import LoadingState from "@repo/ui/components/common/loading-state";
+import { Button } from "@repo/ui/components/shared/button";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-} from "@/src/components/ui/card";
-import { Skeleton } from "@/src/components/ui/skeleton";
+} from "@repo/ui/components/shared/card";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 
@@ -28,14 +28,7 @@ export default function TransactionDetails() {
     <Layout>
       <Card className="col-span-3">
         {isLoading ? (
-          <>
-            <Skeleton className="h-10 w-100" />
-            <Skeleton className="h-10 w-100" />
-            <Skeleton className="h-10 w-100" />
-            <Skeleton className="h-10 w-100" />
-            <Skeleton className="h-10 w-100" />
-            <Skeleton className="h-10 w-100" />
-          </>
+          <LoadingState />
         ) : transactionDetails ? (
           <>
             <CardHeader>

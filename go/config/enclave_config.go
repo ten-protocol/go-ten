@@ -161,7 +161,7 @@ func retrieveEnvFlags() (map[string]*flag.TenFlag, error) {
 func newConfig(flags map[string]*flag.TenFlag) (*EnclaveConfig, error) {
 	cfg := &EnclaveConfig{
 		// hardcoding for now
-		RPCTimeout: 5 * time.Second,
+		RPCTimeout: 120 * time.Second,
 	}
 
 	nodeType, err := common.ToNodeType(flags[NodeTypeFlag].String())
