@@ -1,10 +1,10 @@
 import { MainNav } from "../main-nav";
 import { ModeToggle } from "../mode-toggle";
-import ConnectWalletButton from "../modules/common/connect-wallet";
+import ConnectWalletButton from "@repo/ui/components/common/connect-wallet";
 import Link from "next/link";
-import { HamburgerMenuIcon } from "@radix-ui/react-icons";
+import { HamburgerMenuIcon } from "@repo/ui/components/shared/react-icons";
 import { useState } from "react";
-import { Button } from "../ui/button";
+import { Button } from "@repo/ui/components/shared/button";
 import HealthIndicator from "../health-indicator";
 import Image from "next/image";
 

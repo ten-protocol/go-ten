@@ -4,11 +4,12 @@ import {
   getToken,
 } from "@/api/ethRequests";
 import { accountIsAuthenticated } from "@/api/gateway";
-import { showToast } from "@/components/ui/use-toast";
 import { METAMASK_CONNECTION_TIMEOUT } from "@/lib/constants";
-import { isTenChain, isValidTokenFormat, ethereum } from "@/lib/utils";
-import { ToastType } from "@/types/interfaces";
+import { isTenChain, isValidTokenFormat } from "@/lib/utils";
+import { ToastType } from "@repo/ui/lib/enums/toast";
 import { Account } from "@/types/interfaces/WalletInterfaces";
+import { ethereum } from "@repo/ui/lib/utils";
+import { showToast } from "@repo/ui/components/shared/use-toast";
 
 const ethService = {
   checkIfMetamaskIsLoaded: async (provider: ethers.providers.Web3Provider) => {

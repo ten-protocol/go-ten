@@ -4,20 +4,21 @@ import {
   WalletConnectionProviderProps,
   Account,
 } from "../../types/interfaces/WalletInterfaces";
-import { showToast } from "../ui/use-toast";
-import { ethereum, isValidTokenFormat } from "../../lib/utils";
+import { isValidTokenFormat } from "../../lib/utils";
 import {
   accountIsAuthenticated,
   fetchVersion,
   revokeAccountsApi,
 } from "../../api/gateway";
-import { ToastType } from "@/types/interfaces";
+import { ToastType } from "@repo/ui/lib/enums/toast";
 import {
   authenticateAccountWithTenGatewayEIP712,
   getToken,
 } from "@/api/ethRequests";
 import { ethers } from "ethers";
 import ethService from "@/services/ethService";
+import { showToast } from "@repo/ui/components/shared/use-toast";
+import { ethereum } from "@repo/ui/lib/utils";
 
 const WalletConnectionContext =
   createContext<WalletConnectionContextType | null>(null);
@@ -67,9 +68,11 @@ export const WalletConnectionProvider = ({
       setVersion(await fetchVersion());
     } catch (error) {
       showToast(
-          ToastType.DESTRUCTIVE,
-      error instanceof Error ? error.message : "Error initializing wallet connection. Please refresh the page."
-    );
+        ToastType.DESTRUCTIVE,
+        error instanceof Error
+          ? error.message
+          : "Error initializing wallet connection. Please refresh the page."
+      );
     } finally {
       setLoading(false);
     }

@@ -7,13 +7,7 @@ import { cn, downloadMetaMask, ethereum } from "../../lib/utils";
 import useWalletStore from "../../stores/wallet-store";
 import TruncatedAddress from "./truncated-address";
 import { Button } from "../shared/button";
-import { ButtonVariants } from "../../lib/types/ui";
-
-interface ConnectWalletButtonProps {
-  className?: string;
-  variant?: ButtonVariants;
-  text?: string;
-}
+import { ConnectWalletButtonProps } from "../../lib/interfaces/ui";
 
 const ConnectWalletButton = ({
   className,

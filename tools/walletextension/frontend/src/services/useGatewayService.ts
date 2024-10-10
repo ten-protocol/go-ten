@@ -1,7 +1,6 @@
-import { ToastType } from "@/types/interfaces";
+import { showToast } from "@repo/ui/components/shared/use-toast";
 import { joinTestnet } from "../api/gateway";
 import { useWalletConnection } from "../components/providers/wallet-provider";
-import { showToast } from "../components/ui/use-toast";
 import {
   SWITCHED_CODE,
   tenGatewayAddress,
@@ -15,6 +14,7 @@ import {
   switchToTenNetwork,
 } from "@/api/ethRequests";
 import { fetchTestnetStatus } from "@/api/general";
+import { ToastType } from "@repo/ui/lib/enums/toast";
 
 const useGatewayService = () => {
   const { token, provider, fetchUserAccounts, setLoading } =

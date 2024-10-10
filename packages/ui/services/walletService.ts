@@ -55,9 +55,9 @@ export const walletService = {
   proceedWithProviderInitialization: async (set: StoreSet, get: StoreGet) => {
     try {
       const { provider: detectedProvider } = get();
-      const accounts = await detectedProvider?.send("eth_requestAccounts", []);
 
       const signer = await initializeSigner(detectedProvider!);
+      const accounts = await walletService.getAccounts(detectedProvider!);
       const network = await detectedProvider?.getNetwork();
       const chainId = network?.chainId;
       const expectedChainId = currentNetwork.l2;
@@ -187,6 +187,23 @@ export const walletService = {
       handleError(error, "Error switching network");
     } finally {
       set({ loading: false });
+    }
+  },
+
+  getAccounts: async (detectedProvider: ethers.providers.Web3Provider) => {
+    try {
+      const accounts = await detectedProvider?.send("eth_requestAccounts", []);
+      if (accounts.length === 0) {
+        toast({
+          description: "No accounts found.",
+          variant: ToastType.DESTRUCTIVE,
+        });
+        return [];
+      }
+      return accounts;
+    } catch (error) {
+      console.error("Error getting accounts:", error);
+      throw error;
     }
   },
 };
