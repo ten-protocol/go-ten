@@ -56,8 +56,8 @@ Example:
 Once the backend is running, navigate to the `tools/walletextension/frontend` directory and execute the following commands:
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 The frontend will be accessible on `http://localhost:3000`.

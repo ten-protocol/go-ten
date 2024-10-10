@@ -1,16 +1,16 @@
 import { fetchRollupByHash } from "@/api/rollups";
 import Layout from "@/src/components/layouts/default-layout";
 import { RollupDetailsComponent } from "@/src/components/modules/rollups/rollup-details";
-import EmptyState from "@/src/components/modules/common/empty-state";
-import { Button } from "@/src/components/ui/button";
+import EmptyState from "@repo/ui/components/common/empty-state";
+import LoadingState from "@repo/ui/components/common/loading-state";
+import { Button } from "@repo/ui/components/shared/button";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
   CardDescription,
-} from "@/src/components/ui/card";
-import { Skeleton } from "@/src/components/ui/skeleton";
+} from "@repo/ui/components/shared/card";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 
@@ -28,7 +28,7 @@ export default function RollupDetails() {
   return (
     <Layout>
       {isLoading ? (
-        <Skeleton className="h-full w-full" />
+        <LoadingState numberOfItems={10} />
       ) : rollupDetails ? (
         <Card className="col-span-3">
           <CardHeader>

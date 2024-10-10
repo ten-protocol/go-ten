@@ -1,13 +1,13 @@
 import React from "react";
-import Layout from "@/src/components/layouts/default-layout";
+import Layout from "../../src/components/layouts/default-layout";
 import { Metadata } from "next";
-import PersonalTransactions from "@/src/components/modules/personal";
-import { useWalletConnection } from "@/src/components/providers/wallet-provider";
-import ConnectWalletButton from "@/src/components/modules/common/connect-wallet";
-import EmptyState from "@/src/components/modules/common/empty-state";
-import { ethereum } from "@/src/lib/utils";
-import HeadSeo from "@/src/components/head-seo";
-import { siteMetadata } from "@/src/lib/siteMetadata";
+import PersonalTransactions from "../../src/components/modules/personal";
+import useWalletStore from "@repo/ui/stores/wallet-store";
+import ConnectWalletButton from "@repo/ui/components/common/connect-wallet";
+import EmptyState from "@repo/ui/components/common/empty-state";
+import { ethereum } from "@repo/ui/lib/utils";
+import HeadSeo from "../../src/components/head-seo";
+import { siteMetadata } from "../../src/lib/siteMetadata";
 
 export const metadata: Metadata = {
   title: "Personal Transactions",
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default function PersonalPage() {
-  const { walletConnected } = useWalletConnection();
+  const { walletConnected } = useWalletStore();
 
   return (
     <>

@@ -22,6 +22,7 @@ const (
 	baseEventsJoin = "from event_log e " +
 		"join receipt rec on e.receipt=rec.id" +
 		"	join tx on rec.tx=tx.id " +
+		"      left join externally_owned_account eoatx on tx.sender_address=eoatx.id " +
 		"	join batch b on rec.batch=b.sequence " +
 		"join event_type et on e.event_type=et.id " +
 		"	join contract c on et.contract=c.id " +
@@ -163,7 +164,7 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 	var queryParams []any
 
 	// todo - should we return the config here?
-	query := "select eoa1.address, eoa2.address, eoa3.address, et.config_public, et.auto_public, et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address " +
+	query := "select eoa1.address, eoa2.address, eoa3.address, et.config_public, et.auto_public, et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, tx.hash, tx.idx, log_idx, c.address, c.auto_visibility, c.transparent " +
 		baseEventsJoin +
 		" AND tx.hash = ? "
 
@@ -182,18 +183,16 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 			Log: types.Log{
 				Topics: []gethcommon.Hash{},
 			},
-			LifecycleEvent: false,
 		}
 
 		var t0, t1, t2, t3 sql.NullString
 		var relAddress1, relAddress2, relAddress3 []byte
-		var config_public, autoPublic bool
 		err = rows.Scan(
 			&relAddress1,
 			&relAddress2,
 			&relAddress3,
-			&config_public,
-			&autoPublic,
+			&l.ConfigPublic,
+			&l.AutoPublic,
 			&t0, &t1, &t2, &t3,
 			&l.Data,
 			&l.BlockHash,
@@ -202,8 +201,9 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 			&l.TxIndex,
 			&l.Index,
 			&l.Address,
+			&l.AutoContract,
+			&l.TransparentContract,
 		)
-		l.LifecycleEvent = config_public || autoPublic
 		if err != nil {
 			return nil, fmt.Errorf("could not load log entry from db: %w", err)
 		}
@@ -311,8 +311,10 @@ func visibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
 		"       (et.topic1_can_view AND eoa1.address=?) " +
 		"    OR (et.topic2_can_view AND eoa2.address=?) " +
 		"    OR (et.topic3_can_view AND eoa3.address=?)" +
+		"    OR (et.sender_can_view AND eoatx.address=?)" +
 		"  )" +
 		")"
+	visibParams = append(visibParams, acc)
 	visibParams = append(visibParams, acc)
 	visibParams = append(visibParams, acc)
 	visibParams = append(visibParams, acc)
