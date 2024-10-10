@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
 	"github.com/ten-protocol/go-ten/integration/ethereummock"
@@ -28,6 +29,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -57,6 +59,7 @@ func checkNetworkValidity(t *testing.T, s *Simulation) {
 	checkTenBlockchainValidity(t, s, l1MaxHeight)
 	checkReceivedLogs(t, s)
 	checkTenscan(t, s)
+	checkZenBaseMinting(t, s)
 }
 
 // Ensures that L1 and L2 txs were actually issued.
@@ -319,6 +322,63 @@ func verifyGasBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
 		if balance.Cmp(amount) != 0 {
 			t.Errorf("Node %d: Balance doesnt match the bridged amount. Have: %d, Want: %d", nodeIdx, balance, amount)
 		}
+	}
+}
+
+func checkZenBaseMinting(t *testing.T, s *Simulation) {
+	// Map to track the number of transactions per sender
+	txCountPerSender := make(map[gethcommon.Address]int)
+
+	// Aggregate transaction counts from Transfer and Withdrawal transactions
+	for _, tx := range s.TxInjector.TxTracker.TransferL2Transactions {
+		sender := getSender(tx)
+		txCountPerSender[sender]++
+	}
+
+	for _, tx := range s.TxInjector.TxTracker.WithdrawalL2Transactions {
+		sender := getSender(tx)
+		txCountPerSender[sender]++
+	}
+
+	for _, tx := range s.TxInjector.TxTracker.NativeValueTransferL2Transactions {
+		sender := getSender(tx)
+		txCountPerSender[sender]++
+	}
+
+	// Iterate through each sender and verify ZenBase balance
+	for sender, expectedMinted := range txCountPerSender {
+		senderRpc := s.RPCHandles.TenWalletClient(sender, 1)
+		zenBaseContract, err := ZenBase.NewZenBase(s.ZenBaseAddress, senderRpc)
+		if err != nil {
+			t.Errorf("Sender %s: Failed to create ZenBase contract. Cause: %s", sender.Hex(), err)
+		}
+		zenBaseBalance, err := zenBaseContract.BalanceOf(&bind.CallOpts{
+			From: sender,
+		}, sender)
+		if err != nil {
+			t.Errorf("Sender %s: Failed to get ZenBase balance. Cause: %s", sender.Hex(), err)
+		}
+
+		expectedBalance := big.NewInt(int64(expectedMinted)) // Assuming 1 ZenBase per transaction
+		if zenBaseBalance.Cmp(expectedBalance) < 0 {
+			t.Errorf("Sender %s: Expected ZenBase balance %d, but found %d", sender.Hex(), expectedBalance, zenBaseBalance)
+		}
+	}
+
+	rpc := s.RPCHandles.TenWalletClient(s.Params.Wallets.L2FaucetWallet.Address(), 1)
+	zenBaseContract, err := ZenBase.NewZenBase(s.ZenBaseAddress, rpc)
+	if err != nil {
+		t.Errorf("Failed to create ZenBase contract. Cause: %s", err)
+	}
+	totalSupply, err := zenBaseContract.TotalSupply(&bind.CallOpts{
+		From: s.Params.Wallets.L2FaucetWallet.Address(),
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	if totalSupply.Cmp(big.NewInt(0)) <= 0 {
+		t.Errorf("ZenBase total supply is 0")
 	}
 }
 

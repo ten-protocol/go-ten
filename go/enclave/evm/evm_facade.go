@@ -91,6 +91,7 @@ func ExecuteTransactions(
 			(fromTxIndex+i)-tCountRollback,
 			hash,
 			header.Number.Uint64(),
+			logger,
 		)
 		result[t.Tx.Hash()] = txResult
 		if txResult.Err != nil {
@@ -128,6 +129,7 @@ func executeTransaction(
 	tCount int,
 	batchHash common.L2BatchHash,
 	batchHeight uint64,
+	logger gethlog.Logger,
 ) *core.TxExecResult {
 	var createdContracts []*gethcommon.Address
 	rules := cc.Rules(big.NewInt(0), true, 0)
@@ -144,9 +146,11 @@ func executeTransaction(
 		OnCodeChange: func(addr gethcommon.Address, prevCodeHash gethcommon.Hash, prevCode []byte, codeHash gethcommon.Hash, code []byte) {
 			// only proceed for new deployments.
 			if len(prevCode) > 0 {
+				logger.Debug("OnCodeChange: Skipping contract deployment", "address", addr.Hex())
 				return
 			}
 			createdContracts = append(createdContracts, &addr)
+			logger.Debug("OnCodeChange: Contract deployed", "address", addr.Hex())
 		},
 	})
 	defer s.SetLogger(nil)
