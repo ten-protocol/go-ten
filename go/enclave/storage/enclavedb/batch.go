@@ -125,7 +125,11 @@ func WriteReceipt(ctx context.Context, dbtx *sql.Tx, batchSeqNo uint64, txId *ui
 	if *addr == (gethcommon.Address{}) {
 		addr = nil
 	}
-	res, err := dbtx.ExecContext(ctx, insert, receipt.PostState, receipt.Status, receipt.CumulativeGasUsed, receipt.EffectiveGasPrice, addr, txId, batchSeqNo)
+	var effPrice uint64
+	if receipt.EffectiveGasPrice != nil {
+		effPrice = receipt.EffectiveGasPrice.Uint64()
+	}
+	res, err := dbtx.ExecContext(ctx, insert, receipt.PostState, receipt.Status, receipt.CumulativeGasUsed, effPrice, addr, txId, batchSeqNo)
 	if err != nil {
 		return 0, err
 	}
