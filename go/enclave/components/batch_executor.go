@@ -206,7 +206,10 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	for _, txResult := range txResults {
 		txReceipts = append(txReceipts, txResult.Receipt)
 	}
-
+	err = txReceipts.DeriveFields(executor.chainConfig, batch.Hash(), batch.NumberU64(), 0, batch.Header.BaseFee, nil, successfulTxs)
+	if err != nil {
+		return nil, fmt.Errorf("could not derive receipts. Cause: %w", err)
+	}
 	onBlockTx, err := executor.systemContracts.CreateOnBatchEndTransaction(ctx, stateDB, successfulTxs, txReceipts)
 	if err != nil && !errors.Is(err, system.ErrNoTransactions) {
 		return nil, fmt.Errorf("could not create on block end transaction. Cause: %w", err)
