@@ -96,6 +96,10 @@ func (receipt *InternalReceipt) ToReceipt() *types.Receipt {
 		effGasPrice = big.NewInt(int64(*receipt.EffectiveGasPrice))
 	}
 
+	var cc gethcommon.Address
+	if receipt.CreatedContract != nil {
+		cc = *receipt.CreatedContract
+	}
 	return &types.Receipt{
 		Type:              receipt.TxType,
 		PostState:         receipt.PostState,
@@ -104,7 +108,7 @@ func (receipt *InternalReceipt) ToReceipt() *types.Receipt {
 		Bloom:             types.Bloom{},
 		Logs:              receipt.Logs,
 		TxHash:            receipt.TxHash,
-		ContractAddress:   *receipt.CreatedContract,
+		ContractAddress:   cc,
 		GasUsed:           receipt.CumulativeGasUsed,
 		EffectiveGasPrice: effGasPrice,
 		BlobGasUsed:       0,
