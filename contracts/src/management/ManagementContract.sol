@@ -150,7 +150,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     }
 
     // solc-ignore-next-line unused-param
-    function AddRollup(Structs.MetaRollup calldata r, string calldata  _rollupData, Structs.HeaderCrossChainData calldata) public {
+    function AddRollup(Structs.MetaRollup calldata r, string calldata, Structs.HeaderCrossChainData calldata) public {
         address enclaveID = ECDSA.recover(r.Hash, r.Signature);
         // revert if the EnclaveID is not attested
         require(attested[enclaveID], "enclaveID not attested");
@@ -163,7 +163,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once
     // solc-ignore-next-line unused-param
-    function InitializeNetworkSecret(address _enclaveID, bytes calldata  _initSecret, string calldata _genesisAttestation) public {
+    function InitializeNetworkSecret(address _enclaveID, bytes calldata, string calldata) public {
         require(!networkSecretInitialized, "network secret already initialized");
 
         // network can no longer be initialized

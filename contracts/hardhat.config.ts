@@ -1,6 +1,8 @@
 import 'ten-hardhat-plugin';
 import { HardhatUserConfig, task } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+import '@openzeppelin/hardhat-upgrades';
+
 
 import "hardhat-abi-exporter";
 import "@solidstate/hardhat-bytecode-exporter";
