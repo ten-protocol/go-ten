@@ -20,10 +20,10 @@ import (
 
 const (
 	baseReceiptJoin = " from receipt rec " +
+		"join batch b on rec.batch=b.sequence " +
 		"join tx curr_tx on rec.tx=curr_tx.id " +
-		"   join externally_owned_account eoatx on curr_tx.sender_address=eoatx.id " +
-		"   left join contract tx_contr on tx_contr.id=curr_tx.to_address " +
-		"join batch b on rec.batch=b.sequence "
+		"   join externally_owned_account tx_sender on curr_tx.sender_address=tx_sender.id " +
+		"   left join contract tx_contr on curr_tx.to_address=tx_contr.id "
 
 	baseEventJoin = " left join event_log e on e.receipt=rec.id " +
 		"left join event_type et on e.event_type=et.id " +
@@ -246,7 +246,7 @@ func bytesToAddress(b []byte) *gethcommon.Address {
 // todo always pass in the actual batch hashes because of reorgs, or make sure to clean up log entries from discarded batches
 func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, orderBy string, orderByParams []any, withReceipts bool) ([]*core.InternalReceipt, []*types.Log, error) {
 	logsQuery := " et.event_sig, t1.topic, t2.topic, t3.topic, datablob, log_idx, b.hash, b.height, curr_tx.hash, curr_tx.idx, c.address "
-	receiptQuery := " rec.post_state, rec.status, rec.cumulative_gas_used, rec.effective_gas_price, rec.created_contract_address, curr_tx.content, eoatx.address, tx_contr.address, curr_tx.type "
+	receiptQuery := " rec.post_state, rec.status, rec.cumulative_gas_used, rec.effective_gas_price, rec.created_contract_address, curr_tx.content, tx_sender.address, tx_contr.address, curr_tx.type "
 
 	query := "select " + logsQuery
 	if withReceipts {
@@ -279,7 +279,8 @@ func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount
 		query += " select null, null, null, null, null, null, b.hash, b.height, curr_tx.hash, curr_tx.idx, null, " + receiptQuery
 		query += baseReceiptJoin
 		query += " where b.is_canonical=true "
-		query += " AND ( (eoatx.address = ?) OR (tx_contr.transparent=true) )"
+		// query += " AND ( (tx_sender.address = ?) OR (tx_contr.transparent=true) )"
+		query += " AND tx_sender.address = ? "
 		queryParams = append(queryParams, requestingAccount.Bytes())
 		query += whereCondition
 		queryParams = append(queryParams, whereParams...)
@@ -399,7 +400,7 @@ func receiptsVisibilityQuery(requestingAccount *gethcommon.Address) (string, []a
 	// - the sender can query
 	// - anyone can query if the contract is transparent
 	// - anyone who can view an event log should also be able to view the receipt
-	query := " AND ( (e.id IS NOT NULL) OR (eoatx.address = ?) OR (tx_contr.transparent=true) )"
+	query := " AND ( (e.id IS NOT NULL) OR (tx_sender.address = ?) OR (tx_contr.transparent=true) )"
 	queryParams := []any{requestingAccount.Bytes()}
 	return query, queryParams
 }
@@ -431,7 +432,7 @@ func logsVisibilityQuery(requestingAccount *gethcommon.Address) (string, []any) 
 		"       (et.topic1_can_view AND eoa1.address=?) " +
 		"    OR (et.topic2_can_view AND eoa2.address=?) " +
 		"    OR (et.topic3_can_view AND eoa3.address=?)" +
-		"    OR (et.sender_can_view AND eoatx.address=?)" +
+		"    OR (et.sender_can_view AND tx_sender.address=?)" +
 		"  )" +
 		")"
 	visibParams = append(visibParams, acc)
