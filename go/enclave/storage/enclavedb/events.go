@@ -19,12 +19,13 @@ import (
 )
 
 const (
-	baseEventsJoin = " from receipt rec " +
+	baseReceiptJoin = " from receipt rec " +
 		"join tx curr_tx on rec.tx=curr_tx.id " +
-		"   left join externally_owned_account eoatx on curr_tx.sender_address=eoatx.id " +
+		"   join externally_owned_account eoatx on curr_tx.sender_address=eoatx.id " +
 		"   left join contract tx_contr on tx_contr.id=curr_tx.to_address " +
-		"join batch b on rec.batch=b.sequence " +
-		"left join event_log e on e.receipt=rec.id " +
+		"join batch b on rec.batch=b.sequence "
+
+	baseEventJoin = " left join event_log e on e.receipt=rec.id " +
 		"left join event_type et on e.event_type=et.id " +
 		"	left join contract c on et.contract=c.id " +
 		//"		left join tx creator_tx on c.tx=creator_tx.id " +
@@ -168,7 +169,7 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, txHash common.TxHash) ([]*tra
 
 	// todo - should we return the config here?
 	query := "select eoa1.address, eoa2.address, eoa3.address, et.config_public, et.auto_public, et.event_sig, t1.topic, t2.topic, t3.topic, datablob, b.hash, b.height, curr_tx.hash, curr_tx.idx, log_idx, c.address, c.auto_visibility, c.transparent " +
-		baseEventsJoin +
+		baseReceiptJoin + baseEventJoin +
 		" AND curr_tx.hash = ? "
 
 	queryParams = append(queryParams, txHash.Bytes())
@@ -251,7 +252,8 @@ func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount
 	if withReceipts {
 		query += "," + receiptQuery
 	}
-	query += baseEventsJoin
+	query += baseReceiptJoin
+	query += baseEventJoin
 
 	var queryParams []any
 
@@ -261,15 +263,26 @@ func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount
 		query += logsVisibQuery
 		queryParams = append(queryParams, logsVisibParams...)
 
-		query += whereCondition
-		queryParams = append(queryParams, whereParams...)
-
 		// add receipt visibility rules
 		if withReceipts {
 			receiptsVisibQuery, receiptsVisibParams := receiptsVisibilityQuery(requestingAccount)
 			query += receiptsVisibQuery
 			queryParams = append(queryParams, receiptsVisibParams...)
 		}
+	}
+
+	query += whereCondition
+	queryParams = append(queryParams, whereParams...)
+
+	if withReceipts && requestingAccount != nil {
+		query += " UNION ALL "
+		query += " select null, null, null, null, null, null, b.hash, b.height, curr_tx.hash, curr_tx.idx, null, " + receiptQuery
+		query += baseReceiptJoin
+		query += " where b.is_canonical=true "
+		query += " AND ( (eoatx.address = ?) OR (tx_contr.transparent=true) )"
+		queryParams = append(queryParams, requestingAccount.Bytes())
+		query += whereCondition
+		queryParams = append(queryParams, whereParams...)
 	}
 
 	if len(orderBy) > 0 {
@@ -386,7 +399,7 @@ func receiptsVisibilityQuery(requestingAccount *gethcommon.Address) (string, []a
 	// - the sender can query
 	// - anyone can query if the contract is transparent
 	// - anyone who can view an event log should also be able to view the receipt
-	query := " AND (eoatx.address = ? OR tx_contr.transparent=true OR et.id IS NOT NULL)"
+	query := " AND ( (e.id IS NOT NULL) OR (eoatx.address = ?) OR (tx_contr.transparent=true) )"
 	queryParams := []any{requestingAccount.Bytes()}
 	return query, queryParams
 }
@@ -395,15 +408,18 @@ func receiptsVisibilityQuery(requestingAccount *gethcommon.Address) (string, []a
 func logsVisibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
 	acc := requestingAccount.Bytes()
 
-	visibQuery := "AND ("
 	visibParams := make([]any, 0)
 
-	// everyone can query config_public events
-	visibQuery += " et.id is NULL OR "
-	visibQuery += " et.config_public=true "
+	visibQuery := "AND ("
 
-	// For event logs that have no explicit configuration, an event is visible be all account owners whose addresses are used in any topic
-	visibQuery += " OR (et.auto_visibility=true AND (et.auto_public=true OR (eoa1.address=? OR eoa2.address=? OR eoa3.address=?))) "
+	// this condition only affects queries that return receipts that have no events logs
+	visibQuery += " (e.id is NULL)  "
+
+	// everyone can query config_public events
+	visibQuery += " OR (et.config_public=true) "
+
+	// For event logs that have no explicit configuration, an event is visible by all account owners whose addresses are used in any topic
+	visibQuery += " OR (et.auto_visibility=true AND (et.auto_public=true OR eoa1.address=? OR eoa2.address=? OR eoa3.address=?)) "
 	visibParams = append(visibParams, acc)
 	visibParams = append(visibParams, acc)
 	visibParams = append(visibParams, acc)

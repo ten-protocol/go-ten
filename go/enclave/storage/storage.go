@@ -563,8 +563,8 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 	return nil
 }
 
-func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, batch *core.Batch, dbTx *sql.Tx) ([]*uint64, []*uint64, error) {
-	senders := make([]*uint64, len(batch.Transactions))
+func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, batch *core.Batch, dbTx *sql.Tx) ([]uint64, []*uint64, error) {
+	senders := make([]uint64, len(batch.Transactions))
 	toContracts := make([]*uint64, len(batch.Transactions))
 	// insert the tx signers as externally owned accounts
 	for i, tx := range batch.Transactions {
@@ -576,7 +576,7 @@ func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, batch *co
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not insert EOA. cause: %w", err)
 		}
-		senders[i] = eoaID
+		senders[i] = *eoaID
 
 		to := tx.To()
 		if to != nil {

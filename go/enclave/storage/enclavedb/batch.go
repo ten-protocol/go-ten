@@ -62,7 +62,7 @@ func ExistsBatchAtHeight(ctx context.Context, dbTx *sql.Tx, height *big.Int) (bo
 }
 
 // WriteTransactions - persists the batch and the transactions
-func WriteTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, senders []*uint64, toContracts []*uint64) error {
+func WriteTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, senders []uint64, toContracts []*uint64) error {
 	// creates a batch insert statement for all entries
 	if len(batch.Transactions) > 0 {
 		insert := "insert into tx (hash, content, to_address, type, sender_address, idx, batch_height) values " + repeat("(?,?,?,?,?,?,?)", ",", len(batch.Transactions))
