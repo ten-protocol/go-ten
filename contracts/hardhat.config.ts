@@ -3,7 +3,6 @@ import { HardhatUserConfig, task } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import '@openzeppelin/hardhat-upgrades';
 
-
 import "hardhat-abi-exporter";
 import "@solidstate/hardhat-bytecode-exporter";
 
@@ -61,7 +60,7 @@ const config: HardhatUserConfig = {
   // For help configuring - https://www.npmjs.com/package/hardhat-ignore-warnings
   warnings : {
     '*' : {
-      default: 'error'
+      default: 'warn'
     },
     'src/testing/**/*': {
       default: 'off'

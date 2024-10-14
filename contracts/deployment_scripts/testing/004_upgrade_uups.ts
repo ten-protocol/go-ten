@@ -7,7 +7,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       initializer: 'initialize',
       kind: 'uups',
       txOverrides: {
-        gasLimit: 100000000
       }
      })
   
