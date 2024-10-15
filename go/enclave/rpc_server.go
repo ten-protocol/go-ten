@@ -477,7 +477,10 @@ func (s *RPCServer) EnclavePublicConfig(ctx context.Context, _ *generated.Enclav
 		s.logger.Error("Error getting message bus address", log.ErrKey, sysError)
 		return &generated.EnclavePublicConfigResponse{SystemError: toRPCError(sysError)}, nil
 	}
-	return &generated.EnclavePublicConfigResponse{L2MessageBusAddress: enclaveCfg.L2MessageBusAddress.Bytes()}, nil
+	return &generated.EnclavePublicConfigResponse{
+		L2MessageBusAddress:             enclaveCfg.L2MessageBusAddress.Bytes(),
+		TransactionPostProcessorAddress: enclaveCfg.TransactionPostProcessorAddress.Bytes(),
+	}, nil
 }
 
 func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Header, error) {

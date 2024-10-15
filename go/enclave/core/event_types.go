@@ -30,3 +30,5 @@ type TxExecResult struct {
 	CreatedContracts map[gethcommon.Address]*ContractVisibilityConfig
 	Err              error
 }
+
+type TxExecResults []*TxExecResult

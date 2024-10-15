@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/host/container"
 	"github.com/ten-protocol/go-ten/go/host/rpc/clientapi"
@@ -113,14 +114,93 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 		return c.getPublicTransactionData(result, args)
 	case rpc.GasPrice:
 		return c.getGasPrice(result)
+	case rpc.Config:
+		return c.tenConfig(result)
+	case rpc.GetBalance:
+		return c.getBalanceAt(result, args)
+	case rpc.EstimateGas:
+		return c.estimateGas(result, args)
+	case rpc.GetCode:
+		return c.getCode(result, args)
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
+}
+func (c *inMemTenClient) getCode(result interface{}, args []interface{}) error {
+	address, ok := args[0].(gethcommon.Address)
+	if !ok {
+		return fmt.Errorf("invalid argument type: expected gethcommon.Address")
+	}
+
+	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(args, 1)
+	if err != nil {
+		return fmt.Errorf("arg to %s is of type %T, expected int64", rpc.GetCode, args[0])
+	}
+
+	code, err := c.ethAPI.GetCode(context.Background(), address, *blockNumber)
+	if err != nil {
+		return err
+	}
+
+	*result.(*hexutil.Bytes) = code
+	return nil
+}
+
+func (c *inMemTenClient) getBalanceAt(result interface{}, args []interface{}) error {
+	enc, err := getEncryptedBytes(args, rpc.GetBalance)
+	if err != nil {
+		return err
+	}
+
+	balance, err := c.ethAPI.GetBalance(context.Background(), enc)
+	if err != nil {
+		return err
+	}
+	*result.(*responses.EnclaveResponse) = balance
+	return nil
+}
+
+func (c *inMemTenClient) estimateGas(result interface{}, args []interface{}) error {
+	enc, err := getEncryptedBytes(args, rpc.EstimateGas)
+	if err != nil {
+		return err
+	}
+
+	balance, err := c.ethAPI.EstimateGas(context.Background(), enc)
+	if err != nil {
+		return err
+	}
+	*result.(*responses.EnclaveResponse) = balance
+	return nil
 }
 
 // CallContext not currently supported by in-memory TEN client, the context will be ignored.
 func (c *inMemTenClient) CallContext(_ context.Context, result interface{}, method string, args ...interface{}) error {
 	return c.Call(result, method, args...) //nolint: contextcheck
+}
+
+func (c *inMemTenClient) tenConfig(result interface{}) error {
+	cfg, err := c.tenAPI.Config()
+	if err != nil {
+		return err
+	}
+
+	importantContracts := make(map[string]gethcommon.Address)
+	for key, value := range cfg.ImportantContracts {
+		importantContracts[key] = gethcommon.Address(value)
+	}
+
+	tenNetworkInfo := &common.TenNetworkInfo{
+		ManagementContractAddress:       gethcommon.Address(cfg.ManagementContractAddress),
+		L1StartHash:                     cfg.L1StartHash,
+		MessageBusAddress:               gethcommon.Address(cfg.MessageBusAddress),
+		L2MessageBusAddress:             gethcommon.Address(cfg.L2MessageBusAddress),
+		ImportantContracts:              importantContracts,
+		TransactionPostProcessorAddress: gethcommon.Address(cfg.TransactionPostProcessorAddress),
+	}
+
+	*result.(*common.TenNetworkInfo) = *tenNetworkInfo
+	return nil
 }
 
 func (c *inMemTenClient) Subscribe(context.Context, string, interface{}, ...interface{}) (*gethrpc.ClientSubscription, error) {

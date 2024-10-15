@@ -85,12 +85,12 @@ func TestTenscan(t *testing.T) {
 	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "{\"count\":1}", string(body))
+	assert.Equal(t, "{\"count\":5}", string(body))
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/count/transactions/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "{\"count\":6}", string(body))
+	assert.Equal(t, "{\"count\":7}", string(body))
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/latest/", serverAddress))
 	assert.NoError(t, err)
@@ -124,8 +124,8 @@ func TestTenscan(t *testing.T) {
 	publicTxsObj := publicTxsRes{}
 	err = json.Unmarshal(body, &publicTxsObj)
 	assert.NoError(t, err)
-	assert.Equal(t, 6, len(publicTxsObj.Result.TransactionsData))
-	assert.Equal(t, uint64(6), publicTxsObj.Result.Total)
+	assert.Equal(t, 7, len(publicTxsObj.Result.TransactionsData))
+	assert.Equal(t, uint64(7), publicTxsObj.Result.Total)
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batches/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)

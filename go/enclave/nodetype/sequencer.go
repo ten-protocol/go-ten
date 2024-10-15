@@ -16,6 +16,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/system"
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	"github.com/ten-protocol/go-ten/go/common/compression"
@@ -135,7 +136,7 @@ func (s *sequencer) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) erro
 // won't be committed by the producer.
 func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header) error {
 	s.logger.Info("Initializing genesis state", log.BlockHashKey, block.Hash())
-	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(
+	batch, _, err := s.batchProducer.CreateGenesisState(
 		ctx,
 		block.Hash(),
 		uint64(time.Now().Unix()),
@@ -169,13 +170,30 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 	// errors in unit test seem to suggest that batch 2 was received before batch 1
 	// this ensures that there is enough gap so that batch 1 is issued before batch 2
 	time.Sleep(time.Second)
+
+	wallet := system.GetPlaceholderWallet(s.chainConfig.ChainID, s.logger)
+	msgBusTx, err := system.MessageBusInitTransaction(wallet, s.logger)
+	if err != nil {
+		s.logger.Crit("[SystemContracts] Failed to create message bus contract", log.ErrKey, err)
+		return err
+	}
+
+	systemDeployerTx, err := system.SystemDeployerInitTransaction(wallet, s.logger, wallet.Address())
+	if err != nil {
+		s.logger.Crit("[SystemContracts] Failed to create system deployer contract", log.ErrKey, err)
+		return err
+	}
+
 	// produce batch #2 which has the message bus and any other system contracts
 	cb, err := s.produceBatch(
 		ctx,
 		big.NewInt(0).Add(batch.Header.SequencerOrderNo, big.NewInt(1)),
 		block.Hash(),
 		batch.Hash(),
-		common.L2Transactions{msgBusTx},
+		common.L2Transactions{
+			msgBusTx,
+			systemDeployerTx,
+		},
 		uint64(time.Now().Unix()),
 		false,
 	)
@@ -186,16 +204,21 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 			s.logger.Debug("Skipping batch production, no transactions to execute")
 			return nil
 		}
-		return fmt.Errorf(" failed producing batch. Cause: %w", err)
+		return fmt.Errorf("[SystemContracts] failed producing batch. Cause: %w", err)
 	}
 
 	if len(cb.TxExecResults) == 0 || cb.TxExecResults[0].Receipt.TxHash.Hex() != msgBusTx.Hash().Hex() {
-		err = fmt.Errorf("message Bus contract not minted - no receipts in batch")
-		s.logger.Error(err.Error())
-		return err
+		err = fmt.Errorf("failed to mint Message Bus contract: expected receipt for transaction %s, but no receipts found in batch", msgBusTx.Hash().Hex())
+		s.logger.Crit(err.Error()) // Fatal error, the node cannot be started.
 	}
 
-	s.logger.Info("Message Bus Contract minted successfully", "address", cb.TxExecResults[0].Receipt.ContractAddress.Hex())
+	systemAddresses, err := system.DeriveAddresses(cb.TxExecResults[1].Receipt)
+	if err != nil {
+		s.logger.Crit("Failed to derive system contract addresses", log.ErrKey, err)
+		return err
+	}
+	s.logger.Info("[SystemContracts] Deployer initialized", "transactionPostProcessor", systemAddresses.ToString())
+	s.logger.Info("[SystemContracts] Message Bus Contract minted successfully", "address", cb.TxExecResults[0].Receipt.ContractAddress.Hex())
 
 	return nil
 }
