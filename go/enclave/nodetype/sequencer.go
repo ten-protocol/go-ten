@@ -365,7 +365,6 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, t
 	}
 
 	s.batchRegistry.OnBatchExecuted(batch.Header, txResults)
-
 	return nil
 }
 

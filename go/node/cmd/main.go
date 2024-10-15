@@ -37,6 +37,7 @@ func main() {
 		node.WithRollupInterval(cliConfig.rollupInterval),
 		node.WithL1ChainID(cliConfig.l1ChainID),
 		node.WithPostgresDBHost(cliConfig.postgresDBHost),
+		node.WithL1BeaconUrl(cliConfig.l1BeaconUrl),
 		node.WithSequencerP2PAddr(cliConfig.sequencerP2PAddr),
 	)
 

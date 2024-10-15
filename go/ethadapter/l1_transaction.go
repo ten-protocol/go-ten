@@ -11,11 +11,16 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// L1Transaction is an abstraction that transforms an Ethereum transaction into a format that can be consumed more easily by Obscuro.
+// L1Transaction is an abstraction that transforms an Ethereum transaction into a format that can be consumed more
+// easily by TEN.
 type L1Transaction interface{}
 
 type L1RollupTx struct {
 	Rollup common.EncodedRollup
+}
+
+type L1RollupHashes struct {
+	BlobHashes []gethcommon.Hash
 }
 
 type L1DepositTx struct {
