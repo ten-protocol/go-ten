@@ -201,7 +201,6 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 
 		err = tenClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
-			println("Value transfer TX failed cause: ", err.Error())
 			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
 			continue
 		}
@@ -235,7 +234,6 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 		err = tenClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
-			println("Transfer TX failed cause: ", err.Error())
 			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
 		}
 
@@ -332,14 +330,12 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	//FIXME
 	err := testcommon.AwaitReceipt(ti.ctx, ti.rpcHandles.TenWalletRndClient(fromWallet), tx.Hash(), 45*time.Second)
 	if err != nil {
-		println("Failed to await receipt for withdrawals: ", err.Error())
 		ti.logger.Error("Failed to await receipt for withdrawal transaction", log.ErrKey, err)
 		return
 	}
 
 	receipt, err := ti.rpcHandles.TenWalletRndClient(fromWallet).TransactionReceipt(ti.ctx, tx.Hash())
 	if err != nil {
-		println("Failed to fetch receipt for withdrawals: ", err.Error())
 		ti.logger.Error("Failed to retrieve receipt for withdrawal transaction", log.ErrKey, err)
 		return
 	}
@@ -479,7 +475,6 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 
 		err = client.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
-			println("withdrawal TX failed cause: ", err.Error())
 			ti.logger.Error("[CrossChain] unable to send withdrawal transaction", log.ErrKey, err)
 		}
 
