@@ -271,6 +271,7 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 			rollupTxs = append(rollupTxs, rlp)
 		}
 
+		//println("TX with RECEIPT: ", txs[i].Hash().Hex(), rec.TxHash.Hex())
 		// compile the tx, receipt and blobs into a single struct for submission to the enclave
 		txWithReceiptsAndBlobs = append(txWithReceiptsAndBlobs, &common.TxAndReceiptAndBlobs{
 			Tx:      txs[i],

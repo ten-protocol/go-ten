@@ -24,7 +24,8 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 
 	simParams := params.SimParams{
-		NumberOfNodes:              5,
+		NumberOfNodes: numberOfNodes,
+		//  todo (#718) - try reducing this back to 50 milliseconds once faster-finality model is optimised
 		AvgBlockDuration:           180 * time.Millisecond,
 		SimulationTime:             45 * time.Second,
 		L1EfficiencyThreshold:      0.2,
@@ -35,8 +36,8 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		StartPort:                  integration.TestPorts.TestInMemoryMonteCarloSimulationPort,
 		IsInMem:                    true,
 		L1TenData:                  &params.L1TenData{},
-		ReceiptTimeout:             10 * time.Second, // Increased from 5s
-		StoppingDelay:              20 * time.Second, // Increased from 15s
+		ReceiptTimeout:             5 * time.Second,
+		StoppingDelay:              15 * time.Second,
 		NodeWithInboundP2PDisabled: 2,
 		L1BeaconPort:               integration.TestPorts.TestInMemoryMonteCarloSimulationPort + integration.DefaultPrysmGatewayPortOffset,
 	}

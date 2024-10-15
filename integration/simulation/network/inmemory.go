@@ -122,6 +122,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	StopTenNodes(n.l2Clients)
+
 	for _, node := range n.ethNodes {
 		temp := node
 		go temp.Stop()
