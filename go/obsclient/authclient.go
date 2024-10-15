@@ -192,7 +192,14 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 	return (*big.Int)(&result), err
 }
 
-func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria common.FilterCriteria, ch chan types.Log) (ethereum.Subscription, error) {
+// Workaround for creating a ETH client interface to be used in generated contracts interacting.
+// Obviously any usage should avoid subscriptions as it will not work.
+func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
+	panic("not implemented")
+}
+
+// Real method that we have used in TEN for subscription
+func (ac *AuthObsClient) SubscribeFilterLogsTEN(ctx context.Context, filterCriteria common.FilterCriteria, ch chan types.Log) (ethereum.Subscription, error) {
 	return ac.rpcClient.Subscribe(ctx, rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeLogs, filterCriteria)
 }
 
@@ -248,6 +255,46 @@ func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxDat
 		Value:    unEstimatedTx.Value(),
 		Data:     unEstimatedTx.Data(),
 	}
+}
+
+func (ac *AuthObsClient) CodeAt(ctx context.Context, address gethcommon.Address, number *big.Int) ([]byte, error) {
+	result := hexutil.Bytes{}
+	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetCode, address, toBlockNumArg(number))
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (ac *AuthObsClient) FilterLogs(context.Context, ethereum.FilterQuery) ([]types.Log, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (ac *AuthObsClient) HeaderByNumber(_ context.Context, number *big.Int) (*types.Header, error) {
+	header, err := ac.GetBatchHeaderByNumber(number)
+	if err != nil {
+		return nil, err
+	}
+
+	return common.ConvertBatchHeaderToHeader(header), nil
+}
+
+func (ac *AuthObsClient) PendingCodeAt(ctx context.Context, address gethcommon.Address) ([]byte, error) {
+	return ac.CodeAt(ctx, address, nil)
+}
+
+func (ac *AuthObsClient) PendingNonceAt(ctx context.Context, address gethcommon.Address) (uint64, error) {
+	return ac.NonceAt(ctx, nil)
+}
+
+func (ac *AuthObsClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
+	return ac.GasPrice(ctx)
+}
+
+// SuggestGasTipCap implements bind.ContractBackend.
+func (ac *AuthObsClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	return ac.GasPrice(ctx)
 }
 
 // GetPrivateTransactions retrieves the receipts for the specified account (must be registered on this client), returns requested range of receipts and the total number of receipts for that acc
