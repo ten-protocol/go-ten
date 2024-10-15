@@ -160,7 +160,7 @@ func FilterLogs(
 		}
 	}
 
-	_, logs, err := loadReceiptsAndEventLogs(ctx, db, requestingAccount, query, queryParams, "", nil, false)
+	_, logs, err := loadReceiptsAndEventLogs(ctx, db, requestingAccount, query, queryParams, false)
 	return logs, err
 }
 
@@ -240,11 +240,79 @@ func bytesToAddress(b []byte) *gethcommon.Address {
 	return nil
 }
 
+func loadReceiptList(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, orderBy string, orderByParams []any) ([]*core.InternalReceipt, error) {
+	if requestingAccount == nil {
+		return nil, fmt.Errorf("you have to specify requestingAccount")
+	}
+	var queryParams []any
+
+	query := "select b.hash, b.height, curr_tx.hash, curr_tx.idx, rec.post_state, rec.status, rec.cumulative_gas_used, rec.effective_gas_price, rec.created_contract_address, curr_tx.content, tx_sender.address, tx_contr.address, curr_tx.type "
+	query += baseReceiptJoin
+
+	// visibility
+	query += " AND tx_sender.address = ? "
+	queryParams = append(queryParams, requestingAccount.Bytes())
+
+	query += whereCondition
+	queryParams = append(queryParams, whereParams...)
+
+	if len(orderBy) > 0 {
+		query += orderBy
+		queryParams = append(queryParams, orderByParams...)
+	}
+
+	rows, err := db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	receipts := make([]*core.InternalReceipt, 0)
+
+	empty := true
+	for rows.Next() {
+		empty = false
+		r, err := onRowWithReceipt(rows)
+		if err != nil {
+			return nil, err
+		}
+		receipts = append(receipts, r)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	if empty {
+		return nil, errutil.ErrNotFound
+	}
+	return receipts, nil
+}
+
+func onRowWithReceipt(rows *sql.Rows) (*core.InternalReceipt, error) {
+	r := core.InternalReceipt{}
+
+	var txIndex *uint
+	var blockHash, transactionHash *gethcommon.Hash
+	var blockNumber *uint64
+	res := []any{&blockHash, &blockNumber, &transactionHash, &txIndex, &r.PostState, &r.Status, &r.CumulativeGasUsed, &r.EffectiveGasPrice, &r.CreatedContract, &r.TxContent, &r.From, &r.To, &r.TxType}
+
+	err := rows.Scan(res...)
+	if err != nil {
+		return nil, fmt.Errorf("could not load receipt from db: %w", err)
+	}
+
+	r.BlockHash = *blockHash
+	r.BlockNumber = big.NewInt(int64(*blockNumber))
+	r.TxHash = *transactionHash
+	r.TransactionIndex = *txIndex
+	return &r, nil
+}
+
 // utility function that knows how to load relevant logs from the database together with a receipt
 // returns either receipts with logs, or only logs
 // this complexity is necessary to avoid executing multiple queries.
 // todo always pass in the actual batch hashes because of reorgs, or make sure to clean up log entries from discarded batches
-func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, orderBy string, orderByParams []any, withReceipts bool) ([]*core.InternalReceipt, []*types.Log, error) {
+func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, withReceipts bool) ([]*core.InternalReceipt, []*types.Log, error) {
 	logsQuery := " et.event_sig, t1.topic, t2.topic, t3.topic, datablob, log_idx, b.hash, b.height, curr_tx.hash, curr_tx.idx, c.address "
 	receiptQuery := " rec.post_state, rec.status, rec.cumulative_gas_used, rec.effective_gas_price, rec.created_contract_address, curr_tx.content, tx_sender.address, tx_contr.address, curr_tx.type "
 
@@ -286,11 +354,6 @@ func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount
 		queryParams = append(queryParams, whereParams...)
 	}
 
-	if len(orderBy) > 0 {
-		query += orderBy
-		queryParams = append(queryParams, orderByParams...)
-	}
-
 	rows, err := db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, nil, err
@@ -303,7 +366,7 @@ func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount
 	empty := true
 	for rows.Next() {
 		empty = false
-		r, l, err := onRow(rows, withReceipts)
+		r, l, err := onRowWithEventLogAndReceipt(rows, withReceipts)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -347,7 +410,7 @@ func groupReceiptAndLogs(receipts []*core.InternalReceipt, logs []*types.Log) []
 	return result
 }
 
-func onRow(rows *sql.Rows, withReceipts bool) (*core.InternalReceipt, *types.Log, error) {
+func onRowWithEventLogAndReceipt(rows *sql.Rows, withReceipts bool) (*core.InternalReceipt, *types.Log, error) {
 	l := types.Log{
 		Topics: make([]gethcommon.Hash, 0),
 	}
