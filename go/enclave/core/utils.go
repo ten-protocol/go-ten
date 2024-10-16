@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -14,7 +15,7 @@ import (
 
 // VerifySignature - Checks that the L2Tx has a valid signature.
 func VerifySignature(chainID int64, tx *types.Transaction) error {
-	signer := types.LatestSignerForChainID(tx.ChainId())
+	signer := types.LatestSignerForChainID(big.NewInt(chainID))
 	_, err := types.Sender(signer, tx)
 	return err
 }
