@@ -343,11 +343,11 @@ func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount
 	queryParams = append(queryParams, whereParams...)
 
 	if withReceipts && requestingAccount != nil {
+		// there is a corner case when a receipt has logs, but none are visible to the requester
 		query += " UNION ALL "
 		query += " select null, null, null, null, null, null, b.hash, b.height, curr_tx.hash, curr_tx.idx, null, " + receiptQuery
 		query += baseReceiptJoin
 		query += " where b.is_canonical=true "
-		// query += " AND ( (tx_sender.address = ?) OR (tx_contr.transparent=true) )"
 		query += " AND tx_sender.address = ? "
 		queryParams = append(queryParams, requestingAccount.Bytes())
 		query += whereCondition
