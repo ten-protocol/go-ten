@@ -109,17 +109,10 @@ func WriteEventLog(ctx context.Context, dbTX *sql.Tx, eventTypeId uint64, userTo
 	return err
 }
 
-func FilterLogs(
-	ctx context.Context,
-	db *sql.DB,
-	requestingAccount *gethcommon.Address,
-	fromBlock, toBlock *big.Int,
-	batchHash *common.L2BatchHash,
-	addresses []gethcommon.Address,
-	topics [][]gethcommon.Hash,
-) ([]*types.Log, error) {
+func FilterLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, batchHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error) {
 	queryParams := []any{}
 	query := ""
+
 	if batchHash != nil {
 		query += " AND b.hash = ? "
 		queryParams = append(queryParams, batchHash.Bytes())
