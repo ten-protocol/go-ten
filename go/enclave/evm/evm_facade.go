@@ -91,6 +91,7 @@ func ExecuteTransactions(
 			(fromTxIndex+i)-tCountRollback,
 			hash,
 			header.Number.Uint64(),
+			logger,
 		)
 		result[t.Tx.Hash()] = txResult
 		if txResult.Err != nil {
@@ -128,12 +129,13 @@ func executeTransaction(
 	tCount int,
 	batchHash common.L2BatchHash,
 	batchHeight uint64,
+	logger gethlog.Logger,
 ) *core.TxExecResult {
 	var createdContracts []*gethcommon.Address
 	rules := cc.Rules(big.NewInt(0), true, 0)
-	from, err := types.Sender(types.LatestSigner(cc), t.Tx)
+	from, err := core.GetTxSigner(t.Tx)
 	if err != nil {
-		return &core.TxExecResult{Err: err}
+		return &core.TxExecResult{Tx: t.Tx, Err: err}
 	}
 	s.Prepare(rules, from, gethcommon.Address{}, t.Tx.To(), nil, nil)
 	snap := s.Snapshot()
@@ -144,9 +146,11 @@ func executeTransaction(
 		OnCodeChange: func(addr gethcommon.Address, prevCodeHash gethcommon.Hash, prevCode []byte, codeHash gethcommon.Hash, code []byte) {
 			// only proceed for new deployments.
 			if len(prevCode) > 0 {
+				logger.Debug("OnCodeChange: Skipping contract deployment", "address", addr.Hex())
 				return
 			}
 			createdContracts = append(createdContracts, &addr)
+			logger.Debug("OnCodeChange: Contract deployed", "address", addr.Hex())
 		},
 	})
 	defer s.SetLogger(nil)
@@ -241,7 +245,7 @@ func executeTransaction(
 	header.MixDigest = before
 	if err != nil {
 		s.RevertToSnapshot(snap)
-		return &core.TxExecResult{Receipt: receipt, Err: err}
+		return &core.TxExecResult{Receipt: receipt, Tx: t.Tx, Err: err}
 	}
 
 	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
@@ -249,7 +253,7 @@ func executeTransaction(
 		contractsWithVisibility[*contractAddress] = readVisibilityConfig(vmenv, contractAddress)
 	}
 
-	return &core.TxExecResult{Receipt: receipt, CreatedContracts: contractsWithVisibility}
+	return &core.TxExecResult{Receipt: receipt, Tx: t.Tx, CreatedContracts: contractsWithVisibility}
 }
 
 const (

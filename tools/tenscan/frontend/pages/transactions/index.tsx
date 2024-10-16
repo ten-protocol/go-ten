@@ -1,13 +1,13 @@
 import React from "react";
 import { columns } from "@/src/components/modules/transactions/columns";
-import { DataTable } from "@/src/components/modules/common/data-table/data-table";
+import { DataTable } from "@repo/ui/components/common/data-table/data-table";
 import Layout from "@/src/components/layouts/default-layout";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { Metadata } from "next";
-import { getItem } from "@/src/lib/utils";
-import { ItemPosition } from "@/src/types/interfaces";
+import { getItem } from "@repo/ui/lib/utils";
 import HeadSeo from "@/src/components/head-seo";
 import { siteMetadata } from "@/src/lib/siteMetadata";
+import { ItemPosition } from "@repo/ui/lib/enums/ui";
 
 export const metadata: Metadata = {
   title: "Transactions",
@@ -15,25 +15,12 @@ export const metadata: Metadata = {
 };
 
 export default function Transactions() {
-  const {
-    transactions,
-    refetchTransactions,
-    setNoPolling,
-    isTransactionsLoading,
-  } = useTransactionsService();
+  const { transactions, refetchTransactions, isTransactionsLoading } =
+    useTransactionsService();
   const { TransactionsData, Total } = transactions?.result || {
     TransactionsData: [],
     Total: 0,
   };
-
-  React.useEffect(() => {
-    setNoPolling(true);
-
-    return () => {
-      setNoPolling(false);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const firstBatchHeight = getItem(TransactionsData, "BatchHeight");
   const lastBatchHeight = getItem(

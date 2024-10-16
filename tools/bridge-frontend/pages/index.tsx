@@ -1,4 +1,7 @@
+import React, { useEffect } from "react";
 import { Metadata } from "next";
+import Layout from "@/src/components/layouts/default-layout";
+import Dashboard from "@/src/components/modules/bridge";
 
 export const metadata: Metadata = {
   title: "TEN Bridge",
@@ -6,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardPage() {
-  return <div>Dashboard</div>;
+  return (
+    <Layout>
+      <Dashboard />
+    </Layout>
+  );
 }

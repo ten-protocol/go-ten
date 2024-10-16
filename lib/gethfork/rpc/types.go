@@ -220,6 +220,9 @@ func (bnh *BlockNumberOrHash) Number() (BlockNumber, bool) {
 }
 
 func (bnh *BlockNumberOrHash) String() string {
+	if bnh == nil {
+		return "nil"
+	}
 	if bnh.BlockNumber != nil {
 		return strconv.Itoa(int(*bnh.BlockNumber))
 	}

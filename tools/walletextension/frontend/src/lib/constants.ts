@@ -1,11 +1,10 @@
-export const tenGatewayAddress =
-  process.env.NEXT_PUBLIC_GATEWAY_URL || "http://127.0.0.1:1443";
+export const tenGatewayAddress = process.env.NEXT_PUBLIC_GATEWAY_URL;
 
 export const tenNetworkName =
-    process.env.NEXT_PUBLIC_NETWORK_NAME || "Ten Testnet";
+  process.env.NEXT_PUBLIC_NETWORK_NAME || "Ten Testnet";
 
 export const tenscanAddress =
-    process.env.NEXT_PUBLIC_TENSCAN_URL || "https://tenscan.io";
+  process.env.NEXT_PUBLIC_TENSCAN_URL || "https://tenscan.io";
 
 export const socialLinks = {
   github: "https://github.com/ten-protocol",
@@ -22,7 +21,10 @@ export const tokenHexLength = 42;
 export const tenGatewayVersion = "v1";
 export const tenChainIDDecimal = 443;
 
+export const environment = process.env.NEXT_PUBLIC_ENVIRONMENT;
+
 export const tenChainIDHex = "0x" + tenChainIDDecimal.toString(16); // Convert to hexadecimal and prefix with '0x'
+
 export const METAMASK_CONNECTION_TIMEOUT = 3000;
 
 export const userStorageAddress = "0x0000000000000000000000000000000000000001";

@@ -7,8 +7,8 @@ import {
   CardTitle,
   CardContent,
   CardDescription,
-} from "@/src/components/ui/card";
-import { Skeleton } from "@/src/components/ui/skeleton";
+} from "@repo/ui/components/shared/card";
+import LoadingState from "@repo/ui/components/common/loading-state";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 
@@ -26,7 +26,7 @@ export default function Batch() {
   return (
     <Layout>
       {isLoading ? (
-        <Skeleton className="h-6 w-24" />
+        <LoadingState numberOfItems={10} />
       ) : batchDetails ? (
         <Card className="col-span-3">
           <CardHeader>
