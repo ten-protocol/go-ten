@@ -144,8 +144,6 @@ type Storage interface {
 	// the blockHash should always be nil.
 	FilterLogs(ctx context.Context, requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, blockHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error)
 
-	FilterLogsForReceipt(ctx context.Context, requestingAccount *gethcommon.Address, TxHash gethcommon.Hash) ([]*types.Log, error)
-
 	// DebugGetLogs returns logs for a given tx hash without any constraints - should only be used for debug purposes
 	DebugGetLogs(ctx context.Context, txHash common.TxHash) ([]*tracers.DebugLogs, error)
 
