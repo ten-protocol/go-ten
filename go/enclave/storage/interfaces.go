@@ -100,6 +100,7 @@ type TransactionStorage interface {
 	GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error)
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
 	GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error)
+	ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error)
 }
 
 type AttestationStorage interface {

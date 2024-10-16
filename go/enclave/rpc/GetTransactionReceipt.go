@@ -28,23 +28,31 @@ func GetTransactionReceiptValidate(reqParams []any, builder *CallBuilder[gethcom
 
 func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[string]interface{}], rpc *EncryptionManager) error {
 	txHash := *builder.Param
-	rpc.logger.Trace("Get receipt for ", log.TxKey, txHash)
 	requester := builder.VK.AccountAddress
+	rpc.logger.Trace("Get receipt for ", log.TxKey, txHash, "requester", requester.Hex())
 
 	// We retrieve the transaction receipt.
-	bareReceipt, err := rpc.storage.GetTransactionReceipt(builder.ctx, txHash, requester, false)
+	receipt, err := rpc.storage.GetTransactionReceipt(builder.ctx, txHash, requester, false)
 	if err != nil {
 		rpc.logger.Trace("error getting tx receipt", log.TxKey, txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
-			builder.Status = NotFound
+			exists, err := rpc.storage.ExistsTransactionReceipt(builder.ctx, txHash)
+			if err != nil {
+				return fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
+			}
+			if exists {
+				builder.Status = NotAuthorised
+			} else {
+				builder.Status = NotFound
+			}
 			return nil
 		}
 		// this is a system error
 		return fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 
-	rpc.logger.Trace("Successfully retrieved receipt for ", log.TxKey, txHash, "rec", bareReceipt)
-	r := bareReceipt.MarshalToJson()
+	rpc.logger.Trace("Successfully retrieved receipt for ", log.TxKey, txHash, "rec", receipt)
+	r := receipt.MarshalToJson()
 	builder.ReturnValue = &r
 	return nil
 }

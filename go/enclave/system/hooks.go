@@ -173,7 +173,7 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 			transaction.To = gethcommon.Address{} // Zero address - contract deployment
 		}
 
-		sender, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+		sender, err := core.GetTxSigner(tx)
 		if err != nil {
 			s.logger.Error("CreateOnBatchEndTransaction: Failed to recover sender address", "error", err, "transactionHash", tx.Hash().Hex())
 			return nil, fmt.Errorf("failed to recover sender address: %w", err)

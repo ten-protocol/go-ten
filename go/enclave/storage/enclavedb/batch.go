@@ -264,6 +264,17 @@ func ReadReceipt(ctx context.Context, db *sql.DB, txHash common.L2TxHash, reques
 	return rec[0], nil
 }
 
+func ExistsReceipt(ctx context.Context, db *sql.DB, txHash common.L2TxHash) (bool, error) {
+	query := "select count(1) from receipt rec join tx curr_tx on rec.tx=curr_tx.id where curr_tx.hash=?"
+	row := db.QueryRowContext(ctx, query, txHash.Bytes())
+	var cnt uint
+	err := row.Scan(&cnt)
+	if err != nil {
+		return false, err
+	}
+	return cnt > 0, nil
+}
+
 func ReadTransaction(ctx context.Context, db *sql.DB, txHash gethcommon.Hash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error) {
 	row := db.QueryRowContext(ctx,
 		"select tx.content, batch.hash, batch.height, tx.idx from receipt join tx on tx.id=receipt.tx join batch on batch.sequence=receipt.batch where batch.is_canonical=true and tx.hash=?",

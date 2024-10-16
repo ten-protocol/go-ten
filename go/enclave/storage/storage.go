@@ -429,6 +429,11 @@ func (s *storageImpl) GetTransactionReceipt(ctx context.Context, txHash common.L
 	return enclavedb.ReadReceipt(ctx, s.db.GetSQLDB(), txHash, requester)
 }
 
+func (s *storageImpl) ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error) {
+	defer s.logDuration("GetTransactionReceipt", measure.NewStopwatch())
+	return enclavedb.ExistsReceipt(ctx, s.db.GetSQLDB(), txHash)
+}
+
 func (s *storageImpl) FetchAttestedKey(ctx context.Context, address gethcommon.Address) (*ecdsa.PublicKey, error) {
 	defer s.logDuration("FetchAttestedKey", measure.NewStopwatch())
 	key, err := enclavedb.FetchAttKey(ctx, s.db.GetSQLDB(), address)
@@ -568,7 +573,7 @@ func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, batch *co
 	toContracts := make([]*uint64, len(batch.Transactions))
 	// insert the tx signers as externally owned accounts
 	for i, tx := range batch.Transactions {
-		sender, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+		sender, err := core.GetTxSigner(tx)
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not read tx sender. Cause: %w", err)
 		}
@@ -576,6 +581,7 @@ func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, batch *co
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not insert EOA. cause: %w", err)
 		}
+		s.logger.Trace("Tx sender", "tx", tx.Hash(), "sender", sender.Hex(), "eoaId", *eoaID)
 		senders[i] = *eoaID
 
 		to := tx.To()

@@ -32,6 +32,7 @@ type ContractVisibilityConfig struct {
 type TxExecResult struct {
 	Receipt          *types.Receipt
 	CreatedContracts map[gethcommon.Address]*ContractVisibilityConfig
+	Tx               *types.Transaction
 	Err              error
 }
 
