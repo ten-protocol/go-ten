@@ -158,7 +158,7 @@ func FilterLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.A
 
 func DebugGetLogs(ctx context.Context, db *sql.DB, fromBlock *big.Int, toBlock *big.Int, address gethcommon.Address, eventSig gethcommon.Hash) ([]*common.DebugLogVisibility, error) {
 	var queryParams []any
-	query := "select c.transparent, c.auto_visibility, et.config_public, et.topic1_can_view, et.topic2_can_view, et.topic3_can_view, et.sender_can_view, et.auto_visibility, et.auto_public, eoa1.address, eoa2.address, eoa3.address, b.height, tx.hash, tx.idx, b.hash, log_idx " +
+	query := "select c.transparent, c.auto_visibility, et.config_public, et.topic1_can_view, et.topic2_can_view, et.topic3_can_view, et.sender_can_view, et.auto_visibility, et.auto_public, eoa1.address, eoa2.address, eoa3.address, b.height, curr_tx.hash, curr_tx.idx, b.hash, log_idx " +
 		baseReceiptJoin + baseEventJoin
 
 	// ignore negative numbers
