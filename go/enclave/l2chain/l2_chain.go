@@ -110,7 +110,7 @@ func (oc *obscuroChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Tra
 	}
 
 	if oc.logger.Enabled(context.Background(), gethlog.LevelTrace) {
-		oc.logger.Trace("Obs_Call: Successful result", "result", fmt.Sprintf("contractAddress=%s, from=%s, data=%s, batch=%s, state=%s",
+		oc.logger.Trace("Obs_Call: Successful result", "result", fmt.Sprintf("to=%s, from=%s, data=%s, batch=%s, state=%s",
 			callMsg.To,
 			callMsg.From,
 			hexutils.BytesToHex(callMsg.Data),
