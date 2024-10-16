@@ -692,12 +692,12 @@ func (e *enclaveImpl) GetBalance(ctx context.Context, encryptedParams common.Enc
 	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetBalanceValidate, rpc.GetBalanceExecute)
 }
 
-func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, common.SystemError) {
+func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash gethrpc.BlockNumberOrHash) ([]byte, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetCode with the enclave stopping"))
 	}
 
-	stateDB, err := e.registry.GetBatchState(ctx, batchHash)
+	stateDB, err := e.registry.GetBatchState(ctx, blockNrOrHash)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not create stateDB. Cause: %w", err))
 	}
@@ -929,7 +929,7 @@ func restoreStateDBCache(ctx context.Context, storage storage.Storage, registry 
 //
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
 func stateDBAvailableForBatch(ctx context.Context, registry components.BatchRegistry, hash common.L2BatchHash) bool {
-	_, err := registry.GetBatchState(ctx, &hash)
+	_, err := registry.GetBatchState(ctx, gethrpc.BlockNumberOrHash{BlockHash: &hash})
 	return err == nil
 }
 

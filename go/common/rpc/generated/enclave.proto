@@ -334,7 +334,7 @@ message GetStorageSlotResponse {
 
 message GetCodeRequest {
   bytes address = 1;
-  bytes rollupHash = 2;
+  bytes blockNrOrHash = 2;
 }
 message GetCodeResponse {
   bytes code = 1;

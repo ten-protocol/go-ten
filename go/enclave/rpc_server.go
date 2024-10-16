@@ -234,9 +234,15 @@ func (s *RPCServer) GetBalance(ctx context.Context, request *generated.GetBalanc
 
 func (s *RPCServer) GetCode(ctx context.Context, request *generated.GetCodeRequest) (*generated.GetCodeResponse, error) {
 	address := gethcommon.BytesToAddress(request.Address)
-	rollupHash := gethcommon.BytesToHash(request.RollupHash)
 
-	code, sysError := s.enclave.GetCode(ctx, address, &rollupHash)
+	blockNrOrHash := &gethrpc.BlockNumberOrHash{}
+	err := blockNrOrHash.UnmarshalJSON(request.BlockNrOrHash)
+	if err != nil {
+		s.logger.Error("Error unmarshalling block nr or hash", log.ErrKey, err)
+		return &generated.GetCodeResponse{SystemError: toRPCError(err)}, nil
+	}
+
+	code, sysError := s.enclave.GetCode(ctx, address, *blockNrOrHash)
 	if sysError != nil {
 		s.logger.Error("Error getting code", log.ErrKey, sysError)
 		return &generated.GetCodeResponse{SystemError: toRPCError(sysError)}, nil

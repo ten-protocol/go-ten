@@ -342,13 +342,18 @@ func (c *Client) GetBalance(ctx context.Context, encryptedParams common.Encrypte
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
-func (c *Client) GetCode(ctx context.Context, address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, common.SystemError) {
+func (c *Client) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash gethrpc.BlockNumberOrHash) ([]byte, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
 	defer cancel()
 
+	json, err := json.Marshal(blockNrOrHash)
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+
 	response, err := c.protoClient.GetCode(timeoutCtx, &generated.GetCodeRequest{
-		Address:    address.Bytes(),
-		RollupHash: batchHash.Bytes(),
+		Address:       address.Bytes(),
+		BlockNrOrHash: json,
 	})
 	if err != nil {
 		return nil, syserr.NewRPCError(err)
