@@ -91,7 +91,7 @@ type Enclave interface {
 	GetBalance(ctx context.Context, encryptedParams EncryptedParamsGetBalance) (*responses.Balance, SystemError)
 
 	// GetCode returns the code stored at the given address in the state for the given rollup hash.
-	GetCode(ctx context.Context, address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, SystemError)
+	GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) ([]byte, SystemError)
 
 	GetStorageSlot(ctx context.Context, encryptedParams EncryptedParamsGetStorageSlot) (*responses.EnclaveResponse, SystemError)
 

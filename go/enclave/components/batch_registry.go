@@ -180,8 +180,14 @@ func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, up
 	return resultBatches, resultBlocks, nil
 }
 
-func (br *batchRegistry) GetBatchState(ctx context.Context, hash *common.L2BatchHash) (*state.StateDB, error) {
-	return getBatchState(ctx, br.storage, *hash)
+func (br *batchRegistry) GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, error) {
+	if blockNumberOrHash.BlockHash != nil {
+		return getBatchState(ctx, br.storage, *blockNumberOrHash.BlockHash)
+	}
+	if blockNumberOrHash.BlockNumber != nil {
+		return br.GetBatchStateAtHeight(ctx, blockNumberOrHash.BlockNumber)
+	}
+	return nil, fmt.Errorf("block number or block hash does not exist")
 }
 
 func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
