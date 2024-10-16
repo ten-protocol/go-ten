@@ -5,7 +5,6 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/mariadb"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/sqlite"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
@@ -13,13 +12,13 @@ import (
 )
 
 type Storage interface {
-	AddUser(userID []byte, privateKey []byte) error
-	DeleteUser(userID []byte) error
-	GetUserPrivateKey(userID []byte) ([]byte, error)
-	AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error
-	GetAccounts(userID []byte) ([]common.AccountDB, error)
+	AddUser(userID []byte, userIDHash []byte, privateKey []byte) error
+	DeleteUser(userIDHash []byte) error
+	GetUserPrivateKey(userIDHash []byte) ([]byte, error)
+	AddAccount(userIDHash []byte, encryptedUserID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error
+	GetAccounts(userIDHash []byte) ([]common.AccountDB, error)
 	GetAllUsers() ([]common.UserDB, error)
-	StoreTransaction(rawTx string, userID []byte) error
+	StoreTransaction(rawTx string, userIDHash []byte) error
 }
 
 type EncryptedStorage struct {
@@ -27,13 +26,13 @@ type EncryptedStorage struct {
 	encryptor *encryption.Encryptor
 }
 
-func New(dbType string, dbConnectionURL, dbPath string, randomNumber []byte) (Storage, error) {
+func New(dbType string, dbConnectionURL, dbPath string, randomNumber []byte) (*EncryptedStorage, error) {
 	var baseStorage Storage
 	var err error
 
 	switch dbType {
-	case "mariaDB":
-		baseStorage, err = mariadb.NewMariaDB(dbConnectionURL)
+	// case "mariaDB":
+	// 	baseStorage, err = mariadb.NewMariaDB(dbConnectionURL)
 	case "sqlite":
 		baseStorage, err = sqlite.NewSqliteDatabase(dbPath)
 	default:
@@ -60,25 +59,39 @@ func NewEncryptedStorage(storage Storage, key []byte) (*EncryptedStorage, error)
 
 // Implement the methods of EncryptedStorage
 func (es *EncryptedStorage) AddUser(userID []byte, privateKey []byte) error {
+	userIDHash := es.encryptor.HashWithHMAC(userID)
 	encryptedPrivateKey, err := es.encryptor.Encrypt(privateKey)
 	if err != nil {
 		return err
 	}
-	return es.Storage.AddUser(userID, encryptedPrivateKey)
+	encryptedUserID, err := es.encryptor.Encrypt(userID)
+	if err != nil {
+		return err
+	}
+	return es.Storage.AddUser(encryptedUserID, userIDHash, encryptedPrivateKey)
+}
+
+func (es *EncryptedStorage) DeleteUser(userID []byte) error {
+	userIDHash := es.encryptor.HashWithHMAC(userID)
+	return es.Storage.DeleteUser(userIDHash)
 }
 
 func (es *EncryptedStorage) GetUserPrivateKey(userID []byte) ([]byte, error) {
-	encryptedPrivateKey, err := es.Storage.GetUserPrivateKey(userID)
+	userIDHash := es.encryptor.HashWithHMAC(userID)
+	encryptedPrivateKey, err := es.Storage.GetUserPrivateKey(userIDHash)
 	if err != nil {
 		return nil, err
 	}
 	return es.encryptor.Decrypt(encryptedPrivateKey)
 }
+
 func (es *EncryptedStorage) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
-	encryptedUserID, err := es.encryptor.Encrypt(userID)
+	userIDHash := es.encryptor.HashWithHMAC(userID)
+	encryptedUserID, err := es.encryptor.Encrypt(userIDHash)
 	if err != nil {
 		return err
 	}
+
 	encryptedAccountAddress, err := es.encryptor.Encrypt(accountAddress)
 	if err != nil {
 		return err
@@ -88,11 +101,12 @@ func (es *EncryptedStorage) AddAccount(userID []byte, accountAddress []byte, sig
 		return err
 	}
 
-	return es.Storage.AddAccount(encryptedUserID, encryptedAccountAddress, encryptedSignature, signatureType)
+	return es.Storage.AddAccount(userIDHash, encryptedUserID, encryptedAccountAddress, encryptedSignature, signatureType)
 }
 
 func (es *EncryptedStorage) GetAccounts(userID []byte) ([]common.AccountDB, error) {
-	accounts, err := es.Storage.GetAccounts(userID)
+	userIDHash := es.encryptor.HashWithHMAC(userID)
+	accounts, err := es.Storage.GetAccounts(userIDHash)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +123,7 @@ func (es *EncryptedStorage) GetAccounts(userID []byte) ([]common.AccountDB, erro
 
 		accounts[i].AccountAddress = decryptedAccountAddress
 		accounts[i].Signature = decryptedSignature
+		accounts[i].SignatureType = account.SignatureType
 	}
 
 	return accounts, nil
@@ -138,16 +153,9 @@ func (es *EncryptedStorage) GetAllUsers() ([]common.UserDB, error) {
 	return decryptedUsers, nil
 }
 
-func (es *EncryptedStorage) StoreTransaction(rawTx string, userID []byte) error {
-	encryptedUserID, err := es.encryptor.Encrypt(userID)
-	if err != nil {
-		return err
-	}
-
-	encryptedRawTx, err := es.encryptor.Encrypt([]byte(rawTx))
-	if err != nil {
-		return err
-	}
-
-	return es.Storage.StoreTransaction(string(encryptedRawTx), encryptedUserID)
+// StoreTransaction stores a transaction in the database
+// TODO: Remove this method in the future as it is only a temporary solution for debugging purposes and that's why it's not encrypted
+func (es *EncryptedStorage) StoreTransaction(rawTx string, userIDHash []byte) error {
+	encryptedUserID := es.encryptor.HashWithHMAC(userIDHash)
+	return es.Storage.StoreTransaction(rawTx, encryptedUserID)
 }

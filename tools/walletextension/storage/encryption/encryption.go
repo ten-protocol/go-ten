@@ -3,13 +3,16 @@ package encryption
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
 	"io"
 )
 
 type Encryptor struct {
 	gcm cipher.AEAD
+	key []byte
 }
 
 func NewEncryptor(key []byte) (*Encryptor, error) {
@@ -21,7 +24,7 @@ func NewEncryptor(key []byte) (*Encryptor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Encryptor{gcm: gcm}, nil
+	return &Encryptor{gcm: gcm, key: key}, nil
 }
 
 func (e *Encryptor) Encrypt(plaintext []byte) ([]byte, error) {
@@ -38,4 +41,10 @@ func (e *Encryptor) Decrypt(ciphertext []byte) ([]byte, error) {
 	}
 	nonce, ciphertext := ciphertext[:e.gcm.NonceSize()], ciphertext[e.gcm.NonceSize():]
 	return e.gcm.Open(nil, nonce, ciphertext, nil)
+}
+
+func (e *Encryptor) HashWithHMAC(data []byte) []byte {
+	h := hmac.New(sha256.New, e.key)
+	h.Write(data)
+	return h.Sum(nil)
 }

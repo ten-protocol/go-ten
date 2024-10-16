@@ -43,8 +43,9 @@ func NewSqliteDatabase(dbPath string) (*Database, error) {
 
 	// create users table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
-		user_id binary(20) PRIMARY KEY,
-		private_key binary(32)
+		user_id_hash BLOB PRIMARY KEY,
+		user_id BLOB,
+		private_key BLOB
 	);`)
 	if err != nil {
 		return nil, err
@@ -52,11 +53,12 @@ func NewSqliteDatabase(dbPath string) (*Database, error) {
 
 	// create accounts table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS accounts (
-		user_id binary(20),
-		account_address binary(20),
-		signature binary(65),
+		user_id_hash BLOB,
+		user_id BLOB,
+		account_address BLOB,
+		signature BLOB,
 		signature_type int,
-    	FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+		FOREIGN KEY(user_id_hash) REFERENCES users(user_id_hash) ON DELETE CASCADE
 	);`)
 	if err != nil {
 		return nil, err
@@ -65,7 +67,7 @@ func NewSqliteDatabase(dbPath string) (*Database, error) {
 	// create transactions table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS transactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id binary(20),
+    user_id BLOB,
     tx_hash TEXT,
     tx TEXT,
     tx_time TEXT DEFAULT (datetime('now'))
@@ -77,14 +79,14 @@ func NewSqliteDatabase(dbPath string) (*Database, error) {
 	return &Database{db: db}, nil
 }
 
-func (s *Database) AddUser(userID []byte, privateKey []byte) error {
-	stmt, err := s.db.Prepare("INSERT OR REPLACE INTO users(user_id, private_key) VALUES (?, ?)")
+func (s *Database) AddUser(userID []byte, userIDHash []byte, privateKey []byte) error {
+	stmt, err := s.db.Prepare("INSERT OR REPLACE INTO users(user_id_hash, user_id, private_key) VALUES (?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(userID, privateKey)
+	_, err = stmt.Exec(userIDHash, userID, privateKey)
 	if err != nil {
 		return err
 	}
@@ -92,14 +94,14 @@ func (s *Database) AddUser(userID []byte, privateKey []byte) error {
 	return nil
 }
 
-func (s *Database) DeleteUser(userID []byte) error {
-	stmt, err := s.db.Prepare("DELETE FROM users WHERE user_id = ?")
+func (s *Database) DeleteUser(userIDHash []byte) error {
+	stmt, err := s.db.Prepare("DELETE FROM users WHERE user_id_hash = ?")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(userID)
+	_, err = stmt.Exec(userIDHash)
 	if err != nil {
 		return err
 	}
@@ -107,12 +109,12 @@ func (s *Database) DeleteUser(userID []byte) error {
 	return nil
 }
 
-func (s *Database) GetUserPrivateKey(userID []byte) ([]byte, error) {
+func (s *Database) GetUserPrivateKey(userIDhash []byte) ([]byte, error) {
 	var privateKey []byte
-	err := s.db.QueryRow("SELECT private_key FROM users WHERE user_id = ?", userID).Scan(&privateKey)
+	err := s.db.QueryRow("SELECT private_key FROM users WHERE user_id_hash = ?", userIDhash).Scan(&privateKey)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// No rows found for the given userID
+			// No rows found for the given userIDHash
 			return nil, errutil.ErrNotFound
 		}
 		return nil, err
@@ -121,14 +123,14 @@ func (s *Database) GetUserPrivateKey(userID []byte) ([]byte, error) {
 	return privateKey, nil
 }
 
-func (s *Database) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
-	stmt, err := s.db.Prepare("INSERT INTO accounts(user_id, account_address, signature, signature_type) VALUES (?, ?, ?, ?)")
+func (s *Database) AddAccount(userIDHash []byte, encryptedUserID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
+	stmt, err := s.db.Prepare("INSERT INTO accounts(user_id_hash, user_id, account_address, signature, signature_type) VALUES (?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(userID, accountAddress, signature, int(signatureType))
+	_, err = stmt.Exec(userIDHash, encryptedUserID, accountAddress, signature, int(signatureType))
 	if err != nil {
 		return err
 	}
@@ -136,8 +138,8 @@ func (s *Database) AddAccount(userID []byte, accountAddress []byte, signature []
 	return nil
 }
 
-func (s *Database) GetAccounts(userID []byte) ([]common.AccountDB, error) {
-	rows, err := s.db.Query("SELECT account_address, signature, signature_type FROM accounts WHERE user_id = ?", userID)
+func (s *Database) GetAccounts(userIDHash []byte) ([]common.AccountDB, error) {
+	rows, err := s.db.Query("SELECT account_address, signature, signature_type FROM accounts WHERE user_id_hash = ?", userIDHash)
 	if err != nil {
 		return nil, err
 	}
