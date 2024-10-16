@@ -434,14 +434,12 @@ func (s *RPCServer) StreamL2Updates(_ *generated.StreamL2UpdatesRequest, stream 
 }
 
 func (s *RPCServer) DebugEventLogRelevancy(ctx context.Context, req *generated.DebugEventLogRelevancyRequest) (*generated.DebugEventLogRelevancyResponse, error) {
-	txHash := gethcommon.BytesToHash(req.TxHash)
-
-	logs, sysError := s.enclave.DebugEventLogRelevancy(ctx, txHash)
+	enclaveResp, sysError := s.enclave.DebugEventLogRelevancy(ctx, req.EncryptedParams)
 	if sysError != nil {
-		s.logger.Error("Error debugging event relevancy", log.ErrKey, sysError)
+		s.logger.Error("Error getting logs", log.ErrKey, sysError)
+		return &generated.DebugEventLogRelevancyResponse{SystemError: toRPCError(sysError)}, nil
 	}
-
-	return &generated.DebugEventLogRelevancyResponse{Msg: string(logs), SystemError: toRPCError(sysError)}, nil
+	return &generated.DebugEventLogRelevancyResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetTotalContractCount(ctx context.Context, _ *generated.GetTotalContractCountRequest) (*generated.GetTotalContractCountResponse, error) {

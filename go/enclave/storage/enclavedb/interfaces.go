@@ -24,6 +24,7 @@ type EnclaveDB interface {
 type Contract struct {
 	Id             uint64
 	Address        gethcommon.Address
+	Creator        gethcommon.Address
 	AutoVisibility bool
 	Transparent    *bool
 }

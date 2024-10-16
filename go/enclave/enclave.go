@@ -837,8 +837,7 @@ func (e *enclaveImpl) DebugTraceTransaction(ctx context.Context, txHash gethcomm
 	return jsonMsg, nil
 }
 
-func (e *enclaveImpl) DebugEventLogRelevancy(ctx context.Context, txHash gethcommon.Hash) (json.RawMessage, common.SystemError) {
-	// ensure the enclave is running
+func (e *enclaveImpl) DebugEventLogRelevancy(ctx context.Context, encryptedParams common.EncryptedParamsDebugLogRelevancy) (*responses.DebugLogs, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested DebugEventLogRelevancy with the enclave stopping"))
 	}
@@ -848,16 +847,7 @@ func (e *enclaveImpl) DebugEventLogRelevancy(ctx context.Context, txHash gethcom
 		return nil, responses.ToInternalError(fmt.Errorf("debug namespace not enabled"))
 	}
 
-	jsonMsg, err := e.debugger.DebugEventLogRelevancy(ctx, txHash)
-	if err != nil {
-		if errors.Is(err, syserr.InternalError{}) {
-			return nil, responses.ToInternalError(err)
-		}
-		// TODO *Pedro* MOVE THIS TO Enclave Response
-		return json.RawMessage(err.Error()), nil
-	}
-
-	return jsonMsg, nil
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.DebugLogsValidate, rpc.DebugLogsExecute)
 }
 
 func (e *enclaveImpl) GetTotalContractCount(ctx context.Context) (*big.Int, common.SystemError) {
