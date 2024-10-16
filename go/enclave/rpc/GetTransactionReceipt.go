@@ -31,20 +31,21 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	requester := builder.VK.AccountAddress
 	rpc.logger.Trace("Get receipt for ", log.TxKey, txHash, "requester", requester.Hex())
 
+	exists, err := rpc.storage.ExistsTransactionReceipt(builder.ctx, txHash)
+	if err != nil {
+		return fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
+	}
+	if !exists {
+		builder.Status = NotFound
+		return nil
+	}
+
 	// We retrieve the transaction receipt.
 	receipt, err := rpc.storage.GetTransactionReceipt(builder.ctx, txHash, requester, false)
 	if err != nil {
 		rpc.logger.Trace("error getting tx receipt", log.TxKey, txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
-			exists, err := rpc.storage.ExistsTransactionReceipt(builder.ctx, txHash)
-			if err != nil {
-				return fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
-			}
-			if exists {
-				builder.Status = NotAuthorised
-			} else {
-				builder.Status = NotFound
-			}
+			builder.Status = NotAuthorised
 			return nil
 		}
 		// this is a system error
