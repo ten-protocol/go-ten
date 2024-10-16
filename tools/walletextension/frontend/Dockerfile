@@ -1,51 +1,50 @@
-# Use an official Node.js LTS version as a base image
-FROM node:20-alpine AS base
+# Node.js LTS version
+FROM node:18-buster AS base
+
 # Install pnpm
 RUN npm install -g pnpm
 
-
+# build-time arguments
 ARG NEXT_PUBLIC_NETWORK_NAME
 ARG NEXT_PUBLIC_TENSCAN_URL
 ARG NEXT_PUBLIC_GATEWAY_URL
 ARG NEXT_PUBLIC_API_HOST_ENVIRONMENT
 
+# environment variabless
 ENV NEXT_PUBLIC_NETWORK_NAME=$NEXT_PUBLIC_NETWORK_NAME
 ENV NEXT_PUBLIC_TENSCAN_URL=$NEXT_PUBLIC_TENSCAN_URL
 ENV NEXT_PUBLIC_GATEWAY_URL=$NEXT_PUBLIC_GATEWAY_URL
-ENV NEXT_PUBLIC_API_HOST_ENVIRONMENT=${NEXT_PUBLIC_API_HOST_ENVIRONMENT}
+ENV NEXT_PUBLIC_API_HOST_ENVIRONMENT=$NEXT_PUBLIC_API_HOST_ENVIRONMENT
 
 # Set the working directory
 WORKDIR /usr/src/app
 
-# Copy the necessary files to the working directory
+# copy app source
 COPY tools/walletextension/frontend/ .
 
 # Install dependencies
-RUN pnpm ci
+RUN pnpm install
 
 # Build the Next.js app
 RUN pnpm run build
 
-# Reduce the size of the final image by using a lighter base image
-FROM node:20-alpine AS runner
+# using a lighter image for the final build
+FROM node:18-buster AS runner
 
-# Set the working directory
+# working directory
 WORKDIR /usr/src/app
 
-# Copy only the necessary files from the build stage
+# Copy the necessary files from the base image
 COPY --from=base /usr/src/app/.next ./.next
 COPY --from=base /usr/src/app/public ./public
 COPY --from=base /usr/src/app/package*.json ./
 
-# Install production dependencies
-RUN pnpm ci --production
+# Install only production dependencies
+RUN pnpm install --production
 
-
-# Set the environment variables
+# Set environment variable and expose port
 ENV PORT=80
-
-# Expose the port
 EXPOSE 80
 
-# Start the application
+# start the app
 CMD ["pnpm", "start"]
