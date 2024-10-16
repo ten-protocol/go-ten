@@ -239,14 +239,6 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, fromBlock *big.Int, toBlock *
 	return result, nil
 }
 
-func bytesToAddress(b []byte) *gethcommon.Address {
-	if b != nil {
-		addr := gethcommon.BytesToAddress(b)
-		return &addr
-	}
-	return nil
-}
-
 func loadReceiptList(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, orderBy string, orderByParams []any) ([]*core.InternalReceipt, error) {
 	if requestingAccount == nil {
 		return nil, fmt.Errorf("you have to specify requestingAccount")
