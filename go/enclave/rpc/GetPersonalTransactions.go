@@ -34,13 +34,13 @@ func GetPersonalTransactionsExecute(builder *CallBuilder[common.ListPrivateTrans
 		return nil //nolint:nilerr
 	}
 	addr := builder.Param.Address
-	bareReceipts, err := rpc.storage.GetTransactionsPerAddress(builder.ctx, &addr, &builder.Param.Pagination)
+	internalReceipts, err := rpc.storage.GetTransactionsPerAddress(builder.ctx, &addr, &builder.Param.Pagination)
 	if err != nil {
 		return fmt.Errorf("GetTransactionsPerAddress - %w", err)
 	}
 
 	var receipts types.Receipts
-	for _, receipt := range bareReceipts {
+	for _, receipt := range internalReceipts {
 		receipts = append(receipts, receipt.ToReceipt())
 	}
 
