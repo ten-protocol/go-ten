@@ -98,7 +98,8 @@ type TransactionStorage interface {
 	// GetTransaction - returns the positional metadata of the tx by hash
 	GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error)
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
-	GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (*types.Receipt, error)
+	GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error)
+	ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error)
 }
 
 type AttestationStorage interface {
@@ -156,7 +157,7 @@ type Storage interface {
 
 type ScanStorage interface {
 	GetContractCount(ctx context.Context) (*big.Int, error)
-	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error)
+	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error)
 
 	CountTransactionsPerAddress(ctx context.Context, addr *gethcommon.Address) (uint64, error)
 }

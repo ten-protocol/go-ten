@@ -65,5 +65,9 @@ func (o *oracle) EstimateL1CostForMsg(args *gethapi.TransactionArgs, block *type
 	nonZeroGas := big.NewInt(int64(params.TxDataNonZeroGasEIP2028))
 	overhead := big.NewInt(0).Mul(big.NewInt(150), nonZeroGas)
 	l1Gas := CalculateL1GasUsed(encoded, overhead)
-	return big.NewInt(0).Mul(l1Gas, block.BaseFee), nil
+	baseFee := big.NewInt(0)
+	if block.BaseFee != nil {
+		baseFee = block.BaseFee
+	}
+	return big.NewInt(0).Mul(l1Gas, baseFee), nil
 }

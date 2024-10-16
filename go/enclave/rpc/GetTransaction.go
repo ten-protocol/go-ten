@@ -53,11 +53,7 @@ func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction]
 		return nil
 	}
 
-	// Unlike in the Geth impl, we hardcode the use of a London signer.
-	// todo (#1553) - once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`
-	signer := types.NewLondonSigner(tx.ChainId())
-	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, rpc.config.BaseFee, signer)
-	builder.ReturnValue = rpcTx
+	builder.ReturnValue = newRPCTransaction(tx, blockHash, blockNumber, index, rpc.config.BaseFee, sender)
 	return nil
 }
 
@@ -85,8 +81,7 @@ type RpcTransaction struct { //nolint
 }
 
 // Lifted from Geth's internal `ethapi` package.
-func newRPCTransaction(tx *types.Transaction, blockHash gethcommon.Hash, blockNumber uint64, index uint64, baseFee *big.Int, signer types.Signer) *RpcTransaction {
-	from, _ := types.Sender(signer, tx)
+func newRPCTransaction(tx *types.Transaction, blockHash gethcommon.Hash, blockNumber uint64, index uint64, baseFee *big.Int, from gethcommon.Address) *RpcTransaction {
 	v, r, s := tx.RawSignatureValues()
 	result := &RpcTransaction{
 		Type:     hexutil.Uint64(tx.Type()),

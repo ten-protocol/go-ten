@@ -1,11 +1,11 @@
 import Layout from "@/src/components/layouts/default-layout";
-import Spinner from "@/src/components/ui/spinner";
 import { siteMetadata } from "@/src/lib/siteMetadata";
 import { useRouter } from "next/router";
 import React from "react";
-import Custom404Error from "../404";
-import { showToast } from "@/src/components/ui/use-toast";
-import { ToastType } from "@/src/types/interfaces";
+import { showToast } from "@repo/ui/components/shared/use-toast";
+import { ToastType } from "@repo/ui/lib/enums/toast";
+import Custom404Error from "@repo/ui/components/common/404";
+import Spinner from "@repo/ui/components/shared/spinner";
 
 type Document = {
   title: string;

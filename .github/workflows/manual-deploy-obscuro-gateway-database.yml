@@ -90,6 +90,50 @@ jobs:
             && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
             && docker network create --driver bridge node_network || true \
+            && mkdir -p /home/obscuro/promtail \
+            && echo "
+            server:
+              http_listen_port: 9080
+              grpc_listen_port: 0
+
+            positions:
+              filename: /tmp/positions.yaml
+
+            clients:
+              - url: ${{ vars.METRICS_URI }}
+                batchwait: 3s
+                batchsize: 1048576
+                tls_config:
+                  insecure_skip_verify: true
+                basic_auth:
+                  username: ${{ secrets.LOKI_USER }}
+                  password: ${{ secrets.LOKI_PASSWORD }}
+
+            scrape_configs:
+            - job_name: flog_scrape
+              docker_sd_configs:
+                - host: unix:///var/run/docker.sock
+                  refresh_interval: 5s
+              relabel_configs:
+                - source_labels: [\"__meta_docker_container_name\"]
+                  regex: \"/(.*)\"
+                  target_label: \"container\"
+                - source_labels: [\"__meta_docker_container_log_stream\"]
+                  target_label: \"logstream\"
+                - source_labels: [\"__meta_docker_container_label_logging_jobname\"]
+                  target_label: \"job\"
+                - replacement: ${{ github.event.inputs.testnet_type }}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }}
+                  target_label: "node_name"
+            " > /home/obscuro/promtail/promtail-config.yaml \
+            && docker run -d --name promtail \
+              --network node_network \
+              -e HOSTNAME=${{ github.event.inputs.testnet_type }}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }} \
+              -v /var/log:/var/log \
+              -v /home/obscuro/promtail:/etc/promtail \
+              -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              grafana/promtail:latest \
+              -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true \
             && cd /home/obscuro/go-obscuro/ \
             && docker run -d --name ${{ github.event.inputs.testnet_type }}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }} \
                 -p 3306:3306 \

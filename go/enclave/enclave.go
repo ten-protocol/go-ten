@@ -14,6 +14,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/enclave/system"
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	"github.com/ten-protocol/go-ten/go/enclave/components"
@@ -67,6 +68,7 @@ type enclaveImpl struct {
 	subscriptionManager   *events.SubscriptionManager
 	crossChainProcessors  *crosschain.Processors
 	sharedSecretProcessor *components.SharedSecretProcessor
+	scb                   system.SystemContractCallbacks
 
 	chain     l2chain.ObscuroChain
 	service   nodetype.NodeType
@@ -167,10 +169,13 @@ func NewEnclave(
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
+	systemContractsWallet := system.GetPlaceholderWallet(chainConfig.ChainID, logger)
+	scb := system.NewSystemContractCallbacks(systemContractsWallet, logger)
+
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 	registry := components.NewBatchRegistry(storage, logger)
-	batchExecutor := components.NewBatchExecutor(storage, registry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, logger)
+	batchExecutor := components.NewBatchExecutor(storage, registry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, scb, logger)
 	sigVerifier, err := components.NewSignatureValidator(storage)
 	rProducer := components.NewRollupProducer(enclaveKey.EnclaveID(), storage, registry, logger)
 	if err != nil {
@@ -271,6 +276,7 @@ func NewEnclave(
 		logger:                 logger,
 		debugger:               debug,
 		stopControl:            stopcontrol.New(),
+		scb:                    scb,
 
 		chain:     chain,
 		registry:  registry,
@@ -868,7 +874,15 @@ func (e *enclaveImpl) EnclavePublicConfig(context.Context) (*common.EnclavePubli
 	if systemError != nil {
 		return nil, systemError
 	}
-	return &common.EnclavePublicConfig{L2MessageBusAddress: address}, nil
+	analyzerAddress := e.scb.TransactionPostProcessor()
+	if analyzerAddress == nil {
+		analyzerAddress = &gethcommon.Address{}
+	}
+
+	return &common.EnclavePublicConfig{
+		L2MessageBusAddress:             address,
+		TransactionPostProcessorAddress: *analyzerAddress,
+	}, nil
 }
 
 func (e *enclaveImpl) rejectBlockErr(ctx context.Context, cause error) *errutil.BlockRejectError {

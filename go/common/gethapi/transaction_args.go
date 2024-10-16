@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -37,6 +38,63 @@ type TransactionArgs struct {
 	// Introduced by AccessListTxType transaction.
 	AccessList *types.AccessList `json:"accessList,omitempty"`
 	ChainID    *hexutil.Big      `json:"chainId,omitempty"`
+}
+
+// String returns a human-readable representation of the transaction arguments.
+// This is necessary for printing the transaction arguments in SGX mode
+func (args TransactionArgs) String() string {
+	var parts []string
+	if args.From != nil {
+		parts = append(parts, fmt.Sprintf("From:%s", args.From.Hex()))
+	}
+	if args.To != nil {
+		parts = append(parts, fmt.Sprintf("To:%s", args.To.Hex()))
+	}
+	if args.Gas != nil {
+		parts = append(parts, fmt.Sprintf("Gas:%d", *args.Gas))
+	}
+	if args.GasPrice != nil {
+		parts = append(parts, fmt.Sprintf("GasPrice:%s", args.GasPrice.String()))
+	}
+	if args.MaxFeePerGas != nil {
+		parts = append(parts, fmt.Sprintf("MaxFeePerGas:%s", args.MaxFeePerGas.String()))
+	}
+	if args.MaxPriorityFeePerGas != nil {
+		parts = append(parts, fmt.Sprintf("MaxPriorityFeePerGas:%s", args.MaxPriorityFeePerGas.String()))
+	}
+	if args.Value != nil {
+		parts = append(parts, fmt.Sprintf("Value:%s", args.Value.String()))
+	}
+	if args.Nonce != nil {
+		parts = append(parts, fmt.Sprintf("Nonce:%d", *args.Nonce))
+	}
+	if args.Data != nil {
+		parts = append(parts, fmt.Sprintf("Data:0x%x", *args.Data))
+	}
+	if args.Input != nil {
+		parts = append(parts, fmt.Sprintf("Input:0x%x", *args.Input))
+	}
+	if args.AccessList != nil {
+		parts = append(parts, fmt.Sprintf("AccessList:%s", accessListToString(*args.AccessList)))
+	}
+	if args.ChainID != nil {
+		parts = append(parts, fmt.Sprintf("ChainID:%s", args.ChainID.String()))
+	}
+
+	return fmt.Sprintf("TransactionArgs{%s}", strings.Join(parts, " "))
+}
+
+// Helper function to convert AccessList to string
+func accessListToString(list types.AccessList) string {
+	var accessListParts []string
+	for _, tuple := range list {
+		storageKeys := make([]string, len(tuple.StorageKeys))
+		for i, key := range tuple.StorageKeys {
+			storageKeys[i] = key.Hex()
+		}
+		accessListParts = append(accessListParts, fmt.Sprintf("{%s: [%s]}", tuple.Address.Hex(), strings.Join(storageKeys, ", ")))
+	}
+	return fmt.Sprintf("[%s]", strings.Join(accessListParts, ", "))
 }
 
 // from retrieves the transaction sender address.

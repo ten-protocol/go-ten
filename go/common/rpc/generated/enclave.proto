@@ -107,7 +107,8 @@ message EnclavePublicConfigRequest {}
 
 message EnclavePublicConfigResponse{
   bytes l2MessageBusAddress = 1;
-  SystemError systemError = 2;
+  bytes transactionPostProcessorAddress = 2;
+  SystemError systemError = 3;
 }
 
 message GetReceiptsByAddressRequest {
