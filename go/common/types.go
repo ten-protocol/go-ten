@@ -48,6 +48,7 @@ type (
 	L2PricedTransaction struct {
 		Tx             *L2Tx
 		PublishingCost *big.Int
+		FromSelf       bool
 	}
 	L2PricedTransactions []L2PricedTransaction
 
