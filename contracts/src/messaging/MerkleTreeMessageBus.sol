@@ -9,6 +9,7 @@ import "./IMerkleTreeMessageBus.sol";
 import "./MessageBus.sol";
 
 contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
+    
     constructor() MessageBus() {}
 
     mapping(bytes32 => uint256) rootValidAfter; //When a xchain messages root becomes valid represented as a timestamp in seconds to be compared against block timestamp

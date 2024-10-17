@@ -18,7 +18,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     using MessageHashUtils for bytes;
 
     constructor() {
-      //  _disableInitializers();
         _transferOwnership(msg.sender);
     }
 

@@ -54,6 +54,7 @@ func (s *Simulation) Start() {
 	testlog.Logger().Info(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(ethereummock.MockGenesisBlock.Hash())))
 	s.ctx = context.Background() // use injected context for graceful shutdowns
 
+	fmt.Printf("Waiting for TEN genesis on L1\n")
 	s.waitForTenGenesisOnL1()
 
 	// Arbitrary sleep to wait for RPC clients to get up and running
@@ -61,13 +62,31 @@ func (s *Simulation) Start() {
 	// todo - instead of sleeping, it would be better to poll
 	time.Sleep(10 * time.Second)
 
+	cfg, err := s.RPCHandles.TenWalletRndClient(s.Params.Wallets.L2FaucetWallet).GetConfig()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Config: %v\n", cfg)
+
+	fmt.Printf("Funding the bridge to TEN\n")
 	s.bridgeFundingToTen()
-	s.deployTenZen()       // Deploy the ZenBase contract
-	s.trackLogs()          // Create log subscriptions, to validate that they're working correctly later.
+
+	fmt.Printf("Deploying ZenBase contract\n")
+	s.deployTenZen() // Deploy the ZenBase contract
+
+	fmt.Printf("Creating log subscriptions\n")
+	s.trackLogs() // Create log subscriptions, to validate that they're working correctly later.
+
+	fmt.Printf("Prefunding L2 wallets\n")
 	s.prefundTenAccounts() // Prefund every L2 wallet
 
-	s.deployTenERC20s()   // Deploy the TEN HOC and POC ERC20 contracts
+	fmt.Printf("Deploying TEN ERC20 contracts\n")
+	s.deployTenERC20s() // Deploy the TEN HOC and POC ERC20 contracts
+
+	fmt.Printf("Prefunding L1 wallets\n")
 	s.prefundL1Accounts() // Prefund every L1 wallet
+
+	fmt.Printf("Checking health status\n")
 	s.checkHealthStatus() // Checks the nodes health status
 
 	timer := time.Now()

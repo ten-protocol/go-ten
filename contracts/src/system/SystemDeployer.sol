@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {MessageBus} from "../messaging/MessageBus.sol";
 import "./TransactionPostProcessor.sol";
 
 contract SystemDeployer {
@@ -9,14 +10,23 @@ contract SystemDeployer {
 
     constructor(address eoaAdmin) {
        deployAnalyzer(eoaAdmin);
+       deployMessageBus(eoaAdmin);
     }
 
     function deployAnalyzer(address eoaAdmin) internal {
         TransactionPostProcessor transactionsPostProcessor = new TransactionPostProcessor();
-        bytes memory callData = abi.encodeWithSelector(transactionsPostProcessor.initialize.selector, eoaAdmin, msg.sender);
+        bytes memory callData = abi.encodeWithSelector(transactionsPostProcessor.initialize.selector, eoaAdmin);
         address transactionsPostProcessorProxy = deployProxy(address(transactionsPostProcessor), eoaAdmin, callData);
         
         emit SystemContractDeployed("TransactionsPostProcessor", transactionsPostProcessorProxy);
+    }
+
+    function deployMessageBus(address eoaAdmin) internal {
+        MessageBus messageBus = new MessageBus();
+        bytes memory callData = abi.encodeWithSelector(messageBus.initialize.selector, eoaAdmin);
+        address messageBusProxy = deployProxy(address(messageBus), eoaAdmin, callData);
+
+        emit SystemContractDeployed("MessageBus", messageBusProxy);
     }
 
     function deployProxy(address _logic, address _admin, bytes memory _data) internal returns (address proxyAddress) {

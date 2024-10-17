@@ -11,7 +11,6 @@ contract TransactionPostProcessor is Initializable, AccessControl{
     using Structs for Structs.Transaction;
 
     bytes32 public constant EOA_ADMIN_ROLE = keccak256("EOA_ADMIN_ROLE");
-    bytes32 public constant HOOK_CALLER_ROLE = keccak256("HOOK_CALLER_ROLE");
 
     event TransactionsConverted(uint256 transactionsLength);
 
@@ -21,19 +20,24 @@ contract TransactionPostProcessor is Initializable, AccessControl{
         uint64 Status;        
     }
 
+    modifier onlySelf() {
+        address maskedSelf = address(uint160(address(this)) - 1);
+        require(msg.sender == maskedSelf, "Not self");
+        _;
+    }
+
     OnBlockEndCallback[] onBlockEndListeners;
 
-    function initialize(address eoaAdmin, address authorizedCaller) public initializer {
+    function initialize(address eoaAdmin) public initializer {
         _grantRole(DEFAULT_ADMIN_ROLE, eoaAdmin);
         _grantRole(EOA_ADMIN_ROLE, eoaAdmin);
-        _grantRole(HOOK_CALLER_ROLE, authorizedCaller);
     }
 
     function addOnBlockEndCallback(address callbackAddress) public {
         onBlockEndListeners.push(OnBlockEndCallback(callbackAddress));
     }
 
-    function onBlock(Structs.Transaction[] calldata transactions) public onlyRole(HOOK_CALLER_ROLE) {
+    function onBlock(Structs.Transaction[] calldata transactions) public onlySelf {
         if (transactions.length == 0) {
             revert("No transactions to convert");
         }
