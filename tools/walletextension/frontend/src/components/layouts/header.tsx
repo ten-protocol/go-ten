@@ -7,8 +7,10 @@ import { useState } from "react";
 import { Button } from "@repo/ui/components/shared/button";
 import HealthIndicator from "../health-indicator";
 import Image from "next/image";
+import useWalletStore from "@/stores/wallet-store";
 
 export default function Header() {
+  const { walletConnected } = useWalletStore();
   return (
     <div className="border-b">
       <div className="flex h-16 justify-between items-center px-4">
@@ -33,7 +35,9 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             <HealthIndicator />
             <ModeToggle />
-            <ConnectWalletButton />
+            <ConnectWalletButton
+              text={walletConnected ? "Connected" : "Connect Wallet"}
+            />
           </div>
         </div>
         <div className="flex items-center space-x-4 md:hidden">

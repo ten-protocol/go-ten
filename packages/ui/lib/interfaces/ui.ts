@@ -44,6 +44,13 @@ export interface ErrorType {
 
 export interface ConnectWalletButtonProps {
   className?: string;
-  variant?: ButtonVariants;
   text?: string;
+  variant?: ButtonVariants;
+  onConnect?: () => void;
+  renderContent?: (props: {
+    walletConnected: boolean;
+    isWrongNetwork: boolean;
+    address: string | null;
+    text: string;
+  }) => React.ReactNode;
 }

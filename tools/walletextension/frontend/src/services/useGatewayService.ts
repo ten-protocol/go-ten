@@ -1,24 +1,20 @@
 import { showToast } from "@repo/ui/components/shared/use-toast";
 import { joinTestnet } from "../api/gateway";
-import { useWalletConnection } from "../components/providers/wallet-provider";
 import {
   SWITCHED_CODE,
   tenGatewayAddress,
   tenGatewayVersion,
 } from "../lib/constants";
 import { isTenChain, isValidTokenFormat } from "../lib/utils";
-import {
-  addNetworkToMetaMask,
-  connectAccounts,
-  getToken,
-  switchToTenNetwork,
-} from "@/api/ethRequests";
 import { fetchTestnetStatus } from "@/api/general";
 import { ToastType } from "@repo/ui/lib/enums/toast";
+import { ethers } from "ethers";
+import useWalletStore from "@/stores/wallet-store";
+import ethService from "./ethService";
 
 const useGatewayService = () => {
-  const { token, provider, fetchUserAccounts, setLoading } =
-    useWalletConnection();
+  const { token, provider, fetchUserAccounts, loading, setLoading } =
+    useWalletStore();
 
   const isMetamaskConnected = async () => {
     if (!provider) {
@@ -47,25 +43,27 @@ const useGatewayService = () => {
         }
       }
       showToast(ToastType.INFO, "Switching to TEN Testnet...");
-      const switched = await switchToTenNetwork();
+      const switched = await ethService.switchToTenNetwork();
       showToast(ToastType.SUCCESS, `Switched to TEN Testnet`);
       // SWITCHED_CODE=4902; error 4902 means that the chain does not exist
       if (
         switched === SWITCHED_CODE ||
-        !isValidTokenFormat(await getToken(provider))
+        !isValidTokenFormat(
+          await ethService.getToken(provider as ethers.providers.Web3Provider)
+        )
       ) {
         showToast(ToastType.INFO, "Adding TEN Testnet...");
         const user = await joinTestnet();
         const rpcUrls = [
           `${tenGatewayAddress}/${tenGatewayVersion}/?token=${user}`,
         ];
-        await addNetworkToMetaMask(rpcUrls);
+        await ethService.addNetworkToMetaMask(rpcUrls);
         showToast(ToastType.SUCCESS, "Added TEN Testnet");
       }
 
       if (!(await isMetamaskConnected())) {
         showToast(ToastType.INFO, "No accounts found, connecting...");
-        await connectAccounts();
+        await ethService.connectAccounts();
         showToast(ToastType.SUCCESS, "Connected to TEN Testnet");
       }
       await fetchUserAccounts();
@@ -89,6 +87,8 @@ const useGatewayService = () => {
   return {
     connectToTenTestnet,
     getTestnetStatus,
+    isMetamaskConnected,
+    loading,
   };
 };
 

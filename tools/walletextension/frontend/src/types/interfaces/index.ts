@@ -21,12 +21,13 @@ export type StoreSet = (
 
 export type StoreGet = () => IGatewayWalletState;
 
-interface IGatewayWalletState extends IWalletState {
+export interface IGatewayWalletState extends IWalletState {
   token: string;
   version: string | null;
   accounts: Account[] | null;
-
-  initializeGateway: () => void;
-  connectAccount: (account: string) => void;
-  revokeAccounts: () => void;
+  setLoading: (loading: boolean) => void;
+  initializeGateway: () => Promise<void>;
+  connectAccount: (account: string) => Promise<void>;
+  revokeAccounts: () => Promise<void>;
+  fetchUserAccounts: () => Promise<void>;
 }
