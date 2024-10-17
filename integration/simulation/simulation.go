@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -66,7 +67,10 @@ func (s *Simulation) Start() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Config: %v\n", cfg)
+	jsonCfg, err := json.Marshal(cfg)
+	if err == nil {
+		fmt.Printf("Config: %v\n", string(jsonCfg))
+	}
 
 	fmt.Printf("Funding the bridge to TEN\n")
 	s.bridgeFundingToTen()
@@ -324,8 +328,12 @@ func (s *Simulation) deployTenERC20s() {
 		go func(token testcommon.ERC20) {
 			defer wg.Done()
 			owner := s.Params.Wallets.Tokens[token].L2Owner
-			// 0x526c84529b2b8c11f57d93d3f5537aca3aecef9b - this is the address of the L2 contract which is currently hardcoded.
-			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), gethcommon.HexToAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b"))
+
+			cfg, err := s.RPCHandles.TenWalletRndClient(owner).GetConfig()
+			if err != nil {
+				panic(err)
+			}
+			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), cfg.L2MessageBusAddress)
 
 			fmt.Printf("Deploy contract from: %s\n", owner.Address().Hex())
 			deployContractTxData := types.DynamicFeeTx{

@@ -446,8 +446,12 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomWithdrawals() {
-	// todo (@stefan) - rework this when old contract deployer is phased out?
-	msgBusAddr := gethcommon.HexToAddress("0x526c84529B2b8c11F57D93d3f5537aCA3AeCEf9B")
+
+	cfg, err := ti.rpcHandles.TenWalletRndClient(ti.wallets.L2FaucetWallet).GetConfig()
+	if err != nil {
+		panic(err)
+	}
+	msgBusAddr := cfg.L2MessageBusAddress
 
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
