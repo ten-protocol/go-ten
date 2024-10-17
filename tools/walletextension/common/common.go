@@ -1,6 +1,7 @@
 package common
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 
@@ -75,4 +76,13 @@ func (r *RPCRequest) Clone() *RPCRequest {
 		Method: r.Method,
 		Params: r.Params,
 	}
+}
+
+func GenerateRandomKey(keySize int) ([]byte, error) {
+	key := make([]byte, keySize)
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
 }
