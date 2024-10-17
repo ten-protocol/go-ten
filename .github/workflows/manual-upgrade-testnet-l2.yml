@@ -166,8 +166,8 @@ jobs:
               -host_id=${{ vars[matrix.node_addr_lookup] }} \
               -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \
               -private_key=${{ secrets[matrix.node_pk_lookup] }} \
-              -sequencer_addr=obscuronode-0-${{ github.event.inputs.testnet_type }}-${{ needs.build.outputs.VM_BUILD_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
-              -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ needs.build.outputs.VM_BUILD_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
+              -sequencer_addr=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:10000 \
+              -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:10000 \
               -host_p2p_port=10000 \
               -enclave_docker_image=${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} \
               -host_docker_image=${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
@@ -193,8 +193,8 @@ jobs:
       - name: "Wait until obscuro node is healthy"
         shell: bash
         run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}-${{ needs.build.outputs.VM_BUILD_NUMBER }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}-${{ needs.build.outputs.VM_BUILD_NUMBER }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
 
   deploy-faucet-on-dispatch:
     uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
