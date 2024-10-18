@@ -345,10 +345,10 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	if err != nil {
 		m.logger.Crit("Failed to store block. Cause: %w", err)
 	}
-	err = m.ProcessBlobs(b)
-	if err != nil {
-		m.logger.Crit("Failed to store blobs. Cause: %w", err)
-	}
+	//err = m.ProcessBlobs(b)
+	//if err != nil {
+	//	m.logger.Crit("Failed to store blobs. Cause: %w", err)
+	//}
 
 	_, err = m.BlockResolver.FetchBlock(context.Background(), b.Header().ParentHash)
 	// only proceed if the parent is available
@@ -473,7 +473,8 @@ func (m *Node) startMining() {
 				if atomic.LoadInt32(m.interrupt) == 1 {
 					return
 				}
-
+				b := NewBlock(canonicalBlock, m.l2ID, toInclude, blockTime)
+				_ = m.ProcessBlobs(b)
 				m.miningCh <- NewBlock(canonicalBlock, m.l2ID, toInclude, blockTime)
 			})
 		}
@@ -550,24 +551,11 @@ func (m *Node) Alive() bool {
 
 func (m *Node) ProcessBlobs(b *types.Block) error {
 	var blobs []*kzg4844.Blob
-	//seenBlobs := make(map[gethcommon.Hash]bool)
-
 	for _, tx := range b.Transactions() {
 		if tx.BlobHashes() != nil {
 			for i := range tx.BlobTxSidecar().Blobs {
 				blobPtr := &tx.BlobTxSidecar().Blobs[i]
-				//commitment, err := kzg4844.BlobToCommitment(blobPtr)
-				//if err != nil {
-				// Handle error appropriately
-				//continue
-				//}
-				//versionedHash := ethadapter.KZGToVersionedHash(commitment)
-
-				// Check if the blob has already been seen
-				//if !seenBlobs[versionedHash] {
 				blobs = append(blobs, blobPtr)
-				//seenBlobs[versionedHash] = true
-				//}
 			}
 		}
 	}
@@ -575,9 +563,9 @@ func (m *Node) ProcessBlobs(b *types.Block) error {
 	blobPointers := make([]*kzg4844.Blob, len(blobs))
 	copy(blobPointers, blobs)
 
-	slot, _ := ethadapter.CalculateSlot(b.Time(), MockGenesisBlock.Time(), SecondsPerSlot)
 	if len(blobs) > 0 {
-		err := m.BlobResolver.StoreBlobs(slot, blobs)
+		// dummy slot to simplify the in memory blob storage
+		err := m.BlobResolver.StoreBlobs(0, blobs)
 		if err != nil {
 			return fmt.Errorf("could not store blobs. Cause: %w", err)
 		}
@@ -594,20 +582,19 @@ func NewMiner(
 	logger gethlog.Logger,
 ) *Node {
 	return &Node{
-		l2ID:          id,
-		mining:        true,
-		cfg:           cfg,
-		stats:         statsCollector,
-		BlockResolver: NewResolver(),
-		BlobResolver:  blobResolver,
-		db:            NewTxDB(),
-		Network:       network,
-		exitCh:        make(chan bool),
-		exitMiningCh:  make(chan bool),
-		interrupt:     new(int32),
-		p2pCh:         make(chan *types.Block),
-		miningCh:      make(chan *types.Block),
-		// miningCh:         make(chan *BlockWithBlobs),
+		l2ID:             id,
+		mining:           true,
+		cfg:              cfg,
+		stats:            statsCollector,
+		BlockResolver:    NewResolver(),
+		BlobResolver:     blobResolver,
+		db:               NewTxDB(),
+		Network:          network,
+		exitCh:           make(chan bool),
+		exitMiningCh:     make(chan bool),
+		interrupt:        new(int32),
+		p2pCh:            make(chan *types.Block),
+		miningCh:         make(chan *types.Block),
 		canonicalCh:      make(chan *types.Block),
 		mempoolCh:        make(chan *types.Transaction),
 		headInCh:         make(chan bool),

@@ -2,7 +2,6 @@ package clientapi
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -131,27 +130,7 @@ func (api *EthereumAPI) SendRawTransaction(ctx context.Context, encryptedParams 
 // GetCode returns the code stored at the given address in the state for the given batch height or batch hash.
 // todo (#1620) - instead of converting the block number of hash client-side, do it on the enclave
 func (api *EthereumAPI) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
-	var batchHash *gethcommon.Hash
-
-	// requested a number
-	if batchNumber, ok := blockNrOrHash.Number(); ok {
-		hash, err := api.batchNumberToBatchHash(batchNumber)
-		if err != nil {
-			return nil, fmt.Errorf("could not retrieve batch with height %d. Cause: %w", batchNumber, err)
-		}
-		batchHash = hash
-	}
-
-	// requested a hash
-	if hash, ok := blockNrOrHash.Hash(); ok {
-		batchHash = &hash
-	}
-
-	if batchHash == nil {
-		return nil, errors.New("invalid arguments; neither batch height nor batch hash specified")
-	}
-
-	code, sysError := api.host.EnclaveClient().GetCode(ctx, address, batchHash)
+	code, sysError := api.host.EnclaveClient().GetCode(ctx, address, blockNrOrHash)
 	if sysError != nil {
 		api.logger.Error(fmt.Sprintf("Enclave System Error. Function %s", "GetCode"), log.ErrKey, sysError)
 		return nil, fmt.Errorf(responses.InternalErrMsg)

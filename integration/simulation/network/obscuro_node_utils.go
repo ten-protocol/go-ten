@@ -36,7 +36,7 @@ func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clien
 	tenNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
 	tenHosts := make([]host.Host, params.NumberOfNodes)
 	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithInboundP2PDisabled)
-	blobResolver := ethereummock.NewBlobResolver(0, ethereummock.SecondsPerSlot)
+	blobResolver := ethereummock.NewMockBlobResolver()
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 

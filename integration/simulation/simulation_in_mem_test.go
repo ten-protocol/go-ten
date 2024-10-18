@@ -31,7 +31,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:      0.2,
 		MgmtContractLib:            ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib:           ethereummock.NewERC20ContractLibMock(),
-		BlobResolver:               ethereummock.NewBlobResolver(0, ethereummock.SecondsPerSlot),
+		BlobResolver:               ethereummock.NewMockBlobResolver(),
 		Wallets:                    wallets,
 		StartPort:                  integration.TestPorts.TestInMemoryMonteCarloSimulationPort,
 		IsInMem:                    true,

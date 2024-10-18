@@ -3,6 +3,8 @@ package rpc
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
@@ -32,9 +34,14 @@ func GetPersonalTransactionsExecute(builder *CallBuilder[common.ListPrivateTrans
 		return nil //nolint:nilerr
 	}
 	addr := builder.Param.Address
-	encryptReceipts, err := rpc.storage.GetTransactionsPerAddress(builder.ctx, &addr, &builder.Param.Pagination)
+	internalReceipts, err := rpc.storage.GetTransactionsPerAddress(builder.ctx, &addr, &builder.Param.Pagination)
 	if err != nil {
 		return fmt.Errorf("GetTransactionsPerAddress - %w", err)
+	}
+
+	var receipts types.Receipts
+	for _, receipt := range internalReceipts {
+		receipts = append(receipts, receipt.ToReceipt())
 	}
 
 	receiptsCount, err := rpc.storage.CountTransactionsPerAddress(builder.ctx, &addr)
@@ -43,7 +50,7 @@ func GetPersonalTransactionsExecute(builder *CallBuilder[common.ListPrivateTrans
 	}
 
 	builder.ReturnValue = &common.PrivateTransactionsQueryResponse{
-		Receipts: encryptReceipts,
+		Receipts: receipts,
 		Total:    receiptsCount,
 	}
 	return nil

@@ -14,26 +14,19 @@ import (
 )
 
 type BlobResolverInMem struct {
-	// map of slots to versioned hashes to match the beacon APIs
-	slotToVersionedHashes sync.Map
 	// map of versioned hash to blob for efficient lookup
 	versionedHashToBlob sync.Map
 	mu                  sync.RWMutex
-	genesisTime         uint64
-	secondsPerSlot      uint64
 }
 
-func NewBlobResolver(genesisTime uint64, secondsPerSlot uint64) l1.BlobResolver {
+func NewMockBlobResolver() l1.BlobResolver {
 	return &BlobResolverInMem{
-		slotToVersionedHashes: sync.Map{},
-		versionedHashToBlob:   sync.Map{},
-		mu:                    sync.RWMutex{},
-		genesisTime:           genesisTime,
-		secondsPerSlot:        secondsPerSlot,
+		versionedHashToBlob: sync.Map{},
+		mu:                  sync.RWMutex{},
 	}
 }
 
-func (b *BlobResolverInMem) StoreBlobs(slot uint64, blobs []*kzg4844.Blob) error {
+func (b *BlobResolverInMem) StoreBlobs(_ uint64, blobs []*kzg4844.Blob) error {
 	for _, blob := range blobs {
 		commitment, err := kzg4844.BlobToCommitment(blob)
 		if err != nil {
@@ -41,45 +34,32 @@ func (b *BlobResolverInMem) StoreBlobs(slot uint64, blobs []*kzg4844.Blob) error
 		}
 
 		versionedHash := ethadapter.KZGToVersionedHash(commitment)
-
-		hashes, _ := b.slotToVersionedHashes.LoadOrStore(slot, &sync.Map{})
-		hashes.(*sync.Map).Store(versionedHash, struct{}{})
-
 		b.versionedHashToBlob.Store(versionedHash, blob)
 	}
 	return nil
 }
 
-func (b *BlobResolverInMem) FetchBlobs(_ context.Context, block *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
-	slot, _ := ethadapter.CalculateSlot(block.Time, MockGenesisBlock.Time(), b.secondsPerSlot)
-
-	storedHashes, exists := b.slotToVersionedHashes.Load(slot)
-	if !exists {
-		return nil, fmt.Errorf("no blobs found for slot %d: %w", slot, ethereum.NotFound)
-	}
-
-	if len(hashes) == 0 {
-		var allBlobs []*kzg4844.Blob
-		storedHashes.(*sync.Map).Range(func(key, _ interface{}) bool {
-			if blob, exists := b.versionedHashToBlob.Load(key); exists {
-				allBlobs = append(allBlobs, blob.(*kzg4844.Blob))
-			}
-			return true
-		})
-		return allBlobs, nil
-	}
-
+func (b *BlobResolverInMem) FetchBlobs(_ context.Context, _ *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
 	var blobs []*kzg4844.Blob
+	var missingHashes []string
+
 	for _, vh := range hashes {
-		if _, found := storedHashes.(*sync.Map).Load(vh); found {
-			if blob, exists := b.versionedHashToBlob.Load(vh); exists {
-				blobs = append(blobs, blob.(*kzg4844.Blob))
-			} else {
-				return nil, fmt.Errorf("blob for hash %s not found", vh.Hex())
-			}
+		if blob, exists := b.versionedHashToBlob.Load(vh); exists {
+			blobs = append(blobs, blob.(*kzg4844.Blob))
 		} else {
-			return nil, fmt.Errorf("versioned hash %s not found in slot %d", vh.Hex(), slot)
+			missingHashes = append(missingHashes, vh.Hex())
 		}
+	}
+
+	if len(blobs) == 0 {
+		if len(missingHashes) > 0 {
+			return nil, fmt.Errorf("blobs not found for hashes: %v", missingHashes)
+		}
+		return nil, ethereum.NotFound
+	}
+
+	if len(missingHashes) > 0 {
+		fmt.Printf("Warning: Some blobs were not found for hashes: %v\n", missingHashes)
 	}
 
 	return blobs, nil

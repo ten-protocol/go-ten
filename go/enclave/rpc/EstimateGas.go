@@ -199,7 +199,7 @@ func (rpc *EncryptionManager) doEstimateGas(ctx context.Context, args *gethapi.T
 	}
 	cap = hi //nolint: revive
 	isFailedAtMax, _, err := rpc.isGasEnough(ctx, args, hi, blkNumber)
-	//TODO: Workaround for the weird conensus nil statement down, which gets interwined with evm errors.
+	// TODO: Workaround for the weird conensus nil statement down, which gets interwined with evm errors.
 	// Here if there is a consensus error - we'd bail. If the tx fails at max gas - we'd bail (probably bad)
 	if err != nil {
 		return 0, gethcommon.Big0, err

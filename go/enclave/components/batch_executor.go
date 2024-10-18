@@ -9,6 +9,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
+
 	"github.com/holiman/uint256"
 
 	"github.com/ten-protocol/go-ten/go/config"
@@ -170,7 +172,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
 	batch := core.DeterministicEmptyBatch(parentBatch, block, context.AtTime, context.SequencerNo, context.BaseFee, context.Creator)
 
-	stateDB, err := executor.batchRegistry.GetBatchState(ctx, &batch.Header.ParentHash)
+	stateDB, err := executor.batchRegistry.GetBatchState(ctx, rpc.BlockNumberOrHash{BlockHash: &batch.Header.ParentHash})
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
@@ -205,6 +207,11 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	txReceipts := make(types.Receipts, 0)
 	for _, txResult := range txResults {
 		txReceipts = append(txReceipts, txResult.Receipt)
+	}
+	// populate the derived fields in the receipt
+	err = txReceipts.DeriveFields(executor.chainConfig, batch.Hash(), batch.NumberU64(), batch.Header.Time, batch.Header.BaseFee, nil, successfulTxs)
+	if err != nil {
+		return nil, fmt.Errorf("could not derive receipts. Cause: %w", err)
 	}
 
 	onBlockTx, err := executor.systemContracts.CreateOnBatchEndTransaction(ctx, stateDB, successfulTxs, txReceipts)

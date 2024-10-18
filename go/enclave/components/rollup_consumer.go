@@ -141,7 +141,7 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 		}
 
 		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {
-			rc.logger.Warn(fmt.Sprintf("blob hashes in rollup at index %d do not match the rollup blob hashes. Cause: %s", i, err))
+			rc.logger.Warn(fmt.Sprintf("blob hashes in rollup at index %d DONT match the rollup blob hashes. Cause: %s", i, err))
 			continue // Blob hashes don't match, skip this rollup
 		}
 
@@ -160,10 +160,6 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 }
 
 func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []gethcommon.Hash) error {
-	if len(rollupHashes.BlobHashes) != len(blobHashes) {
-		return fmt.Errorf("hash count mismatch: rollupHashes (%d) and blobHashes (%d)", len(rollupHashes.BlobHashes), len(blobHashes))
-	}
-
 	for i, hash := range rollupHashes.BlobHashes {
 		if hash != blobHashes[i] {
 			return fmt.Errorf("hash mismatch at index %d: rollupHash (%s) != blobHash (%s)", i, hash.Hex(), blobHashes[i].Hex())

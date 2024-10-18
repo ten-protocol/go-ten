@@ -3,6 +3,8 @@ package rpc
 import (
 	"fmt"
 
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
@@ -50,18 +52,12 @@ func GetTransactionCountExecute(builder *CallBuilder[uint64, string], rpc *Encry
 		return nil //nolint:nilerr
 	}
 
-	var nonce uint64
-	l2Head, err := rpc.storage.FetchBatchHeaderBySeqNo(builder.ctx, *builder.Param)
-	if err == nil {
-		// todo - we should return an error when head state is not available, but for current test situations with race
-		//  conditions we allow it to return zero while head state is uninitialized
-		h := l2Head.Hash()
-		s, err := rpc.registry.GetBatchState(builder.ctx, &h)
-		if err != nil {
-			return err
-		}
-		nonce = s.GetNonce(*builder.From)
+	latest := gethrpc.LatestBlockNumber
+	s, err := rpc.registry.GetBatchState(builder.ctx, gethrpc.BlockNumberOrHash{BlockNumber: &latest})
+	if err != nil {
+		return err
 	}
+	nonce := s.GetNonce(*builder.From)
 
 	enc := hexutil.EncodeUint64(nonce)
 	builder.ReturnValue = &enc

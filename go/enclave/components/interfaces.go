@@ -93,7 +93,7 @@ type BatchRegistry interface {
 	GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error)
 
 	// GetBatchState - creates a stateDB for the block hash
-	GetBatchState(ctx context.Context, hash *common.L2BatchHash) (*state.StateDB, error)
+	GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, error)
 
 	// GetBatchAtHeight - same as `GetBatchStateAtHeight`, but instead returns the full batch
 	// rather than its stateDB only.

@@ -43,7 +43,7 @@ type Client struct {
 
 func NewClient(enclaveRPCAddress string, enclaveRPCTimeout time.Duration, logger gethlog.Logger) common.Enclave {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	connection, err := grpc.Dial(enclaveRPCAddress, opts...)
+	connection, err := grpc.NewClient(enclaveRPCAddress, opts...)
 	if err != nil {
 		logger.Crit("Failed to connect to enclave RPC service.", log.ErrKey, err)
 	}
@@ -342,13 +342,18 @@ func (c *Client) GetBalance(ctx context.Context, encryptedParams common.Encrypte
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
-func (c *Client) GetCode(ctx context.Context, address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, common.SystemError) {
+func (c *Client) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash gethrpc.BlockNumberOrHash) ([]byte, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
 	defer cancel()
 
+	json, err := json.Marshal(blockNrOrHash)
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+
 	response, err := c.protoClient.GetCode(timeoutCtx, &generated.GetCodeRequest{
-		Address:    address.Bytes(),
-		RollupHash: batchHash.Bytes(),
+		Address:       address.Bytes(),
+		BlockNrOrHash: json,
 	})
 	if err != nil {
 		return nil, syserr.NewRPCError(err)
@@ -574,12 +579,12 @@ func (c *Client) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func())
 	return batchChan, cancel
 }
 
-func (c *Client) DebugEventLogRelevancy(ctx context.Context, hash gethcommon.Hash) (json.RawMessage, common.SystemError) {
+func (c *Client) DebugEventLogRelevancy(ctx context.Context, encryptedParams common.EncryptedParamsDebugLogRelevancy) (*responses.DebugLogs, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.DebugEventLogRelevancy(timeoutCtx, &generated.DebugEventLogRelevancyRequest{
-		TxHash: hash.Bytes(),
+		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
 		return nil, syserr.NewRPCError(err)
@@ -587,7 +592,8 @@ func (c *Client) DebugEventLogRelevancy(ctx context.Context, hash gethcommon.Has
 	if response != nil && response.SystemError != nil {
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
-	return json.RawMessage(response.Msg), nil
+
+	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
 func (c *Client) GetTotalContractCount(ctx context.Context) (*big.Int, common.SystemError) {
