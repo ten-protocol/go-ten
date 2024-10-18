@@ -176,11 +176,21 @@ func (s *storageImpl) FetchBatchHeader(ctx context.Context, hash common.L2BatchH
 
 func (s *storageImpl) FetchBatchTransactionsBySeq(ctx context.Context, seqNo uint64) ([]*common.L2Tx, error) {
 	defer s.logDuration("FetchBatchTransactionsBySeq", measure.NewStopwatch())
-	batch, err := s.FetchBatchHeaderBySeqNo(ctx, seqNo)
+	batch, err := s.cachingService.ReadBatch(ctx, seqNo, func(_ any) (*core.Batch, error) {
+		batchHeader, err := s.FetchBatchHeaderBySeqNo(ctx, seqNo)
+		if err != nil {
+			return nil, err
+		}
+		txs, err := enclavedb.ReadBatchTransactions(ctx, s.db.GetSQLDB(), batchHeader.Number.Uint64())
+		if err != nil {
+			return nil, err
+		}
+		return &core.Batch{Header: batchHeader, Transactions: txs}, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	return enclavedb.ReadBatchTransactions(ctx, s.db.GetSQLDB(), batch.Number.Uint64())
+	return batch.Transactions, nil
 }
 
 func (s *storageImpl) FetchBatchByHeight(ctx context.Context, height uint64) (*core.Batch, error) {
@@ -484,7 +494,7 @@ func (s *storageImpl) FetchBatchBySeqNo(ctx context.Context, seqNum uint64) (*co
 
 func (s *storageImpl) FetchBatchHeaderBySeqNo(ctx context.Context, seqNum uint64) (*common.BatchHeader, error) {
 	defer s.logDuration("FetchBatchHeaderBySeqNo", measure.NewStopwatch())
-	return s.cachingService.ReadBatch(ctx, seqNum, func(seq any) (*common.BatchHeader, error) {
+	return s.cachingService.ReadBatchHeader(ctx, seqNum, func(seq any) (*common.BatchHeader, error) {
 		return enclavedb.ReadBatchHeaderBySeqNo(ctx, s.db.GetSQLDB(), seqNum)
 	})
 }
