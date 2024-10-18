@@ -4,11 +4,27 @@ pragma solidity >=0.7.0 <0.9.0;
 import "./IMessageBus.sol";
 import "./Structs.sol";
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract MessageBus is IMessageBus, Ownable {
+contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
 
-    constructor() Ownable(msg.sender) {}
+    constructor() {
+        _transferOwnership(msg.sender);
+        _disableInitializers();
+    }
+
+    function initialize(address caller) public initializer {
+        __Ownable_init(caller);
+    }
+
+    // Since this contract exists on the L2, when messages are added from the L1, we can have the from address be the same as self.
+    // This ensures no EOA collision can ever occur and no key is needed to be stored on the L2 or shared with validators.
+    modifier ownerOrSelf() {
+        address maskedSelf = address(uint160(address(this)) - 1);
+        require(msg.sender == owner() || msg.sender == maskedSelf, "Not owner or self");
+        _;
+    }
 
     function messageFee() internal virtual returns (uint256) {
         return 0;
@@ -109,7 +125,7 @@ contract MessageBus is IMessageBus, Ownable {
     function storeCrossChainMessage(
         Structs.CrossChainMessage calldata crossChainMessage,
         uint256 finalAfterTimestamp
-    ) external override onlyOwner {
+    ) external override ownerOrSelf {
         //Consider the message as verified after this period. Useful for having a challenge period.
         uint256 finalAtTimestamp = block.timestamp + finalAfterTimestamp;
         bytes32 msgHash = keccak256(abi.encode(crossChainMessage));

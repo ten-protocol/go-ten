@@ -10,6 +10,8 @@ import (
 	"github.com/holiman/uint256"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/evm"
+	"github.com/ten-protocol/go-ten/go/enclave/system"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -48,11 +50,8 @@ func NewObscuroMessageBusManager(
 
 	logger.Info(fmt.Sprintf("L2 Cross Chain Owner Address: %s", wallet.Address().Hex()))
 
-	// Key is derived, address is predictable, thus address of contract is predictable across all enclaves
-	l2MessageBus := crypto.CreateAddress(wallet.Address(), 0)
-
 	return &MessageBusManager{
-		messageBusAddress: &l2MessageBus,
+		messageBusAddress: nil,
 		storage:           storage,
 		logger:            logger,
 		wallet:            wallet,
@@ -80,10 +79,15 @@ func (m *MessageBusManager) GetBusAddress() *common.L2Address {
 	return m.messageBusAddress
 }
 
-// DeriveOwner - Generates the key pair that will be used to transact with the L2 message bus.
-func (m *MessageBusManager) DeriveOwner(_ []byte) (*common.L2Address, error) {
-	// todo (#1549) - implement with cryptography epic
-	return m.messageBusAddress, nil
+// DeriveMessageBusAddress - Derives the address of the message bus contract.
+func (m *MessageBusManager) Initialize(systemAddresses system.SystemContractAddresses) error {
+	address, ok := systemAddresses["MessageBus"]
+	if !ok {
+		return fmt.Errorf("message bus contract not found in system addresses")
+	}
+
+	m.messageBusAddress = address
+	return nil
 }
 
 // GenerateMessageBusDeployTx - Returns a signed message bus deployment transaction.
@@ -208,9 +212,17 @@ func (m *MessageBusManager) ExecuteValueTransfers(ctx context.Context, transfers
 
 // CreateSyntheticTransactions - generates transactions that the enclave should execute internally for the messages.
 func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, rollupState *state.StateDB) common.L2Transactions {
+	if len(messages) == 0 {
+		return make(common.L2Transactions, 0)
+	}
+
+	if m.messageBusAddress == nil {
+		m.logger.Crit("Message bus address not set")
+	}
+
 	// Get current nonce for this stateDB.
 	// There can be forks thus we cannot trust the wallet.
-	startingNonce := rollupState.GetNonce(m.GetOwner())
+	startingNonce := rollupState.GetNonce(evm.MaskedSender(*m.messageBusAddress))
 
 	signedTransactions := make(types.Transactions, 0)
 	for idx, message := range messages {

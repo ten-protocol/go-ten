@@ -172,12 +172,6 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 	time.Sleep(time.Second)
 
 	wallet := system.GetPlaceholderWallet(s.chainConfig.ChainID, s.logger)
-	msgBusTx, err := system.MessageBusInitTransaction(wallet, s.logger)
-	if err != nil {
-		s.logger.Crit("[SystemContracts] Failed to create message bus contract", log.ErrKey, err)
-		return err
-	}
-
 	systemDeployerTx, err := system.SystemDeployerInitTransaction(wallet, s.logger, wallet.Address())
 	if err != nil {
 		s.logger.Crit("[SystemContracts] Failed to create system deployer contract", log.ErrKey, err)
@@ -191,7 +185,6 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 		block.Hash(),
 		batch.Hash(),
 		common.L2Transactions{
-			msgBusTx,
 			systemDeployerTx,
 		},
 		uint64(time.Now().Unix()),
@@ -207,18 +200,18 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 		return fmt.Errorf("[SystemContracts] failed producing batch. Cause: %w", err)
 	}
 
-	if len(cb.TxExecResults) == 0 || cb.TxExecResults[0].Receipt.TxHash.Hex() != msgBusTx.Hash().Hex() {
-		err = fmt.Errorf("failed to mint Message Bus contract: expected receipt for transaction %s, but no receipts found in batch", msgBusTx.Hash().Hex())
+	if len(cb.TxExecResults) == 0 || cb.TxExecResults[0].Receipt.TxHash.Hex() != systemDeployerTx.Hash().Hex() {
+		err = fmt.Errorf("failed to instantiate system contracts: expected receipt for transaction %s, but no receipts found in batch", systemDeployerTx.Hash().Hex())
 		s.logger.Crit(err.Error()) // Fatal error, the node cannot be started.
 	}
 
-	systemAddresses, err := system.DeriveAddresses(cb.TxExecResults[1].Receipt)
+	systemAddresses, err := system.DeriveAddresses(cb.TxExecResults[0].Receipt)
 	if err != nil {
 		s.logger.Crit("Failed to derive system contract addresses", log.ErrKey, err)
 		return err
 	}
-	s.logger.Info("[SystemContracts] Deployer initialized", "transactionPostProcessor", systemAddresses.ToString())
-	s.logger.Info("[SystemContracts] Message Bus Contract minted successfully", "address", cb.TxExecResults[0].Receipt.ContractAddress.Hex())
+	s.logger.Info("[SystemContracts] Deployer initialized", "transactionPostProcessor", systemAddresses["TransactionPostProcessor"])
+	s.logger.Info("[SystemContracts] Message Bus Contract minted successfully", "address", systemAddresses["MessageBus"])
 
 	return nil
 }

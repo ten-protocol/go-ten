@@ -194,6 +194,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 		xchainTxs = append(xchainTxs, common.L2PricedTransaction{
 			Tx:             xTx,
 			PublishingCost: big.NewInt(0),
+			FromSelf:       true,
 		})
 	}
 
@@ -223,6 +224,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 			common.L2PricedTransaction{
 				Tx:             onBlockTx,
 				PublishingCost: big.NewInt(0),
+				FromSelf:       true,
 			},
 		}
 		onBlockSuccessfulTx, _, onBlockTxResult, err := executor.processTransactions(ctx, batch, len(successfulTxs), onBlockPricedTxes, stateDB, context.ChainConfig, true)
@@ -328,7 +330,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 }
 
 func (executor *batchExecutor) initializeSystemContracts(_ context.Context, batch *core.Batch, receipts types.Receipts) error {
-	return executor.systemContracts.Initialize(batch, receipts)
+	return executor.systemContracts.Initialize(batch, receipts, executor.crossChainProcessors.Local)
 }
 
 func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Batch) ([]*core.TxExecResult, error) {
@@ -396,18 +398,10 @@ func (executor *batchExecutor) CreateGenesisState(
 		Transactions: []*common.L2Tx{},
 	}
 
-	// todo (#1577) - figure out a better way to bootstrap the system contracts
-	deployTx, err := executor.crossChainProcessors.Local.GenerateMessageBusDeployTx()
-	if err != nil {
-		executor.logger.Crit("Could not create message bus deployment transaction", "Error", err)
-	}
-
-	executor.logger.Info("L2 Bus deploy", log.TxKey, deployTx.Hash())
-
 	if err = executor.genesis.CommitGenesisState(executor.storage); err != nil {
 		return nil, nil, fmt.Errorf("could not apply genesis preallocation. Cause: %w", err)
 	}
-	return genesisBatch, deployTx, nil
+	return genesisBatch, nil, nil
 }
 
 func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Context, batch *core.Batch, block *types.Header, receipts types.Receipts) error {
