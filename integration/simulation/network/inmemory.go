@@ -51,8 +51,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		incomingP2PDisabled := !isGenesis && i == params.NodeWithInboundP2PDisabled
 
 		// create the in memory l1 and l2 node
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-
+		miner := createMockEthNode(i, params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats, params.BlobResolver)
 		agg := createInMemTenNode(
 			int64(i),
 			isGenesis,
@@ -68,6 +67,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			params.AvgBlockDuration/2,
 			incomingP2PDisabled,
 			params.AvgBlockDuration,
+			params.BlobResolver,
 		)
 		tenClient := p2p.NewInMemTenClient(agg)
 

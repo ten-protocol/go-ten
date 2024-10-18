@@ -110,9 +110,10 @@ ${BEACON_BINARY} --datadir="${BEACONDATA_DIR}" \
                --chain-config-file "${BASE_PATH}/config.yml" \
                --contract-deployment-block 0 \
                --chain-id "${CHAIN_ID}" \
-               --rpc-host=127.0.0.1 \
+               --rpc-host=0.0.0.0 \
                --rpc-port="${BEACON_RPC_PORT}" \
                --p2p-udp-port="${BEACON_P2P_PORT}" \
+               --grpc-gateway-host=0.0.0.0 \
                --grpc-gateway-port=${BEACON_GATEWAY_PORT} \
                --accept-terms-of-use \
                --jwt-secret "${BASE_PATH}/jwt.hex" \

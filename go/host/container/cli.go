@@ -54,6 +54,8 @@ type HostConfigToml struct {
 	IsInboundP2PDisabled      bool
 	L1BlockTime               int
 	MaxRollupSize             int
+	L1BeaconUrl               string
+	L1BlobArchiveUrl          string
 }
 
 // ParseConfig returns a config.HostInputConfig based on either the file identified by the `config` flag, or the flags with
@@ -96,6 +98,8 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	crossChainInterval := flag.String(crossChainIntervalName, cfg.CrossChainInterval.String(), flagUsageMap[crossChainIntervalName])
 	isInboundP2PDisabled := flag.Bool(isInboundP2PDisabledName, cfg.IsInboundP2PDisabled, flagUsageMap[isInboundP2PDisabledName])
 	maxRollupSize := flag.Uint64(maxRollupSizeFlagName, cfg.MaxRollupSize, flagUsageMap[maxRollupSizeFlagName])
+	l1BeaconUrl := flag.String(l1BeaconUrlName, cfg.L1BeaconUrl, flagUsageMap[l1BeaconUrlName])
+	l1BlobArchiveUrl := flag.String(l1BlobArchiveUrlName, cfg.L1BlobArchiveUrl, flagUsageMap[l1BlobArchiveUrlName])
 
 	flag.Parse()
 
@@ -155,6 +159,8 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	}
 	cfg.IsInboundP2PDisabled = *isInboundP2PDisabled
 	cfg.MaxRollupSize = *maxRollupSize
+	cfg.L1BeaconUrl = *l1BeaconUrl
+	cfg.L1BlobArchiveUrl = *l1BlobArchiveUrl
 
 	return cfg, nil
 }

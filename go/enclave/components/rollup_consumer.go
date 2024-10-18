@@ -4,16 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
-	"github.com/ten-protocol/go-ten/go/enclave/storage"
-
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
@@ -47,15 +48,21 @@ func NewRollupConsumer(
 	}
 }
 
-func (rc *rollupConsumerImpl) ProcessRollupsInBlock(ctx context.Context, b *common.BlockAndReceipts) error {
-	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed block", log.BlockHashKey, b.BlockHeader.Hash())
+// ProcessBlobsInBlock - processes the blobs in a block, extracts the rollups, verifies the rollups and stores them
+func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts) error {
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", log.BlockHashKey, b.BlockHeader.Hash())
 
-	rollups := rc.extractRollups(b)
+	rollups, err := rc.extractAndVerifyRollups(b)
+	if err != nil {
+		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, b.BlockHeader.Hash(), log.ErrKey, err)
+		return err
+	}
 	if len(rollups) == 0 {
+		rc.logger.Trace("No rollups found in block", log.BlockHashKey, b.BlockHeader.Hash())
 		return nil
 	}
 
-	rollups, err := rc.getSignedRollup(rollups)
+	rollups, err = rc.getSignedRollup(rollups)
 	if err != nil {
 		return err
 	}
@@ -110,31 +117,69 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 }
 
 // todo - when processing the rollup, instead of looking up batches one by one, compare the last sequence number from the db with the ones in the rollup
-// extractRollups - returns a list of the rollups published in this block
-func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*common.ExtRollup {
-	rollups := make([]*common.ExtRollup, 0)
+// extractAndVerifyRollups returns a list of the rollups published in this block
+// It processes each transaction, attempting to extract and verify rollups
+// If a transaction is not a rollup or fails verification, it's skipped
+// The function only returns an error if there's a critical failure in rollup reconstruction
+func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipts) ([]*common.ExtRollup, error) {
+	rollups := make([]*common.ExtRollup, 0, len(*br.RelevantTransactions()))
 	b := br.BlockHeader
+	blobs, blobHashes, err := rc.extractBlobsAndHashes(br)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, tx := range *br.RelevantTransactions() {
-		// go through all rollup transactions
+	for i, tx := range *br.RelevantTransactions() {
 		t := rc.MgmtContractLib.DecodeTx(tx)
 		if t == nil {
 			continue
 		}
 
-		rolTx, ok := t.(*ethadapter.L1RollupTx)
+		rollupHashes, ok := t.(*ethadapter.L1RollupHashes)
 		if !ok {
 			continue
 		}
 
-		r, err := common.DecodeRollup(rolTx.Rollup)
+		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {
+			rc.logger.Warn(fmt.Sprintf("blob hashes in rollup at index %d do not match the rollup blob hashes. Cause: %s", i, err))
+			continue // Blob hashes don't match, skip this rollup
+		}
+
+		r, err := ethadapter.ReconstructRollup(blobs)
 		if err != nil {
-			rc.logger.Crit("could not decode rollup.", log.ErrKey, err)
-			return nil
+			// This is a critical error because we've already verified the blob hashes
+			// If we can't reconstruct the rollup at this point, something is seriously wrong
+			return nil, fmt.Errorf("could not recreate rollup from blobs. Cause: %w", err)
 		}
 
 		rollups = append(rollups, r)
 		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, b.Hash())
 	}
-	return rollups
+
+	return rollups, nil
+}
+
+func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []gethcommon.Hash) error {
+	for i, hash := range rollupHashes.BlobHashes {
+		if hash != blobHashes[i] {
+			return fmt.Errorf("hash mismatch at index %d: rollupHash (%s) != blobHash (%s)", i, hash.Hex(), blobHashes[i].Hex())
+		}
+	}
+	return nil
+}
+
+func (rc *rollupConsumerImpl) extractBlobsAndHashes(br *common.BlockAndReceipts) ([]*kzg4844.Blob, []gethcommon.Hash, error) {
+	blobs := make([]*kzg4844.Blob, 0)
+	for _, txWithReceipt := range br.TxsWithReceipts {
+		if txWithReceipt.Blobs != nil {
+			blobs = append(blobs, txWithReceipt.Blobs...)
+		}
+	}
+
+	_, blobHashes, err := ethadapter.MakeSidecar(blobs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
+	}
+
+	return blobs, blobHashes, nil
 }

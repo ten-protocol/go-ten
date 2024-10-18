@@ -65,6 +65,10 @@ type HostInputConfig struct {
 	ProfilerEnabled bool
 	// L1StartHash is the hash of the L1 block we can start streaming from for all Obscuro state (e.g. management contract deployment block)
 	L1StartHash gethcommon.Hash
+	// L1BeaconUrl of the beacon chain to fetch blob data
+	L1BeaconUrl string
+	// L1BlobArchiveUrl of the blob archive to fetch expired blob data
+	L1BlobArchiveUrl string
 
 	// MetricsEnabled defines whether the metrics are enabled or not
 	MetricsEnabled bool
@@ -144,6 +148,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		CrossChainInterval:        p.CrossChainInterval,
 		IsInboundP2PDisabled:      p.IsInboundP2PDisabled,
 		MaxRollupSize:             p.MaxRollupSize,
+		L1BeaconUrl:               p.L1BeaconUrl,
 	}
 }
 
@@ -178,6 +183,10 @@ type HostConfig struct {
 	L1BlockTime time.Duration
 	// CrossChainInterval - The interval at which the host will check for new cross chain data to submit
 	CrossChainInterval time.Duration
+	// L1BeaconUrl of the beacon chain to fetch blob data
+	L1BeaconUrl string
+	// L1BlobArchiveUrl of the blob archive to fetch expired blob data
+	L1BlobArchiveUrl string
 
 	/////
 	// NODE CONFIG
@@ -278,7 +287,9 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		RollupInterval:       5 * time.Second,
 		L1BlockTime:          15 * time.Second,
 		IsInboundP2PDisabled: false,
-		MaxRollupSize:        1024 * 64,
+		MaxRollupSize:        1024 * 128, // the max blob size enforced by the beacon chain is 128kb
 		CrossChainInterval:   6 * time.Second,
+		// L1BeaconUrl:          "127.0.0.1:12600", // default port for the beacon chain if not specified
+		L1BeaconUrl: "eth2network:12600", // local testnet defaults here
 	}
 }

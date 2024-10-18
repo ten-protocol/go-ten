@@ -3,10 +3,10 @@ package ethereummock
 import (
 	"bytes"
 	"encoding/gob"
-
-	"github.com/ten-protocol/go-ten/integration/datagenerator"
+	"fmt"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -56,11 +56,42 @@ func (m *mockContractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 		return nil
 	}
 
+	if tx.To().Hex() == rollupTxAddr.Hex() {
+		return &ethadapter.L1RollupHashes{
+			BlobHashes: tx.BlobHashes(),
+		}
+	}
 	return decodeTx(tx)
 }
 
-func (m *mockContractLib) CreateRollup(tx *ethadapter.L1RollupTx) types.TxData {
-	return encodeTx(tx, rollupTxAddr)
+func (m *mockContractLib) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error) {
+	var err error
+	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert rollup to blobs: %w", err)
+	}
+
+	var blobHashes []gethcommon.Hash
+	var sidecar *types.BlobTxSidecar
+	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
+		return nil, fmt.Errorf("failed to make sidecar: %w", err)
+	}
+
+	hashesTx := ethadapter.L1RollupHashes{BlobHashes: blobHashes}
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+
+	if err := enc.Encode(hashesTx); err != nil {
+		panic(err)
+	}
+
+	return &types.BlobTx{
+		To:         rollupTxAddr,
+		Data:       buf.Bytes(),
+		BlobHashes: blobHashes,
+		Sidecar:    sidecar,
+	}, nil
 }
 
 func (m *mockContractLib) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData {
@@ -117,8 +148,6 @@ func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	// so this is a way that we can differentiate different contract calls
 	var t ethadapter.L1Transaction
 	switch tx.To().Hex() {
-	case rollupTxAddr.Hex():
-		t = &ethadapter.L1RollupTx{}
 	case storeSecretTxAddr.Hex():
 		t = &ethadapter.L1RespondSecretTx{}
 	case depositTxAddr.Hex():
@@ -135,6 +164,7 @@ func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	if err := dec.Decode(t); err != nil {
 		panic(err)
 	}
+
 	return t
 }
 

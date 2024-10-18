@@ -421,7 +421,7 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceipt, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveImpl) SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceiptAndBlobs) (*common.BlockSubmissionResponse, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitL1Block with the enclave stopping"))
 	}
@@ -468,7 +468,7 @@ func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndRece
 		return nil, err
 	}
 
-	err = e.rollupConsumer.ProcessRollupsInBlock(ctx, br)
+	err = e.rollupConsumer.ProcessBlobsInBlock(ctx, br)
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
@@ -511,7 +511,6 @@ func (e *enclaveImpl) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested SubmitBatch with the enclave stopping"))
 	}
-
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "SubmitBatch call completed.", log.BatchHashKey, extBatch.Hash())
 
 	e.logger.Info("Received new p2p batch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
@@ -587,6 +586,7 @@ func (e *enclaveImpl) CreateRollup(ctx context.Context, fromSeqNo uint64) (*comm
 	}
 
 	rollup, err := e.Sequencer().CreateRollup(ctx, fromSeqNo)
+	// TODO do we need to store the blob hashes here so we can check them against our records?
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}

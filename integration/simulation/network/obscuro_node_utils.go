@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
+
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
@@ -34,7 +36,7 @@ func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clien
 	tenNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
 	tenHosts := make([]host.Host, params.NumberOfNodes)
 	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithInboundP2PDisabled)
-
+	blobResolver := ethereummock.NewMockBlobResolver()
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
@@ -53,6 +55,7 @@ func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clien
 			params.AvgBlockDuration/3,
 			true,
 			params.AvgBlockDuration,
+			blobResolver,
 		)
 		tenHosts[i] = tenNodes[i].Host()
 	}
@@ -110,7 +113,7 @@ func CreateAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 
 // StopTenNodes stops the TEN nodes and their RPC clients.
 func StopTenNodes(clients []rpc.Client) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	eg, _ := errgroup.WithContext(ctx)
 

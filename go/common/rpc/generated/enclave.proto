@@ -256,9 +256,8 @@ message StartResponse {
 message SubmitBlockRequest {
   bytes encodedBlock = 1;
   bytes encodedReceipts = 2;
-  bool isLatest = 3;
-
 }
+
 message SubmitBlockResponse {
   BlockSubmissionResponseMsg blockSubmissionResponse = 1;
   SystemError systemError = 2;

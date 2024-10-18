@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/host/l1"
+
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 
@@ -53,7 +56,6 @@ const (
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
 // time of the simulation and the average block duration, that all TEN nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
-	time.Sleep(2 * time.Second)
 	checkTransactionsInjected(t, s)
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
 	checkTenBlockchainValidity(t, s, l1MaxHeight)
@@ -282,8 +284,8 @@ func ExtractDataFromEthereumChain(
 				deposits = append(deposits, tx.Hash())
 				totalDeposited.Add(totalDeposited, l1tx.Amount)
 				successfulDeposits++
-			case *ethadapter.L1RollupTx:
-				r, err := common.DecodeRollup(l1tx.Rollup)
+			case *ethadapter.L1RollupHashes:
+				r, err := getRollupFromBlobHashes(s.ctx, s.Params.BlobResolver, block, l1tx.BlobHashes)
 				if err != nil {
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
@@ -426,7 +428,6 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 	}
 
 	verifyGasBridgeTransactions(t, s, nodeIdx)
-
 	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {
 		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave",
@@ -442,7 +443,6 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 	}
 
 	checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
-
 	totalSuccessfullyWithdrawn := extractWithdrawals(t, tenClient, nodeIdx)
 
 	totalAmountLogged := getLoggedWithdrawals(minTenHeight, tenClient, headBatchHeader)
@@ -576,7 +576,6 @@ func getSender(tx *common.L2Tx) gethcommon.Address {
 // Checks that there is a receipt available for each L2 transaction.
 func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
 	l2Txs := append(txInjector.TxTracker.TransferL2Transactions, txInjector.TxTracker.WithdrawalL2Transactions...)
-
 	nrSuccessful := 0
 	for _, tx := range l2Txs {
 		sender := getSender(tx)
@@ -907,4 +906,21 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 	if batchByHash.Header.Hash() != batchByTx.Header.Hash() {
 		t.Errorf("node %d: retrieved batch by hash, but hash was incorrect", nodeIdx)
 	}
+}
+
+func getRollupFromBlobHashes(ctx context.Context, blobResolver l1.BlobResolver, block *types.Block, blobHashes []gethcommon.Hash) (*common.ExtRollup, error) {
+	blobs, err := blobResolver.FetchBlobs(ctx, block.Header(), blobHashes)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch blobs from hashes during chain validation. Cause: %w", err)
+	}
+	data, err := ethadapter.DecodeBlobs(blobs)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding rollup blob. Cause: %w", err)
+	}
+
+	var rollup common.ExtRollup
+	if err := rlp.DecodeBytes(data, &rollup); err != nil {
+		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
+	}
+	return &rollup, nil
 }
