@@ -345,10 +345,6 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	if err != nil {
 		m.logger.Crit("Failed to store block. Cause: %w", err)
 	}
-	//err = m.ProcessBlobs(b)
-	//if err != nil {
-	//	m.logger.Crit("Failed to store blobs. Cause: %w", err)
-	//}
 
 	_, err = m.BlockResolver.FetchBlock(context.Background(), b.Header().ParentHash)
 	// only proceed if the parent is available
@@ -474,7 +470,11 @@ func (m *Node) startMining() {
 					return
 				}
 				b := NewBlock(canonicalBlock, m.l2ID, toInclude, blockTime)
-				_ = m.ProcessBlobs(b)
+				// there is a race condition if we process this at the same time as the blocks, so it has to be placed here
+				err := m.ProcessBlobs(b)
+				if err != nil {
+					m.logger.Crit("Failed to store blobs. Cause: %w", err)
+				}
 				m.miningCh <- NewBlock(canonicalBlock, m.l2ID, toInclude, blockTime)
 			})
 		}

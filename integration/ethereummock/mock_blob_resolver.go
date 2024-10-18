@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -51,15 +50,8 @@ func (b *BlobResolverInMem) FetchBlobs(_ context.Context, _ *types.Header, hashe
 		}
 	}
 
-	if len(blobs) == 0 {
-		if len(missingHashes) > 0 {
-			return nil, fmt.Errorf("blobs not found for hashes: %v", missingHashes)
-		}
-		return nil, ethereum.NotFound
-	}
-
-	if len(missingHashes) > 0 {
-		fmt.Printf("Warning: Some blobs were not found for hashes: %v\n", missingHashes)
+	if len(blobs) == 0 && len(missingHashes) > 0 {
+		return nil, fmt.Errorf("blobs not found for hashes: %v", missingHashes)
 	}
 
 	return blobs, nil

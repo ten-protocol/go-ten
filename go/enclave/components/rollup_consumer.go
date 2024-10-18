@@ -141,7 +141,7 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 		}
 
 		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {
-			rc.logger.Warn(fmt.Sprintf("blob hashes in rollup at index %d DONT match the rollup blob hashes. Cause: %s", i, err))
+			rc.logger.Warn(fmt.Sprintf("blob hashes in rollup at index %d do not match the rollup blob hashes. Cause: %s", i, err))
 			continue // Blob hashes don't match, skip this rollup
 		}
 
