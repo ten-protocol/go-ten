@@ -74,9 +74,6 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	fmt.Printf("Validating simulation results\n")
 	testlog.Logger().Info("Validating simulation results")
 
-	if params.IsInMem {
-		time.Sleep(15 * time.Second)
-	}
 	checkNetworkValidity(t, &simulation)
 
 	fmt.Printf("Stopping simulation\n")

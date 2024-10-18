@@ -30,14 +30,6 @@ type BlobSidecar struct {
 	KZGProof Bytes48 `json:"kzg_proof"`
 }
 
-type BeaconBlockHeader struct {
-	Slot          Uint64String `json:"slot"`
-	ProposerIndex Uint64String `json:"proposer_index"`
-	ParentRoot    Bytes32      `json:"parent_root"`
-	StateRoot     Bytes32      `json:"state_root"`
-	BodyRoot      Bytes32      `json:"body_root"`
-}
-
 type APIGetBlobSidecarsResponse struct {
 	Data []*BlobSidecar `json:"data"`
 }
