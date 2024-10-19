@@ -68,9 +68,9 @@ type CacheService struct {
 func NewCacheService(logger gethlog.Logger) *CacheService {
 	// todo (tudor) figure out the config
 	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 100_000_000,        // 10 times the expected elements
-		MaxCost:     1024 * 1024 * 1024, // allocate 1GB
-		BufferItems: 64,                 // number of keys per Get buffer.
+		NumCounters: 2 * 100_000_000,        // 10 times the expected elements
+		MaxCost:     2 * 1024 * 1024 * 1024, // allocate 1GB
+		BufferItems: 64,                     // number of keys per Get buffer.
 	})
 	if err != nil {
 		logger.Crit("Could not initialise ristretto cache", log.ErrKey, err)
@@ -100,6 +100,10 @@ func NewCacheService(logger gethlog.Logger) *CacheService {
 		lastBatchesCache:         cache.New[*core.Batch](ristrettoStoreForBatches),
 		logger:                   logger,
 	}
+}
+
+func (cs *CacheService) CacheConvertedHash(ctx context.Context, batchHash, convertedHash gethcommon.Hash) {
+	cacheValue(ctx, cs.convertedHashCache, cs.logger, batchHash, &convertedHash, hashCost)
 }
 
 func (cs *CacheService) CacheBlock(ctx context.Context, b *types.Header) {
