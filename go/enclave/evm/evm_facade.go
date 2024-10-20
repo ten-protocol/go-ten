@@ -216,9 +216,12 @@ func executeTransaction(
 			return receipt, err
 		}
 
+		// Synthetic transactions and ten zen are free. Do not increase the balancec of the coinbase.
+		isPaidProcessing := !cfg.NoBaseFee
+
 		// Do not increase the balance of zero address as it is the contract deployment address.
 		// Doing so might cause weird interactions.
-		if header.Coinbase.Big().Cmp(gethcommon.Big0) != 0 {
+		if header.Coinbase.Big().Cmp(gethcommon.Big0) != 0 && isPaidProcessing {
 			gasUsed := big.NewInt(0).SetUint64(receipt.GasUsed)
 			executionGasCost := big.NewInt(0).Mul(gasUsed, header.BaseFee)
 			// As the baseFee is burned, we add it back to the coinbase.
