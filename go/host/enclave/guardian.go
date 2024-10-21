@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
@@ -309,7 +311,7 @@ func (g *Guardian) provideSecret() error {
 		if err != nil {
 			return fmt.Errorf("next block after block=%s not found - %w", awaitFromBlock, err)
 		}
-		secretRespTxs, _, _ := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(nextBlock)
+		secretRespTxs := g.sl.L1Publisher().FindSecretResponseTx(nextBlock)
 		for _, scrt := range secretRespTxs {
 			if scrt.RequesterID.Hex() == g.enclaveID.Hex() {
 				err = g.enclaveClient.InitEnclave(context.Background(), scrt.Secret)
@@ -417,7 +419,6 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
 	if !g.submitDataLock.TryLock() {
 		g.logger.Debug("Unable to submit block, enclave is busy processing data")
-		// we are waiting for the enclave to process other data, and we don't want to leak goroutines, we wil catch up with the block later
 		return false, nil
 	}
 	receipts, err := g.sl.L1Repo().FetchObscuroReceipts(block)
@@ -425,21 +426,9 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
 	}
-	txWithReceipts := make([]*common.TxAndReceipt, 0)
-	// only submit the relevant transactions to the enclave
-	// nullify all non-relevant transactions
-	txs := block.Transactions()
-	for i, rec := range receipts {
-		// the FetchObscuroReceipts method returns dummy receipts on non-relevant positions.
-		if rec.BlockNumber != nil {
-			txWithReceipts = append(txWithReceipts, &common.TxAndReceipt{
-				Tx:      txs[i],
-				Receipt: rec,
-			})
-		}
-	}
+	txsReceiptsAndBlobs, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractRelevantTenTransactions(block, receipts)
 
-	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txWithReceipts, isLatest)
+	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txsReceiptsAndBlobs)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
@@ -459,7 +448,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	}
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
-	g.processL1BlockTransactions(block)
+	g.processL1BlockTransactions(block, rollupTxs, contractAddressTxs)
 
 	if err != nil {
 		return false, fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
@@ -473,10 +462,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
-	// if there are any secret responses in the block we should refresh our P2P list to re-sync with the network
-	_, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractObscuroRelevantTransactions(block)
-
+func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*ethadapter.L1RollupTx, contractAddressTxs []*ethadapter.L1SetImportantContractsTx) {
 	// TODO (@will) this should be removed and pulled from the L1
 	err := g.storage.AddBlock(block.Header())
 	if err != nil {
@@ -596,13 +582,13 @@ func (g *Guardian) periodicRollupProduction() {
 		case <-rollupCheckTicker.C:
 			if !g.state.IsUpToDate() {
 				// if we're behind the L1, we don't want to produce rollups
-				g.logger.Debug("skipping rollup production because L1 is not up to date", "state", g.state)
+				g.logger.Debug("Skipping rollup production because L1 is not up to date", "state", g.state)
 				continue
 			}
 
 			fromBatch, err := g.getLatestBatchNo()
 			if err != nil {
-				g.logger.Error("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
+				g.logger.Error("Encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
 				continue
 			}
 

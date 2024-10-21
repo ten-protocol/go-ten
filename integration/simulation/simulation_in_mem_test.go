@@ -31,6 +31,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:      0.2,
 		MgmtContractLib:            ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib:           ethereummock.NewERC20ContractLibMock(),
+		BlobResolver:               ethereummock.NewMockBlobResolver(),
 		Wallets:                    wallets,
 		StartPort:                  integration.TestPorts.TestInMemoryMonteCarloSimulationPort,
 		IsInMem:                    true,
@@ -38,6 +39,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		ReceiptTimeout:             5 * time.Second,
 		StoppingDelay:              15 * time.Second,
 		NodeWithInboundP2PDisabled: 2,
+		L1BeaconPort:               integration.TestPorts.TestInMemoryMonteCarloSimulationPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

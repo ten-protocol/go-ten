@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-
 	"github.com/ten-protocol/go-ten/go/host/l2"
 
 	"github.com/ten-protocol/go-ten/go/host/enclave"
@@ -45,7 +44,6 @@ type host struct {
 	logger gethlog.Logger
 
 	metricRegistry gethmetrics.Registry
-
 	// l2MessageBusAddress is fetched from the enclave but cache it here because it never changes
 	l2MessageBusAddress             *gethcommon.Address
 	transactionPostProcessorAddress gethcommon.Address
@@ -60,7 +58,7 @@ func (bl batchListener) HandleBatch(batch *common.ExtBatch) {
 	bl.newHeads <- batch.Header
 }
 
-func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
+func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry, blobResolver l1.BlobResolver) hostcommon.Host {
 	hostStorage := storage.NewHostStorageFromConfig(config, logger)
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
@@ -97,7 +95,6 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardians, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
-
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
 	hostServices.RegisterService(hostcommon.P2PName, p2p)
 	hostServices.RegisterService(hostcommon.L1BlockRepositoryName, l1Repo)
@@ -109,6 +106,7 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		ethClient,
 		mgmtContractLib,
 		l1Repo,
+		blobResolver,
 		host.stopControl,
 		logger,
 		maxWaitForL1Receipt,
@@ -235,7 +233,7 @@ func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error)
 	}, nil
 }
 
-// ObscuroConfig returns info on the Obscuro network
+// TenConfig returns info on the TEN network
 func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 	if h.l2MessageBusAddress == nil || h.transactionPostProcessorAddress.Cmp(gethcommon.Address{}) == 0 {
 		publicCfg, err := h.EnclaveClient().EnclavePublicConfig(context.Background())

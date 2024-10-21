@@ -61,9 +61,9 @@ type EnclaveConfig struct {
 	// Maximum bytes a batch can be uncompressed.
 	MaxBatchSize uint64
 	// MaxRollupSize - configured to be close to what the ethereum clients
-	// have configured as the maximum size a transaction can have. Note that this isn't
-	// a protocol limit, but a miner imposed limit and it might be hard to find someone
-	// to include a transaction if it goes above it
+	// have configured as the maximum size a transaction can have. Note that this is a beacon-chain imposed blob size-limit.
+	// We want to keep this configurable as it may change in the future and we may want to allow larger rollups which can be split
+	// across multiple blobs. As of right now (Oct 2024), it is set to 128kb.
 	MaxRollupSize uint64
 
 	GasPaymentAddress        gethcommon.Address
