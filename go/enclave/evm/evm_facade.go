@@ -248,7 +248,7 @@ func executeTransaction(
 	header.MixDigest = before
 	if err != nil {
 		s.RevertToSnapshot(snap)
-		return &core.TxExecResult{Receipt: receipt, Tx: t.Tx, Err: err}
+		return &core.TxExecResult{Receipt: receipt, Tx: t.Tx, From: &from, Err: err}
 	}
 
 	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
@@ -256,7 +256,7 @@ func executeTransaction(
 		contractsWithVisibility[*contractAddress] = readVisibilityConfig(vmenv, contractAddress)
 	}
 
-	return &core.TxExecResult{Receipt: receipt, Tx: t.Tx, CreatedContracts: contractsWithVisibility}
+	return &core.TxExecResult{Receipt: receipt, Tx: t.Tx, From: &from, CreatedContracts: contractsWithVisibility}
 }
 
 const (

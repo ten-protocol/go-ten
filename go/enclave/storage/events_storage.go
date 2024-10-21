@@ -18,12 +18,13 @@ import (
 
 // responsible for saving event logs
 type eventsStorage struct {
+	db             enclavedb.EnclaveDB
 	cachingService *CacheService
 	logger         gethlog.Logger
 }
 
-func newEventsStorage(cachingService *CacheService, logger gethlog.Logger) *eventsStorage {
-	return &eventsStorage{cachingService: cachingService, logger: logger}
+func newEventsStorage(cachingService *CacheService, db enclavedb.EnclaveDB, logger gethlog.Logger) *eventsStorage {
+	return &eventsStorage{cachingService: cachingService, db: db, logger: logger}
 }
 
 func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx, batch *common.BatchHeader, txExecResult *core.TxExecResult) error {
@@ -52,6 +53,11 @@ func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql
 		}
 	}
 
+	es.cachingService.CacheReceipt(ctx, &CachedReceipt{
+		Receipt: txExecResult.Receipt,
+		From:    txExecResult.From,
+		To:      txExecResult.Tx.To(),
+	})
 	return nil
 }
 

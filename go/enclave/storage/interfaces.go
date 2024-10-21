@@ -97,8 +97,8 @@ type SharedSecretStorage interface {
 type TransactionStorage interface {
 	// GetTransaction - returns the positional metadata of the tx by hash
 	GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error)
-	// GetTransactionReceipt - returns the receipt of a tx by tx hash
-	GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error)
+	// GetFilteredReceipt - returns the receipt of a tx with event logs visible to the requester
+	GetFilteredInternalReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error)
 	ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error)
 }
 
@@ -153,6 +153,7 @@ type Storage interface {
 	StateDB() state.Database
 
 	ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error)
+	ReadEventType(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error)
 }
 
 type ScanStorage interface {

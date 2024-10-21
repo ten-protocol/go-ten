@@ -79,7 +79,7 @@ func (s *systemContractCallbacks) Load() error {
 		return fmt.Errorf("genesis batch does not have enough transactions")
 	}
 
-	receipt, err := s.storage.GetTransactionReceipt(context.Background(), batch.Transactions[1].Hash(), nil, true)
+	receipt, err := s.storage.GetFilteredInternalReceipt(context.Background(), batch.Transactions[1].Hash(), nil, true)
 	if err != nil {
 		s.logger.Error("Load: Failed fetching receipt", "transactionHash", batch.Transactions[1].Hash().Hex(), "error", err)
 		return fmt.Errorf("failed fetching receipt %w", err)

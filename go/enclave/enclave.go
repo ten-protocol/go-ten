@@ -242,7 +242,7 @@ func NewEnclave(
 		registry,
 		config.GasLocalExecutionCapFlag,
 	)
-	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, registry, crossChainProcessors, service, config, gasOracle, storage, blockProcessor, chain, logger)
+	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, cachingService, registry, crossChainProcessors, service, config, gasOracle, storage, blockProcessor, chain, logger)
 	subscriptionManager := events.NewSubscriptionManager(storage, registry, config.ObscuroChainID, logger)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data

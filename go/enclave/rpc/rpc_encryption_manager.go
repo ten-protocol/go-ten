@@ -22,6 +22,7 @@ type EncryptionManager struct {
 	chain                  l2chain.ObscuroChain
 	enclavePrivateKeyECIES *ecies.PrivateKey
 	storage                storage.Storage
+	cacheService           *storage.CacheService
 	registry               components.BatchRegistry
 	processors             *crosschain.Processors
 	service                nodetype.NodeType
@@ -33,9 +34,10 @@ type EncryptionManager struct {
 	whitelist              *privacy.Whitelist
 }
 
-func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey, storage storage.Storage, registry components.BatchRegistry, processors *crosschain.Processors, service nodetype.NodeType, config *config.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain l2chain.ObscuroChain, logger gethlog.Logger) *EncryptionManager {
+func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey, storage storage.Storage, cacheService *storage.CacheService, registry components.BatchRegistry, processors *crosschain.Processors, service nodetype.NodeType, config *config.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain l2chain.ObscuroChain, logger gethlog.Logger) *EncryptionManager {
 	return &EncryptionManager{
 		storage:                storage,
+		cacheService:           cacheService,
 		registry:               registry,
 		processors:             processors,
 		service:                service,

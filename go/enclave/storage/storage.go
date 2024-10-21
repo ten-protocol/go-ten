@@ -93,7 +93,7 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, cha
 		stateCache:     stateDB,
 		chainConfig:    chainConfig,
 		cachingService: cachingService,
-		eventsStorage:  newEventsStorage(cachingService, logger),
+		eventsStorage:  newEventsStorage(cachingService, backingDB, logger),
 		logger:         logger,
 	}
 }
@@ -430,8 +430,8 @@ func (s *storageImpl) GetTransaction(ctx context.Context, txHash gethcommon.Hash
 	return enclavedb.ReadTransaction(ctx, s.db.GetSQLDB(), txHash)
 }
 
-func (s *storageImpl) GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error) {
-	defer s.logDuration("GetTransactionReceipt", measure.NewStopwatch())
+func (s *storageImpl) GetFilteredInternalReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error) {
+	defer s.logDuration("GetFilteredInternalReceipt", measure.NewStopwatch())
 	if !syntheticTx && requester == nil {
 		return nil, errors.New("requester address is required for non-synthetic transactions")
 	}
@@ -439,7 +439,7 @@ func (s *storageImpl) GetTransactionReceipt(ctx context.Context, txHash common.L
 }
 
 func (s *storageImpl) ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error) {
-	defer s.logDuration("GetTransactionReceipt", measure.NewStopwatch())
+	defer s.logDuration("ExistsTransactionReceipt", measure.NewStopwatch())
 	return enclavedb.ExistsReceipt(ctx, s.db.GetSQLDB(), txHash)
 }
 
@@ -840,6 +840,15 @@ func (s *storageImpl) ReadContract(ctx context.Context, address gethcommon.Addre
 	}
 	defer dbtx.Rollback()
 	return enclavedb.ReadContractByAddress(ctx, dbtx, address)
+}
+
+func (s *storageImpl) ReadEventType(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error) {
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+	return s.eventsStorage.readEventType(ctx, dbTx, contractAddress, eventSignature)
 }
 
 func (s *storageImpl) logDuration(method string, stopWatch *measure.Stopwatch) {
