@@ -98,6 +98,7 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
 	hostServices.RegisterService(hostcommon.P2PName, p2p)
 	hostServices.RegisterService(hostcommon.L1BlockRepositoryName, l1Repo)
+	txExtractor := l1.NewTransactionExtractor(mgmtContractLib, blobResolver, logger)
 	maxWaitForL1Receipt := 6 * config.L1BlockTime   // wait ~10 blocks to see if tx gets published before retrying
 	retryIntervalForL1Receipt := config.L1BlockTime // retry ~every block
 	l1Publisher := l1.NewL1Publisher(
@@ -106,7 +107,7 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		ethClient,
 		mgmtContractLib,
 		l1Repo,
-		blobResolver,
+		&txExtractor,
 		host.stopControl,
 		logger,
 		maxWaitForL1Receipt,
