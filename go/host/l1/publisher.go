@@ -8,6 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
@@ -33,6 +37,7 @@ type Publisher struct {
 	ethClient       ethadapter.EthClient
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 	storage         storage.Storage
+	blobResolver    BlobResolver
 
 	// cached map of important contract addresses (updated when we see a SetImportantContractsTx)
 	importantContractAddresses map[string]gethcommon.Address
@@ -60,6 +65,7 @@ func NewL1Publisher(
 	client ethadapter.EthClient,
 	mgmtContract mgmtcontractlib.MgmtContractLib,
 	repository host.L1BlockRepository,
+	blobResolver BlobResolver,
 	hostStopper *stopcontrol.StopControl,
 	logger gethlog.Logger,
 	maxWaitForL1Receipt time.Duration,
@@ -73,6 +79,7 @@ func NewL1Publisher(
 		ethClient:                 client,
 		mgmtContractLib:           mgmtContract,
 		repository:                repository,
+		blobResolver:              blobResolver,
 		hostStopper:               hostStopper,
 		logger:                    logger,
 		maxWaitForL1Receipt:       maxWaitForL1Receipt,
@@ -221,12 +228,65 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 	return nil
 }
 
-// ExtractObscuroRelevantTransactions will extract any transactions from the block that are relevant to obscuro
+// ExtractRelevantTenTransactions will extract any transactions from the block that are relevant to TEN
 // todo (#2495) we should monitor for relevant L1 events instead of scanning every transaction in the block
-func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
-	var secretRespTxs []*ethadapter.L1RespondSecretTx
-	var rollupTxs []*ethadapter.L1RollupTx
-	var contractAddressTxs []*ethadapter.L1SetImportantContractsTx
+func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts types.Receipts) ([]*common.TxAndReceiptAndBlobs, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
+	txWithReceiptsAndBlobs := make([]*common.TxAndReceiptAndBlobs, 0)
+	rollupTxs := make([]*ethadapter.L1RollupTx, 0)
+	contractAddressTxs := make([]*ethadapter.L1SetImportantContractsTx, 0)
+
+	txs := block.Transactions()
+	for i, rec := range receipts {
+		if rec.BlockNumber == nil {
+			continue // Skip non-relevant transactions
+		}
+
+		decodedTx := p.mgmtContractLib.DecodeTx(txs[i])
+		var blobs []*kzg4844.Blob
+		var err error
+
+		switch typedTx := decodedTx.(type) {
+		case *ethadapter.L1SetImportantContractsTx:
+			contractAddressTxs = append(contractAddressTxs, typedTx)
+		case *ethadapter.L1RollupHashes:
+			blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), typedTx.BlobHashes)
+			if err != nil {
+				if errors.Is(err, ethereum.NotFound) {
+					p.logger.Crit("Blobs were not found on beacon chain or archive service", "block", block.Hash(), "error", err)
+				} else {
+					p.logger.Crit("could not fetch blobs", log.ErrKey, err)
+				}
+				continue
+			}
+
+			encodedRlp, err := ethadapter.DecodeBlobs(blobs)
+			if err != nil {
+				p.logger.Crit("could not decode blobs.", log.ErrKey, err)
+				continue
+			}
+
+			rlp := &ethadapter.L1RollupTx{
+				Rollup: encodedRlp,
+			}
+			rollupTxs = append(rollupTxs, rlp)
+		}
+
+		// compile the tx, receipt and blobs into a single struct for submission to the enclave
+		txWithReceiptsAndBlobs = append(txWithReceiptsAndBlobs, &common.TxAndReceiptAndBlobs{
+			Tx:      txs[i],
+			Receipt: rec,
+			Blobs:   blobs,
+		})
+	}
+
+	return txWithReceiptsAndBlobs, rollupTxs, contractAddressTxs
+}
+
+// FindSecretResponseTx will scan the block for any secret response transactions. This is separate from the above method
+// as we do not require the receipts for these transactions.
+func (p *Publisher) FindSecretResponseTx(block *types.Block) []*ethadapter.L1RespondSecretTx {
+	secretRespTxs := make([]*ethadapter.L1RespondSecretTx, 0)
+
 	for _, tx := range block.Transactions() {
 		t := p.mgmtContractLib.DecodeTx(tx)
 		if t == nil {
@@ -236,16 +296,8 @@ func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*e
 			secretRespTxs = append(secretRespTxs, scrtTx)
 			continue
 		}
-		if rollupTx, ok := t.(*ethadapter.L1RollupTx); ok {
-			rollupTxs = append(rollupTxs, rollupTx)
-			continue
-		}
-		if contractAddressTx, ok := t.(*ethadapter.L1SetImportantContractsTx); ok {
-			contractAddressTxs = append(contractAddressTxs, contractAddressTx)
-			continue
-		}
 	}
-	return secretRespTxs, rollupTxs, contractAddressTxs
+	return secretRespTxs
 }
 
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
@@ -274,14 +326,18 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
 	}
 
-	rollupTx := p.mgmtContractLib.CreateRollup(tx)
+	rollupBlobTx, err := p.mgmtContractLib.CreateBlobRollup(tx)
+	if err != nil {
+		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
+	}
 
-	err = p.publishTransaction(rollupTx)
+	err = p.publishTransaction(rollupBlobTx)
 	if err != nil {
 		p.logger.Error("Could not issue rollup tx", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	} else {
 		p.logger.Info("Rollup included in L1", log.RollupHashKey, producedRollup.Hash())
 	}
+	// TODO publish rollup to archive service if not already done
 }
 
 func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, rollupNum *big.Int, forkID gethcommon.Hash) error {
@@ -395,8 +451,6 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 
 	retries := -1
 
-	// we keep trying to send the transaction with this nonce until it is included in a block
-	// note: this is only safe because of the sendingLock guaranteeing only one transaction in-flight at a time
 	nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
 	if err != nil {
 		return fmt.Errorf("could not get nonce for L1 tx: %w", err)
@@ -416,8 +470,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		if err != nil {
 			return errors.Wrap(err, "could not sign L1 tx")
 		}
-
-		p.logger.Info("Host issuing l1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
+		p.logger.Info("Host issuing L1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
 		err = p.ethClient.SendTransaction(signedTx)
 		if err != nil {
 			return errors.Wrap(err, "could not broadcast L1 tx")
@@ -425,15 +478,15 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
 
 		var receipt *types.Receipt
-		// retry until receipt is found
+		// retry until receipt is found or context is canceled
 		err = retry.Do(
 			func() error {
 				if p.hostStopper.IsStopping() {
-					return retry.FailFast(errors.New("host is stopping"))
+					return retry.FailFast(errors.New("host is stopping or context canceled"))
 				}
 				receipt, err = p.ethClient.TransactionReceipt(signedTx.Hash())
 				if err != nil {
-					return fmt.Errorf("could not get receipt for L1 tx=%s: %w", signedTx.Hash(), err)
+					return fmt.Errorf("could not get receipt publishing tx for L1 tx=%s: %w", signedTx.Hash(), err)
 				}
 				return err
 			},
@@ -444,7 +497,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 			continue // try again with updated gas price
 		}
 
-		if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
+		if receipt.Status != types.ReceiptStatusSuccessful {
 			return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
 		}
 
@@ -462,7 +515,7 @@ func (p *Publisher) awaitTransaction(tx *types.Transaction) error {
 		func() error {
 			receipt, err = p.ethClient.TransactionReceipt(tx.Hash())
 			if err != nil {
-				return fmt.Errorf("could not get receipt for L1 tx=%s: %w", tx.Hash(), err)
+				return fmt.Errorf("could not get receipt for xchain L1 tx=%s: %w", tx.Hash(), err)
 			}
 			return err
 		},

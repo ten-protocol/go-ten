@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common"
+
 	"github.com/ten-protocol/go-ten/tools/tenscan/backend/config"
 	"github.com/ten-protocol/go-ten/tools/tenscan/backend/container"
 
@@ -26,7 +28,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
-	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/ethereummock"
@@ -78,7 +79,9 @@ func TestTenscan(t *testing.T) {
 		5,
 	)
 
-	// Issue tests
+	err = waitForFirstRollup(serverAddress)
+	require.NoError(t, err)
+
 	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
@@ -302,6 +305,7 @@ func createTenNetwork(t *testing.T, startPort int) {
 		Wallets:          wallets,
 		StartPort:        startPort,
 		WithPrefunding:   true,
+		L1BeaconPort:     integration.TestPorts.TestTenscanPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 
 	tenNetwork := network.NewNetworkOfSocketNodes(wallets)
@@ -377,4 +381,21 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 			t.Fatalf("Tx Failed")
 		}
 	}
+}
+
+func waitForFirstRollup(serverAddress string) error {
+	for now := time.Now(); time.Since(now) < 3*time.Minute; time.Sleep(5 * time.Second) {
+		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/latest/", serverAddress))
+		if err != nil {
+			if strings.Contains(err.Error(), "connection") {
+				continue
+			}
+			return err
+		}
+
+		if statusCode == http.StatusOK {
+			return nil
+		}
+	}
+	return fmt.Errorf("timed out before rollup was found")
 }

@@ -23,7 +23,6 @@ func GetTransactionCountValidate(reqParams []any, builder *CallBuilder[uint64, s
 	}
 
 	address := gethcommon.HexToAddress(addressStr)
-
 	seqNo := rpc.registry.HeadBatchSeq().Uint64()
 	if len(reqParams) == 2 {
 		tag, err := gethencoding.ExtractBlockNumber(reqParams[1])

@@ -8,9 +8,9 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 )
 
-var MockGenesisBlock = NewBlock(nil, common.HexToAddress("0x0"), []*types.Transaction{})
+var MockGenesisBlock = NewBlock(nil, common.HexToAddress("0x0"), []*types.Transaction{}, 0)
 
-func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transaction) *types.Block {
+func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transaction, blockTime uint64) *types.Block {
 	var parentHash common.Hash
 	var height uint64
 	if parent != nil {
@@ -30,7 +30,7 @@ func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transacti
 		Number:      big.NewInt(int64(height)),
 		GasLimit:    0,
 		GasUsed:     0,
-		Time:        0,
+		Time:        blockTime, // Set the block time here
 		Extra:       nil,
 		MixDigest:   common.Hash{},
 		Nonce:       types.BlockNonce{},
