@@ -3,6 +3,7 @@ package config2
 import (
 	"embed"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
@@ -16,9 +17,19 @@ var _baseConfig embed.FS
 
 // Load reads and applies the config files and environment variables, returning a TenConfig struct
 func Load(filePaths []string) (*TenConfig, error) {
+	// Print all environment variables for debugging
+	fmt.Println("Environment variables:")
+	for _, env := range os.Environ() {
+		fmt.Println(env)
+	}
+
 	// parse yaml file with viper
 	v := viper.New()
 	var err error
+
+	// Bind environment variables to config keys to override yaml files
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
 
 	for i, filePath := range filePaths {
 		// Check if the file exists in the embedded FS
@@ -46,10 +57,6 @@ func Load(filePaths []string) (*TenConfig, error) {
 		}
 	}
 
-	// Bind environment variables to config keys
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.AutomaticEnv()
-
 	// todo (@matt) for enclave processes apply signed configuration file **after** even the env variable overrides
 
 	var tenCfg TenConfig
@@ -69,8 +76,19 @@ func Load(filePaths []string) (*TenConfig, error) {
 	return &tenCfg, nil
 }
 
-func LoadTenConfigForEnv(env string) (*TenConfig, error) {
-	return Load([]string{"default/0-base-config.yaml", fmt.Sprintf("default/1-env-%s.yaml", env)})
+// LoadTenConfigForEnv loads the TenConfig for the given environment, merging the base config with the environment-specific one
+// and optionally any additional files provided (e.g. for node/network specific config)
+func LoadTenConfigForEnv(env string, files ...string) (*TenConfig, error) {
+	// Default base and environment-specific files
+	configFiles := []string{
+		"default/0-base-config.yaml",
+		fmt.Sprintf("default/1-env-%s.yaml", env),
+	}
+
+	// Append any provided files to the default ones
+	configFiles = append(configFiles, files...)
+
+	return Load(configFiles)
 }
 func DefaultTenConfig() (*TenConfig, error) {
 	// load embedded base config

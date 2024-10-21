@@ -129,15 +129,19 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 
 	fmt.Println("Connecting to the enclave...")
 	services := host.NewServicesRegistry(logger)
+	fmt.Println("1")
 	enclaveClients := make([]common.Enclave, len(cfg.EnclaveRPCAddresses))
+	fmt.Println("2")
 	for i, addr := range cfg.EnclaveRPCAddresses {
 		enclaveClients[i] = enclaverpc.NewClient(addr, cfg.EnclaveRPCTimeout, logger)
 	}
+	fmt.Println("3")
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
 	metricsService := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
+	fmt.Println("4")
 
 	aggP2P := p2p.NewSocketP2PLayer(cfg, services, p2pLogger, metricsService.Registry())
-
+	fmt.Println("5")
 	rpcServer := node.NewServer(&node.RPCConfig{
 		EnableHTTP: cfg.HasClientRPCHTTP,
 		HTTPPort:   int(cfg.ClientRPCPortHTTP),
@@ -150,6 +154,7 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 	obscuroRelevantContracts := []gethcommon.Address{cfg.ManagementContractAddress, cfg.MessageBusAddress}
 	l1Repo := l1.NewL1Repository(l1Client, obscuroRelevantContracts, logger)
 
+	fmt.Println("6")
 	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Repo, enclaveClients, mgmtContractLib, ethWallet, rpcServer, logger, metricsService)
 }
 

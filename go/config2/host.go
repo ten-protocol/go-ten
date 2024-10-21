@@ -72,7 +72,7 @@ type HostL1 struct {
 //
 //	yaml: `host.enclave`
 type HostEnclave struct {
-	// RPCAddresses is a comma-separated list of enclave RPC addresses.
+	// RPCAddresses is a list of managed enclave RPC addresses.
 	RPCAddresses []string      `mapstructure:"rpcAddresses"`
 	RPCTimeout   time.Duration `mapstructure:"rpcTimeout"`
 }

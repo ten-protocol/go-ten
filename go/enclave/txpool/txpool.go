@@ -57,10 +57,12 @@ func (t *TxPool) Start() error {
 		return fmt.Errorf("tx pool already started")
 	}
 
+	fmt.Println("Starting tx pool")
 	memp, err := gethtxpool.New(t.gasTip.Uint64(), t.Chain, []gethtxpool.SubPool{t.legacyPool})
 	if err != nil {
 		return fmt.Errorf("unable to init geth tx pool - %w", err)
 	}
+	fmt.Println("Tx pool started")
 
 	t.pool = memp
 	t.running = true

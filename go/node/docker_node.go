@@ -39,17 +39,17 @@ func (d *DockerNode) Start() error {
 
 	err := d.startEdgelessDB()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to start edgelessdb: %w", err)
 	}
 
 	err = d.startEnclave()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to start enclave: %w", err)
 	}
 
 	err = d.startHost()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to start host: %w", err)
 	}
 
 	return nil

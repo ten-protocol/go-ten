@@ -2,6 +2,7 @@ package config2
 
 import (
 	"fmt"
+	"math/big"
 	"reflect"
 	"strings"
 
@@ -95,12 +96,33 @@ func structToEnvMap(prefix string, cfg interface{}) map[string]string {
 			envKey = prefix + "_" + envKey
 		}
 
+		// Handle *big.Int explicitly before the switch
+		if field.Type() == reflect.TypeOf(new(big.Int)) {
+			if !field.IsNil() {
+				envMap[envKey] = field.Interface().(*big.Int).String()
+			}
+			continue
+		} else if field.Type() == reflect.TypeOf(big.Int{}) {
+			ptrBigInt := field.Addr().Interface().(*big.Int)
+			envMap[envKey] = ptrBigInt.String()
+			continue
+		}
+
 		switch field.Kind() {
 		case reflect.Struct:
 			// Recursively handle nested structures
 			nestedMap := structToEnvMap(envKey, field.Interface())
 			for k, v := range nestedMap {
 				envMap[k] = v
+			}
+		case reflect.Slice:
+			// Handle string slices as comma-separated strings
+			if field.Type().Elem().Kind() == reflect.String {
+				strSlice := field.Interface().([]string)
+				envMap[envKey] = strings.Join(strSlice, ",")
+			} else {
+				// Handle other slice types, if needed
+				envMap[envKey] = fmt.Sprintf("%v", field.Interface())
 			}
 		case reflect.Ptr:
 			if !field.IsNil() {
@@ -112,6 +134,9 @@ func structToEnvMap(prefix string, cfg interface{}) map[string]string {
 			}
 		default:
 			// Handle basic types
+			if !field.CanInterface() {
+				fmt.Println("Field cannot be interfaced:", prefix, envKey)
+			}
 			envMap[envKey] = fmt.Sprintf("%v", field.Interface())
 		}
 	}

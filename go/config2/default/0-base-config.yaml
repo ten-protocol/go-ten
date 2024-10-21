@@ -4,7 +4,7 @@
 
 network:
   chainId: 443
-  genesis: "" # json string of genesis block, used for configuring prefunded accounts etc.
+  genesis: "{}" # json string of genesis block, used for configuring prefunded accounts etc.
   batch:
     interval: 1s
     maxInterval: 1s # if this is greater than batch.interval then we make batches more slowly when there are no transactions
@@ -37,7 +37,7 @@ node:
   id: 0x0 # unique identifier for this node (currently based on its wallet eth address)
   hostAddress: 0x0 # address of the node's p2p server
   privateKey: 0x0 # private key for this node's eth account
-  isGenesis: false # true only for the first sequencer on a fresh chain
+  isGenesis: true # true only for the first sequencer on a fresh chain
 
 host:
   db:
@@ -50,14 +50,14 @@ host:
     enableProfiler: false
     enableDebugNamespace: false
   enclave:
-    rpcAddresses: [ 127.0.0.1:11000 ] # list of enclave rpc addresses
+    rpcAddresses: [ "127.0.0.1:11000" ] # list of enclave rpc addresses
     rpcTimeout: 10s
   l1:
     wsURL: ws://localhost:8546 # websocket URL for L1 RPC service
     rpcTimeout: 15s
   log:
-    level: 0 # -4 is DEBUG, 0 is INFO, 4 is WARN, 8 is ERROR (according to geth/slog lib)
-    path: "" # path to log file, will log to stdout when empty
+    level: 4
+    path: sys_out # path to log file, will log to stdout when empty
   p2p:
     disableP2P: false
     bindAddress: 0.0.0.0:10000
@@ -83,6 +83,7 @@ enclave:
     #genesisJSON:  # json string of L1 genesis block, used for expectation todo: still needed?
   log:
     level: 4
-    path: "" # path to log file, will log to stdout when empty
+    path: sys_out
   rpc:
+    bindAddress: "0.0.0.0:11000"
     timeout: 5s
