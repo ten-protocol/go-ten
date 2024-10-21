@@ -41,12 +41,12 @@ type systemContractCallbacks struct {
 	logger gethlog.Logger
 }
 
-func NewSystemContractCallbacks(ownerWallet wallet.Wallet, logger gethlog.Logger) SystemContractCallbacks {
+func NewSystemContractCallbacks(ownerWallet wallet.Wallet, storage storage.Storage, logger gethlog.Logger) SystemContractCallbacks {
 	return &systemContractCallbacks{
 		transactionsPostProcessorAddress: nil,
 		ownerWallet:                      ownerWallet,
 		logger:                           logger,
-		storage:                          nil,
+		storage:                          storage,
 	}
 }
 
@@ -66,7 +66,7 @@ func (s *systemContractCallbacks) Load() error {
 		return fmt.Errorf("storage is not set")
 	}
 
-	batchSeqNo := uint64(1)
+	batchSeqNo := uint64(2)
 	s.logger.Debug("Load: Fetching batch", "batchSeqNo", batchSeqNo)
 	batch, err := s.storage.FetchBatchBySeqNo(context.Background(), batchSeqNo)
 	if err != nil {
