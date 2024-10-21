@@ -64,3 +64,7 @@ func (s *ServicesRegistry) LogSubs() hostcommon.LogSubscriptionManager {
 func (s *ServicesRegistry) CrossChainMachine() l1.CrossChainStateMachine {
 	return s.getService(hostcommon.CrossChainServiceName).(l1.CrossChainStateMachine)
 }
+
+func (s *ServicesRegistry) L1TxExtractor() l1.TransactionExtractor {
+	return s.getService(hostcommon.L1TxExtractor).(l1.TransactionExtractor)
+}

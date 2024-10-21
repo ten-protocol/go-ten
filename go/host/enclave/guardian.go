@@ -45,6 +45,7 @@ const (
 type guardianServiceLocator interface {
 	P2P() host.P2P
 	L1Publisher() host.L1Publisher
+	L1TxExtractor() l1.TransactionExtractor
 	L1Repo() host.L1BlockRepository
 	L2Repo() host.L2BatchRepository
 	LogSubs() host.LogSubscriptionManager
@@ -311,7 +312,7 @@ func (g *Guardian) provideSecret() error {
 		if err != nil {
 			return fmt.Errorf("next block after block=%s not found - %w", awaitFromBlock, err)
 		}
-		secretRespTxs := g.sl.L1Publisher().FindSecretResponseTx(nextBlock)
+		secretRespTxs := g.sl.L1TxExtractor().FindSecretResponseTx(nextBlock)
 		for _, scrt := range secretRespTxs {
 			if scrt.RequesterID.Hex() == g.enclaveID.Hex() {
 				err = g.enclaveClient.InitEnclave(context.Background(), scrt.Secret)
@@ -426,7 +427,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
 	}
-	txsReceiptsAndBlobs, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractRelevantTenTransactions(block, receipts)
+	txsReceiptsAndBlobs, rollupTxs, contractAddressTxs := g.sl.L1TxExtractor().ExtractRelevantTenTransactions(context.Background(), block, receipts)
 
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txsReceiptsAndBlobs)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
