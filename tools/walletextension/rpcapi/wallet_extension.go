@@ -39,7 +39,7 @@ import (
 type Services struct {
 	HostAddrHTTP string // The HTTP address on which the TEN host can be reached
 	HostAddrWS   string // The WS address on which the TEN host can be reached
-	Storage      storage.Storage
+	Storage      *storage.EncryptedStorage
 	logger       gethlog.Logger
 	stopControl  *stopcontrol.StopControl
 	version      string
@@ -56,7 +56,7 @@ type NewHeadNotifier interface {
 	onNewHead(header *tencommon.BatchHeader)
 }
 
-func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, config *common.Config) *Services {
+func NewServices(hostAddrHTTP string, hostAddrWS string, storage *storage.EncryptedStorage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, config *common.Config) *Services {
 	newGatewayCache, err := cache.NewCache(logger)
 	if err != nil {
 		logger.Error(fmt.Errorf("could not create cache. Cause: %w", err).Error())

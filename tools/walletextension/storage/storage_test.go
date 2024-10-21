@@ -6,12 +6,13 @@ import (
 	"testing"
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
-var tests = map[string]func(storage Storage, t *testing.T){
+var tests = map[string]func(*EncryptedStorage, *testing.T){
 	"testAddAndGetUser":     testAddAndGetUser,
 	"testAddAndGetAccounts": testAddAndGetAccounts,
 	"testDeleteUser":        testDeleteUser,
@@ -20,10 +21,14 @@ var tests = map[string]func(storage Storage, t *testing.T){
 }
 
 func TestSQLiteGatewayDB(t *testing.T) {
+	randomKey, err := wecommon.GenerateRandomKey(32)
+	require.NoError(t, err)
+
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			// storage, err := New("mariaDB", "obscurouser:password@tcp(127.0.0.1:3306)/ogdb", "") allows to run tests against a local instance of MariaDB
-			storage, err := New("sqlite", "", "")
+
+			storage, err := New("sqlite", "", "", randomKey)
 			require.NoError(t, err)
 
 			test(storage, t)
@@ -31,7 +36,7 @@ func TestSQLiteGatewayDB(t *testing.T) {
 	}
 }
 
-func testAddAndGetUser(storage Storage, t *testing.T) {
+func testAddAndGetUser(storage *EncryptedStorage, t *testing.T) {
 	userID := []byte("userID")
 	privateKey := []byte("privateKey")
 
@@ -50,7 +55,7 @@ func testAddAndGetUser(storage Storage, t *testing.T) {
 	}
 }
 
-func testAddAndGetAccounts(storage Storage, t *testing.T) {
+func testAddAndGetAccounts(storage *EncryptedStorage, t *testing.T) {
 	userID := []byte("userID")
 	privateKey := []byte("privateKey")
 	accountAddress1 := []byte("accountAddress1")
@@ -104,7 +109,7 @@ func testAddAndGetAccounts(storage Storage, t *testing.T) {
 	}
 }
 
-func testDeleteUser(storage Storage, t *testing.T) {
+func testDeleteUser(storage *EncryptedStorage, t *testing.T) {
 	userID := []byte("testDeleteUserID")
 	privateKey := []byte("testDeleteUserPrivateKey")
 
@@ -124,7 +129,7 @@ func testDeleteUser(storage Storage, t *testing.T) {
 	}
 }
 
-func testGetAllUsers(storage Storage, t *testing.T) {
+func testGetAllUsers(storage *EncryptedStorage, t *testing.T) {
 	initialUsers, err := storage.GetAllUsers()
 	if err != nil {
 		t.Fatal(err)
@@ -148,7 +153,7 @@ func testGetAllUsers(storage Storage, t *testing.T) {
 	}
 }
 
-func testStoringNewTx(storage Storage, t *testing.T) {
+func testStoringNewTx(storage *EncryptedStorage, t *testing.T) {
 	userID := []byte("userID")
 	rawTransaction := "0x0123456789"
 
