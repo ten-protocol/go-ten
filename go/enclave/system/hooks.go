@@ -41,12 +41,12 @@ type systemContractCallbacks struct {
 	logger gethlog.Logger
 }
 
-func NewSystemContractCallbacks(ownerWallet wallet.Wallet, logger gethlog.Logger) SystemContractCallbacks {
+func NewSystemContractCallbacks(ownerWallet wallet.Wallet, storage storage.Storage, logger gethlog.Logger) SystemContractCallbacks {
 	return &systemContractCallbacks{
 		transactionsPostProcessorAddress: nil,
 		ownerWallet:                      ownerWallet,
 		logger:                           logger,
-		storage:                          nil,
+		storage:                          storage,
 	}
 }
 
