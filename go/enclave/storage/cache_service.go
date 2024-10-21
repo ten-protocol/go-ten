@@ -82,6 +82,9 @@ func NewCacheService(logger gethlog.Logger) *CacheService {
 	nrBatches := int64(50)
 	ristrettoStoreForBatches := newCache(logger, nrBatches, nrBatches*batchCost)
 
+	nrReceiptsToCache := int64(10_000)
+	ristrettoStoreForReceipts := newCache(logger, nrReceiptsToCache, nrReceiptsToCache*receiptCost)
+
 	return &CacheService{
 		blockCache:               cache.New[*types.Header](ristrettoStore),
 		batchCacheBySeqNo:        cache.New[*common.BatchHeader](ristrettoStore),
@@ -93,8 +96,7 @@ func NewCacheService(logger gethlog.Logger) *CacheService {
 		eventTypeCache:           cache.New[*enclavedb.EventType](ristrettoStore),
 		convertedGethHeaderCache: cache.New[*types.Header](ristrettoStore),
 
-		// todo separate store
-		receiptCache:     cache.New[*CachedReceipt](ristrettoStore),
+		receiptCache:     cache.New[*CachedReceipt](ristrettoStoreForReceipts),
 		lastBatchesCache: cache.New[*core.Batch](ristrettoStoreForBatches),
 		logger:           logger,
 	}
