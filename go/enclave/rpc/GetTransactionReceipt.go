@@ -38,28 +38,15 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	requester := builder.VK.AccountAddress
 	rpc.logger.Trace("Get receipt for ", log.TxKey, txHash, "requester", requester.Hex())
 
-	rec, _ := rpc.cacheService.ReadReceipt(builder.ctx, txHash)
-	if rec != nil {
-		// receipt found in cache
-		// we need to check whether the requester is the sender
-		if rec.From == requester {
-			logs := rec.Receipt.Logs
-			if rec.To != nil && *rec.To != (gethcommon.Address{}) {
-				// we need to filter the logs.
-				ctr, err := rpc.storage.ReadContract(builder.ctx, *rec.To)
-				if err != nil {
-					return fmt.Errorf("could not read contract in eth_getTransactionReceipt request. Cause: %w", err)
-				}
-				logs, err = filterLogs(builder.ctx, rpc.storage, rec.Receipt.Logs, ctr, requester)
-				if err != nil {
-					return fmt.Errorf("could not filter cached logs in eth_getTransactionReceipt request. Cause: %w", err)
-				}
-			}
-			r := marshalReceipt(rec.Receipt, logs, rec.From, rec.To)
-			builder.ReturnValue = &r
-			rpc.logger.Trace("Successfully retrieved receipt from cache for ", log.TxKey, txHash, "rec", rec)
-			return nil
-		}
+	result, err := fetchFromCache(builder.ctx, rpc.storage, rpc.cacheService, txHash, requester)
+	if err != nil {
+		return err
+	}
+
+	if result != nil {
+		rpc.logger.Trace("Successfully retrieved receipt from cache for ", log.TxKey, txHash, "rec", result)
+		builder.ReturnValue = &result
+		return nil
 	}
 
 	exists, err := rpc.storage.ExistsTransactionReceipt(builder.ctx, txHash)
@@ -87,6 +74,34 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	r := receipt.MarshalToJson()
 	builder.ReturnValue = &r
 	return nil
+}
+
+func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *storage.CacheService, txHash gethcommon.Hash, requester *gethcommon.Address) (map[string]interface{}, error) {
+	rec, _ := cacheService.ReadReceipt(ctx, txHash)
+	if rec == nil {
+		return nil, nil
+	}
+
+	// receipt found in cache
+	// we need to check whether the requester is the sender
+	if rec.From != requester {
+		return nil, nil
+	}
+
+	logs := rec.Receipt.Logs
+	if rec.To != nil && *rec.To != (gethcommon.Address{}) {
+		// we need to filter the logs.
+		ctr, err := storage.ReadContract(ctx, *rec.To)
+		if err != nil {
+			return nil, fmt.Errorf("could not read contract in eth_getTransactionReceipt request. Cause: %w", err)
+		}
+		logs, err = filterLogs(ctx, storage, rec.Receipt.Logs, ctr, requester)
+		if err != nil {
+			return nil, fmt.Errorf("could not filter cached logs in eth_getTransactionReceipt request. Cause: %w", err)
+		}
+	}
+	r := marshalReceipt(rec.Receipt, logs, rec.From, rec.To)
+	return r, nil
 }
 
 // at this point the requester is the tx sender
