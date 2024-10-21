@@ -1,4 +1,4 @@
-import { showToast } from "@repo/ui/components/shared/use-toast";
+import { showToast, toast } from "@repo/ui/components/shared/use-toast";
 import { joinTestnet } from "../api/gateway";
 import {
   SWITCHED_CODE,
@@ -35,10 +35,12 @@ const useGatewayService = () => {
     try {
       if (await isTenChain()) {
         if (!token || !isValidTokenFormat(token)) {
-          showToast(
-            ToastType.DESTRUCTIVE,
-            "Existing TEN Testnet detected in MetaMask. Please remove before hitting begin"
-          );
+          toast({
+            title: "Invalid Encrypted Token",
+            variant: ToastType.DESTRUCTIVE,
+            description:
+              "Please restart the process to get a new encryption token by removing TEN Testnet from your wallet and reconnecting.",
+          });
           return;
         }
       }
@@ -68,7 +70,16 @@ const useGatewayService = () => {
       }
       await fetchUserAccounts();
     } catch (error: Error | any) {
-      showToast(ToastType.DESTRUCTIVE, `${error?.message}`);
+      toast({
+        title: "Invalid Encrypted Token",
+        variant: ToastType.DESTRUCTIVE,
+        description:
+          error instanceof Error
+            ? error.message
+            : error?.data?.message?.includes("not found")
+              ? "Please restart the process to get a new encryption token by removing TEN Testnet from your wallet and reconnecting."
+              : "An error occurred. Please try again.}",
+      });
       throw error;
     } finally {
       setLoading(false);

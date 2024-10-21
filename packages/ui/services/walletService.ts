@@ -64,12 +64,12 @@ export const walletService = {
 
       const isWrongNetwork = chainId !== expectedChainId;
 
-      if (isWrongNetwork) {
-        toast({
-          description: "You are on the wrong network. Please switch to TEN.",
-          variant: ToastType.INFO,
-        });
-      }
+      // if (isWrongNetwork) {
+      //   toast({
+      //     description: "You are on the wrong network. Please switch to TEN.",
+      //     variant: ToastType.INFO,
+      //   });
+      // }
 
       set({
         address: accounts[0],

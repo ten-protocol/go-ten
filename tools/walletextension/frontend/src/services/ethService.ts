@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import { ToastType } from "@repo/ui/lib/enums/toast";
-import { showToast } from "@repo/ui/components/shared/use-toast";
+import { showToast, toast } from "@repo/ui/components/shared/use-toast";
 import { ethereum } from "@repo/ui/lib/utils";
 import {
   nativeCurrency,
@@ -47,6 +47,41 @@ const typedData = {
 };
 
 const ethService = {
+  initializeGateway: async (set: any, get: any) => {
+    try {
+      const providerInstance = new ethers.providers.Web3Provider(ethereum);
+      set({ provider: providerInstance });
+
+      await ethService.checkIfMetamaskIsLoaded(providerInstance);
+
+      const fetchedToken = await ethService.getToken(providerInstance);
+      set({ token: fetchedToken });
+
+      const accounts = await ethService.getAccounts(providerInstance, set);
+      set({ accounts: accounts || null });
+
+      const status = await ethService.isUserConnectedToTenChain(fetchedToken);
+      set({ walletConnected: status });
+
+      const version = await fetchVersion();
+      set({ version });
+    } catch (error: any) {
+      toast({
+        title: "Invalid Encrypted Token",
+        variant: ToastType.DESTRUCTIVE,
+        description:
+          error instanceof Error
+            ? error.message
+            : error?.data?.message?.includes("not found")
+              ? "Please restart the process to get a new encryption token by removing TEN Testnet from your wallet and reconnecting."
+              : "An error occurred. Please try again.}",
+      });
+      set({ walletConnected: false });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
   checkIfMetamaskIsLoaded: async (provider: ethers.providers.Web3Provider) => {
     try {
       if (ethereum) {
@@ -117,32 +152,7 @@ const ethService = {
     return false;
   },
 
-  formatAccounts: async (
-    accounts: string[],
-    provider: ethers.providers.Web3Provider,
-    token: string
-  ) => {
-    if (!provider) {
-      showToast(
-        ToastType.DESTRUCTIVE,
-        "No provider found. Please try again later."
-      );
-      return;
-    }
-    showToast(ToastType.INFO, "Checking account authentication status...");
-    const updatedAccounts = await Promise.all(
-      accounts.map((account) =>
-        accountIsAuthenticated(token, account).then(({ status }) => ({
-          name: account,
-          connected: status,
-        }))
-      )
-    );
-    showToast(ToastType.INFO, "Account authentication status updated!");
-    return updatedAccounts;
-  },
-
-  getAccounts: async (provider: ethers.providers.Web3Provider) => {
+  getAccounts: async (provider: ethers.providers.Web3Provider, set: any) => {
     if (!provider) {
       showToast(
         ToastType.DESTRUCTIVE,
@@ -154,6 +164,7 @@ const ethService = {
     const token = await ethService.getToken(provider);
 
     if (!token || !isValidTokenFormat(token)) {
+      set({ walletConnected: false });
       return;
     }
 
@@ -162,6 +173,7 @@ const ethService = {
 
       if (!(await isTenChain())) {
         showToast(ToastType.DESTRUCTIVE, "Please connect to the TEN chain.");
+        set({ walletConnected: false });
         return;
       }
 
@@ -169,15 +181,100 @@ const ethService = {
 
       if (accounts.length === 0) {
         showToast(ToastType.DESTRUCTIVE, "No MetaMask accounts found.");
+        set({ walletConnected: false });
         return [];
       }
       showToast(ToastType.SUCCESS, "Accounts found!");
 
-      return ethService.formatAccounts(accounts, provider, token);
+      set({ token, walletConnected: true });
+
+      const authenticatedAccounts = await ethService.authenticateAccounts(
+        accounts,
+        provider,
+        token
+      );
+
+      return authenticatedAccounts;
     } catch (error) {
       console.error(error);
       showToast(ToastType.DESTRUCTIVE, "An error occurred. Please try again.");
+      set({ walletConnected: false });
       throw error;
+    }
+  },
+
+  authenticateAccounts: async (
+    accounts: string[],
+    provider: ethers.providers.Web3Provider,
+    token: string
+  ) => {
+    if (!provider) {
+      showToast(
+        ToastType.DESTRUCTIVE,
+        "No provider found. Please try again later."
+      );
+      return [];
+    }
+    showToast(ToastType.INFO, "Authenticating accounts...");
+    const updatedAccounts = await Promise.all(
+      accounts.map(async (account) => {
+        const isAuthenticated = await accountIsAuthenticated(token, account);
+
+        if (!isAuthenticated.status) {
+          const authenticated = await ethService.authenticateWithGateway(
+            token,
+            account
+          );
+
+          return {
+            name: account,
+            connected: authenticated,
+          };
+        }
+
+        return {
+          name: account,
+          connected: isAuthenticated.status,
+        };
+      })
+    );
+
+    showToast(ToastType.SUCCESS, "Accounts authenticated!");
+    return updatedAccounts;
+  },
+
+  connectAccount: async (set: any, get: any, account: string) => {
+    const { token } = get();
+
+    try {
+      if (!token) {
+        showToast(
+          ToastType.INFO,
+          "Encryption token is required to connect an account."
+        );
+        return;
+      }
+
+      const authenticated = await ethService.authenticateWithGateway(
+        token,
+        account
+      );
+
+      if (authenticated) {
+        showToast(ToastType.SUCCESS, "Account authenticated!");
+
+        set((state: any) => ({
+          accounts:
+            state.accounts?.map((acc: Account) =>
+              acc.name === account ? { ...acc, connected: true } : acc
+            ) || null,
+          walletConnected: true,
+        }));
+      } else {
+        showToast(ToastType.DESTRUCTIVE, "Account authentication failed.");
+      }
+    } catch (error: any) {
+      showToast(ToastType.DESTRUCTIVE, "Account authentication failed.");
     }
   },
 
@@ -192,6 +289,7 @@ const ethService = {
         ToastType.DESTRUCTIVE,
         `Error authenticating account: ${account}`
       );
+      return false;
     }
   },
 
@@ -244,7 +342,7 @@ const ethService = {
   },
 
   getToken: async (provider: ethers.providers.Web3Provider) => {
-    if (!provider.send) {
+    if (!provider?.send) {
       return null;
     }
     try {
@@ -259,6 +357,16 @@ const ethService = {
         return null;
       }
     } catch (e: any) {
+      toast({
+        title: "Invalid Encrypted Token",
+        variant: ToastType.DESTRUCTIVE,
+        description:
+          e instanceof Error
+            ? e.message
+            : e?.data?.message?.includes("not found")
+              ? "Please restart the process to get a new encryption token by removing TEN Testnet from your wallet and reconnecting."
+              : "An error occurred. Please try again.}",
+      });
       console.error(e);
       throw e;
     }
@@ -325,64 +433,6 @@ const ethService = {
     }
   },
 
-  initializeGateway: async (set: any, get: any) => {
-    try {
-      const providerInstance = new ethers.providers.Web3Provider(ethereum);
-      set({ provider: providerInstance });
-
-      await ethService.checkIfMetamaskIsLoaded(providerInstance);
-
-      const fetchedToken = await ethService.getToken(providerInstance);
-      set({ token: fetchedToken });
-
-      const status = await ethService.isUserConnectedToTenChain(fetchedToken);
-      set({ walletConnected: status });
-
-      const accounts = await ethService.getAccounts(providerInstance);
-      set({ accounts: accounts || null });
-
-      const version = await fetchVersion();
-      set({ version });
-    } catch (error) {
-      showToast(
-        ToastType.DESTRUCTIVE,
-        error instanceof Error
-          ? error.message
-          : "Error initializing wallet connection. Please refresh the page."
-      );
-    } finally {
-      set({ loading: false });
-    }
-  },
-
-  connectAccount: async (set: any, get: any, account: string) => {
-    const { token } = get();
-    try {
-      if (!token) {
-        showToast(
-          ToastType.INFO,
-          "Encryption token is required to connect an account."
-        );
-        return;
-      }
-      await ethService.authenticateAccountWithTenGatewayEIP712(token, account);
-      const { status } = await accountIsAuthenticated(token, account);
-      if (status) {
-        showToast(ToastType.SUCCESS, "Account authenticated!");
-        set((state: any) => ({
-          accounts:
-            state.accounts?.map((acc: Account) =>
-              acc.name === account ? { ...acc, connected: status } : acc
-            ) || null,
-        }));
-      } else {
-        showToast(ToastType.DESTRUCTIVE, "Account authentication failed.");
-      }
-    } catch (error: any) {
-      showToast(ToastType.DESTRUCTIVE, "Account authentication failed.");
-    }
-  },
-
   revokeAccounts: async (set: any, get: any) => {
     const { token } = get();
     if (!token) {
@@ -395,7 +445,12 @@ const ethService = {
     const revokeResponse = await revokeAccountsApi(token);
     if (revokeResponse === ToastType.SUCCESS) {
       showToast(ToastType.DESTRUCTIVE, "Accounts revoked!");
-      set({ accounts: null, walletConnected: false, token: "" });
+      set({
+        accounts: null,
+        walletConnected: false,
+        token: "",
+        loading: false,
+      });
     }
   },
 };

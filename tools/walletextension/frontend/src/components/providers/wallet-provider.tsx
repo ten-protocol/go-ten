@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect } from "react";
-import { ethers } from "ethers";
 import { ethereum } from "@repo/ui/lib/utils";
 import { showToast } from "@repo/ui/components/shared/use-toast";
 import { ToastType } from "@repo/ui/lib/enums/toast";
@@ -25,18 +24,14 @@ export const WalletConnectionProvider = ({
   children: React.ReactNode;
 }) => {
   const walletStore = useWalletStore();
-  const { initializeGateway, fetchUserAccounts, setLoading } = walletStore;
+  const { initializeGateway, initializeProvider } = walletStore;
 
   useEffect(() => {
     const initializeWallet = async () => {
-      setLoading(true);
       if (ethereum && ethereum.isMetaMask) {
         try {
-          const providerInstance = new ethers.providers.Web3Provider(ethereum);
-          useWalletStore.setState({ provider: providerInstance });
-          await initializeGateway();
-
-          ethereum.on("accountsChanged", fetchUserAccounts);
+          initializeProvider();
+          initializeGateway();
         } catch (error) {
           console.error("Failed to initialize wallet:", error);
           showToast(
@@ -50,16 +45,9 @@ export const WalletConnectionProvider = ({
           "MetaMask not detected. Some features may be unavailable."
         );
       }
-      setLoading(false);
     };
 
     initializeWallet();
-
-    return () => {
-      if (ethereum && ethereum.removeListener) {
-        ethereum.removeListener("accountsChanged", fetchUserAccounts);
-      }
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ethereum]);
 

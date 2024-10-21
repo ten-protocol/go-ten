@@ -1,30 +1,51 @@
 import React from "react";
-import useGatewayService from "../../../services/useGatewayService";
-import useWalletStore from "@/stores/wallet-store";
 import { downloadMetaMask, ethereum } from "@repo/ui/lib/utils";
 import { ConnectWalletButtonProps } from "@repo/ui/lib/interfaces/ui";
 import {
+  ExclamationTriangleIcon,
   Link2Icon,
   LinkBreak2Icon,
 } from "@repo/ui/components/shared/react-icons";
 import ConnectWalletButton from "@repo/ui/components/common/connect-wallet";
+import useWalletStore from "@/stores/wallet-store";
+import { isValidTokenFormat } from "@/lib/utils";
+import useGatewayService from "@/services/useGatewayService";
 
 const GatewayConnectButton = (
   props: Omit<ConnectWalletButtonProps, "onConnect" | "renderContent">
 ) => {
-  const { walletConnected, revokeAccounts, accounts } = useWalletStore();
+  const {
+    walletConnected,
+    disconnectWallet,
+    accounts,
+    token,
+    isWrongNetwork,
+    switchNetwork,
+  } = useWalletStore();
+
   const { connectToTenTestnet } = useGatewayService();
 
   const handleConnect = () => {
-    if (ethereum) {
-      if (walletConnected) {
-        revokeAccounts();
-      } else {
-        connectToTenTestnet();
-      }
-    } else {
+    if (!ethereum) {
       downloadMetaMask();
+      return;
     }
+
+    if (!walletConnected) {
+      connectToTenTestnet();
+      return;
+    }
+
+    if (isWrongNetwork) {
+      if (token && isValidTokenFormat(token)) {
+        switchNetwork();
+      } else {
+        disconnectWallet();
+      }
+      return;
+    }
+
+    disconnectWallet();
   };
 
   const renderGatewayContent = () => {
@@ -33,6 +54,15 @@ const GatewayConnectButton = (
         <>
           <Link2Icon className="h-4 w-4 mr-1" />
           Install MetaMask
+        </>
+      );
+    }
+
+    if (isWrongNetwork) {
+      return (
+        <>
+          <ExclamationTriangleIcon className="h-4 w-4 mr-1 text-yellow-500" />
+          Unsupported network
         </>
       );
     }

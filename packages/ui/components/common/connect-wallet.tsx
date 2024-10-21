@@ -42,7 +42,7 @@ const ConnectWalletButton = ({
     } else if (onConnect) {
       onConnect();
     } else {
-      connectWallet();
+      connectWallet?.();
     }
   };
 

@@ -1,6 +1,5 @@
 import { MainNav } from "../main-nav";
 import { ModeToggle } from "../mode-toggle";
-import ConnectWalletButton from "@repo/ui/components/common/connect-wallet";
 import Link from "next/link";
 import { HamburgerMenuIcon } from "@repo/ui/components/shared/react-icons";
 import { useState } from "react";
@@ -8,6 +7,7 @@ import { Button } from "@repo/ui/components/shared/button";
 import HealthIndicator from "../health-indicator";
 import Image from "next/image";
 import useWalletStore from "@/stores/wallet-store";
+import GatewayConnectButton from "../modules/connect-wallet/gateway-connect-button";
 
 export default function Header() {
   const { walletConnected } = useWalletStore();
@@ -35,9 +35,7 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             <HealthIndicator />
             <ModeToggle />
-            <ConnectWalletButton
-              text={walletConnected ? "Connected" : "Connect Wallet"}
-            />
+            <GatewayConnectButton />
           </div>
         </div>
         <div className="flex items-center space-x-4 md:hidden">
@@ -66,7 +64,7 @@ const MobileMenu = () => {
           <div className="bg-background border rounded-lg shadow-lg">
             <div className="flex flex-col p-4 space-y-2">
               <MainNav className="flex flex-col" />
-              <ConnectWalletButton />
+              <GatewayConnectButton />
             </div>
           </div>
         </div>
