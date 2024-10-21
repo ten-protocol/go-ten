@@ -309,6 +309,7 @@ func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(ctx context.Context,
 			ExcessBlobGas:   nil,
 			Bloom:           types.Bloom{},
 		}
+		enc.cachingService.CacheConvertedHash(ctx, h.Hash(), gethHeader.Hash())
 		return &gethHeader, nil
 	})
 }
