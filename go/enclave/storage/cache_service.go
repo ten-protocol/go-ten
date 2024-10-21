@@ -66,27 +66,14 @@ type CacheService struct {
 }
 
 func NewCacheService(logger gethlog.Logger) *CacheService {
-	// todo (tudor) figure out the config
-	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 2 * 100_000_000,        // 10 times the expected elements
-		MaxCost:     2 * 1024 * 1024 * 1024, // allocate 1GB
-		BufferItems: 64,                     // number of keys per Get buffer.
-	})
-	if err != nil {
-		logger.Crit("Could not initialise ristretto cache", log.ErrKey, err)
-	}
-	ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
+	// the general cache for 50Mil elements, - 2GB
+	// todo - consider making it fine grained per cache
+	ristrettoStore := newCache(logger, 50_000_000, 2*1024*1024*1024)
 
-	nrBatches := 5
-	ristrettoCacheForBatches, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: int64(10 * nrBatches),        // 10 times the expected elements
-		MaxCost:     int64(nrBatches * batchCost), // allocate 5MB
-		BufferItems: 64,                           // number of keys per Get buffer.
-	})
-	if err != nil {
-		logger.Crit("Could not initialise ristretto cache", log.ErrKey, err)
-	}
-	ristrettoStoreForBatches := ristretto_store.NewRistretto(ristrettoCacheForBatches)
+	// cache the latest received batches to avoid a lookup when streaming it back to the host after processing
+	nrBatches := int64(50)
+	ristrettoStoreForBatches := newCache(logger, nrBatches, nrBatches*batchCost)
+
 	return &CacheService{
 		blockCache:               cache.New[*types.Header](ristrettoStore),
 		batchCacheBySeqNo:        cache.New[*common.BatchHeader](ristrettoStore),
@@ -100,6 +87,18 @@ func NewCacheService(logger gethlog.Logger) *CacheService {
 		lastBatchesCache:         cache.New[*core.Batch](ristrettoStoreForBatches),
 		logger:                   logger,
 	}
+}
+
+func newCache(logger gethlog.Logger, nrElem, capacity int64) *ristretto_store.RistrettoStore {
+	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 10 * nrElem, // 10 times the expected elements
+		MaxCost:     capacity,
+		BufferItems: 64, // number of keys per Get buffer.
+	})
+	if err != nil {
+		logger.Crit("Could not initialise ristretto cache", log.ErrKey, err)
+	}
+	return ristretto_store.NewRistretto(ristrettoCache)
 }
 
 func (cs *CacheService) CacheConvertedHash(ctx context.Context, batchHash, convertedHash gethcommon.Hash) {
