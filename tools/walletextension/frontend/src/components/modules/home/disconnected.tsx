@@ -2,7 +2,6 @@ import React from "react";
 import { Alert, AlertDescription } from "@repo/ui/components/shared/alert";
 import useGatewayService from "../../../services/useGatewayService";
 import { Terminal, Badge } from "lucide-react";
-
 import { Button } from "@repo/ui/components/shared/button";
 import {
   Dialog,
@@ -38,7 +37,6 @@ const Disconnected = () => {
           </li>
         ))}
       </ol>
-
       <Dialog>
         <DialogTrigger asChild>
           <Button

@@ -4,11 +4,13 @@ function Skeleton({
   className,
   width,
   height,
+  style,
   ...props
 }: {
   className?: string;
   width?: number | string;
   height?: number | string;
+  style?: React.CSSProperties;
 }) {
   return (
     <span

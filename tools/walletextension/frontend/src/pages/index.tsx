@@ -2,6 +2,7 @@ import React from "react";
 import Layout from "../components/layouts/default-layout";
 import Home from "../components/modules/home";
 import { Metadata } from "next/types";
+import { MarketPlace } from "@/pages/catalogs";
 
 export const metadata: Metadata = {
   title: "Tenscan Gateway",
@@ -14,6 +15,8 @@ export default function HomePage() {
       <div className="flex items-center justify-center w-full h-full">
         <Home />
       </div>
+
+      <MarketPlace />
     </Layout>
   );
 }

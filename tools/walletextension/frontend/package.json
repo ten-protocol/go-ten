@@ -9,11 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@radix-ui/react-collapsible": "^1.1.1",
     "@tanstack/react-query": "^5.8.1",
     "@tanstack/react-query-devtools": "^5.8.1",
     "axios": "^1.6.2",
     "class-variance-authority": "^0.7.0",
-    "clsx": "^2.0.0",
+    "clsx": "^2.1.1",
     "cmdk": "^0.2.0",
     "date-fns": "^2.30.0",
     "ethers": "^5.7.2",
@@ -23,7 +24,8 @@
     "path-to-regexp": "^6.2.1",
     "react": "^18",
     "react-dom": "^18",
-    "tailwind-merge": "^2.0.0",
+    "react-resizable-panels": "^2.1.4",
+    "tailwind-merge": "^2.3.0",
     "tailwindcss-animate": "^1.0.7",
     "zustand": "5.0.0-rc.2"
   },
