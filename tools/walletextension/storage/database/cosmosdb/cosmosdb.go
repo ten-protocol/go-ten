@@ -31,17 +31,23 @@ Quick summary of the CosmosDB setup:
 
 */
 
+// CosmosDB struct represents the CosmosDB storage implementation
 type CosmosDB struct {
 	client         *azcosmos.Client
 	usersContainer *azcosmos.ContainerClient
-	encryptor      *encryption.Encryptor
+	encryptor      encryption.Encryptor
 }
 
+// EncryptedDocument struct is used to store encrypted user data in CosmosDB
+// We use this structure to add an extra layer of security by encrypting the actual user data
+// The 'ID' field is used as the document ID and partition key in CosmosDB
+// The 'Data' field contains the base64-encoded encrypted user data
 type EncryptedDocument struct {
 	ID   string `json:"id"`
 	Data string `json:"data"`
 }
 
+// Constants for the CosmosDB database and container names
 const (
 	DATABASE_NAME        = "gatewayDB"
 	USERS_CONTAINER_NAME = "users"
@@ -49,15 +55,15 @@ const (
 )
 
 func NewCosmosDB(connectionString string, encryptionKey []byte) (*CosmosDB, error) {
-	// create encryptor
+	// Create encryptor
 	encryptor, err := encryption.NewEncryptor(encryptionKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create encryptor: %w", err)
 	}
 
 	client, err := azcosmos.NewClientFromConnectionString(connectionString, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create CosmosDB client: %w", err)
 	}
 
 	// Create database if it doesn't exist
@@ -76,7 +82,7 @@ func NewCosmosDB(connectionString string, encryptionKey []byte) (*CosmosDB, erro
 	return &CosmosDB{
 		client:         client,
 		usersContainer: usersContainer,
-		encryptor:      encryptor,
+		encryptor:      *encryptor,
 	}, nil
 }
 
@@ -89,28 +95,19 @@ func (c *CosmosDB) AddUser(userID []byte, privateKey []byte) error {
 	}
 	userJSON, err := json.Marshal(user)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal user: %w", err)
 	}
 
-	var encryptedData string
-	if c.encryptor != nil {
-		ciphertext, err := c.encryptor.Encrypt(userJSON)
-		if err != nil {
-			return err
-		}
-		encryptedData = base64.StdEncoding.EncodeToString(ciphertext)
-	} else {
-		encryptedData = base64.StdEncoding.EncodeToString(userJSON)
+	ciphertext, err := c.encryptor.Encrypt(userJSON)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt user data: %w", err)
 	}
+	encryptedData := base64.StdEncoding.EncodeToString(ciphertext)
 
-	// Hash the userID to use as the key
-	key := userID
-	if c.encryptor != nil {
-		key = c.encryptor.HashWithHMAC(userID)
-	}
+	key := c.encryptor.HashWithHMAC(userID)
 	keyString := hex.EncodeToString(key)
 
-	// Create the encrypted document
+	// Create an EncryptedDocument struct to store in CosmosDB
 	doc := EncryptedDocument{
 		ID:   keyString,
 		Data: encryptedData,
@@ -118,7 +115,7 @@ func (c *CosmosDB) AddUser(userID []byte, privateKey []byte) error {
 
 	docJSON, err := json.Marshal(doc)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal document: %w", err)
 	}
 
 	partitionKey := azcosmos.NewPartitionKeyString(keyString)
@@ -131,10 +128,7 @@ func (c *CosmosDB) AddUser(userID []byte, privateKey []byte) error {
 }
 
 func (c *CosmosDB) DeleteUser(userID []byte) error {
-	key := userID
-	if c.encryptor != nil {
-		key = c.encryptor.HashWithHMAC(userID)
-	}
+	key := c.encryptor.HashWithHMAC(userID)
 	keyString := hex.EncodeToString(key)
 	partitionKey := azcosmos.NewPartitionKeyString(keyString)
 	ctx := context.Background()
@@ -147,10 +141,7 @@ func (c *CosmosDB) DeleteUser(userID []byte) error {
 }
 
 func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
-	key := userID
-	if c.encryptor != nil {
-		key = c.encryptor.HashWithHMAC(userID)
-	}
+	key := c.encryptor.HashWithHMAC(userID)
 	keyString := hex.EncodeToString(key)
 	partitionKey := azcosmos.NewPartitionKeyString(keyString)
 	ctx := context.Background()
@@ -171,12 +162,9 @@ func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []
 		return fmt.Errorf("failed to decode base64 data: %w", err)
 	}
 
-	data := encryptedData
-	if c.encryptor != nil {
-		data, err = c.encryptor.Decrypt(encryptedData)
-		if err != nil {
-			return fmt.Errorf("failed to decrypt data: %w", err)
-		}
+	data, err := c.encryptor.Decrypt(encryptedData)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt data: %w", err)
 	}
 
 	var user common.GWUserDB
@@ -198,16 +186,11 @@ func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []
 		return fmt.Errorf("error marshaling updated user: %w", err)
 	}
 
-	var encryptedDataStr string
-	if c.encryptor != nil {
-		ciphertext, err := c.encryptor.Encrypt(userJSON)
-		if err != nil {
-			return fmt.Errorf("failed to encrypt updated user data: %w", err)
-		}
-		encryptedDataStr = base64.StdEncoding.EncodeToString(ciphertext)
-	} else {
-		encryptedDataStr = base64.StdEncoding.EncodeToString(userJSON)
+	ciphertext, err := c.encryptor.Encrypt(userJSON)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt updated user data: %w", err)
 	}
+	encryptedDataStr := base64.StdEncoding.EncodeToString(ciphertext)
 
 	// Update the document
 	doc.Data = encryptedDataStr
@@ -226,10 +209,7 @@ func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []
 }
 
 func (c *CosmosDB) GetUser(userID []byte) (common.GWUserDB, error) {
-	key := userID
-	if c.encryptor != nil {
-		key = c.encryptor.HashWithHMAC(userID)
-	}
+	key := c.encryptor.HashWithHMAC(userID)
 	keyString := hex.EncodeToString(key)
 	partitionKey := azcosmos.NewPartitionKeyString(keyString)
 	ctx := context.Background()
@@ -250,12 +230,9 @@ func (c *CosmosDB) GetUser(userID []byte) (common.GWUserDB, error) {
 		return common.GWUserDB{}, fmt.Errorf("failed to decode base64 data: %w", err)
 	}
 
-	data := encryptedData
-	if c.encryptor != nil {
-		data, err = c.encryptor.Decrypt(encryptedData)
-		if err != nil {
-			return common.GWUserDB{}, fmt.Errorf("failed to decrypt data: %w", err)
-		}
+	data, err := c.encryptor.Decrypt(encryptedData)
+	if err != nil {
+		return common.GWUserDB{}, fmt.Errorf("failed to decrypt data: %w", err)
 	}
 
 	var user common.GWUserDB
