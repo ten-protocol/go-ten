@@ -37,7 +37,7 @@ export function CustomError({
 }: ErrorType) {
   return (
     <section
-      className="h-full flex flex-col justify-center items-center"
+      className="h-screen flex flex-col justify-center items-center"
       {...props}
     >
       <main className={isFullWidth ? "max-w-full" : ""}>
