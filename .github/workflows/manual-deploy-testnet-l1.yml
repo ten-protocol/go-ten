@@ -94,7 +94,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "${{ github.event.inputs.testnet_type }}-eth2network-${{ GITHUB.RUN_NUMBER }}" --port 8025,8026,9000,9001,12200,12300,12400,12500,12600
+            az vm open-port -g Testnet -n "${{ github.event.inputs.testnet_type }}-eth2network-${{ GITHUB.RUN_NUMBER }}" --port 8025,8026,9000,9001,12600
 
         # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
       - name: 'Allow time for VM initialization'
@@ -158,7 +158,7 @@ jobs:
               grafana/promtail:latest \
               -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true \
             && docker run -d \
-            -p 8025:8025 -p 8026:8026 -p 9000:9000 -p 9001:9001 -p 12200:12200 -p 12300:12300 -p 12400:12400 -p 12500:12500 -p 12600:12600 \
+            -p 8025:8025 -p 8026:8026 -p 9000:9000 -p 9001:9001 -p 12600:12600 \
             --entrypoint /home/obscuro/go-obscuro/integration/eth2network/main/main ${{ vars.DOCKER_BUILD_TAG_ETH2NETWORK }} \
             --gethHTTPStartPort=8025 --gethWSStartPort=9000 --prysmBeaconGatewayStartPort=12600 \
             --prefundedAddrs="${{ vars.ACCOUNT_ADDR_WORKER }},${{ vars.ACCOUNT_ADDR_NODE_0 }},${{ vars.ACCOUNT_ADDR_NODE_1 }},${{ vars.ACCOUNT_ADDR_NODE_2 }},${{ vars.ACCOUNT_ADDR_L1_BRIDGE_TEST }}"'
