@@ -38,6 +38,7 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	requester := builder.VK.AccountAddress
 	rpc.logger.Trace("Get receipt for ", log.TxKey, txHash, "requester", requester.Hex())
 
+	// first try the cache for recent transactions
 	result, err := fetchFromCache(builder.ctx, rpc.storage, rpc.cacheService, txHash, requester)
 	if err != nil {
 		return err
@@ -83,14 +84,16 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 	}
 
 	// receipt found in cache
-	// we need to check whether the requester is the sender
+	// for simplicity only the tx sender will access the cache
+	// check whether the requester is the sender
 	if rec.From != requester {
 		return nil, nil
 	}
 
 	logs := rec.Receipt.Logs
+	// filter out the logs that the sender can't read
+	// doesn't apply to value transfers (when to=nil)
 	if rec.To != nil && *rec.To != (gethcommon.Address{}) {
-		// we need to filter the logs.
 		ctr, err := storage.ReadContract(ctx, *rec.To)
 		if err != nil {
 			return nil, fmt.Errorf("could not read contract in eth_getTransactionReceipt request. Cause: %w", err)
@@ -104,31 +107,35 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 	return r, nil
 }
 
-// at this point the requester is the tx sender
 func filterLogs(ctx context.Context, storage storage.Storage, logs []*types.Log, ctr *enclavedb.Contract, requester *gethcommon.Address) ([]*types.Log, error) {
 	filtered := make([]*types.Log, 0)
 	for _, l := range logs {
-
-		eventSig := l.Topics[0]
-		eventType, err := storage.ReadEventType(ctx, ctr.Address, eventSig)
+		canView, err := canViewLog(ctx, storage, ctr, l, requester)
 		if err != nil {
-			return nil, fmt.Errorf("could not read event type in eth_getTransactionReceipt request. Cause: %w", err)
+			return nil, err
 		}
-		// event visibility logic
-		canView := eventType.ConfigPublic ||
-			eventType.IsPublic() ||
-			(eventType.AutoPublic != nil && *eventType.AutoPublic) ||
-			(eventType.SenderCanView != nil && *eventType.SenderCanView) ||
-			(eventType.Topic1CanView != nil && *eventType.Topic1CanView && isAddress(l.Topics, 1, requester)) ||
-			(eventType.Topic2CanView != nil && *eventType.Topic2CanView && isAddress(l.Topics, 2, requester)) ||
-			(eventType.Topic3CanView != nil && *eventType.Topic3CanView && isAddress(l.Topics, 3, requester)) ||
-			(eventType.AutoVisibility && (isAddress(l.Topics, 1, requester) || isAddress(l.Topics, 2, requester) || isAddress(l.Topics, 3, requester)))
-
 		if canView {
 			filtered = append(filtered, l)
 		}
 	}
 	return filtered, nil
+}
+
+func canViewLog(ctx context.Context, storage storage.Storage, ctr *enclavedb.Contract, l *types.Log, requester *gethcommon.Address) (bool, error) {
+	eventSig := l.Topics[0]
+	eventType, err := storage.ReadEventType(ctx, ctr.Address, eventSig)
+	if err != nil {
+		return false, fmt.Errorf("could not read event type in eth_getTransactionReceipt request. Cause: %w", err)
+	}
+	// event visibility logic
+	canView := eventType.IsPublic() ||
+		(eventType.AutoPublic != nil && *eventType.AutoPublic) ||
+		(eventType.SenderCanView != nil && *eventType.SenderCanView) ||
+		(eventType.Topic1CanView != nil && *eventType.Topic1CanView && isAddress(l.Topics, 1, requester)) ||
+		(eventType.Topic2CanView != nil && *eventType.Topic2CanView && isAddress(l.Topics, 2, requester)) ||
+		(eventType.Topic3CanView != nil && *eventType.Topic3CanView && isAddress(l.Topics, 3, requester)) ||
+		(eventType.AutoVisibility && (isAddress(l.Topics, 1, requester) || isAddress(l.Topics, 2, requester) || isAddress(l.Topics, 3, requester)))
+	return canView, nil
 }
 
 func isAddress(topics []gethcommon.Hash, nr int, requester *gethcommon.Address) bool {
