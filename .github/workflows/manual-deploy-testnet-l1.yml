@@ -94,7 +94,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "${{ github.event.inputs.testnet_type }}-eth2network-${{ GITHUB.RUN_NUMBER }}" --port 8025,8026,9000,9001
+            az vm open-port -g Testnet -n "${{ github.event.inputs.testnet_type }}-eth2network-${{ GITHUB.RUN_NUMBER }}" --port 8025,8026,9000,9001,12600
 
         # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
       - name: 'Allow time for VM initialization'
