@@ -13,7 +13,6 @@ import (
 type Storage interface {
 	AddUser(userID []byte, privateKey []byte) error
 	DeleteUser(userID []byte) error
-	GetUserPrivateKey(userID []byte) ([]byte, error)
 	AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error
 	GetAccounts(userID []byte) ([]common.GWAccountDB, error)
 	GetUser(userID []byte) (common.GWUserDB, error)

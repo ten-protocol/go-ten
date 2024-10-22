@@ -262,12 +262,12 @@ func (w *Services) UserExists(userID []byte) bool {
 	// Check if user exists and don't log error if user doesn't exist, because we expect this to happen in case of
 	// user revoking encryption token or using different testnet.
 	// todo add a counter here in the future
-	key, err := w.Storage.GetUserPrivateKey(userID)
+	users, err := w.Storage.GetUser(userID)
 	if err != nil {
 		return false
 	}
 
-	return len(key) > 0
+	return len(users.PrivateKey) > 0
 }
 
 func (w *Services) Version() string {

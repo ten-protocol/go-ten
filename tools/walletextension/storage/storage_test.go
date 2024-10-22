@@ -22,8 +22,8 @@ var tests = map[string]func(storage Storage, t *testing.T){
 func TestGatewayStorage(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			//storage, err := New("sqlite", "", "")
-			storage, err := New("cosmosDB", "<cosmosdb-connection-string>", "")
+			storage, err := New("sqlite", "", "")
+			// storage, err := New("cosmosDB", "<cosmosdb-connection-string>", "")
 			require.NoError(t, err)
 
 			test(storage, t)
@@ -51,14 +51,14 @@ func testAddAndGetUser(storage Storage, t *testing.T) {
 	}
 
 	// Retrieve user's private key from storage
-	returnedPrivateKey, err := storage.GetUserPrivateKey(userID)
+	user, err := storage.GetUser(userID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Check if retrieved private key matches the original
-	if !bytes.Equal(returnedPrivateKey, privateKey) {
-		t.Errorf("privateKey mismatch: got %v, want %v", returnedPrivateKey, privateKey)
+	if !bytes.Equal(user.PrivateKey, privateKey) {
+		t.Errorf("privateKey mismatch: got %v, want %v", user.PrivateKey, privateKey)
 	}
 }
 
@@ -153,7 +153,7 @@ func testDeleteUser(storage Storage, t *testing.T) {
 
 	// Attempt to retrieve the deleted user's private key
 	// This should fail with a "not found" error
-	_, err = storage.GetUserPrivateKey(userID)
+	_, err = storage.GetUser(userID)
 	if err == nil || !errors.Is(err, errutil.ErrNotFound) {
 		t.Fatal("Expected 'not found' error when getting deleted user, but got none or different error")
 	}

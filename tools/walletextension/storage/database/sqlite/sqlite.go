@@ -14,11 +14,11 @@ import (
 	"path/filepath"
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
 	obscurocommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 type Database struct {
@@ -98,25 +98,6 @@ func (s *Database) DeleteUser(userID []byte) error {
 	}
 
 	return nil
-}
-
-func (s *Database) GetUserPrivateKey(userID []byte) ([]byte, error) {
-	var userDataJSON string
-	err := s.db.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, errutil.ErrNotFound
-		}
-		return nil, err
-	}
-
-	var user common.GWUserDB
-	err = json.Unmarshal([]byte(userDataJSON), &user)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
-	}
-
-	return user.PrivateKey, nil
 }
 
 func (s *Database) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {

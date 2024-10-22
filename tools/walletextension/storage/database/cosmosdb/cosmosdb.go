@@ -102,28 +102,6 @@ func (c *CosmosDB) DeleteUser(userID []byte) error {
 	return nil
 }
 
-func (c *CosmosDB) GetUserPrivateKey(userID []byte) ([]byte, error) {
-	// Convert userID to hex string for use as partition key
-	userIDHex := hex.EncodeToString(userID)
-	partitionKey := azcosmos.NewPartitionKeyString(userIDHex)
-
-	ctx := context.Background()
-
-	// Read the item from the container
-	itemResponse, err := c.usersContainer.ReadItem(ctx, partitionKey, userIDHex, nil)
-	if err != nil {
-		return nil, errutil.ErrNotFound
-	}
-
-	var user common.GWUserDB
-	err = json.Unmarshal(itemResponse.Value, &user)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
-	}
-
-	return user.PrivateKey, nil
-}
-
 func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
 	// Convert userID to hex string for use as partition key
 	userIDHex := hex.EncodeToString(userID)
@@ -198,7 +176,7 @@ func (c *CosmosDB) GetUser(userID []byte) (common.GWUserDB, error) {
 	// Read the existing user
 	itemResponse, err := c.usersContainer.ReadItem(ctx, partitionKey, userIDHex, nil)
 	if err != nil {
-		return common.GWUserDB{}, fmt.Errorf("failed to get user: %w", err)
+		return common.GWUserDB{}, errutil.ErrNotFound
 	}
 
 	var user common.GWUserDB
