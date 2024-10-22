@@ -228,11 +228,12 @@ func (w *Services) UserHasAccount(userID []byte, address string) (bool, error) {
 
 	// todo - this can be optimised and done in the database if we will have users with large number of accounts
 	// get all the accounts for the selected user
-	accounts, err := w.Storage.GetAccounts(userID)
+	user, err := w.Storage.GetUser(userID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error getting accounts for user (%s), %w", userID, err).Error())
 		return false, err
 	}
+	accounts := user.Accounts
 
 	// check if any of the account matches given account
 	found := false

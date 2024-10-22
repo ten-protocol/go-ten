@@ -140,22 +140,6 @@ func (s *Database) AddAccount(userID []byte, accountAddress []byte, signature []
 	return nil
 }
 
-func (s *Database) GetAccounts(userID []byte) ([]common.GWAccountDB, error) {
-	var userDataJSON string
-	err := s.db.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user: %w", err)
-	}
-
-	var user common.GWUserDB
-	err = json.Unmarshal([]byte(userDataJSON), &user)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
-	}
-
-	return user.Accounts, nil
-}
-
 func (s *Database) GetUser(userID []byte) (common.GWUserDB, error) {
 	var userDataJSON string
 	err := s.db.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)

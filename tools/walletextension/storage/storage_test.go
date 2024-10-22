@@ -13,10 +13,10 @@ import (
 )
 
 var tests = map[string]func(storage Storage, t *testing.T){
-	"testAddAndGetUser":     testAddAndGetUser,
-	"testAddAndGetAccounts": testAddAndGetAccounts,
-	"testDeleteUser":        testDeleteUser,
-	"testGetUser":           testGetUser,
+	"testAddAndGetUser": testAddAndGetUser,
+	"testAddAccounts":   testAddAccounts,
+	"testDeleteUser":    testDeleteUser,
+	"testGetUser":       testGetUser,
 }
 
 func TestGatewayStorage(t *testing.T) {
@@ -62,7 +62,7 @@ func testAddAndGetUser(storage Storage, t *testing.T) {
 	}
 }
 
-func testAddAndGetAccounts(storage Storage, t *testing.T) {
+func testAddAccounts(storage Storage, t *testing.T) {
 	// Generate random user ID, private key, and account details
 	userID := make([]byte, 20)
 	rand.Read(userID)
@@ -98,14 +98,14 @@ func testAddAndGetAccounts(storage Storage, t *testing.T) {
 	}
 
 	// Retrieve all accounts for the user
-	accounts, err := storage.GetAccounts(userID)
+	user, err := storage.GetUser(userID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Check if the correct number of accounts were retrieved
-	if len(accounts) != 2 {
-		t.Errorf("Expected 2 accounts, got %d", len(accounts))
+	if len(user.Accounts) != 2 {
+		t.Errorf("Expected 2 accounts, got %d", len(user.Accounts))
 	}
 
 	// Flags to check if both accounts are found
@@ -113,7 +113,7 @@ func testAddAndGetAccounts(storage Storage, t *testing.T) {
 	foundAccount2 := false
 
 	// Iterate through retrieved accounts and check if they match the added accounts
-	for _, account := range accounts {
+	for _, account := range user.Accounts {
 		if bytes.Equal(account.AccountAddress, accountAddress1) && bytes.Equal(account.Signature, signature1) {
 			foundAccount1 = true
 		}
