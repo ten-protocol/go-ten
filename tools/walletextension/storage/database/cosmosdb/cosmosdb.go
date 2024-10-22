@@ -39,21 +39,6 @@ const (
 	PARTITION_KEY        = "/id"
 )
 
-// GWUser is the user struct for the gateway
-// both ID and UserID are the same for now, but we will use different values with encryption
-type GWUser struct {
-	ID         string      `json:"id"` // Required by CosmosDB
-	UserId     []byte      `json:"userId"`
-	PrivateKey []byte      `json:"privateKey"`
-	Accounts   []GWAccount `json:"accounts"` // List of Accounts
-}
-
-type GWAccount struct {
-	AccountAddress []byte `json:"accountAddress"`
-	Signature      []byte `json:"signature"`
-	SignatureType  int    `json:"signatureType"`
-}
-
 func NewCosmosDB(connectionString string) (*CosmosDB, error) {
 	client, err := azcosmos.NewClientFromConnectionString(connectionString, nil)
 	if err != nil {
@@ -80,11 +65,11 @@ func NewCosmosDB(connectionString string) (*CosmosDB, error) {
 }
 
 func (c *CosmosDB) AddUser(userID []byte, privateKey []byte) error {
-	user := GWUser{
+	user := common.GWUserDB{
 		ID:         hex.EncodeToString(userID),
 		UserId:     userID,
 		PrivateKey: privateKey,
-		Accounts:   []GWAccount{},
+		Accounts:   []common.GWAccountDB{},
 	}
 	userJSON, err := json.Marshal(user)
 	if err != nil {
@@ -130,7 +115,7 @@ func (c *CosmosDB) GetUserPrivateKey(userID []byte) ([]byte, error) {
 		return nil, errutil.ErrNotFound
 	}
 
-	var user GWUser
+	var user common.GWUserDB
 	err = json.Unmarshal(itemResponse.Value, &user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
@@ -152,14 +137,14 @@ func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []
 		return fmt.Errorf("failed to get user: %w", err)
 	}
 
-	var user GWUser
+	var user common.GWUserDB
 	err = json.Unmarshal(itemResponse.Value, &user)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal user data: %w", err)
 	}
 
 	// Create new account
-	newAccount := GWAccount{
+	newAccount := common.GWAccountDB{
 		AccountAddress: accountAddress,
 		Signature:      signature,
 		SignatureType:  int(signatureType),
@@ -182,7 +167,7 @@ func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []
 	return nil
 }
 
-func (c *CosmosDB) GetAccounts(userID []byte) ([]common.AccountDB, error) {
+func (c *CosmosDB) GetAccounts(userID []byte) ([]common.GWAccountDB, error) {
 	// Convert userID to hex string for use as partition key
 	userIDHex := hex.EncodeToString(userID)
 	partitionKey := azcosmos.NewPartitionKeyString(userIDHex)
@@ -195,26 +180,15 @@ func (c *CosmosDB) GetAccounts(userID []byte) ([]common.AccountDB, error) {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	var user GWUser
+	var user common.GWUserDB
 	err = json.Unmarshal(itemResponse.Value, &user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
 	}
-
-	// Convert GWAccount to common.AccountDB
-	accounts := make([]common.AccountDB, len(user.Accounts))
-	for i, acc := range user.Accounts {
-		accounts[i] = common.AccountDB{
-			AccountAddress: acc.AccountAddress,
-			Signature:      acc.Signature,
-			SignatureType:  acc.SignatureType,
-		}
-	}
-
-	return accounts, nil
+	return user.Accounts, nil
 }
 
-func (c *CosmosDB) GetUser(userID []byte) (common.UserDB, error) {
+func (c *CosmosDB) GetUser(userID []byte) (common.GWUserDB, error) {
 	// Convert userID to hex string for use as partition key
 	userIDHex := hex.EncodeToString(userID)
 	partitionKey := azcosmos.NewPartitionKeyString(userIDHex)
@@ -224,19 +198,14 @@ func (c *CosmosDB) GetUser(userID []byte) (common.UserDB, error) {
 	// Read the existing user
 	itemResponse, err := c.usersContainer.ReadItem(ctx, partitionKey, userIDHex, nil)
 	if err != nil {
-		return common.UserDB{}, fmt.Errorf("failed to get user: %w", err)
+		return common.GWUserDB{}, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	var user GWUser
+	var user common.GWUserDB
 	err = json.Unmarshal(itemResponse.Value, &user)
 	if err != nil {
-		return common.UserDB{}, fmt.Errorf("failed to unmarshal user data: %w", err)
+		return common.GWUserDB{}, fmt.Errorf("failed to unmarshal user data: %w", err)
 	}
 
-	// TODO: @ziga - check if I can use user directly instead of GWUser/UserDB since they are mostly the same...
-	// Convert GWUser to common.UserDB
-	return common.UserDB{
-		UserID:     userID,
-		PrivateKey: user.PrivateKey,
-	}, nil
+	return user, nil
 }

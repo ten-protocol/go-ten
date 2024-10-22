@@ -22,8 +22,8 @@ var tests = map[string]func(storage Storage, t *testing.T){
 func TestGatewayStorage(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			// storage, err := New("sqlite", "", "")
-			storage, err := New("cosmosDB", "<connection string>", "")
+			//storage, err := New("sqlite", "", "")
+			storage, err := New("cosmosDB", "<cosmosdb-connection-string>", "")
 			require.NoError(t, err)
 
 			test(storage, t)
@@ -179,8 +179,8 @@ func testGetUser(storage Storage, t *testing.T) {
 	}
 
 	// Check if retrieved user matches the added user
-	if !bytes.Equal(user.UserID, userID) {
-		t.Errorf("Retrieved user ID does not match. Expected %x, got %x", userID, user.UserID)
+	if !bytes.Equal(user.UserId, userID) {
+		t.Errorf("Retrieved user ID does not match. Expected %x, got %x", userID, user.UserId)
 	}
 
 	if !bytes.Equal(user.PrivateKey, privateKey) {
