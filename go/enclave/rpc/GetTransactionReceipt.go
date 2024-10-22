@@ -92,15 +92,18 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 
 	logs := rec.Receipt.Logs
 	// filter out the logs that the sender can't read
-	// doesn't apply to value transfers (when to=nil)
-	if rec.To != nil && *rec.To != (gethcommon.Address{}) {
+	// doesn't apply to contract creation (when to=nil)
+	if len(logs) > 0 && (rec.To != nil && *rec.To != (gethcommon.Address{})) {
 		ctr, err := storage.ReadContract(ctx, *rec.To)
-		if err != nil {
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not read contract in eth_getTransactionReceipt request. Cause: %w", err)
 		}
-		logs, err = filterLogs(ctx, storage, rec.Receipt.Logs, ctr, requester)
-		if err != nil {
-			return nil, fmt.Errorf("could not filter cached logs in eth_getTransactionReceipt request. Cause: %w", err)
+		// only filter when the transaction calls a contract. Value transfers emit no events.
+		if ctr != nil {
+			logs, err = filterLogs(ctx, storage, rec.Receipt.Logs, ctr, requester)
+			if err != nil {
+				return nil, fmt.Errorf("could not filter cached logs in eth_getTransactionReceipt request. Cause: %w", err)
+			}
 		}
 	}
 	r := marshalReceipt(rec.Receipt, logs, rec.From, rec.To)
@@ -110,7 +113,7 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 func filterLogs(ctx context.Context, storage storage.Storage, logs []*types.Log, ctr *enclavedb.Contract, requester *gethcommon.Address) ([]*types.Log, error) {
 	filtered := make([]*types.Log, 0)
 	for _, l := range logs {
-		canView, err := canViewLog(ctx, storage, ctr, l, requester)
+		canView, err := senderCanViewLog(ctx, storage, ctr, l, requester)
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +124,7 @@ func filterLogs(ctx context.Context, storage storage.Storage, logs []*types.Log,
 	return filtered, nil
 }
 
-func canViewLog(ctx context.Context, storage storage.Storage, ctr *enclavedb.Contract, l *types.Log, requester *gethcommon.Address) (bool, error) {
+func senderCanViewLog(ctx context.Context, storage storage.Storage, ctr *enclavedb.Contract, l *types.Log, sender *gethcommon.Address) (bool, error) {
 	eventSig := l.Topics[0]
 	eventType, err := storage.ReadEventType(ctx, ctr.Address, eventSig)
 	if err != nil {
@@ -131,10 +134,10 @@ func canViewLog(ctx context.Context, storage storage.Storage, ctr *enclavedb.Con
 	canView := eventType.IsPublic() ||
 		(eventType.AutoPublic != nil && *eventType.AutoPublic) ||
 		(eventType.SenderCanView != nil && *eventType.SenderCanView) ||
-		(eventType.Topic1CanView != nil && *eventType.Topic1CanView && isAddress(l.Topics, 1, requester)) ||
-		(eventType.Topic2CanView != nil && *eventType.Topic2CanView && isAddress(l.Topics, 2, requester)) ||
-		(eventType.Topic3CanView != nil && *eventType.Topic3CanView && isAddress(l.Topics, 3, requester)) ||
-		(eventType.AutoVisibility && (isAddress(l.Topics, 1, requester) || isAddress(l.Topics, 2, requester) || isAddress(l.Topics, 3, requester)))
+		(eventType.Topic1CanView != nil && *eventType.Topic1CanView && isAddress(l.Topics, 1, sender)) ||
+		(eventType.Topic2CanView != nil && *eventType.Topic2CanView && isAddress(l.Topics, 2, sender)) ||
+		(eventType.Topic3CanView != nil && *eventType.Topic3CanView && isAddress(l.Topics, 3, sender)) ||
+		(eventType.AutoVisibility && (isAddress(l.Topics, 1, sender) || isAddress(l.Topics, 2, sender) || isAddress(l.Topics, 3, sender)))
 	return canView, nil
 }
 

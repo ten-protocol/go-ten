@@ -187,7 +187,7 @@ func (cs *CacheService) ReadEventType(ctx context.Context, contractAddress gethc
 }
 
 func (cs *CacheService) ReadConvertedHeader(ctx context.Context, batchHash common.L2BatchHash, onCacheMiss func(any) (*types.Header, error)) (*types.Header, error) {
-	return getCachedValue(ctx, cs.convertedGethHeaderCache, cs.logger, batchHash, blockHeaderCost, onCacheMiss, false)
+	return getCachedValue(ctx, cs.convertedGethHeaderCache, cs.logger, batchHash, blockHeaderCost, onCacheMiss, true)
 }
 
 // getCachedValue - returns the cached value for the provided key. If the key is not found, then invoke the 'onCacheMiss' function
