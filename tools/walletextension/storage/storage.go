@@ -18,11 +18,17 @@ type Storage interface {
 }
 
 func New(dbType string, dbConnectionURL, dbPath string) (Storage, error) {
+	// TODO @ziga: Generate random key in a different part of the code!
+	randomKey, err := common.GenerateRandomKey(32)
+	if err != nil {
+		return nil, err
+	}
+
 	switch dbType {
 	case "sqlite":
 		return sqlite.NewSqliteDatabase(dbPath)
 	case "cosmosDB":
-		return cosmosdb.NewCosmosDB(dbConnectionURL)
+		return cosmosdb.NewCosmosDB(dbConnectionURL, randomKey)
 	}
 
 	return nil, fmt.Errorf("unknown db %s", dbType)

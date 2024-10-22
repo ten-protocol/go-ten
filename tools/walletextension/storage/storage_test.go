@@ -23,7 +23,7 @@ func TestGatewayStorage(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			storage, err := New("sqlite", "", "")
-			// storage, err := New("cosmosDB", "<cosmosdb-connection-string>", "")
+			//storage, err := New("cosmosDB", "<cosmosdb-connection-string>", "")
 			require.NoError(t, err)
 
 			test(storage, t)
