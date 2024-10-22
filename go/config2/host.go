@@ -64,6 +64,10 @@ type HostP2P struct {
 //	yaml: `host.l1`
 type HostL1 struct {
 	WebsocketURL string `mapstructure:"wsURL"`
+	// L1BeaconUrl of the beacon chain to fetch blob data
+	L1BeaconUrl string `mapstructure:"beaconURL"`
+	// L1BlobArchiveUrl of the blob archive to fetch expired blob data
+	L1BlobArchiveUrl string `mapstructure:"blobArchiveURL"`
 	// RPCTimeout is the timeout for L1 client operations.
 	RPCTimeout time.Duration `mapstructure:"rpcTimeout"`
 }

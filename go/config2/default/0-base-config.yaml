@@ -54,6 +54,8 @@ host:
     rpcTimeout: 10s
   l1:
     wsURL: ws://localhost:8546 # websocket URL for L1 RPC service
+    beaconURL: eth2network:12600 # websocket URL for L1 beacon service
+    blobArchiveURL: "" # URL for L1 blob archive service
     rpcTimeout: 15s
   log:
     level: 4

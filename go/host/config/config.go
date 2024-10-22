@@ -88,6 +88,10 @@ type HostConfig struct {
 	P2PPublicAddress string
 	// L1WebsocketURL is the RPC address for interactions with the L1
 	L1WebsocketURL string
+	// L1BeaconUrl of the beacon chain to fetch blob data
+	L1BeaconUrl string
+	// L1BlobArchiveUrl of the blob archive to fetch expired blob data
+	L1BlobArchiveUrl string
 	// Timeout duration for RPC requests to the enclave service
 	EnclaveRPCTimeout time.Duration
 	// Timeout duration for connecting to, and communicating with, the L1 node
