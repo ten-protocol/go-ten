@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -16,7 +17,9 @@ type Encryptor struct {
 }
 
 func NewEncryptor(key []byte) (*Encryptor, error) {
-	// TODO: @ziga Check key length!
+	if len(key) != 32 {
+		return nil, fmt.Errorf("key must be 32 bytes long")
+	}
 
 	block, err := aes.NewCipher(key)
 	if err != nil {

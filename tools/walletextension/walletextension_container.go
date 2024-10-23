@@ -32,8 +32,15 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	// create the account manager with a single unauthenticated connection
 	hostRPCBindAddrWS := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
 	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
+
+	// TODO fix passing this random key to next enclave and not generating it here every time we start the wallet extension
+	randomKey, err := wecommon.GenerateRandomKey()
+	if err != nil {
+		logger.Crit("unable to generate random encryption key", log.ErrKey, err)
+		os.Exit(1)
+	}
 	// start the database
-	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride)
+	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride, randomKey)
 	if err != nil {
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
 		os.Exit(1)

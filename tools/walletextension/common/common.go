@@ -16,6 +16,8 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
+const EncryptionKeySize = 32
+
 // PrivateKeyToCompressedPubKey converts *ecies.PrivateKey to compressed PubKey ([]byte with length 33)
 func PrivateKeyToCompressedPubKey(prvKey *ecies.PrivateKey) []byte {
 	ecdsaPublicKey := prvKey.PublicKey.ExportECDSA()
@@ -78,8 +80,8 @@ func (r *RPCRequest) Clone() *RPCRequest {
 	}
 }
 
-func GenerateRandomKey(keySize int) ([]byte, error) {
-	key := make([]byte, keySize)
+func GenerateRandomKey() ([]byte, error) {
+	key := make([]byte, EncryptionKeySize)
 	_, err := rand.Read(key)
 	if err != nil {
 		return nil, err

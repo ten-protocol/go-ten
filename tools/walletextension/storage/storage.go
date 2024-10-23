@@ -17,13 +17,7 @@ type Storage interface {
 	GetUser(userID []byte) (common.GWUserDB, error)
 }
 
-func New(dbType string, dbConnectionURL, dbPath string) (Storage, error) {
-	// TODO @ziga: Generate random key in a different part of the code!
-	randomKey, err := common.GenerateRandomKey(32)
-	if err != nil {
-		return nil, err
-	}
-
+func New(dbType string, dbConnectionURL, dbPath string, randomKey []byte) (Storage, error) {
 	switch dbType {
 	case "sqlite":
 		return sqlite.NewSqliteDatabase(dbPath)

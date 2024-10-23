@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 var tests = map[string]func(storage Storage, t *testing.T){
@@ -20,10 +21,13 @@ var tests = map[string]func(storage Storage, t *testing.T){
 }
 
 func TestGatewayStorage(t *testing.T) {
+	randomKey, err := wecommon.GenerateRandomKey()
+	require.NoError(t, err)
+
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			storage, err := New("sqlite", "", "")
-			//storage, err := New("cosmosDB", "<cosmosdb-connection-string>", "")
+			//storage, err := New("sqlite", "", "", randomKey)
+			storage, err := New("cosmosDB", "<cosmosdb connection string>", "", randomKey)
 			require.NoError(t, err)
 
 			test(storage, t)
