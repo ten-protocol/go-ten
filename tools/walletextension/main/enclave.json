@@ -12,18 +12,5 @@
       "value": "false"
     }
   ],
-  "files": [
-    {
-      "source": "../storage/database/mariadb/001_init.sql",
-      "target": "/home/ten/go-ten/tools/walletextension/storage/database/mariadb/001_init.sql"
-    },
-    {
-      "source": "../storage/database/mariadb/002_store_incoming_txs.sql",
-      "target": "/home/ten/go-ten/tools/walletextension/storage/database/mariadb/002_store_incoming_txs.sql"
-    },
-    {
-      "source": "../storage/database/mariadb/003_add_signature_type.sql",
-      "target": "/home/ten/go-ten/tools/walletextension/storage/database/mariadb/003_add_signature_type.sql"
-    }
-  ]
+  "files": []
 }
