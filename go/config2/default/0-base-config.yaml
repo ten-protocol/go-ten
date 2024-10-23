@@ -12,7 +12,7 @@ network:
   rollup:
     interval: 5s
     maxInterval: 10m # rollups will be produced after this time even if the data blob is not full
-    maxSize: 65536 # 64kb
+    maxSize: 131072 # 128kb
   gas: # todo: ask stefan about these fields
     baseFee: 1000000000 # using geth's initial base fee for EIP-1559 blocks.
     minGasPrice: 1000000000 # using geth's initial base fee for EIP-1559 blocks.
