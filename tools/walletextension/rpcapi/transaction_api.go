@@ -2,8 +2,6 @@ package rpcapi
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -105,19 +103,6 @@ func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.Trans
 	if err != nil {
 		return common.Hash{}, err
 	}
-	userIDBytes, _ := extractUserID(ctx, s.we)
-	if s.we.Config.StoreIncomingTxs && len(userIDBytes) > 10 {
-		tx, err := json.Marshal(args)
-		if err != nil {
-			s.we.Logger().Error("error marshalling transaction: %s", err)
-			return *txRec, nil
-		}
-		err = s.we.Storage.StoreTransaction(string(tx), userIDBytes)
-		if err != nil {
-			s.we.Logger().Error("error storing transaction in the database: %s", err)
-			return *txRec, nil
-		}
-	}
 	return *txRec, err
 }
 
@@ -134,13 +119,6 @@ func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.B
 	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{tryAll: true, timeout: sendTransactionDuration}, "eth_sendRawTransaction", input)
 	if err != nil {
 		return common.Hash{}, err
-	}
-	userIDBytes, err := extractUserID(ctx, s.we)
-	if s.we.Config.StoreIncomingTxs && len(userIDBytes) > 10 {
-		err = s.we.Storage.StoreTransaction(input.String(), userIDBytes)
-		if err != nil {
-			s.we.Logger().Error(fmt.Errorf("error storing transaction in the database: %w", err).Error())
-		}
 	}
 	return *txRec, err
 }

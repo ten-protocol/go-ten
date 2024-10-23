@@ -1,1 +1,0 @@
-ALTER TABLE ogdb.accounts ADD COLUMN IF NOT EXISTS signature_type INT DEFAULT 0;

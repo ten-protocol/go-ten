@@ -7,6 +7,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	"github.com/ethereum/go-ethereum/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 var userCacheKeyPrefix = []byte{0x0, 0x1, 0x2, 0x3}
@@ -33,6 +34,28 @@ func (u GWUser) GetAllAddresses() []*common.Address {
 	return accts
 }
 
+func gwUserFromDB(userDB wecommon.GWUserDB, s *Services) (*GWUser, error) {
+	result := &GWUser{
+		userID:   userDB.UserId,
+		services: s,
+		accounts: make(map[common.Address]*GWAccount),
+		userKey:  userDB.PrivateKey,
+	}
+
+	for _, accountDB := range userDB.Accounts {
+		address := common.BytesToAddress(accountDB.AccountAddress)
+		gwAccount := &GWAccount{
+			user:          result,
+			address:       &address,
+			signature:     accountDB.Signature,
+			signatureType: viewingkey.SignatureType(accountDB.SignatureType),
+		}
+		result.accounts[address] = gwAccount
+	}
+
+	return result, nil
+}
+
 func userCacheKey(userID []byte) []byte {
 	var key []byte
 	key = append(key, userCacheKeyPrefix...)
@@ -42,21 +65,11 @@ func userCacheKey(userID []byte) []byte {
 
 func getUser(userID []byte, s *Services) (*GWUser, error) {
 	return withCache(s.Cache, &CacheCfg{CacheType: LongLiving}, userCacheKey(userID), func() (*GWUser, error) {
-		result := GWUser{userID: userID, services: s, accounts: map[common.Address]*GWAccount{}}
-		userPrivateKey, err := s.Storage.GetUserPrivateKey(userID)
+		user, err := s.Storage.GetUser(userID)
 		if err != nil {
 			return nil, fmt.Errorf("user %s not found. %w", hexutils.BytesToHex(userID), err)
 		}
-		result.userKey = userPrivateKey
-		allAccounts, err := s.Storage.GetAccounts(userID)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, account := range allAccounts {
-			address := common.BytesToAddress(account.AccountAddress)
-			result.accounts[address] = &GWAccount{user: &result, address: &address, signature: account.Signature, signatureType: viewingkey.SignatureType(uint8(account.SignatureType))}
-		}
-		return &result, nil
+		result, err := gwUserFromDB(user, s)
+		return result, err
 	})
 }
