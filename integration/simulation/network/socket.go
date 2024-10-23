@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/host/l1"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/config2"
+	"github.com/ten-protocol/go-ten/go/host/l1"
 	"github.com/ten-protocol/go-ten/integration/noderunner"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -117,6 +117,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		tenCfg.Host.RPC.WSPort = uint64(simParams.StartPort + integration.DefaultHostRPCWSOffset + i)
 		tenCfg.Host.Enclave.RPCAddresses = []string{fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultEnclaveOffset+i)}
 		tenCfg.Host.L1.WebsocketURL = fmt.Sprintf("ws://127.0.0.1:%d", simParams.StartPort+100)
+		tenCfg.Host.L1.L1BeaconUrl = beaconURL
 		tenCfg.Host.Log.Level = 4
 		tenCfg.Enclave.Log.Level = 4
 		tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultEnclaveOffset+i)

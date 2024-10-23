@@ -153,8 +153,10 @@ func HostConfigFromTenConfig(tenCfg *config2.TenConfig) *HostConfig {
 		P2PConnectionTimeout: tenCfg.Host.P2P.Timeout,
 		P2PPublicAddress:     tenCfg.Node.HostAddress,
 
-		L1WebsocketURL: tenCfg.Host.L1.WebsocketURL,
-		L1RPCTimeout:   tenCfg.Host.L1.RPCTimeout,
+		L1WebsocketURL:   tenCfg.Host.L1.WebsocketURL,
+		L1BeaconUrl:      tenCfg.Host.L1.L1BeaconUrl,
+		L1BlobArchiveUrl: tenCfg.Host.L1.L1BlobArchiveUrl,
+		L1RPCTimeout:     tenCfg.Host.L1.RPCTimeout,
 
 		ProfilerEnabled:       tenCfg.Host.Debug.EnableProfiler,
 		MetricsEnabled:        tenCfg.Host.Debug.EnableMetrics,
