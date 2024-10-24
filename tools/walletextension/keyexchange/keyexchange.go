@@ -1,6 +1,7 @@
 package keyexchange
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -30,11 +31,18 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		return nil, fmt.Errorf("failed to generate private key: %w", err)
 	}
 	// Derive the public key from the private key
-	publicKey := privateKey.Public()
+	publicKey := crypto.FromECDSAPub(&privateKey.PublicKey)
 
 	logger.Info("Generated new key pair", "publicKey", publicKey)
 
 	// Get Attestation from Intel
+	// Create a new instance of EgoAttestationProvider
+	attestationProvider := &common.EgoAttestationProvider{}
+	attestation, err := attestationProvider.GetReport(context.Background(), publicKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get attestation: %w", err)
+	}
+	fmt.Println("Attestation:", attestation)
 
 	fmt.Println("Using existing gateway URL for encryption key exchange")
 	return nil, nil
