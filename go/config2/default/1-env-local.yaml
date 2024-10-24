@@ -10,5 +10,3 @@ host:
 enclave:
    db:
       useInMemory: false
-   debug:
-     enableDebugNamespace: true

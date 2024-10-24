@@ -65,7 +65,7 @@ host:
     bindAddress: 0.0.0.0:10000
     timeout: 10s
   rpc:
-    hostAddress: 127.0.0.1
+    hostAddress: 0.0.0.0
     enableHTTP: true
     httpPort: 80
     enableWS: true
