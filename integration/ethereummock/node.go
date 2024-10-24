@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/common/log"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -366,7 +367,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 		m.stats.L1Reorg(m.l2ID)
 		fork, err := LCA(context.Background(), head, b, m.BlockResolver)
 		if err != nil {
-			panic(err)
+			m.logger.Error("Should not happen.", log.ErrKey, err)
 		}
 		m.logger.Info(
 			fmt.Sprintf("L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.CommonAncestor.Hash()), fork.CommonAncestor.Number.Uint64()))
