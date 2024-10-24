@@ -177,8 +177,8 @@ func (n *PosImpl) Start() error {
 
 func (n *PosImpl) Stop() error {
 	kill(n.gethProcessID)
-	kill(n.beaconProcessID)
 	kill(n.validatorProcessID)
+	kill(n.beaconProcessID)
 	time.Sleep(time.Second)
 	return nil
 }
