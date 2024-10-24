@@ -43,6 +43,11 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to deploy l1 contracts - %w", err)
 	}
 
+	edgelessDBImage := "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
+	if !t.cfg.isSGXEnabled {
+		edgelessDBImage = "ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"
+	}
+
 	sequencerCfg, err := config2.LoadTenConfigForEnv("local", "default/2-node-local-sequencer.yaml")
 	if err != nil {
 		return fmt.Errorf("unable to load sequencer config - %w", err)
@@ -54,7 +59,7 @@ func (t *Testnet) Start() error {
 	sequencerNode := node.NewDockerNode(sequencerCfg,
 		"testnetobscuronet.azurecr.io/obscuronet/host:latest",
 		"testnetobscuronet.azurecr.io/obscuronet/enclave:latest",
-		"ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2",
+		edgelessDBImage,
 		false,
 		"", // no PCCS override
 	)
@@ -88,7 +93,7 @@ func (t *Testnet) Start() error {
 	validatorNode := node.NewDockerNode(validatorNodeCfg,
 		"testnetobscuronet.azurecr.io/obscuronet/host:latest",
 		"testnetobscuronet.azurecr.io/obscuronet/enclave:latest",
-		"ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2",
+		edgelessDBImage,
 		false,
 		"", // no PCCS override
 	)
