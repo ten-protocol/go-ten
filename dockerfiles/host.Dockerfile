@@ -44,4 +44,4 @@ COPY --from=build-host \
 WORKDIR /home/obscuro/go-obscuro/go/host/main
 
 # expose the http and the ws ports to the host
-EXPOSE 8025 9000 12600
+EXPOSE 8025 9000
