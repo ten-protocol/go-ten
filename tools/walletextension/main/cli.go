@@ -72,6 +72,10 @@ const (
 	rateLimitMaxConcurrentRequestsName    = "maxConcurrentRequestsPerUser"
 	rateLimitMaxConcurrentRequestsDefault = 3
 	rateLimitMaxConcurrentRequestsUsage   = "Number of concurrent requests allowed per user. Default: 3"
+
+	existingGatewayURLName    = "existingGatewayURL"
+	existingGatewayURLDefault = "https://testnet.ten.xyz"
+	existingGatewayURLUsage   = "The URL of existing gateway to use for encryption key exchange. If this is set, the gateway will not generate a new encryption key. It is needed only if database type is set to cosmosDB."
 )
 
 func parseCLIArgs() wecommon.Config {
@@ -91,6 +95,7 @@ func parseCLIArgs() wecommon.Config {
 	rateLimitUserComputeTime := flag.Duration(rateLimitUserComputeTimeName, rateLimitUserComputeTimeDefault, rateLimitUserComputeTimeUsage)
 	rateLimitWindow := flag.Duration(rateLimitWindowName, rateLimitWindowDefault, rateLimitWindowUsage)
 	rateLimitMaxConcurrentRequests := flag.Int(rateLimitMaxConcurrentRequestsName, rateLimitMaxConcurrentRequestsDefault, rateLimitMaxConcurrentRequestsUsage)
+	existingGatewayURL := flag.String(existingGatewayURLName, existingGatewayURLDefault, existingGatewayURLUsage)
 	flag.Parse()
 
 	return wecommon.Config{
@@ -109,5 +114,6 @@ func parseCLIArgs() wecommon.Config {
 		RateLimitUserComputeTime:       *rateLimitUserComputeTime,
 		RateLimitWindow:                *rateLimitWindow,
 		RateLimitMaxConcurrentRequests: *rateLimitMaxConcurrentRequests,
+		ExistingGatewayURL:             *existingGatewayURL,
 	}
 }

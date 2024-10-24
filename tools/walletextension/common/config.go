@@ -19,4 +19,5 @@ type Config struct {
 	RateLimitUserComputeTime       time.Duration
 	RateLimitWindow                time.Duration
 	RateLimitMaxConcurrentRequests int
+	ExistingGatewayURL             string
 }

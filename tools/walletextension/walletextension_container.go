@@ -1,6 +1,7 @@
 package walletextension
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/keyexchange"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
 
@@ -32,6 +34,17 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	// create the account manager with a single unauthenticated connection
 	hostRPCBindAddrWS := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
 	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
+
+	// exchange encryption key with existing gateway / generate a new one if not set
+	encryptionKey, err := keyexchange.GetEncryptionKey(config, logger)
+	if err != nil {
+		logger.Crit("Failed to get encryption key from existing gateway", log.ErrKey, err)
+		os.Exit(1)
+	}
+
+	// TODO @ziga remove this after testing
+	fmt.Println("!!! Encryption key is: ", encryptionKey)
+
 	// start the database
 	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride)
 	if err != nil {
