@@ -9,7 +9,6 @@ on:
         description: 'Tag to build and push (leave empty for latest)'
         required: false
         default: ''
-  pull_request:
 
 jobs:
   build-and-push:
@@ -45,7 +44,7 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuro/enclave:${VERSION} --build-arg TESTMODE=true -f dockerfiles/enclave.Dockerfile .
-          docker push testnetobscuronet.azurecr.io/obscuro/enclave:${VERSION}
-          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuro/host:${VERSION} -f dockerfiles/host.Dockerfile .
-          docker push testnetobscuronet.azurecr.io/obscuro/host:${VERSION}
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave:${VERSION} --build-arg TESTMODE=true -f dockerfiles/enclave.Dockerfile .
+          docker push testnetobscuronet.azurecr.io/obscuronet/enclave:${VERSION}
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/host:${VERSION} -f dockerfiles/host.Dockerfile .
+          docker push testnetobscuronet.azurecr.io/obscuronet/host:${VERSION}
