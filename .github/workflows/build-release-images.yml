@@ -9,6 +9,7 @@ on:
         description: 'Tag to build and push (leave empty for latest)'
         required: false
         default: ''
+  pull_request:
 
 jobs:
   build-and-push:
