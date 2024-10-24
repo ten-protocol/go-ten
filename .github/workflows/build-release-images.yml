@@ -7,7 +7,7 @@ on:
     inputs:
       tag:
         description: 'Tag to build and push (leave empty for latest)'
-        required: false
+        required: true
         default: ''
 
 jobs:
@@ -37,7 +37,9 @@ jobs:
           elif [ -n "${{ github.event.inputs.tag }}" ]; then
             echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
           else
-            echo "VERSION=latest" >> $GITHUB_OUTPUT
+            # Fetch the latest tag from the repository
+            LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+            echo "VERSION=${LATEST_TAG}" >> $GITHUB_OUTPUT
           fi
 
       - name: 'Build and push obscuro node images'
