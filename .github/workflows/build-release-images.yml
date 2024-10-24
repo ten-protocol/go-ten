@@ -1,0 +1,50 @@
+name: 'Build and Push Release Images'
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and push (leave empty for latest)'
+        required: false
+        default: ''
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.21.8
+
+      - name: 'Login to Azure docker registry'
+        uses: azure/docker-login@v1
+        with:
+          login-server: testnetobscuronet.azurecr.io
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: 'Get version'
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          elif [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 'Build and push obscuro node images'
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuro/enclave:${VERSION} --build-arg TESTMODE=true -f dockerfiles/enclave.Dockerfile .
+          docker push testnetobscuronet.azurecr.io/obscuro/enclave:${VERSION}
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuro/host:${VERSION} -f dockerfiles/host.Dockerfile .
+          docker push testnetobscuronet.azurecr.io/obscuro/host:${VERSION}
