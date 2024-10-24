@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/log"
+
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 
@@ -366,14 +368,15 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 		m.stats.L1Reorg(m.l2ID)
 		fork, err := LCA(context.Background(), head, b, m.BlockResolver)
 		if err != nil {
-			panic(err)
+			m.logger.Error("Should not happen.", log.ErrKey, err)
+			return head
 		}
 		m.logger.Info(
 			fmt.Sprintf("L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.CommonAncestor.Hash()), fork.CommonAncestor.Number.Uint64()))
 		return m.setFork(m.BlocksBetween(fork.CommonAncestor, b))
 	}
 	if b.NumberU64() > (head.NumberU64() + 1) {
-		m.logger.Crit("Should not happen")
+		m.logger.Error("Should not happen. Blocks are skewed")
 	}
 
 	return m.setHead(b)
