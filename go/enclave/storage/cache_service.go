@@ -73,16 +73,25 @@ type CacheService struct {
 	logger gethlog.Logger
 }
 
-func NewCacheService(logger gethlog.Logger) *CacheService {
+func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
+	nrElem := int64(50_000_000)
+	cacheSize := int64(2 * 1024 * 1024 * 1024)
+	nrReceiptsToCache := int64(10_000)
+
+	if testMode {
+		nrElem = 1_000_000
+		cacheSize = int64(100 * 1024 * 1024)
+		nrReceiptsToCache = int64(500)
+	}
+
 	// the general cache for 50Mil elements, - 2GB
 	// todo - consider making it fine grained per cache
-	ristrettoStore := newCache(logger, 50_000_000, 2*1024*1024*1024)
+	ristrettoStore := newCache(logger, nrElem, cacheSize)
 
 	// cache the latest received batches to avoid a lookup when streaming it back to the host after processing
 	nrBatches := int64(50)
 	ristrettoStoreForBatches := newCache(logger, nrBatches, nrBatches*batchCost)
 
-	nrReceiptsToCache := int64(10_000)
 	ristrettoStoreForReceipts := newCache(logger, nrReceiptsToCache, nrReceiptsToCache*receiptCost)
 
 	return &CacheService{
