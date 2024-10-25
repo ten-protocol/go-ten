@@ -116,7 +116,7 @@ func NewEnclave(
 	}
 
 	// Initialise the database
-	cachingService := storage.NewCacheService(logger)
+	cachingService := storage.NewCacheService(logger, config.UseInMemoryDB)
 	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.ObscuroChainID))
 	storage := storage.NewStorageFromConfig(config, cachingService, chainConfig, logger)
 

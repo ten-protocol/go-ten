@@ -43,7 +43,7 @@ func TestDefaultGenesis(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to create temp db: %s", err)
 	}
-	storageDB := storage.NewStorage(backingDB, storage.NewCacheService(gethlog.New()), nil, gethlog.New())
+	storageDB := storage.NewStorage(backingDB, storage.NewCacheService(gethlog.New(), true), nil, gethlog.New())
 	stateDB, err := gen.applyAllocations(storageDB)
 	if err != nil {
 		t.Fatalf("unable to apply genesis allocations")
@@ -86,7 +86,7 @@ func TestCustomGenesis(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to create temp db: %s", err)
 	}
-	storageDB := storage.NewStorage(backingDB, storage.NewCacheService(gethlog.New()), nil, gethlog.New())
+	storageDB := storage.NewStorage(backingDB, storage.NewCacheService(gethlog.New(), true), nil, gethlog.New())
 	stateDB, err := gen.applyAllocations(storageDB)
 	if err != nil {
 		t.Fatalf("unable to apply genesis allocations")

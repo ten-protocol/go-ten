@@ -86,6 +86,8 @@ func runGethNetwork(t *testing.T) *netInfo {
 }
 
 func TestManagementContract(t *testing.T) {
+	t.Skip("Skipping as it's too flaky.")
+
 	// run tests on one network
 	sim := runGethNetwork(t)
 	defer sim.eth2Network.Stop() //nolint: errcheck

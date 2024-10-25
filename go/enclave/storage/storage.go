@@ -268,14 +268,14 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Header, chain
 		if err != nil {
 			return err
 		}
-	}
 
-	// double check that there is always a single canonical batch or block per layer
-	// only for debugging
-	//err = enclavedb.CheckCanonicalValidity(ctx, dbTx)
-	//if err != nil {
-	//	return err
-	//}
+		// sanity check that there is always a single canonical batch or block per layer
+		// called after forks, for the latest 50 blocks
+		err = enclavedb.CheckCanonicalValidity(ctx, dbTx, blockId-50)
+		if err != nil {
+			s.logger.Crit("Should not happen.", log.ErrKey, err)
+		}
+	}
 
 	if err := dbTx.Commit(); err != nil {
 		return fmt.Errorf("4. could not store block %s. Cause: %w", block.Hash(), err)
