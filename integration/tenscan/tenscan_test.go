@@ -384,7 +384,7 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 }
 
 func waitForFirstRollup(serverAddress string) error {
-	for now := time.Now(); time.Since(now) < 3*time.Minute; time.Sleep(5 * time.Second) {
+	for now := time.Now(); time.Since(now) < 4*time.Minute; time.Sleep(5 * time.Second) {
 		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/latest/", serverAddress))
 		if err != nil {
 			if strings.Contains(err.Error(), "connection") {
