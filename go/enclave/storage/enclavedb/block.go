@@ -56,8 +56,8 @@ func IsCanonicalBlock(ctx context.Context, dbtx *sql.Tx, hash *gethcommon.Hash) 
 }
 
 // CheckCanonicalValidity - expensive but useful for debugging races
-func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx) error {
-	rows, err := dbtx.QueryContext(ctx, "select count(*), height from batch where is_canonical=true group by height having count(*) >1")
+func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx, blockId int64) error {
+	rows, err := dbtx.QueryContext(ctx, "select count(*), height from batch where l1_proof >=? AND is_canonical=true group by height having count(*) >1", blockId)
 	if err != nil {
 		return err
 	}
@@ -67,12 +67,12 @@ func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx) error {
 	}
 	if rows.Next() {
 		var cnt uint64
-		var heignt uint64
-		err := rows.Scan(&cnt, &heignt)
+		var height uint64
+		err := rows.Scan(&cnt, &height)
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("found multiple (%d) canonical batches for height %d", cnt, heignt)
+		return fmt.Errorf("found multiple (%d) canonical batches for height %d", cnt, height)
 	}
 	return nil
 }
