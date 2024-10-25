@@ -2,7 +2,6 @@ package cosmosdb
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -44,14 +43,13 @@ type CosmosDB struct {
 // The 'Data' field contains the base64-encoded encrypted user data
 type EncryptedDocument struct {
 	ID   string `json:"id"`
-	Data string `json:"data"`
+	Data []byte `json:"data"`
 }
 
 // Constants for the CosmosDB database and container names
 const (
 	DATABASE_NAME        = "gatewayDB"
 	USERS_CONTAINER_NAME = "users"
-	PARTITION_KEY        = "/id"
 )
 
 func NewCosmosDB(connectionString string, encryptionKey []byte) (*CosmosDB, error) {
@@ -102,7 +100,6 @@ func (c *CosmosDB) AddUser(userID []byte, privateKey []byte) error {
 	if err != nil {
 		return fmt.Errorf("failed to encrypt user data: %w", err)
 	}
-	encryptedData := base64.StdEncoding.EncodeToString(ciphertext)
 
 	key := c.encryptor.HashWithHMAC(userID)
 	keyString := hex.EncodeToString(key)
@@ -110,7 +107,7 @@ func (c *CosmosDB) AddUser(userID []byte, privateKey []byte) error {
 	// Create an EncryptedDocument struct to store in CosmosDB
 	doc := EncryptedDocument{
 		ID:   keyString,
-		Data: encryptedData,
+		Data: ciphertext,
 	}
 
 	docJSON, err := json.Marshal(doc)
@@ -157,12 +154,7 @@ func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []
 		return fmt.Errorf("failed to unmarshal document: %w", err)
 	}
 
-	encryptedData, err := base64.StdEncoding.DecodeString(doc.Data)
-	if err != nil {
-		return fmt.Errorf("failed to decode base64 data: %w", err)
-	}
-
-	data, err := c.encryptor.Decrypt(encryptedData)
+	data, err := c.encryptor.Decrypt(doc.Data)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt data: %w", err)
 	}
@@ -190,10 +182,9 @@ func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []
 	if err != nil {
 		return fmt.Errorf("failed to encrypt updated user data: %w", err)
 	}
-	encryptedDataStr := base64.StdEncoding.EncodeToString(ciphertext)
 
 	// Update the document
-	doc.Data = encryptedDataStr
+	doc.Data = ciphertext
 
 	docJSON, err := json.Marshal(doc)
 	if err != nil {
@@ -225,12 +216,7 @@ func (c *CosmosDB) GetUser(userID []byte) (common.GWUserDB, error) {
 		return common.GWUserDB{}, fmt.Errorf("failed to unmarshal document: %w", err)
 	}
 
-	encryptedData, err := base64.StdEncoding.DecodeString(doc.Data)
-	if err != nil {
-		return common.GWUserDB{}, fmt.Errorf("failed to decode base64 data: %w", err)
-	}
-
-	data, err := c.encryptor.Decrypt(encryptedData)
+	data, err := c.encryptor.Decrypt(doc.Data)
 	if err != nil {
 		return common.GWUserDB{}, fmt.Errorf("failed to decrypt data: %w", err)
 	}
