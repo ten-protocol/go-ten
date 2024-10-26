@@ -18,7 +18,7 @@ function process_value_transfer(ethers, value_transfer) {
   }
 
 
-  function decode_base64(base64String) {
+  function decode_base64(base64String: string) {
     let jsonString = atob(base64String);
     return JSON.parse(jsonString);
   }
