@@ -1,4 +1,4 @@
-package config2
+package config
 
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"

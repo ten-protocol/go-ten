@@ -9,7 +9,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/config2"
+	"github.com/ten-protocol/go-ten/go/config"
 )
 
 var (
@@ -151,14 +151,14 @@ func validateNodeAction(action string) bool {
 	return false
 }
 
-func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config2.TenConfig {
+func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	nodeType, err := common.ToNodeType(cliCfg.nodeType)
 	if err != nil {
 		fmt.Printf("Error converting node type: %v\n", err)
 		os.Exit(1)
 	}
 
-	tenCfg, err := config2.DefaultTenConfig()
+	tenCfg, err := config.DefaultTenConfig()
 	if err != nil {
 		fmt.Printf("Error loading default Ten config: %v\n", err)
 		os.Exit(1)

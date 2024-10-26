@@ -6,7 +6,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/config2"
+	"github.com/ten-protocol/go-ten/go/config"
 )
 
 // For now, this is the bridge between TenConfig and the config used internally by the enclave service.
@@ -74,7 +74,7 @@ type EnclaveConfig struct {
 	RPCTimeout time.Duration
 }
 
-func EnclaveConfigFromTenConfig(tenCfg *config2.TenConfig) *EnclaveConfig {
+func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 	return &EnclaveConfig{
 		HostID:      tenCfg.Node.ID,
 		HostAddress: tenCfg.Node.HostAddress,

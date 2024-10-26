@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/profiler"
-	"github.com/ten-protocol/go-ten/go/config2"
+	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/node"
 	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/integration"
@@ -111,7 +111,7 @@ func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 }
 
 func createInMemoryNode() node.Node {
-	tenCfg, err := config2.DefaultTenConfig()
+	tenCfg, err := config.DefaultTenConfig()
 	if err != nil {
 		panic(err)
 	}

@@ -5,14 +5,14 @@ import (
 	"os"
 
 	"github.com/ten-protocol/go-ten/go/common/container"
-	"github.com/ten-protocol/go-ten/go/config2"
+	"github.com/ten-protocol/go-ten/go/config"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	enclavecontainer "github.com/ten-protocol/go-ten/go/enclave/container"
 )
 
 // Runs an Obscuro enclave as a standalone process.
 func main() {
-	tenCfg, err := config2.LoadTenConfigForEnv("local")
+	tenCfg, err := config.LoadTenConfigForEnv("local")
 	if err != nil {
 		fmt.Println("Error loading ten config:", err)
 		os.Exit(1)

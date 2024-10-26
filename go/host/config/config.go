@@ -5,7 +5,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/config2"
+	"github.com/ten-protocol/go-ten/go/config"
 )
 
 // For now, this is the bridge between TenConfig and the config used internally by the host service.
@@ -110,7 +110,7 @@ type HostConfig struct {
 	IsInboundP2PDisabled bool
 }
 
-func HostConfigFromTenConfig(tenCfg *config2.TenConfig) *HostConfig {
+func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 	return &HostConfig{
 		ID:               tenCfg.Node.ID,
 		PrivateKeyString: tenCfg.Node.PrivateKeyString,

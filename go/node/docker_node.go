@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/go/config2"
+	"github.com/ten-protocol/go-ten/go/config"
 
 	"github.com/ten-protocol/go-ten/go/common/docker"
 )
@@ -14,7 +14,7 @@ import (
 var _enclaveDataDir = "/enclavedata" // this is how the directory is references within the enclave container
 
 type DockerNode struct {
-	cfg              *config2.TenConfig
+	cfg              *config.TenConfig
 	hostImage        string
 	enclaveImage     string
 	edgelessDBImage  string
@@ -22,7 +22,7 @@ type DockerNode struct {
 	pccsAddr         string // optional specified PCCS address
 }
 
-func NewDockerNode(cfg *config2.TenConfig, hostImage, enclaveImage, edgelessDBImage string, enclaveDebug bool, pccsAddr string) *DockerNode {
+func NewDockerNode(cfg *config.TenConfig, hostImage, enclaveImage, edgelessDBImage string, enclaveDebug bool, pccsAddr string) *DockerNode {
 	return &DockerNode{
 		cfg:              cfg,
 		hostImage:        hostImage,

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/ten-protocol/go-ten/go/config2"
+	"github.com/ten-protocol/go-ten/go/config"
 )
 
 // This is the location where the metadata will be stored
@@ -19,7 +19,7 @@ type NetworkConfig struct {
 	L1StartHash               string // L1 block hash from which to process for L2 data (mgmt contract deploy block)
 }
 
-func WriteNetworkConfigToDisk(cfg *config2.TenConfig) error {
+func WriteNetworkConfigToDisk(cfg *config.TenConfig) error {
 	n := NetworkConfig{
 		ManagementContractAddress: cfg.Network.L1.L1Contracts.ManagementContract.Hex(),
 		MessageBusAddress:         cfg.Network.L1.L1Contracts.MessageBusContract.Hex(),

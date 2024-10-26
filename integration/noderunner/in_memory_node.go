@@ -5,7 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/config2"
+	"github.com/ten-protocol/go-ten/go/config"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/node"
@@ -17,12 +17,12 @@ import (
 )
 
 type InMemNode struct {
-	tenCfg  *config2.TenConfig
+	tenCfg  *config.TenConfig
 	enclave *enclavecontainer.EnclaveContainer
 	host    *hostcontainer.HostContainer
 }
 
-func NewInMemNode(cfg *config2.TenConfig) *InMemNode {
+func NewInMemNode(cfg *config.TenConfig) *InMemNode {
 	return &InMemNode{
 		tenCfg: cfg,
 	}

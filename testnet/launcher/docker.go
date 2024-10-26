@@ -8,7 +8,7 @@ import (
 	"github.com/sanity-io/litter"
 	common2 "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/retry"
-	"github.com/ten-protocol/go-ten/go/config2"
+	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/node"
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
@@ -48,7 +48,7 @@ func (t *Testnet) Start() error {
 		edgelessDBImage = "ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"
 	}
 
-	sequencerCfg, err := config2.LoadTenConfigForEnv("local", "default/2-node-local-sequencer.yaml")
+	sequencerCfg, err := config.LoadTenConfigForEnv("local", "default/2-node-local-sequencer.yaml")
 	if err != nil {
 		return fmt.Errorf("unable to load sequencer config - %w", err)
 	}
@@ -76,7 +76,7 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("sequencer TEN node not healthy - %w", err)
 	}
 
-	validatorNodeCfg, err := config2.LoadTenConfigForEnv("local", "default/2-node-local-validator.yaml")
+	validatorNodeCfg, err := config.LoadTenConfigForEnv("local", "default/2-node-local-validator.yaml")
 	if err != nil {
 		return fmt.Errorf("unable to load validator config - %w", err)
 	}
