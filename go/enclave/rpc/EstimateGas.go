@@ -116,6 +116,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	if balance.ToInt().Cmp(big.NewInt(0).Mul(gasPrice, big.NewInt(0).SetUint64(totalGasEstimateUint64))) < 0 {
 		return fmt.Errorf("insufficient funds for gas estimate")
 	}
+	rpc.logger.Debug("Estimation breakdown", "gasPrice", gasPrice, "executionGasEstimate", uint64(executionGasEstimate), "publishingGas", publishingGas, "totalGasEstimate", uint64(totalGasEstimate))
 	builder.ReturnValue = &totalGasEstimate
 	return nil
 }
@@ -149,6 +150,30 @@ func (rpc *EncryptionManager) calculateMaxGasCap(ctx context.Context, gasCap uin
 
 	return gasCap
 }
+
+// This adds a bit of an overhead to gas estimation. Fixes issues when calling proxies, but needs more investigation.
+// Not sure why simulation is non consistent.
+func calculateProxyOverhead(txArgs *gethapi.TransactionArgs) uint64 {
+	if txArgs == nil || txArgs.Data == nil {
+		return 0
+	}
+
+	calldata := []byte(*txArgs.Data)
+
+	// Base costs
+	overhead := uint64(2200) // SLOAD (cold) + DELEGATECALL
+
+	// Memory operations
+	dataSize := uint64(len(calldata))
+	memCost := (dataSize * 3) * 2 // calldatacopy in both contexts
+
+	// Memory expansion
+	words := (dataSize + 31) / 32
+	memCost += words * 3
+
+	return overhead + memCost
+}
+
 func (rpc *EncryptionManager) estimateGasSinglePass(ctx context.Context, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, *big.Int, common.SystemError) {
 	maxGasCap := rpc.calculateMaxGasCap(ctx, gasCap, args.Gas)
 	// allowance will either be the maxGasCap or the balance allowance.
@@ -162,7 +187,7 @@ func (rpc *EncryptionManager) estimateGasSinglePass(ctx context.Context, args *g
 	args.Gas = (*hexutil.Uint64)(&allowance)
 
 	// Perform a single gas estimation pass using isGasEnough
-	failed, result, err := rpc.isGasEnough(ctx, args, gasCap, blkNumber)
+	failed, result, err := rpc.isGasEnough(ctx, args, allowance, blkNumber)
 	if err != nil {
 		// Return zero values and the encountered error if estimation fails
 		return 0, nil, err
@@ -184,8 +209,12 @@ func (rpc *EncryptionManager) estimateGasSinglePass(ctx context.Context, args *g
 		return 0, nil, fmt.Errorf("no execution result returned")
 	}
 
-	// Extract the gas used from the execution result
-	gasUsed := hexutil.Uint64(result.UsedGas)
+	// Extract the gas used from the execution result.
+	// Add an overhead buffer to account for the fact that the execution might not be able to be completed in the same batch.
+	// There can be further discrepancies in the execution due to storage and other factors.
+	gasUsedBig := big.NewInt(0).SetUint64(result.UsedGas)
+	gasUsedBig.Add(gasUsedBig, big.NewInt(0).SetUint64(calculateProxyOverhead(args)))
+	gasUsed := hexutil.Uint64(gasUsedBig.Uint64())
 
 	return gasUsed, feeCap, nil
 }

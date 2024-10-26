@@ -362,22 +362,26 @@ func ExecuteObsCall(
 		noBaseFee = false
 	}
 
-	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "evm_facade.go:ObsCall()")
-
-	gp := gethcore.GasPool(gasEstimationCap)
-	gp.SetGas(gasEstimationCap)
-	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, nil)
-
 	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
 		return nil, err
 	}
-	blockContext := gethcore.NewEVMBlockContext(ethHeader, chain, nil)
 
+	snapshot := s.Snapshot()
+	defer s.RevertToSnapshot(snapshot) // Always revert after simulation
+	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "evm_facade.go:ObsCall()")
+
+	gp := gethcore.GasPool(gasEstimationCap)
+	gp.SetGas(gasEstimationCap)
+
+	cleanState := s.Copy()
+	cleanState.Prepare(chainConfig.Rules(header.Number, true, 0), msg.From, ethHeader.Coinbase, msg.To, nil, msg.AccessList)
+
+	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, nil)
+	blockContext := gethcore.NewEVMBlockContext(ethHeader, chain, nil)
 	// sets TxKey.origin
 	txContext := gethcore.NewEVMTxContext(msg)
-	vmenv := vm.NewEVM(blockContext, txContext, s, chainConfig, vmCfg)
-
+	vmenv := vm.NewEVM(blockContext, txContext, cleanState, chainConfig, vmCfg)
 	result, err := gethcore.ApplyMessage(vmenv, msg, &gp)
 	// Follow the same error check structure as in geth
 	// 1 - vmError / stateDB err check
@@ -385,7 +389,7 @@ func ExecuteObsCall(
 	// 3 - error check the ApplyMessage
 
 	// Read the error stored in the database.
-	if dbErr := s.Error(); dbErr != nil {
+	if dbErr := cleanState.Error(); dbErr != nil {
 		return nil, newErrorWithReasonAndCode(dbErr)
 	}
 

@@ -53,7 +53,7 @@ var EnclaveFlags = map[string]*flag.TenFlag{
 	MessageBusAddressFlag:         flag.NewStringFlag(MessageBusAddressFlag, "", "The address of the L1 message bus contract owned by the management contract."),
 	MaxBatchSizeFlag:              flag.NewUint64Flag(MaxBatchSizeFlag, 1024*55, "The maximum size a batch is allowed to reach uncompressed"),
 	MaxRollupSizeFlag:             flag.NewUint64Flag(MaxRollupSizeFlag, 1024*128, "The maximum size a rollup is allowed to reach"),
-	L2BaseFeeFlag:                 flag.NewUint64Flag(L2BaseFeeFlag, params.InitialBaseFee/10, ""),
+	L2BaseFeeFlag:                 flag.NewUint64Flag(L2BaseFeeFlag, params.InitialBaseFee, ""),
 	L2CoinbaseFlag:                flag.NewStringFlag(L2CoinbaseFlag, "0xd6C9230053f45F873Cb66D8A02439380a37A4fbF", ""),
 	GasBatchExecutionLimit:        flag.NewUint64Flag(GasBatchExecutionLimit, 3_000_000_000, "Max gas that can be executed in a single batch"),
 	TenGenesisFlag:                flag.NewStringFlag(TenGenesisFlag, "", "The json string with the obscuro genesis"),
