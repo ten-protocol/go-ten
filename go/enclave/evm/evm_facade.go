@@ -374,8 +374,7 @@ func ExecuteObsCall(
 	gp := gethcore.GasPool(gasEstimationCap)
 	gp.SetGas(gasEstimationCap)
 
-	cleanState := s.Copy()
-	cleanState.Prepare(chainConfig.Rules(header.Number, true, 0), msg.From, ethHeader.Coinbase, msg.To, nil, msg.AccessList)
+	cleanState := createCleanState(s, msg, ethHeader, chainConfig)
 
 	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, nil)
 	blockContext := gethcore.NewEVMBlockContext(ethHeader, chain, nil)
@@ -405,6 +404,12 @@ func ExecuteObsCall(
 	}
 
 	return result, nil
+}
+
+func createCleanState(s *state.StateDB, msg *gethcore.Message, ethHeader *types.Header, chainConfig *params.ChainConfig) *state.StateDB {
+	cleanState := s.Copy()
+	cleanState.Prepare(chainConfig.Rules(ethHeader.Number, true, 0), msg.From, ethHeader.Coinbase, msg.To, nil, msg.AccessList)
+	return cleanState
 }
 
 func initParams(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config config.EnclaveConfig, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {
