@@ -10,6 +10,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/log"
+
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"github.com/ten-protocol/go-ten/go/host/l1"
+
 	"github.com/ten-protocol/go-ten/go/common/async"
 
 	"github.com/google/uuid"
@@ -17,8 +22,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -32,6 +35,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
+const SecondsPerSlot = uint64(12)
+
 type L1Network interface {
 	// BroadcastBlock - send the block and the parent to make sure there are no gaps
 	BroadcastBlock(b common.EncodedL1Block, p common.EncodedL1Block)
@@ -39,8 +44,9 @@ type L1Network interface {
 }
 
 type MiningConfig struct {
-	PowTime common.Latency
-	LogFile string
+	PowTime      common.Latency
+	LogFile      string
+	L1BeaconPort int
 }
 
 type TxDB interface {
@@ -53,16 +59,22 @@ type StatsCollector interface {
 	L1Reorg(id gethcommon.Address)
 }
 
+type BlockWithBlobs struct {
+	Block *types.Block
+	Blobs []*kzg4844.Blob
+}
+
 type Node struct {
-	l2ID     gethcommon.Address // the address of the Obscuro node this client is dedicated to
-	cfg      MiningConfig
-	Network  L1Network
-	mining   bool
-	stats    StatsCollector
-	Resolver *blockResolverInMem
-	db       TxDB
-	subs     map[uuid.UUID]*mockSubscription // active subscription for mock blocks
-	subMu    sync.Mutex
+	l2ID          gethcommon.Address // the address of the Obscuro node this client is dedicated to
+	cfg           MiningConfig
+	Network       L1Network
+	mining        bool
+	stats         StatsCollector
+	BlockResolver *blockResolverInMem
+	BlobResolver  l1.BlobResolver
+	db            TxDB
+	subs          map[uuid.UUID]*mockSubscription // active subscription for mock blocks
+	subMu         sync.Mutex
 
 	// Channels
 	exitCh       chan bool // the Node stops
@@ -84,6 +96,21 @@ type Node struct {
 }
 
 func (m *Node) PrepareTransactionToSend(_ context.Context, txData types.TxData, _ gethcommon.Address) (types.TxData, error) {
+	switch tx := txData.(type) {
+	case *types.LegacyTx:
+		return createLegacyTx(txData)
+	case *types.BlobTx:
+		return createBlobTx(txData)
+	default:
+		return nil, fmt.Errorf("unsupported transaction type: %T", tx)
+	}
+}
+
+func (m *Node) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, _ uint64, _ int) (types.TxData, error) {
+	return m.PrepareTransactionToSend(ctx, txData, from)
+}
+
+func createLegacyTx(txData types.TxData) (types.TxData, error) {
 	tx := types.NewTx(txData)
 	return &types.LegacyTx{
 		Nonce:    123,
@@ -95,8 +122,14 @@ func (m *Node) PrepareTransactionToSend(_ context.Context, txData types.TxData, 
 	}, nil
 }
 
-func (m *Node) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, _ uint64, _ int) (types.TxData, error) {
-	return m.PrepareTransactionToSend(ctx, txData, from)
+func createBlobTx(txData types.TxData) (types.TxData, error) {
+	tx := types.NewTx(txData)
+	return &types.BlobTx{
+		To:         *tx.To(),
+		Data:       tx.Data(),
+		BlobHashes: tx.BlobHashes(),
+		Sidecar:    tx.BlobTxSidecar(),
+	}, nil
 }
 
 func (m *Node) SendTransaction(tx *types.Transaction) error {
@@ -123,11 +156,15 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 			continue
 		}
 		switch l1tx := decodedTx.(type) {
-		case *ethadapter.L1RollupTx:
-			r, err := common.DecodeRollup(l1tx.Rollup)
-			if err == nil {
-				return r
+		case *ethadapter.L1RollupHashes:
+			ctx := context.TODO()
+			blobs, _ := m.BlobResolver.FetchBlobs(ctx, block.Header(), l1tx.BlobHashes)
+			r, err := ethadapter.ReconstructRollup(blobs)
+			if err != nil {
+				m.logger.Error("could not recreate rollup from blobs. Cause: %w", err)
+				return nil
 			}
+			return r
 		}
 	}
 	return nil
@@ -139,7 +176,12 @@ func (m *Node) FetchLastBatchSeqNo(gethcommon.Address) (*big.Int, error) {
 		return nil, err
 	}
 
-	for currentBlock := startingBlock; currentBlock.NumberU64() != 0; currentBlock, _ = m.BlockByHash(currentBlock.Header().ParentHash) {
+	for currentBlock := startingBlock; currentBlock.NumberU64() != 0; {
+		currentBlock, err = m.BlockByHash(currentBlock.Header().ParentHash)
+		if err != nil {
+			m.logger.Error("Error fetching block by hash", "error", err)
+			break
+		}
 		rollup := m.getRollupFromBlock(currentBlock)
 		if rollup != nil {
 			return big.NewInt(int64(rollup.Header.LastBatchSeqNo)), nil
@@ -164,7 +206,7 @@ func (m *Node) BlockListener() (chan *types.Header, ethereum.Subscription) {
 }
 
 func (m *Node) BlockNumber() (uint64, error) {
-	blk, err := m.Resolver.FetchHeadBlock(context.Background())
+	blk, err := m.BlockResolver.FetchHeadBlock(context.Background())
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return 0, ethereum.NotFound
@@ -179,7 +221,7 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 		return MockGenesisBlock, nil
 	}
 	// TODO this should be a method in the resolver
-	blk, err := m.Resolver.FetchHeadBlock(context.Background())
+	blk, err := m.BlockResolver.FetchHeadBlock(context.Background())
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil, ethereum.NotFound
@@ -191,7 +233,7 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 			return blk, nil
 		}
 
-		blk, err = m.Resolver.FetchBlock(context.Background(), blk.ParentHash())
+		blk, err = m.BlockResolver.FetchBlock(context.Background(), blk.ParentHash())
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve parent for block in chain. Cause: %w", err)
 		}
@@ -200,7 +242,7 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 }
 
 func (m *Node) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
-	blk, err := m.Resolver.FetchBlock(context.Background(), id)
+	blk, err := m.BlockResolver.FetchBlock(context.Background(), id)
 	if err != nil {
 		return nil, fmt.Errorf("block could not be retrieved. Cause: %w", err)
 	}
@@ -208,7 +250,7 @@ func (m *Node) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
 }
 
 func (m *Node) FetchHeadBlock() (*types.Block, error) {
-	block, err := m.Resolver.FetchHeadBlock(context.Background())
+	block, err := m.BlockResolver.FetchHeadBlock(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
@@ -222,7 +264,7 @@ func (m *Node) Info() ethadapter.Info {
 }
 
 func (m *Node) IsBlockAncestor(block *types.Block, proof common.L1BlockHash) bool {
-	return m.Resolver.IsBlockAncestor(context.Background(), block, proof)
+	return m.BlockResolver.IsBlockAncestor(context.Background(), block, proof)
 }
 
 func (m *Node) BalanceAt(gethcommon.Address, *big.Int) (*big.Int, error) {
@@ -250,14 +292,13 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 	return logs, nil
 }
 
-// Start runs an infinite loop that listens to the two block producing channels and processes them.
 func (m *Node) Start() {
 	if m.mining {
 		// This starts the mining
 		go m.startMining()
 	}
 
-	err := m.Resolver.StoreBlock(context.Background(), MockGenesisBlock, nil)
+	err := m.BlockResolver.StoreBlock(context.Background(), MockGenesisBlock, nil)
 	if err != nil {
 		m.logger.Crit("Failed to store block")
 	}
@@ -266,7 +307,7 @@ func (m *Node) Start() {
 	for {
 		select {
 		case p2pb := <-m.p2pCh: // Received from peers
-			_, err := m.Resolver.FetchBlock(context.Background(), p2pb.Hash())
+			_, err := m.BlockResolver.FetchBlock(context.Background(), p2pb.Hash())
 			// only process blocks if they haven't been processed before
 			if err != nil {
 				if errors.Is(err, errutil.ErrNotFound) {
@@ -278,8 +319,8 @@ func (m *Node) Start() {
 
 		case mb := <-m.miningCh: // Received from the local mining
 			head = m.processBlock(mb, head)
-			if bytes.Equal(head.Hash().Bytes(), mb.Hash().Bytes()) { // Ignore the locally produced block if someone else found one already
-				p, err := m.Resolver.FetchBlock(context.Background(), mb.ParentHash())
+			if bytes.Equal(head.Hash().Bytes(), mb.Hash().Bytes()) { // Only broadcast if it's the new head
+				p, err := m.BlockResolver.FetchBlock(context.Background(), mb.ParentHash())
 				if err != nil {
 					panic(fmt.Errorf("could not retrieve parent. Cause: %w", err))
 				}
@@ -302,11 +343,12 @@ func (m *Node) Start() {
 }
 
 func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
-	err := m.Resolver.StoreBlock(context.Background(), b, nil)
+	err := m.BlockResolver.StoreBlock(context.Background(), b, nil)
 	if err != nil {
 		m.logger.Crit("Failed to store block. Cause: %w", err)
 	}
-	_, err = m.Resolver.FetchBlock(context.Background(), b.Header().ParentHash)
+
+	_, err = m.BlockResolver.FetchBlock(context.Background(), b.Header().ParentHash)
 	// only proceed if the parent is available
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -322,18 +364,19 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	}
 
 	// Check for Reorgs
-	if !m.Resolver.IsAncestor(context.Background(), b, head) {
+	if !m.BlockResolver.IsAncestor(context.Background(), b, head) {
 		m.stats.L1Reorg(m.l2ID)
-		fork, err := LCA(context.Background(), head, b, m.Resolver)
+		fork, err := LCA(context.Background(), head, b, m.BlockResolver)
 		if err != nil {
-			panic(err)
+			m.logger.Error("Should not happen.", log.ErrKey, err)
+			return head
 		}
 		m.logger.Info(
 			fmt.Sprintf("L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.CommonAncestor.Hash()), fork.CommonAncestor.Number.Uint64()))
 		return m.setFork(m.BlocksBetween(fork.CommonAncestor, b))
 	}
 	if b.NumberU64() > (head.NumberU64() + 1) {
-		m.logger.Crit("Should not happen")
+		m.logger.Error("Should not happen. Blocks are skewed")
 	}
 
 	return m.setHead(b)
@@ -402,7 +445,6 @@ func (m *Node) startMining() {
 	mempool := make([]*types.Transaction, 0)
 	z := int32(0)
 	interrupt := &z
-
 	for {
 		select {
 		case <-m.exitMiningCh:
@@ -414,7 +456,7 @@ func (m *Node) startMining() {
 			// A new canonical block was found. Start a new round based on that block.
 
 			// remove transactions that are already considered committed
-			mempool = m.removeCommittedTransactions(context.Background(), canonicalBlock, mempool, m.Resolver, m.db)
+			mempool = m.removeCommittedTransactions(context.Background(), canonicalBlock, mempool, m.BlockResolver, m.db)
 
 			// notify the existing mining go routine to stop mining
 			atomic.StoreInt32(interrupt, 1)
@@ -423,14 +465,20 @@ func (m *Node) startMining() {
 
 			// Generate a random number, and wait for that number of ms. Equivalent to PoW
 			// Include all rollups received during this period.
+			blockTime := uint64(time.Now().Unix())
 			async.Schedule(m.cfg.PowTime(), func() {
-				toInclude := findNotIncludedTxs(canonicalBlock, mempool, m.Resolver, m.db)
+				toInclude := findNotIncludedTxs(canonicalBlock, mempool, m.BlockResolver, m.db)
 				// todo - iterate through the rollup transactions and include only the ones with the proof on the canonical chain
 				if atomic.LoadInt32(m.interrupt) == 1 {
 					return
 				}
-
-				m.miningCh <- NewBlock(canonicalBlock, m.l2ID, toInclude)
+				b := NewBlock(canonicalBlock, m.l2ID, toInclude, blockTime)
+				// there is a race condition if we process this at the same time as the blocks, so it has to be placed here
+				err := m.ProcessBlobs(b)
+				if err != nil {
+					m.logger.Crit("Failed to store blobs. Cause: %w", err)
+				}
+				m.miningCh <- NewBlock(canonicalBlock, m.l2ID, toInclude, blockTime)
 			})
 		}
 	}
@@ -453,7 +501,6 @@ func (m *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(m.interrupt, 1)
 	time.Sleep(time.Millisecond * 100)
-
 	m.exitMiningCh <- true
 	m.exitCh <- true
 }
@@ -470,7 +517,7 @@ func (m *Node) BlocksBetween(blockA *types.Header, blockB *types.Block) []*types
 		if bytes.Equal(tempBlock.Hash().Bytes(), blockA.Hash().Bytes()) {
 			break
 		}
-		tempBlock, err = m.Resolver.FetchBlock(context.Background(), tempBlock.ParentHash())
+		tempBlock, err = m.BlockResolver.FetchBlock(context.Background(), tempBlock.ParentHash())
 		if err != nil {
 			panic(fmt.Errorf("could not retrieve parent block. Cause: %w", err))
 		}
@@ -505,18 +552,45 @@ func (m *Node) Alive() bool {
 	return true
 }
 
+func (m *Node) ProcessBlobs(b *types.Block) error {
+	var blobs []*kzg4844.Blob
+	for _, tx := range b.Transactions() {
+		if tx.BlobHashes() != nil {
+			for i := range tx.BlobTxSidecar().Blobs {
+				blobPtr := &tx.BlobTxSidecar().Blobs[i]
+				blobs = append(blobs, blobPtr)
+			}
+		}
+	}
+
+	blobPointers := make([]*kzg4844.Blob, len(blobs))
+	copy(blobPointers, blobs)
+
+	if len(blobs) > 0 {
+		// dummy slot to simplify the in memory blob storage
+		err := m.BlobResolver.StoreBlobs(0, blobs)
+		if err != nil {
+			return fmt.Errorf("could not store blobs. Cause: %w", err)
+		}
+	}
+	return nil
+}
+
 func NewMiner(
 	id gethcommon.Address,
 	cfg MiningConfig,
 	network L1Network,
 	statsCollector StatsCollector,
+	blobResolver l1.BlobResolver,
+	logger gethlog.Logger,
 ) *Node {
 	return &Node{
 		l2ID:             id,
 		mining:           true,
 		cfg:              cfg,
 		stats:            statsCollector,
-		Resolver:         NewResolver(),
+		BlockResolver:    NewResolver(),
+		BlobResolver:     blobResolver,
 		db:               NewTxDB(),
 		Network:          network,
 		exitCh:           make(chan bool),
@@ -530,7 +604,7 @@ func NewMiner(
 		headOutCh:        make(chan *types.Block),
 		erc20ContractLib: NewERC20ContractLibMock(),
 		mgmtContractLib:  NewMgmtContractLibMock(),
-		logger:           log.New(log.EthereumL1Cmp, int(gethlog.LvlInfo), cfg.LogFile, log.NodeIDKey, id),
+		logger:           logger,
 		subs:             map[uuid.UUID]*mockSubscription{},
 		subMu:            sync.Mutex{},
 	}

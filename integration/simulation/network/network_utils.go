@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/host"
 	"github.com/ten-protocol/go-ten/go/host/l1"
@@ -36,11 +38,12 @@ const (
 	DefaultL1RPCTimeout     = 15 * time.Second
 )
 
-func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereummock.Node {
+func createMockEthNode(id int, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats, blobResolver l1.BlobResolver) *ethereummock.Node {
 	mockEthNetwork := ethereummock.NewMockEthNetwork(avgBlockDuration, avgNetworkLatency, stats)
 	ethereumMockCfg := defaultMockEthNodeCfg(nrNodes, avgBlockDuration)
+	logger := log.New(log.EthereumL1Cmp, int(gethlog.LvlInfo), ethereumMockCfg.LogFile, log.NodeIDKey, id)
 	// create an in memory mock ethereum node responsible with notifying the layer 2 node about blocks
-	miner := ethereummock.NewMiner(gethcommon.BigToAddress(big.NewInt(id)), ethereumMockCfg, mockEthNetwork, stats)
+	miner := ethereummock.NewMiner(gethcommon.BigToAddress(big.NewInt(int64(id))), ethereumMockCfg, mockEthNetwork, stats, blobResolver, logger)
 	mockEthNetwork.CurrentNode = miner
 	return miner
 }
@@ -60,6 +63,7 @@ func createInMemTenNode(
 	batchInterval time.Duration,
 	incomingP2PDisabled bool,
 	l1BlockTime time.Duration,
+	blobResolver l1.BlobResolver,
 ) *container.HostContainer {
 	mgtContractAddress := mgmtContractLib.GetContractAddr()
 
@@ -92,7 +96,7 @@ func createInMemTenNode(
 		MessageBusAddress:         l1BusAddress,
 		ManagementContractAddress: *mgtContractAddress,
 		MaxBatchSize:              1024 * 55,
-		MaxRollupSize:             1024 * 64,
+		MaxRollupSize:             1024 * 128,
 		BaseFee:                   big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
 		GasLocalExecutionCapFlag:  params.MaxGasLimit / 2,
 		GasBatchExecutionLimit:    params.MaxGasLimit / 2,
@@ -106,7 +110,7 @@ func createInMemTenNode(
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 	l1Repo := l1.NewL1Repository(ethClient, ethereummock.MgmtContractAddresses, hostLogger)
-	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Repo, enclaveClients, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
+	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Repo, enclaveClients, mgmtContractLib, ethWallet, nil, hostLogger, metricsService, blobResolver)
 
 	return currentContainer
 }

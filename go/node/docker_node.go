@@ -108,7 +108,7 @@ func (d *DockerNode) startHost() error {
 		"-p2pBindAddress", fmt.Sprintf("0.0.0.0:%d", d.cfg.hostP2PPort),
 		"-clientRPCPortHttp", fmt.Sprintf("%d", d.cfg.hostHTTPPort),
 		"-clientRPCPortWs", fmt.Sprintf("%d", d.cfg.hostWSPort),
-		"-maxRollupSize=65536",
+		"-maxRollupSize=131072",
 		// host persistence hardcoded to use /data dir within the container, this needs to be mounted
 		fmt.Sprintf("-useInMemoryDB=%t", d.cfg.hostInMemDB),
 		fmt.Sprintf("-debugNamespaceEnabled=%t", d.cfg.debugNamespaceEnabled),
@@ -119,6 +119,7 @@ func (d *DockerNode) startHost() error {
 		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
 		fmt.Sprintf("-isInboundP2PDisabled=%t", d.cfg.isInboundP2PDisabled),
 		fmt.Sprintf("-l1ChainID=%d", d.cfg.l1ChainID),
+		fmt.Sprintf("-l1BeaconUrl=%s", d.cfg.l1BeaconUrl),
 	}
 	if !d.cfg.hostInMemDB {
 		cmd = append(cmd, "-postgresDBHost", d.cfg.postgresDB)
@@ -174,7 +175,7 @@ func (d *DockerNode) startEnclave() error {
 		"-logLevel", fmt.Sprintf("%d", log.LvlInfo),
 		fmt.Sprintf("-debugNamespaceEnabled=%t", d.cfg.debugNamespaceEnabled),
 		"-maxBatchSize=56320",
-		"-maxRollupSize=65536",
+		"-maxRollupSize=131072",
 		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
 		"-tenGenesis", "{}",
 		"-edgelessDBHost", d.cfg.nodeName+"-edgelessdb",

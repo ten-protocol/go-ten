@@ -18,12 +18,13 @@ import (
 
 // responsible for saving event logs
 type eventsStorage struct {
+	db             enclavedb.EnclaveDB
 	cachingService *CacheService
 	logger         gethlog.Logger
 }
 
-func newEventsStorage(cachingService *CacheService, logger gethlog.Logger) *eventsStorage {
-	return &eventsStorage{cachingService: cachingService, logger: logger}
+func newEventsStorage(cachingService *CacheService, db enclavedb.EnclaveDB, logger gethlog.Logger) *eventsStorage {
+	return &eventsStorage{cachingService: cachingService, db: db, logger: logger}
 }
 
 func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx, batch *common.BatchHeader, txExecResult *core.TxExecResult) error {
@@ -52,6 +53,11 @@ func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql
 		}
 	}
 
+	es.cachingService.CacheReceipt(ctx, &CachedReceipt{
+		Receipt: txExecResult.Receipt,
+		From:    txExecResult.From,
+		To:      txExecResult.Tx.To(),
+	})
 	return nil
 }
 
@@ -202,7 +208,7 @@ func (es *eventsStorage) storeTopics(ctx context.Context, dbTX *sql.Tx, eventTyp
 			// if no entry was found
 			topicId, err = es.storeTopic(ctx, dbTX, eventType, i, topic)
 			if err != nil {
-				return nil, fmt.Errorf("could not read the event topic. Cause: %w", err)
+				return nil, fmt.Errorf("could not store the event topic. Cause: %w", err)
 			}
 		}
 		topicIds[i-1] = &topicId
@@ -221,8 +227,11 @@ func (es *eventsStorage) storeTopic(ctx context.Context, dbTX *sql.Tx, eventType
 	if relevantAddress != nil {
 		var err error
 		relAddressId, err = es.readEOA(ctx, dbTX, *relevantAddress)
-		if err != nil {
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return 0, err
+		}
+		if relAddressId == nil {
+			es.logger.Debug("EOA not found when saving topic", "topic", topic.Hex())
 		}
 	}
 	eventTopicId, err := enclavedb.WriteEventTopic(ctx, dbTX, &topic, relAddressId, eventType.Id)

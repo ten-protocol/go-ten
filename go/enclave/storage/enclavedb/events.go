@@ -238,7 +238,7 @@ func loadReceiptList(ctx context.Context, db *sql.DB, requestingAccount *gethcom
 	}
 	var queryParams []any
 
-	query := "select b.hash, b.height, curr_tx.hash, curr_tx.idx, rec.post_state, rec.status, rec.cumulative_gas_used, rec.effective_gas_price, rec.created_contract_address, curr_tx.content, tx_sender.address, tx_contr.address, curr_tx.type "
+	query := "select b.hash, b.height, curr_tx.hash, curr_tx.idx, rec.post_state, rec.status, rec.cumulative_gas_used, rec.effective_gas_price, rec.created_contract_address, tx_sender.address, tx_contr.address, curr_tx.type "
 	query += baseReceiptJoin
 
 	// visibility
@@ -286,7 +286,7 @@ func onRowWithReceipt(rows *sql.Rows) (*core.InternalReceipt, error) {
 	var txIndex *uint
 	var blockHash, transactionHash *gethcommon.Hash
 	var blockNumber *uint64
-	res := []any{&blockHash, &blockNumber, &transactionHash, &txIndex, &r.PostState, &r.Status, &r.CumulativeGasUsed, &r.EffectiveGasPrice, &r.CreatedContract, &r.TxContent, &r.From, &r.To, &r.TxType}
+	res := []any{&blockHash, &blockNumber, &transactionHash, &txIndex, &r.PostState, &r.Status, &r.CumulativeGasUsed, &r.EffectiveGasPrice, &r.CreatedContract, &r.From, &r.To, &r.TxType}
 
 	err := rows.Scan(res...)
 	if err != nil {
@@ -306,7 +306,7 @@ func onRowWithReceipt(rows *sql.Rows) (*core.InternalReceipt, error) {
 // todo always pass in the actual batch hashes because of reorgs, or make sure to clean up log entries from discarded batches
 func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, withReceipts bool) ([]*core.InternalReceipt, []*types.Log, error) {
 	logsQuery := " et.event_sig, t1.topic, t2.topic, t3.topic, datablob, log_idx, b.hash, b.height, curr_tx.hash, curr_tx.idx, c.address "
-	receiptQuery := " rec.post_state, rec.status, rec.cumulative_gas_used, rec.effective_gas_price, rec.created_contract_address, curr_tx.content, tx_sender.address, tx_contr.address, curr_tx.type "
+	receiptQuery := " rec.post_state, rec.status, rec.cumulative_gas_used, rec.effective_gas_price, rec.created_contract_address, tx_sender.address, tx_contr.address, curr_tx.type "
 
 	query := "select " + logsQuery
 	if withReceipts {
@@ -417,7 +417,7 @@ func onRowWithEventLogAndReceipt(rows *sql.Rows, withReceipts bool) (*core.Inter
 
 	if withReceipts {
 		// when loading receipts, add the extra fields
-		res = append(res, &r.PostState, &r.Status, &r.CumulativeGasUsed, &r.EffectiveGasPrice, &r.CreatedContract, &r.TxContent, &r.From, &r.To, &r.TxType)
+		res = append(res, &r.PostState, &r.Status, &r.CumulativeGasUsed, &r.EffectiveGasPrice, &r.CreatedContract, &r.From, &r.To, &r.TxType)
 	}
 
 	err := rows.Scan(res...)
