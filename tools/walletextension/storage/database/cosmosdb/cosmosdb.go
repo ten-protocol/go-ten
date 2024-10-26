@@ -86,7 +86,6 @@ func NewCosmosDB(connectionString string, encryptionKey []byte) (*CosmosDB, erro
 
 func (c *CosmosDB) AddUser(userID []byte, privateKey []byte) error {
 	user := common.GWUserDB{
-		ID:         hex.EncodeToString(userID),
 		UserId:     userID,
 		PrivateKey: privateKey,
 		Accounts:   []common.GWAccountDB{},

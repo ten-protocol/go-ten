@@ -61,7 +61,6 @@ func NewSqliteDatabase(dbPath string) (*Database, error) {
 
 func (s *Database) AddUser(userID []byte, privateKey []byte) error {
 	user := common.GWUserDB{
-		ID:         string(userID),
 		UserId:     userID,
 		PrivateKey: privateKey,
 		Accounts:   []common.GWAccountDB{},
@@ -77,7 +76,7 @@ func (s *Database) AddUser(userID []byte, privateKey []byte) error {
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(user.ID, string(userJSON))
+	_, err = stmt.Exec(string(user.UserId), string(userJSON))
 	if err != nil {
 		return err
 	}
