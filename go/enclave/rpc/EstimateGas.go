@@ -183,6 +183,12 @@ func calculateProxyOverhead(txArgs *gethapi.TransactionArgs) uint64 {
 // estimateGasSinglePass - deduces the simulation params from the call parameters and the local environment configuration.
 // will override the gas limit with one provided in transaction if lower. Furthermore figures out the gas cap and the allowance
 // for the from address.
+// In the binary search approach geth uses, the high of the range for gas limit is where our single pass runs.
+// For example, if you estimate gas for a swap, the simulation EVM will be configured to run at the highest possible gas cap.
+// This allows the maximum gas for running the call. Then we look at the gas used and return this with a couple modifications.
+// The modifications are an overhead buffer and a 20% increase to account for warm storage slots. This is because the stateDB
+// for the head batch might not be fully clean in terms of the running call. Cold storage slots cost far more than warm ones to
+// read and write.
 func (rpc *EncryptionManager) estimateGasSinglePass(ctx context.Context, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, *big.Int, common.SystemError) {
 	maxGasCap := rpc.calculateMaxGasCap(ctx, gasCap, args.Gas)
 	// allowance will either be the maxGasCap or the balance allowance.
