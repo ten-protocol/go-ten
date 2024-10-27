@@ -52,6 +52,8 @@ func EstimateGasValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlo
 	return nil
 }
 
+// EstimateGasExecute - performs the gas estimation based on the provided parameters and the local environment configuration.
+// Will accomodate l1 gas cost and stretch the final gas estimation.
 func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64], rpc *EncryptionManager) error {
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
@@ -93,6 +95,10 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	// TODO: Change to fixed time period quotes, rather than this.
 	publishingGas = publishingGas.Mul(publishingGas, gethcommon.Big2)
 
+	// Run the execution simulation based on stateDB after head batch.
+	// Notice that unfortunately, some slots might ve considered warm, which skews the estimation.
+	// The single pass will run once at the highest gas cap and return gas used. Not completely reliable,
+	// but is quick.
 	executionGasEstimate, gasPrice, err := rpc.estimateGasSinglePass(builder.ctx, txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
@@ -174,6 +180,9 @@ func calculateProxyOverhead(txArgs *gethapi.TransactionArgs) uint64 {
 	return overhead + memCost
 }
 
+// estimateGasSinglePass - deduces the simulation params from the call parameters and the local environment configuration.
+// will override the gas limit with one provided in transaction if lower. Furthermore figures out the gas cap and the allowance
+// for the from address.
 func (rpc *EncryptionManager) estimateGasSinglePass(ctx context.Context, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, *big.Int, common.SystemError) {
 	maxGasCap := rpc.calculateMaxGasCap(ctx, gasCap, args.Gas)
 	// allowance will either be the maxGasCap or the balance allowance.
@@ -214,6 +223,10 @@ func (rpc *EncryptionManager) estimateGasSinglePass(ctx context.Context, args *g
 	// There can be further discrepancies in the execution due to storage and other factors.
 	gasUsedBig := big.NewInt(0).SetUint64(result.UsedGas)
 	gasUsedBig.Add(gasUsedBig, big.NewInt(0).SetUint64(calculateProxyOverhead(args)))
+	// Add 20% overhead to gas used - this is a rough accomodation for
+	// warm storage slots.
+	gasUsedBig.Mul(gasUsedBig, big.NewInt(120))
+	gasUsedBig.Div(gasUsedBig, big.NewInt(100))
 	gasUsed := hexutil.Uint64(gasUsedBig.Uint64())
 
 	return gasUsed, feeCap, nil
