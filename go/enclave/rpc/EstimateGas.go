@@ -53,7 +53,7 @@ func EstimateGasValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlo
 }
 
 // EstimateGasExecute - performs the gas estimation based on the provided parameters and the local environment configuration.
-// Will accomodate l1 gas cost and stretch the final gas estimation.
+// Will accommodate l1 gas cost and stretch the final gas estimation.
 func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64], rpc *EncryptionManager) error {
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
@@ -229,7 +229,7 @@ func (rpc *EncryptionManager) estimateGasSinglePass(ctx context.Context, args *g
 	// There can be further discrepancies in the execution due to storage and other factors.
 	gasUsedBig := big.NewInt(0).SetUint64(result.UsedGas)
 	gasUsedBig.Add(gasUsedBig, big.NewInt(0).SetUint64(calculateProxyOverhead(args)))
-	// Add 20% overhead to gas used - this is a rough accomodation for
+	// Add 20% overhead to gas used - this is a rough accommodation for
 	// warm storage slots.
 	gasUsedBig.Mul(gasUsedBig, big.NewInt(120))
 	gasUsedBig.Div(gasUsedBig, big.NewInt(100))
