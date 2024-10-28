@@ -149,8 +149,8 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 func (n *networkOfSocketNodes) TearDown() {
 	// Stop the TEN nodes first (each host will attempt to shut down its enclave as part of shutdown).
 	StopTenNodes(n.l2Clients)
-	StopEth2Network(n.gethClients, n.eth2Network)
 	CheckHostRPCServersStopped(n.hostWebsocketURLs)
+	StopEth2Network(n.gethClients, n.eth2Network)
 }
 
 func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) error {
