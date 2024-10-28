@@ -72,6 +72,10 @@ const (
 	rateLimitMaxConcurrentRequestsName    = "maxConcurrentRequestsPerUser"
 	rateLimitMaxConcurrentRequestsDefault = 3
 	rateLimitMaxConcurrentRequestsUsage   = "Number of concurrent requests allowed per user. Default: 3"
+
+	debugFlagName    = "debug"
+	debugFlagDefault = false
+	debugFlagUsage   = "Flag to enable debug mode"
 )
 
 func parseCLIArgs() wecommon.Config {
@@ -91,6 +95,7 @@ func parseCLIArgs() wecommon.Config {
 	rateLimitUserComputeTime := flag.Duration(rateLimitUserComputeTimeName, rateLimitUserComputeTimeDefault, rateLimitUserComputeTimeUsage)
 	rateLimitWindow := flag.Duration(rateLimitWindowName, rateLimitWindowDefault, rateLimitWindowUsage)
 	rateLimitMaxConcurrentRequests := flag.Int(rateLimitMaxConcurrentRequestsName, rateLimitMaxConcurrentRequestsDefault, rateLimitMaxConcurrentRequestsUsage)
+	debugFlag := flag.Bool(debugFlagName, debugFlagDefault, debugFlagUsage)
 	flag.Parse()
 
 	return wecommon.Config{
@@ -109,5 +114,6 @@ func parseCLIArgs() wecommon.Config {
 		RateLimitUserComputeTime:       *rateLimitUserComputeTime,
 		RateLimitWindow:                *rateLimitWindow,
 		RateLimitMaxConcurrentRequests: *rateLimitMaxConcurrentRequests,
+		Debug:                          *debugFlag,
 	}
 }
