@@ -18,6 +18,9 @@ var EmptyHash = gethcommon.Hash{}
 // it also returns the blocks that became canonical, and the once that are now the fork
 func LCA(ctx context.Context, newCanonical *types.Block, oldCanonical *types.Block, resolver *blockResolverInMem) (*common.ChainFork, error) {
 	b, cp, ncp, err := internalLCA(ctx, newCanonical, oldCanonical, resolver, []common.L1BlockHash{}, []common.L1BlockHash{})
+	if err != nil {
+		return nil, fmt.Errorf("could not calculate LCA. Cause: %w", err)
+	}
 	return &common.ChainFork{
 		NewCanonical:     newCanonical.Header(),
 		OldCanonical:     oldCanonical.Header(),

@@ -208,7 +208,7 @@ func (es *eventsStorage) storeTopics(ctx context.Context, dbTX *sql.Tx, eventTyp
 			// if no entry was found
 			topicId, err = es.storeTopic(ctx, dbTX, eventType, i, topic)
 			if err != nil {
-				return nil, fmt.Errorf("could not read the event topic. Cause: %w", err)
+				return nil, fmt.Errorf("could not store the event topic. Cause: %w", err)
 			}
 		}
 		topicIds[i-1] = &topicId
@@ -227,8 +227,11 @@ func (es *eventsStorage) storeTopic(ctx context.Context, dbTX *sql.Tx, eventType
 	if relevantAddress != nil {
 		var err error
 		relAddressId, err = es.readEOA(ctx, dbTX, *relevantAddress)
-		if err != nil {
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return 0, err
+		}
+		if relAddressId == nil {
+			es.logger.Debug("EOA not found when saving topic", "topic", topic.Hex())
 		}
 	}
 	eventTopicId, err := enclavedb.WriteEventTopic(ctx, dbTX, &topic, relAddressId, eventType.Id)
