@@ -2,6 +2,7 @@ package walletextension
 
 import (
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/subscription"
@@ -15,9 +16,14 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
+	"github.com/ten-protocol/go-ten/go/enclave/egoutils"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
+)
+
+var (
+	encryptionKeyFilepath = filepath.Join("/data", "encryption_key.json")
 )
 
 type Container struct {
@@ -39,6 +45,14 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		logger.Crit("unable to generate random encryption key", log.ErrKey, err)
 		os.Exit(1)
 	}
+
+	// seal the encryption key
+	err = egoutils.SealAndPersist(string(randomKey), encryptionKeyFilepath, true)
+	if err != nil {
+		logger.Error("unable to seal and persist encryption key", log.ErrKey, err)
+		// os.Exit(1)
+	}
+
 	// start the database
 	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride, randomKey)
 	if err != nil {
