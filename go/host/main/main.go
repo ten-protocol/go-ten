@@ -17,6 +17,11 @@ func main() {
 		panic(fmt.Errorf("could not parse config. Cause: %w", err))
 	}
 
+	err = os.Mkdir("/data", os.FileMode(0777))
+	if err != nil {
+		panic(fmt.Errorf("could not create /data directory: %w", err))
+	}
+
 	// temporary code to help identify OOM
 	go func() {
 		for {
