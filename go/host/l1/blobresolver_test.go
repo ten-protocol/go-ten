@@ -3,6 +3,7 @@ package l1
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"testing"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -29,4 +30,54 @@ func TestBlobResolver(t *testing.T) {
 	blobs, err := blobResolver.FetchBlobs(context.Background(), b, []gethcommon.Hash{gethcommon.HexToHash(vHash1), gethcommon.HexToHash(vHash2)})
 	require.NoError(t, err)
 	require.Len(t, blobs, 2)
+}
+
+// TestSepoliaBlobResolver checks the public node sepolia beacon APIs work as expected
+func TestSepoliaBlobResolver(t *testing.T) {
+	httpClient := ethadapter.NewBaseHTTPClient(new(http.Client), "https://ethereum-sepolia-beacon-api.publicnode.com/")
+
+	// get the latest slot from the beacon headers
+	var beaconHeaderResponse BeaconHeaderResponse
+	err := httpClient.Request(
+		context.Background(),
+		&beaconHeaderResponse,
+		"/eth/v1/beacon/headers/",
+		url.Values{}, // empty query params
+
+	)
+
+	require.NoError(t, err, "Expected no error when calling /eth/v1/beacon/headers")
+	require.NotEmpty(t, beaconHeaderResponse.Data)
+	require.NotEmpty(t, beaconHeaderResponse.Data[0].Header.Message.Slot)
+
+	slot := beaconHeaderResponse.Data[0].Header.Message.Slot
+
+	// get the sidecars for the latest slot from the beacon blob sidecars
+	// manually calling the endpoint instead of using the blob resolver since we dont want to convert the slot back to
+	// a block timestamp and convert back to the slot in FetchBlobs
+	var sidecarResponse ethadapter.APIGetBlobSidecarsResponse
+	err = httpClient.Request(
+		context.Background(),
+		&sidecarResponse,
+		"eth/v1/beacon/blob_sidecars/"+slot,
+		url.Values{}, // empty query params
+	)
+
+	require.NoError(t, err)
+	require.True(t, len(sidecarResponse.Data) > 1)
+}
+
+// Response struct for /eth/v1/beacon/headers/
+type BeaconHeaderResponse struct {
+	ExecutionOptimistic bool `json:"execution_optimistic"`
+	Finalized           bool `json:"finalized"`
+	Data                []struct {
+		Root      string `json:"root"`
+		Canonical bool   `json:"canonical"`
+		Header    struct {
+			Message struct {
+				Slot string `json:"slot"`
+			} `json:"message"`
+		} `json:"header"`
+	} `json:"data"`
 }
