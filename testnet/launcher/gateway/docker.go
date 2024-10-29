@@ -32,7 +32,7 @@ func (n *DockerGateway) Start() error {
 		"--nodePortWS", fmt.Sprintf("%d", n.cfg.tenNodeWSPort),
 		"--nodeHost", n.cfg.tenNodeHost,
 		"--dbType", "sqlite",
-		"--logPath", "gateway_logs.log",
+		"--logPath", "sys_out",
 		"--rateLimitUserComputeTime", fmt.Sprintf("%d", n.cfg.rateLimitUserComputeTime),
 	}
 
