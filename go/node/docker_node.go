@@ -119,11 +119,6 @@ func (d *DockerNode) startHost() error {
 
 	envVariables := d.cfg.ToEnvironmentVariables()
 
-	fmt.Println("Starting host with env variables: ")
-	for k, v := range envVariables {
-		fmt.Printf("%s=%s\n", k, v)
-	}
-
 	_, err = docker.StartNewContainer(d.cfg.Node.Name+"-host", d.hostImage, cmd, exposedPorts, envVariables, nil, nil, true)
 
 	return err
@@ -166,12 +161,6 @@ func (d *DockerNode) startEnclave() error {
 	} else {
 		envVariables["OE_SIMULATION"] = "1"
 		cmd = append(cmd, "-willAttest=false")
-	}
-
-	// dump the env variables to stdout
-	fmt.Println("Starting enclave with env variables: ")
-	for k, v := range envVariables {
-		fmt.Printf("%s=%s\n", k, v)
 	}
 
 	// we need the enclave volume to store the db credentials

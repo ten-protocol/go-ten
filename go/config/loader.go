@@ -48,8 +48,10 @@ func load(filePaths []string) (*TenConfig, error) {
 			// File found in embedded FS
 			v.SetConfigType("yaml")
 			if i == 0 { // only first file is read, the rest are 'merged'
+				fmt.Println("reading embedded config file: ", filePath)
 				err = v.ReadConfig(strings.NewReader(string(content)))
 			} else {
+				fmt.Println("merging embedded config file: ", filePath)
 				err = v.MergeConfig(strings.NewReader(string(content)))
 			}
 		} else {
@@ -62,8 +64,10 @@ func load(filePaths []string) (*TenConfig, error) {
 
 			v.SetConfigFile(filePath)
 			if i == 0 { // only first file is read, the rest are 'merged'
+				fmt.Println("reading config file: ", filePath)
 				err = v.ReadInConfig()
 			} else {
+				fmt.Println("merging config file: ", filePath)
 				err = v.MergeInConfig()
 			}
 		}

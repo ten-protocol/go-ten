@@ -1,6 +1,6 @@
 node:
    name: validator
-   type: validator
+   nodeType: validator
    isGenesis: false
    id: 0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A
    privateKey: ebca545772d6438bbbe1a16afbed455733eccf96157b52384f1722ea65ccfa89
