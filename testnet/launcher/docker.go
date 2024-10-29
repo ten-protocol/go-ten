@@ -6,7 +6,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/sanity-io/litter"
-	common2 "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/retry"
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/node"
@@ -48,7 +47,10 @@ func (t *Testnet) Start() error {
 		edgelessDBImage = "ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"
 	}
 
-	sequencerCfg, err := config.LoadTenConfigForEnv("local", "default/2-node-local-sequencer.yaml")
+	sequencerCfg, err := config.LoadTenConfig(
+		"defaults/testnet-launcher/1-testnet-launcher.yaml",
+		"defaults/testnet-launcher/2-sequencer.yaml",
+	)
 	if err != nil {
 		return fmt.Errorf("unable to load sequencer config - %w", err)
 	}
@@ -76,19 +78,16 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("sequencer TEN node not healthy - %w", err)
 	}
 
-	validatorNodeCfg, err := config.LoadTenConfigForEnv("local", "default/2-node-local-validator.yaml")
+	validatorNodeCfg, err := config.LoadTenConfig(
+		"defaults/testnet-launcher/1-testnet-launcher.yaml",
+		"defaults/testnet-launcher/2-validator.yaml",
+	)
 	if err != nil {
 		return fmt.Errorf("unable to load validator config - %w", err)
 	}
 	validatorNodeCfg.Network.L1.StartHash = common.HexToHash(networkConfig.L1StartHash)
 	validatorNodeCfg.Network.L1.L1Contracts.ManagementContract = common.HexToAddress(networkConfig.ManagementContractAddress)
 	validatorNodeCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkConfig.MessageBusAddress)
-	validatorNodeCfg.Node.NodeType = common2.Validator
-	validatorNodeCfg.Host.RPC.HTTPPort = 13010
-	validatorNodeCfg.Host.RPC.WSPort = 13011
-	validatorNodeCfg.Host.P2P.BindAddress = "validator-host:15010"
-	validatorNodeCfg.Enclave.RPC.BindAddress = "validator-enclave:11010"
-	validatorNodeCfg.Enclave.DB.EdgelessDBHost = "validator-edgelessdb"
 
 	validatorNode := node.NewDockerNode(validatorNodeCfg,
 		"testnetobscuronet.azurecr.io/obscuronet/host:latest",

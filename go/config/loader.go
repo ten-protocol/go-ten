@@ -12,11 +12,22 @@ import (
 
 // Any yaml files in the default config directory will be embedded into the binary
 //
-//go:embed default/*.yaml
+//go:embed defaults/*.yaml defaults/**/*.yaml
 var _baseConfig embed.FS
 
-// Load reads and applies the config files and environment variables, returning a TenConfig struct
-func Load(filePaths []string) (*TenConfig, error) {
+const _defaultBaseConfig = "defaults/0-base-config.yaml"
+
+// LoadTenConfig reads the base config file and applying additional files provided as well as any env variables,
+// returns a TenConfig struct
+func LoadTenConfig(files ...string) (*TenConfig, error) {
+	configFiles := []string{_defaultBaseConfig}
+	configFiles = append(configFiles, files...)
+	return load(configFiles)
+}
+
+// load reads and applies the config files and environment variables, returning a TenConfig struct
+// This method is not publicly available as we want callers to always use the base config file to avoid gotchas.
+func load(filePaths []string) (*TenConfig, error) {
 	// Print all environment variables for debugging
 	fmt.Println("Environment variables:")
 	for _, env := range os.Environ() {
@@ -36,15 +47,21 @@ func Load(filePaths []string) (*TenConfig, error) {
 		if content, err := _baseConfig.ReadFile(filePath); err == nil {
 			// File found in embedded FS
 			v.SetConfigType("yaml")
-			if i == 0 {
+			if i == 0 { // only first file is read, the rest are 'merged'
 				err = v.ReadConfig(strings.NewReader(string(content)))
 			} else {
 				err = v.MergeConfig(strings.NewReader(string(content)))
 			}
 		} else {
-			// Otherwise, treat it as a file system path
+			// Otherwise, check if it exists as a file in the filesystem
+			_, err = os.Stat(filePath)
+			if os.IsNotExist(err) {
+				fmt.Println("Config file not found: ", filePath)
+				return nil, err
+			}
+
 			v.SetConfigFile(filePath)
-			if i == 0 {
+			if i == 0 { // only first file is read, the rest are 'merged'
 				err = v.ReadInConfig()
 			} else {
 				err = v.MergeInConfig()
@@ -74,23 +91,4 @@ func Load(filePaths []string) (*TenConfig, error) {
 	fmt.Println("Successfully loaded Ten config.")
 	tenCfg.PrettyPrint()
 	return &tenCfg, nil
-}
-
-// LoadTenConfigForEnv loads the TenConfig for the given environment, merging the base config with the environment-specific one
-// and optionally any additional files provided (e.g. for node/network specific config)
-func LoadTenConfigForEnv(env string, files ...string) (*TenConfig, error) {
-	// Default base and environment-specific files
-	configFiles := []string{
-		"default/0-base-config.yaml",
-		fmt.Sprintf("default/1-env-%s.yaml", env),
-	}
-
-	// Append any provided files to the default ones
-	configFiles = append(configFiles, files...)
-
-	return Load(configFiles)
-}
-func DefaultTenConfig() (*TenConfig, error) {
-	// load embedded base config
-	return Load([]string{"default/0-base-config.yaml", "default/1-env-local.yaml"})
 }

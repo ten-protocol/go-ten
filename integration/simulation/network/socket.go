@@ -96,7 +96,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		}
 		hostP2PAddress := fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset+i)
 
-		tenCfg, err := config.LoadTenConfigForEnv("sim")
+		tenCfg, err := config.LoadTenConfig("defaults/sim/1-env-sim.yaml")
 		if err != nil {
 			return nil, fmt.Errorf("unable to load TEN config: %w", err)
 		}

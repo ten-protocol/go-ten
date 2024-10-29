@@ -12,7 +12,7 @@ import (
 
 // Runs an Obscuro host as a standalone process.
 func main() {
-	tenCfg, err := config.LoadTenConfigForEnv("local")
+	tenCfg, err := config.LoadTenConfig()
 	if err != nil {
 		fmt.Println("Error loading ten config:", err)
 		os.Exit(1)
