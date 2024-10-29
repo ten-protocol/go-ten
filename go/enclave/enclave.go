@@ -111,7 +111,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	}
 
 	// Initialise the database
-	cachingService := storage.NewCacheService(logger)
+	cachingService := storage.NewCacheService(logger, config.UseInMemoryDB)
 	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.ObscuroChainID))
 	storage := storage.NewStorageFromConfig(config, cachingService, chainConfig, logger)
 
@@ -165,7 +165,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
 	systemContractsWallet := system.GetPlaceholderWallet(chainConfig.ChainID, logger)
-	scb := system.NewSystemContractCallbacks(systemContractsWallet, logger)
+	scb := system.NewSystemContractCallbacks(systemContractsWallet, storage, logger)
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
@@ -244,6 +244,11 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	err = restoreStateDBCache(context.Background(), storage, registry, batchExecutor, genesis, logger)
 	if err != nil {
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
+	}
+
+	err = scb.Load()
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		logger.Crit("failed to load system contracts", log.ErrKey, err)
 	}
 
 	// TODO ensure debug is allowed/disallowed

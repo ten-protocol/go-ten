@@ -64,7 +64,7 @@ func (api *DebugAPI) EventLogRelevancy(ctx context.Context, crit common.FilterCr
 			tryUntilAuthorised: true,
 		},
 		"debug_eventLogRelevancy",
-		crit,
+		common.SerializableFilterCriteria(crit),
 	)
 	if err != nil {
 		return nil, err

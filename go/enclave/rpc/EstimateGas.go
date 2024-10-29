@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -53,6 +52,8 @@ func EstimateGasValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlo
 	return nil
 }
 
+// EstimateGasExecute - performs the gas estimation based on the provided parameters and the local environment configuration.
+// Will accommodate l1 gas cost and stretch the final gas estimation.
 func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64], rpc *EncryptionManager) error {
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
@@ -94,7 +95,11 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	// TODO: Change to fixed time period quotes, rather than this.
 	publishingGas = publishingGas.Mul(publishingGas, gethcommon.Big2)
 
-	executionGasEstimate, gasPrice, err := rpc.doEstimateGas(builder.ctx, txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
+	// Run the execution simulation based on stateDB after head batch.
+	// Notice that unfortunately, some slots might ve considered warm, which skews the estimation.
+	// The single pass will run once at the highest gas cap and return gas used. Not completely reliable,
+	// but is quick.
+	executionGasEstimate, gasPrice, err := rpc.estimateGasSinglePass(builder.ctx, txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
@@ -117,43 +122,123 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	if balance.ToInt().Cmp(big.NewInt(0).Mul(gasPrice, big.NewInt(0).SetUint64(totalGasEstimateUint64))) < 0 {
 		return fmt.Errorf("insufficient funds for gas estimate")
 	}
+	rpc.logger.Debug("Estimation breakdown", "gasPrice", gasPrice, "executionGasEstimate", uint64(executionGasEstimate), "publishingGas", publishingGas, "totalGasEstimate", uint64(totalGasEstimate))
 	builder.ReturnValue = &totalGasEstimate
 	return nil
 }
 
-// DoEstimateGas returns the estimation of minimum gas required to execute transaction
-// This is a copy of https://github.com/ethereum/go-ethereum/blob/master/internal/ethapi/api.go#L1055
-// there's a high complexity to the method due to geth business rules (which is mimic'd here)
-// once the work of obscuro gas mechanics is established this method should be simplified
-func (rpc *EncryptionManager) doEstimateGas(ctx context.Context, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, *big.Int, common.SystemError) { //nolint: gocognit
-	// Binary search the gas requirement, as it may be higher than the amount used
-	var ( //nolint: revive
-		lo  = params.TxGas - 1
-		hi  uint64
-		cap uint64 //nolint:predeclared
-	)
-	// Use zero address if sender unspecified.
-	if args.From == nil {
-		args.From = new(gethcommon.Address)
+func (rpc *EncryptionManager) calculateMaxGasCap(ctx context.Context, gasCap uint64, argsGas *hexutil.Uint64) uint64 {
+	// Fetch the current batch header to get the batch gas limit
+	batchHeader, err := rpc.storage.FetchHeadBatchHeader(ctx)
+	if err != nil {
+		rpc.logger.Error("Failed to fetch batch header", "error", err)
+		return gasCap
 	}
-	// Determine the highest gas limit can be used during the estimation.
-	if args.Gas != nil && uint64(*args.Gas) >= params.TxGas {
-		hi = uint64(*args.Gas)
-	} else {
-		// todo (#627) - review this with the gas mechanics/tokenomics work
-		/*
-			//Retrieve the block to act as the gas ceiling
-			block, Err := b.BlockByNumberOrHash(ctx, blockNrOrHash)
-			if Err != nil {
-				return 0, Err
-			}
-			if block == nil {
-				return 0, errors.New("block not found")
-			}
-			hi = block.GasLimit()
-		*/
-		hi = rpc.config.GasLocalExecutionCapFlag
+
+	// Determine the gas limit based on the batch header
+	batchGasLimit := batchHeader.GasLimit
+	if batchGasLimit < gasCap {
+		gasCap = batchGasLimit
 	}
+
+	// If args.Gas is specified, take the minimum of gasCap and args.Gas
+	if argsGas != nil {
+		argsGasUint64 := uint64(*argsGas)
+		if argsGasUint64 < gasCap {
+			rpc.logger.Debug("Gas cap adjusted based on args.Gas",
+				"argsGas", argsGasUint64,
+				"previousGasCap", gasCap,
+				"newGasCap", argsGasUint64,
+			)
+			gasCap = argsGasUint64
+		}
+	}
+
+	return gasCap
+}
+
+// This adds a bit of an overhead to gas estimation. Fixes issues when calling proxies, but needs more investigation.
+// Not sure why simulation is non consistent.
+func calculateProxyOverhead(txArgs *gethapi.TransactionArgs) uint64 {
+	if txArgs == nil || txArgs.Data == nil {
+		return 0
+	}
+
+	calldata := []byte(*txArgs.Data)
+
+	// Base costs
+	overhead := uint64(2200) // SLOAD (cold) + DELEGATECALL
+
+	// Memory operations
+	dataSize := uint64(len(calldata))
+	memCost := (dataSize * 3) * 2 // calldatacopy in both contexts
+
+	// Memory expansion
+	words := (dataSize + 31) / 32
+	memCost += words * 3
+
+	return overhead + memCost
+}
+
+// estimateGasSinglePass - deduces the simulation params from the call parameters and the local environment configuration.
+// will override the gas limit with one provided in transaction if lower. Furthermore figures out the gas cap and the allowance
+// for the from address.
+// In the binary search approach geth uses, the high of the range for gas limit is where our single pass runs.
+// For example, if you estimate gas for a swap, the simulation EVM will be configured to run at the highest possible gas cap.
+// This allows the maximum gas for running the call. Then we look at the gas used and return this with a couple modifications.
+// The modifications are an overhead buffer and a 20% increase to account for warm storage slots. This is because the stateDB
+// for the head batch might not be fully clean in terms of the running call. Cold storage slots cost far more than warm ones to
+// read and write.
+func (rpc *EncryptionManager) estimateGasSinglePass(ctx context.Context, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, *big.Int, common.SystemError) {
+	maxGasCap := rpc.calculateMaxGasCap(ctx, gasCap, args.Gas)
+	// allowance will either be the maxGasCap or the balance allowance.
+	// If the users funds are floaty, this might cause issues combined with the l1 pricing.
+	allowance, feeCap, err := rpc.normalizeFeeCapAndAdjustGasLimit(ctx, args, blkNumber, maxGasCap)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	// Set the gas limit to the provided gasCap
+	args.Gas = (*hexutil.Uint64)(&allowance)
+
+	// Perform a single gas estimation pass using isGasEnough
+	failed, result, err := rpc.isGasEnough(ctx, args, allowance, blkNumber)
+	if err != nil {
+		// Return zero values and the encountered error if estimation fails
+		return 0, nil, err
+	}
+
+	if failed {
+		if result != nil && result.Err != vm.ErrOutOfGas { //nolint: errorlint
+			if len(result.Revert()) > 0 {
+				return 0, gethcommon.Big0, newRevertError(result)
+			}
+			return 0, gethcommon.Big0, result.Err
+		}
+		// If the gas cap is insufficient, return an appropriate error
+		return 0, nil, fmt.Errorf("gas required exceeds the provided gas cap (%d)", gasCap)
+	}
+
+	if result == nil {
+		// If there's no result, something went wrong
+		return 0, nil, fmt.Errorf("no execution result returned")
+	}
+
+	// Extract the gas used from the execution result.
+	// Add an overhead buffer to account for the fact that the execution might not be able to be completed in the same batch.
+	// There can be further discrepancies in the execution due to storage and other factors.
+	gasUsedBig := big.NewInt(0).SetUint64(result.UsedGas)
+	gasUsedBig.Add(gasUsedBig, big.NewInt(0).SetUint64(calculateProxyOverhead(args)))
+	// Add 20% overhead to gas used - this is a rough accommodation for
+	// warm storage slots.
+	gasUsedBig.Mul(gasUsedBig, big.NewInt(120))
+	gasUsedBig.Div(gasUsedBig, big.NewInt(100))
+	gasUsed := hexutil.Uint64(gasUsedBig.Uint64())
+
+	return gasUsed, feeCap, nil
+}
+
+func (rpc *EncryptionManager) normalizeFeeCapAndAdjustGasLimit(ctx context.Context, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, hi uint64) (uint64, *big.Int, error) {
 	// Normalize the max fee per gas the call is willing to spend.
 	var feeCap *big.Int
 	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
@@ -165,6 +250,7 @@ func (rpc *EncryptionManager) doEstimateGas(ctx context.Context, args *gethapi.T
 	} else {
 		feeCap = gethcommon.Big0
 	}
+
 	// Recap the highest gas limit with account's available balance.
 	if feeCap.BitLen() != 0 { //nolint:nestif
 		balance, err := rpc.chain.GetBalanceAtBlock(ctx, *args.From, blkNumber)
@@ -187,73 +273,18 @@ func (rpc *EncryptionManager) doEstimateGas(ctx context.Context, args *gethapi.T
 			if transfer == nil {
 				transfer = new(hexutil.Big)
 			}
-			rpc.logger.Debug("Gas estimation capped by limited funds", "original", hi, "balance", balance,
-				"sent", transfer.ToInt(), "maxFeePerGas", feeCap, "fundable", allowance)
+			rpc.logger.Debug("Gas estimation capped by limited funds",
+				"original", hi,
+				"balance", balance,
+				"sent", transfer.ToInt(),
+				"maxFeePerGas", feeCap,
+				"fundable", allowance,
+			)
 			hi = allowance.Uint64()
 		}
 	}
-	// Recap the highest gas allowance with specified gascap.
-	if gasCap != 0 && hi > gasCap {
-		rpc.logger.Debug("Caller gas above allowance, capping", "requested", hi, "cap", gasCap)
-		hi = gasCap
-	}
-	cap = hi //nolint: revive
-	isFailedAtMax, _, err := rpc.isGasEnough(ctx, args, hi, blkNumber)
-	// TODO: Workaround for the weird conensus nil statement down, which gets interwined with evm errors.
-	// Here if there is a consensus error - we'd bail. If the tx fails at max gas - we'd bail (probably bad)
-	if err != nil {
-		return 0, gethcommon.Big0, err
-	}
-	if isFailedAtMax {
-		return 0, gethcommon.Big0, fmt.Errorf("gas required exceeds allowance (%d)", cap)
-	}
 
-	// Execute the binary search and hone in on an isGasEnough gas limit
-	for lo+1 < hi {
-		mid := (hi + lo) / 2
-		if mid > lo*2 {
-			// Most txs don't need much higher gas limit than their gas used, and most txs don't
-			// require near the full block limit of gas, so the selection of where to bisect the
-			// range here is skewed to favor the low side.
-			mid = lo * 2
-		}
-		failed, _, _ := rpc.isGasEnough(ctx, args, mid, blkNumber)
-		// TODO @siliev: The following statement is bullshit. I dont know why its here.
-		// We might have masked our internal workings, or mixed up with how geth works.
-		// Either way transaction reverted is counted as a consensus error, rather than
-		// EVM failure.
-
-		// If the error is not nil(consensus error), it means the provided message
-		// call or transaction will never be accepted no matter how much gas it is
-		// assigned. Return the error directly, don't struggle any more.
-		/*if err != nil && isFailedAtMax {
-			return 0, gethcommon.Big0, err
-		}*/
-		if failed {
-			lo = mid
-		} else {
-			hi = mid
-		}
-	}
-
-	// Reject the transaction as invalid if it still fails at the highest allowance
-	if hi == cap { //nolint:nestif
-		failed, result, err := rpc.isGasEnough(ctx, args, hi, blkNumber)
-		if err != nil {
-			return 0, gethcommon.Big0, err
-		}
-		if failed {
-			if result != nil && result.Err != vm.ErrOutOfGas { //nolint: errorlint
-				if len(result.Revert()) > 0 {
-					return 0, gethcommon.Big0, newRevertError(result)
-				}
-				return 0, gethcommon.Big0, result.Err
-			}
-			// Otherwise, the specified gas cap is too low
-			return 0, gethcommon.Big0, fmt.Errorf("gas required exceeds allowance (%d)", cap)
-		}
-	}
-	return hexutil.Uint64(hi), feeCap, nil
+	return hi, feeCap, nil
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction

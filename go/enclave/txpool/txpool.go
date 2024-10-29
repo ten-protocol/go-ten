@@ -72,7 +72,11 @@ func (t *TxPool) Start() error {
 // PendingTransactions returns all pending transactions grouped per address and ordered per nonce
 func (t *TxPool) PendingTransactions() map[gethcommon.Address][]*gethtxpool.LazyTransaction {
 	// todo - for now using the base fee from the block
-	baseFee := t.Chain.CurrentBlock().BaseFee
+	currentBlock := t.Chain.CurrentBlock()
+	if currentBlock == nil {
+		return make(map[gethcommon.Address][]*gethtxpool.LazyTransaction)
+	}
+	baseFee := currentBlock.BaseFee
 	return t.pool.Pending(gethtxpool.PendingFilter{
 		BaseFee:      uint256.NewInt(baseFee.Uint64()),
 		OnlyPlainTxs: true,
