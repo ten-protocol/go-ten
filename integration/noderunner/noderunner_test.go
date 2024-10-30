@@ -110,18 +110,18 @@ func TestCanStartStandaloneTenHostAndEnclave(t *testing.T) {
 	t.Fatalf("Zero rollups have been produced after ten seconds. Something is wrong. Latest error was: %s", err)
 }
 
-func createInMemoryNode() node.Node {
-	tenCfg, err := config.DefaultTenConfig()
+func createInMemoryNode(startPort int) node.Node {
+	tenCfg, err := config.LoadTenConfig()
 	if err != nil {
 		panic(err)
 	}
 
 	tenCfg.Node.PrivateKeyString = integration.GethNodePK
 	tenCfg.Node.ID = common.HexToAddress(integration.GethNodeAddress)
-	tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("0.0.0.0:%d", _startPort+integration.DefaultEnclaveOffset)
-	tenCfg.Host.RPC.HTTPPort = _startPort + integration.DefaultHostRPCHTTPOffset
-	tenCfg.Host.RPC.WSPort = _startPort + integration.DefaultHostRPCWSOffset
-	tenCfg.Host.L1.WebsocketURL = fmt.Sprintf("ws://%s:%d", _localhost, _startPort+integration.DefaultGethWSPortOffset)
+	tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("0.0.0.0:%d", startPort+integration.DefaultEnclaveOffset)
+	tenCfg.Host.RPC.HTTPPort = uint64(startPort) + integration.DefaultHostRPCHTTPOffset
+	tenCfg.Host.RPC.WSPort = uint64(startPort) + integration.DefaultHostRPCWSOffset
+	tenCfg.Host.L1.WebsocketURL = fmt.Sprintf("ws://%s:%d", _localhost, startPort+integration.DefaultGethWSPortOffset)
 	tenCfg.Node.IsGenesis = true
 
 	return NewInMemNode(tenCfg)
