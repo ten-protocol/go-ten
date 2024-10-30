@@ -93,7 +93,7 @@ type BatchRegistry interface {
 	GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error)
 
 	// GetBatchState - creates a stateDB for the block hash
-	GetBatchState(ctx context.Context, hash *common.L2BatchHash) (*state.StateDB, error)
+	GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, error)
 
 	// GetBatchAtHeight - same as `GetBatchStateAtHeight`, but instead returns the full batch
 	// rather than its stateDB only.
@@ -121,8 +121,7 @@ type RollupProducer interface {
 }
 
 type RollupConsumer interface {
-	// ProcessRollupsInBlock - extracts the rollup from the block's transactions
-	// and verifies its integrity, saving and processing any batches that have
-	// not been seen previously.
-	ProcessRollupsInBlock(ctx context.Context, b *common.BlockAndReceipts) error
+	// ProcessBlobsInBlock - extracts the blob hashes from the block's transactions and builds the blob hashes from the blobs,
+	// compares this with the hashes seen in the block.
+	ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts) error
 }

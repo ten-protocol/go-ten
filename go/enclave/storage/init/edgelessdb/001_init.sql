@@ -87,6 +87,8 @@ create table if not exists tendb.tx
     id             INTEGER AUTO_INCREMENT,
     hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
+    to_address     int,
+    type           SMALLINT   NOT NULL,
     sender_address int        NOT NULL,
     idx            int        NOT NULL,
     batch_height   int        NOT NULL,
@@ -98,10 +100,14 @@ create table if not exists tendb.tx
 
 create table if not exists tendb.receipt
 (
-    id      INTEGER AUTO_INCREMENT,
-    content mediumblob,
-    tx      int,
-    batch   int NOT NULL,
+    id                       INTEGER AUTO_INCREMENT,
+    post_state               binary(32),
+    status                   TINYINT not null,
+    cumulative_gas_used      BIGINT  not null,
+    effective_gas_price      BIGINT,
+    created_contract_address binary(20),
+    tx                       int,
+    batch                    int     NOT NULL,
     INDEX (batch),
     INDEX (tx, batch),
     primary key (id)
@@ -114,6 +120,7 @@ create table if not exists tendb.contract
     creator         int        NOT NULL,
     auto_visibility boolean    NOT NULL,
     transparent     boolean,
+    tx              INTEGER,
     primary key (id),
     INDEX USING HASH (address)
 );

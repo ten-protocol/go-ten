@@ -116,7 +116,7 @@ func NewEnclave(
 	}
 
 	// Initialise the database
-	cachingService := storage.NewCacheService(logger)
+	cachingService := storage.NewCacheService(logger, config.UseInMemoryDB)
 	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.ObscuroChainID))
 	storage := storage.NewStorageFromConfig(config, cachingService, chainConfig, logger)
 
@@ -170,7 +170,7 @@ func NewEnclave(
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
 	systemContractsWallet := system.GetPlaceholderWallet(chainConfig.ChainID, logger)
-	scb := system.NewSystemContractCallbacks(systemContractsWallet, logger)
+	scb := system.NewSystemContractCallbacks(systemContractsWallet, storage, logger)
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
@@ -242,13 +242,18 @@ func NewEnclave(
 		registry,
 		config.GasLocalExecutionCapFlag,
 	)
-	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, registry, crossChainProcessors, service, config, gasOracle, storage, blockProcessor, chain, logger)
+	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, cachingService, registry, crossChainProcessors, service, config, gasOracle, storage, blockProcessor, chain, logger)
 	subscriptionManager := events.NewSubscriptionManager(storage, registry, config.ObscuroChainID, logger)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
 	err = restoreStateDBCache(context.Background(), storage, registry, batchExecutor, genesis, logger)
 	if err != nil {
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
+	}
+
+	err = scb.Load()
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		logger.Crit("failed to load system contracts", log.ErrKey, err)
 	}
 
 	// TODO ensure debug is allowed/disallowed
@@ -421,7 +426,7 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceipt, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveImpl) SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceiptAndBlobs) (*common.BlockSubmissionResponse, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitL1Block with the enclave stopping"))
 	}
@@ -468,7 +473,7 @@ func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndRece
 		return nil, err
 	}
 
-	err = e.rollupConsumer.ProcessRollupsInBlock(ctx, br)
+	err = e.rollupConsumer.ProcessBlobsInBlock(ctx, br)
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
@@ -511,7 +516,6 @@ func (e *enclaveImpl) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested SubmitBatch with the enclave stopping"))
 	}
-
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "SubmitBatch call completed.", log.BatchHashKey, extBatch.Hash())
 
 	e.logger.Info("Received new p2p batch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
@@ -587,6 +591,7 @@ func (e *enclaveImpl) CreateRollup(ctx context.Context, fromSeqNo uint64) (*comm
 	}
 
 	rollup, err := e.Sequencer().CreateRollup(ctx, fromSeqNo)
+	// TODO do we need to store the blob hashes here so we can check them against our records?
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
@@ -692,12 +697,12 @@ func (e *enclaveImpl) GetBalance(ctx context.Context, encryptedParams common.Enc
 	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetBalanceValidate, rpc.GetBalanceExecute)
 }
 
-func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, common.SystemError) {
+func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash gethrpc.BlockNumberOrHash) ([]byte, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetCode with the enclave stopping"))
 	}
 
-	stateDB, err := e.registry.GetBatchState(ctx, batchHash)
+	stateDB, err := e.registry.GetBatchState(ctx, blockNrOrHash)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not create stateDB. Cause: %w", err))
 	}
@@ -837,8 +842,7 @@ func (e *enclaveImpl) DebugTraceTransaction(ctx context.Context, txHash gethcomm
 	return jsonMsg, nil
 }
 
-func (e *enclaveImpl) DebugEventLogRelevancy(ctx context.Context, txHash gethcommon.Hash) (json.RawMessage, common.SystemError) {
-	// ensure the enclave is running
+func (e *enclaveImpl) DebugEventLogRelevancy(ctx context.Context, encryptedParams common.EncryptedParamsDebugLogRelevancy) (*responses.DebugLogs, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested DebugEventLogRelevancy with the enclave stopping"))
 	}
@@ -848,16 +852,7 @@ func (e *enclaveImpl) DebugEventLogRelevancy(ctx context.Context, txHash gethcom
 		return nil, responses.ToInternalError(fmt.Errorf("debug namespace not enabled"))
 	}
 
-	jsonMsg, err := e.debugger.DebugEventLogRelevancy(ctx, txHash)
-	if err != nil {
-		if errors.Is(err, syserr.InternalError{}) {
-			return nil, responses.ToInternalError(err)
-		}
-		// TODO *Pedro* MOVE THIS TO Enclave Response
-		return json.RawMessage(err.Error()), nil
-	}
-
-	return jsonMsg, nil
+	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.DebugLogsValidate, rpc.DebugLogsExecute)
 }
 
 func (e *enclaveImpl) GetTotalContractCount(ctx context.Context) (*big.Int, common.SystemError) {
@@ -939,7 +934,7 @@ func restoreStateDBCache(ctx context.Context, storage storage.Storage, registry 
 //
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
 func stateDBAvailableForBatch(ctx context.Context, registry components.BatchRegistry, hash common.L2BatchHash) bool {
-	_, err := registry.GetBatchState(ctx, &hash)
+	_, err := registry.GetBatchState(ctx, gethrpc.BlockNumberOrHash{BlockHash: &hash})
 	return err == nil
 }
 

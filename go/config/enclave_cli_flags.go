@@ -14,6 +14,7 @@ const (
 	NodeTypeFlag                  = "nodeType"
 	L1ChainIDFlag                 = "l1ChainID"
 	ObscuroChainIDFlag            = "obscuroChainID"
+	L1BeaconUrlFlag               = "l1BeaconUrl"
 	WillAttestFlag                = "willAttest"
 	ValidateL1BlocksFlag          = "validateL1Blocks"
 	ManagementContractAddressFlag = "managementContractAddress"
@@ -51,7 +52,7 @@ var EnclaveFlags = map[string]*flag.TenFlag{
 	MinGasPriceFlag:               flag.NewInt64Flag(MinGasPriceFlag, 1, "The minimum gas price for mining a transaction"),
 	MessageBusAddressFlag:         flag.NewStringFlag(MessageBusAddressFlag, "", "The address of the L1 message bus contract owned by the management contract."),
 	MaxBatchSizeFlag:              flag.NewUint64Flag(MaxBatchSizeFlag, 1024*55, "The maximum size a batch is allowed to reach uncompressed"),
-	MaxRollupSizeFlag:             flag.NewUint64Flag(MaxRollupSizeFlag, 1024*64, "The maximum size a rollup is allowed to reach"),
+	MaxRollupSizeFlag:             flag.NewUint64Flag(MaxRollupSizeFlag, 1024*128, "The maximum size a rollup is allowed to reach"),
 	L2BaseFeeFlag:                 flag.NewUint64Flag(L2BaseFeeFlag, params.InitialBaseFee, ""),
 	L2CoinbaseFlag:                flag.NewStringFlag(L2CoinbaseFlag, "0xd6C9230053f45F873Cb66D8A02439380a37A4fbF", ""),
 	GasBatchExecutionLimit:        flag.NewUint64Flag(GasBatchExecutionLimit, 3_000_000_000, "Max gas that can be executed in a single batch"),
@@ -62,6 +63,7 @@ var EnclaveFlags = map[string]*flag.TenFlag{
 	ProfilerEnabledFlag:           flag.NewBoolFlag(ProfilerEnabledFlag, false, "Runs a profiler instance (Defaults to false)"),
 	DebugNamespaceEnabledFlag:     flag.NewBoolFlag(DebugNamespaceEnabledFlag, false, "Whether the debug namespace is enabled"),
 	GasLocalExecutionCapFlag:      flag.NewUint64Flag(GasLocalExecutionCapFlag, 4_000_000_000, "Max gas usage when executing local transactions"),
+	L1BeaconUrlFlag:               flag.NewStringFlag(L1BeaconUrlFlag, "127.0.0.1:12600", "The beacon chain gateway endpoint used in docker config"),
 }
 
 // enclaveRestrictedFlags are the flags that the enclave can receive ONLY over the Ego signed enclave.json

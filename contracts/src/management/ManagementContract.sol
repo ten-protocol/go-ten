@@ -149,7 +149,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     }
 
     // solc-ignore-next-line unused-param
-    function AddRollup(Structs.MetaRollup calldata r, string calldata  _rollupData, Structs.HeaderCrossChainData calldata) public {
+    function AddRollup(Structs.MetaRollup calldata r, Structs.HeaderCrossChainData calldata) public {
         address enclaveID = ECDSA.recover(r.Hash, r.Signature);
         // revert if the EnclaveID is not attested
         require(attested[enclaveID], "enclaveID not attested");
@@ -186,7 +186,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         bytes32 msgHash = keccak256(abi.encode(_msg));
         require(isWithdrawalSpent[msgHash] == false, "withdrawal already spent");
         isWithdrawalSpent[keccak256(abi.encode(_msg))] = true;
-        
+
         messageBus.receiveValueFromL2(_msg.receiver, _msg.amount);
     }
 

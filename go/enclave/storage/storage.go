@@ -33,7 +33,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/common/tracers"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 
@@ -94,7 +93,7 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, cha
 		stateCache:     stateDB,
 		chainConfig:    chainConfig,
 		cachingService: cachingService,
-		eventsStorage:  newEventsStorage(cachingService, logger),
+		eventsStorage:  newEventsStorage(cachingService, backingDB, logger),
 		logger:         logger,
 	}
 }
@@ -177,11 +176,21 @@ func (s *storageImpl) FetchBatchHeader(ctx context.Context, hash common.L2BatchH
 
 func (s *storageImpl) FetchBatchTransactionsBySeq(ctx context.Context, seqNo uint64) ([]*common.L2Tx, error) {
 	defer s.logDuration("FetchBatchTransactionsBySeq", measure.NewStopwatch())
-	batch, err := s.FetchBatchHeaderBySeqNo(ctx, seqNo)
+	batch, err := s.cachingService.ReadBatch(ctx, seqNo, func(_ any) (*core.Batch, error) {
+		batchHeader, err := s.FetchBatchHeaderBySeqNo(ctx, seqNo)
+		if err != nil {
+			return nil, err
+		}
+		txs, err := enclavedb.ReadBatchTransactions(ctx, s.db.GetSQLDB(), batchHeader.Number.Uint64())
+		if err != nil {
+			return nil, err
+		}
+		return &core.Batch{Header: batchHeader, Transactions: txs}, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	return enclavedb.ReadBatchTransactions(ctx, s.db.GetSQLDB(), batch.Number.Uint64())
+	return batch.Transactions, nil
 }
 
 func (s *storageImpl) FetchBatchByHeight(ctx context.Context, height uint64) (*core.Batch, error) {
@@ -259,14 +268,14 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Header, chain
 		if err != nil {
 			return err
 		}
-	}
 
-	// double check that there is always a single canonical batch or block per layer
-	// only for debugging
-	//err = enclavedb.CheckCanonicalValidity(ctx, dbTx)
-	//if err != nil {
-	//	return err
-	//}
+		// sanity check that there is always a single canonical batch or block per layer
+		// called after forks, for the latest 50 blocks
+		err = enclavedb.CheckCanonicalValidity(ctx, dbTx, blockId-50)
+		if err != nil {
+			s.logger.Crit("Should not happen.", log.ErrKey, err)
+		}
+	}
 
 	if err := dbTx.Commit(); err != nil {
 		return fmt.Errorf("4. could not store block %s. Cause: %w", block.Hash(), err)
@@ -421,9 +430,17 @@ func (s *storageImpl) GetTransaction(ctx context.Context, txHash gethcommon.Hash
 	return enclavedb.ReadTransaction(ctx, s.db.GetSQLDB(), txHash)
 }
 
-func (s *storageImpl) GetTransactionReceipt(ctx context.Context, txHash gethcommon.Hash) (*types.Receipt, error) {
-	defer s.logDuration("GetTransactionReceipt", measure.NewStopwatch())
-	return enclavedb.ReadReceipt(ctx, s.db.GetSQLDB(), txHash, s.chainConfig)
+func (s *storageImpl) GetFilteredInternalReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error) {
+	defer s.logDuration("GetFilteredInternalReceipt", measure.NewStopwatch())
+	if !syntheticTx && requester == nil {
+		return nil, errors.New("requester address is required for non-synthetic transactions")
+	}
+	return enclavedb.ReadReceipt(ctx, s.db.GetSQLDB(), txHash, requester)
+}
+
+func (s *storageImpl) ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error) {
+	defer s.logDuration("ExistsTransactionReceipt", measure.NewStopwatch())
+	return enclavedb.ExistsReceipt(ctx, s.db.GetSQLDB(), txHash)
 }
 
 func (s *storageImpl) FetchAttestedKey(ctx context.Context, address gethcommon.Address) (*ecdsa.PublicKey, error) {
@@ -477,7 +494,7 @@ func (s *storageImpl) FetchBatchBySeqNo(ctx context.Context, seqNum uint64) (*co
 
 func (s *storageImpl) FetchBatchHeaderBySeqNo(ctx context.Context, seqNum uint64) (*common.BatchHeader, error) {
 	defer s.logDuration("FetchBatchHeaderBySeqNo", measure.NewStopwatch())
-	return s.cachingService.ReadBatch(ctx, seqNum, func(seq any) (*common.BatchHeader, error) {
+	return s.cachingService.ReadBatchHeader(ctx, seqNum, func(seq any) (*common.BatchHeader, error) {
 		return enclavedb.ReadBatchHeaderBySeqNo(ctx, s.db.GetSQLDB(), seqNum)
 	})
 }
@@ -542,12 +559,12 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 
 	// only insert transactions if this is the first time a batch of this height is created
 	if !existsHeight {
-		senders, err := s.handleTxSenders(ctx, batch, dbTx)
+		senders, toContracts, err := s.handleTxSendersAndReceivers(ctx, batch, dbTx)
 		if err != nil {
 			return err
 		}
 
-		if err := enclavedb.WriteTransactions(ctx, dbTx, batch, senders); err != nil {
+		if err := enclavedb.WriteTransactions(ctx, dbTx, batch, senders, toContracts); err != nil {
 			return fmt.Errorf("could not write transactions. Cause: %w", err)
 		}
 	}
@@ -560,21 +577,34 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 	return nil
 }
 
-func (s *storageImpl) handleTxSenders(ctx context.Context, batch *core.Batch, dbTx *sql.Tx) ([]*uint64, error) {
-	senders := make([]*uint64, len(batch.Transactions))
+func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, batch *core.Batch, dbTx *sql.Tx) ([]uint64, []*uint64, error) {
+	senders := make([]uint64, len(batch.Transactions))
+	toContracts := make([]*uint64, len(batch.Transactions))
 	// insert the tx signers as externally owned accounts
 	for i, tx := range batch.Transactions {
-		sender, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+		sender, err := core.GetTxSigner(tx)
 		if err != nil {
-			return nil, fmt.Errorf("could not read tx sender. Cause: %w", err)
+			return nil, nil, fmt.Errorf("could not read tx sender. Cause: %w", err)
 		}
 		eoaID, err := s.readOrWriteEOA(ctx, dbTx, sender)
 		if err != nil {
-			return nil, fmt.Errorf("could not insert EOA. cause: %w", err)
+			return nil, nil, fmt.Errorf("could not insert EOA. cause: %w", err)
 		}
-		senders[i] = eoaID
+		s.logger.Trace("Tx sender", "tx", tx.Hash(), "sender", sender.Hex(), "eoaId", *eoaID)
+		senders[i] = *eoaID
+
+		to := tx.To()
+		if to != nil {
+			ctr, err := s.ReadContract(ctx, *to)
+			if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+				return nil, nil, fmt.Errorf("could not read contract. cause: %w", err)
+			}
+			if ctr != nil {
+				toContracts[i] = &ctr.Id
+			}
+		}
 	}
-	return senders, nil
+	return senders, toContracts, nil
 }
 
 func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, results []*core.TxExecResult) error {
@@ -731,9 +761,9 @@ func (s *storageImpl) FetchRollupMetadata(ctx context.Context, hash common.L2Rol
 	return enclavedb.FetchRollupMetadata(ctx, s.db.GetSQLDB(), hash)
 }
 
-func (s *storageImpl) DebugGetLogs(ctx context.Context, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
+func (s *storageImpl) DebugGetLogs(ctx context.Context, from *big.Int, to *big.Int, address gethcommon.Address, eventSig gethcommon.Hash) ([]*common.DebugLogVisibility, error) {
 	defer s.logDuration("DebugGetLogs", measure.NewStopwatch())
-	return enclavedb.DebugGetLogs(ctx, s.db.GetSQLDB(), txHash)
+	return enclavedb.DebugGetLogs(ctx, s.db.GetSQLDB(), from, to, address, eventSig)
 }
 
 func (s *storageImpl) FilterLogs(
@@ -775,9 +805,9 @@ func (s *storageImpl) BatchWasExecuted(ctx context.Context, hash common.L2BatchH
 	return enclavedb.BatchWasExecuted(ctx, s.db.GetSQLDB(), hash)
 }
 
-func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
+func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, requester *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
 	defer s.logDuration("GetTransactionsPerAddress", measure.NewStopwatch())
-	return enclavedb.GetTransactionsPerAddress(ctx, s.db.GetSQLDB(), s.chainConfig, address, pagination)
+	return enclavedb.GetTransactionsPerAddress(ctx, s.db.GetSQLDB(), requester, pagination)
 }
 
 func (s *storageImpl) CountTransactionsPerAddress(ctx context.Context, address *gethcommon.Address) (uint64, error) {
@@ -810,6 +840,15 @@ func (s *storageImpl) ReadContract(ctx context.Context, address gethcommon.Addre
 	}
 	defer dbtx.Rollback()
 	return enclavedb.ReadContractByAddress(ctx, dbtx, address)
+}
+
+func (s *storageImpl) ReadEventType(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error) {
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+	return s.eventsStorage.readEventType(ctx, dbTx, contractAddress, eventSignature)
 }
 
 func (s *storageImpl) logDuration(method string, stopWatch *measure.Stopwatch) {

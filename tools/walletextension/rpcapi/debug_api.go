@@ -3,11 +3,9 @@ package rpcapi
 import (
 	"context"
 
-	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/common/tracers"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
@@ -52,8 +50,11 @@ func (api *DebugAPI) SetHead(number hexutil.Uint64) {
 }
 
 // EventLogRelevancy - specific to TEN
-func (api *DebugAPI) EventLogRelevancy(ctx context.Context, crit common.FilterCriteria) ([]*tracers.DebugLogs, error) {
-	l, err := ExecAuthRPC[[]*tracers.DebugLogs](
+// the FilterCriteria must have a single contract address and only the topics on the position 0 ( event signatures)
+// the caller must be the contract deployer
+// Intended for debug purposes for the owner of a contract. It doesn't reveal any user information.
+func (api *DebugAPI) EventLogRelevancy(ctx context.Context, crit common.FilterCriteria) ([]*common.DebugLogVisibility, error) {
+	l, err := ExecAuthRPC[[]*common.DebugLogVisibility](
 		ctx,
 		api.we,
 		&ExecCfg{
@@ -63,7 +64,7 @@ func (api *DebugAPI) EventLogRelevancy(ctx context.Context, crit common.FilterCr
 			tryUntilAuthorised: true,
 		},
 		"debug_eventLogRelevancy",
-		crit,
+		common.SerializableFilterCriteria(crit),
 	)
 	if err != nil {
 		return nil, err

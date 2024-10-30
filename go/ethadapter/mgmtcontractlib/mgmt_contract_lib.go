@@ -25,12 +25,12 @@ const methodBytesLen = 4
 // messages for call requests, and converting ethereum transactions into L1Transactions.
 type MgmtContractLib interface {
 	IsMock() bool
-	CreateRollup(t *ethadapter.L1RollupTx) types.TxData
+	CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error)
 	CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData
 	CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, verifyAttester bool) types.TxData
 	CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData
 
-	// DecodeTx receives a *types.Transaction and converts it to an common.L1Transaction
+	// DecodeTx receives a *types.Transaction and converts it to a common.L1Transaction
 	DecodeTx(tx *types.Transaction) ethadapter.L1Transaction
 	GetContractAddr() *gethcommon.Address
 
@@ -87,19 +87,13 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	contractCallData := map[string]interface{}{}
 	switch method.Name {
 	case AddRollupMethod:
-		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
-			panic(err)
+		if tx.Type() == types.BlobTxType {
+			return &ethadapter.L1RollupHashes{
+				BlobHashes: tx.BlobHashes(),
+			}
+		} else {
+			return nil
 		}
-		callData, found := contractCallData["_rollupData"]
-		if !found {
-			panic("call data not found for rollupData")
-		}
-		rollup := Base64DecodeFromString(callData.(string))
-
-		return &ethadapter.L1RollupTx{
-			Rollup: rollup,
-		}
-
 	case RespondSecretMethod:
 		return c.unpackRespondSecretTx(tx, method, contractCallData)
 
@@ -121,13 +115,12 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	return nil
 }
 
-func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx) types.TxData {
+// CreateBlobRollup creates a BlobTx, encoding the rollup data into blobs.
+func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error) {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
 		panic(err)
 	}
-
-	encRollupData := base64EncodeToString(t.Rollup)
 
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),
@@ -142,17 +135,30 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx) types.TxData {
 	data, err := c.contractABI.Pack(
 		AddRollupMethod,
 		metaRollup,
-		encRollupData,
 		crossChain,
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	return &types.LegacyTx{
-		To:   c.addr,
-		Data: data,
+	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
 	}
+
+	var blobHashes []gethcommon.Hash
+	var sidecar *types.BlobTxSidecar
+
+	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
+		return nil, fmt.Errorf("failed to make sidecar: %w", err)
+	}
+
+	return &types.BlobTx{
+		To:         *c.addr,
+		Data:       data,
+		BlobHashes: blobHashes,
+		Sidecar:    sidecar,
+	}, nil
 }
 
 func (c *contractLibImpl) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData {

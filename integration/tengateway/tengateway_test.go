@@ -488,8 +488,14 @@ func testErrorHandling(t *testing.T, startPort int, httpURL, wsURL string, w wal
 	err = ogClient.RegisterAccount(w.PrivateKey(), w.Address())
 	require.NoError(t, err)
 
+	privateTxs, _ := json.Marshal(common.ListPrivateTransactionsQueryParams{
+		Address:    gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
+		Pagination: common.QueryPagination{Size: 10},
+	})
+
 	// make requests to geth for comparison
 	for _, req := range []string{
+		`{"jsonrpc":"2.0","method":"eth_getStorageAt","params":["` + common.ListPrivateTransactionsCQMethod + `", "` + string(privateTxs) + `","latest"],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[[]],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"topics":[]}],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock":"0x387","topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
@@ -793,6 +799,16 @@ func testGetStorageAtForReturningUserID(t *testing.T, _ int, httpURL, wsURL stri
 	if !strings.Contains(string(respBody3), expectedErr) {
 		t.Errorf("eth_getStorageAt did not respond with error: %s, it was: %s", expectedErr, string(respBody3))
 	}
+
+	privateTxs, _ := json.Marshal(common.ListPrivateTransactionsQueryParams{
+		Address:    gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
+		Pagination: common.QueryPagination{Size: 10},
+	})
+
+	respBody4 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{common.ListPrivateTransactionsCQMethod, string(privateTxs), nil})
+	if err = json.Unmarshal(respBody4, &response); err != nil {
+		t.Error("Unable to unmarshal response")
+	}
 }
 
 func makeRequestHTTP(url string, body []byte) []byte {
@@ -873,6 +889,7 @@ func createTenNetwork(t *testing.T, startPort int) {
 		Wallets:          wallets,
 		StartPort:        startPort,
 		WithPrefunding:   true,
+		L1BeaconPort:     integration.TestPorts.TestTenGatewayPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 
 	tenNetwork := network.NewNetworkOfSocketNodes(wallets)

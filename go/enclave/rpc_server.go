@@ -124,12 +124,14 @@ func (s *RPCServer) SubmitL1Block(ctx context.Context, request *generated.Submit
 		s.logger.Error("Error decoding block", log.ErrKey, err)
 		return nil, err
 	}
-	receipts, err := s.decodeReceipts(request.EncodedReceipts)
+
+	txReceiptsAndBlobs, err := s.decodeReceiptsAndBlobs(request.EncodedReceipts)
 	if err != nil {
 		s.logger.Error("Error decoding receipts", log.ErrKey, err)
 		return nil, err
 	}
-	blockSubmissionResponse, err := s.enclave.SubmitL1Block(ctx, bl, receipts, request.IsLatest)
+
+	blockSubmissionResponse, err := s.enclave.SubmitL1Block(ctx, bl, txReceiptsAndBlobs)
 	if err != nil {
 		var rejErr *errutil.BlockRejectError
 		isReject := errors.As(err, &rejErr)
@@ -234,9 +236,15 @@ func (s *RPCServer) GetBalance(ctx context.Context, request *generated.GetBalanc
 
 func (s *RPCServer) GetCode(ctx context.Context, request *generated.GetCodeRequest) (*generated.GetCodeResponse, error) {
 	address := gethcommon.BytesToAddress(request.Address)
-	rollupHash := gethcommon.BytesToHash(request.RollupHash)
 
-	code, sysError := s.enclave.GetCode(ctx, address, &rollupHash)
+	blockNrOrHash := &gethrpc.BlockNumberOrHash{}
+	err := blockNrOrHash.UnmarshalJSON(request.BlockNrOrHash)
+	if err != nil {
+		s.logger.Error("Error unmarshalling block nr or hash", log.ErrKey, err)
+		return &generated.GetCodeResponse{SystemError: toRPCError(err)}, nil
+	}
+
+	code, sysError := s.enclave.GetCode(ctx, address, *blockNrOrHash)
 	if sysError != nil {
 		s.logger.Error("Error getting code", log.ErrKey, sysError)
 		return &generated.GetCodeResponse{SystemError: toRPCError(sysError)}, nil
@@ -434,14 +442,12 @@ func (s *RPCServer) StreamL2Updates(_ *generated.StreamL2UpdatesRequest, stream 
 }
 
 func (s *RPCServer) DebugEventLogRelevancy(ctx context.Context, req *generated.DebugEventLogRelevancyRequest) (*generated.DebugEventLogRelevancyResponse, error) {
-	txHash := gethcommon.BytesToHash(req.TxHash)
-
-	logs, sysError := s.enclave.DebugEventLogRelevancy(ctx, txHash)
+	enclaveResp, sysError := s.enclave.DebugEventLogRelevancy(ctx, req.EncryptedParams)
 	if sysError != nil {
-		s.logger.Error("Error debugging event relevancy", log.ErrKey, sysError)
+		s.logger.Error("Error getting logs", log.ErrKey, sysError)
+		return &generated.DebugEventLogRelevancyResponse{SystemError: toRPCError(sysError)}, nil
 	}
-
-	return &generated.DebugEventLogRelevancyResponse{Msg: string(logs), SystemError: toRPCError(sysError)}, nil
+	return &generated.DebugEventLogRelevancyResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetTotalContractCount(ctx context.Context, _ *generated.GetTotalContractCountRequest) (*generated.GetTotalContractCountResponse, error) {
@@ -490,9 +496,9 @@ func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Header, error) {
 	return &block, nil
 }
 
-// decodeReceipts - converts the rlp encoded bytes to receipts if possible.
-func (s *RPCServer) decodeReceipts(encodedReceipts []byte) ([]*common.TxAndReceipt, error) {
-	receipts := make([]*common.TxAndReceipt, 0)
+// decodeReceiptsAndBlobs - converts the rlp encoded bytes to receipts if possible.
+func (s *RPCServer) decodeReceiptsAndBlobs(encodedReceipts []byte) ([]*common.TxAndReceiptAndBlobs, error) {
+	receipts := make([]*common.TxAndReceiptAndBlobs, 0)
 
 	err := rlp.DecodeBytes(encodedReceipts, &receipts)
 	if err != nil {

@@ -9,7 +9,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/measure"
@@ -19,12 +18,13 @@ import (
 
 // responsible for saving event logs
 type eventsStorage struct {
+	db             enclavedb.EnclaveDB
 	cachingService *CacheService
 	logger         gethlog.Logger
 }
 
-func newEventsStorage(cachingService *CacheService, logger gethlog.Logger) *eventsStorage {
-	return &eventsStorage{cachingService: cachingService, logger: logger}
+func newEventsStorage(cachingService *CacheService, db enclavedb.EnclaveDB, logger gethlog.Logger) *eventsStorage {
+	return &eventsStorage{cachingService: cachingService, db: db, logger: logger}
 }
 
 func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx, batch *common.BatchHeader, txExecResult *core.TxExecResult) error {
@@ -35,7 +35,7 @@ func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql
 
 	// store the contracts created by this tx
 	for createdContract, cfg := range txExecResult.CreatedContracts {
-		err := es.storeNewContractWithEventTypeConfigs(ctx, dbTX, createdContract, senderId, cfg)
+		err := es.storeNewContractWithEventTypeConfigs(ctx, dbTX, createdContract, senderId, cfg, *txId)
 		if err != nil {
 			return err
 		}
@@ -53,11 +53,16 @@ func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql
 		}
 	}
 
+	es.cachingService.CacheReceipt(ctx, &CachedReceipt{
+		Receipt: txExecResult.Receipt,
+		From:    txExecResult.From,
+		To:      txExecResult.Tx.To(),
+	})
 	return nil
 }
 
-func (es *eventsStorage) storeNewContractWithEventTypeConfigs(ctx context.Context, dbTX *sql.Tx, contractAddr gethcommon.Address, senderId *uint64, cfg *core.ContractVisibilityConfig) error {
-	_, err := enclavedb.WriteContractConfig(ctx, dbTX, contractAddr, *senderId, cfg)
+func (es *eventsStorage) storeNewContractWithEventTypeConfigs(ctx context.Context, dbTX *sql.Tx, contractAddr gethcommon.Address, senderId *uint64, cfg *core.ContractVisibilityConfig, txId uint64) error {
+	_, err := enclavedb.WriteContractConfig(ctx, dbTX, contractAddr, *senderId, cfg, txId)
 	if err != nil {
 		return fmt.Errorf("could not write contract address. cause %w", err)
 	}
@@ -86,17 +91,8 @@ func (es *eventsStorage) storeNewContractWithEventTypeConfigs(ctx context.Contex
 	return nil
 }
 
-// Convert the receipt into its storage form and serialize
-// this removes information that can be recreated
-// todo - in a future iteration, this can be slimmed down further because we already store the logs separately
 func (es *eventsStorage) storeReceipt(ctx context.Context, dbTX *sql.Tx, batch *common.BatchHeader, txExecResult *core.TxExecResult, txId *uint64) (uint64, error) {
-	storageReceipt := (*types.ReceiptForStorage)(txExecResult.Receipt)
-	receiptBytes, err := rlp.EncodeToBytes(storageReceipt)
-	if err != nil {
-		return 0, fmt.Errorf("failed to encode block receipts. Cause: %w", err)
-	}
-
-	execTxId, err := enclavedb.WriteReceipt(ctx, dbTX, batch.SequencerOrderNo.Uint64(), txId, receiptBytes)
+	execTxId, err := enclavedb.WriteReceipt(ctx, dbTX, batch.SequencerOrderNo.Uint64(), txId, txExecResult.Receipt)
 	if err != nil {
 		return 0, fmt.Errorf("could not write receipt. Cause: %w", err)
 	}
@@ -212,7 +208,7 @@ func (es *eventsStorage) storeTopics(ctx context.Context, dbTX *sql.Tx, eventTyp
 			// if no entry was found
 			topicId, err = es.storeTopic(ctx, dbTX, eventType, i, topic)
 			if err != nil {
-				return nil, fmt.Errorf("could not read the event topic. Cause: %w", err)
+				return nil, fmt.Errorf("could not store the event topic. Cause: %w", err)
 			}
 		}
 		topicIds[i-1] = &topicId
@@ -231,8 +227,11 @@ func (es *eventsStorage) storeTopic(ctx context.Context, dbTX *sql.Tx, eventType
 	if relevantAddress != nil {
 		var err error
 		relAddressId, err = es.readEOA(ctx, dbTX, *relevantAddress)
-		if err != nil {
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return 0, err
+		}
+		if relAddressId == nil {
+			es.logger.Debug("EOA not found when saving topic", "topic", topic.Hex())
 		}
 	}
 	eventTopicId, err := enclavedb.WriteEventTopic(ctx, dbTX, &topic, relAddressId, eventType.Id)

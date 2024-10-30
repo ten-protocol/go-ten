@@ -170,12 +170,12 @@ message GetTotalContractCountResponse{
   SystemError systemError = 2;
 }
 
-message DebugEventLogRelevancyRequest{
-  bytes txHash = 1;
+message DebugEventLogRelevancyRequest {
+  bytes encryptedParams = 1;
 }
 
-message DebugEventLogRelevancyResponse{
-  string msg = 1;
+message DebugEventLogRelevancyResponse {
+  bytes encodedEnclaveResponse = 1;
   SystemError systemError = 2;
 }
 
@@ -256,9 +256,8 @@ message StartResponse {
 message SubmitBlockRequest {
   bytes encodedBlock = 1;
   bytes encodedReceipts = 2;
-  bool isLatest = 3;
-
 }
+
 message SubmitBlockResponse {
   BlockSubmissionResponseMsg blockSubmissionResponse = 1;
   SystemError systemError = 2;
@@ -334,7 +333,7 @@ message GetStorageSlotResponse {
 
 message GetCodeRequest {
   bytes address = 1;
-  bytes rollupHash = 2;
+  bytes blockNrOrHash = 2;
 }
 message GetCodeResponse {
   bytes code = 1;

@@ -135,7 +135,7 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 					if t == nil {
 						continue
 					}
-					if _, ok := t.(*ethadapter.L1RollupTx); ok {
+					if _, ok := t.(*ethadapter.L1RollupHashes); ok {
 						// exit at the first TEN rollup we see
 						return
 					}
@@ -241,12 +241,13 @@ func (s *Simulation) prefundTenAccounts() {
 
 	faucetWallet := s.Params.Wallets.L2FaucetWallet
 	faucetClient := s.RPCHandles.TenWalletClient(faucetWallet.Address(), 0) // get sequencer, else errors on submission get swallowed
+	// in memory test needs this to allow head batch to be set
+	time.Sleep(5 * time.Second)
 	nonce := NextNonce(s.ctx, s.RPCHandles, faucetWallet)
 
 	// Give 1000 ether per account - ether is 1e18 so best convert it by code
 	// as a lot of the hardcodes were giving way too little and choking the gas payments
-	allocObsWallets := big.NewInt(0).Mul(big.NewInt(1000), big.NewInt(gethparams.Ether))
-
+	allocObsWallets := big.NewInt(0).Mul(big.NewInt(1000000), big.NewInt(gethparams.Ether))
 	testcommon.PrefundWallets(s.ctx, faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), allocObsWallets, s.Params.ReceiptTimeout)
 }
 

@@ -32,6 +32,8 @@ const (
 	rollupIntervalFlag          = "rollup_interval"
 	l1ChainIDFlag               = "l1_chain_id"
 	postgresDBHostFlag          = "postgres_db_host"
+	l1BeaconUrlFlag             = "l1_beacon_url"
+	l1BlobArchiveUrlFlag        = "l1_blob_archive_url"
 )
 
 // Returns a map of the flag usages.
@@ -68,5 +70,7 @@ func getFlagUsageMap() map[string]string {
 		rollupIntervalFlag:          "Duration between each rollup. Can be formatted like 500ms or 1s",
 		l1ChainIDFlag:               "Chain ID of the L1 network",
 		postgresDBHostFlag:          "Host connection details for Postgres DB",
+		l1BeaconUrlFlag:             "Url for the beacon chain API",
+		l1BlobArchiveUrlFlag:        "Url for the blob archive endpoint",
 	}
 }

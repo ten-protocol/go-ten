@@ -133,9 +133,9 @@ func executeTransaction(
 ) *core.TxExecResult {
 	var createdContracts []*gethcommon.Address
 	rules := cc.Rules(big.NewInt(0), true, 0)
-	from, err := types.Sender(types.LatestSigner(cc), t.Tx)
+	from, err := core.GetTxSigner(t.Tx)
 	if err != nil {
-		return &core.TxExecResult{Err: err}
+		return &core.TxExecResult{Tx: t.Tx, Err: err}
 	}
 	s.Prepare(rules, from, gethcommon.Address{}, t.Tx.To(), nil, nil)
 	snap := s.Snapshot()
@@ -216,9 +216,12 @@ func executeTransaction(
 			return receipt, err
 		}
 
+		// Synthetic transactions and ten zen are free. Do not increase the balancec of the coinbase.
+		isPaidProcessing := !cfg.NoBaseFee
+
 		// Do not increase the balance of zero address as it is the contract deployment address.
 		// Doing so might cause weird interactions.
-		if header.Coinbase.Big().Cmp(gethcommon.Big0) != 0 {
+		if header.Coinbase.Big().Cmp(gethcommon.Big0) != 0 && isPaidProcessing {
 			gasUsed := big.NewInt(0).SetUint64(receipt.GasUsed)
 			executionGasCost := big.NewInt(0).Mul(gasUsed, header.BaseFee)
 			// As the baseFee is burned, we add it back to the coinbase.
@@ -245,7 +248,7 @@ func executeTransaction(
 	header.MixDigest = before
 	if err != nil {
 		s.RevertToSnapshot(snap)
-		return &core.TxExecResult{Receipt: receipt, Err: err}
+		return &core.TxExecResult{Receipt: receipt, Tx: t.Tx, From: &from, Err: err}
 	}
 
 	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
@@ -253,7 +256,7 @@ func executeTransaction(
 		contractsWithVisibility[*contractAddress] = readVisibilityConfig(vmenv, contractAddress)
 	}
 
-	return &core.TxExecResult{Receipt: receipt, CreatedContracts: contractsWithVisibility}
+	return &core.TxExecResult{Receipt: receipt, Tx: t.Tx, From: &from, CreatedContracts: contractsWithVisibility}
 }
 
 const (
@@ -359,22 +362,25 @@ func ExecuteObsCall(
 		noBaseFee = false
 	}
 
-	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "evm_facade.go:ObsCall()")
-
-	gp := gethcore.GasPool(gasEstimationCap)
-	gp.SetGas(gasEstimationCap)
-	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, nil)
-
 	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
 		return nil, err
 	}
-	blockContext := gethcore.NewEVMBlockContext(ethHeader, chain, nil)
 
+	snapshot := s.Snapshot()
+	defer s.RevertToSnapshot(snapshot) // Always revert after simulation
+	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "evm_facade.go:ObsCall()")
+
+	gp := gethcore.GasPool(gasEstimationCap)
+	gp.SetGas(gasEstimationCap)
+
+	cleanState := createCleanState(s, msg, ethHeader, chainConfig)
+
+	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, nil)
+	blockContext := gethcore.NewEVMBlockContext(ethHeader, chain, nil)
 	// sets TxKey.origin
 	txContext := gethcore.NewEVMTxContext(msg)
-	vmenv := vm.NewEVM(blockContext, txContext, s, chainConfig, vmCfg)
-
+	vmenv := vm.NewEVM(blockContext, txContext, cleanState, chainConfig, vmCfg)
 	result, err := gethcore.ApplyMessage(vmenv, msg, &gp)
 	// Follow the same error check structure as in geth
 	// 1 - vmError / stateDB err check
@@ -382,7 +388,7 @@ func ExecuteObsCall(
 	// 3 - error check the ApplyMessage
 
 	// Read the error stored in the database.
-	if dbErr := s.Error(); dbErr != nil {
+	if dbErr := cleanState.Error(); dbErr != nil {
 		return nil, newErrorWithReasonAndCode(dbErr)
 	}
 
@@ -398,6 +404,12 @@ func ExecuteObsCall(
 	}
 
 	return result, nil
+}
+
+func createCleanState(s *state.StateDB, msg *gethcore.Message, ethHeader *types.Header, chainConfig *params.ChainConfig) *state.StateDB {
+	cleanState := s.Copy()
+	cleanState.Prepare(chainConfig.Rules(ethHeader.Number, true, 0), msg.From, ethHeader.Coinbase, msg.To, nil, msg.AccessList)
+	return cleanState
 }
 
 func initParams(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config config.EnclaveConfig, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {

@@ -46,12 +46,12 @@ type systemContractCallbacks struct {
 	logger gethlog.Logger
 }
 
-func NewSystemContractCallbacks(ownerWallet wallet.Wallet, logger gethlog.Logger) SystemContractCallbacks {
+func NewSystemContractCallbacks(ownerWallet wallet.Wallet, storage storage.Storage, logger gethlog.Logger) SystemContractCallbacks {
 	return &systemContractCallbacks{
 		transactionsPostProcessorAddress: nil,
 		ownerWallet:                      ownerWallet,
 		logger:                           logger,
-		storage:                          nil,
+		storage:                          storage,
 	}
 }
 
@@ -71,7 +71,7 @@ func (s *systemContractCallbacks) Load() error {
 		return fmt.Errorf("storage is not set")
 	}
 
-	batchSeqNo := uint64(1)
+	batchSeqNo := uint64(2)
 	s.logger.Debug("Load: Fetching batch", "batchSeqNo", batchSeqNo)
 	batch, err := s.storage.FetchBatchBySeqNo(context.Background(), batchSeqNo)
 	if err != nil {
@@ -84,13 +84,13 @@ func (s *systemContractCallbacks) Load() error {
 		return fmt.Errorf("genesis batch does not have enough transactions")
 	}
 
-	receipt, err := s.storage.GetTransactionReceipt(context.Background(), batch.Transactions[1].Hash())
+	receipt, err := s.storage.GetFilteredInternalReceipt(context.Background(), batch.Transactions[1].Hash(), nil, true)
 	if err != nil {
 		s.logger.Error("Load: Failed fetching receipt", "transactionHash", batch.Transactions[1].Hash().Hex(), "error", err)
 		return fmt.Errorf("failed fetching receipt %w", err)
 	}
 
-	addresses, err := DeriveAddresses(receipt)
+	addresses, err := DeriveAddresses(receipt.ToReceipt())
 	if err != nil {
 		s.logger.Error("Load: Failed deriving addresses", "error", err, "receiptHash", receipt.TxHash.Hex())
 		return fmt.Errorf("failed deriving addresses %w", err)
@@ -187,7 +187,7 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 			transaction.To = gethcommon.Address{} // Zero address - contract deployment
 		}
 
-		sender, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+		sender, err := core.GetTxSigner(tx)
 		if err != nil {
 			s.logger.Error("CreateOnBatchEndTransaction: Failed to recover sender address", "error", err, "transactionHash", tx.Hash().Hex())
 			return nil, fmt.Errorf("failed to recover sender address: %w", err)

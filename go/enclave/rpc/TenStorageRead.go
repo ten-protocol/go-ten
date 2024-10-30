@@ -64,16 +64,7 @@ func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWit
 func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], rpc *EncryptionManager) error {
 	var err error
 	var stateDb *state.StateDB
-	blkNumber := builder.Param.block
-	hash := blkNumber.BlockHash
-	if hash != nil {
-		stateDb, err = rpc.registry.GetBatchState(builder.ctx, hash)
-	}
-
-	number := blkNumber.BlockNumber
-	if number != nil {
-		stateDb, err = rpc.registry.GetBatchStateAtHeight(builder.ctx, number)
-	}
+	stateDb, err = rpc.registry.GetBatchState(builder.ctx, *builder.Param.block)
 	if err != nil {
 		builder.Err = fmt.Errorf("unable to read block number - %w", err)
 		return nil

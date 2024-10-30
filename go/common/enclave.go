@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -26,9 +28,10 @@ type Status struct {
 	L2Head     *big.Int
 }
 
-type TxAndReceipt struct {
+type TxAndReceiptAndBlobs struct {
 	Tx      *types.Transaction
 	Receipt *types.Receipt
+	Blobs   []*kzg4844.Blob
 }
 
 const (
@@ -62,7 +65,7 @@ type Enclave interface {
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*TxAndReceipt, isLatest bool) (*BlockSubmissionResponse, SystemError)
+	SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*TxAndReceiptAndBlobs) (*BlockSubmissionResponse, SystemError)
 
 	// SubmitTx - user transactions
 	SubmitTx(ctx context.Context, tx EncryptedTx) (*responses.RawTx, SystemError)
@@ -91,7 +94,7 @@ type Enclave interface {
 	GetBalance(ctx context.Context, encryptedParams EncryptedParamsGetBalance) (*responses.Balance, SystemError)
 
 	// GetCode returns the code stored at the given address in the state for the given rollup hash.
-	GetCode(ctx context.Context, address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, SystemError)
+	GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) ([]byte, SystemError)
 
 	GetStorageSlot(ctx context.Context, encryptedParams EncryptedParamsGetStorageSlot) (*responses.EnclaveResponse, SystemError)
 
@@ -140,7 +143,7 @@ type Enclave interface {
 	// All will be queued in the channel that has been returned.
 	StreamL2Updates() (chan StreamL2UpdatesResponse, func())
 	// DebugEventLogRelevancy returns the logs of a transaction
-	DebugEventLogRelevancy(ctx context.Context, hash gethcommon.Hash) (json.RawMessage, SystemError)
+	DebugEventLogRelevancy(ctx context.Context, params EncryptedParamsDebugLogRelevancy) (*responses.DebugLogs, SystemError)
 
 	ExportCrossChainData(context.Context, uint64, uint64) (*ExtCrossChainBundle, SystemError)
 }

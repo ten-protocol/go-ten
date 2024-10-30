@@ -1,6 +1,10 @@
 package core
 
 import (
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
@@ -28,7 +32,92 @@ type ContractVisibilityConfig struct {
 type TxExecResult struct {
 	Receipt          *types.Receipt
 	CreatedContracts map[gethcommon.Address]*ContractVisibilityConfig
+	Tx               *types.Transaction
+	From             *gethcommon.Address
 	Err              error
+}
+
+// InternalReceipt - Equivalent to the geth types.Receipt, but without weird quirks
+type InternalReceipt struct {
+	PostState         []byte
+	Status            uint64
+	CumulativeGasUsed uint64
+	EffectiveGasPrice *uint64
+	CreatedContract   *gethcommon.Address
+	TxHash            gethcommon.Hash
+	BlockHash         gethcommon.Hash
+	BlockNumber       *big.Int
+	TransactionIndex  uint
+	From              gethcommon.Address
+	To                *gethcommon.Address
+	TxType            uint8
+	Logs              []*types.Log
+}
+
+// MarshalToJson marshals a transaction receipt into a JSON object.
+// taken from geth
+func (receipt *InternalReceipt) MarshalToJson() map[string]interface{} {
+	var effGasPrice *hexutil.Big
+	if receipt.EffectiveGasPrice != nil {
+		effGasPrice = (*hexutil.Big)(big.NewInt(int64(*receipt.EffectiveGasPrice)))
+	}
+
+	fields := map[string]interface{}{
+		"blockHash":         receipt.BlockHash,
+		"blockNumber":       hexutil.Uint64(receipt.BlockNumber.Uint64()),
+		"transactionHash":   receipt.TxHash,
+		"transactionIndex":  hexutil.Uint64(receipt.TransactionIndex),
+		"from":              receipt.From,
+		"to":                receipt.To,
+		"gasUsed":           hexutil.Uint64(receipt.CumulativeGasUsed),
+		"cumulativeGasUsed": hexutil.Uint64(receipt.CumulativeGasUsed),
+		"contractAddress":   receipt.CreatedContract,
+		"logs":              receipt.Logs,
+		"logsBloom":         types.Bloom{},
+		"type":              hexutil.Uint(receipt.TxType),
+		"effectiveGasPrice": effGasPrice,
+	}
+
+	// Assign receipt status or post state.
+	if len(receipt.PostState) > 0 {
+		fields["root"] = hexutil.Bytes(receipt.PostState)
+	} else {
+		fields["status"] = hexutil.Uint(receipt.Status)
+	}
+	if receipt.Logs == nil {
+		fields["logs"] = []*types.Log{}
+	}
+
+	return fields
+}
+
+func (receipt *InternalReceipt) ToReceipt() *types.Receipt {
+	var effGasPrice *big.Int
+	if receipt.EffectiveGasPrice != nil {
+		effGasPrice = big.NewInt(int64(*receipt.EffectiveGasPrice))
+	}
+
+	var cc gethcommon.Address
+	if receipt.CreatedContract != nil {
+		cc = *receipt.CreatedContract
+	}
+	return &types.Receipt{
+		Type:              receipt.TxType,
+		PostState:         receipt.PostState,
+		Status:            receipt.Status,
+		CumulativeGasUsed: receipt.CumulativeGasUsed,
+		Bloom:             types.Bloom{},
+		Logs:              receipt.Logs,
+		TxHash:            receipt.TxHash,
+		ContractAddress:   cc,
+		GasUsed:           receipt.CumulativeGasUsed,
+		EffectiveGasPrice: effGasPrice,
+		BlobGasUsed:       0,
+		BlobGasPrice:      nil,
+		BlockHash:         receipt.BlockHash,
+		BlockNumber:       receipt.BlockNumber,
+		TransactionIndex:  receipt.TransactionIndex,
+	}
 }
 
 type TxExecResults []*TxExecResult

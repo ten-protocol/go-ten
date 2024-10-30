@@ -15,7 +15,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/common/tracers"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 )
@@ -98,8 +97,9 @@ type SharedSecretStorage interface {
 type TransactionStorage interface {
 	// GetTransaction - returns the positional metadata of the tx by hash
 	GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error)
-	// GetTransactionReceipt - returns the receipt of a tx by tx hash
-	GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (*types.Receipt, error)
+	// GetFilteredReceipt - returns the receipt of a tx with event logs visible to the requester
+	GetFilteredInternalReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error)
+	ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error)
 }
 
 type AttestationStorage interface {
@@ -144,7 +144,7 @@ type Storage interface {
 	FilterLogs(ctx context.Context, requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, blockHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error)
 
 	// DebugGetLogs returns logs for a given tx hash without any constraints - should only be used for debug purposes
-	DebugGetLogs(ctx context.Context, txHash common.TxHash) ([]*tracers.DebugLogs, error)
+	DebugGetLogs(ctx context.Context, from *big.Int, to *big.Int, address gethcommon.Address, eventSig gethcommon.Hash) ([]*common.DebugLogVisibility, error)
 
 	// TrieDB - return the underlying trie database
 	TrieDB() *triedb.Database
@@ -153,11 +153,12 @@ type Storage interface {
 	StateDB() state.Database
 
 	ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error)
+	ReadEventType(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error)
 }
 
 type ScanStorage interface {
 	GetContractCount(ctx context.Context) (*big.Int, error)
-	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error)
+	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error)
 
 	CountTransactionsPerAddress(ctx context.Context, addr *gethcommon.Address) (uint64, error)
 }
