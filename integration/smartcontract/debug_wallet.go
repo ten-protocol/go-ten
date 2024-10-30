@@ -3,9 +3,10 @@ package smartcontract
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ten-protocol/go-ten/go/common/retry"
-	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
