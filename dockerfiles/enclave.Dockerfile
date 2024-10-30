@@ -9,9 +9,6 @@
 #   /home/obscuro/go-obscuro/go/enclave/main    contains the executable for the enclave
 #
 
-# Defaults to restricted flag mode
-ARG TESTMODE=false
-
 FROM ghcr.io/edgelesssys/ego-dev:v1.5.3 AS build-base
 
 # setup container data structure
@@ -34,18 +31,9 @@ WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 RUN --mount=type=cache,target=/root/.cache/go-build \
     ego-go build
 
-# New build stage for compiling the enclave with restricted flags mode
-FROM build-enclave as build-enclave-testmode-false
+FROM build-enclave
 # Sign the enclave executable
 RUN ego sign enclave.json
-
-# New build stage for compiling the enclave without restricted flags mode
-FROM build-enclave as build-enclave-testmode-true
-# Sign the enclave executable
-RUN ego sign enclave-test.json
-
-# Tag the restricted mode as the current build
-FROM build-enclave-testmode-${TESTMODE} as build-enclave
 
 # Trigger a new build stage and use the smaller ego version:
 FROM ghcr.io/edgelesssys/ego-deploy:v1.5.3

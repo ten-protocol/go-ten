@@ -143,7 +143,7 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		ClientRPCPortHTTP:      tenCfg.Host.RPC.HTTPPort,
 		HasClientRPCWebsockets: tenCfg.Host.RPC.EnableWS,
 		ClientRPCPortWS:        tenCfg.Host.RPC.WSPort,
-		ClientRPCHost:          tenCfg.Host.RPC.HostAddress,
+		ClientRPCHost:          tenCfg.Host.RPC.Address,
 
 		EnclaveRPCAddresses: tenCfg.Host.Enclave.RPCAddresses,
 		EnclaveRPCTimeout:   tenCfg.Host.Enclave.RPCTimeout,

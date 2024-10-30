@@ -46,7 +46,7 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave:${VERSION} --build-arg TESTMODE=true -f dockerfiles/enclave.Dockerfile .
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave:${VERSION} -f dockerfiles/enclave.Dockerfile .
           docker push testnetobscuronet.azurecr.io/obscuronet/enclave:${VERSION}
           DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/host:${VERSION} -f dockerfiles/host.Dockerfile .
           docker push testnetobscuronet.azurecr.io/obscuronet/host:${VERSION}

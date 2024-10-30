@@ -36,15 +36,16 @@ func load(filePaths []string) (*TenConfig, error) {
 
 	// parse yaml file with viper
 	v := viper.New()
-	var err error
 
 	// Bind environment variables to config keys to override yaml files
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
 	for i, filePath := range filePaths {
+		var content []byte
+		var err error
 		// Check if the file exists in the embedded FS
-		if content, err := _baseConfig.ReadFile(filePath); err == nil {
+		if content, err = _baseConfig.ReadFile(filePath); err == nil {
 			// File found in embedded FS
 			v.SetConfigType("yaml")
 			if i == 0 { // only first file is read, the rest are 'merged'
@@ -81,7 +82,7 @@ func load(filePaths []string) (*TenConfig, error) {
 	// todo (@matt) for enclave processes apply signed configuration file **after** even the env variable overrides
 
 	var tenCfg TenConfig
-	err = v.Unmarshal(&tenCfg, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+	err := v.Unmarshal(&tenCfg, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
 		mapstructure.StringToTimeDurationHookFunc(), // handle string -> time.Duration
 		mapstructure.StringToSliceHookFunc(","),     // handle string -> []string
 		mapstructure.TextUnmarshallerHookFunc(),     // handle all types that implement encoding.TextUnmarshaler

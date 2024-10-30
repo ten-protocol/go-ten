@@ -43,6 +43,7 @@ func (t *Testnet) Start() error {
 	}
 
 	edgelessDBImage := "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
+	// todo: revisit how we should configure the image, this condition is not ideal
 	if !t.cfg.isSGXEnabled {
 		edgelessDBImage = "ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"
 	}

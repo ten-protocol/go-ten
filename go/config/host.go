@@ -40,11 +40,11 @@ type HostLog struct {
 //
 //	yaml: `host.rpc`
 type HostRPC struct {
-	HostAddress string `mapstructure:"hostAddress"`
-	EnableHTTP  bool   `mapstructure:"enableHTTP"`
-	HTTPPort    uint64 `mapstructure:"httpPort"`
-	EnableWS    bool   `mapstructure:"enableWS"`
-	WSPort      uint64 `mapstructure:"wsPort"`
+	Address    string `mapstructure:"address"`
+	EnableHTTP bool   `mapstructure:"enableHTTP"`
+	HTTPPort   uint64 `mapstructure:"httpPort"`
+	EnableWS   bool   `mapstructure:"enableWS"`
+	WSPort     uint64 `mapstructure:"wsPort"`
 }
 
 // HostP2P contains the configuration for the host P2P server.

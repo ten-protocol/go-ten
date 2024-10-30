@@ -86,7 +86,7 @@ jobs:
 
       - name: 'Build and push obscuro node images'
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} --build-arg TESTMODE=true -f dockerfiles/enclave.Dockerfile  .
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} -f dockerfiles/enclave.Dockerfile  .
           docker push ${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }}
           DOCKER_BUILDKIT=1 docker build -t ${{ vars.L2_HOST_DOCKER_BUILD_TAG }} -f dockerfiles/host.Dockerfile .
           docker push ${{ vars.L2_HOST_DOCKER_BUILD_TAG }}
