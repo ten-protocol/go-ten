@@ -359,10 +359,15 @@ func (e *gethRPCClient) prepareBlobTxToRetry(ctx context.Context, txData types.T
 	}
 	blobFeeCap := calcBlobFeeCap(blobBaseFee, retryNumber)
 
+	// Calculate GasFeeCap as baseFee * 2 + tipCap
+	baseFee := head.BaseFee
+	gasFeeCap := new(big.Int).Mul(baseFee, big.NewInt(2))
+	gasFeeCap.Add(gasFeeCap, retryPrice)
+
 	return &types.BlobTx{
 		Nonce:      nonce,
-		GasTipCap:  uint256.MustFromBig(retryPrice), // aka maxPriorityFeePerGas
-		GasFeeCap:  uint256.MustFromBig(retryPrice), // aka. maxFeePerGas
+		GasTipCap:  uint256.MustFromBig(retryPrice), // maxPriorityFeePerGas
+		GasFeeCap:  uint256.MustFromBig(gasFeeCap),  // maxFeePerGas = (baseFee * 2) + maxPriorityFeePerGas
 		Gas:        gasLimit,
 		To:         *unEstimatedTx.To(),
 		Value:      uint256.MustFromBig(value),
