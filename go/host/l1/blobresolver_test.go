@@ -3,7 +3,6 @@ package l1
 import (
 	"context"
 	"net/http"
-	"net/url"
 	"testing"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -13,8 +12,9 @@ import (
 )
 
 const (
-	vHash1 = "0x012b7a6a22399aa9eecd8eda6ec658679e81be21af6ff296116aee205e2218f2"
-	vHash2 = "0x012374e04a848591844b75bc2f500318cf640552379b5e3a1a77bb828620690e"
+	vHash1    = "0x012b7a6a22399aa9eecd8eda6ec658679e81be21af6ff296116aee205e2218f2"
+	vHash2    = "0x012374e04a848591844b75bc2f500318cf640552379b5e3a1a77bb828620690e"
+	sepVHash1 = "0x0158c07e3b83cf77a46d1e6fb6fa245e0a38285a5d46885a463bb27330d145bb "
 )
 
 func TestBlobResolver(t *testing.T) {
@@ -34,50 +34,17 @@ func TestBlobResolver(t *testing.T) {
 
 // TestSepoliaBlobResolver checks the public node sepolia beacon APIs work as expected
 func TestSepoliaBlobResolver(t *testing.T) {
-	httpClient := ethadapter.NewBaseHTTPClient(new(http.Client), "https://ethereum-sepolia-beacon-api.publicnode.com/")
+	// l1_beacon_url for sepolia
+	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), "https://ethereum-sepolia-beacon-api.publicnode.com")
+	// l1_blob_archive_url for sepolia
+	fallback := ethadapter.NewBeaconHTTPClient(new(http.Client), "https://eth-beacon-chain-sepolia.drpc.org/rest/")
+	blobResolver := NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, fallback))
 
-	// get the latest slot from the beacon headers
-	var beaconHeaderResponse BeaconHeaderResponse
-	err := httpClient.Request(
-		context.Background(),
-		&beaconHeaderResponse,
-		"/eth/v1/beacon/headers/",
-		url.Values{}, // empty query params
+	b := &types.Header{
+		Time: 1737346236,
+	}
 
-	)
-
-	require.NoError(t, err, "Expected no error when calling /eth/v1/beacon/headers")
-	require.NotEmpty(t, beaconHeaderResponse.Data)
-	require.NotEmpty(t, beaconHeaderResponse.Data[0].Header.Message.Slot)
-
-	slot := beaconHeaderResponse.Data[0].Header.Message.Slot
-
-	// get the sidecars for the latest slot from the beacon blob sidecars
-	// manually calling the endpoint instead of using the blob resolver since we dont want to convert the slot back to
-	// a block timestamp and convert back to the slot in FetchBlobs
-	var sidecarResponse ethadapter.APIGetBlobSidecarsResponse
-	err = httpClient.Request(
-		context.Background(),
-		&sidecarResponse,
-		"eth/v1/beacon/blob_sidecars/"+slot,
-		url.Values{}, // empty query params
-	)
-
+	blobs, err := blobResolver.FetchBlobs(context.Background(), b, []gethcommon.Hash{gethcommon.HexToHash(sepVHash1)})
 	require.NoError(t, err)
-	require.True(t, len(sidecarResponse.Data) > 1)
-}
-
-// Response struct for /eth/v1/beacon/headers/
-type BeaconHeaderResponse struct {
-	ExecutionOptimistic bool `json:"execution_optimistic"`
-	Finalized           bool `json:"finalized"`
-	Data                []struct {
-		Root      string `json:"root"`
-		Canonical bool   `json:"canonical"`
-		Header    struct {
-			Message struct {
-				Slot string `json:"slot"`
-			} `json:"message"`
-		} `json:"header"`
-	} `json:"data"`
+	require.Len(t, blobs, 2)
 }
