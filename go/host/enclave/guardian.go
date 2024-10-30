@@ -10,7 +10,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
-	
+
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
@@ -372,7 +372,6 @@ func (g *Guardian) catchupWithL1() error {
 		}
 
 		l1Block, isLatest, err := g.sl.L1Repo().FetchNextBlock(enclaveHead)
-
 		if err != nil {
 			if errors.Is(err, l1.ErrNoNextBlock) {
 				if g.state.hostL1Head == gethutil.EmptyHash {

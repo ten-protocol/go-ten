@@ -278,7 +278,6 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 			}
 
 			return fmt.Errorf("node OverallHealth is not good yet")
-
 		}, retry.NewTimeoutStrategy(7*time.Minute, 1*time.Second),
 	)
 	if err != nil {

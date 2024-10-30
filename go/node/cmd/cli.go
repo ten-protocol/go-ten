@@ -158,7 +158,7 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 		os.Exit(1)
 	}
 
-	tenCfg, err := config.DefaultTenConfig()
+	tenCfg, err := config.LoadTenConfig()
 	if err != nil {
 		fmt.Printf("Error loading default Ten config: %v\n", err)
 		os.Exit(1)

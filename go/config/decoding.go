@@ -13,8 +13,8 @@ func bigIntHookFunc() mapstructure.DecodeHookFuncType {
 	return func(
 		f reflect.Type,
 		t reflect.Type,
-		data interface{}) (interface{}, error) {
-
+		data interface{},
+	) (interface{}, error) {
 		// Check if we are trying to map into a *big.Int
 		if t == reflect.TypeOf(&big.Int{}) {
 			switch data := data.(type) {
