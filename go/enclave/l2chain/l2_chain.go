@@ -128,7 +128,7 @@ func (oc *obscuroChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Tra
 }
 
 // GetChainStateAtTransaction Returns the state of the chain at certain block height after executing transactions up to the selected transaction
-// TODO make this cacheable
+// TODO make this cacheable - why isn't this in the evm_facade?
 func (oc *obscuroChain) GetChainStateAtTransaction(ctx context.Context, batch *core.Batch, txIndex int, _ uint64) (*gethcore.Message, vm.BlockContext, *state.StateDB, error) {
 	// Short circuit if it's genesis batch.
 	if batch.NumberU64() == 0 {

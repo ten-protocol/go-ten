@@ -2,7 +2,10 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"math/big"
+
+	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 
@@ -34,8 +37,7 @@ const (
 )
 
 type CacheService struct {
-	// cache for the immutable blocks and batches.
-	// this avoids a trip to the database.
+	// cache for the immutable blocks headers
 	blockCache *cache.Cache[*types.Header]
 
 	// stores batches using the sequence number as key
@@ -49,6 +51,9 @@ type CacheService struct {
 	// note: to fetch a batch by height will require 2 cache hits
 	seqCacheByHeight *cache.Cache[*big.Int]
 
+	// store the converted ethereum header which is passed to the evm
+	convertedGethHeaderCache *cache.Cache[*types.Header]
+
 	// batch hash - geth converted hash
 	convertedHashCache *cache.Cache[*gethcommon.Hash]
 
@@ -56,11 +61,8 @@ type CacheService struct {
 	eoaCache             *cache.Cache[*uint64]
 	contractAddressCache *cache.Cache[*enclavedb.Contract]
 
-	// from contract_address||event_sig to the event_type (id, isLifecycle) object
+	// from contract_address||event_sig to the event_type object
 	eventTypeCache *cache.Cache[*enclavedb.EventType]
-
-	// store the converted ethereum header which is passed to the evm
-	convertedGethHeaderCache *cache.Cache[*types.Header]
 
 	// store the last few batches together with the content
 	lastBatchesCache *cache.Cache[*core.Batch]
@@ -74,48 +76,50 @@ type CacheService struct {
 }
 
 func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
-	nrElem := int64(50_000_000)
-	cacheSize := int64(2 * 1024 * 1024 * 1024)
-	nrReceiptsToCache := int64(10_000)
+	nrL1Blocks := 100        // ~200k
+	nrBatches := 10_000      // ~25M
+	nrConvertedEth := 10_000 // ~25M
+
+	nrEventTypes := 10_000        // ~2M
+	nrEOA := 100_000              // ~1M
+	nrContractAddresses := 10_000 // ~1M
+
+	nrBatchesWithContent := 50 // ~100M
+	nrReceipts := 10_000       // ~1G
 
 	if testMode {
-		nrElem = 1_000_000
-		cacheSize = int64(100 * 1024 * 1024)
-		nrReceiptsToCache = int64(500)
+		nrReceipts = 500 //~50M
 	}
 
-	// the general cache for 50Mil elements, - 2GB
-	// todo - consider making it fine grained per cache
-	ristrettoStore := newCache(logger, nrElem, cacheSize)
-
-	// cache the latest received batches to avoid a lookup when streaming it back to the host after processing
-	nrBatches := int64(50)
-	ristrettoStoreForBatches := newCache(logger, nrBatches, nrBatches*batchCost)
-
-	ristrettoStoreForReceipts := newCache(logger, nrReceiptsToCache, nrReceiptsToCache*receiptCost)
-
 	return &CacheService{
-		blockCache:               cache.New[*types.Header](ristrettoStore),
-		batchCacheBySeqNo:        cache.New[*common.BatchHeader](ristrettoStore),
-		seqCacheByHash:           cache.New[*big.Int](ristrettoStore),
-		seqCacheByHeight:         cache.New[*big.Int](ristrettoStore),
-		convertedHashCache:       cache.New[*gethcommon.Hash](ristrettoStore),
-		eoaCache:                 cache.New[*uint64](ristrettoStore),
-		contractAddressCache:     cache.New[*enclavedb.Contract](ristrettoStore),
-		eventTypeCache:           cache.New[*enclavedb.EventType](ristrettoStore),
-		convertedGethHeaderCache: cache.New[*types.Header](ristrettoStore),
+		blockCache: cache.New[*types.Header](newCache(logger, nrL1Blocks, blockHeaderCost)),
 
-		receiptCache:     cache.New[*CachedReceipt](ristrettoStoreForReceipts),
-		lastBatchesCache: cache.New[*core.Batch](ristrettoStoreForBatches),
-		logger:           logger,
+		batchCacheBySeqNo: cache.New[*common.BatchHeader](newCache(logger, nrBatches, batchHeaderCost)),
+		seqCacheByHash:    cache.New[*big.Int](newCache(logger, nrBatches, idCost)),
+		seqCacheByHeight:  cache.New[*big.Int](newCache(logger, nrBatches, idCost)),
+
+		convertedGethHeaderCache: cache.New[*types.Header](newCache(logger, nrConvertedEth, batchHeaderCost)),
+		convertedHashCache:       cache.New[*gethcommon.Hash](newCache(logger, nrConvertedEth, hashCost)),
+
+		eoaCache:             cache.New[*uint64](newCache(logger, nrEOA, idCost)),
+		contractAddressCache: cache.New[*enclavedb.Contract](newCache(logger, nrContractAddresses, contractCost)),
+		eventTypeCache:       cache.New[*enclavedb.EventType](newCache(logger, nrEventTypes, eventTypeCost)),
+
+		receiptCache: cache.New[*CachedReceipt](newCache(logger, nrReceipts, receiptCost)),
+
+		// cache the latest received batches to avoid a lookup when streaming it back to the host after processing
+		lastBatchesCache: cache.New[*core.Batch](newCache(logger, nrBatchesWithContent, batchCost)),
+
+		logger: logger,
 	}
 }
 
-func newCache(logger gethlog.Logger, nrElem, capacity int64) *ristretto_store.RistrettoStore {
+func newCache(logger gethlog.Logger, nrElem, capacityPerElem int) *ristretto_store.RistrettoStore {
 	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 10 * nrElem, // 10 times the expected elements
-		MaxCost:     capacity,
-		BufferItems: 64, // number of keys per Get buffer.
+		NumCounters: int64(10 * nrElem),                  // 10 times the expected elements
+		MaxCost:     int64(capacityPerElem * nrElem * 2), // calculate the max cost
+		BufferItems: 64,                                  // number of keys per Get buffer.
+		Metrics:     true,
 	})
 	if err != nil {
 		logger.Crit("Could not initialise ristretto cache", log.ErrKey, err)
@@ -185,7 +189,7 @@ type CachedReceipt struct {
 }
 
 func (cs *CacheService) ReadReceipt(ctx context.Context, txHash gethcommon.Hash) (*CachedReceipt, error) {
-	return cs.receiptCache.Get(ctx, txHash)
+	return getCachedValue(ctx, cs.receiptCache, cs.logger, txHash, receiptCost, nil, false)
 }
 
 func (cs *CacheService) ReadEventType(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash, onCacheMiss func(any) (*enclavedb.EventType, error)) (*enclavedb.EventType, error) {
@@ -202,7 +206,10 @@ func (cs *CacheService) ReadConvertedHeader(ctx context.Context, batchHash commo
 // getCachedValue - returns the cached value for the provided key. If the key is not found, then invoke the 'onCacheMiss' function
 // which returns the value, and cache it
 func getCachedValue[V any](ctx context.Context, cache *cache.Cache[*V], logger gethlog.Logger, key any, cost int64, onCacheMiss func(any) (*V, error), cacheIfMissing bool) (*V, error) {
-	value, err := cache.Get(ctx, key)
+	value, err := cache.Get(ctx, toString(key))
+	if onCacheMiss == nil {
+		return value, err
+	}
 	if err != nil || value == nil {
 		// todo metrics for cache misses
 		v, err := onCacheMiss(key)
@@ -225,8 +232,35 @@ func cacheValue[V any](ctx context.Context, cache *cache.Cache[*V], logger gethl
 	if v == nil {
 		return
 	}
-	err := cache.Set(ctx, key, v, store.WithCost(cost))
+	err := cache.Set(ctx, toString(key), v, store.WithCost(cost))
 	if err != nil {
 		logger.Error("Could not store value in cache", log.ErrKey, err)
 	}
 }
+
+// ristretto cache works with string keys
+// if anything else is presented, it will use MD5
+func toString(key any) string {
+	switch key.(type) {
+	case string:
+		return key.(string)
+	case []byte:
+		return hexutils.BytesToHex(key.([]byte))
+	case gethcommon.Hash:
+		return hexutils.BytesToHex(key.(gethcommon.Hash).Bytes())
+	case gethcommon.Address:
+		return hexutils.BytesToHex(key.(gethcommon.Address).Bytes())
+	case uint64, int64, int, uint:
+		return fmt.Sprint(key)
+	case *big.Int:
+		return fmt.Sprint(key.(*big.Int))
+	default:
+		panic("should not happen. Invalid cache type")
+	}
+}
+
+//func logCacheMetrics(c *ristretto.Cache, name string, logger gethlog.Logger) {
+//	metrics := c.Metrics
+//	logger.Info(fmt.Sprintf("Cache %s metrics: Hits: %d, Misses: %d, Cost Added: %d",
+//		name, metrics.Hits(), metrics.Misses(), metrics.CostAdded()))
+//}
