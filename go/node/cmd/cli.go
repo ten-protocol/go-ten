@@ -158,6 +158,7 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 		os.Exit(1)
 	}
 
+	// load default Ten config before we apply the CLI overrides
 	tenCfg, err := config.LoadTenConfig()
 	if err != nil {
 		fmt.Printf("Error loading default Ten config: %v\n", err)
@@ -183,19 +184,27 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 		fmt.Printf("Error parsing rollup interval '%s': %v\n", cliCfg.rollupInterval, err)
 		os.Exit(1)
 	}
+	tenCfg.Network.Sequencer.P2PAddress = cliCfg.sequencerP2PAddr
 
 	tenCfg.Node.ID = gethcommon.HexToAddress(cliCfg.hostID)
 	tenCfg.Node.Name = cliCfg.nodeName
 	tenCfg.Node.NodeType = nodeType
 	tenCfg.Node.IsGenesis = cliCfg.isGenesis
 	tenCfg.Node.HostAddress = cliCfg.hostP2PPublicAddr
+	tenCfg.Node.PrivateKeyString = cliCfg.privateKey
 
+	tenCfg.Host.DB.PostgresHost = cliCfg.postgresDBHost
+	tenCfg.Host.Debug.EnableDebugNamespace = cliCfg.isDebugNamespaceEnabled
 	tenCfg.Host.L1.WebsocketURL = cliCfg.l1WebsocketURL
+	tenCfg.Host.L1.L1BeaconUrl = cliCfg.l1BeaconUrl
+	tenCfg.Host.L1.L1BlobArchiveUrl = cliCfg.l1BlobArchiveUrl
 	tenCfg.Host.P2P.BindAddress = fmt.Sprintf("%s:%d", cliCfg.hostP2PHost, cliCfg.hostP2PPort)
 	tenCfg.Host.P2P.IsDisabled = cliCfg.isInboundP2PDisabled
-	tenCfg.Host.DB.PostgresHost = cliCfg.postgresDBHost
+	tenCfg.Host.RPC.HTTPPort = uint64(cliCfg.hostHTTPPort)
+	tenCfg.Host.RPC.WSPort = uint64(cliCfg.hostWSPort)
 	tenCfg.Host.Log.Level = cliCfg.logLevel
 
+	tenCfg.Enclave.Debug.EnableDebugNamespace = cliCfg.isDebugNamespaceEnabled
 	tenCfg.Enclave.EnableAttestation = cliCfg.isSGXEnabled
 	tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("0.0.0.0:%d", cliCfg.enclaveWSPort)
 	tenCfg.Enclave.Log.Level = cliCfg.logLevel
