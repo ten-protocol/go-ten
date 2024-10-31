@@ -284,6 +284,7 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 
 		return txWithReceiptsAndBlobs, rollupTxs, contractAddressTxs
 	}
+	return nil, nil, nil
 }
 
 // FindSecretResponseTx will scan the block for any secret response transactions. This is separate from the above method
