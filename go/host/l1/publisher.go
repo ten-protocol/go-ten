@@ -447,10 +447,6 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 	// after unless we're stuck blocking.
 	p.logger.Info("Host preparing to issue L1 tx")
 
-	if p.hostStopper.IsStopping() {
-		return fmt.Errorf("host is stopping, cannot publish transaction")
-	}
-
 	p.sendingLock.Lock()
 	defer p.sendingLock.Unlock()
 
