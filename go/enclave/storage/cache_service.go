@@ -241,19 +241,19 @@ func cacheValue[V any](ctx context.Context, cache *cache.Cache[*V], logger gethl
 // ristretto cache works with string keys
 // if anything else is presented, it will use MD5
 func toString(key any) string {
-	switch key.(type) {
+	switch k := key.(type) {
 	case string:
-		return key.(string)
+		return k
 	case []byte:
-		return hexutils.BytesToHex(key.([]byte))
+		return hexutils.BytesToHex(k)
 	case gethcommon.Hash:
-		return hexutils.BytesToHex(key.(gethcommon.Hash).Bytes())
+		return hexutils.BytesToHex(k.Bytes())
 	case gethcommon.Address:
-		return hexutils.BytesToHex(key.(gethcommon.Address).Bytes())
+		return hexutils.BytesToHex(k.Bytes())
 	case uint64, int64, int, uint:
-		return fmt.Sprint(key)
+		return fmt.Sprint(k)
 	case *big.Int:
-		return fmt.Sprint(key.(*big.Int))
+		return fmt.Sprint(k)
 	default:
 		panic("should not happen. Invalid cache type")
 	}
