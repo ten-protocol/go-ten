@@ -250,7 +250,8 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 			contractAddressTxs = append(contractAddressTxs, typedTx)
 		case *ethadapter.L1RollupHashes:
 			blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), typedTx.BlobHashes)
-			if err != nil {
+			// temporarily add this host stopping check to prevent sim test failures until a more robust solution is implemented
+			if err != nil && !p.hostStopper.IsStopping() {
 				if errors.Is(err, ethereum.NotFound) {
 					p.logger.Crit("Blobs were not found on beacon chain or archive service", "block", block.Hash(), "error", err)
 				} else {
@@ -445,6 +446,10 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 	// this log message seems superfluous but is useful to debug deadlock issues, we expect 'Host issuing l1 tx' soon
 	// after unless we're stuck blocking.
 	p.logger.Info("Host preparing to issue L1 tx")
+
+	if p.hostStopper.IsStopping() {
+		return fmt.Errorf("host is stopping, cannot publish transaction")
+	}
 
 	p.sendingLock.Lock()
 	defer p.sendingLock.Unlock()
