@@ -38,7 +38,7 @@ func CreateDBFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) (host
 // validateDBConf high-level checks that you have a valid configuration for DB creation
 func validateDBConf(cfg *hostconfig.HostConfig) error {
 	if cfg.UseInMemoryDB && cfg.PostgresDBHost != "" {
-		return fmt.Errorf("invalid db config, useInMemoryDB=true so MariaDB host not expected, but PostgresDBHost=%s", cfg.PostgresDBHost)
+		return fmt.Errorf("invalid db config, useInMemoryDB=true so PostgresDB host not expected, but PostgresDBHost=%s", cfg.PostgresDBHost)
 	}
 	if cfg.SqliteDBPath != "" && cfg.UseInMemoryDB {
 		return fmt.Errorf("useInMemoryDB=true so sqlite database will not be used and no path is needed, but sqliteDBPath=%s", cfg.SqliteDBPath)

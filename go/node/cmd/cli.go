@@ -193,6 +193,7 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	tenCfg.Node.HostAddress = cliCfg.hostP2PPublicAddr
 	tenCfg.Node.PrivateKeyString = cliCfg.privateKey
 
+	tenCfg.Host.DB.UseInMemory = false // these nodes always use a persistent DB
 	tenCfg.Host.DB.PostgresHost = cliCfg.postgresDBHost
 	tenCfg.Host.Debug.EnableDebugNamespace = cliCfg.isDebugNamespaceEnabled
 	tenCfg.Host.Enclave.RPCAddresses = []string{fmt.Sprintf("%s:%d", cliCfg.nodeName+"-enclave", cliCfg.enclaveWSPort)}
