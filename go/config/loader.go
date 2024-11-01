@@ -28,12 +28,6 @@ func LoadTenConfig(files ...string) (*TenConfig, error) {
 // load reads and applies the config files and environment variables, returning a TenConfig struct
 // This method is not publicly available as we want callers to always use the base config file to avoid gotchas.
 func load(filePaths []string) (*TenConfig, error) {
-	// Print all environment variables for debugging
-	fmt.Println("Environment variables:")
-	for _, env := range os.Environ() {
-		fmt.Println(env)
-	}
-
 	// parse yaml file with viper
 	v := viper.New()
 

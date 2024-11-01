@@ -1,3 +1,6 @@
+host:
+   debug:
+      enableDebugNamespace: true
 enclave:
    debug:
       enableDebugNamespace: true

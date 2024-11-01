@@ -7,8 +7,12 @@ network:
    sequencer:
       p2pAddress: sequencer-host:15000
 host:
+   debug:
+        enableDebugNamespace: true
    l1:
       wsURL: ws://eth2network:9000
 enclave:
    db:
       useInMemory: false
+   debug:
+      enableDebugNamespace: true
