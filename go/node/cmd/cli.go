@@ -195,6 +195,7 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 
 	tenCfg.Host.DB.PostgresHost = cliCfg.postgresDBHost
 	tenCfg.Host.Debug.EnableDebugNamespace = cliCfg.isDebugNamespaceEnabled
+	tenCfg.Host.Enclave.RPCAddresses = []string{fmt.Sprintf("%s:%d", cliCfg.nodeName+"-enclave", cliCfg.enclaveWSPort)}
 	tenCfg.Host.L1.WebsocketURL = cliCfg.l1WebsocketURL
 	tenCfg.Host.L1.L1BeaconUrl = cliCfg.l1BeaconUrl
 	tenCfg.Host.L1.L1BlobArchiveUrl = cliCfg.l1BlobArchiveUrl
