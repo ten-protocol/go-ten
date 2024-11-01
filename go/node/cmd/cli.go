@@ -205,6 +205,7 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	tenCfg.Host.Log.Level = cliCfg.logLevel
 
 	tenCfg.Enclave.DB.UseInMemory = false // these nodes always use a persistent DB
+	tenCfg.Enclave.DB.EdgelessDBHost = cliCfg.nodeName + "-edgelessdb"
 	tenCfg.Enclave.Debug.EnableDebugNamespace = cliCfg.isDebugNamespaceEnabled
 	tenCfg.Enclave.EnableAttestation = cliCfg.isSGXEnabled
 	tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("0.0.0.0:%d", cliCfg.enclaveWSPort)
