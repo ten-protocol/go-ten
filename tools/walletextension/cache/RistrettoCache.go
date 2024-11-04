@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -81,8 +82,8 @@ func (c *ristrettoCache) startMetricsLogging(logger log.Logger) {
 		select {
 		case <-ticker.C:
 			metrics := c.cache.Metrics
-			logger.Info("Cache metrics: Hits: %d, Misses: %d, Cost Added: %d\n",
-				metrics.Hits(), metrics.Misses(), metrics.CostAdded())
+			logger.Info(fmt.Sprintf("Cache metrics: Hits: %d, Misses: %d, Cost Added: %d",
+				metrics.Hits(), metrics.Misses(), metrics.CostAdded()))
 		case <-c.quit:
 			ticker.Stop()
 			return

@@ -43,19 +43,20 @@ func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, clien
 	}
 	txData, err := d.CreateBlobRollup(&ethadapter.L1RollupTx{Rollup: encodedRollup})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create blob rollup: %w", err)
 	}
 
 	issuedTx, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to send and await transaction: %w", err)
 	}
 
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		_, err := w.debugTransaction(client, issuedTx)
-		if err != nil {
-			return fmt.Errorf("transaction should have succeeded, expected %d got %d - reason: %w", types.ReceiptStatusSuccessful, receipt.Status, err)
+		debugOutput, debugErr := w.debugTransaction(client, issuedTx)
+		if debugErr != nil {
+			return fmt.Errorf("transaction failed with status %d and debug failed: %v", receipt.Status, debugErr)
 		}
+		return fmt.Errorf("transaction failed with status %d: %s", receipt.Status, string(debugOutput))
 	}
 
 	// rollup meta data is actually stored

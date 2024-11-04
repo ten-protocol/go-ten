@@ -33,6 +33,7 @@ type TxExecResult struct {
 	Receipt          *types.Receipt
 	CreatedContracts map[gethcommon.Address]*ContractVisibilityConfig
 	Tx               *types.Transaction
+	From             *gethcommon.Address
 	Err              error
 }
 
@@ -43,7 +44,6 @@ type InternalReceipt struct {
 	CumulativeGasUsed uint64
 	EffectiveGasPrice *uint64
 	CreatedContract   *gethcommon.Address
-	TxContent         []byte
 	TxHash            gethcommon.Hash
 	BlockHash         gethcommon.Hash
 	BlockNumber       *big.Int

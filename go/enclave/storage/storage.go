@@ -93,7 +93,7 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, cha
 		stateCache:     stateDB,
 		chainConfig:    chainConfig,
 		cachingService: cachingService,
-		eventsStorage:  newEventsStorage(cachingService, logger),
+		eventsStorage:  newEventsStorage(cachingService, backingDB, logger),
 		logger:         logger,
 	}
 }
@@ -268,14 +268,14 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Header, chain
 		if err != nil {
 			return err
 		}
-	}
 
-	// double check that there is always a single canonical batch or block per layer
-	// only for debugging
-	//err = enclavedb.CheckCanonicalValidity(ctx, dbTx)
-	//if err != nil {
-	//	return err
-	//}
+		// sanity check that there is always a single canonical batch or block per layer
+		// called after forks, for the latest 50 blocks
+		err = enclavedb.CheckCanonicalValidity(ctx, dbTx, blockId-50)
+		if err != nil {
+			s.logger.Crit("Should not happen.", log.ErrKey, err)
+		}
+	}
 
 	if err := dbTx.Commit(); err != nil {
 		return fmt.Errorf("4. could not store block %s. Cause: %w", block.Hash(), err)
@@ -430,8 +430,8 @@ func (s *storageImpl) GetTransaction(ctx context.Context, txHash gethcommon.Hash
 	return enclavedb.ReadTransaction(ctx, s.db.GetSQLDB(), txHash)
 }
 
-func (s *storageImpl) GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error) {
-	defer s.logDuration("GetTransactionReceipt", measure.NewStopwatch())
+func (s *storageImpl) GetFilteredInternalReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error) {
+	defer s.logDuration("GetFilteredInternalReceipt", measure.NewStopwatch())
 	if !syntheticTx && requester == nil {
 		return nil, errors.New("requester address is required for non-synthetic transactions")
 	}
@@ -439,7 +439,7 @@ func (s *storageImpl) GetTransactionReceipt(ctx context.Context, txHash common.L
 }
 
 func (s *storageImpl) ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error) {
-	defer s.logDuration("GetTransactionReceipt", measure.NewStopwatch())
+	defer s.logDuration("ExistsTransactionReceipt", measure.NewStopwatch())
 	return enclavedb.ExistsReceipt(ctx, s.db.GetSQLDB(), txHash)
 }
 
@@ -840,6 +840,15 @@ func (s *storageImpl) ReadContract(ctx context.Context, address gethcommon.Addre
 	}
 	defer dbtx.Rollback()
 	return enclavedb.ReadContractByAddress(ctx, dbtx, address)
+}
+
+func (s *storageImpl) ReadEventType(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error) {
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+	return s.eventsStorage.readEventType(ctx, dbTx, contractAddress, eventSignature)
 }
 
 func (s *storageImpl) logDuration(method string, stopWatch *measure.Stopwatch) {

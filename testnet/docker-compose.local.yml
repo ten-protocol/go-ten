@@ -19,11 +19,11 @@ services:
       dockerfile: ./dockerfiles/enclave.Dockerfile
       args:
         TESTMODE: true
-#  enclave-debug:
-#    image: "testnetobscuronet.azurecr.io/obscuronet/enclave_debug:latest"
-#    build:
-#      context: $ROOT_PATH
-#      dockerfile: ./dockerfiles/enclave.debug.Dockerfile
+  #  enclave-debug:
+  #    image: "testnetobscuronet.azurecr.io/obscuronet/enclave_debug:latest"
+  #    build:
+  #      context: $ROOT_PATH
+  #      dockerfile: ./dockerfiles/enclave.debug.Dockerfile
   ten-scan:
     image: "testnetobscuronet.azurecr.io/obscuronet/tenscan:latest"
     build:
@@ -38,7 +38,7 @@ services:
     image: "testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway:latest"
     build:
       context: $ROOT_PATH
-      dockerfile: ./tools/walletextension/Dockerfile
+      dockerfile: ./tools/walletextension/enclave.Dockerfile
   faucet:
     image: "testnetobscuronet.azurecr.io/obscuronet/faucet:latest"
     build:

@@ -92,7 +92,7 @@ func TestManagementContract(t *testing.T) {
 
 	// set up the client and the (debug) wallet
 	client := sim.ethClients[0]
-	w := newDebugWallet(sim.wallets[0])
+	w := newDebugWallet(sim.wallets[0], 30*time.Second)
 
 	for name, test := range map[string]func(*testing.T, *debugMgmtContractLib, *debugWallet, ethadapter.EthClient){
 		"secretCannotBeInitializedTwice":     secretCannotBeInitializedTwice,

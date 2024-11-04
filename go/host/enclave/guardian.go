@@ -558,7 +558,7 @@ func (g *Guardian) periodicBatchProduction() {
 			skipBatchIfEmpty := g.maxBatchInterval > g.batchInterval && time.Since(g.lastBatchCreated) < g.maxBatchInterval
 			err := g.enclaveClient.CreateBatch(context.Background(), skipBatchIfEmpty)
 			if err != nil {
-				g.logger.Error("Unable to produce batch", log.ErrKey, err)
+				g.logger.Crit("Unable to produce batch", log.ErrKey, err)
 			}
 		case <-g.hostInterrupter.Done():
 			// interrupted - end periodic process
