@@ -2,11 +2,9 @@ package walletextension
 
 import (
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/subscription"
-	"github.com/ten-protocol/go-ten/go/enclave/core/egoutils"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/httpapi"
 
@@ -36,33 +34,14 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
 
 	// Database encryption key handling
-	// First we try to unseal the encryption key from the file
-	// If we fail to unseal the key, we generate a new one and seal it to the file
+	// TODO: Check if encryption key is already sealed and unseal it and generate new one if not (part of the next PR)
 	// TODO: We should have a mechanism to get the key from an enclave that already runs (part of the next PR)
 	// TODO: Move this to a separate file along with key exchange logic (part of the next PR)
-	encryptionKeyFilepath := filepath.Join(".", "encryption_key.json")
 
-	// try to read and unseal the encryption key
-	encryptionKey, err := egoutils.ReadAndUnseal(encryptionKeyFilepath)
+	encryptionKey, err := wecommon.GenerateRandomKey()
 	if err != nil {
-		// we were not able to unseal the key, generate a new one
-		logger.Info("unable to read and unseal encryption key", log.ErrKey, err)
-		encryptionKey, err = wecommon.GenerateRandomKey()
-		if err != nil {
-			logger.Crit("unable to generate random encryption key", log.ErrKey, err)
-			os.Exit(1)
-		}
-		logger.Info("generated new encryption key", log.ErrKey, err)
-	}
-
-	// try to seal the encryption key to the file
-	// debug mode is used for testing purposes when we don't run inside an enclave, but we still want to test gateway functionality
-	if !config.Debug {
-		err = egoutils.SealAndPersist(string(encryptionKey), encryptionKeyFilepath, true)
-		if err != nil {
-			logger.Error("unable to seal and persist encryption key", log.ErrKey, err)
-			// os.Exit(1)
-		}
+		logger.Crit("unable to generate random encryption key", log.ErrKey, err)
+		os.Exit(1)
 	}
 
 	// start the database with the encryption key

@@ -11,6 +11,16 @@ import (
 	"io"
 )
 
+// Encryptor provides AES-GCM encryption/decryption with the following characteristics:
+//   - Uses AES-256-GCM (Galois/Counter Mode) with a 32-byte key
+//   - Generates a random 12-byte nonce for each encryption operation using crypto/rand
+//   - The nonce is prepended to the ciphertext output from Encrypt() and is generated
+//     using crypto/rand.Reader for cryptographically secure random values
+//
+// Additionally provides HMAC-SHA256 hashing functionality:
+// - Uses the same 32-byte key as the encryption operations
+// - Generates a 32-byte (256-bit) message authentication code
+// - Suitable for creating secure message digests and verifying data integrity
 type Encryptor struct {
 	gcm cipher.AEAD
 	key []byte
