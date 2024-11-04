@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+
 	"github.com/status-im/keycard-go/hexutils"
 
+	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
-	"github.com/ten-protocol/go-ten/tools/walletextension/rpcapi"
-
-	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ten-protocol/go-ten/go/common/httputil"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
@@ -20,7 +20,7 @@ import (
 
 // NewHTTPRoutes returns the http specific routes
 // todo - move these to the rpc framework.
-func NewHTTPRoutes(walletExt *rpcapi.Services) []node.Route {
+func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 	return []node.Route{
 		{
 			Name: common.APIVersion1 + common.PathReady,
@@ -66,8 +66,8 @@ func NewHTTPRoutes(walletExt *rpcapi.Services) []node.Route {
 }
 
 func httpHandler(
-	walletExt *rpcapi.Services,
-	fun func(walletExt *rpcapi.Services, conn UserConn),
+	walletExt *services.Services,
+	fun func(walletExt *services.Services, conn UserConn),
 ) func(resp http.ResponseWriter, req *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
 		httpRequestHandler(walletExt, resp, req, fun)
@@ -75,7 +75,7 @@ func httpHandler(
 }
 
 // Overall request handler for http requests
-func httpRequestHandler(walletExt *rpcapi.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *rpcapi.Services, conn UserConn)) {
+func httpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
 	if walletExt.IsStopping() {
 		return
 	}
@@ -87,10 +87,10 @@ func httpRequestHandler(walletExt *rpcapi.Services, resp http.ResponseWriter, re
 }
 
 // readyRequestHandler is used to check whether the server is ready
-func readyRequestHandler(_ *rpcapi.Services, _ UserConn) {}
+func readyRequestHandler(_ *services.Services, _ UserConn) {}
 
 // This function handles request to /join endpoint. It is responsible to create new user (new key-pair) and store it to the db
-func joinRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
+func joinRequestHandler(walletExt *services.Services, conn UserConn) {
 	// audit()
 	// todo (@ziga) add protection against DDOS attacks
 	_, err := conn.ReadRequest()
@@ -116,7 +116,7 @@ func joinRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 // This function handles request to /authenticate endpoint.
 // In the request we receive message, signature and address in JSON as request body and userID and address as query parameters
 // We then check if message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
-func authenticateRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
+func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 	// read the request
 	body, err := conn.ReadRequest()
 	if err != nil {
@@ -181,7 +181,7 @@ func authenticateRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 // This function handles request to /query endpoint.
 // In the query parameters address and userID are required. We check if provided address is registered for given userID
 // and return true/false in json response
-func queryRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
+func queryRequestHandler(walletExt *services.Services, conn UserConn) {
 	// read the request
 	_, err := conn.ReadRequest()
 	if err != nil {
@@ -233,7 +233,7 @@ func queryRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 
 // This function handles request to /revoke endpoint.
 // It requires userID as query parameter and deletes given user and all associated viewing keys
-func revokeRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
+func revokeRequestHandler(walletExt *services.Services, conn UserConn) {
 	// read the request
 	_, err := conn.ReadRequest()
 	if err != nil {
@@ -263,7 +263,7 @@ func revokeRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 }
 
 // Handles request to /health endpoint.
-func healthRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
+func healthRequestHandler(walletExt *services.Services, conn UserConn) {
 	// read the request
 	_, err := conn.ReadRequest()
 	if err != nil {
@@ -279,7 +279,7 @@ func healthRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
 }
 
 // Handles request to /network-health endpoint.
-func networkHealthRequestHandler(walletExt *rpcapi.Services, userConn UserConn) {
+func networkHealthRequestHandler(walletExt *services.Services, userConn UserConn) {
 	// read the request
 	_, err := userConn.ReadRequest()
 	if err != nil {
@@ -321,7 +321,7 @@ func networkHealthRequestHandler(walletExt *rpcapi.Services, userConn UserConn) 
 	}
 }
 
-func networkConfigRequestHandler(walletExt *rpcapi.Services, userConn UserConn) {
+func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn) {
 	// read the request
 	_, err := userConn.ReadRequest()
 	if err != nil {
@@ -373,7 +373,7 @@ func networkConfigRequestHandler(walletExt *rpcapi.Services, userConn UserConn) 
 }
 
 // Handles request to /version endpoint.
-func versionRequestHandler(walletExt *rpcapi.Services, userConn UserConn) {
+func versionRequestHandler(walletExt *services.Services, userConn UserConn) {
 	// read the request
 	_, err := userConn.ReadRequest()
 	if err != nil {
@@ -388,7 +388,7 @@ func versionRequestHandler(walletExt *rpcapi.Services, userConn UserConn) {
 }
 
 // getMessageRequestHandler handles request to /getmessage endpoint.
-func getMessageRequestHandler(walletExt *rpcapi.Services, conn UserConn) {
+func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	// read the request
 	body, err := conn.ReadRequest()
 	if err != nil {
