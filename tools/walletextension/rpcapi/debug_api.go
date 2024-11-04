@@ -3,6 +3,10 @@ package rpcapi
 import (
 	"context"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -10,10 +14,10 @@ import (
 )
 
 type DebugAPI struct {
-	we *Services
+	we *services.Services
 }
 
-func NewDebugAPI(we *Services) *DebugAPI {
+func NewDebugAPI(we *services.Services) *DebugAPI {
 	return &DebugAPI{we}
 }
 
@@ -58,8 +62,8 @@ func (api *DebugAPI) EventLogRelevancy(ctx context.Context, crit common.FilterCr
 		ctx,
 		api.we,
 		&ExecCfg{
-			cacheCfg: &CacheCfg{
-				CacheType: NoCache,
+			cacheCfg: &cache.Cfg{
+				Type: cache.NoCache,
 			},
 			tryUntilAuthorised: true,
 		},

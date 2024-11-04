@@ -10,23 +10,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+
 	"github.com/status-im/keycard-go/hexutils"
 
-	"github.com/ten-protocol/go-ten/go/common/measure"
-	"github.com/ten-protocol/go-ten/go/enclave/core"
-
-	"github.com/ten-protocol/go-ten/go/common/log"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-	pool "github.com/jolestar/go-commons-pool/v2"
-	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
-
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-
-	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -37,9 +30,6 @@ const (
 
 	notAuthorised = "not authorised"
 	serverBusy    = "server busy. please retry later"
-
-	longCacheTTL  = 5 * time.Hour
-	shortCacheTTL = 1 * time.Minute
 
 	// hardcoding the maximum time for an RPC request
 	// this value will be propagated to the node and enclave and all the operations
@@ -52,29 +42,16 @@ var rpcNotImplemented = fmt.Errorf("rpc endpoint not implemented")
 type ExecCfg struct {
 	// these 4 fields specify the account(s) that should make the backend call
 	account             *gethcommon.Address
-	computeFromCallback func(user *GWUser) *gethcommon.Address
+	computeFromCallback func(user *services.GWUser) *gethcommon.Address
 	tryAll              bool
 	tryUntilAuthorised  bool
 
-	adjustArgs func(acct *GWAccount) []any
-	cacheCfg   *CacheCfg
+	adjustArgs func(acct *services.GWAccount) []any
+	cacheCfg   *cache.Cfg
 	timeout    time.Duration
 }
 
-type CacheStrategy uint8
-
-const (
-	NoCache     CacheStrategy = iota
-	LatestBatch CacheStrategy = iota
-	LongLiving  CacheStrategy = iota
-)
-
-type CacheCfg struct {
-	CacheType        CacheStrategy
-	CacheTypeDynamic func() CacheStrategy
-}
-
-func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *CacheCfg, method string, args ...any) (*R, error) {
+func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services, cfg *cache.Cfg, method string, args ...any) (*R, error) {
 	if ctx == nil {
 		return nil, errors.New("invalid call. nil Context")
 	}
@@ -83,8 +60,8 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *Cac
 	cacheArgs := []any{method}
 	cacheArgs = append(cacheArgs, args...)
 
-	res, err := withCache(w.Cache, cfg, generateCacheKey(cacheArgs), func() (*R, error) {
-		return withPlainRPCConnection(ctx, w, func(client *rpc.Client) (*R, error) {
+	res, err := cache.WithCache(w.Cache, cfg, generateCacheKey(cacheArgs), func() (*R, error) {
+		return services.WithPlainRPCConnection(ctx, w, func(client *rpc.Client) (*R, error) {
 			var resp *R
 			var err error
 
@@ -100,7 +77,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *Services, cfg *Cac
 	return res, err
 }
 
-func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method string, args ...any) (*R, error) {
+func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *ExecCfg, method string, args ...any) (*R, error) {
 	audit(w, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
 	userID, err := extractUserID(ctx, w)
@@ -117,8 +94,8 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 	cacheArgs := []any{userID, method}
 	cacheArgs = append(cacheArgs, args...)
 
-	res, err := withCache(w.Cache, cfg.cacheCfg, generateCacheKey(cacheArgs), func() (*R, error) {
-		user, err := getUser(userID, w)
+	res, err := cache.WithCache(w.Cache, cfg.cacheCfg, generateCacheKey(cacheArgs), func() (*R, error) {
+		user, err := w.GetUser(userID)
 		if err != nil {
 			return nil, err
 		}
@@ -135,7 +112,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 		var rpcErr error
 		for i := range candidateAccts {
 			acct := candidateAccts[i]
-			result, err := withEncRPCConnection(ctx, w, acct, func(rpcClient *tenrpc.EncRPCClient) (*R, error) {
+			result, err := services.WithEncRPCConnection(ctx, w, acct, func(rpcClient *tenrpc.EncRPCClient) (*R, error) {
 				var result *R
 				adjustedArgs := args
 				if cfg.adjustArgs != nil {
@@ -174,12 +151,12 @@ func ExecAuthRPC[R any](ctx context.Context, w *Services, cfg *ExecCfg, method s
 	return res, err
 }
 
-func getCandidateAccounts(user *GWUser, _ *Services, cfg *ExecCfg) ([]*GWAccount, error) {
-	candidateAccts := make([]*GWAccount, 0)
+func getCandidateAccounts(user *services.GWUser, _ *services.Services, cfg *ExecCfg) ([]*services.GWAccount, error) {
+	candidateAccts := make([]*services.GWAccount, 0)
 	// for users with multiple accounts try to determine a candidate account based on the available information
 	switch {
 	case cfg.account != nil:
-		acc := user.accounts[*cfg.account]
+		acc := user.Accounts[*cfg.account]
 		if acc != nil {
 			candidateAccts = append(candidateAccts, acc)
 			return candidateAccts, nil
@@ -188,7 +165,7 @@ func getCandidateAccounts(user *GWUser, _ *Services, cfg *ExecCfg) ([]*GWAccount
 	case cfg.computeFromCallback != nil:
 		suggestedAddress := cfg.computeFromCallback(user)
 		if suggestedAddress != nil {
-			acc := user.accounts[*suggestedAddress]
+			acc := user.Accounts[*suggestedAddress]
 			if acc != nil {
 				candidateAccts = append(candidateAccts, acc)
 				return candidateAccts, nil
@@ -197,7 +174,7 @@ func getCandidateAccounts(user *GWUser, _ *Services, cfg *ExecCfg) ([]*GWAccount
 	}
 
 	if cfg.tryAll || cfg.tryUntilAuthorised {
-		for _, acc := range user.accounts {
+		for _, acc := range user.Accounts {
 			candidateAccts = append(candidateAccts, acc)
 		}
 	}
@@ -205,7 +182,7 @@ func getCandidateAccounts(user *GWUser, _ *Services, cfg *ExecCfg) ([]*GWAccount
 	return candidateAccts, nil
 }
 
-func extractUserID(ctx context.Context, _ *Services) ([]byte, error) {
+func extractUserID(ctx context.Context, _ *services.Services) ([]byte, error) {
 	token, ok := ctx.Value(rpc.GWTokenKey{}).(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid userid: %s", ctx.Value(rpc.GWTokenKey{}))
@@ -233,115 +210,24 @@ func generateCacheKey(params []any) []byte {
 	return hasher.Sum(nil)
 }
 
-func withCache[R any](cache cache.Cache, cfg *CacheCfg, cacheKey []byte, onCacheMiss func() (*R, error)) (*R, error) {
-	if cfg == nil {
-		return onCacheMiss()
-	}
-
-	cacheType := cfg.CacheType
-	if cfg.CacheTypeDynamic != nil {
-		cacheType = cfg.CacheTypeDynamic()
-	}
-
-	if cacheType == NoCache {
-		return onCacheMiss()
-	}
-
-	// we implement a custom cache eviction logic for the cache strategy of type LatestBatch.
-	// when a new batch is created, all entries with "LatestBatch" are considered evicted.
-	// elements not cached for a specific batch are not evicted
-	isEvicted := false
-	ttl := longCacheTTL
-	if cacheType == LatestBatch {
-		ttl = shortCacheTTL
-		isEvicted = cache.IsEvicted(cacheKey, ttl)
-	}
-
-	if !isEvicted {
-		cachedValue, foundInCache := cache.Get(cacheKey)
-		if foundInCache {
-			returnValue, ok := cachedValue.(*R)
-			if !ok {
-				return nil, fmt.Errorf("unexpected error. Invalid format cached. %v", cachedValue)
-			}
-			return returnValue, nil
-		}
-	}
-
-	result, err := onCacheMiss()
-
-	// cache only non-nil values
-	if err == nil && result != nil {
-		cache.Set(cacheKey, result, ttl)
-	}
-
-	return result, err
-}
-
-func audit(services *Services, msg string, params ...any) {
+func audit(services *services.Services, msg string, params ...any) {
 	if services.Config.VerboseFlag {
-		services.logger.Info(fmt.Sprintf(msg, params...))
+		services.Logger().Info(fmt.Sprintf(msg, params...))
 	}
 }
 
-func cacheBlockNumberOrHash(blockNrOrHash rpc.BlockNumberOrHash) CacheStrategy {
+func cacheBlockNumberOrHash(blockNrOrHash rpc.BlockNumberOrHash) cache.Strategy {
 	if blockNrOrHash.BlockNumber != nil && blockNrOrHash.BlockNumber.Int64() <= 0 {
-		return LatestBatch
+		return cache.LatestBatch
 	}
-	return LongLiving
+	return cache.LongLiving
 }
 
-func cacheBlockNumber(lastBlock rpc.BlockNumber) CacheStrategy {
+func cacheBlockNumber(lastBlock rpc.BlockNumber) cache.Strategy {
 	if lastBlock > 0 {
-		return LongLiving
+		return cache.LongLiving
 	}
-	return LatestBatch
-}
-
-func connectWS(ctx context.Context, account *GWAccount, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
-	return conn(ctx, account.user.services.rpcWSConnPool, account, logger)
-}
-
-func conn(ctx context.Context, p *pool.ObjectPool, account *GWAccount, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
-	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "get rpc connection")
-	connectionObj, err := p.BorrowObject(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
-	}
-	conn := connectionObj.(*rpc.Client)
-	encClient, err := wecommon.CreateEncClient(conn, account.address.Bytes(), account.user.userKey, account.signature, account.signatureType, logger)
-	if err != nil {
-		_ = returnConn(p, conn, logger)
-		return nil, fmt.Errorf("error creating new client, %w", err)
-	}
-	return encClient, nil
-}
-
-func returnConn(p *pool.ObjectPool, conn tenrpc.Client, logger gethlog.Logger) error {
-	err := p.ReturnObject(context.Background(), conn)
-	if err != nil {
-		logger.Error("Error returning connection to pool", log.ErrKey, err)
-	}
-	return err
-}
-
-func withEncRPCConnection[R any](ctx context.Context, w *Services, acct *GWAccount, execute func(*tenrpc.EncRPCClient) (*R, error)) (*R, error) {
-	rpcClient, err := conn(ctx, acct.user.services.rpcHTTPConnPool, acct, w.logger)
-	if err != nil {
-		return nil, fmt.Errorf("could not connect to backed. Cause: %w", err)
-	}
-	defer returnConn(w.rpcHTTPConnPool, rpcClient.BackingClient(), w.logger)
-	return execute(rpcClient)
-}
-
-func withPlainRPCConnection[R any](ctx context.Context, w *Services, execute func(client *rpc.Client) (*R, error)) (*R, error) {
-	connectionObj, err := w.rpcHTTPConnPool.BorrowObject(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
-	}
-	rpcClient := connectionObj.(*rpc.Client)
-	defer returnConn(w.rpcHTTPConnPool, rpcClient, w.logger)
-	return execute(rpcClient)
+	return cache.LatestBatch
 }
 
 func SafeGenericToString[R any](r *R) string {

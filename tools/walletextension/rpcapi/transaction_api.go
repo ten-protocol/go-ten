@@ -3,6 +3,10 @@ package rpcapi
 import (
 	"context"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -12,15 +16,15 @@ import (
 )
 
 type TransactionAPI struct {
-	we *Services
+	we *services.Services
 }
 
-func NewTransactionAPI(we *Services) *TransactionAPI {
+func NewTransactionAPI(we *services.Services) *TransactionAPI {
 	return &TransactionAPI{we}
 }
 
 func (s *TransactionAPI) GetBlockTransactionCountByNumber(ctx context.Context, blockNr gethrpc.BlockNumber) *hexutil.Uint {
-	count, err := UnauthenticatedTenRPCCall[hexutil.Uint](ctx, s.we, &CacheCfg{CacheTypeDynamic: func() CacheStrategy {
+	count, err := UnauthenticatedTenRPCCall[hexutil.Uint](ctx, s.we, &cache.Cfg{DynamicType: func() cache.Strategy {
 		return cacheBlockNumber(blockNr)
 	}}, "eth_getBlockTransactionCountByNumber", blockNr)
 	if err != nil {
@@ -30,7 +34,7 @@ func (s *TransactionAPI) GetBlockTransactionCountByNumber(ctx context.Context, b
 }
 
 func (s *TransactionAPI) GetBlockTransactionCountByHash(ctx context.Context, blockHash common.Hash) *hexutil.Uint {
-	count, err := UnauthenticatedTenRPCCall[hexutil.Uint](ctx, s.we, &CacheCfg{CacheType: LongLiving}, "eth_getBlockTransactionCountByHash", blockHash)
+	count, err := UnauthenticatedTenRPCCall[hexutil.Uint](ctx, s.we, &cache.Cfg{Type: cache.LongLiving}, "eth_getBlockTransactionCountByHash", blockHash)
 	if err != nil {
 		return nil
 	}
@@ -63,8 +67,8 @@ func (s *TransactionAPI) GetTransactionCount(ctx context.Context, address common
 		s.we,
 		&ExecCfg{
 			account: &address,
-			cacheCfg: &CacheCfg{
-				CacheTypeDynamic: func() CacheStrategy {
+			cacheCfg: &cache.Cfg{
+				DynamicType: func() cache.Strategy {
 					return cacheBlockNumberOrHash(blockNrOrHash)
 				},
 			},
@@ -76,11 +80,11 @@ func (s *TransactionAPI) GetTransactionCount(ctx context.Context, address common
 }
 
 func (s *TransactionAPI) GetTransactionByHash(ctx context.Context, hash common.Hash) (*rpc.RpcTransaction, error) {
-	return ExecAuthRPC[rpc.RpcTransaction](ctx, s.we, &ExecCfg{tryAll: true, cacheCfg: &CacheCfg{CacheType: LongLiving}}, "eth_getTransactionByHash", hash)
+	return ExecAuthRPC[rpc.RpcTransaction](ctx, s.we, &ExecCfg{tryAll: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, "eth_getTransactionByHash", hash)
 }
 
 func (s *TransactionAPI) GetRawTransactionByHash(ctx context.Context, hash common.Hash) (hexutil.Bytes, error) {
-	tx, err := ExecAuthRPC[hexutil.Bytes](ctx, s.we, &ExecCfg{tryAll: true, cacheCfg: &CacheCfg{CacheType: LongLiving}}, "eth_getRawTransactionByHash", hash)
+	tx, err := ExecAuthRPC[hexutil.Bytes](ctx, s.we, &ExecCfg{tryAll: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, "eth_getRawTransactionByHash", hash)
 	if tx != nil {
 		return *tx, err
 	}
@@ -88,7 +92,7 @@ func (s *TransactionAPI) GetRawTransactionByHash(ctx context.Context, hash commo
 }
 
 func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error) {
-	txRec, err := ExecAuthRPC[map[string]interface{}](ctx, s.we, &ExecCfg{tryUntilAuthorised: true, cacheCfg: &CacheCfg{CacheType: LongLiving}}, "eth_getTransactionReceipt", hash)
+	txRec, err := ExecAuthRPC[map[string]interface{}](ctx, s.we, &ExecCfg{tryUntilAuthorised: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, "eth_getTransactionReceipt", hash)
 	if err != nil {
 		return nil, err
 	}

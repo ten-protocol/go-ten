@@ -4,6 +4,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+
 	"github.com/ten-protocol/go-ten/go/common/subscription"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/httpapi"
@@ -24,7 +26,7 @@ type Container struct {
 	stopControl     *stopcontrol.StopControl
 	logger          gethlog.Logger
 	rpcServer       node.Server
-	services        *rpcapi.Services
+	services        *services.Services
 	newHeadsService *subscription.NewHeadsService
 }
 
@@ -58,7 +60,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	}
 
 	stopControl := stopcontrol.New()
-	walletExt := rpcapi.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, databaseStorage, stopControl, version, logger, &config)
+	walletExt := services.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, databaseStorage, stopControl, version, logger, &config)
 	cfg := &node.RPCConfig{
 		EnableHTTP: true,
 		HTTPPort:   config.WalletExtensionPortHTTP,

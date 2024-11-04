@@ -1,4 +1,4 @@
-package rpcapi
+package services
 
 import (
 	"bytes"
@@ -46,8 +46,8 @@ type Services struct {
 	Cache        cache.Cache
 	RateLimiter  *ratelimiter.RateLimiter
 	// the OG maintains a connection pool of rpc connections to underlying nodes
-	rpcHTTPConnPool *pool.ObjectPool
-	rpcWSConnPool   *pool.ObjectPool
+	RpcHTTPConnPool *pool.ObjectPool
+	RpcWSConnPool   *pool.ObjectPool
 	Config          *common.Config
 	NewHeadsService *subscriptioncommon.NewHeadsService
 }
@@ -103,8 +103,8 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		version:         version,
 		Cache:           newGatewayCache,
 		RateLimiter:     rateLimiter,
-		rpcHTTPConnPool: pool.NewObjectPool(context.Background(), factoryHTTP, cfg),
-		rpcWSConnPool:   pool.NewObjectPool(context.Background(), factoryWS, cfg),
+		RpcHTTPConnPool: pool.NewObjectPool(context.Background(), factoryHTTP, cfg),
+		RpcWSConnPool:   pool.NewObjectPool(context.Background(), factoryWS, cfg),
 		Config:          config,
 	}
 
@@ -132,7 +132,7 @@ func subscribeToNewHeadsWithRetry(ch chan *tencommon.BatchHeader, services Servi
 	var sub *gethrpc.ClientSubscription
 	err := retry.Do(
 		func() error {
-			connectionObj, err := services.rpcWSConnPool.BorrowObject(context.Background())
+			connectionObj, err := services.RpcWSConnPool.BorrowObject(context.Background())
 			if err != nil {
 				return fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
 			}
@@ -140,7 +140,7 @@ func subscribeToNewHeadsWithRetry(ch chan *tencommon.BatchHeader, services Servi
 			sub, err = rpcClient.Subscribe(context.Background(), rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeNewHeads)
 			if err != nil {
 				logger.Info("could not subscribe for new head blocks", log.ErrKey, err)
-				_ = returnConn(services.rpcWSConnPool, rpcClient, logger)
+				_ = ReturnConn(services.RpcWSConnPool, rpcClient, logger)
 			}
 			return err
 		},
@@ -277,7 +277,7 @@ func (w *Services) Version() string {
 
 func (w *Services) GetTenNodeHealthStatus() (bool, error) {
 	audit(w, "Getting TEN node health status")
-	res, err := withPlainRPCConnection[bool](context.Background(), w, func(client *gethrpc.Client) (*bool, error) {
+	res, err := WithPlainRPCConnection[bool](context.Background(), w, func(client *gethrpc.Client) (*bool, error) {
 		res, err := obsclient.NewObsClient(client).Health()
 		return &res, err
 	})
@@ -286,7 +286,7 @@ func (w *Services) GetTenNodeHealthStatus() (bool, error) {
 
 func (w *Services) GetTenNetworkConfig() (tencommon.TenNetworkInfo, error) {
 	audit(w, "Getting TEN network config")
-	res, err := withPlainRPCConnection[tencommon.TenNetworkInfo](context.Background(), w, func(client *gethrpc.Client) (*tencommon.TenNetworkInfo, error) {
+	res, err := WithPlainRPCConnection[tencommon.TenNetworkInfo](context.Background(), w, func(client *gethrpc.Client) (*tencommon.TenNetworkInfo, error) {
 		res, err := obsclient.NewObsClient(client).GetConfig()
 		return res, err
 	})
@@ -310,7 +310,19 @@ func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlic
 	return string(message), nil
 }
 
+func (w *Services) GetUser(userID []byte) (*GWUser, error) {
+	return cache.WithCache(w.Cache, &cache.Cfg{Type: cache.LongLiving}, userCacheKey(userID), func() (*GWUser, error) {
+		// todo - use storage with cache
+		user, err := w.Storage.GetUser(userID)
+		if err != nil {
+			return nil, fmt.Errorf("user %s not found. %w", hexutils.BytesToHex(userID), err)
+		}
+		result, err := gwUserFromDB(user, w)
+		return result, err
+	})
+}
+
 func (w *Services) Stop() {
-	w.rpcHTTPConnPool.Close(context.Background())
-	w.rpcWSConnPool.Close(context.Background())
+	w.RpcHTTPConnPool.Close(context.Background())
+	w.RpcWSConnPool.Close(context.Background())
 }
