@@ -1,20 +1,24 @@
 package sqlite
 
+/*
+	SQLite database implementation of the Storage interface
+
+	SQLite is used for local deployments and testing without the need for a cloud database.
+	To make sure to see similar behaviour as in production using CosmosDB we use SQLite database in a similar way as comosDB (as key-value database).
+*/
 import (
 	"database/sql"
-	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
 	obscurocommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
-	common "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 type Database struct {
@@ -41,50 +45,38 @@ func NewSqliteDatabase(dbPath string) (*Database, error) {
 		return nil, err
 	}
 
-	// create users table
+	// Modify the users table to store the entire GWUserDB as JSON
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
-		user_id binary(20) PRIMARY KEY,
-		private_key binary(32)
+		id TEXT PRIMARY KEY,
+		user_data TEXT
 	);`)
 	if err != nil {
 		return nil, err
 	}
 
-	// create accounts table
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS accounts (
-		user_id binary(20),
-		account_address binary(20),
-		signature binary(65),
-		signature_type int,
-    	FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
-	);`)
-	if err != nil {
-		return nil, err
-	}
-
-	// create transactions table
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS transactions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id binary(20),
-    tx_hash TEXT,
-    tx TEXT,
-    tx_time TEXT DEFAULT (datetime('now'))
-)	;`)
-	if err != nil {
-		return nil, err
-	}
+	// Remove the accounts table as it will be stored within the user_data JSON
 
 	return &Database{db: db}, nil
 }
 
 func (s *Database) AddUser(userID []byte, privateKey []byte) error {
-	stmt, err := s.db.Prepare("INSERT OR REPLACE INTO users(user_id, private_key) VALUES (?, ?)")
+	user := common.GWUserDB{
+		UserId:     userID,
+		PrivateKey: privateKey,
+		Accounts:   []common.GWAccountDB{},
+	}
+	userJSON, err := json.Marshal(user)
+	if err != nil {
+		return err
+	}
+
+	stmt, err := s.db.Prepare("INSERT OR REPLACE INTO users(id, user_data) VALUES (?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(userID, privateKey)
+	_, err = stmt.Exec(string(user.UserId), string(userJSON))
 	if err != nil {
 		return err
 	}
@@ -93,93 +85,77 @@ func (s *Database) AddUser(userID []byte, privateKey []byte) error {
 }
 
 func (s *Database) DeleteUser(userID []byte) error {
-	stmt, err := s.db.Prepare("DELETE FROM users WHERE user_id = ?")
+	stmt, err := s.db.Prepare("DELETE FROM users WHERE id = ?")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(userID)
+	_, err = stmt.Exec(string(userID))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete user: %w", err)
 	}
 
 	return nil
-}
-
-func (s *Database) GetUserPrivateKey(userID []byte) ([]byte, error) {
-	var privateKey []byte
-	err := s.db.QueryRow("SELECT private_key FROM users WHERE user_id = ?", userID).Scan(&privateKey)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// No rows found for the given userID
-			return nil, errutil.ErrNotFound
-		}
-		return nil, err
-	}
-
-	return privateKey, nil
 }
 
 func (s *Database) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
-	stmt, err := s.db.Prepare("INSERT INTO accounts(user_id, account_address, signature, signature_type) VALUES (?, ?, ?, ?)")
+	var userDataJSON string
+	err := s.db.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	var user common.GWUserDB
+	err = json.Unmarshal([]byte(userDataJSON), &user)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal user data: %w", err)
+	}
+
+	newAccount := common.GWAccountDB{
+		AccountAddress: accountAddress,
+		Signature:      signature,
+		SignatureType:  int(signatureType),
+	}
+
+	user.Accounts = append(user.Accounts, newAccount)
+
+	updatedUserJSON, err := json.Marshal(user)
+	if err != nil {
+		return fmt.Errorf("error marshaling updated user: %w", err)
+	}
+
+	stmt, err := s.db.Prepare("UPDATE users SET user_data = ? WHERE id = ?")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(userID, accountAddress, signature, int(signatureType))
+	_, err = stmt.Exec(string(updatedUserJSON), string(userID))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update user with new account: %w", err)
 	}
 
 	return nil
 }
 
-func (s *Database) GetAccounts(userID []byte) ([]common.AccountDB, error) {
-	rows, err := s.db.Query("SELECT account_address, signature, signature_type FROM accounts WHERE user_id = ?", userID)
+func (s *Database) GetUser(userID []byte) (common.GWUserDB, error) {
+	var userDataJSON string
+	err := s.db.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
 	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var accounts []common.AccountDB
-	for rows.Next() {
-		var account common.AccountDB
-		if err := rows.Scan(&account.AccountAddress, &account.Signature, &account.SignatureType); err != nil {
-			return nil, err
+		if err == sql.ErrNoRows {
+			return common.GWUserDB{}, fmt.Errorf("failed to get user: %w", errutil.ErrNotFound)
 		}
-		accounts = append(accounts, account)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+		return common.GWUserDB{}, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	return accounts, nil
-}
-
-func (s *Database) GetAllUsers() ([]common.UserDB, error) {
-	rows, err := s.db.Query("SELECT user_id, private_key FROM users")
+	var user common.GWUserDB
+	err = json.Unmarshal([]byte(userDataJSON), &user)
 	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var users []common.UserDB
-	for rows.Next() {
-		var user common.UserDB
-		err = rows.Scan(&user.UserID, &user.PrivateKey)
-		if err != nil {
-			return nil, err
-		}
-		users = append(users, user)
+		return common.GWUserDB{}, fmt.Errorf("failed to unmarshal user data: %w", err)
 	}
 
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return users, nil
+	return user, nil
 }
 
 func createOrLoad(dbPath string) (string, error) {
@@ -202,33 +178,4 @@ func createOrLoad(dbPath string) (string, error) {
 	}
 
 	return dbPath, nil
-}
-
-func (s *Database) StoreTransaction(rawTx string, userID []byte) error {
-	stmt, err := s.db.Prepare("INSERT INTO transactions(user_id, tx_hash, tx) VALUES (?, ?, ?)")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	txHash := ""
-	if len(rawTx) < 3 {
-		fmt.Println("Invalid rawTx: ", rawTx)
-	} else {
-		// Decode the hex string to bytes, excluding the '0x' prefix
-		rawTxBytes, err := hex.DecodeString(rawTx[2:])
-		if err != nil {
-			fmt.Println("Error decoding rawTx: ", err)
-		} else {
-			// Compute Keccak-256 hash
-			txHash = crypto.Keccak256Hash(rawTxBytes).Hex()
-		}
-	}
-
-	_, err = stmt.Exec(userID, txHash, rawTx)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

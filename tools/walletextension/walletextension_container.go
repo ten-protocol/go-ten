@@ -32,8 +32,20 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	// create the account manager with a single unauthenticated connection
 	hostRPCBindAddrWS := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
 	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
-	// start the database
-	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride)
+
+	// Database encryption key handling
+	// TODO: Check if encryption key is already sealed and unseal it and generate new one if not (part of the next PR)
+	// TODO: We should have a mechanism to get the key from an enclave that already runs (part of the next PR)
+	// TODO: Move this to a separate file along with key exchange logic (part of the next PR)
+
+	encryptionKey, err := wecommon.GenerateRandomKey()
+	if err != nil {
+		logger.Crit("unable to generate random encryption key", log.ErrKey, err)
+		os.Exit(1)
+	}
+
+	// start the database with the encryption key
+	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride, encryptionKey)
 	if err != nil {
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
 		os.Exit(1)
