@@ -160,7 +160,6 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 }
 
 func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []gethcommon.Hash) error {
-	// there may be a case where there are less blobHashes in the rollup than in the block
 	minLength := len(blobHashes)
 	if len(rollupHashes.BlobHashes) < minLength {
 		minLength = len(rollupHashes.BlobHashes)
