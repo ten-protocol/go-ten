@@ -160,15 +160,20 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 }
 
 func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []gethcommon.Hash) error {
-	if len(blobHashes) < len(rollupHashes.BlobHashes) {
-		println("ROLLUP VERIFICAITON FAILURE ")
-		return nil
-		//return fmt.Errorf("blobHashes has fewer elements (%d) than rollupHashes (%d)", len(blobHashes), len(rollupHashes.BlobHashes))
+	// there may be a case where there are less blobHashes in the rollup than in the block
+	minLength := len(blobHashes)
+	if len(rollupHashes.BlobHashes) < minLength {
+		minLength = len(rollupHashes.BlobHashes)
 	}
 
-	for i, hash := range rollupHashes.BlobHashes {
-		if hash != blobHashes[i] {
-			return fmt.Errorf("hash mismatch at index %d: rollupHash (%s) != blobHash (%s)", i, hash.Hex(), blobHashes[i].Hex())
+	for i := 0; i < minLength; i++ {
+		if rollupHashes.BlobHashes[i] != blobHashes[i] {
+			return fmt.Errorf(
+				"hash mismatch at index %d: rollupHash (%s) != blobHash (%s)",
+				i,
+				rollupHashes.BlobHashes[i].Hex(),
+				blobHashes[i].Hex(),
+			)
 		}
 	}
 	return nil
