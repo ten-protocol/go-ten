@@ -118,11 +118,15 @@ func createInMemoryNode(startPort int) node.Node {
 
 	tenCfg.Node.PrivateKeyString = integration.GethNodePK
 	tenCfg.Node.ID = common.HexToAddress(integration.GethNodeAddress)
-	tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("0.0.0.0:%d", startPort+integration.DefaultEnclaveOffset)
+	tenCfg.Node.IsGenesis = true
+
+	tenCfg.Host.Debug.EnableProfiler = true
+	tenCfg.Host.Enclave.RPCAddresses = []string{fmt.Sprintf("%s:%d", _localhost, startPort+integration.DefaultEnclaveOffset)}
 	tenCfg.Host.RPC.HTTPPort = uint64(startPort) + integration.DefaultHostRPCHTTPOffset
 	tenCfg.Host.RPC.WSPort = uint64(startPort) + integration.DefaultHostRPCWSOffset
 	tenCfg.Host.L1.WebsocketURL = fmt.Sprintf("ws://%s:%d", _localhost, startPort+integration.DefaultGethWSPortOffset)
-	tenCfg.Node.IsGenesis = true
+
+	tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("%s:%d", _localhost, startPort+integration.DefaultEnclaveOffset)
 
 	return NewInMemNode(tenCfg)
 }
