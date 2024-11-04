@@ -245,13 +245,21 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 
 			decodedTx := p.mgmtContractLib.DecodeTx(txs[i])
 			var blobs []*kzg4844.Blob
-			var err error
 
 			switch typedTx := decodedTx.(type) {
 			case *ethadapter.L1SetImportantContractsTx:
 				contractAddressTxs = append(contractAddressTxs, typedTx)
 			case *ethadapter.L1RollupHashes:
-				blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), typedTx.BlobHashes)
+				// Check if this block is part of a reorg
+				canonicalBlock, err := p.ethClient.EthClient().BlockByNumber(context.Background(), block.Number())
+				if err == nil && canonicalBlock.Hash() != block.Hash() {
+					p.logger.Debug("Skipping rollup from reorged block",
+						"blockNumber", block.NumberU64(),
+						"blockHash", block.Hash(),
+						"canonicalHash", canonicalBlock.Hash())
+					continue
+				}
+				blobs, err := p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), typedTx.BlobHashes)
 				// temporarily add this host stopping check to prevent sim test failures until a more robust solution is implemented
 				if err != nil {
 					if errors.Is(err, ethereum.NotFound) {
