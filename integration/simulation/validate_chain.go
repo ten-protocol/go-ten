@@ -289,12 +289,6 @@ func ExtractDataFromEthereumChain(
 				if err != nil {
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
-				// Add debug logging
-				testlog.Logger().Debug("Processing rollup",
-					"blockNumber", block.NumberU64(),
-					"blockHash", block.Hash(),
-					"rollupHash", r.Hash(),
-					"lastBatchSeqNo", r.Header.LastBatchSeqNo)
 				rollups = append(rollups, r)
 				rollupReceipts = append(rollupReceipts, receipt)
 				s.Stats.NewRollup(nodeIdx)

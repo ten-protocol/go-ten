@@ -251,14 +251,14 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 				contractAddressTxs = append(contractAddressTxs, typedTx)
 			case *ethadapter.L1RollupHashes:
 				// Check if this block is part of a reorg
-				canonicalBlock, err := p.ethClient.EthClient().BlockByNumber(context.Background(), block.Number())
-				if err == nil && canonicalBlock.Hash() != block.Hash() {
-					p.logger.Debug("Skipping rollup from reorged block",
-						"blockNumber", block.NumberU64(),
-						"blockHash", block.Hash(),
-						"canonicalHash", canonicalBlock.Hash())
-					continue
-				}
+				//canonicalBlock, err := p.ethClient.EthClient().BlockByNumber(context.Background(), block.Number())
+				//if err == nil && canonicalBlock.Hash() != block.Hash() {
+				//	println("Skipping rollup from reorged block",
+				//		"blockNumber", block.NumberU64(),
+				//		"blockHash", block.Hash().Hex(),
+				//		"canonicalHash", canonicalBlock.Hash().Hex())
+				//	continue
+				//}
 				blobs, err := p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), typedTx.BlobHashes)
 				// temporarily add this host stopping check to prevent sim test failures until a more robust solution is implemented
 				if err != nil {
