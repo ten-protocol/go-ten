@@ -15,6 +15,7 @@ import (
 	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/evm"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/wallet"
 )
@@ -26,11 +27,15 @@ var (
 
 type SystemContractCallbacks interface {
 	GetOwner() gethcommon.Address
-	Initialize(batch *core.Batch, receipts types.Receipts) error
+	Initialize(batch *core.Batch, receipts types.Receipts, msgBusManager SystemContractsInitializable) error
 	Load() error
 	CreateOnBatchEndTransaction(ctx context.Context, stateDB *state.StateDB, transactions common.L2Transactions, receipts types.Receipts) (*types.Transaction, error)
 	TransactionPostProcessor() *gethcommon.Address
 	VerifyOnBlockReceipt(transactions common.L2Transactions, receipt *types.Receipt) (bool, error)
+}
+
+type SystemContractsInitializable interface {
+	Initialize(SystemContractAddresses) error
 }
 
 type systemContractCallbacks struct {
@@ -104,20 +109,29 @@ func (s *systemContractCallbacks) initializeRequiredAddresses(addresses SystemCo
 	return nil
 }
 
-func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipts types.Receipts) error {
-	s.logger.Info("Initialize: Starting initialization of system contracts", "batchSeqNo", batch.SeqNo)
+func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipts types.Receipts, msgBusManager SystemContractsInitializable) error {
+	s.logger.Info("Initialize: Starting initialization of system contracts", "batchSeqNo", batch.SeqNo())
+	if batch.SeqNo().Uint64() != 2 {
+		s.logger.Error("Initialize: Batch is not genesis", "batchSeqNo", batch.SeqNo)
+		return fmt.Errorf("batch is not genesis")
+	}
 
-	if len(receipts) < 2 {
-		s.logger.Error("Initialize: Genesis batch does not have enough receipts", "expected", 2, "got", len(receipts))
+	if len(receipts) < 1 {
+		s.logger.Error("Initialize: Genesis batch does not have enough receipts", "expected", 1, "got", len(receipts))
 		return fmt.Errorf("genesis batch does not have enough receipts")
 	}
 
-	receiptIndex := 1
+	receiptIndex := 0
 	s.logger.Debug("Initialize: Deriving addresses from receipt", "receiptIndex", receiptIndex, "transactionHash", receipts[receiptIndex].TxHash.Hex())
 	addresses, err := DeriveAddresses(receipts[receiptIndex])
 	if err != nil {
 		s.logger.Error("Initialize: Failed deriving addresses", "error", err, "receiptHash", receipts[receiptIndex].TxHash.Hex())
 		return fmt.Errorf("failed deriving addresses %w", err)
+	}
+
+	if err := msgBusManager.Initialize(addresses); err != nil {
+		s.logger.Error("Initialize: Failed deriving message bus address", "error", err)
+		return fmt.Errorf("failed deriving message bus address %w", err)
 	}
 
 	s.logger.Info("Initialize: Initializing required addresses", "addresses", addresses)
@@ -135,7 +149,7 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 		return nil, ErrNoTransactions
 	}
 
-	nonceForSyntheticTx := l2State.GetNonce(s.GetOwner())
+	nonceForSyntheticTx := l2State.GetNonce(evm.MaskedSender(*s.transactionsPostProcessorAddress))
 	s.logger.Debug("CreateOnBatchEndTransaction: Retrieved nonce for synthetic transaction", "nonce", nonceForSyntheticTx)
 
 	solidityTransactions := make([]TransactionPostProcessor.StructsTransaction, 0)
