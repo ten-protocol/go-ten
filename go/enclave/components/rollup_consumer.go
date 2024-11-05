@@ -159,26 +159,21 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 	return rollups, nil
 }
 
-// given the blobHashes are extracted from the block and receipts, and the transactions are decoded to get the rollup hashes,
-// we should always get an equal number of hashes to compare
+// there may be many rollups in one block so the blobHashes array, so it is possible that the rollupHashes array is a
+// subset of the blobHashes array
 func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []gethcommon.Hash) error {
-	numBlobHashes := len(blobHashes)
-	numRollupHashes := len(rollupHashes.BlobHashes)
-	if numRollupHashes != numBlobHashes {
-		return fmt.Errorf(
-			"length mismatch: rollupHashes (%d) != blobHashes (%d)",
-			numRollupHashes,
-			numBlobHashes,
-		)
+	// more efficient lookup
+	blobHashSet := make(map[gethcommon.Hash]struct{}, len(blobHashes))
+	for _, h := range blobHashes {
+		blobHashSet[h] = struct{}{}
 	}
 
-	for i := 0; i < numBlobHashes; i++ {
-		if rollupHashes.BlobHashes[i] != blobHashes[i] {
+	for i, rollupHash := range rollupHashes.BlobHashes {
+		if _, exists := blobHashSet[rollupHash]; !exists {
 			return fmt.Errorf(
-				"hash mismatch at index %d: rollupHash (%s) != blobHash (%s)",
+				"rollupHash at index %d (%s) not found in blobHashes",
 				i,
-				rollupHashes.BlobHashes[i].Hex(),
-				blobHashes[i].Hex(),
+				rollupHash.Hex(),
 			)
 		}
 	}
