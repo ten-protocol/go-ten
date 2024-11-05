@@ -1,4 +1,4 @@
-package rpcapi
+package services
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"time"
+
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
@@ -16,9 +18,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/rpc"
 
 	"github.com/ten-protocol/go-ten/go/obsclient"
-
-	pool "github.com/jolestar/go-commons-pool/v2"
-	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/status-im/keycard-go/hexutils"
 
@@ -37,82 +36,53 @@ import (
 
 // Services handles the various business logic for the api endpoints
 type Services struct {
-	HostAddrHTTP string // The HTTP address on which the TEN host can be reached
-	HostAddrWS   string // The WS address on which the TEN host can be reached
-	Storage      storage.Storage
-	logger       gethlog.Logger
-	stopControl  *stopcontrol.StopControl
-	version      string
-	Cache        cache.Cache
-	RateLimiter  *ratelimiter.RateLimiter
-	// the OG maintains a connection pool of rpc connections to underlying nodes
-	rpcHTTPConnPool *pool.ObjectPool
-	rpcWSConnPool   *pool.ObjectPool
-	Config          *common.Config
-	NewHeadsService *subscriptioncommon.NewHeadsService
+	HostAddrHTTP      string // The HTTP address on which the TEN host can be reached
+	HostAddrWS        string // The WS address on which the TEN host can be reached
+	Storage           storage.UserStorage
+	logger            gethlog.Logger
+	stopControl       *stopcontrol.StopControl
+	version           string
+	RPCResponsesCache cache.Cache
+	BackendRPC        *BackendRPC
+	RateLimiter       *ratelimiter.RateLimiter
+	Config            *common.Config
+	NewHeadsService   *subscriptioncommon.NewHeadsService
 }
 
 type NewHeadNotifier interface {
 	onNewHead(header *tencommon.BatchHeader)
 }
 
-func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, config *common.Config) *Services {
-	newGatewayCache, err := cache.NewCache(logger)
+// number of rpc responses to cache
+const rpcResponseCacheSize = 1_000_000
+
+func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserStorage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, config *common.Config) *Services {
+	newGatewayCache, err := cache.NewCache(rpcResponseCacheSize, logger)
 	if err != nil {
 		logger.Error(fmt.Errorf("could not create cache. Cause: %w", err).Error())
 		panic(err)
 	}
 
-	factoryHTTP := pool.NewPooledObjectFactory(
-		func(context.Context) (interface{}, error) {
-			rpcClient, err := gethrpc.Dial(hostAddrHTTP)
-			if err != nil {
-				return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", hostAddrHTTP, err)
-			}
-			return rpcClient, nil
-		}, func(ctx context.Context, object *pool.PooledObject) error {
-			client := object.Object.(*gethrpc.Client)
-			client.Close()
-			return nil
-		}, nil, nil, nil)
-
-	factoryWS := pool.NewPooledObjectFactory(
-		func(context.Context) (interface{}, error) {
-			rpcClient, err := gethrpc.Dial(hostAddrWS)
-			if err != nil {
-				return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", hostAddrWS, err)
-			}
-			return rpcClient, nil
-		}, func(ctx context.Context, object *pool.PooledObject) error {
-			client := object.Object.(*gethrpc.Client)
-			client.Close()
-			return nil
-		}, nil, nil, nil)
-
-	cfg := pool.NewDefaultPoolConfig()
-	cfg.MaxTotal = 200 // todo - what is the right number
-
 	rateLimiter := ratelimiter.NewRateLimiter(config.RateLimitUserComputeTime, config.RateLimitWindow, uint32(config.RateLimitMaxConcurrentRequests), logger)
 
 	services := Services{
-		HostAddrHTTP:    hostAddrHTTP,
-		HostAddrWS:      hostAddrWS,
-		Storage:         storage,
-		logger:          logger,
-		stopControl:     stopControl,
-		version:         version,
-		Cache:           newGatewayCache,
-		RateLimiter:     rateLimiter,
-		rpcHTTPConnPool: pool.NewObjectPool(context.Background(), factoryHTTP, cfg),
-		rpcWSConnPool:   pool.NewObjectPool(context.Background(), factoryWS, cfg),
-		Config:          config,
+		HostAddrHTTP:      hostAddrHTTP,
+		HostAddrWS:        hostAddrWS,
+		Storage:           storage,
+		logger:            logger,
+		stopControl:       stopControl,
+		version:           version,
+		RPCResponsesCache: newGatewayCache,
+		BackendRPC:        NewBackendRPC(hostAddrHTTP, hostAddrWS, logger),
+		RateLimiter:       rateLimiter,
+		Config:            config,
 	}
 
 	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(
 		func() (chan *tencommon.BatchHeader, <-chan error, error) {
 			logger.Info("Connecting to new heads service...")
 			// clear the cache to avoid returning stale data during reconnecting.
-			services.Cache.EvictShortLiving()
+			services.RPCResponsesCache.EvictShortLiving()
 			ch := make(chan *tencommon.BatchHeader)
 			errCh, err := subscribeToNewHeadsWithRetry(ch, services, logger)
 			logger.Info("Connected to new heads service.", log.ErrKey, err)
@@ -121,7 +91,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.Storage
 		true,
 		logger,
 		func(newHead *tencommon.BatchHeader) error {
-			services.Cache.EvictShortLiving()
+			services.RPCResponsesCache.EvictShortLiving()
 			return nil
 		})
 
@@ -132,15 +102,14 @@ func subscribeToNewHeadsWithRetry(ch chan *tencommon.BatchHeader, services Servi
 	var sub *gethrpc.ClientSubscription
 	err := retry.Do(
 		func() error {
-			connectionObj, err := services.rpcWSConnPool.BorrowObject(context.Background())
+			connectionObj, err := services.BackendRPC.PlainConnectWs(context.Background())
 			if err != nil {
 				return fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
 			}
-			rpcClient := connectionObj.(rpc.Client)
-			sub, err = rpcClient.Subscribe(context.Background(), rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeNewHeads)
+			sub, err = connectionObj.Subscribe(context.Background(), rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeNewHeads)
 			if err != nil {
 				logger.Info("could not subscribe for new head blocks", log.ErrKey, err)
-				_ = returnConn(services.rpcWSConnPool, rpcClient, logger)
+				_ = services.BackendRPC.ReturnConnWS(connectionObj)
 			}
 			return err
 		},
@@ -212,7 +181,6 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 		return err
 	}
 
-	w.Cache.Remove(userCacheKey(userID))
 	audit(w, "Storing new address for user: %s, address: %s, duration: %d ", hexutils.BytesToHex(userID), address, time.Since(requestStartTime).Milliseconds())
 	return nil
 }
@@ -228,33 +196,21 @@ func (w *Services) UserHasAccount(userID []byte, address string) (bool, error) {
 
 	// todo - this can be optimised and done in the database if we will have users with large number of accounts
 	// get all the accounts for the selected user
-	accounts, err := w.Storage.GetAccounts(userID)
+	user, err := w.Storage.GetUser(userID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error getting accounts for user (%s), %w", userID, err).Error())
 		return false, err
 	}
+	accounts := user.Accounts
 
 	// check if any of the account matches given account
 	found := false
 	for _, account := range accounts {
-		if bytes.Equal(account.AccountAddress, addressBytes) {
+		if bytes.Equal(account.Address.Bytes(), addressBytes) {
 			found = true
 		}
 	}
 	return found, nil
-}
-
-// DeleteUser deletes user and accounts associated with user from the database for given userID
-func (w *Services) DeleteUser(userID []byte) error {
-	audit(w, "Deleting user: %s", hexutils.BytesToHex(userID))
-
-	err := w.Storage.DeleteUser(userID)
-	if err != nil {
-		w.Logger().Error(fmt.Errorf("error deleting user (%s), %w", userID, err).Error())
-		return err
-	}
-	w.Cache.Remove(userCacheKey(userID))
-	return nil
 }
 
 func (w *Services) UserExists(userID []byte) bool {
@@ -262,12 +218,12 @@ func (w *Services) UserExists(userID []byte) bool {
 	// Check if user exists and don't log error if user doesn't exist, because we expect this to happen in case of
 	// user revoking encryption token or using different testnet.
 	// todo add a counter here in the future
-	key, err := w.Storage.GetUserPrivateKey(userID)
+	user, err := w.Storage.GetUser(userID)
 	if err != nil {
 		return false
 	}
 
-	return len(key) > 0
+	return len(user.UserKey) > 0
 }
 
 func (w *Services) Version() string {
@@ -276,7 +232,7 @@ func (w *Services) Version() string {
 
 func (w *Services) GetTenNodeHealthStatus() (bool, error) {
 	audit(w, "Getting TEN node health status")
-	res, err := withPlainRPCConnection[bool](context.Background(), w, func(client *gethrpc.Client) (*bool, error) {
+	res, err := WithPlainRPCConnection[bool](context.Background(), w.BackendRPC, func(client *gethrpc.Client) (*bool, error) {
 		res, err := obsclient.NewObsClient(client).Health()
 		return &res, err
 	})
@@ -285,10 +241,12 @@ func (w *Services) GetTenNodeHealthStatus() (bool, error) {
 
 func (w *Services) GetTenNetworkConfig() (tencommon.TenNetworkInfo, error) {
 	audit(w, "Getting TEN network config")
-	res, err := withPlainRPCConnection[tencommon.TenNetworkInfo](context.Background(), w, func(client *gethrpc.Client) (*tencommon.TenNetworkInfo, error) {
-		res, err := obsclient.NewObsClient(client).GetConfig()
-		return res, err
+	res, err := WithPlainRPCConnection[tencommon.TenNetworkInfo](context.Background(), w.BackendRPC, func(client *gethrpc.Client) (*tencommon.TenNetworkInfo, error) {
+		return obsclient.NewObsClient(client).GetConfig()
 	})
+	if err != nil {
+		return tencommon.TenNetworkInfo{}, err
+	}
 	return *res, err
 }
 
@@ -310,6 +268,5 @@ func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlic
 }
 
 func (w *Services) Stop() {
-	w.rpcHTTPConnPool.Close(context.Background())
-	w.rpcWSConnPool.Close(context.Background())
+	w.BackendRPC.Stop()
 }

@@ -10,10 +10,8 @@ import (
 )
 
 const (
-	numCounters = 1e7       // number of keys to track frequency of (10M).
-	maxCost     = 1_000_000 // 1 million entries
-	bufferItems = 64        // number of keys per Get buffer.
-	defaultCost = 1         // default cost of cache.
+	bufferItems = 64 // number of keys per Get buffer.
+	defaultCost = 1  // default cost of cache.
 )
 
 type ristrettoCache struct {
@@ -23,10 +21,10 @@ type ristrettoCache struct {
 }
 
 // NewRistrettoCacheWithEviction returns a new ristrettoCache.
-func NewRistrettoCacheWithEviction(logger log.Logger) (Cache, error) {
+func NewRistrettoCacheWithEviction(nrElems int, logger log.Logger) (Cache, error) {
 	cache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: numCounters,
-		MaxCost:     maxCost,
+		NumCounters: int64(nrElems * 10),
+		MaxCost:     int64(nrElems),
 		BufferItems: bufferItems,
 		Metrics:     true,
 	})

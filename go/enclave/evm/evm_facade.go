@@ -170,7 +170,7 @@ func executeTransaction(
 		usedGas *uint64,
 		cfg vm.Config,
 	) (*types.Receipt, error) {
-		msg, err := gethcore.TransactionToMessage(tx.Tx, types.MakeSigner(config, header.Number, header.Time), header.BaseFee)
+		msg, err := TransactionToMessageWithOverrides(&tx, config, header)
 		if err != nil {
 			return nil, err
 		}

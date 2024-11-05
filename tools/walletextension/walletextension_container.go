@@ -4,6 +4,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+
 	"github.com/ten-protocol/go-ten/go/common/subscription"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/httpapi"
@@ -24,7 +26,7 @@ type Container struct {
 	stopControl     *stopcontrol.StopControl
 	logger          gethlog.Logger
 	rpcServer       node.Server
-	services        *rpcapi.Services
+	services        *services.Services
 	newHeadsService *subscription.NewHeadsService
 }
 
@@ -32,8 +34,20 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	// create the account manager with a single unauthenticated connection
 	hostRPCBindAddrWS := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
 	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
-	// start the database
-	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride)
+
+	// Database encryption key handling
+	// TODO: Check if encryption key is already sealed and unseal it and generate new one if not (part of the next PR)
+	// TODO: We should have a mechanism to get the key from an enclave that already runs (part of the next PR)
+	// TODO: Move this to a separate file along with key exchange logic (part of the next PR)
+
+	encryptionKey, err := wecommon.GenerateRandomKey()
+	if err != nil {
+		logger.Crit("unable to generate random encryption key", log.ErrKey, err)
+		os.Exit(1)
+	}
+
+	// start the database with the encryption key
+	userStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride, encryptionKey, logger)
 	if err != nil {
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
 		os.Exit(1)
@@ -46,7 +60,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	}
 
 	stopControl := stopcontrol.New()
-	walletExt := rpcapi.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, databaseStorage, stopControl, version, logger, &config)
+	walletExt := services.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, userStorage, stopControl, version, logger, &config)
 	cfg := &node.RPCConfig{
 		EnableHTTP: true,
 		HTTPPort:   config.WalletExtensionPortHTTP,

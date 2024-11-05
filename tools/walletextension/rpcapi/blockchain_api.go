@@ -6,6 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -17,11 +23,11 @@ import (
 )
 
 type BlockChainAPI struct {
-	we               *Services
+	we               *services.Services
 	storageWhitelist *privacy.Whitelist
 }
 
-func NewBlockChainAPI(we *Services) *BlockChainAPI {
+func NewBlockChainAPI(we *services.Services) *BlockChainAPI {
 	whitelist := privacy.NewWhitelist()
 	return &BlockChainAPI{
 		we:               we,
@@ -30,12 +36,12 @@ func NewBlockChainAPI(we *Services) *BlockChainAPI {
 }
 
 func (api *BlockChainAPI) ChainId() *hexutil.Big { //nolint:stylecheck
-	chainID, _ := UnauthenticatedTenRPCCall[hexutil.Big](context.Background(), api.we, &CacheCfg{CacheType: LongLiving}, "eth_chainId")
+	chainID, _ := UnauthenticatedTenRPCCall[hexutil.Big](context.Background(), api.we, &cache.Cfg{Type: cache.LongLiving}, "eth_chainId")
 	return chainID
 }
 
 func (api *BlockChainAPI) BlockNumber() hexutil.Uint64 {
-	nr, err := UnauthenticatedTenRPCCall[hexutil.Uint64](context.Background(), api.we, &CacheCfg{CacheType: LatestBatch}, "eth_blockNumber")
+	nr, err := UnauthenticatedTenRPCCall[hexutil.Uint64](context.Background(), api.we, &cache.Cfg{Type: cache.LatestBatch}, "eth_blockNumber")
 	if err != nil {
 		return hexutil.Uint64(0)
 	}
@@ -47,8 +53,8 @@ func (api *BlockChainAPI) GetBalance(ctx context.Context, address gethcommon.Add
 		ctx,
 		api.we,
 		&ExecCfg{
-			cacheCfg: &CacheCfg{
-				CacheTypeDynamic: func() CacheStrategy {
+			cacheCfg: &cache.Cfg{
+				DynamicType: func() cache.Strategy {
 					return cacheBlockNumberOrHash(blockNrOrHash)
 				},
 			},
@@ -83,7 +89,7 @@ func (s *BlockChainAPI) GetProof(ctx context.Context, address gethcommon.Address
 }
 
 func (api *BlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (map[string]interface{}, error) {
-	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &CacheCfg{CacheTypeDynamic: func() CacheStrategy {
+	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &cache.Cfg{DynamicType: func() cache.Strategy {
 		return cacheBlockNumber(number)
 	}}, "eth_getHeaderByNumber", number)
 	if resp == nil {
@@ -93,7 +99,7 @@ func (api *BlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.Bloc
 }
 
 func (api *BlockChainAPI) GetHeaderByHash(ctx context.Context, hash gethcommon.Hash) map[string]interface{} {
-	resp, _ := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &CacheCfg{CacheType: LongLiving}, "eth_getHeaderByHash", hash)
+	resp, _ := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, "eth_getHeaderByHash", hash)
 	if resp == nil {
 		return nil
 	}
@@ -104,8 +110,8 @@ func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.Block
 	resp, err := UnauthenticatedTenRPCCall[common.BatchHeader](
 		ctx,
 		api.we,
-		&CacheCfg{
-			CacheTypeDynamic: func() CacheStrategy {
+		&cache.Cfg{
+			DynamicType: func() cache.Strategy {
 				return cacheBlockNumber(number)
 			},
 		}, "eth_getBlockByNumber", number, fullTx)
@@ -126,7 +132,7 @@ func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.Block
 }
 
 func (api *BlockChainAPI) GetBlockByHash(ctx context.Context, hash gethcommon.Hash, fullTx bool) (map[string]interface{}, error) {
-	resp, err := UnauthenticatedTenRPCCall[common.BatchHeader](ctx, api.we, &CacheCfg{CacheType: LongLiving}, "eth_getBlockByHash", hash, fullTx)
+	resp, err := UnauthenticatedTenRPCCall[common.BatchHeader](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, "eth_getBlockByHash", hash, fullTx)
 	if resp == nil {
 		return nil, err
 	}
@@ -148,8 +154,8 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Addres
 	resp, err := UnauthenticatedTenRPCCall[hexutil.Bytes](
 		ctx,
 		api.we,
-		&CacheCfg{
-			CacheTypeDynamic: func() CacheStrategy {
+		&cache.Cfg{
+			DynamicType: func() cache.Strategy {
 				return cacheBlockNumberOrHash(blockNrOrHash)
 			},
 		},
@@ -181,7 +187,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 			return nil, err
 		}
 
-		_, err = getUser(userID, api.we)
+		_, err = api.we.Storage.GetUser(userID)
 		if err != nil {
 			return nil, err
 		}
@@ -246,15 +252,15 @@ type (
 
 func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash rpc.BlockNumberOrHash, overrides *StateOverride, blockOverrides *BlockOverrides) (hexutil.Bytes, error) {
 	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, api.we, &ExecCfg{
-		cacheCfg: &CacheCfg{
-			CacheTypeDynamic: func() CacheStrategy {
+		cacheCfg: &cache.Cfg{
+			DynamicType: func() cache.Strategy {
 				return cacheBlockNumberOrHash(blockNrOrHash)
 			},
 		},
-		computeFromCallback: func(user *GWUser) *gethcommon.Address {
+		computeFromCallback: func(user *wecommon.GWUser) *gethcommon.Address {
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
-		adjustArgs: func(acct *GWAccount) []any {
+		adjustArgs: func(acct *wecommon.GWAccount) []any {
 			argsClone := populateFrom(acct, args)
 			return []any{argsClone, blockNrOrHash, overrides, blockOverrides}
 		},
@@ -268,18 +274,18 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 
 func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash *rpc.BlockNumberOrHash, overrides *StateOverride) (hexutil.Uint64, error) {
 	resp, err := ExecAuthRPC[hexutil.Uint64](ctx, api.we, &ExecCfg{
-		cacheCfg: &CacheCfg{
-			CacheTypeDynamic: func() CacheStrategy {
+		cacheCfg: &cache.Cfg{
+			DynamicType: func() cache.Strategy {
 				if blockNrOrHash != nil {
 					return cacheBlockNumberOrHash(*blockNrOrHash)
 				}
-				return LatestBatch
+				return cache.LatestBatch
 			},
 		},
-		computeFromCallback: func(user *GWUser) *gethcommon.Address {
+		computeFromCallback: func(user *wecommon.GWUser) *gethcommon.Address {
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
-		adjustArgs: func(acct *GWAccount) []any {
+		adjustArgs: func(acct *wecommon.GWAccount) []any {
 			argsClone := populateFrom(acct, args)
 			return []any{argsClone, blockNrOrHash, overrides}
 		},
@@ -292,12 +298,12 @@ func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.Transact
 	return *resp, err
 }
 
-func populateFrom(acct *GWAccount, args gethapi.TransactionArgs) gethapi.TransactionArgs {
+func populateFrom(acct *wecommon.GWAccount, args gethapi.TransactionArgs) gethapi.TransactionArgs {
 	// clone the args
 	argsClone := cloneArgs(args)
 	// set the from
 	if args.From == nil || args.From.Hex() == (gethcommon.Address{}).Hex() {
-		argsClone.From = acct.address
+		argsClone.From = acct.Address
 	}
 	return argsClone
 }

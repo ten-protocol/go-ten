@@ -3,30 +3,35 @@ package storage
 import (
 	"fmt"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/mariadb"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/sqlite"
-
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/cosmosdb"
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/sqlite"
 )
 
-type Storage interface {
+type UserStorage interface {
 	AddUser(userID []byte, privateKey []byte) error
 	DeleteUser(userID []byte) error
-	GetUserPrivateKey(userID []byte) ([]byte, error)
 	AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error
-	GetAccounts(userID []byte) ([]common.AccountDB, error)
-	GetAllUsers() ([]common.UserDB, error)
-	StoreTransaction(rawTx string, userID []byte) error
+	GetUser(userID []byte) (*common.GWUser, error)
 }
 
-func New(dbType string, dbConnectionURL, dbPath string) (Storage, error) {
+func New(dbType, dbConnectionURL, dbPath string, randomKey []byte, logger gethlog.Logger) (UserStorage, error) {
+	var underlyingStorage UserStorage
+	var err error
 	switch dbType {
-	case "mariaDB":
-		return mariadb.NewMariaDB(dbConnectionURL)
 	case "sqlite":
-		return sqlite.NewSqliteDatabase(dbPath)
+		underlyingStorage, err = sqlite.NewSqliteDatabase(dbPath)
+	case "cosmosDB":
+		underlyingStorage, err = cosmosdb.NewCosmosDB(dbConnectionURL, randomKey)
+	default:
+		panic(fmt.Sprintf("unknown db type: %s", dbType))
 	}
-	return nil, fmt.Errorf("unknown db %s", dbType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize underlying storage: %w", err)
+	}
+
+	return NewUserStorageWithCache(underlyingStorage, logger)
 }

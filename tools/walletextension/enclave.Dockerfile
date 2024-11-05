@@ -10,6 +10,12 @@
 
 FROM ghcr.io/edgelesssys/ego-dev:v1.5.3 AS build-base
 
+# Install ca-certificates package and update it
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && update-ca-certificates
+
+
 # setup container data structure
 RUN mkdir -p /home/ten/go-ten
 

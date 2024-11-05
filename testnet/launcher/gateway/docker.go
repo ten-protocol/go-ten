@@ -24,7 +24,7 @@ func (n *DockerGateway) Start() error {
 	fmt.Printf("Starting gateway with config: \n%s\n\n", litter.Sdump(*n.cfg))
 
 	cmds := []string{
-		"ego", "run", "/home/ten/go-ten/tools/walletextension/main/main",
+		"/home/obscuro/go-obscuro/tools/walletextension/bin/wallet_extension_linux",
 		"--host", "0.0.0.0",
 		"--port", fmt.Sprintf("%d", n.cfg.gatewayHTTPPort),
 		"--portWS", fmt.Sprintf("%d", n.cfg.gatewayWSPort),

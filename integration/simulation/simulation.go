@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -54,6 +55,7 @@ func (s *Simulation) Start() {
 	testlog.Logger().Info(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(ethereummock.MockGenesisBlock.Hash())))
 	s.ctx = context.Background() // use injected context for graceful shutdowns
 
+	fmt.Printf("Waiting for TEN genesis on L1\n")
 	s.waitForTenGenesisOnL1()
 
 	// Arbitrary sleep to wait for RPC clients to get up and running
@@ -61,13 +63,34 @@ func (s *Simulation) Start() {
 	// todo - instead of sleeping, it would be better to poll
 	time.Sleep(10 * time.Second)
 
+	cfg, err := s.RPCHandles.TenWalletRndClient(s.Params.Wallets.L2FaucetWallet).GetConfig()
+	if err != nil {
+		panic(err)
+	}
+	jsonCfg, err := json.Marshal(cfg)
+	if err == nil {
+		fmt.Printf("Config: %v\n", string(jsonCfg))
+	}
+
+	fmt.Printf("Funding the bridge to TEN\n")
 	s.bridgeFundingToTen()
-	s.deployTenZen()       // Deploy the ZenBase contract
-	s.trackLogs()          // Create log subscriptions, to validate that they're working correctly later.
+
+	fmt.Printf("Deploying ZenBase contract\n")
+	s.deployTenZen() // Deploy the ZenBase contract
+
+	fmt.Printf("Creating log subscriptions\n")
+	s.trackLogs() // Create log subscriptions, to validate that they're working correctly later.
+
+	fmt.Printf("Prefunding L2 wallets\n")
 	s.prefundTenAccounts() // Prefund every L2 wallet
 
-	s.deployTenERC20s()   // Deploy the TEN HOC and POC ERC20 contracts
+	fmt.Printf("Deploying TEN ERC20 contracts\n")
+	s.deployTenERC20s() // Deploy the TEN HOC and POC ERC20 contracts
+
+	fmt.Printf("Prefunding L1 wallets\n")
 	s.prefundL1Accounts() // Prefund every L1 wallet
+
+	fmt.Printf("Checking health status\n")
 	s.checkHealthStatus() // Checks the nodes health status
 
 	timer := time.Now()
@@ -306,8 +329,12 @@ func (s *Simulation) deployTenERC20s() {
 		go func(token testcommon.ERC20) {
 			defer wg.Done()
 			owner := s.Params.Wallets.Tokens[token].L2Owner
-			// 0x526c84529b2b8c11f57d93d3f5537aca3aecef9b - this is the address of the L2 contract which is currently hardcoded.
-			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), gethcommon.HexToAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b"))
+
+			cfg, err := s.RPCHandles.TenWalletRndClient(owner).GetConfig()
+			if err != nil {
+				panic(err)
+			}
+			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), cfg.L2MessageBusAddress)
 
 			fmt.Printf("Deploy contract from: %s\n", owner.Address().Hex())
 			deployContractTxData := types.DynamicFeeTx{

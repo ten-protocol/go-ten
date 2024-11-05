@@ -36,7 +36,7 @@ services:
     image: "testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway:latest"
     build:
       context: $ROOT_PATH
-      dockerfile: ./tools/walletextension/enclave.Dockerfile
+      dockerfile: ./tools/walletextension/Dockerfile
   faucet:
     image: "testnetobscuronet.azurecr.io/obscuronet/faucet:latest"
     build:

@@ -158,19 +158,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "HOOK_CALLER_ROLE",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "address",
@@ -249,11 +236,6 @@
       {
         "internalType": "address",
         "name": "eoaAdmin",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "authorizedCaller",
         "type": "address"
       }
     ],
