@@ -4,13 +4,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	rpc2 "github.com/ten-protocol/go-ten/go/enclave/rpc"
+	"github.com/ten-protocol/go-ten/tools/walletextension/services"
 )
 
 type TxPoolAPI struct {
-	we *Services
+	we *services.Services
 }
 
-func NewTxPoolAPI(we *Services) *TxPoolAPI {
+func NewTxPoolAPI(we *services.Services) *TxPoolAPI {
 	return &TxPoolAPI{we}
 }
 

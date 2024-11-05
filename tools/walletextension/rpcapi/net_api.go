@@ -2,18 +2,22 @@ package rpcapi
 
 import (
 	"context"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/services"
 )
 
 type NetAPI struct {
-	we *Services
+	we *services.Services
 }
 
-func NewNetAPI(we *Services) *NetAPI {
+func NewNetAPI(we *services.Services) *NetAPI {
 	return &NetAPI{we}
 }
 
 func (api *NetAPI) Version(ctx context.Context) (*string, error) {
-	return UnauthenticatedTenRPCCall[string](ctx, api.we, &CacheCfg{CacheType: LongLiving}, "net_version")
+	return UnauthenticatedTenRPCCall[string](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, "net_version")
 }
 
 type ConfigResponseJson struct {
@@ -24,5 +28,5 @@ type ConfigResponseJson struct {
 }
 
 func (api *NetAPI) Config(ctx context.Context) (*ConfigResponseJson, error) {
-	return UnauthenticatedTenRPCCall[ConfigResponseJson](ctx, api.we, &CacheCfg{CacheType: LongLiving}, "obscuro_config")
+	return UnauthenticatedTenRPCCall[ConfigResponseJson](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, "obscuro_config")
 }

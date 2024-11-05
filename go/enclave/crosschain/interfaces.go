@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/enclave/system"
 )
 
 type (
@@ -39,9 +40,8 @@ type Manager interface {
 	// GetBusAddress - Returns the L2 address of the message bus contract.
 	GetBusAddress() *common.L2Address
 
-	// DeriveOwner - Generates the key pair that will be used to transact with the L2 message bus.
-	// todo (#1549) - implement with cryptography epic.
-	DeriveOwner(seed []byte) (*common.L2Address, error)
+	// Initialize - Derives the address of the message bus contract.
+	Initialize(systemAddresses system.SystemContractAddresses) error
 
 	// GenerateMessageBusDeployTx - Returns a signed message bus deployment transaction.
 	GenerateMessageBusDeployTx() (*common.L2Tx, error)
@@ -56,4 +56,6 @@ type Manager interface {
 	ExecuteValueTransfers(ctx context.Context, transfers common.ValueTransferEvents, rollupState *state.StateDB)
 
 	RetrieveInboundMessages(ctx context.Context, fromBlock *types.Header, toBlock *types.Header, rollupState *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents)
+
+	system.SystemContractsInitializable
 }

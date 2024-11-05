@@ -86,15 +86,13 @@ func runGethNetwork(t *testing.T) *netInfo {
 }
 
 func TestManagementContract(t *testing.T) {
-	t.Skip("Skipping as it's too flaky.")
-
 	// run tests on one network
 	sim := runGethNetwork(t)
 	defer sim.eth2Network.Stop() //nolint: errcheck
 
 	// set up the client and the (debug) wallet
 	client := sim.ethClients[0]
-	w := newDebugWallet(sim.wallets[0])
+	w := newDebugWallet(sim.wallets[0], 30*time.Second)
 
 	for name, test := range map[string]func(*testing.T, *debugMgmtContractLib, *debugWallet, ethadapter.EthClient){
 		"secretCannotBeInitializedTwice":     secretCannotBeInitializedTwice,

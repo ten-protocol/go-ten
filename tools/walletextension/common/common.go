@@ -1,6 +1,7 @@
 package common
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 
@@ -14,6 +15,8 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
+
+const EncryptionKeySize = 32
 
 // PrivateKeyToCompressedPubKey converts *ecies.PrivateKey to compressed PubKey ([]byte with length 33)
 func PrivateKeyToCompressedPubKey(prvKey *ecies.PrivateKey) []byte {
@@ -75,4 +78,13 @@ func (r *RPCRequest) Clone() *RPCRequest {
 		Method: r.Method,
 		Params: r.Params,
 	}
+}
+
+func GenerateRandomKey() ([]byte, error) {
+	key := make([]byte, EncryptionKeySize)
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
 }

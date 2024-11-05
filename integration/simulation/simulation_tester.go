@@ -73,14 +73,13 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	// run tests
 	fmt.Printf("Validating simulation results\n")
 	testlog.Logger().Info("Validating simulation results")
-
 	checkNetworkValidity(t, &simulation)
-
-	fmt.Printf("Stopping simulation\n")
-	testlog.Logger().Info("Stopping simulation")
-	simulation.Stop()
 
 	// generate and print the final stats
 	t.Logf("Simulation results:%+v", NewOutputStats(&simulation))
 	testlog.Logger().Info(fmt.Sprintf("Simulation results:%+v", NewOutputStats(&simulation)))
+
+	fmt.Printf("Stopping simulation\n")
+	testlog.Logger().Info("Stopping simulation")
+	simulation.Stop()
 }

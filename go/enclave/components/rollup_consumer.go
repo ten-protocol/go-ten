@@ -159,10 +159,22 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 	return rollups, nil
 }
 
+// there may be many rollups in one block so the blobHashes array, so it is possible that the rollupHashes array is a
+// subset of the blobHashes array
 func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []gethcommon.Hash) error {
-	for i, hash := range rollupHashes.BlobHashes {
-		if hash != blobHashes[i] {
-			return fmt.Errorf("hash mismatch at index %d: rollupHash (%s) != blobHash (%s)", i, hash.Hex(), blobHashes[i].Hex())
+	// more efficient lookup
+	blobHashSet := make(map[gethcommon.Hash]struct{}, len(blobHashes))
+	for _, h := range blobHashes {
+		blobHashSet[h] = struct{}{}
+	}
+
+	for i, rollupHash := range rollupHashes.BlobHashes {
+		if _, exists := blobHashSet[rollupHash]; !exists {
+			return fmt.Errorf(
+				"rollupHash at index %d (%s) not found in blobHashes",
+				i,
+				rollupHash.Hex(),
+			)
 		}
 	}
 	return nil

@@ -3,26 +3,30 @@ package rpcapi
 import (
 	"context"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 type EthereumAPI struct {
-	we *Services
+	we *services.Services
 }
 
-func NewEthereumAPI(we *Services,
+func NewEthereumAPI(we *services.Services,
 ) *EthereumAPI {
 	return &EthereumAPI{we}
 }
 
 func (api *EthereumAPI) GasPrice(ctx context.Context) (*hexutil.Big, error) {
-	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, &CacheCfg{CacheType: LatestBatch}, "eth_gasPrice")
+	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, &cache.Cfg{Type: cache.LatestBatch}, "eth_gasPrice")
 }
 
 func (api *EthereumAPI) MaxPriorityFeePerGas(ctx context.Context) (*hexutil.Big, error) {
-	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, &CacheCfg{CacheType: LatestBatch}, "eth_maxPriorityFeePerGas")
+	return UnauthenticatedTenRPCCall[hexutil.Big](ctx, api.we, &cache.Cfg{Type: cache.LatestBatch}, "eth_maxPriorityFeePerGas")
 }
 
 type FeeHistoryResult struct {
@@ -36,7 +40,7 @@ func (api *EthereumAPI) FeeHistory(ctx context.Context, blockCount math.HexOrDec
 	return UnauthenticatedTenRPCCall[FeeHistoryResult](
 		ctx,
 		api.we,
-		&CacheCfg{CacheTypeDynamic: func() CacheStrategy {
+		&cache.Cfg{DynamicType: func() cache.Strategy {
 			return cacheBlockNumber(lastBlock)
 		}},
 		"eth_feeHistory",

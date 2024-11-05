@@ -603,7 +603,13 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 		t.Errorf("node %d: More than half the transactions failed. Successful number: %d", nodeIdx, nrSuccessful)
 	}
 
-	msgBusAddr := gethcommon.HexToAddress("0x526c84529B2b8c11F57D93d3f5537aCA3AeCEf9B")
+	rpc := rpcHandles.TenWalletClient(txInjector.rndObsWallet().Address(), nodeIdx)
+	cfg, err := rpc.GetConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	msgBusAddr := cfg.L2MessageBusAddress
 
 	for _, tx := range txInjector.TxTracker.WithdrawalL2Transactions {
 		sender := getSender(tx)
