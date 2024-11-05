@@ -6,6 +6,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	"github.com/stretchr/testify/require"
@@ -13,7 +15,7 @@ import (
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
-var tests = map[string]func(storage Storage, t *testing.T){
+var tests = map[string]func(storage UserStorage, t *testing.T){
 	"testAddAndGetUser": testAddAndGetUser,
 	"testAddAccounts":   testAddAccounts,
 	"testDeleteUser":    testDeleteUser,
@@ -26,7 +28,7 @@ func TestGatewayStorage(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			storage, err := New("sqlite", "", "", randomKey)
+			storage, err := New("sqlite", "", "", randomKey, testlog.Logger())
 			// storage, err := New("cosmosDB", "", "", randomKey)
 			require.NoError(t, err)
 
@@ -35,7 +37,7 @@ func TestGatewayStorage(t *testing.T) {
 	}
 }
 
-func testAddAndGetUser(storage Storage, t *testing.T) {
+func testAddAndGetUser(storage UserStorage, t *testing.T) {
 	// Generate random user ID and private key
 	userID := make([]byte, 20)
 	_, err := rand.Read(userID)
@@ -61,12 +63,12 @@ func testAddAndGetUser(storage Storage, t *testing.T) {
 	}
 
 	// Check if retrieved private key matches the original
-	if !bytes.Equal(user.PrivateKey, privateKey) {
-		t.Errorf("privateKey mismatch: got %v, want %v", user.PrivateKey, privateKey)
+	if !bytes.Equal(user.UserKey, privateKey) {
+		t.Errorf("privateKey mismatch: got %v, want %v", user.UserKey, privateKey)
 	}
 }
 
-func testAddAccounts(storage Storage, t *testing.T) {
+func testAddAccounts(storage UserStorage, t *testing.T) {
 	// Generate random user ID, private key, and account details
 	userID := make([]byte, 20)
 	rand.Read(userID)
@@ -118,10 +120,10 @@ func testAddAccounts(storage Storage, t *testing.T) {
 
 	// Iterate through retrieved accounts and check if they match the added accounts
 	for _, account := range user.Accounts {
-		if bytes.Equal(account.AccountAddress, accountAddress1) && bytes.Equal(account.Signature, signature1) {
+		if bytes.Equal(account.Address.Bytes(), accountAddress1) && bytes.Equal(account.Signature, signature1) {
 			foundAccount1 = true
 		}
-		if bytes.Equal(account.AccountAddress, accountAddress2) && bytes.Equal(account.Signature, signature2) {
+		if bytes.Equal(account.Address.Bytes(), accountAddress2) && bytes.Equal(account.Signature, signature2) {
 			foundAccount2 = true
 		}
 	}
@@ -136,7 +138,7 @@ func testAddAccounts(storage Storage, t *testing.T) {
 	}
 }
 
-func testDeleteUser(storage Storage, t *testing.T) {
+func testDeleteUser(storage UserStorage, t *testing.T) {
 	// Generate random user ID and private key
 	userID := make([]byte, 20)
 	rand.Read(userID)
@@ -163,7 +165,7 @@ func testDeleteUser(storage Storage, t *testing.T) {
 	}
 }
 
-func testGetUser(storage Storage, t *testing.T) {
+func testGetUser(storage UserStorage, t *testing.T) {
 	// Generate random user ID and private key
 	userID := make([]byte, 20)
 	rand.Read(userID)
@@ -183,12 +185,12 @@ func testGetUser(storage Storage, t *testing.T) {
 	}
 
 	// Check if retrieved user matches the added user
-	if !bytes.Equal(user.UserId, userID) {
-		t.Errorf("Retrieved user ID does not match. Expected %x, got %x", userID, user.UserId)
+	if !bytes.Equal(user.UserID, userID) {
+		t.Errorf("Retrieved user ID does not match. Expected %x, got %x", userID, user.UserID)
 	}
 
-	if !bytes.Equal(user.PrivateKey, privateKey) {
-		t.Errorf("Retrieved private key does not match. Expected %x, got %x", privateKey, user.PrivateKey)
+	if !bytes.Equal(user.UserKey, privateKey) {
+		t.Errorf("Retrieved private key does not match. Expected %x, got %x", privateKey, user.UserKey)
 	}
 
 	// Try to get a non-existent user

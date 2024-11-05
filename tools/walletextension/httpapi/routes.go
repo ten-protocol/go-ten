@@ -249,7 +249,7 @@ func revokeRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 
 	// delete user and accounts associated with it from the database
-	err = walletExt.DeleteUser(userID)
+	err = walletExt.Storage.DeleteUser(userID)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
 		walletExt.Logger().Error("unable to delete user", "userID", userID, log.ErrKey, err)
