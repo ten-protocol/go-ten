@@ -9,6 +9,7 @@ import (
 )
 
 // bigIntHookFunc is a mapstructure HookFunc to handle both ints and strings for big.Int
+// viper doesn't handle big ints nicely out of the box (in yaml they might be provided as numbers or strings in various formats
 func bigIntHookFunc() mapstructure.DecodeHookFuncType {
 	return func(
 		f reflect.Type,
