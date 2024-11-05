@@ -9,9 +9,12 @@ package sqlite
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	dbcommon "github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
@@ -21,11 +24,11 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
-type Database struct {
+type SqliteDB struct {
 	db *sql.DB
 }
 
-func NewSqliteDatabase(dbPath string) (*Database, error) {
+func NewSqliteDatabase(dbPath string) (*SqliteDB, error) {
 	// load the db file
 	dbFilePath, err := createOrLoad(dbPath)
 	if err != nil {
@@ -56,14 +59,14 @@ func NewSqliteDatabase(dbPath string) (*Database, error) {
 
 	// Remove the accounts table as it will be stored within the user_data JSON
 
-	return &Database{db: db}, nil
+	return &SqliteDB{db: db}, nil
 }
 
-func (s *Database) AddUser(userID []byte, privateKey []byte) error {
-	user := common.GWUserDB{
+func (s *SqliteDB) AddUser(userID []byte, privateKey []byte) error {
+	user := dbcommon.GWUserDB{
 		UserId:     userID,
 		PrivateKey: privateKey,
-		Accounts:   []common.GWAccountDB{},
+		Accounts:   []dbcommon.GWAccountDB{},
 	}
 	userJSON, err := json.Marshal(user)
 	if err != nil {
@@ -84,7 +87,7 @@ func (s *Database) AddUser(userID []byte, privateKey []byte) error {
 	return nil
 }
 
-func (s *Database) DeleteUser(userID []byte) error {
+func (s *SqliteDB) DeleteUser(userID []byte) error {
 	stmt, err := s.db.Prepare("DELETE FROM users WHERE id = ?")
 	if err != nil {
 		return err
@@ -99,20 +102,20 @@ func (s *Database) DeleteUser(userID []byte) error {
 	return nil
 }
 
-func (s *Database) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
+func (s *SqliteDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
 	var userDataJSON string
 	err := s.db.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
 
-	var user common.GWUserDB
+	var user dbcommon.GWUserDB
 	err = json.Unmarshal([]byte(userDataJSON), &user)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal user data: %w", err)
 	}
 
-	newAccount := common.GWAccountDB{
+	newAccount := dbcommon.GWAccountDB{
 		AccountAddress: accountAddress,
 		Signature:      signature,
 		SignatureType:  int(signatureType),
@@ -139,23 +142,23 @@ func (s *Database) AddAccount(userID []byte, accountAddress []byte, signature []
 	return nil
 }
 
-func (s *Database) GetUser(userID []byte) (common.GWUserDB, error) {
+func (s *SqliteDB) GetUser(userID []byte) (*common.GWUser, error) {
 	var userDataJSON string
 	err := s.db.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return common.GWUserDB{}, fmt.Errorf("failed to get user: %w", errutil.ErrNotFound)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("failed to get user: %w", errutil.ErrNotFound)
 		}
-		return common.GWUserDB{}, fmt.Errorf("failed to get user: %w", err)
+		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	var user common.GWUserDB
+	var user dbcommon.GWUserDB
 	err = json.Unmarshal([]byte(userDataJSON), &user)
 	if err != nil {
-		return common.GWUserDB{}, fmt.Errorf("failed to unmarshal user data: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
 	}
 
-	return user, nil
+	return user.ToGWUser(), nil
 }
 
 func createOrLoad(dbPath string) (string, error) {

@@ -13,7 +13,7 @@ import (
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
-var tests = map[string]func(storage Storage, t *testing.T){
+var tests = map[string]func(storage UserStorage, t *testing.T){
 	"testAddAndGetUser": testAddAndGetUser,
 	"testAddAccounts":   testAddAccounts,
 	"testDeleteUser":    testDeleteUser,
@@ -35,7 +35,7 @@ func TestGatewayStorage(t *testing.T) {
 	}
 }
 
-func testAddAndGetUser(storage Storage, t *testing.T) {
+func testAddAndGetUser(storage UserStorage, t *testing.T) {
 	// Generate random user ID and private key
 	userID := make([]byte, 20)
 	_, err := rand.Read(userID)
@@ -66,7 +66,7 @@ func testAddAndGetUser(storage Storage, t *testing.T) {
 	}
 }
 
-func testAddAccounts(storage Storage, t *testing.T) {
+func testAddAccounts(storage UserStorage, t *testing.T) {
 	// Generate random user ID, private key, and account details
 	userID := make([]byte, 20)
 	rand.Read(userID)
@@ -136,7 +136,7 @@ func testAddAccounts(storage Storage, t *testing.T) {
 	}
 }
 
-func testDeleteUser(storage Storage, t *testing.T) {
+func testDeleteUser(storage UserStorage, t *testing.T) {
 	// Generate random user ID and private key
 	userID := make([]byte, 20)
 	rand.Read(userID)
@@ -163,7 +163,7 @@ func testDeleteUser(storage Storage, t *testing.T) {
 	}
 }
 
-func testGetUser(storage Storage, t *testing.T) {
+func testGetUser(storage UserStorage, t *testing.T) {
 	// Generate random user ID and private key
 	userID := make([]byte, 20)
 	rand.Read(userID)

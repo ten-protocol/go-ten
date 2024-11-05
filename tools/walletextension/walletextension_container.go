@@ -47,7 +47,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	}
 
 	// start the database with the encryption key
-	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride, encryptionKey)
+	userStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride, encryptionKey, logger)
 	if err != nil {
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
 		os.Exit(1)
@@ -60,7 +60,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	}
 
 	stopControl := stopcontrol.New()
-	walletExt := services.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, databaseStorage, stopControl, version, logger, &config)
+	walletExt := services.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, userStorage, stopControl, version, logger, &config)
 	cfg := &node.RPCConfig{
 		EnableHTTP: true,
 		HTTPPort:   config.WalletExtensionPortHTTP,

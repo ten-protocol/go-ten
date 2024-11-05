@@ -85,7 +85,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 	errorChannels := make([]<-chan error, 0)
 	backendSubscriptions := make([]*rpc.ClientSubscription, 0)
 	for _, address := range candidateAddresses {
-		rpcWSClient, err := services.ConnectWS(ctx, user.Accounts[*address], api.we.Logger())
+		rpcWSClient, err := api.we.BackendRPC.ConnectWS(ctx, user.Accounts[*address])
 		if err != nil {
 			return nil, err
 		}
@@ -152,11 +152,11 @@ func (api *FilterAPI) closeConnections(backendSubscriptions []*rpc.ClientSubscri
 		backendSub.Unsubscribe()
 	}
 	for _, connection := range backendWSConnections {
-		_ = services.ReturnConn(api.we.RpcWSConnPool, connection.BackingClient(), api.logger)
+		_ = api.we.BackendRPC.ReturnConnWS(connection.BackingClient())
 	}
 }
 
-func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *services.GWUser, error) {
+func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *wecommon.GWUser, error) {
 	subNotifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
 		return nil, nil, fmt.Errorf("creation of subscriptions is not supported")
@@ -167,7 +167,7 @@ func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *se
 		return nil, nil, fmt.Errorf("illegal access")
 	}
 
-	user, err := api.we.GetUser(subNotifier.UserID)
+	user, err := api.we.Storage.GetUser(subNotifier.UserID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("illegal access: %s, %w", subNotifier.UserID, err)
 	}
@@ -208,7 +208,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 	}
 
 	res, err := cache.WithCache(
-		api.we.Cache,
+		api.we.RPCResponsesCache,
 		&cache.Cfg{
 			DynamicType: func() cache.Strategy {
 				if crit.ToBlock != nil && crit.ToBlock.Int64() > 0 {
@@ -223,7 +223,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 		},
 		generateCacheKey([]any{userID, method, common.SerializableFilterCriteria(crit)}),
 		func() (*[]*types.Log, error) { // called when there is no entry in the cache
-			user, err := api.we.GetUser(userID)
+			user, err := api.we.Storage.GetUser(userID)
 			if err != nil {
 				return nil, err
 			}
@@ -233,7 +233,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 			// execute the get_Logs function
 			// dedupe and concatenate the results
 			for _, acct := range user.Accounts {
-				eventLogs, err := services.WithEncRPCConnection(ctx, api.we, acct, func(rpcClient *tenrpc.EncRPCClient) (*[]*types.Log, error) {
+				eventLogs, err := services.WithEncRPCConnection(ctx, api.we.BackendRPC, acct, func(rpcClient *tenrpc.EncRPCClient) (*[]*types.Log, error) {
 					var result []*types.Log
 
 					// wrap the context with a timeout to prevent long executions

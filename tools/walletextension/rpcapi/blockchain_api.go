@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/services"
@@ -185,7 +187,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 			return nil, err
 		}
 
-		_, err = api.we.GetUser(userID)
+		_, err = api.we.Storage.GetUser(userID)
 		if err != nil {
 			return nil, err
 		}
@@ -255,10 +257,10 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 				return cacheBlockNumberOrHash(blockNrOrHash)
 			},
 		},
-		computeFromCallback: func(user *services.GWUser) *gethcommon.Address {
+		computeFromCallback: func(user *wecommon.GWUser) *gethcommon.Address {
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
-		adjustArgs: func(acct *services.GWAccount) []any {
+		adjustArgs: func(acct *wecommon.GWAccount) []any {
 			argsClone := populateFrom(acct, args)
 			return []any{argsClone, blockNrOrHash, overrides, blockOverrides}
 		},
@@ -280,10 +282,10 @@ func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.Transact
 				return cache.LatestBatch
 			},
 		},
-		computeFromCallback: func(user *services.GWUser) *gethcommon.Address {
+		computeFromCallback: func(user *wecommon.GWUser) *gethcommon.Address {
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
-		adjustArgs: func(acct *services.GWAccount) []any {
+		adjustArgs: func(acct *wecommon.GWAccount) []any {
 			argsClone := populateFrom(acct, args)
 			return []any{argsClone, blockNrOrHash, overrides}
 		},
@@ -296,7 +298,7 @@ func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.Transact
 	return *resp, err
 }
 
-func populateFrom(acct *services.GWAccount, args gethapi.TransactionArgs) gethapi.TransactionArgs {
+func populateFrom(acct *wecommon.GWAccount, args gethapi.TransactionArgs) gethapi.TransactionArgs {
 	// clone the args
 	argsClone := cloneArgs(args)
 	// set the from

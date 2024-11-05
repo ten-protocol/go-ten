@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	dbcommon "github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
+
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
@@ -85,10 +87,10 @@ func NewCosmosDB(connectionString string, encryptionKey []byte) (*CosmosDB, erro
 }
 
 func (c *CosmosDB) AddUser(userID []byte, privateKey []byte) error {
-	user := common.GWUserDB{
+	user := dbcommon.GWUserDB{
 		UserId:     userID,
 		PrivateKey: privateKey,
-		Accounts:   []common.GWAccountDB{},
+		Accounts:   []dbcommon.GWAccountDB{},
 	}
 	userJSON, err := json.Marshal(user)
 	if err != nil {
@@ -158,14 +160,14 @@ func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []
 		return fmt.Errorf("failed to decrypt data: %w", err)
 	}
 
-	var user common.GWUserDB
+	var user dbcommon.GWUserDB
 	err = json.Unmarshal(data, &user)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal user data: %w", err)
 	}
 
 	// Add the new account
-	newAccount := common.GWAccountDB{
+	newAccount := dbcommon.GWAccountDB{
 		AccountAddress: accountAddress,
 		Signature:      signature,
 		SignatureType:  int(signatureType),
@@ -198,7 +200,7 @@ func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []
 	return nil
 }
 
-func (c *CosmosDB) GetUser(userID []byte) (common.GWUserDB, error) {
+func (c *CosmosDB) GetUser(userID []byte) (*common.GWUser, error) {
 	key := c.encryptor.HashWithHMAC(userID)
 	keyString := hex.EncodeToString(key)
 	partitionKey := azcosmos.NewPartitionKeyString(keyString)
@@ -206,24 +208,24 @@ func (c *CosmosDB) GetUser(userID []byte) (common.GWUserDB, error) {
 
 	itemResponse, err := c.usersContainer.ReadItem(ctx, partitionKey, keyString, nil)
 	if err != nil {
-		return common.GWUserDB{}, errutil.ErrNotFound
+		return nil, errutil.ErrNotFound
 	}
 
 	var doc EncryptedDocument
 	err = json.Unmarshal(itemResponse.Value, &doc)
 	if err != nil {
-		return common.GWUserDB{}, fmt.Errorf("failed to unmarshal document: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal document: %w", err)
 	}
 
 	data, err := c.encryptor.Decrypt(doc.Data)
 	if err != nil {
-		return common.GWUserDB{}, fmt.Errorf("failed to decrypt data: %w", err)
+		return nil, fmt.Errorf("failed to decrypt data: %w", err)
 	}
 
-	var user common.GWUserDB
+	var user dbcommon.GWUserDB
 	err = json.Unmarshal(data, &user)
 	if err != nil {
-		return common.GWUserDB{}, fmt.Errorf("failed to unmarshal user data: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
 	}
-	return user, nil
+	return user.ToGWUser(), nil
 }

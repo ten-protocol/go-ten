@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/services"
@@ -42,11 +44,11 @@ var rpcNotImplemented = fmt.Errorf("rpc endpoint not implemented")
 type ExecCfg struct {
 	// these 4 fields specify the account(s) that should make the backend call
 	account             *gethcommon.Address
-	computeFromCallback func(user *services.GWUser) *gethcommon.Address
+	computeFromCallback func(user *common.GWUser) *gethcommon.Address
 	tryAll              bool
 	tryUntilAuthorised  bool
 
-	adjustArgs func(acct *services.GWAccount) []any
+	adjustArgs func(acct *common.GWAccount) []any
 	cacheCfg   *cache.Cfg
 	timeout    time.Duration
 }
@@ -60,8 +62,8 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 	cacheArgs := []any{method}
 	cacheArgs = append(cacheArgs, args...)
 
-	res, err := cache.WithCache(w.Cache, cfg, generateCacheKey(cacheArgs), func() (*R, error) {
-		return services.WithPlainRPCConnection(ctx, w, func(client *rpc.Client) (*R, error) {
+	res, err := cache.WithCache(w.RPCResponsesCache, cfg, generateCacheKey(cacheArgs), func() (*R, error) {
+		return services.WithPlainRPCConnection(ctx, w.BackendRPC, func(client *rpc.Client) (*R, error) {
 			var resp *R
 			var err error
 
@@ -94,8 +96,8 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *ExecCfg,
 	cacheArgs := []any{userID, method}
 	cacheArgs = append(cacheArgs, args...)
 
-	res, err := cache.WithCache(w.Cache, cfg.cacheCfg, generateCacheKey(cacheArgs), func() (*R, error) {
-		user, err := w.GetUser(userID)
+	res, err := cache.WithCache(w.RPCResponsesCache, cfg.cacheCfg, generateCacheKey(cacheArgs), func() (*R, error) {
+		user, err := w.Storage.GetUser(userID)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +114,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *ExecCfg,
 		var rpcErr error
 		for i := range candidateAccts {
 			acct := candidateAccts[i]
-			result, err := services.WithEncRPCConnection(ctx, w, acct, func(rpcClient *tenrpc.EncRPCClient) (*R, error) {
+			result, err := services.WithEncRPCConnection(ctx, w.BackendRPC, acct, func(rpcClient *tenrpc.EncRPCClient) (*R, error) {
 				var result *R
 				adjustedArgs := args
 				if cfg.adjustArgs != nil {
@@ -151,8 +153,8 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *ExecCfg,
 	return res, err
 }
 
-func getCandidateAccounts(user *services.GWUser, _ *services.Services, cfg *ExecCfg) ([]*services.GWAccount, error) {
-	candidateAccts := make([]*services.GWAccount, 0)
+func getCandidateAccounts(user *common.GWUser, _ *services.Services, cfg *ExecCfg) ([]*common.GWAccount, error) {
+	candidateAccts := make([]*common.GWAccount, 0)
 	// for users with multiple accounts try to determine a candidate account based on the available information
 	switch {
 	case cfg.account != nil:

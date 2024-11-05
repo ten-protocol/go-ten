@@ -19,8 +19,8 @@ type Cache interface {
 	Remove(key []byte)
 }
 
-func NewCache(logger log.Logger) (Cache, error) {
-	return NewRistrettoCacheWithEviction(logger)
+func NewCache(nrElems int, logger log.Logger) (Cache, error) {
+	return NewRistrettoCacheWithEviction(nrElems, logger)
 }
 
 type Strategy uint8
