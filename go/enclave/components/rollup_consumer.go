@@ -145,11 +145,6 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 			continue // Blob hashes don't match, skip this rollup
 		}
 
-		// Check if we have all required blobs
-		if len(blobs) < len(rollupHashes.BlobHashes) {
-			return nil, fmt.Errorf("insufficient blobs for rollup reconstruction: have %d, need %d", len(blobs), len(rollupHashes.BlobHashes))
-		}
-
 		r, err := ethadapter.ReconstructRollup(blobs)
 		if err != nil {
 			// This is a critical error because we've already verified the blob hashes
