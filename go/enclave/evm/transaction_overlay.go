@@ -15,6 +15,9 @@ func MaskedSender(address gethcommon.Address) gethcommon.Address {
 	return gethcommon.BigToAddress(big.NewInt(0).Sub(address.Big(), big.NewInt(1)))
 }
 
+// TransactionToMessageWithOverrides is used to convert a transaction to a message to be applied to the evm.
+// Overrides can change how stuff in the message is derived, e.g. the sender. This is useful for synthetic transactions,
+// where we do not want to do signature validation or have a private key.
 func TransactionToMessageWithOverrides(
 	tx *common.L2PricedTransaction,
 	config *params.ChainConfig,
