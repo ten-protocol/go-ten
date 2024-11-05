@@ -159,13 +159,20 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 	return rollups, nil
 }
 
+// given the blobHashes are extracted from the block and receipts, and the transactions are decoded to get the rollup hashes,
+// we should always get an equal number of hashes to compare
 func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []gethcommon.Hash) error {
-	minLength := len(blobHashes)
-	if len(rollupHashes.BlobHashes) < minLength {
-		minLength = len(rollupHashes.BlobHashes)
+	numBlobHashes := len(blobHashes)
+	numRollupHashes := len(rollupHashes.BlobHashes)
+	if numRollupHashes != numBlobHashes {
+		return fmt.Errorf(
+			"length mismatch: rollupHashes (%d) != blobHashes (%d)",
+			numRollupHashes,
+			numBlobHashes,
+		)
 	}
 
-	for i := 0; i < minLength; i++ {
+	for i := 0; i < numBlobHashes; i++ {
 		if rollupHashes.BlobHashes[i] != blobHashes[i] {
 			return fmt.Errorf(
 				"hash mismatch at index %d: rollupHash (%s) != blobHash (%s)",
