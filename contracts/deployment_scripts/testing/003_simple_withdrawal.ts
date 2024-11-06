@@ -63,8 +63,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const mgmtContractAddress = networkConfig.ManagementContractAddress;
     const messageBusAddress = networkConfig.MessageBusAddress;
+    const l2MessageBusAddress = networkConfig.L2MessageBusAddress;
 
-    var mbusBase = await hre.ethers.getContractAt("MessageBus", messageBusAddress);
+    var mbusBase = await hre.ethers.getContractAt("MessageBus", l2MessageBusAddress);
     const mbus = mbusBase.connect(await hre.ethers.provider.getSigner(deployer)); 
     const tx = await mbus.getFunction("sendValueToL2").send(deployer, 1000, { value: 1000});
     const receipt = await tx.wait()
