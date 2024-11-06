@@ -2,7 +2,6 @@ package l1
 
 import (
 	"context"
-	"math/big"
 	"net/http"
 	"testing"
 	"time"
@@ -43,8 +42,7 @@ func TestSepoliaBlobResolver(t *testing.T) {
 
 	// this is a moving point in time so we can't compare hashes or be certain there will be blobs in the block
 	historicalBlock := &types.Header{
-		Time:   uint64(time.Now().Add(-30 * 24 * time.Hour).Unix()), // 30 days ago
-		Number: big.NewInt(1234567),
+		Time: uint64(time.Now().Add(-30 * 24 * time.Hour).Unix()), // 30 days ago
 	}
 
 	_, err := blobResolver.FetchBlobs(context.Background(), historicalBlock, []gethcommon.Hash{})
