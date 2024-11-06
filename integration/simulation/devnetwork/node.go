@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/enclave/config"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -21,7 +23,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/metrics"
-	"github.com/ten-protocol/go-ten/go/config"
 	enclavecontainer "github.com/ten-protocol/go-ten/go/enclave/container"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
@@ -126,7 +127,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	p2pAddr := fmt.Sprintf("%s:%d", network.Localhost, p2pPort)
 	seqP2PAddr := fmt.Sprintf("%s:%d", network.Localhost, n.config.PortStart+integration.DefaultHostP2pOffset)
 
-	hostConfig := &config.HostConfig{
+	hostConfig := &hostconfig.HostConfig{
 		ID:                        n.l1Wallet.Address(),
 		IsGenesis:                 n.nodeType == common.Sequencer,
 		NodeType:                  n.nodeType,

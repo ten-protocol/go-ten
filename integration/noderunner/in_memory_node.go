@@ -3,34 +3,34 @@ package noderunner
 import (
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/go/node"
-	"github.com/ten-protocol/go-ten/go/wallet"
-
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/config"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
+	"github.com/ten-protocol/go-ten/go/node"
 
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
-
-	"github.com/sanity-io/litter"
 
 	enclavecontainer "github.com/ten-protocol/go-ten/go/enclave/container"
 	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
 )
 
 type InMemNode struct {
-	cfg     *node.Config
+	tenCfg  *config.TenConfig
 	enclave *enclavecontainer.EnclaveContainer
 	host    *hostcontainer.HostContainer
 }
 
-func NewInMemNode(cfg *node.Config) *InMemNode {
+func NewInMemNode(cfg *config.TenConfig) *InMemNode {
 	return &InMemNode{
-		cfg: cfg,
+		tenCfg: cfg,
 	}
 }
 
 func (d *InMemNode) Start() error {
 	// TODO this should probably be removed in the future
-	fmt.Printf("Starting Node with config: \n%s\n\n", litter.Sdump(*d.cfg))
+	d.tenCfg.PrettyPrint()
 
 	err := d.startEnclave()
 	if err != nil {
@@ -56,19 +56,16 @@ func (d *InMemNode) Stop() error {
 
 func (d *InMemNode) Upgrade(networkCfg *node.NetworkConfig) error {
 	// TODO this should probably be removed in the future
-	fmt.Printf("Upgrading node with config: %+v\n", d.cfg)
+	d.tenCfg.PrettyPrint()
 
 	err := d.Stop()
 	if err != nil {
 		return err
 	}
 
-	// update network configs
-	d.cfg.UpdateNodeConfig(
-		node.WithManagementContractAddress(networkCfg.ManagementContractAddress),
-		node.WithManagementContractAddress(networkCfg.MessageBusAddress),
-		node.WithL1Start(networkCfg.L1StartHash),
-	)
+	d.tenCfg.Network.L1.L1Contracts.ManagementContract = common.HexToAddress(networkCfg.ManagementContractAddress)
+	d.tenCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkCfg.MessageBusAddress)
+	d.tenCfg.Network.L1.StartHash = common.HexToHash(networkCfg.L1StartHash)
 
 	fmt.Println("Starting upgraded host and enclave")
 	err = d.startEnclave()
@@ -85,20 +82,17 @@ func (d *InMemNode) Upgrade(networkCfg *node.NetworkConfig) error {
 }
 
 func (d *InMemNode) startHost() error {
-	hostConfig := d.cfg.ToHostConfig()
-	// calculate the host ID from the private key here, so we have it for the logger
-	addr, err := wallet.RetrieveAddress(hostConfig.PrivateKeyString)
-	if err != nil {
-		panic("unable to calculate the Node ID")
-	}
-	logger := testlog.Logger().New(log.CmpKey, log.HostCmp, log.NodeIDKey, *addr)
+	hostConfig := hostconfig.HostConfigFromTenConfig(d.tenCfg)
+
+	logger := testlog.Logger().New(log.CmpKey, log.HostCmp, log.NodeIDKey, d.tenCfg.Node.ID)
 	d.host = hostcontainer.NewHostContainerFromConfig(hostConfig, logger)
 	return d.host.Start()
 }
 
 func (d *InMemNode) startEnclave() error {
-	enclaveCfg := d.cfg.ToEnclaveConfig()
-	logger := testlog.Logger().New(log.CmpKey, log.EnclaveCmp, log.NodeIDKey, enclaveCfg.HostID)
+	enclaveCfg := enclaveconfig.EnclaveConfigFromTenConfig(d.tenCfg)
+	logger := testlog.Logger().New(log.CmpKey, log.EnclaveCmp, log.NodeIDKey, d.tenCfg.Node.ID)
+	enclaveCfg.LogPath = testlog.LogFile()
 
 	// if not nil, the node will use the testlog.Logger - NewEnclaveContainerWithLogger will create one otherwise
 	d.enclave = enclavecontainer.NewEnclaveContainerWithLogger(enclaveCfg, logger)

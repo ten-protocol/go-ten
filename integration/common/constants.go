@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/config"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/wallet"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -59,8 +59,8 @@ type ERC20Mapping struct {
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
-func DefaultEnclaveConfig() *config.EnclaveConfig {
-	return &config.EnclaveConfig{
+func DefaultEnclaveConfig() *enclaveconfig.EnclaveConfig {
+	return &enclaveconfig.EnclaveConfig{
 		HostID:                    gethcommon.BytesToAddress([]byte("")),
 		HostAddress:               "127.0.0.1:10000",
 		Address:                   "127.0.0.1:11000",

@@ -3,7 +3,7 @@ package host
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/config"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 )
 
 type Identity struct {
@@ -13,7 +13,7 @@ type Identity struct {
 	IsSequencer      bool
 }
 
-func NewIdentity(cfg *config.HostConfig) Identity {
+func NewIdentity(cfg *hostconfig.HostConfig) Identity {
 	return Identity{
 		ID:               cfg.ID,
 		P2PPublicAddress: cfg.P2PPublicAddress,

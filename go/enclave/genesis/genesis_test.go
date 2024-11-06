@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/holiman/uint256"
-
-	"github.com/ten-protocol/go-ten/go/config"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/enclave/storage/init/sqlite"
@@ -39,7 +38,7 @@ func TestDefaultGenesis(t *testing.T) {
 		t.Fatal("unexpected number of accounts")
 	}
 
-	backingDB, err := sqlite.CreateTemporarySQLiteDB("", "", config.EnclaveConfig{RPCTimeout: time.Second}, testlog.Logger())
+	backingDB, err := sqlite.CreateTemporarySQLiteDB("", "", enclaveconfig.EnclaveConfig{RPCTimeout: time.Second}, testlog.Logger())
 	if err != nil {
 		t.Fatalf("unable to create temp db: %s", err)
 	}
@@ -82,7 +81,7 @@ func TestCustomGenesis(t *testing.T) {
 		t.Fatal("unexpected number of accounts")
 	}
 
-	backingDB, err := sqlite.CreateTemporarySQLiteDB("", "", config.EnclaveConfig{RPCTimeout: time.Second}, testlog.Logger())
+	backingDB, err := sqlite.CreateTemporarySQLiteDB("", "", enclaveconfig.EnclaveConfig{RPCTimeout: time.Second}, testlog.Logger())
 	if err != nil {
 		t.Fatalf("unable to create temp db: %s", err)
 	}

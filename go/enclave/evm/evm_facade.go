@@ -11,8 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"
-
-	"github.com/ten-protocol/go-ten/go/config"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
 	// unsafe package imported in order to link to a private function in go-ethereum.
 	// This allows us to customize the message generated from a signed transaction and inject custom gas logic.
@@ -51,7 +50,7 @@ func ExecuteTransactions(
 	storage storage.Storage,
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
-	config config.EnclaveConfig,
+	config enclaveconfig.EnclaveConfig,
 	fromTxIndex int,
 	noBaseFee bool,
 	batchGasLimit uint64,
@@ -354,7 +353,7 @@ func ExecuteObsCall(
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
 	gasEstimationCap uint64,
-	config config.EnclaveConfig,
+	config enclaveconfig.EnclaveConfig,
 	logger gethlog.Logger,
 ) (*gethcore.ExecutionResult, error) {
 	noBaseFee := true
@@ -412,7 +411,7 @@ func createCleanState(s *state.StateDB, msg *gethcore.Message, ethHeader *types.
 	return cleanState
 }
 
-func initParams(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config config.EnclaveConfig, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {
+func initParams(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config enclaveconfig.EnclaveConfig, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {
 	vmCfg := vm.Config{
 		NoBaseFee: noBaseFee,
 	}

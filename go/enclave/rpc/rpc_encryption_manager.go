@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ten-protocol/go-ten/go/common/privacy"
-	"github.com/ten-protocol/go-ten/go/config"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -29,12 +29,12 @@ type EncryptionManager struct {
 	gasOracle              gas.Oracle
 	blockResolver          storage.BlockResolver
 	l1BlockProcessor       components.L1BlockProcessor
-	config                 *config.EnclaveConfig
+	config                 *enclaveconfig.EnclaveConfig
 	logger                 gethlog.Logger
 	whitelist              *privacy.Whitelist
 }
 
-func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey, storage storage.Storage, cacheService *storage.CacheService, registry components.BatchRegistry, processors *crosschain.Processors, service nodetype.NodeType, config *config.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain l2chain.ObscuroChain, logger gethlog.Logger) *EncryptionManager {
+func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey, storage storage.Storage, cacheService *storage.CacheService, registry components.BatchRegistry, processors *crosschain.Processors, service nodetype.NodeType, config *enclaveconfig.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain l2chain.ObscuroChain, logger gethlog.Logger) *EncryptionManager {
 	return &EncryptionManager{
 		storage:                storage,
 		cacheService:           cacheService,

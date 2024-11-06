@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ten-protocol/go-ten/go/config"
-
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -31,7 +30,7 @@ import (
 
 type obscuroChain struct {
 	chainConfig         *params.ChainConfig
-	config              config.EnclaveConfig
+	config              enclaveconfig.EnclaveConfig
 	storage             storage.Storage
 	gethEncodingService gethencoding.EncodingService
 	genesis             *genesis.Genesis
@@ -44,7 +43,7 @@ type obscuroChain struct {
 
 func NewChain(
 	storage storage.Storage,
-	config config.EnclaveConfig,
+	config enclaveconfig.EnclaveConfig,
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
 	genesis *genesis.Genesis,

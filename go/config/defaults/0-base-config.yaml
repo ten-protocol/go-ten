@@ -1,0 +1,91 @@
+# Base config for all TEN services
+#  - this contains sensible defaults where possible
+#  - serves as template/documentation for config structure
+
+network:
+  chainId: 443
+  genesis: "{}" # json string of genesis block, used for configuring prefunded accounts etc.
+  batch:
+    interval: 1s
+    maxInterval: 1s # if this is greater than batch.interval then we make batches more slowly when there are no transactions
+    maxSize: 56320 # 55kb
+  rollup:
+    interval: 5s
+    maxInterval: 10m # rollups will be produced after this time even if the data blob is not full
+    maxSize: 131072 # 128kb
+  gas: # todo: ask stefan about these fields
+    baseFee: 1000000000 # using geth's initial base fee for EIP-1559 blocks.
+    minGasPrice: 1000000000 # using geth's initial base fee for EIP-1559 blocks.
+    paymentAddress: 0xd6C9230053f45F873Cb66D8A02439380a37A4fbF
+    batchExecutionLimit: 300000000000 # 300 gwei
+    localExecutionCap: 300000000000 # 300 gwei
+  l1:
+    chainId: 1337
+    blockTime: 15s
+    startHash: 0x0 # hash of the L1 block that Ten can safely start processing from to get entire L2 history
+    contracts:
+      management: 0x0 # L1 address of the Ten management contract
+      messageBus: 0x0 # L1 address of the Ten message bus contract
+      bridge: 0x0 # L1 address of the Ten bridge contract
+  sequencer:
+    p2pAddress: 0x0 # address of the sequencer's p2p server
+  crossChain:
+    interval: 6s
+
+node:
+  nodeType: sequencer # sequencer or validator
+  id: 0x0 # unique identifier for this node (currently based on its wallet eth address)
+  hostAddress: 0x0 # address of the node's p2p server
+  privateKey: 0x0 # private key for this node's eth account
+  isGenesis: true # true only for the first sequencer on a fresh chain
+
+host:
+  db:
+    useInMemory: true
+    postgresHost: "" # host address for postgres db when used
+    sqlitePath: "" # path to sqlite db, will use a throwaway temp file when empty
+  debug:
+    enableMetrics: true
+    metricsPort: 14000
+    enableProfiler: false
+    enableDebugNamespace: false
+  enclave:
+    rpcAddresses: [ "127.0.0.1:11000" ] # list of enclave rpc addresses
+    rpcTimeout: 10s
+  l1:
+    wsURL: ws://localhost:8546 # websocket URL for L1 RPC service
+    beaconURL: eth2network:12600 # websocket URL for L1 beacon service
+    blobArchiveURL: "" # URL for L1 blob archive service
+    rpcTimeout: 15s
+  log:
+    level: 4
+    path: sys_out # path to log file, will log to stdout when empty
+  p2p:
+    disableP2P: false
+    bindAddress: 0.0.0.0:10000
+    timeout: 10s
+  rpc:
+    address: 0.0.0.0
+    enableHTTP: true
+    httpPort: 80
+    enableWS: true
+    wsPort: 81
+
+enclave:
+  enableAttestation: false
+  db:
+    useInMemory: true
+    edgelessDBHost: "" # host address for postgres db when used
+    sqlitePath: "" # path to sqlite db, will use a throwaway temp file when empty
+  debug:
+    enableDebugNamespace: false
+    enableProfiler: false
+  l1:
+    enableBlockValidation: false
+    #genesisJSON:  # json string of L1 genesis block, used for expectation todo: still needed?
+  log:
+    level: 4
+    path: sys_out
+  rpc:
+    bindAddress: "0.0.0.0:11000"
+    timeout: 5s

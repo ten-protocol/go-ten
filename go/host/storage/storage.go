@@ -12,7 +12,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/config"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 )
 
@@ -190,7 +190,7 @@ func (s *storageImpl) Close() error {
 	return s.db.GetSQLDB().Close()
 }
 
-func NewHostStorageFromConfig(config *config.HostConfig, logger gethlog.Logger) Storage {
+func NewHostStorageFromConfig(config *hostconfig.HostConfig, logger gethlog.Logger) Storage {
 	backingDB, err := CreateDBFromConfig(config, logger)
 	if err != nil {
 		logger.Crit("Failed to connect to backing database", log.ErrKey, err)
