@@ -27,6 +27,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     console.log(` Using deployers for bridge interaction L1 address=${l1Accounts.deployer} L2 Address=${l2Accounts.deployer}`);
 
+    // Request the message bus address from the config endpoint
+    const networkConfig: any = await hre.network.provider.request({ method: 'net_config' });
+    if (!networkConfig || !networkConfig.MessageBusAddress) {
+        throw new Error("Failed to retrieve MessageBusAddress from network config");
+    }
+    const messageBusAddress = networkConfig.MessageBusAddress;
+    console.log(`Loaded message bus address = ${messageBusAddress}`);
+
     // Tell the bridge to whitelist the address of HOC token. This generates a cross chain message.
     let hocResult = await l1Network.deployments.execute("ObscuroBridge", {
         from: l1Accounts.deployer, 
@@ -95,7 +103,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Poll message submission 
     await new Promise(async (resolve, fail)=> { 
         setTimeout(fail, 30_000)
-        const messageBusContract = (await hre.ethers.getContractAt('MessageBus', '0x526c84529b2b8c11f57d93d3f5537aca3aecef9b'));
+        const messageBusContract = (await hre.ethers.getContractAt('MessageBus', messageBusAddress));
         const gasLimit = await messageBusContract.getFunction('verifyMessageFinalized').estimateGas(messages[1], {
             maxFeePerGas: 1000000001,
         })

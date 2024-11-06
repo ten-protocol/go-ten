@@ -57,8 +57,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   return;
     const l2Network = hre; 
     const {deployer} = await hre.getNamedAccounts();
-    
-    var mbusBase = await hre.ethers.getContractAt("MessageBus", "0x526c84529b2b8c11f57d93d3f5537aca3aecef9b");
+
+    const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
+    console.log(`Network config = ${JSON.stringify(networkConfig, null, 2)}`);
+
+    const mgmtContractAddress = networkConfig.ManagementContractAddress;
+    const messageBusAddress = networkConfig.MessageBusAddress;
+
+    var mbusBase = await hre.ethers.getContractAt("MessageBus", messageBusAddress);
     const mbus = mbusBase.connect(await hre.ethers.provider.getSigner(deployer)); 
     const tx = await mbus.getFunction("sendValueToL2").send(deployer, 1000, { value: 1000});
     const receipt = await tx.wait()
@@ -95,13 +101,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       console.error('Constructed merkle root matches block crossChainTreeHash');
       return
     }
-
-
-    const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-    console.log(`Network config = ${JSON.stringify(networkConfig, null, 2)}`);
-
-    const mgmtContractAddress = networkConfig.ManagementContractAddress;
-    const messageBusAddress = networkConfig.MessageBusAddress;
 
     const l1Accounts = await hre.companionNetworks.layer1.getNamedAccounts()
     const fundTx = await hre.companionNetworks.layer1.deployments.rawTx({
