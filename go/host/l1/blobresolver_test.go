@@ -2,14 +2,13 @@ package l1
 
 import (
 	"context"
-	"net/http"
-	"testing"
-	"time"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"net/http"
+	"testing"
+	"time"
 )
 
 const (
@@ -34,6 +33,7 @@ func TestBlobResolver(t *testing.T) {
 
 // TestSepoliaBlobResolver checks the public node sepolia beacon APIs work as expected
 func TestSepoliaBlobResolver(t *testing.T) {
+	t.Skipf("Test will occasionally fail due to the time wi ad ndow landing on a block with no blobs")
 	// l1_beacon_url for sepolia
 	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), "https://ethereum-sepolia-beacon-api.publicnode.com")
 	// l1_blob_archive_url for sepolia
@@ -41,8 +41,9 @@ func TestSepoliaBlobResolver(t *testing.T) {
 	blobResolver := NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, fallback))
 
 	// this is a moving point in time so we can't compare hashes or be certain there will be blobs in the block
+	// create block with timestamp 30 days ago relative to current time
 	historicalBlock := &types.Header{
-		Time: uint64(time.Now().Add(-30 * 24 * time.Hour).Unix()), // 30 days ago
+		Time: uint64(time.Now().Unix()) - (30 * 24 * 60 * 60), // 30 days in seconds
 	}
 
 	_, err := blobResolver.FetchBlobs(context.Background(), historicalBlock, []gethcommon.Hash{})

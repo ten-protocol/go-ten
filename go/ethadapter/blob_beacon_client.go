@@ -97,6 +97,9 @@ func (bc *BeaconHTTPClient) BeaconBlobSidecars(ctx context.Context, slot uint64,
 	if err != nil {
 		return APIGetBlobSidecarsResponse{}, err
 	}
+	if len(resp.Data) == 0 {
+		return APIGetBlobSidecarsResponse{}, fmt.Errorf("no blob sidecars found for blob at slot %d", slot)
+	}
 	return resp, nil
 }
 
@@ -187,7 +190,7 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 	for i := 0; i < cl.pool.Len(); i++ {
 		f := cl.pool.Get()
 		resp, err := f.BeaconBlobSidecars(ctx, slot, hashes)
-		if err != nil || len(resp.Data) == 0 {
+		if err != nil {
 			cl.pool.Next()
 			errs = append(errs, err)
 		} else {
