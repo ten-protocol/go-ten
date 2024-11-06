@@ -2,13 +2,14 @@ package l1
 
 import (
 	"context"
+	"net/http"
+	"testing"
+	"time"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
-	"net/http"
-	"testing"
-	"time"
 )
 
 const (

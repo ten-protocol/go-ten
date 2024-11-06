@@ -251,6 +251,7 @@ func (cl *L1BeaconClient) FetchBlobs(ctx context.Context, b *types.Header, hashe
 
 	return BlobsFromSidecars(blobSidecars, hashes)
 }
+
 func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
 	if len(blobSidecars) != len(hashes) {
 		return nil, fmt.Errorf("number of hashes and blobSidecars mismatch, %d != %d", len(hashes), len(blobSidecars))
