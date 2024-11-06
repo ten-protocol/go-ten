@@ -916,9 +916,6 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 }
 
 func getRollupFromBlobHashes(ctx context.Context, blobResolver l1.BlobResolver, block *types.Block, blobHashes []gethcommon.Hash) (*common.ExtRollup, error) {
-	for _, bh := range blobHashes {
-		println("blob hash: ", bh.Hex())
-	}
 	blobs, err := blobResolver.FetchBlobs(ctx, block.Header(), blobHashes)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch blobs from hashes during chain validation. Cause: %w", err)
