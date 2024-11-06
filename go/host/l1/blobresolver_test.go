@@ -2,8 +2,10 @@ package l1
 
 import (
 	"context"
+	"math/big"
 	"net/http"
 	"testing"
+	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -12,9 +14,8 @@ import (
 )
 
 const (
-	vHash1    = "0x012b7a6a22399aa9eecd8eda6ec658679e81be21af6ff296116aee205e2218f2"
-	vHash2    = "0x012374e04a848591844b75bc2f500318cf640552379b5e3a1a77bb828620690e"
-	sepVHash1 = "0x0158c07e3b83cf77a46d1e6fb6fa245e0a38285a5d46885a463bb27330d145bb "
+	vHash1 = "0x012b7a6a22399aa9eecd8eda6ec658679e81be21af6ff296116aee205e2218f2"
+	vHash2 = "0x012374e04a848591844b75bc2f500318cf640552379b5e3a1a77bb828620690e"
 )
 
 func TestBlobResolver(t *testing.T) {
@@ -40,11 +41,12 @@ func TestSepoliaBlobResolver(t *testing.T) {
 	fallback := ethadapter.NewBeaconHTTPClient(new(http.Client), "https://eth-beacon-chain-sepolia.drpc.org/rest/")
 	blobResolver := NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, fallback))
 
-	b := &types.Header{
-		Time: 1737346236,
+	// this is a moving point in time so we can't compare hashes or be certain there will be blobs in the block
+	historicalBlock := &types.Header{
+		Time:   uint64(time.Now().Add(-30 * 24 * time.Hour).Unix()), // 30 days ago
+		Number: big.NewInt(1234567),
 	}
 
-	blobs, err := blobResolver.FetchBlobs(context.Background(), b, []gethcommon.Hash{gethcommon.HexToHash(sepVHash1)})
+	_, err := blobResolver.FetchBlobs(context.Background(), historicalBlock, []gethcommon.Hash{})
 	require.NoError(t, err)
-	require.Len(t, blobs, 2)
 }

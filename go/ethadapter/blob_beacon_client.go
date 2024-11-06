@@ -198,11 +198,9 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 }
 
 // GetBlobSidecars fetches blob sidecars that were confirmed in the specified
-// L1 block with the given hashes.
+// L1 block. If hashes are provided, only returns sidecars matching those hashes.
+// If no hashes are provided, returns all sidecars for the block.
 func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*BlobSidecar, error) {
-	if len(hashes) == 0 {
-		return []*BlobSidecar{}, nil
-	}
 	slotFn, err := cl.GetTimeToSlot(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get time to slot function: %w", err)
@@ -217,6 +215,12 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, b, err)
 	}
 
+	// return all sidecars for block if no hashes provided
+	if len(hashes) == 0 {
+		return resp.Data, nil
+	}
+
+	// match sidecars with provided hashes
 	sidecars, err := MatchSidecarsWithHashes(resp.Data, hashes)
 	if err != nil {
 		return nil, err
@@ -233,9 +237,17 @@ func (cl *L1BeaconClient) FetchBlobs(ctx context.Context, b *types.Header, hashe
 	if err != nil {
 		return nil, fmt.Errorf("failed to get blob sidecars for Block Header %s: %w", b.Hash().Hex(), err)
 	}
+
+	// no hashes were provided, create slice of all hashes from sidecars
+	if len(hashes) == 0 {
+		hashes = make([]gethcommon.Hash, len(blobSidecars))
+		for i, sidecar := range blobSidecars {
+			hashes[i] = KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
+		}
+	}
+
 	return BlobsFromSidecars(blobSidecars, hashes)
 }
-
 func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
 	if len(blobSidecars) != len(hashes) {
 		return nil, fmt.Errorf("number of hashes and blobSidecars mismatch, %d != %d", len(hashes), len(blobSidecars))
