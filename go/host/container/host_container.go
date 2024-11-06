@@ -153,10 +153,9 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	obscuroRelevantContracts := []gethcommon.Address{cfg.ManagementContractAddress, cfg.MessageBusAddress}
 	l1Repo := l1.NewL1Repository(l1Client, obscuroRelevantContracts, logger)
 	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BeaconUrl)
-	beaconFallback := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BeaconUrl)
+	beaconFallback := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BlobArchiveUrl)
 	// we can add more fallback clients as they become available
-	fallback := ethadapter.NewArchivalHTTPClient(new(http.Client), cfg.L1BlobArchiveUrl)
-	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, beaconFallback, fallback))
+	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, beaconFallback))
 	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Repo, enclaveClients, mgmtContractLib, ethWallet, rpcServer, logger, metricsService, blobResolver)
 }
 
