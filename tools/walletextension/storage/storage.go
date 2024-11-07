@@ -11,6 +11,7 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/sqlite"
 )
 
+// todo - pass the Context
 type UserStorage interface {
 	AddUser(userID []byte, privateKey []byte) error
 	DeleteUser(userID []byte) error
