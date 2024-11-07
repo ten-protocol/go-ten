@@ -24,6 +24,7 @@ const (
 	PathHealth                    = "/health/"
 	PathNetworkHealth             = "/network-health/"
 	PathNetworkConfig             = "/network-config/"
+	PathKeyExchange               = "/key-exchange/"
 	WSProtocol                    = "ws://"
 	HTTPProtocol                  = "http://"
 	EncryptedTokenQueryParameter  = "token"

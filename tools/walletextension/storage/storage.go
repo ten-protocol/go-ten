@@ -16,6 +16,7 @@ type UserStorage interface {
 	DeleteUser(userID []byte) error
 	AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error
 	GetUser(userID []byte) (*common.GWUser, error)
+	GetEncryptionKey() []byte
 }
 
 func New(dbType, dbConnectionURL, dbPath string, randomKey []byte, logger gethlog.Logger) (UserStorage, error) {

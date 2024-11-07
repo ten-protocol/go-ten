@@ -6,8 +6,9 @@
 
 # Final container folder structure:
 #   /home/ten/go-ten/tools/walletextension/main    contains the executable for the enclave
+#   /data                                          persistent volume mount point
 
-
+# Trigger new build stage for compiling the enclave
 FROM ghcr.io/edgelesssys/ego-dev:v1.5.3 AS build-base
 
 # Install ca-certificates package and update it
@@ -15,8 +16,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && update-ca-certificates
 
-
-# setup container data structure
+# Setup container data structure
 RUN mkdir -p /home/ten/go-ten
 
 # Ensures container layer caching when dependencies are not changed
@@ -39,16 +39,27 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # Sign the enclave executable
 RUN ego sign enclave.json
 
-
-# Trigger a new build stage and use the smaller ego version:
 FROM ghcr.io/edgelesssys/ego-deploy:v1.5.3
+
+# Create data directory that will be used for persistence
+RUN mkdir -p /data && chmod 777 /data
 
 # Copy just the binary for the enclave into this build stage
 COPY --from=build-enclave \
     /home/ten/go-ten/tools/walletextension/main /home/ten/go-ten/tools/walletextension/main
 
+# Copy the entry.sh script and make it executable
+COPY tools/walletextension/main/entry.sh /home/ten/go-ten/tools/walletextension/main/entry.sh
+RUN chmod +x /home/ten/go-ten/tools/walletextension/main/entry.sh
+
 WORKDIR /home/ten/go-ten/tools/walletextension/main
+
+# Add volume mount point
+VOLUME ["/data"]
 
 # simulation mode is ACTIVE by default
 ENV OE_SIMULATION=1
 EXPOSE 3000
+
+# Set the entrypoint to entry.sh
+ENTRYPOINT ["/home/ten/go-ten/tools/walletextension/main/entry.sh"]

@@ -73,9 +73,13 @@ const (
 	rateLimitMaxConcurrentRequestsDefault = 3
 	rateLimitMaxConcurrentRequestsUsage   = "Number of concurrent requests allowed per user. Default: 3"
 
-	debugFlagName    = "debug"
-	debugFlagDefault = false
-	debugFlagUsage   = "Flag to enable debug mode"
+	insideEnclaveFlagName    = "insideEnclave"
+	insideEnclaveFlagDefault = true
+	insideEnclaveFlagUsage   = "Flag to indicate if the program is running inside an enclave. Default: false"
+
+	keyExchangeURLFlagName    = "keyExchangeURL"
+	keyExchangeURLFlagDefault = ""
+	keyExchangeURLFlagUsage   = "URL to exchange the key with another enclave. Default: empty"
 )
 
 func parseCLIArgs() wecommon.Config {
@@ -95,7 +99,8 @@ func parseCLIArgs() wecommon.Config {
 	rateLimitUserComputeTime := flag.Duration(rateLimitUserComputeTimeName, rateLimitUserComputeTimeDefault, rateLimitUserComputeTimeUsage)
 	rateLimitWindow := flag.Duration(rateLimitWindowName, rateLimitWindowDefault, rateLimitWindowUsage)
 	rateLimitMaxConcurrentRequests := flag.Int(rateLimitMaxConcurrentRequestsName, rateLimitMaxConcurrentRequestsDefault, rateLimitMaxConcurrentRequestsUsage)
-	debugFlag := flag.Bool(debugFlagName, debugFlagDefault, debugFlagUsage)
+	insideEnclaveFlag := flag.Bool(insideEnclaveFlagName, insideEnclaveFlagDefault, insideEnclaveFlagUsage)
+	keyExchangeURL := flag.String(keyExchangeURLFlagName, keyExchangeURLFlagDefault, keyExchangeURLFlagUsage)
 	flag.Parse()
 
 	return wecommon.Config{
@@ -114,6 +119,7 @@ func parseCLIArgs() wecommon.Config {
 		RateLimitUserComputeTime:       *rateLimitUserComputeTime,
 		RateLimitWindow:                *rateLimitWindow,
 		RateLimitMaxConcurrentRequests: *rateLimitMaxConcurrentRequests,
-		Debug:                          *debugFlag,
+		InsideEnclave:                  *insideEnclaveFlag,
+		KeyExchangeURL:                 *keyExchangeURL,
 	}
 }

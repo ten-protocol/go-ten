@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -13,7 +15,9 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
+	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
 
+	tencommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/httputil"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
@@ -61,6 +65,10 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 		{
 			Name: common.APIVersion1 + common.PathNetworkConfig,
 			Func: httpHandler(walletExt, networkConfigRequestHandler),
+		},
+		{
+			Name: common.APIVersion1 + common.PathKeyExchange,
+			Func: httpHandler(walletExt, keyExchangeRequestHandler),
 		},
 	}
 }
@@ -515,5 +523,86 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	err = conn.WriteResponse(responseBytes)
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+	}
+}
+
+func keyExchangeRequestHandler(walletExt *services.Services, conn UserConn) {
+	// Read the request
+	body, err := conn.ReadRequest()
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		return
+	}
+
+	// Step 1: Deserialize the received message
+	var receivedMessageOG keymanager.KeyExchangeRequest
+	err = json.Unmarshal(body, &receivedMessageOG)
+	if err != nil {
+		walletExt.Logger().Error("OG: Failed to deserialize received message", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to deserialize message: %w", err))
+		return
+	}
+
+	// Step 2: Deserialize the public key
+	receivedPubKey, err := keymanager.DeserializePublicKey(receivedMessageOG.PublicKey)
+	if err != nil {
+		walletExt.Logger().Error("OG: Failed to deserialize public key", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to deserialize public key: %w", err))
+		return
+	}
+
+	// Step 3: Deserialize the attestation report
+	var receivedAttestation tencommon.AttestationReport
+	if err := json.Unmarshal(receivedMessageOG.Attestation, &receivedAttestation); err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("error unmarshaling attestation report: %w", err))
+		return
+	}
+
+	// Step 4: Verify the attestation report
+	verifiedData, err := keymanager.VerifyReport(&receivedAttestation)
+	if err != nil {
+		walletExt.Logger().Error("OG: Failed to verify attestation report", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to verify attestation report: %w", err))
+		return
+	}
+
+	// Hash the received public key bytes
+	pubKeyHash := sha256.Sum256(receivedMessageOG.PublicKey)
+
+	// Only compare the first 32 bytes since verifiedData is padded to 64 bytes
+	verifiedDataTruncated := verifiedData[:32]
+	if bytes.Equal(verifiedDataTruncated, pubKeyHash[:]) {
+		walletExt.Logger().Info("OG: Public keys match")
+	} else {
+		walletExt.Logger().Error("OG: Public keys do not match")
+	}
+
+	// Step 5Encrypt the public key using the received public key
+	encryptedKeyOG, err := keymanager.EncryptWithPublicKey(walletExt.Storage.GetEncryptionKey(), receivedPubKey)
+	if err != nil {
+		walletExt.Logger().Error("OG: Encryption failed", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), fmt.Errorf("encryption failed: %w", err))
+		return
+	}
+
+	// Step 6: Encode the encrypted encryption key to Base64
+	encodedEncryptedKeyOG := keymanager.EncodeBase64(encryptedKeyOG)
+
+	// Step 7: Create the response message containing the encrypted key
+	messageOG := keymanager.KeyExchangeResponse{
+		EncryptedKey: encodedEncryptedKeyOG,
+	}
+
+	// Step 8: Serialize the response message to JSON and send it back to the requester
+	messageBytesOG, err := json.Marshal(messageOG)
+	if err != nil {
+		walletExt.Logger().Error("OG: Failed to serialize response message", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to serialize response message: %w", err))
+		return
+	}
+	walletExt.Logger().Info("Shared encrypted key with another gateway enclave")
+	err = conn.WriteResponse(messageBytesOG)
+	if err != nil {
+		walletExt.Logger().Error("error writing response", log.ErrKey, err)
 	}
 }

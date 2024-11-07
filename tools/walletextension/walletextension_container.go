@@ -19,6 +19,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
 
@@ -35,14 +36,9 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	hostRPCBindAddrWS := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
 	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
 
-	// Database encryption key handling
-	// TODO: Check if encryption key is already sealed and unseal it and generate new one if not (part of the next PR)
-	// TODO: We should have a mechanism to get the key from an enclave that already runs (part of the next PR)
-	// TODO: Move this to a separate file along with key exchange logic (part of the next PR)
-
-	encryptionKey, err := wecommon.GenerateRandomKey()
+	encryptionKey, err := keymanager.GetEncryptionKey(config, logger)
 	if err != nil {
-		logger.Crit("unable to generate random encryption key", log.ErrKey, err)
+		logger.Crit("unable to get encryption key", log.ErrKey, err)
 		os.Exit(1)
 	}
 

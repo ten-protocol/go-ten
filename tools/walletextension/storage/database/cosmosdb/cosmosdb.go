@@ -229,3 +229,8 @@ func (c *CosmosDB) GetUser(userID []byte) (*common.GWUser, error) {
 	}
 	return user.ToGWUser(), nil
 }
+
+// GetEncryptionKey returns the encryption key used by the CosmosDB instance
+func (c *CosmosDB) GetEncryptionKey() []byte {
+	return c.encryptor.GetKey()
+}
