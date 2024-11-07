@@ -41,7 +41,7 @@ const (
 
 var rpcNotImplemented = fmt.Errorf("rpc endpoint not implemented")
 
-type ExecCfg struct {
+type AuthExecCfg struct {
 	// these 4 fields specify the account(s) that should make the backend call
 	account             *gethcommon.Address
 	computeFromCallback func(user *common.GWUser) *gethcommon.Address
@@ -79,7 +79,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 	return res, err
 }
 
-func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *ExecCfg, method string, args ...any) (*R, error) {
+func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExecCfg, method string, args ...any) (*R, error) {
 	audit(w, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
 	userID, err := extractUserID(ctx, w)
@@ -153,12 +153,12 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *ExecCfg,
 	return res, err
 }
 
-func getCandidateAccounts(user *common.GWUser, _ *services.Services, cfg *ExecCfg) ([]*common.GWAccount, error) {
+func getCandidateAccounts(user *common.GWUser, _ *services.Services, cfg *AuthExecCfg) ([]*common.GWAccount, error) {
 	candidateAccts := make([]*common.GWAccount, 0)
 	// for users with multiple accounts try to determine a candidate account based on the available information
 	switch {
 	case cfg.account != nil:
-		acc := user.Accounts[*cfg.account]
+		acc := user.AllAccounts()[*cfg.account]
 		if acc != nil {
 			candidateAccts = append(candidateAccts, acc)
 			return candidateAccts, nil
@@ -167,7 +167,7 @@ func getCandidateAccounts(user *common.GWUser, _ *services.Services, cfg *ExecCf
 	case cfg.computeFromCallback != nil:
 		suggestedAddress := cfg.computeFromCallback(user)
 		if suggestedAddress != nil {
-			acc := user.Accounts[*suggestedAddress]
+			acc := user.AllAccounts()[*suggestedAddress]
 			if acc != nil {
 				candidateAccts = append(candidateAccts, acc)
 				return candidateAccts, nil
@@ -176,7 +176,7 @@ func getCandidateAccounts(user *common.GWUser, _ *services.Services, cfg *ExecCf
 	}
 
 	if cfg.tryAll || cfg.tryUntilAuthorised {
-		for _, acc := range user.Accounts {
+		for _, acc := range user.AllAccounts() {
 			candidateAccts = append(candidateAccts, acc)
 		}
 	}

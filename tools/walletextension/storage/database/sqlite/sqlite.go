@@ -14,6 +14,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ethereum/go-ethereum/crypto"
+
 	dbcommon "github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
@@ -102,17 +104,44 @@ func (s *SqliteDB) DeleteUser(userID []byte) error {
 	return nil
 }
 
-func (s *SqliteDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
-	var userDataJSON string
-	err := s.db.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
+func (s *SqliteDB) ActivateSessionKey(userID []byte, active bool) error {
+	user, err := s.readUser(userID)
 	if err != nil {
-		return fmt.Errorf("failed to get user: %w", err)
+		return err
 	}
+	user.ActiveSK = active
+	return s.updateUser(user)
+}
 
-	var user dbcommon.GWUserDB
-	err = json.Unmarshal([]byte(userDataJSON), &user)
+func (s *SqliteDB) AddSessionKey(userID []byte, key common.GWSessionKey) error {
+	user, err := s.readUser(userID)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal user data: %w", err)
+		return err
+	}
+	user.SessionKey = &dbcommon.GWSessionKeyDB{
+		PrivateKey: crypto.FromECDSA(key.PrivateKey.ExportECDSA()),
+		Account: dbcommon.GWAccountDB{
+			AccountAddress: key.Account.Address.Bytes(),
+			Signature:      key.Account.Signature,
+			SignatureType:  int(key.Account.SignatureType),
+		},
+	}
+	return s.updateUser(user)
+}
+
+func (s *SqliteDB) RemoveSessionKey(userID []byte) error {
+	user, err := s.readUser(userID)
+	if err != nil {
+		return err
+	}
+	user.SessionKey = nil
+	return s.updateUser(user)
+}
+
+func (s *SqliteDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
+	user, err := s.readUser(userID)
+	if err != nil {
+		return err
 	}
 
 	newAccount := dbcommon.GWAccountDB{
@@ -123,6 +152,37 @@ func (s *SqliteDB) AddAccount(userID []byte, accountAddress []byte, signature []
 
 	user.Accounts = append(user.Accounts, newAccount)
 
+	return s.updateUser(user)
+}
+
+func (s *SqliteDB) GetUser(userID []byte) (*common.GWUser, error) {
+	user, err := s.readUser(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return user.ToGWUser()
+}
+
+func (s *SqliteDB) readUser(userID []byte) (dbcommon.GWUserDB, error) {
+	var userDataJSON string
+	err := s.db.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return dbcommon.GWUserDB{}, fmt.Errorf("failed to get user: %w", errutil.ErrNotFound)
+		}
+		return dbcommon.GWUserDB{}, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	var user dbcommon.GWUserDB
+	err = json.Unmarshal([]byte(userDataJSON), &user)
+	if err != nil {
+		return dbcommon.GWUserDB{}, fmt.Errorf("failed to unmarshal user data: %w", err)
+	}
+	return user, nil
+}
+
+func (s *SqliteDB) updateUser(user dbcommon.GWUserDB) error {
 	updatedUserJSON, err := json.Marshal(user)
 	if err != nil {
 		return fmt.Errorf("error marshaling updated user: %w", err)
@@ -134,31 +194,11 @@ func (s *SqliteDB) AddAccount(userID []byte, accountAddress []byte, signature []
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(string(updatedUserJSON), string(userID))
+	_, err = stmt.Exec(string(updatedUserJSON), string(user.UserId))
 	if err != nil {
 		return fmt.Errorf("failed to update user with new account: %w", err)
 	}
-
 	return nil
-}
-
-func (s *SqliteDB) GetUser(userID []byte) (*common.GWUser, error) {
-	var userDataJSON string
-	err := s.db.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("failed to get user: %w", errutil.ErrNotFound)
-		}
-		return nil, fmt.Errorf("failed to get user: %w", err)
-	}
-
-	var user dbcommon.GWUserDB
-	err = json.Unmarshal([]byte(userDataJSON), &user)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
-	}
-
-	return user.ToGWUser(), nil
 }
 
 func createOrLoad(dbPath string) (string, error) {

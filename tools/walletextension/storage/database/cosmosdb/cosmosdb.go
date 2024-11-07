@@ -138,6 +138,18 @@ func (c *CosmosDB) DeleteUser(userID []byte) error {
 	return nil
 }
 
+func (c *CosmosDB) AddSessionKey(userID []byte, key common.GWSessionKey) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (c *CosmosDB) ActivateSessionKey(userID []byte, active bool) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (c *CosmosDB) RemoveSessionKey(userID []byte) error {
+	return fmt.Errorf("not implemented")
+}
+
 func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
 	key := c.encryptor.HashWithHMAC(userID)
 	keyString := hex.EncodeToString(key)
@@ -227,5 +239,5 @@ func (c *CosmosDB) GetUser(userID []byte) (*common.GWUser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
 	}
-	return user.ToGWUser(), nil
+	return user.ToGWUser()
 }

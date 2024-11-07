@@ -85,7 +85,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 	errorChannels := make([]<-chan error, 0)
 	backendSubscriptions := make([]*rpc.ClientSubscription, 0)
 	for _, address := range candidateAddresses {
-		rpcWSClient, err := api.we.BackendRPC.ConnectWS(ctx, user.Accounts[*address])
+		rpcWSClient, err := api.we.BackendRPC.ConnectWS(ctx, user.AllAccounts()[*address])
 		if err != nil {
 			return nil, err
 		}
@@ -232,7 +232,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 			// for each account registered for the current user
 			// execute the get_Logs function
 			// dedupe and concatenate the results
-			for _, acct := range user.Accounts {
+			for _, acct := range user.AllAccounts() {
 				eventLogs, err := services.WithEncRPCConnection(ctx, api.we.BackendRPC, acct, func(rpcClient *tenrpc.EncRPCClient) (*[]*types.Log, error) {
 					var result []*types.Log
 
@@ -281,7 +281,7 @@ func (api *FilterAPI) UninstallFilter(id rpc.ID) bool {
 }
 
 func (api *FilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*types.Log, error) {
-	//txRec, err := ExecAuthRPC[[]*types.Log](ctx, api.we, "GetFilterLogs", ExecCfg{account: args.From}, id)
+	//txRec, err := ExecAuthRPC[[]*types.Log](ctx, api.we, "GetFilterLogs", AuthExecCfg{account: args.From}, id)
 	//if txRec != nil {
 	//	return *txRec, err
 	//}

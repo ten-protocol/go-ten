@@ -9,7 +9,7 @@ import (
 )
 
 func searchFromAndData(possibleAddresses []*common.Address, args gethapi.TransactionArgs) *common.Address {
-	if args.From != nil {
+	if args.From != nil && (*args.From != common.Address{}) {
 		return args.From
 	}
 

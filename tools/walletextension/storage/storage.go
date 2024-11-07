@@ -15,6 +15,9 @@ type UserStorage interface {
 	AddUser(userID []byte, privateKey []byte) error
 	DeleteUser(userID []byte) error
 	AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error
+	AddSessionKey(userID []byte, key common.GWSessionKey) error
+	ActivateSessionKey(userID []byte, active bool) error
+	RemoveSessionKey(userID []byte) error
 	GetUser(userID []byte) (*common.GWUser, error)
 }
 

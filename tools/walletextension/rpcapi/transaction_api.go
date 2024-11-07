@@ -65,7 +65,7 @@ func (s *TransactionAPI) GetTransactionCount(ctx context.Context, address common
 	return ExecAuthRPC[hexutil.Uint64](
 		ctx,
 		s.we,
-		&ExecCfg{
+		&AuthExecCfg{
 			account: &address,
 			cacheCfg: &cache.Cfg{
 				DynamicType: func() cache.Strategy {
@@ -80,11 +80,11 @@ func (s *TransactionAPI) GetTransactionCount(ctx context.Context, address common
 }
 
 func (s *TransactionAPI) GetTransactionByHash(ctx context.Context, hash common.Hash) (*rpc.RpcTransaction, error) {
-	return ExecAuthRPC[rpc.RpcTransaction](ctx, s.we, &ExecCfg{tryAll: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, "eth_getTransactionByHash", hash)
+	return ExecAuthRPC[rpc.RpcTransaction](ctx, s.we, &AuthExecCfg{tryAll: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, "eth_getTransactionByHash", hash)
 }
 
 func (s *TransactionAPI) GetRawTransactionByHash(ctx context.Context, hash common.Hash) (hexutil.Bytes, error) {
-	tx, err := ExecAuthRPC[hexutil.Bytes](ctx, s.we, &ExecCfg{tryAll: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, "eth_getRawTransactionByHash", hash)
+	tx, err := ExecAuthRPC[hexutil.Bytes](ctx, s.we, &AuthExecCfg{tryAll: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, "eth_getRawTransactionByHash", hash)
 	if tx != nil {
 		return *tx, err
 	}
@@ -92,7 +92,7 @@ func (s *TransactionAPI) GetRawTransactionByHash(ctx context.Context, hash commo
 }
 
 func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error) {
-	txRec, err := ExecAuthRPC[map[string]interface{}](ctx, s.we, &ExecCfg{tryUntilAuthorised: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, "eth_getTransactionReceipt", hash)
+	txRec, err := ExecAuthRPC[map[string]interface{}](ctx, s.we, &AuthExecCfg{tryUntilAuthorised: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, "eth_getTransactionReceipt", hash)
 	if err != nil {
 		return nil, err
 	}
@@ -103,11 +103,13 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 }
 
 func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.TransactionArgs) (common.Hash, error) {
-	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{account: args.From, timeout: sendTransactionDuration}, "eth_sendTransaction", args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return *txRec, err
+	//txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &AuthExecCfg{account: args.From, timeout: sendTransactionDuration}, "eth_sendTransaction", args)
+	//if err != nil {
+	//	return common.Hash{}, err
+	//}
+	//return *txRec, err
+	// not implemented for now. We might use this for session keys.
+	return common.Hash{}, rpcNotImplemented
 }
 
 type SignTransactionResult struct {
@@ -120,7 +122,35 @@ func (s *TransactionAPI) FillTransaction(ctx context.Context, args gethapi.Trans
 }
 
 func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.Bytes) (common.Hash, error) {
-	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{tryAll: true, timeout: sendTransactionDuration}, "eth_sendRawTransaction", input)
+	signedTx := input
+	userID, err := extractUserID(ctx, s.we)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	user, err := s.we.Storage.GetUser(userID)
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	// when there is an active Session Key, sign all incoming transactions with that SK
+	if user.ActiveSK && user.SessionKey != nil {
+		tx := new(types.Transaction)
+		if err := tx.UnmarshalBinary(input); err != nil {
+			return common.Hash{}, err
+		}
+		signer := types.NewLondonSigner(tx.ChainId())
+
+		tx, err = types.SignTx(tx, signer, user.SessionKey.PrivateKey.ExportECDSA())
+		if err != nil {
+			return common.Hash{}, err
+		}
+		signedTx, err = tx.MarshalBinary()
+		if err != nil {
+			return common.Hash{}, err
+		}
+	}
+
+	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &AuthExecCfg{tryAll: true, timeout: sendTransactionDuration}, "eth_sendRawTransaction", signedTx)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -132,7 +162,7 @@ func (s *TransactionAPI) PendingTransactions() ([]*rpc.RpcTransaction, error) {
 }
 
 func (s *TransactionAPI) Resend(ctx context.Context, sendArgs gethapi.TransactionArgs, gasPrice *hexutil.Big, gasLimit *hexutil.Uint64) (common.Hash, error) {
-	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &ExecCfg{account: sendArgs.From}, "eth_resend", sendArgs, gasPrice, gasLimit)
+	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &AuthExecCfg{account: sendArgs.From}, "eth_resend", sendArgs, gasPrice, gasLimit)
 	if txRec != nil {
 		return *txRec, err
 	}
