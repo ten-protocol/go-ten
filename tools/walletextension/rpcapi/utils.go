@@ -173,7 +173,7 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *ExecC
 				return candidateAccts, nil
 			} else {
 				// this should not happen, because the suggestedAddress is one of the addresses
-				we.Logger().Crit("should not happen. Could not ``computeFromCallback`` the from", "suggested", suggestedAddress.Hex(), "user", user.UserID)
+				return nil, fmt.Errorf("should not happen. From: %s . UserId: %s", suggestedAddress.Hex(), hexutils.BytesToHex(user.UserID))
 			}
 		}
 	}
