@@ -107,7 +107,13 @@ func (s *SqliteDB) DeleteUser(userID []byte) error {
 
 func (s *SqliteDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
 	var userDataJSON string
-	err := s.db.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	err = tx.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
@@ -131,7 +137,7 @@ func (s *SqliteDB) AddAccount(userID []byte, accountAddress []byte, signature []
 		return fmt.Errorf("error marshaling updated user: %w", err)
 	}
 
-	stmt, err := s.db.Prepare("UPDATE users SET user_data = ? WHERE id = ?")
+	stmt, err := tx.Prepare("UPDATE users SET user_data = ? WHERE id = ?")
 	if err != nil {
 		return err
 	}
@@ -140,6 +146,10 @@ func (s *SqliteDB) AddAccount(userID []byte, accountAddress []byte, signature []
 	_, err = stmt.Exec(string(updatedUserJSON), string(userID))
 	if err != nil {
 		return fmt.Errorf("failed to update user with new account: %w", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
 	}
 
 	return nil
