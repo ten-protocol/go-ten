@@ -31,7 +31,7 @@ func getUserID(conn UserConn) ([]byte, error) {
 			return hexutils.HexToBytes(userID), nil
 		}
 
-		return nil, fmt.Errorf(fmt.Sprintf("wrong length of userID from URL. Got: %d, Expected: %d od %d", len(userID), common.MessageUserIDLenWithPrefix, common.MessageUserIDLen))
+		return nil, fmt.Errorf("wrong length of userID from URL. Got: %d, Expected: %d od %d", len(userID), common.MessageUserIDLenWithPrefix, common.MessageUserIDLen)
 	}
 
 	return nil, fmt.Errorf("missing token field")
