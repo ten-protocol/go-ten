@@ -85,7 +85,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 	errorChannels := make([]<-chan error, 0)
 	backendSubscriptions := make([]*rpc.ClientSubscription, 0)
 	for _, address := range candidateAddresses {
-		rpcWSClient, err := api.we.BackendRPC.ConnectWS(ctx, user.Accounts[*address])
+		rpcWSClient, err := api.we.BackendRPC.ConnectWS(ctx, user.Accounts[address])
 		if err != nil {
 			return nil, err
 		}
@@ -174,14 +174,14 @@ func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *we
 	return subNotifier, user, nil
 }
 
-func searchForAddressInFilterCriteria(filterCriteria common.FilterCriteria, possibleAddresses []*gethcommon.Address) []*gethcommon.Address {
-	result := make([]*gethcommon.Address, 0)
+func searchForAddressInFilterCriteria(filterCriteria common.FilterCriteria, possibleAddresses []gethcommon.Address) []gethcommon.Address {
+	result := make([]gethcommon.Address, 0)
 	addrMap := toMap(possibleAddresses)
 	for _, topicCondition := range filterCriteria.Topics {
 		for _, topic := range topicCondition {
 			potentialAddr := common.ExtractPotentialAddress(topic)
-			if potentialAddr != nil && addrMap[*potentialAddr] != nil {
-				result = append(result, potentialAddr)
+			if potentialAddr != nil && addrMap[*potentialAddr] {
+				result = append(result, *potentialAddr)
 			}
 		}
 	}
