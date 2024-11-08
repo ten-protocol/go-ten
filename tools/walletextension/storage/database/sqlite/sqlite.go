@@ -11,9 +11,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"os"
 	"path/filepath"
+
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	dbcommon "github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
 

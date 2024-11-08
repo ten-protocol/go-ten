@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+
 	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"github.com/ten-protocol/go-ten/go/host/storage/init/sqlite"
@@ -10,8 +11,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/host/storage/init/postgres"
 )
 
-const HOST = "HOST_"
-const sqliteHostCfg = "_foreign_keys=on&_journal_mode=wal&_txlock=immediate&_synchronous=normal&mode=memory&cache=shared"
+const (
+	HOST          = "HOST_"
+	sqliteHostCfg = "_foreign_keys=on&_journal_mode=wal&_txlock=immediate&_synchronous=normal&mode=memory&cache=shared"
+)
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
 func CreateDBFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) (hostdb.HostDB, error) {
