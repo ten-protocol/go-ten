@@ -153,7 +153,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *ExecCfg,
 	return res, err
 }
 
-func getCandidateAccounts(user *common.GWUser, _ *services.Services, cfg *ExecCfg) ([]*common.GWAccount, error) {
+func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *ExecCfg) ([]*common.GWAccount, error) {
 	candidateAccts := make([]*common.GWAccount, 0)
 	// for users with multiple accounts try to determine a candidate account based on the available information
 	switch {
@@ -171,6 +171,9 @@ func getCandidateAccounts(user *common.GWUser, _ *services.Services, cfg *ExecCf
 			if acc != nil {
 				candidateAccts = append(candidateAccts, acc)
 				return candidateAccts, nil
+			} else {
+				// this should not happen, because the suggestedAddress is one of the addresses
+				return nil, fmt.Errorf("should not happen. From: %s . UserId: %s", suggestedAddress.Hex(), hexutils.BytesToHex(user.UserID))
 			}
 		}
 	}

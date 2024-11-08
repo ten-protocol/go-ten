@@ -2,6 +2,7 @@ package common
 
 import (
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"golang.org/x/exp/maps"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -19,10 +20,6 @@ type GWUser struct {
 	UserKey  []byte
 }
 
-func (u GWUser) GetAllAddresses() []*common.Address {
-	accts := make([]*common.Address, 0)
-	for _, acc := range u.Accounts {
-		accts = append(accts, acc.Address)
-	}
-	return accts
+func (u GWUser) GetAllAddresses() []common.Address {
+	return maps.Keys(u.Accounts)
 }
