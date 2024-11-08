@@ -201,9 +201,8 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 		return nil, err
 	}
 
-	userID := user.ID
-	rateLimitAllowed, requestUUID := api.we.RateLimiter.Allow(gethcommon.Address(userID))
-	defer api.we.RateLimiter.SetRequestEnd(gethcommon.Address(userID), requestUUID)
+	rateLimitAllowed, requestUUID := api.we.RateLimiter.Allow(gethcommon.Address(user.ID))
+	defer api.we.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 	if !rateLimitAllowed {
 		return nil, fmt.Errorf("rate limit exceeded")
 	}
@@ -222,7 +221,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 				return cache.LatestBatch
 			},
 		},
-		generateCacheKey([]any{userID, method, common.SerializableFilterCriteria(crit)}),
+		generateCacheKey([]any{user.ID, method, common.SerializableFilterCriteria(crit)}),
 		func() (*[]*types.Log, error) { // called when there is no entry in the cache
 			allEventLogsMap := make(map[LogKey]*types.Log)
 			// for each account registered for the current user

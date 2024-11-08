@@ -15,6 +15,12 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
 
+// SKManager - session keys are Private Keys managed by the Gateway
+// At the moment, each user can have a single Session Key. Which is either active or inactive
+// when the SK is active, then all transactions submitted by that user will be signed with the session key
+// The SK is also considered an "Account" of that user
+// when the SK is created, it signs over the VK of the user so that it can interact with a node the standard way
+// From the POV of the Ten network - a session key is a normal account key
 type SKManager interface {
 	CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error)
 	SignTx(ctx context.Context, user *common.GWUser, input hexutil.Bytes) (hexutil.Bytes, error)

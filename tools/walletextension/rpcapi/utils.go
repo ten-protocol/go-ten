@@ -86,15 +86,14 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 	if err != nil {
 		return nil, err
 	}
-	userID := user.ID
 
-	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(userID))
-	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(userID), requestUUID)
+	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
+	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 	if !rateLimitAllowed {
 		return nil, fmt.Errorf("rate limit exceeded")
 	}
 
-	cacheArgs := []any{userID, method}
+	cacheArgs := []any{user.ID, method}
 	cacheArgs = append(cacheArgs, args...)
 
 	res, err := cache.WithCache(w.RPCResponsesCache, cfg.cacheCfg, generateCacheKey(cacheArgs), func() (*R, error) {
@@ -145,7 +144,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 		}
 		return nil, rpcErr
 	})
-	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(userID), method, args, SafeGenericToString(res), err, time.Since(requestStartTime).Milliseconds())
+	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(user.ID), method, args, SafeGenericToString(res), err, time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
