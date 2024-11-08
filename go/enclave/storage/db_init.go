@@ -33,7 +33,7 @@ func CreateDBFromConfig(cfg *enclaveconfig.EnclaveConfig, logger gethlog.Logger)
 		logger.Warn("Attestation is disabled, using a basic sqlite DB for persistence")
 		// when we want to test persistence after node restart the SqliteDBPath should be set
 		// (if empty string then a temp sqldb file will be created for the lifetime of the enclave)
-		return sqlite.CreateTemporarySQLiteDB(cfg.SqliteDBPath, sqliteCfg, *cfg, logger)
+		return sqlite.CreateTemporarySQLiteDB(cfg.SqliteDBPath, SqliteCfg, *cfg, logger)
 	}
 
 	if !cfg.WillAttest && len(cfg.EdgelessDBHost) > 0 {

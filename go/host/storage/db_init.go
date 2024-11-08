@@ -2,8 +2,6 @@ package storage
 
 import (
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/enclave/storage"
-
 	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"github.com/ten-protocol/go-ten/go/host/storage/init/sqlite"
@@ -13,6 +11,7 @@ import (
 )
 
 const HOST = "HOST_"
+const sqliteHostCfg = "_foreign_keys=on&_journal_mode=wal&_txlock=immediate&_synchronous=normal&mode=memory&cache=shared"
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
 func CreateDBFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) (hostdb.HostDB, error) {
@@ -22,7 +21,7 @@ func CreateDBFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) (host
 	}
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		sqliteDB, err := sqlite.CreateTemporarySQLiteHostDB(dbName, storage.SqliteCfg)
+		sqliteDB, err := sqlite.CreateTemporarySQLiteHostDB(dbName, sqliteHostCfg)
 		if err != nil {
 			return nil, fmt.Errorf("could not create in memory sqlite DB: %w", err)
 		}
