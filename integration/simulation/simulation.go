@@ -55,7 +55,6 @@ func (s *Simulation) Start() {
 	testlog.Logger().Info(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(ethereummock.MockGenesisBlock.Hash())))
 	s.ctx = context.Background() // use injected context for graceful shutdowns
 
-	fmt.Printf("Waiting for TEN genesis on L1\n")
 	s.waitForTenGenesisOnL1()
 
 	// Arbitrary sleep to wait for RPC clients to get up and running
@@ -69,32 +68,24 @@ func (s *Simulation) Start() {
 	}
 	jsonCfg, err := json.Marshal(cfg)
 	if err == nil {
-		fmt.Printf("Config: %v\n", string(jsonCfg))
+		testlog.Logger().Error("Config: %v\n", string(jsonCfg))
 	}
 
-	fmt.Printf("Funding the bridge to TEN\n")
 	s.bridgeFundingToTen()
 
-	fmt.Printf("Deploying ZenBase contract\n")
 	s.deployTenZen() // Deploy the ZenBase contract
 
-	fmt.Printf("Creating log subscriptions\n")
 	s.trackLogs() // Create log subscriptions, to validate that they're working correctly later.
 
-	fmt.Printf("Prefunding L2 wallets\n")
 	s.prefundTenAccounts() // Prefund every L2 wallet
 
-	fmt.Printf("Deploying TEN ERC20 contracts\n")
 	s.deployTenERC20s() // Deploy the TEN HOC and POC ERC20 contracts
 
-	fmt.Printf("Prefunding L1 wallets\n")
 	s.prefundL1Accounts() // Prefund every L1 wallet
 
-	fmt.Printf("Checking health status\n")
 	s.checkHealthStatus() // Checks the nodes health status
 
 	timer := time.Now()
-	fmt.Printf("Starting injection\n")
 	testlog.Logger().Info("Starting injection")
 	go s.TxInjector.Start()
 
@@ -103,14 +94,12 @@ func (s *Simulation) Start() {
 
 	// Wait for the simulation time
 	time.Sleep(s.SimulationTime - s.Params.StoppingDelay)
-	fmt.Printf("Stopping injection\n")
 	testlog.Logger().Info("Stopping injection")
 
 	s.TxInjector.Stop()
 
 	time.Sleep(s.Params.StoppingDelay)
 
-	fmt.Printf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), s.SimulationTime)
 	testlog.Logger().Info(fmt.Sprintf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), s.SimulationTime))
 }
 
@@ -336,7 +325,6 @@ func (s *Simulation) deployTenERC20s() {
 			}
 			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), cfg.L2MessageBusAddress)
 
-			fmt.Printf("Deploy contract from: %s\n", owner.Address().Hex())
 			deployContractTxData := types.DynamicFeeTx{
 				Nonce:     NextNonce(s.ctx, s.RPCHandles, owner),
 				Gas:       5_000_000,
