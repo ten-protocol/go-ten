@@ -180,20 +180,14 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Addres
 //
 // In future, we can support both CustomQueries and some debug version of eth_getStorageAt if needed.
 func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.Address, params string, _ rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
-	userID, err := extractUserID(ctx, api.we)
+	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
-		// todo
-		return nil, err
-	}
-	user, err := api.we.Storage.GetUser(userID)
-	if err != nil {
-		// todo
 		return nil, err
 	}
 
 	switch address.Hex() {
 	case common.UserIDRequestCQMethod: // todo - review whether we need this endpoint
-		return userID, nil
+		return user.ID, nil
 	case common.ListPrivateTransactionsCQMethod:
 		// sensitive CustomQuery methods use the convention of having "address" at the top level of the params json
 		userAddr, err := extractCustomQueryAddress(params)
@@ -217,20 +211,20 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		}
 		return sk.Account.Address.Bytes(), nil
 	case common.ActivateSessionKeyCQMethod:
-		err := api.we.Storage.ActivateSessionKey(user.UserID, true)
+		err := api.we.Storage.ActivateSessionKey(user.ID, true)
 		if err != nil {
 			return nil, err
 		}
 		return []byte{1}, nil
 
 	case common.DeactivateSessionKeyCQMethod:
-		err := api.we.Storage.ActivateSessionKey(user.UserID, false)
+		err := api.we.Storage.ActivateSessionKey(user.ID, false)
 		if err != nil {
 			return nil, err
 		}
 		return []byte{1}, nil
 	case common.DeleteSessionKeyCQMethod:
-		err := api.we.Storage.RemoveSessionKey(user.UserID)
+		err := api.we.Storage.RemoveSessionKey(user.ID)
 		if err != nil {
 			return nil, err
 		}

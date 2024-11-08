@@ -778,7 +778,7 @@ func testGetStorageAtForReturningUserID(t *testing.T, _ int, httpURL, wsURL stri
 		t.Error("Unable to unmarshal response")
 	}
 	if !bytes.Equal(gethcommon.FromHex(response.Result), user.tgClient.UserIDBytes()) {
-		t.Errorf("Wrong UserID returned. Expected: %s, received: %s", user.tgClient.UserID(), response.Result)
+		t.Errorf("Wrong ID returned. Expected: %s, received: %s", user.tgClient.UserID(), response.Result)
 	}
 
 	// make a request to GetStorageAt with correct parameters to get userID, but with wrong userID

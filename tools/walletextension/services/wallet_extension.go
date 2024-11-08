@@ -147,7 +147,7 @@ func (w *Services) GenerateAndStoreNewUser() ([]byte, error) {
 	}
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
 
-	// create UserID and store it in the database with the private key
+	// create ID and store it in the database with the private key
 	userID := viewingkey.CalculateUserID(common.PrivateKeyToCompressedPubKey(viewingPrivateKeyEcies))
 	err = w.Storage.AddUser(userID, crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
 	if err != nil {

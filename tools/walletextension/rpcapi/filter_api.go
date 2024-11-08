@@ -196,11 +196,12 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 	method := "eth_getLogs"
 	audit(api.we, "RPC start method=%s args=%v", method, ctx)
 	requestStartTime := time.Now()
-	userID, err := extractUserID(ctx, api.we)
+	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
 		return nil, err
 	}
 
+	userID := user.ID
 	rateLimitAllowed, requestUUID := api.we.RateLimiter.Allow(gethcommon.Address(userID))
 	defer api.we.RateLimiter.SetRequestEnd(gethcommon.Address(userID), requestUUID)
 	if !rateLimitAllowed {
@@ -223,11 +224,6 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 		},
 		generateCacheKey([]any{userID, method, common.SerializableFilterCriteria(crit)}),
 		func() (*[]*types.Log, error) { // called when there is no entry in the cache
-			user, err := api.we.Storage.GetUser(userID)
-			if err != nil {
-				return nil, err
-			}
-
 			allEventLogsMap := make(map[LogKey]*types.Log)
 			// for each account registered for the current user
 			// execute the get_Logs function

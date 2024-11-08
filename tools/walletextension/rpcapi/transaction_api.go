@@ -122,29 +122,15 @@ func (s *TransactionAPI) FillTransaction(ctx context.Context, args gethapi.Trans
 }
 
 func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.Bytes) (common.Hash, error) {
-	signedTx := input
-	userID, err := extractUserID(ctx, s.we)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	user, err := s.we.Storage.GetUser(userID)
+	user, err := extractUserForRequest(ctx, s.we)
 	if err != nil {
 		return common.Hash{}, err
 	}
 
+	signedTx := input
 	// when there is an active Session Key, sign all incoming transactions with that SK
 	if user.ActiveSK && user.SessionKey != nil {
-		tx := new(types.Transaction)
-		if err := tx.UnmarshalBinary(input); err != nil {
-			return common.Hash{}, err
-		}
-		signer := types.NewLondonSigner(tx.ChainId())
-
-		tx, err = types.SignTx(tx, signer, user.SessionKey.PrivateKey.ExportECDSA())
-		if err != nil {
-			return common.Hash{}, err
-		}
-		signedTx, err = tx.MarshalBinary()
+		signedTx, err = s.we.SKManager.SignTx(ctx, user, input)
 		if err != nil {
 			return common.Hash{}, err
 		}

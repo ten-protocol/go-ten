@@ -555,7 +555,7 @@ func createSKRequestHandler(walletExt *services.Services, conn UserConn) {
 
 func deleteSKRequestHandler(walletExt *services.Services, conn UserConn) {
 	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		err := walletExt.Storage.RemoveSessionKey(user.UserID)
+		err := walletExt.Storage.RemoveSessionKey(user.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -565,7 +565,7 @@ func deleteSKRequestHandler(walletExt *services.Services, conn UserConn) {
 
 func activateSKRequestHandler(walletExt *services.Services, conn UserConn) {
 	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		err := walletExt.Storage.ActivateSessionKey(user.UserID, true)
+		err := walletExt.Storage.ActivateSessionKey(user.ID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -575,7 +575,7 @@ func activateSKRequestHandler(walletExt *services.Services, conn UserConn) {
 
 func deactivateSKRequestHandler(walletExt *services.Services, conn UserConn) {
 	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		err := walletExt.Storage.ActivateSessionKey(user.UserID, false)
+		err := walletExt.Storage.ActivateSessionKey(user.ID, false)
 		if err != nil {
 			return nil, err
 		}

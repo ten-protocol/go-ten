@@ -32,7 +32,7 @@ type GWSessionKeyDB struct {
 
 func (userDB *GWUserDB) ToGWUser() (*wecommon.GWUser, error) {
 	user := &wecommon.GWUser{
-		UserID:   userDB.UserId,
+		ID:       userDB.UserId,
 		Accounts: make(map[common.Address]*wecommon.GWAccount),
 		UserKey:  userDB.PrivateKey,
 		ActiveSK: userDB.ActiveSK,

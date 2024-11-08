@@ -22,7 +22,7 @@ type GWAccount struct {
 }
 
 type GWUser struct {
-	UserID     []byte
+	ID         []byte
 	Accounts   map[common.Address]*GWAccount
 	UserKey    []byte
 	SessionKey *GWSessionKey

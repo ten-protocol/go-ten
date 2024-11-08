@@ -1,7 +1,11 @@
 package services
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -13,6 +17,7 @@ import (
 
 type SKManager interface {
 	CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error)
+	SignTx(ctx context.Context, user *common.GWUser, input hexutil.Bytes) (hexutil.Bytes, error)
 }
 
 type skManager struct {
@@ -35,7 +40,7 @@ func (m *skManager) CreateSessionKey(user *common.GWUser) (*common.GWSessionKey,
 	if err != nil {
 		return nil, err
 	}
-	err = m.storage.AddSessionKey(user.UserID, *sk)
+	err = m.storage.AddSessionKey(user.ID, *sk)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +59,7 @@ func (m *skManager) createSK(user *common.GWUser) (*common.GWSessionKey, error) 
 	address := crypto.PubkeyToAddress(sk.PublicKey)
 
 	// use the viewing key to sign over the session key
-	msg, err := viewingkey.GenerateMessage(user.UserID, int64(m.config.TenChainID), 1, viewingkey.EIP712Signature)
+	msg, err := viewingkey.GenerateMessage(user.ID, int64(m.config.TenChainID), 1, viewingkey.EIP712Signature)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate message. Cause %w", err)
 	}
@@ -79,4 +84,19 @@ func (m *skManager) createSK(user *common.GWUser) (*common.GWSessionKey, error) 
 			SignatureType: viewingkey.EIP712Signature,
 		},
 	}, nil
+}
+
+func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, input hexutil.Bytes) (hexutil.Bytes, error) {
+	tx := new(types.Transaction)
+	if err := tx.UnmarshalBinary(input); err != nil {
+		return hexutil.Bytes{}, err
+	}
+
+	signer := types.NewLondonSigner(tx.ChainId())
+
+	tx, err := types.SignTx(tx, signer, user.SessionKey.PrivateKey.ExportECDSA())
+	if err != nil {
+		return hexutil.Bytes{}, err
+	}
+	return tx.MarshalBinary()
 }

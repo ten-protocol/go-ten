@@ -82,10 +82,11 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExecCfg, method string, args ...any) (*R, error) {
 	audit(w, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
-	userID, err := extractUserID(ctx, w)
+	user, err := extractUserForRequest(ctx, w)
 	if err != nil {
 		return nil, err
 	}
+	userID := user.ID
 
 	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(userID))
 	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(userID), requestUUID)
@@ -97,11 +98,6 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 	cacheArgs = append(cacheArgs, args...)
 
 	res, err := cache.WithCache(w.RPCResponsesCache, cfg.cacheCfg, generateCacheKey(cacheArgs), func() (*R, error) {
-		user, err := w.Storage.GetUser(userID)
-		if err != nil {
-			return nil, err
-		}
-
 		// determine candidate "from"
 		candidateAccts, err := getCandidateAccounts(user, w, cfg)
 		if err != nil {
@@ -173,7 +169,7 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 				return candidateAccts, nil
 			} else {
 				// this should not happen, because the suggestedAddress is one of the addresses
-				return nil, fmt.Errorf("should not happen. From: %s . UserId: %s", suggestedAddress.Hex(), hexutils.BytesToHex(user.UserID))
+				return nil, fmt.Errorf("should not happen. From: %s . UserId: %s", suggestedAddress.Hex(), hexutils.BytesToHex(user.ID))
 			}
 		}
 	}
@@ -190,13 +186,25 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 func extractUserID(ctx context.Context, _ *services.Services) ([]byte, error) {
 	token, ok := ctx.Value(rpc.GWTokenKey{}).(string)
 	if !ok {
-		return nil, fmt.Errorf("invalid userid: %s", ctx.Value(rpc.GWTokenKey{}))
+		return nil, fmt.Errorf("invalid authentication token: %s", ctx.Value(rpc.GWTokenKey{}))
 	}
 	userID := gethcommon.FromHex(token)
 	if len(userID) != viewingkey.UserIDLength {
-		return nil, fmt.Errorf("invalid userid: %s", token)
+		return nil, fmt.Errorf("invalid authentication token: %s", token)
 	}
 	return userID, nil
+}
+
+func extractUserForRequest(ctx context.Context, w *services.Services) (*common.GWUser, error) {
+	userID, err := extractUserID(ctx, w)
+	if err != nil {
+		return nil, err
+	}
+	user, err := w.Storage.GetUser(userID)
+	if err != nil {
+		return nil, fmt.Errorf("authentication failed: %w", err)
+	}
+	return user, nil
 }
 
 // generateCacheKey generates a cache key for the given method, encryptionToken and parameters
