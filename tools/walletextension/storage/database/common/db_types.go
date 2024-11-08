@@ -40,13 +40,13 @@ func (userDB *GWUserDB) ToGWUser() (*wecommon.GWUser, error) {
 
 	for _, accountDB := range userDB.Accounts {
 		address := common.BytesToAddress(accountDB.AccountAddress)
-		gwAccount := &wecommon.GWAccount{
+		gwAccount := wecommon.GWAccount{
 			User:          user,
 			Address:       &address,
 			Signature:     accountDB.Signature,
 			SignatureType: viewingkey.SignatureType(accountDB.SignatureType),
 		}
-		user.Accounts[address] = gwAccount
+		user.Accounts[address] = &gwAccount
 	}
 
 	if userDB.SessionKey != nil {

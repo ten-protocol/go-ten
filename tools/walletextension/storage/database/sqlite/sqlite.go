@@ -30,6 +30,8 @@ type SqliteDB struct {
 	db *sql.DB
 }
 
+const sqliteCfg = "_foreign_keys=on&_journal_mode=wal&_txlock=immediate&_synchronous=normal"
+
 func NewSqliteDatabase(dbPath string) (*SqliteDB, error) {
 	// load the db file
 	dbFilePath, err := createOrLoad(dbPath)
@@ -38,7 +40,8 @@ func NewSqliteDatabase(dbPath string) (*SqliteDB, error) {
 	}
 
 	// open the db
-	db, err := sql.Open("sqlite3", dbFilePath)
+	path := fmt.Sprintf("file:%s?%s", dbFilePath, sqliteCfg)
+	db, err := sql.Open("sqlite3", path)
 	if err != nil {
 		fmt.Println("Error opening database: ", err)
 		return nil, err
@@ -188,7 +191,7 @@ func (s *SqliteDB) updateUser(user dbcommon.GWUserDB) error {
 		return fmt.Errorf("error marshaling updated user: %w", err)
 	}
 
-	stmt, err := s.db.Prepare("UPDATE users SET user_data = ? WHERE id = ?")
+	stmt, err := tx.Prepare("UPDATE users SET user_data = ? WHERE id = ?")
 	if err != nil {
 		return err
 	}

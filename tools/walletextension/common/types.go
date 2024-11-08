@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"golang.org/x/exp/maps"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -38,10 +39,6 @@ func (u GWUser) AllAccounts() map[common.Address]*GWAccount {
 	return res
 }
 
-func (u GWUser) GetAllAddresses() []*common.Address {
-	accts := make([]*common.Address, 0)
-	for _, acc := range u.AllAccounts() {
-		accts = append(accts, acc.Address)
-	}
-	return accts
+func (u GWUser) GetAllAddresses() []common.Address {
+	return maps.Keys(u.AllAccounts())
 }

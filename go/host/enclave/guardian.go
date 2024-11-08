@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
@@ -26,7 +27,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
-	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 )
 
@@ -80,7 +80,7 @@ type Guardian struct {
 	enclaveID        *common.EnclaveID
 }
 
-func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, storage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
+func NewGuardian(cfg *hostconfig.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, storage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
 	return &Guardian{
 		hostData:           hostData,
 		state:              NewStateTracker(logger),

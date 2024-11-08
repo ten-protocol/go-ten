@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path"
+
+	"github.com/ten-protocol/go-ten/go/config"
 )
 
 // This is the location where the metadata will be stored
@@ -17,11 +19,11 @@ type NetworkConfig struct {
 	L1StartHash               string // L1 block hash from which to process for L2 data (mgmt contract deploy block)
 }
 
-func WriteNetworkConfigToDisk(cfg *Config) error {
+func WriteNetworkConfigToDisk(cfg *config.TenConfig) error {
 	n := NetworkConfig{
-		ManagementContractAddress: cfg.managementContractAddr,
-		MessageBusAddress:         cfg.messageBusContractAddress,
-		L1StartHash:               cfg.l1Start,
+		ManagementContractAddress: cfg.Network.L1.L1Contracts.ManagementContract.Hex(),
+		MessageBusAddress:         cfg.Network.L1.L1Contracts.MessageBusContract.Hex(),
+		L1StartHash:               cfg.Network.L1.StartHash.Hex(),
 	}
 	jsonStr, err := json.Marshal(n)
 	if err != nil {

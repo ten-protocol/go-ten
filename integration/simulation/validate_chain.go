@@ -189,15 +189,16 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 
 	checkCollectedL1Fees(t, node, s, nodeIdx, rollupReceipts)
 
-	if len(findHashDups(deposits)) > 0 {
-		dups := findHashDups(deposits)
-		t.Errorf("Node %d: Found Deposit duplicates: %v", nodeIdx, dups)
+	hashDups := findHashDups(deposits)
+	if len(hashDups) > 0 {
+		t.Errorf("Node %d: Found Deposit duplicates: %v", nodeIdx, hashDups)
 	}
-	if len(findRollupDups(rollups)) > 0 {
-		dups := findRollupDups(rollups)
+
+	rollupDups := findRollupDups(rollups)
+	if len(rollupDups) > 0 {
 		// todo @siliev - fix in memory rollups, lack of real client breaks the normal ask smart contract flow.
 		if !s.Params.IsInMem {
-			t.Errorf("Node %d: Found Rollup duplicates: %v", nodeIdx, dups)
+			t.Errorf("Node %d: Found Rollup duplicates: %v", nodeIdx, rollupDups)
 		}
 	}
 

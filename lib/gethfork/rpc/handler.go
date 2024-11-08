@@ -389,7 +389,8 @@ func (h *handler) startCallProc(fn func(*callProc)) {
 		defer h.callWG.Done()
 		defer cancel()
 		// handle the case when normal rpc calls are made over a ws connection
-		if ctx.Value(GWTokenKey{}) == nil {
+		v, ok := ctx.Value(GWTokenKey{}).(string)
+		if !ok || len(v) == 0 {
 			ctx = context.WithValue(ctx, GWTokenKey{}, hexutils.BytesToHex(h.UserID))
 		}
 		fn(&callProc{ctx: ctx})

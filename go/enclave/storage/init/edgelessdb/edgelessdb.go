@@ -24,9 +24,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/config"
-
 	"github.com/ten-protocol/go-ten/go/common/log"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/storage/init/migration"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
@@ -131,7 +130,7 @@ type Credentials struct {
 }
 
 // Connector (re-)establishes a connection to the Edgeless DB for the TEN enclave
-func Connector(edbCfg *Config, config config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
+func Connector(edbCfg *Config, config enclaveconfig.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	// rather than fail immediately if EdgelessDB is not available yet we wait up for `edgelessDBStartTimeout` for it to be available
 	err := waitForEdgelessDBToStart(edbCfg.Host, logger)
 	if err != nil {
@@ -182,7 +181,7 @@ func waitForEdgelessDBToStart(edbHost string, logger gethlog.Logger) error {
 		edgelessDBStartTimeout, edgelessHTTPAddr, err)
 }
 
-func getHandshakeCredentials(enclaveConfig config.EnclaveConfig, edbCfg *Config, logger gethlog.Logger) (*Credentials, error) {
+func getHandshakeCredentials(enclaveConfig enclaveconfig.EnclaveConfig, edbCfg *Config, logger gethlog.Logger) (*Credentials, error) {
 	// if we have previously performed the handshake we can retrieve the creds from disk and proceed
 	edbCreds, found, err := LoadCredentialsFromFile()
 	if err != nil {
@@ -217,7 +216,7 @@ func LoadCredentialsFromFile() (*Credentials, bool, error) {
 	return edbCreds, true, nil
 }
 
-func performHandshake(enclaveConfig config.EnclaveConfig, edbCfg *Config, logger gethlog.Logger) (*Credentials, error) {
+func performHandshake(enclaveConfig enclaveconfig.EnclaveConfig, edbCfg *Config, logger gethlog.Logger) (*Credentials, error) {
 	// we need to make sure this dir exists before we start read/writing files in there
 	err := os.MkdirAll(dataDir, 0o644)
 	if err != nil {

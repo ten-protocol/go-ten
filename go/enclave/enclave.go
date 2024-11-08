@@ -11,6 +11,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/compression"
 	"github.com/ten-protocol/go-ten/go/common/measure"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -38,7 +39,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 	"github.com/ten-protocol/go-ten/go/common/tracers"
-	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 	"github.com/ten-protocol/go-ten/go/enclave/debugger"
@@ -58,7 +58,7 @@ import (
 var _noHeadBatch = big.NewInt(0)
 
 type enclaveImpl struct {
-	config                *config.EnclaveConfig
+	config                *enclaveconfig.EnclaveConfig
 	storage               storage.Storage
 	blockResolver         storage.BlockResolver
 	l1BlockProcessor      components.L1BlockProcessor
@@ -94,12 +94,7 @@ type enclaveImpl struct {
 // NewEnclave creates a new enclave.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
-func NewEnclave(
-	config *config.EnclaveConfig,
-	genesis *genesis.Genesis,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	logger gethlog.Logger,
-) common.Enclave {
+func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) common.Enclave {
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Creating enclave service with following config", log.CfgKey, string(jsonConfig))
 
