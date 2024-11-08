@@ -15,7 +15,7 @@ import (
 // _journal_mode=wal - The recommended running mode: "Write-ahead logging": https://www.sqlite.org/draft/matrix/wal.html
 // _txlock=immediate - db transactions start as soon as "BeginTx()" is called. Avoids deadlocks. https://www.sqlite.org/lang_transaction.html
 // _synchronous=normal - not exactly sure if we actually need this. It was recommended somewhere. https://www.sqlite.org/pragma.html#pragma_synchronous
-const sqliteCfg = "_foreign_keys=on&_journal_mode=wal&_txlock=immediate&_synchronous=normal"
+const SqliteCfg = "_foreign_keys=on&_journal_mode=wal&_txlock=immediate&_synchronous=normal"
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
 func CreateDBFromConfig(cfg *enclaveconfig.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
@@ -25,7 +25,7 @@ func CreateDBFromConfig(cfg *enclaveconfig.EnclaveConfig, logger gethlog.Logger)
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating temporary sqlite database...")
 		// this creates a temporary sqlite sqldb
-		return sqlite.CreateTemporarySQLiteDB("", sqliteCfg, *cfg, logger)
+		return sqlite.CreateTemporarySQLiteDB("", SqliteCfg, *cfg, logger)
 	}
 
 	if !cfg.WillAttest && len(cfg.SqliteDBPath) > 0 {

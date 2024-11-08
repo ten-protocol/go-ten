@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"os"
 	"path/filepath"
 
@@ -28,8 +29,6 @@ type SqliteDB struct {
 	db *sql.DB
 }
 
-const sqliteCfg = "_foreign_keys=on&_journal_mode=wal&_txlock=immediate&_synchronous=normal"
-
 func NewSqliteDatabase(dbPath string) (*SqliteDB, error) {
 	// load the db file
 	dbFilePath, err := createOrLoad(dbPath)
@@ -38,7 +37,7 @@ func NewSqliteDatabase(dbPath string) (*SqliteDB, error) {
 	}
 
 	// open the db
-	path := fmt.Sprintf("file:%s?%s", dbFilePath, sqliteCfg)
+	path := fmt.Sprintf("file:%s?%s", dbFilePath, storage.SqliteCfg)
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
 		fmt.Println("Error opening database: ", err)
