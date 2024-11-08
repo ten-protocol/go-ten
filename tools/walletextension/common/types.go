@@ -1,8 +1,6 @@
 package common
 
 import (
-	"maps"
-
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"golang.org/x/exp/maps"

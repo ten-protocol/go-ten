@@ -78,98 +78,117 @@ func (s *SqliteDB) AddUser(userID []byte, privateKey []byte) error {
 		return err
 	}
 
-	stmt, err := s.db.Prepare("INSERT OR REPLACE INTO users(id, user_data) VALUES (?, ?)")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
+	return s.withTx(func(dbTx *sql.Tx) error {
+		stmt, err := dbTx.Prepare("INSERT OR REPLACE INTO users(id, user_data) VALUES (?, ?)")
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
 
-	_, err = stmt.Exec(string(user.UserId), string(userJSON))
-	if err != nil {
-		return err
-	}
+		_, err = stmt.Exec(string(user.UserId), string(userJSON))
+		if err != nil {
+			return err
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (s *SqliteDB) DeleteUser(userID []byte) error {
-	stmt, err := s.db.Prepare("DELETE FROM users WHERE id = ?")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
+	return s.withTx(func(dbTx *sql.Tx) error {
+		stmt, err := dbTx.Prepare("DELETE FROM users WHERE id = ?")
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
 
-	_, err = stmt.Exec(string(userID))
-	if err != nil {
-		return fmt.Errorf("failed to delete user: %w", err)
-	}
+		_, err = stmt.Exec(string(userID))
+		if err != nil {
+			return fmt.Errorf("failed to delete user: %w", err)
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (s *SqliteDB) ActivateSessionKey(userID []byte, active bool) error {
-	user, err := s.readUser(userID)
-	if err != nil {
-		return err
-	}
-	user.ActiveSK = active
-	return s.updateUser(user)
+	return s.withTx(func(dbTx *sql.Tx) error {
+		user, err := s.readUser(dbTx, userID)
+		if err != nil {
+			return err
+		}
+		user.ActiveSK = active
+		return s.updateUser(dbTx, user)
+	})
 }
 
 func (s *SqliteDB) AddSessionKey(userID []byte, key common.GWSessionKey) error {
-	user, err := s.readUser(userID)
-	if err != nil {
-		return err
-	}
-	user.SessionKey = &dbcommon.GWSessionKeyDB{
-		PrivateKey: crypto.FromECDSA(key.PrivateKey.ExportECDSA()),
-		Account: dbcommon.GWAccountDB{
-			AccountAddress: key.Account.Address.Bytes(),
-			Signature:      key.Account.Signature,
-			SignatureType:  int(key.Account.SignatureType),
-		},
-	}
-	return s.updateUser(user)
+	return s.withTx(func(dbTx *sql.Tx) error {
+		user, err := s.readUser(dbTx, userID)
+		if err != nil {
+			return err
+		}
+		user.SessionKey = &dbcommon.GWSessionKeyDB{
+			PrivateKey: crypto.FromECDSA(key.PrivateKey.ExportECDSA()),
+			Account: dbcommon.GWAccountDB{
+				AccountAddress: key.Account.Address.Bytes(),
+				Signature:      key.Account.Signature,
+				SignatureType:  int(key.Account.SignatureType),
+			},
+		}
+		return s.updateUser(dbTx, user)
+	})
 }
 
 func (s *SqliteDB) RemoveSessionKey(userID []byte) error {
-	user, err := s.readUser(userID)
-	if err != nil {
-		return err
-	}
-	user.SessionKey = nil
-	return s.updateUser(user)
+	return s.withTx(func(dbTx *sql.Tx) error {
+		user, err := s.readUser(dbTx, userID)
+		if err != nil {
+			return err
+		}
+		user.SessionKey = nil
+		return s.updateUser(dbTx, user)
+	})
 }
 
 func (s *SqliteDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
-	user, err := s.readUser(userID)
-	if err != nil {
-		return err
-	}
+	return s.withTx(func(dbTx *sql.Tx) error {
+		user, err := s.readUser(dbTx, userID)
+		if err != nil {
+			return err
+		}
 
-	newAccount := dbcommon.GWAccountDB{
-		AccountAddress: accountAddress,
-		Signature:      signature,
-		SignatureType:  int(signatureType),
-	}
+		newAccount := dbcommon.GWAccountDB{
+			AccountAddress: accountAddress,
+			Signature:      signature,
+			SignatureType:  int(signatureType),
+		}
 
-	user.Accounts = append(user.Accounts, newAccount)
+		user.Accounts = append(user.Accounts, newAccount)
 
-	return s.updateUser(user)
+		return s.updateUser(dbTx, user)
+	})
 }
 
 func (s *SqliteDB) GetUser(userID []byte) (*common.GWUser, error) {
-	user, err := s.readUser(userID)
+	var user dbcommon.GWUserDB
+	var err error
+	err = s.withTx(func(dbTx *sql.Tx) error {
+		user, err = s.readUser(dbTx, userID)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
 	return user.ToGWUser()
 }
 
-func (s *SqliteDB) readUser(userID []byte) (dbcommon.GWUserDB, error) {
+func (s *SqliteDB) readUser(dbTx *sql.Tx, userID []byte) (dbcommon.GWUserDB, error) {
 	var userDataJSON string
-	err := s.db.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
+	err := dbTx.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbcommon.GWUserDB{}, fmt.Errorf("failed to get user: %w", errutil.ErrNotFound)
@@ -185,13 +204,13 @@ func (s *SqliteDB) readUser(userID []byte) (dbcommon.GWUserDB, error) {
 	return user, nil
 }
 
-func (s *SqliteDB) updateUser(user dbcommon.GWUserDB) error {
+func (s *SqliteDB) updateUser(dbTx *sql.Tx, user dbcommon.GWUserDB) error {
 	updatedUserJSON, err := json.Marshal(user)
 	if err != nil {
 		return fmt.Errorf("error marshaling updated user: %w", err)
 	}
 
-	stmt, err := tx.Prepare("UPDATE users SET user_data = ? WHERE id = ?")
+	stmt, err := dbTx.Prepare("UPDATE users SET user_data = ? WHERE id = ?")
 	if err != nil {
 		return err
 	}
@@ -201,6 +220,7 @@ func (s *SqliteDB) updateUser(user dbcommon.GWUserDB) error {
 	if err != nil {
 		return fmt.Errorf("failed to update user with new account: %w", err)
 	}
+
 	return nil
 }
 
@@ -224,4 +244,19 @@ func createOrLoad(dbPath string) (string, error) {
 	}
 
 	return dbPath, nil
+}
+
+func (s *SqliteDB) withTx(fn func(*sql.Tx) error) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	err = fn(tx)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
