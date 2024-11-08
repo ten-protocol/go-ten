@@ -45,6 +45,7 @@ type Services struct {
 	RPCResponsesCache cache.Cache
 	BackendRPC        *BackendRPC
 	RateLimiter       *ratelimiter.RateLimiter
+	SKManager         SKManager
 	Config            *common.Config
 	NewHeadsService   *subscriptioncommon.NewHeadsService
 }
@@ -74,6 +75,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 		version:           version,
 		RPCResponsesCache: newGatewayCache,
 		BackendRPC:        NewBackendRPC(hostAddrHTTP, hostAddrWS, logger),
+		SKManager:         NewSKManager(storage, config, logger),
 		RateLimiter:       rateLimiter,
 		Config:            config,
 	}
@@ -139,13 +141,13 @@ func (w *Services) GenerateAndStoreNewUser() ([]byte, error) {
 	requestStartTime := time.Now()
 	// generate new key-pair
 	viewingKeyPrivate, err := crypto.GenerateKey()
-	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
 	if err != nil {
 		w.Logger().Error(fmt.Sprintf("could not generate new keypair: %s", err))
 		return nil, err
 	}
+	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
 
-	// create UserID and store it in the database with the private key
+	// create ID and store it in the database with the private key
 	userID := viewingkey.CalculateUserID(common.PrivateKeyToCompressedPubKey(viewingPrivateKeyEcies))
 	err = w.Storage.AddUser(userID, crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
 	if err != nil {
