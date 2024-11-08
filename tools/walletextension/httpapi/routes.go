@@ -614,5 +614,4 @@ func withUser(walletExt *services.Services, conn UserConn, withUser func(user *c
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
-	return
 }

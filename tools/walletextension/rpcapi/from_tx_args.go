@@ -8,7 +8,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 )
 
-func searchFromAndData(possibleAddresses []*common.Address, args gethapi.TransactionArgs) *common.Address {
+func searchFromAndData(possibleAddresses []common.Address, args gethapi.TransactionArgs) *common.Address {
 	if args.From != nil && (*args.From != common.Address{}) {
 		return args.From
 	}
