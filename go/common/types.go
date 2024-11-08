@@ -189,3 +189,7 @@ func (cf *ChainFork) String() string {
 	return fmt.Sprintf("ChainFork{NewCanonical: %s, OldCanonical: %s, CommonAncestor: %s, CanonicalPath: %s, NonCanonicalPath: %s}",
 		cf.NewCanonical.Hash(), cf.OldCanonical.Hash(), cf.CommonAncestor.Hash(), cf.CanonicalPath, cf.NonCanonicalPath)
 }
+
+func MaskedSender(address L2Address) L2Address {
+	return L2Address(common.BigToAddress(big.NewInt(0).Sub(address.Big(), big.NewInt(1))))
+}

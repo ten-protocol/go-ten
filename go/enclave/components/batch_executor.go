@@ -249,6 +249,31 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 		onBatchTxOffset = 1
 	}
 
+	// Create and process public callback transaction if needed
+	publicCallbackTx, err := executor.systemContracts.CreatePublicCallbackHandlerTransaction(ctx, stateDB)
+	if err != nil {
+		return nil, fmt.Errorf("could not create public callback transaction. Cause: %w", err)
+	}
+
+	if publicCallbackTx != nil {
+		publicCallbackPricedTxes := common.L2PricedTransactions{
+			common.L2PricedTransaction{
+				Tx:             publicCallbackTx,
+				PublishingCost: big.NewInt(0),
+				FromSelf:       true,
+			},
+		}
+		publicCallbackSuccessfulTx, _, publicCallbackTxResult, err := executor.processTransactions(ctx, batch, len(successfulTxs)+onBatchTxOffset, publicCallbackPricedTxes, stateDB, context.ChainConfig, true)
+		if err != nil {
+			return nil, fmt.Errorf("could not process public callback transaction. Cause: %w", err)
+		}
+		// Ensure the public callback transaction is successful. It should NEVER fail.
+		if err = executor.verifySyntheticTransactionsSuccess(publicCallbackPricedTxes, publicCallbackSuccessfulTx, publicCallbackTxResult); err != nil {
+			return nil, fmt.Errorf("batch computation failed due to public callback reverting. Cause: %w", err)
+		}
+		onBatchTxOffset++
+	}
+
 	ccSuccessfulTxs, _, ccTxResults, err := executor.processTransactions(ctx, batch, len(successfulTxs)+onBatchTxOffset, syntheticTransactions, stateDB, context.ChainConfig, true)
 	if err != nil {
 		return nil, err
