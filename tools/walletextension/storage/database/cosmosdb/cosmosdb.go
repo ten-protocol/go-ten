@@ -13,7 +13,9 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/encryption"
 )
@@ -54,6 +56,12 @@ const (
 	DATABASE_NAME        = "gatewayDB"
 	USERS_CONTAINER_NAME = "users"
 )
+
+// userWithETag struct is used to store the user data along with its ETag
+type userWithETag struct {
+	user dbcommon.GWUserDB
+	etag azcore.ETag
+}
 
 func NewCosmosDB(connectionString string, encryptionKey []byte) (*CosmosDB, error) {
 	// Create encryptor
@@ -126,7 +134,7 @@ func (c *CosmosDB) AddSessionKey(userID []byte, key common.GWSessionKey) error {
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
-	user.SessionKey = &dbcommon.GWSessionKeyDB{
+	user.user.SessionKey = &dbcommon.GWSessionKeyDB{
 		PrivateKey: crypto.FromECDSA(key.PrivateKey.ExportECDSA()),
 		Account: dbcommon.GWAccountDB{
 			AccountAddress: key.Account.Address.Bytes(),
@@ -134,7 +142,7 @@ func (c *CosmosDB) AddSessionKey(userID []byte, key common.GWSessionKey) error {
 			SignatureType:  int(key.Account.SignatureType),
 		},
 	}
-	return c.updateUser(ctx, user)
+	return c.updateUser(ctx, user.user)
 }
 
 func (c *CosmosDB) ActivateSessionKey(userID []byte, active bool) error {
@@ -144,8 +152,8 @@ func (c *CosmosDB) ActivateSessionKey(userID []byte, active bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
-	user.ActiveSK = active
-	return c.updateUser(ctx, user)
+	user.user.ActiveSK = active
+	return c.updateUser(ctx, user.user)
 }
 
 func (c *CosmosDB) RemoveSessionKey(userID []byte) error {
@@ -155,8 +163,8 @@ func (c *CosmosDB) RemoveSessionKey(userID []byte) error {
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
-	user.SessionKey = nil
-	return c.updateUser(ctx, user)
+	user.user.SessionKey = nil
+	return c.updateUser(ctx, user.user)
 }
 
 func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
@@ -173,9 +181,9 @@ func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []
 		Signature:      signature,
 		SignatureType:  int(signatureType),
 	}
-	user.Accounts = append(user.Accounts, newAccount)
+	user.user.Accounts = append(user.user.Accounts, newAccount)
 
-	return c.updateUser(ctx, user)
+	return c.updateUser(ctx, user.user)
 }
 
 func (c *CosmosDB) GetUser(userID []byte) (*common.GWUser, error) {
@@ -183,51 +191,63 @@ func (c *CosmosDB) GetUser(userID []byte) (*common.GWUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	return user.ToGWUser()
+	return user.user.ToGWUser()
 }
 
-func (c *CosmosDB) getUserDB(userID []byte) (dbcommon.GWUserDB, error) {
+func (c *CosmosDB) getUserDB(userID []byte) (userWithETag, error) {
 	keyString, partitionKey := c.dbKey(userID)
 
 	ctx := context.Background()
 
 	itemResponse, err := c.usersContainer.ReadItem(ctx, partitionKey, keyString, nil)
 	if err != nil {
-		return dbcommon.GWUserDB{}, err
+		return userWithETag{}, err
 	}
 
 	var doc EncryptedDocument
 	err = json.Unmarshal(itemResponse.Value, &doc)
 	if err != nil {
-		return dbcommon.GWUserDB{}, fmt.Errorf("failed to unmarshal document: %w", err)
+		return userWithETag{}, fmt.Errorf("failed to unmarshal document: %w", err)
 	}
 
 	data, err := c.encryptor.Decrypt(doc.Data)
 	if err != nil {
-		return dbcommon.GWUserDB{}, fmt.Errorf("failed to decrypt data: %w", err)
+		return userWithETag{}, fmt.Errorf("failed to decrypt data: %w", err)
 	}
 
 	var user dbcommon.GWUserDB
 	err = json.Unmarshal(data, &user)
 	if err != nil {
-		return dbcommon.GWUserDB{}, fmt.Errorf("failed to unmarshal user data: %w", err)
+		return userWithETag{}, fmt.Errorf("failed to unmarshal user data: %w", err)
 	}
-	return user, nil
+	return userWithETag{user: user, etag: itemResponse.ETag}, nil
 }
 
 func (c *CosmosDB) updateUser(ctx context.Context, user dbcommon.GWUserDB) error {
-	keyString, partitionKey := c.dbKey(user.UserId)
+	// Attempt to update without retries
+	currentUser, err := c.getUserDB(user.UserId)
+	if err != nil {
+		return fmt.Errorf("failed to get current user state: %w", err)
+	}
 
+	keyString, partitionKey := c.dbKey(user.UserId)
 	encryptedDoc, err := c.createEncryptedDoc(user, keyString)
 	if err != nil {
 		return fmt.Errorf("failed to marshal updated document: %w", err)
 	}
 
-	// Replace the item in the container
-	_, err = c.usersContainer.ReplaceItem(ctx, partitionKey, keyString, encryptedDoc, nil)
-	if err != nil {
-		return fmt.Errorf("failed to update user with new account: %w", err)
+	options := &azcosmos.ItemOptions{
+		IfMatchEtag: &currentUser.etag,
 	}
+
+	_, err = c.usersContainer.ReplaceItem(ctx, partitionKey, keyString, encryptedDoc, options)
+	if err != nil {
+		if strings.Contains(err.Error(), "Precondition Failed") {
+			return fmt.Errorf("ETag mismatch: the user document was modified by another process")
+		}
+		return fmt.Errorf("failed to update user: %w", err)
+	}
+
 	return nil
 }
 
