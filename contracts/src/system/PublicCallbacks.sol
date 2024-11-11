@@ -46,6 +46,7 @@ contract PublicCallbacks is Initializable {
         Callback memory callback = callbacks[callbackId];
         (bool success, ) = callback.target.call(callback.data);
         require(success, "Callback execution failed");
+        delete callbacks[callbackId];
         // nothing to refund; the callback was already paid for during its failure
     }
 
