@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"strings"
 
 	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
@@ -15,7 +16,7 @@ const HOST = "HOST_"
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
 func CreateDBFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) (hostdb.HostDB, error) {
-	dbName := HOST + cfg.ID.String()
+	dbName := createHostName(cfg)
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}
@@ -44,4 +45,9 @@ func validateDBConf(cfg *hostconfig.HostConfig) error {
 		return fmt.Errorf("useInMemoryDB=true so sqlite database will not be used and no path is needed, but sqliteDBPath=%s", cfg.SqliteDBPath)
 	}
 	return nil
+}
+
+func createHostName(cfg *hostconfig.HostConfig) string {
+	sanitizedAddress := strings.Replace(cfg.P2PPublicAddress, ":", "_", -1)
+	return fmt.Sprintf("%s_%s_%s", HOST, cfg.NodeType, sanitizedAddress)
 }

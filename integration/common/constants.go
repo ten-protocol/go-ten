@@ -61,7 +61,6 @@ type ERC20Mapping struct {
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
 func DefaultEnclaveConfig() *enclaveconfig.EnclaveConfig {
 	return &enclaveconfig.EnclaveConfig{
-		HostID:                    gethcommon.BytesToAddress([]byte("")),
 		HostAddress:               "127.0.0.1:10000",
 		Address:                   "127.0.0.1:11000",
 		NodeType:                  common.Sequencer,

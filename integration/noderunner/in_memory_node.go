@@ -84,14 +84,14 @@ func (d *InMemNode) Upgrade(networkCfg *node.NetworkConfig) error {
 func (d *InMemNode) startHost() error {
 	hostConfig := hostconfig.HostConfigFromTenConfig(d.tenCfg)
 
-	logger := testlog.Logger().New(log.CmpKey, log.HostCmp, log.NodeIDKey, d.tenCfg.Node.ID)
+	logger := testlog.Logger().New(log.CmpKey, log.HostCmp, log.NodeIDKey, d.tenCfg.Node.HostAddress)
 	d.host = hostcontainer.NewHostContainerFromConfig(hostConfig, logger)
 	return d.host.Start()
 }
 
 func (d *InMemNode) startEnclave() error {
 	enclaveCfg := enclaveconfig.EnclaveConfigFromTenConfig(d.tenCfg)
-	logger := testlog.Logger().New(log.CmpKey, log.EnclaveCmp, log.NodeIDKey, d.tenCfg.Node.ID)
+	logger := testlog.Logger().New(log.CmpKey, log.EnclaveCmp, log.NodeIDKey, d.tenCfg.Node.HostAddress)
 	enclaveCfg.LogPath = testlog.LogFile()
 
 	// if not nil, the node will use the testlog.Logger - NewEnclaveContainerWithLogger will create one otherwise

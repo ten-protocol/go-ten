@@ -112,7 +112,6 @@ type HostConfig struct {
 
 func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 	return &HostConfig{
-		ID:               tenCfg.Node.ID,
 		PrivateKeyString: tenCfg.Node.PrivateKeyString,
 		IsGenesis:        tenCfg.Node.IsGenesis,
 		NodeType:         tenCfg.Node.NodeType,

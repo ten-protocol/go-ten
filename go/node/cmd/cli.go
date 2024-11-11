@@ -75,7 +75,6 @@ func ParseConfigCLI() *NodeConfigCLI {
 	enclaveHTTPPort := flag.Int(enclaveHTTPPortFlag, 11000, flagUsageMap[enclaveHTTPPortFlag])
 	enclaveWSPort := flag.Int(enclaveWSPortFlag, 11001, flagUsageMap[enclaveWSPortFlag])
 	privateKey := flag.String(privateKeyFlag, "", flagUsageMap[privateKeyFlag])
-	hostID := flag.String(hostIDFlag, "", flagUsageMap[hostIDFlag])
 	sequencerP2PAddr := flag.String(sequencerP2PAddrFlag, "", flagUsageMap[sequencerP2PAddrFlag])
 	managementContractAddr := flag.String(managementContractAddrFlag, "", flagUsageMap[managementContractAddrFlag])
 	messageBusContractAddr := flag.String(messageBusContractAddrFlag, "", flagUsageMap[messageBusContractAddrFlag])
@@ -107,7 +106,6 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.enclaveHTTPPort = *enclaveHTTPPort
 	cfg.enclaveWSPort = *enclaveWSPort
 	cfg.privateKey = *privateKey
-	cfg.hostID = *hostID
 	cfg.sequencerP2PAddr = *sequencerP2PAddr
 	cfg.managementContractAddr = *managementContractAddr
 	cfg.messageBusContractAddr = *messageBusContractAddr
@@ -186,7 +184,6 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	}
 	tenCfg.Network.Sequencer.P2PAddress = cliCfg.sequencerP2PAddr
 
-	tenCfg.Node.ID = gethcommon.HexToAddress(cliCfg.hostID)
 	tenCfg.Node.Name = cliCfg.nodeName
 	tenCfg.Node.NodeType = nodeType
 	tenCfg.Node.IsGenesis = cliCfg.isGenesis
