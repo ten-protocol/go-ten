@@ -33,7 +33,6 @@ type NodeConfigCLI struct {
 	enclaveHTTPPort         int
 	enclaveWSPort           int
 	privateKey              string
-	hostID                  string
 	sequencerP2PAddr        string
 	managementContractAddr  string
 	messageBusContractAddr  string

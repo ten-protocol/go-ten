@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/profiler"
 	"github.com/ten-protocol/go-ten/go/config"
@@ -117,7 +116,6 @@ func createInMemoryNode(startPort int) node.Node {
 	}
 
 	tenCfg.Node.PrivateKeyString = integration.GethNodePK
-	tenCfg.Node.ID = common.HexToAddress(integration.GethNodeAddress)
 	tenCfg.Node.IsGenesis = true
 
 	tenCfg.Host.Debug.EnableProfiler = true
