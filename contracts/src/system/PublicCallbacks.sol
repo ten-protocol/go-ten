@@ -3,6 +3,12 @@ pragma solidity ^0.8.28;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
+interface IPublicCallbacks {
+    function register(bytes calldata callback) external payable;
+    function reattemptCallback(uint256 callbackId) external;
+}
+
+
 contract PublicCallbacks is Initializable {
 
     modifier onlySelf() {
