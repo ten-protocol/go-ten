@@ -68,8 +68,9 @@ contract PublicCallbacks is Initializable {
         }
         uint256 gasAfter = gasleft();
         uint256 gasRefund = (gasBefore - gasAfter) * baseFee;
-        internalRefund(gasRefund, callback.target);
         callback.value = callback.value - gasRefund;
+        
+        internalRefund(gasRefund, callback.target);
         payForCallback(callback.value);
     }
 
