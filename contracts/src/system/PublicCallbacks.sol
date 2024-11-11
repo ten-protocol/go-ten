@@ -20,6 +20,7 @@ contract PublicCallbacks is Initializable {
         address target;
         bytes data;
         uint256 value;
+        uint256 baseFee;
     }
 
     mapping(uint256 => Callback) public callbacks;
@@ -32,7 +33,7 @@ contract PublicCallbacks is Initializable {
     }
 
     function addCallback(address callback, bytes calldata data, uint256 value) internal {
-        callbacks[nextCallbackId++] = Callback({target: callback, data: data, value: value});
+        callbacks[nextCallbackId++] = Callback({target: callback, data: data, value: value, baseFee: block.basefee});
     }
 
     function register(bytes calldata callback) external payable { 
@@ -59,7 +60,7 @@ contract PublicCallbacks is Initializable {
         uint256 callbackId = lastUnusedCallbackId++;
         require(callbackId < lastUnusedCallbackId, "Paranoia- todo: delete");
         Callback storage callback = callbacks[callbackId];
-        uint256 baseFee = block.basefee;
+        uint256 baseFee = callback.baseFee;
         uint256 gas = callback.value / baseFee;
         uint256 gasBefore = gasleft();
         (bool success, ) = callback.target.call{gas: gas}(callback.data);
@@ -69,7 +70,7 @@ contract PublicCallbacks is Initializable {
         uint256 gasAfter = gasleft();
         uint256 gasRefund = (gasBefore - gasAfter) * baseFee;
         callback.value = callback.value - gasRefund;
-        
+
         internalRefund(gasRefund, callback.target);
         payForCallback(callback.value);
     }
