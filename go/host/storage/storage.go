@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -78,14 +79,15 @@ func (s *storageImpl) AddRollup(rollup *common.ExtRollup, metadata *common.Publi
 func (s *storageImpl) AddBlock(b *types.Header) error {
 	dbtx, err := s.db.NewDBTransaction()
 	if err != nil {
-		return err
+		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
+	defer dbtx.Rollback()
 
-	if err := hostdb.AddBlock(dbtx, s.db.GetSQLStatement(), b); err != nil {
-		if err := dbtx.Rollback(); err != nil {
-			return err
+	_, err = hostdb.GetBlockId(s.db, b.Hash())
+	if errors.Is(err, sql.ErrNoRows) {
+		if err := hostdb.AddBlock(dbtx, s.db.GetSQLStatement(), b); err != nil {
+			return fmt.Errorf("could not add block to host. Cause: %w", err)
 		}
-		return fmt.Errorf("could not add block to host. Cause: %w", err)
 	}
 
 	if err := dbtx.Write(); err != nil {

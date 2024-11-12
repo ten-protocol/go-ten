@@ -10,6 +10,7 @@ import (
 
 const (
 	selectBlocks = "SELECT b.id, b.hash, b.header, r.hash FROM block_host b join rollup_host r on r.compression_block=b.id ORDER BY b.id DESC "
+	selectBlock  = "SELECT id FROM block_host WHERE hash="
 )
 
 // AddBlock stores a block header with the given rollupHash it contains in the host DB
@@ -28,6 +29,18 @@ func AddBlock(dbtx *dbTransaction, statements *SQLStatements, b *types.Header) e
 	}
 
 	return nil
+}
+
+// GetBlockId returns the block ID given the hash.
+func GetBlockId(db HostDB, hash common.L1BlockHash) (*int64, error) {
+	query := selectBlock + db.GetSQLStatement().Placeholder
+	var blockId int64
+	err := db.GetSQLDB().QueryRow(query, hash.Bytes()).Scan(blockId)
+	if err != nil {
+		return nil, fmt.Errorf("query execution for select txs failed: %w", err)
+	}
+
+	return &blockId, nil
 }
 
 // GetBlockListing returns a paginated list of blocks in descending order against the order they were added
