@@ -41,6 +41,7 @@ type ChecksumFormattedTenNetworkConfig struct {
 	L2MessageBusAddress             gethcommon.AddressEIP55
 	ImportantContracts              map[string]gethcommon.AddressEIP55 // map of contract name to address
 	TransactionPostProcessorAddress gethcommon.AddressEIP55
+	PublicSystemContracts           map[string]gethcommon.AddressEIP55
 }
 
 func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetworkConfig {
@@ -48,6 +49,12 @@ func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetwork
 	for name, addr := range info.ImportantContracts {
 		importantContracts[name] = gethcommon.AddressEIP55(addr)
 	}
+
+	publicSystemContracts := make(map[string]gethcommon.AddressEIP55)
+	for name, addr := range info.PublicSystemContracts {
+		publicSystemContracts[name] = gethcommon.AddressEIP55(addr)
+	}
+
 	return &ChecksumFormattedTenNetworkConfig{
 		ManagementContractAddress:       gethcommon.AddressEIP55(info.ManagementContractAddress),
 		L1StartHash:                     info.L1StartHash,
@@ -55,5 +62,6 @@ func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetwork
 		L2MessageBusAddress:             gethcommon.AddressEIP55(info.L2MessageBusAddress),
 		ImportantContracts:              importantContracts,
 		TransactionPostProcessorAddress: gethcommon.AddressEIP55(info.TransactionPostProcessorAddress),
+		PublicSystemContracts:           publicSystemContracts,
 	}
 }

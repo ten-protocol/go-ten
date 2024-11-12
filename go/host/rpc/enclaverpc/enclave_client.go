@@ -638,8 +638,15 @@ func (c *Client) EnclavePublicConfig(ctx context.Context) (*common.EnclavePublic
 	if response != nil && response.SystemError != nil {
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
+
+	publicSystemContracts := make(map[string]gethcommon.Address, len(response.PublicSystemContracts))
+	for k, v := range response.PublicSystemContracts {
+		publicSystemContracts[k] = gethcommon.BytesToAddress(v)
+	}
+
 	return &common.EnclavePublicConfig{
 		L2MessageBusAddress:             gethcommon.BytesToAddress(response.L2MessageBusAddress),
 		TransactionPostProcessorAddress: gethcommon.BytesToAddress(response.TransactionPostProcessorAddress),
+		PublicSystemContracts:           publicSystemContracts,
 	}, nil
 }

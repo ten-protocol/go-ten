@@ -59,13 +59,16 @@ contract PublicCallbacks is Initializable {
     // System level call. As it is called during a synthetic transaction that does not have gas limit, 
     // the contract enforces a custom limit based on the value stored for the callback.
     // It attempts to somewhat accurately refund.
-    function executeNextCallback() external onlySelf {
-        if (nextCallbackId > lastUnusedCallbackId) {
+    function executeNextCallback() external view onlySelf {
+        if (nextCallbackId == lastUnusedCallbackId) {
             return; // todo: change to revert if possible
         }
 
-        uint256 callbackId = lastUnusedCallbackId++;
-        require(callbackId < lastUnusedCallbackId, "Paranoia- todo: delete");
+        return;
+
+       /* uint256 callbackId = lastUnusedCallbackId;
+        lastUnusedCallbackId++;
+        //require(callbackId < lastUnusedCallbackId, "Paranoia- todo: delete");
         Callback storage callback = callbacks[callbackId];
         uint256 baseFee = callback.baseFee;
         uint256 gas = callback.value / baseFee;
@@ -78,8 +81,8 @@ contract PublicCallbacks is Initializable {
         uint256 gasRefund = (gasBefore - gasAfter) * baseFee;
         callback.value = callback.value - gasRefund;
 
-        internalRefund(gasRefund, callback.target);
-        payForCallback(callback.value);
+       /* internalRefund(gasRefund, callback.target);
+        payForCallback(callback.value);*/
     }
 
     function internalRefund(uint256 gasRefund, address to) internal {

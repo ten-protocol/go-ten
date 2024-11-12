@@ -6,8 +6,10 @@ import {IPublicCallbacks} from "../system/PublicCallbacks.sol";
 contract PublicCallbacksTest {
     IPublicCallbacks public callbacks;
 
-    constructor(address _callbacks) {
+    constructor(address _callbacks) payable {
         callbacks = IPublicCallbacks(_callbacks);
+        lastCallSuccess = true;
+        testRegisterCallback();
     }
 
     bool lastCallSuccess = true;
@@ -24,7 +26,7 @@ contract PublicCallbacksTest {
     }
 
     // Test function that registers a callback
-    function testRegisterCallback() external payable {
+    function testRegisterCallback() internal {
         require(lastCallSuccess, "Last call failed");
         // Encode the callback data - calling handleCallback()
         // Calculate expected gas based on value sent
@@ -33,5 +35,9 @@ contract PublicCallbacksTest {
         
         // Register the callback, forwarding any value sent to this call
         callbacks.register{value: msg.value}(callbackData);
+    }
+
+    function isLastCallSuccess() external view returns (bool) {
+        return lastCallSuccess;
     }
 }

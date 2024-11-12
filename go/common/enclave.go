@@ -177,4 +177,5 @@ type ProducedSecretResponse struct {
 type EnclavePublicConfig struct {
 	L2MessageBusAddress             gethcommon.Address
 	TransactionPostProcessorAddress gethcommon.Address
+	PublicSystemContracts           map[string]gethcommon.Address
 }
