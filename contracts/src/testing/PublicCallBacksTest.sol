@@ -17,7 +17,7 @@ contract PublicCallbacksTest {
     // This function will be called back by the system
     function handleCallback(uint256 expectedGas) external {
         uint256 gasGiven = gasleft();
-        if (gasGiven > expectedGas - 22000) { //call + 1000 for calldata (which overshoots greatly)
+        if (gasGiven >= expectedGas - 2100) { //call + 1000 for calldata (which overshoots greatly)
             lastCallSuccess = true;
         }
         // Handle the callback here

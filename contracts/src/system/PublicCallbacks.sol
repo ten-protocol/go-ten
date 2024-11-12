@@ -80,16 +80,27 @@ contract PublicCallbacks is Initializable {
         uint256 gas = callback.value / baseFee;
         uint256 gasBefore = gasleft();
         (bool success, ) = callback.target.call{gas: gas}(callback.data);
+        uint256 gasAfter = gasleft();
+    
+
+        uint256 gasUsed = (gasBefore - gasAfter);
+        uint256 gasRefundValue = 0;
+        if (gas > gasUsed) {
+            gasRefundValue = (gas - gasUsed) * baseFee;
+        }
+       
+        emit CallbackExecuted(callbackId, gasBefore, gasAfter);
+        require(address(this).balance >= callback.value, "Not enough balance");
+        require(callback.value >= gasRefundValue, "Refund value is greater than the value");
+        uint256 paymentToCoinbase = callback.value - gasRefundValue;
+        address target = callback.target;
+
         if (success) {
             delete callbacks[callbackId];
         }
-        uint256 gasAfter = gasleft();
-        emit CallbackExecuted(callbackId, gasBefore, gasAfter);
-       // uint256 gasRefund = (gasBefore - gasAfter);
-       // callback.value = callback.value - gasRefund;
-
-        //internalRefund(gasRefund, callback.target);
-        payForCallback(callback.value);
+        
+        internalRefund(gasRefundValue, target);
+        payForCallback(paymentToCoinbase);
     }
 
     function internalRefund(uint256 gasRefund, address to) internal {
