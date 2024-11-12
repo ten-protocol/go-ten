@@ -177,16 +177,13 @@ func testSessionKeys(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
-	// register the user so we can call the endpoints that require authentication
 	err = user0.RegisterAccounts()
 	require.NoError(t, err)
 
 	var amountToTransfer int64 = 1_000_000_000_000_000_000
-	// Transfer some funds to user1 to be able to make transactions
 	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user0.Wallets[0].Address(), amountToTransfer)
 	require.NoError(t, err)
 
-	// call BalanceAt - fist call should be successful
 	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
 	require.NoError(t, err)
 
