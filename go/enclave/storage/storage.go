@@ -248,31 +248,38 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Header, chain
 		return err
 	}
 
+	var nonCanonical, canonical []common.L1BlockHash
 	if chainFork != nil && chainFork.IsFork() {
 		s.logger.Info(fmt.Sprintf("Update Fork. %s", chainFork))
-		err := enclavedb.UpdateCanonicalBlock(ctx, dbTx, false, chainFork.NonCanonicalPath)
-		if err != nil {
-			return err
-		}
-		err = enclavedb.UpdateCanonicalBlock(ctx, dbTx, true, chainFork.CanonicalPath)
-		if err != nil {
-			return err
-		}
-		err = enclavedb.UpdateCanonicalBatch(ctx, dbTx, false, chainFork.NonCanonicalPath)
-		if err != nil {
-			return err
-		}
-		err = enclavedb.UpdateCanonicalBatch(ctx, dbTx, true, chainFork.CanonicalPath)
-		if err != nil {
-			return err
-		}
+		nonCanonical = chainFork.NonCanonicalPath
+		canonical = chainFork.CanonicalPath
+	} else {
+		// handle the case when this block was canonical at some point, then reverted
+		canonical = []common.L1BlockHash{block.Hash()}
+	}
 
-		// sanity check that there is always a single canonical batch or block per layer
-		// called after forks, for the latest 50 blocks
-		err = enclavedb.CheckCanonicalValidity(ctx, dbTx, blockId-50)
-		if err != nil {
-			s.logger.Crit("Should not happen.", log.ErrKey, err)
-		}
+	err = enclavedb.UpdateCanonicalBlock(ctx, dbTx, false, nonCanonical)
+	if err != nil {
+		return err
+	}
+	err = enclavedb.UpdateCanonicalBlock(ctx, dbTx, true, canonical)
+	if err != nil {
+		return err
+	}
+	err = enclavedb.UpdateCanonicalBatch(ctx, dbTx, false, nonCanonical)
+	if err != nil {
+		return err
+	}
+	err = enclavedb.UpdateCanonicalBatch(ctx, dbTx, true, canonical)
+	if err != nil {
+		return err
+	}
+
+	// sanity check that there is always a single canonical batch or block per layer
+	// called after forks, for the latest 50 blocks
+	err = enclavedb.CheckCanonicalValidity(ctx, dbTx, blockId-50)
+	if err != nil {
+		s.logger.Crit("Should not happen.", log.ErrKey, err)
 	}
 
 	if err := dbTx.Commit(); err != nil {

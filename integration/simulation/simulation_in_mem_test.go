@@ -26,7 +26,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	simParams := params.SimParams{
 		NumberOfNodes: numberOfNodes,
 		//  todo (#718) - try reducing this back to 50 milliseconds once faster-finality model is optimised
-		AvgBlockDuration:           180 * time.Millisecond,
+		AvgBlockDuration:           40 * time.Millisecond,
 		SimulationTime:             45 * time.Second,
 		L1EfficiencyThreshold:      0.2,
 		MgmtContractLib:            ethereummock.NewMgmtContractLibMock(),
