@@ -3,8 +3,8 @@ package services
 import (
 	"context"
 	"fmt"
+	"math/big"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -23,7 +23,7 @@ import (
 // From the POV of the Ten network - a session key is a normal account key
 type SKManager interface {
 	CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error)
-	SignTx(ctx context.Context, user *common.GWUser, input hexutil.Bytes) (hexutil.Bytes, error)
+	SignTx(ctx context.Context, user *common.GWUser, input *types.Transaction) (*types.Transaction, error)
 }
 
 type skManager struct {
@@ -92,17 +92,16 @@ func (m *skManager) createSK(user *common.GWUser) (*common.GWSessionKey, error) 
 	}, nil
 }
 
-func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, input hexutil.Bytes) (hexutil.Bytes, error) {
-	tx := new(types.Transaction)
-	if err := tx.UnmarshalBinary(input); err != nil {
-		return hexutil.Bytes{}, err
-	}
+func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, tx *types.Transaction) (*types.Transaction, error) {
+	prvKey := user.SessionKey.PrivateKey.ExportECDSA()
+	signer := types.NewCancunSigner(big.NewInt(int64(m.config.TenChainID)))
 
-	signer := types.NewLondonSigner(tx.ChainId())
-
-	tx, err := types.SignTx(tx, signer, user.SessionKey.PrivateKey.ExportECDSA())
+	stx, err := types.SignTx(tx, signer, prvKey)
 	if err != nil {
-		return hexutil.Bytes{}, err
+		return nil, err
 	}
-	return tx.MarshalBinary()
+
+	m.logger.Debug("Signed transaction with session key", "stxHash", stx.Hash().Hex())
+
+	return stx, nil
 }
