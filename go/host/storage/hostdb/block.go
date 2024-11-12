@@ -35,9 +35,9 @@ func AddBlock(dbtx *dbTransaction, statements *SQLStatements, b *types.Header) e
 func GetBlockId(db HostDB, hash common.L1BlockHash) (*int64, error) {
 	query := selectBlock + db.GetSQLStatement().Placeholder
 	var blockId int64
-	err := db.GetSQLDB().QueryRow(query, hash.Bytes()).Scan(blockId)
+	err := db.GetSQLDB().QueryRow(query, hash.Bytes()).Scan(&blockId)
 	if err != nil {
-		return nil, fmt.Errorf("query execution for select txs failed: %w", err)
+		return nil, fmt.Errorf("query execution for select block failed: %w", err)
 	}
 
 	return &blockId, nil
