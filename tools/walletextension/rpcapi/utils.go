@@ -41,7 +41,7 @@ const (
 
 var rpcNotImplemented = fmt.Errorf("rpc endpoint not implemented")
 
-type ExecCfg struct {
+type AuthExecCfg struct {
 	// these 4 fields specify the account(s) that should make the backend call
 	account             *gethcommon.Address
 	computeFromCallback func(user *common.GWUser) *gethcommon.Address
@@ -79,29 +79,24 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 	return res, err
 }
 
-func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *ExecCfg, method string, args ...any) (*R, error) {
+func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExecCfg, method string, args ...any) (*R, error) {
 	audit(w, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
-	userID, err := extractUserID(ctx, w)
+	user, err := extractUserForRequest(ctx, w)
 	if err != nil {
 		return nil, err
 	}
 
-	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(userID))
-	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(userID), requestUUID)
+	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
+	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 	if !rateLimitAllowed {
 		return nil, fmt.Errorf("rate limit exceeded")
 	}
 
-	cacheArgs := []any{userID, method}
+	cacheArgs := []any{user.ID, method}
 	cacheArgs = append(cacheArgs, args...)
 
 	res, err := cache.WithCache(w.RPCResponsesCache, cfg.cacheCfg, generateCacheKey(cacheArgs), func() (*R, error) {
-		user, err := w.Storage.GetUser(userID)
-		if err != nil {
-			return nil, err
-		}
-
 		// determine candidate "from"
 		candidateAccts, err := getCandidateAccounts(user, w, cfg)
 		if err != nil {
@@ -149,16 +144,16 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *ExecCfg,
 		}
 		return nil, rpcErr
 	})
-	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(userID), method, args, SafeGenericToString(res), err, time.Since(requestStartTime).Milliseconds())
+	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(user.ID), method, args, SafeGenericToString(res), err, time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
-func getCandidateAccounts(user *common.GWUser, _ *services.Services, cfg *ExecCfg) ([]*common.GWAccount, error) {
+func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthExecCfg) ([]*common.GWAccount, error) {
 	candidateAccts := make([]*common.GWAccount, 0)
 	// for users with multiple accounts try to determine a candidate account based on the available information
 	switch {
 	case cfg.account != nil:
-		acc := user.Accounts[*cfg.account]
+		acc := user.AllAccounts()[*cfg.account]
 		if acc != nil {
 			candidateAccts = append(candidateAccts, acc)
 			return candidateAccts, nil
@@ -167,16 +162,19 @@ func getCandidateAccounts(user *common.GWUser, _ *services.Services, cfg *ExecCf
 	case cfg.computeFromCallback != nil:
 		suggestedAddress := cfg.computeFromCallback(user)
 		if suggestedAddress != nil {
-			acc := user.Accounts[*suggestedAddress]
+			acc := user.AllAccounts()[*suggestedAddress]
 			if acc != nil {
 				candidateAccts = append(candidateAccts, acc)
 				return candidateAccts, nil
+			} else {
+				// this should not happen, because the suggestedAddress is one of the addresses
+				return nil, fmt.Errorf("should not happen. From: %s . UserId: %s", suggestedAddress.Hex(), hexutils.BytesToHex(user.ID))
 			}
 		}
 	}
 
 	if cfg.tryAll || cfg.tryUntilAuthorised {
-		for _, acc := range user.Accounts {
+		for _, acc := range user.AllAccounts() {
 			candidateAccts = append(candidateAccts, acc)
 		}
 	}
@@ -187,13 +185,25 @@ func getCandidateAccounts(user *common.GWUser, _ *services.Services, cfg *ExecCf
 func extractUserID(ctx context.Context, _ *services.Services) ([]byte, error) {
 	token, ok := ctx.Value(rpc.GWTokenKey{}).(string)
 	if !ok {
-		return nil, fmt.Errorf("invalid userid: %s", ctx.Value(rpc.GWTokenKey{}))
+		return nil, fmt.Errorf("invalid authentication token: %s", ctx.Value(rpc.GWTokenKey{}))
 	}
 	userID := gethcommon.FromHex(token)
 	if len(userID) != viewingkey.UserIDLength {
-		return nil, fmt.Errorf("invalid userid: %s", token)
+		return nil, fmt.Errorf("invalid authentication token: %s", token)
 	}
 	return userID, nil
+}
+
+func extractUserForRequest(ctx context.Context, w *services.Services) (*common.GWUser, error) {
+	userID, err := extractUserID(ctx, w)
+	if err != nil {
+		return nil, err
+	}
+	user, err := w.Storage.GetUser(userID)
+	if err != nil {
+		return nil, fmt.Errorf("authentication failed: %w", err)
+	}
+	return user, nil
 }
 
 // generateCacheKey generates a cache key for the given method, encryptionToken and parameters

@@ -61,7 +61,7 @@ func (api *DebugAPI) EventLogRelevancy(ctx context.Context, crit common.FilterCr
 	l, err := ExecAuthRPC[[]*common.DebugLogVisibility](
 		ctx,
 		api.we,
-		&ExecCfg{
+		&AuthExecCfg{
 			cacheCfg: &cache.Cfg{
 				Type: cache.NoCache,
 			},

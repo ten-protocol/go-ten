@@ -185,8 +185,8 @@ func testGetUser(storage UserStorage, t *testing.T) {
 	}
 
 	// Check if retrieved user matches the added user
-	if !bytes.Equal(user.UserID, userID) {
-		t.Errorf("Retrieved user ID does not match. Expected %x, got %x", userID, user.UserID)
+	if !bytes.Equal(user.ID, userID) {
+		t.Errorf("Retrieved user ID does not match. Expected %x, got %x", userID, user.ID)
 	}
 
 	if !bytes.Equal(user.UserKey, privateKey) {

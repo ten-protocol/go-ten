@@ -52,7 +52,7 @@ func (api *BlockChainAPI) GetBalance(ctx context.Context, address gethcommon.Add
 	return ExecAuthRPC[hexutil.Big](
 		ctx,
 		api.we,
-		&ExecCfg{
+		&AuthExecCfg{
 			cacheCfg: &cache.Cfg{
 				DynamicType: func() cache.Strategy {
 					return cacheBlockNumberOrHash(blockNrOrHash)
@@ -180,25 +180,21 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Addres
 //
 // In future, we can support both CustomQueries and some debug version of eth_getStorageAt if needed.
 func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.Address, params string, _ rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
-	switch address.Hex() {
-	case common.UserIDRequestCQMethod:
-		userID, err := extractUserID(ctx, api.we)
-		if err != nil {
-			return nil, err
-		}
+	user, err := extractUserForRequest(ctx, api.we)
+	if err != nil {
+		return nil, err
+	}
 
-		_, err = api.we.Storage.GetUser(userID)
-		if err != nil {
-			return nil, err
-		}
-		return userID, nil
+	switch address.Hex() {
+	case common.UserIDRequestCQMethod: // todo - review whether we need this endpoint
+		return user.ID, nil
 	case common.ListPrivateTransactionsCQMethod:
 		// sensitive CustomQuery methods use the convention of having "address" at the top level of the params json
 		userAddr, err := extractCustomQueryAddress(params)
 		if err != nil {
 			return nil, fmt.Errorf("unable to extract address from custom query params: %w", err)
 		}
-		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{account: userAddr}, "scan_getPersonalTransactions", params)
+		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{account: userAddr}, "scan_getPersonalTransactions", params)
 		if err != nil {
 			return nil, fmt.Errorf("unable to execute custom query: %w", err)
 		}
@@ -208,8 +204,33 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 			return nil, fmt.Errorf("unable to marshal response object: %w", err)
 		}
 		return serialised, nil
+	case common.CreateSessionKeyCQMethod:
+		sk, err := api.we.SKManager.CreateSessionKey(user)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create session key: %w", err)
+		}
+		return sk.Account.Address.Bytes(), nil
+	case common.ActivateSessionKeyCQMethod:
+		err := api.we.Storage.ActivateSessionKey(user.ID, true)
+		if err != nil {
+			return nil, err
+		}
+		return []byte{1}, nil
+
+	case common.DeactivateSessionKeyCQMethod:
+		err := api.we.Storage.ActivateSessionKey(user.ID, false)
+		if err != nil {
+			return nil, err
+		}
+		return []byte{1}, nil
+	case common.DeleteSessionKeyCQMethod:
+		err := api.we.Storage.RemoveSessionKey(user.ID)
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
 	default: // address was not a recognised custom query method address
-		resp, err := ExecAuthRPC[any](ctx, api.we, &ExecCfg{tryUntilAuthorised: true}, "eth_getStorageAt", address, params, nil)
+		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, "eth_getStorageAt", address, params, nil)
 		if err != nil {
 			return nil, fmt.Errorf("unable to execute eth_getStorageAt: %w", err)
 		}
@@ -251,7 +272,7 @@ type (
 )
 
 func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash rpc.BlockNumberOrHash, overrides *StateOverride, blockOverrides *BlockOverrides) (hexutil.Bytes, error) {
-	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, api.we, &ExecCfg{
+	resp, err := ExecAuthRPC[hexutil.Bytes](ctx, api.we, &AuthExecCfg{
 		cacheCfg: &cache.Cfg{
 			DynamicType: func() cache.Strategy {
 				return cacheBlockNumberOrHash(blockNrOrHash)
@@ -273,7 +294,7 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 }
 
 func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash *rpc.BlockNumberOrHash, overrides *StateOverride) (hexutil.Uint64, error) {
-	resp, err := ExecAuthRPC[hexutil.Uint64](ctx, api.we, &ExecCfg{
+	resp, err := ExecAuthRPC[hexutil.Uint64](ctx, api.we, &AuthExecCfg{
 		cacheCfg: &cache.Cfg{
 			DynamicType: func() cache.Strategy {
 				if blockNrOrHash != nil {
