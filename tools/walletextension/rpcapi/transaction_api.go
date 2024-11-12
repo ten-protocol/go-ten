@@ -2,6 +2,7 @@ package rpcapi
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
@@ -103,13 +104,26 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 }
 
 func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.TransactionArgs) (common.Hash, error) {
-	//txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &AuthExecCfg{account: args.From, timeout: sendTransactionDuration}, "eth_sendTransaction", args)
-	//if err != nil {
-	//	return common.Hash{}, err
-	//}
-	//return *txRec, err
-	// not implemented for now. We might use this for session keys.
-	return common.Hash{}, rpcNotImplemented
+	user, err := extractUserForRequest(ctx, s.we)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	if !user.ActiveSK {
+		return common.Hash{}, fmt.Errorf("please activate session key")
+	}
+
+	// when there is an active Session Key, sign all incoming transactions with that SK
+	signedTx, err := s.we.SKManager.SignTx(ctx, user, args.ToTransaction())
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	blob, err := signedTx.MarshalBinary()
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	return s.sendRawTx(ctx, blob)
 }
 
 type SignTransactionResult struct {
@@ -127,16 +141,28 @@ func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.B
 		return common.Hash{}, err
 	}
 
-	signedTx := input
+	signedTxBlob := input
 	// when there is an active Session Key, sign all incoming transactions with that SK
 	if user.ActiveSK && user.SessionKey != nil {
-		signedTx, err = s.we.SKManager.SignTx(ctx, user, input)
+		tx := new(types.Transaction)
+		if err = tx.UnmarshalBinary(input); err != nil {
+			return common.Hash{}, err
+		}
+		signedTx, err := s.we.SKManager.SignTx(ctx, user, tx)
+		if err != nil {
+			return common.Hash{}, err
+		}
+		signedTxBlob, err = signedTx.MarshalBinary()
 		if err != nil {
 			return common.Hash{}, err
 		}
 	}
 
-	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &AuthExecCfg{tryAll: true, timeout: sendTransactionDuration}, "eth_sendRawTransaction", signedTx)
+	return s.sendRawTx(ctx, signedTxBlob)
+}
+
+func (s *TransactionAPI) sendRawTx(ctx context.Context, input hexutil.Bytes) (common.Hash, error) {
+	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &AuthExecCfg{tryAll: true, timeout: sendTransactionDuration}, "eth_sendRawTransaction", input)
 	if err != nil {
 		return common.Hash{}, err
 	}
