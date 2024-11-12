@@ -58,7 +58,7 @@ host:
     blobArchiveURL: "" # URL for L1 blob archive service
     rpcTimeout: 15s
   log:
-    level: 4
+    level: 1
     path: sys_out # path to log file, will log to stdout when empty
   p2p:
     disableP2P: false
@@ -84,7 +84,7 @@ enclave:
     enableBlockValidation: false
     #genesisJSON:  # json string of L1 genesis block, used for expectation todo: still needed?
   log:
-    level: 4
+    level: 1
     path: sys_out
   rpc:
     bindAddress: "0.0.0.0:11000"
