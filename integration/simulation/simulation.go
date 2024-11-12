@@ -280,6 +280,7 @@ func (s *Simulation) deployPublicCallbacksTest() {
 	auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, s.Params.Wallets.L2FaucetWallet))
 	auth.GasPrice = big.NewInt(0).SetUint64(gethparams.InitialBaseFee)
 	auth.Context = s.ctx
+	auth.Value = big.NewInt(0).Mul(big.NewInt(1), big.NewInt(gethparams.Ether))
 
 	_, tx, instance, err := PublicCallbacksTest.DeployPublicCallbacksTest(auth, rpcClient, publicCallbacksAddress)
 	if err != nil {
@@ -291,7 +292,7 @@ func (s *Simulation) deployPublicCallbacksTest() {
 		panic(fmt.Errorf("failed to deploy public callbacks test contract"))
 	}
 
-	success, err := instance.IsLastCallSuccess(&bind.CallOpts{Context: s.ctx})
+	success, err := instance.IsLastCallSuccess(&bind.CallOpts{Context: s.ctx, From: s.Params.Wallets.L2FaucetWallet.Address()})
 	if err != nil {
 		panic(fmt.Errorf("failed to check if last call was successful: %w", err))
 	}

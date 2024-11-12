@@ -8,17 +8,17 @@ contract PublicCallbacksTest {
 
     constructor(address _callbacks) payable {
         callbacks = IPublicCallbacks(_callbacks);
-        lastCallSuccess = true;
+        lastCallSuccess = false;
         testRegisterCallback();
     }
 
-    bool lastCallSuccess = true;
+    bool lastCallSuccess = false;
 
     // This function will be called back by the system
     function handleCallback(uint256 expectedGas) external {
         uint256 gasGiven = gasleft();
         if (gasGiven > expectedGas - 22000) { //call + 1000 for calldata (which overshoots greatly)
-            lastCallSuccess = false;
+            lastCallSuccess = true;
         }
         // Handle the callback here
         // For testing we'll just allow it to succeed
@@ -27,7 +27,6 @@ contract PublicCallbacksTest {
 
     // Test function that registers a callback
     function testRegisterCallback() internal {
-        require(lastCallSuccess, "Last call failed");
         // Encode the callback data - calling handleCallback()
         // Calculate expected gas based on value sent
         uint256 expectedGas = msg.value / block.basefee;

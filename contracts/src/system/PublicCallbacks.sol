@@ -42,7 +42,13 @@ contract PublicCallbacks is Initializable {
         callbacks[nextCallbackId++] = Callback({target: callback, data: data, value: value, baseFee: block.basefee});
     }
 
+    function calculateGas(uint256 value) internal view returns (uint256) {
+        return value / block.basefee;
+    }
+
     function register(bytes calldata callback) external payable { 
+        require(msg.value > 0, "No value sent");
+        require(calculateGas(msg.value) > 21000, "Gas too low compared to cost of call");
         addCallback(msg.sender, callback, msg.value);
     }
 
@@ -56,19 +62,19 @@ contract PublicCallbacks is Initializable {
         // nothing to refund; the callback was already paid for during its failure
     }
 
+    event CallbackExecuted(uint256 callbackId, uint256 gasBefore, uint256 gasAfter);
+
     // System level call. As it is called during a synthetic transaction that does not have gas limit, 
     // the contract enforces a custom limit based on the value stored for the callback.
     // It attempts to somewhat accurately refund.
-    function executeNextCallback() external view onlySelf {
+    function executeNextCallback() external onlySelf {
         if (nextCallbackId == lastUnusedCallbackId) {
             return; // todo: change to revert if possible
         }
 
-        return;
-
-       /* uint256 callbackId = lastUnusedCallbackId;
+        uint256 callbackId = lastUnusedCallbackId;
         lastUnusedCallbackId++;
-        //require(callbackId < lastUnusedCallbackId, "Paranoia- todo: delete");
+        require(callbackId < lastUnusedCallbackId, "Paranoia- todo: delete");
         Callback storage callback = callbacks[callbackId];
         uint256 baseFee = callback.baseFee;
         uint256 gas = callback.value / baseFee;
@@ -78,11 +84,12 @@ contract PublicCallbacks is Initializable {
             delete callbacks[callbackId];
         }
         uint256 gasAfter = gasleft();
-        uint256 gasRefund = (gasBefore - gasAfter) * baseFee;
-        callback.value = callback.value - gasRefund;
+        emit CallbackExecuted(callbackId, gasBefore, gasAfter);
+       // uint256 gasRefund = (gasBefore - gasAfter);
+       // callback.value = callback.value - gasRefund;
 
-       /* internalRefund(gasRefund, callback.target);
-        payForCallback(callback.value);*/
+        //internalRefund(gasRefund, callback.target);
+        payForCallback(callback.value);
     }
 
     function internalRefund(uint256 gasRefund, address to) internal {
