@@ -3,10 +3,11 @@ package hostdb
 import (
 	"database/sql"
 	"errors"
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"testing"
 	"time"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
 )
