@@ -83,9 +83,9 @@ func (s *storageImpl) AddBlock(b *types.Header) error {
 	}
 	defer dbtx.Rollback()
 
-	_, err = hostdb.GetBlockId(s.db, b.Hash())
+	_, err = hostdb.GetBlockId(dbtx.Tx, s.db.GetSQLStatement(), b.Hash())
 	if errors.Is(err, sql.ErrNoRows) {
-		if err := hostdb.AddBlock(dbtx, s.db.GetSQLStatement(), b); err != nil {
+		if err := hostdb.AddBlock(dbtx.Tx, s.db.GetSQLStatement(), b); err != nil {
 			return fmt.Errorf("could not add block to host. Cause: %w", err)
 		}
 	}

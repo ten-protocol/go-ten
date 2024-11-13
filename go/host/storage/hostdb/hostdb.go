@@ -38,7 +38,7 @@ func (db *hostDB) NewDBTransaction() (*dbTransaction, error) {
 	}
 
 	return &dbTransaction{
-		tx: tx,
+		Tx: tx,
 	}, nil
 }
 
@@ -50,18 +50,18 @@ func (db *hostDB) Close() error {
 }
 
 type dbTransaction struct {
-	tx *sql.Tx
+	Tx *sql.Tx
 }
 
 func (b *dbTransaction) Write() error {
-	if err := b.tx.Commit(); err != nil {
+	if err := b.Tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit host db transaction. Cause: %w", err)
 	}
 	return nil
 }
 
 func (b *dbTransaction) Rollback() error {
-	if err := b.tx.Rollback(); err != nil {
+	if err := b.Tx.Rollback(); err != nil {
 		return fmt.Errorf("failed to rollback host transaction. Cause: %w", err)
 	}
 	return nil
