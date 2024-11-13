@@ -27,7 +27,6 @@ type obsValidator struct {
 	blockProcessor components.L1BlockProcessor
 	batchExecutor  components.BatchExecutor
 	batchRegistry  components.BatchRegistry
-	rollupConsumer components.RollupConsumer
 
 	chainConfig *params.ChainConfig
 
@@ -44,7 +43,6 @@ func NewValidator(
 	consumer components.L1BlockProcessor,
 	batchExecutor components.BatchExecutor,
 	registry components.BatchRegistry,
-	rollupConsumer components.RollupConsumer,
 	chainConfig *params.ChainConfig,
 	storage storage.Storage,
 	sigValidator *components.SignatureValidator,
@@ -58,7 +56,6 @@ func NewValidator(
 		blockProcessor: consumer,
 		batchExecutor:  batchExecutor,
 		batchRegistry:  registry,
-		rollupConsumer: rollupConsumer,
 		chainConfig:    chainConfig,
 		storage:        storage,
 		sigValidator:   sigValidator,

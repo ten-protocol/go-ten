@@ -32,6 +32,9 @@ func WriteBlock(ctx context.Context, dbtx *sql.Tx, b *types.Header) error {
 }
 
 func UpdateCanonicalBlock(ctx context.Context, dbtx *sql.Tx, isCanonical bool, blocks []common.L1BlockHash) error {
+	if len(blocks) == 0 {
+		return nil
+	}
 	args := make([]any, 0)
 	args = append(args, isCanonical)
 	for _, blockHash := range blocks {
