@@ -26,9 +26,8 @@ func TestCanStoreAndRetrieveBlock(t *testing.T) {
 	if !errors.Is(err, sql.ErrNoRows) {
 		t.Errorf("expected sql.ErrNoRows for non-existent block, got: %v", err)
 	}
-	dbtx.Rollback() // Clean up the transaction
+	dbtx.Rollback()
 
-	// Now proceed with adding blocks
 	dbtx, _ = db.NewDBTransaction()
 	err = AddBlock(dbtx.Tx, statements, &block1)
 	if err != nil {
@@ -39,7 +38,6 @@ func TestCanStoreAndRetrieveBlock(t *testing.T) {
 		t.Errorf("could not commit block1: %s", err)
 	}
 
-	// Second block
 	dbtx, _ = db.NewDBTransaction()
 	err = AddBlock(dbtx.Tx, statements, &block2)
 	if err != nil {
@@ -50,7 +48,6 @@ func TestCanStoreAndRetrieveBlock(t *testing.T) {
 		t.Errorf("could not commit block2: %s", err)
 	}
 
-	// Create new transaction for the query
 	dbtx, _ = db.NewDBTransaction()
 	blockId, err := GetBlockId(dbtx.Tx, statements, block2.Hash())
 	if err != nil {
@@ -59,7 +56,7 @@ func TestCanStoreAndRetrieveBlock(t *testing.T) {
 	if *blockId != 2 {
 		t.Errorf("expected block ID 2, got %d", *blockId)
 	}
-	dbtx.Rollback() // Clean up the final transaction
+	dbtx.Rollback()
 }
 
 func createBlock(blockNum int64) types.Header {
