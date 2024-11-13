@@ -191,5 +191,5 @@ func (cf *ChainFork) String() string {
 }
 
 func MaskedSender(address L2Address) L2Address {
-	return L2Address(common.BigToAddress(big.NewInt(0).Sub(address.Big(), big.NewInt(1))))
+	return common.BigToAddress(big.NewInt(0).Sub(address.Big(), big.NewInt(1)))
 }
