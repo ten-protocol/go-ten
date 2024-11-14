@@ -96,7 +96,7 @@ func (s *storageImpl) AddBlock(b *types.Header) error {
 
 	if err := hostdb.AddBlock(dbtx.Tx, s.db.GetSQLStatement(), b); err != nil {
 		if IsConstraintError(err) {
-			s.logger.Debug("Block already exists (constraint)",
+			s.logger.Debug("Block already exists",
 				"hash", b.Hash().Hex(),
 				"error", err)
 			return nil
