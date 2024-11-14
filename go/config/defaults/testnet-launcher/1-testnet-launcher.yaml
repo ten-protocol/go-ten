@@ -11,8 +11,12 @@ host:
         enableDebugNamespace: true
    l1:
       wsURL: ws://eth2network:9000
+   log:
+      level: 4
 enclave:
    db:
       useInMemory: false
    debug:
       enableDebugNamespace: true
+   log:
+        level: 4
