@@ -42,6 +42,15 @@ contract PublicCallbacks is Initializable {
         callbacks[nextCallbackId++] = Callback({target: callback, data: data, value: value, baseFee: block.basefee});
     }
 
+    function getCurrentCallbackToExecute() internal view returns (Callback memory) {
+        return callbacks[lastUnusedCallbackId];
+    }
+
+    function popCurrentCallback() internal {
+        delete callbacks[lastUnusedCallbackId];
+        lastUnusedCallbackId++;
+    }
+
     function calculateGas(uint256 value) internal view returns (uint256) {
         return value / block.basefee;
     }
@@ -78,10 +87,7 @@ contract PublicCallbacks is Initializable {
             return; // todo: change to revert if possible
         }
 
-        uint256 callbackId = lastUnusedCallbackId;
-        lastUnusedCallbackId++;
-        require(callbackId < lastUnusedCallbackId, "Paranoia- todo: delete");
-        Callback storage callback = callbacks[callbackId];
+        Callback memory callback = getCurrentCallbackToExecute();
         uint256 baseFee = callback.baseFee;
         uint256 prepaidGas = callback.value / baseFee;
         uint256 gasBefore = gasleft();
@@ -95,12 +101,11 @@ contract PublicCallbacks is Initializable {
             gasRefundValue = (prepaidGas - gasUsed) * baseFee;
         }
        
-        emit CallbackExecuted(callbackId, gasBefore, gasAfter);
         uint256 paymentToCoinbase = callback.value - gasRefundValue;
         address target = callback.target;
 
-        if (success) {
-            delete callbacks[callbackId];
+        if (success) {  
+            popCurrentCallback();
         }
 
         internalRefund(gasRefundValue, target);
