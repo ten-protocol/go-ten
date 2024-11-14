@@ -163,7 +163,7 @@ func (s *systemContractCallbacks) CreatePublicCallbackHandlerTransaction(ctx con
 	nonceForSyntheticTx := l2State.GetNonce(common.MaskedSender(*s.PublicCallbackHandler()))
 	s.logger.Debug("CreatePublicCallbackHandlerTransaction: Retrieved nonce for synthetic transaction", "nonce", nonceForSyntheticTx)
 
-	data, err := publicCallbacksABI.Pack("executeNextCallback")
+	data, err := publicCallbacksABI.Pack("executeNextCallbacks")
 	if err != nil {
 		s.logger.Error("CreatePublicCallbackHandlerTransaction: Failed packing executeNextCallback data", "error", err)
 		return nil, fmt.Errorf("failed packing executeNextCallback() %w", err)

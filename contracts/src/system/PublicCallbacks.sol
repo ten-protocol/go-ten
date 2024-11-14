@@ -67,7 +67,13 @@ contract PublicCallbacks is Initializable {
     // System level call. As it is called during a synthetic transaction that does not have gas limit, 
     // the contract enforces a custom limit based on the value stored for the callback.
     // It attempts to somewhat accurately refund.
-    function executeNextCallback() external onlySelf {
+    function executeNextCallbacks() external onlySelf {
+        while (nextCallbackId != lastUnusedCallbackId) {
+            executeNextCallback();
+        }
+    }
+
+    function executeNextCallback() internal {
         if (nextCallbackId == lastUnusedCallbackId) {
             return; // todo: change to revert if possible
         }
@@ -77,28 +83,26 @@ contract PublicCallbacks is Initializable {
         require(callbackId < lastUnusedCallbackId, "Paranoia- todo: delete");
         Callback storage callback = callbacks[callbackId];
         uint256 baseFee = callback.baseFee;
-        uint256 gas = callback.value / baseFee;
+        uint256 prepaidGas = callback.value / baseFee;
         uint256 gasBefore = gasleft();
-        (bool success, ) = callback.target.call{gas: gas}(callback.data);
+        (bool success, ) = callback.target.call{gas: prepaidGas}(callback.data);
         uint256 gasAfter = gasleft();
     
 
         uint256 gasUsed = (gasBefore - gasAfter);
         uint256 gasRefundValue = 0;
-        if (gas > gasUsed) {
-            gasRefundValue = (gas - gasUsed) * baseFee;
+        if (prepaidGas > gasUsed) {
+            gasRefundValue = (prepaidGas - gasUsed) * baseFee;
         }
        
         emit CallbackExecuted(callbackId, gasBefore, gasAfter);
-        require(address(this).balance >= callback.value, "Not enough balance");
-        require(callback.value >= gasRefundValue, "Refund value is greater than the value");
         uint256 paymentToCoinbase = callback.value - gasRefundValue;
         address target = callback.target;
 
         if (success) {
             delete callbacks[callbackId];
         }
-        
+
         internalRefund(gasRefundValue, target);
         payForCallback(paymentToCoinbase);
     }
