@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
@@ -56,6 +57,45 @@ func TestCanStoreAndRetrieveBlock(t *testing.T) {
 	if *blockId != 2 {
 		t.Errorf("expected block ID 2, got %d", *blockId)
 	}
+	dbtx.Rollback()
+}
+
+func TestAddBlockWithForeignKeyConstraint(t *testing.T) {
+	db, _ := createSQLiteDB(t)
+	dbtx, _ := db.NewDBTransaction()
+	statements := db.GetSQLStatement()
+	metadata := createRollupMetadata(batchNumber - 10)
+	rollup := createRollup(batchNumber)
+	block := types.NewBlock(&types.Header{}, nil, nil, nil)
+
+	// add block
+	err := AddBlock(dbtx.Tx, db.GetSQLStatement(), block.Header())
+	if err != nil {
+		t.Errorf("could not store block. Cause: %s", err)
+	}
+	dbtx.Write()
+	dbtx, _ = db.NewDBTransaction()
+
+	// add rollup referencing block
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup, &metadata, block)
+	if err != nil {
+		t.Errorf("could not store rollup. Cause: %s", err)
+	}
+	dbtx.Write()
+
+	// this should fail due to the UNIQUE constraint on block_host.hash
+	dbtx, _ = db.NewDBTransaction()
+	err = AddBlock(dbtx.Tx, statements, block.Header())
+	if !strings.Contains(err.Error(), "UNIQUE constraint failed: block_host.hash") {
+		t.Fatalf("expected UNIQUE constraint error, got: %v", err)
+	}
+
+	// verify the block still exists
+	_, err = GetBlockId(dbtx.Tx, statements, block.Hash())
+	if err != nil {
+		t.Fatalf("failed to get block id after duplicate insert: %v", err)
+	}
+
 	dbtx.Rollback()
 }
 

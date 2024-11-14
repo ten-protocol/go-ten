@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -84,10 +85,23 @@ func (s *storageImpl) AddBlock(b *types.Header) error {
 	defer dbtx.Rollback()
 
 	_, err = hostdb.GetBlockId(dbtx.Tx, s.db.GetSQLStatement(), b.Hash())
-	if errors.Is(err, sql.ErrNoRows) {
-		if err := hostdb.AddBlock(dbtx.Tx, s.db.GetSQLStatement(), b); err != nil {
-			return fmt.Errorf("could not add block to host. Cause: %w", err)
+	switch {
+	case err == nil:
+		// Block already exists
+		s.logger.Debug("Block already exists", "hash", b.Hash().Hex())
+		return nil
+	case !errors.Is(err, sql.ErrNoRows):
+		return fmt.Errorf("error checking block existence: %w", err)
+	}
+
+	if err := hostdb.AddBlock(dbtx.Tx, s.db.GetSQLStatement(), b); err != nil {
+		if IsConstraintError(err) {
+			s.logger.Debug("Block already exists (constraint)",
+				"hash", b.Hash().Hex(),
+				"error", err)
+			return nil
 		}
+		return fmt.Errorf("could not add block to host: %w", err)
 	}
 
 	if err := dbtx.Write(); err != nil {
@@ -205,4 +219,20 @@ func NewStorage(backingDB hostdb.HostDB, logger gethlog.Logger) Storage {
 		db:     backingDB,
 		logger: logger,
 	}
+}
+
+// SQLite constraint error messages
+const (
+	ErrUniqueBlockHash = "UNIQUE constraint failed: block_host.hash"
+	ErrForeignKey      = "FOREIGN KEY constraint failed"
+)
+
+// IsConstraintError returns true if the error is a known constraint error
+func IsConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errMsg := err.Error()
+	return strings.Contains(errMsg, ErrUniqueBlockHash) ||
+		strings.Contains(errMsg, ErrForeignKey)
 }
