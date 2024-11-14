@@ -55,6 +55,11 @@ contract PublicCallbacks is Initializable {
         return value / block.basefee;
     }
 
+    // This function is callable from external dApps to register a callback.
+    // The bytes passed in the param are the calldata for the call to be made
+    // to msg.sender. 
+    // todo: Consider making the callback function named in order to avoid
+    // weird potential attacks if any? 
     function register(bytes calldata callback) external payable { 
         require(msg.value > 0, "No value sent");
         require(calculateGas(msg.value) > 21000, "Gas too low compared to cost of call");

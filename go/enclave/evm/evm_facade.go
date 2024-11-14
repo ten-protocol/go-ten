@@ -57,6 +57,9 @@ func ExecuteTransactions(
 	logger gethlog.Logger,
 ) (map[common.TxHash]*core.TxExecResult, error) {
 	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, logger)
+	// If there is noBaseFee for the batch, we set the gas limit to the max as
+	// we are working with synthetic transactions that either have predefined contracts
+	// or contract enforced gas limits.
 	if noBaseFee {
 		batchGasLimit = params.MaxGasLimit
 	}
