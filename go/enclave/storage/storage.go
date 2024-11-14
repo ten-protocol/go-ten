@@ -587,7 +587,7 @@ func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, batch *co
 	toContracts := make([]*uint64, len(batch.Transactions))
 	// insert the tx signers as externally owned accounts
 	for i, tx := range batch.Transactions {
-		sender, err := core.GetTxSigner(tx)
+		sender, err := core.GetExternalTxSigner(tx)
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not read tx sender. Cause: %w", err)
 		}

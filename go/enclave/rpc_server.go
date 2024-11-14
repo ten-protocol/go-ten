@@ -481,9 +481,16 @@ func (s *RPCServer) EnclavePublicConfig(ctx context.Context, _ *generated.Enclav
 		s.logger.Error("Error getting message bus address", log.ErrKey, sysError)
 		return &generated.EnclavePublicConfigResponse{SystemError: toRPCError(sysError)}, nil
 	}
+
+	publicContracts := make(map[string][]byte, len(enclaveCfg.PublicSystemContracts))
+	for k, v := range enclaveCfg.PublicSystemContracts {
+		publicContracts[k] = v.Bytes()
+	}
+
 	return &generated.EnclavePublicConfigResponse{
 		L2MessageBusAddress:             enclaveCfg.L2MessageBusAddress.Bytes(),
 		TransactionPostProcessorAddress: enclaveCfg.TransactionPostProcessorAddress.Bytes(),
+		PublicSystemContracts:           publicContracts,
 	}, nil
 }
 

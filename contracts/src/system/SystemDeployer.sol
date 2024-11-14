@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {MessageBus} from "../messaging/MessageBus.sol";
 import "./TransactionPostProcessor.sol";
+import {PublicCallbacks} from "./PublicCallbacks.sol";
 
 contract SystemDeployer {
     event SystemContractDeployed(string name, address contractAddress);
@@ -11,6 +12,7 @@ contract SystemDeployer {
     constructor(address eoaAdmin) {
        deployAnalyzer(eoaAdmin);
        deployMessageBus(eoaAdmin);
+       deployPublicCallbacks(eoaAdmin);
     }
 
     function deployAnalyzer(address eoaAdmin) internal {
@@ -27,6 +29,14 @@ contract SystemDeployer {
         address messageBusProxy = deployProxy(address(messageBus), eoaAdmin, callData);
 
         emit SystemContractDeployed("MessageBus", messageBusProxy);
+    }
+
+    function deployPublicCallbacks(address eoaAdmin) internal {
+        PublicCallbacks publicCallbacks = new PublicCallbacks();
+        bytes memory callData = abi.encodeWithSelector(publicCallbacks.initialize.selector);
+        address publicCallbacksProxy = deployProxy(address(publicCallbacks), eoaAdmin, callData);
+
+        emit SystemContractDeployed("PublicCallbacks", publicCallbacksProxy);
     }
 
     function deployProxy(address _logic, address _admin, bytes memory _data) internal returns (address proxyAddress) {

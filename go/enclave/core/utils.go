@@ -61,8 +61,21 @@ func LogMethodDuration(logger gethlog.Logger, stopWatch *measure.Stopwatch, msg 
 }
 
 // GetTxSigner returns the address that signed a transaction
-func GetTxSigner(tx *common.L2Tx) (gethcommon.Address, error) {
+func GetExternalTxSigner(tx *types.Transaction) (gethcommon.Address, error) {
 	from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
+	}
+
+	return from, nil
+}
+
+func GetTxSigner(tx *common.L2PricedTransaction) (gethcommon.Address, error) {
+	if tx.FromSelf {
+		return common.MaskedSender(*tx.Tx.To()), nil
+	}
+
+	from, err := types.Sender(types.LatestSignerForChainID(tx.Tx.ChainId()), tx.Tx)
 	if err != nil {
 		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
 	}
