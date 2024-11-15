@@ -555,31 +555,22 @@ func createSKRequestHandler(walletExt *services.Services, conn UserConn) {
 
 func deleteSKRequestHandler(walletExt *services.Services, conn UserConn) {
 	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		err := walletExt.Storage.RemoveSessionKey(user.ID)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
+		res, err := walletExt.SKManager.DeleteSessionKey(user)
+		return []byte{boolToByte(res)}, err
 	})
 }
 
 func activateSKRequestHandler(walletExt *services.Services, conn UserConn) {
 	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		err := walletExt.Storage.ActivateSessionKey(user.ID, true)
-		if err != nil {
-			return nil, err
-		}
-		return []byte{1}, nil
+		res, err := walletExt.SKManager.ActivateSessionKey(user)
+		return []byte{boolToByte(res)}, err
 	})
 }
 
 func deactivateSKRequestHandler(walletExt *services.Services, conn UserConn) {
 	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		err := walletExt.Storage.ActivateSessionKey(user.ID, false)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
+		res, err := walletExt.SKManager.DeactivateSessionKey(user)
+		return []byte{boolToByte(res)}, err
 	})
 }
 
@@ -614,4 +605,11 @@ func withUser(walletExt *services.Services, conn UserConn, withUser func(user *c
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
+}
+
+func boolToByte(res bool) byte {
+	if res {
+		return 1
+	}
+	return 0
 }

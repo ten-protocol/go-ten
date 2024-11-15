@@ -23,6 +23,9 @@ import (
 // From the POV of the Ten network - a session key is a normal account key
 type SKManager interface {
 	CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error)
+	ActivateSessionKey(user *common.GWUser) (bool, error)
+	DeactivateSessionKey(user *common.GWUser) (bool, error)
+	DeleteSessionKey(user *common.GWUser) (bool, error)
 	SignTx(ctx context.Context, user *common.GWUser, input *types.Transaction) (*types.Transaction, error)
 }
 
@@ -42,6 +45,9 @@ func NewSKManager(storage storage.UserStorage, config *common.Config, logger get
 
 // CreateSessionKey - generates a fresh key and signs over the VK of the user with it
 func (m *skManager) CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error) {
+	if user.SessionKey != nil {
+		return nil, fmt.Errorf("user already has a session key")
+	}
 	sk, err := m.createSK(user)
 	if err != nil {
 		return nil, err
@@ -51,6 +57,48 @@ func (m *skManager) CreateSessionKey(user *common.GWUser) (*common.GWSessionKey,
 		return nil, err
 	}
 	return sk, nil
+}
+
+func (m *skManager) ActivateSessionKey(user *common.GWUser) (bool, error) {
+	if user.SessionKey == nil {
+		return false, fmt.Errorf("please create a session key")
+	}
+	if user.ActiveSK {
+		return false, fmt.Errorf("session key already activated")
+	}
+	err := m.storage.ActivateSessionKey(user.ID, true)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (m *skManager) DeactivateSessionKey(user *common.GWUser) (bool, error) {
+	if user.SessionKey == nil {
+		return false, fmt.Errorf("please create a session key")
+	}
+	if !user.ActiveSK {
+		return false, fmt.Errorf("session key is not activated")
+	}
+	err := m.storage.ActivateSessionKey(user.ID, false)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (m *skManager) DeleteSessionKey(user *common.GWUser) (bool, error) {
+	if user.SessionKey == nil {
+		return false, fmt.Errorf("please create a session key")
+	}
+	if user.ActiveSK {
+		return false, fmt.Errorf("session key is active. Please deactivate first")
+	}
+	err := m.storage.RemoveSessionKey(user.ID)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (m *skManager) createSK(user *common.GWUser) (*common.GWSessionKey, error) {
