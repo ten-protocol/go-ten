@@ -1,6 +1,15 @@
 package simulation
 
 import (
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
+	"time"
+)
+
+/
+
+import (
 	"testing"
 	"time"
 

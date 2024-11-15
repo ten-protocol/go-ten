@@ -34,7 +34,7 @@ func TestBlobResolver(t *testing.T) {
 
 // TestSepoliaBlobResolver checks the public node sepolia beacon APIs work as expected
 func TestSepoliaBlobResolver(t *testing.T) {
-	t.Skipf("Test will occasionally fail due to the time wi ad ndow landing on a block with no blobs")
+	t.Skipf("Test will occasionally not pass due to the time window landing on a block with no blobs")
 	// l1_beacon_url for sepolia
 	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), "https://ethereum-sepolia-beacon-api.publicnode.com")
 	// l1_blob_archive_url for sepolia
