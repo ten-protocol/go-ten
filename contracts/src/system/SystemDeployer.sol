@@ -12,8 +12,7 @@ contract SystemDeployer {
 
     constructor(address eoaAdmin) {
        deployAnalyzer(eoaAdmin);
-       deployFees(eoaAdmin, 100);
-       address feesProxy = deployFees(eoaAdmin, 100);
+       address feesProxy = deployFees(eoaAdmin, 0);
        deployMessageBus(eoaAdmin, feesProxy);
        deployPublicCallbacks(eoaAdmin);
     }
