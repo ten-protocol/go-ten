@@ -6,6 +6,7 @@ import "./Structs.sol";
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "../system/Fees.sol";
 
 contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
 
@@ -14,8 +15,9 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         _disableInitializers();
     }
 
-    function initialize(address caller) public initializer {
+    function initialize(address caller, address feesAddress) public initializer {
         __Ownable_init(caller);
+        fees = IFees(feesAddress);
     }
 
     // Since this contract exists on the L2, when messages are added from the L1, we can have the from address be the same as self.
@@ -24,10 +26,6 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         address maskedSelf = address(uint160(address(this)) - 1);
         require(msg.sender == owner() || msg.sender == maskedSelf, "Not owner or self");
         _;
-    }
-
-    function messageFee() internal virtual returns (uint256) {
-        return 0;
     }
 
     // This mapping contains the block timestamps where messages become valid
@@ -41,6 +39,7 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
     // Whenever a message is published, this sequence number increments.
     // This gives ordering to messages, guaranteed by us.
     mapping(address => uint64) addressSequences;
+    IFees fees;
 
     function incrementSequence(
         address sender
@@ -66,6 +65,17 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         require(ok, "failed sending value");
     }
 
+    function getFixedDataLength() internal pure returns (uint256) {
+        return 4 + // nonce (uint32)
+               4 + // topic (uint32) 
+               1 + // consistencyLevel (uint8)
+               8; // sequence (uint64)
+    }
+
+    function getMessageFee(uint256 payloadLength) internal view returns (uint256) {
+        return fees.messageFee(payloadLength + getFixedDataLength());
+    }
+
     // This method is called from contracts to publish messages to the other linked message bus.
     // nonce - This is provided and serves as deduplication nonce. It can also be used to group a batch of messages together.
     // topic - This is the topic for which the payload is published.
@@ -79,9 +89,10 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         uint32 topic,
         bytes calldata payload,
         uint8 consistencyLevel
-    ) external override returns (uint64 sequence) {
-        //TODO: implement messageFee mechanism.
-        //require(msg.value >= messageFee());
+    ) external payable override returns (uint64 sequence) {
+        if (address(fees) != address(0)) { // No fee required for L1 to L2 messages.
+            require(msg.value >= getMessageFee(payload.length), "Insufficient funds to publish message");
+        }
 
         sequence = incrementSequence(msg.sender);
         emit LogMessagePublished(
