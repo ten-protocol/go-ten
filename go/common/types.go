@@ -49,6 +49,7 @@ type (
 		Tx             *L2Tx
 		PublishingCost *big.Int
 		FromSelf       bool
+		SystemDeployer bool // Free contract construction
 	}
 	L2PricedTransactions []L2PricedTransaction
 

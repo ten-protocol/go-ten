@@ -16,7 +16,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
-	"github.com/ten-protocol/go-ten/go/enclave/system"
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	"github.com/ten-protocol/go-ten/go/common/compression"
@@ -168,22 +167,13 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 	// this ensures that there is enough gap so that batch 1 is issued before batch 2
 	time.Sleep(time.Second)
 
-	wallet := system.GetPlaceholderWallet(s.chainConfig.ChainID, s.logger)
-	systemDeployerTx, err := system.SystemDeployerInitTransaction(wallet, s.logger, wallet.Address())
-	if err != nil {
-		s.logger.Crit("[SystemContracts] Failed to create system deployer contract", log.ErrKey, err)
-		return err
-	}
-
 	// produce batch #2 which has the message bus and any other system contracts
-	cb, err := s.produceBatch(
+	_, err = s.produceBatch(
 		ctx,
 		big.NewInt(0).Add(batch.Header.SequencerOrderNo, big.NewInt(1)),
 		block.Hash(),
 		batch.Hash(),
-		common.L2Transactions{
-			systemDeployerTx,
-		},
+		common.L2Transactions{},
 		uint64(time.Now().Unix()),
 		false,
 	)
@@ -196,19 +186,6 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 		}
 		return fmt.Errorf("[SystemContracts] failed producing batch. Cause: %w", err)
 	}
-
-	if len(cb.TxExecResults) == 0 || cb.TxExecResults[0].Receipt.TxHash.Hex() != systemDeployerTx.Hash().Hex() {
-		err = fmt.Errorf("failed to instantiate system contracts: expected receipt for transaction %s, but no receipts found in batch", systemDeployerTx.Hash().Hex())
-		s.logger.Crit(err.Error()) // Fatal error, the node cannot be started.
-	}
-
-	systemAddresses, err := system.DeriveAddresses(cb.TxExecResults[0].Receipt)
-	if err != nil {
-		s.logger.Crit("Failed to derive system contract addresses", log.ErrKey, err)
-		return err
-	}
-	s.logger.Info("[SystemContracts] Deployer initialized", "transactionPostProcessor", systemAddresses["TransactionPostProcessor"])
-	s.logger.Info("[SystemContracts] Message Bus Contract minted successfully", "address", systemAddresses["MessageBus"])
 
 	return nil
 }

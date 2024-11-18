@@ -96,6 +96,22 @@ func (executor *batchExecutor) filterTransactionsWithSufficientFunds(ctx context
 	block, _ := executor.storage.FetchBlock(ctx, context.BlockPtr)
 
 	for _, tx := range context.Transactions {
+		// Transactions that are created inside the enclave can have no GasPrice set.
+		// External transactions are always required to have a gas price set. Thus we filter
+		// those transactions for separate processing than the normal ones and we run them through the EVM
+		// with a flag that disables the baseFee logic and wont fail them for having price lower than the base fee.
+		isFreeTransaction := tx.GasFeeCap().Cmp(gethcommon.Big0) == 0
+		isFreeTransaction = isFreeTransaction && tx.GasPrice().Cmp(gethcommon.Big0) == 0
+
+		if isFreeTransaction {
+			freeTransactions = append(freeTransactions, common.L2PricedTransaction{
+				Tx:             tx,
+				PublishingCost: big.NewInt(0),
+				FromSelf:       true,
+			})
+			continue
+		}
+
 		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
 		if err != nil {
 			executor.logger.Error("Unable to extract sender for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
@@ -109,20 +125,6 @@ func (executor *batchExecutor) filterTransactionsWithSufficientFunds(ctx context
 			continue
 		}
 
-		// Transactions that are created inside the enclave can have no GasPrice set.
-		// External transactions are always required to have a gas price set. Thus we filter
-		// those transactions for separate processing than the normal ones and we run them through the EVM
-		// with a flag that disables the baseFee logic and wont fail them for having price lower than the base fee.
-		isFreeTransaction := tx.GasFeeCap().Cmp(gethcommon.Big0) == 0
-		isFreeTransaction = isFreeTransaction && tx.GasPrice().Cmp(gethcommon.Big0) == 0
-
-		if isFreeTransaction {
-			freeTransactions = append(freeTransactions, common.L2PricedTransaction{
-				Tx:             tx,
-				PublishingCost: big.NewInt(0),
-			})
-			continue
-		}
 		if accBalance.Cmp(uint256.MustFromBig(cost)) == -1 {
 			executor.logger.Info(fmt.Sprintf("insufficient account balance for tx - want: %d have: %d", cost, accBalance), log.TxKey, tx.Hash(), "addr", sender.Hex())
 			continue
@@ -187,6 +189,11 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 
 	transactionsToProcess, freeTransactions := executor.filterTransactionsWithSufficientFunds(ctx, stateDB, context)
 
+	systemDeployerOffset, systemContractCreationResult, err := executor.processSystemDeployer(ctx, stateDB, batch, context)
+	if err != nil {
+		return nil, fmt.Errorf("could not deploy system contracts. Cause: %w", err)
+	}
+
 	xchainTxs := make(common.L2PricedTransactions, 0)
 	for _, xTx := range crossChainTransactions {
 		xchainTxs = append(xchainTxs, common.L2PricedTransaction{
@@ -199,7 +206,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	syntheticTransactions := append(xchainTxs, freeTransactions...)
 
 	// fromTxIndex - Here we start from the 0 index. This will be the same for a validator.
-	successfulTxs, excludedTxs, txResults, err := executor.processTransactions(ctx, batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
+	successfulTxs, excludedTxs, txResults, err := executor.processTransactions(ctx, batch, systemDeployerOffset, transactionsToProcess, stateDB, context.ChainConfig, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
@@ -250,17 +257,21 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}
 
 	// Create and process public callback transaction if needed
-	onBatchTxOffset, err = executor.executePublicCallbacks(ctx, stateDB, context, batch, onBatchTxOffset)
+	onBatchTxOffset, err = executor.executePublicCallbacks(ctx, stateDB, context, batch, len(successfulTxs)+onBatchTxOffset)
 	if err != nil {
 		return nil, fmt.Errorf("could not execute public callbacks. Cause: %w", err)
 	}
 
-	ccSuccessfulTxs, _, ccTxResults, err := executor.processTransactions(ctx, batch, len(successfulTxs)+onBatchTxOffset, syntheticTransactions, stateDB, context.ChainConfig, true)
+	ccSuccessfulTxs, _, ccTxResults, err := executor.processTransactions(ctx, batch, onBatchTxOffset, syntheticTransactions, stateDB, context.ChainConfig, true)
 	if err != nil {
 		return nil, err
 	}
 	if len(ccSuccessfulTxs) != len(syntheticTransactions) {
 		return nil, fmt.Errorf("failed cross chain transactions")
+	}
+
+	if len(systemContractCreationResult) > 0 {
+		ccTxResults = append(ccTxResults, systemContractCreationResult...)
 	}
 
 	ccReceipts := make(types.Receipts, 0)
@@ -320,7 +331,11 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 		// Further restarts will call into Load() which will take the receipts for batch number 2 (which should never be deleted)
 		// and reinitialize them.
 		if err == nil && batch.Header.SequencerOrderNo.Uint64() == 2 {
-			return h, executor.initializeSystemContracts(ctx, batch, allReceipts)
+			if len(systemContractCreationResult) == 0 {
+				return h, fmt.Errorf("failed to instantiate system contracts: expected receipt for system deployer transaction, but no receipts found in batch")
+			}
+
+			return h, executor.initializeSystemContracts(ctx, batch, systemContractCreationResult[0].Receipt)
 		}
 
 		return h, err
@@ -333,11 +348,42 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}, nil
 }
 
+func (executor *batchExecutor) processSystemDeployer(ctx context.Context, stateDB *state.StateDB, batch *core.Batch, context *BatchExecutionContext) (int, []*core.TxExecResult, error) {
+	if context.SequencerNo.Uint64() != 2 {
+		return 0, nil, nil
+	}
+
+	systemDeployerTx, err := system.SystemDeployerInitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader())
+	if err != nil {
+		executor.logger.Crit("[SystemContracts] Failed to create system deployer contract", log.ErrKey, err)
+		return 0, nil, err
+	}
+
+	transactions := common.L2PricedTransactions{
+		common.L2PricedTransaction{
+			Tx:             systemDeployerTx,
+			PublishingCost: big.NewInt(0),
+			SystemDeployer: true,
+		},
+	}
+
+	successfulTxs, _, result, err := executor.processTransactions(ctx, batch, 0, transactions, stateDB, context.ChainConfig, true)
+	if err != nil {
+		return 0, nil, fmt.Errorf("could not process system deployer transaction. Cause: %w", err)
+	}
+
+	if err = executor.verifySyntheticTransactionsSuccess(transactions, successfulTxs, result); err != nil {
+		return 0, nil, fmt.Errorf("batch computation failed due to system deployer reverting. Cause: %w", err)
+	}
+
+	return 1, result, nil
+}
+
 func (executor *batchExecutor) executePublicCallbacks(ctx context.Context, stateDB *state.StateDB, context *BatchExecutionContext, batch *core.Batch, txOffset int) (int, error) {
 	// Create and process public callback transaction if needed
 	publicCallbackTx, err := executor.systemContracts.CreatePublicCallbackHandlerTransaction(ctx, stateDB)
 	if err != nil {
-		return 0, fmt.Errorf("could not create public callback transaction. Cause: %w", err)
+		return txOffset, fmt.Errorf("could not create public callback transaction. Cause: %w", err)
 	}
 
 	if publicCallbackTx != nil {
@@ -350,19 +396,19 @@ func (executor *batchExecutor) executePublicCallbacks(ctx context.Context, state
 		}
 		publicCallbackSuccessfulTx, _, publicCallbackTxResult, err := executor.processTransactions(ctx, batch, txOffset, publicCallbackPricedTxes, stateDB, context.ChainConfig, true)
 		if err != nil {
-			return 0, fmt.Errorf("could not process public callback transaction. Cause: %w", err)
+			return txOffset, fmt.Errorf("could not process public callback transaction. Cause: %w", err)
 		}
 		// Ensure the public callback transaction is successful. It should NEVER fail.
 		if err = executor.verifySyntheticTransactionsSuccess(publicCallbackPricedTxes, publicCallbackSuccessfulTx, publicCallbackTxResult); err != nil {
-			return 0, fmt.Errorf("batch computation failed due to public callback reverting. Cause: %w", err)
+			return txOffset, fmt.Errorf("batch computation failed due to public callback reverting. Cause: %w", err)
 		}
-		return len(publicCallbackSuccessfulTx), nil
+		return len(publicCallbackSuccessfulTx) + txOffset, nil
 	}
-	return 0, nil
+	return txOffset, nil
 }
 
-func (executor *batchExecutor) initializeSystemContracts(_ context.Context, batch *core.Batch, receipts types.Receipts) error {
-	return executor.systemContracts.Initialize(batch, receipts, executor.crossChainProcessors.Local)
+func (executor *batchExecutor) initializeSystemContracts(_ context.Context, batch *core.Batch, receipts *types.Receipt) error {
+	return executor.systemContracts.Initialize(batch, *receipts, executor.crossChainProcessors.Local)
 }
 
 func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Batch) ([]*core.TxExecResult, error) {

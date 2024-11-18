@@ -3,6 +3,7 @@ package evm
 import (
 	"math/big"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -19,9 +20,13 @@ func TransactionToMessageWithOverrides(
 	header *types.Header,
 ) (*core.Message, error) {
 	// Override from can be used for calling system contracts from underivable addresses like all zeroes
-	if tx.FromSelf {
+	if tx.SystemDeployer {
 		msg := TransactionToMessageNoSender(tx.Tx, header.BaseFee)
-		msg.From = common.MaskedSender(*msg.To)
+		msg.From = common.MaskedSender(gethcommon.BigToAddress(big.NewInt(tx.Tx.ChainId().Int64())))
+		return msg, nil
+	} else if tx.FromSelf {
+		msg := TransactionToMessageNoSender(tx.Tx, header.BaseFee)
+		msg.From = common.MaskedSender(*tx.Tx.To())
 		return msg, nil
 	}
 	return core.TransactionToMessage(tx.Tx, types.MakeSigner(config, header.Number, header.Time), header.BaseFee)
