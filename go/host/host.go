@@ -229,7 +229,7 @@ func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error)
 		}
 	}
 
-	// fetch all enclave status check status of each
+	// fetch all enclaves and check status of each
 	enclaveStatus := make([]common.Status, 0)
 	for _, client := range h.services.Enclaves().GetEnclaveClients() {
 		status, err := client.Status(ctx)
