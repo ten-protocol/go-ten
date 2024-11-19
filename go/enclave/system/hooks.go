@@ -11,26 +11,35 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/ten-protocol/go-ten/contracts/generated/PublicCallbacks"
 	"github.com/ten-protocol/go-ten/contracts/generated/TransactionPostProcessor"
 	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
-	"github.com/ten-protocol/go-ten/go/enclave/evm"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
 var (
 	transactionPostProcessorABI, _ = abi.JSON(strings.NewReader(TransactionPostProcessor.TransactionPostProcessorMetaData.ABI))
+	publicCallbacksABI, _          = abi.JSON(strings.NewReader(PublicCallbacks.PublicCallbacksMetaData.ABI))
 	ErrNoTransactions              = fmt.Errorf("no transactions")
 )
 
 type SystemContractCallbacks interface {
+	// Getters
 	GetOwner() gethcommon.Address
+	PublicCallbackHandler() *gethcommon.Address
+	TransactionPostProcessor() *gethcommon.Address
+
+	// Initialization
 	Initialize(batch *core.Batch, receipts types.Receipts, msgBusManager SystemContractsInitializable) error
 	Load() error
+
+	// Usage
 	CreateOnBatchEndTransaction(ctx context.Context, stateDB *state.StateDB, transactions common.L2Transactions, receipts types.Receipts) (*types.Transaction, error)
-	TransactionPostProcessor() *gethcommon.Address
+	CreatePublicCallbackHandlerTransaction(ctx context.Context, stateDB *state.StateDB) (*types.Transaction, error)
 	VerifyOnBlockReceipt(transactions common.L2Transactions, receipt *types.Receipt) (bool, error)
 }
 
@@ -42,6 +51,7 @@ type systemContractCallbacks struct {
 	transactionsPostProcessorAddress *gethcommon.Address
 	ownerWallet                      wallet.Wallet
 	storage                          storage.Storage
+	systemAddresses                  SystemContractAddresses
 
 	logger gethlog.Logger
 }
@@ -52,6 +62,7 @@ func NewSystemContractCallbacks(ownerWallet wallet.Wallet, storage storage.Stora
 		ownerWallet:                      ownerWallet,
 		logger:                           logger,
 		storage:                          storage,
+		systemAddresses:                  make(SystemContractAddresses),
 	}
 }
 
@@ -61,6 +72,10 @@ func (s *systemContractCallbacks) TransactionPostProcessor() *gethcommon.Address
 
 func (s *systemContractCallbacks) GetOwner() gethcommon.Address {
 	return s.ownerWallet.Address()
+}
+
+func (s *systemContractCallbacks) PublicCallbackHandler() *gethcommon.Address {
+	return s.systemAddresses["PublicCallbacks"]
 }
 
 func (s *systemContractCallbacks) Load() error {
@@ -105,6 +120,7 @@ func (s *systemContractCallbacks) initializeRequiredAddresses(addresses SystemCo
 	}
 
 	s.transactionsPostProcessorAddress = addresses["TransactionsPostProcessor"]
+	s.systemAddresses = addresses
 
 	return nil
 }
@@ -138,6 +154,34 @@ func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipts types.R
 	return s.initializeRequiredAddresses(addresses)
 }
 
+func (s *systemContractCallbacks) CreatePublicCallbackHandlerTransaction(ctx context.Context, l2State *state.StateDB) (*types.Transaction, error) {
+	if s.PublicCallbackHandler() == nil {
+		s.logger.Debug("CreatePublicCallbackHandlerTransaction: PublicCallbackHandler is nil, skipping transaction creation")
+		return nil, nil
+	}
+
+	nonceForSyntheticTx := l2State.GetNonce(common.MaskedSender(*s.PublicCallbackHandler()))
+	s.logger.Debug("CreatePublicCallbackHandlerTransaction: Retrieved nonce for synthetic transaction", "nonce", nonceForSyntheticTx)
+
+	data, err := publicCallbacksABI.Pack("executeNextCallbacks")
+	if err != nil {
+		s.logger.Error("CreatePublicCallbackHandlerTransaction: Failed packing executeNextCallback data", "error", err)
+		return nil, fmt.Errorf("failed packing executeNextCallback() %w", err)
+	}
+
+	tx := &types.LegacyTx{
+		Nonce: nonceForSyntheticTx,
+		Value: gethcommon.Big0,
+		Gas:   params.MaxGasLimit,
+		Data:  data,
+		To:    s.PublicCallbackHandler(),
+	}
+
+	formedTx := types.NewTx(tx)
+	s.logger.Info("CreatePublicCallbackHandlerTransaction: Successfully created transaction", "transactionHash", formedTx.Hash().Hex())
+	return formedTx, nil
+}
+
 func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Context, l2State *state.StateDB, transactions common.L2Transactions, receipts types.Receipts) (*types.Transaction, error) {
 	if s.transactionsPostProcessorAddress == nil {
 		s.logger.Debug("CreateOnBatchEndTransaction: TransactionsPostProcessorAddress is nil, skipping transaction creation")
@@ -149,7 +193,7 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 		return nil, ErrNoTransactions
 	}
 
-	nonceForSyntheticTx := l2State.GetNonce(evm.MaskedSender(*s.transactionsPostProcessorAddress))
+	nonceForSyntheticTx := l2State.GetNonce(common.MaskedSender(*s.transactionsPostProcessorAddress))
 	s.logger.Debug("CreateOnBatchEndTransaction: Retrieved nonce for synthetic transaction", "nonce", nonceForSyntheticTx)
 
 	solidityTransactions := make([]TransactionPostProcessor.StructsTransaction, 0)
@@ -187,7 +231,7 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 			transaction.To = gethcommon.Address{} // Zero address - contract deployment
 		}
 
-		sender, err := core.GetTxSigner(tx)
+		sender, err := core.GetExternalTxSigner(tx)
 		if err != nil {
 			s.logger.Error("CreateOnBatchEndTransaction: Failed to recover sender address", "error", err, "transactionHash", tx.Hash().Hex())
 			return nil, fmt.Errorf("failed to recover sender address: %w", err)
@@ -207,21 +251,15 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 	tx := &types.LegacyTx{
 		Nonce:    nonceForSyntheticTx,
 		Value:    gethcommon.Big0,
-		Gas:      500_000_000,
+		Gas:      params.MaxGasLimit,
 		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 		Data:     data,
 		To:       s.transactionsPostProcessorAddress,
 	}
 
-	s.logger.Debug("CreateOnBatchEndTransaction: Signing transaction", "to", s.transactionsPostProcessorAddress.Hex(), "nonce", nonceForSyntheticTx)
-	signedTx, err := s.ownerWallet.SignTransaction(tx)
-	if err != nil {
-		s.logger.Error("CreateOnBatchEndTransaction: Failed signing transaction", "error", err)
-		return nil, fmt.Errorf("failed signing transaction %w", err)
-	}
-
-	s.logger.Info("CreateOnBatchEndTransaction: Successfully created signed transaction", "transactionHash", signedTx.Hash().Hex())
-	return signedTx, nil
+	formedTx := types.NewTx(tx)
+	s.logger.Info("CreateOnBatchEndTransaction: Successfully created signed transaction", "transactionHash", formedTx.Hash().Hex())
+	return formedTx, nil
 }
 
 func (s *systemContractCallbacks) VerifyOnBlockReceipt(transactions common.L2Transactions, receipt *types.Receipt) (bool, error) {

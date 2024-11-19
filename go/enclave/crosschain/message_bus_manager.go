@@ -10,7 +10,6 @@ import (
 	"github.com/holiman/uint256"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
-	"github.com/ten-protocol/go-ten/go/enclave/evm"
 	"github.com/ten-protocol/go-ten/go/enclave/system"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -59,7 +58,7 @@ func NewObscuroMessageBusManager(
 }
 
 func (m *MessageBusManager) IsSyntheticTransaction(transaction *common.L2Tx) bool {
-	sender, err := core.GetTxSigner(transaction)
+	sender, err := core.GetExternalTxSigner(transaction)
 	if err != nil {
 		return false
 	}
@@ -222,7 +221,7 @@ func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, mes
 
 	// Get current nonce for this stateDB.
 	// There can be forks thus we cannot trust the wallet.
-	startingNonce := rollupState.GetNonce(evm.MaskedSender(*m.messageBusAddress))
+	startingNonce := rollupState.GetNonce(common.MaskedSender(*m.messageBusAddress))
 
 	signedTransactions := make(types.Transactions, 0)
 	for idx, message := range messages {

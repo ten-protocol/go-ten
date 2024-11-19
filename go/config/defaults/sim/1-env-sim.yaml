@@ -2,12 +2,11 @@ host:
    debug:
       enableDebugNamespace: true
    log:
-      level: 4
-      path: ""
-
+     level: 1
+     path: ""
 enclave:
    debug:
       enableDebugNamespace: true
    log:
-     level: 4
+     level: 1
      path: ""

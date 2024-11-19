@@ -46,6 +46,7 @@ type host struct {
 	// l2MessageBusAddress is fetched from the enclave but cache it here because it never changes
 	l2MessageBusAddress             *gethcommon.Address
 	transactionPostProcessorAddress gethcommon.Address
+	publicSystemContracts           map[string]gethcommon.Address
 	newHeads                        chan *common.BatchHeader
 }
 
@@ -73,8 +74,9 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		logger:         logger,
 		metricRegistry: regMetrics,
 
-		stopControl: stopcontrol.New(),
-		newHeads:    make(chan *common.BatchHeader),
+		stopControl:           stopcontrol.New(),
+		newHeads:              make(chan *common.BatchHeader),
+		publicSystemContracts: make(map[string]gethcommon.Address),
 	}
 
 	enclGuardians := make([]*enclave.Guardian, 0, len(enclaveClients))
@@ -240,6 +242,7 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		}
 		h.l2MessageBusAddress = &publicCfg.L2MessageBusAddress
 		h.transactionPostProcessorAddress = publicCfg.TransactionPostProcessorAddress
+		h.publicSystemContracts = publicCfg.PublicSystemContracts
 	}
 
 	return &common.TenNetworkInfo{
@@ -250,6 +253,7 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		L2MessageBusAddress:             *h.l2MessageBusAddress,
 		ImportantContracts:              h.services.L1Publisher().GetImportantContracts(),
 		TransactionPostProcessorAddress: h.transactionPostProcessorAddress,
+		PublicSystemContracts:           h.publicSystemContracts,
 	}, nil
 }
 

@@ -47,7 +47,6 @@ type sequencer struct {
 	batchProducer     components.BatchExecutor
 	batchRegistry     components.BatchRegistry
 	rollupProducer    components.RollupProducer
-	rollupConsumer    components.RollupConsumer
 	rollupCompression *components.RollupCompression
 	gethEncoding      gethencoding.EncodingService
 
@@ -68,7 +67,6 @@ func NewSequencer(
 	batchExecutor components.BatchExecutor,
 	registry components.BatchRegistry,
 	rollupProducer components.RollupProducer,
-	rollupConsumer components.RollupConsumer,
 	rollupCompression *components.RollupCompression,
 	gethEncodingService gethencoding.EncodingService,
 	logger gethlog.Logger,
@@ -86,7 +84,6 @@ func NewSequencer(
 		batchProducer:          batchExecutor,
 		batchRegistry:          registry,
 		rollupProducer:         rollupProducer,
-		rollupConsumer:         rollupConsumer,
 		rollupCompression:      rollupCompression,
 		gethEncoding:           gethEncodingService,
 		logger:                 logger,

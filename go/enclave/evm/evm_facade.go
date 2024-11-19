@@ -57,6 +57,12 @@ func ExecuteTransactions(
 	logger gethlog.Logger,
 ) (map[common.TxHash]*core.TxExecResult, error) {
 	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, logger)
+	// If there is noBaseFee for the batch, we set the gas limit to the max as
+	// we are working with synthetic transactions that either have predefined contracts
+	// or contract enforced gas limits.
+	if noBaseFee {
+		batchGasLimit = params.MaxGasLimit
+	}
 	gp := gethcore.GasPool(batchGasLimit)
 	zero := uint64(0)
 	usedGas := &zero
@@ -66,6 +72,9 @@ func ExecuteTransactions(
 	if err != nil {
 		logger.Error("Could not convert to eth header", log.ErrKey, err)
 		return nil, err
+	}
+	if noBaseFee {
+		ethHeader.GasLimit = batchGasLimit
 	}
 
 	hash := header.Hash()
@@ -132,7 +141,7 @@ func executeTransaction(
 ) *core.TxExecResult {
 	var createdContracts []*gethcommon.Address
 	rules := cc.Rules(big.NewInt(0), true, 0)
-	from, err := core.GetTxSigner(t.Tx)
+	from, err := core.GetTxSigner(&t)
 	if err != nil {
 		return &core.TxExecResult{Tx: t.Tx, Err: err}
 	}

@@ -193,7 +193,6 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 			batchExecutor,
 			registry,
 			rProducer,
-			rConsumer,
 			rollupCompression,
 			gethEncodingService,
 			logger,
@@ -217,7 +216,6 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 			blockProcessor,
 			batchExecutor,
 			registry,
-			rConsumer,
 			chainConfig,
 			storage,
 			sigVerifier,
@@ -878,10 +876,17 @@ func (e *enclaveImpl) EnclavePublicConfig(context.Context) (*common.EnclavePubli
 	if analyzerAddress == nil {
 		analyzerAddress = &gethcommon.Address{}
 	}
+	publicCallbacksAddress := e.scb.PublicCallbackHandler()
+	if publicCallbacksAddress == nil {
+		publicCallbacksAddress = &gethcommon.Address{}
+	}
 
 	return &common.EnclavePublicConfig{
 		L2MessageBusAddress:             address,
 		TransactionPostProcessorAddress: *analyzerAddress,
+		PublicSystemContracts: map[string]gethcommon.Address{
+			"PublicCallbacks": *publicCallbacksAddress,
+		},
 	}, nil
 }
 

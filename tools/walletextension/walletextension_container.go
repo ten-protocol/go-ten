@@ -92,6 +92,9 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 			Namespace: "debug",
 			Service:   rpcapi.NewDebugAPI(walletExt),
 		}, {
+			Namespace: "sessionkeys",
+			Service:   rpcapi.NewSessionKeyAPI(walletExt),
+		}, {
 			Namespace: "eth",
 			Service:   rpcapi.NewFilterAPI(walletExt),
 		}, {

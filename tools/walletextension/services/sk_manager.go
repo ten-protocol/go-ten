@@ -3,8 +3,8 @@ package services
 import (
 	"context"
 	"fmt"
+	"math/big"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -23,7 +23,10 @@ import (
 // From the POV of the Ten network - a session key is a normal account key
 type SKManager interface {
 	CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error)
-	SignTx(ctx context.Context, user *common.GWUser, input hexutil.Bytes) (hexutil.Bytes, error)
+	ActivateSessionKey(user *common.GWUser) (bool, error)
+	DeactivateSessionKey(user *common.GWUser) (bool, error)
+	DeleteSessionKey(user *common.GWUser) (bool, error)
+	SignTx(ctx context.Context, user *common.GWUser, input *types.Transaction) (*types.Transaction, error)
 }
 
 type skManager struct {
@@ -42,6 +45,9 @@ func NewSKManager(storage storage.UserStorage, config *common.Config, logger get
 
 // CreateSessionKey - generates a fresh key and signs over the VK of the user with it
 func (m *skManager) CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error) {
+	if user.SessionKey != nil {
+		return nil, fmt.Errorf("user already has a session key")
+	}
 	sk, err := m.createSK(user)
 	if err != nil {
 		return nil, err
@@ -51,6 +57,48 @@ func (m *skManager) CreateSessionKey(user *common.GWUser) (*common.GWSessionKey,
 		return nil, err
 	}
 	return sk, nil
+}
+
+func (m *skManager) ActivateSessionKey(user *common.GWUser) (bool, error) {
+	if user.SessionKey == nil {
+		return false, fmt.Errorf("please create a session key")
+	}
+	if user.ActiveSK {
+		return false, fmt.Errorf("session key already activated")
+	}
+	err := m.storage.ActivateSessionKey(user.ID, true)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (m *skManager) DeactivateSessionKey(user *common.GWUser) (bool, error) {
+	if user.SessionKey == nil {
+		return false, fmt.Errorf("please create a session key")
+	}
+	if !user.ActiveSK {
+		return false, fmt.Errorf("session key is not activated")
+	}
+	err := m.storage.ActivateSessionKey(user.ID, false)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (m *skManager) DeleteSessionKey(user *common.GWUser) (bool, error) {
+	if user.SessionKey == nil {
+		return false, fmt.Errorf("please create a session key")
+	}
+	if user.ActiveSK {
+		return false, fmt.Errorf("session key is active. Please deactivate first")
+	}
+	err := m.storage.RemoveSessionKey(user.ID)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (m *skManager) createSK(user *common.GWUser) (*common.GWSessionKey, error) {
@@ -92,17 +140,16 @@ func (m *skManager) createSK(user *common.GWUser) (*common.GWSessionKey, error) 
 	}, nil
 }
 
-func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, input hexutil.Bytes) (hexutil.Bytes, error) {
-	tx := new(types.Transaction)
-	if err := tx.UnmarshalBinary(input); err != nil {
-		return hexutil.Bytes{}, err
-	}
+func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, tx *types.Transaction) (*types.Transaction, error) {
+	prvKey := user.SessionKey.PrivateKey.ExportECDSA()
+	signer := types.NewCancunSigner(big.NewInt(int64(m.config.TenChainID)))
 
-	signer := types.NewLondonSigner(tx.ChainId())
-
-	tx, err := types.SignTx(tx, signer, user.SessionKey.PrivateKey.ExportECDSA())
+	stx, err := types.SignTx(tx, signer, prvKey)
 	if err != nil {
-		return hexutil.Bytes{}, err
+		return nil, err
 	}
-	return tx.MarshalBinary()
+
+	m.logger.Debug("Signed transaction with session key", "stxHash", stx.Hash().Hex())
+
+	return stx, nil
 }

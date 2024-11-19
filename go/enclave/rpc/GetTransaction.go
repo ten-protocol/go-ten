@@ -41,7 +41,7 @@ func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction]
 		return err
 	}
 
-	sender, err := core.GetTxSigner(tx)
+	sender, err := core.GetExternalTxSigner(tx)
 	if err != nil {
 		return fmt.Errorf("could not recover the tx %s sender. Cause: %w", tx.Hash(), err)
 	}

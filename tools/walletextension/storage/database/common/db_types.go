@@ -1,8 +1,9 @@
 package common
 
 import (
-	"crypto/x509"
 	"fmt"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -50,7 +51,7 @@ func (userDB *GWUserDB) ToGWUser() (*wecommon.GWUser, error) {
 	}
 
 	if userDB.SessionKey != nil {
-		ecdsaPrivateKey, err := x509.ParseECPrivateKey(userDB.SessionKey.PrivateKey)
+		ecdsaPrivateKey, err := crypto.ToECDSA(userDB.SessionKey.PrivateKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse ECDSA private key: %w", err)
 		}

@@ -117,4 +117,5 @@ type TenNetworkInfo struct {
 	L2MessageBusAddress             common.Address
 	ImportantContracts              map[string]common.Address // map of contract name to address
 	TransactionPostProcessorAddress common.Address
+	PublicSystemContracts           map[string]common.Address
 }

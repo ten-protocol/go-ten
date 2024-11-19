@@ -178,7 +178,7 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Addres
 // This method signature matches eth_getStorageAt, but we use the address field to specify the custom query method,
 // the hex-encoded position field to specify the parameters json, and nil for the block number.
 //
-// In future, we can support both CustomQueries and some debug version of eth_getStorageAt if needed.
+// In the future, we can support both CustomQueries and some debug version of eth_getStorageAt if needed.
 func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.Address, params string, _ rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
@@ -211,24 +211,14 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		}
 		return sk.Account.Address.Bytes(), nil
 	case common.ActivateSessionKeyCQMethod:
-		err := api.we.Storage.ActivateSessionKey(user.ID, true)
-		if err != nil {
-			return nil, err
-		}
-		return []byte{1}, nil
-
+		res, err := api.we.SKManager.ActivateSessionKey(user)
+		return []byte{boolToByte(res)}, err
 	case common.DeactivateSessionKeyCQMethod:
-		err := api.we.Storage.ActivateSessionKey(user.ID, false)
-		if err != nil {
-			return nil, err
-		}
-		return []byte{1}, nil
+		res, err := api.we.SKManager.DeactivateSessionKey(user)
+		return []byte{boolToByte(res)}, err
 	case common.DeleteSessionKeyCQMethod:
-		err := api.we.Storage.RemoveSessionKey(user.ID)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
+		res, err := api.we.SKManager.DeleteSessionKey(user)
+		return []byte{boolToByte(res)}, err
 	default: // address was not a recognised custom query method address
 		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, "eth_getStorageAt", address, params, nil)
 		if err != nil {
@@ -245,6 +235,13 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		// turn resp object into hexutil.Bytes
 		return hexutil.MustDecode(respHex), nil
 	}
+}
+
+func boolToByte(res bool) byte {
+	if res {
+		return 1
+	}
+	return 0
 }
 
 func (s *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]map[string]interface{}, error) {
