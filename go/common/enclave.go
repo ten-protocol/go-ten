@@ -26,6 +26,7 @@ type Status struct {
 	StatusCode StatusCode
 	L1Head     gethcommon.Hash
 	L2Head     *big.Int
+	EnclaveID
 }
 
 type TxAndReceiptAndBlobs struct {
