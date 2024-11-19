@@ -110,6 +110,14 @@ func (e *Service) GetEnclaveClient() common.Enclave {
 	return e.enclaveGuardians[0].GetEnclaveClient()
 }
 
+func (e *Service) GetEnclaveClients() []common.Enclave {
+	clients := make([]common.Enclave, len(e.enclaveGuardians))
+	for i, guardian := range e.enclaveGuardians {
+		clients[i] = guardian.enclaveClient
+	}
+	return clients
+}
+
 func (e *Service) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 

@@ -159,6 +159,9 @@ type EnclaveService interface {
 	// GetEnclaveClient returns an enclave client // todo (@matt) we probably don't want to expose this
 	GetEnclaveClient() common.Enclave
 
+	// GetEnclaveClients returns a list of all enclave clients
+	GetEnclaveClients() []common.Enclave
+
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to other hosts on the network (in particular, to the sequencer)
 	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error)
 
