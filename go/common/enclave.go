@@ -21,11 +21,12 @@ import (
 type StatusCode int
 
 // Status represents the enclave's current state - whether the enclave is healthy and ready to process requests, as well
-// as its latest known heads for the L1 and L2 chains
+// as its latest known heads for the L1 and L2 chains and enclave ID derived from the public key
 type Status struct {
 	StatusCode StatusCode
 	L1Head     gethcommon.Hash
 	L2Head     *big.Int
+	EnclaveID  EnclaveID
 }
 
 type TxAndReceiptAndBlobs struct {
