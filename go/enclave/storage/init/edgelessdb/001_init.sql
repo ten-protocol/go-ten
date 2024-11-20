@@ -129,6 +129,7 @@ create table if not exists tendb.externally_owned_account
 (
     id      INTEGER AUTO_INCREMENT,
     address binary(20) NOT NULL,
+    system_account boolean,
     primary key (id),
     INDEX USING HASH (address)
 );

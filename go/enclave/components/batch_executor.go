@@ -270,10 +270,6 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 		return nil, fmt.Errorf("failed cross chain transactions")
 	}
 
-	if len(systemContractCreationResult) > 0 {
-		ccTxResults = append(ccTxResults, systemContractCreationResult...)
-	}
-
 	ccReceipts := make(types.Receipts, 0)
 	for _, txResult := range ccTxResults {
 		ccReceipts = append(ccReceipts, txResult.Receipt)
