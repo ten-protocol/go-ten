@@ -79,11 +79,6 @@ const (
 	SubmitTx
 )
 
-//type EncryptedRequest struct {
-//	Content []byte
-//	Method  uint8
-//}
-
 func (txs L2PricedTransactions) ToTransactions() types.Transactions {
 	ret := make(types.Transactions, 0)
 	for _, tx := range txs {
