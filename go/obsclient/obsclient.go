@@ -131,6 +131,16 @@ func (oc *ObsClient) Health() (bool, error) {
 	return healthy.OverallHealth, nil
 }
 
+// HealthCheck returns the health of the node.TODO update API above
+func (oc *ObsClient) HealthCheck() (*hostcommon.HealthCheck, error) {
+	var healthy *hostcommon.HealthCheck
+	err := oc.rpcClient.Call(&healthy, rpc.Health)
+	if err != nil {
+		return nil, err
+	}
+	return healthy, nil
+}
+
 // GetTotalContractCount returns the total count of created contracts
 func (oc *ObsClient) GetTotalContractCount() (int, error) {
 	var count int
