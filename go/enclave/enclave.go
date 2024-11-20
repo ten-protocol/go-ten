@@ -483,13 +483,6 @@ func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndRece
 	return ingestion, nil
 }
 
-func (e *enclaveImpl) SubmitTx(ctx context.Context, encryptedTxParams common.EncryptedTx) (*responses.RawTx, common.SystemError) {
-	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitTx with the enclave stopping"))
-	}
-	return rpc.HandleEncryptedRPC(ctx, e.rpcEncryptionManager, encryptedTxParams)
-}
-
 func (e *enclaveImpl) Validator() nodetype.ObsValidator {
 	validator, ok := e.service.(nodetype.ObsValidator)
 	if !ok {
