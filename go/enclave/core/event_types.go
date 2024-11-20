@@ -139,3 +139,7 @@ func (receipt *InternalReceipt) ToReceipt() *types.Receipt {
 }
 
 type TxExecResults []*TxExecResult
+
+func (txResults *TxExecResults) Add(other ...*TxExecResult) {
+	*txResults = append(*txResults, other...)
+}

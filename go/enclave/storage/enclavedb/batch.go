@@ -337,7 +337,7 @@ func ReadTransaction(ctx context.Context, db *sql.DB, txHash gethcommon.Hash) (*
 func ReadBatchTransactions(ctx context.Context, db *sql.DB, height uint64) ([]*common.L2Tx, error) {
 	var txs []*common.L2Tx
 
-	rows, err := db.QueryContext(ctx, "select content from tx where batch_height=? order by idx", height)
+	rows, err := db.QueryContext(ctx, "select content from tx where batch_height=? and is_synthetic=? order by idx", height, false)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error

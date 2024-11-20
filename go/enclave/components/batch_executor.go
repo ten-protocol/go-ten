@@ -179,6 +179,8 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	snap := stateDB.Snapshot()
 
 	syntheticTxs := make(core.SyntheticTxs, 0)
+	syntheticTxResults := make(core.TxExecResults, 0)
+
 	var messages common.CrossChainMessages
 	var transfers common.ValueTransferEvents
 	if context.SequencerNo.Int64() > int64(common.L2GenesisSeqNo+1) {
@@ -194,6 +196,8 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	if err != nil {
 		return nil, fmt.Errorf("could not deploy system contracts. Cause: %w", err)
 	}
+
+	syntheticTxResults.Add(systemContractCreationResult...)
 
 	xchainTxs := make(common.L2PricedTransactions, 0)
 	for _, xTx := range crossChainTransactions {
@@ -251,6 +255,8 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 			return nil, fmt.Errorf("could not add synthetic on block tx to batch. Cause: %w", err)
 		}
 
+		syntheticTxResults.Add(onBlockTxResult...)
+
 	} else if err == nil && batch.Header.SequencerOrderNo.Uint64() > 2 {
 		executor.logger.Crit("Bootstrapping of network failed! System contract hooks have not been initialised after genesis.")
 	}
@@ -263,10 +269,12 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}
 
 	// Create and process public callback transaction if needed
-	onBatchTxOffset, err = executor.executePublicCallbacks(ctx, stateDB, context, batch, len(successfulTxs)+onBatchTxOffset, &syntheticTxs)
+	var publicCallbackTxResult core.TxExecResults
+	onBatchTxOffset, publicCallbackTxResult, err = executor.executePublicCallbacks(ctx, stateDB, context, batch, len(successfulTxs)+onBatchTxOffset, &syntheticTxs)
 	if err != nil {
 		return nil, fmt.Errorf("could not execute public callbacks. Cause: %w", err)
 	}
+	syntheticTxResults.Add(publicCallbackTxResult...)
 
 	ccSuccessfulTxs, _, ccTxResults, err := executor.processTransactions(ctx, batch, onBatchTxOffset, syntheticTransactions, stateDB, context.ChainConfig, true)
 	if err != nil {
@@ -343,9 +351,11 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 		return h, err
 	}
 
+	syntheticTxResults.Add(ccTxResults...)
+
 	return &ComputedBatch{
 		Batch:         &copyBatch,
-		TxExecResults: append(txResults, ccTxResults...),
+		TxExecResults: append(txResults, syntheticTxResults...),
 		SyntheticTxs:  syntheticTxs,
 		Commit:        commitFunc,
 	}, nil
@@ -386,11 +396,11 @@ func (executor *batchExecutor) processSystemDeployer(ctx context.Context, stateD
 	return 1, result, nil
 }
 
-func (executor *batchExecutor) executePublicCallbacks(ctx context.Context, stateDB *state.StateDB, context *BatchExecutionContext, batch *core.Batch, txOffset int, syntheticTxs *core.SyntheticTxs) (int, error) {
+func (executor *batchExecutor) executePublicCallbacks(ctx context.Context, stateDB *state.StateDB, context *BatchExecutionContext, batch *core.Batch, txOffset int, syntheticTxs *core.SyntheticTxs) (int, core.TxExecResults, error) {
 	// Create and process public callback transaction if needed
 	publicCallbackTx, err := executor.systemContracts.CreatePublicCallbackHandlerTransaction(ctx, stateDB)
 	if err != nil {
-		return txOffset, fmt.Errorf("could not create public callback transaction. Cause: %w", err)
+		return txOffset, nil, fmt.Errorf("could not create public callback transaction. Cause: %w", err)
 	}
 
 	if publicCallbackTx != nil {
@@ -403,20 +413,20 @@ func (executor *batchExecutor) executePublicCallbacks(ctx context.Context, state
 		}
 		publicCallbackSuccessfulTx, _, publicCallbackTxResult, err := executor.processTransactions(ctx, batch, txOffset, publicCallbackPricedTxes, stateDB, context.ChainConfig, true)
 		if err != nil {
-			return txOffset, fmt.Errorf("could not process public callback transaction. Cause: %w", err)
+			return txOffset, nil, fmt.Errorf("could not process public callback transaction. Cause: %w", err)
 		}
 		// Ensure the public callback transaction is successful. It should NEVER fail.
 		if err = executor.verifySyntheticTransactionsSuccess(publicCallbackPricedTxes, publicCallbackSuccessfulTx, publicCallbackTxResult); err != nil {
-			return txOffset, fmt.Errorf("batch computation failed due to public callback reverting. Cause: %w", err)
+			return txOffset, nil, fmt.Errorf("batch computation failed due to public callback reverting. Cause: %w", err)
 		}
 
 		if err = syntheticTxs.Add(&publicCallbackPricedTxes[0]); err != nil {
-			return txOffset, fmt.Errorf("could not add synthetic public callback tx to batch. Cause: %w", err)
+			return txOffset, nil, fmt.Errorf("could not add synthetic public callback tx to batch. Cause: %w", err)
 		}
 
-		return len(publicCallbackSuccessfulTx) + txOffset, nil
+		return len(publicCallbackSuccessfulTx) + txOffset, publicCallbackTxResult, nil
 	}
-	return txOffset, nil
+	return txOffset, nil, nil
 }
 
 func (executor *batchExecutor) initializeSystemContracts(_ context.Context, batch *core.Batch, receipts *types.Receipt) error {
