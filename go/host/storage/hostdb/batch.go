@@ -30,7 +30,7 @@ func AddBatch(dbtx *dbTransaction, statements *SQLStatements, batch *common.ExtB
 		return fmt.Errorf("could not encode L2 transactions: %w", err)
 	}
 
-	_, err = dbtx.tx.Exec(statements.InsertBatch,
+	_, err = dbtx.Tx.Exec(statements.InsertBatch,
 		batch.SeqNo().Uint64(),       // sequence
 		batch.Hash(),                 // full hash
 		batch.Header.Number.Uint64(), // height
@@ -51,20 +51,20 @@ func AddBatch(dbtx *dbTransaction, statements *SQLStatements, batch *common.ExtB
 			args = append(args, txHash.Bytes(), batch.SeqNo().Uint64())
 		}
 		insert = strings.TrimRight(insert, ",")
-		_, err = dbtx.tx.Exec(insert, args...)
+		_, err = dbtx.Tx.Exec(insert, args...)
 		if err != nil {
 			return fmt.Errorf("failed to insert transactions. cause: %w", err)
 		}
 	}
 
 	var currentTotal int
-	err = dbtx.tx.QueryRow(selectTxCount).Scan(&currentTotal)
+	err = dbtx.Tx.QueryRow(selectTxCount).Scan(&currentTotal)
 	if err != nil {
 		return fmt.Errorf("failed to query transaction count: %w", err)
 	}
 
 	newTotal := currentTotal + len(batch.TxHashes)
-	_, err = dbtx.tx.Exec(statements.UpdateTxCount, newTotal)
+	_, err = dbtx.Tx.Exec(statements.UpdateTxCount, newTotal)
 	if err != nil {
 		return fmt.Errorf("failed to update transaction count: %w", err)
 	}
