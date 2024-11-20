@@ -52,12 +52,8 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	obscuroGenesis "github.com/ten-protocol/go-ten/go/enclave/genesis"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
-
-// todo (#1056) - replace with the genesis.json of Obscuro's L1 network.
-const hardcodedGenesisJSON = "TODO - REPLACE ME"
 
 var _noHeadBatch = big.NewInt(0)
 
@@ -98,7 +94,7 @@ type enclaveImpl struct {
 // NewEnclave creates a new enclave.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
-func NewEnclave(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger) common.Enclave {
+func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) common.Enclave {
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Creating enclave service with following config", log.CfgKey, string(jsonConfig))
 
@@ -170,18 +166,6 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger) comm
 
 	systemContractsWallet := system.GetPlaceholderWallet(chainConfig.ChainID, logger)
 	scb := system.NewSystemContractCallbacks(systemContractsWallet, storage, logger)
-
-	contractAddr := config.ManagementContractAddress
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr, logger)
-
-	if config.ValidateL1Blocks {
-		config.GenesisJSON = []byte(hardcodedGenesisJSON)
-	}
-
-	genesis, err := obscuroGenesis.New(config.TenGenesis)
-	if err != nil {
-		logger.Crit("unable to parse obscuro genesis", log.ErrKey, err)
-	}
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
