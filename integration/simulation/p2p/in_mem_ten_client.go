@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"math/big"
 
-	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
-
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -63,20 +61,16 @@ func NewInMemTenClient(hostContainer *container.HostContainer) rpc.Client {
 // Call bypasses RPC, and invokes methods on the node directly.
 func (c *inMemTenClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
-	case tenrpc.ERPCSendRawTransaction:
-		return c.sendRawTransaction(result, args)
-
-	case tenrpc.ERPCGetTransactionByHash:
-		return c.getTransactionByHash(result, args)
-
-	case tenrpc.ERPCCall:
-		return c.rpcCall(result, args)
-
-	case tenrpc.ERPCGetTransactionCount:
-		return c.getTransactionCount(result, args)
-
-	case tenrpc.ERPCGetTransactionReceipt:
-		return c.getTransactionReceipt(result, args)
+	case "ten_encryptedRPC":
+		encBytes, err := getEncryptedBytes(args)
+		if err != nil {
+			return err
+		}
+		encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), encBytes)
+		if err == nil {
+			*result.(*responses.EnclaveResponse) = encryptedResponse
+		}
+		return err
 
 	case rpc.BatchNumber:
 		*result.(*hexutil.Uint64) = c.ethAPI.BlockNumber()
@@ -84,9 +78,6 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 
 	case rpc.StopHost:
 		return c.testAPI.StopHost()
-
-	case tenrpc.ERPCGetLogs:
-		return c.getLogs(result, args)
 
 	case rpc.GetBatchByNumber:
 		return c.getBatchByNumber(result, args)
@@ -114,16 +105,16 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 
 	case rpc.GetPublicTransactionData:
 		return c.getPublicTransactionData(result, args)
+
 	case rpc.GasPrice:
 		return c.getGasPrice(result)
+
 	case rpc.Config:
 		return c.tenConfig(result)
-	case tenrpc.ERPCGetBalance:
-		return c.getBalanceAt(result, args)
-	case tenrpc.ERPCEstimateGas:
-		return c.estimateGas(result, args)
+
 	case rpc.GetCode:
 		return c.getCode(result, args)
+
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
@@ -146,34 +137,6 @@ func (c *inMemTenClient) getCode(result interface{}, args []interface{}) error {
 	}
 
 	*result.(*hexutil.Bytes) = code
-	return nil
-}
-
-func (c *inMemTenClient) getBalanceAt(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, tenrpc.ERPCGetBalance)
-	if err != nil {
-		return err
-	}
-
-	balance, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
-	if err != nil {
-		return err
-	}
-	*result.(*responses.EnclaveResponse) = balance
-	return nil
-}
-
-func (c *inMemTenClient) estimateGas(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, tenrpc.ERPCEstimateGas)
-	if err != nil {
-		return err
-	}
-
-	balance, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
-	if err != nil {
-		return err
-	}
-	*result.(*responses.EnclaveResponse) = balance
 	return nil
 }
 
@@ -214,90 +177,6 @@ func (c *inMemTenClient) tenConfig(result interface{}) error {
 
 func (c *inMemTenClient) Subscribe(context.Context, string, interface{}, ...interface{}) (*gethrpc.ClientSubscription, error) {
 	panic("not implemented")
-}
-
-func (c *inMemTenClient) sendRawTransaction(result interface{}, args []interface{}) error {
-	encBytes, err := getEncryptedBytes(args, tenrpc.ERPCSendRawTransaction)
-	if err != nil {
-		return err
-	}
-
-	encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), encBytes)
-	if err == nil {
-		*result.(*responses.EnclaveResponse) = encryptedResponse
-	}
-
-	return err
-}
-
-func (c *inMemTenClient) getTransactionByHash(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, tenrpc.ERPCGetTransactionByHash)
-	if err != nil {
-		return err
-	}
-	encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
-	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", tenrpc.ERPCGetTransactionByHash, err)
-	}
-
-	// GetTransactionByHash returns EnclaveResponse
-	*result.(*responses.EnclaveResponse) = encryptedResponse
-	return nil
-}
-
-func (c *inMemTenClient) rpcCall(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, tenrpc.ERPCCall)
-	if err != nil {
-		return err
-	}
-	encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
-	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", tenrpc.ERPCCall, err)
-	}
-	*result.(*responses.EnclaveResponse) = encryptedResponse
-	return nil
-}
-
-func (c *inMemTenClient) getTransactionReceipt(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, tenrpc.ERPCGetTransactionReceipt)
-	if err != nil {
-		return err
-	}
-	encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
-	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", tenrpc.ERPCGetTransactionReceipt, err)
-	}
-
-	// GetTransactionReceipt returns EnclaveResponse
-	*result.(*responses.EnclaveResponse) = encryptedResponse
-	return nil
-}
-
-func (c *inMemTenClient) getTransactionCount(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, tenrpc.ERPCGetTransactionCount)
-	if err != nil {
-		return err
-	}
-	encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
-	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", tenrpc.ERPCGetTransactionCount, err)
-	}
-
-	*result.(*responses.EnclaveResponse) = encryptedResponse
-	return nil
-}
-
-func (c *inMemTenClient) getLogs(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, tenrpc.ERPCGetLogs)
-	if err != nil {
-		return err
-	}
-	encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
-	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", tenrpc.ERPCGetLogs, err)
-	}
-	*result.(*responses.EnclaveResponse) = encryptedResponse
-	return nil
 }
 
 func (c *inMemTenClient) getBatchByNumber(result interface{}, args []interface{}) error {
@@ -495,13 +374,13 @@ func (c *inMemTenClient) getPublicTransactionData(result interface{}, args []int
 }
 
 // getEncryptedBytes expects args to have a single element and it to be of type bytes (client doesn't know anything about what's getting passed through on sensitive methods)
-func getEncryptedBytes(args []interface{}, methodName string) ([]byte, error) {
+func getEncryptedBytes(args []interface{}) ([]byte, error) {
 	if len(args) != 1 {
-		return nil, fmt.Errorf("expected 1 arg to %s, got %d", methodName, len(args))
+		return nil, fmt.Errorf("expected 1 arg for encrypted method, got %d", len(args))
 	}
 	encBytes, ok := args[0].([]byte)
 	if !ok {
-		return nil, fmt.Errorf("first arg to %s is of type %T, expected []byte", methodName, args[0])
+		return nil, fmt.Errorf("first arg to encrypted method is of type %T, expected []byte", args[0])
 	}
 	return encBytes, nil
 }

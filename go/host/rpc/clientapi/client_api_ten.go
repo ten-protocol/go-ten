@@ -48,16 +48,12 @@ func (api *TenAPI) Config() (*ChecksumFormattedTenNetworkConfig, error) {
 func (api *TenAPI) EncryptedRPC(ctx context.Context, encryptedParams common.EncryptedRequest) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().EncryptedRPC(ctx, encryptedParams)
 	if sysError != nil {
-		return api.handleSysError("EncryptedRPC", sysError)
+		api.logger.Error("Enclave System Error. Function EncryptedRPC", log.ErrKey, sysError)
+		return responses.EnclaveResponse{
+			Err: &responses.InternalErrMsg,
+		}, nil
 	}
 	return *enclaveResponse, nil
-}
-
-func (api *TenAPI) handleSysError(function string, sysError common.SystemError) (responses.EnclaveResponse, error) {
-	api.logger.Error(fmt.Sprintf("Enclave System Error. Function %s", function), log.ErrKey, sysError)
-	return responses.EnclaveResponse{
-		Err: &responses.InternalErrMsg,
-	}, nil
 }
 
 // ChecksumFormattedTenNetworkConfig serialises the addresses as EIP55 checksum addresses.
