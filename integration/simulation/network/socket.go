@@ -68,14 +68,12 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	// get the sequencer Address
 	seqPrivateKey := n.wallets.NodeWallets[0].PrivateKey()
 	seqPrivKey := fmt.Sprintf("%x", crypto.FromECDSA(seqPrivateKey))
-	seqHostAddress := crypto.PubkeyToAddress(seqPrivateKey.PublicKey)
 
 	// create the nodes
 	nodes := make([]node.Node, simParams.NumberOfNodes)
 	var err error
 	for i := 0; i < simParams.NumberOfNodes; i++ {
 		privateKey := seqPrivKey
-		hostAddress := seqHostAddress
 		nodeTypeStr := "sequencer"
 		isInboundP2PDisabled := false
 
@@ -83,7 +81,6 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		if i != 0 {
 			nodeTypeStr = "validator"
 			privateKey = fmt.Sprintf("%x", crypto.FromECDSA(n.wallets.NodeWallets[i].PrivateKey()))
-			hostAddress = crypto.PubkeyToAddress(n.wallets.NodeWallets[i].PrivateKey().PublicKey)
 			// only the validators can have the incoming p2p disabled
 			isInboundP2PDisabled = i == simParams.NodeWithInboundP2PDisabled
 		}
@@ -113,7 +110,6 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		tenCfg.Node.HostAddress = hostP2PAddress
 		tenCfg.Node.NodeType = nodeType
 		tenCfg.Node.IsGenesis = i == 0
-		tenCfg.Node.ID = hostAddress
 		tenCfg.Host.P2P.IsDisabled = isInboundP2PDisabled
 		tenCfg.Host.P2P.BindAddress = hostP2PAddress
 		tenCfg.Host.RPC.HTTPPort = uint64(simParams.StartPort + integration.DefaultHostRPCHTTPOffset + i)

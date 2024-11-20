@@ -13,8 +13,6 @@ import (
 
 // EnclaveConfig contains the full configuration for an Obscuro enclave service.
 type EnclaveConfig struct {
-	// The identity of the host the enclave service is tied to
-	HostID gethcommon.Address
 	// The public peer-to-peer IP address of the host the enclave service is tied to
 	HostAddress string
 	// The address on which to serve requests
@@ -76,7 +74,6 @@ type EnclaveConfig struct {
 
 func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 	return &EnclaveConfig{
-		HostID:      tenCfg.Node.ID,
 		HostAddress: tenCfg.Node.HostAddress,
 		NodeType:    tenCfg.Node.NodeType,
 		WillAttest:  tenCfg.Enclave.EnableAttestation,

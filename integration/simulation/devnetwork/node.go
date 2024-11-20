@@ -200,7 +200,6 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		enclaveType = common.Validator
 	}
 	enclaveConfig := &config.EnclaveConfig{
-		HostID:                    n.l1Wallet.Address(),
 		HostAddress:               hostAddr,
 		Address:                   enclaveAddr,
 		NodeType:                  enclaveType,

@@ -1,7 +1,6 @@
 package config
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
@@ -14,7 +13,7 @@ type NodeConfig struct {
 	Name string `mapstructure:"name"`
 	// The host's identity derived from the L1 Private Key
 	// todo: does node ID still need to exist? Look to remove in favour of enclave IDs
-	ID gethcommon.Address `mapstructure:"id"`
+	// ID gethcommon.Address `mapstructure:"id"`
 	// The public peer-to-peer IP address of the host
 	// todo: does host address still need to exist for the enclave to sign over or does the enclave ID cover the usages?
 	HostAddress string `mapstructure:"hostAddress"`
