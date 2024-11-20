@@ -178,6 +178,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}
 	snap := stateDB.Snapshot()
 
+	syntheticTxs := make(core.SyntheticTxs, 0)
 	var messages common.CrossChainMessages
 	var transfers common.ValueTransferEvents
 	if context.SequencerNo.Int64() > int64(common.L2GenesisSeqNo+1) {
@@ -189,7 +190,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 
 	transactionsToProcess, freeTransactions := executor.filterTransactionsWithSufficientFunds(ctx, stateDB, context)
 
-	systemDeployerOffset, systemContractCreationResult, err := executor.processSystemDeployer(ctx, stateDB, batch, context)
+	systemDeployerOffset, systemContractCreationResult, err := executor.processSystemDeployer(ctx, stateDB, batch, context, &syntheticTxs)
 	if err != nil {
 		return nil, fmt.Errorf("could not deploy system contracts. Cause: %w", err)
 	}
@@ -245,6 +246,11 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 			executor.logger.Error("VerifyOnBlockReceipt failed", "error", err, "ok", ok)
 			return nil, fmt.Errorf("VerifyOnBlockReceipt failed")
 		}
+
+		if err = syntheticTxs.Add(&onBlockPricedTxes[0]); err != nil {
+			return nil, fmt.Errorf("could not add synthetic on block tx to batch. Cause: %w", err)
+		}
+
 	} else if err == nil && batch.Header.SequencerOrderNo.Uint64() > 2 {
 		executor.logger.Crit("Bootstrapping of network failed! System contract hooks have not been initialised after genesis.")
 	}
@@ -257,7 +263,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	}
 
 	// Create and process public callback transaction if needed
-	onBatchTxOffset, err = executor.executePublicCallbacks(ctx, stateDB, context, batch, len(successfulTxs)+onBatchTxOffset)
+	onBatchTxOffset, err = executor.executePublicCallbacks(ctx, stateDB, context, batch, len(successfulTxs)+onBatchTxOffset, &syntheticTxs)
 	if err != nil {
 		return nil, fmt.Errorf("could not execute public callbacks. Cause: %w", err)
 	}
@@ -340,11 +346,12 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 	return &ComputedBatch{
 		Batch:         &copyBatch,
 		TxExecResults: append(txResults, ccTxResults...),
+		SyntheticTxs:  syntheticTxs,
 		Commit:        commitFunc,
 	}, nil
 }
 
-func (executor *batchExecutor) processSystemDeployer(ctx context.Context, stateDB *state.StateDB, batch *core.Batch, context *BatchExecutionContext) (int, []*core.TxExecResult, error) {
+func (executor *batchExecutor) processSystemDeployer(ctx context.Context, stateDB *state.StateDB, batch *core.Batch, context *BatchExecutionContext, syntheticTxs *core.SyntheticTxs) (int, []*core.TxExecResult, error) {
 	if context.SequencerNo.Uint64() != 2 {
 		return 0, nil, nil
 	}
@@ -372,10 +379,14 @@ func (executor *batchExecutor) processSystemDeployer(ctx context.Context, stateD
 		return 0, nil, fmt.Errorf("batch computation failed due to system deployer reverting. Cause: %w", err)
 	}
 
+	if err = syntheticTxs.Add(&transactions[0]); err != nil {
+		return 0, nil, fmt.Errorf("could not add synthetic tx to batch. Cause: %w", err)
+	}
+
 	return 1, result, nil
 }
 
-func (executor *batchExecutor) executePublicCallbacks(ctx context.Context, stateDB *state.StateDB, context *BatchExecutionContext, batch *core.Batch, txOffset int) (int, error) {
+func (executor *batchExecutor) executePublicCallbacks(ctx context.Context, stateDB *state.StateDB, context *BatchExecutionContext, batch *core.Batch, txOffset int, syntheticTxs *core.SyntheticTxs) (int, error) {
 	// Create and process public callback transaction if needed
 	publicCallbackTx, err := executor.systemContracts.CreatePublicCallbackHandlerTransaction(ctx, stateDB)
 	if err != nil {
@@ -398,6 +409,11 @@ func (executor *batchExecutor) executePublicCallbacks(ctx context.Context, state
 		if err = executor.verifySyntheticTransactionsSuccess(publicCallbackPricedTxes, publicCallbackSuccessfulTx, publicCallbackTxResult); err != nil {
 			return txOffset, fmt.Errorf("batch computation failed due to public callback reverting. Cause: %w", err)
 		}
+
+		if err = syntheticTxs.Add(&publicCallbackPricedTxes[0]); err != nil {
+			return txOffset, fmt.Errorf("could not add synthetic public callback tx to batch. Cause: %w", err)
+		}
+
 		return len(publicCallbackSuccessfulTx) + txOffset, nil
 	}
 	return txOffset, nil
@@ -407,7 +423,7 @@ func (executor *batchExecutor) initializeSystemContracts(_ context.Context, batc
 	return executor.systemContracts.Initialize(batch, *receipts, executor.crossChainProcessors.Local)
 }
 
-func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Batch) ([]*core.TxExecResult, error) {
+func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Batch) ([]*core.TxExecResult, []*core.SyntheticTx, error) {
 	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Executed batch", log.BatchHashKey, batch.Hash())
 
 	// Validators recompute the entire batch using the same batch context
@@ -426,20 +442,20 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 		BaseFee:      batch.Header.BaseFee,
 	}, false) // this execution is not used when first producing a batch, we never want to fail for empty batches
 	if err != nil {
-		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
+		return nil, nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
 	}
 
 	if cb.Batch.Hash() != batch.Hash() {
 		// todo @stefan - generate a validator challenge here and return it
 		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v", cb.Batch.Header, batch.Header))
-		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
+		return nil, nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
 	}
 
 	if _, err := cb.Commit(true); err != nil {
-		return nil, fmt.Errorf("cannot commit stateDB for incoming valid batch %s. Cause: %w", batch.Hash(), err)
+		return nil, nil, fmt.Errorf("cannot commit stateDB for incoming valid batch %s. Cause: %w", batch.Hash(), err)
 	}
 
-	return cb.TxExecResults, nil
+	return cb.TxExecResults, cb.SyntheticTxs, nil
 }
 
 func (executor *batchExecutor) CreateGenesisState(

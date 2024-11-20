@@ -582,6 +582,42 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 	return nil
 }
 
+func (s *storageImpl) handleSyntheticTxsSendersAndReceivers(ctx context.Context, syntheticTxs core.SyntheticTxs, dbTx *sql.Tx) ([]uint64, []*uint64, error) {
+	senders := make([]uint64, len(syntheticTxs))
+	toContracts := make([]*uint64, len(syntheticTxs))
+
+	if syntheticTxs == nil {
+		return senders, toContracts, nil
+	}
+
+	for i, syntheticTx := range syntheticTxs {
+		tx := syntheticTx.Tx
+		sender := syntheticTx.Sender
+		if sender == nil {
+			return nil, nil, errors.New("synthetic tx sender is nil")
+		}
+
+		eoaID, err := s.readOrWriteEOA(ctx, dbTx, *sender)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not insert EOA. cause: %w", err)
+		}
+		s.logger.Trace("Tx sender", "tx", tx.Hash(), "sender", sender.Hex(), "eoaId", *eoaID)
+		senders[i] = *eoaID
+
+		to := tx.To()
+		if to != nil {
+			ctr, err := s.ReadContract(ctx, *to)
+			if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+				return nil, nil, fmt.Errorf("could not read contract. cause: %w", err)
+			}
+			if ctr != nil {
+				toContracts[i] = &ctr.Id
+			}
+		}
+	}
+	return senders, toContracts, nil
+}
+
 func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, batch *core.Batch, dbTx *sql.Tx) ([]uint64, []*uint64, error) {
 	senders := make([]uint64, len(batch.Transactions))
 	toContracts := make([]*uint64, len(batch.Transactions))
@@ -612,7 +648,7 @@ func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, batch *co
 	return senders, toContracts, nil
 }
 
-func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, results []*core.TxExecResult) error {
+func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, results []*core.TxExecResult, syntheticTxs core.SyntheticTxs) error {
 	defer s.logDuration("StoreExecutedBatch", measure.NewStopwatch())
 	executed, err := enclavedb.BatchWasExecuted(ctx, s.db.GetSQLDB(), batch.Hash())
 	if err != nil {
@@ -633,6 +669,15 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.Batc
 
 	if err := enclavedb.MarkBatchExecuted(ctx, dbTx, batch.SequencerOrderNo); err != nil {
 		return fmt.Errorf("could not set the executed flag. Cause: %w", err)
+	}
+
+	senders, toContracts, err := s.handleSyntheticTxsSendersAndReceivers(ctx, syntheticTxs, dbTx)
+	if err != nil {
+		return fmt.Errorf("could not handle synthetic txs senders and receivers. Cause: %w", err)
+	}
+
+	if err := enclavedb.WriteSyntheticTxs(ctx, dbTx, batch, syntheticTxs, senders, toContracts); err != nil {
+		return fmt.Errorf("could not write synthetic txs. Cause: %w", err)
 	}
 
 	for _, txExecResult := range results {

@@ -129,11 +129,11 @@ func (val *obsValidator) ExecuteStoredBatches(ctx context.Context) error {
 				Transactions: txs,
 			}
 
-			txResults, err := val.batchExecutor.ExecuteBatch(ctx, batch)
+			txResults, syntheticTxs, err := val.batchExecutor.ExecuteBatch(ctx, batch)
 			if err != nil {
 				return fmt.Errorf("could not execute batchHeader %s. Cause: %w", batchHeader.Hash(), err)
 			}
-			err = val.storage.StoreExecutedBatch(ctx, batchHeader, txResults)
+			err = val.storage.StoreExecutedBatch(ctx, batchHeader, txResults, syntheticTxs)
 			if err != nil {
 				return fmt.Errorf("could not store executed batchHeader %s. Cause: %w", batchHeader.Hash(), err)
 			}
@@ -176,7 +176,7 @@ func (val *obsValidator) handleGenesis(ctx context.Context, batch *common.BatchH
 		return fmt.Errorf("received invalid genesis batch")
 	}
 
-	err = val.storage.StoreExecutedBatch(ctx, genBatch.Header, nil)
+	err = val.storage.StoreExecutedBatch(ctx, genBatch.Header, nil, nil)
 	if err != nil {
 		return err
 	}

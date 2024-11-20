@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -35,6 +36,23 @@ type TxExecResult struct {
 	Tx               *types.Transaction
 	From             *gethcommon.Address
 	Err              error
+	IsSynthetic      bool
+}
+
+type SyntheticTx struct {
+	Tx     *types.Transaction
+	Sender *gethcommon.Address
+}
+
+type SyntheticTxs []*SyntheticTx
+
+func (stxs *SyntheticTxs) Add(tx *common.L2PricedTransaction) error {
+	sender, err := GetTxSigner(tx)
+	if err != nil {
+		return err
+	}
+	*stxs = append(*stxs, &SyntheticTx{Tx: tx.Tx, Sender: &sender})
+	return nil
 }
 
 // InternalReceipt - Equivalent to the geth types.Receipt, but without weird quirks

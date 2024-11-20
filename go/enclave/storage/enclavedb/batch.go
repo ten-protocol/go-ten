@@ -64,11 +64,39 @@ func ExistsBatchAtHeight(ctx context.Context, dbTx *sql.Tx, height *big.Int) (bo
 	return exists, nil
 }
 
+func WriteSyntheticTxs(ctx context.Context, dbtx *sql.Tx, header *common.BatchHeader, syntheticTxs core.SyntheticTxs, senders []uint64, toContracts []*uint64) error {
+	if len(syntheticTxs) == 0 {
+		return nil
+	}
+
+	insert := "insert into tx (hash, content, to_address, type, sender_address, idx, batch_height, is_synthetic) values " + repeat("(?,?,?,?,?,?,?,?)", ",", len(syntheticTxs))
+
+	args := make([]any, 0)
+	for i, syntheticTx := range syntheticTxs {
+		transaction := syntheticTx.Tx
+		txBytes, err := rlp.EncodeToBytes(transaction)
+		if err != nil {
+			return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
+		}
+
+		args = append(args, transaction.Hash())     // tx_hash
+		args = append(args, txBytes)                // content
+		args = append(args, toContracts[i])         // To
+		args = append(args, transaction.Type())     // Type
+		args = append(args, senders[i])             // sender_address
+		args = append(args, i)                      // idx
+		args = append(args, header.Number.Uint64()) // the batch height which contained it
+		args = append(args, true)                   // is_synthetic is true as syntheticTxs only contains synthetic transactions
+	}
+	_, err := dbtx.ExecContext(ctx, insert, args...)
+	return err
+}
+
 // WriteTransactions - persists the batch and the transactions
 func WriteTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, senders []uint64, toContracts []*uint64) error {
 	// creates a batch insert statement for all entries
 	if len(batch.Transactions) > 0 {
-		insert := "insert into tx (hash, content, to_address, type, sender_address, idx, batch_height) values " + repeat("(?,?,?,?,?,?,?)", ",", len(batch.Transactions))
+		insert := "insert into tx (hash, content, to_address, type, sender_address, idx, batch_height, is_synthetic) values " + repeat("(?,?,?,?,?,?,?,?)", ",", len(batch.Transactions))
 
 		args := make([]any, 0)
 		for i, transaction := range batch.Transactions {
@@ -84,6 +112,7 @@ func WriteTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, sen
 			args = append(args, senders[i])                   // sender_address
 			args = append(args, i)                            // idx
 			args = append(args, batch.Header.Number.Uint64()) // the batch height which contained it
+			args = append(args, false)                        // is_synthetic is false as batch.Transactions only contains real transactions
 		}
 		_, err := dbtx.ExecContext(ctx, insert, args...)
 		if err != nil {
