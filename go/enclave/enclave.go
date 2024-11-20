@@ -374,7 +374,8 @@ func (e *enclaveImpl) Status(ctx context.Context) (common.Status, common.SystemE
 	} else {
 		l2HeadSeqNo = currSeqNo
 	}
-	return common.Status{StatusCode: common.Running, L1Head: l1HeadHash, L2Head: l2HeadSeqNo}, nil
+	enclaveID := e.enclaveKey.EnclaveID()
+	return common.Status{StatusCode: common.Running, L1Head: l1HeadHash, L2Head: l2HeadSeqNo, EnclaveID: enclaveID}, nil
 }
 
 // StopClient is only implemented by the RPC wrapper
