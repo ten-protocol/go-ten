@@ -89,7 +89,6 @@ func HandleEncryptedRPC(ctx context.Context,
 	case rpc.ERPCGetTransactionReceipt:
 		return withVKEncryption(ctx, encManager, decodedRequest, vk, GetTransactionReceiptValidate, GetTransactionReceiptExecute)
 	case rpc.ERPCSendRawTransaction:
-		// todo - implement
 		return withVKEncryption(ctx, encManager, decodedRequest, vk, SubmitTxValidate, SubmitTxExecute)
 	case rpc.ERPCResend:
 		// todo - implement
