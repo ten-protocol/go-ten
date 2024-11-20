@@ -92,6 +92,7 @@ create table if not exists tendb.tx
     sender_address int        NOT NULL,
     idx            int        NOT NULL,
     batch_height   int        NOT NULL,
+    is_synthetic   boolean    NOT NULL,
     INDEX USING HASH (hash),
     INDEX (sender_address),
     INDEX (batch_height, idx),
@@ -129,7 +130,6 @@ create table if not exists tendb.externally_owned_account
 (
     id      INTEGER AUTO_INCREMENT,
     address binary(20) NOT NULL,
-    system_account boolean,
     primary key (id),
     INDEX USING HASH (address)
 );
