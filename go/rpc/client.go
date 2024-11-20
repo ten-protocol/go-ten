@@ -6,29 +6,20 @@ import (
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
+// these are public RPC methods exposed by a TEN node
 const (
-	BatchNumber           = "eth_blockNumber"
-	Call                  = "eth_call"
-	ChainID               = "eth_chainId"
-	GetBalance            = "eth_getBalance"
-	GetBatchByHash        = "eth_getBlockByHash"
-	GetBatchByNumber      = "eth_getBlockByNumber"
-	GetCode               = "eth_getCode"
-	GetTransactionByHash  = "eth_getTransactionByHash"
-	GetTransactionCount   = "eth_getTransactionCount"
-	GetTransactionReceipt = "eth_getTransactionReceipt"
-	SendRawTransaction    = "eth_sendRawTransaction"
-	EstimateGas           = "eth_estimateGas"
-	GetLogs               = "eth_getLogs"
-	DebugLogs             = "debug_eventLogRelevancy"
-	GetStorageAt          = "eth_getStorageAt"
-	GasPrice              = "eth_gasPrice"
+	BatchNumber      = "ten_blockNumber"
+	ChainID          = "ten_chainId"
+	GetBatchByHash   = "ten_getBlockByHash"
+	GetBatchByNumber = "ten_getBlockByNumber"
+	GetCode          = "ten_getCode"
+	GasPrice         = "ten_gasPrice"
 
-	Health = "obscuro_health"
-	Config = "obscuro_config"
+	Health = "ten_health"
+	Config = "ten_config"
 
 	StopHost                 = "test_stopHost"
-	SubscribeNamespace       = "eth"
+	SubscribeNamespace       = "ten"
 	SubscriptionTypeLogs     = "logs"
 	SubscriptionTypeNewHeads = "newHeads"
 

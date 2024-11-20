@@ -123,6 +123,7 @@ func (s *ScanAPI) GetBatchTransactions(batchHash gethcommon.Hash) (*common.Trans
 // These methods are for private user data, they will need to be requested with VK (e.g. via the gateway)
 
 // GetPersonalTransactions gets the private transactions data for a given user
-func (s *ScanAPI) GetPersonalTransactions(ctx context.Context, encryptedParams common.EncryptedParamsGetPersonalTransactions) (*responses.Receipts, error) {
-	return s.host.EnclaveClient().GetPersonalTransactions(ctx, encryptedParams)
+// todo - fix
+func (s *ScanAPI) GetPersonalTransactions(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.Receipts, error) {
+	return s.host.EnclaveClient().EncryptedRPC(ctx, encryptedParams)
 }

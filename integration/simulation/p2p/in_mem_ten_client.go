@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -32,7 +34,7 @@ const (
 // An in-memory implementation of `rpc.Client` that speaks directly to the node.
 type inMemTenClient struct {
 	tenAPI           *clientapi.TenAPI
-	ethAPI           *clientapi.EthereumAPI
+	ethAPI           *clientapi.ChainAPI
 	filterAPI        *clientapi.FilterAPI
 	tenScanAPI       *clientapi.ScanAPI
 	testAPI          *clientapi.TestAPI
@@ -49,8 +51,8 @@ func NewInMemTenClient(hostContainer *container.HostContainer) rpc.Client {
 	enclPubKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
 	return &inMemTenClient{
-		tenAPI:           clientapi.NewTenAPI(hostContainer.Host()),
-		ethAPI:           clientapi.NewEthereumAPI(hostContainer.Host(), logger),
+		tenAPI:           clientapi.NewTenAPI(hostContainer.Host(), logger),
+		ethAPI:           clientapi.NewChainAPI(hostContainer.Host(), logger),
 		filterAPI:        clientapi.NewFilterAPI(hostContainer.Host(), logger),
 		tenScanAPI:       clientapi.NewScanAPI(hostContainer.Host(), logger),
 		testAPI:          clientapi.NewTestAPI(hostContainer),
@@ -61,19 +63,19 @@ func NewInMemTenClient(hostContainer *container.HostContainer) rpc.Client {
 // Call bypasses RPC, and invokes methods on the node directly.
 func (c *inMemTenClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
-	case rpc.SendRawTransaction:
+	case tenrpc.ERPCSendRawTransaction:
 		return c.sendRawTransaction(result, args)
 
-	case rpc.GetTransactionByHash:
+	case tenrpc.ERPCGetTransactionByHash:
 		return c.getTransactionByHash(result, args)
 
-	case rpc.Call:
+	case tenrpc.ERPCCall:
 		return c.rpcCall(result, args)
 
-	case rpc.GetTransactionCount:
+	case tenrpc.ERPCGetTransactionCount:
 		return c.getTransactionCount(result, args)
 
-	case rpc.GetTransactionReceipt:
+	case tenrpc.ERPCGetTransactionReceipt:
 		return c.getTransactionReceipt(result, args)
 
 	case rpc.BatchNumber:
@@ -83,7 +85,7 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 	case rpc.StopHost:
 		return c.testAPI.StopHost()
 
-	case rpc.GetLogs:
+	case tenrpc.ERPCGetLogs:
 		return c.getLogs(result, args)
 
 	case rpc.GetBatchByNumber:
@@ -116,9 +118,9 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 		return c.getGasPrice(result)
 	case rpc.Config:
 		return c.tenConfig(result)
-	case rpc.GetBalance:
+	case tenrpc.ERPCGetBalance:
 		return c.getBalanceAt(result, args)
-	case rpc.EstimateGas:
+	case tenrpc.ERPCEstimateGas:
 		return c.estimateGas(result, args)
 	case rpc.GetCode:
 		return c.getCode(result, args)
@@ -148,12 +150,12 @@ func (c *inMemTenClient) getCode(result interface{}, args []interface{}) error {
 }
 
 func (c *inMemTenClient) getBalanceAt(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.GetBalance)
+	enc, err := getEncryptedBytes(args, tenrpc.ERPCGetBalance)
 	if err != nil {
 		return err
 	}
 
-	balance, err := c.ethAPI.GetBalance(context.Background(), enc)
+	balance, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
 	if err != nil {
 		return err
 	}
@@ -162,12 +164,12 @@ func (c *inMemTenClient) getBalanceAt(result interface{}, args []interface{}) er
 }
 
 func (c *inMemTenClient) estimateGas(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.EstimateGas)
+	enc, err := getEncryptedBytes(args, tenrpc.ERPCEstimateGas)
 	if err != nil {
 		return err
 	}
 
-	balance, err := c.ethAPI.EstimateGas(context.Background(), enc)
+	balance, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
 	if err != nil {
 		return err
 	}
@@ -215,12 +217,12 @@ func (c *inMemTenClient) Subscribe(context.Context, string, interface{}, ...inte
 }
 
 func (c *inMemTenClient) sendRawTransaction(result interface{}, args []interface{}) error {
-	encBytes, err := getEncryptedBytes(args, rpc.SendRawTransaction)
+	encBytes, err := getEncryptedBytes(args, tenrpc.ERPCSendRawTransaction)
 	if err != nil {
 		return err
 	}
 
-	encryptedResponse, err := c.ethAPI.SendRawTransaction(context.Background(), encBytes)
+	encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), encBytes)
 	if err == nil {
 		*result.(*responses.EnclaveResponse) = encryptedResponse
 	}
@@ -229,13 +231,13 @@ func (c *inMemTenClient) sendRawTransaction(result interface{}, args []interface
 }
 
 func (c *inMemTenClient) getTransactionByHash(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.GetTransactionByHash)
+	enc, err := getEncryptedBytes(args, tenrpc.ERPCGetTransactionByHash)
 	if err != nil {
 		return err
 	}
-	encryptedResponse, err := c.ethAPI.GetTransactionByHash(context.Background(), enc)
+	encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTransactionByHash, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", tenrpc.ERPCGetTransactionByHash, err)
 	}
 
 	// GetTransactionByHash returns EnclaveResponse
@@ -244,26 +246,26 @@ func (c *inMemTenClient) getTransactionByHash(result interface{}, args []interfa
 }
 
 func (c *inMemTenClient) rpcCall(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.Call)
+	enc, err := getEncryptedBytes(args, tenrpc.ERPCCall)
 	if err != nil {
 		return err
 	}
-	encryptedResponse, err := c.ethAPI.Call(context.Background(), enc)
+	encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.Call, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", tenrpc.ERPCCall, err)
 	}
 	*result.(*responses.EnclaveResponse) = encryptedResponse
 	return nil
 }
 
 func (c *inMemTenClient) getTransactionReceipt(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.GetTransactionReceipt)
+	enc, err := getEncryptedBytes(args, tenrpc.ERPCGetTransactionReceipt)
 	if err != nil {
 		return err
 	}
-	encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), enc)
+	encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTransactionReceipt, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", tenrpc.ERPCGetTransactionReceipt, err)
 	}
 
 	// GetTransactionReceipt returns EnclaveResponse
@@ -272,13 +274,13 @@ func (c *inMemTenClient) getTransactionReceipt(result interface{}, args []interf
 }
 
 func (c *inMemTenClient) getTransactionCount(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.GetTransactionCount)
+	enc, err := getEncryptedBytes(args, tenrpc.ERPCGetTransactionCount)
 	if err != nil {
 		return err
 	}
-	encryptedResponse, err := c.ethAPI.GetTransactionCount(context.Background(), enc)
+	encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTransactionCount, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", tenrpc.ERPCGetTransactionCount, err)
 	}
 
 	*result.(*responses.EnclaveResponse) = encryptedResponse
@@ -286,13 +288,13 @@ func (c *inMemTenClient) getTransactionCount(result interface{}, args []interfac
 }
 
 func (c *inMemTenClient) getLogs(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.GetLogs)
+	enc, err := getEncryptedBytes(args, tenrpc.ERPCGetLogs)
 	if err != nil {
 		return err
 	}
-	encryptedResponse, err := c.filterAPI.GetLogs(context.Background(), enc)
+	encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetLogs, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", tenrpc.ERPCGetLogs, err)
 	}
 	*result.(*responses.EnclaveResponse) = encryptedResponse
 	return nil

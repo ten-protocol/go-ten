@@ -34,8 +34,8 @@ func (api *NetworkDebug) TraceTransaction(ctx context.Context, hash gethcommon.H
 	return response, nil
 }
 
-func (api *NetworkDebug) EventLogRelevancy(ctx context.Context, encryptedParams common.EncryptedParamsDebugLogRelevancy) (responses.DebugLogs, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().DebugEventLogRelevancy(ctx, encryptedParams)
+func (api *NetworkDebug) EventLogRelevancy(ctx context.Context, encryptedParams common.EncryptedRequest) (responses.DebugLogs, error) {
+	enclaveResponse, sysError := api.host.EnclaveClient().EncryptedRPC(ctx, encryptedParams)
 	if sysError != nil {
 		return responses.EnclaveResponse{
 			Err: &responses.InternalErrMsg,

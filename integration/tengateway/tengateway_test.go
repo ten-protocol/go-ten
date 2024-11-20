@@ -22,8 +22,6 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension"
 
 	"github.com/go-kit/kit/transport/http/jsonrpc"
-	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
-
 	log2 "github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ethereum/go-ethereum"
@@ -254,7 +252,7 @@ func deployContract(t *testing.T, w wallet.Wallet, user0 *GatewayUser) gethcommo
 
 func interactWithSmartContractUnsigned(client *ethclient.Client, sendRaw bool, nonce uint64, contractAddress gethcommon.Address, contractInteractionData []byte, value *big.Int) (*types.Receipt, error) {
 	var result responses.GasPriceType
-	err := client.Client().CallContext(context.Background(), &result, tenrpc.GasPrice)
+	err := client.Client().CallContext(context.Background(), &result, "eth_gasPrice")
 	if err != nil {
 		return nil, err
 	}
@@ -895,9 +893,9 @@ func testInvokeNonSensitiveMethod(t *testing.T, _ int, httpURL, wsURL string, w 
 
 	// call one of the non-sensitive methods with unauthenticated user
 	// and make sure gateway is not complaining about not having viewing keys
-	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.ChainID, user.tgClient.UserID(), nil)
-	if strings.Contains(string(respBody), fmt.Sprintf("method %s cannot be called with an unauthorised client - no signed viewing keys found", tenrpc.ChainID)) {
-		t.Errorf("sensitive method called without authenticating viewingkeys and did fail because of it:  %s", tenrpc.ChainID)
+	respBody := makeHTTPEthJSONReq(httpURL, "eth_chainId", user.tgClient.UserID(), nil)
+	if strings.Contains(string(respBody), fmt.Sprintf("method %s cannot be called with an unauthorised client - no signed viewing keys found", "eth_chainId")) {
+		t.Errorf("sensitive method called without authenticating viewingkeys and did fail because of it:  %s", "eth_chainId")
 	}
 }
 
@@ -911,7 +909,7 @@ func testGetStorageAtForReturningUserID(t *testing.T, _ int, httpURL, wsURL stri
 	var response JSONResponse
 
 	// make a request to GetStorageAt with correct parameters to get userID that exists in the database
-	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{common.UserIDRequestCQMethod, "0", nil})
+	respBody := makeHTTPEthJSONReq(httpURL, "eth_getStorageAt", user.tgClient.UserID(), []interface{}{common.UserIDRequestCQMethod, "0", nil})
 	if err = json.Unmarshal(respBody, &response); err != nil {
 		t.Error("Unable to unmarshal response")
 	}
@@ -920,7 +918,7 @@ func testGetStorageAtForReturningUserID(t *testing.T, _ int, httpURL, wsURL stri
 	}
 
 	// make a request to GetStorageAt with correct parameters to get userID, but with wrong userID
-	respBody2 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, "0x0000000000000000000000000000000000000001", []interface{}{common.UserIDRequestCQMethod, "0", nil})
+	respBody2 := makeHTTPEthJSONReq(httpURL, "eth_getStorageAt", "0x0000000000000000000000000000000000000001", []interface{}{common.UserIDRequestCQMethod, "0", nil})
 	if !strings.Contains(string(respBody2), "not found") {
 		t.Error("eth_getStorageAt did not respond with not found error")
 	}
@@ -932,7 +930,7 @@ func testGetStorageAtForReturningUserID(t *testing.T, _ int, httpURL, wsURL stri
 	}
 
 	// make a request to GetStorageAt with wrong parameters to get userID, but correct userID
-	respBody3 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{"0x0000000000000000000000000000000000000007", "0", nil})
+	respBody3 := makeHTTPEthJSONReq(httpURL, "eth_getStorageAt", user.tgClient.UserID(), []interface{}{"0x0000000000000000000000000000000000000007", "0", nil})
 	expectedErr := "not supported"
 	if !strings.Contains(string(respBody3), expectedErr) {
 		t.Errorf("eth_getStorageAt did not respond with error: %s, it was: %s", expectedErr, string(respBody3))
@@ -943,7 +941,7 @@ func testGetStorageAtForReturningUserID(t *testing.T, _ int, httpURL, wsURL stri
 		Pagination: common.QueryPagination{Size: 10},
 	})
 
-	respBody4 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{common.ListPrivateTransactionsCQMethod, string(privateTxs), nil})
+	respBody4 := makeHTTPEthJSONReq(httpURL, "eth_getStorageAt", user.tgClient.UserID(), []interface{}{common.ListPrivateTransactionsCQMethod, string(privateTxs), nil})
 	if err = json.Unmarshal(respBody4, &response); err != nil {
 		t.Error("Unable to unmarshal response")
 	}

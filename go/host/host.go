@@ -171,7 +171,7 @@ func (h *host) EnclaveClient() common.Enclave {
 	return h.services.Enclaves().GetEnclaveClient()
 }
 
-func (h *host) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
+func (h *host) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error) {
 	if h.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitAndBroadcastTx with the host stopping"))
 	}
@@ -269,10 +269,10 @@ func (h *host) NewHeadsChan() chan *common.BatchHeader {
 
 // Checks the host config is valid.
 func (h *host) validateConfig() {
-	if h.config.IsGenesis && h.config.NodeType != common.Sequencer {
+	if h.config.IsGenesis && h.config.NodeType != common.ActiveSequencer {
 		h.logger.Crit("genesis node must be the sequencer")
 	}
-	if !h.config.IsGenesis && h.config.NodeType == common.Sequencer {
+	if !h.config.IsGenesis && h.config.NodeType == common.ActiveSequencer {
 		h.logger.Crit("only the genesis node can be a sequencer")
 	}
 

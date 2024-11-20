@@ -2,6 +2,11 @@ package clientapi
 
 import (
 	"context"
+	"fmt"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -10,13 +15,20 @@ import (
 
 // TenAPI implements Ten-specific JSON RPC operations.
 type TenAPI struct {
-	host host.Host
+	host   host.Host
+	logger gethlog.Logger
 }
 
-func NewTenAPI(host host.Host) *TenAPI {
+func NewTenAPI(host host.Host, logger gethlog.Logger) *TenAPI {
 	return &TenAPI{
-		host: host,
+		host:   host,
+		logger: logger,
 	}
+}
+
+// Version returns the protocol version of the Obscuro network.
+func (api *TenAPI) Version() string {
+	return fmt.Sprintf("%d", api.host.Config().ObscuroChainID)
 }
 
 // Health returns the health status of TEN host + enclave + db
@@ -31,6 +43,21 @@ func (api *TenAPI) Config() (*ChecksumFormattedTenNetworkConfig, error) {
 		return nil, err
 	}
 	return checksumFormatted(config), nil
+}
+
+func (api *TenAPI) EncryptedRPC(ctx context.Context, encryptedParams common.EncryptedRequest) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.EnclaveClient().EncryptedRPC(ctx, encryptedParams)
+	if sysError != nil {
+		return api.handleSysError("EncryptedRPC", sysError)
+	}
+	return *enclaveResponse, nil
+}
+
+func (api *TenAPI) handleSysError(function string, sysError common.SystemError) (responses.EnclaveResponse, error) {
+	api.logger.Error(fmt.Sprintf("Enclave System Error. Function %s", function), log.ErrKey, sysError)
+	return responses.EnclaveResponse{
+		Err: &responses.InternalErrMsg,
+	}, nil
 }
 
 // ChecksumFormattedTenNetworkConfig serialises the addresses as EIP55 checksum addresses.
