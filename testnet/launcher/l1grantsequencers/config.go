@@ -10,7 +10,7 @@ type Config struct {
 	mgmtContractAddress string
 	enclaveIDs          string
 	dockerImage         string
-	debugEnabled        bool
+	//debugEnabled        bool
 }
 
 func NewGrantSequencerConfig(opts ...Option) *Config {
@@ -53,8 +53,8 @@ func WithDockerImage(s string) Option {
 	}
 }
 
-func WithDebugEnabled(b bool) Option {
-	return func(c *Config) {
-		c.debugEnabled = b
-	}
-}
+//func WithDebugEnabled(b bool) Option {
+//	return func(c *Config) {
+//		c.debugEnabled = b
+//	}
+//}

@@ -295,7 +295,7 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 	return nil
 }
 
-func (t *Testnet) grantSequencerStatus(mgmt string) error {
+func (t *Testnet) grantSequencerStatus(mgmtContractAddr string) error {
 	// fetch enclaveIDs
 	hostURL := fmt.Sprintf("http://localhost:%d", 80)
 	client, err := rpc.NewNetworkClient(hostURL)
@@ -318,12 +318,11 @@ func (t *Testnet) grantSequencerStatus(mgmt string) error {
 
 	l1grantsequencers, err := l1gs.NewGrantSequencers(
 		l1gs.NewGrantSequencerConfig(
-			l1gs.WithL1HTTPURL("http://eth2network:8025"),
 			l1gs.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l1gs.WithDockerImage(t.cfg.contractDeployerDockerImage),
-			l1gs.WithMgmtContractAddress(mgmt),
+			l1gs.WithMgmtContractAddress(mgmtContractAddr),
 			l1gs.WithEnclaveIDs(enclaveIDsStr),
-			l1gs.WithDebugEnabled(t.cfg.contractDeployerDebug),
+			//l1gs.WithDebugEnabled(t.cfg.contractDeployerDebug),
 		),
 	)
 	if err != nil {
@@ -335,7 +334,7 @@ func (t *Testnet) grantSequencerStatus(mgmt string) error {
 		return fmt.Errorf("unable to start l1 grant sequencers - %w", err)
 	}
 
-	fmt.Println("L1 Contracts were successfully deployed...")
+	fmt.Println("Enclaves were successfully granted sequencer roles...")
 
 	return nil
 }
