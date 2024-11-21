@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	rpc2 "github.com/ten-protocol/go-ten/go/rpc"
+
 	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
@@ -43,7 +45,7 @@ func (api *BlockChainAPI) ChainId() *hexutil.Big { //nolint:stylecheck
 }
 
 func (api *BlockChainAPI) BlockNumber() hexutil.Uint64 {
-	nr, err := UnauthenticatedTenRPCCall[hexutil.Uint64](context.Background(), api.we, &cache.Cfg{Type: cache.LatestBatch}, "ten_blockNumber")
+	nr, err := UnauthenticatedTenRPCCall[hexutil.Uint64](context.Background(), api.we, &cache.Cfg{Type: cache.LatestBatch}, rpc2.BatchNumber)
 	if err != nil {
 		return hexutil.Uint64(0)
 	}
@@ -116,7 +118,7 @@ func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.Block
 			DynamicType: func() cache.Strategy {
 				return cacheBlockNumber(number)
 			},
-		}, "ten_getBlockByNumber", number, fullTx)
+		}, rpc2.GetBatchByNumber, number, fullTx)
 	if resp == nil {
 		return nil, err
 	}
@@ -134,7 +136,7 @@ func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.Block
 }
 
 func (api *BlockChainAPI) GetBlockByHash(ctx context.Context, hash gethcommon.Hash, fullTx bool) (map[string]interface{}, error) {
-	resp, err := UnauthenticatedTenRPCCall[common.BatchHeader](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, "ten_getBlockByHash", hash, fullTx)
+	resp, err := UnauthenticatedTenRPCCall[common.BatchHeader](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, rpc2.GetBatchByHash, hash, fullTx)
 	if resp == nil {
 		return nil, err
 	}

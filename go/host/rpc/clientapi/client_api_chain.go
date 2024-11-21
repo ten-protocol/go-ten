@@ -35,8 +35,8 @@ func (api *ChainAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,reviv
 	return (*hexutil.Big)(big.NewInt(api.host.Config().ObscuroChainID)), nil
 }
 
-// BlockNumber returns the height of the current head batch.
-func (api *ChainAPI) BlockNumber() hexutil.Uint64 {
+// BatchNumber returns the height of the current head batch.
+func (api *ChainAPI) BatchNumber() hexutil.Uint64 {
 	header, err := api.host.Storage().FetchHeadBatchHeader()
 	if err != nil {
 		// This error may be nefarious, but unfortunately the Eth API doesn't allow us to return an error.
@@ -46,17 +46,17 @@ func (api *ChainAPI) BlockNumber() hexutil.Uint64 {
 	return hexutil.Uint64(header.Number.Uint64())
 }
 
-// GetBlockByNumber returns the header of the batch with the given height.
-func (api *ChainAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (*common.BatchHeader, error) {
+// GetBatchByNumber returns the header of the batch with the given height.
+func (api *ChainAPI) GetBatchByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (*common.BatchHeader, error) {
 	batchHash, err := api.batchNumberToBatchHash(number)
 	if err != nil {
 		return nil, fmt.Errorf("could not find batch with height %d. Cause: %w", number, err)
 	}
-	return api.GetBlockByHash(ctx, *batchHash, true)
+	return api.GetBatchByHash(ctx, *batchHash, true)
 }
 
-// GetBlockByHash returns the header of the batch with the given hash.
-func (api *ChainAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (*common.BatchHeader, error) {
+// GetBatchByHash returns the header of the batch with the given hash.
+func (api *ChainAPI) GetBatchByHash(_ context.Context, hash gethcommon.Hash, _ bool) (*common.BatchHeader, error) {
 	batchHeader, err := api.host.Storage().FetchBatchHeaderByHash(hash)
 	if err != nil {
 		return nil, err
