@@ -2,6 +2,9 @@ package rpc
 
 import "github.com/ten-protocol/go-ten/go/common/viewingkey"
 
+// EncRPC - the RPC method through which all encypted calls get routed
+const EncRPC = "ten_encryptedRPC"
+
 // encryptedMethods for which the RPC requests and responses should be encrypted
 // these are names of virtual RPC methods exposed by a TEN node
 // they all get routed through "ten_encryptedRPC"

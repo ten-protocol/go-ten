@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -61,12 +63,16 @@ func NewInMemTenClient(hostContainer *container.HostContainer) rpc.Client {
 // Call bypasses RPC, and invokes methods on the node directly.
 func (c *inMemTenClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
-	case "ten_encryptedRPC":
-		encBytes, err := getEncryptedBytes(args)
-		if err != nil {
-			return err
+	case tenrpc.EncRPC:
+		if len(args) != 1 {
+			return fmt.Errorf("expected 1 arg for encrypted method, got %d", len(args))
 		}
-		encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), encBytes)
+		encryptedRPCRequest, ok := args[0].(common.EncryptedRPCRequest)
+		if !ok {
+			return fmt.Errorf("first arg to encrypted method is of type %T, expected EncryptedRPCRequest", args[0])
+		}
+
+		encryptedResponse, err := c.tenAPI.EncryptedRPC(context.Background(), encryptedRPCRequest)
 		if err == nil {
 			*result.(*responses.EnclaveResponse) = encryptedResponse
 		}
@@ -371,16 +377,4 @@ func (c *inMemTenClient) getPublicTransactionData(result interface{}, args []int
 	}
 	*res = *txs
 	return nil
-}
-
-// getEncryptedBytes expects args to have a single element and it to be of type bytes (client doesn't know anything about what's getting passed through on sensitive methods)
-func getEncryptedBytes(args []interface{}) ([]byte, error) {
-	if len(args) != 1 {
-		return nil, fmt.Errorf("expected 1 arg for encrypted method, got %d", len(args))
-	}
-	encBytes, ok := args[0].([]byte)
-	if !ok {
-		return nil, fmt.Errorf("first arg to encrypted method is of type %T, expected []byte", args[0])
-	}
-	return encBytes, nil
 }

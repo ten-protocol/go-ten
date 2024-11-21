@@ -74,10 +74,11 @@ type (
 	EnclaveID = common.Address
 )
 
-const (
-	Call uint8 = iota
-	SubmitTx
-)
+// EncryptedRPCRequest - an encrypted request with extra plaintext metadata
+type EncryptedRPCRequest struct {
+	Req  EncryptedRequest
+	IsTx bool // we can make this an enum if we need to provide more info to the TEN host
+}
 
 func (txs L2PricedTransactions) ToTransactions() types.Transactions {
 	ret := make(types.Transactions, 0)

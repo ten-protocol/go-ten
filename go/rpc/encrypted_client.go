@@ -106,9 +106,11 @@ func (c *EncRPCClient) executeEncryptedCall(ctx context.Context, result interfac
 		return fmt.Errorf("failed to encrypt args for %s call - %w", method, err)
 	}
 
-	// We setup the rawResult to receive an EnclaveResponse. All sensitive methods should return this
+	// we need to inform the TEN node that the call is a transaction because it needs to broadcast it
+	isTx := method == rpc.ERPCSendRawTransaction
+
 	var rawResult responses.EnclaveResponse
-	err = c.executeRPCCall(ctx, &rawResult, "ten_encryptedRPC", encryptedParams)
+	err = c.executeRPCCall(ctx, &rawResult, rpc.EncRPC, common.EncryptedRPCRequest{Req: encryptedParams, IsTx: isTx})
 	if err != nil {
 		return err
 	}
