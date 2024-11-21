@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sync"
 	"sync/atomic"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -26,7 +27,9 @@ type Service struct {
 	sl       enclaveServiceLocator
 
 	// The service goes via the Guardians to talk to the enclave (because guardian knows if the enclave is healthy etc.)
-	enclaveGuardians []*Guardian
+	enclaveGuardians  []*Guardian
+	activeSequencerID *common.EnclaveID
+	haLock            sync.Mutex // lock for failover operations: evicting an enclave, promoting a standby to active, etc.
 
 	running atomic.Bool
 	logger  gethlog.Logger
@@ -116,6 +119,37 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 		clients[i] = guardian.enclaveClient
 	}
 	return clients
+}
+
+func (e *Service) EvictEnclave(enclaveID *common.EnclaveID) {
+	failedEnclaveIdx := -1
+	e.haLock.Lock()
+	defer e.haLock.Unlock()
+	for i, guardian := range e.enclaveGuardians {
+		if guardian.GetEnclaveID() == enclaveID {
+			failedEnclaveIdx = i
+			break
+		}
+	}
+	if failedEnclaveIdx == -1 {
+		e.logger.Warn("Could not find enclave to evict.", log.EnclaveIDKey, enclaveID)
+		return
+	}
+
+	// remove the failed enclave from the list of enclaves
+	e.enclaveGuardians = append(e.enclaveGuardians[:failedEnclaveIdx], e.enclaveGuardians[failedEnclaveIdx+1:]...)
+	e.logger.Warn("Evicted enclave.", log.EnclaveIDKey, enclaveID)
+
+	if e.activeSequencerID == enclaveID {
+		// sequencer enclave has failed, so we need to select another one to promote as the active sequencer
+		if len(e.enclaveGuardians) == 0 {
+			e.logger.Crit("All enclaves have failed, no sequencer to promote.")
+			return
+		}
+		e.activeSequencerID = e.enclaveGuardians[0].GetEnclaveID()
+		e.enclaveGuardians[0].PromoteToActiveSequencer()
+		e.logger.Warn("Promoted new sequencer.", log.EnclaveIDKey, e.activeSequencerID)
+	}
 }
 
 func (e *Service) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error) {
