@@ -117,6 +117,8 @@ func (g *Guardian) Start() error {
 		g.enclaveID = &enclID
 		// include the enclave ID in guardian log messages (for multi-enclave nodes)
 		g.logger = g.logger.New(log.EnclaveIDKey, g.enclaveID)
+		// recreate status with new logger
+		g.state = NewStateTracker(g.logger)
 		g.logger.Info("Starting guardian process.")
 	}
 
