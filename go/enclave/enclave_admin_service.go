@@ -87,6 +87,8 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 	// change the node type service
 	// do something with the mempool
 	// make some other checks?
+	// Once we've got the sequencer Enclave IDs permission list monitoring we should include that check here probably.
+	// We could even make it so that all sequencer enclaves start as backup and it can't be activated until the permissioning is done?
 
 	return nil
 }
@@ -440,6 +442,6 @@ func (e *enclaveAdminService) isBackupSequencer() bool {
 	return e.config.NodeType == common.ActiveSequencer
 }
 
-func (e *enclaveAdminService) isValidator() bool {
+func (e *enclaveAdminService) isValidator() bool { //nolint:unused
 	return e.config.NodeType == common.Validator
 }
