@@ -108,6 +108,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKey.EnclaveID(), storage, logger)
 
 	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, gethEncodingService, *config, logger)
+	// todo  - mempool for backup sequencer needs to store all txs
 	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
@@ -287,6 +288,13 @@ func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) common.SystemError {
 		return systemError
 	}
 	return e.rpcService.Unsubscribe(id)
+}
+
+func (e *enclaveImpl) MakeActive() common.SystemError {
+	if systemError := checkStopping(e.stopControl); systemError != nil {
+		return systemError
+	}
+	return e.adminService.MakeActive()
 }
 
 func (e *enclaveImpl) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, common.SystemError) {

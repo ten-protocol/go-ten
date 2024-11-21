@@ -29,6 +29,7 @@ import (
 )
 
 type enclaveAdminService struct {
+	config                 *enclaveconfig.EnclaveConfig
 	mainMutex              sync.Mutex // serialises all data ingestion or creation to avoid weird races
 	logger                 gethlog.Logger
 	l1BlockProcessor       components.L1BlockProcessor
@@ -57,6 +58,7 @@ func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.
 	}
 
 	return &enclaveAdminService{
+		config:                 config,
 		mainMutex:              sync.Mutex{},
 		logger:                 logger,
 		l1BlockProcessor:       l1BlockProcessor,
@@ -72,6 +74,21 @@ func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.
 		profiler:               prof,
 		subscriptionManager:    subscriptionManager,
 	}
+}
+
+func (e *enclaveAdminService) MakeActive() common.SystemError {
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
+
+	if !e.isBackupSequencer() {
+		return fmt.Errorf("only backup sequencer can become active")
+	}
+	// todo
+	// change the node type service
+	// do something with the mempool
+	// make some other checks?
+
+	return nil
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
@@ -105,65 +122,11 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *ty
 	return bsr, nil
 }
 
-func (e *enclaveAdminService) rejectBlockErr(ctx context.Context, cause error) *errutil.BlockRejectError {
-	var hash common.L1BlockHash
-	l1Head, err := e.l1BlockProcessor.GetHead(ctx)
-	// todo - handle error
-	if err == nil {
-		hash = l1Head.Hash()
-	}
-	return &errutil.BlockRejectError{
-		L1Head:  hash,
-		Wrapped: cause,
-	}
-}
-
-func (e *enclaveAdminService) ingestL1Block(ctx context.Context, br *common.BlockAndReceipts) (*components.BlockIngestionType, error) {
-	e.logger.Info("Start ingesting block", log.BlockHashKey, br.BlockHeader.Hash())
-	ingestion, err := e.l1BlockProcessor.Process(ctx, br)
-	if err != nil {
-		// only warn for unexpected errors
-		if errors.Is(err, errutil.ErrBlockAncestorNotFound) || errors.Is(err, errutil.ErrBlockAlreadyProcessed) {
-			e.logger.Debug("Did not ingest block", log.ErrKey, err, log.BlockHashKey, br.BlockHeader.Hash())
-		} else {
-			e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.BlockHeader.Hash())
-		}
-		return nil, err
-	}
-
-	err = e.rollupConsumer.ProcessBlobsInBlock(ctx, br)
-	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
-		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
-		// Unsure what to do here; block has been stored
-	}
-
-	if ingestion.IsFork() {
-		e.registry.OnL1Reorg(ingestion)
-		err := e.service.OnL1Fork(ctx, ingestion.ChainFork)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return ingestion, nil
-}
-
-func (e *enclaveAdminService) Validator() nodetype.ObsValidator {
-	validator, ok := e.service.(nodetype.ObsValidator)
-	if !ok {
-		panic("enclave service is not a validator but validator was requested!")
-	}
-	return validator
-}
-
-func (e *enclaveAdminService) Sequencer() nodetype.Sequencer {
-	sequencer, ok := e.service.(nodetype.Sequencer)
-	if !ok {
-		panic("enclave service is not a sequencer but sequencer was requested!")
-	}
-	return sequencer
-}
-
 func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch) common.SystemError {
+	if e.isActiveSequencer() {
+		e.logger.Crit("Can't submit a batch to the active sequencer")
+	}
+
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "SubmitBatch call completed.", log.BatchHashKey, extBatch.Hash())
 
 	e.logger.Info("Received new p2p batch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
@@ -180,7 +143,7 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 		return responses.ToInternalError(fmt.Errorf("could not convert batch. Cause: %w", err))
 	}
 
-	err = e.Validator().VerifySequencerSignature(batch)
+	err = e.validator().VerifySequencerSignature(batch)
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("invalid batch received. Could not verify signature. Cause: %w", err))
 	}
@@ -200,7 +163,7 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 		return responses.ToInternalError(fmt.Errorf("could not store batch. Cause: %w", err))
 	}
 
-	err = e.Validator().ExecuteStoredBatches(ctx)
+	err = e.validator().ExecuteStoredBatches(ctx)
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not execute batches. Cause: %w", err))
 	}
@@ -209,12 +172,16 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 }
 
 func (e *enclaveAdminService) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) common.SystemError {
+	if !e.isActiveSequencer() {
+		e.logger.Crit("Only the active sequencer can create batches")
+	}
+
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateBatch call ended")
 
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	err := e.Sequencer().CreateBatch(ctx, skipBatchIfEmpty)
+	err := e.sequencer().CreateBatch(ctx, skipBatchIfEmpty)
 	if err != nil {
 		return responses.ToInternalError(err)
 	}
@@ -223,6 +190,9 @@ func (e *enclaveAdminService) CreateBatch(ctx context.Context, skipBatchIfEmpty 
 }
 
 func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
+	if !e.isActiveSequencer() {
+		e.logger.Crit("Only the active sequencer can create rollups")
+	}
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateRollup call ended")
 
 	e.mainMutex.Lock()
@@ -232,44 +202,12 @@ func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64
 		return nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))
 	}
 
-	rollup, err := e.Sequencer().CreateRollup(ctx, fromSeqNo)
+	rollup, err := e.sequencer().CreateRollup(ctx, fromSeqNo)
 	// TODO do we need to store the blob hashes here so we can check them against our records?
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
 	return rollup, nil
-}
-
-// HealthCheck returns whether the enclave is deemed healthy
-func (e *enclaveAdminService) HealthCheck(ctx context.Context) (bool, common.SystemError) {
-	if e.stopControl.IsStopping() {
-		return false, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the enclave stopping"))
-	}
-
-	// check the storage health
-	storageHealthy, err := e.storage.HealthCheck(ctx)
-	if err != nil {
-		// simplest iteration, log the error and just return that it's not healthy
-		e.logger.Info("HealthCheck failed for the enclave storage", log.ErrKey, err)
-		return false, nil
-	}
-
-	// todo (#1148) - enclave healthcheck operations
-	l1blockHealthy, err := e.l1BlockProcessor.HealthCheck()
-	if err != nil {
-		// simplest iteration, log the error and just return that it's not healthy
-		e.logger.Info("HealthCheck failed for the l1 block processor", log.ErrKey, err)
-		return false, nil
-	}
-
-	l2batchHealthy, err := e.registry.HealthCheck()
-	if err != nil {
-		// simplest iteration, log the error and just return that it's not healthy
-		e.logger.Info("HealthCheck failed for the l2 batch registry", log.ErrKey, err)
-		return false, nil
-	}
-
-	return storageHealthy && l1blockHealthy && l2batchHealthy, nil
 }
 
 func (e *enclaveAdminService) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, common.SystemError) {
@@ -332,6 +270,38 @@ func (e *enclaveAdminService) StreamL2Updates() (chan common.StreamL2UpdatesResp
 	return l2UpdatesChannel, func() {
 		e.registry.UnsubscribeFromBatches()
 	}
+}
+
+// HealthCheck returns whether the enclave is deemed healthy
+func (e *enclaveAdminService) HealthCheck(ctx context.Context) (bool, common.SystemError) {
+	if e.stopControl.IsStopping() {
+		return false, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the enclave stopping"))
+	}
+
+	// check the storage health
+	storageHealthy, err := e.storage.HealthCheck(ctx)
+	if err != nil {
+		// simplest iteration, log the error and just return that it's not healthy
+		e.logger.Info("HealthCheck failed for the enclave storage", log.ErrKey, err)
+		return false, nil
+	}
+
+	// todo (#1148) - enclave healthcheck operations
+	l1blockHealthy, err := e.l1BlockProcessor.HealthCheck()
+	if err != nil {
+		// simplest iteration, log the error and just return that it's not healthy
+		e.logger.Info("HealthCheck failed for the l1 block processor", log.ErrKey, err)
+		return false, nil
+	}
+
+	l2batchHealthy, err := e.registry.HealthCheck()
+	if err != nil {
+		// simplest iteration, log the error and just return that it's not healthy
+		e.logger.Info("HealthCheck failed for the l2 batch registry", log.ErrKey, err)
+		return false, nil
+	}
+
+	return storageHealthy && l1blockHealthy && l2batchHealthy, nil
 }
 
 func (e *enclaveAdminService) Stop() common.SystemError {
@@ -402,4 +372,74 @@ func (e *enclaveAdminService) streamEventsForNewHeadBatch(ctx context.Context, b
 			Logs: logs,
 		}
 	}
+}
+
+func (e *enclaveAdminService) ingestL1Block(ctx context.Context, br *common.BlockAndReceipts) (*components.BlockIngestionType, error) {
+	e.logger.Info("Start ingesting block", log.BlockHashKey, br.BlockHeader.Hash())
+	ingestion, err := e.l1BlockProcessor.Process(ctx, br)
+	if err != nil {
+		// only warn for unexpected errors
+		if errors.Is(err, errutil.ErrBlockAncestorNotFound) || errors.Is(err, errutil.ErrBlockAlreadyProcessed) {
+			e.logger.Debug("Did not ingest block", log.ErrKey, err, log.BlockHashKey, br.BlockHeader.Hash())
+		} else {
+			e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.BlockHeader.Hash())
+		}
+		return nil, err
+	}
+
+	err = e.rollupConsumer.ProcessBlobsInBlock(ctx, br)
+	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
+		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
+		// Unsure what to do here; block has been stored
+	}
+
+	if ingestion.IsFork() {
+		e.registry.OnL1Reorg(ingestion)
+		err := e.service.OnL1Fork(ctx, ingestion.ChainFork)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ingestion, nil
+}
+
+func (e *enclaveAdminService) rejectBlockErr(ctx context.Context, cause error) *errutil.BlockRejectError {
+	var hash common.L1BlockHash
+	l1Head, err := e.l1BlockProcessor.GetHead(ctx)
+	// todo - handle error
+	if err == nil {
+		hash = l1Head.Hash()
+	}
+	return &errutil.BlockRejectError{
+		L1Head:  hash,
+		Wrapped: cause,
+	}
+}
+
+func (e *enclaveAdminService) validator() nodetype.Validator {
+	validator, ok := e.service.(nodetype.Validator)
+	if !ok {
+		panic("enclave service is not a validator but validator was requested!")
+	}
+	return validator
+}
+
+func (e *enclaveAdminService) sequencer() nodetype.Sequencer {
+	sequencer, ok := e.service.(nodetype.Sequencer)
+	if !ok {
+		panic("enclave service is not a sequencer but sequencer was requested!")
+	}
+	return sequencer
+}
+
+func (e *enclaveAdminService) isActiveSequencer() bool {
+	return e.config.NodeType == common.ActiveSequencer
+}
+
+func (e *enclaveAdminService) isBackupSequencer() bool {
+	return e.config.NodeType == common.ActiveSequencer
+}
+
+func (e *enclaveAdminService) isValidator() bool {
+	return e.config.NodeType == common.Validator
 }

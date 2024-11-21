@@ -83,6 +83,10 @@ func (s *RPCServer) Status(ctx context.Context, _ *generated.StatusRequest) (*ge
 	}, nil
 }
 
+func (s *RPCServer) MakeActive(ctx context.Context, in *generated.MakeActiveRequest) (*generated.MakeActiveResponse, error) {
+	return &generated.MakeActiveResponse{SystemError: toRPCError(s.enclave.MakeActive())}, nil
+}
+
 func (s *RPCServer) Attestation(ctx context.Context, _ *generated.AttestationRequest) (*generated.AttestationResponse, error) {
 	attestation, sysError := s.enclave.Attestation(ctx)
 	if sysError != nil {

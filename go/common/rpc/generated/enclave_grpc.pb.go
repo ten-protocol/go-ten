@@ -42,49 +42,28 @@ const (
 	EnclaveProto_StreamL2Updates_FullMethodName       = "/generated.EnclaveProto/StreamL2Updates"
 	EnclaveProto_GetTotalContractCount_FullMethodName = "/generated.EnclaveProto/GetTotalContractCount"
 	EnclaveProto_EnclavePublicConfig_FullMethodName   = "/generated.EnclaveProto/EnclavePublicConfig"
+	EnclaveProto_MakeActive_FullMethodName            = "/generated.EnclaveProto/MakeActive"
 )
 
 // EnclaveProtoClient is the client API for EnclaveProto service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// todo (low priority) - remove these comments which duplicate those in common/enclave.go.
 type EnclaveProtoClient interface {
-	// Status is used to check whether the server is ready for requests.
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
-	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation(ctx context.Context, in *AttestationRequest, opts ...grpc.CallOption) (*AttestationResponse, error)
-	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
 	GenerateSecret(ctx context.Context, in *GenerateSecretRequest, opts ...grpc.CallOption) (*GenerateSecretResponse, error)
-	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error)
-	// EnclaveID - request the EnclaveID from the enclave
 	EnclaveID(ctx context.Context, in *EnclaveIDRequest, opts ...grpc.CallOption) (*EnclaveIDResponse, error)
-	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
-	//
-	//	a. historic block - if the enclave is behind and in the process of catching up with the L1 state
-	//	b. the latest block published by the L1, to which the enclave should respond with a rollup
-	//
-	// It is the responsibility of the host to gossip the returned rollup
-	// For good functioning the caller should always submit blocks ordered by height
-	// submitting a block before receiving ancestors of it, will result in it being ignored
 	SubmitL1Block(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error)
 	EncryptedRPC(ctx context.Context, in *EncCallRequest, opts ...grpc.CallOption) (*EncCallResponse, error)
-	// SubmitBatch submits a batch received from the sequencer for processing.
 	SubmitBatch(ctx context.Context, in *SubmitBatchRequest, opts ...grpc.CallOption) (*SubmitBatchResponse, error)
-	// Stop gracefully stops the enclave
 	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error)
-	// GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash
 	GetCode(ctx context.Context, in *GetCodeRequest, opts ...grpc.CallOption) (*GetCodeResponse, error)
 	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (*SubscribeResponse, error)
 	Unsubscribe(ctx context.Context, in *UnsubscribeRequest, opts ...grpc.CallOption) (*UnsubscribeResponse, error)
-	// HealthCheck returns the health status of enclave + db
 	HealthCheck(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*HealthCheckResponse, error)
-	// GetBatch returns the encrypted batch based on a hash
 	GetBatch(ctx context.Context, in *GetBatchRequest, opts ...grpc.CallOption) (*GetBatchResponse, error)
-	// GetBatch returns the encrypted batch based on a hash
 	GetBatchBySeqNo(ctx context.Context, in *GetBatchBySeqNoRequest, opts ...grpc.CallOption) (*GetBatchResponse, error)
-	// GetRollupData returns the first batch sequence number in the rollup and the timestamp
 	GetRollupData(ctx context.Context, in *GetRollupDataRequest, opts ...grpc.CallOption) (*GetRollupDataResponse, error)
 	CreateBatch(ctx context.Context, in *CreateBatchRequest, opts ...grpc.CallOption) (*CreateBatchResponse, error)
 	CreateRollup(ctx context.Context, in *CreateRollupRequest, opts ...grpc.CallOption) (*CreateRollupResponse, error)
@@ -92,8 +71,8 @@ type EnclaveProtoClient interface {
 	DebugTraceTransaction(ctx context.Context, in *DebugTraceTransactionRequest, opts ...grpc.CallOption) (*DebugTraceTransactionResponse, error)
 	StreamL2Updates(ctx context.Context, in *StreamL2UpdatesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[EncodedUpdateResponse], error)
 	GetTotalContractCount(ctx context.Context, in *GetTotalContractCountRequest, opts ...grpc.CallOption) (*GetTotalContractCountResponse, error)
-	// EnclavePublicConfig returns public network data that is known to the enclave but may not be known to the host
 	EnclavePublicConfig(ctx context.Context, in *EnclavePublicConfigRequest, opts ...grpc.CallOption) (*EnclavePublicConfigResponse, error)
+	MakeActive(ctx context.Context, in *MakeActiveRequest, opts ...grpc.CallOption) (*MakeActiveResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -343,47 +322,35 @@ func (c *enclaveProtoClient) EnclavePublicConfig(ctx context.Context, in *Enclav
 	return out, nil
 }
 
+func (c *enclaveProtoClient) MakeActive(ctx context.Context, in *MakeActiveRequest, opts ...grpc.CallOption) (*MakeActiveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MakeActiveResponse)
+	err := c.cc.Invoke(ctx, EnclaveProto_MakeActive_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility.
-//
-// todo (low priority) - remove these comments which duplicate those in common/enclave.go.
 type EnclaveProtoServer interface {
-	// Status is used to check whether the server is ready for requests.
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
-	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation(context.Context, *AttestationRequest) (*AttestationResponse, error)
-	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
 	GenerateSecret(context.Context, *GenerateSecretRequest) (*GenerateSecretResponse, error)
-	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error)
-	// EnclaveID - request the EnclaveID from the enclave
 	EnclaveID(context.Context, *EnclaveIDRequest) (*EnclaveIDResponse, error)
-	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
-	//
-	//	a. historic block - if the enclave is behind and in the process of catching up with the L1 state
-	//	b. the latest block published by the L1, to which the enclave should respond with a rollup
-	//
-	// It is the responsibility of the host to gossip the returned rollup
-	// For good functioning the caller should always submit blocks ordered by height
-	// submitting a block before receiving ancestors of it, will result in it being ignored
 	SubmitL1Block(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error)
 	EncryptedRPC(context.Context, *EncCallRequest) (*EncCallResponse, error)
-	// SubmitBatch submits a batch received from the sequencer for processing.
 	SubmitBatch(context.Context, *SubmitBatchRequest) (*SubmitBatchResponse, error)
-	// Stop gracefully stops the enclave
 	Stop(context.Context, *StopRequest) (*StopResponse, error)
-	// GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash
 	GetCode(context.Context, *GetCodeRequest) (*GetCodeResponse, error)
 	Subscribe(context.Context, *SubscribeRequest) (*SubscribeResponse, error)
 	Unsubscribe(context.Context, *UnsubscribeRequest) (*UnsubscribeResponse, error)
-	// HealthCheck returns the health status of enclave + db
 	HealthCheck(context.Context, *EmptyArgs) (*HealthCheckResponse, error)
-	// GetBatch returns the encrypted batch based on a hash
 	GetBatch(context.Context, *GetBatchRequest) (*GetBatchResponse, error)
-	// GetBatch returns the encrypted batch based on a hash
 	GetBatchBySeqNo(context.Context, *GetBatchBySeqNoRequest) (*GetBatchResponse, error)
-	// GetRollupData returns the first batch sequence number in the rollup and the timestamp
 	GetRollupData(context.Context, *GetRollupDataRequest) (*GetRollupDataResponse, error)
 	CreateBatch(context.Context, *CreateBatchRequest) (*CreateBatchResponse, error)
 	CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error)
@@ -391,8 +358,8 @@ type EnclaveProtoServer interface {
 	DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error)
 	StreamL2Updates(*StreamL2UpdatesRequest, grpc.ServerStreamingServer[EncodedUpdateResponse]) error
 	GetTotalContractCount(context.Context, *GetTotalContractCountRequest) (*GetTotalContractCountResponse, error)
-	// EnclavePublicConfig returns public network data that is known to the enclave but may not be known to the host
 	EnclavePublicConfig(context.Context, *EnclavePublicConfigRequest) (*EnclavePublicConfigResponse, error)
+	MakeActive(context.Context, *MakeActiveRequest) (*MakeActiveResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -471,6 +438,9 @@ func (UnimplementedEnclaveProtoServer) GetTotalContractCount(context.Context, *G
 }
 func (UnimplementedEnclaveProtoServer) EnclavePublicConfig(context.Context, *EnclavePublicConfigRequest) (*EnclavePublicConfigResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EnclavePublicConfig not implemented")
+}
+func (UnimplementedEnclaveProtoServer) MakeActive(context.Context, *MakeActiveRequest) (*MakeActiveResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MakeActive not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 func (UnimplementedEnclaveProtoServer) testEmbeddedByValue()                      {}
@@ -900,6 +870,24 @@ func _EnclaveProto_EnclavePublicConfig_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_MakeActive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MakeActiveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).MakeActive(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EnclaveProto_MakeActive_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).MakeActive(ctx, req.(*MakeActiveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -994,6 +982,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "EnclavePublicConfig",
 			Handler:    _EnclaveProto_EnclavePublicConfig_Handler,
+		},
+		{
+			MethodName: "MakeActive",
+			Handler:    _EnclaveProto_MakeActive_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

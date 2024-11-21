@@ -61,6 +61,9 @@ type EnclaveInit interface {
 
 // EnclaveAdmin provides administrative functions for managing an enclave.
 type EnclaveAdmin interface {
+	// MakeActive - backup sequencer enclave can become active at the command of the host
+	MakeActive() SystemError
+
 	// SubmitL1Block - Used for the host to submit L1 blocks to the enclave, these may be:
 	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
 	//  b. the latest block published by the L1, to which the enclave should respond with a rollup

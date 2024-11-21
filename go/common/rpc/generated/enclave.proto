@@ -4,72 +4,31 @@ option go_package = "enclave/rpc/generated";
 
 package generated;
 
-// todo (low priority) - remove these comments which duplicate those in common/enclave.go.
 service EnclaveProto {
-  // Status is used to check whether the server is ready for requests.
   rpc Status(StatusRequest) returns (StatusResponse) {}
-
-  // Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
   rpc Attestation(AttestationRequest) returns (AttestationResponse) {}
-
-  // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
   rpc GenerateSecret(GenerateSecretRequest) returns (GenerateSecretResponse) {}
-
-  // Init - initialise an enclave with a seed received by another enclave
   rpc InitEnclave(InitEnclaveRequest) returns (InitEnclaveResponse) {}
-
-  // EnclaveID - request the EnclaveID from the enclave
   rpc EnclaveID(EnclaveIDRequest) returns (EnclaveIDResponse) {}
-
-  // SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
-  //  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
-  //  b. the latest block published by the L1, to which the enclave should respond with a rollup
-  // It is the responsibility of the host to gossip the returned rollup
-  // For good functioning the caller should always submit blocks ordered by height
-  // submitting a block before receiving ancestors of it, will result in it being ignored
   rpc SubmitL1Block(SubmitBlockRequest) returns (SubmitBlockResponse) {}
-
   rpc EncryptedRPC(EncCallRequest) returns (EncCallResponse){}
-
-  // SubmitBatch submits a batch received from the sequencer for processing.
   rpc SubmitBatch(SubmitBatchRequest) returns (SubmitBatchResponse) {}
-
-  // Stop gracefully stops the enclave
   rpc Stop(StopRequest) returns (StopResponse) {}
-
-  // GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash
   rpc GetCode(GetCodeRequest) returns (GetCodeResponse) {}
-
   rpc Subscribe(SubscribeRequest) returns (SubscribeResponse) {}
-
   rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse) {}
-
-  // HealthCheck returns the health status of enclave + db
   rpc HealthCheck(EmptyArgs) returns (HealthCheckResponse) {}
-
-  // GetBatch returns the encrypted batch based on a hash
   rpc GetBatch(GetBatchRequest) returns (GetBatchResponse) {}
-
-  // GetBatch returns the encrypted batch based on a hash
   rpc GetBatchBySeqNo(GetBatchBySeqNoRequest) returns (GetBatchResponse) {}
-
-  // GetRollupData returns the first batch sequence number in the rollup and the timestamp
   rpc GetRollupData(GetRollupDataRequest) returns (GetRollupDataResponse) {}
-
   rpc CreateBatch(CreateBatchRequest) returns (CreateBatchResponse) {}
-
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
-
   rpc ExportCrossChainData(ExportCrossChainDataRequest) returns (ExportCrossChainDataResponse) {}
-
   rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
-
   rpc StreamL2Updates(StreamL2UpdatesRequest) returns (stream EncodedUpdateResponse) {}
-
   rpc GetTotalContractCount(GetTotalContractCountRequest) returns (GetTotalContractCountResponse) {}
-
-  // EnclavePublicConfig returns public network data that is known to the enclave but may not be known to the host
   rpc EnclavePublicConfig(EnclavePublicConfigRequest) returns (EnclavePublicConfigResponse) {}
+  rpc MakeActive(MakeActiveRequest) returns (MakeActiveResponse) {}
 }
 
 message EnclavePublicConfigRequest {}
@@ -172,6 +131,11 @@ message StatusResponse {
   bytes l2Head = 3; // seq number (big.Int) for the L2 head batch that the enclave has seen
   bytes enclaveID = 4; // enclave ID derived from the public key
   SystemError systemError = 5;
+}
+
+message MakeActiveRequest {}
+message MakeActiveResponse {
+  SystemError systemError = 1;
 }
 
 message AttestationRequest {}
