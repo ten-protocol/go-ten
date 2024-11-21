@@ -121,10 +121,7 @@ type EnclaveClientRPC interface {
 	DebugTraceTransaction(ctx context.Context, hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, SystemError)
 
 	GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) ([]byte, SystemError)
-}
 
-// EnclaveScan represents the methods that are used for data scanning in the enclave
-type EnclaveScan interface {
 	// GetTotalContractCount returns the total number of contracts that have been deployed
 	GetTotalContractCount(context.Context) (*big.Int, SystemError)
 
@@ -134,7 +131,6 @@ type EnclaveScan interface {
 
 // Enclave represents the API of the service that runs inside the TEE.
 type Enclave interface {
-	EnclaveScan
 	EnclaveInit
 	EnclaveAdmin
 	EnclaveClientRPC
